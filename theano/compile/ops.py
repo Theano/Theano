@@ -4,7 +4,7 @@ and Ops building class (:class:`FromFunctionOp`) and decorator
 
 """
 import copy
-import cPickle
+import theano.compat.six.moves.cPickle as pickle
 import warnings
 
 import theano
@@ -517,12 +517,12 @@ class FromFunctionOp(gof.Op):
         try:
             obj = load_back(mod, name)
         except (ImportError, KeyError, AttributeError):
-            raise cPickle.PicklingError(
+            raise pickle.PicklingError(
                 "Can't pickle as_op(), not found as %s.%s" %
                 (mod, name))
         else:
             if obj is not self:
-                raise cPickle.PicklingError(
+                raise pickle.PicklingError(
                     "Can't pickle as_op(), not the object "
                     "at %s.%s" % (mod, name))
         return load_back, (mod, name)

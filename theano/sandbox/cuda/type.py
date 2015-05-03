@@ -2,7 +2,7 @@
 """
 from __future__ import print_function
 import os
-import copy_reg
+import theano.compat.six.moves.copyreg as copyreg
 import warnings
 
 import numpy
@@ -546,7 +546,7 @@ def CudaNdarray_unpickler(npa):
     else:
         raise ImportError("Cuda not found. Cannot unpickle CudaNdarray")
 
-copy_reg.constructor(CudaNdarray_unpickler)
+copyreg.constructor(CudaNdarray_unpickler)
 
 
 def CudaNdarray_pickler(cnda):
@@ -554,5 +554,5 @@ def CudaNdarray_pickler(cnda):
 
 # In case cuda is not imported.
 if cuda is not None:
-    copy_reg.pickle(cuda.CudaNdarray, CudaNdarray_pickler,
+    copyreg.pickle(cuda.CudaNdarray, CudaNdarray_pickler,
                     CudaNdarray_unpickler)

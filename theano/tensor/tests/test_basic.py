@@ -10,7 +10,7 @@ import warnings
 from copy import copy, deepcopy
 from itertools import izip
 # Import builtin min to be able to use it after importing the tensor version.
-from __builtin__ import min as builtin_min
+from theano.compat.six.moves.builtins import min as builtin_min
 from nose.tools import assert_raises
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
@@ -20,8 +20,8 @@ from numpy.testing.noseclasses import KnownFailureTest
 from distutils.version import LooseVersion
 
 import theano
-from theano.compat import PY3, exc_message, operator_div, reduce
-from theano.compat.six import StringIO
+from theano.compat import PY3, exc_message, operator_div
+from theano.compat.six.moves import StringIO, reduce
 from theano import compile, config, function, gof, tensor, shared
 from theano.compile import DeepCopyOp
 from theano.compile.mode import get_default_mode

@@ -10,7 +10,7 @@ from __future__ import print_function
 # so state is ignored
 
 # since this job is not restartable, channel is also ignored
-import logging, StringIO, time, sys
+import logging, io, time, sys
 
 import numpy
 

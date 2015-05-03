@@ -7,9 +7,9 @@ from __future__ import print_function
 
 import copy
 import sys
-import copy_reg
 import gc
 import logging
+import theano.compat.six.moves.copyreg as copyreg
 from itertools import izip, product as itertools_product
 
 import numpy
@@ -2485,7 +2485,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
 
 def _pickle_DebugMode_Maker(maker):
     raise NotImplementedError('DebugMode is not picklable (yet)')
-copy_reg.pickle(_Maker, _pickle_DebugMode_Maker)
+copyreg.pickle(_Maker, _pickle_DebugMode_Maker)
 
 ########################
 #

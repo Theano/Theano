@@ -2,7 +2,7 @@
 """
 from __future__ import print_function
 import atexit
-import cPickle
+import theano.compat.six.moves.cPickle as pickle
 import logging
 import os
 import re
@@ -481,8 +481,8 @@ class KeyData(object):
         # Note that writing in binary mode is important under Windows.
         try:
             with open(self.key_pkl, 'wb') as f:
-                cPickle.dump(self, f, protocol=cPickle.HIGHEST_PROTOCOL)
-        except cPickle.PicklingError:
+                pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
+        except pickle.PicklingError:
             _logger.warning("Cache leak due to unpickle-able key data %s",
                             self.keys)
             os.remove(self.key_pkl)
@@ -721,7 +721,7 @@ class ModuleCache(object):
 
                     try:
                         with open(key_pkl, 'rb') as f:
-                            key_data = cPickle.load(f)
+                            key_data = pickle.load(f)
                     except EOFError:
                         # Happened once... not sure why (would be worth
                         # investigating if it ever happens again).
@@ -957,7 +957,7 @@ class ModuleCache(object):
                 try:
                     key_data.add_key(key, save_pkl=bool(key[0]))
                     key_broken = False
-                except cPickle.PicklingError:
+                except pickle.PicklingError:
                     key_data.remove_key(key)
                     key_broken = True
                 # We need the lock while we check in case of parallel
@@ -1011,7 +1011,7 @@ class ModuleCache(object):
         if key[0]:
             try:
                 key_data.save_pkl()
-            except cPickle.PicklingError:
+            except pickle.PicklingError:
                 key_broken = True
                 key_data.remove_key(key)
                 key_data.save_pkl()
@@ -1129,7 +1129,7 @@ class ModuleCache(object):
         for i in range(3):
             try:
                 with open(key_pkl, 'rb') as f:
-                    key_data = cPickle.load(f)
+                    key_data = pickle.load(f)
                 break
             except EOFError:
                 # This file is probably getting written/updated at the
@@ -1138,7 +1138,7 @@ class ModuleCache(object):
                 if i == 2:
                     with compilelock.lock_ctx():
                         with open(key_pkl, 'rb') as f:
-                            key_data = cPickle.load(f)
+                            key_data = pickle.load(f)
                 time.sleep(2)
 
         found = sum(key == other_key for other_key in key_data.keys)

@@ -1,6 +1,6 @@
 """Driver for gradient calculations."""
 from __future__ import print_function
-import __builtin__
+import theano.compat.six.moves.builtins as builtins
 from itertools import izip
 import logging
 import time
@@ -1387,9 +1387,9 @@ class numeric_grad(object):
         # if not dtypes == [dtypes[0]] * len(apt):
         #      raise TypeError('All function arguments must have same dtype')
 
-        total_size = __builtin__.sum(prod(sh) for sh in shapes)
+        total_size = builtins.sum(prod(sh) for sh in shapes)
 
-        working_dtype = __builtin__.min(
+        working_dtype = builtins.min(
             (self.type_eps[dt], dt) for dt in dtypes)[1]
 
         # create un-initialized memory
@@ -1401,7 +1401,7 @@ class numeric_grad(object):
             gx = numpy.ndarray((total_size,), dtype=working_dtype)
 
         if eps is None:
-            eps = __builtin__.max(self.type_eps[dt] for dt in dtypes)
+            eps = builtins.max(self.type_eps[dt] for dt in dtypes)
 
         # set up aliases so that apt[i] is backed by memory in x
         # and self.gf is backed by memory in gx
@@ -1586,9 +1586,9 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
         float64=1e-4)
 
     if abs_tol is None:
-        abs_tol = __builtin__.max(_type_tol[str(p.dtype)] for p in pt)
+        abs_tol = builtins.max(_type_tol[str(p.dtype)] for p in pt)
     if rel_tol is None:
-        rel_tol = __builtin__.max(_type_tol[str(p.dtype)] for p in pt)
+        rel_tol = builtins.max(_type_tol[str(p.dtype)] for p in pt)
 
     if rng is None:
         raise TypeError(('rng should be a valid instance of '

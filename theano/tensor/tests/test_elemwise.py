@@ -1,4 +1,4 @@
-import cPickle
+import theano.compat.six.moves.cPickle as pickle
 from copy import copy
 from itertools import imap
 import unittest
@@ -718,9 +718,9 @@ class test_Prod(unittest.TestCase):
     def test_pickle_bug(self):
         # Regression test for bug fixed in 24d4fd291054.
         o = Prod()
-        s = cPickle.dumps(o, protocol=-1)
-        o = cPickle.loads(s)
-        cPickle.dumps(o)
+        s = pickle.dumps(o, protocol=-1)
+        o = pickle.loads(s)
+        pickle.dumps(o)
 
 
 class test_IsInf_IsNan(unittest.TestCase):

@@ -4,7 +4,6 @@ Contains the FunctionGraph class and exception
 types that it can raise
 """
 from __future__ import print_function
-import StringIO
 import sys
 import time
 import traceback
@@ -17,6 +16,7 @@ from theano import config
 import warnings
 
 from theano.compat import OrderedDict
+from theano.compat.six.moves import StringIO
 from theano.misc.ordered_set import OrderedSet
 
 NullType = None
@@ -334,7 +334,7 @@ class FunctionGraph(utils.object2):
                             tr = getattr(r.tag, 'trace', None)
                             detailed_err_msg = ""
                             if tr:
-                                sio = StringIO.StringIO()
+                                sio = StringIO()
                                 traceback.print_list(tr, sio)
                                 tr = sio.getvalue()
                                 detailed_err_msg += "\nBacktrace when the variable is created:\n"

@@ -6,7 +6,7 @@ import time
 import sys
 import unittest
 
-import cPickle
+import theano.compat.six.moves.cPickle as pickle
 import numpy
 from numpy.testing import dec
 
