@@ -284,6 +284,11 @@ class Keyword:
         self.nonzero = nonzero
 
     def __nonzero__(self):
+        # Python 2.x
+        return self.__bool__()
+
+    def __bool__(self):
+        # Python 3.x
         return self.nonzero
 
     def __str__(self):
