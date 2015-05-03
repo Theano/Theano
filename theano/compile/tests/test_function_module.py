@@ -5,6 +5,7 @@ import unittest
 
 
 from theano import config, gof
+from theano.compat.six import iteritems
 from theano.compile.io import In, Out
 from theano.compile import function
 from theano.compile import UnusedInputError
@@ -408,14 +409,14 @@ class T_function(unittest.TestCase):
         func([1])
 
         check_list = []
-        for key, val in func.fn.storage_map.iteritems():
+        for key, val in iteritems(func.fn.storage_map):
             if not isinstance(key, theano.gof.Constant):
                 check_list.append(val)
         assert any([val[0] for val in check_list])
 
         func.free()
 
-        for key, val in func.fn.storage_map.iteritems():
+        for key, val in iteritems(func.fn.storage_map):
             if not isinstance(key, theano.gof.Constant):
                 assert (val[0] == None)
 

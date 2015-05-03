@@ -25,6 +25,7 @@ from collections import defaultdict
 import numpy
 
 import theano
+from theano.compat.six import iteritems
 from theano.gof import graph
 from theano.configparser import AddConfigVar, BoolParam, IntParam, StrParam
 
@@ -112,7 +113,7 @@ def _atexit_print_fn():
             for attr in ["apply_time", "apply_callcount",
                          "apply_cimpl", "variable_shape", "variable_strides"]:
                 cum_attr = getattr(cum, attr)
-                for key, val in getattr(ps, attr).iteritems():
+                for key, val in iteritems(getattr(ps, attr)):
                     assert key not in cum_attr
                     cum_attr[key] = val
 
@@ -1004,11 +1005,11 @@ class ProfileStats(object):
                     for var in node.outputs:
                         compute_map[var][0] = 0
 
-                    for k_remove, v_remove in viewedby_remove.iteritems():
+                    for k_remove, v_remove in iteritems(viewedby_remove):
                         for i in v_remove:
                             viewed_by[k_remove].append(i)
 
-                    for k_add, v_add in viewedby_add.iteritems():
+                    for k_add, v_add in iteritems(viewedby_add):
                         for i in v_add:
                             viewed_by[k_add].remove(i)
 
@@ -1030,10 +1031,10 @@ class ProfileStats(object):
 
             return mem_bound
 
-        for fgraph, nodes_mem in fct_memory.iteritems():
+        for fgraph, nodes_mem in iteritems(fct_memory):
             # Sum of the size of all variables in bytes
             sum_size = sum([sum([v for v in val if not isinstance(v, str)])
-                            for key, val in nodes_mem.iteritems()])
+                            for key, val in iteritems(nodes_mem)])
 
             order = fgraph.toposort()
             # A list of intermediate variable that are not need
@@ -1184,9 +1185,9 @@ class ProfileStats(object):
         items.sort(key=lambda a: a[1], reverse=True)
         for idx, (node, node_outputs_size) in enumerate(items[:N]):
             code = ['c'] * len(node.outputs)
-            for out, inp in getattr(node.op, 'destroy_map', {}).iteritems():
+            for out, inp in iteritems(getattr(node.op, 'destroy_map', {})):
                 code[out] = "i"
-            for out, inp in getattr(node.op, 'view_map', {}).iteritems():
+            for out, inp in iteritems(getattr(node.op, 'view_map', {})):
                 code[out] = "v"
             shapes = str(fct_shapes[node.fgraph][node])
 
@@ -1432,7 +1433,7 @@ if False:  # old code still to be ported from ProfileMode
             print("  - With the default gcc libm, exp in float32 is slower than in float64! Try Theano flags floatX=float64 or install amdlibm and set the theano flags lib.amdlibm=True")
 
         # tip 4
-        for a, t in apply_time.iteritems():
+        for a, t in iteritems(apply_time):
             node = a
             if (isinstance(node.op, T.Dot) and
                     all([len(i.type.broadcastable) == 2 for i in node.inputs])):
@@ -1443,7 +1444,7 @@ if False:  # old code still to be ported from ProfileMode
                        [i.type for i in node.inputs]))
 
         # tip 5
-        for a, t in apply_time.iteritems():
+        for a, t in iteritems(apply_time):
             node = a
             if isinstance(node.op, RandomFunction):
                 print ("  - Replace the default random number generator by "

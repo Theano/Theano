@@ -17,7 +17,7 @@ import numpy
 import theano
 from theano import gof
 from theano.compat import get_unbound_function
-from theano.compat.six import string_types
+from theano.compat.six import string_types, iteritems
 from theano.compat.six.moves import StringIO, xrange
 from theano.gof import (FunctionGraph, graph, utils, link,
                         ops_with_inner_function)
@@ -795,13 +795,13 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
     """
     destroyed_idx_list = []
     destroy_map = getattr(node.op, 'destroy_map', {})
-    for o_pos, i_pos_list in destroy_map.iteritems():
+    for o_pos, i_pos_list in iteritems(destroy_map):
         destroyed_idx_list.extend(i_pos_list)
     destroyed_res_list = [node.inputs[i] for i in destroyed_idx_list]
 
     actually_inplace_outputs = []
     dmap = getattr(node.op, 'destroy_map', {})
-    for oo, ii in dmap.iteritems():
+    for oo, ii in iteritems(dmap):
         var = node.outputs[oo]
         out_var = storage_map[var][0]
         in_var = storage_map[node.inputs[ii[0]]][0]
@@ -820,7 +820,7 @@ def _check_inputs(node, storage_map, r_vals, dr_vals, active_nodes,
                                 ii[0], str(node))
 
     vmap = getattr(node.op, 'view_map', {})
-    for oo, ii in vmap.iteritems():
+    for oo, ii in iteritems(vmap):
         var = node.outputs[oo]
         out_var = storage_map[var][0]
         in_var = storage_map[node.inputs[ii[0]]][0]
@@ -913,7 +913,7 @@ def _check_viewmap(node, storage_map):
         # TODO: make sure this is correct
         # According to OB, duplicate inputs are rejected on build graph time
         # if they cause problems. So if they are here it should be ok.
-        for key, val in good_alias.iteritems():
+        for key, val in iteritems(good_alias):
             bad_alias.pop(key, None)
         if bad_alias:
             raise BadViewMap(node, oi, outstorage, bad_alias.values())
@@ -1048,7 +1048,7 @@ def _find_bad_optimizations1(order, reasons, r_vals):
     # identify equivalence sets that are broken
     equivalence_sets_broken = {}  # id(set) -> Bool
     there_is_a_problem = False
-    for r, r_equiv in equivalence_sets.iteritems():
+    for r, r_equiv in iteritems(equivalence_sets):
         if id(r_equiv) not in equivalence_sets_broken:
             equivalence_sets_broken[id(r_equiv)] = False
             # loop over the variables in the set comparing them to be
@@ -1888,7 +1888,7 @@ class _Linker(gof.link.LocalLinker):
                 #  Precondition: the storage map is empty, transferred
                 #  completely to r_vals
                 #####
-                for r, s in storage_map.iteritems():
+                for r, s in iteritems(storage_map):
                     if s[0] is not None:
                         print(r, s)
                     assert s[0] is None
@@ -2146,7 +2146,7 @@ class _Linker(gof.link.LocalLinker):
 
                 # Nothing should be in storage map after evaluating
                 # each the thunk (specifically the last one)
-                for r, s in storage_map.iteritems():
+                for r, s in iteritems(storage_map):
                     assert type(s) is list
                     assert s[0] is None
 

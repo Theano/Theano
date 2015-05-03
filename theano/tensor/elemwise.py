@@ -7,6 +7,7 @@ import numpy
 
 import theano
 from theano import gof
+from theano.compat.six import iteritems
 from theano.gof import Apply, Op, OpenMPOp
 from theano import scalar
 from theano.scalar import Scalar, get_scalar_type
@@ -940,7 +941,7 @@ class Elemwise(OpenMPOp):
         # that overwrite them.  We just convert them to the actual
         # Variables.
         dmap = dict([(node.outputs[o], [node.inputs[i]])
-                     for o, i in self.inplace_pattern.iteritems()])
+                     for o, i in iteritems(self.inplace_pattern)])
 
         # dtypes of the inputs
         idtypes = [input.type.dtype_specs()[1] for input in inputs]

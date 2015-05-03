@@ -14,7 +14,7 @@ import textwrap
 import numpy
 
 import theano
-from theano.compat.six import string_types
+from theano.compat.six import string_types, iteritems
 from theano.configparser import config, AddConfigVar, ConfigParam, StrParam
 from theano.gof.utils import flatten
 from theano.misc.windows import output_subprocess_Popen
@@ -390,7 +390,7 @@ def print_compiledir_content():
     print()
     print(("List of %d individual compiled Op classes and "
            "the number of times they got compiled" % len(table_op_class)))
-    table_op_class = sorted(table_op_class.iteritems(), key=lambda t: t[1])
+    table_op_class = sorted(iteritems(table_op_class), key=lambda t: t[1])
     for op_class, nb in table_op_class:
         print(op_class, nb)
 
@@ -406,7 +406,7 @@ def print_compiledir_content():
         for dir, size, ops in big_key_files:
             print(dir, size, ops)
 
-    nb_keys = sorted(nb_keys.iteritems())
+    nb_keys = sorted(iteritems(nb_keys))
     print()
     print("Number of keys for a compiled module")
     print("number of keys/number of modules with that number of keys")

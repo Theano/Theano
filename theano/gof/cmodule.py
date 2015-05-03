@@ -25,7 +25,7 @@ import numpy.distutils  # TODO: TensorType should handle this
 
 import theano
 from theano.compat import PY3, decode, decode_iter
-from theano.compat.six import b, BytesIO, StringIO, string_types
+from theano.compat.six import b, BytesIO, StringIO, string_types, iteritems
 from theano.gof.utils import flatten
 from theano.configparser import config
 from theano.gof.cc import hash_from_code
@@ -510,7 +510,7 @@ class KeyData(object):
             del entry_from_key[key]
         if do_manual_check:
             to_del = []
-            for key, key_entry in entry_from_key.iteritems():
+            for key, key_entry in iteritems(entry_from_key):
                 if key_entry == entry:
                     to_del.append(key)
             for key in to_del:
@@ -869,7 +869,7 @@ class ModuleCache(object):
         del root, files, subdirs
 
         # Remove entries that are not in the filesystem.
-        items_copy = list(self.module_hash_to_key_data.iteritems())
+        items_copy = list(self.module_hash_to_key_data.items())
         for module_hash, key_data in items_copy:
             entry = key_data.get_entry()
             try:

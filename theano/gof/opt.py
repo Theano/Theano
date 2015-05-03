@@ -17,7 +17,7 @@ import numpy
 
 import theano
 from theano import config
-from theano.compat.six import string_types
+from theano.compat.six import string_types, iteritems
 from theano.compat.six.moves import reduce
 from theano.gof import graph, op, utils, unify, toolbox
 from theano.gof.fg import InconsistencyError
@@ -631,7 +631,7 @@ class MergeOptimizer(Optimizer):
             validate_time = fgraph.profile.validate_time - validate_before
             callback_time = fgraph.execute_callbacks_time - callback_before
             callbacks_time = {}
-            for k, v in fgraph.execute_callbacks_times.iteritems():
+            for k, v in iteritems(fgraph.execute_callbacks_times):
                 if k in callbacks_before:
                     callbacks_time[k] = v - callbacks_before[k]
                 else:
@@ -661,7 +661,7 @@ class MergeOptimizer(Optimizer):
         print(blanc, "  callback_time", callback_time, file=stream)
         if callback_time > 1:
             print(blanc, "  callbacks_time", file=stream)
-            for i in sorted(callbacks_time.iteritems(), key=lambda a: a[1]):
+            for i in sorted(iteritems(callbacks_time), key=lambda a: a[1]):
                 if i[1] > 0:
                     print(i)
         print(blanc, "  nb_merged", nb_merged, file=stream)
@@ -689,7 +689,7 @@ def is_same_graph_with_merge(var1, var2, givens=None):
     # break the mapping in givens.
     fgraph = theano.gof.fg.FunctionGraph(inputs, vars, clone=False)
     # Perform Variable substitution.
-    for to_replace, replace_by in givens.iteritems():
+    for to_replace, replace_by in iteritems(givens):
         fgraph.replace(to_replace, replace_by)
     # Perform merge optimization.
     merge_optimizer.optimize(fgraph)
@@ -1928,7 +1928,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         for i in range(len(loop_timing)):
             lopt = ""
             if loop_process_count[i]:
-                d = list(reversed(sorted(loop_process_count[i].iteritems(),
+                d = list(reversed(sorted(iteritems(loop_process_count[i]),
                                          key=lambda a: a[1])))
                 lopt = " ".join([str((str(k), v)) for k, v
                                  in d[:5]])
@@ -1951,9 +1951,9 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                   opt.final_optimizers):
             process_count.setdefault(o, 0)
         for count in loop_process_count:
-            for o, v in count.iteritems():
+            for o, v in iteritems(count):
                 process_count[o] += v
-        for opt, count in process_count.iteritems():
+        for opt, count in iteritems(process_count):
             if count > 0:
                 count_opt.append((time_opts[opt], count,
                                   node_created[opt], opt))
@@ -2010,7 +2010,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         loop_process_count = list(prof1[2])
         for i in range(min(len(loop_process_count), len(prof2[2]))):
             process_count = loop_process_count[i]
-            for process, count in prof2[2][i].iteritems():
+            for process, count in iteritems(prof2[2][i]):
                 if process in process_count:
                     process_count[process] += count
                 else:
@@ -2024,7 +2024,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         nb_nodes = merge_list(prof1[5], prof2[5])
 
         time_opts = prof1[6].copy()
-        for opt, t in prof2[6].iteritems():
+        for opt, t in iteritems(prof2[6]):
             if opt in time_opts:
                 time_opts[opt] += t
             else:

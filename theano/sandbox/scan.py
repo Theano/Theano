@@ -16,6 +16,7 @@ import numpy
 import warnings
 
 from theano.compile import SharedVariable, function
+from theano.compat.six import iteritems
 from theano import compile
 from theano import gof
 from theano.compat import OrderedDict
@@ -599,7 +600,7 @@ def scan(fn,
     if condition is not None:
         inner_outs.append(condition)
     new_givens = OrderedDict()
-    for w, w_copy in givens.iteritems():
+    for w, w_copy in iteritems(givens):
         new_givens[w] = w.type.filter_variable(w_copy)
 
     new_outs = scan_utils.clone(inner_outs, replace=new_givens)

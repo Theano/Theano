@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 import copy
+from theano.compat.six import iteritems
 import theano.compat.six.moves.copyreg as copyreg
 import theano.compat.six.moves.cPickle as pickle
 import itertools
@@ -544,7 +545,7 @@ returned directly?"""
 
         # Set keyword arguments
         if kwargs:  # for speed, skip the iteritems for empty kwargs
-            for k, arg in kwargs.iteritems():
+            for k, arg in iteritems(kwargs):
                 self[k] = arg
 
         if (not self.trust_input and
@@ -979,7 +980,7 @@ class FunctionMaker(object):
             # The sole purpose of this loop is to set 'need_optimize' by
             # going through graph_db, looking for graph that has the same
             # computation performed.
-            for graph_old, graph_optimized in graph_db.iteritems():
+            for graph_old, graph_optimized in iteritems(graph_db):
                 inputs_old = graph_old.inputs
                 outputs_old = graph_old.outputs
                 size_old = len(graph_old.apply_nodes)
@@ -1054,7 +1055,7 @@ class FunctionMaker(object):
                         # hack to remove inconstent entry in givens
                         # seems to work that but source of inconsistency
                         # could be worth investigating.
-                        for key, value in temp.iteritems():
+                        for key, value in iteritems(temp):
                             if key.type != value.type:
                                 del givens[key]
 

@@ -25,6 +25,7 @@ import theano
 from theano import config
 
 import theano.gof.cc
+from theano.compat.six import itervalues
 from theano.compat.six.moves import StringIO
 from theano.gof import graph
 from theano.gof import utils
@@ -538,7 +539,7 @@ class PureOp(object):
                 # copy the values of the inputs in destroy_map
                 destroyed_inputs_idx = set()
                 if getattr(node.op, 'destroy_map', None):
-                    for i_pos_list in node.op.destroy_map.itervalues():
+                    for i_pos_list in itervalues(node.op.destroy_map):
                         destroyed_inputs_idx.update(i_pos_list)
                 for inp_idx in destroyed_inputs_idx:
                     inp = node.inputs[inp_idx]

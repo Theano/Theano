@@ -9,6 +9,7 @@ import warnings
 
 import theano
 from theano import gof
+from theano.compat.six import iteritems
 from theano.compat.six.moves import xrange
 
 
@@ -621,7 +622,7 @@ class Rebroadcast(gof.Op):
 
     def __init__(self, *axis):
         self.axis = dict(axis)
-        for axis, broad in self.axis.iteritems():
+        for axis, broad in iteritems(self.axis):
             assert isinstance(axis, (numpy.integer, int)), (
                 "Rebroadcast needs integer axes. Got ", axis)
 
@@ -630,7 +631,7 @@ class Rebroadcast(gof.Op):
 
     def __hash__(self):
         # no ambiguity because each item key is unique
-        items = sorted(self.axis.iteritems())
+        items = sorted(iteritems(self.axis))
         return hash((type(self), tuple(items)))
 
     def __str__(self):
@@ -639,7 +640,7 @@ class Rebroadcast(gof.Op):
         else:
             broadcast_pattern = ['?' for i
                                  in xrange(1 + numpy.max(self.axis.keys()))]
-        for k, v in self.axis.iteritems():
+        for k, v in iteritems(self.axis):
             broadcast_pattern[k] = str(int(v))
         return '%s{%s}' % (self.__class__.__name__,
                            ','.join(broadcast_pattern))
@@ -655,7 +656,7 @@ class Rebroadcast(gof.Op):
     def perform(self, node, inp, out_):
         x, = inp
         out, = out_
-        for axis, value in self.axis.iteritems():
+        for axis, value in iteritems(self.axis):
             if value and x.shape[axis] != 1:
                 raise ValueError('Dimension %s in Rebroadcast\'s input was'
                                  ' supposed to be 1 (got %s instead)' %
@@ -667,7 +668,7 @@ class Rebroadcast(gof.Op):
         gz, = grads
         # restore the broadcasting pattern of the input
         return Rebroadcast(*[(axis, x.type.broadcastable[axis])
-                             for axis, value in self.axis.iteritems()])(gz),
+                             for axis, value in iteritems(self.axis)])(gz),
 
     def infer_shape(self, node, ishapes):
         assert len(ishapes) == 1
@@ -695,7 +696,7 @@ class Rebroadcast(gof.Op):
         if itype in self.c_code_and_version:
             code, version = self.c_code_and_version[itype]
             final_code = ""
-            for axis, value in self.axis.iteritems():
+            for axis, value in iteritems(self.axis):
                 if value:
                     final_code += code % locals()
             return final_code + """

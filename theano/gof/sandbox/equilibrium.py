@@ -104,7 +104,7 @@ if 0:
             u = self.attach_updater(fgraph, importer, pruner, chin)
             print('KEYS', list(map(hash, tasks.keys())))
             while tasks:
-                for node in tasks.iterkeys():
+                for node in tasks:
                     todo = tasks.pop(node)
                     break
                 for lopt in todo:

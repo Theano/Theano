@@ -47,6 +47,7 @@ import logging
 import numpy
 import warnings
 
+from theano.compat.six import iteritems
 from theano.compile import SharedVariable, function
 from theano import compile
 from theano import gof
@@ -972,11 +973,10 @@ def scan(fn,
         # variables are put on GPU right aways >:| ,
         new_givens = OrderedDict()
 
-        for w, w_copy in givens.iteritems():
+        for w, w_copy in iteritems(givens):
             if ((isinstance(w.type, cuda.CudaNdarrayType) or
                  isinstance(w.type, gpuarray.GpuArrayType)) and
                 isinstance(w_copy.type, tensor.TensorType)):
-
                 for o in inner_outs:
                     new_givens = traverse(o, w, w_copy, new_givens)
             else:
