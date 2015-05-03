@@ -72,10 +72,10 @@ class t_gemm(TestCase):
             b = numpy.asarray(b_, dtype=dtype)
 
             def cmp_linker(z, a, x, y, b, l):
-                z, a, x, y, b = [numpy.asarray(p) for p in z, a, x, y, b]
+                z, a, x, y, b = [numpy.asarray(p) for p in (z, a, x, y, b)]
                 z_orig = z.copy()
                 tz, ta, tx, ty, tb = [as_tensor_variable(p).type()
-                                      for p in z, a, x, y, b]
+                                      for p in (z, a, x, y, b)]
 
                 f = inplace_func([tz, ta, tx, ty, tb],
                                  gemm_inplace(tz, ta, tx, ty, tb),
@@ -267,11 +267,11 @@ class t_gemm(TestCase):
 
         def t(z, x, y, a=1.0, b=0.0, l='c|py', dt='float64'):
             z, a, x, y, b = [theano._asarray(p, dtype=dt)
-                             for p in z, a, x, y, b]
+                             for p in (z, a, x, y, b)]
             z_orig = z.copy()
             z_after = self._gemm(z, a, x, y, b)
 
-            tz, ta, tx, ty, tb = [shared(p) for p in z, a, x, y, b]
+            tz, ta, tx, ty, tb = [shared(p) for p in (z, a, x, y, b)]
 
             # f = inplace_func([tz,ta,tx,ty,tb], gemm_inplace(tz,ta,tx,ty,tb),
             #                 mode = compile.Mode(optimizer = None, linker=l))
@@ -327,14 +327,14 @@ class t_gemm(TestCase):
 
         def t(z, x, y, a=1.0, b=0.0, l='c|py', dt='float64'):
             z, a, x, y, b = [theano._asarray(p, dtype=dt)
-                             for p in z, a, x, y, b]
+                             for p in (z, a, x, y, b)]
             z_orig = z.copy()
             z_after = numpy.zeros_like(z_orig)
             for i in xrange(3):
                 z_after[:, :, i] = self._gemm(z[:, :, i], a,
                                               x[:, :, i], y[:, :, i], b)
 
-            tz, ta, tx, ty, tb = [shared(p) for p in z, a, x, y, b]
+            tz, ta, tx, ty, tb = [shared(p) for p in (z, a, x, y, b)]
             for i in xrange(3):
                 f_i = inplace_func([],
                         gemm_inplace(tz[:, :, i],
