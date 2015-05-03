@@ -965,7 +965,7 @@ class Gemm(GemmRelated):
         return dict(inplace=self.inplace)
 
     def make_node(self, *inputs):
-        inputs = map(T.as_tensor_variable, inputs)
+        inputs = list(map(T.as_tensor_variable, inputs))
         if len(inputs) != 5:
             raise TypeError(
                 "Wrong number of inputs for %s (expected 5, got %s)" %

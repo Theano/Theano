@@ -432,7 +432,7 @@ class Subtensor(Op):
                     else:
                         raise
 
-        return map(conv, real_idx)
+        return list(map(conv, real_idx))
 
     def __init__(self, idx_list):
         self.idx_list = tuple(map(self.convert, idx_list))
@@ -1180,7 +1180,7 @@ class IncSubtensor(Op):
                  destroyhandler_tolerate_aliased=None):
         if destroyhandler_tolerate_aliased is None:
             destroyhandler_tolerate_aliased = []
-        self.idx_list = map(Subtensor.convert, idx_list)
+        self.idx_list = list(map(Subtensor.convert, idx_list))
         self.inplace = inplace
         if inplace:
             self.destroy_map = {0: [0]}

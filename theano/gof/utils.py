@@ -408,7 +408,7 @@ def give_variables_names(variables):
     """ Gives unique names to an iterable of variables. Modifies input.
 
     This function is idempotent."""
-    names = map(lambda var: var.name, variables)
+    names = [var.name for var in variables]
     h = hist(names)
 
     def bad_var(var):
@@ -417,7 +417,7 @@ def give_variables_names(variables):
     for i, var in enumerate(filter(bad_var, variables)):
         var.name = (var.name or "") + "_%d" % i
 
-    if not unique(map(str, variables)):
+    if not unique(list(map(str, variables))):
         raise ValueError("Not all variables have unique names. Maybe you've "
                          "named some of the variables identically")
     return variables

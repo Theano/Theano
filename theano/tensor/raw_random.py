@@ -203,7 +203,7 @@ class RandomFunction(gof.Op):
 
         # convert args to TensorType instances
         # and append enough None's to match the length of self.args
-        args = map(tensor.as_tensor_variable, args)
+        args = list(map(tensor.as_tensor_variable, args))
 
         return gof.Apply(self,
                          [r, shape] + args,

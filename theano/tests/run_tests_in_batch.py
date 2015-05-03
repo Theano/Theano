@@ -179,7 +179,7 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
             stderr.flush()
             test_range = range(test_id, min(test_id + batch_size, n_tests + 1))
             cmd = ([python, theano_nose, '--with-id'] +
-                   map(str, test_range) +
+                   list(map(str, test_range)) +
                    argv)
             subprocess_extra_args = dict(stdin=dummy_in.fileno())
             if not display_batch_output:

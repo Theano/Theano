@@ -20,8 +20,8 @@ config = theano.config
 
 # We cannot import discrete_dtypes or float_dtypes from tensor.basic yet,
 # so we redefine them here
-discrete_dtypes = map(str, scalar.discrete_types)
-float_dtypes = map(str, scalar.float_types)
+discrete_dtypes = list(map(str, scalar.discrete_types))
+float_dtypes = list(map(str, scalar.float_types))
 
 
 # tensor depends on elemwise to provide definitions for several ops
@@ -525,7 +525,7 @@ class Elemwise(OpenMPOp):
         is left-completed to the greatest number of dimensions with 1s
         using DimShuffle.
         """
-        inputs = map(as_tensor_variable, inputs)
+        inputs = list(map(as_tensor_variable, inputs))
         shadow = self.scalar_op.make_node(
                 *[get_scalar_type(dtype=i.type.dtype).make_variable()
                   for i in inputs])
@@ -733,8 +733,8 @@ class Elemwise(OpenMPOp):
                     return t
                 return get_scalar_type(t.type.dtype)()
 
-            scalar_inputs = map(as_scalar, inputs)
-            scalar_ograds = map(as_scalar, ograds)
+            scalar_inputs = list(map(as_scalar, inputs))
+            scalar_ograds = list(map(as_scalar, ograds))
             scalar_igrads = self.scalar_op.grad(scalar_inputs, scalar_ograds)
             for igrad in scalar_igrads:
                 assert igrad is not None, self.scalar_op
