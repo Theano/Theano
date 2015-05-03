@@ -4,7 +4,7 @@ import theano
 import theano.tensor as T
 import collections
 
-from theano.compat.six import string_types
+from theano.compat.six import string_types, add_metaclass
 #import klass
 
 
@@ -44,10 +44,9 @@ class InitGraph(type):
                 setattr(cls, key, val)
 
 
+# installs class attributes from build_graph after declaration
+@add_metaclass(InitGraph)
 class SymbolicModule(object):
-    # installs class attributes from build_graph after declaration
-    __metaclass__ = InitGraph
-
     # if we call this function, it will return a new SymbolicModule
     def __new__(self, **kwargs):
         class SymMod(SymbolicModule):
