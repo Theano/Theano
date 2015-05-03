@@ -12,6 +12,7 @@ from theano.compat.six.moves import reduce
 from theano import tensor
 from theano.tensor import opt
 from theano import gof
+from theano.compat.six import string_types
 from theano.compile import optdb
 
 
@@ -144,7 +145,7 @@ class RandomFunction(gof.Op):
     def __setstate__(self, state):
         self.state = state
         fn, outtype, inplace, ndim_added = state
-        if isinstance(fn, basestring):
+        if isinstance(fn, string_types):
             self.fn = getattr(numpy.random.RandomState, fn)
         else:
             self.fn = fn

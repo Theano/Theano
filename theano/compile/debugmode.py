@@ -17,6 +17,7 @@ import numpy
 import theano
 from theano import gof
 from theano.compat import get_unbound_function
+from theano.compat.six import string_types
 from theano.compat.six.moves import StringIO, xrange
 from theano.gof import (FunctionGraph, graph, utils, link,
                         ops_with_inner_function)
@@ -66,7 +67,7 @@ AddConfigVar('DebugMode.warn_input_not_reused',
 
 
 def is_valid_check_preallocated_output_param(param):
-    if not isinstance(param, basestring):
+    if not isinstance(param, string_types):
         return False
     valid = ["initial", "previous", "c_contiguous", "f_contiguous",
              "strided", "wrong_size", "ALL", ""]

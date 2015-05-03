@@ -10,6 +10,7 @@ from theano import gof
 import theano.gof.vm
 from theano.configparser import config, AddConfigVar, StrParam
 from theano.compile.ops import _output_guard
+from theano.compat.six import string_types
 
 
 _logger = logging.getLogger('theano.compile.mode')
@@ -271,10 +272,10 @@ class Mode(object):
         linker, optimizer = state
         self.provided_linker = linker
         self.provided_optimizer = optimizer
-        if isinstance(linker, basestring) or linker is None:
+        if isinstance(linker, string_types) or linker is None:
             linker = predefined_linkers[linker]
         self.linker = linker
-        if isinstance(optimizer, basestring) or optimizer is None:
+        if isinstance(optimizer, string_types) or optimizer is None:
             optimizer = predefined_optimizers[optimizer]
         if isinstance(optimizer, gof.Query):
             self.provided_optimizer = optimizer
@@ -297,9 +298,9 @@ class Mode(object):
     optimizer = property(__get_optimizer)
 
     def get_linker_optimizer(self, linker, optimizer):
-        if isinstance(linker, basestring) or linker is None:
+        if isinstance(linker, string_types) or linker is None:
             linker = predefined_linkers[linker]
-        if isinstance(optimizer, basestring) or optimizer is None:
+        if isinstance(optimizer, string_types) or optimizer is None:
             optimizer = predefined_optimizers[optimizer]
         return (linker, optimizer)
 
@@ -341,7 +342,7 @@ def get_mode(orig_string):
         string = config.mode
     else:
         string = orig_string
-    if not isinstance(string, basestring):
+    if not isinstance(string, string_types):
         return string  # it is hopefully already a mode...
 
     global instanciated_default_mode

@@ -1565,7 +1565,7 @@ def convert_function_input(input):
         orig = input
         if not input:
             raise TypeError("Nonsensical input specification: %s" % input)
-        if isinstance(input[0], basestring):
+        if isinstance(input[0], string_types):
             name = input[0]
             input = input[1:]
         else:

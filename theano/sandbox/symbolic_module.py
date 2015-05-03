@@ -4,6 +4,7 @@ import theano
 import theano.tensor as T
 import collections
 
+from theano.compat.six import string_types
 #import klass
 
 
@@ -133,7 +134,7 @@ def compile(smod, initial_values=None):
                 elif issymbolicmodule(val):
                     for s in modwalker(val.__dict__, [v for k, v in sym_items(val)]):
                         yield s
-                elif isinstance(val, (basestring, int, float)):
+                elif isinstance(val, (string_types, int, float)):
                     pass
                 elif isinstance(val, theano.Variable):
                     pass
@@ -184,7 +185,7 @@ def compile(smod, initial_values=None):
                 reflected[thing] = cmod
                 for key, val in sym_items(thing):
                     setattr(CMod, key, reflect(val))
-            elif isinstance(thing, (basestring, int, float)):
+            elif isinstance(thing, (string_types, int, float)):
                 reflected[thing] = thing
             elif isinstance(thing, theano.Variable):
                 if thing.owner is None:

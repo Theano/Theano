@@ -23,6 +23,7 @@ TheanoElementwiseKernel.
 import numpy
 
 import theano
+from theano.compat.six import string_types
 from theano.compat.six.moves import xrange
 from theano.gof import Op, Apply, local_optimizer, EquilibriumDB
 from theano.sandbox.cuda import GpuElemwise, CudaNdarrayType, GpuOp
@@ -64,7 +65,7 @@ class TheanoElementwiseKernel(pycuda.elementwise.ElementwiseKernel):
                  name="kernel", keep=False, options=None, **kwargs):
         if options is None:
             options = []
-        if isinstance(arguments, basestring):
+        if isinstance(arguments, string_types):
             arguments = [theano_parse_c_arg(arg)
                          for arg in arguments.split(",")]
         pycuda.elementwise.ElementwiseKernel.__init__(self, arguments,

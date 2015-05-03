@@ -13,6 +13,7 @@ import hashlib
 
 import numpy as np
 import collections
+from theano.compat.six import string_types
 
 try:
     import pydot as pd
@@ -345,7 +346,7 @@ class PatternPrinter:
     def __init__(self, *patterns):
         self.patterns = []
         for pattern in patterns:
-            if isinstance(pattern, basestring):
+            if isinstance(pattern, string_types):
                 self.patterns.append((pattern, ()))
             else:
                 self.patterns.append((pattern[0], pattern[1:]))

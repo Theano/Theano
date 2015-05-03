@@ -14,6 +14,7 @@ from theano.compat.six import StringIO
 
 import theano
 from theano.compat import configparser as ConfigParser
+from theano.compat.six import string_types
 import collections
 
 _logger = logging.getLogger('theano.configparser')
@@ -337,7 +338,7 @@ class EnumStr(ConfigParam):
 
         # All options should be strings
         for val in self.all:
-            if not isinstance(val, basestring):
+            if not isinstance(val, string_types):
                 raise ValueError('Valid values for an EnumStr parameter '
                                  'should be strings', val, type(val))
 
