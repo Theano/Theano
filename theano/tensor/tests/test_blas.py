@@ -1548,13 +1548,13 @@ class TestGer_make_node(TestCase):
         self.za = T.zscalar()
 
     def test_works_on_all_valid_dtypes(self):
-        self.assertEquals(self.fm.type,
+        self.assertEqual(self.fm.type,
             ger(self.fm, self.fa, self.fv, self.fv_2).type)
-        self.assertEquals(self.fm.type,
+        self.assertEqual(self.fm.type,
             ger(self.fm, self.fa, self.fv, self.fv_2).type)
-        self.assertEquals(self.fm.type,
+        self.assertEqual(self.fm.type,
             ger(self.fm, self.fa, self.fv, self.fv_2).type)
-        self.assertEquals(self.fm.type,
+        self.assertEqual(self.fm.type,
             ger(self.fm, self.fa, self.fv, self.fv_2).type)
 
     def test_fails_on_invalid_dtypes(self):
@@ -1570,7 +1570,7 @@ class TestGer_make_node(TestCase):
         self.assertRaises(TypeError,
                 ger, self.fm, self.fv1, self.fv, self.fv_2)
         # actually doing the aforementioned dimshuffle makes it work
-        self.assertEquals(self.fm.type,
+        self.assertEqual(self.fm.type,
                 ger(self.fm, self.fv1.dimshuffle(), self.fv, self.fv_2).type)
 
     def test_fails_for_nonmatrix_A(self):

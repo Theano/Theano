@@ -317,8 +317,8 @@ class TestEval(unittest.TestCase):
         self.w = 2 * self.z
 
     def test_eval(self):
-        self.assertEquals(self.w.eval({self.x : 1., self.y : 2.}), 6.)
-        self.assertEquals(self.w.eval({self.z : 3}), 6.)
+        self.assertEqual(self.w.eval({self.x : 1., self.y : 2.}), 6.)
+        self.assertEqual(self.w.eval({self.z : 3}), 6.)
         self.assertTrue(hasattr(self.w, "_fn_cache"),
                 "variable must have cache after eval")
         self.assertFalse(hasattr(pickle.loads(pickle.dumps(self.w)), '_fn_cache'),

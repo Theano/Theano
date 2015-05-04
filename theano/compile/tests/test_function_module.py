@@ -744,5 +744,5 @@ if __name__ == '__main__':
         t = T_picklefunction()
         def fu(b):
             assert b
-        t.failUnless = fu
+        t.assertTrue = fu
         t.test_deepcopy_shared_container()
