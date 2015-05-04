@@ -16,7 +16,7 @@ from theano.configparser import (config, AddConfigVar,
 
 import theano.gof.cmodule
 
-from six import iteritems
+from six import iteritems, itervalues
 from six.moves import xrange
 
 logger = logging.getLogger(__name__)
@@ -854,9 +854,9 @@ class VM_Linker(link.LocalLinker):
 
             nodes_idx_inv = {}
             vars_idx_inv = {}
-            for (node, i) in nodes_idx.items():
+            for (node, i) in iteritems(nodes_idx):
                 nodes_idx_inv[i] = node
-            for (var, i) in vars_idx.items():
+            for (var, i) in iteritems(vars_idx):
                 vars_idx_inv[i] = var
 
             # put storage_map and compute_map into a int-based scheme
@@ -892,7 +892,7 @@ class VM_Linker(link.LocalLinker):
 
             # build the var owner array
             var_owner = [None] * len(vars_idx)
-            for (var, i) in vars_idx.items():
+            for (var, i) in iteritems(vars_idx):
                 if var.owner:
                     var_owner[i] = nodes_idx[var.owner]
 
@@ -920,7 +920,7 @@ class VM_Linker(link.LocalLinker):
             # values of the update expressions).
             update_storage = []
             update_in_from_out = {}
-            for (ivar, ovar) in updated_vars.items():
+            for (ivar, ovar) in iteritems(updated_vars):
                 update_in_from_out[vars_idx[ovar]] = vars_idx[ivar]
             for oidx in output_vars:
                 if oidx in update_in_from_out:
@@ -1036,7 +1036,7 @@ class VM_Linker(link.LocalLinker):
             lazy = not all([(not th.lazy) for th in thunks])
         if not (lazy or (config.profile and config.profile_memory) or
                 self.use_cloop or self.callback):
-            for pair in reallocated_info.values():
+            for pair in itervalues(reallocated_info):
                 storage_map[pair[1]] = storage_map[pair[0]]
 
         computed, last_user = link.gc_helper(order)
@@ -1048,7 +1048,7 @@ class VM_Linker(link.LocalLinker):
                     if (input in computed and
                             input not in fgraph.outputs and
                             node == last_user[input] and
-                            input not in reallocated_info.keys()):
+                            input not in reallocated_info):
                         clear_after_this_thunk.append(storage_map[input])
                 post_thunk_clear.append(clear_after_this_thunk)
         else:

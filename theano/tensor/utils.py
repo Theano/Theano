@@ -42,7 +42,7 @@ def hash_from_dict(d):
     hashable.
 
     """
-    items = d.items()
+    items = list(d.items())
     items.sort()
     first_part = [k for k, v in items]
     second_part = []

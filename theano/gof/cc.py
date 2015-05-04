@@ -1648,7 +1648,7 @@ class OpWiseCLinker(link.LocalLinker):
                             node == last_user[input])])
 
             if no_recycling is True:
-                no_recycling = storage_map.values()
+                no_recycling = list(storage_map.values())
                 no_recycling = utils.difference(no_recycling, input_storage)
             else:
                 no_recycling = [storage_map[r]

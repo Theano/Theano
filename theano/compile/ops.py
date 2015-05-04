@@ -74,7 +74,7 @@ class ViewOp(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, v) in sorted(self.c_code_and_version.items(),
+        for t, (c, v) in sorted(iteritems(self.c_code_and_version),
                                 key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for ViewOp, but it has no "
@@ -169,7 +169,7 @@ class DeepCopyOp(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, v) in sorted(self.c_code_and_version.items(),
+        for t, (c, v) in sorted(iteritems(self.c_code_and_version),
                                 key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for DeepCopyOp, but it has "
@@ -290,7 +290,7 @@ class Shape(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, v) in sorted(self.c_code_and_version.items(),
+        for t, (c, v) in sorted(iteritems(self.c_code_and_version),
                                 key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for Shape, but it has no "
@@ -362,7 +362,7 @@ class Shape_i(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, ci, v) in sorted(self.c_code_and_version.items(),
+        for t, (c, ci, v) in sorted(iteritems(self.c_code_and_version),
                                     key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for Shape_i, but it has "
@@ -710,7 +710,7 @@ class Rebroadcast(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, v) in sorted(self.c_code_and_version.items(),
+        for t, (c, v) in sorted(iteritems(self.c_code_and_version),
                                 key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for Rebroadcast, but it "
@@ -853,7 +853,7 @@ class SpecifyShape(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, v, _) in sorted(self.c_code_and_version.items(),
+        for t, (c, v, _) in sorted(iteritems(self.c_code_and_version),
                                    key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for SpecifyShape, but it "

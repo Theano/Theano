@@ -67,7 +67,7 @@ class SparseType(gof.Type):
             self.format = format
         else:
             raise NotImplementedError('unsupported format "%s" not in list' %
-                                      format, self.format_cls.keys())
+                                      format, list(self.format_cls.keys()))
 
     def filter(self, value, strict=False, allow_downcast=None):
         if isinstance(value, self.format_cls[self.format])\

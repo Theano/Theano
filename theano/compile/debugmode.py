@@ -10,7 +10,7 @@ import sys
 import gc
 import logging
 import six.moves.copyreg as copyreg
-from itertools import product as itertools_product
+from itertools import chain, product as itertools_product
 from theano.compat import izip
 
 import numpy
@@ -18,7 +18,7 @@ import numpy
 import theano
 from theano import gof
 from theano.compat import get_unbound_function
-from six import string_types, iteritems
+from six import string_types, iteritems, itervalues
 from six.moves import StringIO, xrange
 from theano.gof import (FunctionGraph, graph, utils, link,
                         ops_with_inner_function)
@@ -917,7 +917,7 @@ def _check_viewmap(node, storage_map):
         for key, val in iteritems(good_alias):
             bad_alias.pop(key, None)
         if bad_alias:
-            raise BadViewMap(node, oi, outstorage, bad_alias.values())
+            raise BadViewMap(node, oi, outstorage, list(bad_alias.values()))
 
         # if its not aliased to input, check output->output aliasing
         if not good_alias and _is_used_in_graph(onode):
@@ -1391,7 +1391,7 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
         dmap = getattr(node.op, 'destroy_map', {})
         vmap = getattr(node.op, 'view_map', {})
         for i, r in enumerate(node.inputs):
-            if any(i in v for v in (dmap.values() + vmap.values())):
+            if any(i in v for v in chain(itervalues(dmap, itervalues(vmap)))):
                 aliased_inputs.add(r)
 
         _logger.debug('starting preallocated output checking')
@@ -1803,7 +1803,7 @@ class _Linker(gof.link.LocalLinker):
         # use new memory storage when it is needed, in particular for the
         # function's outputs. no_recycling_map will be used in f() below.
         if self.no_recycling is True:
-            no_recycling_map = storage_map.values()
+            no_recycling_map = list(storage_map.values())
             no_recycling_map = utils.difference(no_recycling_map,
                                                 input_storage)
         else:
@@ -2011,8 +2011,8 @@ class _Linker(gof.link.LocalLinker):
                                 # as viewd are unsafe too, because the
                                 # corresponding output can be
                                 # destroyed.
-                                if any(i in v for v in (dmap.values() +
-                                                        vmap.values())):
+                                if any(i in v for v in chain(dmap.values(),
+                                                             vmap.values())):
                                     storage_map[r][0] = _lessbroken_deepcopy(
                                         r_vals[r])
 

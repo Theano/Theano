@@ -844,7 +844,7 @@ def pydotprint(fct, outfile=None,
         astr = apply_name(node)
 
         use_color = None
-        for opName, color in colorCodes.items():
+        for opName, color in iteritems(colorCodes):
             if opName in node.op.__class__.__name__:
                 use_color = color
 
@@ -1037,7 +1037,7 @@ def pydotprint_variables(vars,
         my_list[app] = astr
 
         use_color = None
-        for opName, color in colorCodes.items():
+        for opName, color in iteritems(colorCodes):
             if opName in app.op.__class__.__name__:
                 use_color = color
 

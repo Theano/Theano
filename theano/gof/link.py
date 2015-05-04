@@ -192,7 +192,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
         storage_map_list = []
         total_size = 0
         total_size_inputs = 0
-        for k in storage_map.keys():
+        for k in storage_map:
             storage_map_item = []
 
             # storage_map_item[0]: the variable
@@ -728,7 +728,7 @@ class PerformLinker(LocalLinker):
         if no_recycling is True:
             # True seems like some special code for *everything*?? -JB
             # FunctionMaker always passes a list I think   -JB
-            no_recycling = storage_map.values()
+            no_recycling = list(storage_map.values())
             no_recycling = utils.difference(no_recycling, input_storage)
         else:
             no_recycling = [storage_map[r] for r in no_recycling if r not in fgraph.inputs]

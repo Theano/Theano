@@ -4,7 +4,7 @@ import theano
 import theano.tensor as T
 import collections
 
-from six import string_types, add_metaclass
+from six import string_types, add_metaclass, iteritems
 #import klass
 
 
@@ -26,7 +26,7 @@ class InitGraph(type):
                     return True
                 return isinstance(v, theano.Variable) and not k.startswith('_')
             r = {}
-            for key, val in dct.items():
+            for key, val in iteritems(dct):
                 if list(filter(key, val)):
                     r[key] = val
             return r
@@ -34,7 +34,7 @@ class InitGraph(type):
         if not isinstance(build_graph_rval, dict):
             raise TypeError('%s.build_graph did not return dictionary' % cls)
         dct = just_symbolic(build_graph_rval)
-        for key, val in dct.items():
+        for key, val in iteritems(dct):
             # print '  adding class attribute', key
             if isinstance(val, theano.Variable) and val.name is None:
                 val.name = key
@@ -311,7 +311,7 @@ if 0:
                 return deco(dummy)
 
         locals_dict = f()
-        for key, val in locals_dict.items():
+        for key, val in iteritems(locals_dict):
             if isinstance(val, theano.Variable):
                 try:
                     kres = klass.KlassMember(val)

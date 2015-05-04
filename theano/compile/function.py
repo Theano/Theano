@@ -212,7 +212,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
                CVM stands for C Virtual Machine.
     """
     if isinstance(outputs, dict):
-        output_items = outputs.items()
+        output_items = list(outputs.items())
 
         for item_pair in output_items:
             assert isinstance(item_pair[0], string_types)
