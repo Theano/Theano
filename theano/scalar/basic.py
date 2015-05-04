@@ -925,7 +925,9 @@ class UnaryScalarOp(ScalarOp):
     amd_float32 = None
     amd_float64 = None
 
-    def c_code_contiguous(self, node, name, (x, ), (z, ), sub):
+    def c_code_contiguous(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if (not theano.config.lib.amdlibm or
             # We compare the dtype AND the broadcast flag
             # as this function do not broadcast
@@ -1008,7 +1010,9 @@ class LT(LogicalComparison):
         # built-in < don't support complex
         return numpy.less(x, y)
 
-    def c_code(self, node, name, (x, y), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x, y) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError()
         return "%(z)s = (%(x)s < %(y)s);" % locals()
@@ -1024,7 +1028,9 @@ class GT(LogicalComparison):
         # built-in > don't support complex
         return numpy.greater(x, y)
 
-    def c_code(self, node, name, (x, y), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x, y) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError()
         return "%(z)s = (%(x)s > %(y)s);" % locals()
@@ -1040,7 +1046,9 @@ class LE(LogicalComparison):
         # built-in <= don't support complex
         return numpy.less_equal(x, y)
 
-    def c_code(self, node, name, (x, y), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x, y) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError()
         return "%(z)s = (%(x)s <= %(y)s);" % locals()
@@ -1056,7 +1064,9 @@ class GE(LogicalComparison):
         # built-in >= don't support complex
         return numpy.greater_equal(x, y)
 
-    def c_code(self, node, name, (x, y), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x, y) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError()
         return "%(z)s = (%(x)s >= %(y)s);" % locals()
@@ -1071,7 +1081,9 @@ class EQ(LogicalComparison):
     def impl(self, x, y):
         return x == y
 
-    def c_code(self, node, name, (x, y), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x, y) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError()
         return "%(z)s = (%(x)s == %(y)s);" % locals()
@@ -1086,7 +1098,9 @@ class NEQ(LogicalComparison):
     def impl(self, x, y):
         return x != y
 
-    def c_code(self, node, name, (x, y), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x, y) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError()
         return "%(z)s = (%(x)s != %(y)s);" % locals()
@@ -1097,7 +1111,9 @@ class IsNan(FixedLogicalComparison):
     def impl(self, x):
         return numpy.isnan(x)
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError()
         return "%(z)s = isnan(%(x)s);" % locals()
@@ -1108,7 +1124,9 @@ class IsInf(FixedLogicalComparison):
     def impl(self, x):
         return numpy.isinf(x)
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError()
         # Note that the C isinf returns -1 for -Inf and +1 for +Inf, while
@@ -1136,7 +1154,9 @@ class InRange(LogicalComparison):
             return False
         return True
 
-    def c_code(self, node, name, (x, low, hi), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x, low, hi) = inputs
+        (z,) = outputs
         if self.openlow:
             cmp1 = '>'
         else:
@@ -1165,7 +1185,9 @@ class InRange(LogicalComparison):
         else:
             return elem.zeros_like()
 
-    def grad(self, (x, low, hi), (gz, )):
+    def grad(self, inputs, gout):
+        (x, low, hi) = inputs
+        (gz,) = gout
         grads = []
         for elem in [x, low, hi]:
             grads.append(get_grad(elem))
@@ -1186,10 +1208,14 @@ class Switch(ScalarOp):
 
             # backport
             # return ift if cond else iff
-    def c_code(self, node, name, (cond, ift, iff), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (cond, ift, iff) = inputs
+        (z,) = outputs
         return "%(z)s = %(cond)s ? %(ift)s : %(iff)s;" % locals()
 
-    def grad(self, (cond, ift, iff), (gz, )):
+    def grad(self, inputs, gout):
+        (cond, ift, iff) = inputs
+        (gz,) = gout
         first_part = switch(cond, gz, 0.)
         second_part = switch(cond, 0., gz)
 
@@ -1205,7 +1231,8 @@ class Switch(ScalarOp):
 
         return (condition_grad, first_part, second_part)
 
-    def output_types(self, (cond_t, ift_t, iff_t)):
+    def output_types(self, types):
+        (cond_t, ift_t, iff_t) = types
         return upcast_out(ift_t, iff_t)
 switch = Switch()
 
@@ -1249,7 +1276,9 @@ class OR(BinaryBitOp):
     def impl(self, x, y):
         return x | y
 
-    def c_code(self, node, name, (x, y), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x, y) = inputs
+        (z,) = outputs
         return "%(z)s = (%(x)s | %(y)s);" % locals()
 or_ = OR()
 
@@ -1262,7 +1291,9 @@ class XOR(BinaryBitOp):
     def impl(self, x, y):
         return x ^ y
 
-    def c_code(self, node, name, (x, y), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x, y) = inputs
+        (z,) = outputs
         return "%(z)s = (%(x)s ^ %(y)s);" % locals()
 xor = XOR()
 
@@ -1275,7 +1306,9 @@ class AND(BinaryBitOp):
     def impl(self, x, y):
         return x & y
 
-    def c_code(self, node, name, (x, y), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x, y) = inputs
+        (z,) = outputs
         return "%(z)s = (%(x)s & %(y)s);" % locals()
 and_ = AND()
 
@@ -1284,7 +1317,9 @@ class Invert(UnaryBitOp):
     def impl(self, x):
         return ~x
 
-    def c_code(self, node, name, (x,), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         return "%(z)s = (~%(x)s);" % locals()
 invert = Invert()
 
@@ -1300,14 +1335,18 @@ class Maximum(BinaryScalarOp):
         # The built-in max function don't support complex type
         return numpy.maximum(*inputs)
 
-    def c_code(self, node, name, (x, y), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x, y) = inputs
+        (z,) = outputs
         if any([i.type in complex_types for i in node.inputs]):
             raise NotImplementedError()
         # Test for both y>x and x>=y to detect NaN
         return ('%(z)s = ((%(y)s)>(%(x)s)? (%(y)s): '
                 '((%(x)s)>=(%(y)s)? (%(x)s): nan("")));' % locals())
 
-    def grad(self, (x, y), (gz, )):
+    def grad(self, inputs, gout):
+        (x, y) = inputs
+        (gz,) = gout
         if gz.type in complex_types:
             # max is currently defined for complex_types,
             # but the gradient for complex is not.
@@ -1334,13 +1373,17 @@ class Minimum(BinaryScalarOp):
         # The built-in min function don't support complex type
         return numpy.minimum(*inputs)
 
-    def c_code(self, node, name, (x, y), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x, y) = inputs
+        (z,) = outputs
         if any([i.type in complex_types for i in node.inputs]):
             raise NotImplementedError()
         return ('%(z)s = ((%(y)s)<(%(x)s)? (%(y)s): '
                 '((%(x)s)<=(%(y)s)? (%(x)s): nan("")));' % locals())
 
-    def grad(self, (x, y), (gz, )):
+    def grad(self, inputs, gout):
+        (x, y) = inputs
+        (gz,) = gout
         if gz.type in complex_types:
             # min is currently defined for complex_types,
             # but the gradient for complex is not.
@@ -1364,13 +1407,15 @@ class Add(ScalarOp):
     def impl(self, *inputs):
         return sum(inputs)
 
-    def c_code(self, node, name, inputs, (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (z,) = outputs
         if not inputs:
             return z + " = 0;"
         else:
             return z + " = " + " + ".join(inputs) + ";"
 
-    def grad(self, inputs, (gz, )):
+    def grad(self, inputs, gout):
+        (gz,) = gout
         if gz.type in complex_types:
             raise NotImplementedError()
         if self(*inputs).type in discrete_types:
@@ -1400,13 +1445,15 @@ class Mul(ScalarOp):
     def impl(self, *inputs):
         return numpy.product(inputs)
 
-    def c_code(self, node, name, inputs, (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (z,) = outputs
         if not inputs:
             return z + " = 1;"
         else:
             return z + " = " + " * ".join(inputs) + ";"
 
-    def grad(self, inputs, (gz, )):
+    def grad(self, inputs, gout):
+        (gz,) = gout
         retval = []
 
         # The following 3 lines verify that gz is complex when the
@@ -1448,10 +1495,14 @@ class Sub(BinaryScalarOp):
     def impl(self, x, y):
         return x - y
 
-    def c_code(self, node, name, (x, y), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x, y) = inputs
+        (z,) = outputs
         return "%(z)s = %(x)s - %(y)s;" % locals()
 
-    def grad(self, (x, y), (gz, )):
+    def grad(self, inputs, gout):
+        (x, y) = inputs
+        (gz,) = gout
         if gz.type in complex_types:
             raise NotImplementedError()
 
@@ -1528,8 +1579,10 @@ class TrueDiv(BinaryScalarOp):
         else:
             return x / y
 
-    def c_code(self, node, name, (x, y), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
         # we generate good c code only when both are complex!
+        (x, y) = inputs
+        (z,) = outputs
         if sum([node.inputs[0].type in complex_types,
                 node.inputs[1].type in complex_types]) == 1:
             raise NotImplementedError('type not supported', type)
@@ -1538,8 +1591,10 @@ class TrueDiv(BinaryScalarOp):
             return "%(z)s = ((double)%(x)s) / %(y)s;" % locals()
         return "%(z)s = %(x)s / %(y)s;" % locals()
 
-    def grad(self, (x, y), (gz, )):
+    def grad(self, inputs, gout):
 
+        (x, y) = inputs
+        (gz,) = gout
         if x.type in complex_types:
             raise NotImplementedError()
 
@@ -1578,7 +1633,9 @@ class IntDiv(BinaryScalarOp):
         # of string formatting.
         return "#define THEANO_MACRO_MOD(x,y) (x % y)"
 
-    def c_code(self, node, name, (x, y), (z,), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x, y) = inputs
+        (z,) = outputs
         t = node.inputs[0].type.upcast(*[i.type for i in node.inputs[1:]])
         if t in imap(str, discrete_types):
             x_div_y_pp = '(%(x)s / %(y)s)' % locals()
@@ -1666,13 +1723,13 @@ class Mod(BinaryScalarOp):
         # of string formatting.
         return "#define THEANO_MACRO_MOD(x,y) (x % y)"
 
-    def c_code(self, node, name, (x, y), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
         """
         We want the result to have the same sign as python, not the other
         implementation of mod.
         """
-        # raise NotImplementedError("Unlike Python, C's modulo returns negative
-        # modulo on negative dividend (to implement)")
+        (x, y) = inputs
+        (z,) = outputs
         t = node.inputs[0].type.upcast(*[i.type for i in node.inputs[1:]])
         if (str(t) in imap(str, discrete_types) or
                 t in ['uint8', 'int8', 'uint16', 'int16'] or
@@ -1716,7 +1773,9 @@ class Mod(BinaryScalarOp):
             }
             """) % locals()
 
-    def grad(self, (x, y), (gz, )):
+    def grad(self, inputs, gout):
+        (x, y) = inputs
+        (gz,) = gout
         z = self(x, y)
         if z.type.dtype in discrete_types:
             # The gradient does not flow in if the output is discrete
@@ -1732,13 +1791,17 @@ class Pow(BinaryScalarOp):
     def impl(self, x, y):
         return x ** y
 
-    def c_code(self, node, name, (x, y), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x, y) = inputs
+        (z,) = outputs
         if (node.inputs[0].type in complex_types or
             node.inputs[1].type in complex_types):
             raise NotImplementedError('type not supported', type)
         return "%(z)s = pow(%(x)s, %(y)s);" % locals()
 
-    def grad(self, (x, y), (gz, )):
+    def grad(self, inputs, gout):
+        (x, y) = inputs
+        (gz,) = gout
         if gz.type in complex_types:
             raise NotImplementedError()
 
@@ -1753,7 +1816,9 @@ class Pow(BinaryScalarOp):
 
         return (first_part, second_part)
 
-    def c_code_contiguous(self, node, name, (x, y), (z, ), sub):
+    def c_code_contiguous(self, node, name, inputs, outputs, sub):
+        (x, y) = inputs
+        (z,) = outputs
         if not theano.config.lib.amdlibm:
             raise theano.gof.utils.MethodNotDefined()
 
@@ -1807,10 +1872,14 @@ class Clip(ScalarOp):
         else:
             return x
 
-    def c_code(self, node, name, (x, min, max), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x, min, max) = inputs
+        (z,) = outputs
         return "%(z)s = %(x)s < %(min)s ? %(min)s : %(x)s > %(max)s ? %(max)s : %(x)s;" % locals()
 
-    def grad(self, (x, mn, mx), (gz, )):
+    def grad(self, inputs, gout):
+        (x, mn, mx) = inputs
+        (gz,) = gout
         assert gz.type not in complex_types
         gx = ((x >= mn) & (x <= mx)) * gz
         gmn = (x < mn) * gz
@@ -1834,7 +1903,9 @@ class Second(BinaryScalarOp):
     def impl(self, x, y):
         return y
 
-    def c_code(self, node, name, (x, y), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x, y) = inputs
+        (z,) = outputs
         return "%(z)s = %(y)s;" % locals()
 
     def connection_pattern(self, node):
@@ -1844,8 +1915,10 @@ class Second(BinaryScalarOp):
 
         return [[False], [True]]
 
-    def grad(self, (x, y), (gz, )):
+    def grad(self, inputs, gout):
 
+        (x, y) = inputs
+        (gz,) = gout
         if y.type in continuous_types:
             # x is disconnected because the elements of x are not used
             return DisconnectedType()(), gz
@@ -1863,10 +1936,14 @@ class Identity(UnaryScalarOp):
     def impl(self, input):
         return input
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         return "%(z)s = %(x)s;" % locals()
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if x.type in continuous_types:
             return gz,
         else:
@@ -1889,10 +1966,14 @@ class Cast(UnaryScalarOp):
     def impl(self, input):
         return self.ctor(input)
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         return "%s = (%s)%s;" % (z, node.outputs[0].type.dtype_specs()[1], x)
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if self.o_type in continuous_types:
             return [gz]
         else:
@@ -1962,7 +2043,9 @@ class Abs(UnaryScalarOp):
     def impl(self, x):
         return numpy.abs(x)
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if self(x).type in discrete_types:
             if x.type in discrete_types:
                 return [x.zeros_like(dtype=theano.config.floatX)]
@@ -1971,7 +2054,9 @@ class Abs(UnaryScalarOp):
 
         return gz * x / abs(x),  # formula works for complex and real
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         type = node.inputs[0].type
         if type in int_types:
             return "%(z)s = abs(%(x)s);" % locals()
@@ -1988,8 +2073,9 @@ class Sgn(UnaryScalarOp):
         # casting to output type is handled by filter
         return numpy.sign(x)
 
-    def grad(self, (x, ), (gz, )):
-
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         rval = x.zeros_like()
 
         if rval.type.dtype in discrete_types:
@@ -1997,9 +2083,11 @@ class Sgn(UnaryScalarOp):
 
         return [rval]
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
         # casting is done by compiler
         # TODO: use copysign
+        (x,) = inputs
+        (z,) = outputs
         type = node.inputs[0].type
         if type in float_types:
             return "%(z)s = (%(x)s >= 0) ? (%(x)s == 0) ? 0.0 : 1.0 : -1.0;" % locals()
@@ -2020,7 +2108,9 @@ class Ceil(UnaryScalarOp):
     def impl(self, x):
         return numpy.ceil(x)
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         rval = x.zeros_like()
 
         if rval.type.dtype in discrete_types:
@@ -2028,7 +2118,9 @@ class Ceil(UnaryScalarOp):
 
         return [rval]
 
-    def c_code(self, node, name, (x,), (z,), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         return "%(z)s = ceil(%(x)s);" % locals()
 ceil = Ceil(same_out_nocomplex, name='ceil')
 
@@ -2037,7 +2129,9 @@ class Floor(UnaryScalarOp):
     def impl(self, x):
         return numpy.floor(x)
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         rval = x.zeros_like()
 
         if rval.type.dtype in discrete_types:
@@ -2045,7 +2139,9 @@ class Floor(UnaryScalarOp):
 
         return [rval]
 
-    def c_code(self, node, name, (x,), (z,), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         return "%(z)s = floor(%(x)s);" % locals()
 floor = Floor(same_out_nocomplex, name='floor')
 
@@ -2054,10 +2150,14 @@ class Trunc(UnaryScalarOp):
     def impl(self, x):
         return numpy.trunc(x)
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         return [x.zeros_like().astype(theano.config.floatX)]
 
-    def c_code(self, node, name, (x,), (z,), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         return "%(z)s = %(x)s >= 0? floor(%(x)s): -floor(-%(x)s);" % locals()
 trunc = Trunc(same_out_nocomplex, name='trunc')
 
@@ -2072,7 +2172,9 @@ class RoundHalfToEven(UnaryScalarOp):
     def impl(self, x):
         return numpy.round(x)
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         rval = x.zeros_like()
 
         if rval.type.dtype in discrete_types:
@@ -2080,7 +2182,9 @@ class RoundHalfToEven(UnaryScalarOp):
 
         return [rval]
 
-    def c_code___(self, node, name, (x, ), (z, ), sub):
+    def c_code___(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         typ = node.outputs[0].type.dtype
         if not typ in ['float32', 'float64']:
             Exception("The output should be float32 or float64")
@@ -2164,7 +2268,9 @@ class RoundHalfAwayFromZero(UnaryScalarOp):
     def impl(self, x):
         return round_half_away_from_zero_vec(x)
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         rval = x.zeros_like()
 
         if rval.type.dtype in discrete_types:
@@ -2172,7 +2278,9 @@ class RoundHalfAwayFromZero(UnaryScalarOp):
 
         return [rval]
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.outputs[0].type.dtype in ['float32', 'float64']:
             return "%(z)s = round(%(x)s);" % locals()
         else:
@@ -2184,7 +2292,9 @@ class Neg(UnaryScalarOp):
     def impl(self, x):
         return -x
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if self(x).type in discrete_types:
             if x.type in discrete_types:
                 return [x.zeros_like(dtype=theano.config.floatX)]
@@ -2193,7 +2303,9 @@ class Neg(UnaryScalarOp):
 
         return -gz,
 
-    def c_code(self, node, name, (x,), (z,), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         return "%(z)s = -%(x)s;" % locals()
 neg = Neg(same_out, name='neg')
 
@@ -2212,7 +2324,9 @@ class Inv(UnaryScalarOp):
     def impl(self, x):
         return numpy.float32(1.0) / x
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if x.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2223,7 +2337,9 @@ class Inv(UnaryScalarOp):
 
         return -gz / (x * x),
 
-    def c_code(self, node, name, (x,), (z,), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError()
         return "%(z)s = 1.0 / %(x)s;" % locals()
@@ -2243,7 +2359,9 @@ class Log(UnaryScalarOp):
             return numpy.log(x, sig='f')
         return numpy.log(x)
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if x.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2254,10 +2372,12 @@ class Log(UnaryScalarOp):
 
         return gz / x,
 
-    def c_code(self, node, name, (x,), (z,), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
         # todo: the version using log2 seems to be very slightly faster
         # on some machines for some reason, check if it's worth switching
         # return "%(z)s = log2(%(x)s) * 0.69314718055994529;" % locals()
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = log(%(x)s);" % locals()
@@ -2277,7 +2397,9 @@ class Log2(UnaryScalarOp):
             return numpy.log2(x, sig='f')
         return numpy.log2(x)
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if x.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2288,7 +2410,9 @@ class Log2(UnaryScalarOp):
 
         return gz / (x * math.log(2.0)),
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = log2(%(x)s);" % locals()
@@ -2308,7 +2432,9 @@ class Log10(UnaryScalarOp):
             return numpy.log10(x, sig='f')
         return numpy.log10(x)
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if x.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2319,7 +2445,9 @@ class Log10(UnaryScalarOp):
 
         return gz / (x * numpy.log(10.0)),
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = log10(%(x)s);" % locals()
@@ -2336,7 +2464,9 @@ class Log1p(UnaryScalarOp):
             return numpy.log1p(x, sig='f')
         return numpy.log1p(x)
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if gz.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2347,7 +2477,9 @@ class Log1p(UnaryScalarOp):
 
         return [gz / (1 + x)]
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = log1p(%(x)s);" % locals()
@@ -2366,7 +2498,9 @@ class Exp(UnaryScalarOp):
             return numpy.exp(x, sig='f')
         return numpy.exp(x)
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if x.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2377,7 +2511,9 @@ class Exp(UnaryScalarOp):
 
         return gz * exp(x),
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = exp(%(x)s);" % locals()
@@ -2393,7 +2529,9 @@ class Exp2(UnaryScalarOp):
             return numpy.exp2(x, sig='f')
         return numpy.exp2(x)
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if x.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2404,7 +2542,9 @@ class Exp2(UnaryScalarOp):
 
         return gz * exp2(x) * log(numpy.cast[x.type](2)),
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = exp2(%(x)s);" % locals()
@@ -2420,7 +2560,9 @@ class Expm1(UnaryScalarOp):
             return numpy.expm1(x, sig='f')
         return numpy.expm1(x)
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if x.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2431,7 +2573,9 @@ class Expm1(UnaryScalarOp):
 
         return gz * exp(x),
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = expm1(%(x)s);" % locals()
@@ -2445,7 +2589,9 @@ class Sqr(UnaryScalarOp):
     def impl(self, x):
         return x * x
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if gz.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2456,7 +2602,9 @@ class Sqr(UnaryScalarOp):
 
         return gz * x * 2,
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         return "%(z)s = %(x)s * %(x)s;" % locals()
 sqr = Sqr(same_out, name='sqr')
 
@@ -2470,7 +2618,9 @@ class Sqrt(UnaryScalarOp):
             return numpy.sqrt(x, sig='f')
         return numpy.sqrt(x)
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if gz.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2481,7 +2631,9 @@ class Sqrt(UnaryScalarOp):
 
         return (gz * 0.5) / sqrt(x),
 
-    def c_code(self, node, name, (x,), (z,), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = sqrt(%(x)s);" % locals()
@@ -2497,7 +2649,9 @@ class Deg2Rad(UnaryScalarOp):
             return numpy.deg2rad(x, sig='f')
         return numpy.deg2rad(x)
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if gz.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2508,7 +2662,9 @@ class Deg2Rad(UnaryScalarOp):
 
         return gz * numpy.asarray(numpy.pi / 180, gz.type),
 
-    def c_code(self, node, name, (x,), (z,), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = %(x)s * (M_PI / 180.0);" % locals()
@@ -2524,7 +2680,9 @@ class Rad2Deg(UnaryScalarOp):
             return numpy.rad2deg(x, sig='f')
         return numpy.rad2deg(x)
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if gz.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2535,7 +2693,9 @@ class Rad2Deg(UnaryScalarOp):
 
         return gz * numpy.asarray(180. / numpy.pi, gz.type),
 
-    def c_code(self, node, name, (x,), (z,), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = %(x)s * (180.0 / M_PI);" % locals()
@@ -2554,7 +2714,9 @@ class Cos(UnaryScalarOp):
             return numpy.cos(x, sig='f')
         return numpy.cos(x)
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if gz.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2565,7 +2727,9 @@ class Cos(UnaryScalarOp):
 
         return -gz * sin(x),
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = cos(%(x)s);" % locals()
@@ -2581,7 +2745,9 @@ class ArcCos(UnaryScalarOp):
             return numpy.arccos(x, sig='f')
         return numpy.arccos(x)
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if gz.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2592,7 +2758,9 @@ class ArcCos(UnaryScalarOp):
 
         return - gz / sqrt(numpy.cast[x.type](1) - sqr(x)),
 
-    def c_code(self, node, name, (x,), (z,), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = acos(%(x)s);" % locals()
@@ -2611,7 +2779,9 @@ class Sin(UnaryScalarOp):
             return numpy.sin(x, sig='f')
         return numpy.sin(x)
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if x.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2622,7 +2792,9 @@ class Sin(UnaryScalarOp):
 
         return gz * cos(x),
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = sin(%(x)s);" % locals()
@@ -2638,7 +2810,9 @@ class ArcSin(UnaryScalarOp):
             return numpy.arcsin(x, sig='f')
         return numpy.arcsin(x)
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if gz.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2649,7 +2823,9 @@ class ArcSin(UnaryScalarOp):
 
         return gz / sqrt(numpy.cast[x.type](1) - sqr(x)),
 
-    def c_code(self, node, name, (x,), (z,), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = asin(%(x)s);" % locals()
@@ -2665,7 +2841,9 @@ class Tan(UnaryScalarOp):
             return numpy.tan(x, sig='f')
         return numpy.tan(x)
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if x.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2676,7 +2854,9 @@ class Tan(UnaryScalarOp):
 
         return gz / sqr(cos(x)),
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = tan(%(x)s);" % locals()
@@ -2692,7 +2872,9 @@ class ArcTan(UnaryScalarOp):
             return numpy.arctan(x, sig='f')
         return numpy.arctan(x)
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if gz.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2703,7 +2885,9 @@ class ArcTan(UnaryScalarOp):
 
         return gz / (numpy.cast[x.type](1) + sqr(x)),
 
-    def c_code(self, node, name, (x,), (z,), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = atan(%(x)s);" % locals()
@@ -2721,7 +2905,9 @@ class ArcTan2(BinaryScalarOp):
                 return numpy.arctan2(y, x, sig='f')
         return numpy.arctan2(y, x)
 
-    def grad(self, (y, x), (gz,)):
+    def grad(self, inputs, gout):
+        (y, x) = inputs
+        (gz,) = gout
         if gz.type in complex_types:
             raise NotImplementedError()
         else:
@@ -2741,7 +2927,9 @@ class ArcTan2(BinaryScalarOp):
             return [gz * x / (sqr(x) + sqr(y)),
                     gz * neg(y) / (sqr(x) + sqr(y))]
 
-    def c_code(self, node, name, (y, x), (z,), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (y, x) = inputs
+        (z,) = outputs
         if (node.inputs[0].type in complex_types or
             node.inputs[1].type in complex_types):
             raise NotImplementedError('type not supported', type)
@@ -2761,7 +2949,9 @@ class Cosh(UnaryScalarOp):
             return numpy.cosh(x, sig='f')
         return numpy.cosh(x)
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if x.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2772,7 +2962,9 @@ class Cosh(UnaryScalarOp):
 
         return gz * sinh(x),
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = cosh(%(x)s);" % locals()
@@ -2788,7 +2980,9 @@ class ArcCosh(UnaryScalarOp):
             return numpy.arccosh(x, sig='f')
         return numpy.arccosh(x)
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if x.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2799,7 +2993,9 @@ class ArcCosh(UnaryScalarOp):
 
         return gz / sqrt(sqr(x) - numpy.cast[x.type](1)),
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = acosh(%(x)s);" % locals()
@@ -2818,7 +3014,9 @@ class Sinh(UnaryScalarOp):
             return numpy.sinh(x, sig='f')
         return numpy.sinh(x)
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if x.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2829,7 +3027,9 @@ class Sinh(UnaryScalarOp):
 
         return gz * cosh(x),
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = sinh(%(x)s);" % locals()
@@ -2845,7 +3045,9 @@ class ArcSinh(UnaryScalarOp):
             return numpy.arcsinh(x, sig='f')
         return numpy.arcsinh(x)
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if x.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2856,7 +3058,9 @@ class ArcSinh(UnaryScalarOp):
 
         return gz / sqrt(sqr(x) + numpy.cast[x.type](1)),
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = asinh(%(x)s);" % locals()
@@ -2876,7 +3080,9 @@ class Tanh(UnaryScalarOp):
             return numpy.tanh(x, sig='f')
         return numpy.tanh(x)
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if x.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2887,7 +3093,9 @@ class Tanh(UnaryScalarOp):
 
         return gz * (1 - sqr(tanh(x))),
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = tanh(%(x)s);" % locals()
@@ -2903,7 +3111,9 @@ class ArcTanh(UnaryScalarOp):
             return numpy.arctanh(x, sig='f')
         return numpy.arctanh(x)
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if x.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -2914,7 +3124,9 @@ class ArcTanh(UnaryScalarOp):
 
         return gz / (numpy.cast[x.type](1) - sqr(x)),
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in complex_types:
             raise NotImplementedError('type not supported', type)
         return "%(z)s = atanh(%(x)s);" % locals()
@@ -2926,7 +3138,9 @@ class Real(UnaryScalarOp):
     def impl(self, x):
         return numpy.real(x)
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         return [complex(gz, 0)]
 
 real = Real(real_out, name='real')
@@ -2936,7 +3150,9 @@ class Imag(UnaryScalarOp):
     def impl(self, x):
         return numpy.imag(x)
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if x.type in complex_types:
             return [complex(0, gz)]
         elif x.type in float_types:
@@ -2951,7 +3167,7 @@ class Angle(UnaryScalarOp):
     def impl(self, x):
         return numpy.angle(x)
 
-    def grad(self, (c, ), (gtheta, )):
+    def grad(self, inputs, gout):
         # y = x.imag
         # r = sqrt(y**2 + x.real**2)
         # g = y/r
@@ -2962,6 +3178,8 @@ class Angle(UnaryScalarOp):
         # else:
         #     theta = -numpy.arcsin(g)+numpy.pi
 
+        (c,) = inputs
+        (gtheta,) = gout
         x = real(c)
         y = imag(c)
         r = abs(c)
@@ -2996,7 +3214,9 @@ class Complex(BinaryScalarOp):
     def impl(self, x, y):
         return numpy.complex(x, y)
 
-    def grad(self, (x, y), (gz,)):
+    def grad(self, inputs, gout):
+        (x, y) = inputs
+        (gz,) = gout
         return [cast(real(gz), x.type.dtype),
                 cast(imag(gz), y.type.dtype)]
 complex = Complex(name='complex')
@@ -3023,7 +3243,9 @@ class ComplexFromPolar(BinaryScalarOp):
         else:
             return numpy.complex128(numpy.complex(x, y))
 
-    def grad(self, (r, theta), (gz,)):
+    def grad(self, inputs, gout):
+        (r, theta) = inputs
+        (gz,) = gout
         gr = gz * complex_from_polar(1, theta)
         gtheta = gz * complex_from_polar(r, -theta)
         return [gr, gtheta]

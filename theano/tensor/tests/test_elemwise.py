@@ -1233,7 +1233,9 @@ def test_not_implemented_elemwise_grad():
         def impl(self, n, x):
             return x * n
 
-        def grad(self, (n, x), (gz,)):
+        def grad(self, inputs, gout):
+            (n, x) = inputs
+            (gz,) = gout
             dy_dx = n
             return [theano.gradient.grad_not_implemented(self, 0, n),
                     gz * dy_dx]

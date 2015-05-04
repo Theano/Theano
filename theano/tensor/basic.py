@@ -5159,10 +5159,14 @@ class Diagonal(Op):
         return Apply(self, [x], [tensor(dtype=x.dtype,
                                         broadcastable=[False] * (x.ndim - 1))])
 
-    def perform(self, node, (x,), (z,)):
+    def perform(self, node, inputs, outputs):
+        (x,) = inputs
+        (z,) = outputs
         z[0] = x.diagonal(self.offset, self.axis1, self.axis2)
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         return [grad_not_implemented(self, 0, x)]
 
     def infer_shape(self, node, shapes):
@@ -5207,10 +5211,12 @@ class Diag(Op):
 
         return Apply(self, [diag], [matrix(dtype=diag.dtype)])
 
-    def perform(self, node, inputs, (z,)):
+    def perform(self, node, inputs, outputs):
+        (z,) = outputs
         z[0] = numpy.diag(inputs[0])
 
-    def grad(self, inputs, (gz,)):
+    def grad(self, inputs, gout):
+        (gz,) = gout
         return [diagonal(gz)]
 
     def infer_shape(self, nodes, shapes):
@@ -5435,7 +5441,8 @@ class Choose(Op):
         o = TensorType(choice.dtype, bcast)
         return Apply(self, [a, choice], [o()])
 
-    def perform(self, node, inputs, (z, )):
+    def perform(self, node, inputs, outputs):
+        (z,) = outputs
         a = inputs[0]
         choice = inputs[1]
         # TODO reuse out?

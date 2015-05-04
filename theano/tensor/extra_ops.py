@@ -593,7 +593,9 @@ class RepeatOp(theano.Op):
 
         return [[True], [False]]
 
-    def grad(self, (x, repeats), (gz, )):
+    def grad(self, inputs, gout):
+        (x, repeats) = inputs
+        (gz,) = gout
         if repeats.ndim == 0:
             if self.axis is None:
                 axis = x.ndim

@@ -84,7 +84,9 @@ class DotModulo(Op):
     def make_node(self, A, s, m, A2, s2, m2):
         return Apply(self, [A, s, m, A2, s2, m2], [s.type()])
 
-    def perform(self, node, (A, s, m, A2, s2, m2), (out, )):
+    def perform(self, node, inputs, outputs):
+        (A, s, m, A2, s2, m2) = inputs
+        (out,) = outputs
         o1 = matVecModM(A, s, m)
         o2 = matVecModM(A2, s2, m2)
         out[0] = numpy.concatenate((o1, o2))
@@ -92,7 +94,9 @@ class DotModulo(Op):
     def c_code_cache_version(self):
         return (6,)
 
-    def c_code(self, node, name, (_A, _s, _m, _A2, _s2, _m2), (_z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (_A, _s, _m, _A2, _s2, _m2) = inputs
+        (_z,) = outputs
         return """
         int osize = -1;
         if (PyArray_NDIM(%(_A)s) != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(A) != 2"); %(fail)s;}
