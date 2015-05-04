@@ -3591,33 +3591,33 @@ class T_Join_and_Split(unittest.TestCase):
         """Tests for gradient of join op with negative axis."""
 
         # Test for one dimensional vectors
-        x1 = T.vector(dtype=self.floatX)
-        c1 = T.concatenate([x1, x1], axis=-1).sum()
-        gx = T.grad(c1, wrt=[x1])
+        x1 = tensor.vector(dtype=self.floatX)
+        c1 = tensor.concatenate([x1, x1], axis=-1).sum()
+        gx = tensor.grad(c1, wrt=[x1])
         f = theano.function([x1], gx, mode=self.mode)
         x_val = numpy.random.randn(5).astype(dtype=self.floatX)
         assert numpy.allclose(f(x_val), numpy.tile(2., x_val.shape))
 
         # Test for 2d arrays
-        X2 = T.matrix(dtype=self.floatX)
-        c2 = T.concatenate([X2, X2], axis=-1).sum()
-        gX = T.grad(c2, wrt=[X2])
+        X2 = tensor.matrix(dtype=self.floatX)
+        c2 = tensor.concatenate([X2, X2], axis=-1).sum()
+        gX = tensor.grad(c2, wrt=[X2])
         f = theano.function([X2], gX, mode=self.mode)
         X_val2 = numpy.random.randn(5, 4).astype(self.floatX)
         assert numpy.allclose(f(X_val2), numpy.tile(2., X_val2.shape))
 
         # Test for 3d tensors
-        X3 = T.tensor3(dtype=self.floatX)
-        c3 = T.concatenate([X3, X3], axis=-1).sum()
-        gX = T.grad(c3, wrt=[X3])
+        X3 = tensor.tensor3(dtype=self.floatX)
+        c3 = tensor.concatenate([X3, X3], axis=-1).sum()
+        gX = tensor.grad(c3, wrt=[X3])
         f = theano.function([X3], gX, mode=self.mode)
         X_val3 = numpy.random.randn(5, 4, 3).astype(self.floatX)
         assert numpy.allclose(f(X_val3), numpy.tile(2., X_val3.shape))
 
         # Raise type error if tensors do not match on negative axis
         try:
-            c = T.concatenate([X2, X3], axis=-1).sum()
-            gX2, gX3 = T.grad(c, wrt[X2, X3])
+            c = tensor.concatenate([X2, X3], axis=-1).sum()
+            gX2, gX3 = tensor.grad(c, wrt[X2, X3])
             f = theano.function([X2, X3], [gX2, gX3], mode=self.mode)
             f(X_val2, X_val3)
             assert False
@@ -3626,8 +3626,8 @@ class T_Join_and_Split(unittest.TestCase):
 
         # Raise value error if negative axis wraps around
         try:
-            c = T.concatenate([x1, x1], axis=-3).sum()
-            gx = T.grad(c, wrt=[x1])
+            c = tensor.concatenate([x1, x1], axis=-3).sum()
+            gx = tensor.grad(c, wrt=[x1])
             f = theano.function([x1], gx, mode=self.mode)
             f(x_val)
             assert False
