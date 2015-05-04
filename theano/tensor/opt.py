@@ -1431,15 +1431,23 @@ def local_useless_elemwise(node):
     mul(x) -> x
     add(x) -> x
     identity(x) -> x
+    and(x,1) -> x
+    and(x,0) -> zeros_like(x)
+    or(x,0) -> x
+    or(x,1) -> ones_like(x)
+    xor(x,x) -> zeros_like(x)
+    le(x,x) -> ones_like(x)
+    ge(x,x) -> ones_like(x)
 
     """
     if isinstance(node.op, T.Elemwise):
         def zeros_like(node, in_idx):
-            #it is the same var in the graph. That will always be true
+            # it is the same var in the graph. That will always be true
             return [T.fill(node.inputs[in_idx],
                            T.constant(0.0, dtype=node.outputs[0].type.dtype))]
+
         def ones_like(node, in_idx):
-            #it is the same var in the graph. That will always be true
+            # it is the same var in the graph. That will always be true
             return [T.fill(node.inputs[in_idx],
                            T.constant(1.0, dtype=node.outputs[0].type.dtype))]
 
@@ -1453,12 +1461,12 @@ def local_useless_elemwise(node):
             return [node.inputs[0]]
         elif node.op.scalar_op == theano.scalar.add and len(node.inputs) == 1:
             return [node.inputs[0]]
-        if (
+        elif (
             node.op.scalar_op == theano.scalar.identity
             and len(node.inputs) == 1
         ):
             return [node.inputs[0]]
-        if (
+        elif (
             isinstance(node.op.scalar_op, scalar.AND)
             and len(node.inputs) == 2
         ):
@@ -1482,7 +1490,7 @@ def local_useless_elemwise(node):
                 and T.extract_constant(node.inputs[1]) == 0
             ):
                 return zeros_like(node, 0)
-        if (
+        elif (
             isinstance(node.op.scalar_op, scalar.OR)
             and len(node.inputs) == 2
         ):
@@ -1506,7 +1514,7 @@ def local_useless_elemwise(node):
                 and T.extract_constant(node.inputs[1]) == 1
             ):
                 return ones_like(node, 0)
-        if (
+        elif (
             isinstance(node.op.scalar_op, scalar.XOR)
             and len(node.inputs) == 2
         ):
