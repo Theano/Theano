@@ -3595,7 +3595,7 @@ class T_Join_and_Split(unittest.TestCase):
         c1 = tensor.concatenate([x1, x1], axis=-1).sum()
         gx = tensor.grad(c1, wrt=[x1])
         f = theano.function([x1], gx, mode=self.mode)
-        x_val = numpy.random.randn(5).astype(dtype=self.floatX)
+        x_val = numpy.random.randn(5).astype(self.floatX)
         assert numpy.allclose(f(x_val), numpy.tile(2., x_val.shape))
 
         # Test for 2d arrays
