@@ -14,12 +14,12 @@ __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 import logging
-from itertools import izip
 
 import numpy
 
 import theano
 from theano import compile
+from theano.compat import izip
 from theano.gof import PureOp, Apply
 from theano import gof
 from theano.tensor import TensorType

@@ -5,12 +5,12 @@ These functions implement special cases of exp and log to improve numerical stab
 from __future__ import print_function
 
 import warnings
-from itertools import imap
 
 import numpy
 
 import theano
 from theano import config, gof, printing, scalar
+from theano.compat import imap
 from theano.configparser import AddConfigVar, BoolParam
 from theano.printing import pprint
 from theano.tensor import basic as tensor

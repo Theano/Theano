@@ -42,11 +42,11 @@ __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 
-from itertools import izip
 import logging
 import numpy
 
 from theano import gof
+from theano.compat import izip
 from theano.tensor import opt, TensorVariable
 from theano.tensor.sharedvar import TensorSharedVariable
 from theano import tensor

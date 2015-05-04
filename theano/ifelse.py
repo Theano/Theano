@@ -12,7 +12,7 @@ is a global operation with a scalar condition.
 """
 from __future__ import print_function
 from copy import deepcopy
-from itertools import izip
+from theano.compat import izip
 import logging
 
 import numpy

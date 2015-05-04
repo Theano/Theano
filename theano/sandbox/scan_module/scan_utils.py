@@ -17,11 +17,11 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 import copy
 import logging
 import warnings
-from itertools import izip
 
 import numpy
 
 import theano
+from theano.compat import izip
 from theano.compile.pfunc import rebuild_collect_shared
 from theano import gof
 from theano import tensor, scalar

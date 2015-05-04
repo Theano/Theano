@@ -11,6 +11,9 @@ __all__ = ['PY3', 'b', 'BytesIO', 'next', 'configparser', 'reload']
 
 if PY3:
     from operator import truediv as operator_div
+    izip = zip
+    imap = map
+    ifilter = filter
 
     # In python 3.x, when an exception is reraised it saves original
     # exception in its args, therefore in order to find the actual
@@ -50,6 +53,7 @@ if PY3:
 else:
     from theano.compat.six import get_unbound_function
     from operator import div as operator_div
+    from itertools import izip, imap, ifilter
 
     def exc_message(e):
         return e[0]

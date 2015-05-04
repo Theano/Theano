@@ -163,7 +163,8 @@ if sys.version_info[:2] < (2, 7):
 
     from operator import itemgetter
     from heapq import nlargest
-    from itertools import repeat, ifilter
+    from itertools import repeat
+    from theano.compat import ifilter
 
     class Counter(dict):
         '''Dict subclass for counting hashable objects.

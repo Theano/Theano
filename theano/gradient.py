@@ -1,7 +1,7 @@
 """Driver for gradient calculations."""
 from __future__ import print_function
 import theano.compat.six.moves.builtins as builtins
-from itertools import izip
+from theano.compat import izip
 import logging
 import time
 import warnings

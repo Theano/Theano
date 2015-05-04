@@ -16,13 +16,12 @@ from __future__ import print_function
 import math
 import warnings
 from copy import copy
-from itertools import imap
 from textwrap import dedent
 
 import numpy
 
 import theano
-from theano.compat import PY3
+from theano.compat import PY3, imap
 from theano import gof, printing
 from theano.gof import (Op, utils, Variable, Constant, Type, Apply,
                         FunctionGraph)
