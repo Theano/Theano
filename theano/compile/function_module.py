@@ -3,10 +3,11 @@
 from __future__ import print_function
 
 import copy
-from six import iteritems
+from six import string_types, iteritems
+from six.moves import xrange
 import six.moves.copyreg as copyreg
 import six.moves.cPickle as pickle
-import itertools
+from itertools import chain
 import time
 import warnings
 import numpy
@@ -15,8 +16,6 @@ import theano
 from theano import gof
 from functools import partial
 from theano.compat import izip
-from six import string_types
-from six.moves import xrange
 import theano.compile.mode
 from theano.compile.io import (
     In, SymbolicInput, SymbolicInputKit, SymbolicOutput)
@@ -65,7 +64,7 @@ def view_tree_set(v, treeset):
             continue
         vmap = getattr(cl.op, 'view_map', {})
         dmap = getattr(cl.op, 'destroy_map', {})
-        for opos, iposlist in vmap.items() + dmap.items():
+        for opos, iposlist in chain(iteritems(vmap), iteritems(dmap)):
             if v_input_pos_to_cl in iposlist:
                 if cl.outputs[opos] not in treeset:
                     view_tree_set(cl.outputs[opos], treeset)
@@ -476,7 +475,7 @@ returned directly?"""
                 self.n_returned_outputs -= 1
 
         for node in self.maker.fgraph.apply_nodes:
-            if node.op in ops_with_inner_function.keys():
+            if node.op in ops_with_inner_function:
                 self.nodes_with_inner_function.append(node.op)
 
     def __contains__(self, item):
@@ -715,7 +714,7 @@ returned directly?"""
         # 1.no allow_gc return False
         # 2.has allow_gc, if allow_gc is False, return True
         if not getattr(self.fn, 'allow_gc', True):
-            for key in self.fn.storage_map.keys():
+            for key in self.fn.storage_map:
                 if not isinstance(key, theano.gof.Constant):
                     self.fn.storage_map[key][0] = None
 
@@ -1231,7 +1230,8 @@ class FunctionMaker(object):
         if not hasattr(linker, 'accept'):
             raise ValueError("'linker' parameter of FunctionMaker should be "
                              "a Linker with an accept method or one of %s" %
-                             theano.compile.mode.predefined_linkers.keys())
+                             list(theano.compile.mode
+                                  .predefined_linkers.keys()))
 
         # the 'no_borrow' outputs are the ones for which that we can't
         # return the internal storage pointer.

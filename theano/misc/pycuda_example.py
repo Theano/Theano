@@ -194,7 +194,7 @@ class PycudaElemwiseSourceModuleOp(GpuOp):
     def __str__(self):
         if self.name is None:
             if self.inplace_pattern:
-                items = self.inplace_pattern.items()
+                items = list(self.inplace_pattern.items())
                 items.sort()
                 return self.__class__.__name__ + "{%s}%s" % (self.scalar_op,
                                                              str(items))
@@ -288,7 +288,7 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
     def __str__(self):
         if self.name is None:
             if self.inplace_pattern:
-                items = self.inplace_pattern.items()
+                items = list(self.inplace_pattern.items())
                 items.sort()
                 return self.__class__.__name__ + "{%s}%s" % (self.scalar_op,
                                                              str(items))

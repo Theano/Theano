@@ -10,6 +10,7 @@ import warnings
 from copy import copy, deepcopy
 # Import builtin min to be able to use it after importing the tensor version.
 from theano.compat import izip
+from six import iteritems
 from six.moves.builtins import min as builtin_min
 from nose.tools import assert_raises
 from nose.plugins.skip import SkipTest
@@ -335,7 +336,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
 
             good = self.add_memmap_values(self.good)
 
-            for testname, inputs in good.items():
+            for testname, inputs in iteritems(good):
                 inputs = [copy(input) for input in inputs]
                 inputrs = [TensorType(
                             dtype=input.dtype,
@@ -409,7 +410,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                                     atol=eps, rtol=eps),
                                 numpy.allclose(variable, expected)))
 
-                for description, check in self.checks.items():
+                for description, check in iteritems(self.checks):
                     if not check(inputs, variables):
                         self.fail(("Test %s::%s: Failed check: %s (inputs"
                             " were %s, outputs were %s)") % (
@@ -419,7 +420,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
         def test_bad_build(self):
             if skip:
                 raise SkipTest(skip)
-            for testname, inputs in self.bad_build.items():
+            for testname, inputs in iteritems(self.bad_build):
                 inputs = [copy(input) for input in inputs]
                 inputrs = [shared(input) for input in inputs]
                 self.assertRaises(Exception,
@@ -431,7 +432,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
         def test_bad_runtime(self):
             if skip:
                 raise SkipTest(skip)
-            for testname, inputs in self.bad_runtime.items():
+            for testname, inputs in iteritems(self.bad_runtime):
                 inputrs = [shared(input) for input in inputs]
                 try:
                     node = safe_make_node(self.op, *inputrs)
@@ -463,7 +464,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
             backup = config.warn.sum_div_dimshuffle_bug
             config.warn.sum_div_dimshuffle_bug = False
             try:
-                for testname, inputs in self.grad.items():
+                for testname, inputs in iteritems(self.grad):
                     inputs = [copy(input) for input in inputs]
                     try:
                         utt.verify_grad(self.op, inputs,
@@ -491,7 +492,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                 # This is not actually an Op
                 return
 
-            for testname, inputs in self.good.items():
+            for testname, inputs in iteritems(self.good):
                 inputs = [copy(input) for input in inputs]
                 inputrs = [TensorType(
                             dtype=input.dtype,
@@ -829,7 +830,7 @@ def copymod(dct, without=None, **kwargs):
     for a in without:
         if a in rval:
             del rval[a]
-    for kw, val in kwargs.items():
+    for kw, val in iteritems(kwargs):
         rval[kw] = val
     return rval
 

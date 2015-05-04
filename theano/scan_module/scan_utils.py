@@ -216,7 +216,7 @@ def clone(output,
         share_inputs = copy_inputs
 
     if isinstance(replace, dict):
-        items = replace.items()
+        items = list(replace.items())
     elif isinstance(replace, (list, tuple)):
         items = replace
     elif replace is None:
@@ -610,8 +610,8 @@ class Validator(object):
 
         # Mapping from invalid variables to equivalent valid ones.
         self.valid_equivalent = valid_equivalent.copy()
-        self.valid.update(valid_equivalent.values())
-        self.invalid.update(valid_equivalent.keys())
+        self.valid.update(list(valid_equivalent.values()))
+        self.invalid.update(list(valid_equivalent.keys()))
 
     def check(self, out):
         '''

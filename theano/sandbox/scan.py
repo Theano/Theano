@@ -457,7 +457,7 @@ def scan(fn,
     # extract still missing inputs (there still might be so) and add them
     # as non sequences at the end of our args
     fake_nonseqs = [x.type() for x in non_seqs]
-    fake_outputs = scan_utils.clone(outputs + updates.values(),
+    fake_outputs = scan_utils.clone(outputs + list(updates.values()),
                                     replace=dict(izip(non_seqs,
                                                       fake_nonseqs)))
     all_inputs = ifilter(

@@ -309,7 +309,7 @@ class SequenceDB(DB):
 
     def print_summary(self, stream=sys.stdout):
         print(self.__class__.__name__ + " (id %i)" % id(self), file=stream)
-        positions = self.__position__.items()
+        positions = list(self.__position__.items())
 
         def c(a, b):
             return cmp(a[1], b[1])

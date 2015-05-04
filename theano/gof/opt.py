@@ -18,7 +18,7 @@ import numpy
 import theano
 from theano import config
 from theano.compat import izip
-from six import string_types, iteritems
+from six import string_types, iteritems, itervalues
 from six.moves import reduce
 from theano.gof import graph, op, utils, unify, toolbox
 from theano.gof.fg import InconsistencyError
@@ -1501,8 +1501,8 @@ class NavigatorOptimizer(Optimizer):
             return False
         old_vars = node.outputs
         if isinstance(replacements, dict):
-            old_vars = replacements.keys()
-            replacements = replacements.values()
+            old_vars = list(replacements.keys())
+            replacements = list(replacements.values())
         elif not isinstance(replacements, (tuple, list)):
             raise TypeError('Optimizer %s gave wrong type of replacement. '
                             'Expected list or tuple. Got %s' % (
@@ -1739,7 +1739,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             yield opt
         # if repeat is not a problem we can drop the set
         s = set()
-        for lopt in self.local_optimizers_map.values():
+        for lopt in itervalues(self.local_optimizers_map):
             for opt in lopt:
                 if opt not in s:
                     yield opt

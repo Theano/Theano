@@ -139,7 +139,7 @@ def rebuild_collect_shared(outputs,
     if replace is None:
         replace = []
     try:
-        replace_pairs = replace.items()
+        replace_pairs = list(replace.items())
     except Exception:
         replace_pairs = replace
 
@@ -473,7 +473,7 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
     # this typically does nothing, contrary to what one may expect.
     in_var_set = set(in_variables)
     try:
-        givens_pairs = givens.items()
+        givens_pairs = list(givens.items())
     except AttributeError:
         givens_pairs = givens
     for x, y in givens_pairs:

@@ -1,4 +1,5 @@
 from collections import defaultdict
+from six import iteritems
 from theano.gof.graph import list_of_nodes
 from theano.compat import cmp
 
@@ -105,7 +106,8 @@ def _toposort(edges):
     [2] http://en.wikipedia.org/wiki/Toposort#Algorithms
     """
     incoming_edges = reverse_dict(edges)
-    incoming_edges = dict((k, set(val)) for k, val in incoming_edges.items())
+    incoming_edges = dict((k, set(val))
+                          for k, val in iteritems(incoming_edges))
     S = set((v for v in edges if v not in incoming_edges))
     L = []
 

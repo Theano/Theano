@@ -3,6 +3,8 @@ import linecache
 import traceback
 import sys
 
+from six import iteritems
+
 from theano import config
 
 
@@ -142,7 +144,7 @@ class scratchpad:
 
     def info(self):
         print("<theano.gof.utils.scratchpad instance at %i>" % id(self))
-        for k, v in self.__dict__.items():
+        for k, v in iteritems(self.__dict__):
             print("  %s: %s" % (k, v))
 
 
@@ -249,14 +251,14 @@ def toposort(prereqs_d):
 
 #     all1 = set(prereqs_d.keys())
 #     all2 = set()
-#     for x, y in prereqs_d.items():
+#     for x, y in iteritems(prereqs_d):
 #         all2.update(y)
 #     print all1.difference(all2)
 
     seq = []
     done = set()
     postreqs_d = {}
-    for x, prereqs in prereqs_d.items():
+    for x, prereqs in iteritems(prereqs_d):
         for prereq in prereqs:
             postreqs_d.setdefault(prereq, set()).add(x)
     next = set([k for k in prereqs_d if not prereqs_d[k]])

@@ -1291,7 +1291,7 @@ class ModuleCache(object):
             min_age = self.age_thresh_del_unversioned
 
         with compilelock.lock_ctx():
-            all_key_datas = self.module_hash_to_key_data.values()
+            all_key_datas = list(self.module_hash_to_key_data.values())
             for key_data in all_key_datas:
                 if not key_data.keys:
                     # May happen for broken versioned keys.

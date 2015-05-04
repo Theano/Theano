@@ -6,6 +6,7 @@ import unittest
 
 from nose.plugins.skip import SkipTest
 import numpy
+from six import itervalues
 
 from theano import function
 from theano.gof import vm
@@ -360,9 +361,9 @@ def test_reallocation():
 
         def check_storage(storage_map):
             from theano.tensor.var import TensorConstant
-            for i in storage_map.keys():
+            for i in storage_map:
                 if not isinstance(i, TensorConstant):
-                    keys_copy = storage_map.keys()[:]
+                    keys_copy = list(storage_map.keys())[:]
                     keys_copy.remove(i)
                     for o in keys_copy:
                         if (storage_map[i][0] and
@@ -371,5 +372,5 @@ def test_reallocation():
             return [False, None]
 
         assert check_storage(storage_map)[0]
-        assert len(set([id(v) for v in
-                        storage_map.values()])) < len(storage_map)
+        assert len(set(id(v) for v in
+                       itervalues(storage_map))) < len(storage_map)

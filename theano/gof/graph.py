@@ -1065,7 +1065,8 @@ def view_roots(r):
     if owner is not None:
         try:
             view_map = owner.op.view_map
-            view_map = dict([(owner.outputs[o], i) for o, i in view_map.items()])
+            view_map = dict((owner.outputs[o], i)
+                            for o, i in iteritems(view_map))
         except AttributeError:
             return [r]
         if r in view_map:

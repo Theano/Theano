@@ -2866,14 +2866,14 @@ def local_useless_rebroadcast(node):
         else:
             # Keep the flags that modify something
             new_axis = {}
-            for dim, bc in node.op.axis.items():
+            for dim, bc in list(node.op.axis.items()):
                 if x.broadcastable[dim] != bc:
                     new_axis[dim] = bc
             if new_axis == node.op.axis:
                 # All flags are useful
                 return
             else:
-                return [T.Rebroadcast(*new_axis.items())(x)]
+                return [T.Rebroadcast(*list(new_axis.items()))(x)]
 
 
 @register_canonicalize
@@ -2899,7 +2899,7 @@ def local_rebroadcast_lift(node):
         # by the `unbroadcast` function before we are in the actual function
         # compilation phase.
         if hasattr(input, 'clients') and len(input.clients) == 1:
-            rval = inode.op.make_node(T.Rebroadcast(*op.axis.items())(
+            rval = inode.op.make_node(T.Rebroadcast(*list(op.axis.items()))(
                     inode.inputs[0])).outputs
             return rval
     if inode and isinstance(inode.op, T.Rebroadcast):
@@ -2908,7 +2908,7 @@ def local_rebroadcast_lift(node):
         axis = inode.op.axis.copy()
         axis.update(op.axis)
         iinput = inode.inputs[0]
-        rval = [T.Rebroadcast(*axis.items())(iinput)]
+        rval = [T.Rebroadcast(*list(axis.items()))(iinput)]
         return rval
 
 

@@ -3,7 +3,7 @@ import six.moves.cPickle as pickle
 import os, sys
 
 import theano
-from six import iteritems
+from six import iteritems, itervalues
 
 DISPLAY_DUPLICATE_KEYS = False
 DISPLAY_MOST_FREQUENT_DUPLICATE_CCODE = False
@@ -52,7 +52,7 @@ if DISPLAY_DUPLICATE_KEYS:
             print("Duplicate key (%i copies): %s" % (v, pickle.loads(k)))
 
 nbs_keys = {}  # nb seen -> now many key
-for val in keys.values():
+for val in itervalues(keys):
     nbs_keys.setdefault(val, 0)
     nbs_keys[val] += 1
 
@@ -75,16 +75,16 @@ if DISPLAY_MOST_FREQUENT_DUPLICATE_CCODE:
         print(kk)
 
 print("key.pkl histograph")
-l = nbs_keys.items()
+l = list(nbs_keys.items())
 l.sort()
 print(l)
 
 print("mod.{cpp,cu} histogram")
-l = nbs_mod.items()
+l = list(nbs_mod.items())
 l.sort()
 print(l)
 
-total = sum([len(k) for k in mods.values()])
+total = sum(len(k) for k in list(mods.values()))
 uniq = len(mods)
 useless = total - uniq
 print("mod.{cpp,cu} total:", total)

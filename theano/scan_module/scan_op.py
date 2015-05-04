@@ -60,6 +60,7 @@ import logging
 import time
 
 import numpy
+from six import iteritems
 
 import theano
 from theano.compat import exc_message
@@ -2626,7 +2627,7 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
         total_super_scan_time = 0
         total_scan_fct_time = 0
         total_scan_op_time = 0
-        for (_, node), v in apply_time.items():
+        for (_, node), v in iteritems(apply_time):
             if isinstance(node.op, Scan):
                 if v > 0:
                     scan_fct_time = node.op.mode_instance.fn_time
