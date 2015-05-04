@@ -58,7 +58,6 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 import itertools
 import logging
 import time
-from itertools import izip
 
 import numpy
 
@@ -68,7 +67,7 @@ from theano.compile import function, Param, Out
 from theano import compile, config, gradient, gof, tensor
 from theano.gof import PureOp, Apply
 from theano.gof.graph import io_toposort
-from theano.compat import OrderedDict
+from theano.compat import OrderedDict, izip
 from theano.tensor import TensorType
 from theano.tensor.opt import Shape_i
 from theano.gradient import grad_undefined, DisconnectedType, NullType

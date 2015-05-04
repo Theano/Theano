@@ -42,11 +42,11 @@ __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 
-import itertools
 import logging
 import numpy
 import warnings
 
+from theano.compat import ifilter
 from theano.compat.six import iteritems
 from theano.compile import SharedVariable, function
 from theano import compile
@@ -792,7 +792,7 @@ def scan(fn,
     fake_outputs = scan_utils.clone(outputs,
                                     replace=OrderedDict(zip(non_seqs,
                                                      fake_nonseqs)))
-    all_inputs = itertools.ifilter(
+    all_inputs = ifilter(
         lambda x: (isinstance(x, gof.Variable) and
                    not isinstance(x, SharedVariable) and
                    not isinstance(x, gof.Constant)),

@@ -4,11 +4,11 @@ __docformat__ = "restructuredtext en"
 
 import sys
 import warnings
-from itertools import izip
 
 import numpy
 
 import theano
+from theano.compat import izip
 from theano.configparser import config
 from theano import gof
 from theano.gof import Apply, Constant, Op, Variable

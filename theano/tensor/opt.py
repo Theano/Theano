@@ -9,7 +9,6 @@ import logging
 _logger = logging.getLogger('theano.tensor.opt')
 
 import itertools
-from itertools import izip
 import operator
 import sys
 import time
@@ -21,6 +20,7 @@ import numpy as N  # guys... please don't do this in the library :(
 
 import theano
 from theano import gof
+from theano.compat import izip
 from theano.compat.six import integer_types, iteritems
 from theano.compat.six.moves import reduce
 from theano.gof import opt, InconsistencyError, TopoOptimizer, graph

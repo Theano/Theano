@@ -10,7 +10,8 @@ import sys
 import gc
 import logging
 import theano.compat.six.moves.copyreg as copyreg
-from itertools import izip, product as itertools_product
+from itertools import product as itertools_product
+from theano.compat import izip
 
 import numpy
 

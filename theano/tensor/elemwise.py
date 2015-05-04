@@ -1,12 +1,12 @@
 from __future__ import print_function
 import sys
 from copy import copy
-from itertools import izip
 
 import numpy
 
 import theano
 from theano import gof
+from theano.compat import izip
 from theano.compat.six import iteritems
 from theano.gof import Apply, Op, OpenMPOp
 from theano import scalar

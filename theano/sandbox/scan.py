@@ -10,7 +10,6 @@ __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 
-import itertools
 import logging
 import numpy
 import warnings
@@ -19,7 +18,7 @@ from theano.compile import SharedVariable, function
 from theano.compat.six import iteritems
 from theano import compile
 from theano import gof
-from theano.compat import OrderedDict
+from theano.compat import OrderedDict, ifilter
 from theano.tensor import opt
 from theano import tensor
 from theano import config
@@ -460,7 +459,7 @@ def scan(fn,
     fake_outputs = scan_utils.clone(outputs + updates.values(),
                                     replace=dict(zip(non_seqs,
                                                      fake_nonseqs)))
-    all_inputs = itertools.ifilter(
+    all_inputs = ifilter(
         lambda x: (isinstance(x, gof.Variable) and
                    not isinstance(x, SharedVariable) and
                    not isinstance(x, gof.Constant)),

@@ -1,5 +1,5 @@
 import unittest
-from itertools import izip
+from theano.compat import izip
 from copy import copy, deepcopy
 
 import numpy

@@ -14,6 +14,7 @@ import numpy
 import theano
 from theano import gof
 from functools import partial
+from theano.compat import izip
 from theano.compat.six import string_types
 from theano.compat.six.moves import xrange
 import theano.compile.mode
@@ -559,7 +560,7 @@ returned directly?"""
                     is_aliased = False
                     for j in xrange(len(args_share_memory)):
 
-                        group_j = itertools.izip(
+                        group_j = izip(
                             [self.maker.inputs[k].variable for k
                              in args_share_memory[j]],
                             [self.input_storage[k].storage[0] for k
@@ -693,7 +694,7 @@ returned directly?"""
 
                 assert len(self.output_keys) == len(outputs)
 
-                return dict(itertools.izip(self.output_keys, outputs))
+                return dict(izip(self.output_keys, outputs))
 
             return outputs
 

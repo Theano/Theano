@@ -7,7 +7,7 @@ from __future__ import print_function
 from copy import copy
 import os
 import sys
-from itertools import izip
+from theano.compat import izip
 
 import numpy
 

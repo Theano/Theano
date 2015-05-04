@@ -8,8 +8,8 @@ from tempfile import mkstemp
 import unittest
 import warnings
 from copy import copy, deepcopy
-from itertools import izip
 # Import builtin min to be able to use it after importing the tensor version.
+from theano.compat import izip
 from theano.compat.six.moves.builtins import min as builtin_min
 from nose.tools import assert_raises
 from nose.plugins.skip import SkipTest

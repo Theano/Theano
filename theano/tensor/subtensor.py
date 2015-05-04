@@ -1,5 +1,4 @@
 from copy import copy
-from itertools import izip
 import os
 import sys
 from textwrap import dedent
@@ -10,6 +9,7 @@ _logger = logging.getLogger("theano.tensor.subtensor")
 import numpy
 
 import theano
+from theano.compat import izip
 from theano.compat.six import integer_types
 from theano.gradient import DisconnectedType
 from theano import gof
