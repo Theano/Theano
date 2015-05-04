@@ -1047,11 +1047,11 @@ class FunctionMaker(object):
 
                         t2 = removeAllFgraph(t2)
 
-                        givens = dict(zip(gof.graph.inputs([t1]),
-                                          gof.graph.inputs([t2])))
+                        givens = dict(izip(gof.graph.inputs([t1]),
+                                           gof.graph.inputs([t2])))
 
-                        temp = dict(zip(gof.graph.inputs([t1]),
-                                        gof.graph.inputs([t2])))
+                        temp = dict(izip(gof.graph.inputs([t1]),
+                                         gof.graph.inputs([t2])))
 
                         # hack to remove inconstent entry in givens
                         # seems to work that but source of inconsistency

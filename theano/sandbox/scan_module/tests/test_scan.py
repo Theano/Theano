@@ -136,8 +136,7 @@ class TestScan(unittest.TestCase):
                 shared_outs = [sh * 5 for sh in shared_vars]
                 states_out = [x for x in states_out]
                 pure_outs = [2 for x in xrange(n_outputs)]
-            return states_out + pure_outs, dict(zip(shared_vars,
-                                                    shared_outs))
+            return states_out + pure_outs, dict(izip(shared_vars, shared_outs))
 
         def execute_inner_graph(*args):
             """

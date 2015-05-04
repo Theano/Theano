@@ -13,6 +13,7 @@ you probably want to use theano.tensor.[c,z,f,d,b,w,i,l,]scalar!
 """
 from __future__ import print_function
 
+from itertools import chain
 import math
 import warnings
 from copy import copy
@@ -21,7 +22,7 @@ from textwrap import dedent
 import numpy
 
 import theano
-from theano.compat import PY3, imap
+from theano.compat import PY3, imap, izip
 from theano import gof, printing
 from theano.gof import (Op, utils, Variable, Constant, Type, Apply,
                         FunctionGraph)
@@ -3425,7 +3426,7 @@ class Composite(ScalarOp):
             res2 = theano.compile.rebuild_collect_shared(
                 inputs=outputs[0].owner.op.inputs,
                 outputs=outputs[0].owner.op.outputs,
-                replace=dict(zip(outputs[0].owner.op.inputs, res[1]))
+                replace=dict(izip(outputs[0].owner.op.inputs, res[1]))
             )
             assert len(res2[1]) == len(outputs)
             assert len(res[0]) == len(inputs)
@@ -3461,7 +3462,7 @@ class Composite(ScalarOp):
             assert len(inputs) == self.nin
             res = theano.compile.rebuild_collect_shared(
                 self.outputs,
-                replace=dict(zip(self.inputs, inputs)),
+                replace=dict(izip(self.inputs, inputs)),
                 rebuild_strict=False)
             # After rebuild_collect_shared, the Variable in inputs
             # are not necessarily in the graph represented by res.
@@ -3485,11 +3486,9 @@ class Composite(ScalarOp):
         raise NotImplementedError("grad is not implemented for Composite")
 
     def c_code(self, node, nodename, inames, onames, sub):
-        d = dict(zip(["i%i" % i for i in xrange(len(inames))],
-                     inames) +
-                 zip(["o%i" % i for i in xrange(len(onames))],
-                     onames),
-                 **sub)
+        d = dict(chain(izip(("i%i" % i for i in xrange(len(inames))), inames),
+                       izip(("o%i" % i for i in xrange(len(onames))),
+                            onames)), **sub)
         d['nodename'] = nodename
         if not 'id' in sub:
             # The use of a dummy id is safe as the code is in a separate block.

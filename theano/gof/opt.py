@@ -17,6 +17,7 @@ import numpy
 
 import theano
 from theano import config
+from theano.compat import izip
 from theano.compat.six import string_types, iteritems
 from theano.compat.six.moves import reduce
 from theano.gof import graph, op, utils, unify, toolbox
@@ -1211,7 +1212,7 @@ class PatternSub(LocalOptimizer):
                 ret = self.transform(real_node, get_nodes=False)
                 if ret is not False and ret is not None:
                     assert len(real_node.outputs) == len(ret)
-                    return dict(zip(real_node.outputs, ret))
+                    return dict(izip(real_node.outputs, ret))
 
         if node.op != self.op:
             return False

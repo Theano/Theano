@@ -1,7 +1,6 @@
 """Driver for gradient calculations."""
 from __future__ import print_function
 import theano.compat.six.moves.builtins as builtins
-from theano.compat import izip
 import logging
 import time
 import warnings
@@ -12,7 +11,7 @@ import theano
 
 from theano import gof
 from theano.gof import Variable
-from theano.compat import OrderedDict
+from theano.compat import OrderedDict, izip
 from theano.compat.six.moves import xrange
 from theano.gof.null_type import NullType, null_type
 from theano.gof.op import get_debug_values
@@ -700,7 +699,7 @@ def subgraph_grad(wrt, end, start=None, cost=None, details=False):
             for i in range(len(grads)):
                 grads[i] += cost_grads[i]
 
-    pgrads = OrderedDict(zip(params, grads))
+    pgrads = OrderedDict(izip(params, grads))
     # separate wrt from end grads:
     wrt_grads = list(pgrads[k] for k in wrt)
     end_grads = list(pgrads[k] for k in end)
