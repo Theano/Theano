@@ -18,6 +18,7 @@ from theano.compile import SharedVariable, function
 from theano.compat.six import iteritems
 from theano import compile
 from theano import gof
+from theano.compat import izip
 from theano.compat import OrderedDict, ifilter
 from theano.tensor import opt
 from theano import tensor
@@ -457,8 +458,8 @@ def scan(fn,
     # as non sequences at the end of our args
     fake_nonseqs = [x.type() for x in non_seqs]
     fake_outputs = scan_utils.clone(outputs + updates.values(),
-                                    replace=dict(zip(non_seqs,
-                                                     fake_nonseqs)))
+                                    replace=dict(izip(non_seqs,
+                                                      fake_nonseqs)))
     all_inputs = ifilter(
         lambda x: (isinstance(x, gof.Variable) and
                    not isinstance(x, SharedVariable) and
@@ -567,7 +568,7 @@ def scan(fn,
                          if (not isinstance(arg, SharedVariable) and
                              not isinstance(arg, tensor.Constant))]
 
-    givens.update(dict(zip(other_scan_args, other_inner_args)))
+    givens.update(dict(izip(other_scan_args, other_inner_args)))
     other_shared_scan_args = [arg.variable for arg
                         in dummy_f.maker.expanded_inputs
                         if (isinstance(arg.variable, SharedVariable) and
@@ -576,8 +577,7 @@ def scan(fn,
                         in dummy_f.maker.expanded_inputs
                         if (isinstance(arg.variable, SharedVariable) and
                             not arg.update)]
-    givens.update(dict(zip(other_shared_scan_args,
-                           other_shared_inner_args)))
+    givens.update(dict(izip(other_shared_scan_args, other_shared_inner_args)))
 
     ##
     # Step 6. Re-order the outputs and clone them replacing things
