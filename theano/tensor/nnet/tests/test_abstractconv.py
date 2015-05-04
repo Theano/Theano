@@ -11,14 +11,16 @@ import theano.tensor.nnet.abstract_conv2d as conv
 
 from theano.sandbox.cuda import float32_shared_constructor as shared
 from theano.sandbox.cuda.tests.test_conv_cuda_ndarray import py_conv
+from theano.sandbox.cuda.dnn import dnn_available
 
 
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
+    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
+    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
 
-from theano.sandbox.cuda.dnn import dnn_available
 
 class TestConv2d(unittest.TestCase):
 
@@ -111,23 +113,29 @@ class TestConv2d(unittest.TestCase):
 
     def test_valid(self):
         mode = mode_with_gpu
-       # if dnn_available():
-            # self.run_conv(inputs_shape=(16, 1, 2, 2),
-            #               filters_shape=(10, 1, 2, 2),
-            #               verify_grad=False)
-            # # self.run_conv(inputs_shape=(16, 1, 8, 8),
-            # #               filters_shape=(10, 1, 2, 2),
-            # #               subsample=(2, 2),
-            # #               verify_grad=False)
-            # self.run_conv(inputs_shape=(16, 1, 2, 2),
-            #               filters_shape=(10, 1, 2, 2),
-            #               verify_grad=True)
-            # # self.run_conv(inputs_shape=(16, 1, 8, 8),
-            # #               filters_shape=(10, 1, 2, 2),
-            # #               subsample=(2, 2),
-            # #               verify_grad=True)
+        if dnn_available():
+            self.run_conv(inputs_shape=(16, 1, 2, 2),
+                          filters_shape=(10, 1, 2, 2),
+                          verify_grad=False, mode=mode)
+            self.run_gradweight(inputs_shape=(16, 1, 2, 2),
+                                filters_shape=(10, 1, 2, 2),
+                                verify_grad=False, mode=mode)
+            self.run_gradinput(inputs_shape=(1, 1, 2, 2),
+                               filters_shape=(10, 1, 2, 2),
+                               verify_grad=False, mode=mode)
 
         mode = mode.excluding('cudnn')
+        self.run_conv(inputs_shape=(16, 1, 2, 2),
+                      filters_shape=(10, 1, 2, 2),
+                      verify_grad=False, mode=mode)
+        self.run_gradweight(inputs_shape=(16, 1, 2, 2),
+                            filters_shape=(10, 1, 2, 2),
+                            verify_grad=False, mode=mode)
+        self.run_gradinput(inputs_shape=(1, 1, 2, 2),
+                           filters_shape=(10, 1, 2, 2),
+                           verify_grad=False, mode=mode)
+
+        mode = mode_without_gpu
         self.run_conv(inputs_shape=(16, 1, 2, 2),
                       filters_shape=(10, 1, 2, 2),
                       verify_grad=False, mode=mode)

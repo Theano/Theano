@@ -456,8 +456,6 @@ def local_conv2d_corrmm(node):
     img, kern = node.inputs
     if not isinstance(img.type, CudaNdarrayType) or \
             not isinstance(kern.type, CudaNdarrayType):
-        print 'here', img.type, kern.type
-        print isinstance(img, CudaNdarrayType), isinstance(kern, CudaNdarrayType)
         return None
 
     if node.op.border_mode in ['full', 'valid']:
@@ -546,140 +544,157 @@ register_specialize_device(local_conv2d_gradinputs_corrmm)
 
 ### Cpu Optmization
 ### Desactived focus on GPU optimization first
-# @local_optimizer([AbstractConv2d])
-# def local_conv2d(node):
-#     if isinstance(node.op, AbstractConv2d) and not node.on_gpu:
-#         img, kern = node.inputs
-#         rval = cpu_conv2d(img, kern,
-#                           node.op.imshp, node.op.filter_shape,
-#                           border_mode=node.op.border_mode,
-#                           subsample=node.op.subsample)
-#         return [rval]
+@local_optimizer([AbstractConv2d])
+def local_conv2d_cpu(node):
+
+    img, kern = node.inputs
+    if isinstance(img.type, CudaNdarrayType) or \
+            isinstance(kern.type, CudaNdarrayType):
+        return None
+    rval = cpu_conv2d(img, kern,
+                      node.op.imshp, node.op.filter_shape,
+                      border_mode=node.op.border_mode,
+                      subsample=node.op.subsample)
+    return [rval]
+register_specialize_device(local_conv2d_cpu)
 
 
-# @local_optimizer([AbstractConv2d_gradWeights])
-# def local_conv2d_gradweight_cpu(node):
+@local_optimizer([AbstractConv2d_gradWeights])
+def local_conv2d_gradweight_cpu(node):
 
-#     if not isinstance(node.op, AbstractConv2d_gradWeights) or not node.on_gpu:
-#         return
+    if len(node.inputs) == 3:
+        img, topgrad, shape = node.inputs
+    else:
+        img, topgrad = node.inputs
+        shape = None
+    if isinstance(img.type, CudaNdarrayType) or \
+            isinstance(topgrad.type, CudaNdarrayType):
+        return None
 
-#     img, topgrad = node.inputs
-#     if op.border_mode == 'valid' and op.subsample != (1, 1):
-#         # Use the gradient as defined in conv3D, because the implementation
-#         # by Conv is slow (about 3x slower than conv3D, and probably 10x
-#         # slower than it could be), nad incorrect when dx or dy > 2.
-#         # build a "node", that should be equivalent to the one given by
-#         # self.make_node, but using convGrad3D instead.
-#         shuffled_img = img.dimshuffle(0, 2, 3, 'x', 1)
-#         shuffled_topgrad = topgrad.dimshuffle(0, 2, 3, 'x', 1)
-#         rval = ConvGrad3D(V=shuffled_img,
-#                           d=(op.subsample[0], op.subsample[1], 1),
-#                           WShape=(self.kshp[0], self.kshp[1], 1),
-#                           dCdH_=shuffled_topgrad)
+    if op.border_mode == 'valid' and op.subsample != (1, 1):
+        # Use the gradient as defined in conv3D, because the implementation
+        # by Conv is slow (about 3x slower than conv3D, and probably 10x
+        # slower than it could be), nad incorrect when dx or dy > 2.
+        # build a "node", that should be equivalent to the one given by
+        # self.make_node, but using convGrad3D instead.
+        shuffled_img = img.dimshuffle(0, 2, 3, 'x', 1)
+        shuffled_topgrad = topgrad.dimshuffle(0, 2, 3, 'x', 1)
+        rval = ConvGrad3D(V=shuffled_img,
+                          d=(op.subsample[0], op.subsample[1], 1),
+                          WShape=(self.kshp[0], self.kshp[1], 1),
+                          dCdH_=shuffled_topgrad)
 
-#         return [rval.dimshuffle(0, 4, 1, 2)]
-
-
-#     if op.subsample[0] not in (1, 2) or op.subsample[1] not in (1, 2):
-#         raise NotImplementedError(
-#             "ERROR: We disable conv2d grad now when stride x or "
-#             "stride y are different from 1 and 2, as there is a bug in it.")
-
-#     if op.imshp is None or op.kshp is None:
-#         raise Exception("AbstractConv2d grad when stride x!=1 or stride y!=1 we must have"
-#                         " all the optional shape information")
-
-#     ####### Determine gradient on kernels ########
-#     assert len(op.imshp) == 4 and len(op.kshp) == 4
-
-#     #newin = inputs.dimshuffle((1, 0, 2, 3))
-#     #newgz = gz.dimshuffle((1, 0, 2, 3))
-
-#     outshp = op.getOutputShape(op.imshp[1:],
-#                                op.kshp,  op.subsample,
-#                                op.border_mode)
-#     fulloutshp = op.getOutputShape(op.imshp[1:],
-#                                    op.kshp, (1, 1),
-#                                    op.border_mode)
+        return [rval.dimshuffle(0, 4, 1, 2)]
 
 
-#     if op.border_mode == 'valid':
-#         (img, filters) = (img, topgrad)
-#         kshp_logical = fulloutshp ## FIXME
-#         kshp_logical_top_aligned = False
-#         imshp_logical = None
-#         (bsize, nkern) = (op.imshp[0], op.kshp[0])
-#         imshp = (bsize, op.imshp[1], op.imshp[2])
-#         kshp = outshp ## FIXME
-#     elif op.border_mode == 'full':
-#         (img, filters) = (topgrad, imag)
-#         kshp_logical = None
-#         kshp_logical_top_aligned = True
-#         imshp_logical = (op.imshp[0],
-#                          fulloutshp[0],
-#                          fulloutshp[1]) ## FIXME
-#         (bsize, nkern) = (op.kshp[0], op.imshp[0])
-#         imshp = (op.imshp[0], outshp[0], outshp[1]) ## FIXME
-#         kshp = op.imshp[1:] ## FIXME
-#     else:
-#         raise NotImplementedError(
-#             'Only [full,valid] modes are currently supported.')
+    if op.subsample[0] not in (1, 2) or op.subsample[1] not in (1, 2):
+        raise NotImplementedError(
+            "ERROR: We disable conv2d grad now when stride x or "
+            "stride y are different from 1 and 2, as there is a bug in it.")
 
-#     filters = filters[:, :, ::-1, ::-1]  # flip them
-#     dw = ConvOp(imshp, kshp, nkern, bsize, 1, 1, output_mode='valid',
-#                 unroll_batch=None, unroll_kern=None, unroll_patch=None,
-#                 imshp_logical=imshp_logical,
-#                 kshp_logical=kshp_logical,
-#                 kshp_logical_top_aligned=kshp_logical_top_aligned,
-#                 direction_hint='bprop weights')
-#     return [dw(img, filters)]
+    if op.imshp is None or op.kshp is None:
+        raise Exception("AbstractConv2d grad when stride x!=1 or stride y!=1 we must have"
+                        " all the optional shape information")
+
+    ####### Determine gradient on kernels ########
+    assert len(op.imshp) == 4 and len(op.kshp) == 4
+
+    #newin = inputs.dimshuffle((1, 0, 2, 3))
+    #newgz = gz.dimshuffle((1, 0, 2, 3))
+
+    outshp = op.getOutputShape(op.imshp[1:],
+                               op.kshp,  op.subsample,
+                               op.border_mode)
+    fulloutshp = op.getOutputShape(op.imshp[1:],
+                                   op.kshp, (1, 1),
+                                   op.border_mode)
 
 
-# @local_optimizer([AbstractConv2d_gradInputs])
-# def local_conv2d_gradinputs_cpu(node):
-#     if not isinstance(node.op, AbstractConv2d_gradInputs) or not node.on_gpu:
-#         return
+    if op.border_mode == 'valid':
+        (img, filters) = (img, topgrad)
+        kshp_logical = fulloutshp ## FIXME
+        kshp_logical_top_aligned = False
+        imshp_logical = None
+        (bsize, nkern) = (op.imshp[0], op.kshp[0])
+        imshp = (bsize, op.imshp[1], op.imshp[2])
+        kshp = outshp ## FIXME
+    elif op.border_mode == 'full':
+        (img, filters) = (topgrad, imag)
+        kshp_logical = None
+        kshp_logical_top_aligned = True
+        imshp_logical = (op.imshp[0],
+                         fulloutshp[0],
+                         fulloutshp[1]) ## FIXME
+        (bsize, nkern) = (op.kshp[0], op.imshp[0])
+        imshp = (op.imshp[0], outshp[0], outshp[1]) ## FIXME
+        kshp = op.imshp[1:] ## FIXME
+    else:
+        raise NotImplementedError(
+            'Only [full,valid] modes are currently supported.')
 
-#     # ####### Determine gradient on inputs ########
-#     # mode = 'valid'
-#     # if not self.out_mode == 'full':
-#     #     mode = 'full'
-#     # filters = kerns.dimshuffle((1, 0, 2, 3))
-#     # filters = filters[:, :, ::-1, ::-1]
+    filters = filters[:, :, ::-1, ::-1]  # flip them
+    dw = ConvOp(imshp, kshp, nkern, bsize, 1, 1, output_mode='valid',
+                unroll_batch=None, unroll_kern=None, unroll_patch=None,
+                imshp_logical=imshp_logical,
+                kshp_logical=kshp_logical,
+                kshp_logical_top_aligned=kshp_logical_top_aligned,
+                direction_hint='bprop weights')
+    return [dw(img, filters)]
+register_specialize_device(local_conv2d_gradweight_cpu)
 
-#     #     nkern = self.imshp[0]
-#     #     imshp = (self.nkern, self.outshp[0], self.outshp[1])
-#     #     imshp_logical = (self.nkern, self.fulloutshp[0],
-#     #                      self.fulloutshp[1])
 
-#     #     if 0:  # hard-code c generation parameters
-#     #         din = ConvOp(imshp, self.kshp, nkern, self.bsize,
-#     #                      1, 1, output_mode=mode,
-#     #                      unroll_batch=un_b, unroll_kern=un_k,
-#     #                      unroll_patch=un_p,
-#     #                      imshp_logical=imshp_logical,
-#     #                      kshp_logical=None,
-#     #                      version=-1,  # we we change the mode, we don't forward the version.
-#     #                      direction_hint='bprop inputs',
-#     #                      verbose=self.verbose)
-#     #     else:  # let __init__ figure out the unrolling / patch sizes
-#     #         din = ConvOp(imshp, self.kshp, nkern, self.bsize,
-#     #                      1, 1, output_mode=mode,
-#     #                      unroll_batch=None, unroll_kern=None,
-#     #                      unroll_patch=None,
-#     #                      imshp_logical=imshp_logical,
-#     #                      kshp_logical=None,
-#     #                      version=-1,  # we we change the mode, we don't forward the version.
-#     #                      direction_hint='bprop inputs',
-#     #                      verbose=self.verbose)
+@local_optimizer([AbstractConv2d_gradInputs])
+def local_conv2d_gradinputs_cpu(node):
 
-#     #     din = din(gz, filters)
+    if len(node.inputs) == 3:
+        kern, topgrad, shape = node.inputs
+    else:
+        kern, topgrad = node.inputs
+        shape = None
+    if  isinstance(kern.type, CudaNdarrayType) or \
+            isinstance(topgrad.type, CudaNdarrayType):
+        return None
 
-#     #     assert all(o is None or o == i
-#     #                for o, i in zip(din.owner.op.outshp, self.imshp[1:]))
+    ####### Determine gradient on inputs ########
+    mode = 'valid'
+    if not self.out_mode == 'full':
+        mode = 'full'
+    filters = kern.dimshuffle((1, 0, 2, 3))
+    filters = filters[:, :, ::-1, ::-1]
 
-#     #     # din and dw should have the same broadcasting pattern as the
-#     #     # parameters they are the gradient of (resp. inputs and kerns).
-#     #     din = patternbroadcast(din, inputs.broadcastable)
-#     #     dw = patternbroadcast(dw, kerns.broadcastable)
-#     #     return [din, dw]
+    nkern = self.imshp[0]
+    imshp = (self.nkern, self.outshp[0], self.outshp[1])
+    imshp_logical = (self.nkern, self.fulloutshp[0],
+                     self.fulloutshp[1])
+
+    if 0:  # hard-code c generation parameters
+        din = ConvOp(imshp, self.kshp, nkern, self.bsize,
+                     1, 1, output_mode=mode,
+                     unroll_batch=un_b, unroll_kern=un_k,
+                     unroll_patch=un_p,
+                     imshp_logical=imshp_logical,
+                     kshp_logical=None,
+                     version=-1,  # we we change the mode, we don't forward the version.
+                     direction_hint='bprop inputs',
+                     verbose=self.verbose)
+    else:  # let __init__ figure out the unrolling / patch sizes
+        din = ConvOp(imshp, self.kshp, nkern, self.bsize,
+                     1, 1, output_mode=mode,
+                     unroll_batch=None, unroll_kern=None,
+                     unroll_patch=None,
+                     imshp_logical=imshp_logical,
+                     kshp_logical=None,
+                     version=-1,  # we we change the mode, we don't forward the version.
+                     direction_hint='bprop inputs',
+                     verbose=self.verbose)
+
+        din = din(gz, filters)
+    assert all(o is None or o == i
+               for o, i in zip(din.owner.op.outshp, self.imshp[1:]))
+
+    # din and dw should have the same broadcasting pattern as the
+    # parameters they are the gradient of (resp. inputs and kerns).
+    din = patternbroadcast(din, inputs.broadcastable)
+    dw = patternbroadcast(dw, kerns.broadcastable)
+    return [din, dw]
+register_specialize_device(local_conv2d_gradinputs_cpu)
