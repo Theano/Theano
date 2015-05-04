@@ -73,7 +73,7 @@ class Kernel(object):
             elif isinstance(t, Variable):
                 return t.type.dtype
             else:
-                raise TypeError, "can't get a dtype from %s" % (type(t),)
+                raise TypeError("can't get a dtype from %s" % (type(t),))
         dtypes = [get_dtype(t) for t in types]
         flags = dict(cluda=True)
         if any(d == numpy.float64 for d in dtypes):
@@ -116,7 +116,7 @@ class GpuKernelBase(object):
         iterable of Kernel objects that describe the kernels this op
         will need.
         """
-        raise MethodNotDefined, 'gpu_kernels'
+        raise MethodNotDefined('gpu_kernels')
 
     def c_headers(self):
         try:

@@ -40,9 +40,9 @@ class NVCC_compiler(NVCC_base):
         if not any(['-arch=sm_' in f for f in flags]):
             dev = theano.sandbox.gpuarray.init_dev.device
             if dev is None:
-                raise Exception, "Trying to compile GPU code without a context"
+                raise Exception("Trying to compile GPU code without a context")
             if dev.startswith("opencl"):
-                raise Exception, "Trying to call nvcc with an OpenCL context"
+                raise Exception("Trying to call nvcc with an OpenCL context")
             assert dev.startswith('cuda')
             if dev == 'cuda':
                 n = theano.sandbox.cuda.use.device_number
