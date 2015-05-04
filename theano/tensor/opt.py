@@ -1436,8 +1436,6 @@ def local_useless_elemwise(node):
     or(x,0) -> x
     or(x,1) -> ones_like(x)
     xor(x,x) -> zeros_like(x)
-    le(x,x) -> ones_like(x)
-    ge(x,x) -> ones_like(x)
 
     """
     if isinstance(node.op, T.Elemwise):
