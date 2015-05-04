@@ -1578,7 +1578,7 @@ class GemmOptimizer(Optimizer):
                     assert len(new_outputs) == len(node.outputs)
                     try:
                         fgraph.replace_all_validate_remove(
-                            zip(node.outputs, new_outputs),
+                            list(zip(node.outputs, new_outputs)),
                             [old_dot22],
                             reason='GemmOptimizer',
                             # For now we disable the warning as we know case

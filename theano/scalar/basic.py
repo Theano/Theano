@@ -3293,11 +3293,9 @@ class Composite(ScalarOp):
 
     def init_c_code(self):
         """Return the C code for this Composite Op.  """
-        subd = dict(
-                zip(self.fgraph.inputs,
-                    ["%%(i%i)s" % i for i in xrange(len(self.fgraph.inputs))])
-                + zip(self.fgraph.outputs,
-                    ["%%(o%i)s" % i for i in xrange(len(self.fgraph.outputs))]))
+        subd = dict(chain(
+            ((e, "%%(i%i)s" % i) for i, e in enumerate(self.fgraph.inputs)),
+            ((e, "%%(o%i)s" % i) for i, e in enumerate(self.fgraph.outputs))))
 
         for var in self.fgraph.variables:
             if var.owner is None:

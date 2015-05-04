@@ -150,7 +150,7 @@ class SymbolicInputKit(object):
         ret.sort()
         if not ret:
             return [[], []]
-        return zip(*ret)
+        return list(zip(*ret))
 
 
 class In(SymbolicInput):

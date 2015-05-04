@@ -595,7 +595,7 @@ class CondMerge(gof.Optimizer):
                     old_outs += [proposal.outputs]
                 else:
                     old_outs += proposal.outputs
-                pairs = zip(old_outs, new_outs)
+                pairs = list(zip(old_outs, new_outs))
                 fgraph.replace_all_validate(pairs, reason='cond_merge')
 
 
@@ -699,7 +699,7 @@ def cond_merge_random_op(main_node):
                 old_outs += [proposal.outputs]
             else:
                 old_outs += proposal.outputs
-            pairs = zip(old_outs, new_outs)
+            pairs = list(zip(old_outs, new_outs))
             main_outs = clone(main_node.outputs, replace=pairs)
             return main_outs
 

@@ -235,9 +235,9 @@ class PycudaElemwiseSourceModuleOp(GpuOp):
                                        tuple([n + "[i]" for n in in_name]),
                                        tuple(n + "[i]" for n in out_name), {})
         c_code_param = ", ".join([_replace_npy_types(var.type.dtype_specs()[1]) + " *" + name
-                                  for var, name in (zip(inputs, in_name) +
-                                                    zip(out_node.outputs,
-                                                        out_name))] +
+                                  for var, name in (list(zip(inputs, in_name)) +
+                                                    list(zip(out_node.outputs,
+                                                        out_name)))] +
                                  ["int size"])
         mod = SourceModule("""
   __global__ void %s(%s)
@@ -326,8 +326,8 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
                                        tuple(n + "[i]" for n in out_name), {})
         c_code_param = ", ".join([_replace_npy_types(var.type.dtype_specs()[1]) + " *" + name
                                   for var, name in
-                                  zip(node.inputs, in_name) +
-                                  zip(node.outputs, out_name)] + ["int size"])
+                                  list(zip(node.inputs, in_name)) +
+                                  list(zip(node.outputs, out_name))] + ["int size"])
         mod = SourceModule("""
   __global__ void %s(%s)
   {

@@ -5760,7 +5760,7 @@ class FusionOptimizer(Optimizer):
                         assert len(new_outputs) == len(node.outputs)
                         try:
                             fgraph.replace_all_validate(
-                                zip(node.outputs, new_outputs),
+                                list(zip(node.outputs, new_outputs)),
                                 reason=self.__class__.__name__)
                             did_something = True
                             nb_replacement += 1

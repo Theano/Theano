@@ -2284,8 +2284,8 @@ def gpuScanOptimization(node):
             scan_outs = [safe_to_gpu(x) for x in thescan.outputs]
             scan_outs = scan_utils.clone(
                 scan_outs,
-                replace=zip(thescan.inputs,
-                            [safe_to_cpu(x) for x in scan_ins]))
+                replace=list(zip(thescan.inputs,
+                                 (safe_to_cpu(x) for x in scan_ins))))
             # We need to construct the hash here, because scan
             # __init__ does not know about cuda ndarray and can not
             # handle graphs with inputs being Cuda Ndarrays
@@ -2330,8 +2330,8 @@ def gpuScanOptimization(node):
             scan_outs = [safe_to_gpu(x) for x in thescan.outputs]
             scan_outs = scan_utils.clone(
                 scan_outs,
-                replace=zip(thescan.inputs,
-                            [safe_to_cpu(x) for x in scan_ins]))
+                replace=list(zip(thescan.inputs,
+                                 (safe_to_cpu(x) for x in scan_ins))))
 
             # We need to construct the hash here, because scan
             # __init__ does not know about cuda ndarray and can not
