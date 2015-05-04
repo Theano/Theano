@@ -63,6 +63,10 @@ class GpuArrayType(Type):
                                   ndmin=len(self.broadcastable))
         else:
             if not hasattr(data, 'dtype'):
+                # This is to convert objects that don't have a dtype
+                # (like lists).  We anticipate that the type below
+                # will match and we pass copy=False so it won't make a
+                # second object on the GPU.
                 data = gpuarray.array(data, copy=False)
 
             up_dtype = scalar.upcast(self.dtype, data.dtype)
