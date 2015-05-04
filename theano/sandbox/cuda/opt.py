@@ -455,7 +455,7 @@ def local_assert_no_cpu_op(node):
                 _logger.warning(("CPU op %s is detected in the computational"
                                  " graph") % node)
             elif config.assert_no_cpu_op == "raise":
-                raise RuntimeError("The op %s is on CPU." % node)
+                raise AssertionError("The op %s is on CPU." % node)
             elif config.assert_no_cpu_op == "pdb":
                 pdb.set_trace()
 
@@ -464,7 +464,7 @@ def local_assert_no_cpu_op(node):
 #Register the local_assert_no_cpu_op:
 assert_no_cpu_op = theano.tensor.opt.in2out(local_assert_no_cpu_op, name='assert_no_cpu_op')
 # 48.7 is after specialize device
-theano.compile.optdb.register('assert_no_cpu_op', assert_no_cpu_op, 48.7)
+theano.compile.optdb.register('assert_no_cpu_op', assert_no_cpu_op, 49.2)
 
 
 @register_opt()
