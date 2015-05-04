@@ -1642,6 +1642,7 @@ ArctanhInplaceTester = makeBroadcastTester(
 if imported_scipy_special:
     expected_erf = scipy.special.erf
     expected_erfc = scipy.special.erfc
+    expected_erfcx = scipy.special.erfcx
     expected_erfinv = scipy.special.erfinv
     expected_erfcinv = scipy.special.erfcinv
     expected_gamma = scipy.special.gamma
@@ -1652,6 +1653,7 @@ if imported_scipy_special:
 else:
     expected_erf = []
     expected_erfc = []
+    expected_erfcx = []
     expected_erfinv = []
     expected_erfcinv = []
     expected_gamma = []
@@ -1689,6 +1691,24 @@ ErfcTester = makeBroadcastTester(
 ErfcInplaceTester = makeBroadcastTester(
     op=inplace.erfc_inplace,
     expected=expected_erfc,
+    good=_good_broadcast_unary_normal_float_no_complex,
+    grad=_grad_broadcast_unary_normal,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    inplace=True,
+    skip=skip_scipy)
+
+ErfcxTester = makeBroadcastTester(
+    op=tensor.erfcx,
+    expected=expected_erfcx,
+    good=_good_broadcast_unary_normal_float_no_complex,
+    grad=_grad_broadcast_unary_normal,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    skip=skip_scipy)
+ErfcxInplaceTester = makeBroadcastTester(
+    op=inplace.erfcx_inplace,
+    expected=expected_erfcx,
     good=_good_broadcast_unary_normal_float_no_complex,
     grad=_grad_broadcast_unary_normal,
     eps=2e-10,

@@ -85,6 +85,38 @@ class Erfc(UnaryScalarOp):
 erfc = Erfc(upgrade_to_float_no_complex, name='erfc')
 
 
+class Erfcx(UnaryScalarOp):
+    """
+    Implements the scaled complementary error function exp(x**2)*erfc(x) in a numerically stable way.
+
+    Note: This op can still be executed on GPU, despite not having c_code.  When
+    running on GPU, sandbox.cuda.opt.local_gpu_elemwise_[0,1] replaces this op
+    with sandbox.cuda.elemwise.ErfcxGPU. (Same as Erfinv below.)
+    """
+    def impl(self, x):
+        if imported_scipy_special:
+            return scipy.special.erfcx(x)
+        else:
+            super(Erfcx, self).impl(x)
+
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
+        if x.type in complex_types:
+            raise NotImplementedError()
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        cst = numpy.asarray(2. / numpy.sqrt(numpy.pi),
+                            dtype=upcast(x.type.dtype, gz.type.dtype))
+        return - gz * cst + (2. * x) * erfcx(x),
+
+erfcx = Erfcx(upgrade_to_float_no_complex, name='erfcx')
+
+
 class Erfinv(UnaryScalarOp):
     """
     Implements the inverse error function.

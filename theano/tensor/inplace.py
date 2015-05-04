@@ -264,6 +264,11 @@ def erfc_inplace(a):
 
 
 @_scal_inplace
+def erfcx_inplace(a):
+    """scaled complementary error function"""
+
+
+@_scal_inplace
 def gamma_inplace(a):
     """gamma function"""
 

@@ -48,7 +48,9 @@ from theano.sandbox.cuda.nnet import (
 
 from theano.sandbox.cuda.elemwise import SupportCodeError
 from theano.scalar.basic_scipy import Erfinv
+from theano.scalar.basic_scipy import Erfcx
 from theano.sandbox.cuda.elemwise import erfinv_gpu
+from theano.sandbox.cuda.elemwise import erfcx_gpu
 from theano.sandbox.cuda.var import CudaNdarrayConstant
 from theano.sandbox.cuda import gpu_optimizer, register_opt, gpu_seqopt, GpuOp
 from theano.scan_module import scan_utils, scan_op, scan_opt
@@ -237,6 +239,8 @@ def local_gpu_elemwise_0(node):
 
                 if isinstance(node.op.scalar_op, Erfinv):
                     new_op = GpuElemwise(erfinv_gpu)
+                elif isinstance(node.op.scalar_op, Erfcx):
+                    new_op = GpuElemwise(erfcx_gpu)
                 else:
                     try:
                         new_op = GpuElemwise(node.op.scalar_op)
@@ -298,6 +302,8 @@ def local_gpu_elemwise_1(node):
 
             if isinstance(elemwise_node.op.scalar_op, Erfinv):
                 new_op = GpuElemwise(erfinv_gpu)
+            elif isinstance(elemwise_node.op.scalar_op, Erfcx):
+                new_op = GpuElemwise(erfcx_gpu)
             else:
                 try:
                     new_op = GpuElemwise(elemwise_node.op.scalar_op)
