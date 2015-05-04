@@ -107,6 +107,7 @@ def test_local_assert_no_cpu_op():
     # If the flag is raise
     try:
         config.assert_no_cpu_op = 'raise'
+
         assert_raises(RuntimeError, theano.function,
                         [], out, mode=mode_local_assert)
     finally:
