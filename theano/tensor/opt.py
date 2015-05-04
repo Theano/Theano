@@ -4003,7 +4003,7 @@ def local_sum_prod_all_to_none(node):
     """Sum{0,1,...N} -> Sum{} or
        Prod{0,1,...N} -> Prod{}
     """
-    if isinstance(node.op, T.Sum) or isinstance(node.opt, T.elemwise.Prod):
+    if isinstance(node.op, T.Sum) or isinstance(node.op, T.elemwise.Prod):
         opt_type = T.Sum if isinstance(node.op, T.Sum) else T.elemwise.Prod
         # if all the axes are named, then use None as a shorthand
         # this permits more merging
@@ -4255,7 +4255,7 @@ def local_opt_alloc(node):
                     to_prod = [shapes[i] for i in xrange(len(shapes))
                                if i in node.op.axis]
                     if to_prod:
-                        if isintance(node.op, T.Sum):
+                        if isinstance(node.op, T.Sum):
                             val *= T.mul(*to_prod)
                         else:
                             val = val ** T.mul(*to_prod)
