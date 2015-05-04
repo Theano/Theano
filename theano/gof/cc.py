@@ -12,7 +12,7 @@ from itertools import izip
 import numpy
 
 from theano.compat import PY3
-from theano.compat.six import string_types
+from theano.compat.six import string_types, reraise
 from theano.compat.six.moves import StringIO, xrange
 from theano.gof.utils import MethodNotDefined
 
@@ -1537,8 +1537,7 @@ class _CThunk(object):
                                       ' Was the error set in the c code?'), end=' ', file=sys.stderr)
                 print(self.error_storage, file=sys.stderr)
                 raise
-
-            raise exc_type, exc_value, exc_trace
+            reraise(exc_type, exc_value, exc_trace)
 
 
 class OpWiseCLinker(link.LocalLinker):

@@ -7,6 +7,8 @@ import traceback
 import numpy
 
 import theano
+from theano.compat import PY3
+from theano.compat.six import reraise
 from theano.compat.six.moves import StringIO
 from theano.gof import utils
 from theano.gof import graph
@@ -100,7 +102,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
     exc_type, exc_value, exc_trace = exc_info
     if exc_type == KeyboardInterrupt:
         # print a simple traceback from KeyboardInterrupt
-        raise exc_type, exc_value, exc_trace
+        reraise(exc_type, exc_value, exc_trace)
     try:
         trace = node.outputs[0].tag.trace
     except AttributeError:
@@ -290,7 +292,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
 
     exc_value = exc_type(str(exc_value) + detailed_err_msg +
                          '\n' + '\n'.join(hints))
-    raise exc_type, exc_value, exc_trace
+    reraise(exc_type, exc_value, exc_trace)
 
 
 class Linker(object):
