@@ -71,7 +71,7 @@ from theano.compat import OrderedDict, izip
 from theano.tensor import TensorType
 from theano.tensor.opt import Shape_i
 from theano.gradient import grad_undefined, DisconnectedType, NullType
-from theano.compat.six import string_types
+from six import string_types
 from theano.compile.profiling import ScanProfileStats
 
 from theano.scan_module import scan_utils

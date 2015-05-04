@@ -8,11 +8,11 @@ import numpy
 
 # local imports
 import theano
-from theano.compat.six.moves import reduce
+from six.moves import reduce
 from theano import tensor
 from theano.tensor import opt
 from theano import gof
-from theano.compat.six import string_types
+from six import string_types
 from theano.compile import optdb
 
 

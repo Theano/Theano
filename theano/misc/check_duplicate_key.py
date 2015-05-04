@@ -1,9 +1,9 @@
 from __future__ import print_function
-import theano.compat.six.moves.cPickle as pickle
+import six.moves.cPickle as pickle
 import os, sys
 
 import theano
-from theano.compat.six import iteritems
+from six import iteritems
 
 DISPLAY_DUPLICATE_KEYS = False
 DISPLAY_MOST_FREQUENT_DUPLICATE_CCODE = False

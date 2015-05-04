@@ -16,7 +16,7 @@ from itertools import count
 import theano
 import warnings
 from theano.gof import utils
-from theano.compat.six import string_types, integer_types, iteritems
+from six import string_types, integer_types, iteritems
 from theano.misc.ordered_set import OrderedSet
 
 # Lazy imports to avoid circular dependencies.

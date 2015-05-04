@@ -29,7 +29,7 @@ def test_none_Constant():
     assert o2.equals(NoneConst)
 
     # This trigger equals that returned the wrong answer in the past.
-    import theano.compat.six.moves.cPickle as pickle
+    import six.moves.cPickle as pickle
     import theano
     from theano import tensor
 

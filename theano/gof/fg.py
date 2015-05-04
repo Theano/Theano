@@ -16,7 +16,7 @@ from theano import config
 import warnings
 
 from theano.compat import OrderedDict
-from theano.compat.six.moves import StringIO
+from six.moves import StringIO
 from theano.misc.ordered_set import OrderedSet
 
 NullType = None

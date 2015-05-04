@@ -15,7 +15,7 @@ import numpy
 import warnings
 
 from theano.compile import SharedVariable, function
-from theano.compat.six import iteritems
+from six import iteritems
 from theano import compile
 from theano import gof
 from theano.compat import izip

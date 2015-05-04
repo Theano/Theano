@@ -15,7 +15,7 @@ import theano
 import theano.tensor as T
 from theano import function, compat
 
-from theano.compat.six.moves import xrange
+from six.moves import xrange
 from theano import config
 from theano.tests import unittest_tools as utt
 from theano.sandbox.rng_mrg import MRG_RandomStreams
@@ -835,7 +835,7 @@ class T_loading_and_saving(unittest.TestCase):
 
     def test_loading_and_saving_1(self):
 
-        import theano.compat.six.moves.cPickle as pickle
+        import six.moves.cPickle as pickle
         import theano, theano.tensor
 
         x = theano.tensor.matrix()

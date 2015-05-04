@@ -10,11 +10,11 @@ import shlex
 import sys
 import warnings
 
-from theano.compat.six import StringIO
+from six import StringIO
 
 import theano
 from theano.compat import configparser as ConfigParser
-from theano.compat.six import string_types
+from six import string_types
 import collections
 
 _logger = logging.getLogger('theano.configparser')

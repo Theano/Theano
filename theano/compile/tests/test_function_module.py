@@ -1,11 +1,11 @@
 import copy
-import theano.compat.six.moves.cPickle as pickle
+import six.moves.cPickle as pickle
 import numpy
 import unittest
 
 
 from theano import config, gof
-from theano.compat.six import iteritems
+from six import iteritems
 from theano.compile.io import In, Out
 from theano.compile import function
 from theano.compile import UnusedInputError

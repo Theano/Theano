@@ -2,9 +2,9 @@
 """
 
 # Python 3.x compatibility
-from theano.compat.six import PY3, b, BytesIO, next
-from theano.compat.six.moves import configparser
-from theano.compat.six.moves import reload_module as reload
+from six import PY3, b, BytesIO, next
+from six.moves import configparser
+from six.moves import reload_module as reload
 import collections
 
 __all__ = ['PY3', 'b', 'BytesIO', 'next', 'configparser', 'reload']
@@ -51,7 +51,7 @@ if PY3:
         for x in itr:
             yield x.decode()
 else:
-    from theano.compat.six import get_unbound_function
+    from six import get_unbound_function
     from operator import div as operator_div
     from itertools import izip, imap, ifilter
 

@@ -5,7 +5,7 @@ import theano
 from theano import tensor
 from theano.gof.graph import io_toposort
 from theano.compat import cmp
-from theano.compat.six.moves import xrange
+from six.moves import xrange
 
 
 def test_dependence():

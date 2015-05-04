@@ -1,6 +1,6 @@
 from itertools import product
 import unittest
-import theano.compat.six.moves.builtins as builtins
+import six.moves.builtins as builtins
 
 import numpy
 

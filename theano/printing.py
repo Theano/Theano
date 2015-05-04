@@ -13,7 +13,7 @@ import hashlib
 
 import numpy as np
 import collections
-from theano.compat.six import string_types, integer_types, iteritems
+from six import string_types, integer_types, iteritems
 
 try:
     import pydot as pd
@@ -27,7 +27,7 @@ except ImportError:
 import theano
 from theano import gof
 from theano import config
-from theano.compat.six.moves import StringIO, reduce
+from six.moves import StringIO, reduce
 from theano.gof import Op, Apply
 from theano.compile import Function, debugmode
 from theano.compile.profilemode import ProfileMode

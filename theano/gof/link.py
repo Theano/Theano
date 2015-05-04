@@ -8,8 +8,8 @@ import numpy
 
 import theano
 from theano.compat import PY3, izip
-from theano.compat.six import reraise
-from theano.compat.six.moves import StringIO
+from six import reraise
+from six.moves import StringIO
 from theano.gof import utils
 from theano.gof import graph
 from theano.gof.type import Type

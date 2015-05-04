@@ -14,7 +14,7 @@ import numpy
 
 from theano.scalar.basic import upgrade_to_float_no_complex, complex_types
 from theano.scalar.basic_scipy import Erfinv
-from theano.compat.six import StringIO
+from six import StringIO
 from theano import Apply
 from theano import gof, scalar
 

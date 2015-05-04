@@ -1,6 +1,6 @@
 import theano
 from theano.gof.utils import give_variables_names, unique, remove
-from theano.compat.six.moves import xrange
+from six.moves import xrange
 
 
 def test_give_variables_names():

@@ -7,7 +7,7 @@ from theano.printing import var_descriptor
 from nose.plugins.skip import SkipTest
 
 from theano import config, shared
-from theano.compat.six import StringIO
+from six import StringIO
 
 
 def sharedX(x, name=None):

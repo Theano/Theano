@@ -12,7 +12,7 @@ import theano
 from theano import gof, Op, tensor, Variable, Apply
 
 import numpy
-import theano.compat.six.moves.builtins as builtins
+import six.moves.builtins as builtins
 
 
 class NeighbourhoodsFromImages(Op):

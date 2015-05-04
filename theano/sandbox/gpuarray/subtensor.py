@@ -4,7 +4,7 @@ import numpy
 
 import theano
 from theano import tensor, gof, Op
-from theano.compat.six.moves import StringIO
+from six.moves import StringIO
 from theano.tensor.subtensor import IncSubtensor, Subtensor, get_idx_list
 import theano.tensor.inplace
 

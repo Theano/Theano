@@ -10,7 +10,7 @@ import theano
 import theano.tensor as tensor
 
 from theano.printing import min_informative_str, debugprint
-from theano.compat.six import StringIO
+from six import StringIO
 
 
 def test_pydotprint_cond_highlight():

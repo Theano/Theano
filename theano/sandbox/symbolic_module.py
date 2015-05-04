@@ -4,7 +4,7 @@ import theano
 import theano.tensor as T
 import collections
 
-from theano.compat.six import string_types, add_metaclass
+from six import string_types, add_metaclass
 #import klass
 
 

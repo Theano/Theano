@@ -8,7 +8,7 @@ import numpy
 
 import theano
 from theano.compat import exc_message, izip
-from theano.compat.six import StringIO
+from six import StringIO
 from theano.compile import DeepCopyOp
 from theano import config
 from theano import gof

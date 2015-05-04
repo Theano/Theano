@@ -1,6 +1,6 @@
 import unittest, os
 import numpy
-import theano.compat.six.moves.cPickle as pickle
+import six.moves.cPickle as pickle
 from theano.compat import DictMixin, OrderedDict
 import theano
 import theano.tensor as T

@@ -3,9 +3,9 @@
 from __future__ import print_function
 
 import copy
-from theano.compat.six import iteritems
-import theano.compat.six.moves.copyreg as copyreg
-import theano.compat.six.moves.cPickle as pickle
+from six import iteritems
+import six.moves.copyreg as copyreg
+import six.moves.cPickle as pickle
 import itertools
 import time
 import warnings
@@ -15,8 +15,8 @@ import theano
 from theano import gof
 from functools import partial
 from theano.compat import izip
-from theano.compat.six import string_types
-from theano.compat.six.moves import xrange
+from six import string_types
+from six.moves import xrange
 import theano.compile.mode
 from theano.compile.io import (
     In, SymbolicInput, SymbolicInputKit, SymbolicOutput)

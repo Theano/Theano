@@ -1,7 +1,7 @@
 from __future__ import print_function
 
-from theano.compat.six.moves import reduce
-from theano.compat.six import string_types
+from six.moves import reduce
+from six import string_types
 
 if 0:
     class _EquilibriumOptimizer(NavigatorOptimizer):

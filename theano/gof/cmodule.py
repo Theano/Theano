@@ -2,7 +2,7 @@
 """
 from __future__ import print_function
 import atexit
-import theano.compat.six.moves.cPickle as pickle
+import six.moves.cPickle as pickle
 import logging
 import os
 import re
@@ -25,7 +25,7 @@ import numpy.distutils  # TODO: TensorType should handle this
 
 import theano
 from theano.compat import PY3, decode, decode_iter
-from theano.compat.six import b, BytesIO, StringIO, string_types, iteritems
+from six import b, BytesIO, StringIO, string_types, iteritems
 from theano.gof.utils import flatten
 from theano.configparser import config
 from theano.gof.cc import hash_from_code

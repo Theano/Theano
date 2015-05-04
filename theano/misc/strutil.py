@@ -1,5 +1,5 @@
 import warnings
-from theano.compat.six.moves import xrange
+from six.moves import xrange
 
 
 def render_string(string, sub):

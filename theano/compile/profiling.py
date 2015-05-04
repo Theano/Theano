@@ -25,7 +25,7 @@ from collections import defaultdict
 import numpy
 
 import theano
-from theano.compat.six import iteritems
+from six import iteritems
 from theano.gof import graph
 from theano.configparser import AddConfigVar, BoolParam, IntParam, StrParam
 

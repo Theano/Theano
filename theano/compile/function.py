@@ -2,13 +2,13 @@
 """
 __docformat__ = "restructuredtext en"
 
-import theano.compat.six.moves.cPickle as pickle
+import six.moves.cPickle as pickle
 import logging
 
 import traceback as tb
 import re
 
-from theano.compat.six import string_types
+from six import string_types
 from theano.compile.io import In
 from theano.compile.function_module import orig_function
 from theano.compile.pfunc import pfunc

@@ -10,7 +10,7 @@ import numpy
 
 import theano
 from theano.compat import izip
-from theano.compat.six import integer_types
+from six import integer_types
 from theano.gradient import DisconnectedType
 from theano import gof
 from theano.gof import Apply, Constant, hashtype, Op, Type, MethodNotDefined
