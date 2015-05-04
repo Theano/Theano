@@ -2,12 +2,11 @@
 """
 
 # Python 3.x compatibility
-from theano.compat.six import PY3, b, BytesIO, next, get_unbound_function
+from theano.compat.six import PY3, b, BytesIO, next
 from theano.compat.six.moves import configparser
 from theano.compat.six.moves import reload_module as reload
 
-__all__ = ['PY3', 'b', 'BytesIO', 'next', 'get_unbound_function',
-           'configparser', 'reload']
+__all__ = ['PY3', 'b', 'BytesIO', 'next', 'configparser', 'reload']
 
 if PY3:
     from operator import truediv as operator_div
@@ -25,6 +24,16 @@ if PY3:
         """Return -1 if x < y, 0 if x == y, 1 if x > y."""
         return (x > y) - (x < y)
 
+
+    def get_unbound_function(unbound):
+        # Op.make_thunk isn't bound, so don't have a __func__ attr.
+        # But bound method, have a __func__ method that point to the
+        # not bound method. That is what we want.
+        if hasattr(unbound, '__func__'):
+            return unbound.__func__
+        return unbound
+
+
     from functools import partial
     from collections import defaultdict, deque
     from sys import maxsize
@@ -38,7 +47,7 @@ if PY3:
         for x in itr:
             yield x.decode()
 else:
-
+    from theano.compat.six import get_unbound_function
     from operator import div as operator_div
 
     def exc_message(e):
