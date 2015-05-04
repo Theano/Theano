@@ -358,7 +358,7 @@ class BadDestroyMap(DebugModeError):
             print >> sio, "  value argmax (new-old):", numpy.unravel_index(delta.argmax(), npy_new_val.shape)
             print >> sio, "  location of first 10 mismatches:", numpy.transpose(numpy.nonzero(delta))[:10]
             print >> sio, ""
-        except Exception, e:
+        except Exception as e:
             print >> sio, "(Numpy-hints failed with: %s)" % str(e)
         print >> sio, "  Hint: this can also be caused by a deficient values_eq_approx() or __eq__() implementation [which compared input values]"
         return sio.getvalue()
@@ -1869,7 +1869,7 @@ class _Linker(gof.link.LocalLinker):
                             # shouldn't have put it into the list in
                             # the first place
                             thunk_py = None
-                        except Exception, e:
+                        except Exception as e:
                             # I think that only 1 optimization can
                             # insert a given apply node. If that is not True,
                             # we would need to loop over all node outputs,
@@ -1966,7 +1966,7 @@ class _Linker(gof.link.LocalLinker):
                         # First time, with None in output_storage
                         try:
                             thunk_c()
-                        except Exception, e:
+                        except Exception as e:
                             # I think that only 1 optimization can
                             # insert a given apply node. If that is not True,
                             # we would need to loop over all node outputs,

@@ -134,7 +134,7 @@ class InputToGpuOptimizer(Optimizer):
                 new_input = host_from_gpu(gpu_from_host(input))
                 fgraph.replace_validate(input, new_input,
                                         "InputToGpuOptimizer")
-            except TypeError, e:
+            except TypeError as e:
                 # This could fail if the inputs are not TensorTypes
                 pass
 

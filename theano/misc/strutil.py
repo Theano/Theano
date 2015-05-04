@@ -15,7 +15,7 @@ def render_string(string, sub):
     """
     try:
         finalCode = string % sub
-    except Exception, E:
+    except Exception as E:
         # If unable to render the string, render longer and longer
         # initial substrings until we find the minimal initial substring
         # that causes an error
@@ -23,7 +23,7 @@ def render_string(string, sub):
         while i <= len(string):
             try:
                 finalCode = string[0:i] % sub
-            except Exception, F:
+            except Exception as F:
                 if str(F) == str(E):
                     raise Exception(string[0:i]+"<<<< caused exception "+str(F))
             i += 1

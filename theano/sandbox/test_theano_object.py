@@ -85,21 +85,21 @@ def test_misc_prints():
 
     try:
         MM.b = 5
-    except Exception, e:
+    except Exception as e:
         print e
     MM.del_member(MM.b)
     try:
         print 'b', MM.value(MM.b)
-    except Exception, e:
+    except Exception as e:
         print e
     MM.b = 'asdffd'
     try:
         print 'b', MM.value(MM.b)
-    except Exception, e:
+    except Exception as e:
         print e
     try:
         print 'b', MM.value(MM.b)
-    except Exception, e:
+    except Exception as e:
         print 'E', e
     print MM.b
     print 'a', MM.value(MM.a)

@@ -178,7 +178,7 @@ if compile_cuda_ndarray and cuda_available:
                             libs=[config.cublas.lib],
                             preargs=['-O3'] + compiler.compile_args())
                     from cuda_ndarray.cuda_ndarray import *
-            except Exception, e:
+            except Exception as e:
                 _logger.error("Failed to compile cuda_ndarray.cu: %s", str(e))
                 set_cuda_disabled()
     finally:
@@ -211,7 +211,7 @@ if cuda_available:
         else:
             try:
                 os.symlink(cuda_ndarray_so, libcuda_ndarray_so)
-            except OSError, e:
+            except OSError as e:
                 # This may happen for instance when running multiple
                 # concurrent jobs, if two of them try to create the
                 # symlink simultaneously.
@@ -228,7 +228,7 @@ if cuda_available:
         cuda_initialization_error_message = ""
 # actively closing our gpu session presents segfault-on-exit on some systems
         atexit.register(gpu_shutdown)
-    except EnvironmentError, e:
+    except EnvironmentError as e:
         cuda_available = False
         cuda_initialization_error_message = " ".join(e.args)
 else:
@@ -413,7 +413,7 @@ def use(device,
                         " crash when we try to use features"
                         " that your GPU does not support.")
 
-        except (EnvironmentError, ValueError, RuntimeError), e:
+        except (EnvironmentError, ValueError, RuntimeError) as e:
             _logger.error(("ERROR: Not using GPU."
                            " Initialisation of device %s failed:\n%s"),
                           str(device), e)
@@ -448,7 +448,7 @@ def use(device,
             # in case the device if just gpu,
             # we check that the driver init it correctly.
             cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((5, 5))
-        except (Exception, NameError), e:
+        except (Exception, NameError) as e:
             # NameError when no gpu present as cuda_ndarray is not loaded.
             e.args += ("ERROR: GPU forced but failed. ",)
             raise

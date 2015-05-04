@@ -341,7 +341,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                             )() for input in inputs]
                 try:
                     node = safe_make_node(self.op, *inputrs)
-                except Exception, exc:
+                except Exception as exc:
                     err_msg = ("Test %s::%s: Error occurred while"
                             " making a node with inputs %s") % (
                                     self.op, testname, inputs)
@@ -350,7 +350,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
 
                 try:
                     f = inplace_func(inputrs, node.outputs, mode=mode, name='test_good')
-                except Exception, exc:
+                except Exception as exc:
                     err_msg = ("Test %s::%s: Error occurred while"
                         " trying to make a Function") % (self.op, testname)
                     exc.args += (err_msg,)
@@ -373,7 +373,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
 
                 try:
                     variables = f(*inputs)
-                except Exception, exc:
+                except Exception as exc:
                     err_msg = ("Test %s::%s: Error occurred while calling"
                     " the Function on the inputs %s") % (
                             self.op, testname, inputs)
@@ -432,7 +432,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                 inputrs = [shared(input) for input in inputs]
                 try:
                     node = safe_make_node(self.op, *inputrs)
-                except Exception, exc:
+                except Exception as exc:
                     err_msg = ("Test %s::%s: Error occurred while trying"
                         " to make a node with inputs %s") % (
                             self.op, testname, inputs)
@@ -441,7 +441,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
 
                 try:
                     f = inplace_func([], node.outputs, mode=mode, name="test_bad_runtime")
-                except Exception, exc:
+                except Exception as exc:
                     err_msg = ("Test %s::%s: Error occurred while trying"
                         " to make a Function") % (self.op, testname)
                     exc.args += (err_msg,)
@@ -467,7 +467,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                                         mode=self.mode,
                                         rel_tol=_grad_rtol,
                                         eps=_grad_eps)
-                    except Exception, exc:
+                    except Exception as exc:
                         err_msg = ("Test %s::%s: Error occurred while"
                             " computing the gradient on the following"
                             " inputs: %s") % (self.op, testname, inputs)
@@ -2743,7 +2743,7 @@ class T_max_and_argmax(unittest.TestCase):
             try:
                 eval_outputs(max_and_argmax(n, 3))
                 assert False
-            except ValueError, e:
+            except ValueError as e:
                 pass
         finally:
             _logger.setLevel(oldlevel)
@@ -2756,7 +2756,7 @@ class T_max_and_argmax(unittest.TestCase):
             try:
                 eval_outputs(max_and_argmax(n, -3))
                 assert False
-            except ValueError, e:
+            except ValueError as e:
                 pass
         finally:
             sys.stderr = old_stderr
@@ -2936,7 +2936,7 @@ class T_argmin_argmax(unittest.TestCase):
                 try:
                     eval_outputs(fct(n, 3))
                     assert False
-                except ValueError, e:
+                except ValueError as e:
                     pass
             finally:
                 _logger.setLevel(oldlevel)
@@ -2950,7 +2950,7 @@ class T_argmin_argmax(unittest.TestCase):
                 try:
                     eval_outputs(fct(n, -3))
                     assert False
-                except ValueError, e:
+                except ValueError as e:
                     pass
             finally:
                 sys.stderr = old_stderr
@@ -3069,7 +3069,7 @@ class T_min_max(unittest.TestCase):
                 try:
                     eval_outputs(fct(n, 3))
                     assert False
-                except ValueError, e:
+                except ValueError as e:
                     pass
             finally:
                 _logger.setLevel(oldlevel)
@@ -3083,7 +3083,7 @@ class T_min_max(unittest.TestCase):
                 try:
                     eval_outputs(fct(n, -3))
                     assert False
-                except ValueError, e:
+                except ValueError as e:
                     pass
             finally:
                 sys.stderr = old_stderr
@@ -4361,7 +4361,7 @@ class t_dot(unittest.TestCase):
             try:
                 tz = eval_outputs([z])
                 assert False    # should have raised exception
-            except ValueError, e:
+            except ValueError as e:
                 e0 = exc_message(e)
                 self.assertTrue(
                     # Reported by numpy.
@@ -6282,7 +6282,7 @@ def test_unalign():
         assert not b.flags.aligned
         assert numpy.allclose(out_numpy, out_theano)
         assert False
-    except TypeError, e:
+    except TypeError as e:
         pass
 
     a = numpy.empty((), dtype=dtype)['f1']
@@ -6300,7 +6300,7 @@ def test_unalign():
         assert not b.flags.aligned
         assert numpy.allclose(out_numpy, out_theano)
         assert False
-    except TypeError, e:
+    except TypeError as e:
         pass
 
 
@@ -6311,7 +6311,7 @@ def test_dimshuffle_duplicate():
 
     try:
         y = tensor.DimShuffle((False, ), (0, 0))(x)
-    except ValueError, e:
+    except ValueError as e:
         assert str(e).find("may not appear twice") != -1
         success = True
 

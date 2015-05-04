@@ -192,7 +192,7 @@ class SeqOptimizer(Optimizer, list):
             except AssertionError:
                 # do not catch Assertion failures
                 raise
-            except Exception, e:
+            except Exception as e:
                 if self.failure_callback:
                     self.failure_callback(e, self, optimizer)
                     continue
@@ -375,7 +375,7 @@ class _metadict:
             if item in self.d:
                 del self.d[item]
                 return
-        except TypeError, e:
+        except TypeError as e:
             assert "unhashable type" in str(e)
         for i, (key, val) in enumerate(self.l):
             if key == item:
@@ -388,7 +388,7 @@ class _metadict:
             if item in self.d:
                 del self.d[item]
                 return
-        except TypeError, e:
+        except TypeError as e:
             assert "unhashable type" in str(e)
         for i, (key, val) in enumerate(self.l):
             if key == item:
@@ -1484,7 +1484,7 @@ class NavigatorOptimizer(Optimizer):
         lopt = lopt or self.local_opt
         try:
             replacements = lopt.transform(node)
-        except Exception, e:
+        except Exception as e:
             if self.failure_callback is not None:
                 self.failure_callback(e, self,
                                       [(x, None) for x in node.outputs],
@@ -1519,7 +1519,7 @@ class NavigatorOptimizer(Optimizer):
         try:
             fgraph.replace_all_validate(repl_pairs, reason=lopt)
             return True
-        except Exception, e:
+        except Exception as e:
             # This means the replacements were rejected by the fgraph.
             #
             # This is not supposed to happen.  The default failure_callback

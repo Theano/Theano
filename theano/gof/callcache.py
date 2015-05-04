@@ -42,5 +42,5 @@ class CallCache(object):
         try:
             if self.filename:
                 self.persist()
-        except Exception, e:
+        except Exception as e:
             _logger.error('persist failed %s %s', self.filename, e)

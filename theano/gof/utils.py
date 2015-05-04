@@ -219,7 +219,7 @@ def difference(seq1, seq2):
             raise Exception('not worth it')
         set2 = set(seq2)
         return [x for x in seq1 if x not in set2]
-    except Exception, e:
+    except Exception as e:
         # maybe a seq2 element is not hashable
         # maybe seq2 is too short
         # -> use O(len(seq1) * len(seq2)) algo

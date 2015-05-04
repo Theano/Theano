@@ -1756,7 +1756,7 @@ class Scan(PureOp):
                         consider_constant=wrt,
                         disconnected_inputs='ignore',
                         return_disconnected='None')
-                except gradient.NullTypeGradError, e:
+                except gradient.NullTypeGradError as e:
                     # The gradient wrt that particular input is undefined.
                     # This is not necessarily an issue, because maybe that
                     # particular input is not in the path between the

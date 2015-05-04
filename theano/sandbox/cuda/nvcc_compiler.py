@@ -363,7 +363,7 @@ class NVCC_compiler(Compiler):
                 indexof = cmd.index('-u')
                 cmd.pop(indexof)  # Remove -u
                 cmd.pop(indexof)  # Remove argument to -u
-            except ValueError, e:
+            except ValueError as e:
                 done = True
 
         # CUDA Toolkit v4.1 Known Issues:

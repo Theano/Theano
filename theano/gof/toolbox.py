@@ -254,7 +254,7 @@ class ReplaceValidate(History, Validator):
         for r, new_r in replacements:
             try:
                 fgraph.replace(r, new_r, reason=reason, verbose=False)
-            except Exception, e:
+            except Exception as e:
                 if ('The type of the replacement must be the same' not in
                     str(e) and 'does not belong to this FunctionGraph' not in str(e)):
                     out = sys.stderr
@@ -266,7 +266,7 @@ class ReplaceValidate(History, Validator):
                 raise
         try:
             fgraph.validate()
-        except Exception, e:
+        except Exception as e:
             fgraph.revert(chk)
             raise
         if verbose:
@@ -331,7 +331,7 @@ class NodeFinder(Bookkeeper):
             self.d.setdefault(node.op, []).append(node)
         except TypeError:  # node.op is unhashable
             return
-        except Exception, e:
+        except Exception as e:
             print >> sys.stderr, 'OFFENDING node', type(node), type(node.op)
             try:
                 print >> sys.stderr, 'OFFENDING node hash', hash(node.op)

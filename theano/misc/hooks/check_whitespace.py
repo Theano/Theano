@@ -38,11 +38,11 @@ def get_parse_error(code):
     code_buffer = StringIO(code)
     try:
         tabnanny.process_tokens(tokenize.generate_tokens(code_buffer.readline))
-    except tokenize.TokenError, err:
+    except tokenize.TokenError as err:
         return "Could not parse code: %s" % err
-    except IndentationError, err:
+    except IndentationError as err:
         return "Indentation error: %s" % err
-    except tabnanny.NannyNag, err:
+    except tabnanny.NannyNag as err:
         return "Ambiguous tab at line %d; line is '%s'." % (err.get_lineno(), err.get_line())
     return None
 
@@ -105,7 +105,7 @@ def run_mercurial_command(hg_command):
         hg_command_tuple.insert(0, sys.executable)
     try:
         hg_subprocess = Popen(hg_command_tuple, stdout=PIPE, stderr=PIPE)
-    except OSError, e:
+    except OSError as e:
         print >> sys.stderr, "Can't find the hg executable!"
         print e
         sys.exit(1)

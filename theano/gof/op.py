@@ -452,7 +452,7 @@ class PureOp(object):
             # ensure that the test value is correct
             try:
                 ret = v.type.filter(v.tag.test_value)
-            except Exception, e:
+            except Exception as e:
                 # Better error message.
                 detailed_err_msg = (
                     "For compute_test_value, one input test value does not"

@@ -68,7 +68,7 @@ class TestRealImag(unittest.TestCase):
         aval = numpy.asarray(rng.randn(2, 5))
         try:
             utt.verify_grad(f, [aval])
-        except utt.verify_grad.E_grad, e:
+        except utt.verify_grad.E_grad as e:
             print e.num_grad.gf
             print e.analytic_grad
             raise
@@ -84,7 +84,7 @@ class TestRealImag(unittest.TestCase):
         aval = numpy.asarray(rng.randn(2, 5))
         try:
             utt.verify_grad(f, [aval])
-        except utt.verify_grad.E_grad, e:
+        except utt.verify_grad.E_grad as e:
             print e.num_grad.gf
             print e.analytic_grad
             raise
@@ -101,7 +101,7 @@ class TestRealImag(unittest.TestCase):
         bval = rng.randn(5)
         try:
             utt.verify_grad(f, [aval, bval])
-        except utt.verify_grad.E_grad, e:
+        except utt.verify_grad.E_grad as e:
             print e.num_grad.gf
             print e.analytic_grad
             raise

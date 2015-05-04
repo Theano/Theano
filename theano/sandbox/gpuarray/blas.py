@@ -6,7 +6,7 @@ from .basic_ops import HideC, as_gpuarray_variable
 try:
     import pygpu
     from pygpu import blas
-except ImportError, e:
+except ImportError as e:
     # To make sure theano is importable
     pass
 

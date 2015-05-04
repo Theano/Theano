@@ -349,7 +349,7 @@ def test_multi_destroyers():
     try:
         g = Env([x, y, z], [e])
         raise Exception("Shouldn't have reached this point.")
-    except InconsistencyError, e:
+    except InconsistencyError as e:
         pass
 
 

@@ -194,7 +194,7 @@ class RecordMode(Mode):
             """
             try:
                 self.record.handle_line(line)
-            except MismatchError, e:
+            except MismatchError as e:
                 print 'Got this MismatchError:'
                 print e
                 print 'while processing node i='+str(i)+':'

@@ -42,7 +42,7 @@ try:
         try:
             # Try to make the location
             os.mkdir(location)
-        except OSError, e:
+        except OSError as e:
             # If we get an error, verify that the error was # 17, the path already exists,
             # and that it is a directory
             # Note: we can't check if it exists before making it, because we are not holding
@@ -116,7 +116,7 @@ except ImportError:
             if not os.path.exists(loc):
                 try:
                     os.mkdir(loc)
-                except OSError, e:
+                except OSError as e:
                     assert e.errno == errno.EEXIST
                     assert os.path.exists(loc)
 

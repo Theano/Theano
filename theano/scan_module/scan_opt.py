@@ -971,7 +971,7 @@ class ScanInplaceOptimizer(Optimizer):
                         reason='scanOp_make_inplace')
                     op = new_op
                     node = new_outs[0].owner
-                except InconsistencyError, e:
+                except InconsistencyError as e:
                     # Failed moving output to be comptued inplace
                     pass
 

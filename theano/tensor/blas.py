@@ -349,7 +349,7 @@ try:
             numpy.dtype('complex64'): fblas.cgemv,
             numpy.dtype('complex128'): fblas.zgemv,
             }
-except ImportError, e:
+except ImportError as e:
     have_fblas = False
     # This is used in Gemv and ScipyGer. We use CGemv and CGer
     # when theano.config.blas.ldflags is defined. So we don't need a
@@ -1561,7 +1561,7 @@ class GemmOptimizer(Optimizer):
                     time_canonicalize += time1
                     time_factor_can += time2
                     time_factor_list += time3
-                except InconsistencyError, e:
+                except InconsistencyError as e:
                     nb_inconsistency_make += 1
                     continue
                 if new_outputs:
@@ -1578,11 +1578,11 @@ class GemmOptimizer(Optimizer):
                         )
                         did_something = True
                         nb_replacement += 1
-                    except InconsistencyError, e:
+                    except InconsistencyError as e:
                         # TODO: retry other applications of gemm (see comment
                         # in _gemm_from_node)
                         nb_inconsistency_replace += 1
-                    except ReplacementDidntRemovedError, e:
+                    except ReplacementDidntRemovedError as e:
                         nb_replacement_didn_t_remove += 1
                         self.warned = True
         fgraph.remove_feature(u)
@@ -1649,7 +1649,7 @@ class Dot22(GemmRelated):
         z, = out
         try:
             z[0] = numpy.asarray(numpy.dot(x, y))
-        except ValueError, e:
+        except ValueError as e:
             # The error raised by numpy has no shape information, we mean to
             # add that
             e.args = e.args + (x.shape, y.shape)
@@ -1921,7 +1921,7 @@ class Dot22Scalar(GemmRelated):
         z, = out
         try:
             z[0] = numpy.asarray(scalar * numpy.dot(x, y))
-        except ValueError, e:
+        except ValueError as e:
             # The error raised by numpy has no shape information, we
             # mean to add that
             e.args = e.args + (x.shape, y.shape)

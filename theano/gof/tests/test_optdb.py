@@ -21,7 +21,7 @@ class Test_DB(TestCase):
         try:
             db.register('c', Opt())  # name taken
             self.fail()
-        except ValueError, e:
+        except ValueError as e:
             if exc_message(e).startswith("The name"):
                 pass
             else:
@@ -32,7 +32,7 @@ class Test_DB(TestCase):
         try:
             db.register('z', Opt())  # name collides with tag
             self.fail()
-        except ValueError, e:
+        except ValueError as e:
             if exc_message(e).startswith("The name"):
                 pass
             else:
@@ -43,7 +43,7 @@ class Test_DB(TestCase):
         try:
             db.register('u', Opt(), 'b')  # name new but tag collides with name
             self.fail()
-        except ValueError, e:
+        except ValueError as e:
             if exc_message(e).startswith("The tag"):
                 pass
             else:

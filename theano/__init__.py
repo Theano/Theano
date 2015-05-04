@@ -148,12 +148,12 @@ def dot(l, r):
     if rval == NotImplemented and hasattr(l, '__dot__'):
         try:
             rval = l.__dot__(r)
-        except Exception, e0:
+        except Exception as e0:
             rval = NotImplemented
     if rval == NotImplemented and hasattr(r, '__rdot__'):
         try:
             rval = r.__rdot__(l)
-        except Exception, e1:
+        except Exception as e1:
             rval = NotImplemented
     if rval == NotImplemented:
         raise NotImplementedError("Dot failed for the following reasons:",

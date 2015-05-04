@@ -68,7 +68,7 @@ def may_fail(msg, EClass):
         def wrapper():
             try:
                 f()
-            except Exception, e:
+            except Exception as e:
                 if isinstance(e, EClass):
                     raise KnownFailureTest(msg, e)
                 raise
@@ -142,7 +142,7 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
             try:
                 node_ref = safe_make_node(self.op, *inputs_ref)
                 node_tst = safe_make_node(self.op, *inputs_tst)
-            except Exception, exc:
+            except Exception as exc:
                 err_msg = ("Test %s::%s: Error occured while making "
                            "a node with inputs %s") % (self.gpu_op, testname,
                                                        inputs)
@@ -152,7 +152,7 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
             try:
                 f_ref = inplace_func([], node_ref.outputs, mode=mode_nogpu)
                 f_tst = inplace_func([], node_tst.outputs, mode=mode_gpu)
-            except Exception, exc:
+            except Exception as exc:
                 err_msg = ("Test %s::%s: Error occured while trying to "
                            "make a Function") % (self.gpu_op, testname)
                 exc.args += (err_msg,)
@@ -163,12 +163,12 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
             ref_e = None
             try:
                 expecteds = f_ref()
-            except Exception, exc:
+            except Exception as exc:
                 ref_e = exc
 
             try:
                 variables = f_tst()
-            except Exception, exc:
+            except Exception as exc:
                 if ref_e is None:
                     err_msg = ("Test %s::%s: exception when calling the "
                                "Function") % (self.gpu_op, testname)

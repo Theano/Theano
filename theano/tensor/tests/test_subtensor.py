@@ -109,7 +109,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         n = self.shared(numpy.ones((), dtype=self.dtype))
         try:
             t = n[0]
-        except ValueError, e:
+        except ValueError as e:
             self.assertTrue(hasattr(e, 'subtensor_invalid'))
             return
         self.fail()
@@ -130,7 +130,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         try:
             try:
                 self.eval_output_and_check(t)
-            except IndexError, e:
+            except IndexError as e:
                 return
             self.fail()
         finally:
@@ -140,7 +140,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         n = self.shared(numpy.ones(3, dtype=self.dtype))
         try:
             t = n[slice(0, slice(1, 2, None), None)]
-        except Exception, e:
+        except Exception as e:
             # Relax constraint on the type of Exception,
             # since this might be handled by AvancedSubtensor
             # if e[0] != Subtensor.e_indextype:
@@ -177,7 +177,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         n = self.shared(numpy.ones(1, dtype=self.dtype))
         try:
             t = n[0, 0]
-        except ValueError, e:
+        except ValueError as e:
             self.assertTrue(hasattr(e, 'subtensor_invalid'))
             return
         self.fail()

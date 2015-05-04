@@ -348,7 +348,7 @@ def get_c_extract(r, name, sub):
                 c_extract = r.type.c_extract(
                     name, sub, True,
                     check_broadcast=False)
-            except TypeError, e:
+            except TypeError as e:
                 c_extract = r.type.c_extract(name, sub, True)
     else:
         c_extract = r.type.c_extract(name, sub, False)
@@ -372,7 +372,7 @@ def get_c_extract_out(r, name, sub):
         try:
             c_extract = r.type.c_extract_out(name, sub, check_input,
                                              check_broadcast=False)
-        except TypeError, e:
+        except TypeError as e:
             c_extract = r.type.c_extract_out(name, sub, check_input)
 
     pre = """
@@ -1345,7 +1345,7 @@ class CLinker(link.Linker):
                 lib_dirs=self.lib_dirs(),
                 libs=libs,
                 preargs=preargs)
-        except Exception, e:
+        except Exception as e:
             e.args += (str(self.fgraph),)
             raise
         finally:

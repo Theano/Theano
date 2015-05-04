@@ -258,7 +258,7 @@ def compile_cutils():
     if not os.path.exists(loc):
         try:
             os.mkdir(loc)
-        except OSError, e:
+        except OSError as e:
             assert e.errno == errno.EEXIST
             assert os.path.exists(loc), loc
 
@@ -278,7 +278,7 @@ try:
     if not os.path.exists(location):
         try:
             os.mkdir(location)
-        except OSError, e:
+        except OSError as e:
             assert e.errno == errno.EEXIST
             assert os.path.exists(location), location
     if not os.path.exists(os.path.join(location, '__init__.py')):

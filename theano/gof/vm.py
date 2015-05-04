@@ -660,7 +660,7 @@ try:
             # skip VM.__init__
 except ImportError:
     pass
-except (OSError, theano.gof.cmodule.MissingGXX), e:
+except (OSError, theano.gof.cmodule.MissingGXX) as e:
     # OSError happens when g++ is not installed.  In that case, we
     # already changed the default linker to something else then CVM.
     # Currently this is the py linker.
@@ -1001,7 +1001,7 @@ class VM_Linker(link.LocalLinker):
                     # So if they didn't specify that its lazy or not, it isn't.
                     # If this member isn't present, it will crash later.
                     thunks[-1].lazy = False
-            except Exception, e:
+            except Exception as e:
                 e.args = ("The following error happened while"
                           " compiling the node", node, "\n") + e.args
                 raise

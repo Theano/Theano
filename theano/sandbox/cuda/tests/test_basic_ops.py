@@ -172,7 +172,7 @@ def test_careduce():
             f_caused_value_error = False
             try:
                 f_out = f(val)
-            except ValueError, e:
+            except ValueError as e:
                 exc = e
                 f_caused_value_error = True
             except NotImplementedError:
@@ -184,7 +184,7 @@ def test_careduce():
             f2_caused_value_error = False
             try:
                 f2_out = f2(val)
-            except ValueError, e:
+            except ValueError as e:
                 exc2 = e
                 f2_caused_value_error = True
 
