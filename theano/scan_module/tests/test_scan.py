@@ -4479,7 +4479,7 @@ class ScanGpuTests:
         # Compute the cost and take the gradient wrt params
         cost = tensor.sum((l2_out - yout) ** 2)
         grads = tensor.grad(cost, nparams)
-        updates = zip(nparams, [n - g for n, g in zip(nparams, grads)])
+        updates = list(zip(nparams, (n - g for n, g in zip(nparams, grads))))
 
         # Compile the theano function
         feval_backprop = theano.function([xin, yout], cost, updates=updates,

@@ -253,7 +253,7 @@ class SeqOptimizer(Optimizer, list):
             else:
                 ll.append((opt.name, opt.__class__.__name__,
                            opts.index(opt)))
-        lll = zip(prof, ll)
+        lll = list(zip(prof, ll))
 
         def cmp(a, b):
             if a[0] == b[0]:
@@ -539,7 +539,7 @@ class MergeFeature(object):
                     continue
 
                 # Schedule transfer of clients from node to candidate
-                pairs = zip(node.outputs, candidate.outputs)
+                pairs = izip(node.outputs, candidate.outputs)
 
                 # transfer names
                 for node_output, cand_output in pairs:

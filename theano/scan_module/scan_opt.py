@@ -346,7 +346,7 @@ class PushOutNonSeqScan(gof.Optimizer):
                              **dict(return_list=True))[0].owner
 
             fgraph.replace_all_validate_remove(
-                zip(node.outputs, nw_node.outputs),
+                list(zip(node.outputs, nw_node.outputs)),
                 remove=[node],
                 reason='scanOp_pushout_nonseqs_ops')
             return True
@@ -558,7 +558,7 @@ class PushOutSeqScan(gof.Optimizer):
                              **dict(return_list=True))[0].owner
 
             fgraph.replace_all_validate_remove(
-                zip(node.outputs, nw_node.outputs),
+                list(zip(node.outputs, nw_node.outputs)),
                 remove=[node],
                 reason='scanOp_pushout_seqs_ops')
             return True
@@ -921,7 +921,7 @@ class PushOutScanOutput(gof.Optimizer):
                 new_scan_node.outputs[new_node_new_outputs_idx+nb_new_outs:])
 
         fgraph.replace_all_validate_remove(
-            zip(old_scan_node.outputs, new_node_old_outputs),
+            list(zip(old_scan_node.outputs, new_node_old_outputs)),
             remove=[old_scan_node],
             reason='scanOp_pushout_output')
 
@@ -981,7 +981,7 @@ class ScanInplaceOptimizer(Optimizer):
                 new_outs = new_op(*inputs, **dict(return_list=True))
                 try:
                     fgraph.replace_all_validate_remove(
-                        zip(node.outputs, new_outs),
+                        list(zip(node.outputs, new_outs)),
                         remove=[node],
                         reason='scanOp_make_inplace')
                     op = new_op
@@ -1702,7 +1702,7 @@ class ScanMerge(gof.Optimizer):
         if not isinstance(new_outs, (list, tuple)):
             new_outs = [new_outs]
 
-        return zip(outer_outs, new_outs)
+        return list(zip(outer_outs, new_outs))
 
     def belongs_to_set(self, node, set_nodes):
         """
@@ -2126,10 +2126,10 @@ class PushOutDot1(gof.Optimizer):
                             new_out = tensor.dot(val, out_seq)
 
                         pos = node.outputs.index(outer_out)
-                        old_new = zip(node.outputs[:pos], new_outs[:pos])
+                        old_new = list(zip(node.outputs[:pos], new_outs[:pos]))
                         old = node.outputs[pos].clients[0][0].outputs[0]
                         old_new.append((old, new_out))
-                        old_new += zip(node.outputs[pos+1:], new_outs[pos:])
+                        old_new += list(zip(node.outputs[pos+1:], new_outs[pos:]))
                         fgraph.replace_all_validate_remove(
                             old_new, remove=[node], reason='scan_pushout_dot1')
 

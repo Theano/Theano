@@ -101,7 +101,7 @@ def fgraph_updated_vars(fgraph, expanded_inputs):
     potential_values = list(fgraph.outputs)  # copy the list
     if len(expanded_inputs) != len(fgraph.inputs):
         raise ValueError('expanded_inputs must match len(fgraph.inputs)')
-    for e_input, ivar in reversed(zip(expanded_inputs, fgraph.inputs)):
+    for e_input, ivar in reversed(list(zip(expanded_inputs, fgraph.inputs))):
         if e_input.update is not None:
             updated_vars[ivar] = potential_values.pop()
     return updated_vars
@@ -657,8 +657,8 @@ returned directly?"""
 
         if getattr(self.fn, 'need_update_inputs', True):
             # Update the inputs that have an update function
-            for input, storage in reversed(zip(self.maker.expanded_inputs,
-                                               self.input_storage)):
+            for input, storage in reversed(list(zip(self.maker.expanded_inputs,
+                                                    self.input_storage))):
                 if input.update is not None:
                     storage.data = outputs.pop()
         else:

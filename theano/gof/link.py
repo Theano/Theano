@@ -7,7 +7,7 @@ import traceback
 import numpy
 
 import theano
-from theano.compat import PY3
+from theano.compat import PY3, izip
 from theano.compat.six import reraise
 from theano.compat.six.moves import StringIO
 from theano.gof import utils
@@ -354,7 +354,7 @@ class Linker(object):
                         % (takes, ['argument', 'arguments'][takes > 1], got)
             if (len(args) != len(inputs)):
                 raise TypeError(e_arity(len(inputs), len(args)))
-            for arg, variable in zip(args, inputs):
+            for arg, variable in izip(args, inputs):
                 variable.data = arg
             thunk()
             if unpack_single:
@@ -499,7 +499,7 @@ def map_storage(fgraph, order, input_storage, output_storage):
         assert len(fgraph.inputs) == len(input_storage)
 
     storage_map = {}
-    for r, storage in zip(fgraph.inputs, input_storage):
+    for r, storage in izip(fgraph.inputs, input_storage):
         storage_map[r] = storage
 #     for orphan in fgraph.orphans:
 #         if not isinstance(orphan, Constant):
@@ -508,7 +508,7 @@ def map_storage(fgraph, order, input_storage, output_storage):
 
     if output_storage is not None:
         assert len(fgraph.outputs) == len(output_storage)
-        for r, storage in zip(fgraph.outputs, output_storage):
+        for r, storage in izip(fgraph.outputs, output_storage):
             storage_map[r] = storage
 
     for node in order:
@@ -565,8 +565,8 @@ def streamline(fgraph, thunks, order, post_thunk_old_storage=None,
             for x in no_recycling:
                 x[0] = None
             try:
-                for thunk, node, old_storage in zip(thunks, order,
-                                                    post_thunk_old_storage):
+                for thunk, node, old_storage in izip(thunks, order,
+                                                     post_thunk_old_storage):
                     thunk()
                     for old_s in old_storage:
                         old_s[0] = None
@@ -574,13 +574,11 @@ def streamline(fgraph, thunks, order, post_thunk_old_storage=None,
                 raise_with_op(node, thunk)
         f = streamline_default_f
     elif nice_errors:
-        thunk_node_list = zip(thunks, order)
-
         def streamline_nice_errors_f():
             for x in no_recycling:
                 x[0] = None
             try:
-                for thunk, node in thunk_node_list:
+                for thunk, node in izip(thunks, order):
                     thunk()
             except Exception:
                 raise_with_op(node, thunk)
@@ -743,9 +741,13 @@ class PerformLinker(LocalLinker):
         add_clear_storage(f, computed, storage_map)
         f.storage_map = storage_map
 
-        return f, [Container(input, storage) for input, storage in zip(fgraph.inputs, input_storage)], \
-            [Container(output, storage, True) for output, storage in zip(fgraph.outputs, output_storage)], \
-            thunks, order
+        return (f,
+                [Container(input, storage)
+                 for input, storage in izip(fgraph.inputs, input_storage)],
+                [Container(output, storage, True)
+                 for output, storage in izip(fgraph.outputs, output_storage)],
+                thunks,
+                order)
 
 
 def add_clear_storage(f, computed, storage_map):
@@ -864,11 +866,11 @@ class WrapLinker(Linker):
         inputs0 = input_lists[0]
         outputs0 = output_lists[0]
 
-        thunk_groups = zip(*thunk_lists)
+        thunk_groups = list(zip(*thunk_lists))
         order = [x[0] for x in zip(*order_lists)]
 
         to_reset = []
-        for thunks, node in zip(thunk_groups, order):
+        for thunks, node in izip(thunk_groups, order):
             for j, output in enumerate(node.outputs):
                 if output in no_recycling:
                     for thunk in thunks:
@@ -879,13 +881,13 @@ class WrapLinker(Linker):
 
         def f():
             for inputs in input_lists[1:]:
-                for input1, input2 in zip(inputs0, inputs):
+                for input1, input2 in izip(inputs0, inputs):
                     input2.storage[0] = copy(input1.storage[0])
             for x in to_reset:
                 x[0] = None
             pre(self, [input.data for input in input_lists[0]],
                 order, thunk_groups)
-            for i, (thunks, node) in enumerate(zip(thunk_groups, order)):
+            for i, (thunks, node) in enumerate(izip(thunk_groups, order)):
                 try:
                     wrapper(i, node, *thunks)
                 except Exception:
