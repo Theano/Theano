@@ -1,6 +1,12 @@
+import os.path
+
 from theano import Op, Apply, config
 
+from theano.compile import optdb
+from theano.gof import local_optimizer, LocalOptGroup
 from theano.tensor.blas import Dot22, Gemv, Gemm, Ger
+from theano.tensor.opt import in2out
+
 from .basic_ops import HideC, as_gpuarray_variable
 
 try:
@@ -239,12 +245,8 @@ class GpuDot22(BlasOp, Dot22):
         dims[0] = PyGpuArray_DIMS(%(A)s)[0];
         dims[1] = PyGpuArray_DIMS(%(B)s)[1];
 
-        Py_XDECREF(%(out)s);
-        %(out)s = pygpu_empty(2, dims,
-                            %(typecode)s,
-                            GA_C_ORDER,
-                            pygpu_default_context(), Py_None);
-        if (!%(out)s) {
+        if (theano_prep_output(&%(out)s, 2, dims, %(typecode)s, GA_C_ORDER,
+                              pygpu_default_context()))
             %(fail)s
         }
 
@@ -265,16 +267,15 @@ class GpuDot22(BlasOp, Dot22):
     def c_code_cache_version(self):
         return (2,)
 
+    def c_header_dir(self):
+        ret = super(GpuDot22, self).c_header_dirs()
+        return ret + [os.path.dirname(__file__)]
+
     def c_headers(self):
         ret = super(GpuDot22, self).c_headers()
-        return ret + ['<numpy_compat.h>']
+        return ret + ['<numpy_compat.h>', '"gpuarray_helper.h"']
 
 gpu_dot22 = GpuDot22()
-
-from theano.compile import optdb
-from theano.gof import local_optimizer, LocalOptGroup
-from theano.tensor.opt import in2out
-
 
 @local_optimizer([gpugemv_no_inplace], inplace=True)
 def local_inplace_gpuagemv(node):
