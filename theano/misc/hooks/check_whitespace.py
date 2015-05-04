@@ -20,7 +20,7 @@ except ImportError:
         " You can install it with this command 'pip install argparse'")
 
 import reindent
-from theano.compat.six import StringIO
+from six import StringIO
 
 SKIP_WHITESPACE_CHECK_FILENAME = ".hg/skip_whitespace_check"
 

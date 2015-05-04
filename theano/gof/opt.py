@@ -18,8 +18,8 @@ import numpy
 import theano
 from theano import config
 from theano.compat import izip
-from theano.compat.six import string_types, iteritems
-from theano.compat.six.moves import reduce
+from six import string_types, iteritems
+from six.moves import reduce
 from theano.gof import graph, op, utils, unify, toolbox
 from theano.gof.fg import InconsistencyError
 
@@ -302,7 +302,7 @@ class SeqOptimizer(Optimizer, list):
                 new_sub_profile.append(None)
 
         # merge not common opt
-        from theano.compat.six import StringIO
+        from six import StringIO
         for l in set(prof1[0]).symmetric_difference(set(prof2[0])):
             # The set trick above only work for the same object optimization
             # It don't work for equivalent optimization.

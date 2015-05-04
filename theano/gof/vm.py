@@ -16,8 +16,8 @@ from theano.configparser import (config, AddConfigVar,
 
 import theano.gof.cmodule
 
-from theano.compat.six import iteritems
-from theano.compat.six.moves import xrange
+from six import iteritems
+from six.moves import xrange
 
 logger = logging.getLogger(__name__)
 

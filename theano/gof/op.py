@@ -25,8 +25,8 @@ import theano
 from theano import config
 
 import theano.gof.cc
-from theano.compat.six import itervalues
-from theano.compat.six.moves import StringIO
+from six import itervalues
+from six.moves import StringIO
 from theano.gof import graph
 from theano.gof import utils
 from theano.gof.cmodule import GCC_compiler

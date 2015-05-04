@@ -2,7 +2,7 @@
 """
 from __future__ import print_function
 import os
-import theano.compat.six.moves.copyreg as copyreg
+import six.moves.copyreg as copyreg
 import warnings
 
 import numpy
@@ -11,7 +11,7 @@ import theano
 from theano import Type, Variable
 from theano import tensor, config
 from theano import scalar as scal
-from theano.compat.six import StringIO
+from six import StringIO
 
 try:
     # We must do those import to be able to create the full doc when nvcc

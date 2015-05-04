@@ -1,6 +1,6 @@
 """Provide a simple user friendly API """
 from theano import config
-from theano.compat.six import iteritems
+from six import iteritems
 from theano.compile import orig_function, In, Out
 from theano.compile import UnusedInputError
 from theano.compile.sharedvalue import SharedVariable, shared

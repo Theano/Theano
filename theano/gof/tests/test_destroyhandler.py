@@ -2,7 +2,7 @@ from __future__ import print_function
 
 import unittest
 
-from theano.compat.six.moves import xrange
+from six.moves import xrange
 from theano.gof.type import Type
 from theano.gof import graph
 from theano.gof.graph import Variable, Apply

@@ -9,7 +9,7 @@ import theano
 
 from theano import gof, Type, Apply
 from theano import tensor, scalar, config
-from theano.compat.six.moves import StringIO, xrange
+from six.moves import StringIO, xrange
 from theano.gradient import grad_undefined
 from theano.scalar import Scalar
 

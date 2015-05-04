@@ -3,7 +3,7 @@ from collections import MutableSet
 from theano.compat import OrderedDict
 import types
 
-from theano.compat.six import string_types
+from six import string_types
 
 
 def check_deterministic(iterable):

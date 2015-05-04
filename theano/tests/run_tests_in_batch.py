@@ -55,7 +55,7 @@ nosetests.
 """
 
 
-import theano.compat.six.moves.cPickle as pickle
+import six.moves.cPickle as pickle
 import datetime
 import os
 import subprocess

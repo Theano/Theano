@@ -6,7 +6,7 @@ DownsampleFactorMax, DownsampleAvg, DownsampleSoftmax.
 """
 from __future__ import print_function
 # This file should move along with conv.py
-import theano.compat.six.moves.builtins as builtins
+import six.moves.builtins as builtins
 
 import numpy
 

@@ -3,7 +3,7 @@
 from theano import gof
 from .sharedvalue import SharedVariable
 
-from theano.compat.six import string_types
+from six import string_types
 
 import logging
 _logger = logging.getLogger("theano.compile.io")

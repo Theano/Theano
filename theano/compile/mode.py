@@ -10,7 +10,7 @@ from theano import gof
 import theano.gof.vm
 from theano.configparser import config, AddConfigVar, StrParam
 from theano.compile.ops import _output_guard
-from theano.compat.six import string_types
+from six import string_types
 
 
 _logger = logging.getLogger('theano.compile.mode')

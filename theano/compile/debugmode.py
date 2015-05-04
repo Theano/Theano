@@ -9,7 +9,7 @@ import copy
 import sys
 import gc
 import logging
-import theano.compat.six.moves.copyreg as copyreg
+import six.moves.copyreg as copyreg
 from itertools import product as itertools_product
 from theano.compat import izip
 
@@ -18,8 +18,8 @@ import numpy
 import theano
 from theano import gof
 from theano.compat import get_unbound_function
-from theano.compat.six import string_types, iteritems
-from theano.compat.six.moves import StringIO, xrange
+from six import string_types, iteritems
+from six.moves import StringIO, xrange
 from theano.gof import (FunctionGraph, graph, utils, link,
                         ops_with_inner_function)
 from theano.gof.link import raise_with_op

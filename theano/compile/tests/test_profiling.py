@@ -7,7 +7,7 @@ import unittest
 import numpy
 
 import theano
-from theano.compat.six.moves import StringIO
+from six.moves import StringIO
 import theano.tensor as T
 from theano.ifelse import ifelse
 

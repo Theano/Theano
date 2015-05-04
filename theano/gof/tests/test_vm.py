@@ -10,7 +10,7 @@ import numpy
 from theano import function
 from theano.gof import vm
 from theano.gof import OpWiseCLinker
-from theano.compat.six.moves import xrange
+from six.moves import xrange
 from theano.compile import Mode
 
 from theano import tensor

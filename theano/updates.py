@@ -3,7 +3,7 @@
 """
 from theano.compat import OrderedDict
 
-from theano.compat.six import iteritems
+from six import iteritems
 from theano.compile.sharedvalue import SharedVariable
 import logging
 import warnings

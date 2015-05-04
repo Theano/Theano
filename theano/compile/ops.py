@@ -4,13 +4,13 @@ and Ops building class (:class:`FromFunctionOp`) and decorator
 
 """
 import copy
-import theano.compat.six.moves.cPickle as pickle
+import six.moves.cPickle as pickle
 import warnings
 
 import theano
 from theano import gof
-from theano.compat.six import iteritems
-from theano.compat.six.moves import xrange
+from six import iteritems
+from six.moves import xrange
 
 
 import numpy

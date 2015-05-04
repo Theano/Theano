@@ -67,7 +67,7 @@ from theano import tensor
 from theano.tensor import opt, get_scalar_constant_value
 from theano import gof
 from theano.compat import OrderedDict
-from theano.compat.six import integer_types
+from six import integer_types
 from theano.gof.opt import Optimizer
 from theano.gof import toolbox, DestroyHandler, InconsistencyError
 from theano.compile import optdb

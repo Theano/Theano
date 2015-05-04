@@ -140,8 +140,8 @@ except ImportError:
     pass
 
 from theano.configparser import config, AddConfigVar, StrParam
-from theano.compat.six import iteritems
-from theano.compat.six.moves import reduce
+from six import iteritems
+from six.moves import reduce
 from theano.gof import (utils, Op, view_roots,
                         local_optimizer, Optimizer,
                         InconsistencyError, toolbox, SequenceDB,

@@ -12,7 +12,7 @@ from theano.tensor.basic import Alloc, Join, Split
 from theano.gof import HideC
 from theano.gof.utils import MethodNotDefined
 from theano.compat import PY3
-from theano.compat.six import string_types
+from six import string_types
 
 try:
     import pygpu

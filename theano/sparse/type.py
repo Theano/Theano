@@ -7,7 +7,7 @@ except ImportError:
 
 import theano
 from theano import gof
-from theano.compat.six import string_types
+from six import string_types
 
 
 def _is_sparse(x):

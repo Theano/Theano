@@ -2,7 +2,7 @@ from __future__ import print_function
 import numpy
 
 from theano import Op, Apply, config
-from theano.compat.six import StringIO
+from six import StringIO
 
 try:
     import pygpu

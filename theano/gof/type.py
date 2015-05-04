@@ -1,6 +1,6 @@
 """WRITEME Defines the `Type` class."""
 from theano.compat import PY3
-from theano.compat.six import string_types
+from six import string_types
 
 from theano.gof import utils
 from theano.gof.utils import MethodNotDefined, object2

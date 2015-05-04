@@ -7,7 +7,7 @@ import time
 import unittest
 import copy
 
-import theano.compat.six.moves.cPickle as pickle
+import six.moves.cPickle as pickle
 import numpy
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr

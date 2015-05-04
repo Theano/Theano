@@ -1,5 +1,5 @@
 from __future__ import print_function
-import theano.compat.six.moves.cPickle as pickle
+import six.moves.cPickle as pickle
 import errno
 import logging
 import os
@@ -14,7 +14,7 @@ import textwrap
 import numpy
 
 import theano
-from theano.compat.six import string_types, iteritems
+from six import string_types, iteritems
 from theano.configparser import config, AddConfigVar, ConfigParam, StrParam
 from theano.gof.utils import flatten
 from theano.misc.windows import output_subprocess_Popen

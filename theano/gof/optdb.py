@@ -5,7 +5,7 @@ import numpy
 
 from theano.compat import DefaultOrderedDict
 from theano.misc.ordered_set import OrderedSet
-from theano.compat.six import StringIO
+from six import StringIO
 from theano.gof import opt
 from theano.configparser import AddConfigVar, FloatParam
 from theano import config

@@ -21,8 +21,8 @@ import numpy as N  # guys... please don't do this in the library :(
 import theano
 from theano import gof
 from theano.compat import izip
-from theano.compat.six import integer_types, iteritems
-from theano.compat.six.moves import reduce
+from six import integer_types, iteritems
+from six.moves import reduce
 from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
 from theano.gof import Variable, Constant
 from theano.gof.utils import MethodNotDefined
@@ -53,7 +53,7 @@ from theano.gof.opt import (Optimizer, pre_constant_merge,
 from theano.gof.opt import merge_optimizer
 from theano.gof import toolbox
 from theano.tensor.basic import get_scalar_constant_value, ShapeError, NotScalarConstantError
-from theano.compat.six import StringIO
+from six import StringIO
 
 theano.configparser.AddConfigVar('on_shape_error',
                                  "warn: print a warning and use the default"

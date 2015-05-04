@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-from theano.compat.six import reraise
+from six import reraise
 from theano import gof
 import sys
 

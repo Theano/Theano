@@ -1,4 +1,4 @@
-import theano.compat.six.moves.cPickle as pickle
+import six.moves.cPickle as pickle
 import os.path
 import sys
 

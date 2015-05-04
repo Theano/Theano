@@ -1,6 +1,6 @@
 from __future__ import print_function
 import sys, time
-from theano.compat.six import iteritems
+from six import iteritems
 from theano.compile.pfunc import pfunc
 from theano import tensor
 

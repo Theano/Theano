@@ -17,7 +17,7 @@ from numpy.testing.noseclasses import KnownFailureTest
 
 import theano
 import theano.scalar as scal
-from theano.compat.six import PY3, StringIO
+from six import PY3, StringIO
 from theano import compile
 from theano.compile import deep_copy_op, DeepCopyOp
 from theano import config

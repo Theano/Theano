@@ -12,8 +12,8 @@ from theano.compat import izip
 import numpy
 
 from theano.compat import PY3
-from theano.compat.six import string_types, reraise
-from theano.compat.six.moves import StringIO, xrange
+from six import string_types, reraise
+from six.moves import StringIO, xrange
 from theano.gof.utils import MethodNotDefined
 
 import theano

@@ -7,7 +7,7 @@ import warnings
 
 import theano
 from theano.gof.link import WrapLinker
-from theano.compat.six import string_types, iteritems
+from six import string_types, iteritems
 from theano.compile.mode import (Mode, register_mode,
                                  predefined_modes, predefined_linkers,
                                  predefined_optimizers)

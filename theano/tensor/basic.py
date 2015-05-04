@@ -21,7 +21,7 @@ from theano.tensor.type import TensorType, values_eq_approx_always_true
 from theano.tensor.type_other import NoneConst
 from theano import scalar as scal
 from functools import partial
-from theano.compat.six import integer_types
+from six import integer_types
 from theano.gof.utils import hashtype
 from theano import compile, printing
 from theano.printing import pprint, min_informative_str
