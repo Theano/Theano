@@ -21,8 +21,8 @@ def print_help(exit_status):
     print('Type "theano-cache unlock" to unlock the cache directory')
     print('Type "theano-cache cleanup" to delete keys in the old format/code version')
     print('Type "theano-cache purge" to force deletion of the cache directory')
-    print('Type "theano-cache basecompiledir" ')
-           'to print the parent of the cache directory')
+    print('Type "theano-cache basecompiledir" '
+          'to print the parent of the cache directory')
     print('Type "theano-cache basecompiledir list" '
            'to print the content of the base compile dir')
     print('Type "theano-cache basecompiledir purge" '
