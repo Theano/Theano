@@ -634,6 +634,9 @@ class DownsampleFactorMaxGrad(Op):
           Py_XDECREF(%(gx)s);
           %(gx)s = (PyArrayObject*) PyArray_ZEROS(4, PyArray_DIMS(%(x)s), x_typenum,0);
         }
+        else {
+          PyArray_FILLWBYTE(%(gx)s, 0);
+        }
         int r_st, r_end, c_st, c_end; // used to index into the input img x
         dtype_%(z)s maximum; // temp var for maximum value in a region
         if (z_r && z_c)
@@ -650,11 +653,6 @@ class DownsampleFactorMaxGrad(Op):
                   r_st -= %(pd0)s;
                   r_end -= %(pd0)s;
 
-                  // handle the case where no padding, ignore border is True
-                  if (%(ignore_border)s)
-                  {
-                    r_end = r_end > r ? r : r_end;
-                  }
                   for(int j=0; j<z_c; j++){
                     c_st = j * %(st1)s;
                     c_end = c_st + %(ds1)s;
@@ -665,11 +663,6 @@ class DownsampleFactorMaxGrad(Op):
                     // change coordinates from padding_img space into img space
                     c_st -= %(pd1)s;
                     c_end -= %(pd1)s;
-                    // handle the case where no padding, ignore border is True
-                    if (%(ignore_border)s)
-                    {
-                      c_end = c_end > c ? c : c_end;
-                    }
                     // the maximum value
                     maximum = ((dtype_%(z)s*)(PyArray_GETPTR4(%(z)s,b,k,i,j)))[0];
                     // the gradient corresponding to this maximum value in z
@@ -697,8 +690,7 @@ class DownsampleFactorMaxGrad(Op):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 3)
-
+        return (0, 6)
 
 class DownsampleFactorMaxGradGrad(Op):
     __props__ = ('ds', 'ignore_border', 'st')
