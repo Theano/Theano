@@ -1459,7 +1459,7 @@ def local_useless_elemwise(node):
         ):
             return [node.inputs[0]]
         if (
-            isinstance(node.op.scalar_op, theano.scalar.basic.AND)
+            isinstance(node.op.scalar_op, scalar.AND)
             and len(node.inputs) == 2
         ):
             if (
@@ -1483,7 +1483,7 @@ def local_useless_elemwise(node):
             ):
                 return zeros_like(node, 0)
         if (
-            isinstance(node.op.scalar_op, theano.scalar.basic.OR)
+            isinstance(node.op.scalar_op, scalar.OR)
             and len(node.inputs) == 2
         ):
             if (
@@ -1507,20 +1507,11 @@ def local_useless_elemwise(node):
             ):
                 return ones_like(node, 0)
         if (
-            isinstance(node.op.scalar_op, theano.scalar.basic.XOR)
+            isinstance(node.op.scalar_op, scalar.XOR)
             and len(node.inputs) == 2
         ):
             if node.inputs[0] == node.inputs[1]:
                 return zeros_like(node, 0)
-        if (
-            isinstance(
-                node.op.scalar_op,
-                (theano.scalar.basic.LE, theano.scalar.basic.GE)
-            )
-            and len(node.inputs) == 2
-        ):
-            if node.inputs[0] == node.inputs[1]:
-                return ones_like(node, 0)
 
 
 @register_specialize
@@ -4057,7 +4048,7 @@ def local_useless_elemwise_comparison(node):
     # Elemwise[{LE,GE}](X, X) -> Elemwise[ones](X)
     if (isinstance(node.op.scalar_op, (scalar.LE, scalar.GE)) and
         node.inputs[0] is node.inputs[1]):
-        return [T.ones_like(node.inputs[0])]
+        return [T.ones_like(node.inputs[0], dtype=node.outputs[0].type.dtype)]
     # Elemwise[{minimum,maximum}](X, X) -> X
     if (isinstance(node.op.scalar_op, (scalar.Minimum, scalar.Maximum)) and
         node.inputs[0] is node.inputs[1]):
