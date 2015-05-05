@@ -1190,7 +1190,7 @@ class InRange(LogicalComparison):
         (gz,) = gout
         grads = []
         for elem in [x, low, hi]:
-            grads.append(get_grad(elem))
+            grads.append(self.get_grad(elem))
         return grads
 
 inopenrange = InRange(True, True)
