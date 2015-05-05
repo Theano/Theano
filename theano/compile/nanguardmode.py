@@ -115,6 +115,7 @@ class NanGuardMode(Mode):
                     [self.guard_input], T.max(T.abs_(self.guard_input)),
                     mode='FAST_RUN'
                 )
+
         def do_check_on(var, nd, f, is_input):
             """
             Checks `var` for NaNs / Infs. If detected, raises an exception
@@ -146,7 +147,7 @@ class NanGuardMode(Mode):
             if inf_is_error:
                 err = False
                 if cuda.cuda_available and isinstance(var, cuda.CudaNdarray):
-                    err = (np.isinf(self.gpumin(var.reshape(var.size))) or \
+                    err = (np.isinf(self.gpumin(var.reshape(var.size))) or
                            np.isinf(self.gpumax(var.reshape(var.size))))
                 else:
                     err = contains_inf(var)
@@ -191,7 +192,8 @@ class NanGuardMode(Mode):
                 The thunk to execute for this Apply node
             """
             inputs = fn.inputs
-            # TODO: figure out why individual inputs are themselves lists sometimes
+            # TODO: figure out why individual inputs are themselves lists
+            # sometimes
             for x in flatten(inputs):
                 do_check_on(x, node, fn, True)
             fn()
@@ -199,5 +201,7 @@ class NanGuardMode(Mode):
             for j, x in enumerate(flatten(outputs)):
                 do_check_on(x, node, fn, False)
 
-        wrap_linker = theano.gof.WrapLinkerMany([theano.gof.OpWiseCLinker()], [nan_check])
-        super(NanGuardMode, self).__init__(wrap_linker, optimizer=theano.config.optimizer)
+        wrap_linker = theano.gof.WrapLinkerMany([theano.gof.OpWiseCLinker()],
+                                                [nan_check])
+        super(NanGuardMode, self).__init__(wrap_linker,
+                                           optimizer=theano.config.optimizer)
