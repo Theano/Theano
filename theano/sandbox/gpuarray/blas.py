@@ -19,10 +19,10 @@ except ImportError, e:
 
 class BlasOp(HideC):
     def c_headers(self):
-        return ['<blas_api.h>']
+        return ['<blas_api.h>', '<numpy_compat.h>', '<gpuarray_helper.h>']
 
     def c_header_dirs(self):
-        return [pygpu.get_include()]
+        return [pygpu.get_include(), os.path.dirname(__file__)]
 
     def c_init_code(self):
         return ['import_pygpu__blas();']
@@ -285,10 +285,6 @@ class GpuDot22(BlasOp, Dot22):
 
     def c_code_cache_version(self):
         return (3,)
-
-    def c_header_dirs(self):
-        ret = super(GpuDot22, self).c_header_dirs()
-        return ret + [os.path.dirname(__file__)]
 
     def c_headers(self):
         ret = super(GpuDot22, self).c_headers()
