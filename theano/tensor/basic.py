@@ -5506,7 +5506,7 @@ class AllocEmpty(gof.Op):
         sh = tuple([int(i) for i in inputs])
         if out[0] is None or out[0].shape != sh:
             # XXX: We could implement and call CudaNdarray.empty(sh) instead.
-            out[0] = numpy.empty(sh)
+            out[0] = numpy.empty(sh, dtype=self.dtype)
 
     def do_merge(self, node):
         return False
