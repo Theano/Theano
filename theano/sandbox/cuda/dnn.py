@@ -1718,17 +1718,19 @@ if True:
     @register_opt('cudnn')
     @local_optimizer([SoftmaxGrad])
     def local_softmax_dnn_grad(node):
-        if (
-            isinstance(node.op, SoftmaxGrad)
-            and (isinstance(node.inputs[0].owner.op, HostFromGpu)
-                 or isinstance(node.inputs[1].owner.op, HostFromGpu))
-        ):
+        if (isinstance(node.op, SoftmaxGrad) and
+            ((node.inputs[0].owner and
+              isinstance(node.inputs[0].owner.op, HostFromGpu))
+             or (node.inputs[1].owner and
+                 isinstance(node.inputs[1].owner.op, HostFromGpu)))):
             if not dnn_available():
                 return
             ins = []
             for n in node.inputs:
                 if isinstance(n.owner.op, HostFromGpu):
                     n = n.owner.inputs[0]
+                if n.ndim != 2:
+                    return
                 ins.append(n.dimshuffle(0, 1, 'x', 'x'))
 
             out = GpuDnnSoftmaxGrad(

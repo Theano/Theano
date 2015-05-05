@@ -34,7 +34,8 @@ VALID_ASSOC = set(['left', 'right', 'either'])
 
 
 def debugprint(obj, depth=-1, print_type=False,
-               file=None, ids='CHAR', stop_on_name=False):
+               file=None, ids='CHAR', stop_on_name=False,
+               done=None):
     """Print a computation graph as text to stdout or a file.
 
     :type obj: Variable, Apply, or Function instance
@@ -53,6 +54,9 @@ def debugprint(obj, depth=-1, print_type=False,
                 "" - don't print an identifier
     :param stop_on_name: When True, if a node in the graph has a name,
                          we don't print anything below it.
+    :type done: None or dict
+    :param done: A dict where we store the ids of printed node.
+        Useful to have multiple call to debugprint share the same ids.
 
     :returns: string if `file` == 'str', else file arg
 
@@ -80,7 +84,8 @@ def debugprint(obj, depth=-1, print_type=False,
         _file = sys.stdout
     else:
         _file = file
-    done = dict()
+    if done is None:
+        done = dict()
     results_to_print = []
     profile_list = []
     order = []
