@@ -33,7 +33,9 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         out_shp.append(input.shape[-1] / ds[1] + yi)
         output_val = numpy.zeros(out_shp)
         func = numpy.max
-        if mode != 'max':
+        if mode == 'sum':
+            func = numpy.sum
+        elif mode != 'max':
             func = numpy.average
 
         for k in numpy.ndindex(*input.shape[:-2]):
@@ -76,7 +78,9 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         tt = []
         y = pad_img(x)
         func = numpy.max
-        if mode != 'max':
+        if mode == 'sum':
+            func = numpy.sum
+        elif mode != 'max':
             func = numpy.average
         inc_pad = mode == 'average_inc_pad'
 
@@ -145,7 +149,9 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         out_shp.append(out_c)
 
         func = numpy.max
-        if mode != 'max':
+        if mode == 'sum':
+            func = numpy.sum
+        elif mode != 'max':
             func = numpy.average
 
         output_val = numpy.zeros(out_shp)
@@ -169,6 +175,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         for maxpoolshp, ignore_border, mode in product(maxpoolshps,
                                                        [True, False],
                                                        ['max',
+                                                        'sum',
                                                         'average_inc_pad',
                                                         'average_exc_pad']):
                 # print 'maxpoolshp =', maxpoolshp
@@ -198,23 +205,23 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         stridesizes = ((1, 1), (3, 3), (5, 7))
         # generate random images
         imval = rng.rand(4, 10, 16, 16)
+        # The same for each mode
         outputshps = ((4, 10, 16, 16), (4, 10, 6, 6), (4, 10, 4, 3),
                       (4, 10, 16, 16), (4, 10, 6, 6), (4, 10, 4, 3),
                       (4, 10, 14, 14), (4, 10, 5, 5), (4, 10, 3, 2),
                       (4, 10, 14, 14), (4, 10, 6, 6), (4, 10, 4, 3),
                       (4, 10, 12, 14), (4, 10, 4, 5), (4, 10, 3, 2),
                       (4, 10, 12, 14), (4, 10, 5, 6), (4, 10, 4, 3))
-        # The same for each mode
-        outputshps = outputshps + outputshps + outputshps
         images = tensor.dtensor4()
         indx = 0
         for mode, maxpoolshp, ignore_border in product(['max',
+                                                        'sum',
                                                         'average_inc_pad',
                                                         'average_exc_pad'],
                                                        maxpoolshps,
                                                        [True, False]):
                 for stride in stridesizes:
-                    outputshp = outputshps[indx]
+                    outputshp = outputshps[indx % len(outputshps)]
                     indx += 1
                     # DownsampleFactorMax op
                     numpy_output_val = \
@@ -251,7 +258,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
             stride = stridesizes[indx]
             maxpoolshp = maxpoolshps[indx]
             for ignore_border, mode in product([True, False],
-                                               ['max', 'average_inc_pad',
+                                               ['max', 'sum',
+                                                'average_inc_pad',
                                                 'average_exc_pad']):
                 indx_out = indx * 2
                 if not ignore_border:
@@ -283,7 +291,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         c = 2  # channel size
         images = tensor.dtensor4()
         for indx, mode in product(numpy.arange(len(maxpoolsizes)),
-                                  ['max', 'average_inc_pad',
+                                  ['max', 'sum', 'average_inc_pad',
                                    'average_exc_pad']):
             imgsize = imgsizes[indx]
             imval = rng.rand(m, c, imgsize[0], imgsize[1]) - 0.5
@@ -486,7 +494,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
         for maxpoolshp, ignore_border, mode in product(maxpoolshps,
                                                        [True, False],
-                                                       ['max',
+                                                       ['max', 'sum',
                                                         'average_inc_pad',
                                                         'average_exc_pad']):
                 # print 'maxpoolshp =', maxpoolshp
@@ -537,7 +545,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
         for maxpoolshp, ignore_border, mode in product(maxpoolshps,
                                                        [True, False],
-                                                       ['max',
+                                                       ['max', 'sum',
                                                         'average_inc_pad',
                                                         'average_exc_pad']):
                 # print 'maxpoolshp =', maxpoolshp
@@ -574,7 +582,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
         for maxpoolshp, ignore_border, mode in product(maxpoolshps,
                                                        [True, False],
-                                                       ['max',
+                                                       ['max', 'sum',
                                                         'average_inc_pad',
                                                         'average_exc_pad']):
                 # print 'maxpoolshp =', maxpoolshp
