@@ -1391,7 +1391,7 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
         dmap = getattr(node.op, 'destroy_map', {})
         vmap = getattr(node.op, 'view_map', {})
         for i, r in enumerate(node.inputs):
-            if any(i in v for v in chain(itervalues(dmap, itervalues(vmap)))):
+            if any(i in v for v in chain(itervalues(dmap), itervalues(vmap))):
                 aliased_inputs.add(r)
 
         _logger.debug('starting preallocated output checking')
