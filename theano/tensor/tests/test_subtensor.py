@@ -500,7 +500,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         f = self.function([idx], t, op=self.adv_sub1)
         topo = f.maker.fgraph.toposort()
         topo_ = [node for node in topo if not isinstance(node.op,
-             self.ignore_topo)]
+                                                         self.ignore_topo)]
         assert len(topo_) == 1
         self.assertTrue(isinstance(topo_[0].op, self.adv_sub1))
         f_0 = f([0])
@@ -547,7 +547,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         f = self.function([idx], t, op=self.adv_sub1)
         topo = f.maker.fgraph.toposort()
         topo_ = [node for node in topo if not isinstance(node.op,
-             self.ignore_topo)]
+                                                         self.ignore_topo)]
         assert len(topo_) == 1
         self.assertTrue(isinstance(topo_[0].op, self.adv_sub1))
         f_0 = f([0])
