@@ -5453,7 +5453,7 @@ for i in xrange(1,len(p64)): print i, 64[i]-p64[i-1]
 # ###############
 # # Loop fusion #
 # ###############
-def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024,
+def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 32,
                              maker=None):
     """
     We parametrize it to make it work for Elemwise and GpuElemwise op.
@@ -5468,10 +5468,8 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024,
                           limit how many ops we fuse together to avoid busting
                           that 256 limit.
 
-                          On the CPU we limit to 1024 input variable
-                          to the resulting fused op. This is big
-                          enough that if we hit it, I'm not sure it
-                          will affect performance.
+                          On the CPU we limit to 32 input variables
+                          since that is the maximum numpy support.
     """
     if maker is None:
         def maker(node, scalar_op):
