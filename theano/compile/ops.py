@@ -215,7 +215,7 @@ class Shape(gof.Op):
 
     @note: Non-differentiable.
     """
-    _fp16_ok = True
+    _f16_ok = True
 
     # Mapping from Type to C code (and version) to use.
     # In the C code, the name of the input variable is %(iname)s,
@@ -310,7 +310,7 @@ class Shape_i(gof.Op):
 
     @note: Non-differentiable.
     """
-    _fp16_ok = True
+    _f16_ok = True
 
     # Mapping from Type to C code (and version) to use.
     # In the C code, the name of the input variable is %(iname)s,

@@ -21,7 +21,7 @@ from .comp import NVCC_compiler
 
 
 class GpuSubtensor(HideC, Subtensor):
-    _fp16_ok = True
+    _f16_ok = True
 
     def make_node(self, x, *inputs):
         rval = tensor.Subtensor.make_node(self, x, *inputs)
