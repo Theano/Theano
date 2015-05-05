@@ -539,7 +539,7 @@ class MergeFeature(object):
                     continue
 
                 # Schedule transfer of clients from node to candidate
-                pairs = izip(node.outputs, candidate.outputs)
+                pairs = list(zip(node.outputs, candidate.outputs))
 
                 # transfer names
                 for node_output, cand_output in pairs:

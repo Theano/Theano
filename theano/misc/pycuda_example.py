@@ -19,12 +19,13 @@ pycuda.elementwise.ElementwiseKernel. It must be wrapper by
 TheanoElementwiseKernel.
 
 """
+from itertools import chain
 
 import numpy
 
 import theano
-from six import string_types
 from six.moves import xrange
+from theano.compat import izip
 from theano.gof import Op, Apply, local_optimizer, EquilibriumDB
 from theano.sandbox.cuda import GpuElemwise, CudaNdarrayType, GpuOp
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
@@ -234,11 +235,12 @@ class PycudaElemwiseSourceModuleOp(GpuOp):
         c_code = self.scalar_op.c_code(out_node, "some_name",
                                        tuple([n + "[i]" for n in in_name]),
                                        tuple(n + "[i]" for n in out_name), {})
-        c_code_param = ", ".join([_replace_npy_types(var.type.dtype_specs()[1]) + " *" + name
-                                  for var, name in (list(zip(inputs, in_name)) +
-                                                    list(zip(out_node.outputs,
-                                                        out_name)))] +
-                                 ["int size"])
+        c_code_param = ", ".join([
+            _replace_npy_types(var.type.dtype_specs()[1]) + " *" + name
+                               for var, name in chain(izip(inputs, in_name),
+                                                      izip(out_node.outputs,
+                                                           out_name))
+        ] + ["int size"])
         mod = SourceModule("""
   __global__ void %s(%s)
   {
@@ -324,10 +326,12 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
         c_code = self.scalar_op.c_code(node, "some_name",
                                        tuple([n + "[i]" for n in in_name]),
                                        tuple(n + "[i]" for n in out_name), {})
-        c_code_param = ", ".join([_replace_npy_types(var.type.dtype_specs()[1]) + " *" + name
-                                  for var, name in
-                                  list(zip(node.inputs, in_name)) +
-                                  list(zip(node.outputs, out_name))] + ["int size"])
+        c_code_param = ", ".join(
+            [_replace_npy_types(var.type.dtype_specs()[1]) + " *" + name
+             for var, name in chain(izip(node.inputs, in_name),
+                                    izip(node.outputs, out_name))]
+            + ["int size"])
+
         mod = SourceModule("""
   __global__ void %s(%s)
   {
