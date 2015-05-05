@@ -29,14 +29,15 @@ class BlasOp(HideC):
 
     def c_support_code(self):
         return """
-PyGpuArray *gpublas_try_copy(PyGpuArray *out, PyGpuArray *y)
+PyGpuArrayObject *gpublas_try_copy(PyGpuArrayObject *out,
+                                   PyGpuArrayObject *y) {
   if (out &&
       GpuArray_CHKFLAGS(&out->ga, GA_CARRAY) &&
       theano_size_check(out, PyGpuArray_NDIM(y),
                         PyGpuArray_DIMS(y),
                         y->ga.typecode)) {
     if (pygpu_move(out, y)) {
-      Py_XDECREF(%(out)s)
+      Py_XDECREF(out);
       return NULL;
     }
   } else {
@@ -264,7 +265,7 @@ class GpuDot22(BlasOp, Dot22):
         dims[1] = PyGpuArray_DIMS(%(B)s)[1];
 
         if (theano_prep_output(&%(out)s, 2, dims, %(typecode)s, GA_C_ORDER,
-                              pygpu_default_context()))
+                              pygpu_default_context())) {
             %(fail)s
         }
 
@@ -283,7 +284,7 @@ class GpuDot22(BlasOp, Dot22):
         return code
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def c_header_dirs(self):
         ret = super(GpuDot22, self).c_header_dirs()
