@@ -461,9 +461,10 @@ def local_assert_no_cpu_op(node):
 
     return None
 
-#Register the local_assert_no_cpu_op:
-assert_no_cpu_op = theano.tensor.opt.in2out(local_assert_no_cpu_op, name='assert_no_cpu_op')
-# 48.7 is after specialize device
+# Register the local_assert_no_cpu_op:
+assert_no_cpu_op = theano.tensor.opt.in2out(local_assert_no_cpu_op,
+                                            name='assert_no_cpu_op')
+# 49.2 is after device specialization & fusion optimizations for last transfers
 theano.compile.optdb.register('assert_no_cpu_op', assert_no_cpu_op, 49.2)
 
 
