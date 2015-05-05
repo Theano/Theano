@@ -3587,6 +3587,53 @@ class T_Join_and_Split(unittest.TestCase):
         utt.verify_grad(lambda a, b: join(0, a, b), [v, 2 * v], mode=self.mode)
         utt.verify_grad(lambda a, b: join(1, a, b), [v, 2 * v], mode=self.mode)
 
+    def test_join_negative_axis_grad(self):
+        """Tests for gradient of join op with negative axis."""
+
+        # Test for one dimensional vectors
+        x1 = tensor.vector(dtype=self.floatX)
+        c1 = tensor.concatenate([x1, x1], axis=-1).sum()
+        gx = tensor.grad(c1, wrt=[x1])
+        f = theano.function([x1], gx, mode=self.mode)
+        x_val = numpy.random.randn(5).astype(self.floatX)
+        assert numpy.allclose(f(x_val), numpy.tile(2., x_val.shape))
+
+        # Test for 2d arrays
+        X2 = tensor.matrix(dtype=self.floatX)
+        c2 = tensor.concatenate([X2, X2], axis=-1).sum()
+        gX = tensor.grad(c2, wrt=[X2])
+        f = theano.function([X2], gX, mode=self.mode)
+        X_val2 = numpy.random.randn(5, 4).astype(self.floatX)
+        assert numpy.allclose(f(X_val2), numpy.tile(2., X_val2.shape))
+
+        # Test for 3d tensors
+        X3 = tensor.tensor3(dtype=self.floatX)
+        c3 = tensor.concatenate([X3, X3], axis=-1).sum()
+        gX = tensor.grad(c3, wrt=[X3])
+        f = theano.function([X3], gX, mode=self.mode)
+        X_val3 = numpy.random.randn(5, 4, 3).astype(self.floatX)
+        assert numpy.allclose(f(X_val3), numpy.tile(2., X_val3.shape))
+
+        # Raise type error if tensors do not match on negative axis
+        try:
+            c = tensor.concatenate([X2, X3], axis=-1).sum()
+            gX2, gX3 = tensor.grad(c, wrt[X2, X3])
+            f = theano.function([X2, X3], [gX2, gX3], mode=self.mode)
+            f(X_val2, X_val3)
+            assert False
+        except TypeError:
+            pass
+
+        # Raise value error if negative axis wraps around
+        try:
+            c = tensor.concatenate([x1, x1], axis=-3).sum()
+            gx = tensor.grad(c, wrt=[x1])
+            f = theano.function([x1], gx, mode=self.mode)
+            f(x_val)
+            assert False
+        except ValueError:
+            pass
+
     def test_vector_len(self):
         x = lscalar('x')
         y = dscalar('y')

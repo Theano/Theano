@@ -3404,6 +3404,31 @@ class Join(Op):
 
         """
         axis, tensors = axis_and_tensors[0], axis_and_tensors[1:]
+
+        # Fix the axis if it is negative, since it crashes with fast_run
+        # Axis can be a constant
+        if not isinstance(axis, int):
+            try:
+
+                # Note : `get_scalar_constant_value` returns a ndarray not
+                # an int
+                if int(get_scalar_constant_value(axis)) < 0:
+                    axis += tensors[0].ndim
+
+            except NotScalarConstantError:
+
+                # Axis can be a tensor variable
+                axis = theano.tensor.switch(
+                           theano.tensor.lt(
+                               axis, as_tensor_variable(0)),
+                           axis + as_tensor_variable(tensors[0].ndim),
+                           axis)
+
+        # Axis can be integer
+        else:
+            if axis < 0:
+                axis += tensors[0].ndim
+
         if not tensors:
             raise ValueError('Cannot join an empty list of tensors')
         as_tensor_variable_args = [as_tensor_variable(x) for x in tensors]
