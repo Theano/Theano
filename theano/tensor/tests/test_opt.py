@@ -3108,20 +3108,45 @@ def test_local_fill_useless():
     f(m_, x_)
 
 
-def test_local_useless_elemwise_comparison():
-    # TODO: test each case individually.
-    # The following case is what made me discover those cases.
-    X = T.matrix('X')
-    Y = T.vector('Y')
-    X_sum, updates = theano.scan(fn=lambda x: x.sum(),
-                                 outputs_info=None,
-                                 sequences=[X],
-                                 non_sequences=None)
-    Z = X_sum + Y
-    theano.printing.debugprint(Z)
-    mode = theano.compile.get_default_mode().excluding('fusion')
-    f = theano.function([X, Y], Z, mode=mode)
-    theano.printing.debugprint(f, print_type=True)
+def assert_eqs_const(topo, val):
+    elem = topo[0]
+    assert len(topo) == 1
+    assert elem.op == deep_copy_op
+    assert len(elem.inputs) == 1
+    assert isinstance(elem.inputs[0], T.TensorConstant)
+    assert T.extract_constant(elem.inputs[0]) == val
+
+
+class Test_local_useless_elemwise_comparison(unittest.TestCase):
+    def test_local_useless_elemwise_comparison(self):
+        # TODO: test each case individually.
+        # The following case is what made me discover those cases.
+        X = T.matrix('X')
+        Y = T.vector('Y')
+        X_sum, updates = theano.scan(fn=lambda x: x.sum(),
+                                     outputs_info=None,
+                                     sequences=[X],
+                                     non_sequences=None)
+        Z = X_sum + Y
+        theano.printing.debugprint(Z)
+        mode = theano.compile.get_default_mode().excluding('fusion')
+        f = theano.function([X, Y], Z, mode=mode)
+        theano.printing.debugprint(f, print_type=True)
+
+    def test_inequality_with_self(self):
+        x = T.scalar('x', dtype=config.floatX)
+
+        f = theano.function([x], T.lt(x, x))
+        assert_eqs_const(f.maker.fgraph.toposort(), 0)
+
+        f = theano.function([x], T.le(x, x))
+        assert_eqs_const(f.maker.fgraph.toposort(), 1)
+
+        f = theano.function([x], T.gt(x, x))
+        assert_eqs_const(f.maker.fgraph.toposort(), 0)
+
+        f = theano.function([x], T.ge(x, x))
+        assert_eqs_const(f.maker.fgraph.toposort(), 1)
 
 
 class Test_local_useless_alloc(unittest.TestCase):
@@ -3896,28 +3921,30 @@ class T_useless_elemwise(unittest.TestCase):
         assert len(topo) == 1
         assert topo[0].op == deep_copy_op
 
-    def assert_eqs_const(self, topo, val):
-        elem = topo[0]
-        assert len(topo) == 1
-        assert elem.op == deep_copy_op
-        assert len(elem.inputs) == 1
-        assert isinstance(elem.inputs[0], T.TensorConstant)
-        assert T.extract_constant(elem.inputs[0]) == val
-
     def assert_identity(self, f):
         topo = f.maker.fgraph.toposort()
         assert topo[0].op == deep_copy_op
-        x_val = numpy.random.randint(256)
+        x_val = -128
+        assert f(x_val) == x_val
+        x_val = -1
+        assert f(x_val) == x_val
+        x_val = 0
+        assert f(x_val) == x_val
+        x_val = 1
+        assert f(x_val) == x_val
+        x_val = 127
+        assert f(x_val) == x_val
+        x_val = numpy.random.randint(255)-128
         assert f(x_val) == x_val
 
     def test_and(self):
-        x = T.scalar('x', dtype='int64')
+        x = T.scalar('x', dtype='int8')
 
         f = theano.function([x], T.and_(x, 0), mode=self.mode)
-        self.assert_eqs_const(f.maker.fgraph.toposort(), 0)
+        assert_eqs_const(f.maker.fgraph.toposort(), 0)
 
         f = theano.function([x], T.and_(0, x), mode=self.mode)
-        self.assert_eqs_const(f.maker.fgraph.toposort(), 0)
+        assert_eqs_const(f.maker.fgraph.toposort(), 0)
 
         f = theano.function([x], T.and_(x, 1), mode=self.mode)
         self.assert_identity(f)
@@ -3926,13 +3953,13 @@ class T_useless_elemwise(unittest.TestCase):
         self.assert_identity(f)
 
     def test_or(self):
-        x = T.scalar('x', dtype='int64')
+        x = T.scalar('x', dtype='int8')
 
         f = theano.function([x], T.or_(x, 1), mode=self.mode)
-        self.assert_eqs_const(f.maker.fgraph.toposort(), 1)
+        assert_eqs_const(f.maker.fgraph.toposort(), 1)
 
         f = theano.function([x], T.or_(1, x), mode=self.mode)
-        self.assert_eqs_const(f.maker.fgraph.toposort(), 1)
+        assert_eqs_const(f.maker.fgraph.toposort(), 1)
 
         f = theano.function([x], T.or_(x, 0), mode=self.mode)
         self.assert_identity(f)
@@ -3941,10 +3968,10 @@ class T_useless_elemwise(unittest.TestCase):
         self.assert_identity(f)
 
     def test_xor(self):
-        x = T.scalar('x', dtype='int64')
+        x = T.scalar('x', dtype='int8')
 
         f = theano.function([x], T.xor(x, x), mode=self.mode)
-        self.assert_eqs_const(f.maker.fgraph.toposort(), 0)
+        assert_eqs_const(f.maker.fgraph.toposort(), 0)
 
 
 class T_cast_cast(unittest.TestCase):

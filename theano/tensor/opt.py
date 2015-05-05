@@ -4050,7 +4050,7 @@ def local_useless_elemwise_comparison(node):
     # Elemwise[{LT,GT}](X, X) -> Elemwise[zeros](X)
     if (isinstance(node.op.scalar_op, (scalar.LT, scalar.GT)) and
         node.inputs[0] is node.inputs[1]):
-        return [T.zeros_like(node.outputs[0])]
+        return [T.zeros_like(node.outputs[0], dtype=node.outputs[0].type.dtype)]
     # Elemwise[{LE,GE}](X, X) -> Elemwise[ones](X)
     if (isinstance(node.op.scalar_op, (scalar.LE, scalar.GE)) and
         node.inputs[0] is node.inputs[1]):
