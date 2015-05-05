@@ -285,7 +285,7 @@ class GpuDot22(BlasOp, Dot22):
     def c_code_cache_version(self):
         return (2,)
 
-    def c_header_dir(self):
+    def c_header_dirs(self):
         ret = super(GpuDot22, self).c_header_dirs()
         return ret + [os.path.dirname(__file__)]
 
