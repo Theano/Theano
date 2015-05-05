@@ -1,7 +1,7 @@
-from __future__ import print_function
 """
 Defines Linkers that deal with C implementations.
 """
+from __future__ import print_function
 
 # Python imports
 from copy import copy

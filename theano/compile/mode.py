@@ -1,6 +1,6 @@
-from __future__ import print_function
 """WRITEME
 """
+from __future__ import print_function
 import logging
 import warnings
 from textwrap import dedent

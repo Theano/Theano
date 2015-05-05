@@ -1,4 +1,3 @@
-from __future__ import print_function
 """
 If you have two expressions
 containing unification variables, these expressions can be "unified"
@@ -8,6 +7,7 @@ if there exists an assignment to all unification variables such that
     [A, [1, 2]] cannot be unified because there is no value for A that
     satisfies the constraints. That's useful for pattern matching.
 """
+from __future__ import print_function
 from copy import copy
 
 from theano.compat import partial

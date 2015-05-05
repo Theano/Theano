@@ -1,7 +1,8 @@
-from __future__ import print_function
 """Driver of graph construction, optimization, and linking.
 
 """
+from __future__ import print_function
+
 __docformat__ = "restructuredtext en"
 
 import copy

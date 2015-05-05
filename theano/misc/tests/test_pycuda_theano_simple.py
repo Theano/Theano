@@ -1,10 +1,10 @@
-from __future__ import print_function
 """
 This file is an example of view the memory allocated by pycuda in a GpuArray
 in a CudaNdarray to be able to use it in Theano.
 
 This also serve as a test for the function: cuda_ndarray.from_gpu_pointer
 """
+from __future__ import print_function
 
 import sys
 

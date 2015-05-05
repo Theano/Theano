@@ -1,6 +1,6 @@
-from __future__ import print_function
 """ test code snippet in the Theano tutorials.
 """
+from __future__ import print_function
 
 import os
 import shutil

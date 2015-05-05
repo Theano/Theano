@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from __future__ import print_function
-
 """IPython Test Suite Runner.
 """
+from __future__ import print_function
 
 # The tests can't even run if nose isn't available, so might as well  give the
 # user a civilized error message in that case.

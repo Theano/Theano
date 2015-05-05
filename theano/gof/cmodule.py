@@ -1,6 +1,6 @@
-from __future__ import print_function
 """Generate and compile C modules for Python,
 """
+from __future__ import print_function
 import atexit
 import cPickle
 import logging

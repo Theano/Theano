@@ -1,8 +1,8 @@
-from __future__ import print_function
 """
  Tests fof the lazy conditiona
 """
 
+from __future__ import print_function
 __docformat__ = 'restructedtext en'
 __authors__ = ("Razvan Pascanu ")
 __copyright__ = "(c) 2010, Universite de Montreal"

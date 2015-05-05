@@ -1,9 +1,4 @@
 #!/usr/bin/env python
-from __future__ import print_function
-
-__authors__ = "Olivier Delalleau, Pascal Lamblin, Eric Larsen"
-__contact__ = "delallea@iro"
-
 """
 This script should behave the same as the `nosetests` command.
 
@@ -16,6 +11,10 @@ disable that plugin.
 
 `run_tests_in_batch.py` will in turn call back this script in another process.
 """
+from __future__ import print_function
+
+__authors__ = "Olivier Delalleau, Pascal Lamblin, Eric Larsen"
+__contact__ = "delallea@iro"
 
 import logging
 _logger = logging.getLogger('theano.bin.theano-nose')

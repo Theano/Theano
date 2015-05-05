@@ -1,8 +1,8 @@
-from __future__ import print_function
 """Ops and optimizations: sigmoid, softplus
 
 These functions implement special cases of exp and log to improve numerical stability.
 """
+from __future__ import print_function
 
 import warnings
 from itertools import imap

@@ -1,4 +1,3 @@
-from __future__ import print_function
 """
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 WARNING
@@ -12,6 +11,7 @@ what you are doing!
 If you want to use a scalar variable in a Theano graph,
 you probably want to use theano.tensor.[c,z,f,d,b,w,i,l,]scalar!
 """
+from __future__ import print_function
 
 import math
 import warnings

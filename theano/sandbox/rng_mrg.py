@@ -1,4 +1,3 @@
-from __future__ import print_function
 """
 Implementation of MRG31k3p random number generator for Theano
 
@@ -6,6 +5,7 @@ Generator code in SSJ package (L'Ecuyer & Simard)
 http://www.iro.umontreal.ca/~simardr/ssj/indexe.html
 
 """
+from __future__ import print_function
 import warnings
 
 import numpy

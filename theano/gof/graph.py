@@ -1,4 +1,3 @@
-from __future__ import print_function
 """
 Node classes (`Apply`, `Variable`) and expression graph algorithms.
 
@@ -6,6 +5,7 @@ To read about what theano graphs are from a user perspective, have a look at
 `graph.html <../doc/graph.html>`__.
 
 """
+from __future__ import print_function
 
 __docformat__ = "restructuredtext en"
 

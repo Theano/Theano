@@ -1,6 +1,6 @@
-from __future__ import print_function
 """Provide CudaNdarrayType
 """
+from __future__ import print_function
 import os
 import copy_reg
 import warnings

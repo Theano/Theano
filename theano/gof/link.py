@@ -1,5 +1,5 @@
-from __future__ import print_function
 """WRITEME"""
+from __future__ import print_function
 from copy import copy, deepcopy
 from sys import getsizeof
 import StringIO

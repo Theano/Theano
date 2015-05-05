@@ -1,5 +1,5 @@
-from __future__ import print_function
 """Driver for gradient calculations."""
+from __future__ import print_function
 import __builtin__
 from itertools import izip
 import logging

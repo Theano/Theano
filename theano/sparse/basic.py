@@ -1,9 +1,9 @@
-from __future__ import print_function
 """Classes for handling sparse matrices.
 
 To read about different sparse formats, see
 http://www-users.cs.umn.edu/~saad/software/SPARSKIT/paper.ps
 """
+from __future__ import print_function
 
 # TODO
 # Automatic methods for determining best sparse format?

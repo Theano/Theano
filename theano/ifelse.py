@@ -1,4 +1,3 @@
-from __future__ import print_function
 """
 IfElse introduces lazy evaluation in Theano (coupled with the CVM/VM
 linkers). It resembles the if clause of any programming language, that
@@ -11,6 +10,7 @@ which value to report. Note also that `switch` is an elemwise operation (so
 it picks each entry of a matrix according to the condition) while `ifelse`
 is a global operation with a scalar condition.
 """
+from __future__ import print_function
 from copy import deepcopy
 from itertools import izip
 import logging

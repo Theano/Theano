@@ -1,4 +1,3 @@
-from __future__ import print_function
 """Ops and optimizations for using BLAS calls
 
 BLAS = Basic Linear Algebra Subroutines
@@ -124,6 +123,7 @@ instead. This optimization is `local_gemm_to_gemv`.
 
 
 """
+from __future__ import print_function
 import copy
 import logging
 import os

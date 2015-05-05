@@ -1,5 +1,5 @@
-from __future__ import print_function
 """Define random number Type (`RandomStateType`) and Op (`RandomFunction`)."""
+from __future__ import print_function
 __docformat__ = "restructuredtext en"
 import sys
 from copy import copy

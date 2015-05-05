@@ -1,9 +1,9 @@
-from __future__ import print_function
 """
 This module provides utility functions for the Scan Op
 
 See scan.py for details on scan
 """
+from __future__ import print_function
 __docformat__ = 'restructedtext en'
 __authors__ = ("Razvan Pascanu "
                "Frederic Bastien "

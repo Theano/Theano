@@ -1,7 +1,7 @@
-from __future__ import print_function
 """
 Tensor optimizations addressing the ops in basic.py
 """
+from __future__ import print_function
 # TODO: intelligent merge for mul/add
 # TODO: 0*x -> 0
 

@@ -1,10 +1,9 @@
-from __future__ import print_function
-
 """
 fg.py: fg stands for FunctionGraph
 Contains the FunctionGraph class and exception
 types that it can raise
 """
+from __future__ import print_function
 import StringIO
 import sys
 import time

@@ -1,6 +1,6 @@
-from __future__ import print_function
 """ProfileStats object for runtime and memory profiling.
 """
+from __future__ import print_function
 #
 # TODO: measure memory usage like ProfileMode did
 # TODO: put the optimization tips into a tips section??

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
+from __future__ import print_function
 __docformat__ = 'restructuredtext en'
 
-from __future__ import print_function
 import difflib
 import operator
 import os

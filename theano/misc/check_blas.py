@@ -5,6 +5,7 @@
 # C=a*C+dot(A,B)*b
 # A,B,C matrix
 # a,b scalar
+from __future__ import print_function
 
 s = """
 result for shapes=(2000,2000) and iters=100
@@ -13,7 +14,6 @@ GTX 285, 6.84s
 GTX 480 5.83s
 """
 
-from __future__ import print_function
 import os
 import sys
 import time

@@ -1,9 +1,9 @@
-from __future__ import print_function
 """Pretty-printing (pprint()), the 'Print' Op, debugprint() and pydotprint().
 
 They all allow different way to print a graph or the result of an Op
 in a graph(Print Op)
 """
+from __future__ import print_function
 from copy import copy
 import logging
 import os

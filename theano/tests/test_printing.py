@@ -1,7 +1,7 @@
-from __future__ import print_function
 """
 Tests of printing functionality
 """
+from __future__ import print_function
 import logging
 
 from nose.plugins.skip import SkipTest

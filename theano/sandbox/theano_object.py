@@ -1,9 +1,9 @@
-from __future__ import print_function
 """DRAFT: TheanoObject
 
 N.B. the gotcha with this design is listed in the documentation of `TheanoObject`
 
 """
+from __future__ import print_function
 import theano
 from theano import tensor
 import numpy

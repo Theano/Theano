@@ -1,8 +1,8 @@
-from __future__ import print_function
 """
 Defines the base class for optimizations as well as a certain
 amount of useful generic optimization tools.
 """
+from __future__ import print_function
 
 import copy
 import logging
