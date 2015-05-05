@@ -22,9 +22,9 @@ def max_pool2D(*args, **kwargs):
 
 def max_pool_2d_same_size(input, patch_size):
     """
-    Takes as input a 4-D tensor. It sets all non maximum values 
-    of non-overlapping patches of size (patch_size[0],patch_size[1]) to zero, 
-    keeping only the maximum values. The output has the same dimensions as 
+    Takes as input a 4-D tensor. It sets all non maximum values
+    of non-overlapping patches of size (patch_size[0],patch_size[1]) to zero,
+    keeping only the maximum values. The output has the same dimensions as
     the input.
 
     :type input: 4-D theano tensor of input images.
@@ -348,7 +348,7 @@ class DownsampleFactorMax(Op):
             }
         if (%(ignore_border)s)
         {
-            
+
             // '/' in C is different from '/' in python
             if (r - %(ds0)s < 0)
             {

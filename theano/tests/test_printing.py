@@ -173,11 +173,11 @@ def test_debugprint():
     debugprint(G, file=s, ids='int')
     s = s.getvalue()
     # The additional white space are needed!
-    reference = """Elemwise{add,no_inplace} [@0] ''   
- |Elemwise{add,no_inplace} [@1] 'C'   
+    reference = """Elemwise{add,no_inplace} [@0] ''
+ |Elemwise{add,no_inplace} [@1] 'C'
  | |A [@2]
  | |B [@3]
- |Elemwise{add,no_inplace} [@4] ''   
+ |Elemwise{add,no_inplace} [@4] ''
    |D [@5]
    |E [@6]
 """
@@ -193,11 +193,11 @@ def test_debugprint():
     debugprint(G, file=s, ids='CHAR')
     s = s.getvalue()
     # The additional white space are needed!
-    reference = """Elemwise{add,no_inplace} [@A] ''   
- |Elemwise{add,no_inplace} [@B] 'C'   
+    reference = """Elemwise{add,no_inplace} [@A] ''
+ |Elemwise{add,no_inplace} [@B] 'C'
  | |A [@C]
  | |B [@D]
- |Elemwise{add,no_inplace} [@E] ''   
+ |Elemwise{add,no_inplace} [@E] ''
    |D [@F]
    |E [@G]
 """
@@ -213,9 +213,9 @@ def test_debugprint():
     debugprint(G, file=s, ids='CHAR', stop_on_name=True)
     s = s.getvalue()
     # The additional white space are needed!
-    reference = """Elemwise{add,no_inplace} [@A] ''   
- |Elemwise{add,no_inplace} [@B] 'C'   
- |Elemwise{add,no_inplace} [@C] ''   
+    reference = """Elemwise{add,no_inplace} [@A] ''
+ |Elemwise{add,no_inplace} [@B] 'C'
+ |Elemwise{add,no_inplace} [@C] ''
    |D [@D]
    |E [@E]
 """
@@ -231,13 +231,13 @@ def test_debugprint():
     debugprint(G, file=s, ids='')
     s = s.getvalue()
     # The additional white space are needed!
-    reference = """Elemwise{add,no_inplace}  ''   
- |Elemwise{add,no_inplace}  'C'   
- | |A 
- | |B 
- |Elemwise{add,no_inplace}  ''   
-   |D 
-   |E 
+    reference = """Elemwise{add,no_inplace}  ''
+ |Elemwise{add,no_inplace}  'C'
+ | |A
+ | |B
+ |Elemwise{add,no_inplace}  ''
+   |D
+   |E
 """
     if s != reference:
         print('--' + s + '--')

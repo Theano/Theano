@@ -638,7 +638,7 @@ def poisson(random_state, size=None, lam=1.0, ndim=None, dtype='int64'):
     Draw samples from a Poisson distribution.
 
     The Poisson distribution is the limit of the Binomial distribution for large N.
-    
+
     :param lam: float or ndarray-like of the same shape as size parameter
         Expectation of interval, should be >= 0.
 
@@ -650,7 +650,7 @@ def poisson(random_state, size=None, lam=1.0, ndim=None, dtype='int64'):
     size or ndim must be given
     """
     lam = tensor.as_tensor_variable(lam)
-    
+
     ndim, size, bcast = _infer_ndim_bcast(ndim, size)
 
     op = RandomFunction("poisson", tensor.TensorType(dtype=dtype,
@@ -926,7 +926,7 @@ class RandomStreamsBase(object):
         """
         return self.gen(random_integers, size, low, high, ndim=ndim,
                         dtype=dtype)
-    
+
     def choice(self, size=None, a=2, replace=True, p=None, ndim=None,
                dtype='int64'):
         """
@@ -943,7 +943,7 @@ class RandomStreamsBase(object):
     def poisson(self, size=None, lam=None, ndim=None, dtype='int64'):
         """
         Draw samples from a Poisson distribution.
-  
+
         The Poisson distribution is the limit of the Binomial distribution for large N.
 
         If the size argument is ambiguous on the number of dimensions,

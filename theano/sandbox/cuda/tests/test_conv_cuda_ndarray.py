@@ -653,7 +653,7 @@ class TestConv2DGPU(unittest.TestCase):
 
 class TestConvWithPadding(object):
     """test conv ops that support arbitrary padding via border_mode
-    note that in order to make the yield work, we can not subclass from 
+    note that in order to make the yield work, we can not subclass from
     unittest.TestCase
     """
 

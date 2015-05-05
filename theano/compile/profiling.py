@@ -709,7 +709,7 @@ class ProfileStats(object):
 
         def count_running_memory(order, fgraph, nodes_mem):
             """
-            Calculate memory with specific node order 
+            Calculate memory with specific node order
             Return a list including the following values
             1.  node_memory_size
                 Sum of the size of all variables that actually allocate
@@ -717,10 +717,10 @@ class ProfileStats(object):
             2. running_memory_size
                 The memory allocated after the current apply node
             3. running_max_memory_size
-                The maximum of running_memory_size during the function   
+                The maximum of running_memory_size during the function
             4.  node_memory_saved_by_view
                 The sum of memory saved by returning view instead of new
-                allocation 
+                allocation
             5.  node_memory_saved_by_inplace
                 The sum of memory saved by reusing the input instead of
                 new allocation
