@@ -5,6 +5,7 @@ import copy
 import sys
 import time
 import warnings
+import pdb
 
 import numpy
 
@@ -444,6 +445,27 @@ def local_gpu_dot_to_dot22(node):
             return [host_from_gpu(GpuReshape(1)(gpu_dot22(gpu_x, gpu_y),
                                                 shape_out))]
     return False
+
+@local_optimizer(None)
+def local_assert_no_cpu_op(node):
+    if not isinstance(node.op, GpuOp) and all([var.owner and isinstance(var.owner.op,
+        HostFromGpu) for var in node.inputs]) and any([[c for c in var.clients
+                if isinstance(c[0].op, GpuFromHost)] for var in node.outputs]):
+            if config.assert_no_cpu_op == "warn":
+                _logger.warning(("CPU op %s is detected in the computational"
+                                 " graph") % node)
+            elif config.assert_no_cpu_op == "raise":
+                raise AssertionError("The op %s is on CPU." % node)
+            elif config.assert_no_cpu_op == "pdb":
+                pdb.set_trace()
+
+    return None
+
+# Register the local_assert_no_cpu_op:
+assert_no_cpu_op = theano.tensor.opt.in2out(local_assert_no_cpu_op,
+                                            name='assert_no_cpu_op')
+# 49.2 is after device specialization & fusion optimizations for last transfers
+theano.compile.optdb.register('assert_no_cpu_op', assert_no_cpu_op, 49.2)
 
 
 @register_opt()
@@ -1914,6 +1936,7 @@ gpu_inplace_elemwise_optimizer = tensor.opt.inplace_elemwise_optimizer_op(
 # It still will be run in fast_run with device=gpu with the current tag.
 optdb.register('gpu_inplace_elemwise_opt', gpu_inplace_elemwise_optimizer, 75,
                'fast_run', 'inplace', 'gpu_inplace')
+
 
 register_opt()(tensor.opt.local_remove_useless_assert)
 

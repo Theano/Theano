@@ -5,6 +5,7 @@ import unittest
 import numpy
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
+from nose.tools import assert_raises
 
 import theano
 from theano.compile.pfunc import pfunc
@@ -89,6 +90,35 @@ def test_local_gpu_contiguous_gpu_contiguous():
                      if isinstance(node.op, basic_ops.GpuContiguous)])
     assert 1 == len([node for node in f2.maker.fgraph.toposort()
                      if isinstance(node.op, basic_ops.GpuContiguous)])
+
+
+def test_local_assert_no_cpu_op():
+    numpy.random.seed(1)
+    m = numpy.random.uniform(-1, 1, (10, 10)).astype("float32")
+    ms = cuda.shared_constructor(m, name="m_shared")
+    out = theano.tensor.tanh(ms).dot(ms.T)
+
+    mode_local_assert = mode_with_gpu.including("assert_no_cpu_op")
+    mode_local_assert = mode_local_assert.excluding("local_gpu_elemwise_0")
+    mode_local_assert = mode_local_assert.excluding("local_gpu_elemwise_1")
+
+    old = config.assert_no_cpu_op
+
+    # If the flag is raise
+    try:
+        config.assert_no_cpu_op = 'raise'
+
+        assert_raises(AssertionError, theano.function,
+                        [], out, mode=mode_local_assert)
+    finally:
+        config.assert_no_cpu_op = old
+
+    # If the flag is ignore
+    try:
+        config.assert_no_cpu_op = 'ignore'
+        theano.function([], out, mode=mode_local_assert)
+    finally:
+        config.assert_no_cpu_op = old
 
 
 def test_int_pow():
