@@ -744,13 +744,18 @@ gpu_softmax_with_bias = GpuSoftmaxWithBias()
 
 import theano
 from theano.gof import local_optimizer
-from theano.sandbox.cuda import CudaNdarrayType
-from theano.sandbox.cuda.blocksparse import sparse_block_gemv_ss
+from theano.sandbox.cuda import CudaNdarrayType, register_opt
+# from theano.sandbox.cuda.blocksparse import sparse_block_gemv_ss, sparse_block_gemv_ss_inplace
 import theano.tensor as T
 from theano.tensor import discrete_dtypes
+from theano.sandbox.cuda.basic_ops import HostFromGpu, GpuFromHost, \
+    gpu_from_host, host_from_gpu
+from theano.sandbox.cuda import register_opt as register_gpu
 
 
-class SparseBlockDot(Op):
+
+
+class SparseBlockGemv(Op):
     """
     This op computes the dot product of specified pieces of vectors
     and matrices, returning pieces of vectors.
@@ -762,9 +767,7 @@ class SparseBlockDot(Op):
     The i and j are taken from the inputIdx and outputIdx lists
     respectively.
 
-    This should not be directly called since the interface is subject
-    to change without notice.  Use the sparse_block_dot_SS() function
-    for a stable interface.
+
     """
     def __init__(self, inplace=False):
         self.inplace = False
@@ -821,12 +824,30 @@ class SparseBlockDot(Op):
         return Apply(self, [o, W, h, inputIdx, outputIdx], [o.type()])
 
     def perform(self, node, inp, out_):
-        raise NotImplementedError('Optimization of SparseBlock failed.')
+        raise NotImplementedError('Optimization of SparseBlockGemv failed.')
+
+    def grad(self, inputs, output_gradients):
+        meta_grad_op = MetaGradSparseBlockGemv(output_gradients)
+        return [meta_grad_op(inp) for inp in inputs]
 
 
-def sparse_block_dot_cpu(o, W, h, inputIdx, outputIdx):
+class MetaGradSparseBlockGemv(Op):
+    props = ('known_grads',)
+
+    def __init__(self, known_grads):
+        self.known_grads = known_grads
+
+    def make_node(self, inp):
+        return Apply(self, [inp], [inp.type()])
+
+    def perform(self, node, inp, out_):
+        raise NotImplementedError('Optimization of MetaGradSparseBlockGemv '
+                                  'failed.')
+
+
+def sparse_block_gemv_cpu(o, W, h, inputIdx, outputIdx):
     """
-    Creates a graph for the sparse block dot operation. Check SparseBlockDot's
+    Creates a graph for the sparse block dot operation. Check SparseBlockGemv's
     docstring for information about the arguments.
     """
     def _outer_loop_over_outputIdx(i, W, h, inputIdx, outputIdx):
@@ -849,15 +870,171 @@ def sparse_block_dot_cpu(o, W, h, inputIdx, outputIdx):
     return T.set_subtensor(o[:, :, :], b.dimshuffle(1, 0, 2))
 
 
-@local_optimizer([SparseBlockDot])
-def local_sparse_block_dot_device(node):
-    is_running_on_gpu = False
-    for inp in node.inputs:
-        if isinstance(inp, CudaNdarrayType):
-            is_running_on_gpu = True
-            break
+@register_opt()
+@local_optimizer([SparseBlockGemv])
+def local_sparse_block_gemv_device(node):
+    """
+    Local optimizer that replaces the SparseBlockGemv metaop by either:
+        - the cpu graph defined in sparse_block_gemv_cpu if the gpu is disabled.
+        - the gpu op sparse_block_gemv_ss if the gpu is enabled. In that case,
+        the potential HostFromGpu inputs and the potential GpuFromHost output
+        are removed.
+    """
+    is_running_on_gpu = any(isinstance(inp.op, HostFromGpu)
+                            for inp in node.inputs)
 
-    if is_running_on_gpu:
-        return [sparse_block_gemv_ss(*node.inputs)] # Todo: the name of this op should include gpu. What does gemv_ss stand for?
-    else:
-        return [sparse_block_dot_cpu(*node.inputs)]
+    if not is_running_on_gpu:
+        return [sparse_block_gemv_cpu(*node.inputs)]
+
+    # The code is running on gpu
+    # SparseBlockGemv(HostFromGPU(PreviousGPUNode)) ->
+    # SparseBlockGemv_gpu(PreviousGPUNode)
+    inputs = []
+    for inp in node.inputs:
+        if isinstance(inp.op, HostFromGpu):
+            inputs.append(inp.inputs[0])
+        else:
+            inputs.append(inp)
+
+    return
+    # if node.op.inplace:
+    #     replacement = sparse_block_gemv_ss_inplace(*inputs)
+    # else:
+    #     replacement = sparse_block_gemv_ss(*inputs)
+    #
+    # if isinstance(node.owner.op, GpuFromHost):
+    #     return [node.owner.owner.op(replacement)]
+    # else:
+    #     return [replacement]
+
+
+@register_opt()
+@local_optimizer([MetaGradSparseBlockGemv])
+def local_sparse_block_gemv_cpu_grad(node):
+    """
+    Local optimizer that replaces MetaGradSparseBlockGemv nodes by the gradient
+    of the graph described by sparse_block_gemv_cpu
+    """
+    true_grad = T.grad(None, node.inputs, known_grads=node.op.known_grads)
+    return [true_grad]
+
+
+
+
+def sparse_block_gemv(W, h, inputIdx, b, outputIdx, inplace=False):
+    """
+    Compute the dot product (plus bias) of the specified pieces of vectors
+    and matrices.
+
+    Parameters
+    ----------
+    var: shape, comment
+    W: (iBlocks, oBlocks, iSize, oSize), weight matrix
+    h: (batch, iWin, iSize), input from lower layer (sparse)
+    inputIdx: (batch, iWin), indexes of the input blocks
+    b: (oBlocks, oSize), bias vector
+    outputIdx: (batch, oWin), indexes of the output blocks
+
+    returns (batch, oWin, oSize), dot(W[i, j], h[i]) + b[j]
+         but b[j] is only added once
+
+    Notation
+    --------
+    - `batch` is the number of examples in a minibatch (batch size).
+    - `iBlocks` is the total number of blocks in the input (from lower layer).
+    - `iSize` is the size of each of these input blocks.
+    - `iWin` is the number of blocks that will be used as inputs. Which blocks
+      will be used is specified in `inputIdx`.
+    - `oBlocks` is the number or possible output blocks.
+    - `oSize` is the size of each of these output blocks.
+    - `oWin` is the number of output blocks that will actually be computed.
+      Which blocks will be computed is specified in `outputIdx`.
+    """
+    assert inputIdx.ndim == h.ndim - 1
+    assert outputIdx.ndim == inputIdx.ndim
+    if h.ndim == 2:
+        h = h.dimshuffle('x', 0, 1)
+        inputIdx = inputIdx.dimshuffle('x', 0)
+        outputIdx = outputIdx.dimshuffle('x', 0)
+    return SparseBlockGemv(inplace)(b.take(outputIdx, axis=0), W, h,
+                                inputIdx, outputIdx)
+
+
+
+
+
+
+
+
+
+import theano.tests.unittest_tools as utt
+import numpy
+from numpy.random import randn
+
+
+
+def blocksparse_data():
+    nInputBlock = 128
+    nOutputBlock = 64
+    inputSize = 40
+    outputSize = 30
+    inputWindowSize = 7
+    outputWindowSize = 9
+    batchSize = 2
+
+    input = randn(batchSize, inputWindowSize, inputSize).astype('float32')
+    permutation = numpy.random.permutation
+    inputIndice = numpy.vstack(permutation(nInputBlock)[:inputWindowSize]
+                               for _ in range(batchSize))
+    outputIndice = numpy.vstack(permutation(nOutputBlock)[:outputWindowSize]
+                                for _ in range(batchSize))
+    weight = randn(nInputBlock, nOutputBlock,
+                   inputSize, outputSize).astype('float32')
+    bias = randn(nOutputBlock, outputSize).astype('float32')
+
+    return weight, input, inputIndice, bias, outputIndice
+
+
+def blocksparse(W, h, iIdx, b, oIdx):
+    o = b.take(oIdx, axis=0)
+
+    for b in range(o.shape[0]):
+        for j in range(o.shape[1]):
+            outputIdx = oIdx[b, j]
+
+            for i in range(h.shape[1]):
+                inputIdx = iIdx[b, i]
+                w = W[inputIdx, outputIdx]
+                # this below is a gemv I think
+                o[b, j, :] += numpy.dot(h[b, i], w)
+    return o
+
+
+from theano import FunctionGraph
+
+def test_blocksparse():
+    b = T.fmatrix()
+    W = T.ftensor4()
+    h = T.ftensor3()
+    iIdx = T.lmatrix()
+    oIdx = T.lmatrix()
+
+    o = sparse_block_gemv(W, h, iIdx, b, oIdx)
+
+    theano.printing.debugprint(o)
+
+    f = theano.function([W, h, iIdx, b, oIdx], o)
+
+    theano.printing.debugprint(f.maker.fgraph)
+
+    W_val, h_val, iIdx_val, b_val, oIdx_val = blocksparse_data()
+
+    th_out = f(W_val, h_val, iIdx_val, b_val, oIdx_val)
+    ref_out = blocksparse(W_val, h_val, iIdx_val, b_val, oIdx_val)
+
+    utt.assert_allclose(ref_out, th_out)
+
+
+
+if __name__ == '__main__':
+    test_blocksparse()
