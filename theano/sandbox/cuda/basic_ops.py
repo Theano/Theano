@@ -3041,24 +3041,6 @@ class GpuJoin(tensor.Join, GpuOp):
         as_tensor_variable_args = [as_cuda_ndarray_variable(x)
                                    for x in tensors]
 
-        # Get joining axis as int
-        axis_int = 0
-        if not isinstance(axis, int):
-            try:
-                # Note : `get_scalar_constant_value` returns a ndarray not
-                # an int
-                axis_int = int(tensor.get_scalar_constant_value(axis))
-
-            except tensor.basic.NotScalarConstantError:
-                pass
-        else:
-            axis_int = axis
-
-        if (axis_int < 0):
-            # Since all tensors must have the same number of dimensions,
-            # we simply add the number of dimensions for the first tensor
-            axis = axis + as_tensor_variable_args[0].ndim
-
         output_maker = \
                 lambda bcast: CudaNdarrayType(broadcastable=bcast)()
 
@@ -3071,6 +3053,12 @@ class GpuJoin(tensor.Join, GpuOp):
         axis, cndas = axis_and_tensors[0], axis_and_tensors[1:]
         # In case axis is numpy.int8 and has no __index__() method
         axis = int(axis)
+        ndim = tensors[0].ndim
+        if axis < -ndim:
+            raise IndexError("Join axis %d out of bounds [0, %d)" %
+                             (axis, ndim))
+        if axis < 0:
+            axis += ndim
 
         # compute size/shape
         width_sum = 0
@@ -3134,7 +3122,7 @@ class GpuJoin(tensor.Join, GpuOp):
 
         # getting the shapes of all the involved tensors (input[0]+out)
         str = """
-        const int axis = PyInt_AsLong((PyObject*)%(axis)s);
+        int axis = PyInt_AsLong((PyObject*)%(axis)s);
         const int nd = %(nd)s;
         int shape_out[nd];
         int width_sum = 0;
@@ -3150,9 +3138,22 @@ class GpuJoin(tensor.Join, GpuOp):
 
         """ % locals()
 
+        # Test negative axis
+        str += """
+        if( axis < -nd ){
+            PyErr_Format(PyExc_IndexError, 
+                         "Join axis %%d out of bounds [0, %%d)", axis, nd);
+            %(fail)s
+        }
+
+        if( axis < 0 ){
+            axis = axis + nd;
+        }
+        """ % locals()
+
         # getting the shapes of all the involved tensors (input[1:])
         # + check: all input tensors have same shape as final out
-        # execept for "axis" dimension
+        # except for "axis" dimension
         # shape_%(cdna)s[nd] is initialized before, to prevent following
         # error: jump to label __label_9 crosses initialization of
         # shape_%(cdna)s[nd]
@@ -3266,7 +3267,7 @@ class GpuJoin(tensor.Join, GpuOp):
         return str
 
     def c_code_cache_version(self):
-        return (5,)
+        return (6,)
 
 gpu_join = GpuJoin()
 

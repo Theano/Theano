@@ -3564,8 +3564,8 @@ class T_Join_and_Split(unittest.TestCase):
     def test_join_matrixV(self):
         """variable join axis"""
         v = numpy.array([[.1, .2, .3], [.4, .5, .6]], dtype=self.floatX)
-        a = self.shared(v.copy())
-        b = as_tensor_variable(v.copy())
+        a = self.shared(v)
+        b = as_tensor_variable(v)
         ax = lscalar()
         s = join(ax, a, b)
 
@@ -3586,6 +3586,75 @@ class T_Join_and_Split(unittest.TestCase):
 
         utt.verify_grad(lambda a, b: join(0, a, b), [v, 2 * v], mode=self.mode)
         utt.verify_grad(lambda a, b: join(1, a, b), [v, 2 * v], mode=self.mode)
+
+    def test_join_matrixV_negative_axis(self):
+        """variable join negative axis"""
+        v = numpy.array([[.1, .2, .3], [.4, .5, .6]], dtype=self.floatX)
+        a = self.shared(v)
+        b = as_tensor_variable(v)
+        ax = lscalar()
+        s = join(ax, a, b)
+
+        f = inplace_func([ax], [s], mode=self.mode)
+        topo = f.maker.fgraph.toposort()
+        assert [True for node in topo
+                if isinstance(node.op, type(self.join_op))]
+
+        want = numpy.array([[.1, .2, .3, .1, .2, .3],
+                            [.4, .5, .6, .4, .5, .6]])
+
+        got = f(-1)
+        assert numpy.allclose(got, want)
+
+        want = numpy.array([[.1, .2, .3], [.4, .5, .6],
+                            [.1, .2, .3], [.4, .5, .6]])
+        got = f(-2)
+        assert numpy.allclose(got, want)
+
+        try:
+            got = f(-3)
+            assert False
+        except IndexError:
+            pass
+
+    def test_join_matrixC_negative_axis(self):
+        """constant join negative axis"""
+        v = numpy.array([[.1, .2, .3], [.4, .5, .6]], dtype=self.floatX)
+        a = self.shared(v)
+        b = as_tensor_variable(v)
+
+        s = join(-1, a, b)
+        f = theano.function([], [s], mode=self.mode)
+        topo = f.maker.fgraph.toposort()
+        assert [True for node in topo
+                if isinstance(node.op, type(self.join_op))]
+
+        want = numpy.array([[.1, .2, .3, .1, .2, .3],
+                            [.4, .5, .6, .4, .5, .6]])
+
+        got = f()
+        assert numpy.allclose(got, want)
+
+        s = join(-2, a, b)
+        f = theano.function([], [s], mode=self.mode)
+        topo = f.maker.fgraph.toposort()
+        assert [True for node in topo
+                if isinstance(node.op, type(self.join_op))]
+
+        want = numpy.array([[.1, .2, .3], [.4, .5, .6],
+                            [.1, .2, .3], [.4, .5, .6]])
+
+        got = f()
+        assert numpy.allclose(got, want)
+
+        try:
+            s = join(-3, a, b)
+            assert False
+        except IndexError:
+            pass
+
+        utt.verify_grad(lambda a, b: join(-1, a, b), [v, 2 * v],
+                        mode=self.mode)
 
     def test_vector_len(self):
         x = lscalar('x')
