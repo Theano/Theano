@@ -2609,11 +2609,17 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
             # CudaNdarray __setitem__ doesn't do broadcast nor support
             # list of index.
             if y.ndim == x.ndim:
-                assert len(y) == len(idx)
-                j = 0
-                for i in idx:
-                    x[i] = y[j]
-                    j += 1
+                if len(y) == 1:
+                    # Allow broadcasting of y[0]
+                    y_0 = y[0]
+                    for i in idx:
+                        x[i] = y_0
+                else:
+                    assert len(y) == len(idx)
+                    j = 0
+                    for i in idx:
+                        x[i] = y[j]
+                        j += 1
             else:
                 for i in idx:
                     x[i] = y
@@ -2639,7 +2645,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         out[0] = x
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         if (self.set_instead_of_inc) or \
@@ -2659,6 +2665,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         dtype_%(ind)s *p_index;
         int num_indices, j;
         int ret;
+        int broadcast_y;
 
         num_indices = PyArray_SIZE(%(ind)s);
         if ((num_indices - 1) > LONG_MAX) {
@@ -2674,7 +2681,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
             %(out)s = %(x)s;
             Py_XINCREF(%(out)s);
         }
-
+        broadcast_y = CudaNdarray_DIMS(%(y)s)[0] == 1;
         for (j = 0;j < num_indices; j++) {
 
              p_index = (dtype_%(ind)s *)PyArray_GETPTR1(%(ind)s, j);
@@ -2690,11 +2697,20 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
                  %(fail)s;
              }
 
-             y_rowind_obj = PyInt_FromLong(j);
              row_x = CudaNdarray_Subscript((PyObject*)%(out)s, x_rowind_obj);
+             if (row_x == NULL) {
+                  Py_XDECREF(row_x);
+                  Py_XDECREF(x_rowind_obj);
+                  %(fail)s;
+             }
+             if (broadcast_y) {
+                 y_rowind_obj = PyInt_FromLong(0);
+             } else {
+                 y_rowind_obj = PyInt_FromLong(j);
+             }
              row_y = CudaNdarray_Subscript(py_%(y)s, y_rowind_obj);
 
-             if ((row_x == NULL) || (row_y == NULL)) {
+             if (row_y == NULL) {
                   Py_XDECREF(row_y);
                   Py_XDECREF(row_x);
                   Py_XDECREF(y_rowind_obj);

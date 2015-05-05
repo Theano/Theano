@@ -914,6 +914,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                     data_num_init = data_num_init.reshape(data_shape)
                     inc_shapes = [data_shape[i:]
                                   for i in xrange(0, len(data_shape) + 1)]
+                    # Test broadcasting of y.
+                    inc_shapes += [(1,) + inc_shapes[-1][1:]]
                     for inc_shape in inc_shapes:
                         inc_n_dims = len(inc_shape)
                         # We copy the numeric value to be 100% sure there is no
@@ -928,6 +930,11 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                         # Symbolic variable with rows to be incremented.
                         idx_var = theano.tensor.vector(dtype='int64')
                         n_to_inc = rng.randint(data_shape[0])
+                        if (n_to_inc == 1 and
+                                len(inc_shape) > 0 and
+                                inc_shape[0] == 1 and
+                                data_shape[0] > 1):
+                            n_to_inc = 2
                         # Corresponding numeric variable.
                         idx_num = rng.randint(0, data_shape[0], n_to_inc)
                         idx_num = idx_num.astype('int64')
@@ -939,7 +946,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                         # `data_shape`: what we actually want is the first
                         # shape element to be equal to the number of rows to
                         # increment.
-                        if len(inc_shape) == len(data_shape):
+                        if len(inc_shape) == len(data_shape) and (
+                                len(inc_shapes) == 0 or inc_shape[0] != 1):
                             inc_shape = (n_to_inc,) + inc_shape[1:]
                         inc_size = numpy.product(inc_shape)
                         # Corresponding numeric variable.
@@ -958,11 +966,19 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                         data_copy = data_num.copy()
                         for j, idx in enumerate(idx_num):
                             if len(inc_shape) == len(data_shape):
-                                # Special case where there is no broadcasting.
-                                if set_instead_of_inc:
-                                    data_copy[idx] = inc_num[j]
+                                if inc_shape[0] == 1:
+                                    # Allow broadcasting of y[0]
+                                    inc_num0 = inc_num[0]
+                                    if set_instead_of_inc:
+                                        data_copy[idx] = inc_num0
+                                    else:
+                                        data_copy[idx] += inc_num0
                                 else:
-                                    data_copy[idx] += inc_num[j]
+                                    # Special case where there is no broadcasting.
+                                    if set_instead_of_inc:
+                                        data_copy[idx] = inc_num[j]
+                                    else:
+                                        data_copy[idx] += inc_num[j]
                             else:
                                 if set_instead_of_inc:
                                     data_copy[idx] = inc_num

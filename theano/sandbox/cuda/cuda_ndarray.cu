@@ -2277,7 +2277,9 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
         }
         else
         {
-            PyErr_SetString(PyExc_IndexError, "index out of bounds");
+            PyErr_Format(PyExc_IndexError,
+                         "index out of bounds. Asked %d, but size of %d",
+                         d_idx, d_dim);
             return NULL;
         }
 
@@ -2449,7 +2451,9 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
                     }
                     else
                     {
-                        PyErr_SetString(PyExc_IndexError, "index out of bounds");
+                        PyErr_Format(PyExc_IndexError,
+                                     "index out of bounds. Asked %d for dimensions %d, but size of %d",
+                                     d_idx, d, d_dim);
                         Py_DECREF(rval);
                         return NULL;
                     }
