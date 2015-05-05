@@ -5292,6 +5292,83 @@ def test_tile():
         assert numpy.all(run_tile(x, x_, (2, 3, 4, 6), use_symbolic_reps) ==
             numpy.tile(x_, (2, 3, 4, 6)))
 
+    #Test when reps is integer, tensor.scalar or tensor.vector.
+    # Test the one-dimensional case.
+    x = vector()
+    x_ = rng.randn(5).astype(config.floatX)
+    #integer:
+    reps_ = 2
+    f = function([x], tile(x, reps_))
+    assert numpy.all( f(x_) == numpy.tile(x_, reps_))
+    #tensor.scalar:
+    reps = iscalar()
+    reps_ = 2
+    f = function([x, reps], tile(x, reps))
+    assert numpy.all( f(x_, reps_) == numpy.tile(x_, reps_))
+    #tensor.vector:
+    reps = ivector()
+    reps_ = [2]
+    ndim_ = 1
+    f = function([x, reps], tile(x, reps, ndim_))
+    assert numpy.all( f(x_, reps_) == numpy.tile(x_, reps_))
+
+    # Test the two-dimensional case.
+    x = matrix()
+    x_ = rng.randn(2, 4).astype(config.floatX)
+    #integer:
+    reps_ = 2
+    f = function([x], tile(x, reps_))
+    assert numpy.all( f(x_) == numpy.tile(x_, reps_))
+    #tensor.scalar:
+    reps = iscalar()
+    reps_ = 2
+    f = function([x, reps], tile(x, reps))
+    assert numpy.all( f(x_, reps_) == numpy.tile(x_, reps_))
+    #tensor.vector:
+    reps = ivector()
+    reps_ = [2]
+    ndim_ = 2
+    f = function([x, reps], tile(x, reps, ndim_))
+    assert numpy.all( f(x_, reps_) == numpy.tile(x_, reps_))
+
+    # Test the three-dimensional case.
+    x = tensor3()
+    x_ = rng.randn(2, 4, 3).astype(config.floatX)
+    #integer:
+    reps_ = 2
+    f = function([x], tile(x, reps_))
+    assert numpy.all( f(x_) == numpy.tile(x_, reps_))
+    #tensor.scalar:
+    reps = iscalar()
+    reps_ = 2
+    f = function([x, reps], tile(x, reps))
+    assert numpy.all( f(x_, reps_) == numpy.tile(x_, reps_))
+    #tensor.vector:
+    reps = ivector()
+    reps_ = [2, 3]
+    ndim_ = 3
+    f = function([x, reps], tile(x, reps, ndim_))
+    assert numpy.all( f(x_, reps_) == numpy.tile(x_, reps_))
+
+    # Test the four-dimensional case.
+    x = tensor4()
+    x_ = rng.randn(2, 4, 3, 5).astype(config.floatX)
+    #integer:
+    reps_ = 2
+    f = function([x], tile(x, reps_))
+    assert numpy.all( f(x_) == numpy.tile(x_, reps_))
+    #tensor.scalar:
+    reps = iscalar()
+    reps_ = 2
+    f = function([x, reps], tile(x, reps))
+    assert numpy.all( f(x_, reps_) == numpy.tile(x_, reps_))
+    #tensor.vector:
+    reps = ivector()
+    reps_ = [2, 3]
+    ndim_ = 4
+    f = function([x, reps], tile(x, reps, ndim_))
+    assert numpy.all( f(x_, reps_) == numpy.tile(x_, reps_))
+
 def test_tile_grad():
 
     def grad_tile(x, reps, np_x):
