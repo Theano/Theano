@@ -209,7 +209,7 @@ static struct PyModuleDef moduledef = {{
         print("}", file=stream)
 
     def add_include(self, str):
-        assert not self.finalized
+        # assert not self.finalized
         self.includes.append(str)
 
     def add_init_code(self, code):
