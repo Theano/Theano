@@ -70,7 +70,7 @@ else:
         return x
 
 __all__ += ['cmp', 'operator_div', 'DictMixin', 'OrderedDict', 'decode',
-            'decode_iter']
+            'decode_iter', 'get_unbound_function', 'imap', 'izip', 'ifilter']
 
 
 class DefaultOrderedDict(OrderedDict):
