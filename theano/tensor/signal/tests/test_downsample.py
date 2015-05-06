@@ -189,7 +189,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                                      mode=mode)
                 f = function([images, ], [output, ])
                 output_val = f(imval)
-                assert numpy.all(output_val == numpy_output_val)
+                utt.assert_allclose(output_val, numpy_output_val)
 
                 # DownsampleFactorMax op
                 maxpool_op = DownsampleFactorMax(maxpoolshp,
