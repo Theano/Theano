@@ -624,6 +624,7 @@ class DownsampleFactorMaxGrad(Op):
 
         // allocating memory for gx
         if ((!%(gx)s)
+          || !PyArray_ISCONTIGUOUS(%(gx)s)
           || *PyArray_DIMS(%(gx)s)!=4
           ||(PyArray_DIMS(%(gx)s)[0] != PyArray_DIMS(%(x)s)[0])
           ||(PyArray_DIMS(%(gx)s)[1] != PyArray_DIMS(%(x)s)[1])
@@ -690,7 +691,7 @@ class DownsampleFactorMaxGrad(Op):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 6)
+        return (0, 7)
 
 class DownsampleFactorMaxGradGrad(Op):
     __props__ = ('ds', 'ignore_border', 'st')
