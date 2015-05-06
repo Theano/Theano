@@ -26,6 +26,20 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
     """This is helpful to make a reproducable case for problem during
     Theano compilation.
 
+    Ex:
+
+    replace `theano.function(...)` by
+    `theano.function_dump('filename.pkl', ...)`.
+
+    If you see this, you where probably asked to use this function to
+    help debug a particular case during the compilation of a Theano
+    function. `function_dump` allows to easily reproduce your
+    compilation without asking any code. It pickle all the objects and
+    parameters needed to reproduce a call to `theano.function()`. This
+    include shared variables and there values. If you do not want
+    that, you can set to replace shared variables values by zeros by
+    calling set_value(...) on them before calling `function_dump`.
+
     """
     assert isinstance(filename, basestring)
     d = dict(inputs=inputs, outputs=outputs, mode=mode, updates=updates,
