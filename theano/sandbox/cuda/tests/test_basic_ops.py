@@ -389,7 +389,7 @@ def test_alloc_empty():
     assert out[1].shape == (2, 3)
     assert out[1].dtype == 'float32'
     assert len([node for node in f.maker.fgraph.apply_nodes
-                if isinstance(node.op, cuda.basic_ops.GpuAllocEmpty)]) == 2
+                if isinstance(node.op, cuda.basic_ops.GpuAllocEmpty)]) == 1
 
 
 def test_elemwise_empty():
