@@ -316,20 +316,24 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         maxpoolsizes = ((5, 3), (3, 5), (3, 3))
         stridesizes = ((3, 2), (2, 3), (3, 3))
         paddingsizes = ((2, 2), (2, 1), (2, 2))
-        for i in range(len(imgsizes)):
-            imgsize = imgsizes[i]
-            imval = rng.rand(1, 1, imgsize[0], imgsize[1]) * 10.0
-            maxpoolsize = maxpoolsizes[i]
-            stridesize = stridesizes[i]
-            paddingsize = paddingsizes[i]
+        # average_inc_pad and average_exc_pad do not
+        # support grad with padding
+        for mode in ['max', 'sum']:
+            for i in range(len(imgsizes)):
+                imgsize = imgsizes[i]
+                imval = rng.rand(1, 1, imgsize[0], imgsize[1]) * 10.0
+                maxpoolsize = maxpoolsizes[i]
+                stridesize = stridesizes[i]
+                paddingsize = paddingsizes[i]
 
-            def mp(input):
-                return DownsampleFactorMax(
-                    maxpoolsize, ignore_border=True,
-                    st=stridesize,
-                    padding=paddingsize,
-                    )(input)
-            utt.verify_grad(mp, [imval], rng=rng)
+                def mp(input):
+                    return DownsampleFactorMax(
+                        maxpoolsize, ignore_border=True,
+                        st=stridesize,
+                        padding=paddingsize,
+                        mode=mode,
+                        )(input)
+                utt.verify_grad(mp, [imval], rng=rng)
 
     def test_DownsampleFactorMax_grad(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -337,14 +341,17 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         imval = rng.rand(2, 3, 3, 4) * 10.0
         # more variance means numeric gradient will be more accurate
 
-        for maxpoolshp in maxpoolshps:
-            for ignore_border in [True, False]:
-                # print 'maxpoolshp =', maxpoolshp
-                # print 'ignore_border =', ignore_border
-                def mp(input):
-                    return DownsampleFactorMax(maxpoolshp,
-                                               ignore_border=ignore_border)(input)
-                utt.verify_grad(mp, [imval], rng=rng)
+        for maxpoolshp, ignore_border, mode in product(maxpoolshps,
+                                                       [True, False],
+                                                       ['max',
+                                                        'sum',
+                                                        'average_inc_pad',
+                                                        'average_exc_pad']):
+            def mp(input):
+                return DownsampleFactorMax(maxpoolshp,
+                                           ignore_border=ignore_border,
+                                           mode=mode)(input)
+            utt.verify_grad(mp, [imval], rng=rng)
 
     def test_DownsampleFactorMax_grad_st(self):
         """checks the gradient for the case that stride is used"""
@@ -353,14 +360,18 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         stridesizes = ((1, 1), (3, 3), (5, 7))
         imval = rng.rand(1, 2, 16, 16)
 
-        for maxpoolshp in maxpoolshps:
-            for ignore_border in [True, False]:
-                for stride in stridesizes:
-                    def mp(input):
-                        return DownsampleFactorMax(maxpoolshp,
-                                                   ignore_border=ignore_border,
-                                                   st=stride)(input)
-                    utt.verify_grad(mp, [imval], rng=rng)
+        for maxpoolshp, ignore_border, mode, stride in product(maxpoolshps,
+                                                       [True, False],
+                                                       ['max',
+                                                        'sum',
+                                                        'average_inc_pad',
+                                                        'average_exc_pad'],
+                                                       stridesizes):
+            def mp(input):
+                return DownsampleFactorMax(maxpoolshp,
+                                           ignore_border=ignore_border,
+                                           st=stride, mode=mode)(input)
+            utt.verify_grad(mp, [imval], rng=rng)
 
     def test_DownsampleFactorMax_grad_st_extra(self):
         """checks the gradient for the case
@@ -372,17 +383,19 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         imvsizs = ((16, 16), (16, 16), (16, 16), (8, 5),
                    (8, 5), (8, 5), (8, 5))
 
-        for indx in numpy.arange(len(maxpoolshps)):
-            imvsize = imvsizs[indx]
-            imval = rng.rand(1, 2, imvsize[0], imvsize[1])
-            stride = stridesizes[indx]
-            maxpoolshp = maxpoolshps[indx]
-            for ignore_border in [True, False]:
-                def mp(input):
-                    return DownsampleFactorMax(maxpoolshp,
-                                               ignore_border=ignore_border,
-                                               st=stride)(input)
-                utt.verify_grad(mp, [imval], rng=rng)
+        for mode in ['max', 'sum', 'average_inc_pad', 'average_exc_pad']:
+            for indx in numpy.arange(len(maxpoolshps)):
+                imvsize = imvsizs[indx]
+                imval = rng.rand(1, 2, imvsize[0], imvsize[1])
+                stride = stridesizes[indx]
+                maxpoolshp = maxpoolshps[indx]
+                for ignore_border in [True, False]:
+                    def mp(input):
+                        return DownsampleFactorMax(maxpoolshp,
+                                                   ignore_border=ignore_border,
+                                                   st=stride,
+                                                   mode=mode)(input)
+                    utt.verify_grad(mp, [imval], rng=rng)
 
     def test_DownsampleFactorMaxGrad_grad(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
