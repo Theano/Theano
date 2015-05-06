@@ -29,7 +29,7 @@ AddConfigVar('gpuarray.sync',
 # This is for documentation not to depend on the availability of pygpu
 from .type import (GpuArrayType, GpuArrayVariable, GpuArrayConstant,
                   GpuArraySharedVariable, gpuarray_shared_constructor)
-from . import opt
+from . import opt, nerv
 
 
 def init_dev(dev):
