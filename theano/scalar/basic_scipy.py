@@ -112,7 +112,7 @@ class Erfcx(UnaryScalarOp):
 
         cst = numpy.asarray(2. / numpy.sqrt(numpy.pi),
                             dtype=upcast(x.type.dtype, gz.type.dtype))
-        return - gz * cst + (2. * x) * erfcx(x),
+        return gz * (-cst + (2. * x) * erfcx(x)),
 
 erfcx = Erfcx(upgrade_to_float_no_complex, name='erfcx')
 
