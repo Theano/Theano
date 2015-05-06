@@ -3453,10 +3453,18 @@ class Join(Op):
                 # that broadcastable flag was False had length 1 along
                 # this dimension, and therefore this dimension should
                 # be broadcastable for the output.
+
+                if axis < -ndim:
+                    raise IndexError("Join axis %d out of bounds [0, %d)" %
+                                     (axis, ndim))
+                if axis < 0:
+                    axis += ndim
+
                 for x in as_tensor_variable_args:
                     for current_axis, bflag in enumerate(x.type.broadcastable):
-                        # This Op supports negative axes, so only consider modulo
-                        if current_axis == axis % ndim:
+                        # Constant negative axis can no longer be negative at 
+                        # this point. It safe to compare this way.
+                        if current_axis == axis:
                             continue
                         if bflag:
                             bcastable[current_axis] = True
@@ -3489,14 +3497,20 @@ class Join(Op):
     def perform(self, node, axis_and_tensors, out_):
         out, = out_
         axis, tensors = axis_and_tensors[0], axis_and_tensors[1:]
+        ndim = tensors[0].ndim
+        if axis < -ndim:
+            raise IndexError("Join axis %d out of bounds [0, %d)" %
+                             (axis, ndim))
+
         out[0] = theano._asarray(numpy.concatenate(tensors, axis=axis),
                                  dtype=node.outputs[0].type.dtype)
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         axis, tensors = inputs[0], inputs[1:]
+        input_1 = tensors[0]
         l = len(tensors)
         out, = outputs
         fail = sub['fail']
@@ -3511,9 +3525,16 @@ class Join(Op):
             """ % locals()
         code += """
         //PyObject* PyArray_Concatenate(PyObject* obj, int axis)
+        int axis = ((%(adtype)s *)PyArray_DATA(%(axis)s))[0];
+        int ndim = PyArray_NDIM(%(input_1)s);
+        if( axis < -ndim ){
+            PyErr_Format(PyExc_IndexError, 
+                         "Join axis %%d out of bounds [0, %%d)", axis, ndim);
+            %(fail)s
+        }
+
         Py_XDECREF(%(out)s);
-        %(out)s = (PyArrayObject *)PyArray_Concatenate(list,
-                      ((%(adtype)s *)PyArray_DATA(%(axis)s))[0]);
+        %(out)s = (PyArrayObject *)PyArray_Concatenate(list, axis);
 
         Py_DECREF(list);
         if(!%(out)s){
