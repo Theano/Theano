@@ -286,10 +286,6 @@ class GpuDot22(BlasOp, Dot22):
     def c_code_cache_version(self):
         return (3,)
 
-    def c_headers(self):
-        ret = super(GpuDot22, self).c_headers()
-        return ret + ['<numpy_compat.h>', '"gpuarray_helper.h"']
-
 gpu_dot22 = GpuDot22()
 
 @local_optimizer([gpugemv_no_inplace], inplace=True)
