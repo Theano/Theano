@@ -610,7 +610,7 @@ class DownsampleFactorMaxGrad(Op):
         else:
             return [theano.tensor.zeros_like(x),
                     theano.tensor.zeros_like(maxout),
-                    theano.gradients.grad_not_implemented(
+                    theano.gradient.grad_not_implemented(
                         self, 2, gz, 'Hessian not implemented with padding')]
 
     def c_code(self, node, name, inp, out, sub):
