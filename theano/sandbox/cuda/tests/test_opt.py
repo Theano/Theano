@@ -325,10 +325,10 @@ def test_opt_gpujoin_joinvectors_negativeaxes():
     rng = numpy.random.RandomState(22)
     x1 = rng.rand(5)
     x2 = rng.rand(10)
-    t1 = shared(numpy.asarray(x1, theano.config.floatX))
-    t2 = shared(numpy.asarray(x2, theano.config.floatX))
+    t1 = cuda.shared_constructor(numpy.asarray(x1, "float32"))
+    t2 = cuda.shared_constructor(numpy.asarray(x2, "float32"))
 
-    t = T.concatenate([t1, t2], axis=-1)
+    t = tensor.concatenate([t1, t2], axis=-1)
     f = theano.function(inputs=[], outputs=t)
 
     assert(numpy.allclose(f(), numpy.concatenate([x1, x2], axis=-1)))
@@ -336,18 +336,18 @@ def test_opt_gpujoin_joinvectors_negativeaxes():
     # Test case for two-dimensional vectors
     x1 = rng.rand(5, 10)
     x2 = rng.rand(10, 10)
-    t1 = shared(numpy.asarray(x1, theano.config.floatX))
-    t2 = shared(numpy.asarray(x2, theano.config.floatX))
+    t1 = cuda.shared_constructor(numpy.asarray(x1, "float32"))
+    t2 = cuda.shared_constructor(numpy.asarray(x2, "float32"))
 
-    t = T.concatenate([t1, t2], axis=-2)
+    t = tensor.concatenate([t1, t2], axis=-2)
     f = theano.function(inputs=[], outputs=t)
 
-    assert(numpy.allclose(f(), numpy.concatenate([x1, x2], axis=-2))) 
+    assert(numpy.allclose(f(), numpy.concatenate([x1, x2], axis=-2)))
 
     # Now check that a value error is raised when vectors don't match
-    # along the negative concatenation axis 
+    # along the negative concatenation axis
     try:
-        t = T.concatenate([t1, t2], axis=-1)
+        t = tensor.concatenate([t1, t2], axis=-1)
         f = theano.function(inputs=[], outputs=t)
         f()
         assert(False)
@@ -357,7 +357,7 @@ def test_opt_gpujoin_joinvectors_negativeaxes():
     # Finally check that a value error is raised when negative
     # axis is larger in absolute value than smallest number of dims
     try:
-        t = T.concatenate([t1, t2], axis=-3)
+        t = tensor.concatenate([t1, t2], axis=-3)
         f = theano.function(inputs=[], outputs=t)
         f()
         assert(False)
