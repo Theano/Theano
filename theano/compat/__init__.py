@@ -28,7 +28,6 @@ if PY3:
         """Return -1 if x < y, 0 if x == y, 1 if x > y."""
         return (x > y) - (x < y)
 
-
     def get_unbound_function(unbound):
         # Op.make_thunk isn't bound, so don't have a __func__ attr.
         # But bound method, have a __func__ method that point to the
@@ -37,11 +36,6 @@ if PY3:
             return unbound.__func__
         return unbound
 
-
-    from functools import partial
-    from collections import defaultdict, deque
-    from sys import maxsize
-    from itertools import combinations, product
     from collections import OrderedDict, MutableMapping as DictMixin
 
     def decode(x):
