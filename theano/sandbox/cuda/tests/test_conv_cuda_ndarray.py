@@ -1,6 +1,7 @@
 """
 Tests for GPU convolution
 """
+from __future__ import print_function
 import sys
 import time
 import unittest
@@ -135,7 +136,7 @@ def py_conv_scipy(img, kern, mode, subsample):
 
 
 def _params_allgood_header():
-    print "ishape kshape #Mflops CPU Mflops GPU Mflops Speedup"
+    print("ishape kshape #Mflops CPU Mflops GPU Mflops Speedup")
 
 
 def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
@@ -223,9 +224,9 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
         cpu_mflops = approx_fp / (t1 - t0)
         gpu_mflops = approx_fp / (t2 - t1)
         if verbose > 0:
-            print >> sys.stdout, '%15s' % str(ishape), '%15s' % str(kshape),
-            print >> sys.stdout, '%12.5f  %7.2f %7.2f %7.1f' % (approx_fp,
-                    cpu_mflops, gpu_mflops, (t1 - t0) / (t2 - t1))
+            print('%15s' % str(ishape), '%15s' % str(kshape), end=' ', file=sys.stdout)
+            print('%12.5f  %7.2f %7.2f %7.1f' % (approx_fp,
+                    cpu_mflops, gpu_mflops, (t1 - t0) / (t2 - t1)), file=sys.stdout)
 
 
 def exec_conv(version, shapes, verbose, random, mode,
@@ -652,7 +653,7 @@ class TestConv2DGPU(unittest.TestCase):
 
 class TestConvWithPadding(object):
     """test conv ops that support arbitrary padding via border_mode
-    note that in order to make the yield work, we can not subclass from 
+    note that in order to make the yield work, we can not subclass from
     unittest.TestCase
     """
 

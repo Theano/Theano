@@ -1,3 +1,4 @@
+from __future__ import print_function
 import unittest
 import theano
 import theano.tensor as T
@@ -283,12 +284,12 @@ class TestConv3D(utt.InferShapeTester):
             tol = 1e-4
 
         if N.abs(H_mat - Hv_mat).max() > tol and not N.allclose(H_mat, Hv_mat):
-            print H_mat
-            print Hv_mat
-            print 'max error: ' + str(N.abs(H_mat - Hv_mat).max())
+            print(H_mat)
+            print(Hv_mat)
+            print('max error: ' + str(N.abs(H_mat - Hv_mat).max()))
             W.get_value(borrow=True)[W.get_value(borrow=True) != 0] += 1.0
-            print 'min non-zero kernel mag: ' + \
-                str(N.abs(W.get_value(borrow=True)).min())
+            print('min non-zero kernel mag: ' + \
+                str(N.abs(W.get_value(borrow=True)).min()))
             assert False
 
     def test_c_against_mat_transp_mul(self):
@@ -351,14 +352,14 @@ class TestConv3D(utt.InferShapeTester):
                  rbv).transpose()
 
         if N.abs(V_mat - Vv_mat).max() > 1e-5:
-            print V_mat
-            print Vv_mat
+            print(V_mat)
+            print(Vv_mat)
 
             for qq in xrange(V_mat.shape[0]):
                 for qqq in xrange(Vv_mat.shape[1]):
                     if abs(V_mat[qq, qqq] - Vv_mat[qq, qqq]) > 1e-5:
-                        print ('wrong at ' + str((qq, qqq)) + ': ' +
-                        str(V_mat[qq, qqq], Vv_mat[qq, qqq]))
+                        print(('wrong at ' + str((qq, qqq)) + ': ' +
+                        str(V_mat[qq, qqq], Vv_mat[qq, qqq])))
                         assert False
 
     def test_c_against_sparse_mat_transp_mul(self):
@@ -469,15 +470,15 @@ class TestConv3D(utt.InferShapeTester):
         V_mat = (temp.transpose() + rbv).transpose()
 
         if N.abs(V_mat - Vv_mat).max() > 1e-5:
-            print 'mul'
-            print V_mat
-            print 'conv'
-            print Vv_mat
+            print('mul')
+            print(V_mat)
+            print('conv')
+            print(Vv_mat)
             for i in xrange(0, n):
                 for j in xrange(0, batchSize):
                     if abs(V_mat[i, j] - Vv_mat[i, j]) > 1e-5:
-                        print ('wrong at %d,%d: %f mul versus %f conv'
-                               % (i, j, V_mat[i, j], Vv_mat[i, j]))
+                        print(('wrong at %d,%d: %f mul versus %f conv'
+                               % (i, j, V_mat[i, j], Vv_mat[i, j])))
             assert False
 
     def test_infer_shape(self):

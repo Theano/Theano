@@ -10,6 +10,7 @@ which value to report. Note also that `switch` is an elemwise operation (so
 it picks each entry of a matrix according to the condition) while `ifelse`
 is a global operation with a scalar condition.
 """
+from __future__ import print_function
 from copy import deepcopy
 from itertools import izip
 import logging
@@ -576,7 +577,7 @@ class CondMerge(gof.Optimizer):
                     as_view=False,
                     gpu=False,
                     name=mn_name + '&' + pl_name)
-                print 'here'
+                print('here')
                 new_outs = new_ifelse(*new_ins, **dict(return_list=True))
                 new_outs = [clone(x) for x in new_outs]
                 old_outs = []

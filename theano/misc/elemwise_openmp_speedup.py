@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import subprocess
 import sys
@@ -20,14 +21,14 @@ def runScript(N):
                             cwd=dir)
     (out, err) = proc.communicate()
     if err:
-        print err
+        print(err)
         sys.exit()
     return map(float, out.split(" "))
 
 if __name__ == '__main__':
     options, arguments = parser.parse_args(sys.argv)
     if hasattr(options, "help"):
-        print options.help
+        print(options.help)
         sys.exit(0)
     orig_flags = os.environ.get('THEANO_FLAGS', '')
     os.environ['THEANO_FLAGS'] = orig_flags + ',openmp=false'
@@ -49,6 +50,6 @@ if __name__ == '__main__':
         costlySpeed = costlyTimeOpenmp / costlyTime
         costlySpeedstring = "slowdown"
 
-    print "Fast op time without openmp %fs with openmp %fs %s %2.2f" % (cheapTime, cheapTimeOpenmp, cheapSpeedstring, cheapSpeed)
+    print("Fast op time without openmp %fs with openmp %fs %s %2.2f" % (cheapTime, cheapTimeOpenmp, cheapSpeedstring, cheapSpeed))
     
-    print "Slow op time without openmp %fs with openmp %fs %s %2.2f" % (costlyTime, costlyTimeOpenmp, costlySpeedstring, costlySpeed)
+    print("Slow op time without openmp %fs with openmp %fs %s %2.2f" % (costlyTime, costlyTimeOpenmp, costlySpeedstring, costlySpeed))

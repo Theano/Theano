@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy as N
 from theano.tensor import basic as T
 from theano.misc import strutil
@@ -355,7 +356,7 @@ def computeR(W, b, d, H, Rshape=None):
 
     if Rshape is not None and Rshape[0] != -1:
         if Rshape[0] < videoHeight:
-            print (Rshape[0], videoHeight)
+            print((Rshape[0], videoHeight))
             assert False
         assert Rshape[1] >= videoWidth
         assert Rshape[2] >= videoDur

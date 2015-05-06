@@ -3,6 +3,7 @@ This module provides utility functions for the Scan Op
 
 See scan.py for details on scan
 """
+from __future__ import print_function
 __docformat__ = 'restructedtext en'
 __authors__ = ("Razvan Pascanu "
                "Frederic Bastien "
@@ -417,7 +418,7 @@ class ScanPermutation(gof.Op):
             pos = index % membuffer.shape[0]
             if outputs[0] is membuffer:
                 membuffer = membuffer.copy()
-            print pos
+            print(pos)
             out[0][:membuffer.shape[0] - pos] = membuffer[pos:]
             out[0][membuffer.shape[0] - pos:] = membuffer[:pos]
 

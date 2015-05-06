@@ -4,6 +4,7 @@ This file is based on hpu.nns.driver_kouh of Oct 22 2009.
 It is meant to be used to benchmark loop fusion optimizations.
 
 """
+from __future__ import print_function
 # this experiments are designed to use file-based configuration
 # rather than db-based configuration.
 # so state is ignored
@@ -310,7 +311,7 @@ if 0:
 
         assert cost.type.ndim == 0
 
-        print layer.params
+        print(layer.params)
 
         gparams = theano.tensor.grad(cost, layer.params)
         updates = [(p, p - s_lr*gp) for p, gp in zip(layer.params, gparams)]

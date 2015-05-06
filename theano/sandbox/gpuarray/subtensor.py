@@ -1,3 +1,4 @@
+from __future__ import print_function
 import copy
 import StringIO
 import numpy
@@ -89,7 +90,7 @@ class GpuSubtensor(HideC, Subtensor):
 """ % dict(out=outputs[0], inp=inp, fail=sub['fail'])
 
         sio = StringIO.StringIO()
-        print >> sio, """
+        print("""
         ssize_t starts[%(sz)s];
         ssize_t stops[%(sz)s];
         ssize_t steps[%(sz)s];
@@ -100,7 +101,7 @@ class GpuSubtensor(HideC, Subtensor):
             PyErr_SetString(PyExc_IndexError, "invalid index");
             %(fail)s
         }
-        """ % dict(sz=len(idx_list), inp=inp, fail=sub['fail'])
+        """ % dict(sz=len(idx_list), inp=inp, fail=sub['fail']), file=sio)
 
         def fix_idx(idx):
             if idx is None:
@@ -117,7 +118,7 @@ class GpuSubtensor(HideC, Subtensor):
                 start, start_n = fix_idx(idx.start)
                 stop, stop_n = fix_idx(idx.stop)
                 step, step_n = fix_idx(idx.step)
-                print >>sio, """
+                print("""
                 starts[%(i)s] = %(start)s;
                 stops[%(i)s] = %(stop)s;
                 steps[%(i)s] = %(step)s;
@@ -128,7 +129,7 @@ class GpuSubtensor(HideC, Subtensor):
                 }
                 """ % dict(i=i, start=start, stop=stop, step=step,
                            start_n=start_n, stop_n=stop_n, step_n=step_n,
-                           fail=sub['fail'], inp=inp)
+                           fail=sub['fail'], inp=inp), file=sio)
             else:
                 if isinstance(idx, gof.Type):
                     start = indices.pop(0)
@@ -136,19 +137,19 @@ class GpuSubtensor(HideC, Subtensor):
                     start = idx
                 else:
                     assert 0, idx
-                print >>sio, """
+                print("""
                 cur = %(start)s;
                 if (cur < 0)
                     cur += %(inp)s->ga.dimensions[%(i)s];
                 starts[%(i)s] = cur;
                 steps[%(i)s] = 0;
-                """ % dict(i=i, start=start, fail=sub['fail'], inp=inp)
+                """ % dict(i=i, start=start, fail=sub['fail'], inp=inp), file=sio)
 
-        print >>sio, """
+        print("""
         Py_XDECREF(%(out)s);
         %(out)s = pygpu_index(%(inp)s, starts, stops, steps);
         if (!%(out)s) { %(fail)s }
-""" % dict(name=name, fail=sub['fail'], inp=inp, out=outputs[0])
+""" % dict(name=name, fail=sub['fail'], inp=inp, out=outputs[0]), file=sio)
 
         return sio.getvalue()
 

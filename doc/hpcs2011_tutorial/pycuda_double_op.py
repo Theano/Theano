@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy, theano
 import theano.misc.pycuda_init
 from pycuda.compiler import SourceModule
@@ -42,4 +43,4 @@ f = theano.function([x], PyCUDADoubleOp()(x))
 xv=numpy.ones((4,5), dtype="float32")
 
 assert numpy.allclose(f(xv), xv*2)
-print numpy.asarray(f(xv))
+print(numpy.asarray(f(xv)))

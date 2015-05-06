@@ -1,6 +1,7 @@
 """
 Defines Linkers that deal with C implementations.
 """
+from __future__ import print_function
 
 # Python imports
 from copy import copy
@@ -796,10 +797,10 @@ class CLinker(link.Linker):
         self.c_init_code_apply = c_init_code_apply
 
         if (self.init_tasks, self.tasks) != self.get_init_tasks():
-            print >> sys.stderr, "init_tasks\n", self.init_tasks
-            print >> sys.stderr, self.get_init_tasks()[0]
-            print >> sys.stderr, "tasks\n", self.tasks
-            print >> sys.stderr, self.get_init_tasks()[1]
+            print("init_tasks\n", self.init_tasks, file=sys.stderr)
+            print(self.get_init_tasks()[0], file=sys.stderr)
+            print("tasks\n", self.tasks, file=sys.stderr)
+            print(self.get_init_tasks()[1], file=sys.stderr)
             assert (self.init_tasks, self.tasks) == self.get_init_tasks()
 
         # List of indices that should be ignored when passing the arguments
@@ -1453,29 +1454,29 @@ class CLinker(link.Linker):
     def instantiate_code(self, n_args):
         code = StringIO()
         struct_name = self.struct_name
-        print >> code, "static PyObject * instantiate(PyObject * self, PyObject *argtuple) {"
-        print >> code, '  assert(PyTuple_Check(argtuple));'
-        print >> code, '  if (%(n_args)i != PyTuple_Size(argtuple)){ ' % locals()
-        print >> code, '     PyErr_Format(PyExc_TypeError, "Wrong number of arguments, expected %(n_args)i, got %%i", (int)PyTuple_Size(argtuple));' % locals()
-        print >> code, '     return NULL;'
-        print >> code, '  }'
-        print >> code, '  %(struct_name)s* struct_ptr = new %(struct_name)s();' % locals()
-        print >> code, '  if (struct_ptr->init(', ','.join('PyTuple_GET_ITEM(argtuple, %i)' % n for n in xrange(n_args)), ') != 0) {'
-        print >> code, '    delete struct_ptr;'
-        print >> code, '    return NULL;'
-        print >> code, '  }'
+        print("static PyObject * instantiate(PyObject * self, PyObject *argtuple) {", file=code)
+        print('  assert(PyTuple_Check(argtuple));', file=code)
+        print('  if (%(n_args)i != PyTuple_Size(argtuple)){ ' % locals(), file=code)
+        print('     PyErr_Format(PyExc_TypeError, "Wrong number of arguments, expected %(n_args)i, got %%i", (int)PyTuple_Size(argtuple));' % locals(), file=code)
+        print('     return NULL;', file=code)
+        print('  }', file=code)
+        print('  %(struct_name)s* struct_ptr = new %(struct_name)s();' % locals(), file=code)
+        print('  if (struct_ptr->init(', ','.join('PyTuple_GET_ITEM(argtuple, %i)' % n for n in xrange(n_args)), ') != 0) {', file=code)
+        print('    delete struct_ptr;', file=code)
+        print('    return NULL;', file=code)
+        print('  }', file=code)
         if PY3:
-            print >> code, """\
+            print("""\
     PyObject* thunk = PyCapsule_New((void*)(&{struct_name}_executor), NULL, {struct_name}_destructor);
     if (thunk != NULL && PyCapsule_SetContext(thunk, struct_ptr) != 0) {{
         PyErr_Clear();
         Py_DECREF(thunk);
         thunk = NULL;
     }}
-""".format(**locals())
+""".format(**locals()), file=code)
         else:
-            print >> code, '  PyObject* thunk = PyCObject_FromVoidPtrAndDesc((void*)(&%(struct_name)s_executor), struct_ptr, %(struct_name)s_destructor);' % locals()
-        print >> code, "  return thunk; }"
+            print('  PyObject* thunk = PyCObject_FromVoidPtrAndDesc((void*)(&%(struct_name)s_executor), struct_ptr, %(struct_name)s_destructor);' % locals(), file=code)
+        print("  return thunk; }", file=code)
         return code.getvalue()
 
 
@@ -1531,9 +1532,9 @@ class _CThunk(object):
                 exc_value = exc_type(_exc_value)
                 exc_value.__thunk_trace__ = trace
             except Exception:
-                print >> sys.stderr, ('ERROR retrieving error_storage.'
-                                      ' Was the error set in the c code?'),
-                print >> sys.stderr, self.error_storage
+                print(('ERROR retrieving error_storage.'
+                                      ' Was the error set in the c code?'), end=' ', file=sys.stderr)
+                print(self.error_storage, file=sys.stderr)
                 raise
 
             raise exc_type, exc_value, exc_trace

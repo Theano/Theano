@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy, scipy.linalg
 from theano import gof, tensor, scalar, function
 import unittest
@@ -34,9 +35,9 @@ class Minimal(gof.Op):
 
         # do what you want here,
         # but do not modify any of the arguments [inplace].
-        print "perform got %i arguments" % len(inputs)
+        print("perform got %i arguments" % len(inputs))
 
-        print "Max of input[0] is ", numpy.max(inputs[0])
+        print("Max of input[0] is ", numpy.max(inputs[0]))
 
         # return some computed value.
         # do not return something that is aliased to one of the inputs.
@@ -59,11 +60,11 @@ class T_minimal(unittest.TestCase):
         A = tensor.matrix()
         b = tensor.vector()
 
-        print 'building function'
+        print('building function')
         f = function([A, b], minimal(A, A, b, b, A))
-        print 'built'
+        print('built')
 
         Aval = self.rng.randn(5, 5)
         bval = numpy.array(range(5), dtype=float)
         f(Aval, bval)
-        print 'done'
+        print('done')

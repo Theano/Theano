@@ -1,3 +1,4 @@
+from __future__ import print_function
 import time, copy, sys, unittest
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
@@ -565,8 +566,8 @@ def test_mapping_getitem_w_int():
     def _cmp(x, y):
         assert x.shape == y.shape
         if not numpy.all(x == y):
-            print x
-            print y
+            print(x)
+            print(y)
         assert numpy.all(x == y)
 
     def _cmpf(x, *y):

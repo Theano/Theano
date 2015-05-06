@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys, timeit, time
 import numpy
 import theano, theano.tensor.signal.conv
@@ -7,7 +8,7 @@ try:
     ker_shape =  int(sys.argv[3]), int(sys.argv[4])
     dtype = sys.argv[5]
 except:
-    print >> sys.stderr, "Usage: %s <img rows> <img cols> <ker rows> <ker cols> <dtype> [nb_call]" % sys.argv[0]
+    print("Usage: %s <img rows> <img cols> <ker rows> <ker cols> <dtype> [nb_call]" % sys.argv[0], file=sys.stderr)
     sys.exit(-1)
 
 nb_call = 1
@@ -31,11 +32,11 @@ out = theano.shared(numpy.ones((2,2,2), dtype=dtype))
 T = timeit.Timer("f()", 
                  setup+"f = theano.function([], theano.tensor.signal.conv.conv2d(img, ker))")
 time_without_shape = T.repeat(repeat=3, number=nb_call)
-print min(time_without_shape), 'theano without shape'
+print(min(time_without_shape), 'theano without shape')
 
 T = timeit.Timer("f()", setup+"""f = theano.function([], [], 
 updates={out:theano.tensor.signal.conv.conv2d(img,
     ker,image_shape=img_shape,filter_shape=ker_shape)})""")
 time_with_shape = T.repeat(repeat=3, number=nb_call)
 
-print min(time_with_shape), 'theano with shape'
+print(min(time_with_shape), 'theano with shape')

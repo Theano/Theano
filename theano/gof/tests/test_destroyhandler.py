@@ -1,3 +1,4 @@
+from __future__ import print_function
 
 import unittest
 
@@ -117,7 +118,7 @@ def consistent(g):
     try:
         assert g.consistent()
     except AssertionError:
-        print "Test failed! The graph was marked as NOT consistent."
+        print("Test failed! The graph was marked as NOT consistent.")
         raise
     # print "Test OK"
 
@@ -127,7 +128,7 @@ def inconsistent(g):
     try:
         assert not g.consistent()
     except AssertionError:
-        print "Test failed! The graph was marked as consistent."
+        print("Test failed! The graph was marked as consistent.")
         raise
     # print "Test OK"
 

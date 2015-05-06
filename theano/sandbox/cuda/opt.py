@@ -1,3 +1,4 @@
+from __future__ import print_function
 import logging
 _logger = logging.getLogger('theano.sandbox.cuda.opt')
 
@@ -818,12 +819,12 @@ def local_gpu_careduce(node):
                             # We should not loose the information
                             # that one dimensions was
                             # broadcastable.
-                            print >> sys.stderr, (
+                            print((
                                 "WARNING: local_gpu_careduce got type"
                                 " wrong",
                                 rval.type, out.type,
                                 node.inputs[0].type, x.type,
-                                node)
+                                node), file=sys.stderr)
                             return None
                     rval = tensor.patternbroadcast(rval,
                                                    out.broadcastable)

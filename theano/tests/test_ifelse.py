@@ -2,6 +2,7 @@
  Tests fof the lazy conditiona
 """
 
+from __future__ import print_function
 __docformat__ = 'restructedtext en'
 __authors__ = ("Razvan Pascanu ")
 __copyright__ = "(c) 2010, Universite de Montreal"
@@ -425,4 +426,4 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
 
 
 if __name__ == '__main__':
-    print ' Use nosetests to run these tests '
+    print(' Use nosetests to run these tests ')

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy
 import theano
 import theano.tensor as T
@@ -36,12 +37,12 @@ predict = theano.function(inputs=[x], outputs=prediction,
             name = "predict")
 
 if any( [x.op.__class__.__name__=='Gemv' for x in train.maker.fgraph.toposort()]):
-    print 'Used the cpu'
+    print('Used the cpu')
 elif any( [x.op.__class__.__name__=='GpuGemm' for x in train.maker.fgraph.toposort()]):
-    print 'Used the gpu'
+    print('Used the gpu')
 else:
-    print 'ERROR, not able to tell if theano used the cpu or the gpu'
-    print train.maker.fgraph.toposort()
+    print('ERROR, not able to tell if theano used the cpu or the gpu')
+    print(train.maker.fgraph.toposort())
 
 
 
@@ -50,11 +51,11 @@ for i in range(training_steps):
 #print "Final model:"
 #print w.get_value(), b.get_value()
 
-print "target values for D"
-print D[1]
+print("target values for D")
+print(D[1])
 
-print "prediction on D"
-print predict(D[0])
+print("prediction on D")
+print(predict(D[0]))
 
 # Print the graph used in the slides
 theano.printing.pydotprint(predict,

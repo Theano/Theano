@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # Theano tutorial
 # Solution to Exercise in section 'Loop'
+from __future__ import print_function
 import numpy
 
 import theano
@@ -29,7 +30,7 @@ final_result = result[-1]
 power = theano.function(inputs=[A, k], outputs=final_result,
                         updates=updates)
 
-print power(range(10), 2)
+print(power(range(10), 2))
 # [  0.   1.   4.   9.  16.  25.  36.  49.  64.  81.]
 
 
@@ -51,7 +52,7 @@ calculate_polynomial1 = theano.function(inputs=[coefficients, x],
                                         outputs=polynomial)
 
 test_coeff = numpy.asarray([1, 0, 2], dtype=numpy.float32)
-print calculate_polynomial1(test_coeff, 3)
+print(calculate_polynomial1(test_coeff, 3))
 # 19.0
 
 # 3. Reduction performed inside scan
@@ -79,5 +80,5 @@ calculate_polynomial = theano.function(inputs=[coefficients, x],
                                        outputs=polynomial, updates=updates)
 
 test_coeff = numpy.asarray([1, 0, 2], dtype=numpy.float32)
-print calculate_polynomial(test_coeff, 3)
+print(calculate_polynomial(test_coeff, 3))
 # 19.0

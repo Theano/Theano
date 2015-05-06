@@ -1,3 +1,4 @@
+from __future__ import print_function
 import theano
 import numpy as N
 from theano import tensor as T
@@ -32,7 +33,7 @@ class RegressionLayer(M.Module):
             self.cost = self.cost + self.regularization
         # GET THE GRADIENTS NECESSARY TO FIT OUR PARAMETERS
         self.grad_w, self.grad_b, grad_act = T.grad(self.cost, [self.w, self.b, self.prediction])
-        print 'grads', self.grad_w, self.grad_b
+        print('grads', self.grad_w, self.grad_b)
         # INTERFACE METHODS
         self.update = M.Method([input, target],
                                [self.cost, self.grad_w, self.grad_b, grad_act],
@@ -80,9 +81,9 @@ class SpecifiedRegressionLayer(RegressionLayer):
 class PrintEverythingMode(theano.Mode):
     def __init__(self, linker, optimizer=None):                                                       
         def print_eval(i, node, fn): 
-            print i, node, [input[0] for input in fn.inputs],                                         
+            print(i, node, [input[0] for input in fn.inputs], end=' ')                                         
             fn()
-            print [output[0] for output in fn.outputs]
+            print([output[0] for output in fn.outputs])
         wrap_linker = theano.gof.WrapLinkerMany([linker], [print_eval])
         super(PrintEverythingMode, self).__init__(wrap_linker, optimizer)                             
 
@@ -104,12 +105,12 @@ def test_module_advanced_example():
     for i in xrange(1000):
        xe, gw, gb, ga = model.update(data_x, data_y)
        if i % 100 == 0:
-           print i, xe
+           print(i, xe)
            pass
        #for inputs, targets in my_training_set():
            #print "cost:", model.update(inputs, targets)
 
-    print "final weights:", model.w
-    print "final biases:", model.b
+    print("final weights:", model.w)
+    print("final biases:", model.b)
 
     profmode.print_summary()

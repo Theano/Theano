@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys, time
 from theano.compile.pfunc import pfunc
 from theano import tensor
@@ -11,9 +12,9 @@ def compare_fns(fns, input, reps=10):
     times = {}
     for implname, impl in fns.iteritems():
         try:
-            print 'TOPOSORT', implname
+            print('TOPOSORT', implname)
             for i, n in enumerate(impl.maker.fgraph.toposort()):
-                print i, n
+                print(i, n)
         except Exception:
             pass
         t0 = time.time()
@@ -26,7 +27,7 @@ def compare_fns(fns, input, reps=10):
 
 def showtimes(times):
     for impl, dt in times.iteritems():
-        print impl, dt
+        print(impl, dt)
 
 
 def cmp_sigmoids(shape):

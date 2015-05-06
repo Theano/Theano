@@ -1,5 +1,6 @@
 """WRITEME
 """
+from __future__ import print_function
 import logging
 import warnings
 from textwrap import dedent
@@ -181,7 +182,7 @@ class PrintCurrentFunctionGraph(gof.Optimizer):
 
     def apply(self, fgraph):
         import theano.printing
-        print "PrintCurrentFunctionGraph:", self.header
+        print("PrintCurrentFunctionGraph:", self.header)
         theano.printing.debugprint(fgraph.outputs)
 
 

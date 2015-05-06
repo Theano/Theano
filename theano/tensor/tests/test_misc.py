@@ -1,3 +1,4 @@
+from __future__ import print_function
 import copy
 import sys
 import numpy
@@ -12,7 +13,7 @@ def test_bug_2009_06_02_trac_387():
             tensor.int_div(
                 tensor.DimShuffle(y[0].broadcastable, ['x'])(y[0]), 2))
     sys.stdout.flush()
-    print f(numpy.ones(1, dtype='int64') * 3)
+    print(f(numpy.ones(1, dtype='int64') * 3))
     # XXX: there is no assert, nor comment that DEBUGMODE is to do the
     #      checking. What was the bug, and how is it being tested?
 
@@ -29,10 +30,10 @@ def test_bug_2009_07_17_borrowed_output():
     y = numpy.ones((2, 5))
 
     z = g(x, y)
-    print z         # Should be zero.
+    print(z)         # Should be zero.
     x.fill(1)
-    print g(x, y)   # Should be non-zero.
-    print z         # Should still be zero.
+    print(g(x, y))   # Should be non-zero.
+    print(z)         # Should still be zero.
     assert numpy.linalg.norm(z) == 0
 
     # The code above was supposed to fail when it was written (or, more
@@ -62,10 +63,10 @@ def test_bug_2009_07_17_borrowed_output():
     z = g(a, b, c)
     z_backup = copy.copy(z)
     id_z = id(z)
-    print('Output z after first call: %s' % (z, ))
+    print(('Output z after first call: %s' % (z, )))
     a[0, 0] = 1
     id_other = id(g(a, b, c))
-    print ('Output z after second call: %s' % (z, ))
+    print(('Output z after second call: %s' % (z, )))
     # Ensure that calling the function again returns a pointer towards a new
     # array.
     assert id_z != id_other

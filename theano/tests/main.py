@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os, unittest, sys
 import nose.plugins.builtin
 
@@ -41,9 +42,9 @@ class TheanoNoseTester(NoseTester):
         nose = import_nose()
 
         import theano
-        print "Theano version %s" % theano.__version__
+        print("Theano version %s" % theano.__version__)
         theano_dir = os.path.dirname(theano.__file__)
-        print "theano is installed in %s" % theano_dir
+        print("theano is installed in %s" % theano_dir)
 
         super(TheanoNoseTester, self)._show_system_info()
 
@@ -146,4 +147,4 @@ def main(modulename):
         tests = unittest.TestLoader().loadTestsFromModule(module)
         unittest.TextTestRunner(verbosity=2).run(tests)
     else:
-        print "options: [--debug]"
+        print("options: [--debug]")

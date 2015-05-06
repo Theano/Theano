@@ -3,6 +3,7 @@
 N.B. the gotcha with this design is listed in the documentation of `TheanoObject`
 
 """
+from __future__ import print_function
 import theano
 from theano import tensor
 import numpy
@@ -174,10 +175,10 @@ class TheanoObject(object):
 
         if key not in cache:
             inputs = [a() for a in args_types]
-            print 'compiling', fn, 'for inputs', inputs
+            print('compiling', fn, 'for inputs', inputs)
             rval = fn(o_self, *inputs)
 
-            print 'compiling to compute outputs', rval.outputs
+            print('compiling to compute outputs', rval.outputs)
 
             if isinstance(rval.outputs, (tuple, list)):
                 all_required_inputs = theano.gof.graph.inputs(rval.outputs)

@@ -1,3 +1,4 @@
+from __future__ import print_function
 
 if 0:
     class _EquilibriumOptimizer(NavigatorOptimizer):
@@ -98,14 +99,14 @@ if 0:
                 tasks[node].extend(lopt for track, i, lopt in self.fetch_tracks0(node.op))
 
             u = self.attach_updater(fgraph, importer, pruner, chin)
-            print 'KEYS', map(hash, tasks.keys())
+            print('KEYS', map(hash, tasks.keys()))
             while tasks:
                 for node in tasks.iterkeys():
                     todo = tasks.pop(node)
                     break
                 for lopt in todo:
                     if runs is not None and runs[lopt] >= max_uses:
-                        print >>sys.stderr, 'Warning: optimization exceeded its maximal use ratio: %s, %s' % (lopt, max_uses)
+                        print('Warning: optimization exceeded its maximal use ratio: %s, %s' % (lopt, max_uses), file=sys.stderr)
                         continue
                     success = self.process_node(fgraph, node, lopt)
                     if success:

@@ -5,6 +5,7 @@ To read about what theano graphs are from a user perspective, have a look at
 `graph.html <../doc/graph.html>`__.
 
 """
+from __future__ import print_function
 
 __docformat__ = "restructuredtext en"
 
@@ -782,9 +783,9 @@ def general_toposort(r_out, deps, debug_print=False,
 
     if len(rlist) != len(reachable):
         if debug_print:
-            print ''
-            print reachable
-            print rlist
+            print('')
+            print(reachable)
+            print(rlist)
         raise ValueError('graph contains cycles')
 
     return rlist

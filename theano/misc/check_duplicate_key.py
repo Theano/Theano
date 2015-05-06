@@ -1,3 +1,4 @@
+from __future__ import print_function
 import cPickle
 import os, sys
 
@@ -41,13 +42,13 @@ for dir in dirs:
         del f
         del path
     except IOError:
-        print dir, "don't have a mod.{cpp,cu} file"
+        print(dir, "don't have a mod.{cpp,cu} file")
         pass
 
 if DISPLAY_DUPLICATE_KEYS:
     for k, v in keys.iteritems():
         if v > 1:
-            print "Duplicate key (%i copies): %s" % (v, cPickle.loads(k))
+            print("Duplicate key (%i copies): %s" % (v, cPickle.loads(k)))
 
 nbs_keys = {}  # nb seen -> now many key
 for val in keys.values():
@@ -67,27 +68,27 @@ for mod, kk in mods.iteritems():
 
 if DISPLAY_MOST_FREQUENT_DUPLICATE_CCODE:
     m = max(nbs_mod.keys())
-    print "The keys associated to the mod.{cpp,cu} with the most number of copy:"
+    print("The keys associated to the mod.{cpp,cu} with the most number of copy:")
     for kk in nbs_mod_to_key[m]:
         kk = cPickle.loads(kk)
-        print kk
+        print(kk)
 
-print "key.pkl histograph"
+print("key.pkl histograph")
 l = nbs_keys.items()
 l.sort()
-print l
+print(l)
 
-print "mod.{cpp,cu} histogram"
+print("mod.{cpp,cu} histogram")
 l = nbs_mod.items()
 l.sort()
-print l
+print(l)
 
 total = sum([len(k) for k in mods.values()])
 uniq = len(mods)
 useless = total - uniq
-print "mod.{cpp,cu} total:", total
-print "mod.{cpp,cu} uniq:", uniq
-print "mod.{cpp,cu} with more than 1 copy:", more_than_one
-print "mod.{cpp,cu} useless:", useless, float(useless)/total*100, "%"
+print("mod.{cpp,cu} total:", total)
+print("mod.{cpp,cu} uniq:", uniq)
+print("mod.{cpp,cu} with more than 1 copy:", more_than_one)
+print("mod.{cpp,cu} useless:", useless, float(useless)/total*100, "%")
 
-print "nb directory", len(dirs)
+print("nb directory", len(dirs))

@@ -1,8 +1,4 @@
 #!/usr/bin/env python
-
-__authors__ = "Olivier Delalleau, Pascal Lamblin, Eric Larsen"
-__contact__ = "delallea@iro"
-
 """
 This script should behave the same as the `nosetests` command.
 
@@ -15,6 +11,10 @@ disable that plugin.
 
 `run_tests_in_batch.py` will in turn call back this script in another process.
 """
+from __future__ import print_function
+
+__authors__ = "Olivier Delalleau, Pascal Lamblin, Eric Larsen"
+__contact__ = "delallea@iro"
 
 import logging
 _logger = logging.getLogger('theano.bin.theano-nose')
@@ -81,7 +81,7 @@ def main():
     time_prof_args = [arg for arg in sys.argv if arg=='--time-profile']
     for arg in time_prof_args:
         sys.argv.remove(arg)
-            
+
     # Time-profiling and batch modes
     if time_prof_args or batch_args:
         from theano.tests import run_tests_in_batch
@@ -156,7 +156,7 @@ def help():
                 progresses will be made to standard output after every group of
                 n tests. Otherwise, notification will occur after every group
                 of 100 tests.
-    
+
                 The files 'timeprof_sort' and 'timeprof_nosort' both contain one
                 record for each test and comprise the following fields:
                 - test running-time
@@ -166,7 +166,7 @@ def help():
                   information is contained in test name
                 - test outcome ('OK', 'SKIPPED TEST', 'FAILED TEST' or
                   'FAILED PARSING')
-    
+
                 In 'timeprof_sort', test records are sorted according to
                 running-time whereas in 'timeprof_nosort' records are reported
                 according to sequential number. The former classification is the
@@ -174,7 +174,7 @@ def help():
                 to same or close classes and files have close sequential, the
                 latter may be used to identify duration patterns among the tests
                 numbers. A full log is also saved as 'timeprof_rawlog'.
-    
+
             --without-knownfailure: Do not load the KnownFailure plugin.
 
             --theano: This parameter is replaced with the path to the theano
@@ -194,16 +194,16 @@ def help():
         The other options will be passed to nosetests, see ``nosetests -h``.
         """
 
-    print textwrap.dedent(help_msg)
+    print(textwrap.dedent(help_msg))
 
 
 class DisabDocString(Plugin):
-    
+
     """
     When activated, a custom Nosetests plugin created through this class
     will preclude automatic replacement in display of the name of the test
     by the first line in its documentation string.
-    
+
     Sources:
     http://nose.readthedocs.org/en/latest/developing.html
     http://nose.readthedocs.org/en/latest/further_reading.html
@@ -214,10 +214,10 @@ class DisabDocString(Plugin):
     https://github.com/Merino/nose-description-fixer-plugin/commit/
         df94596f29c04fea8001713dd9b04bf3720aebf4
     """
-    
+
     enabled = False # plugin disabled by default
     score = 2000  # high score ensures priority over other plugins
-    
+
     def __init__(self):
         # 'super.__init__(self):' would have achieved exactly the same
         if self.name is None:
@@ -253,7 +253,7 @@ class DisabDocString(Plugin):
         # 'describeTest' is also called when the test result in Nosetests calls
         # 'test.shortDescription()' and can thus be used to alter the display.
         return False
-    
+
 if __name__ == '__main__':
     if '--help' in sys.argv or '-h' in sys.argv:
         help()

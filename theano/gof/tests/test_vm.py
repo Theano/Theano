@@ -1,3 +1,4 @@
+from __future__ import print_function
 import gc
 import sys
 import time
@@ -83,9 +84,9 @@ def test_speed():
         t_a = t1 - t0
         t_b = t3 - t2
 
-        print "%s takes %f s/Kop" % (
+        print("%s takes %f s/Kop" % (
             'numpy',
-            (1000 * (t_b - t_a) / (steps_b - steps_a)))
+            (1000 * (t_b - t_a) / (steps_b - steps_a))))
 
     def time_linker(name, linker):
         steps_a = 5
@@ -113,9 +114,9 @@ def test_speed():
         t_a = t1 - t0
         t_b = t3 - t2
 
-        print "%s takes %f s/Kop" % (
+        print("%s takes %f s/Kop" % (
             name,
-            (1000*(t_b-t_a) / (steps_b - steps_a)))
+            (1000*(t_b-t_a) / (steps_b - steps_a))))
 
     time_linker('c|py', OpWiseCLinker)
     time_linker('vmLinker', vm.VM_Linker)
@@ -162,9 +163,9 @@ def test_speed_lazy():
         t_a = t1 - t0
         t_b = t3 - t2
 
-        print "%s takes %f s/Kop" % (
+        print("%s takes %f s/Kop" % (
             name,
-            (1000*(t_b-t_a) / (steps_b - steps_a)))
+            (1000*(t_b-t_a) / (steps_b - steps_a))))
 
     time_linker('vmLinker', vm.VM_Linker)
     time_linker('vmLinker_nogc', lambda: vm.VM_Linker(allow_gc=False))
@@ -210,9 +211,9 @@ if run_memory_usage_tests:
             assert c == sys.getrefcount(n)
             del a
             if not i % 1000:
-                print '.',
-                print gc.collect(),
-                print gc.collect()
+                print('.', end=' ')
+                print(gc.collect(), end=' ')
+                print(gc.collect())
             sys.stdout.flush()
 
     def test_no_leak_many_graphs():
@@ -228,7 +229,7 @@ if run_memory_usage_tests:
 
             f = function([x], z, mode=Mode(optimizer=None, linker='cvm'))
             if not i % 100:
-                print gc.collect()
+                print(gc.collect())
             sys.stdout.flush()
 
             gc.collect()
@@ -265,13 +266,13 @@ if run_memory_usage_tests:
                 import resource
                 pre = resource.getrusage(resource.RUSAGE_SELF)
                 post = resource.getrusage(resource.RUSAGE_SELF)
-                print pre.ru_ixrss, post.ru_ixrss
-                print pre.ru_idrss, post.ru_idrss
-                print pre.ru_maxrss, post.ru_maxrss
-        print 1
+                print(pre.ru_ixrss, post.ru_ixrss)
+                print(pre.ru_idrss, post.ru_idrss)
+                print(pre.ru_maxrss, post.ru_maxrss)
+        print(1)
         time_linker('vmLinker_C',
                     lambda: vm.VM_Linker(allow_gc=False, use_cloop=True))
-        print 2
+        print(2)
         time_linker('vmLinker',
                     lambda: vm.VM_Linker(allow_gc=False, use_cloop=False))
 
@@ -298,10 +299,10 @@ if run_memory_usage_tests:
             inp = numpy.random.rand(1000000)
             for i in xrange(500):
                 f_a(inp)
-        print 1
+        print(1)
         time_linker('vmLinker_C',
                     lambda: vm.VM_Linker(allow_gc=False, use_cloop=True))
-        print 2
+        print(2)
         time_linker('vmLinker',
                     lambda: vm.VM_Linker(allow_gc=False, use_cloop=False))
 

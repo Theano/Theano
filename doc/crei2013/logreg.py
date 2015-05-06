@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy
 import theano
 import theano.tensor as tt
@@ -13,8 +14,8 @@ x = tt.matrix("x")
 y = tt.vector("y")
 w = theano.shared(rng.randn(feats), name="w")
 b = theano.shared(0., name="b")
-print "Initial model:"
-print w.get_value(), b.get_value()
+print("Initial model:")
+print(w.get_value(), b.get_value())
 
 # Construct Theano expression graph
 p_1 = 1 / (1 + tt.exp(-tt.dot(x, w) - b))   # Probability that target = 1
@@ -38,7 +39,7 @@ predict = theano.function(inputs=[x], outputs=prediction,
 for i in range(training_steps):
     pred, err = train(D[0], D[1])
 
-print "Final model:"
-print w.get_value(), b.get_value()
-print "target values for D:", D[1]
-print "prediction on D:", predict(D[0])
+print("Final model:")
+print(w.get_value(), b.get_value())
+print("target values for D:", D[1])
+print("prediction on D:", predict(D[0]))
