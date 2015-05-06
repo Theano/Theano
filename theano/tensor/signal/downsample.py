@@ -577,8 +577,6 @@ class DownsampleFactorMaxGrad(Op):
                         self, 2, gz, 'Hessian not implemented with padding')]
 
     def c_code(self, node, name, inp, out, sub):
-        if self.ds != self.st or self.padding != (0, 0):
-            raise theano.gof.utils.MethodNotDefined()
         if self.mode != 'max':
             raise theano.gof.utils.MethodNotDefined()
         x, z, gz = inp
@@ -586,13 +584,14 @@ class DownsampleFactorMaxGrad(Op):
         fail = sub['fail']
         ignore_border = int(self.ignore_border)
         ds0, ds1 = self.ds
+        st0, st1 = self.st
+        pd0, pd1 = self.padding
         return """
+        // sanity checks
         int x_typenum = PyArray_ObjectType((PyObject*)%(x)s, 0);
         int z_typenum = PyArray_ObjectType((PyObject*)%(z)s, 0);
         int gz_typenum = PyArray_ObjectType((PyObject*)%(gz)s, 0);
-        int x_shp0_usable;
-        int x_shp1_usable;
-        int z_shp0, z_shp1;
+        
         if ((x_typenum != z_typenum) || (x_typenum != gz_typenum))
         {
             PyErr_SetString(PyExc_ValueError, "input types must all match");
@@ -613,19 +612,20 @@ class DownsampleFactorMaxGrad(Op):
             PyErr_SetString(PyExc_ValueError, "gz must be a 4d ndarray");
             %(fail)s;
         }
-        z_shp0 = PyArray_DIMS(%(z)s)[2];
-        z_shp1 = PyArray_DIMS(%(z)s)[3];
-        if (%(ignore_border)s)
-        {
-            x_shp0_usable = z_shp0 * %(ds0)s;
-            x_shp1_usable = z_shp1 * %(ds1)s;
-        }
-        else
-        {
-            x_shp0_usable = PyArray_DIMS(%(x)s)[2];
-            x_shp1_usable = PyArray_DIMS(%(x)s)[3];
-        }
+        
+        int z_r, z_c;
+        z_r = PyArray_DIMS(%(z)s)[2];
+        z_c = PyArray_DIMS(%(z)s)[3];
+        
+        int r, c; // shape of the padded_input
+        r = PyArray_DIMS(%(x)s)[2];
+        c = PyArray_DIMS(%(x)s)[3];
+        r += %(pd0)s * 2;
+        c += %(pd1)s * 2;
+
+        // allocating memory for gx
         if ((!%(gx)s)
+          || !PyArray_ISCONTIGUOUS(%(gx)s)
           || *PyArray_DIMS(%(gx)s)!=4
           ||(PyArray_DIMS(%(gx)s)[0] != PyArray_DIMS(%(x)s)[0])
           ||(PyArray_DIMS(%(gx)s)[1] != PyArray_DIMS(%(x)s)[1])
@@ -636,45 +636,63 @@ class DownsampleFactorMaxGrad(Op):
           Py_XDECREF(%(gx)s);
           %(gx)s = (PyArrayObject*) PyArray_ZEROS(4, PyArray_DIMS(%(x)s), x_typenum,0);
         }
+        else {
+          PyArray_FILLWBYTE(%(gx)s, 0);
+        }
+        int r_st, r_end, c_st, c_end; // used to index into the input img x
+        dtype_%(z)s maximum; // temp var for maximum value in a region
+        if (z_r && z_c)
+        {
+            for(int b=0; b<PyArray_DIMS(%(x)s)[0]; b++){
+              for(int k=0; k<PyArray_DIMS(%(x)s)[1]; k++){
+                for(int i=0; i< z_r; i++){
+                  r_st = i * %(st0)s;
+                  r_end = r_st + %(ds0)s;
+                  // skip the padding
+                  r_st = r_st < %(pd0)s ? %(pd0)s : r_st;
+                  r_end = r_end > (r - %(pd0)s) ? r - %(pd0)s : r_end;
+                  // from padded_img space to img space
+                  r_st -= %(pd0)s;
+                  r_end -= %(pd0)s;
 
-        for(int b=0;b<PyArray_DIMS(%(x)s)[0];b++){
-          for(int k=0;k<PyArray_DIMS(%(x)s)[1];k++){
-            int mini_i = 0;
-            int zi = 0;
-            for(int i=0;i< x_shp0_usable; i++){
-               int mini_j = 0;
-               int zj = 0;
-               for(int j=0; j< x_shp1_usable; j++){
-                 dtype_%(x)s * __restrict__ xp = ((dtype_%(x)s*)(PyArray_GETPTR4(%(x)s,b,k,i,j)));
-                 dtype_%(gx)s * __restrict__ gxp = ((dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s,b,k,i,j)));
-                 dtype_%(z)s * __restrict__ zp = ((dtype_%(z)s*)(PyArray_GETPTR4(%(z)s,b,k,zi,zj)));
-                 dtype_%(gz)s * __restrict__ gzp = ((dtype_%(gz)s*)(PyArray_GETPTR4(%(gz)s,b,k,zi,zj)));
-                 gxp[0] = (zp[0] == xp[0]) ? gzp[0] : 0;
-                 mini_j = (mini_j + 1 == %(ds1)s) ? 0 : mini_j+1;
-                 zj += (mini_j == 0);
-              }//for j
-              mini_i = (mini_i + 1 == %(ds0)s) ? 0 : mini_i+1;
-              zi += (mini_i == 0);
-
-              for (int j = x_shp1_usable; j < PyArray_DIMS(%(x)s)[3]; ++j) {
-                dtype_%(gx)s * gxp = ((dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s,b,k,i,j)));
-                gxp[0] = 0;
-              }
-            }//for i
-
-            for(int i = x_shp0_usable; i < PyArray_DIMS(%(x)s)[2]; i++){
-                for (int j = 0; j < PyArray_DIMS(%(x)s)[3]; ++j) {
-                    dtype_%(gx)s * gxp = ((dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s,b,k,i,j)));
-                    gxp[0] = 0;
+                  for(int j=0; j<z_c; j++){
+                    c_st = j * %(st1)s;
+                    c_end = c_st + %(ds1)s;
+                    // skip the padding
+                    c_st = c_st < %(pd1)s ? %(pd1)s : c_st;
+                    c_end = c_end > (c - %(pd1)s) ? c - %(pd1)s : c_end;
+                    
+                    // change coordinates from padding_img space into img space
+                    c_st -= %(pd1)s;
+                    c_end -= %(pd1)s;
+                    // the maximum value
+                    maximum = ((dtype_%(z)s*)(PyArray_GETPTR4(%(z)s,b,k,i,j)))[0];
+                    // the gradient corresponding to this maximum value in z
+                    dtype_%(gz)s * gz = (
+                          (dtype_%(gz)s*)(PyArray_GETPTR4(%(gz)s, b, k, i, j)));
+                    // go through the pooled region in the unpadded input
+                    for(int m=r_st; m<r_end; m++)
+                    {
+                      for(int n=c_st; n<c_end; n++)
+                      {
+                        dtype_%(x)s a = ((dtype_%(x)s*)(PyArray_GETPTR4(%(x)s,b,k,m,n)))[0];
+                        dtype_%(gx)s * gx = (
+                          (dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s, b, k, m, n)));
+                        if (a == maximum){
+                          gx[0] = gx[0] + gz[0]; 
+                        }
+                      }
+                    }
+                  }
                 }
+              }
             }
-          }//for k
-        }//for b
+            
+        }
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 2)
-
+        return (0, 7)
 
 class DownsampleFactorMaxGradGrad(Op):
     __props__ = ('ds', 'ignore_border', 'st')
