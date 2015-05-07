@@ -320,7 +320,8 @@ class ScalarSoftplus(scalar.UnaryScalarOp):
     def c_code(self, node, name, inp, out, sub):
         x, = inp
         z, = out
-        if node.inputs[0].type == scalar.float32:
+        if (node.inputs[0].type == scalar.float32 or
+                node.inputs[0].type == scalar.float16):
             # These constants were obtained by looking at the output of python commands like:
             #  for i in xrange(750):
             #      print i, repr( numpy.log1p(numpy.exp(theano._asarray([i,-i], dtype=dt))))
