@@ -119,7 +119,7 @@ def main():
         else:
             ret = nose.main()
         return ret
-    except TypeError, e:
+    except TypeError as e:
         if "got an unexpected keyword argument 'addplugins'" in e.message:
             # This means nose is too old and does not support plugins
             _logger.warn(
