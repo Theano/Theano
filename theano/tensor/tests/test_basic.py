@@ -2065,6 +2065,29 @@ Allocb4GradTester = makeBroadcastTester(
 )
 
 
+# Partial un broadcast of a dimshuffled input
+AllocDimshuffleGradTester = makeBroadcastTester(
+    name='Allocb4GradTester',
+    op=lambda x: alloc(x.dimshuffle('x', 'x', 0), 1, s2, s3),
+    expected=(lambda x: numpy.zeros((1, s2, s3), dtype=x.dtype) + x),
+    grad=dict(
+        x1=(rand(s3),),
+        x2=(rand(s3),),
+        x3=(rand(s3),),
+    ),
+)
+AllocDimshuffleGradTester2 = makeBroadcastTester(
+    name='Allocb4GradTester',
+    op=lambda x: alloc(x.dimshuffle('x', 0), 1, s2, s3),
+    expected=(lambda x: numpy.zeros((1, s2, s3), dtype=x.dtype) + x),
+    grad=dict(
+        x1=(rand(s3),),
+        x2=(rand(s3),),
+        x3=(rand(s3),),
+    ),
+)
+
+
 class ApplyDefaultTestOp(theano.Op):
     def __init__(self, id):
         self.default_output = id

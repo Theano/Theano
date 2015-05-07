@@ -2520,22 +2520,20 @@ class Alloc(gof.Op):
         axis = range(n_axes_to_sum)
         # The broadcasted dimensions
         axis_broadcasted = []
+        axis_kept = []
         for i, (ib, gb) in enumerate(
             zip(inputs[0].broadcastable,
                 # We need the dimensions corresponding to x
                 grads[0].broadcastable[-inputs[0].ndim:])):
             if ib and not gb:
                 axis_broadcasted.append(i + n_axes_to_sum)
+            else:
+                axis_kept.append(i)
         gx = gz.sum(axis=axis + axis_broadcasted)
         if axis_broadcasted:
-            new_order = list(x.broadcastable)
-            idx = 0
-            for i in range(x.ndim):
-                if not new_order[i]:
-                    new_order[i] = idx
-                    idx += 1
-                else:
-                    new_order[i] = 'x'
+            new_order = ['x'] * x.ndim
+            for idx, axis in enumerate(axis_kept):
+                new_order[axis] = idx
             gx = gx.dimshuffle(new_order)
             # Dimshuffle to add back the broadcasted dims
         # The *elements* of the output are not connected to
