@@ -3890,7 +3890,7 @@ def local_sum_prod_mul_by_scalar(node):
                         return [T.mul(scalars[0], node.op(non_scalars[0]))]
                     else:
                         return [scalars[0]]
-        if node_inps.owner and node_inps.owner.op == T.neg:
+        if isinstance(node.op, T.Sum) and node_inps.owner and node_inps.owner.op == T.neg:
             return [T.neg(node.op(node_inps.owner.inputs[0]))]
 
 
