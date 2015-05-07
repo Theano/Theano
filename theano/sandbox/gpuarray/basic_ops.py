@@ -13,6 +13,7 @@ from theano.gof import HideC
 from theano.gof.utils import MethodNotDefined
 from theano.compat import PY3
 from six import string_types
+from six.moves import xrange
 
 try:
     import pygpu

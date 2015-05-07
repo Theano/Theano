@@ -5,10 +5,11 @@ import unittest
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
 import numpy
+from six import StringIO
+from six.moves import xrange
 
 import theano
 from theano.compat import exc_message, izip
-from six import StringIO
 from theano.compile import DeepCopyOp
 from theano import config
 from theano import gof

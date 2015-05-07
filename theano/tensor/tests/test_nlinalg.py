@@ -5,6 +5,7 @@ import numpy.linalg
 from numpy.testing import assert_array_almost_equal
 from numpy.testing import dec, assert_array_equal, assert_allclose
 from numpy import inf
+from six.moves import xrange
 
 import theano
 from theano import tensor, function

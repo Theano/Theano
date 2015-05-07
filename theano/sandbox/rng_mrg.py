@@ -9,6 +9,7 @@ from __future__ import print_function
 import warnings
 
 import numpy
+from six.moves import xrange
 
 from theano import Op, Apply, shared, config, Variable, Out
 from theano import gradient, function

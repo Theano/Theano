@@ -141,7 +141,7 @@ except ImportError:
 
 from theano.configparser import config, AddConfigVar, StrParam
 from six import iteritems
-from six.moves import reduce
+from six.moves import reduce, xrange
 from theano.gof import (utils, Op, view_roots,
                         local_optimizer, Optimizer,
                         InconsistencyError, toolbox, SequenceDB,

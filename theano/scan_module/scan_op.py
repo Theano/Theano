@@ -61,6 +61,7 @@ import time
 
 import numpy
 from six import iteritems
+from six.moves import xrange
 
 import theano
 from theano.compat import exc_message

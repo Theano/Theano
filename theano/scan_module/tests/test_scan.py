@@ -8,6 +8,7 @@ import unittest
 import copy
 
 import six.moves.cPickle as pickle
+from six.moves import xrange
 import numpy
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr

@@ -3,6 +3,7 @@ import logging
 logger = logging.getLogger(__name__)
 import numpy
 import warnings
+from six.moves import xrange
 
 from theano.gof import Op, Apply
 

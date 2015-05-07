@@ -7,6 +7,7 @@ import sys
 import unittest
 
 import six.moves.cPickle as pickle
+from six.moves import xrange
 import numpy
 from numpy.testing import dec
 

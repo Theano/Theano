@@ -6,6 +6,7 @@ from theano.compile.pfunc import pfunc
 from theano import tensor
 
 import numpy
+from six.moves import xrange
 import theano
 import theano.tensor as T
 

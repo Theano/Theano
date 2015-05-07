@@ -1,6 +1,7 @@
 import copy
 import theano
 import numpy
+from six.moves import xrange
 
 try:
     import pygpu

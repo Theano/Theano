@@ -1,6 +1,7 @@
 from unittest import TestCase
 
 import numpy
+from six.moves import xrange
 import theano
 
 from theano.tests import unittest_tools as utt

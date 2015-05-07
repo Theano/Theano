@@ -6,6 +6,7 @@ import sys
 import warnings
 
 import numpy
+from six.moves import xrange
 
 import theano
 from theano.compat import izip

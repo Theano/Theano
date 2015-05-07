@@ -8,6 +8,7 @@ import theano
 from theano import gof
 from theano.compat import izip
 from six import iteritems
+from six.moves import xrange
 from theano.gof import Apply, Op, OpenMPOp
 from theano import scalar
 from theano.scalar import Scalar, get_scalar_type

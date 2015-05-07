@@ -15,7 +15,7 @@ from theano import scalar as scal
 from theano import config, tensor, gof
 import theano.ifelse
 
-from six.moves import reduce
+from six.moves import reduce, xrange
 from theano.compile import optdb
 from theano.gof import (local_optimizer, EquilibriumDB, ProxyDB,
                         Optimizer, toolbox)

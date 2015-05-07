@@ -5,6 +5,7 @@ import traceback as tb
 import warnings
 
 import numpy
+from six.moves import xrange
 
 import theano
 from theano.compat import PY3

@@ -6,6 +6,7 @@ from theano.compat import izip
 
 from nose.plugins.skip import SkipTest
 import numpy
+from six.moves import xrange
 
 import theano
 from theano.compile.sharedvalue import shared
