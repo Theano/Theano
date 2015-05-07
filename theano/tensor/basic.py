@@ -5521,7 +5521,7 @@ class AllocEmpty(gof.Op):
         
         for idx, sh in enumerate(shps):
             str +="dims[%(idx)s] =" \
-                  "((npy_intp) PyLong_AsLong((PyObject*)%(sh)s));\n" % locals()
+                  "((npy_intp)((dtype_%(sh)s*)PyArray_DATA(%(sh)s))[0]);\n" % locals()
 
         # Validate that the output storage exists
         str += "if(%(out)s==NULL\n" % locals()
@@ -5550,6 +5550,7 @@ class AllocEmpty(gof.Op):
         return [node.inputs]
 
     def c_code_cache_version(self):
+        return None
         return (2,)
 
     def do_constant_folding(self, node):
