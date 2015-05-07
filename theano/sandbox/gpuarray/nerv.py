@@ -3,6 +3,7 @@ import theano
 from theano import Op, Apply, Variable, tensor
 
 from theano.compile import optdb
+from theano.compile.ops import shape_i
 from theano.gof import local_optimizer
 from theano.scalar import as_scalar, constant
 
@@ -96,10 +97,11 @@ def local_dot_to_gemm16(node):
             node.inputs[0].dtype == 'float16' and
             node.inputs[1].dtype == 'float16' and
             node.inputs[0].ndim == 2 and node.inputs[1].ndim == 2):
+        fgraph = node.inputs[0].fgraph
         A = gpu_from_host(node.inputs[0])
         B = gpu_from_host(node.inputs[1])
         C = gpu_alloc(numpy.asarray(0, dtype='float16'),
-                      A.shape[0], B.shape[1])
+                      shape_i(A, 0, fgraph), shape_i(B, 1, fgraph))
         return [host_from_gpu(Gemm16()(C, 1.0, A, B, 0.0))]
 
 
