@@ -503,7 +503,7 @@ def scan(fn,
     if as_while:
         tmp_dummy_f_outs -= 1
     if not (tmp_dummy_f_outs == n_outs or outs_info == []):
-        raise ValueError('Please provide None as output_info for '
+        raise ValueError('Please provide None as outputs_info for '
                          'any output that does not feed back into '
                          'scan (i.e. it behaves like a map) ')
 
