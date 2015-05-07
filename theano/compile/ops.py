@@ -639,14 +639,14 @@ class Rebroadcast(gof.Op):
             broadcast_pattern = []
         else:
             broadcast_pattern = ['?' for i
-                                 in xrange(1 + numpy.max(self.axis.keys()))]
+                                 in xrange(1 + max(self.axis.keys()))]
         for k, v in iteritems(self.axis):
             broadcast_pattern[k] = str(int(v))
         return '%s{%s}' % (self.__class__.__name__,
                            ','.join(broadcast_pattern))
 
     def make_node(self, x):
-        if self.axis.keys() and (x.ndim <= numpy.max(self.axis.keys())):
+        if self.axis.keys() and (x.ndim <= max(self.axis.keys())):
             raise ValueError('Trying to rebroadcast non-existent dimension')
         t = x.type.clone(
             broadcastable=[self.axis.get(i, b)
