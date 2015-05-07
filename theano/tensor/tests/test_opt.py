@@ -10,6 +10,7 @@ import time
 import unittest
 
 import numpy
+from six.moves import xrange
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
 from numpy.testing import dec

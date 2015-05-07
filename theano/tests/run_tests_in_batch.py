@@ -55,12 +55,13 @@ nosetests.
 """
 
 
-import six.moves.cPickle as pickle
 import datetime
 import os
 import subprocess
 import sys
 import time
+from six.moves import xrange
+import six.moves.cPickle as pickle
 
 import theano
 from theano.misc.windows import output_subprocess_Popen

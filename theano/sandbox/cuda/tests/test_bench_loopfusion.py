@@ -13,6 +13,7 @@ from __future__ import print_function
 import logging, io, time, sys
 
 import numpy
+from six.moves import xrange
 
 import theano
 from theano.compile import shared, pfunc

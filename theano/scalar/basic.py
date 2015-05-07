@@ -20,6 +20,7 @@ from copy import copy
 from textwrap import dedent
 
 import numpy
+from six.moves import xrange
 
 import theano
 from theano.compat import PY3, imap, izip

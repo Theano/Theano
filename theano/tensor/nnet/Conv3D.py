@@ -1,4 +1,5 @@
 from __future__ import print_function
+from six.moves import xrange
 import theano
 from theano.tensor import basic as T
 import numpy as N

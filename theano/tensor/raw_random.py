@@ -8,7 +8,7 @@ import numpy
 
 # local imports
 import theano
-from six.moves import reduce
+from six.moves import reduce, xrange
 from theano import tensor
 from theano.tensor import opt
 from theano import gof

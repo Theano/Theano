@@ -16,6 +16,7 @@ import warnings
 
 from theano.compile import SharedVariable, function
 from six import iteritems
+from six.moves import xrange
 from theano import compile
 from theano import gof
 from theano.compat import izip

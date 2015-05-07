@@ -9,6 +9,7 @@ from numpy import (arange, array, common_type, complex64, complex128, float32,
 from numpy.testing import assert_array_almost_equal
 
 from nose.plugins.attrib import attr
+from six.moves import xrange
 
 import theano
 import theano.tensor as T

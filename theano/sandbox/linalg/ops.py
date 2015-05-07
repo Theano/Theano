@@ -4,6 +4,7 @@ logger = logging.getLogger(__name__)
 import numpy
 
 from six import iteritems
+from six.moves import xrange
 
 from theano.gof import Op, Apply
 

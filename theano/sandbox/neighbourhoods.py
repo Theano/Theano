@@ -12,6 +12,7 @@ import theano
 from theano import gof, Op, tensor, Variable, Apply
 
 import numpy
+from six.moves import xrange
 import six.moves.builtins as builtins
 
 

@@ -11,6 +11,7 @@ from copy import copy, deepcopy
 # Import builtin min to be able to use it after importing the tensor version.
 from theano.compat import izip
 from six import iteritems
+from six.moves import xrange
 from six.moves.builtins import min as builtin_min
 from nose.tools import assert_raises
 from nose.plugins.skip import SkipTest

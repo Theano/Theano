@@ -7,6 +7,7 @@ from __future__ import print_function
 import warnings
 
 import numpy
+from six.moves import xrange
 
 import theano
 from theano import config, gof, printing, scalar

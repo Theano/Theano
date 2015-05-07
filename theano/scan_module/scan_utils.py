@@ -22,6 +22,7 @@ import numpy
 import theano
 from theano.compat import izip
 from six import string_types, iteritems
+from six.moves import xrange
 from theano.compile.pfunc import rebuild_collect_shared
 from theano import gof, compat
 from theano import tensor, scalar

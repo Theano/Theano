@@ -17,6 +17,7 @@ import warnings
 
 import numpy
 import numpy as N  # guys... please don't do this in the library :(
+from six.moves import xrange
 
 import theano
 from theano import gof

@@ -5,6 +5,7 @@ import theano.tensor as T
 import collections
 
 from six import string_types, add_metaclass, iteritems
+from six.moves import xrange
 #import klass
 
 

@@ -2,6 +2,7 @@
 TODO: implement Images2Neibs.infer_shape() methods
 
 """
+from six.moves import xrange
 import theano
 from theano import Op, Apply
 import theano.tensor as T

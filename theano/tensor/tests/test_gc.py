@@ -1,6 +1,7 @@
-import six.moves.cPickle as pickle
 import sys
 import numpy
+import six.moves.cPickle as pickle
+from six.moves import xrange
 import theano
 from theano import tensor as T
 import time

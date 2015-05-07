@@ -8,6 +8,7 @@ from nose.plugins.skip import SkipTest
 
 from theano import config, shared
 from six import StringIO
+from six.moves import xrange
 
 
 def sharedX(x, name=None):

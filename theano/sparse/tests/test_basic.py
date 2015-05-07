@@ -5,6 +5,7 @@ import unittest
 from nose.plugins.attrib import attr
 from nose.plugins.skip import SkipTest
 import numpy
+from six.moves import xrange
 try:
     import scipy.sparse as sp
     import scipy.sparse
@@ -2258,7 +2259,7 @@ class Test_getitem(unittest.TestCase):
                                   x.__getitem__, (slice(a, b), slice(c, d, 2)))
             else:
                 raise SkipTest("Slicing with step is supported.")
-                
+
             # Advanced indexing is not supported
             self.assertRaises(ValueError,
                               x.__getitem__,

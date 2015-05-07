@@ -18,6 +18,7 @@ import logging
 import numpy
 
 from six import iteritems
+from six.moves import xrange
 
 import theano
 from theano import compile

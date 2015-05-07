@@ -12,6 +12,7 @@ import sys
 
 import numpy
 from numpy.lib.stride_tricks import as_strided
+from six.moves import xrange
 import scipy.sparse
 
 import theano
