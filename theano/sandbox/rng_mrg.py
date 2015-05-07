@@ -341,15 +341,6 @@ class mrg_uniform(mrg_uniform_base):
     def perform(self, node, inp, out):
         rstate, size = inp
         o_rstate, o_sample = out
-        numpy_version = numpy.__version__.split('.')
-
-        if (not self.warned_numpy_version and
-            int(numpy_version[0]) <= 1 and
-            int(numpy_version[1]) < 3):
-
-            print("Warning: you must use numpy version 1.3.0 or higher with the python version of this op. Otherwise numpy leak memory. and numpy")
-            self.warned_numpy_version = True
-
         n_elements = 1
 
         rstate = numpy.asarray(rstate)  # bring state from GPU if necessary
@@ -378,6 +369,8 @@ class mrg_uniform(mrg_uniform_base):
 
     def c_code(self, node, name, inp, out, sub):
         rstate, size = inp
+        if not isinstance(node.inputs[0].type, TensorType):
+            raise NotImplementedError("C code is cpu-only")
         o_rstate, o_sample = out
         if self.inplace:
             o_rstate_requirement = 'NPY_ARRAY_C_CONTIGUOUS|NPY_ARRAY_ALIGNED'
