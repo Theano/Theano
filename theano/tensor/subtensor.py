@@ -329,7 +329,7 @@ class Subtensor(Op):
         TODO: WRITEME: This method also accepts "entry" already being a Type;
             when would that happen?
         """
-        invalid_scal_types = [scal.float64, scal.float32]
+        invalid_scal_types = [scal.float64, scal.float32, scal.float16]
         scal_types = [scal.int64, scal.int32, scal.int16, scal.int8]
         tensor_types = [theano.tensor.lscalar, theano.tensor.iscalar,
                         theano.tensor.wscalar, theano.tensor.bscalar]
