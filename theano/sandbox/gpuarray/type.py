@@ -40,7 +40,12 @@ class GpuArrayType(Type):
         return "GpuArrayType(%s, %s)" % (self.dtype, self.broadcastable)
 
     def filter(self, data, strict=False, allow_downcast=None):
-        if strict:
+        if (isinstance(data, gpuarray.GpuArray) and
+                data.typecode == self.typecode):
+            # This is just to make this condition not enter the
+            # following branches
+            pass
+        elif strict:
             if not isinstance(data, gpuarray.GpuArray):
                 raise TypeError("%s expected a GpuArray object." % self,
                                 data, type(data))
@@ -50,13 +55,24 @@ class GpuArrayType(Type):
                                 (self, self.typecode, self.dtype,
                                  data.typecode, str(data.dtype)))
             # fallthrough to ndim check
-        elif allow_downcast:
+        elif (allow_downcast or
+              (allow_downcast is None and
+               type(data) == float and
+               self.dtype == config.floatX)):
             data = gpuarray.array(data, dtype=self.typecode, copy=False,
                                   ndmin=len(self.broadcastable))
         else:
+            if not hasattr(data, 'dtype'):
+                # This is to convert objects that don't have a dtype
+                # (like lists).  We anticipate that the type below
+                # will match and we pass copy=False so it won't make a
+                # second object on the GPU.
+                data = gpuarray.array(data, copy=False)
+
             up_dtype = scalar.upcast(self.dtype, data.dtype)
             if up_dtype == self.dtype:
-                data = gpuarray.array(data, dtype=self.dtype, copy=False)
+                data = gpuarray.array(data, dtype=self.dtype,
+                                      copy=False)
             else:
                 raise TypeError("%s cannot store a value of dtype %s "
                                 "without risking loss of precision." %
@@ -150,17 +166,14 @@ class GpuArrayType(Type):
 
     def convert_variable(self, var):
         if (type(self) == type(var.type) and
-            self.typecode == var.type.typecode and
-            self.ndim == var.type.ndim and
-            all(sb == ob or ob for sb, ob in zip(self.broadcastable,
-                                                 var.type.broadcastable))):
+                self.typecode == var.type.typecode and
+                self.ndim == var.type.ndim and
+                all(sb == ob or ob for sb, ob in zip(self.broadcastable,
+                                                     var.type.broadcastable))):
             return theano.tensor.patternbroadcast(var, self.broadcastable)
 
     def __hash__(self):
         return (hash(self.typecode) ^ hash(self.broadcastable))
-
-    def __str__(self):
-        return "GpuArray<%s>" % (self.dtype,)
 
     def dtype_specs(self):
         """Return a tuple (python type, c type, numpy typenum) that corresponds
@@ -250,9 +263,9 @@ class GpuArrayType(Type):
     def c_headers(self):
         # We need arrayobject for the PyArrayDescr struct def
         # (even if we just use a pointer to it in a function def)
-        return ['<gpuarray/array.h>', '<gpuarray/kernel.h>', '<gpuarray/error.h>',
-                '<gpuarray/buffer_blas.h>', '<numpy/arrayobject.h>',
-                '<gpuarray_api.h>']
+        return ['<gpuarray/array.h>', '<gpuarray/kernel.h>',
+                '<gpuarray/error.h>', '<gpuarray/buffer_blas.h>',
+                '<numpy/arrayobject.h>', '<gpuarray_api.h>']
 
     def c_header_dirs(self):
         return [pygpu.get_include(), numpy.get_include()]
@@ -284,8 +297,9 @@ GpuArrayType.Variable = GpuArrayVariable
 
 
 class GpuArraySignature(tensor.TensorConstantSignature):
-    pass  # might do something better if we can run the sum on the
-          # GPU, but for now this will suffice.
+    # might do something better if we can run the sum on the GPU, but
+    # for now this will suffice.
+    pass
 
 
 class GpuArrayConstant(_operators, Constant):
@@ -312,7 +326,9 @@ class GpuArraySharedVariable(_operators, SharedVariable):
             return numpy.asarray(self.container.value)
 
     def set_value(self, value, borrow=False):
-        self.container.value = pygpu.gpuarray.array(value, copy=(not borrow))
+        if isinstance(value, pygpu.gpuarray.GpuArray):
+            value = pygpu.gpuarray.array(value, copy=(not borrow))
+        self.container.value = value
 
     def __getitem__(self, *args):
         return _operators.__getitem__(self, *args)
