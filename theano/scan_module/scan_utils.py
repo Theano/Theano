@@ -452,15 +452,13 @@ def equal_computations(xs, ys, in_xs=None, in_ys=None):
         elif len(nd_x.outputs) != len(nd_y.outputs):
             return False
         else:
+            all_in_common=True
             for dx, dy in izip(nd_x.outputs, nd_y.outputs):
                 if (dx, dy) in different:
                     return False
-
-            all_in_common=True
-            for dx, dy in izip(nd_x.outputs, nd_y.outputs):
                 if (dx, dy) not in common:
                     all_in_common = False
-                    break
+
             if all_in_common:
                 return True
 
