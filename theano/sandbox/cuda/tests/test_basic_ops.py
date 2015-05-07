@@ -304,7 +304,9 @@ def test_careduce():
 
 def test_flatten():
     x = cuda.fmatrix('x')
-    f = theano.function([x], x.flatten())
+    f = theano.function([x], x.flatten(), mode=mode_with_gpu)
+    assert any([node for node in f.maker.fgraph.toposort()
+                if isinstance(node.op, B.GpuFlatten)])
     assert len(f([[0., 0.], [0., 0.]]).shape) == 1
 
 
