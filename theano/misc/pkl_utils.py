@@ -166,7 +166,7 @@ class PersistentCudaNdarrayID(PersistentNdarrayID):
                 zipadd(write_array, self.zip_file, name)
                 self.seen[id(obj)] = 'cuda_ndarray.{0}'.format(name)
             return self.seen[id(obj)]
-        super(PersistentCudaNdarrayID, self).__call__(obj)
+        return super(PersistentCudaNdarrayID, self).__call__(obj)
 
 
 class PersistentSharedVariableID(PersistentCudaNdarrayID):
