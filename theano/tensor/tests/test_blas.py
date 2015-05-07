@@ -930,6 +930,7 @@ def test_dot22scalar():
                                                 mode=mode_blas_opt)
                             topo = f.maker.fgraph.toposort()
                             check_dot22scalar(f, 5)
+                            #print (av.dtype, bv.dtype, cv.dtype)
 
                             f(av, bv, cv)
 

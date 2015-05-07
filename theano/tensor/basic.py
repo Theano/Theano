@@ -5473,7 +5473,7 @@ class Choose(Op):
 
 class AllocEmpty(gof.Op):
     """Implement Alloc on the gpu, but without initializing memory."""
-    __props__ = ()
+    __props__ = ("dtype",)
 
     # specify the type of the data
     def __init__(self, dtype):
@@ -5550,8 +5550,7 @@ class AllocEmpty(gof.Op):
         return [node.inputs]
 
     def c_code_cache_version(self):
-        return None
-        #return (1,)
+        return (2,)
 
     def do_constant_folding(self, node):
         return False
