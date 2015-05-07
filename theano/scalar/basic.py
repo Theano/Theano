@@ -50,26 +50,34 @@ class IntegerDivisionError(Exception):
 
 
 def upcast(dtype, *dtypes):
-    # Should we try to keep float32 instead of float64? This is used so that
-    # for instance mixing int64 with float32 yields float32 instead of float64.
-    # Note that we store this boolean as a one-element list so that it can be
-    # modified within `make_array`.
+    # This tries to keep data in floatX or lower precision, unless we
+    # explicitely request a higher precision datatype.
     keep_float32 = [(config.cast_policy == 'numpy+floatX' and
                      config.floatX == 'float32')]
+    keep_float16 = [(config.cast_policy == 'numpy+floatX' and
+                     config.floatX == 'float16')]
 
     def make_array(dt):
         if dt == 'float64':
             # There is an explicit float64 dtype: we cannot keep float32.
             keep_float32[0] = False
+            keep_float16[0] = False
+        if dt == 'float32':
+            keep_float16[0] = False
         return numpy.zeros((), dtype=dt)
     z = make_array(dtype)
     for dt in dtypes:
         z = z + make_array(dt=dt)
     rval = str(z.dtype)
-    if rval == 'float64' and keep_float32[0]:
-        return 'float32'
-    else:
-        return rval
+    if rval == 'float64':
+        if keep_float16[0]:
+            return 'float16'
+        if keep_float32[0]:
+            return 'float32'
+    elif rval == 'float32':
+        if keep_float16[0]:
+            return 'float16'
+    return rval
 
 
 def get_scalar_type(dtype):
@@ -232,6 +240,7 @@ class Scalar(Type):
                 print(dtype, np.zeros(1, dtype=dtype).dtype.num)
             """
             return {  # dtype: (py_type, c_type, cls_name)
+                    'float16': (numpy.float16, 'npy_float16', 'Float16'),
                     'float32': (numpy.float32, 'npy_float32', 'Float32'),
                     'float64': (numpy.float64, 'npy_float64', 'Float64'),
                     'complex128': (numpy.complex128, 'theano_complex128',
@@ -501,6 +510,7 @@ uint8 = get_scalar_type('uint8')
 uint16 = get_scalar_type('uint16')
 uint32 = get_scalar_type('uint32')
 uint64 = get_scalar_type('uint64')
+float16 = get_scalar_type('float16')
 float32 = get_scalar_type('float32')
 float64 = get_scalar_type('float64')
 complex64 = get_scalar_type('complex64')
@@ -508,7 +518,7 @@ complex128 = get_scalar_type('complex128')
 
 int_types = int8, int16, int32, int64
 uint_types = uint8, uint16, uint32, uint64
-float_types = float32, float64
+float_types = float16, float32, float64
 complex_types = complex64, complex128
 
 discrete_types = int_types + uint_types
@@ -1995,6 +2005,7 @@ convert_to_uint8 = Cast(uint8, name='convert_to_uint8')
 convert_to_uint16 = Cast(uint16, name='convert_to_uint16')
 convert_to_uint32 = Cast(uint32, name='convert_to_uint32')
 convert_to_uint64 = Cast(uint64, name='convert_to_uint64')
+convert_to_float16 = Cast(float16, name='convert_to_float16')
 convert_to_float32 = Cast(float32, name='convert_to_float32')
 convert_to_float64 = Cast(float64, name='convert_to_float64')
 convert_to_complex64 = Cast(complex64, name='convert_to_complex64')
@@ -2009,6 +2020,7 @@ _cast_mapping = {
            'uint16': convert_to_uint16,
            'uint32': convert_to_uint32,
            'uint64': convert_to_uint64,
+           'float16': convert_to_float16,
            'float32': convert_to_float32,
            'float64': convert_to_float64,
            'complex64': convert_to_complex64,
@@ -3286,14 +3298,20 @@ class Composite(ScalarOp):
                 + zip(self.fgraph.outputs,
                     ["%%(o%i)s" % i for i in xrange(len(self.fgraph.outputs))]))
 
-        for orphan in self.fgraph.variables:  # fgraph.orphans:
-            if orphan.owner is None and orphan not in self.fgraph.inputs:
-                if isinstance(orphan, Constant):
-                    subd[orphan] = orphan.type.c_literal(orphan.data)
-                else:
-                    raise ValueError(
-                        "All orphans in the fgraph to Composite must"
-                        " be Constant instances.")
+        for var in self.fgraph.variables:
+            if var.owner is None:
+                if var not in self.fgraph.inputs:
+                    # This is an orphan
+                    if isinstance(var, Constant):
+                        subd[var] = var.type.c_literal(var.data)
+                    else:
+                        raise ValueError(
+                            "All orphans in the fgraph to Composite must"
+                            " be Constant instances.")
+            elif (any(i.dtype == 'float16' for i in var.owner.inputs) or
+                      any(o.dtype == 'float16' for o in var.owner.outputs)):
+                # flag for elemwise ops to check.
+                self.inner_float16 = True
 
         _c_code = "{\n"
         self.nodenames = ["%(nodename)s_" + ('subnode%i' % j)

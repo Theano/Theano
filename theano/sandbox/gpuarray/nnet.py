@@ -16,6 +16,7 @@ from .type import GpuArrayType
 from .kernel_codegen import (nvcc_kernel,
                              inline_softmax,
                              inline_softmax_fixed_shared)
+from .fp16_help import work_dtype, load_w, write_w
 
 
 class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
@@ -24,15 +25,8 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
     """
     nin = 3
     nout = 3
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
+    _f16_ok = True
 
     def make_node(self, x, b, y_idx):
         # N.B. won't work when we don't cast y_idx to float anymore
@@ -52,6 +46,12 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
         dtype_x = node.inputs[0].dtype
         dtype_b = node.inputs[1].dtype
         dtype_y_idx = node.inputs[2].dtype
+        work_x = work_dtype(dtype_x)
+        work_b = work_dtype(dtype_b)
+        load_x = load_w(dtype_x)
+        load_b = load_w(dtype_b)
+        write_x = write_w(dtype_x)
+        write_b = write_w(dtype_b)
         return """
         __global__ void k_xent_sm_1hot_bias_%(nodename)s(int M, int N,
             const npy_%(dtype_x)s* x_data, int xs0, int xs1,
@@ -67,12 +67,13 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
             const npy_%(dtype_y_idx)s y_idx = y_idx_data[row * y_idxs0];
             npy_%(dtype_x)s* sm = sm_data + sms0 * row;
 
-            npy_%(dtype_x)s sum = 0.0;
+            npy_%(work_x)s sum = 0.0;
             int row_max_j = 0;
-            npy_%(dtype_x)s row_max = x[0] + b[0];
+            npy_%(work_x)s row_max = %(load_x)s(x[0]) + %(load_b)s(b[0]);
             for (int j = 1; j < N; ++j)
             {
-                npy_%(dtype_x)s row_ij = x[j*xs1] + b[j*bs0];
+                npy_%(work_x)s row_ij = %(load_x)s(x[j*xs1]) +
+                                        %(load_b)s(b[j*bs0]);
                 //todo: store to shared memory
                 row_max_j = (row_ij > row_max) ? j : row_max_j;
                 row_max   = (row_ij > row_max) ? row_ij : row_max;
@@ -80,27 +81,30 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
             //compute the exp
             for (int j = 0; j < N; ++j)
             {
-                npy_%(dtype_x)s row_ij = x[j*xs1] + b[j*bs0];
-                npy_%(dtype_x)s sm_ij = exp(row_ij - row_max);
+                npy_%(work_x)s row_ij = %(load_x)s(x[j*xs1]) +
+                                        %(load_b)s(b[j*bs0]);
+                npy_%(work_x)s sm_ij = exp(row_ij - row_max);
                 sum += sm_ij;
-                sm[j * sms1] = sm_ij;
+                sm[j * sms1] = %(write_x)s(sm_ij);
             }
-            npy_%(dtype_x)s sum_inv = 1.0 / sum;
+            npy_%(work_x)s sum_inv = 1.0 / sum;
             for (int j = 0; j < N; ++j)
             {
-                sm[j * sms1] *= sum_inv;
+                npy_%(work_x)s __tmp = %(load_x)s(sm[j * sms1]);
+                __tmp *= sum_inv;
+                sm[j * sms1] = %(write_x)s(__tmp);
             }
             if ((y_idx >= N) || (y_idx < 0))
             {
                 //TODO: set raise an error bit in a global var?
-                nll_data[row*nlls0] = 0.0; // raise some suspicion at least...
+                nll_data[row*nlls0] = %(write_x)s(0.0); // raise some suspicion at least...
             }
             else
             {
-                nll_data[row*nlls0] = - x[y_idx*xs1]
-                           - b[y_idx*bs0]
+                nll_data[row*nlls0] = %(write_x)s(- %(load_x)s(x[y_idx*xs1])
+                           - %(load_b)s(b[y_idx*bs0])
                            + row_max
-                           + log(sum);
+                           + log(sum));
             }
             am_data[row*ams0] = row_max_j;
           }
@@ -259,8 +263,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
         return sio.getvalue()
 
     def c_code_cache_version(self):
-        # return ()
-        return (5,)
+        return (6,)
 
     def c_compiler(self):
         return NVCC_compiler
@@ -272,21 +275,13 @@ gpu_crossentropy_softmax_argmax_1hot_with_bias = GpuCrossentropySoftmaxArgmax1Ho
 class GpuCrossentropySoftmax1HotWithBiasDx(Op):
     """
     Implement CrossentropySoftmax1HotWithBiasDx on the gpu.
+
+    Gradient wrt x of the CrossentropySoftmax1Hot Op
     """
     nin = 3
     nout = 1
-    """Gradient wrt x of the CrossentropySoftmax1Hot Op"""
-    def __init__(self, **kwargs):
-        Op.__init__(self, **kwargs)
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
+    _f16_ok = True
 
     def make_node(self, dnll, sm, y_idx):
         dnll = as_gpuarray_variable(dnll)
@@ -295,8 +290,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
         return Apply(self, [dnll, sm, y_idx], [sm.type()])
 
     def c_code_cache_version(self):
-        # return ()
-        return (8,)
+        return (9,)
 
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>']
@@ -421,6 +415,10 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
         dtype_sm = node.inputs[1].dtype
         dtype_y_idx = node.inputs[2].dtype
         dtype_dx = node.outputs[0].dtype
+        work_dnll = work_dtype(dtype_dnll)
+        load_dnll = load_w(dtype_dnll)
+        load_sm = load_w(dtype_sm)
+        write_dx = write_w(dtype_dx)
         return """
         __global__ void kCrossEntropySoftmax1HotWithBiasDx_%(nodename)s(
            int N, int K,
@@ -431,7 +429,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
         {
             for (int i = blockIdx.x; i < N; i += gridDim.x)
             {
-                npy_%(dtype_dnll)s dnll_i = dnll[i * dnll_s0];
+                npy_%(work_dnll)s dnll_i = %(load_dnll)s(dnll[i * dnll_s0]);
                 npy_%(dtype_y_idx)s y_i = y_idx[i * y_idx_s0];
 
                 for (int j = threadIdx.x; j < K; j += blockDim.x)
@@ -439,16 +437,15 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
                     if (y_i == j)
                     {
                         dx[i * dx_s0 + j * dx_s1] =
-                            dnll_i * (sm[i * sm_s0 + j * sm_s1]-1.0);
+                            %(write_dx)s(dnll_i *
+                              (%(load_sm)s(sm[i * sm_s0 + j * sm_s1]) - 1.0));
                     }
                     else
                     {
                         dx[i * dx_s0 + j * dx_s1] =
-                            dnll_i * sm[i * sm_s0 + j * sm_s1];
+                            %(write_dx)s(dnll_i *
+                              %(load_sm)s(sm[i * sm_s0 + j * sm_s1]));
                     }
-                    //dx[i * dx_s0 + j * dx_s1] =
-                    //    dnll_i * sm[i * sm_s0 + j * sm_s1];
-                    //dx[i*dx_s0+j*dx_s1] = 0;
                 }
             }
         }
@@ -466,14 +463,7 @@ class GpuSoftmax (Op):
     """
     Implement Softmax on the gpu.
     """
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, x):
         x = as_gpuarray_variable(x)
@@ -484,14 +474,14 @@ class GpuSoftmax (Op):
 
     def c_code_cache_version(self):
         return (12,) + inline_softmax.code_version
-        
+
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
                 '<gpuarray/ext_cuda.h>']
 
     def c_compiler(self):
         return NVCC_compiler
-        
+
     def c_init_code(self):
         return ['setup_ext_cuda();']
 
@@ -527,7 +517,7 @@ class GpuSoftmax (Op):
                                 pygpu_default_context(), Py_None);
             if (!%(z)s) {
                 %(fail)s
-            } 
+            }
         }
         {
             int n_blocks = std::min(PyGpuArray_DIMS(%(x)s)[0],
@@ -658,15 +648,7 @@ class GpuSoftmaxWithBias (Op):
     """
     nin = 2
     nout = 1
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, x, b):
         x = as_gpuarray_variable(x)
@@ -675,20 +657,20 @@ class GpuSoftmaxWithBias (Op):
 
     def infer_shape(self, node, shape):
         return  [shape[0]]
-        
+
     def c_code_cache_version(self):
         return (11,) + inline_softmax.code_version
-        
+
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
                 '<gpuarray/ext_cuda.h>']
 
     def c_compiler(self):
         return NVCC_compiler
-        
+
     def c_init_code(self):
         return ['setup_ext_cuda();']
-        
+
     def c_code(self, node, nodename, inp, out, sub):
         dtype_x = node.inputs[0].dtype
         dtype_b = node.inputs[1].dtype
@@ -738,7 +720,7 @@ class GpuSoftmaxWithBias (Op):
                                 pygpu_default_context(), Py_None);
             if (!%(z)s) {
                 %(fail)s
-            } 
+            }
         }
         {
             int n_blocks = std::min(PyGpuArray_DIMS(%(x)s)[0], (size_t)(32*1024));

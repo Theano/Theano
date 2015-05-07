@@ -726,9 +726,20 @@ class Op(utils.object2, PureOp, CLinkerOp):
         node_output_storage = [storage_map[r] for r in node.outputs]
         node_input_compute = [compute_map[r] for r in node.inputs]
         node_output_compute = [compute_map[r] for r in node.outputs]
-        #logger.debug('Compiling node %i of graph' % node_idx)
+
         if self._op_use_c_code:
             try:
+                # float16 get special treatment since running
+                # unprepared C code will get bad results.
+                if not getattr(self, '_f16_ok', False):
+                    def is_f16(t):
+                        return getattr(t, 'dtype', '') == 'float16'
+
+                    if (any(is_f16(i.type) for i in node.inputs) or
+                            any(is_f16(o.type) for o in node.outputs)):
+                        print ("Disabling C code for %s due to unsupported "
+                               "float16" % (self,))
+                        raise NotImplementedError("float16")
                 e = FunctionGraph(node.inputs, node.outputs)
 
                 e_no_recycling = [new_o

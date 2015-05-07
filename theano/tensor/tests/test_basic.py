@@ -5820,40 +5820,24 @@ def _test_autocast_custom():
     orig_autocast = autocast_float.dtypes
 
     # Test that autocast_float_as sets the autocast dtype correctly
-    try:  # ghetto 2.4 version of with
-        ac = autocast_float_as('float32')
-        ac.__enter__()
+    with autocast_float_as('float32'):
         assert autocast_float.dtypes == ('float32',)
-    finally:
-        ac.__exit__()
     assert autocast_float.dtypes == orig_autocast
-    try:  # ghetto 2.4 version of with
-        ac = autocast_float_as('float64')
-        ac.__enter__()
+
+    with autocast_float_as('float64'):
         assert autocast_float.dtypes == ('float64',)
-    finally:
-        ac.__exit__()
     assert autocast_float.dtypes == orig_autocast
+
     # Test that we can set it back to something, and nest it
-    try:  # ghetto 2.4 version of with
-        ac = autocast_float_as('float32')
-        ac.__enter__()
+    with autocast_float_as('float32'):
         assert autocast_float.dtypes == ('float32',)
-        try:  # ghetto 2.4 version of with
-            ac2 = autocast_float_as('float64')
-            ac2.__enter__()
+        with autocast_float_as('float64'):
             assert autocast_float.dtypes == ('float64',)
-        finally:
-            ac2.__exit__()
         assert autocast_float.dtypes == ('float32',)
-    finally:
-        ac.__exit__()
     assert autocast_float.dtypes == orig_autocast
 
     # Test that the autocasting dtype is used correctly in expression-building
-    try:  # ghetto 2.4 version of with
-        ac = autocast_float_as('float32')
-        ac.__enter__()
+    with autocast_float_as('float32'):
         assert (dvector() + 1.1).dtype == 'float64'
         assert (fvector() + 1.1).dtype == 'float32'
         assert (fvector() + theano._asarray(1.1, dtype='float64')).dtype == \
@@ -5863,13 +5847,9 @@ def _test_autocast_custom():
 
         assert (dvector() + 1).dtype == 'float64'
         assert (fvector() + 1).dtype == 'float32'
-    finally:
-        ac.__exit__()
 
     # Test that the autocasting dtype is used correctly in expression-building
-    try:  # ghetto 2.4 version of with
-        ac = autocast_float_as('float64')
-        ac.__enter__()
+    with autocast_float_as('float64'):
         assert (dvector() + 1.1).dtype == 'float64'
         assert (fvector() + 1.1).dtype == 'float64'
         assert (fvector() + 1.0).dtype == 'float64'
@@ -5880,13 +5860,9 @@ def _test_autocast_custom():
 
         assert (dvector() + 1).dtype == 'float64'
         assert (fvector() + 1).dtype == 'float32'
-    finally:
-        ac.__exit__()
 
     # Test that the autocasting dtype is used correctly in expression-building
-    try:  # ghetto 2.4 version of with
-        ac = autocast_float_as('float32', 'float64')
-        ac.__enter__()
+    with autocast_float_as('float32', 'float64'):
         assert (dvector() + 1.1).dtype == 'float64'
         assert (fvector() + 1.1).dtype == theano.config.floatX
         assert (fvector() + 1.0).dtype == 'float32'
@@ -5903,14 +5879,8 @@ def _test_autocast_custom():
         assert (ivector() + numpy.int8(1)).dtype == 'int32'
         assert (wvector() + numpy.int8(1)).dtype == 'int16'
         assert (bvector() + numpy.int8(1)).dtype == 'int8'
-        try:  # ghetto 2.4 version of with
-            ac2 = autocast_float_as('float64')
-            ac2.__enter__()
+        with autocast_float_as('float64'):
             assert (fvector() + 1.0).dtype == 'float64'
-        finally:
-            ac2.__exit__()
-    finally:
-        ac.__exit__()
 
 
 def _test_autocast_numpy():
@@ -6036,17 +6006,8 @@ class test_arithmetic_cast(unittest.TestCase):
                                             config.int_division == 'raise')
                                     # This is the expected behavior.
                                     continue
-                                # For numpy we have a problem:
-                                #   http://projects.scipy.org/numpy/ticket/1827
-                                # As a result we only consider the highest data
-                                # type that numpy may return.
-                                numpy_dtypes = [
-                                        op(numpy_args[0](a_type),
-                                           numpy_args[1](b_type)).dtype,
-                                        op(numpy_args[1](b_type),
-                                           numpy_args[0](a_type)).dtype]
-                                numpy_dtype = theano.scalar.upcast(
-                                        *map(str, numpy_dtypes))
+                                numpy_dtype = op(numpy_args[0](a_type),
+                                                 numpy_args[1](b_type)).dtype
                                 if numpy_dtype == theano_dtype:
                                     # Same data type found, all is good!
                                     continue
@@ -6078,9 +6039,7 @@ class test_arithmetic_cast(unittest.TestCase):
                                         # Theano upcasted the result array.
                                         theano_dtype == up_type and
                                         # But Numpy kept its original type.
-                                        # (not an equality because of numpy bug
-                                        # mentioned above).
-                                        array_type in numpy_dtypes):
+                                        array_type == numpy_dtype):
                                         # Then we accept this difference in
                                         # behavior.
                                         continue
@@ -6092,17 +6051,20 @@ class test_arithmetic_cast(unittest.TestCase):
                                                  numpy.__version__.split('.')[:2]]
                                 if (cfg == 'numpy+floatX' and
                                     a_type == 'complex128' and
-                                    b_type == 'float32' and
+                                    (b_type == 'float32' or
+                                     b_type == 'float16') and
                                     combo == ('scalar', 'array') and
                                     bool(numpy_version >= [1, 6]) and
                                     theano_dtype == 'complex128' and
-                                    numpy_dtypes == ['complex64',
-                                                     'complex64']):
-                                    # In numpy 1.6.x adding a complex128 with
-                                    # a float32 may result in a complex64. This
-                                    # may be a bug (investigation is currently
-                                    # in progress), so in the meantime we just
-                                    # mark this test as a known failure.
+                                    numpy_dtype == 'complex64'):
+                                    # In numpy 1.6.x adding a
+                                    # complex128 with a float32 or
+                                    # float16 may result in a
+                                    # complex64. This may be a bug
+                                    # (investigation is currently in
+                                    # progress), so in the meantime we
+                                    # just mark this test as a known
+                                    # failure.
                                     raise KnownFailureTest('Known issue with '
                                             'numpy >= 1.6.x see #761')
 

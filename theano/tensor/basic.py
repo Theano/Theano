@@ -252,10 +252,10 @@ class NumpyAutocaster(object):
             return numpy.asarray(x)
         elif config.cast_policy == 'numpy+floatX':
             rval = numpy.asarray(x)
-            if ((rval.dtype == 'float64' and         # numpy wants float64
-                 config.floatX == 'float32' and      # but we prefer float32
-                 not hasattr(x, 'dtype'))):           # and `x` was not typed
-                rval = theano._asarray(rval, dtype='float32')
+            if ((not hasattr(x, 'dtype') and
+                 rval.dtype in ('float64', 'float32') and
+                 rval.dtype != config.floatX)):
+                rval = theano._asarray(rval, dtype=config.floatX)
             return rval
 
         # The following is the original code, corresponding to the 'custom'
@@ -278,11 +278,14 @@ class NumpyAutocaster(object):
         # recall: float is numpy.float
         if ((isinstance(x, float) and
              config.floatX in self.dtypes and
-             config.floatX == 'float32')):
+             config.floatX != 'float64')):
+            return theano._asarray(x, dtype=config.floatX)
 
-            return theano._asarray(x, dtype='float32')
+        # Don't autocast to float16 unless config.floatX is float16
+        try_dtypes = [d for d in self.dtypes
+                      if config.floatX == 'float16' or d != 'float16']
 
-        for dtype in self.dtypes:
+        for dtype in try_dtypes:
             x_ = theano._asarray(x, dtype=dtype)
             if numpy.all(x == x_):
                 break
@@ -290,7 +293,7 @@ class NumpyAutocaster(object):
         return x_
 
 autocast_int = NumpyAutocaster(('int8', 'int16', 'int32', 'int64'))
-autocast_float = NumpyAutocaster(('float32', 'float64'))
+autocast_float = NumpyAutocaster(('float16', 'float32', 'float64'))
 
 
 # autocast_float dtypes might be manipulated in tensor.__init__
@@ -313,7 +316,7 @@ class autocast_float_as(object):
     If `config.cast_policy` is not 'custom', an exception is raised.
 
     For example:
-    >>> with autocast_float_as('float32') as _dummy:
+    >>> with autocast_float_as('float32'):
     ...    assert (fvector() + 1.1).dtype == 'float32'  # temporary downcasting
     >>> assert (fvector() + 1.1).dtype == 'float64' # back to default behaviour
 
@@ -1137,6 +1140,10 @@ _convert_to_uint64 = _conversion(
     elemwise.Elemwise(scal.convert_to_uint64), 'uint64')
 """Cast to unsigned 64-bit integer"""
 
+_convert_to_float16 = _conversion(
+    elemwise.Elemwise(scal.convert_to_float16), 'float16')
+"""Cast to half-precision floating point"""
+
 _convert_to_float32 = _conversion(
     elemwise.Elemwise(scal.convert_to_float32), 'float32')
 """Cast to single-precision floating point"""
@@ -1162,6 +1169,7 @@ _cast_mapping = {
     'uint16': _convert_to_uint16,
     'uint32': _convert_to_uint32,
     'uint64': _convert_to_uint64,
+    'float16': _convert_to_float16,
     'float32': _convert_to_float32,
     'float64': _convert_to_float64,
     'complex64': _convert_to_complex64,
@@ -2757,8 +2765,12 @@ def mean(input, axis=None, dtype=None, op=False, keepdims=False,
         # sum() will complain if it is not suitable.
         sum_dtype = dtype
     else:
-        # Let sum() infer the appropriate dtype.
         sum_dtype = None
+
+    # float16 overflows way too fast for sum
+    if ((sum_dtype == 'float16' or input.dtype == 'float16') and
+            acc_dtype != 'float16'):
+        sum_dtype == 'float32'
 
     s = sum(input, axis=axis, dtype=sum_dtype, keepdims=keepdims,
             acc_dtype=acc_dtype)
@@ -2767,7 +2779,7 @@ def mean(input, axis=None, dtype=None, op=False, keepdims=False,
     # Cast shp into a float type
     # TODO Once we have a consistent casting policy, we could simply
     # use true_div.
-    if s.dtype in ('float32', 'complex64'):
+    if s.dtype in ('float16', 'float32', 'complex64'):
         shp = cast(shp, 'float32')
     else:
         shp = cast(shp, 'float64')
@@ -2784,6 +2796,9 @@ def mean(input, axis=None, dtype=None, op=False, keepdims=False,
     # This sequential division will possibly be optimized by Theano:
     for i in axis:
         s = true_div(s, shp[i])
+
+    if dtype == 'float16' or (dtype is None and input.dtype == 'float16'):
+        s = cast(s, 'float16')
 
     return s
 

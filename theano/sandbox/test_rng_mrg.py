@@ -613,60 +613,48 @@ def test_binomial():
                 # test empty size (scalar)
                 ((), (), [], []),
                 ]:
+            yield (t_binomial, mean, size, const_size, var_input, input,
+                   steps, rtol)
 
-            # print ''
-            # print 'ON CPU with size=(%s) and mean(%d):' % (str(size), mean)
-            R = MRG_RandomStreams(234, use_cuda=False)
-            # Note: we specify `nstreams` to avoid a warning.
-            u = R.binomial(size=size, p=mean,
-                           nstreams=rng_mrg.guess_n_streams(size, warn=False))
-            f = theano.function(var_input, u, mode=mode)
-            # theano.printing.debugprint(f)
-            out = f(*input)
-            # print 'random?[:10]\n', out[0, 0:10]
-            # print 'random?[-1,-10:]\n', out[-1, -10:]
 
-            # Increase the number of steps if sizes implies only a few samples
-            if numpy.prod(const_size) < 10:
-                steps_ = steps * 100
-            else:
-                steps_ = steps
-            basictest(f, steps_, const_size, prefix='mrg  cpu',
-                      inputs=input, allow_01=True,
-                      target_avg=mean, mean_rtol=rtol)
+def t_binomial(mean, size, const_size, var_input, input, steps, rtol):
+    R = MRG_RandomStreams(234, use_cuda=False)
+    u = R.binomial(size=size, p=mean)
+    f = theano.function(var_input, u, mode=mode)
+    out = f(*input)
 
-            if mode != 'FAST_COMPILE' and cuda_available:
-                # print ''
-                # print 'ON GPU with size=(%s) and mean(%d):' % (str(size), mean)
-                R = MRG_RandomStreams(234, use_cuda=True)
-                u = R.binomial(size=size, p=mean, dtype='float32',
-                               nstreams=rng_mrg.guess_n_streams(size,
-                                                                warn=False))
-                # well, it's really that this test w GPU doesn't make sense otw
-                assert u.dtype == 'float32'
-                f = theano.function(var_input, theano.Out(
-                    theano.sandbox.cuda.basic_ops.gpu_from_host(u),
-                    borrow=True), mode=mode_with_gpu)
-                # theano.printing.debugprint(f)
-                gpu_out = numpy.asarray(f(*input))
-                # print 'random?[:10]\n', gpu_out[0, 0:10]
-                # print 'random?[-1,-10:]\n', gpu_out[-1, -10:]
-                basictest(f, steps_, const_size, prefix='mrg  gpu',
-                          inputs=input, allow_01=True,
-                          target_avg=mean, mean_rtol=rtol)
-                numpy.testing.assert_array_almost_equal(out, gpu_out,
-                                                        decimal=6)
+    # Increase the number of steps if sizes implies only a few samples
+    if numpy.prod(const_size) < 10:
+        steps_ = steps * 100
+    else:
+        steps_ = steps
+    basictest(f, steps_, const_size, prefix='mrg  cpu',
+              inputs=input, allow_01=True,
+              target_avg=mean, mean_rtol=rtol)
 
-            # print ''
-            # print 'ON CPU w NUMPY with size=(%s) and mean(%d):' % (str(size),
-            #                                                       mean)
-            RR = theano.tensor.shared_randomstreams.RandomStreams(234)
+    if mode != 'FAST_COMPILE' and cuda_available:
+        R = MRG_RandomStreams(234, use_cuda=True)
+        u = R.binomial(size=size, p=mean, dtype='float32')
+        # well, it's really that this test w GPU doesn't make sense otw
+        assert u.dtype == 'float32'
+        f = theano.function(var_input, theano.Out(
+                theano.sandbox.cuda.basic_ops.gpu_from_host(u),
+                borrow=True), mode=mode_with_gpu)
+        gpu_out = numpy.asarray(f(*input))
 
-            uu = RR.binomial(size=size, p=mean)
-            ff = theano.function(var_input, uu, mode=mode)
-            # It's not our problem if numpy generates 0 or 1
-            basictest(ff, steps_, const_size, prefix='numpy', allow_01=True,
-                      inputs=input, target_avg=mean, mean_rtol=rtol)
+        basictest(f, steps_, const_size, prefix='mrg  gpu',
+                  inputs=input, allow_01=True,
+                  target_avg=mean, mean_rtol=rtol)
+        numpy.testing.assert_array_almost_equal(out, gpu_out,
+                                                decimal=6)
+
+    RR = theano.tensor.shared_randomstreams.RandomStreams(234)
+
+    uu = RR.binomial(size=size, p=mean)
+    ff = theano.function(var_input, uu, mode=mode)
+    # It's not our problem if numpy generates 0 or 1
+    basictest(ff, steps_, const_size, prefix='numpy', allow_01=True,
+              inputs=input, target_avg=mean, mean_rtol=rtol)
 
 
 @attr('slow')

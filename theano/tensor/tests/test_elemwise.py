@@ -1024,6 +1024,7 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
                     uint8='uint64',
                     uint16='uint64',
                     uint32='uint64',
+                    float16='float32',
                     float32='float64',
                     complex64='complex128'
                     ).get(dtype, dtype)

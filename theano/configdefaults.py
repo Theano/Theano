@@ -18,12 +18,17 @@ def floatX_convert(s):
         return "float32"
     elif s == "64":
         return "float64"
+    elif s == "16":
+        return "float16"
     else:
         return s
 
 AddConfigVar('floatX',
-             "Default floating-point precision for python casts",
-             EnumStr('float64', 'float32', convert=floatX_convert,),
+             "Default floating-point precision for python casts.\n"
+             "\n"
+             "Note: float16 support is experimental, use at your own risk.",
+             EnumStr('float64', 'float32', 'float16',
+                     convert=floatX_convert,),
              )
 
 AddConfigVar('warn_float64',
@@ -39,7 +44,7 @@ AddConfigVar('cast_policy',
              EnumStr('custom', 'numpy+floatX',
                      # The 'numpy' policy was originally planned to provide a
                      # smooth transition from numpy. It was meant to behave the
-                     # same asnumpy+floatX, but keeping float64 when numpy
+                     # same as numpy+floatX, but keeping float64 when numpy
                      # would. However the current implementation of some cast
                      # mechanisms makes it a bit more complex to add than what
                      # was expected, so it is currently not available.

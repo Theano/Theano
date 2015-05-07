@@ -185,6 +185,7 @@ class GpuArrayType(Type):
         # complex64, etc.
         try:
             return {
+                'float16': (float, 'npy_float16', 'NPY_FLOAT16'),
                 'float32': (float, 'npy_float32', 'NPY_FLOAT32'),
                 'float64': (float, 'npy_float64', 'NPY_FLOAT64'),
                 'uint8': (int, 'npy_uint8', 'NPY_UINT8'),
@@ -309,7 +310,11 @@ class GpuArrayConstant(_operators, Constant):
     def __str__(self):
         if self.name is not None:
             return self.name
-        return "GpuArrayConstant{%s}" % numpy.asarray(self.data)
+        try:
+            np_data = numpy.asarray(self.data)
+        except gpuarray.GpuArrayException:
+            np_data = self.data
+        return "GpuArrayConstant{%s}" % np_data
 
 
 GpuArrayType.Constant = GpuArrayConstant

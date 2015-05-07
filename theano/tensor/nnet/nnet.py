@@ -1746,7 +1746,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
             # Check z is zeros_like(log(sm))
             if not _is_const(z, 0):
                 return
-            if z.type not in (dmatrix, fmatrix):
+            if z.broadcastable != (False, False):
                 if not (vector_softmax and z.broadcastable == (True, False)):
                     return
             # here we know that we are incrementing a matrix of zeros
@@ -1758,14 +1758,15 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
             if incr.ndim != 1 or incr.dtype not in tensor.float_dtypes:
                 return
 
-            # here we know that we are incrementing some part of matrix z by a vector
+            # here we know that we are incrementing some part of
+            # matrix z by a vector
 
-            # unless the user has taken care to mark that the data and labels have the
-            # same number of rows, we cannot be sure here that
-            # len(y) == len(z)
-            # However, in the common case that these are predictions and labels it is true.
-            # We leave it to the Op to crash (and the user to complain) if this assumption is
-            # ever not true.
+            # unless the user has taken care to mark that the data and
+            # labels have the same number of rows, we cannot be sure
+            # here that len(y) == len(z) However, in the common case
+            # that these are predictions and labels it is true.  We
+            # leave it to the Op to crash (and the user to complain)
+            # if this assumption is ever not true.
 
             out_grad = -incr
 
