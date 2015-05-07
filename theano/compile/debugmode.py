@@ -1708,10 +1708,20 @@ class _Linker(gof.link.LocalLinker):
                     raise utils.MethodNotDefined()
                 # Ops that do not inherit from gof.op.Op don't have certain
                 # methods defined that the CLinker expects (Scan is an
-                # exmaple, ifelse is another of such classes that inherit
+                # example, ifelse is another of such classes that inherit
                 # directly from PureOp)
                 if not isinstance(node.op, gof.op.Op):
                     raise utils.MethodNotDefined()
+
+                # Don't try to test the C code for float16 if not
+                # tagged ok.
+                if (not getattr(node.op, '_f16_ok', False) and
+                        (any(getattr(i, 'dtype', '') == 'float16'
+                             for i in node.inputs) or
+                         any(getattr(o, 'dtype', '') == 'float16'
+                             for o in node.outputs))):
+                    raise utils.MethodNotDefined()
+
                 e = FunctionGraph(node.inputs, node.outputs)
                 # The toposort isn't a stochastic order as it contain only one node.
                 e.toposort = lambda: list(e.apply_nodes)
