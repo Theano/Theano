@@ -1257,14 +1257,15 @@ class MRG_RandomStreams(object):
         probably result in [[1,0,0],[0,1,0]].
 
         .. note::
-            -`size` and `ndim` are only there keep the same signature as other
+            `size` and `ndim` are only there keep the same signature as other
             uniform, binomial, normal, etc.
             todo : adapt multinomial to take that into account
 
-            -Does not do any value checking on pvals, i.e. there is no
-             check that the elements are non-negative, less than 1, or
-             sum to 1. passing pvals = [[-2., 2.]] will result in
-             sampling [[0, 0]]
+            pvals : sequence of floats, length p
+                Probabilities of each of the ``p`` different outcomes.  These
+                should sum to 1 (however, the last element is always assumed to
+                account for the remaining probability, as long as
+                ``sum(pvals) <= 1)``.
         """
         if pvals is None:
             raise TypeError("You have to specify pvals")
