@@ -291,6 +291,7 @@ class Subtensor(Op):
     debug = 0
     check_input = False
     view_map = {0: [0]}
+    _f16_ok = True
 
     @staticmethod
     def collapse(idxs, cond):
@@ -1603,6 +1604,7 @@ class AdvancedSubtensor1(Op):
     # sparse_grad doesn't go in here since it only affects the output
     # of the grad() method.
     __props__ = ()
+    _f16_ok = True
 
     def __init__(self, sparse_grad=False):
         self.sparse_grad = sparse_grad
