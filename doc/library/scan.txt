@@ -138,7 +138,7 @@ Simple accumulation into a scalar, ditching lambda
 
 Although this example would seem almost self-explanatory, it stresses a
 pitfall to be careful of: the initial output state that is supplied, that is 
-``output_info``, must be of a **shape similar to that of the output variable**
+``outputs_info``, must be of a **shape similar to that of the output variable**
 generated at each iteration and moreover, it **must not involve an implicit
 downcast** of the latter. 
 
