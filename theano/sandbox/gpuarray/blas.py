@@ -189,8 +189,8 @@ class GpuGer(BlasOp, Ger):
         inplace = self.destructive
         if inplace and not A.flags.forc:
             inplace = False
-        outputs[0][0] = blas.ger(alpha, x, y, A,
-                                 overwrite_a=inplace)
+        out[0][0] = blas.ger(alpha, x, y, A,
+                             overwrite_a=inplace)
 
     def c_code(self, node, name, inp, out, sub):
         vars = dict(out=out[0], A=inp[0], alpha=inp[1], x=inp[2], y=inp[3],
