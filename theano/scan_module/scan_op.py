@@ -245,7 +245,7 @@ class Scan(PureOp):
                                     "that it shouldn't be the case")
 
             for out in self.outputs:
-                if isinstance(inp.type, GpuArrayType):
+                if isinstance(out.type, GpuArrayType):
                     raise TypeError("Inconsistency in the inner graph of "
                                     "scan '%s' : one of the outputs to the "
                                     "inner graph is of type GpuArrayType but "
