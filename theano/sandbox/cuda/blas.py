@@ -14,6 +14,192 @@ from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            gpu_contiguous)
 from theano.tensor import as_tensor_variable
 
+class BatchedDotOp(GpuOp):
+
+    __props__ = ()
+
+    def make_node(self, inp1, inp2):
+        inp1 = gpu_contiguous(as_cuda_ndarray_variable(inp1))
+        inp2 = gpu_contiguous(as_cuda_ndarray_variable(inp2))
+
+        assert inp1.dtype == "float32"
+        assert inp2.dtype == "float32"
+        assert inp1.ndim == 3 # (batch, a, b)
+        assert inp2.ndim == 3
+
+        return theano.Apply(self, [inp1, inp2],
+                           [self.output_type(inp1, inp2)()])
+
+    def output_type(self, inp1, inp2):
+        return CudaNdarrayType(
+            (inp1.type.broadcastable[0] or inp2.type.broadcastable[0],
+             inp1.type.broadcastable[1], inp2.type.broadcastable[2]))
+
+    def c_code(self, node, name, input_names, output_names, sub):
+        bx, by = input_names
+        bz, = output_names
+        fail = sub['fail']
+        return """
+        float alpha = 1.0;
+        float beta = 0.0;
+
+        int i, x_dim0, x_dim1, x_dim2, y_dim0, y_dim1, y_dim2;
+        int x_stride, y_stride, z_stride, total_size;
+        int ptr_array_size = 3 * CudaNdarray_HOST_DIMS(%(bx)s)[0] * sizeof(float *);
+        int out_dim[3];
+
+        cublasStatus_t err;
+        cudaError_t err1;
+
+        float **host_x = NULL;
+        float **host_z = NULL;
+        float **host_y = NULL;
+
+        float **gpu_x = NULL;
+        float **gpu_y = NULL;
+        float **gpu_z = NULL;
+
+        x_dim0 = CudaNdarray_HOST_DIMS(%(bx)s)[0];
+        x_dim1 = CudaNdarray_HOST_DIMS(%(bx)s)[1];
+        x_dim2 = CudaNdarray_HOST_DIMS(%(bx)s)[2];
+
+        y_dim0 = CudaNdarray_HOST_DIMS(%(by)s)[0];
+        y_dim1 = CudaNdarray_HOST_DIMS(%(by)s)[1];
+        y_dim2 = CudaNdarray_HOST_DIMS(%(by)s)[2];
+
+        if (x_dim0 != y_dim0)
+        {
+            PyErr_Format(PyExc_RuntimeError,
+                    "The batchsizes (%%d, %%d) don't match.\\n",
+                    x_dim0, x_dim1);
+            %(fail)s;
+        }
+
+        if (x_dim2 != y_dim1)
+        {
+            PyErr_Format(PyExc_RuntimeError,
+                    "Shape mismatch. (%%d, %%d, %%d) (%%d, %%d, %%d)\\n",
+                    x_dim0, x_dim1, x_dim2, y_dim0, y_dim1, y_dim2);
+            %(fail)s;
+        }
+
+        out_dim[0] = x_dim0;
+        out_dim[1] = x_dim1;
+        out_dim[2] = y_dim2;
+
+        if ( !(%(bz)s
+               && %(bz)s->nd==3
+               && CudaNdarray_is_c_contiguous(%(bz)s)
+               && CudaNdarray_HOST_DIMS(%(bz)s)[0]==out_dim[0]
+               && CudaNdarray_HOST_DIMS(%(bz)s)[1]==out_dim[1]
+               && CudaNdarray_HOST_DIMS(%(bz)s)[2]==out_dim[2]))
+        {
+            Py_XDECREF(%(bz)s);
+            %(bz)s = (CudaNdarray*)CudaNdarray_NewDims(3,out_dim);
+            if (NULL == %(bz)s)
+            {
+                PyErr_Format(PyExc_RuntimeError,
+                        "Failed to allocate output of %%d x %%d x %%d",
+                        out_dim[0], out_dim[1], out_dim[2]);
+                %(fail)s;
+            }
+        }
+
+        if (x_dim0 != 0 && y_dim0 != 0 &&
+            x_dim1 != 0 && y_dim1 != 0 &&
+            x_dim2 != 0 && y_dim2 != 0)
+        {
+            x_stride = CudaNdarray_HOST_STRIDES(%(bx)s)[0];
+            y_stride = CudaNdarray_HOST_STRIDES(%(by)s)[0];
+            z_stride = CudaNdarray_HOST_STRIDES(%(bz)s)[0];
+
+            host_x = (float **) malloc (ptr_array_size);
+
+            if (host_x == NULL)
+            {
+                CLEANUP();
+                PyErr_Format(PyExc_RuntimeError,
+                             "%%s", "malloc failure");
+                %(fail)s;
+            }
+
+            host_y = &host_x[x_dim0];
+            host_z = &host_y[x_dim0];
+
+            host_x[0] = CudaNdarray_DEV_DATA(%(bx)s);
+            host_y[0] = CudaNdarray_DEV_DATA(%(by)s);
+            host_z[0] = CudaNdarray_DEV_DATA(%(bz)s);
+
+            for (i = 1; i < out_dim[0]; i++)
+            {
+                host_x[i] = host_x[i - 1] + x_stride;
+                host_y[i] = host_y[i - 1] + y_stride;
+                host_z[i] = host_z[i - 1] + z_stride;
+            }
+
+            err1 = cudaMalloc((void **)&gpu_x, ptr_array_size);
+
+            if (err1 != cudaSuccess)
+            {
+                CLEANUP();
+                PyErr_Format(PyExc_RuntimeError,
+                             "%%s", "cudaMalloc failure");
+                %(fail)s;
+            }
+
+            gpu_y = &gpu_x[x_dim0];
+            gpu_z = &gpu_y[x_dim0];
+
+            err1 = cudaMemcpy(gpu_x, host_x, ptr_array_size, cudaMemcpyHostToDevice);
+
+            if (err1 != cudaSuccess)
+            {
+                CLEANUP();
+                PyErr_Format(PyExc_RuntimeError,
+                             "%%s", "cudaMemcpy failure");
+                %(fail)s;
+            }
+
+            err = cublasSgemmBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
+                               y_dim2, x_dim1, x_dim2, &alpha,
+                               (const float **) gpu_y, y_dim2,
+                               (const float **) gpu_x, x_dim2, &beta,
+                               gpu_z, y_dim2, x_dim0);
+
+            CLEANUP();
+
+            if (CUBLAS_STATUS_SUCCESS != err)
+            {
+                PyErr_Format(PyExc_RuntimeError,
+                             "cublasSgemmBatched failed (%%i) %%s",
+                             err,  cublasGetErrorString(err));
+                %(fail)s;
+            }
+        }
+        else
+        {
+            total_size = x_dim0 * x_dim1 * y_dim2 * sizeof(float);
+            if (cudaSuccess != cudaMemset(CudaNdarray_DEV_DATA(%(bz)s), 0, total_size))
+            {
+                PyErr_Format(PyExc_RuntimeError,
+                        "Failed to fill output with zeros");
+                %(fail)s;
+            }
+        }
+
+        """ % locals()
+
+    def c_support_code(self):
+        return """
+        #define CLEANUP()                               \
+            do                                          \
+            {                                           \
+                if (host_x) free (host_x);              \
+                if (gpu_x) cudaFree(gpu_x);             \
+            } while (0)
+        """
+
+batched_dot = BatchedDotOp()
 
 class GpuDot22(GpuOp):
     """
@@ -669,7 +855,7 @@ class BaseGpuCorrMM(GpuOp):
     int dW = %(dW)s;
     int padH = %(padH)s;
     int padW = %(padW)s;
-    
+
     CudaNdarray * bottom = %(bottom)s;
     CudaNdarray * weights = %(weights)s;
     CudaNdarray * top = %(top)s;
@@ -2165,7 +2351,7 @@ class GpuDownsampleFactorMaxGradGrad(GpuOp):
     Implement the grad of downsample with max on the gpu.
     """
     __props__ = ('ds', 'ignore_border')
-    
+
     def __init__(self, ds, ignore_border):
         self.ds = tuple(ds)
         self.ignore_border = ignore_border
@@ -2174,14 +2360,14 @@ class GpuDownsampleFactorMaxGradGrad(GpuOp):
         x = as_cuda_ndarray_variable(x)
         z = as_cuda_ndarray_variable(z)
         gx = as_cuda_ndarray_variable(gx)
-        
+
         if x.type.ndim != 4:
             raise TypeError('x must be 4D tensor')
         if z.type.ndim != 4:
             raise TypeError('z must be 4D tensor')
         if gx.type.ndim != 4:
             raise TypeError('gx must be 4D tensor')
-        
+
         return Apply(self, [x, z, gx], [x.type()])
 
     def c_code_cache_version(self):
@@ -2223,7 +2409,7 @@ class GpuDownsampleFactorMaxGradGrad(GpuOp):
             }
         }
         {
-            
+
             int needs_extra_z_col = %(ignore_border)s && (CudaNdarray_HOST_DIMS(%(x)s)[2] %% %(ds0)s);
             dim3 grid(std::min(CudaNdarray_HOST_DIMS(%(z)s)[0], 65535),
                       CudaNdarray_HOST_DIMS(%(z)s)[2] + (needs_extra_z_col ? 1 : 0));
@@ -2335,12 +2521,12 @@ class GpuDownsampleFactorMaxGradGrad(GpuOp):
                         {
                             // my_gx = gx[image_row][image_col][x_row][x_col]
                             my_gx = gx[i0*gxS0 + i1*gxS1 + x_row*gxS2 + x_col*gxS3];
-                            
+
                             if (my_z == x[i0*xS0 + i1*xS1 + x_row*xS2 + x_col*xS3]) {
                                 gz[i0 *  gzS0 + i1 *  gzS1 + i2 *  gzS2 + z_col* gzS3] = my_gx;
                             }
                         }
-                        
+
 
                     }
                 }

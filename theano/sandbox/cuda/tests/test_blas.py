@@ -23,7 +23,7 @@ import theano.compile.mode
 from theano.tensor.tests.test_blas import BaseGemv, TestBlasStrides, TestGer
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace, gpu_gemv_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace, gpu_ger_no_inplace
-
+from theano.sandbox.cuda.blas import batched_dot
 
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
@@ -43,6 +43,68 @@ mode_without_gpu.check_py_code = False
 def my_rand(*shape):
     return theano._asarray(numpy.random.rand(*shape), dtype='float32')
 
+class TestBatchedDot(TestCase):
+
+    def test_batched_dot_correctness(self):
+
+        def cmp(a_shp, b_shp):
+
+            a=numpy.random.randn(*a_shp).astype(numpy.float32)
+            b=numpy.random.randn(*b_shp).astype(numpy.float32)
+
+            x=tensor.ftensor3()
+            y=tensor.ftensor3()
+
+            f=theano.function([x,y], batched_dot(x,y), mode=mode_with_gpu)
+
+            z0=numpy.asarray(f(a,b))
+
+            ga = cuda_ndarray.CudaNdarray(a)
+            gb = cuda_ndarray.CudaNdarray(b)
+
+            z1=numpy.asarray(f(ga,gb))
+
+            z_test = numpy.sum(a[:,:,:,None]*b[:,None,:,:],axis=-2)
+
+            assert numpy.allclose(z0, z_test)
+            assert numpy.allclose(z1, z_test)
+
+        cmp((5,4,3), (5,3,2))
+        cmp((5,3,3), (5,3,3))
+        cmp((5,2,6), (5,6,3))
+
+        # Test dimensions of 0
+        cmp((0,2,6), (0,6,3))
+        cmp((5,0,3), (5,3,2))
+        cmp((5,4,0), (5,0,2))
+        cmp((5,4,3), (5,3,0))
+        cmp((0,0,0), (0,0,0))
+
+        # Test dimensions of 1
+        cmp((1,2,6), (1,6,3))
+        cmp((5,1,3), (5,3,2))
+        cmp((5,4,1), (5,1,2))
+        cmp((5,4,3), (5,3,1))
+
+    def test_batched_dot_errors(self):
+
+        def fail(a_shp, b_shp):
+
+            a=numpy.random.randn(*a_shp).astype(numpy.float32)
+            b=numpy.random.randn(*b_shp).astype(numpy.float32)
+
+            x=tensor.ftensor3()
+            y=tensor.ftensor3()
+
+            f=theano.function([x,y], batched_dot(x,y), mode=mode_with_gpu)
+
+            z = f(a,b)
+
+        # Different batch size
+        self.assertRaises(RuntimeError, fail, (5,4,3), (6,3,2))
+
+        # Shape mismatch
+        self.assertRaises(RuntimeError, fail, (5,4,3), (5,2,2))
 
 def test_dot22():
     def cmp(a_shp, b_shp):
@@ -310,14 +372,14 @@ def test_downsample():
 
                 ggf = gradient.Lop(tensor.grad((ds_op(
                     tensor.as_tensor_variable(a))**2).sum(), a), a, a)
-                
+
                 ref_mode = copy.copy(mode_without_gpu)
                 ref_mode.check_py_code = False
                 gpu_mode = copy.copy(mode_with_gpu)
                 gpu_mode.check_py_code = False
                 gg = pfunc([], ggf, mode=gpu_mode)
                 gg2 = pfunc([], ggf, mode=ref_mode)
-                
+
                 assert any([isinstance(node.op,
                                        tcn.blas.GpuDownsampleFactorMaxGradGrad)
                             for node in gg.maker.fgraph.toposort()])
