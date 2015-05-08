@@ -2,6 +2,48 @@
 This module provides the Scan Op
 
 See scan.py for details on scan
+
+
+Memory reuse in scan
+--------------------
+
+To reduce the number of memory allocations and copies associated with calling
+the inner function and recovering the outputs at every iteration, Scan uses a
+memory pre-allocation mechanism for some of its outputs. Instead of repeatedly
+calling the inner function and copying the outputs to designated locations,
+it tries to make the inner function write the outputs directly to the
+designated locations.
+
+This is achieved by initializing, at every iteration, the output storage
+of the inner function with references to previously allocated memory. Other
+than the code in the Python and Cython backends to do this and to ensure that
+the pre-allocated memory has been used, the memory pre-allocation mechanism
+relies on the following elements to work properly :
+- In make_thunk(), when compiling the inner function, the borrow flag must
+  be set to False for the inputs. This will prevent aliasing between the
+  inputs and the outputs of the inner function which could lead to invalid
+  results.
+- In make_thunk(), again, the borrow flag must be set to True for the outputs.
+  This will make Theano consider the output storages as persistent and make
+  Theano provide them as pre-allocated storage to the ops that compute the
+  outputs of the inner function instead of letting these ops allocate their
+  own output storage.
+- The ops that produce the outputs of the inner function must be prevented
+  from working inplace because if they do, they're not using the pre-allocated
+  storage. This is achieved by including the optimization
+  'add_no_output_from_inplace' to the compilation mode used by scan. It
+  prevents other optimizations from altering the graph such that outputs are
+  produced by inplace operations.
+- The ScanSaveMem optimization, whose goal is to limit the amount of memory
+  used by scan, needs to allocate buffers large enough to be able, at every
+  iteration, to simultaneously read the needed previous states and storing
+  the new states. Before the memory reuse feature, the buffers could be
+  smaller because, often, Scan only needed buffers large enough to read the
+  needed previous states. This is because all the outputs of the inner
+  function were computed before any of them was stored in the buffers. Now,
+  the outputs are stored as they are computed which means that, if the buffer
+  is too small, computing an output can overwrite an input that is still
+  needed to compute another output.
 """
 
 __docformat__ = 'restructedtext en'
