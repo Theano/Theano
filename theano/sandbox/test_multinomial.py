@@ -15,21 +15,29 @@ class TestMultinomial(unittest.TestCase):
         self.mrng = MRG_RandomStreams(seed=1234)
 
     def test_pval_ok(self):
-        # Tests that the remaning probability is assing to the last element if the
-        # sum is below 1
-        p_vals = numpy.asarray([[0.96, 0.01, 0.01, 0.01, 0.01]], dtype="float32")
+        p_vals = numpy.asarray([[0.96, 0.01, 0.01, 0.01, 0.01]], dtype=theano.config.floatX)
 
         mult = self.mrng.multinomial(
             pvals=p_vals,
             dtype=theano.config.floatX
         ).eval()
 
-        self.assertEqual(mult.sum(dtype="float64"), 1.)
+        self.assertEqual(mult.sum(), 1.)
+
+    def test_pval_ok_big(self):
+        p_vals = numpy.asarray([5000 * [0.0001] + [0.49, 0.01]], dtype=theano.config.floatX)
+
+        mult = self.mrng.multinomial(
+            pvals=p_vals,
+            dtype=theano.config.floatX
+        ).eval()
+
+        self.assertEqual(mult.sum(), 1.)
 
     def test_pval_0(self):
         # Tests that the remaning probability is assing to the last element if the
         # sum is below 1
-        p_vals = numpy.zeros((1, 10), dtype="float32")
+        p_vals = numpy.zeros((1, 10), dtype=theano.config.floatX)
 
         mult = self.mrng.multinomial(
             pvals=p_vals,
@@ -44,7 +52,7 @@ class TestMultinomial(unittest.TestCase):
 
         # This pvals is a special case where if the precise Kahan sum is use it sums
         # above 1 and if the normal sum is used it sums below 1
-        p_vals = numpy.float32(1e-8) * numpy.ones(int(1e7) + 1, dtype=numpy.float32)
+        p_vals = numpy.float32(1e-8) * numpy.ones(int(1e7) + 1, dtype=theano.config.floatX)
         p_vals[0] = numpy.float32(0.96)
 
         self.assertRaises(
