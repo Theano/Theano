@@ -10,10 +10,16 @@
 .. moduleauthor:: LISA
 
 
-- Functions
+Functions
+=========
 
-    .. autofunction:: theano.tensor.nnet.neighbours.images2neibs
+.. autofunction:: theano.tensor.nnet.neighbours.images2neibs
 
-    .. autofunction:: theano.tensor.nnet.neighbours.neibs2images
+.. autofunction:: theano.tensor.nnet.neighbours.neibs2images
 
-- See also: :ref:`indexing`, :ref:`lib_scan`
+
+See also
+========
+
+- :ref:`indexing`
+- :ref:`lib_scan`
