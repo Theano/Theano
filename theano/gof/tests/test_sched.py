@@ -60,7 +60,7 @@ def test_posort_easy():
 
 
 def test_posort():
-    l = range(1, 20)
+    l = list(range(1, 20))
     cmps = [lambda a, b: a % 10 - b % 10,
             lambda a, b: (a / 10) % 2 - (b / 10) % 2,
             lambda a, b: a - b]

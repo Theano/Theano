@@ -373,7 +373,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
         var = sub["lv%i" % i]
         declare_strides += """
         %(ovar)s_loops_rit = %(ovar)s_loops.rbegin();""" % locals()
-        for j in reversed(range(nnested)):
+        for j in reversed(xrange(nnested)):
             declare_strides += """
             int %(var)s_stride_l%(j)i = init_strides[%(i)i][%(ovar)s_loops_rit->second];
             ++%(ovar)s_loops_rit;

@@ -178,7 +178,8 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
         for test_id in xrange(1, n_tests + 1, batch_size):
             stdout.flush()
             stderr.flush()
-            test_range = range(test_id, min(test_id + batch_size, n_tests + 1))
+            test_range = list(range(test_id,
+                                    min(test_id + batch_size, n_tests + 1)))
             cmd = ([python, theano_nose, '--with-id'] +
                    list(map(str, test_range)) +
                    argv)

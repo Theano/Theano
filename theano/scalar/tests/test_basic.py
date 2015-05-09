@@ -237,32 +237,32 @@ class test_upgrade_to_float(object):
     # at least float32, not float16.
 
     unary_ops_vals = [
-        (inv, range(-127, 0) + range(1, 127)),
-        (sqrt, range(0, 128)),
-        (log, range(1, 128)),
-        (log2, range(1, 128)),
-        (log10, range(1, 128)),
-        (log1p, range(0, 128)),
-        (exp, range(-127, 89)),
-        (exp2, range(-127, 89)),
-        (expm1, range(-127, 89)),
-        (deg2rad, range(-127, 128)),
-        (rad2deg, range(-127, 128)),
-        (cos, range(-127, 128)),
-        (arccos, range(-1, 2)),
-        (cosh, range(-89, 90)),
-        (arccosh, range(1, 128)),
-        (sin, range(-127, 128)),
-        (arcsin, range(-1, 2)),
-        (sinh, range(-89, 90)),
-        (arcsinh, range(-127, 128)),
-        (tan, range(-3, 4)),
-        (arctan, range(-127, 128)),
-        (tanh, range(-127, 128)),
+        (inv, list(range(-127, 0) + range(1, 127))),
+        (sqrt, list(range(0, 128))),
+        (log, list(range(1, 128))),
+        (log2, list(range(1, 128))),
+        (log10, list(range(1, 128))),
+        (log1p, list(range(0, 128))),
+        (exp, list(range(-127, 89))),
+        (exp2, list(range(-127, 89))),
+        (expm1, list(range(-127, 89))),
+        (deg2rad, list(range(-127, 128))),
+        (rad2deg, list(range(-127, 128))),
+        (cos, list(range(-127, 128))),
+        (arccos, list(range(-1, 2))),
+        (cosh, list(range(-89, 90))),
+        (arccosh, list(range(1, 128))),
+        (sin, list(range(-127, 128))),
+        (arcsin, list(range(-1, 2))),
+        (sinh, list(range(-89, 90))),
+        (arcsinh, list(range(-127, 128))),
+        (tan, list(range(-3, 4))),
+        (arctan, list(range(-127, 128))),
+        (tanh, list(range(-127, 128))),
         (arctanh, [0])]
 
     binary_ops_vals = [
-        (arctan2, range(-127, 128), range(-127, 128))]
+        (arctan2, list(range(-127, 128), range(-127, 128)))]
 
     @staticmethod
     def _test_unary(unary_op, x_range):

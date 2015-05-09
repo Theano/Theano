@@ -18,4 +18,4 @@ final_result = result[-1]
 power = theano.function(inputs=[A,k], outputs=final_result,
                         updates=updates)
 
-print(power(range(10),2))
+print(power(list(range(10)), 2))

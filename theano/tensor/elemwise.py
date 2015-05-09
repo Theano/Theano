@@ -411,7 +411,7 @@ class DimShufflePrinter:
         if new_order != () and  new_order[0] == 'x':
             return "%s" % self.__p(new_order[1:], pstate, r)
 #            return "[%s]" % self.__p(new_order[1:], pstate, r)
-        if list(new_order) == range(r.type.ndim):
+        if list(new_order) == list(range(r.type.ndim)):
             return pstate.pprinter.process(r)
         if list(new_order) == list(reversed(range(r.type.ndim))):
             return "%s.T" % pstate.pprinter.process(r)
@@ -544,7 +544,7 @@ class Elemwise(OpenMPOp):
                 # TODO: use LComplete instead
                 args.append(DimShuffle(
                     input.type.broadcastable,
-                    ['x'] * difference + range(length),
+                    ['x'] * difference + list(range(length)),
                     inplace=False)(input))
         inputs = args
 
@@ -1006,11 +1006,11 @@ class Elemwise(OpenMPOp):
             i += 1  # before this loop, i = number of inputs
             sub['lv%i' % i] = oname
             sub['olv'] = oname
-            alloc += cgen.make_declare([range(nnested)], [odtype],
+            alloc += cgen.make_declare([list(range(nnested))], [odtype],
                                        dict(sub, lv0=oname))
             alloc += cgen.make_alloc(orders, odtype, sub,
                                      fortran=alloc_fortran)
-            alloc += cgen.make_checks([range(nnested)], [odtype],
+            alloc += cgen.make_checks([list(range(nnested))], [odtype],
                                       dict(sub, lv0=oname))
         olv_index = i  # index of the last output
 
@@ -1058,7 +1058,7 @@ class Elemwise(OpenMPOp):
         }
         """ % locals()
 
-        loop_orders = orders + [range(nnested)] * len(real_onames)
+        loop_orders = orders + [list(range(nnested))] * len(real_onames)
         dtypes = (idtypes + list(real_odtypes))
         if all([o.ndim <= 1 for o in node.outputs] or
                # Use simpler code when output ndim == 0 or 1
@@ -1333,8 +1333,8 @@ class CAReduce(Op):
         input = as_tensor_variable(input)
         axis = self.axis
         if axis is None:
-            axis = range(len(input.type.broadcastable))
-        if any([a < 0 for a in axis]):
+            axis = list(range(len(input.type.broadcastable)))
+        if any(a < 0 for a in axis):
             axis2 = []
             for a in self.axis:
                 if a < 0:
@@ -1388,7 +1388,7 @@ class CAReduce(Op):
         output, = out
         axis = self.axis
         if axis is None:
-            axis = range(input.ndim)
+            axis = list(range(input.ndim))
         variable = input
         to_reduce = reversed(sorted(axis))
 
@@ -1470,7 +1470,7 @@ class CAReduce(Op):
 
         axis = self.axis
         if axis is None:
-            axis = range(len(input.type.broadcastable))
+            axis = list(range(len(input.type.broadcastable)))
 
         if len(axis) == 0:
             # The acc_dtype is never a downcast compared to the input dtype
@@ -1510,11 +1510,11 @@ class CAReduce(Op):
 
         # Allocate output buffer
         alloc += cgen.make_declare(
-                [range(nnested) + ['x'] * len(axis)],
+                [list(range(nnested)) + ['x'] * len(axis)],
                 [odtype], dict(sub, lv0=oname))
         alloc += cgen.make_alloc([order1], odtype, sub)
         alloc += cgen.make_checks(
-                [range(nnested) + ['x'] * len(axis)],
+                [list(range(nnested)) + ['x'] * len(axis)],
                 [odtype], dict(sub, lv0=oname))
 
         if adtype != odtype:
@@ -1523,11 +1523,11 @@ class CAReduce(Op):
             sub['olv'] = aname
 
             alloc += cgen.make_declare(
-                    [range(nnested) + ['x'] * len(axis)],
+                    [list(range(nnested)) + ['x'] * len(axis)],
                     [adtype], dict(sub, lv0=aname))
             alloc += cgen.make_alloc([order1], adtype, sub)
             alloc += cgen.make_checks(
-                    [range(nnested) + ['x'] * len(axis)],
+                    [list(range(nnested)) + ['x'] * len(axis)],
                     [adtype], dict(sub, lv0=aname))
 
         if hasattr(self.scalar_op, 'identity'):
@@ -1552,7 +1552,7 @@ class CAReduce(Op):
             pattern = [0] * len(node.inputs[0].broadcastable)
             axis = self.axis
             if axis is None:
-                axis = range(len(pattern))
+                axis = list(range(len(pattern)))
             for i in axis:
                 pattern[i] = 1
             pattern_ = str(pattern)[1:-1]
@@ -1608,7 +1608,7 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
         else:
             all_code = [task0_decl + code1]
         loop = cgen.make_loop_careduce(
-                [order, range(nnested) + ['x'] * len(axis)],
+                [order, list(range(nnested)) + ['x'] * len(axis)],
                 [idtype, adtype], all_code, sub)
 
         end = ""
@@ -1928,7 +1928,7 @@ class Sum(CAReduceDtype):
         gz = as_tensor_variable(gz)
         axis = self.axis
         if axis is None:
-            axis = range(x.type.ndim)
+            axis = list(range(x.type.ndim))
         if axis == ():
             return gz,
         new_dims = []
@@ -2041,7 +2041,7 @@ class Prod(CAReduceDtype):
         gz = as_tensor_variable(gz)
         axis = self.axis
         if axis is None:
-            axis = range(prod_in.type.ndim)
+            axis = list(range(prod_in.type.ndim))
         if axis == ():
             return gz,
         new_dims = []
