@@ -13,7 +13,7 @@ import theano
 from theano import gof
 from theano.gof import Variable
 from theano.compat import OrderedDict, izip
-from six.moves import xrange
+from six.moves import xrange, reduce
 from theano.gof.null_type import NullType, null_type
 from theano.gof.op import get_debug_values
 from theano.compile import ViewOp
