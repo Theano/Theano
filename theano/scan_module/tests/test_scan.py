@@ -1706,7 +1706,7 @@ class T_Scan(unittest.TestCase):
 
         # Also validate that the mappings outer_inp_from_outer_out and
         # outer_inp_from_inner_inp produce the correct results
-        scan_node = updates.values()[0].owner
+        scan_node = list(updates.values())[0].owner
 
         result = scan_node.op.var_mappings['outer_inp_from_outer_out']
         expected_result = {0: 3, 1: 5, 2: 4}
@@ -3662,7 +3662,7 @@ class T_Scan(unittest.TestCase):
                                  n_steps=10,
                                  truncate_gradient=-1,
                                  go_backwards=False)
-        cost = updates.values()[0]
+        cost = list(updates.values())[0]
         g_sh = tensor.grad(cost, shared_var)
         fgrad = theano.function([], g_sh)
         assert fgrad() == 1

@@ -846,7 +846,8 @@ _good_broadcast_div_mod_normal_float_no_complex = dict(
     uinteger=(randint(2, 3).astype("uint8"),
               randint_nonzero(2, 3).astype("uint8")),
     int8=[numpy.tile(numpy.arange(-127, 128, dtype='int8'), [254, 1]).T,
-          numpy.tile(numpy.array(range(-127, 0) + range(1, 128), dtype='int8'),
+          numpy.tile(numpy.array(list(range(-127, 0)) + list(range(1, 128)),
+                                 dtype='int8'),
                      [255, 1])],
     # This empty2 doesn't work for some tests. I don't remember why
     #empty2=(numpy.asarray([0]), numpy.asarray([])),
@@ -933,7 +934,7 @@ TrueDivInplaceTester = makeBroadcastTester(
 _good_inv = dict(
     normal=[5 * rand_nonzero((2, 3))],
     integers=[randint_nonzero(2, 3)],
-    int8=[numpy.array(range(-127, 0) + range(1, 127), dtype='int8')],
+    int8=[numpy.array(list(range(-127, 0)) + list(range(1, 127)), dtype='int8')],
     complex=[randcomplex_nonzero((2, 3))],
     empty=[numpy.asarray([], dtype=config.floatX)])
 

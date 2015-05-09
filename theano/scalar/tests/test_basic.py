@@ -237,7 +237,7 @@ class test_upgrade_to_float(object):
     # at least float32, not float16.
 
     unary_ops_vals = [
-        (inv, list(range(-127, 0) + range(1, 127))),
+        (inv, list(range(-127, 0)) + list(range(1, 127))),
         (sqrt, list(range(0, 128))),
         (log, list(range(1, 128))),
         (log2, list(range(1, 128))),
@@ -262,7 +262,7 @@ class test_upgrade_to_float(object):
         (arctanh, [0])]
 
     binary_ops_vals = [
-        (arctan2, list(range(-127, 128), range(-127, 128)))]
+        (arctan2, list(range(-127, 128)), list(range(-127, 128)))]
 
     @staticmethod
     def _test_unary(unary_op, x_range):
@@ -306,8 +306,8 @@ class test_upgrade_to_float(object):
     def test_true_div(self):
         # true_div's upcast policy is not exactly "upgrade_to_float",
         # so the test is a little bit different
-        x_range = range(-127, 128)
-        y_range = range(-127, 0) + range(1, 127)
+        x_range = list(range(-127, 128))
+        y_range = list(range(-127, 0)) + list(range(1, 127))
 
         xi = int8('xi')
         yi = int8('yi')
