@@ -167,9 +167,9 @@ def as_tensor_variable(x, name=None, ndim=None):
         else:
             if (x.type.ndim > ndim):
                 # strip off leading broadcastable dimensions
-                first_non_broadcastable = [idx for idx in range(x.ndim)
+                first_non_broadcastable = [idx for idx in xrange(x.ndim)
                                            if not x.broadcastable[idx]][0]
-                x = x.dimshuffle(range(x.ndim)[first_non_broadcastable:])
+                x = x.dimshuffle(list(range(x.ndim))[first_non_broadcastable:])
                 if x.ndim > ndim:
                     raise ValueError(
                         'TensorType could not be cast to have %i dimensions'
@@ -1219,13 +1219,13 @@ class MaxAndArgmax(Op):
             axis = [int(a) for a in axis]
             if len(axis) != 1:
                 axis = list(axis)
-                for idx in range(len(axis)):
+                for idx in xrange(len(axis)):
                     if axis[idx] < 0:
                         axis[idx] += x.type.ndim
                 axis.sort()
-                if axis == range(-x.type.ndim, 0, 1):
-                    axis = range(x.type.ndim)
-                assert axis == range(x.type.ndim), (
+                if axis == list(range(-x.type.ndim, 0, 1)):
+                    axis = list(range(x.type.ndim))
+                assert axis == list(range(x.type.ndim)), (
                     "MaxAndArgmax does not support multiple"
                     " axes. the max fct supports it. Got %s" % axis)
                 axis = None
@@ -1262,7 +1262,7 @@ class MaxAndArgmax(Op):
                     'input is: %s)' % (axis, x.type.ndim))
             all_axes.add(axis)
         else:
-            all_axes = range(x.ndim)
+            all_axes = list(range(x.ndim))
         if axis is None:
             axis = NoneConst.clone()
         else:
@@ -1408,7 +1408,7 @@ class MaxAndArgmax(Op):
         if g_max_disconnected:
             return [x.zeros_like(), axis_grad]
         if NoneConst.equals(axis):
-            axis_ = range(x.ndim)
+            axis_ = list(range(x.ndim))
         else:
             axis_ = axis
         xmax = max(x, axis_)
@@ -1419,7 +1419,7 @@ class MaxAndArgmax(Op):
         if NoneConst.equals(axis):
             # We are taking the max/argmax over all dimensions.
             axis = None
-        for i in range(x.ndim):
+        for i in xrange(x.ndim):
             if axis is None or i == axis.data:
                 pattern.append('x')
             else:
@@ -1449,7 +1449,7 @@ def makeKeepDims(x, y, axis):
     y = as_tensor_variable(y)
 
     if axis is None:
-        axis = range(x.type.ndim)
+        axis = list(range(x.type.ndim))
     elif isinstance(axis, (int, numpy.integer)):
         axis = [axis]
     elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
@@ -2639,7 +2639,7 @@ class Alloc(gof.Op):
         gz = grads[0]
         n_axes_to_sum = gz.ndim - x.ndim
         # The number of dimensions added
-        axis = range(n_axes_to_sum)
+        axis = list(range(n_axes_to_sum))
         # The broadcasted dimensions
         axis_broadcasted = []
         axis_kept = []
@@ -2653,9 +2653,14 @@ class Alloc(gof.Op):
                 axis_kept.append(i)
         gx = gz.sum(axis=axis + axis_broadcasted)
         if axis_broadcasted:
-            new_order = ['x'] * x.ndim
-            for idx, axis in enumerate(axis_kept):
-                new_order[axis] = idx
+            new_order = list(x.broadcastable)
+            idx = 0
+            for i in xrange(x.ndim):
+                if not new_order[i]:
+                    new_order[i] = idx
+                    idx += 1
+                else:
+                    new_order[i] = 'x'
             gx = gx.dimshuffle(new_order)
             # Dimshuffle to add back the broadcasted dims
         # The *elements* of the output are not connected to
@@ -2905,7 +2910,7 @@ def mean(input, axis=None, dtype=None, op=False, keepdims=False,
         shp = cast(shp, 'float64')
 
     if axis is None:
-        axis = range(input.ndim)
+        axis = list(range(input.ndim))
     elif isinstance(axis, (int, numpy.integer)):
         axis = [axis]
     elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
@@ -2944,7 +2949,7 @@ def var(input, axis=None, keepdims=False):
 
     input_ndim = input.type.ndim
     if axis is None:
-        axis = range(input_ndim)
+        axis = list(range(input_ndim))
     elif isinstance(axis, (int, numpy.integer)):
         axis = [axis]
     elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
@@ -3189,9 +3194,9 @@ def transpose(x, axes=None):
 
     """
     if axes is None:
-        axes = range((x.ndim - 1), -1, -1)
+        axes = list(range((x.ndim - 1), -1, -1))
     ret = DimShuffle(x.broadcastable, axes, inplace=False)(x)
-    if x.name and axes == range((x.ndim - 1), -1, -1):
+    if x.name and axes == list(range((x.ndim - 1), -1, -1)):
         ret.name = x.name + '.T'
     return ret
 
@@ -3232,7 +3237,7 @@ def batched_tensordot(x, y, axes=2):
         the last i dimensions of the first tensor and the first
         i dimensions of the second tensor (excluding the first
         (batch) dimension):
-            axes = [range(a.ndim - i, b.ndim), range(1,i+1)]
+            axes = [list(range(a.ndim - i, b.ndim)), list(range(1,i+1))]
 
         If an array, its two elements must contain compatible axes
         of the two tensors. For example, [[1, 2], [2, 4]] means sum
@@ -3372,10 +3377,10 @@ class Split(Op):
         splits = node.inputs[2]
         shp_x, shp_axis, shp_splits = in_shapes
         out_shapes = []
-        for i in range(self.len_splits):
+        for i in xrange(self.len_splits):
             temp = as_tensor_variable(shp_x)
             temp = theano.tensor.subtensor.set_subtensor(temp[axis], splits[i])
-            temp = [temp[i] for i in range(len(shp_x))]
+            temp = [temp[i] for i in xrange(len(shp_x))]
             out_shapes.append(temp)
         return out_shapes
 
@@ -3602,7 +3607,7 @@ class Join(Op):
 
                 for x in as_tensor_variable_args:
                     for current_axis, bflag in enumerate(x.type.broadcastable):
-                        # Constant negative axis can no longer be negative at 
+                        # Constant negative axis can no longer be negative at
                         # this point. It safe to compare this way.
                         if current_axis == axis:
                             continue
@@ -3668,7 +3673,7 @@ class Join(Op):
         int axis = ((%(adtype)s *)PyArray_DATA(%(axis)s))[0];
         int ndim = PyArray_NDIM(%(input_1)s);
         if( axis < -ndim ){
-            PyErr_Format(PyExc_IndexError, 
+            PyErr_Format(PyExc_IndexError,
                          "Join axis %%d out of bounds [0, %%d)", axis, ndim);
             %(fail)s
         }
@@ -4411,7 +4416,7 @@ class Tile(Op):
         shp = in_shapes[0]
         tiled_shp = shp * reps
         out_shape = []
-        for i in range(self.ndim):
+        for i in xrange(self.ndim):
             out_shape.append(tiled_shp[i])
         return [out_shape]
 
@@ -4737,7 +4742,7 @@ class PermuteRowElements(Op):
         shp_y = in_shapes[1]
         assert len(shp_x) == len(shp_y)
         out_shape = []
-        for i in range(len(shp_x)):
+        for i in xrange(len(shp_x)):
             out_shape.append(maximum(shp_x[i], shp_y[i]))
         return [out_shape]
 
@@ -5088,7 +5093,7 @@ def tensordot(a, b, axes=2):
                  If an integer i, it is converted to an array containing
                  the last i dimensions of the first tensor and the first
                  i dimensions of the second tensor:
-                     axes = [range(a.ndim - i, b.ndim), range(i)]
+                     axes = [list(range(a.ndim - i, b.ndim)), list(range(i))]
 
                  If an array, its two elements must contain compatible axes
                  of the two tensors. For example, [[1, 2], [2, 0]] means sum
@@ -5175,13 +5180,13 @@ def tensordot(a, b, axes=2):
         outndim = a.ndim + b.ndim - (2 * axes)
 
         a_shape_0 = b_shape_0 = a_shape_1 = b_shape_1 = 1
-        for s0 in range(a.ndim - axes):
+        for s0 in xrange(a.ndim - axes):
             a_shape_0 *= a.shape[s0]
-        for s0 in range(axes):
+        for s0 in xrange(axes):
             b_shape_0 *= b.shape[s0]
-        for s1 in range(a.ndim - axes, a.ndim):
+        for s1 in xrange(a.ndim - axes, a.ndim):
             a_shape_1 *= a.shape[s1]
-        for s1 in range(axes, b.ndim):
+        for s1 in xrange(axes, b.ndim):
             b_shape_1 *= b.shape[s1]
 
         a_reshaped = a.reshape((a_shape_0, a_shape_1), ndim=2)
@@ -5459,7 +5464,7 @@ def swapaxes(y, axis1, axis2):
     "swap axes of inputted tensor"
     y = as_tensor_variable(y)
     ndim = y.ndim
-    li = range(0, ndim)
+    li = list(range(0, ndim))
     li[axis1], li[axis2] = li[axis2], li[axis1]
     return y.dimshuffle(li)
 
@@ -5552,7 +5557,7 @@ class Choose(Op):
                               theano.typed_list.TypedListVariable)
             raise ShapeError("Case not implemented")
             shape = shapes[0]
-            for i in range(len(shapes[0]) - 1):
+            for i in xrange(len(shapes[0]) - 1):
                 shape[i] = shapes[1][i]
             return [(shape)]
 

@@ -1015,7 +1015,7 @@ class FunctionMaker(object):
                 else:
                     flags = []
                     for output_new, output_old, i in zip(
-                            outputs_new, outputs_old, range(len(outputs_new))):
+                            outputs_new, outputs_old, xrange(len(outputs_new))):
                         print('loop through outputs node for both graphs')
                         graph_old.variables = set(gof.graph.variables(
                             graph_old.inputs, graph_old.outputs))

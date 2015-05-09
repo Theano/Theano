@@ -65,6 +65,6 @@ class T_minimal(unittest.TestCase):
         print('built')
 
         Aval = self.rng.randn(5, 5)
-        bval = numpy.array(range(5), dtype=float)
+        bval = numpy.arange(5, dtype=float)
         f(Aval, bval)
         print('done')

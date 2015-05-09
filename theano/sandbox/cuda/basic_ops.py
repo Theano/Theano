@@ -275,7 +275,7 @@ class GpuElemwise(GpuOp):
                 # TODO: use LComplete instead
                 args.append(GpuDimShuffle(
                     input.type.broadcastable,
-                    ['x'] * difference + range(length)
+                    ['x'] * difference + list(range(length))
                     )(input))
         _inputs = args
 
@@ -813,8 +813,8 @@ class GpuCAReduce(GpuOp):
         ndim = len(self.reduce_mask)
         nd_out = ndim - sum(self.reduce_mask)
         shapes_format = "shape=(%s)" % ",".join(["%d"] * node.inputs[0].ndim)
-        shapes_data = ",".join(["CudaNdarray_HOST_DIMS(%s)[%d]" % (x, i)
-                                for i in range(node.inputs[0].ndim)])
+        shapes_data = ",".join("CudaNdarray_HOST_DIMS(%s)[%d]" % (x, i)
+                               for i in xrange(node.inputs[0].ndim))
 
         print("""
             if (verbose)
@@ -3209,7 +3209,7 @@ class GpuJoin(tensor.Join, GpuOp):
 
         def construct_slices(curlen):
             slices = [slice(None, None, None) for i in \
-                            range(len(template_shape))]
+                            xrange(len(template_shape))]
             slices[axis] = slice(curpos, curpos + curlen, None)
             return tuple(slices)
 

@@ -7,6 +7,8 @@ from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
 from nose.tools import raises
 
+from six.moves import xrange
+
 import theano
 from theano.compat import imap
 from theano import gof, scalar, config
@@ -348,7 +350,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                 e = as_tensor_variable(tensor_op(x, axis=tosum, **d))
 
             if tosum is None:
-                tosum = range(len(xsh))
+                tosum = list(range(len(xsh)))
 
             f = copy(linker).accept(FunctionGraph([x], [e])).make_function()
             xv = numpy.asarray(numpy.random.rand(*xsh))
@@ -462,7 +464,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             else:
                 e = tensor_op(x, axis=tosum)
             if tosum is None:
-                tosum = range(len(xsh))
+                tosum = list(range(len(xsh)))
             f = copy(linker).accept(FunctionGraph([x],
                                                   [e.shape])).make_function()
             if not(scalar_op in [scalar.maximum, scalar.minimum] and
@@ -546,7 +548,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             if pre_scalar_op is not None:
                 x = pre_scalar_op(x)
             if tosum is None:
-                tosum = range(len(xsh))
+                tosum = list(range(len(xsh)))
             xv = numpy.asarray(numpy.random.rand(*xsh), dtype=dtype)
             d = {}
             if pre_scalar_op is not None:
@@ -1169,7 +1171,7 @@ class TestElemwise(unittest_tools.InferShapeTester):
         s = a + b + c + d + e + f
         g = theano.function([a, b, c, d, e, f], s,
                              mode=theano.compile.Mode(linker='py'))
-        g(*[numpy.zeros(2 ** 11, config.floatX) for i in range(6)])
+        g(*[numpy.zeros(2 ** 11, config.floatX) for i in xrange(6)])
 
 
 def test_gt_grad():

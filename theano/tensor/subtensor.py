@@ -7,6 +7,7 @@ import logging
 _logger = logging.getLogger("theano.tensor.subtensor")
 
 import numpy
+from six.moves import xrange
 
 import theano
 from theano.compat import izip
@@ -1034,7 +1035,7 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
                                                                       y.ndim))
 
     dim_offset = x.ndim - y.ndim
-    for dim in range(y.ndim):
+    for dim in xrange(y.ndim):
         if (x.broadcastable[dim + dim_offset]
                 and not y.broadcastable[dim]):
             # It is acceptable to try to increment a subtensor with a
@@ -1132,7 +1133,7 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
         if y.ndim > 0:
             # This if is needed to prevent some useless warning about
             # old code bug.
-            expanded_y = alloc(y, *[x.shape[i] for i in range(x.ndim)])
+            expanded_y = alloc(y, *[x.shape[i] for i in xrange(x.ndim)])
             flattened_y = expanded_y.flatten(inner_x.ndim)
         else:
             flattened_y = y
@@ -1570,7 +1571,7 @@ def _sum_grad_over_bcasted_dims(x, gx):
         x_broad = (True,) * x_dim_added + x.broadcastable
         assert sum(gx.broadcastable) < sum(x_broad)
         axis_to_sum = []
-        for i in range(gx.ndim):
+        for i in xrange(gx.ndim):
             if gx.broadcastable[i] is False and x_broad[i] is True:
                 axis_to_sum.append(i)
             elif (gx.broadcastable[i] is True and
@@ -1584,9 +1585,9 @@ def _sum_grad_over_bcasted_dims(x, gx):
         gx = gx.sum(axis=axis_to_sum, keepdims=True)
         if gx.ndim != x.ndim:
             assert gx.ndim > x.ndim
-            for i in range(x_dim_added):
+            for i in xrange(x_dim_added):
                 assert gx.broadcastable[i]
-            gx = gx.dimshuffle(*range(x_dim_added, gx.ndim))
+            gx = gx.dimshuffle(*list(range(x_dim_added, gx.ndim)))
         assert gx.broadcastable == x.broadcastable
     return gx
 
@@ -2293,7 +2294,7 @@ def take(a, indices, axis=None, mode='raise'):
             if axis < 0:
                 axis += a.ndim
             assert axis >= 0
-            shuffle = range(a.ndim)
+            shuffle = list(range(a.ndim))
             shuffle[0] = axis
             shuffle[axis] = 0
             return advanced_subtensor1(

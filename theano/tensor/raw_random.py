@@ -418,7 +418,7 @@ def _generate_broadcasting_indices(out_shape, *shapes):
         # Temporary list to generate the indices
         _ret_indices = [[] for shape in all_shapes]
 
-        out_range = range(out_shape[dim])
+        out_range = list(range(out_shape[dim]))
 
         # Verify the shapes are compatible along that dimension
         # and generate the appropriate range: out_range, or [0, ..., 0]

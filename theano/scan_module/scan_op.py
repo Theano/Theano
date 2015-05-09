@@ -245,7 +245,7 @@ class Scan(PureOp):
         # inputs and output and ensure that they have the same dtype
         nb_recurr_outputs = self.n_mit_mot + self.n_mit_sot + self.n_sit_sot
 
-        for outer_oidx in range(nb_recurr_outputs):
+        for outer_oidx in xrange(nb_recurr_outputs):
 
             inner_iidxs = self.var_mappings['inner_inp_from_outer_out'][outer_oidx]
             inner_oidxs = self.var_mappings['inner_out_from_outer_out'][outer_oidx]
@@ -776,8 +776,8 @@ class Scan(PureOp):
                 d1 = numpy.max(cython_tap_array_len)
             d0 = len(self.tap_array)
             cython_tap_array = numpy.zeros((d0, d1), dtype='int32')
-            for _d0 in range(d0):
-                for _d1 in range(cython_tap_array_len[_d0]):
+            for _d0 in xrange(d0):
+                for _d1 in xrange(cython_tap_array_len[_d0]):
                     cython_tap_array[_d0, _d1] = self.tap_array[_d0][_d1]
             cython_mit_mot_out_nslices = \
                 numpy.asarray([len(x) for x in self.mit_mot_out_slices],
@@ -789,8 +789,8 @@ class Scan(PureOp):
             d0 = len(self.mit_mot_out_slices)
             cython_mit_mot_out_slices = numpy.zeros((d0, d1),
                                                       dtype='int32')
-            for _d0 in range(d0):
-                for _d1 in range(cython_mit_mot_out_nslices[_d0]):
+            for _d0 in xrange(d0):
+                for _d1 in xrange(cython_mit_mot_out_nslices[_d0]):
                     cython_mit_mot_out_slices[_d0, _d1] = \
                         self.mit_mot_out_slices[_d0][_d1]
 
@@ -1492,9 +1492,9 @@ class Scan(PureOp):
         nb_inputs = len(self.inputs)
         nb_outputs = len(self.outputs)
 
-        for i in range(nb_inputs):
+        for i in xrange(nb_inputs):
             input = self.inputs[i]
-            inp_connection_pattern = [i == j for j in range(nb_inputs)]
+            inp_connection_pattern = [i == j for j in xrange(nb_inputs)]
             connect_pattern_by_var[input] = inp_connection_pattern
 
         # Iterate through the nodes used to produce the outputs from the
@@ -1514,11 +1514,11 @@ class Scan(PureOp):
             # For every output of the inner node, figure out which inputs it
             # is connected to by combining the connection pattern of the inner
             # node and the connection patterns of the inner node's inputs.
-            for out_idx in range(len(n.outputs)):
+            for out_idx in xrange(len(n.outputs)):
                 out = n.outputs[out_idx]
                 out_connection_pattern = [False] * nb_inputs
 
-                for inp_idx in range(len(n.inputs)):
+                for inp_idx in xrange(len(n.inputs)):
                     inp = n.inputs[inp_idx]
 
                     if inp in connect_pattern_by_var:
@@ -1530,17 +1530,17 @@ class Scan(PureOp):
                         if op_connection_pattern[inp_idx][out_idx]:
                             out_connection_pattern = [out_connection_pattern[i] or
                                                     inp_connection_pattern[i]
-                                                    for i in range(nb_inputs)]
+                                                    for i in xrange(nb_inputs)]
 
                 # Store the connection pattern of the node output
                 connect_pattern_by_var[out] = out_connection_pattern
 
         # Obtain the global connection pattern by combining the
         # connnection patterns of the individual outputs
-        global_connection_pattern = [[] for o in range(len(self.inputs))]
+        global_connection_pattern = [[] for o in xrange(len(self.inputs))]
         for out in self.outputs:
             out_connection_pattern = connect_pattern_by_var[out]
-            for i in range(len(self.inputs)):
+            for i in xrange(len(self.inputs)):
                 global_connection_pattern[i].append(out_connection_pattern[i])
 
         return global_connection_pattern
@@ -1565,10 +1565,10 @@ class Scan(PureOp):
         # over every possible pairing of their corresponding inner inputs
         # and inner outputs and, if one such pair of inner variables is
         # connected than the pair of outer variables is connected.
-        for outer_oidx in range(len(node.outputs)):
+        for outer_oidx in xrange(len(node.outputs)):
             inner_oidxs = self.var_mappings['inner_out_from_outer_out'][outer_oidx]
 
-            for outer_iidx in range(len(node.inputs)):
+            for outer_iidx in xrange(len(node.inputs)):
                 inner_iidxs = self.var_mappings['inner_inp_from_outer_inp'][outer_iidx]
 
                 for inner_oidx in inner_oidxs:
@@ -1617,7 +1617,6 @@ class Scan(PureOp):
         indices because multiple inner variables can be associated with the
         same state
         """
-
         # Lists for outer variables contain individual indices, lists for
         # inner variables contain sequences of indices because many inner
         # variables can be associated with the same outer variable. The list
@@ -1634,7 +1633,7 @@ class Scan(PureOp):
         outer_oidx = 0
 
         # Handle sequences inputs
-        for i in range(self.info['n_seqs']):
+        for i in xrange(self.info['n_seqs']):
             outer_input_indices.append(outer_iidx)
             inner_input_indices.append([inner_iidx])
             inner_output_indices.append([])
@@ -1646,7 +1645,7 @@ class Scan(PureOp):
             outer_oidx += 0
 
         # Handle mitmots, mitsots and sitsots variables
-        for i in range(len(self.info['tap_array'])):
+        for i in xrange(len(self.info['tap_array'])):
             nb_input_taps = len(self.info['tap_array'][i])
 
             if i < self.n_mit_mot:
@@ -1655,10 +1654,10 @@ class Scan(PureOp):
                 nb_output_taps = 1
 
             outer_input_indices.append(outer_iidx)
-            inner_input_indices.append(range(inner_iidx,
-                                             inner_iidx + nb_input_taps))
-            inner_output_indices.append(range(inner_oidx,
-                                              inner_oidx + nb_output_taps))
+            inner_input_indices.append(list(range(inner_iidx,
+                                                  inner_iidx + nb_input_taps)))
+            inner_output_indices.append(list(range(inner_oidx,
+                                                   inner_oidx + nb_output_taps)))
             outer_output_indices.append(outer_oidx)
 
             outer_iidx += 1
@@ -1671,7 +1670,7 @@ class Scan(PureOp):
         outer_iidx += self.info['n_shared_outs']
 
         # Handle nitsots variables
-        for i in range(self.n_nit_sot):
+        for i in xrange(self.n_nit_sot):
             outer_input_indices.append(outer_iidx)
             inner_input_indices.append([])
             inner_output_indices.append([inner_oidx])
@@ -1687,7 +1686,7 @@ class Scan(PureOp):
         outer_iidx -= (self.info['n_shared_outs'] + self.n_nit_sot)
 
         # Handle shared states
-        for i in range(self.info['n_shared_outs']):
+        for i in xrange(self.info['n_shared_outs']):
             outer_input_indices.append(outer_iidx)
             inner_input_indices.append([inner_iidx])
             inner_output_indices.append([inner_oidx])
@@ -1706,7 +1705,7 @@ class Scan(PureOp):
         # Note : the number of non-sequence inputs is not stored in self.info
         # so it has to be inferred from the number of inner inputs that remain
         # to be handled
-        for i in range(len(self.inputs) - inner_iidx):
+        for i in xrange(len(self.inputs) - inner_iidx):
             outer_input_indices.append(outer_iidx)
             inner_input_indices.append([inner_iidx])
             inner_output_indices.append([])
@@ -1732,10 +1731,10 @@ class Scan(PureOp):
                     "inner_inp_from_inner_out" : {},
                     "outer_out_from_inner_out" : {}}
 
-        for (oinp, iinp, iout, oout) in zip(outer_input_indices,
-                                            inner_input_indices,
-                                            inner_output_indices,
-                                            outer_output_indices):
+        for (oinp, iinp, iout, oout) in izip(outer_input_indices,
+                                             inner_input_indices,
+                                             inner_output_indices,
+                                             outer_output_indices):
 
             if oout != -1:
                 mappings["outer_inp_from_outer_out"][oout] = oinp

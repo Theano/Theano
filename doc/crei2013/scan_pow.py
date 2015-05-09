@@ -22,5 +22,5 @@ power = theano.function(inputs=[A, k],
                         outputs=final_result,
                         updates=updates)
 
-print(power(range(10), 2))
+print(power(list(range(10)), 2))
 #[  0.   1.   4.   9.  16.  25.  36.  49.  64.  81.]
