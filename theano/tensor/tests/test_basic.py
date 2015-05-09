@@ -1080,6 +1080,11 @@ _good_broadcast_unary_normal_float_no_empty_no_complex = copymod(
 _good_broadcast_unary_normal_float_no_complex = copymod(
         _good_broadcast_unary_normal_float,
         without=['complex'])
+        
+_good_broadcast_unary_normal_float_no_complex_small_neg_range = dict(
+        normal=[rand_ranged(-2, 5, (2, 3))],
+        corner_case=[corner_case],
+        empty=[numpy.asarray([], dtype=config.floatX)])
 
 _good_broadcast_unary_normal = dict(
         normal=[numpy.asarray(rand_ranged(-5, 5, (2, 3)),
@@ -1109,6 +1114,10 @@ _grad_broadcast_unary_normal = dict(
         corner_case=[corner_case_grad],
         # empty = [numpy.asarray([])] # XXX: should this be included?
         )
+        
+_grad_broadcast_unary_normal_small_neg_range = dict(
+        normal=[numpy.asarray(rand_ranged(-2, 5, (2, 3)), dtype=floatX)],
+        corner_case=[corner_case_grad])
 
 _grad_broadcast_unary_normal_no_complex_no_corner_case = copymod(
         _grad_broadcast_unary_normal_no_complex,
@@ -1709,16 +1718,16 @@ ErfcInplaceTester = makeBroadcastTester(
 ErfcxTester = makeBroadcastTester(
     op=tensor.erfcx,
     expected=expected_erfcx,
-    good=_good_broadcast_unary_normal_float_no_complex,
-    grad=_grad_broadcast_unary_normal,
+    good=_good_broadcast_unary_normal_float_no_complex_small_neg_range,
+    grad=_grad_broadcast_unary_normal_small_neg_range,
     eps=2e-10,
     mode=mode_no_scipy,
     skip=skip_scipy12)
 ErfcxInplaceTester = makeBroadcastTester(
     op=inplace.erfcx_inplace,
     expected=expected_erfcx,
-    good=_good_broadcast_unary_normal_float_no_complex,
-    grad=_grad_broadcast_unary_normal,
+    good=_good_broadcast_unary_normal_float_no_complex_small_neg_range,
+    grad=_grad_broadcast_unary_normal_small_neg_range,
     eps=2e-10,
     mode=mode_no_scipy,
     inplace=True,
