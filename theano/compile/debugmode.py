@@ -2273,8 +2273,8 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
             inputs = [inputs]
 
         # Wrap them in In or Out instances if needed.
-        inputs = map(self.wrap_in, inputs)
-        outputs = map(self.wrap_out, outputs)
+        inputs, outputs = (list(map(self.wrap_in, inputs)),
+                           list(map(self.wrap_out, outputs)))
         _inputs = gof.graph.inputs([o.variable for o in outputs] +
                                    [i.update for i in inputs
                                     if getattr(i, 'update', False)])
@@ -2302,7 +2302,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                 optimizer(fgraph)
 
                 theano.compile.function_module.insert_deepcopy(
-                    fgraph, inputs, outputs + additional_outputs)
+                    fgraph, inputs, list(chain(outputs, additional_outputs)))
             finally:
                 theano.config.compute_test_value = compute_test_value_orig
 
