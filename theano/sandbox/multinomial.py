@@ -288,16 +288,16 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
     def c_code(self, node, name, ins, outs, sub):
         (pvals, unis) = ins
         (z,) = outs
-        # import ipdb
-        # ipdb.set_trace()
         fail = sub['fail']
         return """
         // Create the memory place that will store the error information.
-        static int* err_var = (int*)device_malloc(sizeof(int));
+        cudaError_t err;
+        int* err_var = (int*)device_malloc(sizeof(int));
         if (!err_var) { // PyErr set by device_malloc
             %(fail)s;
         }
-        cudaError_t err = cudaMemset((void*)err_var, 0, sizeof(int));
+
+        err = cudaMemset((void*)err_var, 0, sizeof(int));
         if (cudaSuccess != err) {
             // Clear the error flag, cudaMemset doesn't do it.
             // Currently this returns the same thing as err, but if in future
