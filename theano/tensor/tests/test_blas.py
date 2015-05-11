@@ -875,7 +875,7 @@ def test_dot22scalar():
                     cst = theano.tensor.basic.constant(.2, dtype=dtype4)
                     cst2 = theano.tensor.basic.constant(.1, dtype=dtype4)
 
-                    def check_dot22scalar(func, len_topo_scalar=-1):
+                    def check_dot22scalar_gemm(func, len_topo_scalar=-1):
                         topo = func.maker.fgraph.toposort()
                         ops = [x.op for x in topo]
                         classes = [type(x.op) for x in topo]
@@ -920,7 +920,7 @@ def test_dot22scalar():
                             f = theano.function([a, b], cst * T.dot(a, b),
                                                 mode=mode_blas_opt)
                             topo = f.maker.fgraph.toposort()
-                            check_dot22scalar(f, 1)
+                            check_dot22scalar_gemm(f, 1)
 
                             f(av, bv)
 
@@ -929,7 +929,7 @@ def test_dot22scalar():
                                                 cst * c * T.dot(a, b),
                                                 mode=mode_blas_opt)
                             topo = f.maker.fgraph.toposort()
-                            check_dot22scalar(f, 5)
+                            check_dot22scalar_gemm(f, 5)
                             #print (av.dtype, bv.dtype, cv.dtype)
 
                             f(av, bv, cv)
@@ -938,7 +938,7 @@ def test_dot22scalar():
                                             c * cst * T.dot(a, b),
                                             mode=mode_blas_opt)
                         topo = f.maker.fgraph.toposort()
-                        check_dot22scalar(f, 5)
+                        check_dot22scalar_gemm(f, 5)
                         f(av, bv, cv)
 
                         # Here, canonicalize also seems needed
@@ -948,7 +948,7 @@ def test_dot22scalar():
                                             cst2 * c * cst * T.dot(a, b),
                                             mode=m2)
                         topo = f.maker.fgraph.toposort()
-                        check_dot22scalar(f, 5)
+                        check_dot22scalar_gemm(f, 5)
                         f(av, bv, cv)
 
                         if dtype1 == dtype2 == dtype3:
@@ -956,7 +956,7 @@ def test_dot22scalar():
                                                 c * cst * a * T.dot(a, b),
                                                 mode=m2)
                             topo = f.maker.fgraph.toposort()
-                            check_dot22scalar(f, 5)
+                            check_dot22scalar_gemm(f, 5)
                             f(sv, sv, sv)
 
                             f = theano.function([a, b, c],
@@ -979,7 +979,7 @@ def test_dot22scalar():
                                                 c * a * cst * T.dot(a, b),
                                                 mode=m2)
                             topo = f.maker.fgraph.toposort()
-                            check_dot22scalar(f, 5)
+                            check_dot22scalar_gemm(f, 5)
                             f(sv, sv, sv)
 
                     cmp((3, 4), (4, 5), (3, 5))

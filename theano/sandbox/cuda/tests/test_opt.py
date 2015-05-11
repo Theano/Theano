@@ -153,6 +153,7 @@ def test_gpualloc():
     l = f.maker.fgraph.toposort()
     assert numpy.any([isinstance(x.op, cuda.GpuAlloc) for x in l])
 
+
 def test_gpuallocempty():
 
 

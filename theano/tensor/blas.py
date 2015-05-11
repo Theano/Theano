@@ -2043,7 +2043,7 @@ def local_dot22_to_dot22scalar(node):
         assert not a.type.ndim
 
         z = T.AllocEmpty(d.owner.inputs[0].dtype)(d.owner.inputs[0].shape[0],
-                                  d.owner.inputs[1].shape[1])
+                                                  d.owner.inputs[1].shape[1])
         zero = T.as_tensor_variable(numpy.asarray(0, dtype=a.dtype))
         dot = gemm(z, a, d.owner.inputs[0], d.owner.inputs[1], zero)
         

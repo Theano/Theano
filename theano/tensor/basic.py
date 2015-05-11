@@ -5550,8 +5550,7 @@ class AllocEmpty(gof.Op):
         return [node.inputs]
 
     def c_code_cache_version(self):
-        return None
-        return (2,)
+        return (3,)
 
     def do_constant_folding(self, node):
         return False

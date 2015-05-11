@@ -380,6 +380,17 @@ def test_alloc_empty():
     assert out.shape == (2, 3)
     assert out.dtype == 'float32'
 
+    # Test that we merge them.
+    f = theano.function([], [cuda.basic_ops.gpu_alloc_empty(2, 3),
+                             cuda.basic_ops.gpu_alloc_empty(2, 3)])
+    out = f()
+    assert out[0].shape == (2, 3)
+    assert out[0].dtype == 'float32'
+    assert out[1].shape == (2, 3)
+    assert out[1].dtype == 'float32'
+    assert len([node for node in f.maker.fgraph.apply_nodes
+                if isinstance(node.op, cuda.basic_ops.GpuAllocEmpty)]) == 1
+
 
 def test_elemwise_empty():
     # test with 0 element
