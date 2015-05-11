@@ -2957,9 +2957,12 @@ class T_Scan(unittest.TestCase):
         # Originally, the shape would have been 1 due to the SaveMem
         # optimization reducing the size to the number of taps (in this case
         # 1) provided to the inner function. Now, because of the memory-reuse
-        # feature in Scan it should be 2 because SaveMem needs to keep a
+        # feature in Scan it can be 2 because SaveMem needs to keep a
         # larger buffer to avoid aliasing between the inputs and the outputs.
-        assert f1().shape[0] == 2
+        if theano.config.scan.allow_output_prealloc:
+            assert f1().shape[0] == 2
+        else:
+            assert f1().shape[0] == 1
 
         gx = theano.tensor.grad(o, x)
         f2 = theano.function([], gx)
@@ -2987,9 +2990,12 @@ class T_Scan(unittest.TestCase):
         # Originally, the shape would have been 1 due to the SaveMem
         # optimization reducing the size to the number of taps (in this case
         # 1) provided to the inner function. Now, because of the memory-reuse
-        # feature in Scan it should be 2 because SaveMem needs to keep a
+        # feature in Scan it can be 2 because SaveMem needs to keep a
         # larger buffer to avoid aliasing between the inputs and the outputs.
-        assert f1().shape[0] == 2
+        if theano.config.scan.allow_output_prealloc:
+            assert f1().shape[0] == 2
+        else:
+            assert f1().shape[0] == 1
 
         gx = theano.tensor.grad(o, x)
         f2 = theano.function([], gx)
@@ -3018,9 +3024,12 @@ class T_Scan(unittest.TestCase):
         # Originally, the shape would have been 1 due to the SaveMem
         # optimization reducing the size to the number of taps (in this case
         # 1) provided to the inner function. Now, because of the memory-reuse
-        # feature in Scan it should be 2 because SaveMem needs to keep a
+        # feature in Scan it can be 2 because SaveMem needs to keep a
         # larger buffer to avoid aliasing between the inputs and the outputs.
-        assert f1().shape[0] == 2
+        if theano.config.scan.allow_output_prealloc:
+            assert f1().shape[0] == 2
+        else:
+            assert f1().shape[0] == 1
 
         gx = theano.tensor.grad(o, x)
         f2 = theano.function([], gx)
