@@ -3932,8 +3932,8 @@ class T_Scan(unittest.TestCase):
             output2 = temp.sum() + recurrent_out
             return output1, output2
 
-        input1 = theano.tensor.tensor3()
-        init = theano.tensor.tensor3()
+        input1 = theano.tensor.ftensor3()
+        init = theano.tensor.ftensor3()
         outputs_info = [None, init]
 
         out, _ = theano.scan(inner_fn, sequences=[input1],
@@ -3946,12 +3946,11 @@ class T_Scan(unittest.TestCase):
         fct = theano.function([input1, init], [out1, out2],
                               mode=mode_with_gpu)
 
-        floatX = theano.config.floatX
-        output = fct(numpy.ones((2, 1, 1), dtype=floatX),
-                     numpy.ones((1, 1, 1), dtype=floatX))
+        output = fct(numpy.ones((2, 1, 1), dtype="float32"),
+                     numpy.ones((1, 1, 1), dtype="float32"))
 
-        expected_output = (numpy.array([2, 4], dtype=floatX),
-                           numpy.array([3, 7], dtype=floatX))
+        expected_output = (numpy.array([2, 4], dtype="float32"),
+                           numpy.array([3, 7], dtype="float32"))
         utt.assert_allclose(output, expected_output)
 
     def test_memory_reuse_with_outputs_as_inputs(self):
