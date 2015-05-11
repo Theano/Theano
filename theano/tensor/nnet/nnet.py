@@ -570,7 +570,7 @@ class Softmax(gof.Op):
 softmax_op = Softmax()
 
 def softmax_graph(c):
-    return tensor.exp(c) / tensor.exp(c).sum(axis=1, keepdims=True)
+    return tensor.exp(c) / tensor.exp(c).sum(axis=-1, keepdims=True)
 
 
 @opt.register_specialize('fast_compile_gpu')
@@ -666,7 +666,7 @@ def softmax_simplifier(numerators, denominators):
         if matching_denom:
             numerators.remove(numerator)
             denominators.remove(matching_denom)
-            numerators.append(softmax(x))
+            numerators.append(softmax_op(x))
     return numerators, denominators
 opt.local_mul_canonizer.add_simplifier(softmax_simplifier,
      'softmax_simplifier')
