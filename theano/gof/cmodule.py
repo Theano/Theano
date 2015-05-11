@@ -960,9 +960,12 @@ class ModuleCache(object):
                 except cPickle.PicklingError:
                     key_data.remove_key(key)
                     key_broken = True
-            if (key[0] and not key_broken and
-                self.check_for_broken_eq):
-                self.check_key(key, key_data.key_pkl)
+                # We need the lock while we check in case of parallel
+                # process that could be changing the file at the same
+                # time.
+                if (key[0] and not key_broken and
+                    self.check_for_broken_eq):
+                    self.check_key(key, key_data.key_pkl)
             self._update_mappings(key, key_data, module.__file__, check_in_keys=not key_broken)
             return module
         else:
