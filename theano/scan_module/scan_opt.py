@@ -1236,12 +1236,18 @@ class ScanSaveMem(gof.Optimizer):
                         # tap needed don't occupy the sample place in the
                         # circular buffer. For now, this only needs to be done
                         # for mitsots and sitsots (because mitmots are not
-                        # currently supported by the mechanism).
+                        # currently supported by the mechanism) and only if
+                        # the pre-allocation mechanism is activated.
+                        prealloc_outs = theano.config.scan.allow_output_prealloc
+
                         first_mitsot_idx = node.op.n_mit_mot
                         last_sitsot_idx = (node.op.n_mit_mot +
                                            node.op.n_mit_sot +
                                            node.op.n_sit_sot - 1)
-                        if (i >= first_mitsot_idx and i <= last_sitsot_idx):
+                        preallocable_output = (i >= first_mitsot_idx and
+                                               i <= last_sitsot_idx)
+
+                        if (prealloc_outs and preallocable_output):
                             pval = select_max(nw_steps - start + init_l[i],
                                               init_l[i] + 1)
                         else:

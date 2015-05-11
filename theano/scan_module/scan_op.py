@@ -86,6 +86,11 @@ AddConfigVar('scan.allow_gc',
              "Allow/disallow gc inside of Scan (default: False)",
              BoolParam(False))
 
+AddConfigVar('scan.allow_output_prealloc',
+             "Allow/disallow memory preallocation for outputs inside of scan "
+             "(default: False)",
+             BoolParam(True))
+
 
 class Scan(PureOp):
     def __init__(self,
@@ -185,12 +190,14 @@ class Scan(PureOp):
                 optimizer=mode_instance.provided_optimizer,
                 linker=mode_instance.linker.clone(allow_gc=self.allow_gc))
 
-        # Now that scan has its mode instance, we activate optimization
+        # Now that scan has its mode instance, if memory pre-allocation is
+        # activated for the outputs, we activate the optimization
         # add_no_output_from_inplace in this mode instance. This will prevent
         # Scan from producing outputs by means of inplace operations and
         # therefore allow it to pre-allocate memory storage for the outputs,
         # avoiding needless copies.
-        self.mode_instance = self.mode_instance.including(
+        if theano.config.scan.allow_output_prealloc:
+            self.mode_instance = self.mode_instance.including(
                                                 "add_no_output_from_inplace")
 
         if not hasattr(self, 'name') or self.name is None:
@@ -717,7 +724,8 @@ class Scan(PureOp):
                   self.n_sit_sot +
                   self.n_nit_sot)
         wrapped_inputs = [Param(x, borrow=False) for x in self.inputs]
-        wrapped_outputs = [Out(x, borrow=True) for x in
+        borrow_outputs = theano.config.scan.allow_output_prealloc
+        wrapped_outputs = [Out(x, borrow=borrow_outputs) for x in
                            self.outputs[:slices]]
         wrapped_outputs += self.outputs[slices:]
         profile = None
