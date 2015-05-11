@@ -1,7 +1,8 @@
+import pkg_resources
+
 import theano
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
-
 from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
 
 try:
@@ -15,7 +16,7 @@ cula_available = False
 try:
     from scikits.cuda import cula
     cula_available = True
-except (ImportError, OSError):
+except (ImportError, OSError, pkg_resources.DistributionNotFound):
     pass
 
 cula_initialized = False
