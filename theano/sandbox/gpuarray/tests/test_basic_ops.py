@@ -302,7 +302,7 @@ GpuAllocTester = makeTester(
 )
 
 
-class TestAlloc(theano.tensor.tests.test_basic.TestAlloc):
+class TestAlloc(test_basic.TestAlloc):
     dtype = "float32"
     mode = mode_with_gpu
     shared = staticmethod(gpuarray_shared_constructor)
