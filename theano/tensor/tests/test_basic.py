@@ -17,6 +17,7 @@ from nose.plugins.attrib import attr
 import numpy
 from numpy.testing import dec, assert_array_equal, assert_allclose
 from numpy.testing.noseclasses import KnownFailureTest
+from distutils.version import LooseVersion
 
 import theano
 from theano.compat import PY3, exc_message, operator_div
@@ -57,6 +58,7 @@ mode_no_scipy = get_default_mode()
 try:
     import scipy.special
     import scipy.stats
+    from scipy import __version__ as scipy_version
     imported_scipy_special = True
 except ImportError:
     if config.mode == "FAST_COMPILE":
@@ -1079,6 +1081,11 @@ _good_broadcast_unary_normal_float_no_empty_no_complex = copymod(
 _good_broadcast_unary_normal_float_no_complex = copymod(
         _good_broadcast_unary_normal_float,
         without=['complex'])
+        
+_good_broadcast_unary_normal_float_no_complex_small_neg_range = dict(
+        normal=[rand_ranged(-2, 5, (2, 3))],
+        corner_case=[corner_case],
+        empty=[numpy.asarray([], dtype=config.floatX)])
 
 _good_broadcast_unary_normal = dict(
         normal=[numpy.asarray(rand_ranged(-5, 5, (2, 3)),
@@ -1108,6 +1115,10 @@ _grad_broadcast_unary_normal = dict(
         corner_case=[corner_case_grad],
         # empty = [numpy.asarray([])] # XXX: should this be included?
         )
+        
+_grad_broadcast_unary_normal_small_neg_range = dict(
+        normal=[numpy.asarray(rand_ranged(-2, 5, (2, 3)), dtype=floatX)],
+        corner_case=[corner_case_grad])
 
 _grad_broadcast_unary_normal_no_complex_no_corner_case = copymod(
         _grad_broadcast_unary_normal_no_complex,
@@ -1650,9 +1661,16 @@ if imported_scipy_special:
     expected_psi = scipy.special.psi
     expected_chi2sf = lambda x, df: scipy.stats.chi2.sf(x, df).astype(x.dtype)
     skip_scipy = False
+    if LooseVersion(scipy_version) >= LooseVersion("0.12.0"):
+        expected_erfcx = scipy.special.erfcx
+        skip_scipy12 = False
+    else:
+        expected_erfcx = []
+        skip_scipy12 = "the erfcx op requires scipy version >= 0.12, installed version is " + scipy_version
 else:
     expected_erf = []
     expected_erfc = []
+    expected_erfcx = []
     expected_erfinv = []
     expected_erfcinv = []
     expected_gamma = []
@@ -1660,6 +1678,7 @@ else:
     expected_psi = []
     expected_chi2sf = []
     skip_scipy = "scipy is not present"
+    skip_scipy12 = "scipy is not present"
 
 ErfTester = makeBroadcastTester(
     op=tensor.erf,
@@ -1696,6 +1715,24 @@ ErfcInplaceTester = makeBroadcastTester(
     mode=mode_no_scipy,
     inplace=True,
     skip=skip_scipy)
+
+ErfcxTester = makeBroadcastTester(
+    op=tensor.erfcx,
+    expected=expected_erfcx,
+    good=_good_broadcast_unary_normal_float_no_complex_small_neg_range,
+    grad=_grad_broadcast_unary_normal_small_neg_range,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    skip=skip_scipy12)
+ErfcxInplaceTester = makeBroadcastTester(
+    op=inplace.erfcx_inplace,
+    expected=expected_erfcx,
+    good=_good_broadcast_unary_normal_float_no_complex_small_neg_range,
+    grad=_grad_broadcast_unary_normal_small_neg_range,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    inplace=True,
+    skip=skip_scipy12)
 
 ErfinvTester = makeBroadcastTester(
     op=tensor.erfinv,

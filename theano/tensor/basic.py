@@ -1938,6 +1938,11 @@ def erfc(a):
 
 
 @_scal_elemwise
+def erfcx(a):
+    """scaled complementary error function"""
+
+
+@_scal_elemwise
 def erfinv(a):
     """inverse error function"""
 

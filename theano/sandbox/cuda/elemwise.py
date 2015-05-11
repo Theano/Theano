@@ -1065,3 +1065,26 @@ class ErfinvGPU(Erfinv):
         return "%(z)s = erfinv(%(x)s);" % locals()
 
 erfinv_gpu = ErfinvGPU(upgrade_to_float_no_complex, name='erfinv_gpu')
+
+
+class ErfcxGPU(Erfinv):
+    """
+    Provides a c-code implementation of the scaled complementary error function for GPU.
+
+    Note: We do not add this c_code to theano.scalar.basic_scipy.Erfcx, as we
+    currently rely on Nvidia's cublas library to provide the erfcx
+    c-implementation (which requires different c_headers). As it stands,
+    theano.scalar.basic_scipy.Erfcx does not have c_code as scipy does not
+    export the required C function
+    """
+    def c_headers(self):
+        return ['math_functions.h', 'cublas_v2.h']
+
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
+        if node.inputs[0].type in complex_types:
+            raise NotImplementedError('type not supported', type)
+        return "%(z)s = erfcx(%(x)s);" % locals()
+
+erfcx_gpu = ErfcxGPU(upgrade_to_float_no_complex, name='erfcx_gpu')
