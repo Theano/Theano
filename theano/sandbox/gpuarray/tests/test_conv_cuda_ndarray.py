@@ -29,13 +29,6 @@ from ..conv import GpuConv
 import pygpu
 gftensor4 = GpuArrayType('float32', [False] * 4)
 
-device_id = theano.sandbox.cuda.use.device_number
-# TODO do with with the new back-end.
-from theano.sandbox.cuda import cuda_ndarray
-cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
-device_prop = cuda_ndarray.device_properties(device_id)
-
-
 def py_conv_valid_numpy(img, kern):
     assert img.shape[1] == kern.shape[1]
     outshp = (img.shape[0], kern.shape[0],
