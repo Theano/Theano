@@ -572,6 +572,10 @@ softmax_op = Softmax()
 def softmax_graph(c):
     return tensor.exp(c) / tensor.exp(c).sum(axis=-1, keepdims=True)
 
+def softmax(c):
+    if c.ndim == 1:
+        c = tensor.shape_padleft(c, n_ones=1)
+    return softmax_graph(c)    
 
 @opt.register_specialize('fast_compile_gpu')
 @gof.local_optimizer([softmax_op])
@@ -640,7 +644,7 @@ def softmax_simplifier(numerators, denominators):
         if not numerator.type.dtype.startswith('float'):
             continue
 
-        if not numerator.type.broadcastable == (False, False):
+        if numerator.ndim != 2:
             continue
         if numerator.owner and numerator.owner.op == tensor.exp:
             x = numerator.owner.inputs[0]
@@ -667,6 +671,7 @@ def softmax_simplifier(numerators, denominators):
             numerators.remove(numerator)
             denominators.remove(matching_denom)
             numerators.append(softmax_op(x))
+
     return numerators, denominators
 opt.local_mul_canonizer.add_simplifier(softmax_simplifier,
      'softmax_simplifier')
@@ -728,7 +733,7 @@ if 0:
                             rest.append(add_in)
                             # print 'maybe_ds =', maybe_ds
                             # if maybe_ds:
-                            #    print 'maybe_ds.ndim =', maybe_ds.ndim, ', maybe_sm.ndim =', maybe_sm.ndim
+                  #I will make a plot with the average over many realizations.            #    print 'maybe_ds.ndim =', maybe_ds.ndim, ', maybe_sm.ndim =', maybe_sm.ndim
                             continue
 
                         if maybe_sm is mul_inputs[0]:

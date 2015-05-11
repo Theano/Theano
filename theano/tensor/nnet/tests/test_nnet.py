@@ -21,7 +21,7 @@ from theano.tensor.nnet import (categorical_crossentropy,
                                 CrossentropySoftmaxArgmax1HotWithBias,
                                 CrossentropyCategorical1Hot,
                                 CrossentropyCategorical1HotGrad,
-                                sigmoid, softplus, Softmax,
+                                sigmoid, softplus, Softmax, softmax,
                                 softmax_op, softmax_graph, SoftmaxWithBias,
                                 softmax_grad,
                                 softmax_with_bias, SoftmaxGrad,
@@ -612,10 +612,10 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
         # Basic case
         expressions = [
-                T.sum(-T.log(softmax_graph(x)[T.arange(y.shape[0]), y])),
-                -T.sum(T.log(softmax_graph(x)[T.arange(y.shape[0]), y])),
-                -T.sum(T.log(softmax_graph(x))[T.arange(y.shape[0]), y]),
-                T.sum(-T.log(softmax_graph(x))[T.arange(y.shape[0]), y])
+                T.sum(-T.log(softmax(x)[T.arange(y.shape[0]), y])),
+                -T.sum(T.log(softmax(x)[T.arange(y.shape[0]), y])),
+                -T.sum(T.log(softmax(x))[T.arange(y.shape[0]), y]),
+                T.sum(-T.log(softmax(x))[T.arange(y.shape[0]), y])
                 ]
         for expr in expressions:
             # Verify the optimizer worked on the expressions
@@ -650,10 +650,10 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
         # Test that a biased softmax is optimized correctly
         bias_expressions = [
-                T.sum(-T.log(softmax_graph(x + b)[T.arange(y.shape[0]), y])),
-                -T.sum(T.log(softmax_graph(b + x)[T.arange(y.shape[0]), y])),
-                -T.sum(T.log(softmax_graph(x + b))[T.arange(y.shape[0]), y]),
-                T.sum(-T.log(softmax_graph(b + x))[T.arange(y.shape[0]), y])]
+                T.sum(-T.log(softmax(x + b)[T.arange(y.shape[0]), y])),
+                -T.sum(T.log(softmax(b + x)[T.arange(y.shape[0]), y])),
+                -T.sum(T.log(softmax(x + b))[T.arange(y.shape[0]), y]),
+                T.sum(-T.log(softmax(b + x))[T.arange(y.shape[0]), y])]
 
         for expr in bias_expressions:
             f = theano.function([x, b, y], expr, mode=mode)
@@ -683,10 +683,10 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
         # Test that using "mean" instead of sum works, too
         mean_expressions = [
-                T.mean(-T.log(softmax_graph(x)[T.arange(y.shape[0]), y])),
-                -T.mean(T.log(softmax_graph(x)[T.arange(y.shape[0]), y])),
-                -T.mean(T.log(softmax_graph(x))[T.arange(y.shape[0]), y]),
-                T.mean(-T.log(softmax_graph(x))[T.arange(y.shape[0]), y])]
+                T.mean(-T.log(softmax(x)[T.arange(y.shape[0]), y])),
+                -T.mean(T.log(softmax(x)[T.arange(y.shape[0]), y])),
+                -T.mean(T.log(softmax(x))[T.arange(y.shape[0]), y]),
+                T.mean(-T.log(softmax(x))[T.arange(y.shape[0]), y])]
 
         for expr in mean_expressions:
             f = theano.function([x, y], expr, mode=mode)
@@ -720,10 +720,10 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 raise
 
         mean_bias_expressions = [
-                T.mean(-T.log(softmax_graph(x + b)[T.arange(y.shape[0]), y])),
-                -T.mean(T.log(softmax_graph(b + x)[T.arange(y.shape[0]), y])),
-                -T.mean(T.log(softmax_graph(x + b))[T.arange(y.shape[0]), y]),
-                T.mean(-T.log(softmax_graph(b + x))[T.arange(y.shape[0]), y])]
+                T.mean(-T.log(softmax(x + b)[T.arange(y.shape[0]), y])),
+                -T.mean(T.log(softmax(b + x)[T.arange(y.shape[0]), y])),
+                -T.mean(T.log(softmax(x + b))[T.arange(y.shape[0]), y]),
+                T.mean(-T.log(softmax(b + x))[T.arange(y.shape[0]), y])]
 
         for expr in mean_bias_expressions:
             f = theano.function([x, b, y], expr, mode=mode)
@@ -764,10 +764,10 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         y = T.lvector('y')
         yi = T.cast(y, 'int32')
         expressions = [
-                T.sum(-T.log(softmax_graph(x)[T.arange(yi.shape[0]), yi])),
-                -T.sum(T.log(softmax_graph(x)[T.arange(yi.shape[0]), yi])),
-                -T.sum(T.log(softmax_graph(x))[T.arange(yi.shape[0]), yi]),
-                T.sum(-T.log(softmax_graph(x))[T.arange(yi.shape[0]), yi])
+                T.sum(-T.log(softmax(x)[T.arange(yi.shape[0]), yi])),
+                -T.sum(T.log(softmax(x)[T.arange(yi.shape[0]), yi])),
+                -T.sum(T.log(softmax(x))[T.arange(yi.shape[0]), yi]),
+                T.sum(-T.log(softmax(x))[T.arange(yi.shape[0]), yi])
                 ]
 
         for expr in expressions:
@@ -815,8 +815,8 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
         # Test that a biased softmax is optimized correctly
         bias_expressions = [
-                T.sum(-T.log(softmax_graph(x)[T.arange(y.shape[0]), y])),
-                -T.sum(T.log(softmax_graph(x)[T.arange(y.shape[0]), y]))]
+                T.sum(-T.log(softmax(x)[T.arange(y.shape[0]), y])),
+                -T.sum(T.log(softmax(x)[T.arange(y.shape[0]), y]))]
 
         for expr in bias_expressions:
             f = theano.function([x, y], expr, mode=mode)
@@ -862,10 +862,10 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
         # Test that a biased softmax is optimized correctly
         bias_expressions = [
-                T.sum(-T.log(softmax_graph(x + b)[T.arange(y.shape[0]), y])),
-                -T.sum(T.log(softmax_graph(b + x)[T.arange(y.shape[0]), y])),
-                -T.sum(T.log(softmax_graph(x + b))[T.arange(y.shape[0]), y]),
-                T.sum(-T.log(softmax_graph(b + x))[T.arange(y.shape[0]), y])]
+                T.sum(-T.log(softmax(x + b)[T.arange(y.shape[0]), y])),
+                -T.sum(T.log(softmax(b + x)[T.arange(y.shape[0]), y])),
+                -T.sum(T.log(softmax(x + b))[T.arange(y.shape[0]), y]),
+                T.sum(-T.log(softmax(b + x))[T.arange(y.shape[0]), y])]
 
         for expr in bias_expressions:
             f = theano.function([x, b, y], expr, mode=mode)
@@ -923,10 +923,10 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
         # Test that a biased softmax is optimized correctly
         bias_expressions = [
-                T.sum(-T.log(softmax_graph(x + b)[T.arange(y.shape[0]), y])),
-                -T.sum(T.log(softmax_graph(b + x)[T.arange(y.shape[0]), y])),
-                -T.sum(T.log(softmax_graph(x + b))[T.arange(y.shape[0]), y]),
-                T.sum(-T.log(softmax_graph(b + x))[T.arange(y.shape[0]), y])]
+                T.sum(-T.log(softmax(x + b)[T.arange(y.shape[0]), y])),
+                -T.sum(T.log(softmax(b + x)[T.arange(y.shape[0]), y])),
+                -T.sum(T.log(softmax(x + b))[T.arange(y.shape[0]), y]),
+                T.sum(-T.log(softmax(b + x))[T.arange(y.shape[0]), y])]
 
         for expr in bias_expressions:
             f = theano.function([x, b, y_], expr, mode=mode)
@@ -985,10 +985,10 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
         # Test that a biased softmax is optimized correctly
         bias_expressions = [
-                T.sum(-T.log(softmax_graph(x + b)[T.arange(y.shape[0]), y])),
-                -T.sum(T.log(softmax_graph(b + x)[T.arange(y.shape[0]), y])),
-                -T.sum(T.log(softmax_graph(x + b))[T.arange(y.shape[0]), y]),
-                T.sum(-T.log(softmax_graph(b + x))[T.arange(y.shape[0]), y])]
+                T.sum(-T.log(softmax(x + b)[T.arange(y.shape[0]), y])),
+                -T.sum(T.log(softmax(b + x)[T.arange(y.shape[0]), y])),
+                -T.sum(T.log(softmax(x + b))[T.arange(y.shape[0]), y]),
+                T.sum(-T.log(softmax(b + x))[T.arange(y.shape[0]), y])]
 
         for expr in bias_expressions:
             f = theano.function([x, b, y_], expr, mode=mode)
