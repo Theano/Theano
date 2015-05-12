@@ -167,7 +167,7 @@ class GpuGemm(BlasOp, Gemm):
         return code
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
 
 gpugemm_no_inplace = GpuGemm(inplace=False)
