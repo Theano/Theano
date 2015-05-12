@@ -835,7 +835,7 @@ class GpuJoin(HideC, Join):
             node.outputs[0].dtype)
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_code(self, node, name, inputs, out_, sub):
         copy_to_list = []
@@ -851,9 +851,22 @@ if (als == NULL) {
 }
 %(copy_inputs_to_list)s
 Py_XDECREF(%(out)s);
-%(out)s = pygpu_concatenate(als, %(n)s, PyInt_AsLong((PyObject *)%(axis)s),
+{
+int axis = PyInt_AsLong((PyObject *)%(axis)s);
+if (axis < 0) {
+  if (axis == -1 && PyErr_Occurred()) {
+    %(fail)s
+  }
+  axis += als[0]->nd;
+  if (axis < 0) {
+    PyErr_SetString(PyExc_IndexError, "invalid axis");
+    %(fail)s
+  }
+}
+%(out)s = pygpu_concatenate(als, %(n)s, axis,
                             %(restype)s, (PyObject *)&PyGpuArrayType,
                             pygpu_default_context());
+}
 PyMem_Free(als);
 if (%(out)s == NULL)
   %(fail)s
