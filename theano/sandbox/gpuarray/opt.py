@@ -723,7 +723,7 @@ def local_scan_to_gpua(node):
     # __init__ does not know about the gpu and can not
     # handle graphs with inputs being on the gpu
     tmp_in, tmp_out = gpu_reconstruct_graph(scan_ins, scan_outs)
-    local_fgraph = gof.FunctionGraph(tmp_in, tmp_out, clone=False)
+    local_fgraph = gof.FunctionGraph(tmp_in, tmp_out, clone=True)
     _cmodule_key = gof.CLinker().cmodule_key_(local_fgraph, [])
     info['gpu_hash'] = hash(_cmodule_key)
 
