@@ -2976,7 +2976,17 @@ class T_Scan(unittest.TestCase):
         assert scan_nodes is not None
         scan_node = scan_nodes[0]
         f1 = theano.function(inputs, scan_node.inputs[2])
-        assert f1().shape[0] == 1
+
+        # Originally, the shape would have been 1 due to the SaveMem
+        # optimization reducing the size to the number of taps (in this case
+        # 1) provided to the inner function. Now, because of the memory-reuse
+        # feature in Scan it can be 2 because SaveMem needs to keep a
+        # larger buffer to avoid aliasing between the inputs and the outputs.
+        if theano.config.scan.allow_output_prealloc:
+            assert f1().shape[0] == 2
+        else:
+            assert f1().shape[0] == 1
+
         gx = theano.tensor.grad(o, x)
         f2 = theano.function([], gx)
         utt.assert_allclose(f2(), numpy.ones((10,)))
@@ -2999,7 +3009,17 @@ class T_Scan(unittest.TestCase):
         assert scan_nodes is not None
         scan_node = scan_nodes[0]
         f1 = theano.function(inputs, scan_node.inputs[2])
-        assert f1().shape[0] == 1
+
+        # Originally, the shape would have been 1 due to the SaveMem
+        # optimization reducing the size to the number of taps (in this case
+        # 1) provided to the inner function. Now, because of the memory-reuse
+        # feature in Scan it can be 2 because SaveMem needs to keep a
+        # larger buffer to avoid aliasing between the inputs and the outputs.
+        if theano.config.scan.allow_output_prealloc:
+            assert f1().shape[0] == 2
+        else:
+            assert f1().shape[0] == 1
+
         gx = theano.tensor.grad(o, x)
         f2 = theano.function([], gx)
         utt.assert_allclose(f2(), numpy.ones((10,)))
@@ -3023,7 +3043,17 @@ class T_Scan(unittest.TestCase):
         assert scan_nodes is not None
         scan_node = scan_nodes[0]
         f1 = theano.function(inputs, scan_node.inputs[2])
-        assert f1().shape[0] == 1
+
+        # Originally, the shape would have been 1 due to the SaveMem
+        # optimization reducing the size to the number of taps (in this case
+        # 1) provided to the inner function. Now, because of the memory-reuse
+        # feature in Scan it can be 2 because SaveMem needs to keep a
+        # larger buffer to avoid aliasing between the inputs and the outputs.
+        if theano.config.scan.allow_output_prealloc:
+            assert f1().shape[0] == 2
+        else:
+            assert f1().shape[0] == 1
+
         gx = theano.tensor.grad(o, x)
         f2 = theano.function([], gx)
         utt.assert_allclose(f2(), numpy.ones((10,)))
@@ -3917,6 +3947,87 @@ class T_Scan(unittest.TestCase):
 
         f = theano.function([seq], results[1], updates=updates)
         assert numpy.all(exp_out == f(inp))
+
+    def test_memory_reuse_gpudimshuffle(self):
+        # Test the memory pre-allocation feature in scan when one output is
+        # the result of a GpuDimshuffle (because an optimization in
+        # GpuDimshuffle can cause issues with the memory pre-allocation
+        # where it falsely thinks that a pre-allocated memory region has
+        # been used when it hasn't).
+        from theano.sandbox import cuda
+        if not cuda.cuda_available:
+            raise SkipTest('Optional package cuda disabled')
+
+        def inner_fn(seq1, recurrent_out):
+            temp = seq1 + recurrent_out.sum()
+            output1 = temp.dimshuffle(1, 0)
+            output2 = temp.sum() + recurrent_out
+            return output1, output2
+
+        input1 = theano.tensor.ftensor3()
+        init = theano.tensor.ftensor3()
+        outputs_info = [None, init]
+
+        out, _ = theano.scan(inner_fn, sequences=[input1],
+                             outputs_info=outputs_info,
+                             mode=mode_with_gpu)
+
+        out1 = out[0].flatten()
+        out2 = out[1].flatten()
+
+        fct = theano.function([input1, init], [out1, out2],
+                              mode=mode_with_gpu)
+
+        output = fct(numpy.ones((2, 1, 1), dtype="float32"),
+                     numpy.ones((1, 1, 1), dtype="float32"))
+
+        expected_output = (numpy.array([2, 4], dtype="float32"),
+                           numpy.array([3, 7], dtype="float32"))
+        utt.assert_allclose(output, expected_output)
+
+    def test_memory_reuse_with_outputs_as_inputs(self):
+        # Test the memory pre-allocation feature in scan for the following
+        # cases :
+        #  - An output of the inner graph is also an input of the inner graph
+        #  - An output of the inner graph is not an input in the unoptimized
+        #    graph but it could becomes the case in the optimized graph due to
+        #    the optimizations.
+        #  - An output of the inner graph is obtained through a view op on an
+        #    input of the inner graph and the view op is removed by the
+        #    optimization process
+        #  - An output of the inner graph is obtained through a view op on an
+        #    input of the inner graph and the view op is NOT removed by the
+        #    optimization process
+        #  - An output of the inner graph is not obtained through any of the
+        #    previously mentionned cases (standard case)
+
+        def inner_fn(tap_m3, tap_m2, tap_m1):
+            return (tap_m2, (tap_m1 * 1),
+                    theano.gradient.disconnected_grad(tap_m2),
+                    theano.tensor.opt.assert_(tap_m2, 1),
+                    tap_m3 + tap_m2 + tap_m1)
+
+        init = theano.tensor.matrix()
+        outputs_info = [None, None, None, None,
+                        dict(initial=init, taps=[-3, -2, -1])]
+
+        out, _ = theano.scan(inner_fn, outputs_info=outputs_info, n_steps=3)
+        fct = theano.function([init], out)
+
+        # Compare obtained outputs with expected outputs
+        floatX = theano.config.floatX
+        outputs = fct(numpy.arange(9, dtype=floatX).reshape(3,3))
+
+        states = numpy.array([[0, 1, 2],
+                              [3, 4, 5],
+                              [6, 7, 8],
+                              [9, 12, 15],
+                              [18, 23, 28],
+                              [33, 42, 51]],dtype=floatX)
+        expected_outputs = [states[1:4], states[2:5], states[1:4],
+                            states[1:4], states[3:6]]
+
+        utt.assert_allclose(outputs, expected_outputs)
 
     def test_grad_connectivity_matrix(self):
         def inner_fn(x_tm1, y_tm1, z_tm1):

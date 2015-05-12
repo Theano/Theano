@@ -1228,8 +1228,32 @@ class ScanSaveMem(gof.Optimizer):
                     if start == 0 or store_steps[i] == 0:
                         store_steps[i] = 0
                     else:
-                        pval = select_max(nw_steps - start + init_l[i],
-                                          init_l[i])
+                        # The "+ 1" is because of the memory pre-allocation
+                        # mechanism used to in the Scan op to reduce overhead.
+                        # To prevent aliasing between the inputs and outputs
+                        # of recurrent states, it requires that the buffer be
+                        # large enough to that, the new state and the oldest
+                        # tap needed don't occupy the sample place in the
+                        # circular buffer. For now, this only needs to be done
+                        # for mitsots and sitsots (because mitmots are not
+                        # currently supported by the mechanism) and only if
+                        # the pre-allocation mechanism is activated.
+                        prealloc_outs = theano.config.scan.allow_output_prealloc
+
+                        first_mitsot_idx = node.op.n_mit_mot
+                        last_sitsot_idx = (node.op.n_mit_mot +
+                                           node.op.n_mit_sot +
+                                           node.op.n_sit_sot - 1)
+                        preallocable_output = (i >= first_mitsot_idx and
+                                               i <= last_sitsot_idx)
+
+                        if (prealloc_outs and preallocable_output):
+                            pval = select_max(nw_steps - start + init_l[i],
+                                              init_l[i] + 1)
+                        else:
+                            pval = select_max(nw_steps - start + init_l[i],
+                                              init_l[i])
+
                         if store_steps[i] != -1:
                             pval = select_max(pval, store_steps[i])
 

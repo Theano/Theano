@@ -2,6 +2,48 @@
 This module provides the Scan Op
 
 See scan.py for details on scan
+
+
+Memory reuse in scan
+--------------------
+
+To reduce the number of memory allocations and copies associated with calling
+the inner function and recovering the outputs at every iteration, Scan uses a
+memory pre-allocation mechanism for some of its outputs. Instead of repeatedly
+calling the inner function and copying the outputs to designated locations,
+it tries to make the inner function write the outputs directly to the
+designated locations.
+
+This is achieved by initializing, at every iteration, the output storage
+of the inner function with references to previously allocated memory. Other
+than the code in the Python and Cython backends to do this and to ensure that
+the pre-allocated memory has been used, the memory pre-allocation mechanism
+relies on the following elements to work properly :
+- In make_thunk(), when compiling the inner function, the borrow flag must
+  be set to False for the inputs. This will prevent aliasing between the
+  inputs and the outputs of the inner function which could lead to invalid
+  results.
+- In make_thunk(), again, the borrow flag must be set to True for the outputs.
+  This will make Theano consider the output storages as persistent and make
+  Theano provide them as pre-allocated storage to the ops that compute the
+  outputs of the inner function instead of letting these ops allocate their
+  own output storage.
+- The ops that produce the outputs of the inner function must be prevented
+  from working inplace because if they do, they're not using the pre-allocated
+  storage. This is achieved by including the optimization
+  'add_no_output_from_inplace' to the compilation mode used by scan. It
+  prevents other optimizations from altering the graph such that outputs are
+  produced by inplace operations.
+- The ScanSaveMem optimization, whose goal is to limit the amount of memory
+  used by scan, needs to allocate buffers large enough to be able, at every
+  iteration, to simultaneously read the needed previous states and storing
+  the new states. Before the memory reuse feature, the buffers could be
+  smaller because, often, Scan only needed buffers large enough to read the
+  needed previous states. This is because all the outputs of the inner
+  function were computed before any of them was stored in the buffers. Now,
+  the outputs are stored as they are computed which means that, if the buffer
+  is too small, computing an output can overwrite an input that is still
+  needed to compute another output.
 """
 from __future__ import print_function
 
@@ -44,6 +86,11 @@ from theano.configparser import AddConfigVar, BoolParam
 AddConfigVar('scan.allow_gc',
              "Allow/disallow gc inside of Scan (default: False)",
              BoolParam(False))
+
+AddConfigVar('scan.allow_output_prealloc',
+             "Allow/disallow memory preallocation for outputs inside of scan "
+             "(default: True)",
+             BoolParam(True))
 
 
 class Scan(PureOp):
@@ -144,12 +191,14 @@ class Scan(PureOp):
                 optimizer=mode_instance.provided_optimizer,
                 linker=mode_instance.linker.clone(allow_gc=self.allow_gc))
 
-        # Now that scan has its mode instance, we activate optimization
+        # Now that scan has its mode instance, if memory pre-allocation is
+        # activated for the outputs, we activate the optimization
         # add_no_output_from_inplace in this mode instance. This will prevent
         # Scan from producing outputs by means of inplace operations and
         # therefore allow it to pre-allocate memory storage for the outputs,
         # avoiding needless copies.
-        self.mode_instance = self.mode_instance.including(
+        if theano.config.scan.allow_output_prealloc:
+            self.mode_instance = self.mode_instance.including(
                                                 "add_no_output_from_inplace")
 
         if not hasattr(self, 'name') or self.name is None:
@@ -675,9 +724,16 @@ class Scan(PureOp):
                   self.n_mit_sot +
                   self.n_sit_sot +
                   self.n_nit_sot)
-        wrapped_inputs = [Param(x, borrow=True) for x in self.inputs]
-        wrapped_outputs = [Out(x, borrow=False) for x in
-                           self.outputs[:slices]]
+        if theano.config.scan.allow_output_prealloc:
+            wrapped_inputs = [Param(x, borrow=False) for x in
+                              self.inputs]
+            wrapped_outputs = [Out(x, borrow=True) for x in
+                               self.outputs[:slices]]
+        else:
+            wrapped_inputs = [Param(x, borrow=True) for x in
+                              self.inputs]
+            wrapped_outputs = [Out(x, borrow=False) for x in
+                               self.outputs[:slices]]
         wrapped_outputs += self.outputs[slices:]
         profile = None
         if (theano.config.profile or
@@ -1022,6 +1078,9 @@ class Scan(PureOp):
         other_args = args[offset:]
         input_storage = self.fn.input_storage
         output_storage = self.fn.output_storage
+        old_output_storage = [None] * len(output_storage)
+        old_output_data = [None] * len(output_storage)
+        output_reused = [None] * len(output_storage)
         fn = self.fn.fn
         offset = (self.n_seqs + sum(map(len, self.tap_array[:self.n_outs])) +
                     self.n_shared_outs)
@@ -1100,10 +1159,23 @@ class Scan(PureOp):
                 pdx = offset + self.n_shared_outs
                 output_storage[pdx].storage[0] = None
 
-            # 4.5. Keep a reference to the variables currently in the
-            # output_storage to be able to compare them with the actual
-            # outputs of the inner function after its execution
-            old_output_storage = [o.storage[0] for o in output_storage]
+            # 4.5. Keep a reference to the variables (ndarrays, CudaNdarrays,
+            # etc) currently in the output_storage to be able to compare them
+            # with the actual outputs of the inner function after its
+            # execution. Also keep pointers to their data to be able to detect
+            # cases where outputs reused the allocated object but alter the
+            # memory region they refer to.
+            for idx in xrange(len(output_storage)):
+
+                var = output_storage[idx].storage[0]
+                old_output_storage[idx] = var
+
+                if hasattr(var, 'gpudata'):
+                    old_output_data[idx] = var.gpudata
+                elif hasattr(var, 'data'):
+                    old_output_data[idx] = var.data
+                else:
+                    old_output_data[idx] = None
 
             # 5. compute outputs
             t0_fn = time.time()
@@ -1136,9 +1208,26 @@ class Scan(PureOp):
 
             # Check which of the pre-allocated outputs (if applicable) have
             # been reused by the inner function
-            output_reused = [old_output_storage[o] is
-                             output_storage[o].storage[0]
-                             for o in range(len(output_storage))]
+            for idx in xrange(len(output_storage)):
+                # If the storage map does not contain the same object, then
+                # the pre-allocated output has not been reused
+                new_var = output_storage[idx].storage[0]
+                if old_output_storage[idx] is new_var:
+
+                    # The pre-allocated output is only considered as having
+                    # been reused if it still points to the same data as it
+                    # did before the execution of the inner function
+                    if old_output_data[idx] is None:
+                        output_reused[idx] = False
+                    else:
+                        if hasattr(new_var, 'gpudata'):
+                            output_reused[idx] = (new_var.gpudata ==
+                                                  old_output_data[idx])
+                        elif hasattr(new_var, 'data'):
+                            output_reused[idx] = (new_var.data ==
+                                                  old_output_data[idx])
+                else:
+                    output_reused[idx] = False
 
             t_fn += dt_fn
             offset_out = 0
