@@ -17,6 +17,8 @@
 # is relative to the documentation root, use os.path.abspath to make it
 # absolute, like shown here.
 #sys.path.append(os.path.abspath('some/directory'))
+import os
+import sys
 theano_path = os.path.join(os.path.dirname(__file__), os.pardir)
 sys.path.append(os.path.abspath(theano_path))
 
