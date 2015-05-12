@@ -146,7 +146,6 @@ class GpuGemm(BlasOp, Gemm):
                    """ % vars
         else:
             code = """
-                   Py_XDECREF(%(out)s);
                    %(out)s = gpublas_try_copy(%(out)s, %(C)s);
                    if (%(out)s == NULL) {
                        %(fail)s
