@@ -88,7 +88,7 @@ AddConfigVar('scan.allow_gc',
 
 AddConfigVar('scan.allow_output_prealloc',
              "Allow/disallow memory preallocation for outputs inside of scan "
-             "(default: False)",
+             "(default: True)",
              BoolParam(True))
 
 
