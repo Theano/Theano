@@ -723,10 +723,16 @@ class Scan(PureOp):
                   self.n_mit_sot +
                   self.n_sit_sot +
                   self.n_nit_sot)
-        wrapped_inputs = [Param(x, borrow=False) for x in self.inputs]
-        borrow_outputs = theano.config.scan.allow_output_prealloc
-        wrapped_outputs = [Out(x, borrow=borrow_outputs) for x in
-                           self.outputs[:slices]]
+        if theano.config.scan.allow_output_prealloc:
+            wrapped_inputs = [Param(x, borrow=False) for x in
+                              self.inputs]
+            wrapped_outputs = [Out(x, borrow=True) for x in
+                               self.outputs[:slices]]
+        else:
+            wrapped_inputs = [Param(x, borrow=True) for x in
+                              self.inputs]
+            wrapped_outputs = [Out(x, borrow=False) for x in
+                               self.outputs[:slices]]
         wrapped_outputs += self.outputs[slices:]
         profile = None
         if (theano.config.profile or
