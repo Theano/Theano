@@ -1158,9 +1158,12 @@ class Scan(PureOp):
                 pdx = offset + self.n_shared_outs
                 output_storage[pdx].storage[0] = None
 
-            # 4.5. Keep a reference to the variables currently in the
-            # output_storage, and their data, to be able to compare them with
-            # the actual outputs of the inner function after its execution
+            # 4.5. Keep a reference to the variables (ndarrays, CudaNdarrays,
+            # etc) currently in the output_storage to be able to compare them
+            # with the actual outputs of the inner function after its
+            # execution. Also keep pointers to their data to be able to detect
+            # cases where outputs reused the allocated object but alter the
+            # memory region they refer to.
             for idx in xrange(len(output_storage)):
 
                 var = output_storage[idx].storage[0]
