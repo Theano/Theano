@@ -5508,9 +5508,6 @@ class AllocEmpty(gof.Op):
             # XXX: We could implement and call CudaNdarray.empty(sh) instead.
             out[0] = numpy.empty(sh, dtype=self.dtype)
 
-    def do_merge(self, node):
-        return False
-
     def c_code(self, node, name, inputs, out_, sub):
         dtype = "NPY_"+self.dtype.upper()
         out, = out_
