@@ -52,7 +52,7 @@ def multMatVect(v, A, m1, B, m2):
         m2_sym = tensor.iscalar('m2')
         o = DotModulo()(A_sym, s_sym, m_sym, A2_sym, s2_sym, m2_sym)
         multMatVect.dot_modulo = function(
-            [A_sym, s_sym, m_sym, A2_sym, s2_sym, m2_sym], o)
+            [A_sym, s_sym, m_sym, A2_sym, s2_sym, m2_sym], o, profile=False)
 
     # This way of calling the Theano fct is done to bypass Theano overhead.
     f = multMatVect.dot_modulo
