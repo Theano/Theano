@@ -294,7 +294,7 @@ class GpuFromHost(Op):
         if isinstance(ev, GpuArrayType):
             return [host_from_gpu(ev)]
         else:
-            return ev
+            return [ev]
 
     def infer_shape(self, node, xshp):
         return xshp
