@@ -586,11 +586,10 @@ class GpuAlloc(HideC, Alloc):
         return s
 
     def make_node(self, value, *shape):
-        res = Alloc.make_node(self, value, *shape)
         value = as_gpuarray_variable(value)
-        otype = GpuArrayType(dtype=res.outputs[0].dtype,
-                             broadcastable=res.outputs[0].broadcastable)
-        return Apply(self, [value] + res.inputs[1:], [otype()])
+        sh, bcast = self.validate_shape(shape)
+        otype = value.type.clone(broadcastable=bcast)
+        return Apply(self, [value] + sh, [otype()])
 
     def c_headers(self):
         return ['<numpy_compat.h>']
@@ -600,7 +599,7 @@ class GpuAlloc(HideC, Alloc):
         v = inputs[0]
         sh = tuple(map(int, inputs[1:]))
         if out[0] is None or out[0].shape != sh:
-            if v.size == 1 and numpy.asarray(v).flatten().item() == 0:
+            if self.memset_0:
                 out[0] = gpuarray.zeros(sh, dtype=v.dtype)
             else:
                 out[0] = gpuarray.empty(sh, dtype=v.dtype)
@@ -712,7 +711,72 @@ class GpuAlloc(HideC, Alloc):
                 return False
         return True
 
+
 gpu_alloc = GpuAlloc()
+
+
+class GpuAllocEmpty(HideC, Alloc):
+    __props__ = ('dtype',)
+    _f16_ok = True
+
+    def __init__(self, dtype):
+        self.dtype = dtype
+
+    def make_node(self, *shape):
+        sh, bcast = self.validate_shape(shape)
+        otype = GpuArrayType(dtype=self.dtype, broadcastable=bcast)
+        return Apply(self, sh, [otype()])
+
+    def perform(self, node, inputs, out_):
+        out = out_[0]
+        sh = [int(i) for i in inputs]
+        if out[0] is None or out[0].shape != sh:
+            out[0] = pygpu.empty(sh, dtype=self.dtype)
+        # if out[0] is the right shape, we just return it
+
+    def c_headers(self):
+        return ['<gpuarray_helper.h>']
+
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__)]
+
+    def c_code(self, node, name, inp, out, sub):
+        ndim = len(inp)
+        zz = out[0]
+        fail = sub['fail']
+
+        code = ["""
+int i;
+size_t shape[%(ndim)s];
+""" % dict(ndim=ndim)]
+
+        for i, shp_i in enumerate(inp):
+            code.append("""
+shape[%(i)s] = ((dtype_%(shp_i)s *)PyArray_DATA(%(shp_i)s))[0];
+""" % dict(i=i, shp_i=shp_i))
+
+        code.append("""
+if (theano_prep_output(&%(zz)s, %(ndim)s, shape, %(type)s, GA_C_ORDER,
+                       pygpu_default_context())) {
+  %(fail)s
+}
+""" % dict(zz=zz, ndim=ndim, type=gpuarray.dtype_to_typecode(self.dtype),
+           fail=fail))
+
+        return ''.join(code)
+
+    def c_code_cache_version(self):
+        return (0,)
+
+    def do_constant_folding(self, node):
+        return False
+
+    def infer_shape(self, node, input_shapes):
+        return [node.inputs]
+
+    def grad(self, *args):
+        # Don't reuse the grad implementation from Alloc
+        raise NotImplementedError("grad disabled")
 
 
 class GpuContiguous(Op):
