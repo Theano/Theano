@@ -714,7 +714,6 @@ def test_dnn_conv_merge_broad():
     assert not isinstance(f2.maker.fgraph.outputs[0].owner.inputs[0].owner.op,
                           dnn.GpuDnnConv)
 
-
     out_f1 = f1(img_val, kern_val)
     out_f2 = f2(img_val, kern_val)
 
