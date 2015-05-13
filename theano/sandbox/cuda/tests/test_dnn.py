@@ -680,10 +680,9 @@ def test_dnn_conv_merge_mouts():
     rr = conv * lr
 
     f = theano.function([img, kern, out], [fr, rr], mode=mode_with_gpu)
-    assert not isinstance(f.maker.fgraph.outputs[0].owner.inputs[0].owner.op,
-                          dnn.GpuDnnConv)
-    assert not isinstance(f.maker.fgraph.outputs[1].owner.inputs[0].owner.op,
-                          dnn.GpuDnnConv)
+    convs = [n for n in f.maker.fgraph.toposort()
+             if isinstance(n.op, dnn.GpuDnnConv)]
+    assert len(convs) == 1
 
 
 def test_dnn_conv_merge_broad():
