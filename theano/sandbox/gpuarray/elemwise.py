@@ -1885,7 +1885,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         """ % locals(), file=sio)
 
     def c_code_cache_version_apply(self, node):
-        version = [12]  # the version corresponding to the c code in this Op
+        version = [13]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
@@ -1906,6 +1906,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         out_dtype = "npy_" + node.outputs[0].dtype
         acc_dtype = "npy_" + self._acc_dtype(node.inputs[0].dtype)
         load_in = load_w(node.inputs[0].dtype)
+        write_out = write_w(node.outputs[0].dtype)
 
         if all(i == 1 for i in self.reduce_mask):
             # this kernel is ok for up to a few thousand elements, but
@@ -2159,7 +2160,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
                             {
                                 %(reduce_fct)s;
                             }
-                            Z[a * sZ0 + c * sZ1] = myresult;
+                            Z[a * sZ0 + c * sZ1] = %(write_out)s(myresult);
                         }
                     }
                 }
@@ -2240,7 +2241,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
                 if (warpSize != 32)
                 {
                     //TODO: set error code
-                    Z[blockIdx.x * sZ0] = -666;
+                    Z[blockIdx.x * sZ0] = %(write_out)s(-666);
                     return;
                 }
 
