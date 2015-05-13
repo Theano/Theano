@@ -32,10 +32,12 @@ def grab_cpu_scalar(v, nd):
             return v.dimshuffle(())
 
 
-def find_node(v, cls):
+def find_node(v, cls, ignore_clients=False):
     # This digs through possibly redundant transfers to for the node
-    # that has the op class specified.
-    if v.owner is not None:
+    # that has the op class specified. If ignore_clients is False (the
+    # default) it will only dig through nodes that have a single
+    # client.
+    if v.owner is not None and (ignore_clients or v.clients == 1):
         if isinstance(v.owner.op, cls):
             return v.owner
         elif (isinstance(v.owner.op, GpuFromHost) and
