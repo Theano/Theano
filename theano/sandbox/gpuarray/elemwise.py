@@ -1943,7 +1943,6 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         """ % locals(), file=sio)
 
     def c_code_cache_version_apply(self, node):
-        return
         version = [14]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
