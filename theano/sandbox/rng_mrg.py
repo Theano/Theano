@@ -994,11 +994,18 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
 
         {
           void *args[4];
-          args[0] = &%(o_sample)s->ga;
-          args[1] = &%(o_rstate)s->ga;
+          size_t ls = 0, gs = 0;
+          args[0] = %(o_sample)s->ga.data;
+          args[1] = %(o_rstate)s->ga.data;
           args[2] = &n_elements;
           args[3] = &n_streams;
-          int err = GpuKernel_call(&%(kname)s, n_elements, 0, 0, args);
+          int err = GpuKernel_sched(&%(kname)s, n_elements, &ls, &gs);
+          if (err != GA_NO_ERROR) {
+              PyErr_Format(PyExc_RuntimeError, "GpuKernel_sched: %%s\\n",
+                           GpuKernel_error(&%(kname)s, err));
+              %(fail)s
+          }
+          err = GpuKernel_call(&%(kname)s, 1, &ls, &gs, 0, args);
           if (err != GA_NO_ERROR) {
               PyErr_Format(PyExc_RuntimeError, "GpuKernel_call: %%s\\n",
                            GpuKernel_error(&%(kname)s, err));
