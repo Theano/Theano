@@ -31,6 +31,10 @@ AddConfigVar('profile_memory',
              "If VM should collect memory profile information and print it",
              BoolParam(False),
              in_c_key=False)
+AddConfigVar('memory_realloc',
+             "If VM should do ndarray reallocation to reduce memory usage",
+             BoolParam(False),
+             in_c_key=False)
 
 
 def filter_vm_lazy(val):
@@ -1000,18 +1004,20 @@ class VM_Linker(link.LocalLinker):
 
         thunks = []
 
-        # Collect Reallocation Info
-        compute_map_re = defaultdict(lambda: [0])
-        for var in fgraph.inputs:
-            compute_map_re[var][0] = 1
+        if config.memory_realloc:
+            # Collect Reallocation Info
+            compute_map_re = defaultdict(lambda: [0])
+            for var in fgraph.inputs:
+                compute_map_re[var][0] = 1
 
-        if getattr(fgraph.profile, 'dependencies', None):
-            dependencies = getattr(fgraph.profile, 'dependencies')
+            if getattr(fgraph.profile, 'dependencies', None):
+                dependencies = getattr(fgraph.profile, 'dependencies')
+            else:
+                dependencies = self.compute_gc_dependencies(storage_map)
+
+            reallocated_info = calculate_reallocate_info(order, fgraph, storage_map, compute_map_re, dependencies)
         else:
-            dependencies = self.compute_gc_dependencies(storage_map)
-
-        reallocated_info = calculate_reallocate_info(
-            order, fgraph, storage_map, compute_map_re, dependencies)
+            reallocated_info = {}
 
         for node in order:
             try:
@@ -1032,15 +1038,15 @@ class VM_Linker(link.LocalLinker):
             thunk.inputs = [storage_map[v] for v in node.inputs]
             thunk.outputs = [storage_map[v] for v in node.outputs]
 
-        lazy = self.lazy
-        if lazy is None:
-            lazy = config.vm.lazy
-        if lazy is None:
-            lazy = not all([(not th.lazy) for th in thunks])
-        if not (lazy or (config.profile and config.profile_memory) or
-                self.use_cloop or self.callback):
-            for pair in reallocated_info.values():
-                storage_map[pair[1]] = storage_map[pair[0]]
+        if config.memory_realloc:
+            lazy = self.lazy
+            if lazy is None:
+                lazy = config.vm.lazy
+            if lazy is None:
+                lazy = not all([(not th.lazy) for th in thunks])
+            if not (lazy or (config.profile and config.profile_memory) or self.use_cloop or self.callback):
+                for pair in reallocated_info.values():
+                    storage_map[pair[1]] = storage_map[pair[0]]
 
         computed, last_user = link.gc_helper(order)
         if self.allow_gc:

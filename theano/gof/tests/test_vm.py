@@ -15,6 +15,7 @@ from theano.compile import Mode
 from theano import tensor
 from theano.ifelse import ifelse
 from theano.tensor.var import TensorConstant
+from theano.configparser import config
 
 
 class TestCallbacks(unittest.TestCase):
@@ -370,9 +371,10 @@ def test_reallocation():
                             return [True, storage_map[o][0]]
             return [False, None]
 
-        assert check_storage(storage_map)[0]
-        assert len(set([id(v) for v in
-                        storage_map.values()])) < len(storage_map)
+        if config.memory_realloc:
+            assert check_storage(storage_map)[0]
+            assert len(set([id(v) for v in
+                            storage_map.values()])) < len(storage_map)
 
 
 def test_shape_reallocation():
@@ -416,7 +418,8 @@ def test_shape_reallocation():
                                     return [True, storage_map[o][0]]
                     return [False, None]
 
-                assert check_storage(storage_map)[0] == m_dict[m]
-                if check_storage(storage_map)[0] is True:
-                    id_list = [id(v) for v in storage_map.values()]
-                    assert len(set(id_list)) < len(storage_map)
+                if config.memory_realloc:
+                    assert check_storage(storage_map)[0] == m_dict[m]
+                    if check_storage(storage_map)[0] is True:
+                        id_list = [id(v) for v in storage_map.values()]
+                        assert len(set(id_list)) < len(storage_map)
