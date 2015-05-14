@@ -58,7 +58,16 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
         # We add boundary checks prevent exp from generating inf or
         # 0. The reset of the logic always generate 0 or 1 in those
         # cases. This is a speed optimization.
-        # The constants were obtained by looking at the output of python commands like:
+        # The constants were obtained by looking at the output of
+        # python commands like:
+        #
+        # import numpy, theano
+        # dt='float32'  # or float64
+        # for i in xrange(750):
+        #     print i, repr(theano._asarray(1.0, dtype=dt) /
+        #                   (theano._asarray(1.0, dtype=dt) +
+        #                    numpy.exp(-theano._asarray([i,-i], dtype=dt))))
+
         if (node.inputs[0].type == scalar.float32 or
                 node.inputs[0].type == scalar.float16):
             return """%(z)s = %(x)s < -88.0f ? 0.0 : %(x)s > 15.0f ? 1.0f : 1.0f /(1.0f + exp(-%(x)s));""" % locals()
