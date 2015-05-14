@@ -330,12 +330,14 @@ class ScalarSoftplus(scalar.UnaryScalarOp):
     def c_code(self, node, name, inp, out, sub):
         x, = inp
         z, = out
-        if (node.inputs[0].type == scalar.float32 or
-                node.inputs[0].type == scalar.float16):
-            # These constants were obtained by looking at the output of python commands like:
-            #  for i in xrange(750):
-            #      print i, repr( numpy.log1p(numpy.exp(theano._asarray([i,-i], dtype=dt))))
-            # the boundary checks prevent us from generating inf
+        # These constants were obtained by looking at the output of
+        # python commands like:
+        #  for i in xrange(750):
+        #      print i, repr(numpy.log1p(numpy.exp(theano._asarray([i,-i], dtype=dt))))
+        # the boundary checks prevent us from generating inf
+        if node.inputs[0].type == scalar.float16:
+            return """%(z)s = %(x)s < -17.0f ? 0.0 : %(x)s > 6.0f ? %(x)s : log1p(exp(%(x)s));""" % locals()
+        elif node.inputs[0].type == scalar.float32:
             return """%(z)s = %(x)s < -103.0f ? 0.0 : %(x)s > 14.0f ? %(x)s : log1p(exp(%(x)s));""" % locals()
         elif node.inputs[0].type == scalar.float64:
             return """%(z)s = %(x)s < -745.0 ? 0.0 : %(x)s > 16.0 ? %(x)s : log1p(exp(%(x)s));""" % locals()
