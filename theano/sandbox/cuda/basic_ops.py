@@ -2020,7 +2020,7 @@ class GpuCAReduce(GpuOp):
 
             }
             """ % locals(), file=sio)
-        if self.reduce_mask == (0, 1, 0) or self.reduce_mask == (1, 0) or self.reduce_mask == (1, 0, 0):
+        if self.reduce_mask in [(0, 1, 0), (1, 0), (1, 0, 0)]:
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
                                              "X[a * sX0 + b * sX1 + c * sX2]",
                                              {}, True)
