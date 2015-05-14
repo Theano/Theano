@@ -361,7 +361,7 @@ def test_opt_gpujoin_joinvectors_negativeaxes():
         f = theano.function(inputs=[], outputs=t)
         f()
         assert(False)
-    except ValueError:
+    except IndexError:
         assert(True)
 
 
