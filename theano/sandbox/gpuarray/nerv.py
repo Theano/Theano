@@ -58,7 +58,6 @@ class Gemm16(COp):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
-        self._use_c_code = False
 
     def make_node(self, C, alpha, A, B, beta):
         if GPUTensor is None:
@@ -87,7 +86,7 @@ class Gemm16(COp):
             else:
                 B = B.copy()
         inplace = self.inplace
-        if inplace and not C.flags.forc:
+        if inplace and not C.flags.c_contiguous:
             inplace = False
         if not inplace:
             C = C.copy()

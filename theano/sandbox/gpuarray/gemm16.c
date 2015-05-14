@@ -15,9 +15,10 @@ PyGpuArrayObject *rand_buf;
 int gemm16(PyGpuArrayObject *C, float alpha,
            PyGpuArrayObject *A, PyGpuArrayObject *B,
            float beta, PyGpuArrayObject **out) {
-  PyGpuArrayObject *AA = NULL;
-  PyGpuArrayObject *BB = NULL;
+  PyGpuArrayObject *_A = NULL;
+  PyGpuArrayObject *_B = NULL;
   GpuKernel *gk;
+  char *prand, *pA, *pB, *pout;
   void *params[13];
   size_t grid[2];
   size_t threads[2];
@@ -29,6 +30,7 @@ int gemm16(PyGpuArrayObject *C, float alpha,
   int vec = 0;
   static unsigned int nprocs = 0;
   char opA, opB;
+
   if (GpuArray_CHKFLAGS(&A->ga, GA_FARRAY) &&
       GpuArray_CHKFLAGS(&B->ga, GA_FARRAY)) {
     /*
@@ -38,21 +40,29 @@ int gemm16(PyGpuArrayObject *C, float alpha,
      */
     if (PyGpuArray_DIM(A, 0) * PyGpuArray_DIM(A, 1) <
         PyGpuArray_DIM(B, 0) * PyGpuArray_DIM(B, 1)) {
-      AA = pygpu_copy(A, GA_C_ORDER);
-      if (AA == NULL) {
+      _A = pygpu_copy(A, GA_C_ORDER);
+      if (_A == NULL) {
         res = 1;
         goto cleanup;
       }
-      BB = B;
-      Py_INCREF(BB);
+      /*
+       * This is not an extra reference on _A so don't add an INCREF.
+       * Also, we don't lose the ref on A since our caller will deal
+       * with it.
+       */
+      A = _A;
     } else {
-      BB = pygpu_copy(B, GA_C_ORDER);
-      if (BB == NULL) {
+      _B = pygpu_copy(B, GA_C_ORDER);
+      if (_B == NULL) {
         res = 1;
         goto cleanup;
       }
-      AA = A;
-      Py_INCREF(AA);
+      /*
+       * This is not an extra reference on _B so don't add an INCREF
+       * Also, we don't lose the ref on B since our caller will deal
+       * with it.
+       */
+      B = _B;
     }
   }
   if (GEMM16_INPLACE && GpuArray_CHKFLAGS(&C->ga, GA_CARRAY)) {
@@ -67,18 +77,31 @@ int gemm16(PyGpuArrayObject *C, float alpha,
     }
   }
 
-  if (GpuArray_CHKFLAGS(&A->ga, GA_FARRAY))
+  if (GpuArray_CHKFLAGS(&A->ga, GA_FARRAY)) {
     opA = 't';
-  else
+    lda = PyGpuArray_STRIDE(A, 1);
+  } else {
     opA = 'n';
+    lda = PyGpuArray_STRIDE(A, 0);
+  }
 
-  if (GpuArray_CHKFLAGS(&B->ga, GA_FARRAY))
+  if (GpuArray_CHKFLAGS(&B->ga, GA_FARRAY)) {
     opB = 't';
-  else
+    ldb = PyGpuArray_STRIDE(B, 1);
+  } else {
     opB = 'n';
+    ldb = PyGpuArray_STRIDE(B, 0);
+  }
 
-  m = PyGpuArray_DIM(C, 0);
-  n = PyGpuArray_DIM(C, 1);
+  ldc = PyGpuArray_STRIDE(*out, 0);
+
+  /* lda and friend are in number of elements, not bytes */
+  lda /= 2;
+  ldb /= 2;
+  ldc /= 2;
+
+  m = PyGpuArray_DIM(*out, 0);
+  n = PyGpuArray_DIM(*out, 1);
   k = PyGpuArray_DIM(B, 0);
 
   /* Tuning code adapted from the python version */
@@ -93,7 +116,7 @@ int gemm16(PyGpuArrayObject *C, float alpha,
         if (48 < n128 && n128 <= 64) {
           n64 = n / 64;
           if (nprocs == 0)
-            if (C->ga.ops->property(C->context->ctx, NULL, NULL,
+            if (A->ga.ops->property(A->context->ctx, NULL, NULL,
                                     GA_CTX_PROP_NUMPROCS, &nprocs)) {
               nprocs = 0;
               res = 1;
@@ -124,7 +147,7 @@ int gemm16(PyGpuArrayObject *C, float alpha,
 
   if ((opA == 't' && opB == 'n' && m % 8 == 0 && n % 8 == 0) ||
       (opA == 'n' && opB == 'n' && k % 16 == 0 && n % 8 == 0) ||
-      (opA == 'n' && opB == '1' && k % 16 == 0))
+      (opA == 'n' && opB == 't' && k % 16 == 0))
     vec = 1;
 
   switch (size) {
@@ -178,10 +201,18 @@ int gemm16(PyGpuArrayObject *C, float alpha,
     goto cleanup;
   }
 
-  params[0] = ((char *)rand_buf->ga.data) + rand_buf->ga.offset;
-  params[1] = ((char *)A->ga.data) + A->ga.offset;
-  params[2] = ((char *)B->ga.data) + B->ga.offset;
-  params[3] = ((char *)C->ga.data) + C->ga.offset;
+  prand = *((char **)rand_buf->ga.data);
+  prand += rand_buf->ga.offset;
+  pA = *((char **)A->ga.data);
+  pA += A->ga.offset;
+  pB = *((char **)B->ga.data);
+  pB += B->ga.offset;
+  pout = *((char **)(*out)->ga.data);
+  pout += (*out)->ga.offset;
+  params[0] = &prand;
+  params[1] = &pA;
+  params[2] = &pB;
+  params[3] = &pout;
   params[4] = &lda;
   params[5] = &ldb;
   params[6] = &ldc;
@@ -192,17 +223,13 @@ int gemm16(PyGpuArrayObject *C, float alpha,
   params[11] = &beta;
   params[12] = &flags;
 
-  printf("%c%c_%s128x%d\n", opA, opB, vec ? "vec_" : "", size);
-
-  printf("%p %p %p %p\n", *param[0], *param[1], *param[2], *param[3]);
-
   if (GpuKernel_call(gk, 2, threads, grid, 0, params) != GA_NO_ERROR) {
     PyErr_SetString(PyExc_RuntimeError, "error in gemm16 kernel call");
     res = 1;
   }
 
 cleanup:
-  Py_XDECREF(AA);
-  Py_XDECREF(BB);
+  Py_XDECREF(_A);
+  Py_XDECREF(_B);
   return res;
 }
