@@ -1250,9 +1250,10 @@ class ShapeOptimizer(Optimizer):
     def apply(self, fgraph):
         pass
 
-# -1 should make it run right before the first merge
+# Register it after merge1 optimization at 0. We don't want to track
+# the shape of merged node.
 theano.compile.mode.optdb.register('ShapeOpt', ShapeOptimizer(),
-                                   -1, 'fast_run', 'fast_compile')
+                                   0.1, 'fast_run', 'fast_compile')
 
 
 @register_specialize
