@@ -1,10 +1,11 @@
+import os.path
 import numpy
 import theano
 from theano import Op, Apply, Variable, tensor
 
 from theano.compile import optdb
 from theano.compile.ops import shape_i
-from theano.gof import local_optimizer
+from theano.gof import local_optimizer, COp
 from theano.scalar import as_scalar, constant
 
 from . import opt
@@ -40,17 +41,24 @@ def ensure_float(val, name):
     return val
 
 
-class Gemm16(Op):
+class Gemm16(COp):
     __props__ = ('relu', 'inplace')
     _f16_ok = True
+    KERN_NAMES = ('nn_128x128', 'nn_128x64', 'nn_128x32',
+                  'nn_vec_128x128', 'nn_vec_128x64', 'nn_vec_128x32',
+                  'tn_128x128', 'tn_128x64', 'tn_128x32',
+                  'tn_vec_128x128', 'tn_vec_128x64', 'tn_vec_128x32',
+                  'tn_vec_128x16', 'nt_128x128', 'nt_vec_128x128')
 
     def __init__(self, relu=False, inplace=False):
+        COp.__init__(self, ["gemm16.c"], "gemm16")
         self.relu = relu
         # relu = True will require more work in optimizations.
         assert self.relu == False
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
+        self._use_c_code = False
 
     def make_node(self, C, alpha, A, B, beta):
         if GPUTensor is None:
@@ -89,6 +97,70 @@ class Gemm16(Op):
         nerv.dot(At, Bt, Ct, alpha=alpha, beta=beta, relu=False)
         outputs[0][0] = C
 
+    def c_headers(self):
+        return ['gpuarray/types.h', 'numpy_compat.h', 'gpuarray_helper.h',
+                'string.h']
+
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__)]
+
+    def get_op_params(self):
+        return [('GEMM16_INPLACE', '1' if self.inplace else '0')]
+
+    @staticmethod
+    def cubin_to_code(name):
+        fname = 'hgemm_{0}.cubin'.format(name)
+        with open(os.path.join(nerv.cubin_path, fname)) as f:
+            cubin = f.read()
+        bcode = ','.join(hex(ord(c)) for c in cubin)
+        return "static const char bin_%s[] = { %s };" % (name, bcode)
+
+    @staticmethod
+    def init_gpukernel(name, fail):
+        return """
+bcode = bin_%(name)s;
+sz = sizeof(bin_%(name)s);
+if (GpuKernel_init(&k_%(name)s, c->ops, c->ctx, 1, &bcode, &sz,
+                   "hgemm_%(name)s", 13, types, GA_USE_BINARY, NULL)
+    != GA_NO_ERROR) {
+  PyErr_SetString(PyExc_RuntimeError, "Could not initialize kernel %(name)s");
+  %(fail)s;
+}
+""" % dict(name=name, fail=fail)
+
+    def c_support_code(self):
+        codel = []
+        for name in self.KERN_NAMES:
+            codel.append(Gemm16.cubin_to_code(name))
+        return '\n'.join(codel)
+
+    def c_support_code_struct(self, node, nodename):
+        codel = []
+        for name in self.KERN_NAMES:
+            codel.append("GpuKernel k_{0};".format(name))
+        codel.append(super(Gemm16, self).c_support_code_struct(node, nodename))
+        return '\n'.join(codel)
+
+    def c_init_code_struct(self, node, nodename, sub):
+        codel = [super(Gemm16, self).c_init_code_struct(node, nodename, sub)]
+        for name in self.KERN_NAMES:
+            codel.append("memset(&k_{0}, 0, sizeof(GpuKernel));".format(name));
+        codel.append("const char *bcode;")
+        codel.append("size_t sz;")
+        codel.append("PyGpuContextObject *c = pygpu_default_context();")
+        codel.append("int types[13] = {GA_BUFFER, GA_BUFFER, GA_BUFFER, "
+                     "GA_BUFFER, GA_INT, GA_INT, GA_INT, GA_INT, GA_INT, "
+                     "GA_INT, GA_FLOAT, GA_FLOAT, GA_INT};")
+        for name in self.KERN_NAMES:
+            codel.append(self.init_gpukernel(name, sub['fail']))
+        return '\n'.join(codel)
+
+    def c_cleanup_code_struct(self, node, nodename):
+        codel = []
+        for name in self.KERN_NAMES:
+            codel.append("GpuKernel_clear(&k_{0});".format(name))
+        return '\n'.join(codel)
+
 
 @opt.register_opt()
 @local_optimizer([tensor.Dot])
@@ -103,7 +175,6 @@ def local_dot_to_gemm16(node):
         C = GpuAllocEmpty(dtype='float16')(
             shape_i(A, 0, fgraph), shape_i(B, 1, fgraph))
         return [host_from_gpu(Gemm16()(C, 1.0, A, B, 0.0))]
-
 
 @opt.register_opt()
 @alpha_merge(Gemm16, alpha_in=1, beta_in=4, nd=2)
