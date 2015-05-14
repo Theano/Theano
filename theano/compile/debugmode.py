@@ -1713,29 +1713,8 @@ class _Linker(gof.link.LocalLinker):
                 if not isinstance(node.op, gof.op.Op):
                     raise utils.MethodNotDefined()
 
-                # Don't try to test the C code for float16 if not
-                # tagged ok.
-                if (not getattr(node.op, '_f16_ok', False) and
-                        (any(getattr(i, 'dtype', '') == 'float16'
-                             for i in node.inputs) or
-                         any(getattr(o, 'dtype', '') == 'float16'
-                             for o in node.outputs))):
-                    raise utils.MethodNotDefined()
-
-                e = FunctionGraph(node.inputs, node.outputs)
-                # The toposort isn't a stochastic order as it contain only one node.
-                e.toposort = lambda: list(e.apply_nodes)
-                #  Specifically... e.nodes is a set, but of only 1 element
-
-                cl = CLinker().accept(e, [r for r, r2 in zip(e.outputs,
-                                                             node.outputs)
-                                          if r2 in no_recycling])
-
-                thunk, node_input_filters, node_output_filters = cl.make_thunk(
-                    input_storage=node_input_storage,
-                    output_storage=node_output_storage)
-                thunk.inputs = node_input_storage
-                thunk.outputs = node_output_storage
+                thunk = node.op.make_c_thunk(node, storage_map, compute_map,
+                                             no_recycling)
                 thunks_c.append(thunk)
             except (NotImplementedError, utils.MethodNotDefined):
                 thunks_c.append(None)
@@ -1745,20 +1724,8 @@ class _Linker(gof.link.LocalLinker):
             # consider that we don't have a python implementation
             if ((self.maker.mode.check_py_code or thunks_c[-1] is None) and
                 node.op.perform.func_code != gof.op.PureOp.perform.func_code):
-                p = node.op.perform
-                ctx = node.run_context()
-                if ctx is graph.NoContext:
-                    thunk = (lambda p=p, i=node_input_storage,
-                             o=node_output_storage,
-                             n=node: p(n, [x[0] for x in i], o))
-                else:
-                    ctx_val = node.context_type.filter(ctx)
-                    thunk = (lambda p=p, i=node_input_storage,
-                             o=node_output_storage, ctx=ctx_val,
-                             n=node: p(n, [x[0] for x in i], o, ctx))
-                thunk.inputs = node_input_storage
-                thunk.outputs = node_output_storage
-                thunk.perform = p
+                thunk = node.op.make_py_thunk(node, storage_map, compute_map,
+                                              no_recycling)
                 thunks_py.append(thunk)
             else:
                 thunks_py.append(None)

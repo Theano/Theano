@@ -699,78 +699,55 @@ class Op(utils.object2, PureOp, CLinkerOp):
         else:
             return NotImplemented
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+    def make_c_thunk(self, node, storage_map, compute_map, no_recycling):
         """
-        :param node: something previously returned by self.make_node
-
-        :param storage_map: dict variable -> one-element-list where a computed
-                value for this variable may be found.
-
-        :param compute_map: dict variable -> one-element-list where a boolean
-                value will be found.  The boolean indicates whether the
-                variable's storage_map container contains a valid value (True)
-                or if it has not been computed yet (False).
-
-        :param no_recycling: list of variables for which it is forbidden to
-                reuse memory allocated by a previous call.
-
-        :note: If the thunk consults the storage_map on every call, it is safe
-            for it to ignore the no_recycling argument, because elements of the
-            no_recycling list will have a value of None in the storage map.  If
-            the thunk can potentially cache return values (like CLinker does),
-            then it must not do so for variables in the no_recycling list.
+        Like make_thunk, but will only try to make a C thunk.
         """
         logger = logging.getLogger('theano.gof.op.Op')
 
         node_input_storage = [storage_map[r] for r in node.inputs]
         node_output_storage = [storage_map[r] for r in node.outputs]
-        node_input_compute = [compute_map[r] for r in node.inputs]
-        node_output_compute = [compute_map[r] for r in node.outputs]
 
-        if self._op_use_c_code:
-            try:
-                # float16 get special treatment since running
-                # unprepared C code will get bad results.
-                if not getattr(self, '_f16_ok', False):
-                    def is_f16(t):
-                        return getattr(t, 'dtype', '') == 'float16'
+        # float16 gets special treatment since running
+        # unprepared C code will get bad results.
+        if not getattr(self, '_f16_ok', False):
+            def is_f16(t):
+                return getattr(t, 'dtype', '') == 'float16'
 
-                    if (any(is_f16(i.type) for i in node.inputs) or
-                            any(is_f16(o.type) for o in node.outputs)):
-                        print ("Disabling C code for %s due to unsupported "
-                               "float16" % (self,))
-                        raise NotImplementedError("float16")
-                e = FunctionGraph(node.inputs, node.outputs)
+            if (any(is_f16(i.type) for i in node.inputs) or
+                any(is_f16(o.type) for o in node.outputs)):
+                print ("Disabling C code for %s due to unsupported "
+                       "float16" % (self,))
+                raise NotImplementedError("float16")
+        e = FunctionGraph(node.inputs, node.outputs)
+        e_no_recycling = [new_o
+                          for (new_o, old_o) in zip(e.outputs, node.outputs)
+                          if old_o in no_recycling]
+        cl = theano.gof.cc.CLinker().accept(e,
+                                            no_recycling=e_no_recycling)
 
-                e_no_recycling = [new_o
-                        for (new_o, old_o) in zip(e.outputs, node.outputs)
-                        if old_o in no_recycling]
-                cl = theano.gof.cc.CLinker().accept(e,
-                        no_recycling=e_no_recycling)
+        logger.debug('Trying CLinker.make_thunk')
+        outputs = cl.make_thunk(input_storage=node_input_storage,
+                                output_storage=node_output_storage)
+        fill_storage, node_input_filters, node_output_filters = outputs
 
-                logger.debug('Trying CLinker.make_thunk')
-                outputs = cl.make_thunk(input_storage=node_input_storage,
-                                        output_storage=node_output_storage)
-                fill_storage, node_input_filters, node_output_filters = outputs
+        def rval():
+            fill_storage()
+            for o in node.outputs:
+                compute_map[o][0] = True
 
-                def rval():
-                    fill_storage()
-                    for o in node.outputs:
-                        compute_map[o][0] = True
+        rval.cthunk = fill_storage.cthunk
+        rval.inputs = node_input_storage
+        rval.outputs = node_output_storage
+        rval.lazy = False
+        return rval
 
-                rval.cthunk = fill_storage.cthunk
-                rval.inputs = node_input_storage
-                rval.outputs = node_output_storage
-                rval.lazy = False
-                return rval
-                # the next line does nothing, but pyflakes is too
-                # stupid to realize the def rval below is not a
-                # redefinition unless I include this
-                del rval
-            except (NotImplementedError, utils.MethodNotDefined):
-                logger.debug('Falling back on perform')
-
-        # condition: either there was no c_code, or it failed
+    def make_py_thunk(self, node, storage_map, compute_map, no_recycling):
+        """
+        Like make_thunk() but only makes python thunks.
+        """
+        node_input_storage = [storage_map[r] for r in node.inputs]
+        node_output_storage = [storage_map[r] for r in node.outputs]
 
         p = node.op.perform
 
@@ -797,6 +774,39 @@ class Op(utils.object2, PureOp, CLinkerOp):
         rval.perform = p
         rval.lazy = False
         return rval
+
+    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+        """
+        :param node: something previously returned by self.make_node
+
+        :param storage_map: dict variable -> one-element-list where a computed
+                value for this variable may be found.
+
+        :param compute_map: dict variable -> one-element-list where a boolean
+                value will be found.  The boolean indicates whether the
+                variable's storage_map container contains a valid value (True)
+                or if it has not been computed yet (False).
+
+        :param no_recycling: list of variables for which it is forbidden to
+                reuse memory allocated by a previous call.
+
+        :note: If the thunk consults the storage_map on every call, it is safe
+            for it to ignore the no_recycling argument, because elements of the
+            no_recycling list will have a value of None in the storage map.  If
+            the thunk can potentially cache return values (like CLinker does),
+            then it must not do so for variables in the no_recycling list.
+        """
+        logger = logging.getLogger('theano.gof.op.Op')
+
+        if self._op_use_c_code:
+            try:
+                return self.make_c_thunk(node, storage_map, compute_map,
+                                         no_recycling)
+            except (NotImplementedError, utils.MethodNotDefined):
+                logger.debug('Falling back on perform')
+
+        # condition: either there was no c_code, or it failed
+        return self.make_py_thunk(node, storage_map, compute_map, no_recycling)
 
 
 def get_test_value(v):
