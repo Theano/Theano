@@ -372,7 +372,7 @@ class mrg_uniform(mrg_uniform_base):
         # If we try to use the C code here with something else than a
         # TensorType, something is wrong (likely one of the GPU ops
         # not defining C code correctly).
-        assert isinstance(node.inputs[0].type, TensorType):
+        assert isinstance(node.inputs[0].type, TensorType)
         o_rstate, o_sample = out
         if self.inplace:
             o_rstate_requirement = 'NPY_ARRAY_C_CONTIGUOUS|NPY_ARRAY_ALIGNED'
