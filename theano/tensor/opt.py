@@ -356,15 +356,25 @@ def register_specialize(lopt, *tags, **kwargs):
 
 
 def register_uncanonicalize(lopt, *tags, **kwargs):
-    name = (kwargs and kwargs.pop('name')) or lopt.__name__
-    compile.optdb['uncanonicalize'].register(name, lopt, 'fast_run', *tags)
-    return lopt
+    if type(lopt) == str:
+        def register(inner_lopt):
+            return register_uncanonicalize(inner_lopt, lopt, *tags, **kwargs)
+        return register
+    else:
+        name = (kwargs and kwargs.pop('name')) or lopt.__name__
+        compile.optdb['uncanonicalize'].register(name, lopt, 'fast_run', *tags)
+        return lopt
 
 
 def register_specialize_device(lopt, *tags, **kwargs):
-    name = (kwargs and kwargs.pop('name')) or lopt.__name__
-    compile.optdb['specialize_device'].register(name, lopt, 'fast_run', *tags)
-    return lopt
+    if type(lopt) == str:
+        def register(inner_lopt):
+            return register_specialize_device(inner_lopt, lopt, *tags, **kwargs)
+        return register
+    else:
+        name = (kwargs and kwargs.pop('name')) or lopt.__name__
+        compile.optdb['specialize_device'].register(name, lopt, 'fast_run', *tags)
+        return lopt
 
 
 # Register merge_optimizer as a global opt during canonicalize
