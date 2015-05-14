@@ -149,6 +149,7 @@ N.B.:
                              file=_file, order=order, ids=ids,
                              scan_ops=scan_ops, stop_on_name=stop_on_name,
                              profile=p)
+
     if len(scan_ops) > 0:
         print("", file=_file)
         new_prefix = ' >'
@@ -156,17 +157,31 @@ N.B.:
         print("Inner graphs of the scan ops:", file=_file)
 
         for s in scan_ops:
+            # prepare a dict which maps the scan op's inner inputs to its outer inputs.
+            if hasattr(s.owner.op, 'fn'):
+                # If the op was compiled, print the optimized version.
+                inner_inputs = s.owner.op.fn.maker.fgraph.inputs
+            else:
+                inner_inputs = s.owner.op.inputs
+            outer_inputs = s.owner.inputs
+            inner_to_outer_inputs = dict([(inner_inputs[i],outer_inputs[o])
+                                          for i,o in enumerate(
+                                                  s.owner.op.get_outer_iidx_from_inner_iidx_seq())])
+            #import pdb; pdb.set_trace()
+
             print("", file=_file)
             debugmode.debugprint(s, depth=depth, done=done,
                                  print_type=print_type,
                                  file=_file, ids=ids,
-                                 scan_ops=scan_ops, stop_on_name=stop_on_name)
+                                 scan_ops=scan_ops, stop_on_name=stop_on_name,
+                                 scan_inner_to_outer_inputs=inner_to_outer_inputs)
             if hasattr(s.owner.op, 'fn'):
                 # If the op was compiled, print the optimized version.
                 outputs = s.owner.op.fn.maker.fgraph.outputs
             else:
                 outputs = s.owner.op.outputs
             for idx, i in enumerate(outputs):
+
                 if hasattr(i, 'owner') and hasattr(i.owner, 'op'):
                     if isinstance(i.owner.op, theano.scan_module.scan_op.Scan):
                         scan_ops.append(i)
@@ -176,7 +191,8 @@ N.B.:
                                      print_type=print_type, file=_file,
                                      ids=ids, stop_on_name=stop_on_name,
                                      prefix_child=new_prefix_child,
-                                     scan_ops=scan_ops)
+                                     scan_ops=scan_ops,
+                                     scan_inner_to_outer_inputs=inner_to_outer_inputs)
 
     if file is _file:
         return file
