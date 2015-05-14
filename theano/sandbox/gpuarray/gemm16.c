@@ -178,10 +178,10 @@ int gemm16(PyGpuArrayObject *C, float alpha,
     goto cleanup;
   }
 
-  params[0] = &rand_buf->ga;
-  params[1] = &A->ga;
-  params[2] = &B->ga;
-  params[3] = &C->ga;
+  params[0] = ((char *)rand_buf->ga.data) + rand_buf->ga.offset;
+  params[1] = ((char *)A->ga.data) + A->ga.offset;
+  params[2] = ((char *)B->ga.data) + B->ga.offset;
+  params[3] = ((char *)C->ga.data) + C->ga.offset;
   params[4] = &lda;
   params[5] = &ldb;
   params[6] = &ldc;
@@ -194,10 +194,9 @@ int gemm16(PyGpuArrayObject *C, float alpha,
 
   printf("%c%c_%s128x%d\n", opA, opB, vec ? "vec_" : "", size);
 
-  printf("%zu %zu %zu %zu\n", rand_buf->ga.offset, A->ga.offset, B->ga.offset, C->ga.offset);
-  printf("%p %p %p %p\n", *((void **)rand_buf->ga.data), *((void **)A->ga.data), *((void **)B->ga.data), *((void **)C->ga.data));
+  printf("%p %p %p %p\n", *param[0], *param[1], *param[2], *param[3]);
 
-  if (GpuKernel_call2(gk, NULL, threads, grid, params) != GA_NO_ERROR) {
+  if (GpuKernel_call(gk, 2, threads, grid, 0, params) != GA_NO_ERROR) {
     PyErr_SetString(PyExc_RuntimeError, "error in gemm16 kernel call");
     res = 1;
   }
