@@ -502,7 +502,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                file=sys.stdout, print_destroy_map=False,
                print_view_map=False, order=None, ids='CHAR',
                stop_on_name=False, prefix_child=None,
-               scan_ops=None, profile=None):
+               scan_ops=None, profile=None, print_test_value=False):
     """Print the graph leading to `r` to given depth.
 
     :param r: Variable instance
@@ -542,6 +542,18 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
         type_str = ' <%s>' % r.type
     else:
         type_str = ''
+
+    if print_test_value:
+        if hasattr(r.tag, 'test_value'):
+            if isinstance(r.tag.test_value, numpy.ndarray):
+                test_value_str = ' <test_value_nan: %s, test_value_inf: %s>' % (numpy.isnan(r.tag.test_value).any(),
+                                                          numpy.isinf(r.tag.test_value).any())
+            else:
+                test_value_str = ' <test_value_not_ndarray>'
+        else:
+            test_value_str = ' <no_test_value>'
+    else:
+        test_value_str = ''
 
     if prefix_child is None:
         prefix_child = prefix
@@ -594,17 +606,19 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
 
         if profile == None or a not in profile.apply_time:
             if len(a.outputs) == 1:
-                print('%s%s %s%s \'%s\' %s %s %s' % (prefix, a.op,
+                print('%s%s %s%s%s \'%s\' %s %s %s' % (prefix, a.op,
                                                               id_str,
                                                               type_str,
+                                                              test_value_str,
                                                               r_name,
                                                               destroy_map_str,
                                                               view_map_str,
                                                               o), file=file)
             else:
-                print('%s%s.%i %s%s \'%s\' %s %s %s' % (prefix, a.op,
+                print('%s%s.%i %s%s%s \'%s\' %s %s %s' % (prefix, a.op,
                                                                  a.outputs.index(r),
                                                                  id_str, type_str,
+                                                                 test_value_str,
                                                                  r_name,
                                                                  destroy_map_str,
                                                                  view_map_str,
@@ -617,10 +631,11 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
             tot_time_percent = (tot_time_dict[a] / profile.fct_call_time) * 100
 
             if len(a.outputs) == 1:
-                print('%s%s %s%s \'%s\' %s %s %s --> %8.2es %4.1f%% %8.2es %4.1f%%'\
+                print('%s%s %s%s%s \'%s\' %s %s %s --> %8.2es %4.1f%% %8.2es %4.1f%%'\
                     % (prefix, a.op,
                        id_str,
                        type_str,
+                       test_value_str,
                        r_name,
                        destroy_map_str,
                        view_map_str,
@@ -629,10 +644,11 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                        tot_time,
                        tot_time_percent), file=file)
             else:
-                print('%s%s.%i %s%s \'%s\' %s %s %s --> %8.2es %4.1f%% %8.2es %4.1f%%'\
+                print('%s%s.%i %s%s%s \'%s\' %s %s %s --> %8.2es %4.1f%% %8.2es %4.1f%%'\
                     % (prefix, a.op,
                        a.outputs.index(r),
                        id_str, type_str,
+                       test_value_str,
                        r_name,
                        destroy_map_str,
                        view_map_str,
@@ -659,12 +675,12 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                                print_type=print_type, file=file, order=order,
                                ids=ids, stop_on_name=stop_on_name,
                                prefix_child=new_prefix_child, scan_ops=scan_ops,
-                               profile=profile)
+                               profile=profile, print_test_value=print_test_value)
 
     else:
         # this is an input variable
         id_str = get_id_str(r)
-        print('%s%s %s%s' % (prefix, r, id_str, type_str), file=file)
+        print('%s%s %s%s%s' % (prefix, r, id_str, type_str, test_value_str), file=file)
 
     return file
 
