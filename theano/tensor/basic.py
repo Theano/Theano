@@ -1196,28 +1196,6 @@ def cast(x, dtype):
 ##########################
 
 
-@constructor
-def old_shape(a):
-    """
-    Return the shape tuple of a TensorType Variable.
-
-    It may be either symbolic or nonsymbolic.
-
-    If the shape of the expression is not known at graph-construction time,
-    then a symbolic lvector will be returned, corresponding to the actual
-    shape at graph-execution time.
-    """
-    va = as_tensor_variable(a)
-    # print 'HERE', va, va.type
-    if None in va.type.shape:
-        # Some shape components are unknown at this time
-        return _shape(va)
-    else:
-        # all shape components are known at compile time, so we return
-        # a tuple directly.  This tuple is like the numpy.ndarray.shape tuple.
-        return va.type.shape
-
-
 class MaxAndArgmax(Op):
     """Calculate the max and argmax over a given axis or over all axes.
     """
@@ -3306,13 +3284,15 @@ def addbroadcast(x, *axes):
             Input theano tensor.
         axis : an int or an iterable object such as list or tuple
                of int values
-            The dimension along which the tensor x should be broadcastable.
-            if the length of x along these dimensions is not 1,
-            a ValueError will be raised.
+
+               The dimension along which the tensor x should be
+               broadcastable.  if the length of x along these
+               dimensions is not 1, a ValueError will be raised.
 
     returns:
     ----------
         a theano tensor, which is broadcastable along the specified dimensions.
+
     """
     rval = Rebroadcast(*[(axis, True) for axis in axes])(x)
     return theano.tensor.opt.apply_rebroadcast_opt(rval)
@@ -3334,13 +3314,15 @@ def unbroadcast(x, *axes):
             Input theano tensor.
         axis : an int or an iterable object such as list or tuple
                of int values
-            The dimension along which the tensor x should be unbroadcastable.
-            if the length of x along these dimensions is not 1,
-            a ValueError will be raised.
+
+               The dimension along which the tensor x should be
+               unbroadcastable.  if the length of x along these
+               dimensions is not 1, a ValueError will be raised.
 
     returns:
     ----------
         a theano tensor, which is unbroadcastable along the specified dimensions.
+
     """
     rval = Rebroadcast(*[(axis, False) for axis in axes])(x)
     return theano.tensor.opt.apply_rebroadcast_opt(rval)
@@ -3363,6 +3345,7 @@ def patternbroadcast(x, broadcastable):
             Input theano tensor.
         broadcastable : an iterable object such as list or tuple
                         of bool values
+
             a set of boolean values indicating whether a dimension
             should be broadcastable or not.
             if the length of x along these dimensions is not 1,
@@ -5468,8 +5451,6 @@ class Choose(Op):
                     "We currently didn't implemented that case. "
                     "To make it work, explicitly add dimensions "
                     "of size one for dimensions that will be broadcasted")
-                assert isinstance(node.inputs[1],
-                                  theano.typed_list.TypedListVariable)
 
         bcast = [False] * out_ndim
         for idx, (b1, b2) in enumerate(
