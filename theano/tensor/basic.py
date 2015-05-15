@@ -1196,28 +1196,6 @@ def cast(x, dtype):
 ##########################
 
 
-@constructor
-def old_shape(a):
-    """
-    Return the shape tuple of a TensorType Variable.
-
-    It may be either symbolic or nonsymbolic.
-
-    If the shape of the expression is not known at graph-construction time,
-    then a symbolic lvector will be returned, corresponding to the actual
-    shape at graph-execution time.
-    """
-    va = as_tensor_variable(a)
-    # print 'HERE', va, va.type
-    if None in va.type.shape:
-        # Some shape components are unknown at this time
-        return _shape(va)
-    else:
-        # all shape components are known at compile time, so we return
-        # a tuple directly.  This tuple is like the numpy.ndarray.shape tuple.
-        return va.type.shape
-
-
 class MaxAndArgmax(Op):
     """Calculate the max and argmax over a given axis or over all axes.
     """
@@ -5473,8 +5451,6 @@ class Choose(Op):
                     "We currently didn't implemented that case. "
                     "To make it work, explicitly add dimensions "
                     "of size one for dimensions that will be broadcasted")
-                assert isinstance(node.inputs[1],
-                                  theano.typed_list.TypedListVariable)
 
         bcast = [False] * out_ndim
         for idx, (b1, b2) in enumerate(
