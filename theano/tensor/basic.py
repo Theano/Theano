@@ -3306,13 +3306,15 @@ def addbroadcast(x, *axes):
             Input theano tensor.
         axis : an int or an iterable object such as list or tuple
                of int values
-            The dimension along which the tensor x should be broadcastable.
-            if the length of x along these dimensions is not 1,
-            a ValueError will be raised.
+
+               The dimension along which the tensor x should be
+               broadcastable.  if the length of x along these
+               dimensions is not 1, a ValueError will be raised.
 
     returns:
     ----------
         a theano tensor, which is broadcastable along the specified dimensions.
+
     """
     rval = Rebroadcast(*[(axis, True) for axis in axes])(x)
     return theano.tensor.opt.apply_rebroadcast_opt(rval)
@@ -3334,13 +3336,15 @@ def unbroadcast(x, *axes):
             Input theano tensor.
         axis : an int or an iterable object such as list or tuple
                of int values
-            The dimension along which the tensor x should be unbroadcastable.
-            if the length of x along these dimensions is not 1,
-            a ValueError will be raised.
+
+               The dimension along which the tensor x should be
+               unbroadcastable.  if the length of x along these
+               dimensions is not 1, a ValueError will be raised.
 
     returns:
     ----------
         a theano tensor, which is unbroadcastable along the specified dimensions.
+
     """
     rval = Rebroadcast(*[(axis, False) for axis in axes])(x)
     return theano.tensor.opt.apply_rebroadcast_opt(rval)
@@ -3363,6 +3367,7 @@ def patternbroadcast(x, broadcastable):
             Input theano tensor.
         broadcastable : an iterable object such as list or tuple
                         of bool values
+
             a set of boolean values indicating whether a dimension
             should be broadcastable or not.
             if the length of x along these dimensions is not 1,
