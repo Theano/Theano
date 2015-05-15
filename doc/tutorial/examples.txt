@@ -325,9 +325,10 @@ Here's a brief example.  The setup code is:
 Here, 'rv_u' represents a random stream of 2x2 matrices of draws from a uniform
 distribution.  Likewise,  'rv_n' represents a random stream of 2x2 matrices of
 draws from a normal distribution.  The distributions that are implemented are
-defined in :class:`RandomStreams` and, at a lower level, in :ref:`raw_random<libdoc_tensor_raw_random>`.
+defined in :class:`RandomStreams` and, at a lower level,
+in :ref:`raw_random<libdoc_tensor_raw_random>`. They only work on CPU.
+See `Other Implementations`_ for GPU version.
 
-  .. TODO: repair the latter reference on RandomStreams
 
 Now let's use these objects.  If we call f(), we get random uniform numbers.
 The internal state of the random number generator is automatically updated,
@@ -459,10 +460,15 @@ Other Random Distributions
 
 There are :ref:`other distributions implemented <libdoc_tensor_raw_random>`. 
 
+.. _example_other_random:
+
 Other Implementations
 ---------------------
 
-There is 2 other implementations based on :class:`CURAND <theano.sandbox.cuda.rng_curand>` and :ref:`MRG31k3p <libdoc_rng_mrg>`
+There is 2 other implementations based on :class:`CURAND
+<theano.sandbox.cuda.rng_curand>` and :ref:`MRG31k3p
+<libdoc_rng_mrg>`. The RandomStream only work on the CPU, MRG31k3p
+work on the CPU and GPU. CURAND only work on the GPU.
 
 .. _logistic_regression:
 
