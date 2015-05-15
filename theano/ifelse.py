@@ -246,10 +246,9 @@ class IfElse(PureOp):
                         for out, outtype, t in izip(outputs, outtypes, ts):
                             compute_map[out][0] = 1
                             if self.as_view:
-                                oval = outtype.filter(storage_map[t][0])
+                                oval = storage_map[t][0]
                             else:
-                                oval = outtype.filter(
-                                    deepcopy(storage_map[t][0]))
+                                oval = deepcopy(storage_map[t][0])
                             storage_map[out][0] = oval
                         return []
                 else:
@@ -262,8 +261,7 @@ class IfElse(PureOp):
                             compute_map[out][0] = 1
                             # can't view both outputs unless destroyhandler
                             # improves
-                            oval = outtype.filter(
-                                deepcopy(storage_map[f][0]))
+                            oval = deepcopy(storage_map[f][0])
                             storage_map[out][0] = oval
                         return []
 
