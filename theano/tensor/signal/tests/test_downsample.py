@@ -8,7 +8,9 @@ import theano
 import theano.tensor as tensor
 from theano.tests import unittest_tools as utt
 from theano.tensor.signal.downsample import (DownsampleFactorMax, max_pool_2d,
-                                             DownsampleFactorMaxGrad, max_pool_2d_same_size)
+                                             DownsampleFactorMaxGrad,
+                                             DownsampleFactorMaxGradGrad,
+                                             max_pool_2d_same_size)
 from theano import function
 
 
@@ -461,7 +463,36 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                 if numpy.prod(grad_shape) == 0:
                     continue
                 utt.verify_grad(mp, [imval, grad_val], rng=rng)
+                
+    def test_DownsampleFactorMaxPaddingStride_grad_grad(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())        
+        imgsizes = ((10, 10), (10, 5), (5, 5))
+        maxpoolsizes = ((5, 3), (3, 5), (3, 3))
+        stridesizes = ((3, 2), (2, 3), (3, 3))
+        paddingsizes = ((2, 2), (2, 1), (2, 2))
+        
+        for i in range(len(imgsizes)):
+            imgsize = imgsizes[i]
+            imval = rng.rand(1, 1, imgsize[0], imgsize[1]) * 10.0
+            maxpoolsize = maxpoolsizes[i]
+            stridesize = stridesizes[i]
+            paddingsize = paddingsizes[i]
 
+            grad_shape = DownsampleFactorMaxGradGrad.out_shape(
+                    imval.shape, maxpoolsize, st=stridesize,
+                ignore_border=True, padding=paddingsize)
+            grad_val = rng.rand(*grad_shape) * 10.0
+            def mp(input, grad):
+                out = DownsampleFactorMax(
+                    maxpoolsize, ignore_border=True,
+                    st=stridesize,
+                    padding=paddingsize,
+                    )(input)
+                grad_op = DownsampleFactorMaxGrad(maxpoolsize, ignore_border=True,
+                                                  st=stridesize, padding=paddingsize)
+                return grad_op(input, out, grad)
+            utt.verify_grad(mp, [imval, grad_val], rng=rng)
+            
     def test_DownsampleFactorMax_hessian(self):
         # Example provided by Frans Cronje, see
         # https://groups.google.com/d/msg/theano-users/qpqUy_3glhw/JMwIvlN5wX4J

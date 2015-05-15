@@ -563,12 +563,12 @@ class DownsampleFactorMaxGrad(Op):
     def grad(self, inp, grads):
         x, maxout, gz = inp
         ggx, = grads
-        if self.padding == (0, 0) and self.mode == 'max':
+        if self.mode == 'max':
             return [theano.tensor.zeros_like(x),
                     theano.tensor.zeros_like(maxout),
                     DownsampleFactorMaxGradGrad(
                         self.ds, ignore_border=self.ignore_border,
-                        st=self.st)(x, maxout, ggx)]
+                        st=self.st, padding=self.padding)(x, maxout, ggx)]
         else:
             return [theano.tensor.zeros_like(x),
                     theano.tensor.zeros_like(maxout),
@@ -694,10 +694,10 @@ class DownsampleFactorMaxGrad(Op):
         return (0, 7)
 
 class DownsampleFactorMaxGradGrad(Op):
-    __props__ = ('ds', 'ignore_border', 'st')
+    __props__ = ('ds', 'ignore_border', 'st', 'padding')
 
     @staticmethod
-    def out_shape(imgshape, ds, ignore_border=False, st=None):
+    def out_shape(imgshape, ds, ignore_border=False, st=None, padding=(0, 0)):
         """Return the shape of the output from this op, for input of given
         shape and flags.
 
@@ -718,6 +718,11 @@ class DownsampleFactorMaxGradGrad(Op):
             extra row/col of partial downsampling (False) or ignore it (True).
         :type ignore_border: bool
 
+        :param padding: (pad_h, pad_w), pad zeros to extend beyond four borders
+            of the images, pad_h is the size of the top and bottom margins,
+            and pad_w is the size of the left and right margins.
+        :type padding: tuple of two ints
+
         :rtype: list
         :returns: the shape of the output from this op, for input of given
             shape.  This will have the same length as imgshape, but with last
@@ -730,6 +735,8 @@ class DownsampleFactorMaxGradGrad(Op):
         if st is None:
             st = ds
         r, c = imgshape[-2:]
+        r += padding[0] * 2
+        c += padding[1] * 2
 
         if ignore_border:
             out_r = (r - ds[0]) // st[0] + 1
@@ -766,12 +773,25 @@ class DownsampleFactorMaxGradGrad(Op):
         rval = list(imgshape[:-2]) + [nr, nc]
         return rval
 
-    def __init__(self, ds, ignore_border, st=None):
+    def __init__(self, ds, ignore_border, st=None, padding=(0,0)):
         self.ds = tuple(ds)
-        self.ignore_border = ignore_border
+        if not all([isinstance(d, int) for d in ds]):
+            raise ValueError(
+                "DownsampleFactorMax downsample parameters must be ints."
+                " Got %s" % str(ds))
         if st is None:
             st = ds
+        assert isinstance(st, (tuple, list))
         self.st = tuple(st)
+        self.ignore_border = ignore_border
+        self.padding = tuple(padding)
+        if self.padding != (0, 0) and not ignore_border:
+            raise NotImplementedError(
+                'padding works only with ignore_border=True')
+        if self.padding[0] >= self.ds[0] or self.padding[1] >= self.ds[1]:
+            raise NotImplementedError(
+                'padding_h and padding_w must be smaller than strides')
+        
 
     def make_node(self, x, maxout, gz):
         # make_node should only be called by the grad function of
@@ -788,26 +808,38 @@ class DownsampleFactorMaxGradGrad(Op):
     def perform(self, node, inp, out):
         x, maxout, ggx = inp
         z, = out
-
         if len(x.shape) != 4:
             raise NotImplementedError(
                 'DownsampleFactorMaxGradGrad requires 4D input for now')
-        z_shape = self.out_shape(x.shape, self.ds, self.ignore_border, self.st)
+        z_shape = self.out_shape(x.shape, self.ds, self.ignore_border,
+                                 self.st, self.padding)
         if (z[0] is None) or (z[0].shape != z_shape):
-            z[0] = numpy.zeros(self.out_shape(x.shape, self.ds,
-                                              self.ignore_border, self.st),
-                               dtype=x.dtype)
+            z[0] = numpy.zeros(z_shape, dtype=x.dtype)
         ggz = z[0]
-
         # number of pooling output rows
         pr = ggz.shape[-2]
         # number of pooling output cols
         pc = ggz.shape[-1]
         ds0, ds1 = self.ds
         st0, st1 = self.st
-        img_rows = x.shape[-2]
-        img_cols = x.shape[-1]
+        pd0, pd1 = self.padding
+        img_rows = x.shape[-2] + 2 * pd0 
+        img_cols = x.shape[-1] + 2 * pd1
 
+        # pad the image and its gradients
+        if self.padding != (0, 0):
+            y_padded = numpy.zeros(
+                (x.shape[0], x.shape[1], img_rows, img_cols),
+                dtype=x.dtype) + x.min() - 1
+            y_padded[:, :, pd0:(img_rows-pd0), pd1:(img_cols-pd1)] = x
+            ggx_padded = numpy.zeros(
+                (x.shape[0], x.shape[1], img_rows, img_cols),
+                dtype=x.dtype)
+            ggx_padded[:, :, pd0:(img_rows-pd0), pd1:(img_cols-pd1)] = ggx
+            
+        else:
+            y_padded = x
+            ggx_padded = ggx
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
                 for r in xrange(pr):
@@ -818,8 +850,8 @@ class DownsampleFactorMaxGradGrad(Op):
                         col_end = __builtin__.min(col_st + ds1, img_cols)
                         for row_ind in xrange(row_st, row_end):
                             for col_ind in xrange(col_st, col_end):
-                                if (maxout[n, k, r, c] == x[n, k, row_ind, col_ind]):
-                                    ggz[n, k, r, c] = ggx[n, k, row_ind, col_ind]
-
+                                if (maxout[n, k, r, c] == y_padded[n, k, row_ind, col_ind]):
+                                    ggz[n, k, r, c] = ggx_padded[n, k, row_ind, col_ind]
+                                    
     def infer_shape(self, node, in_shapes):
         return [in_shapes[0]]
