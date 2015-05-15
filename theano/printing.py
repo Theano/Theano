@@ -36,7 +36,9 @@ VALID_ASSOC = set(['left', 'right', 'either'])
 
 def debugprint(obj, depth=-1, print_type=False,
                file=None, ids='CHAR', stop_on_name=False,
-               done=None, print_test_value=False):
+               done=None, include_nan_info=False,
+               include_inf_info=False, recursion_rules='ALWAYS',
+               print_test_value=False):
     """Print a computation graph as text to stdout or a file.
 
     :type obj: Variable, Apply, or Function instance
@@ -148,7 +150,10 @@ N.B.:
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
                              file=_file, order=order, ids=ids,
                              scan_ops=scan_ops, stop_on_name=stop_on_name,
-                             profile=p, print_test_value=print_test_value)
+                             profile=p, include_nan_info=include_nan_info,
+                             include_inf_info=include_inf_info,
+                             recursion_rules=recursion_rules,
+                             print_test_value=print_test_value)
     if len(scan_ops) > 0:
         print("", file=_file)
         new_prefix = ' >'
@@ -160,7 +165,11 @@ N.B.:
             debugmode.debugprint(s, depth=depth, done=done,
                                  print_type=print_type,
                                  file=_file, ids=ids,
-                                 scan_ops=scan_ops, stop_on_name=stop_on_name, print_test_value=print_test_value)
+                                 scan_ops=scan_ops, stop_on_name=stop_on_name,
+                                 include_nan_info=include_nan_info,
+                                 include_inf_info=include_inf_info,
+                                 recursion_rules=recursion_rules,
+                                 print_test_value=print_test_value)
             if hasattr(s.owner.op, 'fn'):
                 # If the op was compiled, print the optimized version.
                 outputs = s.owner.op.fn.maker.fgraph.outputs
@@ -176,7 +185,11 @@ N.B.:
                                      print_type=print_type, file=_file,
                                      ids=ids, stop_on_name=stop_on_name,
                                      prefix_child=new_prefix_child,
-                                     scan_ops=scan_ops, print_test_value=print_test_value)
+                                     scan_ops=scan_ops,
+                                     include_nan_info=include_nan_info,
+                                     include_inf_info=include_inf_info,
+                                     recursion_rules=recursion_rules,
+                                     print_test_value=print_test_value)
 
     if file is _file:
         return file

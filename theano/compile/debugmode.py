@@ -12,6 +12,8 @@ from itertools import izip
 
 import numpy
 
+import re
+
 import theano
 from theano import gof
 from theano.compat import get_unbound_function, product as itertools_product
@@ -502,7 +504,9 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                file=sys.stdout, print_destroy_map=False,
                print_view_map=False, order=None, ids='CHAR',
                stop_on_name=False, prefix_child=None,
-               scan_ops=None, profile=None, print_test_value=False):
+               scan_ops=None, profile=None, include_nan_info=False,
+               include_inf_info=False, recursion_rules='ALWAYS',
+               print_test_value=False):
     """Print the graph leading to `r` to given depth.
 
     :param r: Variable instance
@@ -543,17 +547,29 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
     else:
         type_str = ''
 
-    if print_test_value:
-        if hasattr(r.tag, 'test_value'):
-            if isinstance(r.tag.test_value, numpy.ndarray):
-                test_value_str = ' <test_value_nan: %s, test_value_inf: %s>' % (numpy.isnan(r.tag.test_value).any(),
-                                                          numpy.isinf(r.tag.test_value).any())
-            else:
-                test_value_str = ' <test_value_not_ndarray>'
-        else:
-            test_value_str = ' <no_test_value>'
-    else:
-        test_value_str = ''
+    recursion_rules = set([recursion_rule for recursion_rule in recursion_rules.split(',') if len(recursion_rule) > 0])
+
+    def nan_inf_info(prefix, enabled, checker):
+        if r is not None and enabled:
+            if hasattr(r, 'tag') and r.tag is not None and hasattr(r.tag, 'test_value'):
+                if isinstance(r.tag.test_value, numpy.ndarray):
+                    mask = checker(r.tag.test_value)
+
+                    if mask.all():
+                        return ' <%s: ALL>' % prefix, 'ALL_' + prefix in recursion_rules
+                    elif mask.any():
+                        return ' <%s: SOME>' % prefix, 'SOME_' + prefix in recursion_rules
+
+                    return ' <%s: NONE>' % prefix, 'NO_' + prefix in recursion_rules
+
+                return ' <%s: NOT_NDARRAY>' % prefix, 'NO_TEST_VALUE' in recursion_rules
+
+            return ' <%s: NO_TEST_VALUE>' % prefix, 'NO_TEST_VALUE' in recursion_rules
+
+        return '', 'NO_TEST_VALUE' in recursion_rules
+
+    nan_info, nan_recurse = nan_inf_info('NANS', include_nan_info, numpy.isnan)
+    inf_info, inf_recurse = nan_inf_info('INFS', include_inf_info, numpy.isinf)
 
     if prefix_child is None:
         prefix_child = prefix
@@ -571,6 +587,11 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
             id_str = ""
         done[obj] = id_str
         return id_str
+
+    if r is not None and print_test_value and hasattr(r, 'tag') and r.tag is not None and hasattr(r.tag, 'test_value'):
+        test_value = ' %s %s' % (r.tag.test_value.shape, re.sub('\\s+', ' ', repr(r.tag.test_value)))
+    else:
+        test_value = ''
 
     if hasattr(r.owner, 'op'):
         # this variable is the output of computation,
@@ -606,23 +627,25 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
 
         if profile == None or a not in profile.apply_time:
             if len(a.outputs) == 1:
-                print('%s%s %s%s%s \'%s\' %s %s %s' % (prefix, a.op,
+                print('%s%s %s%s%s%s \'%s\' %s %s %s%s' % (prefix, a.op,
                                                               id_str,
                                                               type_str,
-                                                              test_value_str,
+                                                              nan_info,
+                                                              inf_info,
                                                               r_name,
                                                               destroy_map_str,
                                                               view_map_str,
-                                                              o), file=file)
+                                                              o, test_value), file=file)
             else:
-                print('%s%s.%i %s%s%s \'%s\' %s %s %s' % (prefix, a.op,
+                print('%s%s.%i %s%s%s%s \'%s\' %s %s %s%s' % (prefix, a.op,
                                                                  a.outputs.index(r),
                                                                  id_str, type_str,
-                                                                 test_value_str,
+                                                                 nan_info,
+                                                                 inf_info,
                                                                  r_name,
                                                                  destroy_map_str,
                                                                  view_map_str,
-                                                                 o), file=file)
+                                                                 o, test_value), file=file)
         else:
             op_time = profile.apply_time[a]
             op_time_percent = (op_time / profile.fct_call_time) * 100
@@ -631,33 +654,37 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
             tot_time_percent = (tot_time_dict[a] / profile.fct_call_time) * 100
 
             if len(a.outputs) == 1:
-                print('%s%s %s%s%s \'%s\' %s %s %s --> %8.2es %4.1f%% %8.2es %4.1f%%'\
+                print('%s%s %s%s%s%s \'%s\' %s %s %s%s --> %8.2es %4.1f%% %8.2es %4.1f%%'\
                     % (prefix, a.op,
                        id_str,
                        type_str,
-                       test_value_str,
+                       nan_info,
+                       inf_info,
                        r_name,
                        destroy_map_str,
                        view_map_str,
-                       o, op_time,
+                       o, test_value, op_time,
                        op_time_percent,
                        tot_time,
                        tot_time_percent), file=file)
             else:
-                print('%s%s.%i %s%s%s \'%s\' %s %s %s --> %8.2es %4.1f%% %8.2es %4.1f%%'\
+                print('%s%s.%i %s%s%s%s \'%s\' %s %s %s%s --> %8.2es %4.1f%% %8.2es %4.1f%%'\
                     % (prefix, a.op,
                        a.outputs.index(r),
                        id_str, type_str,
-                       test_value_str,
+                       nan_info,
+                       inf_info,
                        r_name,
                        destroy_map_str,
                        view_map_str,
-                       o, op_time,
+                       o, test_value, op_time,
                        op_time_percent,
                        tot_time,
                        tot_time_percent), file=file)
 
         if not already_printed:
+            recurse = nan_recurse or inf_recurse or 'ALWAYS' in recursion_rules
+
             if (not stop_on_name or
                 not (hasattr(r, 'name') and r.name is not None)):
                 new_prefix = prefix_child + ' |'
@@ -671,16 +698,20 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                         if isinstance(i.owner.op, theano.scan_module.scan_op.Scan):
                             scan_ops.append(i)
 
-                    debugprint(i, new_prefix, depth=depth - 1, done=done,
-                               print_type=print_type, file=file, order=order,
-                               ids=ids, stop_on_name=stop_on_name,
-                               prefix_child=new_prefix_child, scan_ops=scan_ops,
-                               profile=profile, print_test_value=print_test_value)
+                    if recurse:
+                        debugprint(i, new_prefix, depth=depth - 1, done=done,
+                                   print_type=print_type, file=file, order=order,
+                                   ids=ids, stop_on_name=stop_on_name,
+                                   prefix_child=new_prefix_child, scan_ops=scan_ops,
+                                   profile=profile, include_nan_info=include_nan_info,
+                                   include_inf_info=include_inf_info,
+                                   recursion_rules=','.join(recursion_rules) if recurse else '',
+                                   print_test_value=print_test_value)
 
     else:
         # this is an input variable
         id_str = get_id_str(r)
-        print('%s%s %s%s%s' % (prefix, r, id_str, type_str, test_value_str), file=file)
+        print('%s%s %s%s%s%s%s' % (prefix, r, id_str, type_str, nan_info, inf_info, test_value), file=file)
 
     return file
 
