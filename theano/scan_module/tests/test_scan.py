@@ -2830,6 +2830,81 @@ class T_Scan(unittest.TestCase):
         # Run it so DebugMode can detect optimization problems.
         f(x_val, y_val)
 
+    def test_pushout_seqs(self):
+
+        def init_predictive_output(inputs,targets,hyp,x_star,s_star):
+            E = hyp.shape[0]
+
+            def init_K(i,X,Y):
+                XX = X.sum(1).reshape((X.shape[0], 1))
+                K = (XX + XX.T)
+                return K.sum()
+
+            beta, K_updts = theano.scan(init_K, sequences=tensor.arange(E),
+                                        non_sequences=[inputs,targets])
+
+            # mean
+            def predict_mean_i(i,x_star,s_star,X,beta,h):
+                n,D = tensor.shape(X)
+                # rescale every dimension by the corresponding inverse lengthscale
+                iL = tensor.diag(h[i,:D])
+                inp = (X - x_star).dot(iL)
+
+                # compute the mean
+                B = iL.dot(s_star).dot(iL)
+                t = inp.dot(B)
+
+                lb = (inp * t).sum() + beta.sum()
+
+                Mi = tensor.sum(lb) * h[i,D];
+                return Mi
+
+            (M), M_updts = theano.scan( predict_mean_i ,
+                                        sequences=tensor.arange(E),
+                                        non_sequences=[x_star,s_star,inputs,beta,hyp] )
+            return M
+
+        # some initializations
+        hypx = numpy.log(numpy.tile([1,1,1,1,1,1,0.01], (3,1)))
+
+        # variables used in the following expressions
+        hyp = theano.shared(hypx)
+        inputs = tensor.dmatrix('X')
+        targets = tensor.dmatrix('Y')
+        x_star = tensor.dvector('x_star')
+        s_star = tensor.dmatrix('s_star')
+
+        M = init_predictive_output(inputs,targets,hyp,x_star,s_star)
+
+        X = numpy.random.random((10,4))
+        Y = numpy.random.random((10,3))
+        test_m = numpy.random.random((4,))
+        test_s = numpy.eye(4)
+
+        # Compute expected outputs (jacobian of M wrt x_star)
+        dfdm = theano.function([inputs,targets,x_star,s_star],
+                               [tensor.grad(M[0],x_star),
+                                tensor.grad(M[1],x_star),
+                                tensor.grad(M[2],x_star)])
+        expected_output = dfdm(X,Y,test_m,test_s)
+
+        # equivalent code for the jacobian using scan
+        dMdm, dMdm_updts = theano.scan(lambda i,M,x: tensor.grad(M[i],x),
+                                       sequences=tensor.arange(M.shape[0]),
+                                       non_sequences=[M,x_star])
+        dfdm = theano.function([inputs,targets,x_star,s_star],
+                               [dMdm[0], dMdm[1], dMdm[2]])
+        scan_output = dfdm(X,Y,test_m,test_s)
+
+        # equivalent code for the jacobian using tensor.jacobian
+        dMdm_j = tensor.jacobian(M,x_star)
+        dfdm_j = theano.function([inputs,targets,x_star,s_star],
+                                 [dMdm_j[0], dMdm_j[1], dMdm_j[2]])
+        jacobian_outputs = dfdm_j(X,Y,test_m,test_s)
+
+        utt.assert_allclose(expected_output, scan_output)
+        utt.assert_allclose(expected_output, jacobian_outputs)
+
     def test_sequence_dict(self):
         # Test that we can specify sequences as a dictionary with
         # only the 'input' key
