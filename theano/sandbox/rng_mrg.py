@@ -791,10 +791,10 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         if self.output_type.dtype == 'float16':
             otype = 'ga_half'
             # limit the values of the state that we use.
-            mask = '& 0xffff'
-            NORM = '1.5199e-05f'  # numpy.float16(1.0/(2**16+130))
+            mask = '& 0x7fff'
+            NORM = '3.0518e-05f'  # numpy.float16(1.0/(2**15+8))
             # this was determined by finding the biggest number such that
-            # numpy.float16(number * (M1 & 0xffff)) < 1.0
+            # numpy.float16(number * (M1 & 0x7fff)) < 1.0
         elif self.output_type.dtype == 'float32':
             otype = 'float'
             mask = ''
