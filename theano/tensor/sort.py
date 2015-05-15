@@ -80,11 +80,43 @@ class SortOp(theano.Op):
                 idx = argsort(*inputs, kind=self.kind, order=self.order)
                 # not working: numpy.where(idx[None, :]==numpy.arange(2)[:, None, None])
                 pass
+        elif a.ndim == 3:
+            if isinstance(axis, theano.Constant) and axis.data is not None:
+                indices = self.__get_argsort_indices(a, axis)
+                inp_grad = output_grads[0].reshape(a.shape)[indices[0], indices[1], indices[2]]
+            elif (axis is None or
+                (isinstance(axis, theano.Constant) and axis.data is None)):
+                rev_idx = self.__get_argsort_indices(a, axis)
+                inp_grad = output_grads[0][rev_idx].reshape(a.shape)
         axis_grad = theano.gradient.grad_undefined(
             self, 1, axis,
             "sort is not defined for non-integer axes so"
             " sort(x, axis+eps) is undefined")
         return [inp_grad, axis_grad]
+
+    def __get_argsort_indices(self, a, axis):
+        """applies argsort to a along axis, returns indices which
+        can be used to sort original array"""
+
+        idx = argsort(a, axis, kind=self.kind, order=self.order)
+        rev_idx = argsort(idx, axis, kind=self.kind, order=self.order) 
+
+        if (axis is None or
+            (isinstance(axis, theano.Constant) and axis.data is None)):
+            return rev_idx
+        indices = []
+        if axis.data > 0:
+            axis_data = axis.data
+        else:
+            axis_data = a.ndim + axis.data
+        for i in range(a.ndim):
+            if i == axis_data:
+                indices.append(rev_idx)
+            else:
+                index_shape = [1] * a.ndim 
+                index_shape[i] = a.shape[i]
+                indices.append(theano.tensor.arange(a.shape[i]).reshape(index_shape))
+        return indices
     """
     def R_op(self, inputs, eval_points):
         # R_op can receive None as eval_points.
