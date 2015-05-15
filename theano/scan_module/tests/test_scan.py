@@ -432,207 +432,6 @@ class T_Scan(unittest.TestCase):
         theano_values = f2(v_u, v_x0, W_in, W)
         utt.assert_allclose(theano_values, v_out)
 
-    # as test_one_sequence_one_output_weights, but on the gpu
-    # This first version test the first case in the optimizer to the gpu.
-    def test_one_sequence_one_output_weights_gpu1(self):
-        from theano.sandbox import cuda
-        if not cuda.cuda_available:
-            raise SkipTest('Optional package cuda disabled')
-
-        def f_rnn(u_t, x_tm1, W_in, W):
-            return u_t * W_in + x_tm1 * W
-
-        u = theano.tensor.fvector('u')
-        x0 = theano.tensor.fscalar('x0')
-        W_in = theano.tensor.fscalar('win')
-        W = theano.tensor.fscalar('w')
-
-        # The following line is needed to have the first case being used
-        # Otherwise, it is the second that is tested.
-        mode = mode_with_gpu.excluding('InputToGpuOptimizer')
-        output, updates = theano.scan(f_rnn,
-                                      u,
-                                      x0,
-                                      [W_in, W],
-                                      n_steps=None,
-                                      truncate_gradient=-1,
-                                      go_backwards=False,
-                                      mode=mode)
-
-        output = theano.sandbox.cuda.gpu_from_host(output)
-        f2 = theano.function([u, x0, W_in, W],
-                             output,
-                             updates=updates,
-                             allow_input_downcast=True,
-                             mode=mode_with_gpu)
-
-        # get random initial values
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        v_u = rng.uniform(size=(4,), low=-5., high=5.)
-        v_x0 = rng.uniform()
-        W = rng.uniform()
-        W_in = rng.uniform()
-
-        v_u = numpy.asarray(v_u, dtype='float32')
-        v_x0 = numpy.asarray(v_x0, dtype='float32')
-        W = numpy.asarray(W, dtype='float32')
-        W_in = numpy.asarray(W_in, dtype='float32')
-
-        # compute the output in numpy
-        v_out = numpy.zeros((4,))
-        v_out[0] = v_u[0] * W_in + v_x0 * W
-        for step in xrange(1, 4):
-            v_out[step] = v_u[step] * W_in + v_out[step - 1] * W
-        theano_values = f2(v_u, v_x0, W_in, W)
-        utt.assert_allclose(theano_values, v_out)
-
-        # TO DEL
-        topo = f2.maker.fgraph.toposort()
-        scan_node = [node for node in topo
-                     if isinstance(node.op, theano.scan_module.scan_op.Scan)]
-        assert len(scan_node) == 1
-        scan_node = scan_node[0]
-
-        topo = f2.maker.fgraph.toposort()
-        assert sum([isinstance(node.op, theano.sandbox.cuda.HostFromGpu)
-                    for node in topo]) == 0
-        assert sum([isinstance(node.op, theano.sandbox.cuda.GpuFromHost)
-                    for node in topo]) == 4
-
-        scan_node = [node for node in topo
-                     if isinstance(node.op, theano.scan_module.scan_op.Scan)]
-        assert len(scan_node) == 1
-        scan_node = scan_node[0]
-        scan_node_topo = scan_node.op.fn.maker.fgraph.toposort()
-
-        # check that there is no gpu transfer in the inner loop.
-        assert any([isinstance(node.op, theano.sandbox.cuda.GpuElemwise)
-                    for node in scan_node_topo])
-        assert not any([isinstance(node.op, theano.sandbox.cuda.HostFromGpu)
-                        for node in scan_node_topo])
-        assert not any([isinstance(node.op, theano.sandbox.cuda.GpuFromHost)
-                        for node in scan_node_topo])
-
-    # This second version test the second case in the optimizer to the gpu.
-    def test_one_sequence_one_output_weights_gpu2(self):
-        from theano.sandbox import cuda
-        if not cuda.cuda_available:
-            raise SkipTest('Optional package cuda disabled')
-
-        def f_rnn(u_t, x_tm1, W_in, W):
-            return u_t * W_in + x_tm1 * W
-
-        u = theano.tensor.fvector('u')
-        x0 = theano.tensor.fscalar('x0')
-        W_in = theano.tensor.fscalar('win')
-        W = theano.tensor.fscalar('w')
-        output, updates = theano.scan(f_rnn,
-                                      u,
-                                      x0,
-                                      [W_in, W],
-                                      n_steps=None,
-                                      truncate_gradient=-1,
-                                      go_backwards=False,
-                                      mode=mode_with_gpu)
-
-        f2 = theano.function([u, x0, W_in, W],
-                             output,
-                             updates=updates,
-                             allow_input_downcast=True,
-                             mode=mode_with_gpu)
-
-        # get random initial values
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        v_u = rng.uniform(size=(4,), low=-5., high=5.)
-        v_x0 = rng.uniform()
-        W = rng.uniform()
-        W_in = rng.uniform()
-
-        # compute the output in numpy
-        v_out = numpy.zeros((4,))
-        v_out[0] = v_u[0] * W_in + v_x0 * W
-        for step in xrange(1, 4):
-            v_out[step] = v_u[step] * W_in + v_out[step - 1] * W
-        theano_values = f2(v_u, v_x0, W_in, W)
-        utt.assert_allclose(theano_values, v_out)
-
-        topo = f2.maker.fgraph.toposort()
-        assert sum([isinstance(node.op, theano.sandbox.cuda.HostFromGpu)
-                    for node in topo]) == 1
-        assert sum([isinstance(node.op, theano.sandbox.cuda.GpuFromHost)
-                    for node in topo]) == 4
-
-        scan_node = [node for node in topo
-                     if isinstance(node.op, theano.scan_module.scan_op.Scan)]
-        assert len(scan_node) == 1
-        scan_node = scan_node[0]
-        scan_node_topo = scan_node.op.fn.maker.fgraph.toposort()
-
-        # check that there is no gpu transfer in the inner loop.
-        assert any([isinstance(node.op, theano.sandbox.cuda.GpuElemwise)
-                    for node in scan_node_topo])
-        assert not any([isinstance(node.op, theano.sandbox.cuda.HostFromGpu)
-                        for node in scan_node_topo])
-        assert not any([isinstance(node.op, theano.sandbox.cuda.GpuFromHost)
-                        for node in scan_node_topo])
-
-    # This third test checks that scan can deal with a mixture of dtypes as
-    # outputs when is running on GPU
-    def test_gpu3_mixture_dtype_outputs(self):
-        from theano.sandbox import cuda
-        if not cuda.cuda_available:
-            raise SkipTest('Optional package cuda disabled')
-
-        def f_rnn(u_t, x_tm1, W_in, W):
-            return (u_t * W_in + x_tm1 * W,
-                    tensor.cast(u_t + x_tm1, 'int64'))
-
-        u = theano.tensor.fvector('u')
-        x0 = theano.tensor.fscalar('x0')
-        W_in = theano.tensor.fscalar('win')
-        W = theano.tensor.fscalar('w')
-        output, updates = theano.scan(f_rnn,
-                                      u,
-                                      [x0, None],
-                                      [W_in, W],
-                                      n_steps=None,
-                                      truncate_gradient=-1,
-                                      go_backwards=False,
-                                      mode=mode_with_gpu)
-
-        f2 = theano.function([u, x0, W_in, W],
-                             output,
-                             updates=updates,
-                             allow_input_downcast=True,
-                             mode=mode_with_gpu)
-
-        # get random initial values
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        v_u = rng.uniform(size=(4,), low=-5., high=5.)
-        v_x0 = rng.uniform()
-        W = rng.uniform()
-        W_in = rng.uniform()
-
-        # compute the output in numpy
-        v_out1 = numpy.zeros((4,))
-        v_out2 = numpy.zeros((4,), dtype='int64')
-        v_out1[0] = v_u[0] * W_in + v_x0 * W
-        v_out2[0] = v_u[0] + v_x0
-        for step in xrange(1, 4):
-            v_out1[step] = v_u[step] * W_in + v_out1[step - 1] * W
-            v_out2[step] = numpy.int64(v_u[step] + v_out1[step - 1])
-
-        theano_out1, theano_out2 = f2(v_u, v_x0, W_in, W)
-        utt.assert_allclose(theano_out1, v_out1)
-        utt.assert_allclose(theano_out2, v_out2)
-
-        topo = f2.maker.fgraph.toposort()
-        scan_node = [node for node in topo
-                     if isinstance(node.op, theano.scan_module.scan_op.Scan)]
-        assert len(scan_node) == 1
-        scan_node = scan_node[0]
-        assert scan_node.op.gpu
-
     # simple rnn, one input, one state, weights for each; input/state
     # are vectors, weights are scalars; using shared variables
     def test_one_sequence_one_output_weights_shared(self):
@@ -1338,88 +1137,6 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(theano_v, numpy_v[:5, :])
         theano_v = my_f()
         utt.assert_allclose(theano_v, numpy_v[5:, :])
-
-    def test_inconsistent_inner_fct(self):
-        # Test that scan can detect inconsistencies in the inner graph and
-        # raises an appropriate exception.
-
-        # This test has not been extensively tested for Python 3 so it should
-        # be skipped if python version is >=3
-        version = sys.version_info
-        if version >= (3,):
-            raise SkipTest("This test relies on a pickled file produced with "
-                           "Python 2. The current python version "
-                           "(%i.%i.%i.%i) is >= 3 so the test will be "
-                           "skipped." % (version.major, version.minor,
-                           version.micro, version.serial))
-
-        # The pickled scan op used in this test requires the use of a gpu
-        from theano.sandbox import cuda
-        if not cuda.cuda_available:
-            raise SkipTest('Optional package cuda disabled')
-
-        # When unpickled, the scan op should perform validation on its inner
-        # graph, detect the inconsistencies and raise a TypeError
-        folder = os.path.dirname(os.path.abspath(__file__))
-        path = os.path.join(folder, "inconsistent_scan.pkl")
-
-        assert_raises(TypeError, cPickle.load, open(path, "r"))
-
-    def test_consistent_inner_fct(self):
-        # Test that scan does not falsely detect inconsistencies in a valid
-        # inner graph
-
-        # The pickled scan op used in this test requires the use of a gpu
-        from theano.sandbox import cuda
-        if not cuda.cuda_available:
-            raise SkipTest('Optional package cuda disabled')
-
-        rs = theano.sandbox.rng_mrg.MRG_RandomStreams(use_cuda=True)
-        output, _ = theano.scan(lambda : rs.uniform((3,), dtype="float32"),
-                                n_steps=3)
-        cPickle.loads(cPickle.dumps(output))
-
-        # Also ensure that, after compilation, the Scan has been moved
-        # on the gpu
-        fct = theano.function([], output, mode=mode_with_gpu)
-        scan_nodes = self.scan_nodes_from_fct(fct)
-        assert len(scan_nodes) == 1
-        assert (scan_nodes[0].op.info.get('gpu', False) or
-                scan_nodes[0].op.info.get('gpua', False))
-
-    def test_cuda_gibbs_chain(self):
-        from theano.sandbox import cuda
-        if not cuda.cuda_available:
-            raise SkipTest('Optional package cuda disabled')
-
-        rng = numpy.random.RandomState(utt.fetch_seed())
-        v_vsample = numpy.array(rng.binomial(1, .5, size=(3, 20),),
-                                dtype='float32')
-        vsample = theano.shared(v_vsample)
-        trng = theano.sandbox.rng_mrg.MRG_RandomStreams(
-            utt.fetch_seed())
-
-        def f(vsample_tm1):
-            return trng.binomial(vsample_tm1.shape, n=1, p=0.3,
-                                 dtype='float32') * vsample_tm1
-
-        theano_vsamples, updates = theano.scan(f,
-                                               [],
-                                               vsample,
-                                               [],
-                                               n_steps=10,
-                                               truncate_gradient=-1,
-                                               go_backwards=False,
-                                               mode=mode_with_gpu)
-        my_f = theano.function([],
-                               theano_vsamples[-1],
-                               updates=updates,
-                               allow_input_downcast=True,
-                               mode=mode_with_gpu)
-
-        # I leave this to tested by debugmode, this test was anyway more of
-        # doest the graph compile kind of test
-        t_result = my_f()
 
     def test_gibbs_chain(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -2880,85 +2597,6 @@ class T_Scan(unittest.TestCase):
         f2_vals = f2(x_val)
         utt.assert_allclose(f_vals, f2_vals)
 
-    def test_gpu_memory_usage(self):
-        # This test validates that the memory usage of the defined theano
-        # function is reasonnable when executed on the GPU. It checks for
-        # a bug in which one of scan's optimization was not applied which
-        # made the scan node compute large and unnecessary outputs which
-        # brought memory usage on the GPU to ~12G.
-
-        # The test must be performed on the GPU
-        from theano.sandbox import cuda
-        if not cuda.cuda_available:
-            raise SkipTest('Optional package cuda disabled')
-
-        # Dimensionality of input and output data (not one-hot coded)
-        n_in = 100
-        n_out = 100
-        # Number of neurons in hidden layer
-        n_hid = 4000
-
-        # Number of minibatches
-        mb_size = 2
-        # Time steps in minibatch
-        mb_length = 200
-
-        # Define input variables
-        xin = tensor.ftensor3(name='xin')
-        yout = tensor.ftensor3(name='yout')
-
-        # Initialize the network parameters
-        floatX = theano.config.floatX
-        U = theano.shared(numpy.zeros((n_in, n_hid), dtype="float32"),
-                        name='W_xin_to_l1')
-        V = theano.shared(numpy.zeros((n_hid, n_hid), dtype="float32"),
-                        name='W_l1_to_l1')
-        W = theano.shared(numpy.zeros((n_hid, n_out), dtype="float32"),
-                        name='W_l1_to_l2')
-        nparams = [U, V, W]
-
-        # Build the forward pass
-        l1_base = tensor.dot(xin, U)
-
-        def scan_l(baseline, last_step):
-            return baseline + tensor.dot(last_step, V)
-
-        zero_output = tensor.alloc(numpy.asarray(0., dtype="float32"),
-                                   mb_size, n_hid)
-
-        l1_out, _ = theano.scan(scan_l, sequences=[l1_base],
-                                outputs_info=[zero_output],
-                                mode=mode_with_gpu)
-
-        l2_out = tensor.dot(l1_out, W)
-
-        # Compute the cost and take the gradient wrt params
-        cost = tensor.sum((l2_out - yout) ** 2)
-        grads = tensor.grad(cost, nparams)
-        updates = zip(nparams, [n - g for n, g in zip(nparams, grads)])
-
-        # Compile the theano function
-        feval_backprop = theano.function([xin, yout], cost, updates=updates,
-                                         mode=mode_with_gpu)
-
-        # Validate that the PushOutScanOutput optimization has been applied
-        # by checking the number of outputs of the grad Scan node in the
-        # compiled function.
-        nodes = feval_backprop.maker.fgraph.toposort()
-        scan_nodes = [n for n in nodes if isinstance(
-                      n.op, theano.scan_module.scan_op.Scan)]
-
-        # The grad scan is always the 2nd one according to toposort. If the
-        # optimization has been applied, it has 2 outputs, otherwise 3.
-        grad_scan_node = scan_nodes[1]
-        assert len(grad_scan_node.outputs) == 2
-
-        # Call the theano function to ensure the absence of a memory error
-        feval_backprop(numpy.zeros((mb_length, mb_size, n_in),
-                                   dtype="float32"),
-                       numpy.zeros((mb_length, mb_size, n_out),
-                                   dtype="float32"))
-
     def test_reduce_memory_consumption(self):
 
         x = theano.shared(numpy.asarray(
@@ -3949,43 +3587,6 @@ class T_Scan(unittest.TestCase):
         f = theano.function([seq], results[1], updates=updates)
         assert numpy.all(exp_out == f(inp))
 
-    def test_memory_reuse_gpudimshuffle(self):
-        # Test the memory pre-allocation feature in scan when one output is
-        # the result of a GpuDimshuffle (because an optimization in
-        # GpuDimshuffle can cause issues with the memory pre-allocation
-        # where it falsely thinks that a pre-allocated memory region has
-        # been used when it hasn't).
-        from theano.sandbox import cuda
-        if not cuda.cuda_available:
-            raise SkipTest('Optional package cuda disabled')
-
-        def inner_fn(seq1, recurrent_out):
-            temp = seq1 + recurrent_out.sum()
-            output1 = temp.dimshuffle(1, 0)
-            output2 = temp.sum() + recurrent_out
-            return output1, output2
-
-        input1 = theano.tensor.ftensor3()
-        init = theano.tensor.ftensor3()
-        outputs_info = [None, init]
-
-        out, _ = theano.scan(inner_fn, sequences=[input1],
-                             outputs_info=outputs_info,
-                             mode=mode_with_gpu)
-
-        out1 = out[0].flatten()
-        out2 = out[1].flatten()
-
-        fct = theano.function([input1, init], [out1, out2],
-                              mode=mode_with_gpu)
-
-        output = fct(numpy.ones((2, 1, 1), dtype="float32"),
-                     numpy.ones((1, 1, 1), dtype="float32"))
-
-        expected_output = (numpy.array([2, 4], dtype="float32"),
-                           numpy.array([3, 7], dtype="float32"))
-        utt.assert_allclose(output, expected_output)
-
     def test_memory_reuse_with_outputs_as_inputs(self):
         # Test the memory pre-allocation feature in scan for the following
         # cases :
@@ -4416,6 +4017,434 @@ class T_Scan(unittest.TestCase):
 
         f_strict = theano.function([x0_], ret_strict[0][-1])
         result_strict = f_strict(x0)
+
+
+class ScanGpuTests:
+    """ This class defines a number of tests for Scan on GPU as well as a few
+    helper functions for these tests. The GPU tests defined in this class are
+    independant of the GPU backend used. Because of this, a class inheriting
+    from ScanGpuTests should define the following attributes and methods to
+    make the tests run on a specific backend :
+    - self.gpu_backend : Reference to the backend module
+    - self.mode_with_opt : Compilation mode to force usage of the gpu backend
+    - self.is_scan_on_gpu(node) : Method to determine is a scan node has been
+                                  moved to run on a gpu under the specific
+                                  backend. Returns a boolean.
+    """
+
+    # as test_one_sequence_one_output_weights, but on the gpu
+    # This first version test the first case in the optimizer to the gpu.
+    def test_one_sequence_one_output_weights_gpu1(self):
+
+        def f_rnn(u_t, x_tm1, W_in, W):
+            return u_t * W_in + x_tm1 * W
+
+        u = theano.tensor.fvector('u')
+        x0 = theano.tensor.fscalar('x0')
+        W_in = theano.tensor.fscalar('win')
+        W = theano.tensor.fscalar('w')
+
+        # The following line is needed to have the first case being used
+        # Otherwise, it is the second that is tested.
+        mode = self.mode_with_gpu.excluding('InputToGpuOptimizer')
+        output, updates = theano.scan(f_rnn,
+                                      u,
+                                      x0,
+                                      [W_in, W],
+                                      n_steps=None,
+                                      truncate_gradient=-1,
+                                      go_backwards=False,
+                                      mode=mode)
+
+        output = self.gpu_backend.gpu_from_host(output)
+        f2 = theano.function([u, x0, W_in, W],
+                             output,
+                             updates=updates,
+                             allow_input_downcast=True,
+                             mode=self.mode_with_gpu)
+
+        # get random initial values
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        v_u = rng.uniform(size=(4,), low=-5., high=5.)
+        v_x0 = rng.uniform()
+        W = rng.uniform()
+        W_in = rng.uniform()
+
+        v_u = numpy.asarray(v_u, dtype='float32')
+        v_x0 = numpy.asarray(v_x0, dtype='float32')
+        W = numpy.asarray(W, dtype='float32')
+        W_in = numpy.asarray(W_in, dtype='float32')
+
+        # compute the output in numpy
+        v_out = numpy.zeros((4,))
+        v_out[0] = v_u[0] * W_in + v_x0 * W
+        for step in xrange(1, 4):
+            v_out[step] = v_u[step] * W_in + v_out[step - 1] * W
+        theano_values = f2(v_u, v_x0, W_in, W)
+        utt.assert_allclose(theano_values, v_out)
+
+        # TO DEL
+        topo = f2.maker.fgraph.toposort()
+        scan_node = [node for node in topo
+                     if isinstance(node.op, theano.scan_module.scan_op.Scan)]
+        assert len(scan_node) == 1
+        scan_node = scan_node[0]
+
+        topo = f2.maker.fgraph.toposort()
+        assert sum([isinstance(node.op, self.gpu_backend.HostFromGpu)
+                    for node in topo]) == 0
+        assert sum([isinstance(node.op, self.gpu_backend.GpuFromHost)
+                    for node in topo]) == 4
+
+        scan_node = [node for node in topo
+                     if isinstance(node.op, theano.scan_module.scan_op.Scan)]
+        assert len(scan_node) == 1
+        scan_node = scan_node[0]
+        scan_node_topo = scan_node.op.fn.maker.fgraph.toposort()
+
+        # check that there is no gpu transfer in the inner loop.
+        assert any([isinstance(node.op, self.gpu_backend.GpuElemwise)
+                    for node in scan_node_topo])
+        assert not any([isinstance(node.op, self.gpu_backend.HostFromGpu)
+                        for node in scan_node_topo])
+        assert not any([isinstance(node.op, self.gpu_backend.GpuFromHost)
+                        for node in scan_node_topo])
+
+    # This second version test the second case in the optimizer to the gpu.
+    def test_one_sequence_one_output_weights_gpu2(self):
+
+        def f_rnn(u_t, x_tm1, W_in, W):
+            return u_t * W_in + x_tm1 * W
+
+        u = theano.tensor.fvector('u')
+        x0 = theano.tensor.fscalar('x0')
+        W_in = theano.tensor.fscalar('win')
+        W = theano.tensor.fscalar('w')
+        output, updates = theano.scan(f_rnn,
+                                      u,
+                                      x0,
+                                      [W_in, W],
+                                      n_steps=None,
+                                      truncate_gradient=-1,
+                                      go_backwards=False,
+                                      mode=self.mode_with_gpu)
+
+        f2 = theano.function([u, x0, W_in, W],
+                             output,
+                             updates=updates,
+                             allow_input_downcast=True,
+                             mode=self.mode_with_gpu)
+
+        # get random initial values
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        v_u = rng.uniform(size=(4,), low=-5., high=5.)
+        v_x0 = rng.uniform()
+        W = rng.uniform()
+        W_in = rng.uniform()
+
+        # compute the output in numpy
+        v_out = numpy.zeros((4,))
+        v_out[0] = v_u[0] * W_in + v_x0 * W
+        for step in xrange(1, 4):
+            v_out[step] = v_u[step] * W_in + v_out[step - 1] * W
+        theano_values = f2(v_u, v_x0, W_in, W)
+        utt.assert_allclose(theano_values, v_out)
+
+        topo = f2.maker.fgraph.toposort()
+        assert sum([isinstance(node.op, self.gpu_backend.HostFromGpu)
+                    for node in topo]) == 1
+        assert sum([isinstance(node.op, self.gpu_backend.GpuFromHost)
+                    for node in topo]) == 4
+
+        scan_node = [node for node in topo
+                     if isinstance(node.op, theano.scan_module.scan_op.Scan)]
+        assert len(scan_node) == 1
+        scan_node = scan_node[0]
+        scan_node_topo = scan_node.op.fn.maker.fgraph.toposort()
+
+        # check that there is no gpu transfer in the inner loop.
+        assert any([isinstance(node.op, self.gpu_backend.GpuElemwise)
+                    for node in scan_node_topo])
+        assert not any([isinstance(node.op, self.gpu_backend.HostFromGpu)
+                        for node in scan_node_topo])
+        assert not any([isinstance(node.op, self.gpu_backend.GpuFromHost)
+                        for node in scan_node_topo])
+
+    # This third test checks that scan can deal with a mixture of dtypes as
+    # outputs when is running on GPU
+    def test_gpu3_mixture_dtype_outputs(self):
+
+        def f_rnn(u_t, x_tm1, W_in, W):
+            return (u_t * W_in + x_tm1 * W,
+                    tensor.cast(u_t + x_tm1, 'int64'))
+
+        u = theano.tensor.fvector('u')
+        x0 = theano.tensor.fscalar('x0')
+        W_in = theano.tensor.fscalar('win')
+        W = theano.tensor.fscalar('w')
+        output, updates = theano.scan(f_rnn,
+                                      u,
+                                      [x0, None],
+                                      [W_in, W],
+                                      n_steps=None,
+                                      truncate_gradient=-1,
+                                      go_backwards=False,
+                                      mode=self.mode_with_gpu)
+
+        f2 = theano.function([u, x0, W_in, W],
+                             output,
+                             updates=updates,
+                             allow_input_downcast=True,
+                             mode=self.mode_with_gpu)
+
+        # get random initial values
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        v_u = rng.uniform(size=(4,), low=-5., high=5.)
+        v_x0 = rng.uniform()
+        W = rng.uniform()
+        W_in = rng.uniform()
+
+        # compute the output in numpy
+        v_out1 = numpy.zeros((4,))
+        v_out2 = numpy.zeros((4,), dtype='int64')
+        v_out1[0] = v_u[0] * W_in + v_x0 * W
+        v_out2[0] = v_u[0] + v_x0
+        for step in xrange(1, 4):
+            v_out1[step] = v_u[step] * W_in + v_out1[step - 1] * W
+            v_out2[step] = numpy.int64(v_u[step] + v_out1[step - 1])
+
+        theano_out1, theano_out2 = f2(v_u, v_x0, W_in, W)
+        utt.assert_allclose(theano_out1, v_out1)
+        utt.assert_allclose(theano_out2, v_out2)
+
+        topo = f2.maker.fgraph.toposort()
+        scan_node = [node for node in topo
+                     if isinstance(node.op, theano.scan_module.scan_op.Scan)]
+        assert len(scan_node) == 1
+        scan_node = scan_node[0]
+        assert self.is_scan_on_gpu(scan_node)
+
+    def test_gibbs_chain(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        v_vsample = numpy.array(rng.binomial(1, .5, size=(3, 20),),
+                                dtype='float32')
+        vsample = theano.shared(v_vsample)
+        trng = theano.sandbox.rng_mrg.MRG_RandomStreams(
+            utt.fetch_seed())
+
+        def f(vsample_tm1):
+            return trng.binomial(vsample_tm1.shape, n=1, p=0.3,
+                                 dtype='float32') * vsample_tm1
+
+        theano_vsamples, updates = theano.scan(f,
+                                               [],
+                                               vsample,
+                                               [],
+                                               n_steps=10,
+                                               truncate_gradient=-1,
+                                               go_backwards=False,
+                                               mode=self.mode_with_gpu)
+        my_f = theano.function([],
+                               theano_vsamples[-1],
+                               updates=updates,
+                               allow_input_downcast=True,
+                               mode=self.mode_with_gpu)
+
+        # I leave this to tested by debugmode, this test was anyway more of
+        # doest the graph compile kind of test
+        t_result = my_f()
+
+    def test_gpu_memory_usage(self):
+        # This test validates that the memory usage of the defined theano
+        # function is reasonnable when executed on the GPU. It checks for
+        # a bug in which one of scan's optimization was not applied which
+        # made the scan node compute large and unnecessary outputs which
+        # brought memory usage on the GPU to ~12G.
+
+        # Dimensionality of input and output data (not one-hot coded)
+        n_in = 100
+        n_out = 100
+        # Number of neurons in hidden layer
+        n_hid = 4000
+
+        # Number of minibatches
+        mb_size = 2
+        # Time steps in minibatch
+        mb_length = 200
+
+        # Define input variables
+        xin = tensor.ftensor3(name='xin')
+        yout = tensor.ftensor3(name='yout')
+
+        # Initialize the network parameters
+        floatX = theano.config.floatX
+        U = theano.shared(numpy.zeros((n_in, n_hid), dtype="float32"),
+                        name='W_xin_to_l1')
+        V = theano.shared(numpy.zeros((n_hid, n_hid), dtype="float32"),
+                        name='W_l1_to_l1')
+        W = theano.shared(numpy.zeros((n_hid, n_out), dtype="float32"),
+                        name='W_l1_to_l2')
+        nparams = [U, V, W]
+
+        # Build the forward pass
+        l1_base = tensor.dot(xin, U)
+
+        def scan_l(baseline, last_step):
+            return baseline + tensor.dot(last_step, V)
+
+        zero_output = tensor.alloc(numpy.asarray(0., dtype="float32"),
+                                   mb_size, n_hid)
+
+        l1_out, _ = theano.scan(scan_l, sequences=[l1_base],
+                                outputs_info=[zero_output],
+                                mode=self.mode_with_gpu)
+
+        l2_out = tensor.dot(l1_out, W)
+
+        # Compute the cost and take the gradient wrt params
+        cost = tensor.sum((l2_out - yout) ** 2)
+        grads = tensor.grad(cost, nparams)
+        updates = zip(nparams, [n - g for n, g in zip(nparams, grads)])
+
+        # Compile the theano function
+        feval_backprop = theano.function([xin, yout], cost, updates=updates,
+                                         mode=self.mode_with_gpu)
+
+        # Validate that the PushOutScanOutput optimization has been applied
+        # by checking the number of outputs of the grad Scan node in the
+        # compiled function.
+        nodes = feval_backprop.maker.fgraph.toposort()
+        scan_nodes = [n for n in nodes if isinstance(
+                      n.op, theano.scan_module.scan_op.Scan)]
+
+        # The grad scan is always the 2nd one according to toposort. If the
+        # optimization has been applied, it has 2 outputs, otherwise 3.
+        grad_scan_node = scan_nodes[1]
+        assert len(grad_scan_node.outputs) == 2
+
+        # Call the theano function to ensure the absence of a memory error
+        feval_backprop(numpy.zeros((mb_length, mb_size, n_in),
+                                   dtype="float32"),
+                       numpy.zeros((mb_length, mb_size, n_out),
+                                   dtype="float32"))
+
+    def test_memory_reuse_gpudimshuffle(self):
+        # Test the memory pre-allocation feature in scan when one output is
+        # the result of a GpuDimshuffle (because an optimization in
+        # GpuDimshuffle can cause issues with the memory pre-allocation
+        # where it falsely thinks that a pre-allocated memory region has
+        # been used when it hasn't).
+        def inner_fn(seq1, recurrent_out):
+            temp = seq1 + recurrent_out.sum()
+            output1 = temp.dimshuffle(1, 0)
+            output2 = temp.sum() + recurrent_out
+            return output1, output2
+
+        input1 = theano.tensor.ftensor3()
+        init = theano.tensor.ftensor3()
+        outputs_info = [None, init]
+
+        out, _ = theano.scan(inner_fn, sequences=[input1],
+                             outputs_info=outputs_info,
+                             mode=self.mode_with_gpu)
+
+        out1 = out[0].flatten()
+        out2 = out[1].flatten()
+
+        fct = theano.function([input1, init], [out1, out2],
+                              mode=self.mode_with_gpu)
+
+        output = fct(numpy.ones((2, 1, 1), dtype="float32"),
+                     numpy.ones((1, 1, 1), dtype="float32"))
+
+        expected_output = (numpy.array([2, 4], dtype="float32"),
+                           numpy.array([3, 7], dtype="float32"))
+        utt.assert_allclose(output, expected_output)
+
+
+class T_Scan_Cuda(unittest.TestCase, ScanGpuTests):
+    """This class takes the gpu tests for scan that are defined in
+    class ScanGpuTests and runs them using the cuda backend. It also adds
+    tests specific to the cuda backend
+    """
+
+    def __init__(self, *args, **kwargs):
+        from theano.sandbox import cuda
+        self.gpu_backend = cuda
+        self.mode_with_gpu = mode_with_opt.including('gpu', 'scan')
+        super(T_Scan_Cuda, self).__init__(*args, **kwargs)
+
+    def setUp(self):
+        # Skip the test if cuda is not available
+        if not self.gpu_backend.cuda_available:
+            raise SkipTest('Optional package cuda disabled')
+
+        utt.seed_rng()
+        super(T_Scan_Cuda, self).setUp()
+
+    def is_scan_on_gpu(self, node):
+        return node.op.info.get('gpu', False)
+
+    def test_inconsistent_inner_fct(self):
+        # Test that scan can detect inconsistencies in the inner graph and
+        # raises an appropriate exception. The pickled file used in this test
+        # relies on the cuda backend.
+
+        # This test has not been extensively tested for Python 3 so it should
+        # be skipped if python version is >=3
+        version = sys.version_info
+        if version >= (3,):
+            raise SkipTest("This test relies on a pickled file produced with "
+                           "Python 2. The current python version "
+                           "(%i.%i.%i.%i) is >= 3 so the test will be "
+                           "skipped." % (version.major, version.minor,
+                           version.micro, version.serial))
+
+        # When unpickled, the scan op should perform validation on its inner
+        # graph, detect the inconsistencies and raise a TypeError
+        folder = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(folder, "inconsistent_scan.pkl")
+        assert_raises(TypeError, cPickle.load, open(path, "r"))
+
+    def test_consistent_inner_fct(self):
+        # Test that scan does not falsely detect inconsistencies in a valid
+        # inner graph
+
+        rs = theano.sandbox.rng_mrg.MRG_RandomStreams(use_cuda=True)
+        output, _ = theano.scan(lambda : rs.uniform((3,), dtype="float32"),
+                                n_steps=3)
+        cPickle.loads(cPickle.dumps(output))
+
+        # Also ensure that, after compilation, the Scan has been moved
+        # on the gpu
+        fct = theano.function([], output, mode=self.mode_with_gpu)
+        scan_nodes = scan_nodes_from_fct(fct)
+        assert len(scan_nodes) == 1
+        assert self.is_scan_on_gpu(scan_nodes[0])
+
+
+class T_Scan_Gpuarray(unittest.TestCase, ScanGpuTests):
+    """This class takes the gpu tests for scan that are defined in
+    class ScanGpuTests and runs them using the gpuarray backend.
+    """
+
+    def __init__(self, *args, **kwargs):
+        from theano.sandbox import gpuarray
+        self.gpu_backend = gpuarray
+        self.mode_with_gpu = mode_with_opt.including('gpuarray_opt', 'scan')
+        super(T_Scan_Gpuarray, self).__init__(*args, **kwargs)
+
+    def setUp(self):
+        # Skip the test if pygpu is not available
+        if not self.gpu_backend.pygpu_activated:
+            raise SkipTest('Optional package pygpu disabled')
+
+        utt.seed_rng()
+        super(T_Scan_Gpuarray, self).setUp()
+
+    def is_scan_on_gpu(self, node):
+        return node.op.info.get('gpua', False)
+
 
 
 def test_speed():
