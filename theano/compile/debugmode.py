@@ -1685,16 +1685,18 @@ class _Linker(gof.link.LocalLinker):
             node_input_storage = [storage_map[r] for r in node.inputs]
             node_output_storage = [storage_map[r] for r in node.outputs]
 
+            compute_map = {}
+            for k in node.inputs:
+                compute_map[k] = [True]
+            for k in node.outputs:
+                compute_map[k] = [False]
+
             # Some Ops define a make_thunk with the expectation that
             # it will be called before the C code is compiled, because
             # the compilation of some dependency is triggered there.
             thunk_other = None
+
             if get_unbound_function(node.op.make_thunk) not in default_make_thunk:
-                compute_map = {}
-                for k in node.inputs:
-                    compute_map[k] = [True]
-                for k in node.outputs:
-                    compute_map[k] = [False]
                 thunk = node.op.make_thunk(node,
                                            storage_map,
                                            compute_map,
