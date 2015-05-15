@@ -250,7 +250,7 @@ class IfElse(PureOp):
                             if self.as_view:
                                 storage_map[out][0] = val
                             # Work around broken numpy deepcopy
-                            elif type(a) in (numpy.ndarray, numpy.memmap):
+                            elif type(val) in (numpy.ndarray, numpy.memmap):
                                 storage_map[out][0] = val.copy()
                             else:
                                 storage_map[out][0] = deepcopy(val)
