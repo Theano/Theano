@@ -713,7 +713,14 @@ def local_scan_to_gpua(node):
     nw_ins += node.inputs[b:e]
     nw_ins += [safe_to_gpu(x) for x in node.inputs[e:]]
     scan_ins = [tensor_to_gpu(x) for x in node.op.inputs]
-    scan_outs = [safe_to_gpu(x) for x in node.op.outputs]
+
+    # The inner output corresponding to the looping condition should not be
+    # moved to the gpu
+    if node.op.info['as_while']:
+        scan_outs = [safe_to_gpu(x) for x in node.op.outputs[:-1]]
+        scan_outs += [node.op.outputs[-1]]
+    else:
+        scan_outs = [safe_to_gpu(x) for x in node.op.outputs]
     scan_outs = scan_utils.clone(
         scan_outs,
         replace=zip(node.op.inputs,
