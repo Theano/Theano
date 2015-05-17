@@ -61,7 +61,7 @@ class SortOp(theano.Op):
         inp_grad = theano.gradient.grad_not_implemented(
             self, 0, axis,
             "Currently, we only implement the gradient on sort for vector"
-            " and matrix (and axis is None or 0)")
+            " matrix (and axis is None or 0) and tensor3")
         if a.ndim == 1:
             idx = argsort(*inputs, kind=self.kind, order=self.order)
 #            rev_idx = numpy.where(idx[None, :]==numpy.arange(5)[:,None])[1]
@@ -95,17 +95,24 @@ class SortOp(theano.Op):
         return [inp_grad, axis_grad]
 
     def __get_argsort_indices(self, a, axis):
-        """applies argsort to a along axis, returns indices which
-        can be used to sort original array"""
+        """Calculates indices which can be used to reverse
+        sorting operation of "a" tensor along "axis"
 
+        returns:
+          1d array if axis is None
+          list of lenght len(a.shape) otherwise
+        """
+
+        # The goal is to get gradient wrt input from gradient 
+        # wrt sort(input, axis)
         idx = argsort(a, axis, kind=self.kind, order=self.order)
+        # rev_idx is the reverse of previous argsort operation 
         rev_idx = argsort(idx, axis, kind=self.kind, order=self.order) 
-
         if (axis is None or
             (isinstance(axis, theano.Constant) and axis.data is None)):
             return rev_idx
         indices = []
-        if axis.data > 0:
+        if axis.data >= 0:
             axis_data = axis.data
         else:
             axis_data = a.ndim + axis.data
@@ -115,6 +122,7 @@ class SortOp(theano.Op):
             else:
                 index_shape = [1] * a.ndim 
                 index_shape[i] = a.shape[i]
+                # it's a way to emulate numpy.ogrid[0:, a.shape[0], 0:a.shape[1], a.shape[2]]
                 indices.append(theano.tensor.arange(a.shape[i]).reshape(index_shape))
         return indices
     """
