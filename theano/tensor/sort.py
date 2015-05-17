@@ -83,7 +83,7 @@ class SortOp(theano.Op):
         elif a.ndim == 3:
             if isinstance(axis, theano.Constant) and axis.data is not None:
                 indices = self.__get_argsort_indices(a, axis)
-                inp_grad = output_grads[0].reshape(a.shape)[indices[0], indices[1], indices[2]]
+                inp_grad = output_grads[0][indices[0], indices[1], indices[2]]
             elif (axis is None or
                 (isinstance(axis, theano.Constant) and axis.data is None)):
                 rev_idx = self.__get_argsort_indices(a, axis)
