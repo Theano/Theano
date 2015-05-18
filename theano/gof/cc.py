@@ -1840,10 +1840,10 @@ PyErr_Print();
             if isinstance(argType, graph.Constant):
                 in_out_list += """
                 PyObject* %(var)s = PyList_New(1);
-                npy_intp dims[1]={1};
-                PyObject* const_%(var)s = PyArray_SimpleNew(1,dims,NPY_FLOAT64);
+                npy_intp %(var)s_dims[1]={1};
+                PyObject* const_%(var)s = PyArray_SimpleNew(1,%(var)s_dims,NPY_FLOAT64);
                 Py_XINCREF(const_%(var)s);
-                ((double *)(PyArray_DATA((PyArrayObject *)const_%(var)s)))[0]=0;
+                ((npy_float64  *)(PyArray_DATA((PyArrayObject *)const_%(var)s)))[0]=0;
                 PyList_SetItem(%(var)s, 0,const_%(var)s);
                 """ % locals()
             else:
