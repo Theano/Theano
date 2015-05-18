@@ -5292,82 +5292,55 @@ def test_tile():
         assert numpy.all(run_tile(x, x_, (2, 3, 4, 6), use_symbolic_reps) ==
             numpy.tile(x_, (2, 3, 4, 6)))
 
-    #Test when reps is integer, tensor.scalar or tensor.vector.
-    # Test the one-dimensional case.
-    x = vector()
-    x_ = rng.randn(5).astype(config.floatX)
-    #integer:
-    reps_ = 2
-    f = function([x], tile(x, reps_))
-    assert numpy.all( f(x_) == numpy.tile(x_, reps_))
-    #tensor.scalar:
-    reps = iscalar()
-    reps_ = 2
-    f = function([x, reps], tile(x, reps))
-    assert numpy.all( f(x_, reps_) == numpy.tile(x_, reps_))
-    #tensor.vector:
-    reps = ivector()
-    reps_ = [2]
-    ndim_ = 1
-    f = function([x, reps], tile(x, reps, ndim_))
-    assert numpy.all( f(x_, reps_) == numpy.tile(x_, reps_))
+    # Test when reps is integer, tensor.scalar or tensor.vector.
+    # Test 1,2,3,4-dimensional cases.
+    # Test input x has the shape [2], [2, 4], [2, 4, 3], [2, 4, 3, 5].
+    test_shape = [2, 4, 3, 5]
+    k = 0 
+    for xtype in [vector(), matrix(), tensor3(), tensor4()]:
+        x = xtype
+        k = k+1
+        x_ = rng.randn(*test_shape[0:k]).astype(config.floatX)
 
-    # Test the two-dimensional case.
-    x = matrix()
-    x_ = rng.randn(2, 4).astype(config.floatX)
-    #integer:
-    reps_ = 2
-    f = function([x], tile(x, reps_))
-    assert numpy.all( f(x_) == numpy.tile(x_, reps_))
-    #tensor.scalar:
-    reps = iscalar()
-    reps_ = 2
-    f = function([x, reps], tile(x, reps))
-    assert numpy.all( f(x_, reps_) == numpy.tile(x_, reps_))
-    #tensor.vector:
-    reps = ivector()
-    reps_ = [2]
-    ndim_ = 2
-    f = function([x, reps], tile(x, reps, ndim_))
-    assert numpy.all( f(x_, reps_) == numpy.tile(x_, reps_))
+        # integer:
+        reps_ = 2
+        f = function([x], tile(x, reps_))
+        assert numpy.all( f(x_) == numpy.tile(x_, reps_))
 
-    # Test the three-dimensional case.
-    x = tensor3()
-    x_ = rng.randn(2, 4, 3).astype(config.floatX)
-    #integer:
-    reps_ = 2
-    f = function([x], tile(x, reps_))
-    assert numpy.all( f(x_) == numpy.tile(x_, reps_))
-    #tensor.scalar:
-    reps = iscalar()
-    reps_ = 2
-    f = function([x, reps], tile(x, reps))
-    assert numpy.all( f(x_, reps_) == numpy.tile(x_, reps_))
-    #tensor.vector:
-    reps = ivector()
-    reps_ = [2, 3]
-    ndim_ = 3
-    f = function([x, reps], tile(x, reps, ndim_))
-    assert numpy.all( f(x_, reps_) == numpy.tile(x_, reps_))
+        # tensor.scalar:
+        reps = iscalar()
+        reps_ = 2
+        f = function([x, reps], tile(x, reps))
+        assert numpy.all( f(x_, reps_) == numpy.tile(x_, reps_))
 
-    # Test the four-dimensional case.
-    x = tensor4()
-    x_ = rng.randn(2, 4, 3, 5).astype(config.floatX)
-    #integer:
-    reps_ = 2
-    f = function([x], tile(x, reps_))
-    assert numpy.all( f(x_) == numpy.tile(x_, reps_))
-    #tensor.scalar:
-    reps = iscalar()
-    reps_ = 2
-    f = function([x, reps], tile(x, reps))
-    assert numpy.all( f(x_, reps_) == numpy.tile(x_, reps_))
-    #tensor.vector:
-    reps = ivector()
-    reps_ = [2, 3]
-    ndim_ = 4
-    f = function([x, reps], tile(x, reps, ndim_))
-    assert numpy.all( f(x_, reps_) == numpy.tile(x_, reps_))
+        # tensor.vector:
+        reps = ivector()
+        reps_ = [2] if k == 1 or k == 2 else [2, 3]
+        ndim_ = k
+        f = function([x, reps], tile(x, reps, ndim_))
+        assert numpy.all( f(x_, reps_) == numpy.tile(x_, reps_))
+
+        # error raising test: ndim not specified when reps is vector
+        reps = ivector()
+        numpy.testing.assert_raises(ValueError, tile, x, reps)
+
+        # error raising test: ndim > x.ndim
+        reps = ivector()
+        ndim_ = k+1
+        numpy.testing.assert_raises(ValueError, tile, x, reps, ndim_)
+
+        #error raising test: len(reps) > x.ndim
+        reps = range(1, k+2)
+        numpy.testing.assert_raises(ValueError, tile, x, reps)
+
+        # error raising test: not a integer
+        for reps in [2.5, fscalar(), fvector()]:
+            numpy.testing.assert_raises(ValueError, tile, x, reps)
+        
+        # error raising test: the dimension of reps exceeds 1
+        reps = imatrix()
+        numpy.testing.assert_raises(ValueError, tile, x, reps)
+
 
 def test_tile_grad():
 
