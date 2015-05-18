@@ -320,7 +320,6 @@ def get_nothing(r, name, sub):
 def get_c_declare(r, name, sub):
     """
     Wrapper around c_declare that declares py_name.
-
     """
     # The declaration will be used by the Apply node that
     # is computing it (`r.owner`), and by each of the clients.
@@ -1838,12 +1837,14 @@ PyErr_Print();
             var = in_out_param[idx]
             argType = symbol2r[arg.replace("storage_", "")]
             if isinstance(argType, graph.Constant):
+                c_constant_type = argType.type.dtype_specs()[1]
+                numpy_constant_type = argType.type.dtype_specs()[2]
                 in_out_list += """
                 PyObject* %(var)s = PyList_New(1);
                 npy_intp %(var)s_dims[1]={1};
-                PyObject* const_%(var)s = PyArray_SimpleNew(1,%(var)s_dims,NPY_FLOAT64);
+                PyObject* const_%(var)s = PyArray_SimpleNew(1,%(var)s_dims,%(numpy_constant_type)s);
                 Py_XINCREF(const_%(var)s);
-                ((npy_float64  *)(PyArray_DATA((PyArrayObject *)const_%(var)s)))[0]=0;
+                ((%(c_constant_type)s  *)(PyArray_DATA((PyArrayObject *)const_%(var)s)))[0]=0;
                 PyList_SetItem(%(var)s, 0,const_%(var)s);
                 """ % locals()
             else:
