@@ -1015,7 +1015,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (6, self.GpuKernelBase_version)
+        return (7, self.GpuKernelBase_version)
 
 
 def guess_n_streams(size, warn=False):
