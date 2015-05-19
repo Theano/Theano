@@ -436,13 +436,13 @@ def use(device,
         cuda_enabled = True
 
     if default_to_move_computation_to_gpu:
+        # Do not add inplace tag here. We do not want to
+        # enable/disable gpu opt based on the inplace tag.
         optdb.add_tags('gpu_opt',
                        'fast_compile',
-                       'fast_run',
-                       'inplace')
+                       'fast_run')
         optdb.add_tags('gpu_after_fusion',
-                       'fast_run',
-                       'inplace')
+                       'fast_run')
 
     if force:
         try:
