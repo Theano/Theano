@@ -7,6 +7,8 @@ from theano.gradient import grad_undefined
 
 from theano.sandbox.cuda import cuda_available, GpuOp, GpuElemwise
 
+_logger = logging.getLogger('theano.sandbox.cuda.blocksparse')
+
 if cuda_available:
     from theano.sandbox.cuda import (basic_ops,
                                      opt, GpuFromHost,
@@ -15,7 +17,7 @@ if cuda_available:
     from theano.sandbox.cuda.opt_util import alpha_merge, output_merge
 
 
-class SparseBlockGemvSS(GpuOp):
+class GpuSparseBlockGemv(GpuOp):
     """
     This op computes the dot product of specified pieces of vectors
     and matrices, returning pieces of vectors.
@@ -43,7 +45,7 @@ class SparseBlockGemvSS(GpuOp):
         return hash(type(self)) ^ hash(self.inplace)
 
     def __str__(self):
-        return "SparseBlockGemvSS%s" % ("{inplace}" if self.inplace else "")
+        return "GpuSparseBlockGemv%s" % ("{inplace}" if self.inplace else "")
 
     def make_node(self, o, W, h, inputIdx, outputIdx):
         o = basic_ops.as_cuda_ndarray_variable(o)
@@ -332,9 +334,9 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
         o, W, h, inputIdx, outputIdx = inputs
         go = grads[0]
 
-        Wgrad = sparse_block_outer_ss(W.zeros_like(),
+        Wgrad = gpu_sparse_block_outer(W.zeros_like(),
                                       h, go, inputIdx, outputIdx)
-        hgrad = sparse_block_gemv_ss(h.zeros_like(),
+        hgrad = gpu_sparse_block_gemv(h.zeros_like(),
                                      W.dimshuffle((1, 0, 3, 2)),
                                      go,
                                      outputIdx, inputIdx)
@@ -345,11 +347,11 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
                                "grad of outputIdx makes no sense")]
 
 
-sparse_block_gemv_ss = SparseBlockGemvSS(False)
-sparse_block_gemv_ss_inplace = SparseBlockGemvSS(True)
+gpu_sparse_block_gemv = GpuSparseBlockGemv(False)
+gpu_sparse_block_gemv_inplace = GpuSparseBlockGemv(True)
 
 
-class SparseBlockOuterSS(GpuOp):
+class GpuSparseBlockOuter(GpuOp):
     """
     This computes the outer product of two sets of pieces of vectors
     updating a full matrix with the results.
@@ -362,7 +364,7 @@ class SparseBlockOuterSS(GpuOp):
 
     This op should not be called directly since its interface is
     subject to change without notice.  It is involved in the gradient
-    of SparseBlockGemvSS.
+    of GpuSparseBlockGemv.
     """
     def __init__(self, inplace=False):
         self.inplace = inplace
@@ -376,7 +378,7 @@ class SparseBlockOuterSS(GpuOp):
         return hash(type(self)) ^ hash(self.inplace)
 
     def __str__(self):
-        return "SparseBlockOuterSS%s" % ("{inplace}" if self.inplace else "")
+        return "GpuSparseBlockOuter%s" % ("{inplace}" if self.inplace else "")
 
     def make_node(self, o, x, y, xIdx, yIdx, alpha=None):
         one = tensor.constant(numpy.asarray(1.0, dtype='float32'))
@@ -629,39 +631,39 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
         return (10,)
 
 
-sparse_block_outer_ss = SparseBlockOuterSS(False)
-sparse_block_outer_ss_inplace = SparseBlockOuterSS(True)
+gpu_sparse_block_outer = GpuSparseBlockOuter(False)
+gpu_sparse_block_outer_inplace = GpuSparseBlockOuter(True)
 
 
 if cuda_available:
     @opt.register_opt()
-    @opt.local_optimizer([sparse_block_gemv_ss], inplace=True)
+    @opt.local_optimizer([gpu_sparse_block_gemv], inplace=True)
     def local_inplace_blocksparse_gemv(node):
-        if node.op == sparse_block_gemv_ss:
-            return [sparse_block_gemv_ss_inplace(*node.inputs)]
+        if node.op == gpu_sparse_block_gemv:
+            return [gpu_sparse_block_gemv_inplace(*node.inputs)]
 
     @opt.register_opt()
-    @opt.local_optimizer([sparse_block_outer_ss], inplace=True)
+    @opt.local_optimizer([gpu_sparse_block_outer], inplace=True)
     def local_inplace_blocksparse_outer(node):
-        if node.op == sparse_block_outer_ss:
-            return [sparse_block_outer_ss_inplace(*node.inputs)]
+        if node.op == gpu_sparse_block_outer:
+            return [gpu_sparse_block_outer_inplace(*node.inputs)]
 
 # XXX: these optimisations were badly broken and now require a working
 # beta param (could only be a 0/1 thing for outer_merge, but
 # alpha_merge needs the full range).
 
 #    @opt.register_opt()
-#    @alpha_merge(SparseBlockOuterSS, alpha_in=5, beta_in=?, nd=4)
+#    @alpha_merge(GpuSparseBlockOuter, alpha_in=5, beta_in=?, nd=4)
 #    def local_merge_blocksparse_alpha(node, *inputs):
 #        """
-# GpuElemwise{mul}(lr, SparseBlockOuterSS) -> SparseBlockOuterSS(..., alpha=lr)
+# GpuElemwise{mul}(lr, GpuSparseBlockOuter) -> GpuSparseBlockOuter(..., alpha=lr)
 #        """
-#        return [sparse_block_outer_ss(*inputs)]
+#        return [gpu_sparse_block_outer(*inputs)]
 
 #    @opt.register_opt()
-#    @output_merge(SparseBlockOuterSS, alpha_in=5, beta_in=? out_in=0, nd=4)
+#    @output_merge(GpuSparseBlockOuter, alpha_in=5, beta_in=? out_in=0, nd=4)
 #    def local_merge_blocksparse_output(node, *inputs):
-#        return [sparse_block_outer_ss(*inputs)]
+#        return [gpu_sparse_block_outer(*inputs)]
 
 
 def sparse_block_dot_SS(W, h, inputIdx, b, outputIdx):
@@ -693,11 +695,16 @@ def sparse_block_dot_SS(W, h, inputIdx, b, outputIdx):
     - `oWin` is the number of output blocks that will actually be computed.
       Which blocks will be computed is specified in `outputIdx`.
     """
+    _logger.warning("theano.sandbox.cuda.blocksparse.sparse_block_dot_SS "
+                    "is deprecated. Use "
+                    "theano.sandbox.blocksparse.sparse_block_dot instead."
+                    "theano.sandbox.cuda.blocksparse.sparse_block_dot_SS "
+                    "will be removed on or after 19 Dec 2015.")
     assert inputIdx.ndim == h.ndim - 1
     assert outputIdx.ndim == inputIdx.ndim
     if h.ndim == 2:
         h = h.dimshuffle('x', 0, 1)
         inputIdx = inputIdx.dimshuffle('x', 0)
         outputIdx = outputIdx.dimshuffle('x', 0)
-    return sparse_block_gemv_ss(b.take(outputIdx, axis=0), W, h,
-                                inputIdx, outputIdx)
+    return gpu_sparse_block_gemv(b.take(outputIdx, axis=0), W, h,
+                                 inputIdx, outputIdx)
