@@ -2401,7 +2401,7 @@ class Alloc(gof.Op):
     """
     __props__ = ()
 
-    def make_node(self, value, *shape):
+    def make_node(self, value, *shape, **kwargs):
         v = as_tensor_variable(value)
         sh = [as_tensor_variable(s) for s in shape]
         bcast = []
@@ -2418,10 +2418,13 @@ class Alloc(gof.Op):
                 raise TypeError('Shape arguments to Alloc must be integers, '
                                 'but argument %s is not for apply node: %s' %
                                 (i, s_as_str))
-            # if s is constant 1, then we're broadcastable in that dim
-            try:
-                const_shp = get_scalar_constant_value(s)
-            except NotScalarConstantError:
+            if kwargs.get('broadcastable', True):
+                # if s is constant 1, then we're broadcastable in that dim
+                try:
+                    const_shp = get_scalar_constant_value(s)
+                except NotScalarConstantError:
+                    const_shp = None
+            else:
                 const_shp = None
             bcast.append(numpy.all(1 == const_shp))
         otype = TensorType(dtype=v.dtype, broadcastable=bcast)
