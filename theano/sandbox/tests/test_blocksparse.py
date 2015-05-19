@@ -1,114 +1,255 @@
+"""
+    Tests for block sparse dot
+"""
+import unittest
+
 import numpy
 from numpy.random import randn
 
 import theano
-import theano.tensor as T
+from theano import tensor
 import theano.tests.unittest_tools as utt
 
-from theano.sandbox.blocksparse import sparse_block_gemv_cpu, sparse_block_outer_cpu
+from theano.sandbox.blocksparse import sparse_block_dot, cpu_sparse_block_gemv, cpu_sparse_block_outer
 
 
-def sparse_block_gemv_data():
-    nInputBlock = 128
-    nOutputBlock = 64
-    inputSize = 40
-    outputSize = 30
-    inputWindowSize = 7
-    outputWindowSize = 9
-    batchSize = 2
+class BlockSparse_Gemv_and_Outer(unittest.TestCase):
+    """
+        ?
+    """
 
-    input = randn(batchSize, inputWindowSize, inputSize).astype('float32')
-    permutation = numpy.random.permutation
-    inputIndice = numpy.vstack(permutation(nInputBlock)[:inputWindowSize]
-                               for _ in range(batchSize))
-    outputIndice = numpy.vstack(permutation(nOutputBlock)[:outputWindowSize]
-                                for _ in range(batchSize))
-    weight = randn(nInputBlock, nOutputBlock,
-                   inputSize, outputSize).astype('float32')
-    bias = randn(nOutputBlock, outputSize).astype('float32')
+    def runTest(self):
+        pass
 
-    return weight, input, inputIndice, bias, outputIndice
+    def setUp(self):
+        utt.seed_rng()
+        self.mode = theano.compile.get_default_mode().excluding(
+            'constant_folding'
+        )
+        self.gemv_op = cpu_sparse_block_gemv
+        self.outer_op = cpu_sparse_block_outer
 
+    @staticmethod
+    def gemv_data():
 
-def sparse_block_gemv_numpy(W, h, iIdx, b, oIdx):
-    o = b.take(oIdx, axis=0)
+        nInputBlock = 128
+        nOutputBlock = 64
+        inputSize = 40
+        outputSize = 30
+        inputWindowSize = 7
+        outputWindowSize = 9
+        batchSize = 2
 
-    for b in range(o.shape[0]):
-        for j in range(o.shape[1]):
-            outputIdx = oIdx[b, j]
+        input = randn(batchSize, inputWindowSize, inputSize).astype('float32')
+        permutation = numpy.random.permutation
+        inputIndice = numpy.vstack(permutation(nInputBlock)[:inputWindowSize]
+                                   for _ in range(batchSize)).astype('int32')
+        outputIndice = numpy.vstack(
+            permutation(nOutputBlock)[:outputWindowSize]
+            for _ in range(batchSize)).astype('int32')
+        weight = randn(nInputBlock, nOutputBlock,
+                       inputSize, outputSize).astype('float32')
+        bias = randn(nOutputBlock, outputSize).astype('float32')
 
-            for i in range(h.shape[1]):
-                inputIdx = iIdx[b, i]
-                w = W[inputIdx, outputIdx]
-                # this below is a gemv I think
-                o[b, j, :] += numpy.dot(h[b, i], w)
-    return o
+        return weight, input, inputIndice, bias, outputIndice
 
+    @staticmethod
+    def outer_data():
+        nInputBlock = 128
+        nOutputBlock = 64
+        xSize = 40
+        ySize = 30
+        xWindowSize = 7
+        yWindowSize = 9
+        batchSize = 2
 
-def test_sparse_block_gemv_cpu():
-    b = T.fmatrix()
-    W = T.ftensor4()
-    h = T.ftensor3()
-    iIdx = T.lmatrix()
-    oIdx = T.lmatrix()
+        o = randn(nInputBlock, nOutputBlock, xSize, ySize).astype('float32')
+        x = randn(batchSize, xWindowSize, xSize).astype('float32')
+        y = randn(batchSize, yWindowSize, ySize).astype('float32')
+        randint = numpy.random.randint
+        xIdx = numpy.vstack(randint(0, xWindowSize, nInputBlock)
+                            for _ in range(batchSize)).astype('int32')
+        yIdx = numpy.vstack(randint(0, yWindowSize, nOutputBlock)
+                            for _ in range(batchSize)).astype('int32')
 
-    o = sparse_block_gemv_cpu(W, h, iIdx, b, oIdx)
+        return o, x, y, xIdx, yIdx
 
-    f = theano.function([W, h, iIdx, b, oIdx], o)
+    @staticmethod
+    def gemv_numpy(W, h, iIdx, b, oIdx):
+        o = b.take(oIdx, axis=0)
 
-    W_val, h_val, iIdx_val, b_val, oIdx_val = sparse_block_gemv_data()
+        for b in range(o.shape[0]):
+            for j in range(o.shape[1]):
+                outputIdx = oIdx[b, j]
 
-    th_out = f(W_val, h_val, iIdx_val, b_val, oIdx_val)
-    ref_out = sparse_block_gemv_numpy(W_val, h_val, iIdx_val, b_val, oIdx_val)
+                for i in range(h.shape[1]):
+                    inputIdx = iIdx[b, i]
+                    w = W[inputIdx, outputIdx]
+                    # this below is a gemv I think
+                    o[b, j, :] += numpy.dot(h[b, i], w)
+        return o
 
-    utt.assert_allclose(ref_out, th_out)
+    @staticmethod
+    def outer_numpy(x, y, xIdx, yIdx):
 
+        o = numpy.zeros((yIdx.shape[1], xIdx.shape[1], y.shape[2], x.shape[2]),
+                        dtype="float32")
 
-def sparse_block_outer_data():
-    nInputBlock = 128
-    nOutputBlock = 64
-    xSize = 40
-    ySize = 30
-    xWindowSize = 7
-    yWindowSize = 9
-    batchSize = 2
+        for b in range(x.shape[0]):
+            for i in range(yIdx.shape[1]):
+                for j in range(xIdx.shape[1]):
+                    o[i, j] += numpy.outer(y[b, yIdx[b, i], :], x[b, xIdx[b, j], :])
+        return o
 
-    x = randn(batchSize, xWindowSize, xSize).astype('float32')
-    y = randn(batchSize, yWindowSize, ySize).astype('float32')
-    randint = numpy.random.randint
-    xIdx = numpy.vstack(randint(0, xWindowSize, nInputBlock)
-                        for _ in range(batchSize))
-    yIdx = numpy.vstack(randint(0, yWindowSize, nOutputBlock)
-                        for _ in range(batchSize))
+    def test_sparseblockdot(self):
+        b = tensor.fmatrix()
+        W = tensor.ftensor4()
+        h = tensor.ftensor3()
+        iIdx = tensor.imatrix()
+        oIdx = tensor.imatrix()
 
-    return x, y, xIdx, yIdx
+        o = sparse_block_dot(W, h, iIdx, b, oIdx)
 
+        f = theano.function([W, h, iIdx, b, oIdx], o, mode=self.mode)
 
-def sparse_block_outer_numpy(x, y, xIdx, yIdx):
+        W_val, h_val, iIdx_val, b_val, oIdx_val = \
+            BlockSparse_Gemv_and_Outer.gemv_data()
 
-    o = numpy.zeros((yIdx.shape[1], xIdx.shape[1], y.shape[2], x.shape[2]),
-                    dtype="float32")
+        th_out = f(W_val, h_val, iIdx_val, b_val, oIdx_val)
+        ref_out = BlockSparse_Gemv_and_Outer.gemv_numpy(
+            W_val, h_val, iIdx_val, b_val, oIdx_val)
 
-    for b in range(x.shape[0]):
-        for i in range(yIdx.shape[1]):
-            for j in range(xIdx.shape[1]):
-                o[i, j] += numpy.outer(y[b, yIdx[b, i], :], x[b, xIdx[b, j], :])
-    return o
+        utt.assert_allclose(ref_out, th_out)
 
+    def test_sparseblockgemv(self):
 
-def test_sparse_block_outer_cpu():
-    x = T.ftensor3()
-    y = T.ftensor3()
-    xIdx = T.lmatrix()
-    yIdx = T.lmatrix()
+        b = tensor.fmatrix()
+        W = tensor.ftensor4()
+        h = tensor.ftensor3()
+        iIdx = tensor.imatrix()
+        oIdx = tensor.imatrix()
 
-    o = sparse_block_outer_cpu(x, y, xIdx, yIdx)
+        o = self.gemv_op(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
 
-    f = theano.function([x, y, xIdx, yIdx], o)
+        f = theano.function([W, h, iIdx, b, oIdx], o, mode=self.mode)
 
-    x_val, y_val, xIdx_val, yIdx_val = sparse_block_outer_data()
+        W_val, h_val, iIdx_val, b_val, oIdx_val = \
+            BlockSparse_Gemv_and_Outer.gemv_data()
 
-    th_out = f(x_val, y_val, xIdx_val, yIdx_val)
-    ref_out = sparse_block_outer_numpy(x_val, y_val, xIdx_val, yIdx_val)
+        th_out = f(W_val, h_val, iIdx_val, b_val, oIdx_val)
+        ref_out = BlockSparse_Gemv_and_Outer.gemv_numpy(
+            W_val, h_val, iIdx_val, b_val, oIdx_val)
 
-    utt.assert_allclose(ref_out, th_out)
+        utt.assert_allclose(ref_out, th_out)
+
+    def test_sparseblockgemvF(self):
+        """
+            Test the fortan order for W (which can happen in the grad for some
+            graphs).
+        """
+        b = tensor.fmatrix()
+        W = tensor.ftensor4()
+        h = tensor.ftensor3()
+        iIdx = tensor.imatrix()
+        oIdx = tensor.imatrix()
+
+        o = self.gemv_op(b.take(oIdx, axis=0),
+            tensor.DimShuffle((False, False, False, False),
+                              (0, 1, 3, 2))(tensor.as_tensor_variable(W)),
+            h, iIdx, oIdx)
+
+        f = theano.function([W, h, iIdx, b, oIdx], o, mode=self.mode)
+
+        W_val, h_val, iIdx_val, b_val, oIdx_val = \
+            BlockSparse_Gemv_and_Outer.gemv_data()
+
+        th_out = f(numpy.swapaxes(W_val, 2, 3), h_val, iIdx_val, b_val,
+                   oIdx_val)
+        ref_out = BlockSparse_Gemv_and_Outer.gemv_numpy(
+            W_val, h_val, iIdx_val, b_val, oIdx_val)
+
+        utt.assert_allclose(ref_out, th_out)
+
+    def test_sparseblockgemv_grad(self):
+        h_val = randn(1, 2, 3).astype('float32')
+        iIdx_val = numpy.random.permutation(3)[:2][None, :]
+        oIdx_val = numpy.random.permutation(3)[:2][None, :]
+        W_val = randn(3, 3, 3, 4).astype('float32')
+        b_val = randn(3, 4).astype('float32')
+
+        iIdx = theano.tensor.constant(iIdx_val)
+        oIdx = theano.tensor.constant(oIdx_val)
+
+        def metaop(b, h, W):
+            print b, h, W
+            return sparse_block_dot(W, h, iIdx, b, oIdx)
+
+        def op(b, h, W):
+            return self.gemv_op(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
+
+        utt.verify_grad(metaop, [b_val, h_val, W_val], mode=self.mode)
+        utt.verify_grad(op, [b_val, h_val, W_val], mode=self.mode)
+
+    def test_sparseblockgemv_grad_1(self):
+        """
+            Test that we correctly handle cases where dimensions are 1.
+        """
+        h_val = randn(1, 1, 1).astype('float32')
+        iIdx_val = numpy.random.permutation(1)[:1][None, :]
+        oIdx_val = numpy.random.permutation(1)[:1][None, :]
+        W_val = randn(1, 1, 1, 1).astype('float32')
+        b_val = randn(1, 1).astype('float32')
+
+        iIdx = theano.tensor.constant(iIdx_val)
+        oIdx = theano.tensor.constant(oIdx_val)
+
+        def metaop(b, h, W):
+            return sparse_block_dot(W, h, iIdx, b, oIdx)
+
+        def op(b, h, W):
+            return self.gemv_op(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
+
+        utt.verify_grad(metaop, [b_val, h_val, W_val], mode=self.mode)
+        utt.verify_grad(op, [b_val, h_val, W_val], mode=self.mode)
+
+    def test_sparseblockgemv_grad_shape(self):
+        b = tensor.fmatrix()
+        W = tensor.ftensor4()
+        h = tensor.ftensor3()
+        iIdx = tensor.imatrix()
+        oIdx = tensor.imatrix()
+
+        o = self.gemv_op(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
+        go = theano.grad(o.sum(), [b, W, h])
+
+        f = theano.function([W, h, iIdx, b, oIdx], go, mode=self.mode)
+
+        W_val, h_val, iIdx_val, b_val, oIdx_val = \
+            BlockSparse_Gemv_and_Outer.gemv_data()
+
+        # just make sure that it runs correcly and all the shapes are ok.
+        b_g, W_g, h_g = f(W_val, h_val, iIdx_val, b_val, oIdx_val)
+
+        assert b_g.shape == b_val.shape
+        assert h_g.shape == h_val.shape
+        assert W_g.shape == W_val.shape
+
+    def test_sparse_block_outer(self):
+        o = tensor.ftensor4()
+        x = tensor.ftensor3()
+        y = tensor.ftensor3()
+        xIdx = tensor.imatrix()
+        yIdx = tensor.imatrix()
+
+        out = self.outer_op(o, x, y, xIdx, yIdx)
+
+        f = theano.function([o, x, y, xIdx, yIdx], out)
+
+        o_val, x_val, y_val, xIdx_val, yIdx_val = \
+            BlockSparse_Gemv_and_Outer.outer_data()
+
+        th_out = f(o_val, x_val, y_val, xIdx_val, yIdx_val)
+        ref_out = BlockSparse_Gemv_and_Outer.outer_numpy(
+            o_val, x_val, y_val, xIdx_val, yIdx_val)
+
+        utt.assert_allclose(ref_out, th_out)

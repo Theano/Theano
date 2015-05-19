@@ -1,3 +1,5 @@
+import logging
+
 import numpy
 import theano
 from theano import Apply, tensor, scalar
@@ -10,10 +12,8 @@ from theano.sandbox.cuda import cuda_available, GpuOp, GpuElemwise
 _logger = logging.getLogger('theano.sandbox.cuda.blocksparse')
 
 if cuda_available:
-    from theano.sandbox.cuda import (basic_ops,
-                                     opt, GpuFromHost,
-                                     HostFromGpu, host_from_gpu,
-                                     GpuDimShuffle)
+    
+    from theano.sandbox.cuda import basic_ops
     from theano.sandbox.cuda.opt_util import alpha_merge, output_merge
 
 
@@ -633,37 +633,6 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
 
 gpu_sparse_block_outer = GpuSparseBlockOuter(False)
 gpu_sparse_block_outer_inplace = GpuSparseBlockOuter(True)
-
-
-if cuda_available:
-    @opt.register_opt()
-    @opt.local_optimizer([gpu_sparse_block_gemv], inplace=True)
-    def local_inplace_blocksparse_gemv(node):
-        if node.op == gpu_sparse_block_gemv:
-            return [gpu_sparse_block_gemv_inplace(*node.inputs)]
-
-    @opt.register_opt()
-    @opt.local_optimizer([gpu_sparse_block_outer], inplace=True)
-    def local_inplace_blocksparse_outer(node):
-        if node.op == gpu_sparse_block_outer:
-            return [gpu_sparse_block_outer_inplace(*node.inputs)]
-
-# XXX: these optimisations were badly broken and now require a working
-# beta param (could only be a 0/1 thing for outer_merge, but
-# alpha_merge needs the full range).
-
-#    @opt.register_opt()
-#    @alpha_merge(GpuSparseBlockOuter, alpha_in=5, beta_in=?, nd=4)
-#    def local_merge_blocksparse_alpha(node, *inputs):
-#        """
-# GpuElemwise{mul}(lr, GpuSparseBlockOuter) -> GpuSparseBlockOuter(..., alpha=lr)
-#        """
-#        return [gpu_sparse_block_outer(*inputs)]
-
-#    @opt.register_opt()
-#    @output_merge(GpuSparseBlockOuter, alpha_in=5, beta_in=? out_in=0, nd=4)
-#    def local_merge_blocksparse_output(node, *inputs):
-#        return [gpu_sparse_block_outer(*inputs)]
 
 
 def sparse_block_dot_SS(W, h, inputIdx, b, outputIdx):
