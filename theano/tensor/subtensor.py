@@ -291,6 +291,7 @@ class Subtensor(Op):
     debug = 0
     check_input = False
     view_map = {0: [0]}
+    _f16_ok = True
 
     @staticmethod
     def collapse(idxs, cond):
@@ -328,7 +329,7 @@ class Subtensor(Op):
         TODO: WRITEME: This method also accepts "entry" already being a Type;
             when would that happen?
         """
-        invalid_scal_types = [scal.float64, scal.float32]
+        invalid_scal_types = [scal.float64, scal.float32, scal.float16]
         scal_types = [scal.int64, scal.int32, scal.int16, scal.int8]
         tensor_types = [theano.tensor.lscalar, theano.tensor.iscalar,
                         theano.tensor.wscalar, theano.tensor.bscalar]
@@ -1603,6 +1604,7 @@ class AdvancedSubtensor1(Op):
     # sparse_grad doesn't go in here since it only affects the output
     # of the grad() method.
     __props__ = ()
+    _f16_ok = True
 
     def __init__(self, sparse_grad=False):
         self.sparse_grad = sparse_grad

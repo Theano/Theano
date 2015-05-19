@@ -1685,16 +1685,18 @@ class _Linker(gof.link.LocalLinker):
             node_input_storage = [storage_map[r] for r in node.inputs]
             node_output_storage = [storage_map[r] for r in node.outputs]
 
+            compute_map = {}
+            for k in node.inputs:
+                compute_map[k] = [True]
+            for k in node.outputs:
+                compute_map[k] = [False]
+
             # Some Ops define a make_thunk with the expectation that
             # it will be called before the C code is compiled, because
             # the compilation of some dependency is triggered there.
             thunk_other = None
+
             if get_unbound_function(node.op.make_thunk) not in default_make_thunk:
-                compute_map = {}
-                for k in node.inputs:
-                    compute_map[k] = [True]
-                for k in node.outputs:
-                    compute_map[k] = [False]
                 thunk = node.op.make_thunk(node,
                                            storage_map,
                                            compute_map,
@@ -1708,24 +1710,13 @@ class _Linker(gof.link.LocalLinker):
                     raise utils.MethodNotDefined()
                 # Ops that do not inherit from gof.op.Op don't have certain
                 # methods defined that the CLinker expects (Scan is an
-                # exmaple, ifelse is another of such classes that inherit
+                # example, ifelse is another of such classes that inherit
                 # directly from PureOp)
                 if not isinstance(node.op, gof.op.Op):
                     raise utils.MethodNotDefined()
-                e = FunctionGraph(node.inputs, node.outputs)
-                # The toposort isn't a stochastic order as it contain only one node.
-                e.toposort = lambda: list(e.apply_nodes)
-                #  Specifically... e.nodes is a set, but of only 1 element
 
-                cl = CLinker().accept(e, [r for r, r2 in zip(e.outputs,
-                                                             node.outputs)
-                                          if r2 in no_recycling])
-
-                thunk, node_input_filters, node_output_filters = cl.make_thunk(
-                    input_storage=node_input_storage,
-                    output_storage=node_output_storage)
-                thunk.inputs = node_input_storage
-                thunk.outputs = node_output_storage
+                thunk = node.op.make_c_thunk(node, storage_map, compute_map,
+                                             no_recycling)
                 thunks_c.append(thunk)
             except (NotImplementedError, utils.MethodNotDefined):
                 thunks_c.append(None)
@@ -1735,20 +1726,8 @@ class _Linker(gof.link.LocalLinker):
             # consider that we don't have a python implementation
             if ((self.maker.mode.check_py_code or thunks_c[-1] is None) and
                 node.op.perform.func_code != gof.op.PureOp.perform.func_code):
-                p = node.op.perform
-                ctx = node.run_context()
-                if ctx is graph.NoContext:
-                    thunk = (lambda p=p, i=node_input_storage,
-                             o=node_output_storage,
-                             n=node: p(n, [x[0] for x in i], o))
-                else:
-                    ctx_val = node.context_type.filter(ctx)
-                    thunk = (lambda p=p, i=node_input_storage,
-                             o=node_output_storage, ctx=ctx_val,
-                             n=node: p(n, [x[0] for x in i], o, ctx))
-                thunk.inputs = node_input_storage
-                thunk.outputs = node_output_storage
-                thunk.perform = p
+                thunk = node.op.make_py_thunk(node, storage_map, compute_map,
+                                              no_recycling)
                 thunks_py.append(thunk)
             else:
                 thunks_py.append(None)

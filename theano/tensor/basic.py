@@ -3842,6 +3842,7 @@ class Reshape(Op):
     The number of dimensions to which to reshape to (ndim) must be
     known at graph build time."""
     view_map = {0: [0]}  # output 0 is potentially aliased to inputs [0]
+    _f16_ok = True
 
     check_input = False
 

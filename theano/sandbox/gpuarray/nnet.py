@@ -464,6 +464,7 @@ class GpuSoftmax (Op):
     Implement Softmax on the gpu.
     """
     __props__ = ()
+    _f16_ok = True
 
     def make_node(self, x):
         x = as_gpuarray_variable(x)
@@ -473,7 +474,7 @@ class GpuSoftmax (Op):
         return shape
 
     def c_code_cache_version(self):
-        return (12,) + inline_softmax.code_version
+        return (13,) + inline_softmax.code_version
 
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
@@ -487,6 +488,7 @@ class GpuSoftmax (Op):
 
     def c_code(self, node, nodename, inp, out, sub):
         dtype_x = node.inputs[0].dtype
+        work_x = work_dtype(dtype_x)
         dtype_z = node.outputs[0].dtype
         itemsize_x = numpy.dtype(dtype_x).itemsize
         itemsize_z = numpy.dtype(dtype_z).itemsize
@@ -525,7 +527,7 @@ class GpuSoftmax (Op):
 //TODO, detect the maximum number of thread per block.
             int n_threads = std::min(PyGpuArray_DIMS(%(x)s)[1], (size_t)512);
             int n_shared_bytes = PyGpuArray_DIMS(%(x)s)[1] *
-                                     2 * sizeof(npy_%(dtype_x)s);
+                                     2 * sizeof(npy_%(work_x)s);
 
             if (PyGpuArray_DIMS(%(x)s)[0] > 0)
             {
@@ -559,7 +561,7 @@ class GpuSoftmax (Op):
                     <<<
                         n_blocks,
                         n_threads,
-                        n_threads * sizeof(npy_%(dtype_x)s)
+                        n_threads * sizeof(npy_%(work_x)s)
                     >>>(
                             PyGpuArray_DIMS(%(x)s)[0],
                             PyGpuArray_DIMS(%(x)s)[1],
@@ -597,25 +599,28 @@ class GpuSoftmax (Op):
     def c_support_code_apply(self, node, nodename):
         dtype_x = node.inputs[0].dtype
         dtype_sm = node.outputs[0].dtype
+        load_x = load_w(node.inputs[0].dtype)
+        write_sm = write_w(node.outputs[0].dtype)
+        work_sm = work_dtype(node.outputs[0].dtype)
         ret1 = nvcc_kernel("kSoftmax_%s" % nodename,
                 params=['int M', 'int N',
                     'const npy_%(dtype_x)s * x', 'const int sx0', 'const int sx1',
                     'npy_%(dtype_sm)s * sm', 'const int sm_s0', 'const int sm_s1'],
                 body=[
-                    "extern __shared__ npy_%(dtype_sm)s buf[]",
-                    "npy_%(dtype_sm)s * buf2 = buf + N",
+                    "extern __shared__ npy_%(work_sm)s buf[]",
+                    "npy_%(work_sm)s * buf2 = buf + N",
                     "for (int blockIDX = blockIdx.x; blockIDX < M;"
                     "     blockIDX += gridDim.x){",
                       "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
-                        "buf[tx] = x[blockIDX * sx0 + tx * sx1]",
+                        "buf[tx] = %(load_x)s(x[blockIDX * sx0 + tx * sx1])",
                         "buf2[tx] = buf[tx]",
                       "}",
                       "__syncthreads()",
                       inline_softmax('N', 'buf', 'buf2',
-                                     'threadIdx.x', 'blockDim.x', dtype_sm),
+                                     'threadIdx.x', 'blockDim.x', work_sm),
                       "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
                         # This set all value correctly
-                        "sm[blockIDX * sm_s0 + tx * sm_s1] = buf[tx]",
+                        "sm[blockIDX * sm_s0 + tx * sm_s1] = %(write_sm)s(buf[tx])",
                       "}",
                       "__syncthreads()",
                     "}",
@@ -625,15 +630,16 @@ class GpuSoftmax (Op):
                     'const npy_%(dtype_x)s * x', 'const int sx0', 'const int sx1',
                     'npy_%(dtype_sm)s * sm', 'const int sm_s0', 'const int sm_s1'],
                 body=[
-                    "extern __shared__ npy_%(dtype_sm)s buf[]",
+                    "extern __shared__ npy_%(work_sm)s buf[]",
                     "for (int blockIDX = blockIdx.x; blockIDX < M;"
                     "     blockIDX += gridDim.x){",
                       "const npy_%(dtype_x)s *x_ptr = &x[blockIDX * sx0]",
                       "npy_%(dtype_sm)s *sm_ptr = &sm[blockIDX * sm_s0]",
                       inline_softmax_fixed_shared('N', 'buf', 'x_ptr', 'sx1',
-                                                  'sm_ptr', 'sm_s1',
+                                                  load_x,
+                                                  'sm_ptr', 'sm_s1', write_sm,
                                                   'threadIdx.x', 'blockDim.x',
-                                                  dtype=dtype_sm),
+                                                  dtype=work_sm),
                       "__syncthreads()",
                     "}",
                     ])
@@ -649,6 +655,7 @@ class GpuSoftmaxWithBias (Op):
     nin = 2
     nout = 1
     __props__ = ()
+    _f16_ok = True
 
     def make_node(self, x, b):
         x = as_gpuarray_variable(x)
@@ -659,7 +666,7 @@ class GpuSoftmaxWithBias (Op):
         return  [shape[0]]
 
     def c_code_cache_version(self):
-        return (11,) + inline_softmax.code_version
+        return (12,) + inline_softmax.code_version
 
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
@@ -675,6 +682,7 @@ class GpuSoftmaxWithBias (Op):
         dtype_x = node.inputs[0].dtype
         dtype_b = node.inputs[1].dtype
         dtype_z = node.outputs[0].dtype
+        work_x = work_dtype(dtype_x)
         itemsize_x = numpy.dtype(dtype_x).itemsize
         itemsize_b = numpy.dtype(dtype_b).itemsize
         itemsize_z = numpy.dtype(dtype_z).itemsize
@@ -727,7 +735,7 @@ class GpuSoftmaxWithBias (Op):
 //TODO, detect the maximum number of thread per block.
             int n_threads = std::min(PyGpuArray_DIMS(%(x)s)[1], (size_t)512);
             int n_shared_bytes = PyGpuArray_DIMS(%(x)s)[1] *
-                                     2 * sizeof(npy_%(dtype_x)s);
+                                     2 * sizeof(npy_%(work_x)s);
             if (PyGpuArray_DIMS(%(x)s)[0] > 0)
             {
               if(n_shared_bytes < (32 * 1024 - 500)){
@@ -760,7 +768,7 @@ class GpuSoftmaxWithBias (Op):
                     <<<
                         n_blocks,
                         n_threads,
-                        n_threads * sizeof(npy_%(dtype_x)s)
+                        n_threads * sizeof(npy_%(work_x)s)
                     >>>(
                         PyGpuArray_DIMS(%(x)s)[0],
                         PyGpuArray_DIMS(%(x)s)[1],
@@ -802,26 +810,30 @@ class GpuSoftmaxWithBias (Op):
         dtype_x = node.inputs[0].dtype
         dtype_b = node.inputs[1].dtype
         dtype_sm = node.outputs[0].dtype
+        load_x = load_w(node.inputs[0].dtype)
+        load_b = load_w(node.inputs[1].dtype)
+        write_sm = write_w(node.outputs[0].dtype)
+        work_sm = work_dtype(node.outputs[0].dtype)
         ret1 = nvcc_kernel("kSoftmaxWithBias_%s" % nodename,
                 params=['int M', 'int N',
                         'const npy_%(dtype_x)s * x', 'const int sx0', 'const int sx1',
                         'const npy_%(dtype_b)s * b', 'const int sb0',
                         'npy_%(dtype_sm)s * sm', 'const int sm_s0', 'const int sm_s1'],
                 body=[
-                    "extern __shared__ npy_%(dtype_sm)s buf[]",
-                    "npy_%(dtype_sm)s * buf2 = buf + N",
+                    "extern __shared__ npy_%(work_sm)s buf[]",
+                    "npy_%(work_sm)s * buf2 = buf + N",
                     "for (int blockIDX = blockIdx.x; blockIDX < M;"
                     "     blockIDX += gridDim.x){",
                       "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
-                         "buf[tx] = x[blockIDX * sx0 + tx * sx1]",
-                         "buf[tx] += b[tx * sb0]",
+                         "buf[tx] = %(load_x)s(x[blockIDX * sx0 + tx * sx1])",
+                         "buf[tx] += %(load_b)s(b[tx * sb0])",
                          "buf2[tx] = buf[tx]",
                       "}",
                        "__syncthreads()",
                        inline_softmax('N', 'buf', 'buf2',
-                                      'threadIdx.x', 'blockDim.x', dtype_sm),
+                                      'threadIdx.x', 'blockDim.x', work_sm),
                       "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
-                         "sm[blockIDX * sm_s0 + tx * sm_s1] = buf[tx]",
+                         "sm[blockIDX * sm_s0 + tx * sm_s1] = %(write_sm)s(buf[tx])",
                       "}",
                       "__syncthreads()",
                     "}",
@@ -834,18 +846,20 @@ class GpuSoftmaxWithBias (Op):
                                    'npy_%(dtype_sm)s * sm',
                                    'const int sm_s0', 'const int sm_s1'],
                            body=[
-                               "extern __shared__ npy_%(dtype_sm)s buf[]",
+                               "extern __shared__ npy_%(work_sm)s buf[]",
                                "for (int blockIDX = blockIdx.x; blockIDX < M;"
                                "     blockIDX += gridDim.x){",
                                "const npy_%(dtype_x)s *x_ptr = &x[blockIDX * sx0]",
                                "npy_%(dtype_sm)s *sm_ptr = &sm[blockIDX * sm_s0]",
                                inline_softmax_fixed_shared('N', 'buf',
                                                            'x_ptr', 'sx1',
+                                                           load_x,
                                                            'sm_ptr', 'sm_s1',
+                                                           write_sm,
                                                            'threadIdx.x',
                                                            'blockDim.x',
-                                                           'b', 'sb0',
-                                                           dtype_sm),
+                                                           'b', 'sb0', load_b,
+                                                           work_sm),
                                "__syncthreads()",
                                "}",
                            ])

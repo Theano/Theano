@@ -169,6 +169,10 @@ class GpuIncSubtensor(IncSubtensor):
           The helper methods like do_type_checking, copy_of_x, etc. specialize
           the c_code for this Op.
     """
+    @property
+    def _f16_ok(self):
+        return self.iadd_node.op._f16_ok
+
     def c_headers(self):
         return self.iadd_node.op.c_headers()
 
@@ -325,7 +329,6 @@ class GpuIncSubtensor(IncSubtensor):
                                                     PyGpuArrayObject* src){
            PyGpuArrayObject* ret = NULL;
         """ % locals()
-        # def c_code(self, node, name, inputs, outputs, sub):
         inputs = ["dst", "src"]
         outputs = ["ret"]
         sub = {"fail": "return NULL;"}
@@ -337,7 +340,6 @@ class GpuIncSubtensor(IncSubtensor):
         return ret
 
     def add_to_zview(self, nodename, x, fail):
-        # TODO
         return """
         PyGpuArrayObject * add_result = inc_sub_iadd_%(nodename)s(zview, %(x)s);
 
@@ -357,7 +359,7 @@ class GpuIncSubtensor(IncSubtensor):
         elemwise_version = self.iadd_node.c_code_cache_version()
         if not parent_version or not elemwise_version:
             return
-        return parent_version + elemwise_version + (1,)
+        return parent_version + elemwise_version + (2,)
 
 
 class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
@@ -391,6 +393,9 @@ class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
         return gof.Apply(self, [x_, y_, ilist_], [x_.type()])
 
     def getInplElemwiseAdditionKernel(self, a, b):
+        if a.dtype == 'float16' or b.dtype == 'float16':
+            raise NotImplementedError('float16 is not supported by pygpu '
+                                      'elemwise')
         a_arg = pygpu.tools.as_argument(a, 'a')
         b_arg = pygpu.tools.as_argument(b, 'b')
         args = [a_arg, b_arg]
@@ -452,10 +457,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
     """Implement AdvancedIncSubtensor1 on the gpu, but use function
     only avail on compute capability 2.0 and more recent.
     """
-
-    def __init__(self, inplace=False, set_instead_of_inc=False):
-        # The python implementation in the parent class is not applicable here
-        GpuAdvancedIncSubtensor1.__init__(self, inplace, set_instead_of_inc)
+    _f16_ok = True
 
     def make_node(self, x, y, ilist):
         """It defer from GpuAdvancedIncSubtensor1 in that it make sure
@@ -541,6 +543,30 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
         itemsize_ind = numpy.dtype(dtype_ind).itemsize
         itemsize_out = numpy.dtype(dtype_out).itemsize
         return """
+
+/*
+ * This is a version of atomicAdd that works for half-floats.  It may
+ * read and write 2 bytes more than the size of the array if the array
+ * has an uneven number of elements.  The actual value at that spot
+ * will not be modified.
+ */
+
+__device__ npy_float16 atomicAdd(npy_float16 *addr, npy_float16 val) {
+  npy_uint32 *base = (npy_uint32 *)((size_t)addr & ~2);
+  npy_uint32 old, assumed, sum, new_;
+  old = *base;
+  do {
+    assumed = old;
+    sum = __float2half_rn(
+      __half2float(val) +
+      __half2float((npy_float16)__byte_perm(old, 0,
+                     ((size_t)addr & 2) ? 0x4432 : 0x4410)));
+    new_ = __byte_perm(old, sum, ((size_t)addr & 2) ? 0x5410 : 0x3254);
+    old = atomicCAS(base, assumed, new_);
+  } while (assumed != old);
+  return (npy_float16)__byte_perm(old, 0,
+                                  ((size_t)addr & 2) ? 0x4432 : 0x4410);
+}
 
         __global__ void k_vector_add_fast(int numRowsX,
                                           int numColsX,
