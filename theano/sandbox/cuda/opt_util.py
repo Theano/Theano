@@ -6,7 +6,6 @@ from theano import scalar as scal, Constant
 from theano.gof import local_optimizer
 from theano.tensor import (DimShuffle, get_scalar_constant_value,
                            NotScalarConstantError)
-from theano.tensor.opt import broadcast_like
 
 from theano.sandbox.cuda.basic_ops import (
     GpuFromHost, HostFromGpu, host_from_gpu, GpuDimShuffle, GpuElemwise)
@@ -101,7 +100,9 @@ def output_merge(cls, alpha_in, beta_in, out_in, nd):
                     # other cases are too complex for now
                     return None
                 if W.broadcastable != targ.inputs[out_in].broadcastable:
-                    W = broadcast_like(W, targ.inputs[out_in], node.fgraph)
+                    # May change later to do the broadcast, but it's
+                    # under discussion.
+                    return None
                 inputs = list(targ.inputs)
                 inputs[out_in] = W
                 inputs[beta_in] = _one.clone()
