@@ -1426,9 +1426,11 @@ optdb.register('crossentropy_to_crossentropy_with_softmax',
                'fast_run', 'xent', 'fast_compile_gpu')
 
 
-@opt.register_specialize('fast_compile_gpu')
+@opt.register_specialize(
+    'fast_compile_gpu',
+    'local_crossentropy_to_crossentropy_with_softmax_grad')  # old name
 @gof.local_optimizer([softmax_grad])
-def local_crossentropy_to_crossentropy_with_softmax_grad(node):
+def local_softmax_grad_to_crossentropy_with_softmax_grad(node):
     if node.op == softmax_grad:
         g_coding_dist, coding_dist = node.inputs
         if (g_coding_dist.owner and
