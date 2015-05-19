@@ -5472,7 +5472,7 @@ class Choose(Op):
 
 
 class AllocEmpty(gof.Op):
-    """Implement Alloc on the gpu, but without initializing memory."""
+    """Implement Alloc on the cpu, but without initializing memory."""
     __props__ = ("dtype",)
 
     # specify the type of the data
