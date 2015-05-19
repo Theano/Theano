@@ -16,7 +16,7 @@ import theano
 from theano import gof
 from theano.tensor import basic as tensor
 from theano.tensor import subtensor
-from theano.tensor import elemwise, dmatrix, fmatrix, dvector, fvector
+from theano.tensor import elemwise
 from theano.tensor import opt
 from theano.compile import optdb
 from theano.gof import Apply
