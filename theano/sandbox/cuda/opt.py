@@ -497,12 +497,19 @@ def local_gpu_lazy_ifelse(node):
             # Should not happen, but just in case
             if isinstance(c.type, CudaNdarrayType):
                 c = host_from_gpu(c)
+            if all([isinstance(o.type, CudaNdarrayType) or o.dtype != 'float32'
+                    for o in outs]):
+                return
 
             for i in range(len(outs)):
-                if not isinstance(outs[i], CudaNdarrayType):
+                if (not isinstance(outs[i].type, CudaNdarrayType) and
+                        outs[i].dtype == 'float32'):
                     outs[i] = gpu_from_host(outs[i])
-            return [host_from_gpu(out) for out in
-                    gpu_ifelse.make_node(c, *outs).outputs]
+            outs = gpu_ifelse(c, *outs, return_list=True)
+            for i in range(len(outs)):
+                if isinstance(outs[i].type, CudaNdarrayType):
+                    outs[i] = host_from_gpu(outs[i])
+            return outs
 
     if isinstance(node.op, GpuFromHost):
         host_input = node.inputs[0]
@@ -522,11 +529,14 @@ def local_gpu_lazy_ifelse(node):
             # Should not happen, but just in case
             if isinstance(c.type, CudaNdarrayType):
                 c = host_from_gpu(c)
+            if all([isinstance(o.type, CudaNdarrayType) or o.dtype != 'float32'
+                    for o in outs]):
+                return
 
             for i in range(len(outs)):
-                if not isinstance(outs[i], CudaNdarrayType):
+                if (not isinstance(outs[i].type, CudaNdarrayType) and
+                        outs[i].dtype == 'float32'):
                     outs[i] = gpu_from_host(outs[i])
-
             outs = gpu_ifelse.make_node(c, *outs).outputs
             return outs
 

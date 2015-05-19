@@ -49,7 +49,7 @@ script:
   - cd $(python -c 'import theano; import os; print(os.path.split(theano.__file__)[0])')
   - echo "$PART"
   - theano-nose -v $PART
-  - theano-cache list
+#  - theano-cache list
 
 #after_script:
 after_failure:
