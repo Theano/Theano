@@ -122,6 +122,7 @@ def test_memory():
         assert mem1 == freemem(), (mem1, freemem())
 
 
+@theano.configparser.change_flags(**{'vm.lazy': True})
 def test_memory_lazy():
     """As test_memory, but with the ifelse op.
 
