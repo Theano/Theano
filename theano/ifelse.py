@@ -227,7 +227,6 @@ class IfElse(PureOp):
                 if_false_op(*if_false, **dict(return_list=True)))
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
-        outtypes = [out.type for out in node.outputs]
         cond = node.inputs[0]
         ts = node.inputs[1:][:self.n_outs]
         fs = node.inputs[1:][self.n_outs:]
@@ -244,7 +243,7 @@ class IfElse(PureOp):
                     if len(ls) > 0:
                         return ls
                     else:
-                        for out, outtype, t in izip(outputs, outtypes, ts):
+                        for out, t in izip(outputs, ts):
                             compute_map[out][0] = 1
                             val = storage_map[t][0]
                             if self.as_view:
@@ -261,7 +260,7 @@ class IfElse(PureOp):
                     if len(ls) > 0:
                         return ls
                     else:
-                        for out, outtype, f in izip(outputs, outtypes, fs):
+                        for out, f in izip(outputs, fs):
                             compute_map[out][0] = 1
                             # can't view both outputs unless destroyhandler
                             # improves
