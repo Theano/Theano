@@ -17,7 +17,7 @@ from theano.tensor import elemwise
 from theano.tensor.var import (AsTensorError, TensorVariable,
                                TensorConstant,
                                _tensor_py_operators)
-from theano.tensor.type import TensorType
+from theano.tensor.type import TensorType, values_eq_approx_always_true
 from theano.tensor.type_other import NoneConst
 from theano import scalar as scal
 from theano.compat import partial
@@ -592,7 +592,8 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                 continue
             elif isinstance(v.owner.op, theano.compile.ops.Shape_i):
                 if isinstance(v.owner.inputs[0], Constant):
-                    return numpy.asarray(v.owner.inputs[0].data.shape[v.owner.op.i])
+                    return numpy.asarray(
+                        v.owner.inputs[0].data.shape[v.owner.op.i])
             # Don't act as the constant_folding optimization here as this
             # fct is used too early in the optimization phase.  This would
             # mess with the stabilization optimization and be too slow.
@@ -5467,3 +5468,84 @@ class Choose(Op):
         choice = inputs[1]
         # TODO reuse out?
         z[0] = numpy.choose(a, choice, mode=self.mode)
+
+
+class AllocEmpty(gof.Op):
+    """Implement Alloc on the cpu, but without initializing memory."""
+    __props__ = ("dtype",)
+
+    # specify the type of the data
+    def __init__(self, dtype):
+        assert isinstance(dtype, str)
+        self.dtype = dtype.lower()
+
+    def validate_shape(self, shape):
+        sh = [as_tensor_variable(s) for s in shape]
+        bcast = []
+        for s in sh:
+            if s.type.dtype[:3] not in ('int', 'uin'):
+                raise TypeError('Shape arguments must be integers', s)
+            # if s is constant 1, then we're broadcastable in that dim
+            try:
+                const_shp = get_scalar_constant_value(s)
+            except NotScalarConstantError:
+                const_shp = None
+            bcast.append(numpy.all(1 == const_shp))
+        otype = TensorType(dtype=self.dtype, broadcastable=bcast)
+        output = otype()
+        return sh, output
+
+    def make_node(self, *shape):
+        shape, output = self.validate_shape(shape)
+        output.tag.values_eq_approx = values_eq_approx_always_true
+        return Apply(self, shape, [output])
+
+    def perform(self, node, inputs, out_):
+        out, = out_
+        sh = tuple([int(i) for i in inputs])
+        if out[0] is None or out[0].shape != sh:
+            out[0] = numpy.empty(sh, dtype=self.dtype)
+
+    def c_code(self, node, name, inputs, out_, sub):
+        dtype = "NPY_"+self.dtype.upper()
+        out, = out_
+        fail = sub['fail']
+        shps = inputs
+        nd = len(shps)
+        str = "npy_intp dims[%(nd)s];\n" % locals()
+        for idx, sh in enumerate(shps):
+            str += "dims[%(idx)s] =" \
+                   "((npy_intp)((dtype_%(sh)s*)" \
+                   " PyArray_DATA(%(sh)s))[0]);\n" % locals()
+
+        # Validate that the output storage exists
+        str += "if(%(out)s==NULL\n" % locals()
+        for idx, sh in enumerate(shps):
+            str += "||PyArray_DIMS(%(out)s)[%(idx)s]!=dims[%(idx)s]" % locals()
+
+        str += """){
+            /* Reference received to invalid output variable.
+            Decrease received reference's ref count and allocate new
+            output variable */
+            Py_XDECREF(%(out)s);
+            %(out)s = (PyArrayObject*)PyArray_EMPTY(%(nd)s,
+                                                    dims,
+                                                    %(dtype)s,
+                                                    0);
+            if (!%(out)s)
+            {
+                PyErr_SetString(PyExc_MemoryError, "alloc failed");
+                %(fail)s;
+            }
+        }
+        """ % locals()
+        return str
+
+    def infer_shape(self, node, input_shapes):
+        return [node.inputs]
+
+    def c_code_cache_version(self):
+        return (3,)
+
+    def do_constant_folding(self, node):
+        return False

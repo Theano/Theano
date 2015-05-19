@@ -1824,7 +1824,6 @@ def local_dot22_to_ger_or_gemv(node):
             # x and y are both vectors so this might qualifies for a GER
             xv = x.dimshuffle(0)
             yv = y.dimshuffle(1)
-
             zeros = T.zeros([x.shape[0], y.shape[1]], dtype=x.dtype)
             rval = ger(zeros, one, xv, yv)
             return [rval]
@@ -1832,19 +1831,19 @@ def local_dot22_to_ger_or_gemv(node):
             # x and y are both vectors so this qualifies for a sdot / ddot
             # TODO: Theano doesn't have a sdot, but gemv is better than _dot22
             xv = x.dimshuffle(1)
-            zeros = T.zeros([1], x.dtype)
+            zeros = T.AllocEmpty(x.dtype)(1)
             rval = gemv_no_inplace(zeros, one, y.T, xv, zero)
             return [rval.dimshuffle('x', 0)]
         if xb[0] and not yb[0] and not yb[1]:
             # x is vector, y is matrix so try gemv
             xv = x.dimshuffle(1)
-            zeros = T.zeros([y.shape[1]], x.dtype)
+            zeros = T.AllocEmpty(x.dtype)(y.shape[1])
             rval = gemv_no_inplace(zeros, one, y.T, xv, zero)
             return [rval.dimshuffle('x', 0)]
         if not xb[0] and not xb[1] and yb[1]:
             # x is matrix, y is vector, try gemv
             yv = y.dimshuffle(0)
-            zeros = T.zeros([x.shape[0]], dtype=x.dtype)
+            zeros = T.AllocEmpty(x.dtype)(x.shape[0])
             rval = gemv_no_inplace(zeros, one, x, yv, zero)
             return [rval.dimshuffle(0, 'x')]
 
@@ -2043,8 +2042,12 @@ def local_dot22_to_dot22scalar(node):
         a = T.cast(_as_scalar(m.owner.inputs[scalar_idx],
                               dtype=d.dtype), d.type.dtype)
         assert not a.type.ndim
-        dot = _dot22scalar(d.owner.inputs[0], d.owner.inputs[1], a)
 
+        z = T.AllocEmpty(d.owner.inputs[0].dtype)(d.owner.inputs[0].shape[0],
+                                                  d.owner.inputs[1].shape[1])
+        zero = T.as_tensor_variable(numpy.asarray(0, dtype=a.dtype))
+        dot = gemm(z, a, d.owner.inputs[0], d.owner.inputs[1], zero)
+        
         # The other inputs to the original node that were
         # neither part of the dot22 or this mul should be
         # factors in the returned "mul" node.
@@ -2079,11 +2082,16 @@ def local_dot22_to_dot22scalar(node):
     a = T.cast(i_scalar[scalar_idx], d.type.dtype)
     assert not a.type.ndim
     if len(o) == 0:
-        return [_dot22scalar(d.owner.inputs[0], d.owner.inputs[1], a)]
+        z = T.AllocEmpty(d.owner.inputs[0].dtype)(d.owner.inputs[0].shape[0],
+                                                  d.owner.inputs[1].shape[1])
+        zero = T.as_tensor_variable(numpy.asarray(0, dtype=a.dtype))
+        return [gemm(z, a, d.owner.inputs[0], d.owner.inputs[1], zero)]
     else:
-        return [T.mul(_dot22scalar(d.owner.inputs[0],
-                                   d.owner.inputs[1], a), *o)]
-
+        z = T.AllocEmpty(d.owner.inputs[0].dtype)(d.owner.inputs[0].shape[0],
+                                                  d.owner.inputs[1].shape[1])
+        zero = T.as_tensor_variable(numpy.asarray(0, dtype=a.dtype))
+        return [T.mul(gemm(z, a, d.owner.inputs[0], d.owner.inputs[1],
+                      zero), *o)]
 # must happen after gemm as the gemm optimizer don't understant
 # dot22scalar and gemm give more speed up then dot22scalar
 blas_optdb.register('local_dot22_to_dot22scalar',

@@ -26,7 +26,7 @@ from theano.sandbox.cuda.basic_ops import (
     GpuElemwise, GpuDimShuffle, GpuReshape, GpuCAReduce, GpuFlatten,
     GpuSubtensor, GpuAdvancedSubtensor1,
     GpuAdvancedIncSubtensor1, GpuAdvancedIncSubtensor1_dev20,
-    GpuIncSubtensor, gpu_alloc, GpuAlloc, gpu_shape, GpuSplit)
+    GpuIncSubtensor, gpu_alloc, GpuAlloc, gpu_shape, GpuSplit, GpuAllocEmpty)
 
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar,
@@ -570,6 +570,8 @@ def local_gpu_dot22(node):
 @local_optimizer([gpu_from_host, tensor.blas.Dot22Scalar])
 def local_gpu_dot22scalar(node):
     """
+    Deprecated : _dot22scalar has been replace by gemm
+    see Dot22scalar for more details
     gpu_from_host(dot22scalar) -> gpudot(gpu_from_host)
 
     dot(host_from_gpu) -> host_from_gpu(gpudot22scalar)
@@ -2289,6 +2291,15 @@ def gpuScanOptimization(node):
             return outputs
     return False
 
+
+@register_opt()
+@local_optimizer([tensor.AllocEmpty, gpu_from_host])
+def local_gpu_allocempty(node):
+    if (isinstance(node.op, tensor.AllocEmpty) and
+        node.op.dtype=="float32"):
+        return [host_from_gpu(GpuAllocEmpty()(*node.inputs))]
+    return False
+        
 
 optdb.register('gpu_scanOp_make_inplace',
                scan_opt.ScanInplaceOptimizer(typeConstructor=typeConstructor,
