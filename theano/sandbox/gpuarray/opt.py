@@ -735,7 +735,7 @@ optdb.register('gpua_scanOp_make_inplace',
                scan_opt.ScanInplaceOptimizer(typeConstructor=GpuArrayType,
                                              gpua_flag=True),
                75,
-               'gpua',
+               'gpuarray',
                'fast_run',
                'inplace',
                'scan')
