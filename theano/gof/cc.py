@@ -1839,12 +1839,14 @@ PyErr_Print();
             if isinstance(argType, graph.Constant):
                 c_constant_type = argType.type.dtype_specs()[1]
                 numpy_constant_type = argType.type.dtype_specs()[2]
+                ndim = argType.type.ndim
+                shp = argType.data.shape
+                shp_str = ",".join([str(s) for s in shp])
                 in_out_list += """
                 PyObject* %(var)s = PyList_New(1);
-                npy_intp %(var)s_dims[1]={1};
-                PyObject* const_%(var)s = PyArray_SimpleNew(1,%(var)s_dims,%(numpy_constant_type)s);
+                npy_intp %(var)s_dims[%(ndim)s]={%(shp_str)s};
+                PyObject* const_%(var)s = PyArray_ZEROS(%(ndim)s,%(var)s_dims,%(numpy_constant_type)s,0);
                 Py_XINCREF(const_%(var)s);
-                ((%(c_constant_type)s  *)(PyArray_DATA((PyArrayObject *)const_%(var)s)))[0]=0;
                 PyList_SetItem(%(var)s, 0,const_%(var)s);
                 """ % locals()
             else:
