@@ -140,7 +140,7 @@ sparse_block_outer = SparseBlockOuter(False)
 sparse_block_outer_inplace = SparseBlockOuter(True)
 
 
-def sparse_block_gemv_cpu(o, W, h, inputIdx, outputIdx):
+def cpu_sparse_block_gemv(o, W, h, inputIdx, outputIdx):
     """
     Creates a graph for the sparse block dot operation. Check SparseBlockGemv's
     docstring for information about the arguments.
@@ -165,7 +165,7 @@ def sparse_block_gemv_cpu(o, W, h, inputIdx, outputIdx):
     return T.set_subtensor(o[:, :, :], b.dimshuffle(1, 0, 2))
 
 
-def sparse_block_outer_cpu(o, x, y, xIdx, yIdx, alpha=None):
+def cpu_sparse_block_outer(o, x, y, xIdx, yIdx, alpha=None):
     """
         TODO: WRITEME
     """
@@ -173,3 +173,42 @@ def sparse_block_outer_cpu(o, x, y, xIdx, yIdx, alpha=None):
     # TODO 
 
     return None
+
+
+def sparse_block_dot(W, h, inputIdx, b, outputIdx, inplace=False):
+    """
+    Compute the dot product (plus bias) of the specified pieces of vectors
+    and matrices.
+
+    Parameters
+    ----------
+    var: shape, comment
+    W: (iBlocks, oBlocks, iSize, oSize), weight matrix
+    h: (batch, iWin, iSize), input from lower layer (sparse)
+    inputIdx: (batch, iWin), indexes of the input blocks
+    b: (oBlocks, oSize), bias vector
+    outputIdx: (batch, oWin), indexes of the output blocks
+
+    returns (batch, oWin, oSize), dot(W[i, j], h[i]) + b[j]
+         but b[j] is only added once
+
+    Notation
+    --------
+    - `batch` is the number of examples in a minibatch (batch size).
+    - `iBlocks` is the total number of blocks in the input (from lower layer).
+    - `iSize` is the size of each of these input blocks.
+    - `iWin` is the number of blocks that will be used as inputs. Which blocks
+      will be used is specified in `inputIdx`.
+    - `oBlocks` is the number or possible output blocks.
+    - `oSize` is the size of each of these output blocks.
+    - `oWin` is the number of output blocks that will actually be computed.
+      Which blocks will be computed is specified in `outputIdx`.
+    """
+    assert inputIdx.ndim == h.ndim - 1
+    assert outputIdx.ndim == inputIdx.ndim
+    if h.ndim == 2:
+        h = h.dimshuffle('x', 0, 1)
+        inputIdx = inputIdx.dimshuffle('x', 0)
+        outputIdx = outputIdx.dimshuffle('x', 0)
+    return SparseBlockGemv(inplace)(b.take(outputIdx, axis=0), W, h,
+                                inputIdx, outputIdx)
