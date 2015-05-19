@@ -2090,7 +2090,7 @@ def local_dot22_to_dot22scalar(node):
                                                   d.owner.inputs[1].shape[1])
         zero = T.as_tensor_variable(numpy.asarray(0, dtype=a.dtype))
         return [T.mul(gemm(z, a, d.owner.inputs[0], d.owner.inputs[1],
-                                                    zero), *o)]
+                      zero), *o)]
 # must happen after gemm as the gemm optimizer don't understant
 # dot22scalar and gemm give more speed up then dot22scalar
 blas_optdb.register('local_dot22_to_dot22scalar',

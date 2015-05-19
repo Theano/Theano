@@ -5505,7 +5505,6 @@ class AllocEmpty(gof.Op):
         out, = out_
         sh = tuple([int(i) for i in inputs])
         if out[0] is None or out[0].shape != sh:
-            # XXX: We could implement and call CudaNdarray.empty(sh) instead.
             out[0] = numpy.empty(sh, dtype=self.dtype)
 
     def c_code(self, node, name, inputs, out_, sub):
@@ -5515,10 +5514,10 @@ class AllocEmpty(gof.Op):
         shps = inputs
         nd = len(shps)
         str = "npy_intp dims[%(nd)s];\n" % locals()
-        
         for idx, sh in enumerate(shps):
-            str +="dims[%(idx)s] =" \
-                  "((npy_intp)((dtype_%(sh)s*)PyArray_DATA(%(sh)s))[0]);\n" % locals()
+            str += "dims[%(idx)s] =" \
+                   "((npy_intp)((dtype_%(sh)s*)" \
+                   " PyArray_DATA(%(sh)s))[0]);\n" % locals()
 
         # Validate that the output storage exists
         str += "if(%(out)s==NULL\n" % locals()

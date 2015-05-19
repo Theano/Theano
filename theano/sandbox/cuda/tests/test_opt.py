@@ -156,7 +156,6 @@ def test_gpualloc():
 
 def test_gpuallocempty():
 
-
     f_gpu = theano.function([], tensor.AllocEmpty('float32')(2,3),
                         mode=mode_with_gpu)
     l_gpu = f_gpu.maker.fgraph.toposort()
