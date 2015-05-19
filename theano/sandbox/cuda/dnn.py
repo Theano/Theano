@@ -1672,6 +1672,8 @@ if True:
         if not dnn_available():
             return
         if isinstance(node.op, DownsampleFactorMaxGrad):
+            if not node.op.ignore_border:
+                return
             inp, out, inp_grad = node.inputs
             ds = node.op.ds
             st = node.op.st
@@ -1683,8 +1685,6 @@ if True:
                 (inp_grad.owner and isinstance(inp_grad.owner.op,
                                                HostFromGpu))):
                 desc = GpuDnnPoolDesc(ws=ds, stride=st, mode=mode, pad=pad)()
-                if not node.op.ignore_border:
-                    return
                 ret = GpuDnnPoolGrad()(gpu_contiguous(inp),
                                        gpu_contiguous(out),
                                        gpu_contiguous(inp_grad),
