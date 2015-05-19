@@ -846,14 +846,15 @@ class ModuleCache(object):
                                     get_safe_part(key),
                                     []).append(key)
                         else:
+                            dir1 = os.path.dirname(self.entry_from_key[key])
+                            dir2 = os.path.dirname(entry)
                             _logger.warning(
                                 "The same cache key is associated to "
                                 "different modules (%s and %s). This "
                                 "is not supposed to happen! You may "
                                 "need to manually delete your cache "
                                 "directory to fix this.",
-                                self.entry_from_key[key],
-                                entry)
+                                dir1, dir2)
                     # Clean up the name space to prevent bug.
                     if key_data.keys:
                         del key
