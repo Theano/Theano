@@ -151,7 +151,7 @@ def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5, gap=None,
     if unsorted_indices:
         for idx in range(n):
             d = data[idx]
-            d = d[range(d.shape[0])]
+            d = d[list(range(d.shape[0]))]
             assert not d.has_sorted_indices
             data[idx] = d
     if explicit_zero:
