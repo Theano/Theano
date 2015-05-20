@@ -2631,7 +2631,6 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
         //take(idx, 0, out, "raise", max_threads);
         PyObject * out_ = NULL;
         PyObject * ret = NULL;
-        Py_INCREF(%(x)s);
         PyObject * args = PyTuple_New(5);
         PyObject * zero = PyInt_FromLong(0);
         PyObject * max = PyInt_FromLong(max_threads);
@@ -2643,13 +2642,37 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
         out_ = (PyObject *) %(out)s;
         if (out_ == NULL)
             out_ = Py_None;
-        else
-            Py_INCREF(out_);
-        PyTuple_SetItem(args, 0, (PyObject *) %(idx)s);
-        PyTuple_SetItem(args, 1, zero);
-        PyTuple_SetItem(args, 2, out_);
-        PyTuple_SetItem(args, 3, raise);
-        PyTuple_SetItem(args, 4, max);
+        Py_INCREF(out_);
+        Py_INCREF(%(idx)s);
+
+        // In the error handling, I don't decref args as I don't know
+        // how it decref not assigned item.
+
+        if(PyTuple_SetItem(args, 0, (PyObject *) %(idx)s)){
+            Py_DECREF(%(idx)s); Py_DECREF(zero); Py_DECREF(out_);
+            Py_DECREF(raise); Py_DECREF(max); Py_DECREF(out_);
+            %(fail)s;
+        }
+        if(PyTuple_SetItem(args, 1, zero)){
+            Py_DECREF(%(idx)s); Py_DECREF(zero); Py_DECREF(out_);
+            Py_DECREF(raise); Py_DECREF(max); Py_DECREF(out_);
+            %(fail)s;
+        }
+        if(PyTuple_SetItem(args, 2, out_)){
+            Py_DECREF(%(idx)s); Py_DECREF(zero); Py_DECREF(out_);
+            Py_DECREF(raise); Py_DECREF(max); Py_DECREF(out_);
+            %(fail)s;
+        }
+        if(PyTuple_SetItem(args, 3, raise)){
+            Py_DECREF(%(idx)s); Py_DECREF(zero); Py_DECREF(out_);
+            Py_DECREF(raise); Py_DECREF(max); Py_DECREF(out_);
+            %(fail)s;
+        }
+        if(PyTuple_SetItem(args, 4, max)){
+            Py_DECREF(%(idx)s); Py_DECREF(zero); Py_DECREF(out_);
+            Py_DECREF(raise); Py_DECREF(max); Py_DECREF(out_);
+            %(fail)s;
+        }
         ret = CudaNdarray_TakeFrom(%(x)s, args);
 
         Py_DECREF(args);
