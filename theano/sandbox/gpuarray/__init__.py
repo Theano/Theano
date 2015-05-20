@@ -33,6 +33,11 @@ from . import opt
 
 
 def init_dev(dev):
+    if pygpu.gpuarray.api_version() != (-10000, 0):
+        raise RuntimeError("Wrong API version for gpuarray:",
+                           pygpu.gpuarray.api_version(),
+                           "Make sure Theano and libgpuarray/pygpu "
+                           "are in sync.")
     global pygpu_activated
     context = pygpu.init(dev)
     pygpu.set_default_context(context)
