@@ -1,7 +1,6 @@
 import os.path
-import numpy
 import theano
-from theano import Op, Apply, Variable, tensor
+from theano import Apply, Variable, tensor
 
 from theano.compile import optdb
 from theano.compile.ops import shape_i
@@ -9,7 +8,7 @@ from theano.gof import local_optimizer, COp
 from theano.scalar import as_scalar, constant
 
 from . import opt
-from .basic_ops import (as_gpuarray_variable, gpu_alloc, gpu_from_host,
+from .basic_ops import (as_gpuarray_variable, gpu_from_host,
                         host_from_gpu, GpuAllocEmpty)
 from .opt_util import alpha_merge, output_merge
 from .pycuda_helper import ensure_pycuda_context
@@ -54,7 +53,7 @@ class Gemm16(COp):
         COp.__init__(self, ["gemm16.c"], "gemm16")
         self.relu = relu
         # relu = True will require more work in optimizations.
-        assert self.relu == False
+        assert self.relu is False
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
@@ -75,7 +74,7 @@ class Gemm16(COp):
         return Apply(self, [C, alpha, A, B, beta], [C.type()])
 
     def perform(self, node, inputs, outputs):
-        ctx = ensure_pycuda_context()
+        ensure_pycuda_context()
         C, alpha, A, B, beta = inputs
         # The nervana code does not support the case where both inputs
         # are trans, so we need to copy one if them if that is the
@@ -143,7 +142,7 @@ if (GpuKernel_init(&k_%(name)s, c->ops, c->ctx, 1, &bcode, &sz,
     def c_init_code_struct(self, node, nodename, sub):
         codel = [super(Gemm16, self).c_init_code_struct(node, nodename, sub)]
         for name in self.KERN_NAMES:
-            codel.append("memset(&k_{0}, 0, sizeof(GpuKernel));".format(name));
+            codel.append("memset(&k_{0}, 0, sizeof(GpuKernel));".format(name))
         codel.append("const char *bcode;")
         codel.append("size_t sz;")
         codel.append("PyGpuContextObject *c = pygpu_default_context();")
@@ -174,6 +173,7 @@ def local_dot_to_gemm16(node):
         C = GpuAllocEmpty(dtype='float16')(
             shape_i(A, 0, fgraph), shape_i(B, 1, fgraph))
         return [host_from_gpu(Gemm16()(C, 1.0, A, B, 0.0))]
+
 
 @opt.register_opt()
 @alpha_merge(Gemm16, alpha_in=1, beta_in=4, nd=2)

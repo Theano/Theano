@@ -8,6 +8,7 @@ except ImportError:
 pycuda_initialized = False
 pycuda_context = None
 
+
 def ensure_pycuda_context():
     global pycuda_context, pycuda_initialized
     if not pycuda_initialized:
