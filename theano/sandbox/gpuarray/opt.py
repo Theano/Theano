@@ -14,6 +14,7 @@ from theano.gof import (local_optimizer, EquilibriumDB,
                         SequenceDB, Optimizer, toolbox)
 from theano.gof.optdb import LocalGroupDB
 
+from theano.scalar.basic import Scalar, Pow, Cast, upcast
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
 from theano.tensor.nnet.conv import ConvOp
@@ -262,10 +263,43 @@ def local_gpu_elemwise(node):
     name = op.name
     if name:
         name = 'Gpu' + name
+
     res = GpuElemwise(scal_op, name=name,
-                      inplace_pattern=copy.copy(op.inplace_pattern),
-                      nfunc_spec=op.nfunc_spec)
-    return res
+                          inplace_pattern=copy.copy(op.inplace_pattern),
+                          nfunc_spec=op.nfunc_spec)
+
+    # If the elemwise operation is a pow, casts might be required on the
+    # inputs and or outputs because only the (float, float)->float and
+    # (double, double)->double cases are implemented at the moment.
+    if isinstance(op.scalar_op, Pow):
+        old_out_dtype = node.outputs[0].dtype
+        old_inp_dtypes = [inp.dtype for inp in node.inputs]
+        new_out_dtype = upcast("float32", *old_inp_dtypes)
+
+        # Transfer the inputs on the GPU and cast them to the right dtype
+        new_inputs = []
+        for inp in node.inputs:
+            if inp.dtype != new_out_dtype:
+                gpu_cast_op = GpuElemwise(Cast(Scalar(new_out_dtype)))
+                new_inputs.append(gpu_cast_op(gpu_from_host(inp)))
+            else:
+                new_inputs.append(gpu_from_host(inp))
+
+        # Perform the exponent on the gpu
+        casted_gpu_output = res(*new_inputs)
+
+        # If needed, cast the output back to the right dtype and transfer it
+        # to the cpu.
+        if casted_gpu_output.dtype != old_out_dtype:
+            gpu_cast_op = GpuElemwise(Cast(Scalar(old_out_dtype)))
+            gpu_output = gpu_cast_op(casted_gpu_output)
+        else:
+            gpu_output = casted_gpu_output
+
+        cpu_output = host_from_gpu(gpu_output)
+        return [cpu_output]
+    else:
+        return res
 
 
 def max_inputs_to_GpuElemwise(node):
