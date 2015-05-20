@@ -185,8 +185,6 @@ def do_setup():
               'theano', 'math', 'numerical', 'symbolic', 'blas',
               'numpy', 'gpu', 'autodiff', 'differentiation'
           ]),
-          cmdclass={'build_py': build_py,
-                    'build_scripts': build_scripts}
     )
 if __name__ == "__main__":
     do_setup()
