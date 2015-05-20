@@ -321,6 +321,14 @@ import theano and print the config variable, as in:
     Do the vm/cvm linkers profile the optimization phase when compiling a Theano function?
     It only works when profile=True.
 
+.. attribute:: memory_realloc
+
+    Bool value: either True or False
+
+    Default False
+
+    Fo the vm/cvm do memory reallocation when executing a Theano function?
+
 .. attribute:: config.profiling.n_apply
 
     Positive int value, default: 20.

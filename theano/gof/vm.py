@@ -1038,15 +1038,15 @@ class VM_Linker(link.LocalLinker):
             thunk.inputs = [storage_map[v] for v in node.inputs]
             thunk.outputs = [storage_map[v] for v in node.outputs]
 
-        if config.memory_realloc:
-            lazy = self.lazy
-            if lazy is None:
-                lazy = config.vm.lazy
-            if lazy is None:
-                lazy = not all([(not th.lazy) for th in thunks])
-            if not (lazy or (config.profile and config.profile_memory) or self.use_cloop or self.callback):
-                for pair in reallocated_info.values():
-                    storage_map[pair[1]] = storage_map[pair[0]]
+        lazy = self.lazy
+        if lazy is None:
+            lazy = config.vm.lazy
+        if lazy is None:
+            lazy = not all([(not th.lazy) for th in thunks])
+        if not (lazy or (config.profile and config.profile_memory) or
+                self.use_cloop or self.callback and config.memory_realloc):
+            for pair in reallocated_info.values():
+                storage_map[pair[1]] = storage_map[pair[0]]
 
         computed, last_user = link.gc_helper(order)
         if self.allow_gc:
