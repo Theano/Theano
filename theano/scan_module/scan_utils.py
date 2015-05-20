@@ -127,14 +127,23 @@ def traverse(out, x, x_copy, d, visited=None):
     if out in visited:
         return d
     visited.add(out)
-    import theano.sandbox.cuda as cuda
+    from theano.sandbox import cuda, gpuarray
     if out == x:
-        d[out] = cuda.gpu_from_host(x_copy)
+        if isinstance(x.type, cuda.CudaNdarrayType):
+            d[out] = cuda.gpu_from_host(x_copy)
+        else:
+            assert isinstance(x.type, gpuarray.GpuArrayType)
+            d[out] = gpuarray.gpu_from_host(x_copy)
         return d
     elif out.owner is None:
         return d
     elif (cuda.cuda_available and
           out.owner.op == cuda.host_from_gpu and
+          out.owner.inputs == [x]):
+        d[out] = tensor.as_tensor_variable(x_copy)
+        return d
+    elif (gpuarray.pygpu_activated and
+          out.owner.op == gpuarray.host_from_gpu and
           out.owner.inputs == [x]):
         d[out] = tensor.as_tensor_variable(x_copy)
         return d
