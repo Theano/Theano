@@ -2653,14 +2653,9 @@ class Alloc(gof.Op):
                 axis_kept.append(i)
         gx = gz.sum(axis=axis + axis_broadcasted)
         if axis_broadcasted:
-            new_order = list(x.broadcastable)
-            idx = 0
-            for i in xrange(x.ndim):
-                if not new_order[i]:
-                    new_order[i] = idx
-                    idx += 1
-                else:
-                    new_order[i] = 'x'
+            new_order = ['x'] * x.ndim
+            for idx, axis in enumerate(axis_kept):
+                new_order[axis] = idx
             gx = gx.dimshuffle(new_order)
             # Dimshuffle to add back the broadcasted dims
         # The *elements* of the output are not connected to
