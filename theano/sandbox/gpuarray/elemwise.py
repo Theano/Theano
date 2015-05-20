@@ -1725,7 +1725,6 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
             {   // reuse 010_AD kernel, we transpose the 2 first dim
                 // See the reduction for the real 010_AD kernel for
                 // explanation. We do this to get coalesced read.
-              printf("fast\\n");
                 dim3 n_threads(32,1,1);
 
                 int A = PyGpuArray_DIMS(%(x)s)[1];
@@ -1943,7 +1942,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         """ % locals(), file=sio)
 
     def c_code_cache_version_apply(self, node):
-        version = [14]  # the version corresponding to the c code in this Op
+        version = [15]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
