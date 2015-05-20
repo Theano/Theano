@@ -141,58 +141,66 @@ def sparse_block_gemv_cpu(W, h, inputIdx, bias, outputIdx):
     Creates a graph for the sparse block dot operation. Check SparseBlockGemv's
     docstring for information about the arguments.
     """
+    def _loop_over_batch(b, W, h, inputIdx, outputIdx):
 
-    def _loop_over_batch(b):
+        def _loop_over_outputIdx(i, b, W, h, inputIdx, outputIdx):
 
-        def _loop_over_outputIdx(i):
-
-            def _loop_over_inputIdx(j):
-                return T.dot(h[b, j, :], W[inputIdx[b, j], outputIdx[b, i], :, :])
+            def _loop_over_inputIdx(j, b, i, W, h, inputIdx, outputIdx):
+                return T.dot(h[b, j, :], W[inputIdx[b, j],
+                                         outputIdx[b, i], :, :])
 
             res3 = theano.scan(fn=_loop_over_inputIdx,
-                            sequences=T.arange(0, inputIdx.shape[1]),
-                            name='_loop_over_inputIdx')[0]
+                               sequences=T.arange(0, inputIdx.shape[1]),
+                               non_sequences=[b, i, W, h, inputIdx, outputIdx],
+                               name='_loop_over_inputIdx')[0]
 
             return res3.sum(axis=0)
 
         res2 = theano.scan(fn=_loop_over_outputIdx,
-                        sequences=T.arange(0, outputIdx.shape[1]),
-                        name='_loop_over_outputIdx')[0]
+                           sequences=T.arange(0, outputIdx.shape[1]),
+                           non_sequences=[b, W, h, inputIdx, outputIdx],
+                           name='_loop_over_outputIdx')[0]
 
         return res2
 
     res1 = theano.scan(fn=_loop_over_batch,
                        sequences=T.arange(0, inputIdx.shape[0]),
+                       non_sequences=[W, h, inputIdx, outputIdx],
                        name='_loop_over_batch')[0]
 
     return res1 + bias.take(outputIdx, axis=0)
 
 
-def sparse_block_outer_cpu(x, y, xIdx, yIdx, alpha=None):
-    if alpha is None:
-        alpha = T.constant(numpy.asarray(1.0, dtype='float32'))
+def sparse_block_outer_cpu(x, y, xIdx, yIdx, alpha=1.0):
+    """
+    Creates a graph for the sparse block outer operation. Check
+    SparseBlockOuter's docstring for information about the arguments.
+    """
 
-    def _loop_over_batch(b):
+    def _loop_over_batch(b, x, y, xIdx, yIdx):
 
-        def _loop_over_outputIdx(i):
+        def _loop_over_outputIdx(i, b, x, y, xIdx, yIdx):
 
-            def _loop_over_inputIdx(j):
-                return T.outer(x[b, i, :], y[b, j, :])
+            def _loop_over_inputIdx(j, i, b, x, y, xIdx, yIdx):
+                return T.outer(y[b, yIdx[b, i], :], x[b, xIdx[b, j], :])
 
             res3 = theano.scan(fn=_loop_over_inputIdx,
-                            sequences=T.arange(0, xIdx.shape[1]),
-                            name='_loop_over_inputIdx')[0]
+                               sequences=T.arange(0, xIdx.shape[1]),
+                               non_sequences=[i, b, x, y, xIdx, yIdx],
+                               name='_loop_over_inputIdx')[0]
 
             return res3
 
         res2 = theano.scan(fn=_loop_over_outputIdx,
-                        sequences=T.arange(0, yIdx.shape[1]),
-                        name='_loop_over_outputIdx')[0]
+                           sequences=T.arange(0, yIdx.shape[1]),
+                           non_sequences=[b, x, y, xIdx, yIdx],
+                           name='_loop_over_outputIdx')[0]
 
         return res2
 
     res1 = theano.scan(fn=_loop_over_batch,
                        sequences=T.arange(0, xIdx.shape[0]),
+                       non_sequences=[x, y, xIdx, yIdx],
                        name='_loop_over_batch')[0]
 
     return alpha * res1.sum(axis=0)

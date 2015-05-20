@@ -5,7 +5,7 @@ import theano
 import theano.tensor as T
 import theano.tests.unittest_tools as utt
 
-from theano.sandbox.blocksparse import sparse_block_gemv_cpu
+from theano.sandbox.blocksparse import sparse_block_gemv_cpu, sparse_block_outer_cpu
 
 
 def sparse_block_gemv_data():
@@ -60,5 +60,55 @@ def test_sparse_block_gemv_cpu():
 
     th_out = f(W_val, h_val, iIdx_val, b_val, oIdx_val)
     ref_out = sparse_block_gemv_numpy(W_val, h_val, iIdx_val, b_val, oIdx_val)
+
+    utt.assert_allclose(ref_out, th_out)
+
+
+def sparse_block_outer_data():
+    nInputBlock = 128
+    nOutputBlock = 64
+    xSize = 40
+    ySize = 30
+    xWindowSize = 7
+    yWindowSize = 9
+    batchSize = 2
+
+    x = randn(batchSize, xWindowSize, xSize).astype('float32')
+    y = randn(batchSize, yWindowSize, ySize).astype('float32')
+    randint = numpy.random.randint
+    xIdx = numpy.vstack(randint(0, xWindowSize, nInputBlock)
+                        for _ in range(batchSize))
+    yIdx = numpy.vstack(randint(0, yWindowSize, nOutputBlock)
+                        for _ in range(batchSize))
+
+    return x, y, xIdx, yIdx
+
+
+def sparse_block_outer_numpy(x, y, xIdx, yIdx):
+
+    o = numpy.zeros((yIdx.shape[1], xIdx.shape[1], y.shape[2], x.shape[2]),
+                    dtype="float32")
+
+    for b in range(x.shape[0]):
+        for i in range(yIdx.shape[1]):
+            for j in range(xIdx.shape[1]):
+                o[i, j] += numpy.outer(y[b, yIdx[b, i], :], x[b, xIdx[b, j], :])
+    return o
+
+
+def test_sparse_block_outer_cpu():
+    x = T.ftensor3()
+    y = T.ftensor3()
+    xIdx = T.lmatrix()
+    yIdx = T.lmatrix()
+
+    o = sparse_block_outer_cpu(x, y, xIdx, yIdx)
+
+    f = theano.function([x, y, xIdx, yIdx], o)
+
+    x_val, y_val, xIdx_val, yIdx_val = sparse_block_outer_data()
+
+    th_out = f(x_val, y_val, xIdx_val, yIdx_val)
+    ref_out = sparse_block_outer_numpy(x_val, y_val, xIdx_val, yIdx_val)
 
     utt.assert_allclose(ref_out, th_out)
