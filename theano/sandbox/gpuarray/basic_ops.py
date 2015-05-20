@@ -588,6 +588,9 @@ class GpuAlloc(HideC, Alloc):
     def make_node(self, value, *shape):
         value = as_gpuarray_variable(value)
         sh, bcast = self.validate_shape(shape)
+        if value.ndim > len(sh):
+            TypeError("The GpuAlloc value to use has more dimensions "
+                      "than the specified shape", v.ndim, len(sh))
         otype = value.type.clone(broadcastable=bcast)
         return Apply(self, [value] + sh, [otype()])
 
