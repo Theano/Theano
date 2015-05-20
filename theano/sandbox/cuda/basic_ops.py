@@ -2556,6 +2556,10 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
         if x_.type.ndim == 0:
             raise TypeError('cannot index into a scalar')
 
+        # c code suppose it is int64
+        if x.ndim in [2, 3] and ilist_.dtype in [
+            'int8', 'int16', 'int32', 'uint8', 'uint16', 'uint32']:
+            ilist_ = ilist_.cast('int64')
         bcast = (ilist_.broadcastable[0],) + x_.broadcastable[1:]
         return Apply(self, [x_, ilist_],
                      [CudaNdarrayType(dtype=x.dtype,
@@ -2613,6 +2617,52 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
             for (j, i) in enumerate(idx):
                 o[j] = x[i]
             out[0] = o
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        x, idx = inputs
+        out, = outputs
+        fail = sub['fail']
+        if node.inputs[0].ndim not in [2, 3]:
+            raise NotImplementedError("This case does not have C code yet.")
+        if node.inputs[1].dtype != 'int64':
+            raise Exception("Index should have dtype int64. Check this node make_node().")
+        return """
+        int max_threads=512;
+        //take(idx, 0, out, "raise", max_threads);
+        PyObject * out_ = NULL;
+        PyObject * ret = NULL;
+        Py_INCREF(%(x)s);
+        PyObject * args = PyTuple_New(5);
+        PyObject * zero = PyInt_FromLong(0);
+        PyObject * max = PyInt_FromLong(max_threads);
+        PyObject * raise = PyString_FromString("raise");
+        if(args == NULL || zero == NULL || max == NULL || raise == NULL){
+            %(fail)s;
+        }
+
+        out_ = (PyObject *) %(out)s;
+        if (out_ == NULL)
+            out_ = Py_None;
+        else
+            Py_INCREF(out_);
+        PyTuple_SetItem(args, 0, (PyObject *) %(idx)s);
+        PyTuple_SetItem(args, 1, zero);
+        PyTuple_SetItem(args, 2, out_);
+        PyTuple_SetItem(args, 3, raise);
+        PyTuple_SetItem(args, 4, max);
+        ret = CudaNdarray_TakeFrom(%(x)s, args);
+
+        Py_DECREF(args);
+        if (ret == NULL){
+            %(fail)s;
+        }
+        // Even if we decref, we still try to reuse preallocated output
+        Py_XDECREF(%(out)s);
+        %(out)s = (CudaNdarray *) ret;
+        """ % locals()
+
+    def c_code_cache_version(self):
+        return (1,)
 
 
 class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):

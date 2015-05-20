@@ -1012,17 +1012,18 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         if (verbose) printf("cudandarray indices\n");
         indices = (CudaNdarray*) indices_obj;
         Py_INCREF(indices);
-    } else if (0 && PyArray_Check(indices_obj)) {
-        PyErr_SetString(PyExc_NotImplementedError, "CudaNdarray_TakeFrom: The indices must cudandarray with float32 value.");
-        return NULL;
-
+    } else if (PyArray_Check(indices_obj)) {
         if (verbose) printf("ndarray indices\n");
-        if (PyArray_TYPE((PyArrayObject *)indices_obj) != NPY_INT32) {
-            PyErr_SetString(PyExc_TypeError, "CudaNdarray_TakeFrom: need a ndarray for indices with dtype int32");
+        if (PyArray_TYPE((PyArrayObject *)indices_obj) != NPY_INT64) {
+            PyErr_SetString(PyExc_TypeError,
+                            "CudaNdarray_TakeFrom: need a ndarray for indices"
+                            " with dtype int64");
             return NULL;
         }
         if (PyArray_NDIM(((PyArrayObject*)indices_obj)) != 1) {
-            PyErr_SetString(PyExc_TypeError, "CudaNdarray_TakeFrom: need a CudaNdarray of indices with only 1 dimensions");
+            PyErr_SetString(PyExc_TypeError,
+                            "CudaNdarray_TakeFrom: need a CudaNdarray of"
+                            " indices with only 1 dimensions");
             return NULL;
         }
         PyArray_Descr* float32_descr = PyArray_DescrFromType(NPY_FLOAT32);
@@ -1030,10 +1031,6 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         indices_float32 = PyArray_View((PyArrayObject*)indices_obj,
                                                   float32_descr, NULL);
         Py_DECREF(float32_descr);
-        if (verbose) printf("ndarray indices\n");
-        //indices_float32 = PyArray_Cast((PyArrayObject*)indices_obj,
-        //                              NPY_FLOAT32);
-        //Py_INCREF(indices_float32);
         if (verbose) printf("ndarray indices\n");
         if (!indices_float32)
             return NULL;
@@ -1047,7 +1044,6 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         if (CudaNdarray_CopyFromArray(indices,
                                       (PyArrayObject *)indices_float32)){
             Py_DECREF(indices_float32);
-
             return NULL;
         }
         Py_DECREF(indices_float32);
@@ -1076,16 +1072,12 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
 
     //Check argument axis
     //TODO: implement the default and other axis
-    PyObject * axis_iobj = PyNumber_Long(axis_obj);
-    if (!axis_iobj) {
-        PyErr_SetString(PyExc_NotImplementedError,"CudaNdarray_TakeFrom: axis must be convertable to a long");
-        Py_DECREF(indices);
-        return NULL;
-    }
-    long axis = PyInt_AsLong(axis_iobj);
-    Py_DECREF(axis_iobj); axis_iobj=NULL;
+    long axis = PyInt_AsLong(axis_obj);
+
     if (axis != 0) {
-        PyErr_SetString(PyExc_NotImplementedError,"CudaNdarray_TakeFrom: only axis=0 is currently supported");
+        PyErr_Format(PyExc_NotImplementedError,
+                     "CudaNdarray_TakeFrom: only axis=0 is currently supported."
+                     " Got %ld.", axis);
         Py_DECREF(indices);
         return NULL;
     }
