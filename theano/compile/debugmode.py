@@ -1,4 +1,5 @@
-"""Provides `DebugMode`, an evaluation mode for debugging theano internals.
+"""Provides `DebugMode`, an evaluation mode for debugging theano internals. 
+This mode is only meant to work for CPU.
 
 :TODO: add support for IfElse Op, LazyLinker, PureOp, etc.
 
