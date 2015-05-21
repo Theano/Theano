@@ -90,7 +90,7 @@ def test_dot22scalar():
                 [a, b],
                 tensor.dot(a, b) * numpy.asarray(4, 'float32'))
         t = f.maker.fgraph.toposort()
-        assert len(t) == 4
+        assert len(t) == 4, t
         assert isinstance(t[0].op, tcn.GpuFromHost)
         assert isinstance(t[1].op, tcn.GpuFromHost)
         assert isinstance(t[2].op, tcn.blas.GpuDot22Scalar)
