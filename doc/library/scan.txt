@@ -53,7 +53,7 @@ The equivalent Theano code would be:
 
   # compiled function that returns A**k
   power = theano.function(inputs=[A,k], outputs=final_result, updates=updates)
-  
+
   print power(range(10),2)
   print power(range(10),4)
 
@@ -110,7 +110,7 @@ from a list of its coefficients:
     test_coefficients = numpy.asarray([1, 0, 2], dtype=numpy.float32)
     test_value = 3
     print calculate_polynomial(test_coefficients, test_value)
-    print 1.0 * (3 ** 0) + 0.0 * (3 ** 1) + 2.0 * (3 ** 2) 
+    print 1.0 * (3 ** 0) + 0.0 * (3 ** 1) + 2.0 * (3 ** 2)
 
 There are a few things to note here.
 
@@ -137,10 +137,10 @@ Simple accumulation into a scalar, ditching lambda
 --------------------------------------------------
 
 Although this example would seem almost self-explanatory, it stresses a
-pitfall to be careful of: the initial output state that is supplied, that is 
+pitfall to be careful of: the initial output state that is supplied, that is
 ``outputs_info``, must be of a **shape similar to that of the output variable**
 generated at each iteration and moreover, it **must not involve an implicit
-downcast** of the latter. 
+downcast** of the latter.
 
 .. code-block:: python
 
@@ -284,7 +284,7 @@ function applied at each step) you do not need to pass them as arguments.
 Scan will find them on its own and add them to the graph.
 However, passing them to the scan function is a good practice, as it avoids
 Scan Op calling any earlier (external) Op over and over. This results in a
-simpler computational graph, which speeds up the optimization and the 
+simpler computational graph, which speeds up the optimization and the
 execution. To pass the shared variables to Scan you need to put them in a list
 and give it to the ``non_sequences`` argument. Here is the Gibbs sampling code
 updated:
@@ -298,7 +298,7 @@ updated:
     bhid = theano.shared(bhid_values)
 
     trng = T.shared_randomstreams.RandomStreams(1234)
-    
+
     # OneStep, with explicit use of the shared variables (W, bvis, bhid)
     def OneStep(vsample, W, bvis, bhid):
         hmean = T.nnet.sigmoid(theano.dot(vsample, W) + bhid)
@@ -308,7 +308,7 @@ updated:
                          dtype=theano.config.floatX)
 
     sample = theano.tensor.vector()
-    
+
     # The new scan, with the shared variables passed as non_sequences
     values, updates = theano.scan(fn=OneStep,
                                   outputs_info=sample,
@@ -425,11 +425,11 @@ will start scaning from ``uvals[4]`` towards the end.
 Conditional ending of Scan
 --------------------------
 
-Scan can also be used as a ``repeat-until`` block. In such a case scan 
+Scan can also be used as a ``repeat-until`` block. In such a case scan
 will stop when either the maximal number of iteration is reached, or the
 provided condition evaluates to True.
 
-For an example, we will compute all powers of two smaller then some provided 
+For an example, we will compute all powers of two smaller then some provided
 value ``max_value``.
 
 .. code-block:: python
