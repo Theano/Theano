@@ -962,7 +962,7 @@ To understand this profile here is some explanation of how optimization work:
   * ``0.751816s - ('canonicalize', 'EquilibriumOptimizer', 4) - 0.004s``
     This line is from SeqOptimizer. Is mean that this sub optimizer took
     a total of .7s. Its name is canonicalize. It is an
-    'EquilibriumOptimizer'. It was executer at index 4 by the
+    'EquilibriumOptimizer'. It was executed at index 4 by the
     SeqOptimizer. It spent 0.004s in the validate phase.
   * All other lines are from the profiler of the EquilibriumOptimizer.
 
@@ -978,11 +978,11 @@ To understand this profile here is some explanation of how optimization work:
     the graph had 108 node, at the end, it had 81 and the maximum size
     was 177.
 
-  * Then it print some global timming, like is spent 0.029s in
+  * Then it print some global timing, like is spent 0.029s in
     io_toposort, all local optimizer took 0.687s together for all
     passes and global optimizer took a total of 0.010s.
 
-  * Then we prit the timming for each pass and the optimization that
+  * Then we print the timing for each pass and the optimization that
     got applied and the number of time they got applied. For example,
     in pass 0, the local_dimshuffle_lift optimizer changed the graph 9
     time.
@@ -990,3 +990,10 @@ To understand this profile here is some explanation of how optimization work:
   * Then we print the time spend in each optimizer, the number of time
     they changed the graph and the number of node they introduced in
     the graph.
+
+  * Optimization with that pattern `local_op_lift` mean that a node
+    with that op will be replaced by another node, with the same op,
+    but will do computation closer to the inputs of the graph.
+
+  * Optimization with that pattern `local_op_sink` is the opposite of
+    `lift`.
