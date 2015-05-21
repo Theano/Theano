@@ -18,6 +18,7 @@ try:
     nerv = NervanaGPU()
 except ImportError:
     GPUTensor = None
+    nerv = None
 
 
 def to_gputensor(a):
