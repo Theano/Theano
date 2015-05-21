@@ -318,7 +318,7 @@ def scan(fn,
 
     :param strict:
         If true, all the shared variables used in ``fn`` must be provided as a
-        part of ``non_sequences`` or ``sequences``. 
+        part of ``non_sequences`` or ``sequences``.
 
     :rtype: tuple
     :return: tuple of the form (outputs, updates); ``outputs`` is either a
@@ -962,21 +962,23 @@ def scan(fn,
                   shared_inner_outputs)
     if condition is not None:
         inner_outs.append(condition)
-    # Cuda is imported here, instead of being imported on top of the file
-    # because forces on the user some dependencies that we might do not want
-    # to. Currently we are working on removing the dependencies on sandbox
-    # code completeley.
-    from theano.sandbox import cuda
-    if cuda.cuda_available:
+    # Cuda and Gpuarray are imported here, instead of being imported on top of
+    # the file because that would force on the user some dependencies that we
+    # might do not want to. Currently we are working on removing the
+    # dependencies on sandbox code completeley.
+    from theano.sandbox import cuda, gpuarray
+    if cuda.cuda_available or gpuarray.pygpu_activated:
         # very often we end up in this situation when we want to
-        # replace w with w_copy, where w is CudaNdarray
+        # replace w with w_copy, where w is a GPU variable
         # and w_copy is TensorType. This is caused because shared
         # variables are put on GPU right aways >:| ,
         new_givens = OrderedDict()
 
         for w, w_copy in givens.iteritems():
-            if (isinstance(w.type, cuda.CudaNdarrayType)
-                and isinstance(w_copy.type, tensor.TensorType)):
+            if ((isinstance(w.type, cuda.CudaNdarrayType) or
+                 isinstance(w.type, gpuarray.GpuArrayType)) and
+                isinstance(w_copy.type, tensor.TensorType)):
+
                 for o in inner_outs:
                     new_givens = traverse(o, w, w_copy, new_givens)
             else:

@@ -47,7 +47,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         itensor3, Tile, switch, Diagonal, Diag,
         nonzero, flatnonzero, nonzero_values,
         stacklists, DimShuffle, hessian, ptp, power,
-        swapaxes, choose, Choose, NoneConst,
+        swapaxes, choose, Choose, NoneConst, AllocEmpty
         )
 
 from theano.tests import unittest_tools as utt
@@ -7557,6 +7557,15 @@ class T_Choose(utt.InferShapeTester):
                                 [A, B, C],
                                 # Op that should be removed from the graph.
                                 self.op_class)
+
+def test_allocempty():
+    # Test that we allocated correctly
+    f = theano.function([], AllocEmpty("float32")(2, 3))
+    assert len(f.maker.fgraph.apply_nodes) == 1
+    out = f()
+    
+    assert out.shape == (2, 3)
+    assert out.dtype == 'float32'
 
 """
 

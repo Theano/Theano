@@ -136,6 +136,12 @@ class GpuArrayType(Type):
                 raise NotImplementedError(
                     "GpuArrayType.values_eq_approx() don't implemented the"
                     " allow_remove_inf and allow_remove_nan parameter")
+            if a.dtype == 'float16' or b.dtype == 'float16':
+                an = numpy.asarray(a)
+                bn = numpy.asarray(b)
+                return tensor.TensorType.values_eq_approx(
+                    an, bn, allow_remove_inf=allow_remove_inf,
+                    allow_remove_nan=allow_remove_nan, rtol=rtol, atol=atol)
             narrow = 'float32', 'complex64'
             if (str(a.dtype) in narrow) or (str(b.dtype) in narrow):
                 atol_ = theano.tensor.basic.float32_atol
@@ -152,6 +158,13 @@ class GpuArrayType(Type):
                             "(%(atol_)s + %(rtol_)s * fabs(%%(b)s)))" %
                             locals())
             return numpy.asarray(res).all()
+
+    @staticmethod
+    def may_share_memory(a, b):
+        if (not isinstance(a, gpuarray.GpuArray) or
+               not isinstance(b, gpuarray.GpuArray)):
+            return False
+        return pygpu.gpuarray.may_share_memory(a, b)
 
     def value_zeros(self, shape):
         return pygpu.gpuarray.zeros(shape, dtype=self.typecode)

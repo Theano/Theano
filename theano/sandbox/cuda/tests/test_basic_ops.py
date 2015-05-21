@@ -382,7 +382,7 @@ def test_alloc_empty():
     assert out.shape == (2, 3)
     assert out.dtype == 'float32'
 
-    # Test that we do not merge them.
+    # Test that we merge them.
     f = theano.function([], [cuda.basic_ops.gpu_alloc_empty(2, 3),
                              cuda.basic_ops.gpu_alloc_empty(2, 3)])
     out = f()

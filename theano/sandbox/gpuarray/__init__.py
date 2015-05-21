@@ -33,6 +33,11 @@ from . import opt
 
 
 def init_dev(dev):
+    if pygpu.gpuarray.api_version() != (-10000, 0):
+        raise RuntimeError("Wrong API version for gpuarray:",
+                           pygpu.gpuarray.api_version(),
+                           "Make sure Theano and libgpuarray/pygpu "
+                           "are in sync.")
     global pygpu_activated
     context = pygpu.init(dev)
     pygpu.set_default_context(context)
@@ -54,6 +59,14 @@ if pygpu:
             optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile', 'inplace')
         elif config.gpuarray.init_device != '':
             init_dev(config.gpuarray.init_device)
+
+        from .basic_ops import (GpuAlloc, GpuContiguous, GpuEye, GpuFromHost,
+                                GpuJoin, GpuReshape, GpuSplit, HostFromGpu)
+        from .basic_ops import host_from_gpu, gpu_from_host
+        from .elemwise import GpuElemwise
+        from .subtensor import (GpuSubtensor, GpuIncSubtensor,
+                                GpuAdvancedIncSubtensor1)
+
     except Exception:
         error("Could not initialize pygpu, support disabled", exc_info=True)
 else:

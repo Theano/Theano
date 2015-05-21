@@ -944,6 +944,7 @@ KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
         kname = self.gpu_kernels(node, name)[0].objvar
         s = """
         size_t dims[2] = {0, 0};
+        size_t ls, gs;
         void *args[3];
         int err;
 
@@ -959,10 +960,12 @@ KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
             %(fail)s
         }
 
-        args[0] = &%(z)s->ga;
+        args[0] = %(z)s->ga.data;
         args[1] = &dims[0];
         args[2] = &dims[1];
-        err = GpuKernel_call(&%(kname)s, 0, 1, 256, args);
+        ls = 1;
+        gs = 256;
+        err = GpuKernel_call(&%(kname)s, 1, &ls, &gs, 0, args);
         if (err != GA_NO_ERROR) {
             PyErr_Format(PyExc_RuntimeError,
                          "gpuarray error: kEye: %%s. n%%lu, m=%%lu.",
@@ -978,4 +981,4 @@ KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
         return s
 
     def c_code_cache_version(self):
-        return (3, self.GpuKernelBase_version)
+        return (4, self.GpuKernelBase_version)
