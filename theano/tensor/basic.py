@@ -2401,14 +2401,9 @@ class Alloc(gof.Op):
     """
     __props__ = ()
 
-    def make_node(self, value, *shape):
-        v = as_tensor_variable(value)
+    def validate_shape(self, shape):
         sh = [as_tensor_variable(s) for s in shape]
         bcast = []
-        if v.ndim > len(sh):
-            raise TypeError("The Alloc value to use has more dimensions"
-                            " than the specified dimensions",
-                            v.ndim, len(sh))
         for i, s in enumerate(sh):
             if s.type.dtype[:3] not in ('int', 'uin'):
                 if config.exception_verbosity == 'high':
@@ -2424,8 +2419,17 @@ class Alloc(gof.Op):
             except NotScalarConstantError:
                 const_shp = None
             bcast.append(numpy.all(1 == const_shp))
+        return sh, bcast
+
+    def make_node(self, value, *shape):
+        v = as_tensor_variable(value)
+        sh, bcast = self.validate_shape(shape)
+        if v.ndim > len(sh):
+            raise TypeError("The Alloc value to use has more dimensions"
+                            " than the specified dimensions",
+                            v.ndim, len(sh))
         otype = TensorType(dtype=v.dtype, broadcastable=bcast)
-        return gof.Apply(self, ([v] + sh), [otype()])
+        return gof.Apply(self, [v] + sh, [otype()])
 
     def perform(self, node, inputs, out_):
         out, = out_
