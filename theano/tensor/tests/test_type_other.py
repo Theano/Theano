@@ -35,5 +35,9 @@ def test_none_Constant():
 
     x = tensor.vector('x')
     y = tensor.argmax(x)
-    f = theano.function([x], [y])
+    kwargs = {}
+    # We can't pickle DebugMode
+    if theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
+        kwargs = {'mode': 'FAST_RUN'}
+    f = theano.function([x], [y], **kwargs)
     cPickle.loads(cPickle.dumps(f))
