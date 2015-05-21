@@ -997,3 +997,11 @@ To understand this profile here is some explanation of how optimization work:
 
   * Optimization with that pattern `local_op_sink` is the opposite of
     `lift`.
+
+  * Local optimizer can replace any arbitrary node in the graph, not
+    only the node it received as input. For this, it must return a
+    dict. The keys being nodes to replace and the
+    values being the corresponding replacement.
+
+    This is useful to replace a client of the node received as
+    parameter.
