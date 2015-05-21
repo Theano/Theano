@@ -210,6 +210,8 @@ with all values set to zero except at the provided array indices.
 This demonstrates that you can introduce new Theano variables into a scan function.
 
 
+.. _lib_scan_shared_variables:
+
 Using shared variables - Gibbs sampling
 ---------------------------------------
 
@@ -316,6 +318,7 @@ updated:
     gibbs10 = theano.function([sample], values[-1], updates=updates)
 
 
+.. _lib_scan_strict:
 
 Using shared variables - the strict flag
 ----------------------------------------
@@ -453,6 +456,73 @@ expressed in terms of the arguments of the inner function (in this case
 As a rule, scan always expects the condition to be the last thing returned
 by the inner function, otherwise an error will be raised.
 
+
+Optimizing Scan's performance
+-----------------------------
+
+This section covers some ways to improve performance of a Theano function
+using Scan.
+
+
+Minimizing Scan usage
+^^^^^^^^^^^^^^^^^^^^^
+
+Scan makes it possible to define simple and compact graphs that can do the
+same work as much larger and more complicated graphs. However, it comes with
+a significant overhead. As such, when performance is the objective, a good
+rule of thumb is to perform as much of the computation as possible outside of
+Scan. This may have the effect of increasing memory usage but can also
+reduce the overhead introduces by using Scan.
+
+
+Passing shared variables as non-sequences
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It is possible, inside of Scan, to use shared variables previously defined
+outside of the Scan without explicitly passing them as inputs to the Scan.
+However it is often more efficient to explicitly pass them as non-sequence
+inputs instead. Section :ref:`lib_scan_shared_variables` provides an
+explanation for this and section :ref:`lib_scan_strict` describes the *strict*
+flag, a tool that Scan provides to help ensure that the shared variables are
+correctly passed as non-sequence inputs to Scan.
+
+
+Deactivating garbage collecting in Scan
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Deactivating the garbage collection for Scan can allow it to reuse memory
+between executions instead of always having to allocate new memory. This can
+improve performance at the cost of increased memory usage.
+
+There are two ways to achieve this, using the Theano flag
+``config.scan.allow_gc`` and setting it to False, or using the argument
+``allow_gc`` of the function theano.scan() and set it to False (when a value
+is not provided for this argument, the value of the flag
+``config.scan.allow_gc`` is used).
+
+
+Graph optimizations
+^^^^^^^^^^^^^^^^^^^
+
+This one is simple but still worth pointing out. Theano is able to
+automatically recognize and optimize many computation patterns. However, it
+doesn't catch every case that could be optimized and it remains useful for
+performance that the user defines an efficient graph in the first place. This
+is also the case, and sometimes even more so, for the graph inside of Scan.
+This is because it will be executed many times for every execution of the
+Theano function that contains it.
+
+The `LSTM tutorial <http://deeplearning.net/tutorial/lstm.html>`_ on
+`DeepLearning.net <http://deeplearning.net>`_ provides an example of such
+optimization. Instead of performing many matrix multiplications between matrix
+:math:`x_t` and each of the matrices :math:`W_i`, :math:`W_c`, :math:`W_f` and
+:math:`W_o`, the matrices :math:`W_*`, are concatenated into a single matrix
+:math:`W` and the graph performs a single larger matrix multiplication
+between :math:`W` and :math:`x_t`. The resulting matrix is then sliced to
+obtain the results of that the small individual matrix multiplications
+would have produced. This optimization replaces many small and inefficient
+matrix multiplications but a single larger one and thus improves performance
+at the cost of a potentially higher memory usage.
 
 
 reference
