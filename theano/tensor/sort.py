@@ -122,7 +122,7 @@ class SortOp(theano.Op):
             else:
                 index_shape = [1] * a.ndim 
                 index_shape[i] = a.shape[i]
-                # it's a way to emulate numpy.ogrid[0:, a.shape[0], 0:a.shape[1], a.shape[2]]
+                # it's a way to emulate numpy.ogrid[0: a.shape[0], 0: a.shape[1], 0: a.shape[2]]
                 indices.append(theano.tensor.arange(a.shape[i]).reshape(index_shape))
         return indices
     """
