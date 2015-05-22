@@ -29,7 +29,7 @@ AddConfigVar('gpuarray.sync',
 # This is for documentation not to depend on the availability of pygpu
 from .type import (GpuArrayType, GpuArrayVariable, GpuArrayConstant,
                   GpuArraySharedVariable, gpuarray_shared_constructor)
-from . import opt
+from . import opt, nerv
 
 
 def init_dev(dev):
@@ -56,7 +56,7 @@ if pygpu:
             init_dev(config.device)
             import theano.compile
             theano.compile.shared_constructor(gpuarray_shared_constructor)
-            optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile', 'inplace')
+            optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile')
         elif config.gpuarray.init_device != '':
             init_dev(config.gpuarray.init_device)
 

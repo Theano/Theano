@@ -11,6 +11,7 @@ Here are some quick guides to NumPy:
   * `Numpy User Guide <http://docs.scipy.org/doc/numpy/user/index.html>`__
   * `More detailed Numpy tutorial <http://www.scipy.org/Tentative_NumPy_Tutorial>`__
   * `100 NumPy exercises <https://github.com/rougier/numpy-100>`__
+  * `Numpy tutorial <http://www.labri.fr/perso/nrougier/teaching/numpy/numpy.html>`__
 
     .. [TODO: More doc, e.g. see _test_tensor.py]
 

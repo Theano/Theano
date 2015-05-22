@@ -24,4 +24,22 @@ static int theano_prep_output(PyGpuArrayObject **out, unsigned int nd,
   return (*out == NULL) ? 1 : 0;
 }
 
+static PyGpuArrayObject *theano_try_copy(PyGpuArrayObject *out,
+                                         PyGpuArrayObject *V) {
+  if (out &&
+      GpuArray_CHKFLAGS(&out->ga, GA_CARRAY) &&
+      theano_size_check(out, PyGpuArray_NDIM(V),
+                        PyGpuArray_DIMS(V),
+                        V->ga.typecode)) {
+    if (pygpu_move(out, V)) {
+      Py_XDECREF(out);
+      return NULL;
+    }
+  } else {
+    Py_XDECREF(out);
+    out = pygpu_copy(V, GA_C_ORDER);
+  }
+  return out;
+}
+
 #endif

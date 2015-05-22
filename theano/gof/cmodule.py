@@ -4,7 +4,6 @@ from __future__ import print_function
 import atexit
 import cPickle
 import logging
-import operator
 import os
 import re
 import shutil
@@ -25,12 +24,12 @@ except ImportError:
 import numpy.distutils  # TODO: TensorType should handle this
 
 import theano
-from theano.compat import PY3, next, decode, decode_iter
+from theano.compat import PY3, decode, decode_iter
 from theano.compat.six import b, BytesIO, StringIO
 from theano.gof.utils import flatten
 from theano.configparser import config
 from theano.gof.cc import hash_from_code
-from theano.misc.windows import (subprocess_Popen, call_subprocess_Popen,
+from theano.misc.windows import (subprocess_Popen,
                                  output_subprocess_Popen)
 
 # we will abuse the lockfile mechanism when reading and writing the registry
@@ -846,14 +845,15 @@ class ModuleCache(object):
                                     get_safe_part(key),
                                     []).append(key)
                         else:
+                            dir1 = os.path.dirname(self.entry_from_key[key])
+                            dir2 = os.path.dirname(entry)
                             _logger.warning(
                                 "The same cache key is associated to "
                                 "different modules (%s and %s). This "
                                 "is not supposed to happen! You may "
                                 "need to manually delete your cache "
                                 "directory to fix this.",
-                                self.entry_from_key[key],
-                                entry)
+                                dir1, dir2)
                     # Clean up the name space to prevent bug.
                     if key_data.keys:
                         del key
@@ -1049,8 +1049,6 @@ class ModuleCache(object):
         module = self._get_from_key(key)
         if module is not None:
             return module
-
-        lock_taken = False
 
         src_code = lnk.get_src_code()
         # Is the source code already in the cache?
@@ -1498,8 +1496,8 @@ def std_lib_dirs_and_libs():
                              r'EGG-INFO\mingw\usr\x86_64-w64-mingw32\lib')]
             for f, lib in [('libmsvcr90.a',
                             'mingw 4.5.2 or 4.8.1-2 (newer could work)')]:
-                if not any([os.path.exists(os.path.join(libdir, f))
-                            for libdir in libdirs]):
+                if not any([os.path.exists(os.path.join(tmp_libdir, f))
+                            for tmp_libdir in libdirs]):
                     print(("Your Python version is from Canopy. " +
                            "You need to install the package '" + lib +
                            "' from Canopy package manager."
