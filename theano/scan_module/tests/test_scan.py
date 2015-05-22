@@ -623,6 +623,20 @@ class T_Scan(unittest.TestCase):
         rval = theano.function([x], y, updates=updates)(inp)
         assert numpy.all(rval == inp[:-1])
 
+    def test_using_negative_taps_sequence(self):
+        # This test refers to a bug reported on github on May 22 2015 by
+        # user june-qijun
+        def lp(x, x2):
+            return x
+        x = tensor.fvector('x')
+        res, upd = theano.scan(lp,
+                               sequences=dict(input=x, taps=[-2, -1]))
+        f = theano.function([x], res, updates = upd)
+
+        output =  f([1, 2, 3, 4, 5])
+        expected_output = numpy.array([1, 2, 3], dtype="float32")
+        utt.assert_allclose(output, expected_output)
+
     def test_connection_pattern(self):
         """Test connection_pattern() in the presence of recurrent outputs
         with multiple taps.
