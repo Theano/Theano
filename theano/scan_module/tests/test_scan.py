@@ -624,6 +624,8 @@ class T_Scan(unittest.TestCase):
         assert numpy.all(rval == inp[:-1])
 
     def test_using_negative_taps_sequence(self):
+        # This test refers to a bug reported on github on May 22 2015 by
+        # user june-qijun
         def lp(x, x2):
             return x
         x = tensor.fvector('x')
