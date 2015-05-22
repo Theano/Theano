@@ -1333,6 +1333,11 @@ class CLinker(link.Linker):
         # old compiled dir.
         if c_callable:
             sig.append('c_callable: ' + str(self.c_callable))
+            constants_vals = ""
+            for var in self.orphans:
+                if isinstance(var, graph.Constant):
+                    constants_vals += str(var.data.flatten())
+            sig.append('costants: '+constants_vals)
 
         error_on_play = [False]
 
