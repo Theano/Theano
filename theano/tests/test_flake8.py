@@ -42,7 +42,6 @@ whitelist_flake8 = [
     "compile/profiling.py",
     "compile/function_module.py",
     "compile/monitormode.py",
-    "compile/io.py",
     "compile/tests/test_builders.py",
     "compile/tests/test_misc.py",
     "compile/tests/test_monitormode.py",
