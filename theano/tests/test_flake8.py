@@ -38,7 +38,6 @@ whitelist_flake8 = [
     "tests/test_tutorial.py",
     "tests/disturb_mem.py",
     "tests/unittest_tools.py",
-    "compile/ops.py",
     "compile/debugmode.py",
     "compile/function.py",
     "compile/pfunc.py",
