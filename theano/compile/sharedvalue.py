@@ -49,7 +49,8 @@ class SharedVariable(Variable):
         or copied, so they must have the correct type.
 
         :param allow_downcast: Only applies if `strict` is False.
-        True -> allow assigned value to lose precision when cast during assignment.
+        True -> allow assigned value to lose precision when cast
+                during assignment.
         False -> never allow precision loss.
         None -> only allow downcasting of a Python float to a scalar floatX.
 
@@ -65,17 +66,18 @@ class SharedVariable(Variable):
         if container is not None:
             self.container = container
             if (value is not None) or (strict is not None):
-                raise TypeError(
-                   'value and strict are ignored if you pass a container here')
+                raise TypeError('value and strict are ignored if you pass '
+                                'a container here')
         else:
             if container is not None:
                 raise TypeError('Error to specify both value and container')
-            self.container = Container(self,
-                    storage=[type.filter(value, strict=strict,
-                                         allow_downcast=allow_downcast)],
-                    readonly=False,
-                    strict=strict,
-                    allow_downcast=allow_downcast)
+            self.container = Container(
+                self,
+                storage=[type.filter(value, strict=strict,
+                                     allow_downcast=allow_downcast)],
+                readonly=False,
+                strict=strict,
+                allow_downcast=allow_downcast)
 
     def get_value(self, borrow=False, return_internal_type=False):
         """Get the non-symbolic value associated with this SharedVariable.
@@ -114,11 +116,11 @@ class SharedVariable(Variable):
 
     def clone(self):
         cp = self.__class__(
-                name=self.name,
-                type=self.type,
-                value=None,
-                strict=None,
-                container=self.container)
+            name=self.name,
+            type=self.type,
+            value=None,
+            strict=None,
+            container=self.container)
         cp.tag = copy.copy(self.tag)
         return cp
 
@@ -140,8 +142,8 @@ class SharedVariable(Variable):
                    type(value))
 
         raise TypeError(
-                "The generic 'SharedVariable' object is not subscriptable. "
-                "This shared variable contains %s" % msg)
+            "The generic 'SharedVariable' object is not subscriptable. "
+            "This shared variable contains %s" % msg)
 
     def _value_get(self):
         raise Exception("sharedvar.value does not exist anymore. Use "
@@ -183,7 +185,8 @@ def shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
         potential constructors to those that can accept those kwargs.
 
     :note: Some shared variable have ``borrow`` as extra kwargs.
-           `See <http://deeplearning.net/software/theano/tutorial/aliasing.html#borrowing-when-creating-shared-variables>`_ for detail.
+           `See <http://deeplearning.net/software/theano/tutorial/aliasing.\
+html#borrowing-when-creating-shared-variables>`_ for detail.
 
     :note: Some shared variable have ``broadcastable`` as extra kwargs.
         As shared variable shapes can change, all dimensions default
@@ -200,7 +203,8 @@ def shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
 
     try:
         if isinstance(value, Variable):
-            raise TypeError(" Shared variable constructor needs numeric values and not symbolic variables.")
+            raise TypeError("Shared variable constructor needs numeric "
+                            "values and not symbolic variables.")
 
         for ctor in reversed(shared.constructors):
             try:
@@ -234,4 +238,4 @@ shared.constructors = []
 def generic_constructor(value, name=None, strict=False, allow_downcast=None):
     """SharedVariable Constructor"""
     return SharedVariable(type=generic, value=value, name=name, strict=strict,
-            allow_downcast=allow_downcast)
+                          allow_downcast=allow_downcast)

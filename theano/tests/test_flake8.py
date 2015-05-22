@@ -41,7 +41,6 @@ whitelist_flake8 = [
     "compile/__init__.py",
     "compile/profiling.py",
     "compile/function_module.py",
-    "compile/sharedvalue.py",
     "compile/monitormode.py",
     "compile/io.py",
     "compile/tests/test_builders.py",
