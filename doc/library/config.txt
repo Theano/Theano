@@ -327,7 +327,7 @@ import theano and print the config variable, as in:
 
     Default False
 
-    Fo the vm/cvm do memory reallocation when executing a Theano function?
+    Do the vm do memory reallocation when executing a Theano function?
 
 .. attribute:: config.profiling.n_apply
 

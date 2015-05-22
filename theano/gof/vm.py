@@ -1043,8 +1043,9 @@ class VM_Linker(link.LocalLinker):
             lazy = config.vm.lazy
         if lazy is None:
             lazy = not all([(not th.lazy) for th in thunks])
-        if not (lazy or (config.profile and config.profile_memory) or
-                self.use_cloop or self.callback and config.memory_realloc):
+        if config.memory_realloc and not (lazy or (config.profile and
+                                          config.profile_memory)
+                                          or self.use_cloop or self.callback):
             for pair in reallocated_info.values():
                 storage_map[pair[1]] = storage_map[pair[0]]
 
