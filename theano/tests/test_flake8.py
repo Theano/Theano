@@ -274,7 +274,6 @@ whitelist_flake8 = [
     "gof/cc.py",
     "gof/opt.py",
     "gof/link.py",
-    "gof/sched.py",
     "gof/toolbox.py",
     "gof/fg.py",
     "gof/op.py",
