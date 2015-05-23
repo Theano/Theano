@@ -1499,7 +1499,8 @@ class NavigatorOptimizer(Optimizer):
             replacements = replacements.values()
         elif not isinstance(replacements, (tuple, list)):
             raise TypeError('Optimizer %s gave wrong type of replacement. '
-                            'Expected list or tuple.' % lopt)
+                            'Expected list or tuple. Got %s' % (
+                                lopt, replacements))
         if len(old_vars) != len(replacements):
             raise ValueError('Optimizer %s gave wrong number of replacements'
                              % lopt)
