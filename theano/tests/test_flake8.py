@@ -33,9 +33,7 @@ whitelist_flake8 = [
     "tests/test_pickle_unpickle_theano_fn.py",
     "tests/test_determinism.py",
     "tests/record.py",
-    "tests/test_printing.py",
     "tests/test_tutorial.py",
-    "tests/disturb_mem.py",
     "tests/unittest_tools.py",
     "compile/__init__.py",
     "compile/profiling.py",
@@ -170,7 +168,6 @@ whitelist_flake8 = [
     "sandbox/cuda/nvcc_compiler.py",
     "sandbox/cuda/neighbours.py",
     "sandbox/cuda/tests/walltime.py",
-    "sandbox/cuda/tests/test_fftconv.py",
     "sandbox/cuda/tests/test_gradient.py",
     "sandbox/cuda/tests/test_neighbours.py",
     "sandbox/cuda/tests/test_conv_cuda_ndarray.py",
@@ -289,8 +286,6 @@ whitelist_flake8 = [
     "gof/tests/test_cc.py",
     "gof/tests/test_compute_test_value.py",
     "gof/sandbox/equilibrium.py",
-    "gof/tests/test_utils.py",
-    "tensor/tests/_test_mpi_roundtrip.py",
 ]
 
 
