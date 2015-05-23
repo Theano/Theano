@@ -273,7 +273,6 @@ whitelist_flake8 = [
     "gof/__init__.py",
     "gof/cc.py",
     "gof/opt.py",
-    "gof/compilelock.py",
     "gof/link.py",
     "gof/sched.py",
     "gof/toolbox.py",
