@@ -5,13 +5,12 @@
 """
 from __future__ import print_function
 
-__docformat__ = "restructuredtext en"
-
 import copy
 import sys
 import copy_reg
 import gc
 from itertools import izip
+import logging
 
 import numpy
 
@@ -30,6 +29,8 @@ from theano.compile.function_module import (
     )
 from theano.compile.mode import Mode, register_mode
 from theano.compile.ops import OutputGuard
+
+__docformat__ = "restructuredtext en"
 
 AddConfigVar('DebugMode.patience',
              "Optimize graph this many times to detect inconsistency",
@@ -96,7 +97,6 @@ AddConfigVar('DebugMode.check_preallocated_output_ndim',
              IntParam(4, lambda i: i > 0),
              in_c_key=False)
 
-import logging
 _logger = logging.getLogger("theano.compile.debugmode")
 
 
@@ -303,9 +303,9 @@ class BadOptimization(DebugModeError):
 
             # N.B. the maximum(..., 1e-8) protects against div by 0 when
             #      nv == ov == 0
-            reldiff = (abs_diff
-                       / numpy.maximum(numpy.absolute(nv) + numpy.absolute(ov),
-                                       1e-8))
+            reldiff = (abs_diff /
+                       numpy.maaximum(numpy.absolute(nv) + numpy.absolute(ov),
+                                      1e-8))
             print("  Max Rel Diff: ", numpy.max(reldiff), file=ssio)
             print("  Mean Rel Diff: ", numpy.mean(reldiff), file=ssio)
             print("  Median Rel Diff: ", numpy.median(reldiff), file=ssio)
@@ -730,8 +730,8 @@ def _optcheck_fgraph(input_specs, output_specs, accept_inplace=False):
     # We need to protect all immutable inputs from inplace operations.
     fgraph.attach_feature(Supervisor(
         input for spec, input in zip(input_specs, fgraph.inputs)
-        if not (spec.mutable or (hasattr(fgraph, 'destroyers')
-                                 and fgraph.destroyers(input)))))
+        if not (spec.mutable or (hasattr(fgraph, 'destroyers') and
+                                 fgraph.destroyers(input)))))
 
     for feature in std_fgraph.features:
         fgraph.attach_feature(feature())
@@ -1340,9 +1340,9 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
         if type(getattr(node, 'op', None)) in ops_with_inner_function:
             fn_attr_name = ops_with_inner_function[type(node.op)]
             fn = getattr(node.op, fn_attr_name, None)
-            if (not fn
-                    or not hasattr(fn, 'maker')
-                    or not hasattr(fn.maker, 'mode')):
+            if (not fn or
+                    not hasattr(fn, 'maker') or
+                    not hasattr(fn.maker, 'mode')):
                 _logger.warn('Expected theano function not found in %s.%s',
                              node.op, fn_attr_name)
             else:
@@ -2251,7 +2251,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
             inputs = [inputs]
 
         # Wrap them in In or Out instances if needed.
-        inputs = map(self.wrap_in, inputs),
+        inputs = map(self.wrap_in, inputs)
         outputs = map(self.wrap_out, outputs)
         _inputs = gof.graph.inputs([o.variable for o in outputs] +
                                    [i.update for i in inputs

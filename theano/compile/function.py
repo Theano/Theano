@@ -1,10 +1,7 @@
 """Define the `function` function
 """
-__docformat__ = "restructuredtext en"
-
 import cPickle
 import logging
-_logger = logging.getLogger('theano.compile.function')
 
 import traceback as tb
 import re
@@ -15,6 +12,9 @@ from theano.compile.pfunc import pfunc
 from numpy import any
 import warnings
 from theano import compat
+
+__docformat__ = "restructuredtext en"
+_logger = logging.getLogger('theano.compile.function')
 
 
 def function_dump(filename, inputs, outputs=None, mode=None, updates=None,

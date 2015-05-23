@@ -2,8 +2,6 @@
 """
 from __future__ import print_function
 
-__docformat__ = "restructuredtext en"
-
 import copy
 import copy_reg
 import cPickle
@@ -24,6 +22,8 @@ from theano.gof.op import ops_with_inner_function
 
 import logging
 _logger = logging.getLogger('theano.compile.function_module')
+
+__docformat__ = "restructuredtext en"
 
 
 class UnusedInputError(Exception):
@@ -1276,8 +1276,8 @@ class FunctionMaker(object):
         #  - variables that have to be provided (used_inputs)
         #  - shared variables that will be updated
         used_inputs = gof.graph.ancestors(
-            ([o.variable for o in outputs]
-             + [i.update for i in inputs if getattr(i, 'update', False)]),
+            ([o.variable for o in outputs] +
+             [i.update for i in inputs if getattr(i, 'update', False)]),
             blockers=[i.variable for i in inputs])
 
         msg = ("theano.function was asked to create a function computing "

@@ -39,9 +39,9 @@ def make_depends():
     def depends(pair):
         """ Returns True if a depends on b """
         a, b = pair
-        return (any(bout in a.inputs for bout in b.outputs)
-                or any(depends((ainp.owner, b)) for ainp in a.inputs
-                       if ainp.owner))
+        return (any(bout in a.inputs for bout in b.outputs) or
+                any(depends((ainp.owner, b)) for ainp in a.inputs
+                    if ainp.owner))
     return depends
 
 

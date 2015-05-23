@@ -405,7 +405,9 @@ def give_variables_names(variables):
     This function is idempotent."""
     names = map(lambda var: var.name, variables)
     h = hist(names)
-    bad_var = lambda var: not var.name or h[var.name] > 1
+
+    def bad_var(var):
+        return not var.name or h[var.name] > 1
 
     for i, var in enumerate(filter(bad_var, variables)):
         var.name = (var.name or "") + "_%d" % i

@@ -1,7 +1,4 @@
 """WRITEME Defines the `Type` class."""
-
-__docformat__ = "restructuredtext en"
-
 from theano.compat import PY3
 
 from theano.gof import utils
@@ -12,6 +9,8 @@ from theano.gof import graph
 # Type #
 ########
 from theano.gof.op import CLinkerObject
+
+__docformat__ = "restructuredtext en"
 
 
 class CLinkerType(CLinkerObject):

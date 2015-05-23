@@ -93,11 +93,11 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
 
         for ins in node.inputs:
             assert not (ins in view_of and viewed_by[ins])
-            if (getattr(ins, 'ndim', None) == 0 and not storage_map[ins][0]
-                    and ins not in fgraph.outputs and ins.owner
-                    and all([compute_map_re[v][0]
-                             for v in dependencies.get(ins, [])])
-                    and ins not in allocated):
+            if (getattr(ins, 'ndim', None) == 0 and not storage_map[ins][0] and
+                    ins not in fgraph.outputs and ins.owner and
+                    all([compute_map_re[v][0]
+                         for v in dependencies.get(ins, [])]) and
+                    ins not in allocated):
                 # Constant Memory cannot be changed
                 # Constant and shared variables' storage_map value is not empty
                 reuse_out = None
@@ -526,9 +526,9 @@ class Stack(VM):
                         for i in current_apply.inputs:
                             # Garbage Collection -> check if anybody else uses
                             # this input
-                            if (dependencies[i]
-                                    and i.owner
-                                    and i not in self.outputs):
+                            if (dependencies[i] and
+                                    i.owner and
+                                    i not in self.outputs):
                                 if all(compute_map[v][0]
                                         for v in dependencies[i]):
                                     storage_map[i][0] = None
@@ -1034,10 +1034,10 @@ class VM_Linker(link.LocalLinker):
             for node in order:
                 clear_after_this_thunk = []
                 for input in node.inputs:
-                    if ((input in computed)
-                            and (input not in fgraph.outputs)
-                            and (node == last_user[input])
-                            and input not in reallocated_info.keys()):
+                    if (input in computed and
+                            input not in fgraph.outputs and
+                            node == last_user[input] and
+                            input not in reallocated_info.keys()):
                         clear_after_this_thunk.append(storage_map[input])
                 post_thunk_clear.append(clear_after_this_thunk)
         else:

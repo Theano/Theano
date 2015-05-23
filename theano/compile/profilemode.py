@@ -12,11 +12,12 @@ from theano.compile.mode import (Mode, register_mode,
                                  predefined_optimizers)
 from theano.configparser import config, AddConfigVar, IntParam, BoolParam
 from theano.compile.function_module import FunctionMaker
-run_cthunk = None  # Will be imported only when needed.
 
 from profiling import ProfileStats
 
+run_cthunk = None  # Will be imported only when needed.
 import_time = time.time()
+
 
 AddConfigVar('ProfileMode.n_apply_to_print',
              "Number of apply instances to print by default",

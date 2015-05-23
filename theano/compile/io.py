@@ -1,11 +1,12 @@
 """Define `SymbolicInput`, `SymbolicOutput`, `In`, `Out` """
-__docformat__ = 'restructuredtext en'
 
 from theano import gof
 from sharedvalue import SharedVariable
 
 import logging
 _logger = logging.getLogger("theano.compile.io")
+
+__docformat__ = 'restructuredtext en'
 
 
 class SymbolicInput(object):

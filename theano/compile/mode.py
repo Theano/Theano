@@ -48,9 +48,9 @@ def check_equal(x, y):
         y = y.todense()
 
     if isinstance(x, numpy.ndarray) and isinstance(y, numpy.ndarray):
-        if (x.dtype != y.dtype
-                or x.shape != y.shape
-                or numpy.any(abs(x - y) > 1e-10)):
+        if (x.dtype != y.dtype or
+                x.shape != y.shape or
+                numpy.any(abs(x - y) > 1e-10)):
             raise Exception("Output mismatch.",
                             {'performlinker': x, 'clinker': y})
     else:

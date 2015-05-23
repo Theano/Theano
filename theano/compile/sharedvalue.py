@@ -1,6 +1,4 @@
 """Provide a simple user friendly API to Theano-managed memory"""
-__docformat__ = 'restructuredtext en'
-
 # Standard imports
 import copy
 import logging
@@ -12,6 +10,7 @@ import numpy
 from theano.gof import Container, Variable, generic, utils
 
 _logger = logging.getLogger('theano.compile.sharedvalue')
+__docformat__ = 'restructuredtext en'
 
 
 class SharedVariable(Variable):

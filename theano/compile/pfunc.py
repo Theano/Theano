@@ -1,8 +1,4 @@
 """Provide a simple user friendly API """
-
-__docformat__ = 'restructuredtext en'
-
-
 from theano import config
 from theano.compile import orig_function, In, Out
 from theano.compile import UnusedInputError
@@ -12,6 +8,8 @@ from theano.gof import Variable, Constant
 
 import logging
 _logger = logging.getLogger("theano.compile.pfunc")
+
+__docformat__ = 'restructuredtext en'
 
 
 def rebuild_collect_shared(outputs,
@@ -232,8 +230,8 @@ def rebuild_collect_shared(outputs,
                 cloned_outputs.append(Out(cloned_v, borrow=v.borrow))
             else:
                 raise TypeError('Outputs must be theano Variable or '
-                                'Out instances. Received ' + str(v)
-                                + ' of type ' + str(type(v)))
+                                'Out instances. Received ' + str(v) +
+                                ' of type ' + str(type(v)))
             # computed_list.append(cloned_v)
     else:
         if isinstance(outputs, Variable):

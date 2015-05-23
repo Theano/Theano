@@ -7,13 +7,13 @@ from theano.tests import unittest_tools as utt
 # Skip tests if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
 import theano.sandbox.cuda as cuda_ndarray
-if not cuda_ndarray.cuda_available:
+if not cuda_ndarray.cuda_available:  # noqa
     raise SkipTest('Optional package cuda not available')
 from theano.misc.pycuda_init import pycuda_available
-if not pycuda_available:
+if not pycuda_available:  # noqa
     raise SkipTest('Optional package pycuda not available')
 from theano.sandbox.cuda.fftconv import scikits_cuda_available
-if not scikits_cuda_available:
+if not scikits_cuda_available:  # noqa
     raise SkipTest('Optional package scikits.cuda not available')
 
 from theano.sandbox.cuda import float32_shared_constructor as shared
