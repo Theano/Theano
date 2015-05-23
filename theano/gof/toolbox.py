@@ -126,7 +126,7 @@ class LambdExtract:
 
     def __call__(self):
         return self.fgraph.change_input(self.node, self.i, self.r,
-                                    reason=("Revert", self.reason))
+                                        reason=("Revert", self.reason))
 
 
 class History(Feature):
@@ -214,9 +214,9 @@ class Validator(Feature):
 
 
 class ReplaceValidate(History, Validator):
-    pickle_rm_attr = ["replace_validate", "replace_all_validate",
-                      "replace_all_validate_remove"] + \
-                      History.pickle_rm_attr + Validator.pickle_rm_attr
+    pickle_rm_attr = (["replace_validate", "replace_all_validate",
+                       "replace_all_validate_remove"] +
+                      History.pickle_rm_attr + Validator.pickle_rm_attr)
 
     def on_attach(self, fgraph):
         for attr in ('replace_validate', 'replace_all_validate',
@@ -256,11 +256,13 @@ class ReplaceValidate(History, Validator):
             try:
                 fgraph.replace(r, new_r, reason=reason, verbose=False)
             except Exception as e:
-                if ('The type of the replacement must be the same' not in
-                    str(e) and 'does not belong to this FunctionGraph' not in str(e)):
+                msg = str(e)
+                s1 = 'The type of the replacement must be the same'
+                s2 = 'does not belong to this FunctionGraph'
+                if (s1 not in msg and s2 not in msg):
                     out = sys.stderr
-                    print("<<!! BUG IN FGRAPH.REPLACE OR A LISTENER !!>>", end=' ', file=out)
-                    print(type(e), e, reason, file=out)
+                    print("<<!! BUG IN FGRAPH.REPLACE OR A LISTENER !!>>",
+                          type(e), e, reason, file=out)
                 # this might fail if the error is in a listener:
                 # (fgraph.replace kinda needs better internal error handling)
                 fgraph.revert(chk)
@@ -286,13 +288,14 @@ class ReplaceValidate(History, Validator):
                 fgraph.revert(chk)
                 if warn:
                     out = sys.stderr
-                    print((
+                    print(
                         "WARNING: An optimization wanted to replace a Variable"
                         " in the graph, but the replacement for it doesn't"
                         " remove it. We disabled the optimization."
                         " Your function runs correctly, but it would be"
                         " appreciated if you submit this problem to the"
-                        " mailing list theano-users so that we can fix it."), file=out)
+                        " mailing list theano-users so that we can fix it.",
+                        file=out)
                     print(reason, replacements, file=out)
                 raise ReplacementDidntRemovedError()
 
@@ -311,7 +314,8 @@ class NodeFinder(Bookkeeper):
 
     def on_attach(self, fgraph):
         if self.fgraph is not None:
-            raise Exception("A NodeFinder instance can only serve one FunctionGraph.")
+            raise Exception("A NodeFinder instance can only serve one "
+                            "FunctionGraph.")
         if hasattr(fgraph, 'get_nodes'):
             raise AlreadyThere("NodeFinder is already present or in conflict"
                                " with another plugin.")
