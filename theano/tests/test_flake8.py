@@ -40,7 +40,6 @@ whitelist_flake8 = [
     "tests/unittest_tools.py",
     "compile/__init__.py",
     "compile/profiling.py",
-    "compile/function_module.py",
     "compile/monitormode.py",
     "compile/tests/test_builders.py",
     "compile/tests/test_misc.py",
