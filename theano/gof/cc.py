@@ -1733,7 +1733,9 @@ class CLinker(link.Linker):
         out_print = ""
         args = ["storage_%s" % self.r2symbol[variable] for variable
                 in utils.uniq(self.inputs)]
+        mapping_str = "// Mapping: variable name -> struct internal stogare\n"
         for var, name in zip(utils.uniq(self.inputs), args):
+            mapping_str += "// %(var)s->%(name)s\n" % locals()
             dtype = var.type.dtype_specs()[2]
             ndim = var.ndim
             shp = range(3, 3+ndim)
@@ -1743,18 +1745,15 @@ class CLinker(link.Linker):
             tot = numpy.prod(shp)
             shp_str = ",".join([str(s) for s in shp])
             in_init += """
-            PyObject* %(name)s_data = PyArray_Arange(0., %(tot)s, 1.,
-                                                     %(dtype)s);
-            npy_intp %(name)s_dims[%(ndim)s] = {%(shp_str)s};
-            PyArray_Dims %(name)s_newshape;
-            %(name)s_newshape.ptr = %(name)s_dims;
-            %(name)s_newshape.len = %(ndim)s;
-            PyObject* %(name)s_value = PyArray_Newshape(
-                (PyArrayObject*) %(name)s_data,
-                &%(name)s_newshape,
-                NPY_CORDER);
-            PyList_SetItem(struct_ptr->%(name)s, 0, %(name)s_value);
-            %(name)s_value = NULL;
+   PyObject* %(name)s_data = PyArray_Arange(0., %(tot)s, 1.,%(dtype)s);
+   npy_intp %(name)s_dims[%(ndim)s] = {%(shp_str)s};
+   PyArray_Dims %(name)s_newshape;
+   %(name)s_newshape.ptr = %(name)s_dims;
+   %(name)s_newshape.len = %(ndim)s;
+   PyObject* %(name)s_value = PyArray_Newshape(
+   (PyArrayObject*) %(name)s_data,&%(name)s_newshape,NPY_CORDER);
+   PyList_SetItem(struct_ptr->%(name)s, 0, %(name)s_value);
+   %(name)s_value = NULL;
             """ % locals()
         args = ["storage_%s" % self.r2symbol[variable] for variable
                 in utils.uniq(self.outputs)]
@@ -1772,59 +1771,58 @@ class CLinker(link.Linker):
             # can't call PyObject_Print(). Otherwise, it segfault.
             for out, name in zip(self.outputs, args):
                 out_print += """
-                //PyList_GET_ITEM return a borrowed reference
-                PyObject *tmp_%(name)s=PyList_GET_ITEM(struct_ptr->%(name)s, 0);
-                PyObject *str_%(name)s = PyObject_Str(tmp_%(name)s);
-                //PyString_AsString return a ptr to the internal representation.
-                printf("%%s\\n", PyString_AsString(str_%(name)s));
-                Py_CLEAR(str_%(name)s);
+   //PyList_GET_ITEM return a borrowed reference
+   PyObject *tmp_%(name)s=PyList_GET_ITEM(struct_ptr->%(name)s, 0);
+   PyObject *str_%(name)s = PyObject_Str(tmp_%(name)s);
+   //PyString_AsString return a ptr to the internal representation.
+   printf("%%s\\n", PyString_AsString(str_%(name)s));
+   Py_CLEAR(str_%(name)s);
                 """ % locals()
         main = """
-        int main(int argc, char *argv[]) {
-    Py_SetProgramName(argv[0]);  /* optional but recommended */
-    Py_Initialize();
+%(mapping_str)s
+int main(int argc, char *argv[]) {
+ Py_SetProgramName(argv[0]);  /* optional but recommended */
+ Py_Initialize();
 
-// Those print are there to help debug import of python module
-printf("Before sys import\\n");
-PyObject * sys = PyImport_ImportModule("sys");
-printf("After import sys %%p\\n", sys);
-PyObject * numpy = PyImport_ImportModule("numpy");
-printf("After import numpy %%p\\n", numpy);
-PyErr_Print();
-    //PyRun_SimpleString("import sys\\n"
-    //    "print sys.path\\n");
+ // Those print are there to help debug import of python module
+ printf("Before sys import\\n");
+ PyObject * sys = PyImport_ImportModule("sys");
+ printf("After import sys %%p\\n", sys);
+ PyObject * numpy = PyImport_ImportModule("numpy");
+ printf("After import numpy %%p\\n", numpy);
+ PyErr_Print();
+ //import_array{,1,2} can be called many times without problems.
+ import_array1(1);
+ printf("after import_array1()\\n");
 
-    //import_array{,1,2} can be called many times without problems.
-    import_array1(1);
-    printf("after import_array1()\\n");
+ %(struct_name)s *struct_ptr = cinit();
+ int run_ret = 0;
+ if(struct_ptr){
+   %(in_init)s
+   printf("\\n after cinit()\\n");
+   //Function execution
+   run_ret = struct_ptr->run();
+   printf("\\nrun() from the shared library returned=%%d\\n", run_ret);
 
-    %(struct_name)s *struct_ptr = cinit();
-    int run_ret = 0;
-    if (struct_ptr){
-        %(in_init)s
-        printf("\\n after cinit()\\n");
-        run_ret = struct_ptr->run();
-        printf("\\nrun() from the shared library returned=%%d\\n", run_ret);
+   %(out_print)s
 
-        %(out_print)s
+   if(run_ret != 0){
+     // See out_print to know why we can't call PyObject_Print on win32
+     PyObject *str_err = PyObject_Str(struct_ptr->__ERROR);
+     //PyString_AsString return a ptr to the internal representation.
+     printf("%%s\\n", PyString_AsString(str_err));
+     Py_CLEAR(str_err);
+   }
+ }else{
+   printf("cinit() failed!\\n");
+   return 1;
+ }
+ //TODO, should struct_ptr.cleanup() cleanup the __ERROR structure?
+ delete struct_ptr;
 
-        if (run_ret != 0) {
-            // See out_print to know why we can't call PyObject_Print on win32
-            PyObject *str_err = PyObject_Str(struct_ptr->__ERROR);
-            //PyString_AsString return a ptr to the internal representation.
-            printf("%%s\\n", PyString_AsString(str_err));
-            Py_CLEAR(str_err);
-        }
-    } else {
-      printf("cinit() failed!\\n");
-      return 1;
-    }
-    //TODO, should struct_ptr.cleanup() cleanup the __ERROR structure?
-    delete struct_ptr;
-
-    printf("\\nmain end, before Py_Finalize\\n");
-    Py_Finalize();
-    return run_ret;
+ printf("\\nmain end, before Py_Finalize\\n");
+ Py_Finalize();
+ return run_ret;
 }
         """ % dict(struct_name=self.struct_name,
                    **locals())
