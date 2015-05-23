@@ -307,7 +307,7 @@ static size_t work_size = 0;
  * request a single chunk of memory at a time since it is reused.
  */
 void *get_work_mem(size_t sz) {
-    if (sz < work_size)
+    if (sz <= work_size)
         return work_mem;
     device_free(work_mem);
     work_mem = device_malloc(sz);
