@@ -268,7 +268,6 @@ whitelist_flake8 = [
     "sparse/sandbox/truedot.py",
     "sparse/sandbox/sp.py",
     "gof/destroyhandler.py",
-    "gof/vm.py",
     "gof/cutils.py",
     "gof/compiledir.py",
     "gof/unify.py",
