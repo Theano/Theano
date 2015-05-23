@@ -269,7 +269,6 @@ whitelist_flake8 = [
     "sparse/sandbox/sp.py",
     "gof/destroyhandler.py",
     "gof/unify.py",
-    "gof/utils.py",
     "gof/graph.py",
     "gof/callcache.py",
     "gof/type.py",
