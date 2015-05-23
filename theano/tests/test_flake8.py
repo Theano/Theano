@@ -270,7 +270,6 @@ whitelist_flake8 = [
     "gof/destroyhandler.py",
     "gof/unify.py",
     "gof/graph.py",
-    "gof/callcache.py",
     "gof/type.py",
     "gof/__init__.py",
     "gof/cc.py",
