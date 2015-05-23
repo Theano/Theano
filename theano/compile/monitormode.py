@@ -1,7 +1,7 @@
 from __future__ import print_function
 # Note: this code was initially copied from the 'pyutools' package by its
 # original author, and re-licensed under Theano's license.
-
+import numpy
 
 import theano
 from theano.compile.mode import Mode
@@ -48,7 +48,7 @@ class MonitorMode(Mode):
         if optimizer == 'default':
             optimizer = theano.config.optimizer
         if (linker is not None and
-            not isinstance(linker.mode, MonitorMode)):
+                not isinstance(linker.mode, MonitorMode)):
             raise Exception("MonitorMode can only use its own linker! You "
                             "should not provide one.", linker)
 
@@ -86,7 +86,7 @@ class MonitorMode(Mode):
 def detect_nan(i, node, fn):
     for output in fn.outputs:
         if (not isinstance(numpy.random.RandomState, output[0]) and
-            numpy.isnan(output[0]).any()):
+                numpy.isnan(output[0]).any()):
             print('*** NaN detected ***')
             theano.printing.debugprint(node)
             print('Inputs : %s' % [input[0] for input in fn.inputs])
