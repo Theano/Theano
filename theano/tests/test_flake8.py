@@ -20,7 +20,6 @@ __contact__ = "Saizheng Zhang <saizhenglisa..at..gmail.com>"
 
 whitelist_flake8 = [
     "__init__.py",
-    "version.py",
     "tests/test_gradient.py",
     "tests/test_config.py",
     "tests/diverse_tests.py",
