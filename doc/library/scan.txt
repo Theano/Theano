@@ -492,7 +492,9 @@ Deactivating garbage collecting in Scan
 
 Deactivating the garbage collection for Scan can allow it to reuse memory
 between executions instead of always having to allocate new memory. This can
-improve performance at the cost of increased memory usage.
+improve performance at the cost of increased memory usage. By default, Scan
+reuses memory between iterations of the same execution but frees the memory
+after the last iteration.
 
 There are two ways to achieve this, using the Theano flag
 ``config.scan.allow_gc`` and setting it to False, or using the argument
