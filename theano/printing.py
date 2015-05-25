@@ -167,7 +167,6 @@ N.B.:
             inner_to_outer_inputs = dict([(inner_inputs[i],outer_inputs[o])
                                           for i,o in enumerate(
                                                   s.owner.op.get_outer_iidx_from_inner_iidx_seq())])
-            #import pdb; pdb.set_trace()
 
             print("", file=_file)
             debugmode.debugprint(s, depth=depth, done=done,
