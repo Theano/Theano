@@ -179,9 +179,10 @@ Manual Openblas instruction
     I believe this is outdated, my machine seems to be using 8 threads 
     happily with the binary openblas...
 
-The openblas included in Ubuntu is limited to 2 threads. If you want
-to use more cores at the same time, you will need to compile it
-yourself. Here is some code that will help you.
+The openblas included in some older Ubuntu version is limited to 2
+threads. Ubuntu 14.04 do not have this limit. If you want to use more
+cores at the same time, you will need to compile it yourself. Here is
+some code that will help you.
 
 .. code-block:: bash
 

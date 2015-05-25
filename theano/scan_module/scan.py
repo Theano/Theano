@@ -500,20 +500,18 @@ def scan(fn,
                     nw_slice.name = nw_name
 
                 # We cut the sequence such that seq[i] to correspond to
-                # seq[i-k]
-                if maxtap < 0:
-                    offset = abs(maxtap)
+                # seq[i-k]. For the purposes of cutting the sequences, we
+                # need to pretend tap 0 is used to avoid cutting the sequences
+                # too long if the taps are all lower or all higher than 0.
+                maxtap_proxy = max(maxtap, 0)
+                mintap_proxy = min(mintap, 0)
+                start = (k - mintap_proxy)
+                if k == maxtap_proxy:
+                    nw_seq = seq['input'][start:]
                 else:
-                    offset = 0
-                if maxtap == mintap and maxtap != 0:
-                    if maxtap < 0:
-                        nw_seq = seq['input'][:maxtap]
-                    else:
-                        nw_seq = seq['input'][maxtap:]
-                elif maxtap - k != 0:
-                    nw_seq = seq['input'][offset + k - mintap: -(maxtap - k)]
-                else:
-                    nw_seq = seq['input'][offset + k - mintap:]
+                    end = -(maxtap_proxy - k)
+                    nw_seq = seq['input'][start:end]
+
                 if go_backwards:
                     nw_seq = nw_seq[::-1]
 
