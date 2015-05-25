@@ -16,4 +16,4 @@ Guide
 
 The NanGuardMode aims to prevent the model from outputing NaNs or Infs. It has
 a number of self-checks, which can help to find out which apply node is
-generating those incorrect output.
+generating those incorrect outputs.
