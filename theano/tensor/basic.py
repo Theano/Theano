@@ -4772,7 +4772,7 @@ def tile(x, reps, ndim=None):
     if len(reps) < ndim:
         reps = [1]*(ndim-len(reps)) + reps
 
-    shape = [1]*(ndim-x.ndim) - [x.shape[i] for i in xrange(x.ndim)]
+    shape = [1]*(ndim-x.ndim) + [x.shape[i] for i in xrange(x.ndim)]
     alloc_shape = reps + shape
     y = alloc(x, *alloc_shape)
     shuffle_ind = numpy.arange(ndim * 2).reshape(2, ndim)
