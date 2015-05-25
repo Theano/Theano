@@ -99,6 +99,8 @@ gpu_dot22 = GpuDot22()
 class GpuDot22Scalar(GpuOp):
     """
     Implement dot(2d, 2d) * scalar on the gpu.
+
+    :note: Not used anymore. Keep to allow unpickle of old graph.
     """
     def __str__(self):
         return 'GpuDot22Scalar'
