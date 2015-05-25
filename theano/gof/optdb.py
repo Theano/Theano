@@ -11,14 +11,14 @@ from theano.configparser import AddConfigVar, FloatParam
 from theano import config
 
 AddConfigVar('optdb.position_cutoff',
-        'Where to stop eariler during optimization. It represent the'
+             'Where to stop eariler during optimization. It represent the'
              ' position of the optimizer where to stop.',
-        FloatParam(numpy.inf),
-        in_c_key=False)
+             FloatParam(numpy.inf),
+             in_c_key=False)
 AddConfigVar('optdb.max_use_ratio',
-        'A ratio that prevent infinite loop in EquilibriumOptimizer.',
-        FloatParam(5),
-        in_c_key=False)
+             'A ratio that prevent infinite loop in EquilibriumOptimizer.',
+             FloatParam(5),
+             in_c_key=False)
 
 
 class DB(object):
@@ -32,7 +32,7 @@ class DB(object):
         self.__db__ = DefaultOrderedDict(OrderedSet)
         self._names = set()
         self.name = None  # will be reset by register
-        #(via obj.name by the thing doing the registering)
+        # (via obj.name by the thing doing the registering)
 
     def register(self, name, obj, *tags, **kwargs):
         """
@@ -175,8 +175,10 @@ class Query(object):
             self.exclude = OrderedSet(self.exclude)
 
     def __str__(self):
-        return "Query{inc=%s,ex=%s,require=%s,subquery=%s,position_cutoff=%d}" % (
-            self.include, self.exclude, self.require, self.subquery, self.position_cutoff)
+        return ("Query{inc=%s,ex=%s,require=%s,subquery=%s,"
+                "position_cutoff=%d}" %
+                (self.include, self.exclude, self.require, self.subquery,
+                 self.position_cutoff))
 
     # add all opt with this tag
     def including(self, *tags):
@@ -268,7 +270,7 @@ class SequenceDB(DB):
         position_cutoff = kwtags.pop('position_cutoff',
                                      config.optdb.position_cutoff)
         if len(tags) >= 1 and isinstance(tags[0], Query):
-# the call to super should have raise an error with a good message
+            # the call to super should have raise an error with a good message
             assert len(tags) == 1
             if getattr(tags[0], 'position_cutoff', None):
                 position_cutoff = tags[0].position_cutoff

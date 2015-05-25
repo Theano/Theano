@@ -1,10 +1,13 @@
 from __future__ import print_function
-import os, unittest, sys
-import nose.plugins.builtin
+import os
+import unittest
+import sys
 
 from nose.config import Config
 from nose.plugins.manager import PluginManager
-from numpy.testing.nosetester import import_nose, NoseTester
+import nose.plugins.builtin
+
+from numpy.testing.nosetester import NoseTester
 from numpy.testing.noseclasses import KnownFailure, NumpyTestProgram
 
 
@@ -31,7 +34,7 @@ class TheanoNoseTester(NoseTester):
         :type extra_argv: list
         :param extra_argv: List with any extra arguments to pass to nosetests.
         """
-        #self.package_path = os.path.abspath(self.package_path)
+        # self.package_path = os.path.abspath(self.package_path)
         argv = [__file__, self.package_path]
         argv += ['--verbosity', str(verbose)]
         if extra_argv:
@@ -39,8 +42,6 @@ class TheanoNoseTester(NoseTester):
         return argv
 
     def _show_system_info(self):
-        nose = import_nose()
-
         import theano
         print("Theano version %s" % theano.__version__)
         theano_dir = os.path.dirname(theano.__file__)
@@ -49,22 +50,20 @@ class TheanoNoseTester(NoseTester):
         super(TheanoNoseTester, self)._show_system_info()
 
     def prepare_test_args(self, verbose=1, extra_argv=None, coverage=False,
-            capture=True, knownfailure=True):
+                          capture=True, knownfailure=True):
         """
         Prepare arguments for the `test` method.
 
         Takes the same arguments as `test`.
         """
-        # fail with nice error message if nose is not present
-        nose = import_nose()
-
         # compile argv
         argv = self._test_argv(verbose, extra_argv)
 
         # numpy way of doing coverage
         if coverage:
-            argv += ['--cover-package=%s' % self.package_name, '--with-coverage',
-                    '--cover-tests', '--cover-inclusive', '--cover-erase']
+            argv += ['--cover-package=%s' % self.package_name,
+                     '--with-coverage', '--cover-tests',
+                     '--cover-inclusive', '--cover-erase']
 
         # Capture output only if needed
         if not capture:
@@ -79,7 +78,7 @@ class TheanoNoseTester(NoseTester):
         return argv, plugins
 
     def test(self, verbose=1, extra_argv=None, coverage=False, capture=True,
-            knownfailure=True):
+             knownfailure=True):
         """
         Run tests for module using nose.
 
@@ -91,7 +90,8 @@ class TheanoNoseTester(NoseTester):
         :param extra_argv: List with any extra arguments to pass to nosetests.
 
         :type coverage: bool
-        :param coverage: If True, report coverage of Theano code. Default is False.
+        :param coverage: If True, report coverage of Theano
+                         code. Default is False.
 
         :type capture: bool
         :param capture: If True, capture the standard output of the tests, like
@@ -123,7 +123,7 @@ class TheanoNoseTester(NoseTester):
                 "launch theano.test()."))
 
         argv, plugins = self.prepare_test_args(verbose, extra_argv, coverage,
-                capture, knownfailure)
+                                               capture, knownfailure)
 
         # The "plugins" keyword of NumpyTestProgram gets ignored if config is
         # specified. Moreover, using "addplugins" instead can lead to strange
@@ -134,8 +134,6 @@ class TheanoNoseTester(NoseTester):
 
 
 def main(modulename):
-    debug = False
-
     if 0:
         unittest.main()
     elif len(sys.argv) == 2 and sys.argv[1] == "--debug":

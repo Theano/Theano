@@ -39,9 +39,9 @@ def make_depends():
     def depends(pair):
         """ Returns True if a depends on b """
         a, b = pair
-        return (any(bout in a.inputs for bout in b.outputs)
-                or any(depends((ainp.owner, b)) for ainp in a.inputs
-                       if ainp.owner))
+        return (any(bout in a.inputs for bout in b.outputs) or
+                any(depends((ainp.owner, b)) for ainp in a.inputs
+                    if ainp.owner))
     return depends
 
 
@@ -160,12 +160,12 @@ def posort(l, *cmps):
             for b in l:
                 assert not(b in comes_after[a] and a in comes_after[b])
 
-    for cmp in cmps:
+    for cmp_fn in cmps:
         for a in l:
             for b in l:
-                if cmp(a, b) < 0:  # a wants to come before b
+                if cmp_fn(a, b) < 0:  # a wants to come before b
                     # if this wouldn't cause a cycle and isn't already known
-                    if not b in comes_before[a] and not b in comes_after[a]:
+                    if b not in comes_before[a] and b not in comes_after[a]:
                         add_links(a, b)
     # check() # debug code
 

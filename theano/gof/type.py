@@ -1,7 +1,4 @@
 """WRITEME Defines the `Type` class."""
-
-__docformat__ = "restructuredtext en"
-
 from theano.compat import PY3
 
 from theano.gof import utils
@@ -12,6 +9,8 @@ from theano.gof import graph
 # Type #
 ########
 from theano.gof.op import CLinkerObject
+
+__docformat__ = "restructuredtext en"
 
 
 class CLinkerType(CLinkerObject):
@@ -45,7 +44,8 @@ class CLinkerType(CLinkerObject):
          - `MethodNotDefined`: Subclass does not implement this method
 
         """
-        raise MethodNotDefined("c_literal", type(self), self.__class__.__name__)
+        raise MethodNotDefined("c_literal", type(self),
+                               self.__class__.__name__)
 
     def c_declare(self, name, sub, check_input=True):
         """Required: Return c code to declare variables that will be
@@ -56,7 +56,8 @@ class CLinkerType(CLinkerObject):
 
             return "PyObject ** addr_of_%(name)s;"
 
-        :param name: the name of the ``PyObject *`` pointer that will  the value for this Type
+        :param name: the name of the ``PyObject *`` pointer that will
+            the value for this Type
 
         :type name: string
 
@@ -138,7 +139,8 @@ class CLinkerType(CLinkerObject):
          - `MethodNotDefined`: Subclass does not implement this method
 
         """
-        raise MethodNotDefined("c_extract", type(self), self.__class__.__name__)
+        raise MethodNotDefined("c_extract", type(self),
+                               self.__class__.__name__)
 
     def c_extract_out(self, name, sub, check_input=True):
         """Optional: C code to extract a PyObject * instance.
@@ -156,9 +158,9 @@ class CLinkerType(CLinkerObject):
             %(c_extract_code)s
         }
         """ % dict(
-                name=name,
-                c_init_code=self.c_init(name, sub),
-                c_extract_code=self.c_extract(name, sub, check_input))
+            name=name,
+            c_init_code=self.c_init(name, sub),
+            c_extract_code=self.c_extract(name, sub, check_input))
 
     def c_cleanup(self, name, sub):
         """Return c code to clean up after `c_extract`.
@@ -184,11 +186,12 @@ class CLinkerType(CLinkerObject):
     def c_sync(self, name, sub):
         """Required: Return c code to pack C types back into a PyObject.
 
-        The code returned from this function must be templated using "%(name)s",
-        representing the name that the caller wants to call this Variable.  The
-        returned code may set "py_%(name)s" to a PyObject* and that PyObject*
-        will be accessible from Python via variable.data. Do not forget to adjust
-        reference counts if "py_%(name)s" is changed from its original value.
+        The code returned from this function must be templated using
+        "%(name)s", representing the name that the caller wants to
+        call this Variable.  The returned code may set "py_%(name)s"
+        to a PyObject* and that PyObject* will be accessible from
+        Python via variable.data. Do not forget to adjust reference
+        counts if "py_%(name)s" is changed from its original value.
 
         :Parameters:
          - `name`: WRITEME
@@ -205,10 +208,11 @@ class CLinkerType(CLinkerObject):
     def c_code_cache_version(self):
         """Return a tuple of integers indicating the version of this Type.
 
-        An empty tuple indicates an 'unversioned' Type that will not be cached between processes.
+        An empty tuple indicates an 'unversioned' Type that will not
+        be cached between processes.
 
-        The cache mechanism may erase cached modules that have been superceded by newer
-        versions.  See `ModuleCache` for details.
+        The cache mechanism may erase cached modules that have been
+        superceded by newer versions.  See `ModuleCache` for details.
 
         """
         return ()
@@ -221,19 +225,21 @@ class PureType(object):
 
     - creating `Variable` instances (conventionally, `__call__` does this), and
 
-    - filtering a value assigned to a `Variable` so that the value conforms to restrictions
-      imposed by the type (also known as casting, this is done by `filter`),
-
+    - filtering a value assigned to a `Variable` so that the value
+      conforms to restrictions imposed by the type (also known as
+      casting, this is done by `filter`),
     """
+    # the type that will be created by call to make_variable.
+    Variable = graph.Variable
 
-    Variable = graph.Variable  # the type that will be created by call to make_variable.
-    Constant = graph.Constant  # the type that will be created by call to make_constant
+    # the type that will be created by call to make_constant
+    Constant = graph.Constant
 
     def filter(self, data, strict=False, allow_downcast=None):
         """Required: Return data or an appropriately wrapped/converted data.
 
-        Subclass implementation should raise a TypeError exception if the data is not of an
-        acceptable type.
+        Subclass implementation should raise a TypeError exception if
+        the data is not of an acceptable type.
 
         If strict is True, the data returned must be the same as the
         data passed as an argument. If it is False, and allow_downcast
@@ -272,18 +278,19 @@ class PureType(object):
 
         if other.type != self:
             raise TypeError(
-                    'Cannot convert Type %(othertype)s '
-                    '(of Variable %(other)s) into Type %(self)s. '
-                    'You can try to manually convert %(other)s into a %(self)s.'
-                    % dict(
-                        othertype=other.type,
-                        other=other,
-                        self=self)
-                    )
+                'Cannot convert Type %(othertype)s '
+                '(of Variable %(other)s) into Type %(self)s. '
+                'You can try to manually convert %(other)s into a %(self)s.'
+                % dict(
+                    othertype=other.type,
+                    other=other,
+                    self=self)
+                )
         return other
 
     def is_valid_value(self, a):
-        """Required: Return True for any python object `a` that would be a legal value for a Variable of this Type"""
+        """Required: Return True for any python object `a` that would be a
+legal value for a Variable of this Type"""
         try:
             self.filter(a, strict=True)
             return True
@@ -291,7 +298,8 @@ class PureType(object):
             return False
 
     def value_validity_msg(self, a):
-        """Optional: return a message explaining the output of is_valid_value"""
+        """Optional: return a message explaining the output of
+is_valid_value"""
         return "none"
 
     def make_variable(self, name=None):
@@ -371,7 +379,8 @@ class Type(object2, PureType, CLinkerType):
 
     But you are encouraged to write your own, as described in WRITEME.
 
-    The following following code illustrates the use of a Type instance, here tensor.fvector:
+    The following following code illustrates the use of a Type
+    instance, here tensor.fvector:
 
     .. code-block:: python
 
@@ -381,17 +390,21 @@ class Type(object2, PureType, CLinkerType):
         # Create a second Variable with the same Type instance
         c = tensor.fvector()
 
-    Whenever you create a symbolic variable in theano (technically, `Variable`) it will contain a
-    reference to a Type instance.  That reference is typically constant during the lifetime of
-    the Variable.  Many variables can refer to a single Type instance, as do b and c above.  The
-    Type instance defines the kind of value which might end up in that variable when executing
-    a `Function`.  In this sense, theano is like a strongly-typed language because the types
-    are included in the graph before the values.  In our example above, b is a Variable which is
-    guaranteed to correspond to a numpy.ndarray of rank 1 when we try to do some computations
+    Whenever you create a symbolic variable in theano (technically,
+    `Variable`) it will contain a reference to a Type instance.  That
+    reference is typically constant during the lifetime of the
+    Variable.  Many variables can refer to a single Type instance, as
+    do b and c above.  The Type instance defines the kind of value
+    which might end up in that variable when executing a `Function`.
+    In this sense, theano is like a strongly-typed language because
+    the types are included in the graph before the values.  In our
+    example above, b is a Variable which is guaranteed to correspond
+    to a numpy.ndarray of rank 1 when we try to do some computations
     with it.
 
-    Many `Op` instances will raise an exception if they are applied to inputs with incorrect
-    types.  Type references are also useful to do type-checking in pattern-based optimizations.
+    Many `Op` instances will raise an exception if they are applied to
+    inputs with incorrect types.  Type references are also useful to
+    do type-checking in pattern-based optimizations.
 
     """
     def convert_variable(self, var):
@@ -451,8 +464,8 @@ class Generic(SingletonType):
     """
     Represents a generic Python object.
 
-    This class implements the `PureType` and `CLinkerType` interfaces for generic PyObject
-    instances.
+    This class implements the `PureType` and `CLinkerType` interfaces
+    for generic PyObject instances.
 
     EXAMPLE of what this means, or when you would use this type.
 
