@@ -5324,15 +5324,6 @@ def test_tile():
         reps = ivector()
         numpy.testing.assert_raises(ValueError, tile, x, reps)
 
-        # error raising test: ndim > x.ndim
-        reps = ivector()
-        ndim_ = k+1
-        numpy.testing.assert_raises(ValueError, tile, x, reps, ndim_)
-
-        #error raising test: len(reps) > x.ndim
-        reps = range(1, k+2)
-        numpy.testing.assert_raises(ValueError, tile, x, reps)
-
         # error raising test: not a integer
         for reps in [2.5, fscalar(), fvector()]:
             numpy.testing.assert_raises(ValueError, tile, x, reps)
