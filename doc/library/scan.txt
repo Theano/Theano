@@ -507,24 +507,27 @@ Graph optimizations
 ^^^^^^^^^^^^^^^^^^^
 
 This one is simple but still worth pointing out. Theano is able to
-automatically recognize and optimize many computation patterns. However, it
-doesn't catch every case that could be optimized and it remains useful for
-performance that the user defines an efficient graph in the first place. This
-is also the case, and sometimes even more so, for the graph inside of Scan.
-This is because it will be executed many times for every execution of the
-Theano function that contains it.
+automatically recognize and optimize many computation patterns. However, there
+are patterns that Theano doesn't optimize because doing so would change the
+user interface (such as merging shared variables together into a single one,
+for instance). Additionnaly, Theano doesn't catch every case that it could
+optimize and so it remains useful for performance that the user defines an
+efficient graph in the first place. This is also the case, and sometimes even
+more so, for the graph inside of Scan. This is because it will be executed
+many times for every execution of the Theano function that contains it.
 
 The `LSTM tutorial <http://deeplearning.net/tutorial/lstm.html>`_ on
-`DeepLearning.net <http://deeplearning.net>`_ provides an example of such
-optimization. Instead of performing many matrix multiplications between matrix
-:math:`x_t` and each of the matrices :math:`W_i`, :math:`W_c`, :math:`W_f` and
-:math:`W_o`, the matrices :math:`W_*`, are concatenated into a single matrix
-:math:`W` and the graph performs a single larger matrix multiplication
-between :math:`W` and :math:`x_t`. The resulting matrix is then sliced to
-obtain the results of that the small individual matrix multiplications
-would have produced. This optimization replaces many small and inefficient
-matrix multiplications but a single larger one and thus improves performance
-at the cost of a potentially higher memory usage.
+`DeepLearning.net <http://deeplearning.net>`_ provides an example of an
+optimization that Theano cannot perform. Instead of performing many matrix
+multiplications between matrix :math:`x_t` and each of the shared matrices
+:math:`W_i`, :math:`W_c`, :math:`W_f` and :math:`W_o`, the matrices
+:math:`W_*`, are merged into a single shared matrix :math:`W` and the graph
+performs a single larger matrix multiplication between :math:`W` and
+:math:`x_t`. The resulting matrix is then sliced to obtain the results of that
+the small individual matrix multiplications would have produced. This
+optimization replaces many small and inefficient matrix multiplications but a
+single larger one and thus improves performance at the cost of a potentially
+higher memory usage.
 
 
 reference
