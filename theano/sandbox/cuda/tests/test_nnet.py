@@ -27,7 +27,7 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
     """
     This is basic test for GpuCrossentropySoftmaxArgmax1HotWithBias
 
-    We check that we loop when their is too much threads
+    We check that we loop when there are too many threads
 
     """
 
@@ -101,7 +101,7 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
     """
     This is basic test for GpuCrossentropySoftmax1HotWithBiasDx
 
-    We check that we loop when their is too much threads
+    We check that we loop when there are too many threads
 
     """
     n_in = 1000
@@ -171,7 +171,7 @@ def test_softmax_with_bias():
 
     We check that we loop when their is too much block
 
-    TODO: check that we loop when their is too much thread.(THIS IS
+    TODO: check that we loop when there are too many threads.(THIS IS
     NOT IMPLEMENTED)
     """
     x = T.fmatrix('x')
@@ -225,7 +225,7 @@ class test_SoftMax(unittest.TestCase):
         """
         This is basic test for GpuSoftmax and GpuDnnSoftmax
 
-        We check that we loop when their is too much block
+        We check that we loop when there is too much block
         We use slower code when there isn't enough shared memory
         """
         f_z_out = f_z(x)

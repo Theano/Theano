@@ -1874,7 +1874,8 @@ blas_optdb.register('local_gemm_to_gemv',
             local_gemm_to_ger,
             local_dot22_to_ger_or_gemv,
             local_dimshuffle_lift],
-            max_use_ratio=5),
+            max_use_ratio=5,
+            ignore_newtrees=False),
         15, 'fast_run')
 
 
