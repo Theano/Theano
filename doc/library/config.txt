@@ -767,7 +767,7 @@ import theano and print the config variable, as in:
 
 .. attribute:: reoptimize_unpickled_function
 
-    Bool value, default: True
+    Bool value, default: False (changed in master after Theano 0.7 release)
 
     Theano users can use the standard python pickle tools to save a compiled
     theano function. When pickling, both graph before and after the optimization
