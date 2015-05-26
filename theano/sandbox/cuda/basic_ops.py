@@ -2627,50 +2627,13 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
         if node.inputs[1].dtype != 'int64':
             raise Exception("Index should have dtype int64. Check this node make_node().")
         return """
-        int max_threads=512;
         //take(idx, 0, out, "raise", max_threads);
-        PyObject * out_ = NULL;
         PyObject * ret = NULL;
-        PyObject * args = PyTuple_New(5);
-        PyObject * zero = PyInt_FromLong(0);
-        PyObject * max = PyInt_FromLong(max_threads);
-        PyObject * raise = PyString_FromString("raise");
-        if(args == NULL || zero == NULL || max == NULL || raise == NULL){
-            %(fail)s;
-        }
-
-        out_ = (PyObject *) %(out)s;
-        if (out_ == NULL)
-            out_ = Py_None;
-        Py_INCREF(out_);
-        Py_INCREF(%(idx)s);
-
-        // In the error handling, I don't decref args as I don't know
-        // how it decref not assigned item.
-
-        if(PyTuple_SetItem(args, 0, (PyObject *) %(idx)s)){
-            Py_DECREF(%(idx)s); Py_DECREF(zero); Py_DECREF(out_);
-            Py_DECREF(raise); Py_DECREF(max); Py_DECREF(out_);
-            %(fail)s;
-        }
-        if(PyTuple_SetItem(args, 1, zero)){
-            Py_DECREF(%(idx)s); Py_DECREF(zero); Py_DECREF(out_);
-            Py_DECREF(raise); Py_DECREF(max); Py_DECREF(out_);
-            %(fail)s;
-        }
-        if(PyTuple_SetItem(args, 2, out_)){
-            Py_DECREF(%(idx)s); Py_DECREF(zero); Py_DECREF(out_);
-            Py_DECREF(raise); Py_DECREF(max); Py_DECREF(out_);
-            %(fail)s;
-        }
-        if(PyTuple_SetItem(args, 3, raise)){
-            Py_DECREF(%(idx)s); Py_DECREF(zero); Py_DECREF(out_);
-            Py_DECREF(raise); Py_DECREF(max); Py_DECREF(out_);
-            %(fail)s;
-        }
-        if(PyTuple_SetItem(args, 4, max)){
-            Py_DECREF(%(idx)s); Py_DECREF(zero); Py_DECREF(out_);
-            Py_DECREF(raise); Py_DECREF(max); Py_DECREF(out_);
+        PyObject * args = Py_BuildValue("OiOsi", %(idx)s, 0,
+                                        %(out)s == NULL ? Py_None : (PyObject *)%(out)s,
+                                        "raise", 512);
+        if(args == NULL){
+            //Error set by Py_BuildValue
             %(fail)s;
         }
         ret = CudaNdarray_TakeFrom(%(x)s, args);
@@ -2685,7 +2648,7 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
 
 class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
