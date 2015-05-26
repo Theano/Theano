@@ -54,6 +54,12 @@ AddConfigVar('cublas.lib',
         """Name of the cuda blas library for the linker.""",
         StrParam('cublas'))
 
+AddConfigVar('lib.cumem',
+             """Do we enable cumem or not.""",
+             # We should not mix both allocator, so we can't override
+             BoolParam(False, allow_override=False),
+             in_c_key=False)
+
 # is_nvcc_available called here to initialize global vars in
 # nvcc_compiler module
 nvcc_compiler.is_nvcc_available()
@@ -377,7 +383,7 @@ def use(device,
         try:
             if (device != 'gpu') and not pycuda_init_dev:
                 assert isinstance(device, int)
-                gpu_init(device)
+                gpu_init(device, config.lib.cumem)
                 use.device_number = device
                 assert active_device_number() == device
             else:
@@ -390,7 +396,7 @@ def use(device,
                 cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((2, 3))
                 use.device_number = active_device_number()
                 # This is needed to initialize the cublas handle.
-                gpu_init(use.device_number)
+                gpu_init(use.device_number, config.lib.cumem)
 
             if test_driver:
                 import theano.sandbox.cuda.tests.test_driver

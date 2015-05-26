@@ -71,7 +71,7 @@ void * device_malloc(size_t size)
 }
 
 ///@TODO: thejaswi: link this option to a theano config variable?
-static bool g_use_cumem = true;
+static bool g_use_cumem = false;
 static const int g_max_devices = 8;
 int initCumem() {
     static bool cumemInitialized = false;
@@ -3093,18 +3093,22 @@ CudaNdarray_ptr_int_size(PyObject* _unused, PyObject* args)
 static int cublas_init();
 static void cublas_shutdown();
 // Initialize the gpu.
-// Takes one optional parameter, the device number.
-// If provided, it sets that device to be the active device.
+// Takes two optional parameters, the device number and if we should use cumem.
+// If the device number is provided, it sets that device to be the active device.
 // If not provided (usually just to test whether the gpu is available at all),
 // it does not set an active device.
 // Raises EnvironmentError or ValueError (as appropriate) if the initialization failed.
+// cumem is threaded like a bool. If converted to 0, don't use cumem. Otherwise, use it.
 PyObject *
 CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
 {
     int card_nb = 0;
     int card_number_provided = 1;
-
-    PyArg_ParseTuple(args, "|i", &card_nb); // if we're given something wildly invalid, this will throw a TypeError
+    int cumem = 0; // 0 False, 1 True
+    // if we're given something wildly invalid, this will throw a TypeError
+    PyArg_ParseTuple(args, "|ii", &card_nb, &cumem);
+    if(cumem)
+        g_use_cumem = true;
 
     if(PyTuple_Size(args) == 0) {
         card_number_provided = 0;
