@@ -1,10 +1,10 @@
+from datetime import datetime
+
 __authors__ = "Ian Goodfellow"
 __credits__ = ["Ian Goodfellow"]
 __license__ = "3-clause BSD"
 __maintainer__ = "Ian Goodfellow"
 __email__ = "goodfeli@iro"
-
-from datetime import datetime
 
 
 def disturb_mem():

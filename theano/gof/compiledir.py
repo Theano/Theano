@@ -8,7 +8,6 @@ import re
 import shutil
 import struct
 import socket
-import subprocess
 import sys
 import textwrap
 
@@ -55,16 +54,16 @@ def python_int_bitwidth():
 
 
 compiledir_format_dict = {
-        "platform": platform.platform(),
-        "processor": platform.processor(),
-        "python_version": platform.python_version(),
-        "python_bitwidth": local_bitwidth(),
-        "python_int_bitwidth": python_int_bitwidth(),
-        "theano_version": theano.__version__,
-        "numpy_version": numpy.__version__,
-        "gxx_version": gcc_version_str.replace(" ", "_"),
-        "hostname": socket.gethostname(),
-        }
+    "platform": platform.platform(),
+    "processor": platform.processor(),
+    "python_version": platform.python_version(),
+    "python_bitwidth": local_bitwidth(),
+    "python_int_bitwidth": python_int_bitwidth(),
+    "theano_version": theano.__version__,
+    "numpy_version": numpy.__version__,
+    "gxx_version": gcc_version_str.replace(" ", "_"),
+    "hostname": socket.gethostname(),
+    }
 
 
 def short_platform(r=None, p=None):
@@ -182,8 +181,8 @@ def filter_compiledir(path):
         if not os.access(path, os.R_OK | os.W_OK | os.X_OK):
             # If it exist we need read, write and listing access
             raise ValueError(
-                    "compiledir '%s' exists but you don't have read, write"
-                    " or listing permissions." % path)
+                "compiledir '%s' exists but you don't have read, write"
+                " or listing permissions." % path)
     else:
         try:
             os.makedirs(path, 0770)  # read-write-execute for user and group
@@ -295,7 +294,8 @@ def cleanup():
                                     have_npy_abi_version = True
                                 elif obj.startswith('c_compiler_str='):
                                     have_c_compiler = True
-                            elif (isinstance(obj, (theano.gof.Op, theano.gof.Type)) and
+                            elif (isinstance(obj, (theano.gof.Op,
+                                                   theano.gof.Type)) and
                                   hasattr(obj, 'c_code_cache_version')):
                                 v = obj.c_code_cache_version()
                                 if v not in [(), None] and v not in key[0]:
@@ -310,7 +310,7 @@ def cleanup():
                                 if keydata.key_pkl != filename:
                                     keydata.key_pkl = filename
                                 keydata.remove_key(key)
-                            except IOError as e:
+                            except IOError:
                                 _logger.error(
                                     "Could not remove file '%s'. To complete "
                                     "the clean-up, please remove manually "
@@ -395,7 +395,7 @@ def print_compiledir_content():
 
     if big_key_files:
         big_key_files = sorted(big_key_files, key=lambda t: str(t[1]))
-        big_total_size = sum([size for dir, size, ops in big_key_files])
+        big_total_size = sum([sz for _, sz, _ in big_key_files])
         print(("There are directories with key files bigger than %d bytes "
                "(they probably contain big tensor constants)" %
                max_key_file_size))

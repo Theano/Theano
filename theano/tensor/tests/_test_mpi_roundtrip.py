@@ -2,12 +2,13 @@
 # mpiexec -np 2 python _test_mpi_roundtrip.py
 
 from mpi4py import MPI
-comm = MPI.COMM_WORLD
 import theano
 from theano.tensor.io import send, recv, mpi_cmps
 from theano.gof.sched import sort_schedule_fn
 import numpy as np
 from sys import stdout, stderr, exit
+
+comm = MPI.COMM_WORLD
 
 rank = comm.Get_rank()
 size = comm.Get_size()

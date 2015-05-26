@@ -36,8 +36,11 @@ def test_give_variables_names_small():
 
 
 def test_remove():
-    even = lambda x: x % 2 == 0
-    odd = lambda x: x % 2 == 1
-    # The list are neede as with python 3, remove and filter return generators
+    def even(x):
+        return x % 2 == 0
+
+    def odd(x):
+        return x % 2 == 1
+    # The list are needed as with python 3, remove and filter return generators
     # and we can't compare generators.
     assert list(remove(even, range(5))) == list(filter(odd, range(5)))

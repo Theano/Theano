@@ -1,11 +1,12 @@
 """Define `SymbolicInput`, `SymbolicOutput`, `In`, `Out` """
-__docformat__ = 'restructuredtext en'
 
 from theano import gof
 from sharedvalue import SharedVariable
 
 import logging
 _logger = logging.getLogger("theano.compile.io")
+
+__docformat__ = 'restructuredtext en'
 
 
 class SymbolicInput(object):
@@ -17,42 +18,55 @@ class SymbolicInput(object):
         not computed from its owner.
 
     name: Any type. (If autoname=True, defaults to variable.name).
-        If name is a valid Python identifier, this input can be set by kwarg, and its value
-        can be accessed by self.<name>.
+        If name is a valid Python identifier, this input can be set by
+        kwarg, and its value can be accessed by self.<name>.
 
     update: Variable instance (default: None)
-        value (see previous) will be replaced with this expression variable after each function call.
-        If update is None, the update will be the default value of the input.
+        value (see previous) will be replaced with this expression
+        variable after each function call.  If update is None, the
+        update will be the default value of the input.
 
-    mutable: Bool (default: False if update is None, True if update is not None)
-        True: permit the compiled function to modify the python object being passed as the input
-        False: do not permit the compiled function to modify the python object being passed as the input.
+    mutable: Bool (default: False if update is None, True if update is
+        not None)
+
+        True: permit the compiled function to modify the python object
+        being passed as the input
+
+        False: do not permit the compiled function to modify the
+        python object being passed as the input.
 
     strict: Bool (default: False)
-        True: means that the value you pass for this input must have exactly the right type
-        False: the value you pass for this input may be cast automatically to the proper type
+
+        True: means that the value you pass for this input must have
+        exactly the right type
+
+        False: the value you pass for this input may be cast
+        automatically to the proper type
 
     allow_downcast: Bool or None (default: None)
         Only applies when `strict` is False.
+
         True: the value you pass for this input can be silently
         downcasted to fit the right type, which may lose precision.
-        False: the value will only be cast to a more general, or precise, type.
-        None: Almost like False, but allows downcast of Python floats to floatX.
+
+        False: the value will only be cast to a more general, or
+        precise, type.  None: Almost like False, but allows downcast
+        of Python floats to floatX.
 
     autoname: Bool (default: True)
         See the name option.
 
     implicit: Bool (default: False)
-        See help(In). Note that 'None' is not allowed here, since we are in the
-        symbolic case.
+        See help(In). Note that 'None' is not allowed here, since we
+        are in the symbolic case.
     """
 
     def __init__(self, variable, name=None, update=None, mutable=None,
-            strict=False, allow_downcast=None, autoname=True,
-            implicit=False):
+                 strict=False, allow_downcast=None, autoname=True,
+                 implicit=False):
         assert implicit is not None  # Safety check.
         self.variable = variable
-        if  (autoname and name is None):
+        if (autoname and name is None):
             self.name = variable.name
         else:
             self.name = name
@@ -146,36 +160,54 @@ class In(SymbolicInput):
         not computed from its owner.
 
     name: Any type. (If autoname=True, defaults to variable.name).
-        If name is a valid Python identifier, this input can be set by kwarg, and its value
-        can be accessed by self.<name>.
+        If name is a valid Python identifier, this input can be set by
+        kwarg, and its value can be accessed by self.<name>.
 
     value: Any type.
-        The initial/default value for this input. If update is None, this input acts just like
-        an argument with a default value in Python. If update is not None, changes to this
-        value will "stick around", whether due to an update or a user's explicit action.
+        The initial/default value for this input. If update is None,
+        this input acts just like an argument with a default value in
+        Python. If update is not None, changes to this value will
+        "stick around", whether due to an update or a user's explicit
+        action.
 
     update: Variable instance (default: None)
-        value (see previous) will be replaced with this expression variable after each function call.
-        If update is None, the update will be the default value of the input.
+        value (see previous) will be replaced with this expression
+        variable after each function call.  If update is None, the
+        update will be the default value of the input.
 
-    mutable: Bool (default: False if update is None, True if update is not None)
-        True: permit the compiled function to modify the python object being passed as the input
-        False: do not permit the compiled function to modify the python object being passed as the input.
+    mutable: Bool (default: False if update is None, True if update is
+             not None)
+
+        True: permit the compiled function to modify the python object
+        being passed as the input
+
+        False: do not permit the compiled function to modify the
+        python object being passed as the input.
 
     borrow: Bool (default: take the same value as mutable)
-        True: permit the output of the compiled function to be aliased to the input
+
+        True: permit the output of the compiled function to be aliased
+        to the input
+
         False: do not permit any output to be aliased to the input
 
     strict: Bool (default: False)
-        True: means that the value you pass for this input must have exactly the right type
-        False: the value you pass for this input may be cast automatically to the proper type
+
+        True: means that the value you pass for this input must have
+        exactly the right type
+
+        False: the value you pass for this input may be cast
+        automatically to the proper type
 
     allow_downcast: Bool or None (default: None)
         Only applies when `strict` is False.
+
         True: the value you pass for this input can be silently
         downcasted to fit the right type, which may lose precision.
-        False: the value will only be cast to a more general, or precise, type.
-        None: Almost like False, but allows downcast of Python floats to floatX.
+
+        False: the value will only be cast to a more general, or
+        precise, type.  None: Almost like False, but allows downcast
+        of Python floats to floatX.
 
     autoname: Bool (default: True)
         See the name option.
@@ -194,11 +226,11 @@ class In(SymbolicInput):
     # Note: the documentation above is duplicated in doc/topics/function.txt,
     # try to keep it synchronized.
     def __init__(self, variable, name=None, value=None, update=None,
-            mutable=None, strict=False, allow_downcast=None, autoname=True,
-            implicit=None, borrow=None, shared=False):
-
-        # if shared, an input's value comes from its persistent storage, not from a default stored
-        # in the function or from the caller
+                 mutable=None, strict=False, allow_downcast=None,
+                 autoname=True, implicit=None, borrow=None, shared=False):
+        # if shared, an input's value comes from its persistent
+        # storage, not from a default stored in the function or from
+        # the caller
         self.shared = shared
 
         if borrow is None:
@@ -211,25 +243,25 @@ class In(SymbolicInput):
         # aliased to the input. Thus mutable=True should require borrow=True.
         if mutable and not self.borrow:
             raise AssertionError(
-                    "Symbolic input for variable %s (name=%s) has "
-                    "flags mutable=True, borrow=False. This combination is "
-                    "incompatible since mutable=True implies that the "
-                    "input variable may be both aliased (borrow=True) and "
-                    "overwritten.",
-                    variable, name)
+                "Symbolic input for variable %s (name=%s) has "
+                "flags mutable=True, borrow=False. This combination is "
+                "incompatible since mutable=True implies that the "
+                "input variable may be both aliased (borrow=True) and "
+                "overwritten.",
+                variable, name)
 
         if implicit is None:
             implicit = (isinstance(value, gof.Container) or
-                    isinstance(value, SharedVariable))
+                        isinstance(value, SharedVariable))
         super(In, self).__init__(
-                variable=variable,
-                name=name,
-                update=update,
-                mutable=mutable,
-                strict=strict,
-                allow_downcast=allow_downcast,
-                autoname=autoname,
-                implicit=implicit)
+            variable=variable,
+            name=name,
+            update=update,
+            mutable=mutable,
+            strict=strict,
+            allow_downcast=allow_downcast,
+            autoname=autoname,
+            implicit=implicit)
         self.value = value
         if self.implicit and value is None:
             raise TypeError('An implicit input must be given a default value')

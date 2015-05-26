@@ -15,12 +15,13 @@ _logger = logging.getLogger('theano.gof.lazylinker_c')
 
 force_compile = False
 version = 0.21  # must match constant returned in function get_version()
+lazylinker_ext = None
 
 
 def try_import():
     global lazylinker_ext
     sys.path[0:0] = [config.compiledir]
-    import lazylinker_ext
+    import lazylinker_ext  # noqa
     del sys.path[0]
 
 
@@ -43,11 +44,11 @@ try:
             # Try to make the location
             os.mkdir(location)
         except OSError as e:
-            # If we get an error, verify that the error was # 17, the path already exists,
-            # and that it is a directory
-            # Note: we can't check if it exists before making it, because we are not holding
-            # the lock right now, so we could race another process and get error 17 if we lose
-            # the race
+            # If we get an error, verify that the error was # 17, the
+            # path already exists, and that it is a directory Note: we
+            # can't check if it exists before making it, because we
+            # are not holding the lock right now, so we could race
+            # another process and get error 17 if we lose the race
             assert e.errno == errno.EEXIST
             assert os.path.isdir(location)
 
@@ -142,5 +143,5 @@ except ImportError:
         # Release lock on compilation directory.
         release_lock()
 
-from lazylinker_ext.lazylinker_ext import *
+from lazylinker_ext.lazylinker_ext import *  # noqa
 assert force_compile or (version == get_version())
