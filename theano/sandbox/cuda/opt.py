@@ -2296,10 +2296,12 @@ def gpuScanOptimization(node):
 @local_optimizer([tensor.AllocEmpty, gpu_from_host])
 def local_gpu_allocempty(node):
     if (isinstance(node.op, tensor.AllocEmpty) and
-        node.op.dtype=="float32"):
-        return [host_from_gpu(GpuAllocEmpty()(*node.inputs))]
+            node.op.dtype == "float32"):
+        ret = host_from_gpu(GpuAllocEmpty()(*node.inputs))
+        # Keep the check that we don't care about the value.
+        ret.tag.values_eq_approx = node.outputs[0].tag.values_eq_approx
+        return [ret]
     return False
-        
 
 optdb.register('gpu_scanOp_make_inplace',
                scan_opt.ScanInplaceOptimizer(typeConstructor=typeConstructor,
