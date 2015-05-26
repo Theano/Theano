@@ -94,6 +94,7 @@ int initCumem() {
         ///@TODO: thejaswi: add support for multiple streams
         devices[i].numStreams = 0;
         devices[i].streams = NULL;
+        devices[i].granularity = 0;
     }
     ///@TODO: thejaswi: passing custom cumem flags?
     cumemStatus_t status = cumemInit(numDevices, devices, CUMEM_FLAGS_DEFAULT);
