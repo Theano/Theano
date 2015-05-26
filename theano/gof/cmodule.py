@@ -2061,6 +2061,57 @@ class GCC_compiler(Compiler):
                                    theano.config.cxx)
 
     @staticmethod
+    def make_makefile(module_name, location=None,
+                      include_dirs=None, lib_dirs=None, libs=None,
+                      preargs=None):
+        if include_dirs is None:
+            include_dirs = []
+        if lib_dirs is None:
+            lib_dirs = []
+        if libs is None:
+            libs = []
+        if preargs is None:
+            preargs = []
+        else:
+            preargs = list(preargs)
+
+        if '-g' not in preargs:
+            preargs.append('-g')
+
+        include_dirs = std_include_dirs() + include_dirs
+        libs = std_libs() + libs
+        lib_dirs = std_lib_dirs() + lib_dirs
+        library_name = os.path.join(location, '%s.%s' %
+                                    (module_name, get_lib_extension()))
+
+        # sometimes, the linker cannot find -lpython so we need to tell it
+        # explicitly where it is located
+        # this returns somepath/lib/python2.x
+        python_lib = distutils.sysconfig.get_python_lib(plat_specific=1,
+                                                        standard_lib=1)
+        python_lib = os.path.dirname(python_lib)
+        if python_lib not in lib_dirs:
+            lib_dirs.append(python_lib)
+        cxx_args = preargs
+        cxx = theano.config.cxx
+        cxx_falgs = ['-I%s' % idir for idir in include_dirs]
+        ld_flags = ['-L%s' % ldir for ldir in lib_dirs]
+        lib_flags = ['-l%s' % l for l in libs]
+        makefile = "CXX=%s\n" % (cxx)
+        makefile = "CXXFLAGS= "
+        for arg in preargs:
+            makefile += "%s " % (arg)
+        makefile += "\n"
+        for flags in cxx_falgs:
+            makefile += "CPPFLAGS+=%s\n" % (flags)
+        for flags in ld_flags:
+            makefile += "LDFLAGS+=%s\n" % (flags)
+        for flags in lib_flags:
+            makefile += "LDLIBS+=%s\n" % (flags)
+        makefile += "LDLIBS+=%s\n" % (library_name)
+        return makefile
+
+    @staticmethod
     def compile_command(module_name, location=None,
                         include_dirs=None, lib_dirs=None, libs=None,
                         preargs=None, py_module=True, shared=True,
