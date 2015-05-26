@@ -82,8 +82,9 @@ int initCumem() {
     int numDevices = 0;
     cumemDevice_t devices[g_max_devices];
     if(cudaGetDeviceCount(&numDevices) != cudaSuccess) {
-        fprintf(stderr, "initCumem: 'cudaGetDeviceCount' failed! Reason=%s\n",
-                cudaGetErrorString(cudaGetLastError()));
+        PyErr_Format(PyExc_RuntimeError,
+                     "initCumem: 'cudaGetDeviceCount' failed! Reason=%s\n",
+                     cudaGetErrorString(cudaGetLastError()));
         return -1;
     }
     for(int i=0;i<numDevices;++i) {
@@ -97,8 +98,9 @@ int initCumem() {
     ///@TODO: thejaswi: passing custom cumem flags?
     cumemStatus_t status = cumemInit(numDevices, devices, CUMEM_FLAGS_DEFAULT);
     if(status != CUMEM_STATUS_SUCCESS) {
-        fprintf(stderr, "initCumem: cumemInit call failed! Reason=%s\n",
-                cumemGetErrorString(status));
+        PyErr_Format(PyExc_RuntimeError,
+                     "initCumem: cumemInit call failed! Reason=%s. numdev=%d\n",
+                     cumemGetErrorString(status), numDevices);
         return -1;
     }
     cumemInitialized = true;
@@ -123,8 +125,9 @@ void * device_malloc(size_t size, int verbose)
     if(g_use_cumem) {
         cumemStatus_t status = cumemMalloc(&rval, size, NULL);
         if(status != CUMEM_STATUS_SUCCESS) {
-            fprintf(stderr, "device_malloc: cumemMallocAysnc call failed! Reason=%s\n",
-                    cumemGetErrorString(status));
+            PyErr_Format(PyExc_MemoryError,
+                         "Error allocating %zd bytes of device memory (%s).",
+                         size, cumemGetErrorString(status));
             return NULL;
         }
     }
