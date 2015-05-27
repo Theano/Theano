@@ -567,7 +567,6 @@ class Function(object):
 
         if not share_memory:
             return self.__copy__()
-
         else:
             # copy SymbolocKits
             ins, outs = copy.deepcopy([self.maker.inputs, self.maker.outputs])
@@ -611,7 +610,6 @@ class Function(object):
             input_storage = copy.copy([getattr(input, 'value', None) for input in ins])
             new_func = new_maker.create( input_storage, storage_map = new_storage_map )
             return new_func
-
 
     def __call__(self, *args, **kwargs):
         profile = self.profile
