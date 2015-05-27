@@ -570,8 +570,6 @@ def local_gpu_dot22(node):
 @local_optimizer([gpu_from_host, tensor.blas.Dot22Scalar])
 def local_gpu_dot22scalar(node):
     """
-    Deprecated : _dot22scalar has been replace by gemm
-    see Dot22scalar for more details
     gpu_from_host(dot22scalar) -> gpudot(gpu_from_host)
 
     dot(host_from_gpu) -> host_from_gpu(gpudot22scalar)
