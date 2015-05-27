@@ -368,9 +368,6 @@ def test_vm_gc():
 
 
 def test_reallocation():
-    """
-    test share memory.
-    """
     x = tensor.scalar('x')
     y = tensor.scalar('y')
     z = tensor.tanh(3 * x + y) + tensor.cosh(x + 5 * y)
@@ -387,10 +384,6 @@ def test_reallocation():
         storage_map = f.fn.storage_map
 
         def check_storage(storage_map):
-            """
-            Return [True, same_value] if two storages have same value,
-            otherwise return [False, None]
-            """
             from theano.tensor.var import TensorConstant
             for i in storage_map:
                 if not isinstance(i, TensorConstant):
@@ -402,7 +395,6 @@ def test_reallocation():
                             return [True, storage_map[o][0]]
             return [False, None]
 
-        # assert there's same value in strage_map
         assert check_storage(storage_map)[0]
         assert len(set(id(v) for v in
                        itervalues(storage_map))) < len(storage_map)
