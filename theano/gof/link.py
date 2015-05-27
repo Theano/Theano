@@ -540,18 +540,22 @@ def map_storage(fgraph, order, input_storage, output_storage):
         assert len(fgraph.inputs) == len(input_storage)
 
     storage_map = {}
-    for r, storage in izip(fgraph.inputs, input_storage):
+
+    # add input storage into storage_map
+    for r, storage in zip(fgraph.inputs, input_storage):
         storage_map[r] = storage
 #     for orphan in fgraph.orphans:
 #         if not isinstance(orphan, Constant):
 #             raise TypeError("Cannot link a graph with non-constant orphans.", orphan)
 #         storage_map[orphan] = [orphan.data]
 
+    # allocate output storage
     if output_storage is not None:
         assert len(fgraph.outputs) == len(output_storage)
         for r, storage in izip(fgraph.outputs, output_storage):
             storage_map[r] = storage
 
+    # allocate storage for intermediate computation
     for node in order:
         for r in node.inputs:
             if r not in storage_map:
@@ -563,6 +567,7 @@ def map_storage(fgraph, order, input_storage, output_storage):
         if isinstance(r, graph.Constant):
             storage_map.setdefault(r, [r.data])
 
+    # extract output storage
     if output_storage is None:
         output_storage = [storage_map[r] for r in fgraph.outputs]
 
