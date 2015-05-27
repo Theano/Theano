@@ -567,6 +567,7 @@ class Function(object):
 
         if not share_memory:
             return self.__copy__()
+
         else:
             # copy SymbolocKits
             ins, outs = copy.deepcopy([self.maker.inputs, self.maker.outputs])
