@@ -393,7 +393,7 @@ def use(device,
                 # query the active GPU. If we check the active GPU before
                 # the device is initialized we will always receive 0
                 # event if another device is selected later.
-                cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((2, 3))
+                cuda_ndarray.cuda_ndarray.select_a_gpu()
                 use.device_number = active_device_number()
                 # This is needed to initialize the cublas handle.
                 gpu_init(use.device_number, config.lib.cumem)

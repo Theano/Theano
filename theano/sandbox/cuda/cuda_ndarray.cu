@@ -73,7 +73,7 @@ void * device_malloc(size_t size)
 ///@TODO: thejaswi: link this option to a theano config variable?
 static bool g_use_cumem = false;
 static const int g_max_devices = 8;
-int initCumem() {
+int initCumem(int card_number_provided, int card_nb) {
     static bool cumemInitialized = false;
     if(cumemInitialized) {
         return 0;
@@ -87,15 +87,29 @@ int initCumem() {
                      cudaGetErrorString(cudaGetLastError()));
         return -1;
     }
-    for(int i=0;i<numDevices;++i) {
-        devices[i].device = i;
+    if(card_number_provided){
+        numDevices = 1;
+        int i = 0;
+        devices[i].device = card_nb;
         ///@TODO: thejaswi: support for choosing mem size to be allocated before-hand?
         devices[i].size = 0;
         ///@TODO: thejaswi: add support for multiple streams
         devices[i].numStreams = 0;
         devices[i].streams = NULL;
         devices[i].granularity = 0;
+
+    }else{
+        for(int i=0;i<numDevices;++i) {
+            devices[i].device = i;
+            ///@TODO: thejaswi: support for choosing mem size to be allocated before-hand?
+            devices[i].size = 0;
+            ///@TODO: thejaswi: add support for multiple streams
+            devices[i].numStreams = 0;
+            devices[i].streams = NULL;
+            devices[i].granularity = 0;
+        }
     }
+
     ///@TODO: thejaswi: passing custom cumem flags?
     cumemStatus_t status = cumemInit(numDevices, devices, CUMEM_FLAGS_DEFAULT);
     if(status != CUMEM_STATUS_SUCCESS) {
@@ -2926,6 +2940,32 @@ CudaNdarray_cublasv2(PyObject* _unused, PyObject* dummy)
     return Py_True;
 }
 
+PyObject *
+CudaNdarray_select_a_gpu(PyObject* _unused, PyObject* dummy)
+{
+    void * rval = NULL;
+
+    cudaError_t err = cudaMalloc(&rval, 4);
+    if (cudaSuccess != err){
+        printf("ERR!\\n");
+            PyErr_Format(PyExc_RuntimeError,
+                         "Not able to do basic stuff on the GPU (alloc of 4 bytes) (%s).",
+                         cudaGetErrorString(err));
+            return NULL;
+    }
+    err = cudaFree(rval);
+    if (cudaSuccess != err){
+        printf("ERR!\\n");
+            PyErr_Format(PyExc_RuntimeError,
+                         "Not able to do basic stuff on the GPU (cudaFree failed) (%s).",
+                         cudaGetErrorString(err));
+            return NULL;
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 #if COMPUTE_GPU_MEM_USED
 /*
  * Return the size in bytes that Theano currently have allocated on the gpu.
@@ -3163,9 +3203,10 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
         if (cublas_init() == -1)
             return NULL;
     }
-    if(g_use_cumem) {
-        if(initCumem() == -1)
+    if(card_number_provided && g_use_cumem) {
+        if(initCumem(card_number_provided, card_nb) == -1){
             return NULL;
+        }
     }
 
     Py_INCREF(Py_None);
@@ -3476,6 +3517,7 @@ static PyMethodDef module_methods[] = {
     {"dimshuffle", CudaNdarray_Dimshuffle, METH_VARARGS, "Returns the dimshuffle of a CudaNdarray."},
     {"dot", CudaNdarray_Dot, METH_VARARGS, "Returns the matrix product of two CudaNdarray arguments."},
     {"gpu_init", CudaNdarray_gpu_init, METH_VARARGS, "Select the gpu card to use; also usable to test whether CUDA is available."},
+    {"select_a_gpu", CudaNdarray_select_a_gpu, METH_NOARGS, "Call this method if you want to select a GPU before gpu_init call and let the driver choose the GPU."},
     {"active_device_name", CudaNdarray_active_device_name, METH_VARARGS, "Get the name of the active device."},
     {"active_device_number", CudaNdarray_active_device_number, METH_VARARGS, "Get the number of the active device."},
     {"gpu_shutdown", CudaNdarray_gpu_shutdown, METH_VARARGS, "Shut down the gpu."},
