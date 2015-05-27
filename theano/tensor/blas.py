@@ -1984,6 +1984,13 @@ _dot22scalar = Dot22Scalar()
 @local_optimizer([T.mul])
 def local_dot22_to_dot22scalar(node):
     """
+    :note: Previous attempts to alter this optimization to replace dot22 with
+        gemm instead of dot22scalar resulted in some Scan nodes being
+        duplicated and the ScanSaveMem optimization never running on them,
+        resulting in highly increased memory usage. Until this issue is
+        resolved, this optimization should keep using dot22scalar instead of
+        gemm.
+
     :note: we upcast the scalar if after the multiplication with the
         dot this give the same type.
 
