@@ -1422,7 +1422,7 @@ class FunctionMaker(object):
                                      "'%s'.\nValid values are 'raise', "
                                      "'warn', and 'ignore'." % on_unused_input)
 
-    def create(self, input_storage=None, trustme=False):
+    def create(self, input_storage=None, trustme=False, storage_map = None):
         """
         Create a function.
 
@@ -1503,7 +1503,7 @@ class FunctionMaker(object):
         try:
             theano.config.traceback.limit = 0
             _fn, _i, _o = self.linker.make_thunk(
-                input_storage=input_storage_lists)
+                input_storage=input_storage_lists, storage_map = storage_map)
         finally:
             theano.config.traceback.limit = limit_orig
 
