@@ -501,7 +501,7 @@ returned directly?"""
                 there.data = here.data
         return cpy
 
-    def copy(self, share_memory = False):
+    def copy(self, share_memory=False):
         """
         Copy this function. Copied function will have separated maker and fgraph
         with original function. User can choose whether to separate storage by 
@@ -522,8 +522,8 @@ returned directly?"""
             ins, outs = copy.deepcopy([self.maker.inputs, self.maker.outputs])
 
             # get copied input, output variables
-            in_vars = [ i.variabls for i in ins ]
-            out_vars = [ o.variabls for o in outs ]
+            in_vars = [ i.variable for i in ins ]
+            out_vars = [ o.variable for o in outs ]
 
             # contruct memo that map old variables to new variables
             memo = {}
@@ -540,19 +540,18 @@ returned directly?"""
 
             # re-initialize new FunctionMaker
             maker = self.maker
-            kwargs = dict(inputs=ins, outputs=outs, fgraph=new_fgraph,
-                            mode=maker.mode, profile=maker.profile,
-                            accept_inplace=maker.accept_inplace,
-                            function_builder=maker.function_builder,
-                            on_unused_input=maker.on_unused_input )
-            new_maker = FunctionMaker( kwargs )
+            new_maker = FunctionMaker( inputs=ins, outputs=outs, fgraph=new_fgraph,
+                                        mode=maker.mode, profile=maker.profile,
+                                        accept_inplace=maker.accept_inplace,
+                                        function_builder=maker.function_builder,
+                                        on_unused_input=maker.on_unused_input )
 
             # construct new storage_map that map new variable to old storage
             # so that the ensuing function shares storage with the original one
             new_storage_map = {}
             storage_map = self.fn.storage_map
             for key in storage_map.keys():
-                if not isinstance(key, theano.tensor.constant) and \
+                if not isinstance(key, theano.tensor.Constant) and \
                     equiv.has_key(key):
                     new_storage_map[memo[key]] = storage_map[key]
 
