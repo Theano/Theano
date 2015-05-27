@@ -106,6 +106,11 @@ class TestBatchedDot(TestCase):
         # Shape mismatch
         self.assertRaises(RuntimeError, fail, (5,4,3), (5,2,2))
 
+    def test_batched_dot_gradient(self):
+        theano.tests.unittest_tools.verify_grad(batched_dot,
+            [numpy.random.randn(5,7,2).astype(numpy.float32),
+             numpy.random.randn(5,2,6).astype(numpy.float32)])
+
 def test_dot22():
     def cmp(a_shp, b_shp):
         a0 = my_rand(*a_shp)
