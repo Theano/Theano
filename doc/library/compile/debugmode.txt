@@ -27,13 +27,13 @@ DebugMode can be used as follows:
 
 .. code-block:: python
 
-    x = tensor.dvector('x')
+    x = tensor.dscalar('x')
 
     f = theano.function([x], 10*x, mode='DebugMode')
 
-    f(5) 
-    f(0) 
-    f(7) 
+    f(5)
+    f(0)
+    f(7)
 
 It can also be used by setting the configuration variable :attr:`config.mode`.
 It can also be used by passing a DebugMode instance as the mode, as in 
