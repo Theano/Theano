@@ -475,16 +475,16 @@ Scan. This may have the effect of increasing memory usage but can also
 reduce the overhead introduces by using Scan.
 
 
-Passing shared variables as non-sequences
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Explicitly passing inputs of the inner function to scan
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-It is possible, inside of Scan, to use shared variables previously defined
-outside of the Scan without explicitly passing them as inputs to the Scan.
-However it is often more efficient to explicitly pass them as non-sequence
-inputs instead. Section :ref:`lib_scan_shared_variables` provides an
-explanation for this and section :ref:`lib_scan_strict` describes the *strict*
-flag, a tool that Scan provides to help ensure that the shared variables are
-correctly passed as non-sequence inputs to Scan.
+It is possible, inside of Scan, to use variables previously defined outside of
+the Scan without explicitly passing them as inputs to the Scan. However, it is
+often more efficient to explicitly pass them as non-sequence inputs instead.
+Section :ref:`lib_scan_shared_variables` provides an explanation for this and
+section :ref:`lib_scan_strict` describes the *strict* flag, a tool that Scan
+provides to help ensure that the inputs to the function inside Scan have all
+been provided as explicit inputs to the ``scan()`` function.
 
 
 Deactivating garbage collecting in Scan
