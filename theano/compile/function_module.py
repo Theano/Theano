@@ -501,7 +501,7 @@ returned directly?"""
                 there.data = here.data
         return cpy
 
-    def copy(self, share_memory=False):
+    def copy(self, share_memory = False):
         """
         Copy this function. Copied function will have separated maker and fgraph
         with original function. User can choose whether to separate storage by 
@@ -530,15 +530,20 @@ returned directly?"""
                                         fgraph=fg_cpy, profile=maker.profile,
                                         accept_inplace=maker.accept_inplace,
                                         function_builder=maker.function_builder,
-                                        on_unused_input=maker.on_unused_input)
 
             # construct new storage_map that map new variable to old storage
             # so that the ensuing function shares storage with the original one
             new_storage_map = {}
             storage_map = self.fn.storage_map
+            
+            # TODO: We could share the output storage, but we must make sure 
+            # 2 different function call won't override each other values. This 
+            # is already done elsewhere, so to reuse it the user would need to 
+            # use Out(var, borrow=True) and maybe the mutable=True flag too. 
+            # But to be safe for now as it isn't documented and we aren't sure 
+            # it is well tested, we don't share the part of the storage_map.
             for key in storage_map.keys():
-                # output_storages should not be shared
-                if key not in self.maker.fgraph.outputs and memo.has_key(key):
+                if key not in self.maker.fgraph.outputs:
                     new_storage_map[memo[key]] = storage_map[key]
 
             # copy input storages if it's mutable
