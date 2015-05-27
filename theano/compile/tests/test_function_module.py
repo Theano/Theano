@@ -241,6 +241,10 @@ class T_function(unittest.TestCase):
         f(1, 2)  # put them out of sync
         self.assertFalse(f(1, 2) == g(1, 2))  # they should not be equal anymore.
 
+    def test_copy_share_memory(self):
+        # Todo: finish the test.
+        pass
+
     def test_shared_state0(self):
         a = T.scalar()  # the a is for 'anonymous' (un-named).
         x, s = T.scalars('xs')
