@@ -22,8 +22,9 @@ import theano.compile.mode
 from theano.compile.io import (
     In, SymbolicInput, SymbolicInputKit, SymbolicOutput)
 from theano.compile.ops import deep_copy_op, view_op
-from theano.gof.graph import is_same_graph
+from theano.gof.graph import is_same_graph, clone_get_equiv
 from theano.gof.op import ops_with_inner_function
+from theano.gof.fg import FunctionGraph
 
 import logging
 _logger = logging.getLogger('theano.compile.function_module')
@@ -535,6 +536,10 @@ class Function(object):
         self.value[item] = value
 
     def __copy__(self):
+        """
+        Copy a function. Copied function have separate intermediate
+        storages and output storages with original function
+        """
         defaults = [default for _1, _2, default in self.defaults]
         cpy = self.maker.create(defaults, trustme=True)
         for (input, _1, _2), here, there in zip(self.indices,
@@ -545,6 +550,68 @@ class Function(object):
             else:
                 there.data = here.data
         return cpy
+
+    def copy(self, share_memory = False):
+        """
+        Copy this function. Copied function will have separated maker and fgraph
+        with original function. User can choose whether to separate storage by 
+        changing the share_memory arguments
+        ---------------------
+        Params:
+            share_memory -- { boolean } Default is False. When True, two function
+            share intermediate storages(storages except input and output storages)
+        ---------------------
+        Returns:
+            func -- Copied theano.Function
+        """
+
+        if not share_memory:
+            return self.__copy__()
+
+        else:
+            # copy SymbolocKits
+            ins, outs = copy.deepcopy([self.maker.inputs, self.maker.outputs])
+
+            # get copied input, output variables
+            in_vars = [ i.variabls for i in ins ]
+            out_vars = [ o.variabls for o in outs ]
+
+            # contruct memo that map old variables to new variables
+            memo = {}
+            for old_i, new_i in zip([i.variable for i in self.maker.inputs],
+                                        in_vars):
+                memo[old_i] = new_i
+            for old_o, new_o in zip([o.variable for o in self.maker.outputs],
+                                        out_vars):
+                memo[old_o] = new_o
+
+            # contruct new fgraph with new vars and complete the memo
+            memo = clone_get_equiv( in_vars, out_vars, memo )
+            new_fgraph = FunctionGraph(in_vars, out_vars)
+
+            # re-initialize new FunctionMaker
+            maker = self.maker
+            kwargs = dict(inputs=ins, outputs=outs, fgraph=new_fgraph,
+                            mode=maker.mode, profile=maker.profile,
+                            accept_inplace=maker.accept_inplace,
+                            function_builder=maker.function_builder,
+                            on_unused_input=maker.on_unused_input )
+            new_maker = FunctionMaker( kwargs )
+
+            # construct new storage_map that map new variable to old storage
+            # so that the ensuing function shares storage with the original one
+            new_storage_map = {}
+            storage_map = self.fn.storage_map
+            for key in storage_map.keys():
+                if not isinstance(key, theano.tensor.constant) and \
+                    equiv.has_key(key):
+                    new_storage_map[memo[key]] = storage_map[key]
+
+            # copy input storages and use new storage_map to link function
+            input_storage = copy.copy([getattr(input, 'value', None) for input in ins])
+            new_func = new_maker.create( input_storage, storage_map = new_storage_map )
+            return new_func
+
 
     def __call__(self, *args, **kwargs):
         profile = self.profile
