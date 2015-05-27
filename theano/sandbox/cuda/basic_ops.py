@@ -34,6 +34,12 @@ _logger = logging.getLogger(_logger_name)
 
 
 def as_cuda_ndarray_variable(x):
+    if \
+            x.owner is not None and \
+            isinstance(x.owner.op, GpuFromHost) and \
+            hasattr(x.owner.inputs[0].owner, 'op') and \
+            isinstance(x.owner.inputs[0].owner.op, HostFromGpu):
+        return x.owner.inputs[0].owner.inputs[0]
     if hasattr(x, '_as_CudaNdarrayVariable'):
         return x._as_CudaNdarrayVariable()
     tensor_x = tensor.as_tensor_variable(x)
