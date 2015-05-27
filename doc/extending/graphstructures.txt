@@ -417,7 +417,7 @@ such that: ``var.clients[*][0].inputs[index]`` or
     client = var.clients[0]
     client
     # (Sum(Elemwise{add,no_inplace}.0), 0)
-    type(clients[0][0])
+    type(client[0])
     # <class 'theano.gof.graph.Apply'>
     assert client[0].inputs[client[1]] is var
 
