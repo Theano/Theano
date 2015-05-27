@@ -547,6 +547,7 @@ def map_storage(fgraph, order, input_storage, output_storage, storage_map=None):
 
     if storage_map is None:
         storage_map = {}
+
     # add input storage into storage_map
     for r, storage in zip(fgraph.inputs, input_storage):
         storage_map[r] = storage
