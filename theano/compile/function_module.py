@@ -556,10 +556,13 @@ returned directly?"""
                 else:
                     input_storage.append( copy.deepcopy[storage])
 
+<<<<<<< HEAD
             new_func = new_maker.create(input_storage, storage_map=new_storage_map)
 
             return new_func
 
+=======
+>>>>>>> 87f2056... Delete extra line
     def __call__(self, *args, **kwargs):
         profile = self.profile
         t0 = time.time()
@@ -1446,12 +1449,8 @@ class FunctionMaker(object):
         limit_orig = theano.config.traceback.limit
         try:
             theano.config.traceback.limit = 0
-            _fn, _i, _o = self.linker.make_thunk(
-<<<<<<< HEAD
+            _fn, _i, _o = self.linker.make_thunk( 
                 input_storage=input_storage_lists, storage_map=storage_map)
-=======
-                input_storage=input_storage_lists, storage_map = storage_map)
->>>>>>> f5682ea... Change interface of FunctionMaker.create()
         finally:
             theano.config.traceback.limit = limit_orig
 
