@@ -1500,7 +1500,11 @@ class FunctionMaker(object):
         try:
             theano.config.traceback.limit = 0
             _fn, _i, _o = self.linker.make_thunk(
+<<<<<<< HEAD
                 input_storage=input_storage_lists, storage_map=storage_map)
+=======
+                input_storage=input_storage_lists, storage_map = storage_map)
+>>>>>>> f5682ea... Change interface of FunctionMaker.create()
         finally:
             theano.config.traceback.limit = limit_orig
 
