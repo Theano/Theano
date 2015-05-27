@@ -510,7 +510,7 @@ This one is simple but still worth pointing out. Theano is able to
 automatically recognize and optimize many computation patterns. However, there
 are patterns that Theano doesn't optimize because doing so would change the
 user interface (such as merging shared variables together into a single one,
-for instance). Additionnaly, Theano doesn't catch every case that it could
+for instance). Additionaly, Theano doesn't catch every case that it could
 optimize and so it remains useful for performance that the user defines an
 efficient graph in the first place. This is also the case, and sometimes even
 more so, for the graph inside of Scan. This is because it will be executed
@@ -525,8 +525,8 @@ multiplications between matrix :math:`x_t` and each of the shared matrices
 performs a single larger matrix multiplication between :math:`W` and
 :math:`x_t`. The resulting matrix is then sliced to obtain the results of that
 the small individual matrix multiplications would have produced. This
-optimization replaces many small and inefficient matrix multiplications but a
-single larger one and thus improves performance at the cost of a potentially
+optimization replaces several small and inefficient matrix multiplications by
+a single larger one and thus improves performance at the cost of a potentially
 higher memory usage.
 
 
