@@ -593,7 +593,7 @@ class Function(object):
             # But to be safe for now as it isn't documented and we aren't sure 
             # it is well tested, we don't share the part of the storage_map.
             for key in storage_map.keys():
-                if key not in self.maker.fgraph.outputs and \
+                if key not in self.maker.fgraph.outputs and 
                     not isinstance(key, theano.tensor.Constant):
                     new_storage_map[memo[key]] = storage_map[key]
 
