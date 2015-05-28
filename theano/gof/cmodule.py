@@ -245,7 +245,7 @@ static struct PyModuleDef moduledef = {{
             print >>f, code
         f.close()
 
-    def code(self):
+    def code(self, executable=False):
         sio = StringIO()
         for inc in self.includes:
             if not inc:
@@ -260,18 +260,18 @@ static struct PyModuleDef moduledef = {{
         print("//////////////////////", file=sio)
         for sc in self.support_code:
             print(sc, file=sio)
+        if not executable:
+            print("//////////////////////", file=sio)
+            print("////  Functions", file=sio)
+            print("//////////////////////", file=sio)
+            for f in self.functions:
+                print(f.code_block, file=sio)
 
-        print("//////////////////////", file=sio)
-        print("////  Functions", file=sio)
-        print("//////////////////////", file=sio)
-        for f in self.functions:
-            print(f.code_block, file=sio)
-
-        print("//////////////////////", file=sio)
-        print("////  Module init", file=sio)
-        print("//////////////////////", file=sio)
-        self.print_methoddef(sio)
-        self.print_init(sio)
+            print("//////////////////////", file=sio)
+            print("////  Module init", file=sio)
+            print("//////////////////////", file=sio)
+            self.print_methoddef(sio)
+            self.print_init(sio)
 
         rval = sio.getvalue()
         h = hash_from_code('\n'.join([rval] + self.header_code))

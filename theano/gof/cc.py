@@ -1542,7 +1542,7 @@ class CLinker(link.Linker):
                                 out_filename='exec')[2]))
 
                     # compile the dynamic python module.
-                    src_code = mod_exec.code()
+                    src_code = mod_exec.code(executable=True)
                     c_compiler.compile_str(
                         module_name=mod_exec.code_hash,
                         src_code=src_code,
@@ -1793,9 +1793,6 @@ int main(int argc, char *argv[]) {
  Py_Initialize();
 
  // Those print are there to help debug import of python module
- printf("Before sys import\\n");
- PyObject * sys = PyImport_ImportModule("sys");
- printf("After import sys %%p\\n", sys);
  PyObject * numpy = PyImport_ImportModule("numpy");
  printf("After import numpy %%p\\n", numpy);
  PyErr_Print();
@@ -1825,7 +1822,6 @@ int main(int argc, char *argv[]) {
    printf("cinit() failed!\\n");
    return 1;
  }
- //TODO, should struct_ptr.cleanup() cleanup the __ERROR structure?
  delete struct_ptr;
 
  printf("\\nmain end, before Py_Finalize\\n");
@@ -1834,6 +1830,7 @@ int main(int argc, char *argv[]) {
 }
         """ % dict(struct_name=self.struct_name,
                    **locals())
+        # TODO, should struct_ptr.cleanup() cleanup the __ERROR structure
         return main
 
     def cinit_code(self):
