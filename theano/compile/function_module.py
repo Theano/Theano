@@ -573,16 +573,11 @@ class Function(object):
 
             # copy fgraph and get memo
             maker = self.maker
-<<<<<<< HEAD
             fg_cpy, memo = maker.fgraph.clone_get_equiv(attach_feature=False)
 
             # use copied ins, outs and fgraph to init a maker
             new_maker = maker.__class__(inputs=ins, outputs=outs, mode=maker.mode,
                                         fgraph=fg_cpy, profile=maker.profile,
-=======
-            new_maker = FunctionMaker(inputs=ins, outputs=outs, mode=maker.mode,
-                                        fgraph=new_fgraph, profile=maker.profile,
->>>>>>> Small modification to copy(). Testcase is finished. Start debuging.
                                         accept_inplace=maker.accept_inplace,
                                         function_builder=maker.function_builder,
                                         on_unused_input=maker.on_unused_input)
@@ -593,7 +588,6 @@ class Function(object):
             storage_map = self.fn.storage_map
             for key in storage_map.keys():
                 # output_storages should not be shared
-<<<<<<< HEAD
                 if key not in self.maker.fgraph.outputs and memo.has_key(key):
                     new_storage_map[memo[key]] = storage_map[key]
 
@@ -609,23 +603,6 @@ class Function(object):
 
             new_func = new_maker.create(input_storage, storage_map=new_storage_map)
 
-=======
-                if key not in self.maker.fgraph.outputs and \
-                    memo.has_key(key):
-                    new_storage_map[memo[key]] = storage_map[key]
-
-            # copy input storages and link function with new storage_map
-            input_storage = copy.copy([getattr(i, 'value', None) for i in ins])
-            new_func = new_maker.create(input_storage, storage_map=new_storage_map)
-
-            # share immutable SharedVariable's storage
-            for (input, _1, _2), here, there in zip(self.indices,
-                                                    self.input_storage,
-                                                    new_func.input_storage):
-                if not input.mutable:
-                    there.data = here.data
-
->>>>>>> Small modification to copy(). Testcase is finished. Start debuging.
             return new_func
 
     def __call__(self, *args, **kwargs):
