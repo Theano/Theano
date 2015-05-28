@@ -77,11 +77,16 @@ class SoftmaxWithBias(gof.Op):
         if b.shape[0] != x.shape[1]:
             raise ValueError('b must have same number of columns as x')
 
-        sm = numpy.zeros_like(x)
-        for i in xrange(sm.shape[0]):
-            row = x[i] + b
-            sm[i] = numpy.exp(row - numpy.max(row))
-            sm[i] *= 1.0 / numpy.sum(sm[i])
+        # sm = numpy.zeros_like(x)
+        # for i in xrange(sm.shape[0]):
+            # row = x[i] + b
+            # sm[i] = numpy.exp(row - numpy.max(row))
+            # sm[i] *= 1.0 / numpy.sum(sm[i])
+        # output_storage[0][0] = sm
+
+        x_plus_b = x + b[None, :]
+        e_x = numpy.exp(x_plus_b - x_plus_b.max(axis=1)[:, None])
+        sm = e_x / e_x.sum(axis=1)[:, None]
         output_storage[0][0] = sm
 
     def grad(self, inp, grads):
@@ -303,8 +308,17 @@ class SoftmaxGrad(gof.Op):
             dx[i] = dy_times_sm_i - sum(dy_times_sm_i) * sm[i]
         output_storage[0][0] = dx
 
-    def grad(self, *args):
-        raise NotImplementedError()
+    def grad(self, inp, grads):
+        dy, sm = inp
+        g, = grads
+        
+        tmp = g + tensor.neg(tensor.sum(g*sm, axis=1).dimshuffle((0, 'x')))
+        g_dy = tmp * sm
+        
+        tmp2 = tensor.sum(dy*sm, axis=1).dimshuffle((0, 'x'))
+        g_sm = tmp*dy - g *tmp2
+    
+        return g_dy, g_sm
 
     def infer_shape(self, node, shape):
         return [shape[1]]
@@ -573,9 +587,7 @@ def softmax_graph(c):
     return tensor.exp(c) / tensor.exp(c).sum(axis=-1, keepdims=True)
 
 def softmax(c):
-    if c.ndim == 1:
-        c = tensor.shape_padleft(c, n_ones=1)
-    return softmax_graph(c)    
+    return softmax_op(c)
 
 @opt.register_specialize('fast_compile_gpu')
 @gof.local_optimizer([softmax_op])
@@ -733,7 +745,7 @@ if 0:
                             rest.append(add_in)
                             # print 'maybe_ds =', maybe_ds
                             # if maybe_ds:
-                  #I will make a plot with the average over many realizations.            #    print 'maybe_ds.ndim =', maybe_ds.ndim, ', maybe_sm.ndim =', maybe_sm.ndim
+                            #    print 'maybe_ds.ndim =', maybe_ds.ndim, ', maybe_sm.ndim =', maybe_sm.ndim
                             continue
 
                         if maybe_sm is mul_inputs[0]:

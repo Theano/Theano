@@ -1011,7 +1011,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             try:
                 g = theano.function([x, b, y], T.grad(expr, x), mode=mode)
             finally:
-                config.warn.sum_div_dimshuffle_bug = backup
+                config.warn.sum_div_dimshuffle_qbug = backup
 
             if verbose:
                 printing.debugprint(g)
@@ -1026,7 +1026,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 theano.printing.debugprint(g)
                 raise
 
-    def test_scale_cost(self):
+    def test_scrossentropy_softmax_1hot_with_bias_dxcale_cost(self):
         # TODO: add the optimization in FAST_COMPILE?
         # In the mean time, run it as 'FAST_RUN' instead
         mode = theano.compile.mode.get_default_mode()
@@ -1071,25 +1071,25 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
         # Cases to test
         expressions = [
-                a * T.sum(-T.log(softmax_graph(x)[T.arange(y.shape[0]), y])),
-                -a * T.sum(T.log(softmax_graph(x)[T.arange(y.shape[0]), y])),
-                a * (-T.sum(T.log(softmax_graph(x)[T.arange(y.shape[0]), y]))),
-                a * T.sum(T.log(softmax_graph(x)[T.arange(y.shape[0]), y])),
+                a * T.sum(-T.log(softmax(x)[T.arange(y.shape[0]), y])),
+                -a * T.sum(T.log(softmax(x)[T.arange(y.shape[0]), y])),
+                a * (-T.sum(T.log(softmax(x)[T.arange(y.shape[0]), y]))),
+                a * T.sum(T.log(softmax(x)[T.arange(y.shape[0]), y])),
 
-                a * T.sum(-T.log(softmax_graph(x))[T.arange(y.shape[0]), y]),
-                -a * T.sum(T.log(softmax_graph(x))[T.arange(y.shape[0]), y]),
-                a * (-T.sum(T.log(softmax_graph(x))[T.arange(y.shape[0]), y])),
-                a * T.sum(T.log(softmax_graph(x))[T.arange(y.shape[0]), y]),
+                a * T.sum(-T.log(softmax(x))[T.arange(y.shape[0]), y]),
+                -a * T.sum(T.log(softmax(x))[T.arange(y.shape[0]), y]),
+                a * (-T.sum(T.log(softmax(x))[T.arange(y.shape[0]), y])),
+                a * T.sum(T.log(softmax(x))[T.arange(y.shape[0]), y]),
 
-                a * T.mean(-T.log(softmax_graph(x)[T.arange(y.shape[0]), y])),
-                -a * T.mean(T.log(softmax_graph(x)[T.arange(y.shape[0]), y])),
-                a * (-T.mean(T.log(softmax_graph(x)[T.arange(y.shape[0]), y]))),
-                a * T.mean(T.log(softmax_graph(x)[T.arange(y.shape[0]), y])),
+                a * T.mean(-T.log(softmax(x)[T.arange(y.shape[0]), y])),
+                -a * T.mean(T.log(softmax(x)[T.arange(y.shape[0]), y])),
+                a * (-T.mean(T.log(softmax(x)[T.arange(y.shape[0]), y]))),
+                a * T.mean(T.log(softmax(x)[T.arange(y.shape[0]), y])),
 
-                a * T.mean(-T.log(softmax_graph(x))[T.arange(y.shape[0]), y]),
-                -a * T.mean(T.log(softmax_graph(x))[T.arange(y.shape[0]), y]),
-                a * (-T.mean(T.log(softmax_graph(x))[T.arange(y.shape[0]), y])),
-                a * T.mean(T.log(softmax_graph(x))[T.arange(y.shape[0]), y]),
+                a * T.mean(-T.log(softmax(x))[T.arange(y.shape[0]), y]),
+                -a * T.mean(T.log(softmax(x))[T.arange(y.shape[0]), y]),
+                a * (-T.mean(T.log(softmax(x))[T.arange(y.shape[0]), y])),
+                a * T.mean(T.log(softmax(x))[T.arange(y.shape[0]), y]),
                 ]
 
         for expr in expressions:
@@ -1130,7 +1130,7 @@ def test_argmax_pushdown():
 
     # test that the max_and_argmax is pushed down if the max is not used
     out = tensor.max_and_argmax(
-            softmax_graph(tensor.exp(tensor.tanh(sigmoid(x)))),
+            softmax(tensor.exp(tensor.tanh(sigmoid(x)))),
             axis=-1)[1]
     fgraph = gof.FunctionGraph(
             [x],
@@ -1147,7 +1147,7 @@ def test_argmax_pushdown():
     x = tensor.matrix()
     # test that the max_and_argmax is not pushed down if the max is used
     out = tensor.max_and_argmax(
-            softmax_graph(tensor.exp(tensor.tanh(sigmoid(x)))),
+            softmax(tensor.exp(tensor.tanh(sigmoid(x)))),
             axis=-1)[0]
     fgraph = gof.FunctionGraph(
             [x],
@@ -1157,7 +1157,7 @@ def test_argmax_pushdown():
     config.warn.argmax_pushdown_bug = False
     try:
         theano.compile.mode.optdb.query(
-                theano.compile.mode.OPT_FAST_RUN).optimize(fgraph)
+            theano.compile.mode.OPT_FAST_RUN).optimize(fgraph)
     finally:
         config.warn.argmax_pushdown_bug = backup
 
@@ -1236,7 +1236,7 @@ def test_asymptotic_32():
             x2 = tensor.dvector()
         y = tensor.lvector()
 
-        c = categorical_crossentropy(softmax_graph(x + x2), y)
+        c = categorical_crossentropy(softmax(x + x2), y)
         f = theano.function([x, y, x2], [c.sum(),
                             tensor.grad(c.sum(), x)], mode='FAST_RUN')
         if 0:
@@ -1374,23 +1374,34 @@ class Test_softmax_opt:
     # REPEAT 3 CASES in presence of log(softmax) with the advanced indexing
     # etc.
 
+
 def test_softmax_graph():
     rng = numpy.random.RandomState(utt.fetch_seed())
     x = theano.shared(rng.normal(size=(3, 4)))
+
     def f(inputs):
         y = softmax_graph(x)
-        z = (y**2).mean()
-        return theano.grad(z, x, known_grads={y: inputs})
-  
-    utt.verify_grad(f, [numpy.random.rand(3, 4)])
-    
-    
+        return theano.grad(None, x, known_grads={y: inputs})
+
+    utt.verify_grad(f, [rng.rand(3, 4)])
+
+
+def test_grad_softmax_grad():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    x = theano.shared(rng.normal(size=(3, 4)))
+
+    def f(inputs):
+        y = softmax_op(x)
+        return theano.grad(None, x, known_grads={y: inputs})
+    utt.verify_grad(f, [rng.rand(3, 4)])
+
+
 def test_stabilize_log_softmax():
     mode = theano.compile.mode.get_default_mode()
     mode = mode.including('local_log_softmax', 'specialize')
 
     x = matrix()
-    y = theano.tensor.nnet.softmax_graph(x)
+    y = softmax(x)
     z = theano.tensor.log(y)
 
     f = theano.function([x], z, mode=mode)
