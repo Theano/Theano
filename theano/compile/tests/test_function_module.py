@@ -240,8 +240,34 @@ class T_function(unittest.TestCase):
         self.assertFalse(f(1, 2) == g(1, 2))  # they should not be equal anymore.
 
     def test_copy_share_memory(self):
-        # Todo: finish the test.
-        pass
+        x = T.fscalar('x')
+        y = T.tanh((x+2)/(x+0.2)**2)
+
+        # test for PerformaLinker, will cover VM_linker later
+        ori = theano.function([x], [y], mode="FAST_COMPILE")
+        cpy = func.copy(share_memory=True)
+
+        # test if memories shared
+        storage_map_ori = ori.fn.storage_map
+        storage_map_cpy = cpy.fn.storage_map
+        fgraph_ori = ori.maker.fgraph
+        fgraph_cpy = cpy.maker.fgraph
+
+        # assert intermediate and Constants storages are shared
+        i_o_variables = fgraph_cpy.inputs
+        ori_storages = storage_map_ori.values()
+        for key in storage_map_cpy.keys()
+            if key not in i_o_variables or isinstance(key, theano.tensor.Constant):
+                self.assertTrue(storage_map_cpy[key] in ori_storages)
+
+        # assert storages of SharedVariable without updates are shared
+        for (input, _1, _2), here, there in zip(ori.indices,
+                                                ori.input_storage,
+                                                cpy.input_storage):
+            if not input.mutable:
+                self.assertTrue(here.data is there.data)
+            else:
+                self.assertFalse(here.data is there.data)
 
     def test_shared_state0(self):
         a = T.scalar()  # the a is for 'anonymous' (un-named).
