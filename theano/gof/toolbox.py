@@ -32,7 +32,7 @@ class Feature(object):
     by various operations on FunctionGraphs. It can be used to enforce
     graph properties at all stages of graph optimization.
 
-    See toolbox and ext modules for common extensions.
+    See :func:`theano.gof.toolbox` for common extensions.
     """
 
     def on_attach(self, function_graph):
