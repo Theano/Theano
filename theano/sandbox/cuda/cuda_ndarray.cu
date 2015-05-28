@@ -78,7 +78,8 @@ int initCumem(int card_number_provided, int card_nb) {
     if(cumemInitialized) {
         return 0;
     }
-    printf("Initializing cumem...\n");
+    // On stderr to be at the same place as "Using gpu device..."
+    fprintf(stderr, "Initializing cumem...\n");
     int numDevices = 0;
     cumemDevice_t devices[g_max_devices];
     if(cudaGetDeviceCount(&numDevices) != cudaSuccess) {
@@ -3240,7 +3241,7 @@ CudaNdarray_gpu_shutdown(PyObject* _unused, PyObject* _unused_args) {
     cublas_shutdown();
     g_gpu_context_active = 0; // context has now been closed down
     if(g_use_cumem) {
-        printf("Shutting down cumem...\n");
+        fprintf(stderr, "Shutting down cumem...\n");
         cumemStatus_t status = cumemFinalize();
         if(status != CUMEM_STATUS_SUCCESS) {
             fprintf(stderr, "CudaNdarray_gpu_shutdown: cumemFinalize failed! Reason=%s\n",
