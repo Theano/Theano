@@ -590,24 +590,33 @@ class Function(object):
 
             # re-initialize new FunctionMaker
             maker = self.maker
-            new_maker = FunctionMaker( inputs=ins, outputs=outs, fgraph=new_fgraph,
-                                        mode=maker.mode, profile=maker.profile,
+            new_maker = FunctionMaker(inputs=ins, outputs=outs, mode=maker.mode,
+                                        fgraph=new_fgraph, profile=maker.profile,
                                         accept_inplace=maker.accept_inplace,
                                         function_builder=maker.function_builder,
-                                        on_unused_input=maker.on_unused_input )
+                                        on_unused_input=maker.on_unused_input)
 
             # construct new storage_map that map new variable to old storage
             # so that the ensuing function shares storage with the original one
             new_storage_map = {}
             storage_map = self.fn.storage_map
             for key in storage_map.keys():
-                if not isinstance(key, theano.tensor.Constant) and \
+                # output_storages should not be shared
+                if key not in self.maker.fgraph.outputs and \
                     memo.has_key(key):
                     new_storage_map[memo[key]] = storage_map[key]
 
-            # copy input storages and use new storage_map to link function
-            input_storage = copy.copy([getattr(input, 'value', None) for input in ins])
-            new_func = new_maker.create( input_storage, storage_map = new_storage_map )
+            # copy input storages and link function with new storage_map
+            input_storage = copy.copy([getattr(i, 'value', None) for i in ins])
+            new_func = new_maker.create(input_storage, storage_map=new_storage_map)
+
+            # share immutable SharedVariable's storage
+            for (input, _1, _2), here, there in zip(self.indices,
+                                                    self.input_storage,
+                                                    new_func.input_storage):
+                if not input.mutable:
+                    there.data = here.data
+
             return new_func
 
     def __call__(self, *args, **kwargs):
