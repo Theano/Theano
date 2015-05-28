@@ -523,6 +523,7 @@ returned directly?"""
 
             # copy fgraph and get memo
             maker = self.maker
+<<<<<<< HEAD
             fg_cpy, memo = maker.fgraph.clone_get_equiv(attach_feature=False)
 
             # use copied ins, outs and fgraph to init a maker
@@ -530,6 +531,13 @@ returned directly?"""
                                         fgraph=fg_cpy, profile=maker.profile,
                                         accept_inplace=maker.accept_inplace,
                                         function_builder=maker.function_builder,
+=======
+            new_maker = FunctionMaker(inputs=ins, outputs=outs, mode=maker.mode,
+                                        fgraph=new_fgraph, profile=maker.profile,
+                                        accept_inplace=maker.accept_inplace,
+                                        function_builder=maker.function_builder,
+                                        on_unused_input=maker.on_unused_input)
+>>>>>>> 6ba7c5d... Small modification to copy(). Testcase is finished. Start debuging.
 
             # construct new storage_map that map new variable to old storage
             # so that the ensuing function shares storage with the original one
@@ -543,6 +551,7 @@ returned directly?"""
             # But to be safe for now as it isn't documented and we aren't sure 
             # it is well tested, we don't share the part of the storage_map.
             for key in storage_map.keys():
+<<<<<<< HEAD
                 if key not in self.maker.fgraph.outputs and 
                     not isinstance(key, theano.tensor.Constant):
                     new_storage_map[memo[key]] = storage_map[key]
@@ -559,6 +568,24 @@ returned directly?"""
 
             new_func = new_maker.create(input_storage, storage_map=new_storage_map)
 
+=======
+                # output_storages should not be shared
+                if key not in self.maker.fgraph.outputs and \
+                    memo.has_key(key):
+                    new_storage_map[memo[key]] = storage_map[key]
+
+            # copy input storages and link function with new storage_map
+            input_storage = copy.copy([getattr(i, 'value', None) for i in ins])
+            new_func = new_maker.create(input_storage, storage_map=new_storage_map)
+
+            # share immutable SharedVariable's storage
+            for (input, _1, _2), here, there in zip(self.indices,
+                                                    self.input_storage,
+                                                    new_func.input_storage):
+                if not input.mutable:
+                    there.data = here.data
+
+>>>>>>> 6ba7c5d... Small modification to copy(). Testcase is finished. Start debuging.
             return new_func
 
     def __call__(self, *args, **kwargs):
