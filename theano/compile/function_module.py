@@ -552,7 +552,7 @@ returned directly?"""
             storage_map = self.fn.storage_map
             for key in storage_map.keys():
                 if not isinstance(key, theano.tensor.Constant) and \
-                    equiv.has_key(key):
+                    memo.has_key(key):
                     new_storage_map[memo[key]] = storage_map[key]
 
             # copy input storages and use new storage_map to link function

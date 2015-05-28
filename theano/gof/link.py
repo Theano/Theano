@@ -606,9 +606,10 @@ class LocalLinker(Linker):
     thunk associated with each node.
     """
 
-    def make_thunk(self, input_storage=None, output_storage=None):
+    def make_thunk(self, input_storage=None, output_storage=None, storage_map=None):
         return self.make_all(input_storage=input_storage,
-                             output_storage=output_storage)[:3]
+                             output_storage=output_storage,
+                             storage_map=storage_map)[:3]
 
     def make_all(self, input_storage, output_storage):
         # By convention, subclasses of LocalLinker should implement this function!
