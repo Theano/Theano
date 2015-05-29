@@ -903,6 +903,45 @@ def test_local_abstractconv_gemm():
     f(numpy.random.rand(1, 32, 32, 32).astype('float32'),
       numpy.random.rand(32, 32, 3, 3).astype('float32'))
 
+
+def test_op_from_graph():
+    from theano import function, OpFromGraph, tensor
+    x, y, z = tensor.fscalars('xyz')
+    e = x + y * z
+    op = OpFromGraph([x, y, z], [e], mode=mode_with_gpu)
+    # op behaves like a normal theano op
+    e2 = op(x, y, z) + op(z, y, x)
+    fn = function([x, y, z], [e2], mode_with_gpu)
+    theano.printing.debugprint(fn, print_type=True)
+    ofg = [n for n in fn.maker.fgraph.toposort()
+           if isinstance(n.op, OpFromGraph)]
+    assert len(ofg) == 2
+    # TODO: block at inputs
+    [theano.printing.debugprint(o.op.fn, print_type=True)
+     for o in ofg]
+    assert numpy.allclose(fn(3, 5, 6), (3 + 5 * 6) + (6 + 5 * 3))
+
+    return# TODO
+    print()
+    # Test with a shared varible in inputs
+    s = theano.shared(numpy.random.rand(2, 2).astype('float32'))
+    e = x + y * z + s
+    op = OpFromGraph([x, y, z], [e], mode=mode_with_gpu)
+    # op behaves like a normal theano op
+    e2 = op(x, y, z) + op(z, y, x)
+    fn = function([x, y, z], [e2], mode=mode_with_gpu)
+    theano.printing.debugprint(fn, print_type=True)
+    ofg = [n for n in fn.maker.fgraph.toposort()
+           if isinstance(n.op, OpFromGraph)]
+    assert len(ofg) == 2
+    # TODO: block at inputs
+    [theano.printing.debugprint(o.op.fn, print_type=True)
+     for o in ofg]
+    assert numpy.allclose(fn(3, 5, 6),
+                          (3 + 5 * 6 + s.get_value()) +
+                          (6 + 5 * 3 + s.get_value()))
+
+
 if __name__ == '__main__':
     test_gpualloc()
     test_opt_gpujoin_onlyajoin()

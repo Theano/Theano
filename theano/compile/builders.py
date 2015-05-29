@@ -82,6 +82,9 @@ class OpFromGraph(gof.Op):
         if 'updates' in kwargs or 'givens' in kwargs:
             raise TypeError('updates and givens are not allowed in kwargs')
 
+        for i in inputs:
+            if i.owner:
+                print("WARNING: OpFromGraph inner inputs are the result of computation. This isn't tested.")
         # To support correctly shared variables the inner fct should
         # not see them. Otherwise their is problem with the gradient.
         self.shared_inputs = [var for var in gof.graph.inputs(outputs)
