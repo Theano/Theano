@@ -136,9 +136,7 @@ might not have Theano installed, who are using a different Python version, or if
 you are planning to save your model for a long time (in which case version
 mismatches might make it difficult to unpickle objects).
 
-.. autofunction:: theano.misc.pkl_utils.dump
-
-.. autofunction:: theano.misc.pkl_utils.load
+See :func:`theano.misc.pkl_utils.dump` and :func:`theano.misc.pkl_utils.load`.
 
 
 Long-Term Serialization

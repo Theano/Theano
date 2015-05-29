@@ -4,7 +4,7 @@
 :mod:`toolbox` -- [doc TODO]
 ================================================
 
-.. module:: toolbox
+.. module:: theano.gof.toolbox
    :platform: Unix, Windows
    :synopsis: Theano Internals
 .. moduleauthor:: LISA
