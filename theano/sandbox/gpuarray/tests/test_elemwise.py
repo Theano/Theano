@@ -46,6 +46,26 @@ class test_gpu_Broadcast(test_Broadcast):
         super(test_gpu_Broadcast, self).test_c_inplace()
 
 
+def test_elemwise_pow():
+    # Test that GpuElemwise(pow) can compile with any combination of integer
+    # or float input dtype.
+    dev = theano.sandbox.gpuarray.init_dev.device
+    if not dev.startswith('cuda'):
+        raise SkipTest("Cuda specific tests")
+
+    dtypes = ["uint8", "uint16", "uint32", "uint64",
+              "int8", "int16", "int32", "int64",
+              "float32", "float64"]
+
+    for dtype_base in dtypes:
+        for dtype_exp in dtypes:
+            # Compile a gpu function with the specified dtypes
+            base = theano.tensor.vector(dtype=dtype_base)
+            exp = theano.tensor.vector(dtype=dtype_exp)
+            output = base ** exp
+            f = theano.function([base, exp], output)
+
+
 class test_GpuDimShuffle(test_DimShuffle):
     op = GpuDimShuffle
 
