@@ -1754,7 +1754,9 @@ class _Linker(gof.link.LocalLinker):
                 thunks_py.append(None)
 
             if not self.maker.mode.check_c_code and thunks_py[-1] is None:
-                print("Op %s don't have a perform, forcing check of the c code" % node.op)
+                _logger.warn(
+                    "Op %s don't have a perform, forcing check of the c code" %
+                    node.op)
                 thunk = node.op.make_c_thunk(node, storage_map, compute_map,
                                              no_recycling)
                 thunks_c[-1] = thunk
