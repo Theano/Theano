@@ -806,20 +806,31 @@ class FunctionGraph(utils.object2):
         """
         return self.clone_get_equiv(check_integrity)[0]
 
-    def clone_get_equiv(self, check_integrity=True):
-        """
-        WRITEME
-
+    def clone_get_equiv(self, check_integrity=True, attach_feature=True):
+        """Clone the graph and get a memo( a dict )that map old node to new node
+        ----------------------------
+        Parameters:
+            check_integrity - { bool } Whether to check integrity. 
+                                Default is True.
+            attach_feature - { bool } Whether to attach feature of origin graph to
+                                cloned graph. Default is True.
+        ----------------------------
+        Returns:
+            e - { FunctionGraph } Cloned fgraph. Every node in cloned graph is cloned.
+            equiv - { dict } A dict that map old node to new node.
         """
         equiv = graph.clone_get_equiv(self.inputs, self.outputs)
+        
         if check_integrity:
             self.check_integrity()
         e = FunctionGraph([equiv[i] for i in self.inputs],
                           [equiv[o] for o in self.outputs])
         if check_integrity:
             e.check_integrity()
-        for feature in self._features:
-            e.attach_feature(feature)
+
+        if attach_feature:
+            for feature in self._features:
+                e.attach_feature(feature)
         return e, equiv
 
     def __getstate__(self):
