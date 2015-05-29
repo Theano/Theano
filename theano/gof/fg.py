@@ -778,7 +778,7 @@ class FunctionGraph(utils.object2):
             self.check_integrity()
         e = FunctionGraph([equiv[i] for i in self.inputs],
                           [equiv[o] for o in self.outputs],
-                          clone=Flase)
+                          clone=False)
         if check_integrity:
             e.check_integrity()
 
