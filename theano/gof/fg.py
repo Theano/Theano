@@ -842,7 +842,11 @@ class FunctionGraph(utils.object2):
             self.check_integrity()
         e = FunctionGraph([equiv[i] for i in self.inputs],
                           [equiv[o] for o in self.outputs],
+<<<<<<< HEAD
                           clone=False)
+=======
+                          clone=Flase)
+>>>>>>> b2901d0... Fix a bug: While initializing a clone graph it should not be cloned again, otherwise the equiv doesn't work.
         if check_integrity:
             e.check_integrity()
 
