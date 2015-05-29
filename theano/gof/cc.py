@@ -1854,13 +1854,13 @@ int main(int argc, char *argv[]) {
                 shp_str = ",".join([str(s) for s in shp])
                 for_str = ""
                 for i, el in enumerate(vals):
-                    for_str += "ptr[%(i)s]=%(el)s;\n"%locals()
+                    for_str += "ptr_%(var)s[%(i)s]=%(el)s;\n"%locals()
 
                 in_out_list += """
                 PyObject* %(var)s = PyList_New(1);
                 npy_intp %(var)s_dims[%(ndim)s]={%(shp_str)s};
                 PyObject* const_%(var)s = PyArray_ZEROS(%(ndim)s,%(var)s_dims,%(numpy_constant_type)s,0);
-                %(c_constant_type)s *ptr =(%(c_constant_type)s *)PyArray_DATA((PyArrayObject*)const_%(var)s);
+                %(c_constant_type)s *ptr_%(var)s =(%(c_constant_type)s *)PyArray_DATA((PyArrayObject*)const_%(var)s);
                 %(for_str)s
                 Py_XINCREF(const_%(var)s);
                 PyList_SetItem(%(var)s, 0,const_%(var)s);
