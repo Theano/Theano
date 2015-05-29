@@ -545,6 +545,7 @@ returned directly?"""
             # But to be safe for now as it isn't documented and we aren't sure 
             # it is well tested, we don't share the part of the storage_map.
             for key in storage_map.keys():
+<<<<<<< HEAD
                 if key not in self.maker.fgraph.outputs and 
                     not isinstance(key, theano.tensor.Constant):
                     new_storage_map[memo[key]] = storage_map[key]
@@ -560,6 +561,33 @@ returned directly?"""
                     input_storage.append( copy.deepcopy[storage])
 
             new_func = new_maker.create(input_storage, storage_map=new_storage_map)
+=======
+                # output_storages should not be shared
+                # if key not in self.maker.fgraph.outputs and \
+                #     memo.has_key(key):
+                new_storage_map[memo[key]] = storage_map[key]
+
+            # copy input storages if it's mutable
+            input_storage = [] 
+            for i in self.maker.inputs:
+                storage = getattr(i, 'value', None) 
+                if isinstance(i.variable, theano.tensor.Constant) or\
+                    not i.mutable:
+                    input_storage.append(storage )
+                else:
+                    input_storage.append( copy.deepcopy[storage])
+
+            new_func = new_maker.create(input_storage, \
+                                storage_map=new_storage_map)
+
+            # share immutable SharedVariable's storage
+            # for (input, _1, _2), here, there in zip(self.indices,
+            #                                         self.input_storage,
+            #                                         new_func.input_storage):
+            #     if isinstance(i.variable, theano.tensor.Constant) or \
+            #         not input.mutable:
+            #         there.data = here.data
+>>>>>>> 4acf04b... Add some docs to FunctionGraph and minor changes of function_module.copy()
 
             return new_func
 
