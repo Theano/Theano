@@ -267,7 +267,6 @@ class T_function(unittest.TestCase):
             elif key in fgraph_cpy.outputs:
                 self.assertFalse(storage_is_shared)
 
-
         # assert storages of SharedVariable without updates are shared
         for (input, _1, _2), here, there in zip(ori.indices,
                                                 ori.input_storage,
