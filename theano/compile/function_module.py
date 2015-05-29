@@ -571,27 +571,13 @@ class Function(object):
             # copy SymbolocKits
             ins, outs = copy.deepcopy([self.maker.inputs, self.maker.outputs])
 
-            # get copied input, output variables
-            in_vars = [ i.variable for i in ins ]
-            out_vars = [ o.variable for o in outs ]
-
-            # contruct memo that map old variables to new variables
-            memo = {}
-            for old_i, new_i in zip([i.variable for i in self.maker.inputs],
-                                        in_vars):
-                memo[old_i] = new_i
-            for old_o, new_o in zip([o.variable for o in self.maker.outputs],
-                                        out_vars):
-                memo[old_o] = new_o
-
-            # contruct new fgraph with new vars and complete the memo
-            memo = clone_get_equiv( in_vars, out_vars, memo )
-            new_fgraph = FunctionGraph(in_vars, out_vars)
-
-            # re-initialize new FunctionMaker
+            # copy fgraph and get memo
             maker = self.maker
+            fg_cpy, memo = maker.fgraph.clone_get_equiv(attach_feature=False)
+
+            # use copied ins, outs and fgraph to init a maker
             new_maker = FunctionMaker(inputs=ins, outputs=outs, mode=maker.mode,
-                                        fgraph=new_fgraph, profile=maker.profile,
+                                        fgraph=fg_cpy, profile=maker.profile,
                                         accept_inplace=maker.accept_inplace,
                                         function_builder=maker.function_builder,
                                         on_unused_input=maker.on_unused_input)
@@ -602,20 +588,30 @@ class Function(object):
             storage_map = self.fn.storage_map
             for key in storage_map.keys():
                 # output_storages should not be shared
-                if key not in self.maker.fgraph.outputs and \
-                    memo.has_key(key):
-                    new_storage_map[memo[key]] = storage_map[key]
+                # if key not in self.maker.fgraph.outputs and \
+                #     memo.has_key(key):
+                new_storage_map[memo[key]] = storage_map[key]
 
-            # copy input storages and link function with new storage_map
-            input_storage = copy.copy([getattr(i, 'value', None) for i in ins])
-            new_func = new_maker.create(input_storage, storage_map=new_storage_map)
+            # copy input storages if it's mutable
+            input_storage = [] 
+            for i in self.maker.inputs:
+                storage = getattr(i, 'value', None) 
+                if isinstance(i.variable, theano.tensor.Constant) or\
+                    not i.mutable:
+                    input_storage.append(storage )
+                else:
+                    input_storage.append( copy.deepcopy[storage])
+
+            new_func = new_maker.create(input_storage, \
+                                storage_map=new_storage_map)
 
             # share immutable SharedVariable's storage
-            for (input, _1, _2), here, there in zip(self.indices,
-                                                    self.input_storage,
-                                                    new_func.input_storage):
-                if not input.mutable:
-                    there.data = here.data
+            # for (input, _1, _2), here, there in zip(self.indices,
+            #                                         self.input_storage,
+            #                                         new_func.input_storage):
+            #     if isinstance(i.variable, theano.tensor.Constant) or \
+            #         not input.mutable:
+            #         there.data = here.data
 
             return new_func
 

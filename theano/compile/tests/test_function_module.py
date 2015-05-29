@@ -243,7 +243,7 @@ class T_function(unittest.TestCase):
 
     def test_copy_share_memory(self):
         x = T.fscalar('x')
-        y = T.tanh((x+2)/(x+0.2)**2)
+        y = T.tanh((x+2)/(x-0.2)**2)
 
         # test for PerformaLinker, will cover VM_linker later
         ori = theano.function([x], [y], mode="FAST_COMPILE")
@@ -256,13 +256,11 @@ class T_function(unittest.TestCase):
         fgraph_cpy = cpy.maker.fgraph
 
         # assert intermediate and Constants storages are shared
-        i_o_variables = fgraph_cpy.inputs
+        i_o_variables = fgraph_cpy.inputs + fgraph_cpy.outputs
         ori_storages = storage_map_ori.values()
         for key in storage_map_cpy.keys():
             if key not in i_o_variables or isinstance(key, theano.tensor.Constant):
-                print key
                 storage = storage_map_cpy[key]
-                print [ storage is s for s in ori_storages]
                 self.assertTrue( any([ storage is s for s in ori_storages]))
 
         # assert storages of SharedVariable without updates are shared
