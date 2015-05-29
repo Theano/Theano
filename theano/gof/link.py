@@ -225,18 +225,22 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
                             data = storage_map[k][0]
                             if out_idx in vmap:
                                 assert len(vmap[out_idx]) == 1
-                                input_data = storage_map[k.owner.inputs[vmap[out_idx][0]]][0]
+                                input_data = storage_map[
+                                    k.owner.inputs[vmap[out_idx][0]]][0]
                                 if k.type.may_share_memory(data, input_data):
                                     total_size -= sz
-                        # If it is a destroyed input, the input shouldn't be in the storage_map anymore
-                        # except if there is a special flag used. So we still must check it.
+                        # If it is a destroyed input, the input
+                        # shouldn't be in the storage_map anymore
+                        # except if there is a special flag used. So
+                        # we still must check it.
                         if getattr(k.owner.op, 'destroy_map', None):
                             vmap = k.owner.op.destroy_map
                             out_idx = k.owner.outputs.index(k)
                             data = storage_map[k][0]
                             if out_idx in vmap:
                                 assert len(vmap[out_idx]) == 1
-                                input_data = storage_map[k.owner.inputs[vmap[out_idx][0]]][0]
+                                input_data = storage_map[
+                                    k.owner.inputs[vmap[out_idx][0]]][0]
                                 if k.type.may_share_memory(data, input_data):
                                     total_size -= sz
             else:
@@ -256,19 +260,19 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
 
         from operator import itemgetter
         storage_map_list.sort(key=itemgetter(3), reverse=True)
-        for storage_map_item in storage_map_list:
-            if storage_map_item[3] is None:
+        for item in storage_map_list:
+            if item[3] is None:
                 continue
-            detailed_err_msg += " - " + storage_map_item[0] + ", "
-            if storage_map_item[4] is True:
+            detailed_err_msg += " - " + item[0] + ", "
+            if item[4] is True:
                 detailed_err_msg += "Shared Input, "
-            elif storage_map_item[4] is False:
+            elif item[4] is False:
                 detailed_err_msg += "Input, "
-            if storage_map_item[1] is not None:
-                detailed_err_msg += "Shape: %s, " % str(storage_map_item[1])
-            detailed_err_msg += "ElemSize: %s Byte(s)" % storage_map_item[2]
-            if storage_map_item[3] is not None:
-                detailed_err_msg += ", TotalSize: %s Byte(s)\n" % storage_map_item[3]
+            if item[1] is not None:
+                detailed_err_msg += "Shape: %s, " % str(item[1])
+            detailed_err_msg += "ElemSize: %s Byte(s)" % item[2]
+            if item[3] is not None:
+                detailed_err_msg += ", TotalSize: %s Byte(s)\n" % item[3]
             else:
                 detailed_err_msg += "\n"
         detailed_err_msg += " TotalSize: %s Byte(s) %.3f GB\n" % (
