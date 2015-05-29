@@ -229,6 +229,8 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
             from operator import itemgetter
             storage_map_list.sort(key=itemgetter(3), reverse=True)
             for storage_map_item in storage_map_list:
+                if storage_map_item[3] is None:
+                    continue
                 detailed_err_msg += " - " + storage_map_item[0] + ", "
                 if storage_map_item[4] is True:
                     detailed_err_msg += "Shared Input, "
