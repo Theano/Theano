@@ -526,7 +526,7 @@ returned directly?"""
             fg_cpy, memo = maker.fgraph.clone_get_equiv(attach_feature=False)
 
             # use copied ins, outs and fgraph to init a maker
-            new_maker = FunctionMaker(inputs=ins, outputs=outs, mode=maker.mode,
+            new_maker = maker.__class__(inputs=ins, outputs=outs, mode=maker.mode,
                                         fgraph=fg_cpy, profile=maker.profile,
                                         accept_inplace=maker.accept_inplace,
                                         function_builder=maker.function_builder,
@@ -538,9 +538,8 @@ returned directly?"""
             storage_map = self.fn.storage_map
             for key in storage_map.keys():
                 # output_storages should not be shared
-                # if key not in self.maker.fgraph.outputs and \
-                #     memo.has_key(key):
-                new_storage_map[memo[key]] = storage_map[key]
+                if key not in self.maker.fgraph.outputs and memo.has_key(key):
+                    new_storage_map[memo[key]] = storage_map[key]
 
             # copy input storages if it's mutable
             input_storage = [] 
@@ -552,16 +551,7 @@ returned directly?"""
                 else:
                     input_storage.append( copy.deepcopy[storage])
 
-            new_func = new_maker.create(input_storage, \
-                                storage_map=new_storage_map)
-
-            # share immutable SharedVariable's storage
-            # for (input, _1, _2), here, there in zip(self.indices,
-            #                                         self.input_storage,
-            #                                         new_func.input_storage):
-            #     if isinstance(i.variable, theano.tensor.Constant) or \
-            #         not input.mutable:
-            #         there.data = here.data
+            new_func = new_maker.create(input_storage, storage_map=new_storage_map)
 
             return new_func
 
@@ -1374,7 +1364,7 @@ class FunctionMaker(object):
                                      "'%s'.\nValid values are 'raise', "
                                      "'warn', and 'ignore'." % on_unused_input)
 
-    def create(self, input_storage=None, trustme=False, storage_map = None):
+    def create(self, input_storage=None, trustme=False, storage_map=None):
         """
         Create a function.
 
@@ -1452,7 +1442,7 @@ class FunctionMaker(object):
         try:
             theano.config.traceback.limit = 0
             _fn, _i, _o = self.linker.make_thunk(
-                input_storage=input_storage_lists, storage_map = storage_map)
+                input_storage=input_storage_lists, storage_map=storage_map)
         finally:
             theano.config.traceback.limit = limit_orig
 
