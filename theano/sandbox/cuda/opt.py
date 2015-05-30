@@ -3092,7 +3092,9 @@ import theano.compile.builders
 def local_gpu_op_from_graph(node):
     if (isinstance(node.op, theano.compile.builders.OpFromGraph) and
         any([(i.owner and isinstance(i.owner.op, HostFromGpu))
-             for i in node.inputs])):
+             for i in node.inputs]) and
+        # If the output is on the GPU, we already moved it to the GPU.
+        not any([isinstance(o.type, CudaNdarrayType) for o in node.outputs])):
             # Need to implement updates, givens, ...
             if node.op.kwargs:
                 for k in node.op.kwargs.keys():
@@ -3101,7 +3103,8 @@ def local_gpu_op_from_graph(node):
             # We make it simple, we suppose all float32 inputs will be
             # on the GPU and that all outputs in float32 will be on
             # the GPU.
-            new_outer_inp = []  # new outer outputs.
+            # We do not want to add the shared inputs. They will be computed again.
+            new_outer_inp = []  # new outer inputs.
             inner_replace = {}
             for o_inp, i_inp in zip(node.inputs, node.op.inputs):
                 if getattr(o_inp, 'dtype', None) == 'float32':
@@ -3119,22 +3122,33 @@ def local_gpu_op_from_graph(node):
                 else:
                     new_inner_out.append(out)
 
+            # SharedVariable was cloned when the FunctionGraph was
+            # created.  node.op.inputs still make reference to the
+            # original SharedVariable.  We must swap it to the one
+            # used in this fgraph
+            for i in range(len(node.op.shared_inputs)):
+                # SharedVariable the user used
+                orig_shr = node.op.shared_inputs[i]
+                # SharedVariable after cloning orig_shr when
+                # FunctionGraph cloned the user graph.
+                fgraph_shr = node.inputs[len(node.op.inputs) + i]
+                inner_replace[orig_shr] = fgraph_shr
             # rebuild the inner graph to introduce the gup_from_host
             # at the start.
             new = theano.compile.rebuild_collect_shared(
                 new_inner_out, inputs=node.op.inputs,
                 replace=inner_replace,
-                copy_inputs_over=False)
+                copy_inputs_over=True)
             (new_inputs, new_outputs, _) = new
             # new_inputs give us the corresponding to the old inputs.
             for i in range(len(new_inputs)):
                 if (new_inputs[i].owner and
-                    isinstance(new_inputs[i].owner.op, HostFromGpu)):
+                        isinstance(new_inputs[i].owner.op, HostFromGpu)):
                     new_inputs[i] = new_inputs[i].owner.inputs[0]
             op = theano.compile.builders.OpFromGraph(
                 new_inputs, new_outputs, **node.op.kwargs)
-
             ret = op(*new_outer_inp, **dict(return_list=True))
+            assert all([inp in node.fgraph.variables for inp in theano.gof.graph.inputs(ret)])
 
             for i in range(len(ret)):
                 if getattr(node.op.outputs[i], 'dtype', None) == 'float32':

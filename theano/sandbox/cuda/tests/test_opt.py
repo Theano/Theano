@@ -920,26 +920,42 @@ def test_op_from_graph():
     [theano.printing.debugprint(o.op.fn, print_type=True)
      for o in ofg]
     assert numpy.allclose(fn(3, 5, 6), (3 + 5 * 6) + (6 + 5 * 3))
+    assert any([isinstance(n.op, cuda.GpuElemwise)
+                for n in fn.maker.fgraph.apply_nodes])
+    for n_ofg in ofg:
+        assert any([isinstance(n.op, cuda.GpuElemwise)
+                    for n in n_ofg.op.fn.maker.fgraph.apply_nodes])
 
-    return# TODO
-    print()
+
+def test_op_from_graph_shared():
+    from theano import function, OpFromGraph, tensor
+    x, y, z = tensor.fscalars('xyz')
+
     # Test with a shared varible in inputs
-    s = theano.shared(numpy.random.rand(2, 2).astype('float32'))
-    e = x + y * z + s
-    op = OpFromGraph([x, y, z], [e], mode=mode_with_gpu)
-    # op behaves like a normal theano op
-    e2 = op(x, y, z) + op(z, y, x)
-    fn = function([x, y, z], [e2], mode=mode_with_gpu)
-    theano.printing.debugprint(fn, print_type=True)
-    ofg = [n for n in fn.maker.fgraph.toposort()
-           if isinstance(n.op, OpFromGraph)]
-    assert len(ofg) == 2
-    # TODO: block at inputs
-    [theano.printing.debugprint(o.op.fn, print_type=True)
-     for o in ofg]
-    assert numpy.allclose(fn(3, 5, 6),
-                          (3 + 5 * 6 + s.get_value()) +
-                          (6 + 5 * 3 + s.get_value()))
+    for s in [theano.shared(numpy.random.rand(2, 2).astype('float32')),
+              cuda.shared_constructor(
+                  numpy.random.rand(2, 2).astype('float32')),
+              ]:
+        e = x + y * z + s
+        op = OpFromGraph([x, y, z], [e], mode=mode_with_gpu)
+        # op behaves like a normal theano op
+        e2 = op(x, y, z) + op(z, y, x)
+        fn = function([x, y, z], [e2], mode=mode_with_gpu)
+        theano.printing.debugprint(fn, print_type=True)
+        ofg = [n for n in fn.maker.fgraph.toposort()
+               if isinstance(n.op, OpFromGraph)]
+        assert len(ofg) == 2
+        # TODO: block at inputs
+        [theano.printing.debugprint(o.op.fn, print_type=True)
+         for o in ofg]
+        assert numpy.allclose(fn(3, 5, 6),
+                              (3 + 5 * 6 + s.get_value()) +
+                              (6 + 5 * 3 + s.get_value()))
+        assert any([isinstance(n.op, cuda.GpuElemwise)
+                    for n in fn.maker.fgraph.apply_nodes])
+        for n_ofg in ofg:
+            assert any([isinstance(n.op, cuda.GpuElemwise)
+                        for n in n_ofg.op.fn.maker.fgraph.apply_nodes])
 
 
 if __name__ == '__main__':
