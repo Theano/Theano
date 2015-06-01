@@ -76,15 +76,21 @@ class PdbBreakpoint(Op):
         # is should be evaluated)
         assert (condition.ndim == 0)
 
-        # Build the op's view_map; every output i is a view of the input i+1.
-        self.view_map = {}
+        # Because the user might be tempted to instantiate PdbBreakpoint only
+        # once and apply it many times on different number of inputs, we must
+        # create a new instance of the op here, define the view_map in that
+        # instance and then apply it on the inputs.
+        new_op = PdbBreakpoint(name=self.name)
+        new_op.view_map = {}
         for i in range(len(monitored_vars)):
-            self.view_map[i] = [i+1]
+            # Every output i is a view of the input i+1 because of the input
+            # condition.
+            new_op.view_map[i] = [i+1]
 
         # Build the Apply node
         inputs = [condition] + list(monitored_vars)
         outputs = [inp.type() for inp in monitored_vars]
-        return Apply(op=self, inputs=inputs, outputs=outputs)
+        return Apply(op=new_op, inputs=inputs, outputs=outputs)
 
     def perform(self, node, inputs, output_storage):
         condition = inputs[0]
