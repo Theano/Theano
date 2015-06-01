@@ -59,18 +59,15 @@ class TestPdbBreakpoint(utt.InferShapeTester):
 
         for i in range(len(gradients)):
             numpy.testing.assert_allclose(gradients[i], expected_gradients[i])
-            
+
     def test_fprop(self):
-        
+
         input1_value = numpy.arange(9).reshape(3,3).astype("float32")
         input2_value = 10.0
         fct = theano.function([self.input1, self.input2],
                               [self.monitored_input1, self.monitored_input2])
 
         output = fct(input1_value, input2_value)[:-1]
-        
-        import pdb
-        pdb.set_trace()
 
         expected_output = [numpy.ones((3, 3), dtype="float32"),
                            numpy.array(1., dtype="float32")]
