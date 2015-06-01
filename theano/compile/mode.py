@@ -253,7 +253,7 @@ class Mode(object):
             linker = config.linker
         if optimizer is 'default':
             optimizer = config.optimizer
-        self.__setstate__((linker, optimizer))
+        Mode.__setstate__(self, (linker, optimizer))
 
         # self.provided_optimizer - typically the `optimizer` arg.
         # But if the `optimizer` arg is keyword corresponding to a predefined

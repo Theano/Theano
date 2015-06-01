@@ -54,6 +54,16 @@ class MonitorMode(Mode):
 
         super(MonitorMode, self).__init__(wrap_linker, optimizer=optimizer)
 
+    def __getstate__(self):
+        lnk, opt = super(MonitorMode, self).__getstate__()
+        return (lnk, opt, self.pre_func, self.post_func)
+
+    def __setstate__(self, state):
+        lnk, opt, pre_func, post_func = state
+        self.pre_func = pre_func
+        self.post_func = post_func
+        super(MonitorMode, self).__setstate__((lnk, opt))
+
     def eval(self, i, node, fn):
         """
         The method that calls the thunk `fn`.
