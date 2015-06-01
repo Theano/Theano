@@ -265,8 +265,8 @@ def local_gpu_elemwise(node):
         name = 'Gpu' + name
 
     res = GpuElemwise(scal_op, name=name,
-                          inplace_pattern=copy.copy(op.inplace_pattern),
-                          nfunc_spec=op.nfunc_spec)
+                      inplace_pattern=copy.copy(op.inplace_pattern),
+                      nfunc_spec=op.nfunc_spec)
 
     # If the elemwise operation is a pow, casts might be required on the
     # inputs and or outputs because only the (float, float)->float and
