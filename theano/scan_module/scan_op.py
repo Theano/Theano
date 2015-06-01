@@ -186,6 +186,10 @@ class Scan(PureOp):
                 self.mode_instance.message = self.name + " sub profile"
             else:
                 self.mode_instance.message = "Scan sub profile"
+        elif isinstance(mode_instance, compile.MonitorMode):
+            # Do not try to clone the linker, as MonitorMode needs
+            # to make sure it was originally created by a MonitorMode
+            self.mode_instance = mode_instance
         else:
             self.mode_instance = type(mode_instance)(
                 optimizer=mode_instance.provided_optimizer,
