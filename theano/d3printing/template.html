@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+<head lang='en'>
+	<meta charset="utf-8">
+	<script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
+	<script type='text/javascript' src="http://cpettitt.github.io/project/dagre-d3/v0.1.5/dagre-d3.min.js"></script>
+	<script type='text/javascript' src="http://cpettitt.github.io/project/graphlib-dot/v0.4.10/graphlib-dot.min.js"></script>
+</head>
+
+<body>
+	<style>
+		.svg {
+		}
+		.nodeRect {
+			stroke: black;
+			border: 3px solid black;
+			fill: lightsteelblue;
+		}
+		.nodeText {
+			color: black;
+			font-family: courier;
+		}
+		.edge {
+			stroke: black;
+			stroke-width: 3px;
+		}
+		.edgeLabelRect {
+			fill: white;
+		}
+		.edgeLabelText {
+			fill: limegreen;
+			font-family: courier;
+			text-anchor: start;
+		}
+		.arrowHead {
+			stroke: black;
+			stroke-width: 3px;
+			fill: black;
+		}
+	</style>
+	
+	<script type="text/javascript">
+		// Global attributes
+		var dotGraphDef = '%% DOT_GRAPH %%';
+		var width = %% WIDTH %%;
+		var height = %% HEIGHT %%;
+		
+		// Add SVG element
+		var svg = d3.select('body').append('svg').attr('class', 'svg').attr('width', width).attr('height', height);
+		var pane = svg.append('g').attr('transform', 'scale(0.8)');
+		
+		// Definition head of edges
+		svg.append("defs").append("marker")
+		    .attr("id", 'markerEnd')
+		    .attr("markerWidth", 6)
+		    .attr("markerHeight", 6)
+		    .attr("refX", 5)
+		    .attr("refY", 3)
+		    .attr("orient", "auto")
+		  	.append("path")
+		    .attr("d", "M0,0 L6,3 L0,6 Z")
+		    .attr('style', 'arrowHead');
+			
+		function textWidth(text) {
+			return text.length * 10.5;
+		}
+		
+		// Parse dot graph definition
+		var graph = {};
+		var nodes = [];
+		var edges = [];
+			var dotGraph = graphlibDot.parse(dotGraphDef);
+		// TODO: parse from file
+		var dotWidth = 763;
+		var dotHeight = 388;
+		var scaleDotX = d3.scale.linear().domain([0, dotWidth]).range([0, width]);
+		var scaleDotY = d3.scale.linear().domain([0, dotHeight]).range([0, height]);
+		
+		// Parse nodes
+		var i = 0;
+		for (nodeId in dotGraph._nodes) {
+			var node = dotGraph._nodes[nodeId];
+			node.index = i++;
+			node.value.width = textWidth(node.value.label);
+			node.value.height = 40;
+			node.value.cx = node.value.width / 2;
+			node.value.cy = node.value.height / 2;
+			node.value.pos = node.value.pos.split(',').map(function(d) {return parseInt(d);});
+			node.x = scaleDotX(node.value.pos[0]);
+			node.y = scaleDotY(dotHeight - node.value.pos[1]);
+			node.fixed = false;
+			nodes.push(node);
+			dotGraph._nodes[nodeId] = node;
+		}
+		
+		// Parse edges
+		for (edgeId in dotGraph._edges) {
+			var edge = dotGraph._edges[edgeId];
+			edge.source = dotGraph._nodes[edge.u].index;
+			edge.target = dotGraph._nodes[edge.v].index;
+			edge.value.width = textWidth(edge.value.label);
+			edge.value.height = 40;
+			edges.push(edge);
+			dotGraph._edges[edgeId] = edge;
+		}
+		
+		// Setup graph
+		graph['nodes'] = nodes;
+		graph['edges'] = edges;
+		
+		// Add edges
+		edges = pane.append('g').attr('id', 'edges').selectAll('path').data(graph['edges']).enter().append('path')
+			.attr('class', 'edge')
+			.attr('marker-end', 'url(#markerEnd)');
+		
+		// Add edge labels
+		edgeLabels = pane.append('g').attr('id', 'edgeLabels').selectAll('g').data(graph['edges']).enter().append('g')
+			.attr('opacity', 0)
+			.on('mouseover', function(d) {d3.select(this).attr('opacity', 1.0);})
+			.on('mouseout', function(d) {d3.select(this).attr('opacity', 0.0);});
+		var edgeLabelsRect = edgeLabels.append('rect')
+			.attr('class', 'edgeLabelRect')
+			.attr('fill', 'white')
+			.attr('width', function(d) {return d.value.width;})
+			.attr('height', function(d) {return d.value.height;});
+		var edgeLabelsText = edgeLabels.append('text')
+			.attr('class', 'edgeLabelText')
+			.attr('dy', function(d) {return 0.5 * d.value.height;})
+			.text(function(d) {return d.value.label;});
+		
+		// Add nodes
+		nodes = pane.append('g').attr('id', 'nodes').selectAll('g').data(graph['nodes']).enter().append('g');
+		var nodesRect = nodes.append('rect')
+			.attr('class', 'nodeRect')
+			.attr('width', function(d) {return d.value.width;})
+			.attr('height', function(d) {return d.value.height;});
+		var nodesText = nodes.append('text')
+			.attr('class', 'nodeText')
+			.attr('x', 5)
+			.attr('dy', function(d) {return d.value.height - 15;})
+			.text(function(d) {return d.value.label;});
+
+		// Update graph
+		function update() {
+			// Update nodes
+			nodes.attr('transform', function(d) { return 'translate(' + d.x + ' ' + d.y + ')'; });
+			// Update edges
+			edges.attr('d', function(d) {
+				return 'M' + (d.source.x + d.source.value.cx) + ',' + (d.source.y + d.source.value.cy) + ' L' + (d.target.x + d.target.value.cx) + ',' + (d.target.y - 3);
+			});
+			// Update edge labels
+			edgeLabels.attr('transform', function(d) {
+				return 'translate(' + (0.5 * (d.source.x + d.source.value.cx + d.target.x + d.target.value.cx) - 0.5 * d.value.width) + ',' + (0.5 * (d.source.y + d.source.value.cy + d.target.y + d.target.value.cy) - 0.5 * d.value.height) + ')';
+			});
+		}
+		
+		// Drag-start event handler
+		function dragStart(d) {
+			d3.event.sourceEvent.stopPropagation();
+			d.fixed = true;
+		}
+		
+		// Zoom and translate event handler
+		function zoom(d) {
+			pane.attr('transform', 'translate(' + d3.event.translate + ') scale(' + d3.event.scale + ')');
+		}
+		
+		// Force layout
+		var layout = d3.layout.force()
+			.nodes(graph['nodes'])
+			.links(graph['edges'])
+			.size([width, height])
+			.gravity(0.2)
+			.charge(-6000)
+			.linkDistance(75)
+			.linkStrength(0.1)
+			.on('tick', update);
+			
+		// Drag behavour
+		var drag = layout.drag()
+			.on('dragstart', dragStart);
+		nodes.call(drag);
+		
+		// Zoom behaviour
+		var bZoom = d3.behavior.zoom()
+			.scaleExtent([0.2, 8])
+			.on('zoom', zoom);
+		svg.call(bZoom);
+		
+		// Start force layout
+		layout.start();	
+	
+	</script>
+</body>
+</html>

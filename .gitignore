@@ -35,3 +35,4 @@ distribute-*.tar.gz
 Theano.suo
 *.DS_Store
 *.bak
+.ipynb_checkpoints
