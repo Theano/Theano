@@ -1669,46 +1669,13 @@ def isinf(a):
     """isinf(a)"""
 
 
-def allclose(a, b, rtol=1e-05, atol=1e-08):
+def allclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
     """
-    Implements Numpy's `allclose` on tensors.
-
-    The tolerance values are positive, typically very small numbers.
-    The relative difference (rtol * abs(b)) and the absolute difference atol
-    are added together to compare against the absolute difference between a
-    and b.
-
-    If either array contains one or more NaNs, False is returned.
-    Infs are treated as equal if they are in the same place and of the same
-    sign in both arrays.
+    Implements Numpy's ``allclose`` on tensors.
 
     ``absolute(a - b) <= (atol + rtol * absolute(b))``
 
     :note: Not a symmetric equation. See Numpy's documentation.
-
-    >>>import theano
-    >>>a = theano._asarray([1, 1], dtype='float32')
-    >>>b = theano._asarray([1.001, 1.001], dtype='float32')
-    >>>theano.tensor.allclose(a, b).eval()
-    array(0, dtype=int8)
-
-    >>>import theano
-    >>>a = theano._asarray([1, 1], dtype='float32')
-    >>>b = theano._asarray([1.000001, 1.000001], dtype='float32')
-    >>>theano.tensor.allclose(a, b).eval()
-    array(1, dtype=int8)
-
-    >>>import theano
-    >>>a = theano._asarray([0, 1], dtype='float32')
-    >>>b = theano._asarray([0.000001, 1.000001], dtype='float32')
-    >>>theano.tensor.allclose(a, b).eval()
-    array(0, dtype=int8)
-
-    >>>import theano
-    >>>a = theano._asarray([0, 1], dtype='float32')
-    >>>b = theano._asarray([0.00000001, 1.000001], dtype='float32')
-    >>>theano.tensor.allclose(a, b).eval()
-    array(1, dtype=int8)
 
     :param a: input to compare
     :type a: tensor
@@ -1722,15 +1689,116 @@ def allclose(a, b, rtol=1e-05, atol=1e-08):
     :param atol: the absolute tolerance parameter
     :type atol: float
 
-    :returns: a boolean value (of type "int8" returned by the tensor
+    :param equal_nan: whether to consider nan's in the same place to be close
+    :type equal_nan: bool
+
+    :returns: a boolean value (of type int8 returned by the tensor
             elementwise `all` function) whether all elements in a and b are in
-            the range defined above.
+            the tolerance range defined above.
     :rtype: int8
     """
+    return all(isclose(a, b, rtol, atol, equal_nan))
+
+
+def isclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
+    """
+    Implements Numpy's ``isclose`` on tensors.
+
+    The tolerance values are positive, typically very small numbers.  The
+    relative difference (`rtol` * abs(`b`)) and the absolute difference
+    `atol` are added together to compare against the absolute difference
+    between `a` and `b`.
+
+    ``absolute(a - b) <= (atol + rtol * absolute(b))``
+
+    :note: Not a symmetric equation. See Numpy's documentation.
+
+    :param a: input to compare
+    :type a: tensor
+
+    :param b: input to compare
+    :type b: tensor
+
+    :param rtol: the relative tolerance parameter
+    :type rtol: float
+
+    :param atol: the absolute tolerance parameter
+    :type atol: float
+
+    :param equal_nan: whether to consider nan's in the same place to be close
+    :type equal_nan: bool
+
+    :returns: returns a boolean (int8) array where two arrays are element-wise
+            equal within a tolerance.
+    :rtype: int8
+
+    >>> import theano
+    >>> import numpy as np
+    >>> a = theano._asarray([1e10, 1e-7], dtype="float64")
+    >>> b = theano._asarray([1.00001e10, 1e-8], dtype="float64")
+    >>> theano.tensor.isclose(a, b).eval()
+    array([1, 0], dtype=int8)
+    >>> a = theano._asarray([1e10, 1e-8], dtype="float64")
+    >>> b = theano._asarray([1.00001e10, 1e-9], dtype="float64")
+    >>> theano.tensor.isclose(a, b).eval()
+    array([1, 1], dtype=int8)
+    >>> a = theano._asarray([1e10, 1e-8], dtype="float64")
+    >>> b = theano._asarray([1.0001e10, 1e-9], dtype="float64")
+    >>> theano.tensor.isclose(a, b).eval()
+    array([0, 1], dtype=int8)
+    >>> a = theano._asarray([1.0, np.nan], dtype="float64")
+    >>> b = theano._asarray([1.0, np.nan], dtype="float64")
+    >>> theano.tensor.isclose(a, b).eval()
+    array([1, 0], dtype==int8)
+    >>> a = theano._asarray([1.0, np.nan], dtype="float64")
+    >>> b = theano._asarray([1.0, np.nan], dtype="float64")
+    >>> theano.tensor.isclose(a, b, equal_nan=True).eval()
+    array([1, 1], dtype==int8)
+    >>> a = theano._asarray([1.0, np.inf], dtype="float64")
+    >>> b = theano._asarray([1.0, -np.inf], dtype="float64")
+    >>> theano.tensor.isclose(a, b).eval()
+    array([1, 0], dtype==int8)
+    >>> a = theano._asarray([1.0, np.inf], dtype="float64")
+    >>> b = theano._asarray([1.0, np.inf], dtype="float64")
+    >>> theano.tensor.isclose(a, b).eval()
+    array([1, 1], dtype==int8)
+    """
+    # close will be an int8 array of 1 where within tolerance
+    # and 0 where not within tolerance or there was a nan or inf value.
     diff = abs(a - b)
     tolerance = atol + rtol * abs(b)
-    close = le(diff, tolerance)
-    return all(close)
+    close_prelim = le(diff, tolerance)
+
+    a_nan = isnan(a)
+    b_nan = isnan(b)
+    nans = bitwise_or(a_nan, b_nan)
+
+    a_inf = isinf(a)
+    b_inf = isinf(b)
+    infs = bitwise_or(a_inf, b_inf)
+
+    nans_or_infs = bitwise_or(nans, infs)
+
+    # close is now an array of 0's except where elements are not nan or inf
+    # and are withing the tolerance.
+    close = bitwise_and(close_prelim, bitwise_not(nans_or_infs))
+
+    # deal with signed inf values. this will make an array inf_eq of 0's
+    # except where inf values have the same sign.
+    both_infs = bitwise_and(a_inf, b_inf)
+    inf_signs_eq = eq(a_inf * sgn(a), b_inf * sgn(b))
+    inf_eq = bitwise_and(both_infs, inf_signs_eq)
+
+    # now create the potential result combining close and inf_eq
+    close_with_infs = bitwise_or(close, inf_eq)
+
+    # deal with comparing nan's.
+    if equal_nan:
+        both_nans = bitwise_and(a_nan, b_nan)
+        return bitwise_or(close_with_infs, both_nans)
+    # otherwise nan's aren't considered close.
+    else:
+        return close_with_infs
 
 
 ##########################
