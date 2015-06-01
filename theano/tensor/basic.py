@@ -1669,6 +1669,70 @@ def isinf(a):
     """isinf(a)"""
 
 
+def allclose(a, b, rtol=1e-05, atol=1e-08):
+    """
+    Implements Numpy's `allclose` on tensors.
+
+    The tolerance values are positive, typically very small numbers.
+    The relative difference (rtol * abs(b)) and the absolute difference atol
+    are added together to compare against the absolute difference between a
+    and b.
+
+    If either array contains one or more NaNs, False is returned.
+    Infs are treated as equal if they are in the same place and of the same
+    sign in both arrays.
+
+    ``absolute(a - b) <= (atol + rtol * absolute(b))``
+
+    :note: Not a symmetric equation. See Numpy's documentation.
+
+    >>>import theano
+    >>>a = theano._asarray([1, 1], dtype='float32')
+    >>>b = theano._asarray([1.001, 1.001], dtype='float32')
+    >>>theano.tensor.allclose(a, b).eval()
+    array(0, dtype=int8)
+
+    >>>import theano
+    >>>a = theano._asarray([1, 1], dtype='float32')
+    >>>b = theano._asarray([1.000001, 1.000001], dtype='float32')
+    >>>theano.tensor.allclose(a, b).eval()
+    array(1, dtype=int8)
+
+    >>>import theano
+    >>>a = theano._asarray([0, 1], dtype='float32')
+    >>>b = theano._asarray([0.000001, 1.000001], dtype='float32')
+    >>>theano.tensor.allclose(a, b).eval()
+    array(0, dtype=int8)
+
+    >>>import theano
+    >>>a = theano._asarray([0, 1], dtype='float32')
+    >>>b = theano._asarray([0.00000001, 1.000001], dtype='float32')
+    >>>theano.tensor.allclose(a, b).eval()
+    array(1, dtype=int8)
+
+    :param a: input to compare
+    :type a: tensor
+
+    :param b: input to compare
+    :type b: tensor
+
+    :param rtol: the relative tolerance parameter
+    :type rtol: float
+
+    :param atol: the absolute tolerance parameter
+    :type atol: float
+
+    :returns: a boolean value (of type "int8" returned by the tensor
+            elementwise `all` function) whether all elements in a and b are in
+            the range defined above.
+    :rtype: int8
+    """
+    diff = abs(a - b)
+    tolerance = atol + rtol * abs(b)
+    close = le(diff, tolerance)
+    return all(close)
+
+
 ##########################
 # Condition
 ##########################
