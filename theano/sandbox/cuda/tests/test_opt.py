@@ -14,6 +14,7 @@ from theano import config, tensor
 import theano.tensor.tests.test_nlinalg
 import theano.tensor.tests.test_opt as test_opt
 
+from theano.tests.breakpoint import PdbBreakpoint
 from theano.tests import unittest_tools as utt
 
 import theano.sandbox.cuda as cuda
@@ -482,6 +483,25 @@ def test_print_op():
     assert isinstance(topo[2].op, cuda.GpuElemwise)
     assert topo[3].op == cuda.host_from_gpu
     f(numpy.random.random((5, 5)).astype('float32'))
+
+
+def test_pdbbreakpoint_op():
+    """ Test that PdbBreakpoint ops don't block gpu optimization"""
+    b = tensor.fmatrix()
+
+    # Create a function composed of a breakpoint followed by
+    # some computation
+    condition = tensor.gt(b.sum(), 0)
+    b_monitored = PdbBreakpoint(name='TestBreakpoint')(condition, b)
+    output = b_monitored ** 2
+
+    f = theano.function([b], output, mode=mode_with_gpu)
+
+    # Ensure that, in the compiled function, the computation following the
+    # breakpoint has been moved to the gpu.
+    topo = f.maker.fgraph.toposort()
+    assert isinstance(topo[-2].op, cuda.GpuElemwise)
+    assert topo[-1].op == cuda.host_from_gpu
 
 
 def test_huge_elemwise_fusion():
