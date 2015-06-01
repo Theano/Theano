@@ -1141,38 +1141,69 @@ def local_gpu_print_op(node):
             return [host_from_gpu(new_op(gpu_x))]
     return False
 
+
 @register_opt()
 @local_optimizer([PdbBreakpoint])
 def local_gpu_pdbbreakpoint_op(node):
     if isinstance(node.op, PdbBreakpoint):
 
         old_inputs = node.inputs
+        old_outputs = node.outputs
 
-        # Obtain the inputs to the new op. The condition (first input) should
-        # be left on the host but the other inputs can be taken from the GPU.
-        new_inputs = old_inputs[:1]
-        for inp in old_inputs[1:]:
-            if inp.owner and isinstance(inp.owner.op, HostFromGpu):
-                # Take the input directly from the gpu
+        new_inputs = node.inputs[:1]
+        input_transfered = []
+
+        # Propagate the transfers to gpu through the PdbBreakpoint node
+        # while leaving the PdbBreakpoint node fully on the host
+        nb_monitored_vars = len(node.outputs)
+        for i in range(nb_monitored_vars):
+
+            inp = old_inputs[i+1]
+            out = old_outputs[i]
+
+            input_is_from_gpu = (inp.owner and
+                                 isinstance(inp.owner.op, HostFromGpu))
+            output_used = len(out.clients) > 0
+            output_goes_to_gpu = all([c[0] != "output" and
+                                      isinstance(c[0].op, GpuFromHost)
+                                      for c in out.clients])
+
+            if input_is_from_gpu and output_used and not output_goes_to_gpu:
+                # The op should be applied on the GPU version of the input
                 new_inputs.append(inp.owner.inputs[0])
-            else:
-                new_inputs.append(inp)
-                
-        # Only proceed further if one of the outputs to the op was a
-        # HostFromGpu
-        if new_inputs[1:] == old_inputs[1:]:
-            return False
-            
-        # Apply the op on the new inputs
-        new_outputs = node.op(*new_inputs)
+                input_transfered.append(True)
 
-        # For every output of the new op for which we took the corresponding
-        # input from the GPU instead of the host, we need to transfer the
-        # output back to the host before returning it.
-        for i in range(len(new_outputs)):
-            inp = old_inputs[i + 1]
-            if (inp.owner and isinstance(inp.owner.op, HostFromGpu)):
-                new_outputs[i] = host_from_gpu(new_outputs[i])
+            elif not input_is_from_gpu and output_used and output_goes_to_gpu:
+                # The input should be transfered to the gpu
+                new_inputs.append(gpu_from_host(inp))
+                input_transfered.append(True)
+
+            else:
+                # Both are on the gpu or on the host. No transfer is required.
+                new_inputs.append(inp)
+                input_transfered.append(False)
+
+        # Only continue the optimization if at least one input has been
+        # transfered to the gpu
+        if not any(input_transfered):
+            return False
+
+        # Apply the op on the new inputs
+        new_op_outputs = node.op(*new_inputs)
+
+        # Ensure that new_op_outputs is a list of outputs (in case the op has
+        # only one output)
+        if not isinstance(new_op_outputs, list):
+            new_op_outputs = [new_op_outputs]
+
+        # Propagate the transfer to the gpu through the outputs that require
+        # it
+        new_outputs = []
+        for i in range(len(new_op_outputs)):
+            if input_transfered[i]:
+                new_outputs.append(host_from_gpu(new_op_outputs[i]))
+            else:
+                new_outputs.append(new_op_outputs[i])
 
         return new_outputs
 
@@ -2339,6 +2370,7 @@ def local_gpu_allocempty(node):
         ret.tag.values_eq_approx = node.outputs[0].tag.values_eq_approx
         return [ret]
     return False
+
 
 optdb.register('gpu_scanOp_make_inplace',
                scan_opt.ScanInplaceOptimizer(typeConstructor=typeConstructor,
