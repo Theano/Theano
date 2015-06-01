@@ -1804,18 +1804,18 @@ int main(int argc, char *argv[]) {
  int run_ret = 0;
  if(struct_ptr){
    %(in_init)s
-   printf("\\n after cinit()\\n");
+   printf("after cinit()\\n");
    //Function execution
    run_ret = struct_ptr->run();
-   printf("\\nrun() from the shared library returned=%%d\\n", run_ret);
+   printf("run() from the shared library returned=%%d\\n", run_ret);
 
+   if(run_ret==0){
    %(out_print)s
-
-   if(run_ret != 0){
+   }else if(run_ret != 0){
      // See out_print to know why we can't call PyObject_Print on win32
      PyObject *str_err = PyObject_Str(struct_ptr->__ERROR);
      //PyString_AsString return a ptr to the internal representation.
-     printf("%%s\\n", PyString_AsString(str_err));
+     printf("Error: %%s\\n", PyString_AsString(str_err));
      Py_CLEAR(str_err);
    }
  }else{
@@ -1824,7 +1824,7 @@ int main(int argc, char *argv[]) {
  }
  delete struct_ptr;
 
- printf("\\nmain end, before Py_Finalize\\n");
+ printf("main end, before Py_Finalize\\n");
  Py_Finalize();
  return run_ret;
 }
