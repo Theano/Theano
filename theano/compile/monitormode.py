@@ -85,7 +85,7 @@ class MonitorMode(Mode):
 
 def detect_nan(i, node, fn):
     for output in fn.outputs:
-        if (not isinstance(numpy.random.RandomState, output[0]) and
+        if (not isinstance(output[0], numpy.random.RandomState) and
                 numpy.isnan(output[0]).any()):
             print('*** NaN detected ***')
             theano.printing.debugprint(node)
