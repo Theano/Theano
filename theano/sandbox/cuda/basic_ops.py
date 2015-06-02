@@ -37,10 +37,9 @@ def as_cuda_ndarray_variable(x):
     if x.owner:
         if isinstance(x.owner.op, HostFromGpu):
             return x.owner.inputs[0]
-        elif \
-                isinstance(x.owner.op, GpuFromHost) and \
-                x.owner.inputs[0].owner and \
-                isinstance(x.owner.inputs[0].owner.op, HostFromGpu):
+        elif (isinstance(x.owner.op, GpuFromHost) and
+              x.owner.inputs[0].owner and
+              isinstance(x.owner.inputs[0].owner.op, HostFromGpu)):
             return x.owner.inputs[0].owner.inputs[0]
     if hasattr(x, '_as_CudaNdarrayVariable'):
         return x._as_CudaNdarrayVariable()
