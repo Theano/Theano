@@ -1690,7 +1690,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                  optimizers,
                  failure_callback=None,
                  ignore_newtrees=True,
-                 max_use_ratio=None):
+                 max_use_ratio=None,
+                 final_optimizers=None):
         """ Apply optimizations until equilibrium point.
 
         :param optimizers:  list or set of local or global optimizations to
@@ -1710,6 +1711,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         self.local_optimizers_map = dict()
         self.local_optimizers_all = []
         self.global_optimizers = []
+        self.final_optimizers = []
 
         for opt in optimizers:
             if isinstance(opt, LocalOptimizer):
@@ -1720,6 +1722,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         self.local_optimizers_map.setdefault(c, []).append(opt)
             else:
                 self.global_optimizers.append(opt)
+        if final_optimizers:
+            self.final_optimizers = final_optimizers
         self.max_use_ratio = max_use_ratio
         assert self.max_use_ratio is not None, (
                 'max_use_ratio has to be a number')
@@ -1766,7 +1770,9 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         io_toposort_timing = []
         nb_nodes = []
         node_created = {}
-        for opt in self.global_optimizers + list(self.get_local_optimizers()):
+        for opt in (self.global_optimizers +
+                    list(self.get_local_optimizers()) +
+                    self.final_optimizers):
             global_process_count.setdefault(opt, 0)
             time_opts.setdefault(opt, 0)
             node_created.setdefault(opt, 0)
@@ -1844,6 +1850,26 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                                 break
             finally:
                 self.detach_updater(fgraph, u)
+
+            # Apply final optimizers
+            for gopt in self.final_optimizers:
+                change_tracker.reset()
+                nb = change_tracker.nb_imported
+                t_opt = time.time()
+                gopt.apply(fgraph)
+                time_opts[gopt] += time.time() - t_opt
+                if change_tracker.changed:
+                    process_count.setdefault(gopt, 0)
+                    process_count[gopt] += 1
+                    global_process_count[gopt] += 1
+                    changed = True
+                    node_created[gopt] += change_tracker.nb_imported - nb
+                    if global_process_count[gopt] > max_use:
+                        max_use_abort = True
+                        opt_name = (getattr(gopt, "name", None)
+                                    or getattr(gopt, "__name__", ""))
+
+            global_opt_timing.append(float(time.time() - t0))
 
             loop_process_count.append(process_count)
             loop_timing.append(float(time.time() - t0))
