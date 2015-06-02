@@ -64,6 +64,16 @@ def safe_new(x, tag='', dtype=None):
         else:
             nw_x = x.type()
         nw_x.name = nw_name
+        if theano.config.compute_test_value != 'off':
+            # Copy test value, cast it if necessary
+            try:
+                x_test_value = gof.op.get_test_value(x)
+            except AttributeError:
+                # There is no test value
+                pass
+            else:
+                # This clause is executed if no exception was raised
+                nw_x.tag.test_value = nw_x.type.filter(x_test_value)
         return nw_x
     else:
         try:
