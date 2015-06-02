@@ -94,13 +94,13 @@ optdb.register('gpu_after_fusion',
 
 # Register merge_optimizer as a global opt
 gpu_optimizer.register('gpu_merge', theano.gof.opt.merge_optimizer,
-                       'fast_run', 'fast_compile')
+                       'fast_run', 'fast_compile', 'final_opt')
 
 
 # register local_track_shape_i at this level too
 # to make multi-level lift of shape work.
 register_opt()(theano.tensor.opt.local_track_shape_i)
-register_opt(name='gpu_constant_folding')(
+register_opt('final_opt', name='gpu_constant_folding')(
     tensor.opt.constant_folding)
 register_opt()(theano.tensor.opt.local_subtensor_make_vector)
 
