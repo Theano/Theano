@@ -4143,8 +4143,20 @@ class test_comparison(unittest.TestCase):
                     v1 = fn1()
                     v2 = fn2()
                     self.assertTrue(
-                        numpy.all(v1 == numpy.isclose(l, r, equal_nan=False)),
-                        numpy.all(v2 == numpy.isclose(l, r, equal_nan=True))
+                        numpy.all(
+                            v1 == numpy.asarray(
+                                [True, False, True, False,
+                                 False, True, False, False],
+                                dtype="bool"
+                            )
+                        ),
+                        numpy.all(
+                            v2 == numpy.asarray(
+                                [True, False, True, False,
+                                 True, True, False, False],
+                                dtype="bool"
+                            )
+                        )
                     )
                 except TypeError:
                     if not dtype.startswith('complex'):
