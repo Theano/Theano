@@ -1692,12 +1692,17 @@ class _Linker(gof.link.LocalLinker):
         self.no_recycling = no_recycling
         return self
 
+<<<<<<< HEAD
     def make_all(self, profiler=None, input_storage=None,
                  output_storage=None, storage_map=None):
         # can't import at toplevel because of circular import TODO:
         # don't do this ugly hacky way of setting the
         # filter_checks_isfinite
         from theano.tensor import TensorType  # to set filter_check_isfinite
+=======
+    def make_all(self, profiler=None, input_storage=None
+                 , output_storage=None, storage_map=None):
+>>>>>>> bf17fa1... Add argument ```storage_map``` to the rest of theano linker
 
         fgraph = self.fgraph
         input_storage_ = input_storage

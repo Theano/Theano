@@ -545,13 +545,7 @@ returned directly?"""
             # But to be safe for now as it isn't documented and we aren't sure 
             # it is well tested, we don't share the part of the storage_map.
             for key in storage_map.keys():
-<<<<<<< HEAD
-                if key not in self.maker.fgraph.outputs and 
-                    not isinstance(key, theano.tensor.Constant):
-=======
-                # output_storages should not be shared
-                if key not in self.maker.fgraph.outputs and memo.has_key(key):
->>>>>>> 38ae402... Format Change; Modify inproper comment;Change constructor class;Add test for output storage.
+                if key not in self.maker.fgraph.outputs:
                     new_storage_map[memo[key]] = storage_map[key]
 
             # copy input storages if it's mutable
