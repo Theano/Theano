@@ -2390,7 +2390,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         self.mode = mode
         self.output_keys = output_keys
 
-    def create(self, defaults=None, trustme=False):
+    def create(self, defaults=None, trustme=False, storage_map=None):
         """
         Create a function.
 
@@ -2494,7 +2494,8 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         defaults = _defaults
 
         # Get a function instance
-        _fn, _i, _o = self.linker.make_thunk(input_storage=input_storage)
+        _fn, _i, _o = self.linker.make_thunk(input_storage=input_storage, 
+                                                storage_map=storage_map)
         fn = self.function_builder(_fn, _i, _o, self.indices,
                                    self.outputs, defaults, self.unpack_single,
                                    self.return_none, self.output_keys, self)
