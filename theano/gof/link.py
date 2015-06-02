@@ -496,8 +496,7 @@ class Container(object):
         return r
 
 
-
-def map_storage(fgraph, order, input_storage, output_storage, storage_map = None):
+def map_storage(fgraph, order, input_storage, output_storage, storage_map=None):
     """Ensure there is storage (a length-1 list) for inputs, outputs, and interior nodes.
 
     :param fgraph: The current fgraph.  This function uses the inputs and outputs attributes.
