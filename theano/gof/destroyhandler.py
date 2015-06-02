@@ -794,12 +794,11 @@ class DestroyHandler(toolbox.Bookkeeper):
         # print 'DH IMPORT', app, id(app), id(self), len(self.debug_all_apps)
 
         # If it's a destructive op, add it to our watch list
-        if getattr(app.op, 'destroy_map', OrderedDict()):
+        if getattr(app.op, 'destroy_map', {}):
             self.destroyers.add(app)
 
         # add this symbol to the forward and backward maps
-        for o_idx, i_idx_list in getattr(app.op, 'view_map',
-                                         OrderedDict()).items():
+        for o_idx, i_idx_list in getattr(app.op, 'view_map', {}).items():
             if len(i_idx_list) > 1:
                 raise NotImplementedError(
                     'destroying this output invalidates multiple inputs',
