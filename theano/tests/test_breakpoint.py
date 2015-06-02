@@ -4,6 +4,7 @@ import theano.tensor as T
 from theano.tests import unittest_tools as utt
 from theano.tests.breakpoint import PdbBreakpoint
 
+
 class TestPdbBreakpoint(utt.InferShapeTester):
 
     def setUp(self):
@@ -28,7 +29,7 @@ class TestPdbBreakpoint(utt.InferShapeTester):
 
     def test_infer_shape(self):
 
-        input1_value = numpy.arange(6).reshape(2,3).astype("float32")
+        input1_value = numpy.arange(6).reshape(2, 3).astype("float32")
         input2_value = 10.0
 
         self._compile_and_check([self.input1, self.input2],
@@ -40,7 +41,7 @@ class TestPdbBreakpoint(utt.InferShapeTester):
 
     def test_grad(self):
 
-        input1_value = numpy.arange(9).reshape(3,3).astype("float32")
+        input1_value = numpy.arange(9).reshape(3, 3).astype("float32")
         input2_value = 10.0
 
         grads = [T.grad(self.monitored_input1.sum(), self.input1),
@@ -62,7 +63,7 @@ class TestPdbBreakpoint(utt.InferShapeTester):
 
     def test_fprop(self):
 
-        input1_value = numpy.arange(9).reshape(3,3).astype("float32")
+        input1_value = numpy.arange(9).reshape(3, 3).astype("float32")
         input2_value = 10.0
         fct = theano.function([self.input1, self.input2],
                               [self.monitored_input1, self.monitored_input2])
@@ -75,6 +76,6 @@ class TestPdbBreakpoint(utt.InferShapeTester):
 
         node = self.monitored_output.owner
         connection_pattern = self.breakpointOp.connection_pattern(node)
-        expected_pattern = [[0,0,0],[1,0,0],[0,1,0],[0,0,1]]
+        expected_pattern = [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]]
 
         assert connection_pattern == expected_pattern

@@ -2,9 +2,9 @@ import numpy
 import pdb
 
 import theano
-import theano.tensor as T
 from theano.gof import Op, Apply
 from theano.gradient import DisconnectedType
+
 
 class PdbBreakpoint(Op):
     """
