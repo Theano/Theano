@@ -67,10 +67,9 @@ class TestPdbBreakpoint(utt.InferShapeTester):
         fct = theano.function([self.input1, self.input2],
                               [self.monitored_input1, self.monitored_input2])
 
-        output = fct(input1_value, input2_value)[:-1]
-
-        expected_output = [numpy.ones((3, 3), dtype="float32"),
-                           numpy.array(1., dtype="float32")]
+        output = fct(input1_value, input2_value)
+        numpy.testing.assert_allclose(output[0], input1_value)
+        numpy.testing.assert_allclose(output[1], input2_value)
 
     def test_connection_pattern(self):
 
