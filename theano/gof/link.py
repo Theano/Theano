@@ -624,6 +624,12 @@ def gc_helper(node_list):
     dictionary that maps each Variable instance to a the last node to use Variable as an input.
 
     This is used to allow garbage collection within graphs.
+
+    It ignore view_map and destroy_map. This isn't needed as python
+    have referecence count. In Theano gc, we should not take into
+    account view_map and destroy_map as if the thunk decided to create
+    a new output, we would delay uselessly its gc by Python.
+
     """
     # for freeing memory
     last_user = {}
