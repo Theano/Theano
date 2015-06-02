@@ -1727,7 +1727,8 @@ class OpWiseCLinker(link.LocalLinker):
         self.no_recycling = no_recycling
         return self
 
-    def make_all(self, profiler=None, input_storage=None, output_storage=None):
+    def make_all(self, profiler=None, input_storage=None, output_storage=None,
+                    storage_map=None):
 
         # The lock will be acquired when we compile the first
         # C code. We will keep the lock untill all the function
@@ -1741,7 +1742,7 @@ class OpWiseCLinker(link.LocalLinker):
             no_recycling = self.no_recycling
 
             input_storage, output_storage, storage_map = link.map_storage(
-                fgraph, order, input_storage, output_storage)
+                fgraph, order, input_storage, output_storage, storage_map)
             if self.allow_gc:
                 computed, last_user = link.gc_helper(order)
                 post_thunk_old_storage = []
