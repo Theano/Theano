@@ -62,7 +62,7 @@ class HostFromGpu(GpuOp):
     Implement the transfer from gpu to the cpu.
     """
     check_input = False
-    
+
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -121,7 +121,7 @@ class GpuFromHost(GpuOp):
     Implement the transfer from cpu to the gpu.
     """
     check_input = False
-    
+
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -2567,7 +2567,8 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
         # c code suppose it is int64
         if x.ndim in [2, 3] and ilist_.dtype in [
             'int8', 'int16', 'int32', 'uint8', 'uint16', 'uint32']:
-            ilist_ = ilist_.cast('int64')
+            ilist_ = tensor.cast(ilist_, 'int64')
+
         bcast = (ilist_.broadcastable[0],) + x_.broadcastable[1:]
         return Apply(self, [x_, ilist_],
                      [CudaNdarrayType(dtype=x.dtype,
@@ -3252,7 +3253,7 @@ class GpuJoin(tensor.Join, GpuOp):
         # Test negative axis
         str += """
         if( axis < -nd ){
-            PyErr_Format(PyExc_IndexError, 
+            PyErr_Format(PyExc_IndexError,
                          "Join axis %%d out of bounds [0, %%d)", axis, nd);
             %(fail)s
         }
