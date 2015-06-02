@@ -291,8 +291,6 @@ if 0:
 
             ####### Do the checking ###########
             already_there = False
-            if self.fgraph is fgraph:
-                already_there = True
             if self.fgraph not in [None, fgraph]:
                 raise Exception("A DestroyHandler instance can only serve"
                                 " one FunctionGraph. (Matthew 6:24)")
