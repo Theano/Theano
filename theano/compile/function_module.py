@@ -17,9 +17,8 @@ import theano.compile.mode
 from theano.compile.io import (
     In, SymbolicInput, SymbolicInputKit, SymbolicOutput)
 from theano.compile.ops import deep_copy_op, view_op
-from theano.gof.graph import is_same_graph, clone_get_equiv
+from theano.gof.graph import is_same_graph
 from theano.gof.op import ops_with_inner_function
-from theano.gof.fg import FunctionGraph
 
 import logging
 _logger = logging.getLogger('theano.compile.function_module')
@@ -503,13 +502,14 @@ returned directly?"""
 
     def copy(self, share_memory=False):
         """
-        Copy this function. Copied function will have separated maker and fgraph
-        with original function. User can choose whether to separate storage by 
-        changing the share_memory arguments
+        Copy this function. Copied function will have separated maker and 
+        fgraph with original function. User can choose whether to separate 
+        storage by changing the share_memory arguments
         ---------------------
         Params:
-            share_memory -- { boolean } Default is False. When True, two function
-            share intermediate storages(storages except input and output storages)
+            share_memory -- { boolean } Default is False. When True, two 
+            function share intermediate storages(storages except input and 
+            output storages)
         ---------------------
         Returns:
             func -- Copied theano.Function
@@ -525,41 +525,38 @@ returned directly?"""
             maker = self.maker
             fg_cpy, memo = maker.fgraph.clone_get_equiv(attach_feature=False)
 
-            # use copied ins, outs and fgraph to init a maker
-            new_maker = maker.__class__(inputs=ins, outputs=outs, mode=maker.mode,
-                                        fgraph=fg_cpy, profile=maker.profile,
-                                        accept_inplace=maker.accept_inplace,
-                                        function_builder=maker.function_builder,
-                                        on_unused_input=maker.on_unused_input)
-
             # construct new storage_map that map new variable to old storage
             # so that the ensuing function shares storage with the original one
             new_storage_map = {}
             storage_map = self.fn.storage_map
             
-            # TODO: We could share the output storage, but we must make sure 
-            # 2 different function call won't override each other values. This 
-            # is already done elsewhere, so to reuse it the user would need to 
-            # use Out(var, borrow=True) and maybe the mutable=True flag too. 
+            # TODO: We could share the output storage, but we must make sure
+            # 2 different function call won't override each other values. This
+            # is already done elsewhere, so to reuse it the user would need to
+            # use Out(var, borrow=True) and maybe the mutable=True flag too.
             # But to be safe for now as it isn't documented and we aren't sure 
             # it is well tested, we don't share the part of the storage_map.
             for key in storage_map.keys():
-                if key not in self.maker.fgraph.outputs:
+                if key not in maker.fgraph.outputs:
                     new_storage_map[memo[key]] = storage_map[key]
 
             # copy input storages if it's mutable
-            input_storage = [] 
-            for i in self.maker.inputs:
-                storage = getattr(i, 'value', None) 
+            input_storage = []
+            for i in maker.inputs:
+                storage = getattr(i, 'value', None)
                 if isinstance(i.variable, theano.tensor.Constant) or\
                     not i.mutable:
-                    input_storage.append(storage )
+                    input_storage.append(storage)
                 else:
-                    input_storage.append( copy.deepcopy[storage])
+                    input_storage.append(copy.deepcopy[storage])
 
-            new_func = new_maker.create(input_storage, storage_map=new_storage_map)
-
-            return new_func
+            # reinitialize new maker and create new function
+            return maker.__class__(inputs=ins, outputs=outs, fgraph=fg_cpy,
+                                   mode=maker.mode, profile=maker.profile, 
+                                   on_unused_input=maker.on_unused_input,
+                                   function_builder=maker.function_builder,
+                                   accept_inplace=maker.accept_inplace).create(
+                                   input_storage, storage_map=new_storage_map)
 
     def __call__(self, *args, **kwargs):
         profile = self.profile
@@ -1447,7 +1444,7 @@ class FunctionMaker(object):
         limit_orig = theano.config.traceback.limit
         try:
             theano.config.traceback.limit = 0
-            _fn, _i, _o = self.linker.make_thunk( 
+            _fn, _i, _o = self.linker.make_thunk(
                 input_storage=input_storage_lists, storage_map=storage_map)
         finally:
             theano.config.traceback.limit = limit_orig
