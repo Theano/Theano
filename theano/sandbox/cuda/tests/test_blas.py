@@ -161,18 +161,18 @@ def test_dot22scalar():
                 [a, b],
                 tensor.dot(a, b) * numpy.asarray(4, 'float32'))
         t = f.maker.fgraph.toposort()
-        assert any([isinstance(n.op, tcn.blas.GpuGemm) for n in t])
-        assert any([isinstance(n.op, tcn.basic_ops.GpuAllocEmpty)
-                    for n in t])
+        assert any([isinstance(n.op, tcn.blas.GpuDot22Scalar) for n in t])
+#        assert any([isinstance(n.op, tcn.basic_ops.GpuAllocEmpty)
+#                    for n in t])
         assert numpy.allclose(f(av, bv), f2(av, bv))
 
         f = theano.function([a, b, scalar], tensor.dot(a, b) * scalar,
                             mode=mode_with_gpu)
         f2 = theano.function([a, b, scalar], tensor.dot(a, b) * scalar)
         t = f.maker.fgraph.toposort()
-        assert any([isinstance(n.op, tcn.blas.GpuGemm) for n in t])
-        assert any([isinstance(n.op, tcn.basic_ops.GpuAllocEmpty)
-                    for n in t])
+        assert any([isinstance(n.op, tcn.blas.GpuDot22Scalar) for n in t])
+#        assert any([isinstance(n.op, tcn.basic_ops.GpuAllocEmpty)
+#                    for n in t])
         assert numpy.allclose(f(av, bv, 0.5), f2(av, bv, 0.5))
 
         f = theano.function([a, b, scalar],
