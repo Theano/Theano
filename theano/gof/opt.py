@@ -1939,7 +1939,9 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         not_used = []
         not_used_time = 0
         process_count = {}
-        for o in opt.global_optimizers + list(opt.get_local_optimizers()):
+        for o in (opt.global_optimizers +
+                  list(opt.get_local_optimizers()) +
+                  opt.final_optimizers):
             process_count.setdefault(o, 0)
         for count in loop_process_count:
             for o, v in count.iteritems():
@@ -1977,9 +1979,15 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             prof2[0].get_local_optimizers())
         global_optimizers = set(prof1[0].global_optimizers).union(
             prof2[0].global_optimizers)
+        if len(prof1[0].final_optimizers) > 0 or len(prof2[0].final_optimizers) > 0:
+            final_optimizers = set(prof1[0].final_optimizers).union(
+                prof2[0].final_optimizers)
+        else:
+            final_optimizers = None
         new_opt = EquilibriumOptimizer(
             local_optimizers.union(global_optimizers),
-            max_use_ratio=1)
+            max_use_ratio=1,
+            final_optimizers=final_optimizers)
 
         def merge_list(l1, l2):
             l = copy.copy(l1)
