@@ -552,13 +552,13 @@ class Function(object):
 
     def copy(self, share_memory=False):
         """
-        Copy this function. Copied function will have separated maker and 
-        fgraph with original function. User can choose whether to separate 
+        Copy this function. Copied function will have separated maker and
+        fgraph with original function. User can choose whether to separate
         storage by changing the share_memory arguments
         ---------------------
         Params:
-            share_memory -- { boolean } Default is False. When True, two 
-            function share intermediate storages(storages except input and 
+            share_memory -- { boolean } Default is False. When True, two
+            function share intermediate storages(storages except input and
             output storages)
         ---------------------
         Returns:
@@ -579,12 +579,12 @@ class Function(object):
             # so that the ensuing function shares storage with the original one
             new_storage_map = {}
             storage_map = self.fn.storage_map
-            
+
             # TODO: We could share the output storage, but we must make sure
             # 2 different function call won't override each other values. This
             # is already done elsewhere, so to reuse it the user would need to
             # use Out(var, borrow=True) and maybe the mutable=True flag too.
-            # But to be safe for now as it isn't documented and we aren't sure 
+            # But to be safe for now as it isn't documented and we aren't sure
             # it is well tested, we don't share the part of the storage_map.
             for key in storage_map.keys():
                 if key not in maker.fgraph.outputs:
@@ -594,15 +594,15 @@ class Function(object):
             input_storage = []
             for i in maker.inputs:
                 storage = getattr(i, 'value', None)
-                if isinstance(i.variable, theano.tensor.Constant) or\
-                    not i.mutable:
+                if isinstance(i.variable, theano.tensor.Constant) or \
+                not i.mutable:
                     input_storage.append(storage)
                 else:
                     input_storage.append(copy.deepcopy[storage])
 
             # reinitialize new maker and create new function
             return maker.__class__(inputs=ins, outputs=outs, fgraph=fg_cpy,
-                                   mode=maker.mode, profile=maker.profile, 
+                                   mode=maker.mode, profile=maker.profile,
                                    on_unused_input=maker.on_unused_input,
                                    function_builder=maker.function_builder,
                                    accept_inplace=maker.accept_inplace).create(

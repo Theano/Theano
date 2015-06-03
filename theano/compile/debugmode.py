@@ -2633,7 +2633,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         defaults = _defaults
 
         # Get a function instance
-        _fn, _i, _o = self.linker.make_thunk(input_storage=input_storage, 
+        _fn, _i, _o = self.linker.make_thunk(input_storage=input_storage,
                                              storage_map=storage_map)
         fn = self.function_builder(_fn, _i, _o, self.indices,
                                    self.outputs, defaults, self.unpack_single,
