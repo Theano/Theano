@@ -64,6 +64,16 @@ def safe_new(x, tag='', dtype=None):
         else:
             nw_x = x.type()
         nw_x.name = nw_name
+        if theano.config.compute_test_value != 'off':
+            # Copy test value, cast it if necessary
+            try:
+                x_test_value = gof.op.get_test_value(x)
+            except AttributeError:
+                # There is no test value
+                pass
+            else:
+                # This clause is executed if no exception was raised
+                nw_x.tag.test_value = nw_x.type.filter(x_test_value)
         return nw_x
     else:
         try:
@@ -73,11 +83,13 @@ def safe_new(x, tag='', dtype=None):
             # want to avoid the convoluted logic that checks for cuda
             # ndarrays
             pass
-    nw_x = x.type()
-    if dtype and nw_x.dtype != dtype:
-        nw_x = nw_x.astype(dtype).type()
-    nw_x.name = nw_name
 
+    # Cast x if needed. If x has a test value, this will also cast it.
+    if dtype and x.dtype != dtype:
+        x = x.astype(dtype)
+
+    nw_x = x.type()
+    nw_x.name = nw_name
     # Preserve test values so that the 'compute_test_value' option can be used.
     # The test value is deep-copied to ensure there can be no interactions
     # between test values, due to inplace operations for instance. This may
