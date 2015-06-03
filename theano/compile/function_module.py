@@ -523,7 +523,6 @@ returned directly?"""
 
             # copy fgraph and get memo
             maker = self.maker
-
             fg_cpy, memo = maker.fgraph.clone_get_equiv(attach_feature=False)
 
             # use copied ins, outs and fgraph to init a maker
