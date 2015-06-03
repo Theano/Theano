@@ -976,8 +976,8 @@ class CLinker(link.Linker):
                 pass
         return utils.uniq(ret)
 
-    def __compile__(self, input_storage=None,
-                    output_storage=None, keep_lock=False):
+    def __compile__(self, input_storage=None, output_storage=None,
+                    storage_map=None, keep_lock=False):
         """WRITEME
         Compiles this linker's fgraph.
 
@@ -1006,6 +1006,7 @@ class CLinker(link.Linker):
         thunk = self.cthunk_factory(error_storage,
                                     input_storage,
                                     output_storage,
+                                    storage_map,
                                     keep_lock=keep_lock)
         return (thunk,
                 [link.Container(input, storage) for input, storage in
@@ -1038,7 +1039,7 @@ class CLinker(link.Linker):
         return init_tasks, tasks
 
     def make_thunk(self, input_storage=None, output_storage=None,
-                   keep_lock=False):
+                   storage_map=None, keep_lock=False):
         """WRITEME
         Compiles this linker's fgraph and returns a function to perform the
         computations, as well as lists of storage cells for both the
@@ -1051,6 +1052,8 @@ class CLinker(link.Linker):
         @param output_storage: list of lists of length 1. The thunk returned
             by __compile__ will put the variables of the computation in these
             lists. If None, storage will be allocated.
+        @param storage_map: dict that map variables to storages. This is used
+            when you need to customize the storage of this thunk.
 
         Returns: thunk, input_storage, output_storage
 
@@ -1063,7 +1066,7 @@ class CLinker(link.Linker):
         """
         init_tasks, tasks = self.get_init_tasks()
         cthunk, in_storage, out_storage, error_storage = self.__compile__(
-            input_storage, output_storage,
+            input_storage, output_storage, storage_map,
             keep_lock=keep_lock)
 
         res = _CThunk(cthunk, init_tasks, tasks, error_storage)
@@ -1412,7 +1415,7 @@ class CLinker(link.Linker):
         return self._mod
 
     def cthunk_factory(self, error_storage, in_storage, out_storage,
-                       keep_lock=False):
+                       storage_map=None, keep_lock=False):
         """WRITEME
         error_storage -> list of length 3
         in_storage -> list of lists of length 1, one per input
@@ -1444,7 +1447,10 @@ class CLinker(link.Linker):
         out_storage = [x for i, x in enumerate(out_storage)
                        if (i + len(in_storage)) not in dupidx]
         in_storage = [x for i, x in enumerate(in_storage) if i not in dupidx]
-        orphd = [[orphan.data] for orphan in self.orphans]
+        if storage_map is None:
+            orphd = [storage_map[orphan] for orphan in self.orphans]
+        else:
+            orphd = [[orphan.data] for orphan in self.orphans]
 
         ret = module.instantiate(error_storage,
                                  *(in_storage + out_storage + orphd))
