@@ -202,13 +202,6 @@ class Test_local_elemwise_alloc(test_opt.Test_local_elemwise_alloc):
                  if elem.op is not None]) == count
         )
 
-    def _verify_assert_count(self, f, count):
-        assert(
-            sum([isinstance(elem.op, tensor.opt.Assert)
-                 for elem in f.maker.fgraph.toposort()
-                 if elem.op is not None]) == count
-        )
-
 
 def test_alloc_memset_0():
     i = tensor.iscalar()

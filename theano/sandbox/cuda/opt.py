@@ -1963,6 +1963,7 @@ gpu_elemwise_alloc = gof.local_optimizer([GpuElemwise])(
     tensor.opt.local_elemwise_alloc_op(GpuElemwise, GpuAlloc, GpuDimShuffle)
 )
 register_opt()(gpu_elemwise_alloc)
+register_opt()(tensor.opt.local_useless_elemwise) # needed by gpu_elemwise_alloc
 tensor.opt.register_specialize_device(gpu_elemwise_alloc)
 
 
