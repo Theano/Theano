@@ -1069,11 +1069,9 @@ class CLinker(link.Linker):
                 pass
         return utils.uniq(ret)
 
-    def __compile__(self, input_storage=None,
-                    output_storage=None, keep_lock=False):
-        """
-        WRITEME
-
+    def __compile__(self, input_storage=None, output_storage=None,
+                    storage_map=None, keep_lock=False):
+        """WRITEME
         Compiles this linker's fgraph.
 
         Parameters
@@ -1111,6 +1109,7 @@ class CLinker(link.Linker):
         thunk = self.cthunk_factory(error_storage,
                                     input_storage,
                                     output_storage,
+                                    storage_map,
                                     keep_lock=keep_lock)
         return (thunk,
                 [link.Container(input, storage) for input, storage in
@@ -1143,10 +1142,8 @@ class CLinker(link.Linker):
         return init_tasks, tasks
 
     def make_thunk(self, input_storage=None, output_storage=None,
-                   keep_lock=False):
-        """
-        WRITEME
-
+                   storage_map=None, keep_lock=False):
+        """WRITEME
         Compiles this linker's fgraph and returns a function to perform the
         computations, as well as lists of storage cells for both the inputs
         and outputs.
@@ -1157,25 +1154,24 @@ class CLinker(link.Linker):
             List of lists of length 1. In order to use
             the thunk returned by __compile__, the inputs must be put in
             that storage. If None, storage will be allocated.
-        output_storage: list of lists of length 1
-            The thunk returned by __compile__ will put the variables of the
-            computation in these lists. If None, storage will be allocated.
+        @param output_storage: list of lists of length 1. The thunk returned
+            by __compile__ will put the variables of the computation in these
+            lists. If None, storage will be allocated.
+        @param storage_map: dict that map variables to storages. This is used
+            when you need to customize the storage of this thunk.
 
-        Returns
-        -------
-        object
-            Thunk, input_storage, output_storage.
-            The return values can be used as follows:
-                f, istor, ostor = clinker.make_thunk()
-                istor[0].data = first_input
-                istor[1].data = second_input
-                f()
-                first_output = ostor[0].data
+        Returns: thunk, input_storage, output_storage
 
+        The return values can be used as follows:
+          f, istor, ostor = clinker.make_thunk()
+          istor[0].data = first_input
+          istor[1].data = second_input
+          f()
+          first_output = ostor[0].data
         """
         init_tasks, tasks = self.get_init_tasks()
         cthunk, in_storage, out_storage, error_storage = self.__compile__(
-            input_storage, output_storage,
+            input_storage, output_storage, storage_map,
             keep_lock=keep_lock)
 
         res = _CThunk(cthunk, init_tasks, tasks, error_storage)
@@ -1529,25 +1525,17 @@ class CLinker(link.Linker):
         return self._mod
 
     def cthunk_factory(self, error_storage, in_storage, out_storage,
-                       keep_lock=False):
-        """
-        WRITEME
+                       storage_map=None, keep_lock=False):
+        """WRITEME
+        error_storage -> list of length 3
+        in_storage -> list of lists of length 1, one per input
+        out_storage -> list of lists of length 1, one per output
 
-        Parameters
-        ----------
-        error_storage : list of length 3
-        in_storage : list of lists of length 1, one per input
-        out_storage : list of lists of length 1, one per output
-
-        Returns
-        -------
-        object
-            A thunk that points to an instance of a C struct that
-            can carry on the computation of this linker's fgraph. That thunk,
-            when executed, will fetch its inputs from in_storage, put its
-            outputs in out_storage and if an error occurs will put the
-            type, value and traceback of the exception in error_storage.
-
+        Returns a thunk that points to an instance of a C struct that
+        can carry on the computation of this linker's fgraph. That thunk,
+        when executed, will fetch its inputs from in_storage, put its
+        outputs in out_storage and if an error occurs will put the
+        type, value and traceback of the exception in error_storage.
         """
         try:
             key = self.cmodule_key()
@@ -1569,7 +1557,10 @@ class CLinker(link.Linker):
         out_storage = [x for i, x in enumerate(out_storage)
                        if (i + len(in_storage)) not in dupidx]
         in_storage = [x for i, x in enumerate(in_storage) if i not in dupidx]
-        orphd = [[orphan.data] for orphan in self.orphans]
+        if storage_map is None:
+            orphd = [storage_map[orphan] for orphan in self.orphans]
+        else:
+            orphd = [[orphan.data] for orphan in self.orphans]
 
         ret = module.instantiate(error_storage,
                                  *(in_storage + out_storage + orphd))
