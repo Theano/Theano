@@ -938,12 +938,22 @@ def test_seed_fn():
         test_use_cuda.append(True)
     idx = tensor.ivector()
     for use_cuda in test_use_cuda:
+        if config.mode == 'FAST_COMPILE' and use_cuda:
+            mode = 'FAST_RUN'
+        else:
+            mode = config.mode
+
         for new_seed, same in [(234, True), (None, True), (23, False)]:
-            random = MRG_RandomStreams(234)
-            fn1 = theano.function([], random.uniform((2, 2)))
-            fn2 = theano.function([], random.uniform((3, 3), nstreams=2))
+            random = MRG_RandomStreams(234, use_cuda=use_cuda)
+            fn1 = theano.function([], random.uniform((2, 2), dtype='float32'),
+                                  mode=mode)
+            fn2 = theano.function([], random.uniform((3, 3), nstreams=2,
+                                                     dtype='float32'),
+                                  mode=mode)
             fn3 = theano.function([idx],
-                                  random.uniform(idx, nstreams=3, ndim=1))
+                                  random.uniform(idx, nstreams=3, ndim=1,
+                                                 dtype='float32'),
+                                  mode=mode)
 
             fn1_val0 = fn1()
             fn1_val1 = fn1()

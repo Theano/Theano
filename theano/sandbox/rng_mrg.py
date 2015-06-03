@@ -1133,8 +1133,7 @@ class MRG_RandomStreams(object):
             if nstreams is None:
                 nstreams = self.n_streams(size)
             rstates = self.get_substream_rstates(nstreams)
-
-            if self.use_cuda and dtype == 'float32':
+            if self.use_cuda and new_r.owner.outputs[1].dtype == 'float32':
                 rstates = rstates.flatten()
                 # HACK - we use fact that int32 and float32 have same size to
                 # sneak ints into the CudaNdarray type.
@@ -1142,12 +1141,12 @@ class MRG_RandomStreams(object):
                 tmp_float_buf = numpy.frombuffer(rstates.data, dtype='float32')
                 assert tmp_float_buf.shape == rstates.shape
                 assert (tmp_float_buf.view('int32') == rstates).all()
-                rstate = tmp_float_buf
+                rstates = tmp_float_buf
             assert (old_r.get_value(borrow=True,
                                     return_internal_type=True).shape ==
                     rstates.shape)
-            old_r.set_value(rstates,
-                            borrow=True)
+            assert rstates.dtype == old_r.dtype
+            old_r.set_value(rstates, borrow=True)
 
     def inc_rstate(self):
         """Update self.rstate to be skipped 2^134 steps forward to the next stream start"""
