@@ -1132,16 +1132,8 @@ class MRG_RandomStreams(object):
         for old_r, new_r, size, nstreams in self.state_updates:
             if nstreams is None:
                 nstreams = self.n_streams(size)
-            rstates = self.get_substream_rstates(nstreams)
-            if self.use_cuda and new_r.owner.outputs[1].dtype == 'float32':
-                rstates = rstates.flatten()
-                # HACK - we use fact that int32 and float32 have same size to
-                # sneak ints into the CudaNdarray type.
-                # these *SHOULD NEVER BE USED AS FLOATS*
-                tmp_float_buf = numpy.frombuffer(rstates.data, dtype='float32')
-                assert tmp_float_buf.shape == rstates.shape
-                assert (tmp_float_buf.view('int32') == rstates).all()
-                rstates = tmp_float_buf
+            rstates = self.get_substream_rstates(nstreams,
+                                                 new_r.owner.outputs[1].dtype)
             assert (old_r.get_value(borrow=True,
                                     return_internal_type=True).shape ==
                     rstates.shape)
@@ -1154,10 +1146,11 @@ class MRG_RandomStreams(object):
         self.rstate = multMatVect(self.rstate, A1p134, M1, A2p134, M2)
         assert self.rstate.dtype == numpy.int32
 
-    def get_substream_rstates(self, n_streams, inc_rstate=True):
+    def get_substream_rstates(self, n_streams, dtype, inc_rstate=True):
         """Initialize a matrix in which each row is a MRG stream state,
         and they are spaced by 2**72 samples.
         """
+        assert isinstance(dtype, str)
         assert n_streams < 2**72
         assert n_streams > 0
         rval = numpy.zeros((n_streams, 6), dtype='int32')
@@ -1184,6 +1177,16 @@ class MRG_RandomStreams(object):
 
         if inc_rstate:
             self.inc_rstate()
+        if self.use_cuda and dtype == 'float32':
+            rval = rval.flatten()
+            # HACK - we use fact that int32 and float32 have same size to
+            # sneak ints into the CudaNdarray type.
+            # these *SHOULD NEVER BE USED AS FLOATS*
+            tmp_float_buf = numpy.frombuffer(rval.data, dtype='float32')
+            assert tmp_float_buf.shape == rval.shape
+            assert (tmp_float_buf.view('int32') == rval).all()
+            rval = tmp_float_buf
+
         return rval
 
     def n_streams(self, size):
@@ -1252,18 +1255,10 @@ class MRG_RandomStreams(object):
         orig_nstreams = nstreams
         if nstreams is None:
             nstreams = self.n_streams(size)
-        rstates = self.get_substream_rstates(nstreams)
+        rstates = self.get_substream_rstates(nstreams, dtype)
 
         if self.use_cuda and dtype == 'float32':
-            rstates = rstates.flatten()
-            # HACK - we use fact that int32 and float32 have same size to
-            # sneak ints into the CudaNdarray type.
-            # these *SHOULD NEVER BE USED AS FLOATS*
-            tmp_float_buf = numpy.frombuffer(rstates.data, dtype='float32')
-            assert tmp_float_buf.shape == rstates.shape
-            assert (tmp_float_buf.view('int32') == rstates).all()
-            # transfer to device
-            node_rstate = float32_shared_constructor(tmp_float_buf)
+            node_rstate = float32_shared_constructor(rstates)
             assert isinstance(node_rstate.type, CudaNdarrayType)
 
             # we can't use the normal mrg_uniform constructor + later
