@@ -542,13 +542,14 @@ returned directly?"""
 
             # copy input storages if it's mutable
             input_storage = []
-            for i in maker.inputs:
-                storage = getattr(i, 'value', None)
-                if isinstance(i.variable, theano.tensor.Constant) or \
-                not i.mutable:
-                    input_storage.append(storage)
+            for in_ori, in_cpy in zip(maker.inputs, ins):
+                if isinstance(in_ori.variable, theano.tensor.Constant) or \
+                not in_ori.mutable:
+                    storage = getattr(in_ori, 'value', None)
+                    in_cpy.value = in_ori.value
                 else:
-                    input_storage.append(copy.deepcopy[storage])
+                    storage = getattr(in_cpy, 'value', None)
+                input_storage.append(storage)
 
             # reinitialize new maker and create new function
             return maker.__class__(inputs=ins, outputs=outs, fgraph=fg_cpy,
