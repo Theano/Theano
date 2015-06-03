@@ -24,15 +24,13 @@ from .fp16_help import write_w
 
 
 def as_gpuarray_variable(x):
-    # This is needed to lower the number of useless transfer
-    # introduced during optimization.  This speed up optimization and
-    # "canonicalize" the graph, so it make easier making some
-    # optimization.
-    if (hasattr(x, 'fgraph') and
-        len(x.clients) == 1 and
-        x.owner and
-        isinstance(x.owner.op, HostFromGpu)):
-        return x.owner.inputs[0]
+    if getattr(x, 'owner', None):
+        if isinstance(x.owner.op, HostFromGpu):
+            return x.owner.inputs[0]
+        elif (isinstance(x.owner.op, GpuFromHost) and
+              x.owner.inputs[0].owner and
+              isinstance(x.owner.inputs[0].owner.op, HostFromGpu)):
+            return x.owner.inputs[0].owner.inputs[0]
     if hasattr(x, '_as_GpuArrayVariable'):
         return x._as_GpuArrayVariable()
     # TODO we need to have the cuda -> gpu path taken care of.
