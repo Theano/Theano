@@ -1030,7 +1030,6 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         PyObject * indices_float32 = NULL;
         indices_float32 = PyArray_View((PyArrayObject*)indices_obj,
                                                   float32_descr, NULL);
-        Py_DECREF(float32_descr);
         if (verbose) printf("ndarray indices\n");
         if (!indices_float32)
             return NULL;
