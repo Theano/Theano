@@ -1852,6 +1852,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 self.detach_updater(fgraph, u)
 
             # Apply final optimizers
+            t_before_final_opt = time.time()
             for gopt in self.final_optimizers:
                 change_tracker.reset()
                 nb = change_tracker.nb_imported
@@ -1869,7 +1870,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         opt_name = (getattr(gopt, "name", None)
                                     or getattr(gopt, "__name__", ""))
 
-            global_opt_timing.append(float(time.time() - t0))
+            global_opt_timing[-1] += time.time() - t_before_final_opt
 
             loop_process_count.append(process_count)
             loop_timing.append(float(time.time() - t0))
