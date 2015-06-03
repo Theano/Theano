@@ -320,6 +320,21 @@ class Mode(object):
                                               self.provided_optimizer)
         return self.__class__(linker=link, optimizer=opt.requiring(*tags))
 
+    def clone(self, link_kwargs=None, **kwargs):
+        """
+        Create a new instance of this Mode.
+
+        Keyword arguments can be provided for the linker,
+        in which case its `clone` method will be called with these
+        arguments.
+        """
+        new_linker = self.linker.clone(**link_kwargs)
+        new_optimizer = self.provided_optimizer
+        new_mode = type(self)(linker=new_linker,
+                              optimizer=new_optimizer)
+        return new_mode
+
+
 # If a string is passed as the mode argument in function or
 # FunctionMaker, the Mode will be taken from this dictionary using the
 # string as the key

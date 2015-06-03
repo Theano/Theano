@@ -92,6 +92,20 @@ class MonitorMode(Mode):
         ret.post_func = self.post_func
         return ret
 
+    def clone(self, opt_kwargs=None, **kwargs):
+        """
+        Create a new instance of this Mode.
+
+        Keyword arguments can be provided for the linker,
+        but they will be ignored, because ProfileMode needs
+        to use its own linker.
+        """
+        new_mode = type(self)(pre_func=self.pre_func,
+                              post_func=self.post_func,
+                              linker=None,
+                              optimizer=self.provided_optimizer)
+        return new_mode
+
 
 def detect_nan(i, node, fn):
     for output in fn.outputs:
