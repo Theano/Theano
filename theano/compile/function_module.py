@@ -543,8 +543,8 @@ returned directly?"""
             # copy input storages if it's mutable
             input_storage = []
             for in_ori, in_cpy in zip(maker.inputs, ins):
-                if isinstance(in_ori.variable, theano.tensor.Constant) or \
-                not in_ori.mutable:
+                is_const = isinstance(in_ori.variable, theano.tensor.Constant)
+                if is_const or not in_ori.mutable:
                     storage = getattr(in_ori, 'value', None)
                     in_cpy.value = in_ori.value
                 else:
