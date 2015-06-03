@@ -230,16 +230,18 @@ class EquilibriumDB(DB):
     def register(self, name, obj, *tags, **kwtags):
         # if name == 'cut_gpua_constant_transfers':
         #     import ipdb;ipdb.set_trace()
-        if 'final_opt' in tags:
-            final_opt = True
+        if 'final_opt' in kwtags:
+            final_opt = kwtags['final_opt']
+            kwtags.pop('final_opt', None)
         else:
             final_opt = False
         super(EquilibriumDB, self).register(name, obj, *tags, **kwtags)
         self.__final__[name] = final_opt
 
     def query(self, *tags, **kwtags):
-        opts = super(EquilibriumDB, self).query(*tags, **kwtags)
-        final_opts = [o for o in opts if self.__final__.get(o.name, False)]
+        _opts = super(EquilibriumDB, self).query(*tags, **kwtags)
+        final_opts = [o for o in _opts if self.__final__.get(o.name, False)]
+        opts = [o for o in _opts if o not in final_opts]
         if len(final_opts) == 0:
             final_opts = None
         return opt.EquilibriumOptimizer(
