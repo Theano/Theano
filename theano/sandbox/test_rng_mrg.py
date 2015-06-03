@@ -932,6 +932,27 @@ def test_multMatVect():
     assert numpy.allclose(r_a2, r_b[3:])
 
 
+def test_seed_fn():
+    test_use_cuda = [False]
+    if cuda_available:
+        test_use_cuda.append(True)
+
+    for use_cuda in test_use_cuda:
+        random = MRG_RandomStreams(234)
+        fn = theano.function([], random.uniform((2, 2)))
+
+        fn_val0 = fn()
+        fn_val1 = fn()
+        assert not numpy.allclose(fn_val0, fn_val1)
+
+        random.seed(234)
+
+        fn_val2 = fn()
+        fn_val3 = fn()
+        assert numpy.allclose(fn_val0, fn_val2)
+        assert numpy.allclose(fn_val1, fn_val3)
+
+
 if __name__ == "__main__":
     rng = MRG_RandomStreams(numpy.random.randint(2147462579))
     import time

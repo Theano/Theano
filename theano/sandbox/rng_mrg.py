@@ -1077,28 +1077,77 @@ class MRG_RandomStreams(object):
         self.state_updates = []
 
         super(MRG_RandomStreams, self).__init__()
+
+        # Needed to reset the streams.
+        self.default_instance_seed = seed
+
+        self.set_rstate(seed)
+
+        if use_cuda is None:
+            self.use_cuda = cuda_enabled
+        else:
+            self.use_cuda = use_cuda
+
+    def set_rstate(self, seed):
         if isinstance(seed, int):
             if seed == 0:
                 raise ValueError('seed should not be 0', seed)
             elif seed >= M2:
                 raise ValueError('seed should be less than %i' % M2, seed)
-            self.rstate = numpy.asarray([seed]*6, dtype='int32')
+            self.rstate = numpy.asarray([seed] * 6, dtype='int32')
         elif len(seed) == 6:
             if seed[0] == 0 and seed[1] == 0 and seed[2] == 0:
-                raise ValueError('The first 3 values of seed should not be all 0', seed)
+                raise ValueError(
+                    'The first 3 values of seed should not be all 0', seed)
             if seed[3] == 0 and seed[4] == 0 and seed[5] == 0:
-                raise ValueError('The last 3 values of seed should not be all 0', seed)
+                raise ValueError(
+                    'The last 3 values of seed should not be all 0', seed)
             if seed[0] >= M1 or seed[1] >= M1 or seed[2] >= M1:
-                raise ValueError('The first 3 values of seed should be less than %i' % M1, seed)
+                raise ValueError(
+                    'The first 3 values of seed should be less than %i' % M1,
+                    seed)
             if seed[3] >= M2 or seed[4] >= M2 or seed[5] >= M2:
-                raise ValueError('The last 3 values of seed should be less than %i' % M2, seed)
+                raise ValueError(
+                    'The last 3 values of seed should be less than %i' % M2,
+                    seed)
             self.rstate = numpy.asarray(seed, dtype='int32')
         else:
             raise TypeError("seed should be 1 integer or 6 integers")
-        if use_cuda is None:
-            self.use_cuda = cuda_enabled
-        else:
-            self.use_cuda = use_cuda
+
+    def seed(self, seed=None):
+        """Re-initialize each random stream
+
+        :param seed: each random stream will be assigned a unique
+        state that depends deterministically on this value.
+
+        :type seed: None or integer in range 0 to 2**30
+
+        :rtype: None
+
+        """
+        if seed is None:
+            seed = self.default_instance_seed
+        self.set_rstate(seed)
+
+        for old_r, new_r, size, nstreams in self.state_updates:
+            if nstreams is None:
+                nstreams = self.n_streams(size)
+            rstates = self.get_substream_rstates(nstreams)
+
+            if self.use_cuda and dtype == 'float32':
+                rstates = rstates.flatten()
+                # HACK - we use fact that int32 and float32 have same size to
+                # sneak ints into the CudaNdarray type.
+                # these *SHOULD NEVER BE USED AS FLOATS*
+                tmp_float_buf = numpy.frombuffer(rstates.data, dtype='float32')
+                assert tmp_float_buf.shape == rstates.shape
+                assert (tmp_float_buf.view('int32') == rstates).all()
+                rstate = tmp_float_buf
+            assert (old_r.get_value(borrow=True,
+                                    return_internal_type=True).shape ==
+                    rstates.shape)
+            old_r.set_value(rstates,
+                            borrow=True)
 
     def inc_rstate(self):
         """Update self.rstate to be skipped 2^134 steps forward to the next stream start"""
@@ -1141,10 +1190,10 @@ class MRG_RandomStreams(object):
     def n_streams(self, size):
         return guess_n_streams(size)
 
-    def pretty_return(self, node_rstate, new_rstate, sample):
+    def pretty_return(self, node_rstate, new_rstate, sample, size, nstreams):
         sample.rstate = node_rstate
         sample.update = (node_rstate, new_rstate)
-        self.state_updates.append((node_rstate, new_rstate))
+        self.state_updates.append((node_rstate, new_rstate, size, nstreams))
         node_rstate.default_update = new_rstate
         return sample
 
@@ -1201,12 +1250,12 @@ class MRG_RandomStreams(object):
                 raise TypeError("size must be a tuple of int or a Theano "
                                 "Variable with 1 dimension, got " + str(size) +
                                 " of type " + str(type(size)))
-
+        orig_nstreams = nstreams
         if nstreams is None:
             nstreams = self.n_streams(size)
+        rstates = self.get_substream_rstates(nstreams)
 
         if self.use_cuda and dtype == 'float32':
-            rstates = self.get_substream_rstates(nstreams)
             rstates = rstates.flatten()
             # HACK - we use fact that int32 and float32 have same size to
             # sneak ints into the CudaNdarray type.
@@ -1225,12 +1274,14 @@ class MRG_RandomStreams(object):
             # reinterpretation.
             u = self.pretty_return(node_rstate,
                                    *GPU_mrg_uniform.new(node_rstate,
-                                                        ndim, dtype, size))
+                                                        ndim, dtype, size),
+                                   size=size, nstreams=orig_nstreams)
         else:
-            node_rstate = shared(self.get_substream_rstates(nstreams))
+            node_rstate = shared(rstates)
             u = self.pretty_return(node_rstate,
                                    *mrg_uniform.new(node_rstate,
-                                                    ndim, dtype, size))
+                                                    ndim, dtype, size),
+                                   size=size, nstreams=orig_nstreams)
         # Add a reference to distinguish from other shared variables
         node_rstate.tag.is_rng = True
         r = u * (high - low) + low
