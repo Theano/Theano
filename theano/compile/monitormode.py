@@ -92,7 +92,7 @@ class MonitorMode(Mode):
         ret.post_func = self.post_func
         return ret
 
-    def clone(self, opt_kwargs=None, **kwargs):
+    def clone(self, link_kwargs=None, **kwargs):
         """
         Create a new instance of this Mode.
 
