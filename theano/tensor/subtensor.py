@@ -155,16 +155,16 @@ def get_canonical_form_slice(theslice, length):
                                   1), 1)
                 stop_plus_len = stop + length
                 stop = switch(
-                        lt(stop, 0),
-                        # stop < 0
-                        switch(
-                            lt(stop_plus_len, 0),
-                            # stop + len < 0
-                            0,
-                            # stop + len >= 0
-                            stop_plus_len),
-                        # stop >= 0: use min(stop, length)
-                        switch(lt(stop, length), stop, length))
+                    lt(stop, 0),
+                    # stop < 0
+                    switch(
+                        lt(stop_plus_len, 0),
+                        # stop + len < 0
+                        0,
+                        # stop + len >= 0
+                        stop_plus_len),
+                    # stop >= 0: use min(stop, length)
+                    switch(lt(stop, length), stop, length))
                 return slice(0, stop, 1), 1
             elif is_stop_length:
                 # start:length:1
@@ -173,16 +173,16 @@ def get_canonical_form_slice(theslice, length):
                                  length, 1), 1
                 start_plus_len = start + length
                 start = switch(
-                        lt(start, 0),
-                        # start < 0
-                        switch(
-                            lt(start_plus_len, 0),
-                            # start + len < 0
-                            0,
-                            # start + len >= 0
-                            start_plus_len),
-                        # start >= 0: use min(start, length)
-                        switch(lt(start, length), start, length))
+                    lt(start, 0),
+                    # start < 0
+                    switch(
+                        lt(start_plus_len, 0),
+                        # start + len < 0
+                        0,
+                        # start + len >= 0
+                        start_plus_len),
+                    # start >= 0: use min(start, length)
+                    switch(lt(start, length), start, length))
                 return slice(start, length, 1), 1
 
         # This is the generic case.
@@ -614,10 +614,8 @@ class Subtensor(Op):
         helper_c_code
         """
 
-        return {
-            "c_prefix": "PyArray",
-            "strides_mul": 1,
-            }
+        return {"c_prefix": "PyArray",
+                "strides_mul": 1}
 
     @staticmethod
     def helper_c_code(node, name, inputs, outputs, sub, idx_list, view_ndim,

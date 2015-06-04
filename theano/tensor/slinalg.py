@@ -25,15 +25,14 @@ except ImportError:
     imported_scipy = False
 
 MATRIX_STRUCTURES = (
-        'general',
-        'symmetric',
-        'lower_triangular',
-        'upper_triangular',
-        'hermitian',
-        'banded',
-        'diagonal',
-        'toeplitz',
-        )
+    'general',
+    'symmetric',
+    'lower_triangular',
+    'upper_triangular',
+    'hermitian',
+    'banded',
+    'diagonal',
+    'toeplitz')
 
 
 class Cholesky(Op):
@@ -168,8 +167,8 @@ class Solve(Op):
         assert A.ndim == 2
         assert b.ndim in [1, 2]
         otype = tensor.tensor(
-                broadcastable=b.broadcastable,
-                dtype=(A * b).dtype)
+            broadcastable=b.broadcastable,
+            dtype=(A * b).dtype)
         return Apply(self, [A, b], [otype])
 
     def perform(self, node, inputs, output_storage):
@@ -294,7 +293,7 @@ class EigvalshGrad(Op):
         (a, b, gw) = inputs
         w, v = scipy.linalg.eigh(a, b, lower=self.lower)
         gA = v.dot(numpy.diag(gw).dot(v.T))
-        gB = - v.dot(numpy.diag(gw*w).dot(v.T))
+        gB = - v.dot(numpy.diag(gw * w).dot(v.T))
 
         # See EighGrad comments for an explanation of these lines
         out1 = self.tri0(gA) + self.tri1(gA).T
