@@ -1064,7 +1064,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     if(!CudaNdarray_is_c_contiguous(indices) != 0) {
         PyErr_SetString(PyExc_NotImplementedError,
                         "CudaNdarray_TakeFrom: The indices must be contiguous in memory.");
-        Py_DECREF(indices_obj);
+        Py_DECREF(indices);
         return NULL;
     }
     int nb_indices = CudaNdarray_SIZE((CudaNdarray *)indices) / 2;// int64 are 8 bytes, float32 are 4 bytes
