@@ -380,7 +380,7 @@ def register_specialize_device(lopt, *tags, **kwargs):
 
 # Register merge_optimizer as a global opt during canonicalize
 compile.optdb['canonicalize'].register(
-        'canon_merge', merge_optimizer, 'fast_run', 'final_opt'=True)
+        'canon_merge', merge_optimizer, 'fast_run', final_opt=True)
 
 
 #####################
