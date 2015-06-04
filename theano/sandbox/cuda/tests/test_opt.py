@@ -14,6 +14,7 @@ from theano import config, tensor
 import theano.tensor.tests.test_nlinalg
 import theano.tensor.tests.test_opt as test_opt
 
+from theano.tests.breakpoint import PdbBreakpoint
 from theano.tests import unittest_tools as utt
 
 import theano.sandbox.cuda as cuda
@@ -164,7 +165,7 @@ def test_gpuallocempty():
 
     f_cpu = theano.function([], tensor.AllocEmpty('int32')(2,3))
     l_cpu = f_cpu.maker.fgraph.toposort()
-    assert not numpy.any([isinstance(x.op, basic_ops.GpuAllocEmpty) for x in l_cpu])    
+    assert not numpy.any([isinstance(x.op, basic_ops.GpuAllocEmpty) for x in l_cpu])
 
 class Test_local_elemwise_alloc(test_opt.Test_local_elemwise_alloc):
     dtype = 'float32'
@@ -322,7 +323,7 @@ def test_opt_gpujoin_joinvectors_elemwise_then_minusone():
 
 
 def test_opt_gpujoin_joinvectors_negativeaxes():
-    """ 
+    """
     Test that negative axis concatenation works as expected.
     """
 
@@ -475,6 +476,25 @@ def test_print_op():
     assert isinstance(topo[2].op, cuda.GpuElemwise)
     assert topo[3].op == cuda.host_from_gpu
     f(numpy.random.random((5, 5)).astype('float32'))
+
+
+def test_pdbbreakpoint_op():
+    """ Test that PdbBreakpoint ops don't block gpu optimization"""
+    b = tensor.fmatrix()
+
+    # Create a function composed of a breakpoint followed by
+    # some computation
+    condition = tensor.gt(b.sum(), 0)
+    b_monitored = PdbBreakpoint(name='TestBreakpoint')(condition, b)
+    output = b_monitored ** 2
+
+    f = theano.function([b], output, mode=mode_with_gpu)
+
+    # Ensure that, in the compiled function, the computation following the
+    # breakpoint has been moved to the gpu.
+    topo = f.maker.fgraph.toposort()
+    assert isinstance(topo[-2].op, cuda.GpuElemwise)
+    assert topo[-1].op == cuda.host_from_gpu
 
 
 def test_huge_elemwise_fusion():

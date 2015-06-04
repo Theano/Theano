@@ -2,6 +2,7 @@ import numpy
 
 import theano
 from theano import tensor
+from theano.tests.breakpoint import PdbBreakpoint
 from theano.tests import unittest_tools as utt
 from theano.tests.unittest_tools import SkipTest
 from theano.tensor.tests import test_basic
@@ -184,6 +185,25 @@ def test_print_op():
     assert isinstance(topo[2].op, GpuElemwise)
     assert topo[3].op == host_from_gpu
     f(numpy.random.random((5, 5)).astype('float32'))
+
+
+def test_pdbbreakpoint_op():
+    """ Test that PdbBreakpoint ops don't block gpu optimization"""
+    b = tensor.fmatrix()
+
+    # Create a function composed of a breakpoint followed by
+    # some computation
+    condition = tensor.gt(b.sum(), 0)
+    b_monitored = PdbBreakpoint(name='TestBreakpoint')(condition, b)
+    output = b_monitored ** 2
+
+    f = theano.function([b], output, mode=mode_with_gpu)
+
+    # Ensure that, in the compiled function, the computation following the
+    # breakpoint has been moved to the gpu.
+    topo = f.maker.fgraph.toposort()
+    assert isinstance(topo[-2].op, GpuElemwise)
+    assert topo[-1].op == host_from_gpu
 
 
 def test_local_gpu_elemwise_careduce():
