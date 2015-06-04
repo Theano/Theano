@@ -355,7 +355,10 @@ class _tensor_py_operators:
 
     # SLICING/INDEXING
     def __getitem__(self, args):
-        if not isinstance(args, tuple):
+        if (isinstance(args, list) and
+                any([isinstance(a, slice) for a in args])):
+            pass
+        elif not isinstance(args, tuple):
             args = args,
         # Convert python literals to theano constants
         args = theano.tensor.subtensor.make_constant(args)
