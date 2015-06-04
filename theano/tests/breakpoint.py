@@ -98,14 +98,15 @@ class PdbBreakpoint(Op):
 
     def perform(self, node, inputs, output_storage):
         condition = inputs[0]
-        try:
-            monitored = [numpy.asarray(inp) for inp in inputs[1:]]
-        except:
-            raise ValueError("Some of the inputs to the PdbBreakpoint op '%s'"
-                             "could not be casted to NumPy arrays" %
-                             self.name)
 
         if condition:
+            try:
+                monitored = [numpy.asarray(inp) for inp in inputs[1:]]
+            except:
+                raise ValueError("Some of the inputs to the PdbBreakpoint op "
+                                 "'%s' could not be casted to NumPy arrays" %
+                                 self.name)
+
             print("\n")
             print("-------------------------------------------------")
             print("Conditional breakpoint '%s' activated\n" % self.name)
@@ -116,10 +117,15 @@ class PdbBreakpoint(Op):
             print("-------------------------------------------------")
             pdb.set_trace()
 
-        # Take the new values in monitored, cast them back to their original
-        # type and store them in the output_storage
-        for i in range(len(output_storage)):
-            output_storage[i][0] = self.inp_types[i].filter(monitored[i])
+            # Take the new values in monitored, cast them back to their
+            # original type and store them in the output_storage
+            for i in range(len(output_storage)):
+                output_storage[i][0] = self.inp_types[i].filter(monitored[i])
+
+        else:
+            # Simply return views on the monitored variables
+            for i in range(len(output_storage)):
+                output_storage[i][0] = inputs[i+1]
 
     def grad(self, inputs, output_gradients):
         return ([DisconnectedType()()] + output_gradients)
