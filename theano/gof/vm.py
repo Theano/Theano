@@ -383,7 +383,7 @@ class Stack(VM):
             # destroy_dependencies would be impossible to compute after the
             # current `node` runs, because node.thunk() is going to destroy a
             # common input variable needed by whatever node owns each variable
-            # in destroy_depenencies.
+            # in destroy_dependencies.
 
             node.destroy_dependencies = []
             if node in ords:
@@ -1061,6 +1061,7 @@ class VM_Linker(link.LocalLinker):
                           )
 
         vm.storage_map = storage_map
+        vm.compute_map = compute_map
 
         return (vm,
                 [link.Container(input, storage)

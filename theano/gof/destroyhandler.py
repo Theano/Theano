@@ -945,6 +945,20 @@ class DestroyHandler(toolbox.Bookkeeper):
                 raise InconsistencyError("Attempting to destroy indestructible variables: %s" %
                         illegal_destroy)
 
+            # We want to compute a list of nodes that may never be computed,
+            # so that we do not force their computations (they may be uncomputeable).
+            # For that, we start by a list of lazy nodes (ifelse), and use io_toposort
+            # to find out which variables will always be computed, even if the lazy
+            # ones are not.
+            lazy_outputs = [var for var in fgraph.variables
+                            if var.owner and isinstance(var.owner, theano.ifelse.IfElse)]
+            always_computed = graph.io_toposort(fgraph.outputs, lazy_outputs)
+            not_always_computed = [var for var in fgraph.variables
+                                   if var not in always_computed]
+            for var in not_always_computed:
+                if var in droot:
+                    raise InconsistencyError("lazily-computed variable depends on destroyed variable")
+
             # add destroyed variable clients as computational dependencies
             for app in self.destroyers:
                 # for each destroyed input...
