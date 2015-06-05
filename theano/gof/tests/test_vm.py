@@ -344,6 +344,7 @@ def test_vm_gc():
     f([1, 2, 3])
 
 
+@theano.configparser.change_flags(**{'memory_realloc': True})
 def test_reallocation():
     x = tensor.scalar('x')
     y = tensor.scalar('y')
@@ -377,6 +378,7 @@ def test_reallocation():
                             storage_map.values()])) < len(storage_map)
 
 
+@theano.configparser.change_flags(**{'memory_realloc': True})
 def test_shape_reallocation():
         a, b, c, d = [tensor.dvector(n) for n in ['a', 'b', 'c', 'd']]
         z = 3*a + b
