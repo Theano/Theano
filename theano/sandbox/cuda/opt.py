@@ -63,6 +63,7 @@ from theano.tensor import nlinalg
 from theano.tensor import slinalg
 
 from theano.tensor.nnet.Conv3D import Conv3D
+from theano.tests.breakpoint import PdbBreakpoint
 
 try:
     # We need to be able to import this file even if cuda isn't avail.
@@ -1141,6 +1142,69 @@ def local_gpu_print_op(node):
     return False
 
 
+@register_opt()
+@local_optimizer([PdbBreakpoint])
+def local_gpu_pdbbreakpoint_op(node):
+    if isinstance(node.op, PdbBreakpoint):
+
+        old_inputs = node.inputs
+        old_outputs = node.outputs
+
+        new_inputs = node.inputs[:1]
+        input_transfered = []
+
+        # Go through the monitored variables, only transfering on GPU those
+        # for which the input comes from the GPU or the output will be
+        # transfered on the GPU.
+        nb_monitored_vars = len(node.outputs)
+        for i in range(nb_monitored_vars):
+
+            inp = old_inputs[i+1]
+            out = old_outputs[i]
+
+            input_is_from_gpu = (inp.owner and
+                                 isinstance(inp.owner.op, HostFromGpu))
+            output_goes_to_gpu = any([c[0] != "output" and
+                                      isinstance(c[0].op, GpuFromHost)
+                                      for c in out.clients])
+
+            if input_is_from_gpu:
+                # The op should be applied on the GPU version of the input
+                new_inputs.append(inp.owner.inputs[0])
+                input_transfered.append(True)
+
+            elif output_goes_to_gpu:
+                # The input should be transfered to the gpu
+                new_inputs.append(gpu_from_host(inp))
+                input_transfered.append(True)
+
+            else:
+                # No transfer is required.
+                new_inputs.append(inp)
+                input_transfered.append(False)
+
+        # Only continue the optimization if at least one input has been
+        # transfered to the gpu
+        if not any(input_transfered):
+            return False
+
+        # Apply the op on the new inputs
+        new_op_outputs = node.op(*new_inputs, return_list=True)
+
+        # Propagate the transfer to the gpu through the outputs that require
+        # it
+        new_outputs = []
+        for i in range(len(new_op_outputs)):
+            if input_transfered[i]:
+                new_outputs.append(host_from_gpu(new_op_outputs[i]))
+            else:
+                new_outputs.append(new_op_outputs[i])
+
+        return new_outputs
+
+    return False
+
+
 def cast(x, dtype):
     stype = scal.Scalar(dtype)
     cast_op = theano.tensor.Elemwise(scal.Identity(scal.specific_out(stype)))
@@ -1963,6 +2027,7 @@ gpu_elemwise_alloc = gof.local_optimizer([GpuElemwise])(
     tensor.opt.local_elemwise_alloc_op(GpuElemwise, GpuAlloc, GpuDimShuffle)
 )
 register_opt()(gpu_elemwise_alloc)
+register_opt()(tensor.opt.local_useless_elemwise) # needed by gpu_elemwise_alloc
 tensor.opt.register_specialize_device(gpu_elemwise_alloc)
 
 
@@ -2301,6 +2366,7 @@ def local_gpu_allocempty(node):
         ret.tag.values_eq_approx = node.outputs[0].tag.values_eq_approx
         return [ret]
     return False
+
 
 optdb.register('gpu_scanOp_make_inplace',
                scan_opt.ScanInplaceOptimizer(typeConstructor=typeConstructor,

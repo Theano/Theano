@@ -67,8 +67,8 @@ class TestBatchedDot(TestCase):
 
             z_test = numpy.sum(a[:,:,:,None]*b[:,None,:,:],axis=-2)
 
-            assert numpy.allclose(z0, z_test)
-            assert numpy.allclose(z1, z_test)
+            unittest_tools.assert_allclose(z0, z_test)
+            unittest_tools.assert_allclose(z1, z_test)
 
         cmp((5,4,3), (5,3,2))
         cmp((5,3,3), (5,3,3))
@@ -108,7 +108,7 @@ class TestBatchedDot(TestCase):
         self.assertRaises(RuntimeError, fail, (5,4,3), (5,2,2))
 
     def test_batched_dot_gradient(self):
-        theano.tests.unittest_tools.verify_grad(
+        unittest_tools.verify_grad(
             batched_dot,
             [numpy.random.randn(5,7,2).astype(numpy.float32),
              numpy.random.randn(5,2,6).astype(numpy.float32)],
@@ -161,18 +161,18 @@ def test_dot22scalar():
                 [a, b],
                 tensor.dot(a, b) * numpy.asarray(4, 'float32'))
         t = f.maker.fgraph.toposort()
-        assert any([isinstance(n.op, tcn.blas.GpuGemm) for n in t])
-        assert any([isinstance(n.op, tcn.basic_ops.GpuAllocEmpty)
-                    for n in t])
+        assert any([isinstance(n.op, tcn.blas.GpuDot22Scalar) for n in t])
+#        assert any([isinstance(n.op, tcn.basic_ops.GpuAllocEmpty)
+#                    for n in t])
         assert numpy.allclose(f(av, bv), f2(av, bv))
 
         f = theano.function([a, b, scalar], tensor.dot(a, b) * scalar,
                             mode=mode_with_gpu)
         f2 = theano.function([a, b, scalar], tensor.dot(a, b) * scalar)
         t = f.maker.fgraph.toposort()
-        assert any([isinstance(n.op, tcn.blas.GpuGemm) for n in t])
-        assert any([isinstance(n.op, tcn.basic_ops.GpuAllocEmpty)
-                    for n in t])
+        assert any([isinstance(n.op, tcn.blas.GpuDot22Scalar) for n in t])
+#        assert any([isinstance(n.op, tcn.basic_ops.GpuAllocEmpty)
+#                    for n in t])
         assert numpy.allclose(f(av, bv, 0.5), f2(av, bv, 0.5))
 
         f = theano.function([a, b, scalar],

@@ -730,7 +730,9 @@ def check_force_gemv_init():
             f = theano.function(
                 [aa, yy, xx],
                 gemv_no_inplace(aa, 1., xx, yy, 0.),
-                theano.compile.Mode(optimizer='fast_compile')
+                theano.compile.Mode(optimizer='fast_compile').excluding('gpu',
+                                                                        'gpuarray'),
+                profile=False
                 )
         finally:
             theano.config.compute_test_value = tv

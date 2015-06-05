@@ -15,6 +15,7 @@ from theano.gof import (local_optimizer, EquilibriumDB,
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
 from theano.tensor.nnet.conv import ConvOp
+from theano.tests.breakpoint import PdbBreakpoint
 from .type import GpuArrayType, GpuArrayConstant
 from .basic_ops import (host_from_gpu, gpu_from_host,
                         HostFromGpu, GpuFromHost,
@@ -328,6 +329,69 @@ def local_gpu_print_op(node):
     new_op = node.op.__class__(global_fn=gpu_print_wrapper)
     new_op.old_op = node.op
     return new_op(gpu_x)
+
+
+@register_opt('fast_compile')
+@local_optimizer([PdbBreakpoint])
+def local_gpu_pdbbreakpoint_op(node):
+    if isinstance(node.op, PdbBreakpoint):
+
+        old_inputs = node.inputs
+        old_outputs = node.outputs
+
+        new_inputs = node.inputs[:1]
+        input_transfered = []
+
+        # Go through the monitored variables, only transfering on GPU those
+        # for which the input comes from the GPU or the output will be
+        # transfered on the GPU.
+        nb_monitored_vars = len(node.outputs)
+        for i in range(nb_monitored_vars):
+
+            inp = old_inputs[i+1]
+            out = old_outputs[i]
+
+            input_is_from_gpu = (inp.owner and
+                                 isinstance(inp.owner.op, HostFromGpu))
+            output_goes_to_gpu = any([c[0] != "output" and
+                                      isinstance(c[0].op, GpuFromHost)
+                                      for c in out.clients])
+
+            if input_is_from_gpu:
+                # The op should be applied on the GPU version of the input
+                new_inputs.append(inp.owner.inputs[0])
+                input_transfered.append(True)
+
+            elif output_goes_to_gpu:
+                # The input should be transfered to the gpu
+                new_inputs.append(gpu_from_host(inp))
+                input_transfered.append(True)
+
+            else:
+                # No transfer is required.
+                new_inputs.append(inp)
+                input_transfered.append(False)
+
+        # Only continue the optimization if at least one input has been
+        # transfered to the gpu
+        if not any(input_transfered):
+            return False
+
+        # Apply the op on the new inputs
+        new_op_outputs = node.op(*new_inputs, return_list=True)
+
+        # Propagate the transfer to the gpu through the outputs that require
+        # it
+        new_outputs = []
+        for i in range(len(new_op_outputs)):
+            if input_transfered[i]:
+                new_outputs.append(host_from_gpu(new_op_outputs[i]))
+            else:
+                new_outputs.append(new_op_outputs[i])
+
+        return new_outputs
+
+    return False
 
 
 @register_opt('fast_compile')

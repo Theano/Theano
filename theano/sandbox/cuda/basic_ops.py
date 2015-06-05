@@ -34,7 +34,7 @@ _logger = logging.getLogger(_logger_name)
 
 
 def as_cuda_ndarray_variable(x):
-    if x.owner:
+    if getattr(x, 'owner', None):
         if isinstance(x.owner.op, HostFromGpu):
             return x.owner.inputs[0]
         elif (isinstance(x.owner.op, GpuFromHost) and

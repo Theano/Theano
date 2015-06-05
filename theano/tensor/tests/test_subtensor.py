@@ -315,6 +315,12 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         n = self.shared(numpy.arange(12, dtype=self.dtype).reshape((4, 3)))
         self.assertRaises(Exception, lambda: n[:(2L ** 63)])
 
+    def test_list_slice(self):
+        x = theano.tensor.arange(100).reshape((5, 5, 4))
+        res = x[[slice(1, -1)] * x.ndim].eval()
+        x = numpy.arange(100).reshape((5, 5, 4))
+        numpy.allclose(res, x[[slice(1, -1)] * x.ndim])
+
     def test_newaxis(self):
         """
         newaxis support comes from logic in the __getitem__ of TensorType
