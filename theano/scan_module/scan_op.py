@@ -1493,20 +1493,6 @@ class Scan(PureOp):
         else:
             return -1
 
-    def get_output_slice_idx(self, output_index):
-        """ For an ``output_index``, an index in the outter ouputs of scan,
-        find a corresponding index in the inner outputs of scan.
-        """
-        ipos = 0
-        opos = output_index
-        for otaps in zip(self.mitmot_out_taps()):
-            if len(otaps) > 0:
-                return ipos
-            else:
-                opos = opos - 1
-                ipos += len(otaps)
-        return ipos + opos
-
     def inner_connection_pattern(self):
         """ Returns the connection pattern of scan's inner function
         """
