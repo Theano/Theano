@@ -1745,6 +1745,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             opt.add_requirements(fgraph)
         for opt in self.global_optimizers:
             opt.add_requirements(fgraph)
+        for opt in self.final_optimizers:
+            opt.add_requirements(fgraph)
 
     def apply(self, fgraph, start_from=None):
         change_tracker = ChangeTracker()
