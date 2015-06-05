@@ -557,8 +557,9 @@ class FunctionGraph(utils.object2):
 
         """
         try:
+            # Why do we catch the exeception anyway?
             self._features.remove(feature)
-        except Exception:
+        except ValueError:
             return
         detach = getattr(feature, 'on_detach', None)
         if detach is not None:
