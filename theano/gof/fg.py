@@ -240,7 +240,7 @@ class FunctionGraph(utils.object2):
             assert entry not in r.clients  # an op,i pair should be unique
         if not r.clients:
             if prune:
-                self.__prune_r__([r], reason)
+                self.__prune_r__(r, reason)
                 return False
             return True
         return False
@@ -374,8 +374,8 @@ class FunctionGraph(utils.object2):
             self.execute_callbacks('on_import', node, reason)
 
     ### prune ###
-    def __prune_r__(self, variables, reason=None):
-        """Should be called for variables that aren't used anymore:
+    def __prune_r__(self, variable, reason=None):
+        """Should be called for variable that aren't used anymore:
         len(var.clients) == 0
 
         This do not mean we will remove it from fgraph.variables. If
@@ -384,11 +384,10 @@ class FunctionGraph(utils.object2):
 
         """
         # Prunes the owners of the variables.
-        for node in set(r.owner for r in variables if r.owner is not None):
-            self.__prune__(node, reason)
-        for r in variables:
-            if not r.clients and r in self.variables:
-                self.variables.remove(r)
+        if variable.owner:
+            self.__prune__(variable.owner, reason)
+        if not variable.clients and variable in self.variables:
+            self.variables.remove(variable)
 
     def __prune__(self, apply_node, reason=None):
         """Always called on owner of pruned variable from the graph.
@@ -460,7 +459,7 @@ class FunctionGraph(utils.object2):
                                r, new_r, reason=reason)
 
         if prune:
-            self.__prune_r__([r], reason=reason)
+            self.__prune_r__(r, reason=reason)
 
     ### replace ###
     def replace(self, r, new_r, reason=None, verbose=None):
