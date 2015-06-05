@@ -1470,29 +1470,6 @@ class Scan(PureOp):
                     scan_outs.append((Shape_i(0)(o),) + x[1:])
         return scan_outs
 
-    def get_input_pos(self, output_index):
-        """ For a given ``output_index``, an index in the inner outputs of
-        scan, find a corresponding first index in the inner inputs of scan
-        """
-        ipos = self.n_seqs
-        opos = output_index
-        for otaps, itaps in zip(self.mitmot_out_taps(), self.mitmot_taps()):
-            if len(otaps) > opos:
-                return ipos
-            else:
-                opos = opos - len(otaps)
-                ipos += len(itaps)
-        for dx, taps in enumerate(self.mitsot_taps()):
-            if opos == 0:
-                return ipos
-            else:
-                opos = opos - 1
-                ipos += len(taps)
-        if opos < self.info['n_sit_sot']:
-            return ipos + opos
-        else:
-            return -1
-
     def inner_connection_pattern(self):
         """ Returns the connection pattern of scan's inner function
         """
