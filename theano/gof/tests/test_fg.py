@@ -1,7 +1,9 @@
+import os
 import pickle
 import unittest
 
 import theano
+from theano.compat.six import PY3
 from theano.gof import CachedConstantError, FunctionGraph
 from theano import tensor as tt
 
@@ -24,3 +26,21 @@ class TFunctionGraph(unittest.TestCase):
 
         s = pickle.dumps(func)
         func2 = pickle.loads(s)
+
+    def test_node_outputs_not_used(self):
+        """In the past, we where removing some not used variable from
+        fgraph.variables event if the apply had other output used in
+        the graph. This caused a crash.
+
+        This test run the pickle that reproduce this case.
+        """
+        with open(os.path.join(os.path.dirname(__file__),
+                               'test_fg_old_crash.pkl'),
+                  'rb') as f:
+            from theano.misc.pkl_utils import CompatUnpickler
+            if PY3:
+                u = CompatUnpickler(f, encoding="latin1")
+            else:
+                u = CompatUnpickler(f)
+            d = u.load()
+        f = theano.function(**d)
