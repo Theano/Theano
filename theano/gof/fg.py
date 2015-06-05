@@ -383,8 +383,23 @@ class FunctionGraph(utils.object2):
         # Prunes the owners of the variables.
         if variable.owner:
             self.__prune__(variable.owner, reason)
-        if not variable.clients and variable in self.variables:
-            self.variables.remove(variable)
+        # variable should not have any clients.
+        # assert not variable.clients
+
+        # variable should be in self.variables
+        # Why this assert fail? Making it True could cause opt speed up
+        # I think this is caused as we remove var in self.variables in
+        # another place.
+        # assert variable in self.variables
+
+        if variable in self.variables:
+            # If the owner have other outputs still used,
+            # then we must keep that variable in the graph.
+            if not variable.owner or not any(
+                [var for var in variable.owner.outputs
+                 if var.clients]):
+
+                self.variables.remove(variable)
 
     def __prune__(self, apply_node, reason=None):
         """Always called on owner of pruned variable from the graph.
