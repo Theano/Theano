@@ -265,13 +265,11 @@ class FunctionGraph(utils.object2):
             self.variables.add(r)
 
     def __import__(self, apply_node, check=True, reason=None):
-        node = apply_node
-
         # We import the nodes in topological order. We only are interested
         # in new nodes, so we use all variables we know of as if they were the input set.
         # (the functions in the graph module only use the input set to
         # know where to stop going down)
-        new_nodes = graph.io_toposort(self.variables, node.outputs)
+        new_nodes = graph.io_toposort(self.variables, apply_node.outputs)
 
         if check:
             for node in new_nodes:
