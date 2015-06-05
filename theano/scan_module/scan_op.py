@@ -1493,29 +1493,6 @@ class Scan(PureOp):
         else:
             return -1
 
-    def get_output_pos(self, input_index):
-        """ For a given ``input_index``, an index in the inner inputs of
-        scan, find a corresponding first index in the inner outputs of scan
-        """
-        ipos = input_index
-        opos = 0
-        for otaps, itaps in zip(self.mitmot_out_taps(), self.mitmot_taps()):
-            if len(itaps) > ipos:
-                return opos
-            else:
-                opos += len(otaps)
-                ipos -= len(itaps)
-        for dx, taps in enumerate(self.mitsot_taps()):
-            if len(taps) > ipos:
-                return opos
-            else:
-                opos += 1
-                ipos -= len(taps)
-        if ipos < self.info['n_sit_sot']:
-            return ipos + opos
-        else:
-            return -1
-
     def get_output_slice_idx(self, output_index):
         """ For an ``output_index``, an index in the outter ouputs of scan,
         find a corresponding index in the inner outputs of scan.
