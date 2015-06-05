@@ -234,10 +234,6 @@ class FunctionGraph(utils.object2):
         """
         for entry in clients_to_remove:
             r.clients.remove(entry)
-            if entry in r.clients:
-                print('ERROR: DUPLICATE CLIENT ENTRY...', file=sys.stderr)
-                print('  ENTRY', repr(entry), type(entry[0]), file=sys.stderr)
-                print('  CLIENTS', repr(r.clients), file=sys.stderr)
             assert entry not in r.clients  # an op,i pair should be unique
         if not r.clients:
             if prune:
