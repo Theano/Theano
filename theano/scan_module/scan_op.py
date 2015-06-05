@@ -748,14 +748,36 @@ class Scan(PureOp):
         # make_thunk can be called many times on the same op
         # we do not want to recompile the inner fct every time.
         if not getattr(self, 'fn', None):
-            self.fn = function(wrapped_inputs,
+
+            # Add a new input 'iter' to the inner function that will represent
+            # the index of the current iteration of the inner function
+            iter = theano.tensor.lscalar()
+            iter.tag.test_value = numpy.array(0, dtype="int64")
+            inputs = list(self.inputs)
+            givens = {}
+
+            # For every sequence element input to the inner function, replace
+            # the sequence element with a subtensor operation on the original
+            # sequence and add a new givens to perform the subtensor operation
+            # in the inner function
+            outer_seqs = self.outer_seqs(node)
+            for i in range(self.n_seqs):
+                inputs[i] = outer_seqs[i].type()
+                if hasattr(outer_seqs[i].tag, 'test_value'):
+                    inputs[i].tag.test_value = outer_seqs[i].tag.test_value
+
+                givens[self.inputs[i]] = inputs[i][iter]
+
+            self.fn = function([Param(p, borrow=True) for p in inputs+[iter]],
                                wrapped_outputs,
                                mode=self.mode_instance,
                                name=self.name,
+                               givens=givens,
                                profile=profile,
                                on_unused_input='ignore')
 
         try:
+            raise ImportError("Exception to force usage of the python version")
             cython_mintaps = numpy.asarray(self.mintaps, dtype='int32')
             cython_tap_array_len = \
                 numpy.asarray([len(x) for x in self.tap_array],
@@ -1087,20 +1109,16 @@ class Scan(PureOp):
         for idx in xrange(len(other_args)):
             input_storage[idx + offset].storage[0] = other_args[idx]
 
+        for idx in xrange(self.n_seqs):
+            input_storage[idx].storage[0] = seqs[idx]
+
         i = 0
         cond = True
         ############## THE MAIN LOOP #########################
         # for i in xrange(n_steps):
         while (i < n_steps) and cond:
-            # sequences over which scan iterates
-            # 3. collect input slices
-            for idx in xrange(self.n_seqs):
-                if self.vector_seqs[idx]:
-                    input_storage[idx].storage[0] = \
-                            seqs[idx][i:i + 1].reshape(())
-                else:
-                    input_storage[idx].storage[0] = seqs[idx][i]
 
+            # 3. collect input slices
             offset = self.n_seqs
             for idx in xrange(self.n_outs):
                 if self.vector_outs[idx]:
@@ -1125,6 +1143,9 @@ class Scan(PureOp):
                 for j in xrange(self.n_shared_outs):
                     input_storage[offset].storage[0] = outs[o_offset + j][0]
                     offset += 1
+
+            # Add the index of the current iteration to the input storage
+            input_storage[-1].storage[0] = numpy.array(i, dtype="int64")
 
             # 4. collecting slices where the output should be stored
 
