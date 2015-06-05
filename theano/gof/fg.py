@@ -396,10 +396,6 @@ class FunctionGraph(utils.object2):
         outputs are still used, we will keep the node in the graph.
 
         """
-        if apply_node not in self.apply_nodes:
-            raise Exception(
-                "%s does not belong to this FunctionGraph." % apply_node)
-        assert apply_node.fgraph is self
         # If apply_node's outputs have no clients, removes it from the graph
         # and recursively tries to prune its inputs. If at least one
         # of the op's outputs is an output to the graph or has a client
