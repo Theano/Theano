@@ -661,10 +661,6 @@ class FunctionGraph(utils.object2):
             ords[node] = list(OrderedSet(prereqs))
         return ords
 
-    def nclients(self, r):
-        """WRITEME Same as len(self.clients(r))."""
-        return len(self.clients(r))
-
     def check_integrity(self):
         """WRITEME
         Call this for a diagnosis if things go awry.
