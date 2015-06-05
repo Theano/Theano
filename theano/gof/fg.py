@@ -112,7 +112,9 @@ class FunctionGraph(utils.object2):
         # outputs are cached in this field
         self.apply_nodes = set()
 
-        # Ditto for variable nodes
+        # Ditto for variable nodes.
+        # It must contain all fgraph.inputs and all apply_nodes
+        # outputs even if they aren't used in the graph.
         self.variables = set()
 
         self.inputs = list(inputs)
