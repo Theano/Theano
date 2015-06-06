@@ -13,6 +13,20 @@ def replace_patterns(x, replace):
     return x
 
 
+def d3dot(fct, node_colors=None, *args, **kwargs):
+    if node_colors is None:
+        node_colors = {'input': 'limegreen',
+                       'output': 'dodgerblue',
+                       'unused': 'lightgrey'
+                       }
+
+    dot_graph = pydotprint(fct, format='dot', return_image=True,
+                           node_colors=node_colors, *args, **kwargs)
+    dot_graph = dot_graph.replace('\n', ' ')
+    dot_graph = dot_graph.replace('node [label="\N"];', '')
+    return dot_graph
+
+
 def d3print(fct, outfile=None, return_html=False, print_message=True,
             width=800, height=600,
             *args, **kwargs):
@@ -27,13 +41,11 @@ def d3print(fct, outfile=None, return_html=False, print_message=True,
     """
 
     # Generate dot graph definition by calling pydotprint
-    dot_graph = pydotprint(fct, format='dot', return_image=True, *args, **kwargs)
-    dot_graph = dot_graph.replace('\n', ' ')
-    dot_graph = dot_graph.replace('node [label="\N"];', '')
+    dot_graph = d3dot(fct, *args, **kwargs)
 
     # Read template HTML file and replace variables
     template_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                  'template.html')
+                                 'template.html')
     f = open(template_file)
     template = f.read()
     f.close()
