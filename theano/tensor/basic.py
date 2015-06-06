@@ -3263,6 +3263,24 @@ def batched_tensordot(x, y, axes=2):
     return result
 
 
+def cross(x, y):
+    """
+    Warning: cross product for vectors of shape (3,) only
+    :param x: Tensor
+    :param y: Tensor
+    This function computes the cross product between the two tensors
+    using a scalar product with the 3D Levi-Civita symbol
+
+    Returns a tensor 
+    """
+    eijk = numpy.zeros((3,3,3))
+    eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
+    eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
+    result = theano.tensor.as_tensor(
+        theano.tensor.dot(theano.tensor.dot(eijk, y), x))
+    return result
+
+
 def split(x, splits_size, n_splits, axis=0):
     the_split = Split(n_splits)
     return the_split(x, axis, splits_size)
