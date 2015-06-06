@@ -603,11 +603,11 @@ class MergeOptimizer(Optimizer):
                         not hasattr(candidate, 'fgraph')):
                     continue
                 if var.owner and candidate.owner:
-                    node = node.owner
+                    var = var.owner
                     candidate = candidate.owner
                     inputs_match = all(node_in is cand_in
                                        for node_in, cand_in in zip(
-                                           node.inputs, candidate.inputs))
+                                           var.inputs, candidate.inputs))
                     # No need to compare the op again, as it don't change.
                     if not inputs_match:
                         continue
