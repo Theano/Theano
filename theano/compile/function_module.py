@@ -540,7 +540,6 @@ returned directly?"""
                 if key not in maker.fgraph.outputs:
                     new_storage_map[memo[key]] = storage_map[key]
 
-            
             input_storage = []
             for in_ori, in_cpy in zip(maker.inputs, ins):
                 # Since we reuse original Out instances, the copied In
