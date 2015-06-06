@@ -518,11 +518,11 @@ returned directly?"""
         if not share_memory:
             return self.__copy__()
         else:
-            # copy SymbolocKits
-            ins, outs = copy.deepcopy([self.maker.inputs, self.maker.outputs])
+            maker = self.maker
+            # copy Ins, so that they have different storage as their value
+            ins = copy.deepcopy(maker.inputs)
 
             # copy fgraph and get memo
-            maker = self.maker
             fg_cpy, memo = maker.fgraph.clone_get_equiv(attach_feature=False)
 
             # construct new storage_map that map new variable to old storage
@@ -540,9 +540,17 @@ returned directly?"""
                 if key not in maker.fgraph.outputs:
                     new_storage_map[memo[key]] = storage_map[key]
 
-            # copy input storages if it's mutable
+            
             input_storage = []
             for in_ori, in_cpy in zip(maker.inputs, ins):
+                # Since we reuse original Out instances, the copied In
+                # instances should use the original variabls as their variables
+                # and updates. Otherwise the compilation will fail at function
+                # FunctionMaker._check_unused_inputs()
+                in_cpy.variable = in_ori.variable
+                in_cpy.update = in_ori.update
+
+                # share input storages if it's immutable
                 is_const = isinstance(in_ori.variable, theano.tensor.Constant)
                 if is_const or not in_ori.mutable:
                     storage = getattr(in_ori, 'value', None)
@@ -552,7 +560,8 @@ returned directly?"""
                 input_storage.append(storage)
 
             # reinitialize new maker and create new function
-            return maker.__class__(inputs=ins, outputs=outs, fgraph=fg_cpy,
+            return maker.__class__(inputs=ins, outputs=maker.outputs,
+                                   fgraph=fg_cpy,
                                    mode=maker.mode, profile=maker.profile,
                                    on_unused_input=maker.on_unused_input,
                                    function_builder=maker.function_builder,
