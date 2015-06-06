@@ -597,9 +597,12 @@ class MergeOptimizer(Optimizer):
                 # doing the full cycle check. The full cycle check is
                 # skipped by validate() if the graph don't contain
                 # destroyers.
-                node = pairs[0][0]
+                var = pairs[0][0]
                 candidate = pairs[0][1]
-                if node.owner and candidate.owner:
+                if (not hasattr(var, 'fgraph') or
+                        not hasattr(candidate, 'fgraph')):
+                    continue
+                if var.owner and candidate.owner:
                     node = node.owner
                     candidate = candidate.owner
                     inputs_match = all(node_in is cand_in

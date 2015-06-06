@@ -402,6 +402,7 @@ class FunctionGraph(utils.object2):
                  if var.clients]):
 
                 self.variables.remove(variable)
+                del variable.fgraph
 
     def __prune__(self, apply_node, reason=None):
         """Always called on owner of pruned variable from the graph.
