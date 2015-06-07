@@ -5091,7 +5091,7 @@ def test_compute_test_value_grad_cast():
         w = theano.shared(numpy.random.randn(4, 3).astype(floatX), name='w')
 
         outputs, _ = theano.scan(lambda i, h, w: (theano.dot(h[i], w), i),
-                                 outputs_info=[None, 0L], non_sequences=[h, w],
+                                 outputs_info=[None, 0], non_sequences=[h, w],
                                  n_steps=3)
 
         theano.grad(outputs[0].sum(), w)
