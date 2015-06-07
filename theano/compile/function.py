@@ -1,7 +1,5 @@
 """Define the `function` function
 """
-__docformat__ = "restructuredtext en"
-
 import six.moves.cPickle as pickle
 import logging
 

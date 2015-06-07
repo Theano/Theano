@@ -571,7 +571,8 @@ def as_op(itypes, otypes, infer_shape=None):
     itypes = list(itypes)
     otypes = list(otypes)
 
-    if infer_shape is not None and not isinstance(infer_shape, collections.Callable):
+    if infer_shape is not None and not isinstance(infer_shape,
+                                                  collections.Callable):
         raise TypeError("infer_shape needs to be a callable")
 
     def make_op(fn):

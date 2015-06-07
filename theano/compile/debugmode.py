@@ -20,8 +20,7 @@ from theano import gof
 from theano.compat import get_unbound_function
 from six import string_types, iteritems, itervalues
 from six.moves import StringIO, xrange
-from theano.gof import (FunctionGraph, graph, utils, link,
-                        ops_with_inner_function)
+from theano.gof import (graph, utils, link, ops_with_inner_function)
 from theano.gof.link import raise_with_op
 from theano.configparser import (config, AddConfigVar, BoolParam, IntParam,
                                  StrParam)
