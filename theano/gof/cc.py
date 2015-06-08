@@ -1765,6 +1765,8 @@ class CLinker(link.Linker):
             """ % locals()
         args = ["storage_%s" % self.r2symbol[variable] for variable
                 in utils.uniq(self.outputs)]
+        for var, name in zip(utils.uniq(self.outputs), args):
+            mapping_str += "// %(var)s->%(name)s\n" % locals()
         if sys.platform != "win32":
             for name in args:
                 out_print += """
