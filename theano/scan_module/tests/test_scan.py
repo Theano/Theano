@@ -4580,7 +4580,7 @@ class T_Scan_Cuda(unittest.TestCase, ScanGpuTests):
         # graph, detect the inconsistencies and raise a TypeError
         folder = os.path.dirname(os.path.abspath(__file__))
         path = os.path.join(folder, "inconsistent_scan.pkl")
-        assert_raises(TypeError, cPickle.load, open(path, "r"))
+        assert_raises(TypeError, pickle.load, open(path, "r"))
 
     def test_consistent_inner_fct(self):
         # Test that scan does not falsely detect inconsistencies in a valid
@@ -4589,7 +4589,7 @@ class T_Scan_Cuda(unittest.TestCase, ScanGpuTests):
         rs = theano.sandbox.rng_mrg.MRG_RandomStreams(use_cuda=True)
         output, _ = theano.scan(lambda : rs.uniform((3,), dtype="float32"),
                                 n_steps=3)
-        cPickle.loads(cPickle.dumps(output))
+        pickle.loads(pickle.dumps(output))
 
         # Also ensure that, after compilation, the Scan has been moved
         # on the gpu
