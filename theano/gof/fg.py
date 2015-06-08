@@ -482,7 +482,7 @@ class FunctionGraph(utils.object2):
             verbose = config.optimizer_verbose
         if verbose:
             print(reason, r, new_r)
-        if r.fgraph is not self:
+        if hasattr(r, 'fgraph') and r.fgraph is not self:
             raise Exception("Cannot replace %s because it does not belong "
                             "to this FunctionGraph" % r, str(reason))
         if r.type != new_r.type:
