@@ -1,6 +1,9 @@
 import os
 import pickle
+import sys
 import unittest
+
+from nose.plugins.skip import SkipTest
 
 import theano
 from theano.compat.six import PY3
@@ -34,6 +37,8 @@ class TFunctionGraph(unittest.TestCase):
 
         This test run the pickle that reproduce this case.
         """
+        if sys.version_info[:2] < (2, 7):
+            raise SkipTest("This test need python 2.7 or more recent.")
         with open(os.path.join(os.path.dirname(__file__),
                                'test_fg_old_crash.pkl'),
                   'rb') as f:
