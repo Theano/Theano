@@ -1,0 +1,107 @@
+
+Compiling and Using Theano functions as shared libraries
+========================================================
+
+First one important note: this functionality is experimental, so not every
+features works, and some may not work as you expected.
+
+This functionality was only be tested on CPU code on a Linux machine.
+
+For now, shared variables not works.
+
+Clearly every node of function that you want to use as shared library must
+have a C implementation.
+ 
+To compile a function as shared library, you must use the CLinker with the the
+parameter c_callable=True:
+
+linker = theano.gof.CLinker(c_callable=True)
+mode = theano.Mode(linker=linker)
+f = theano.function(inputs, outputs , mode=mode)
+
+The shared library is build in a specific temp directory, in the Theano cache
+directory. To know in which directory, you can call print the fn.name
+property of the function
+
+print f.fn.filename
+
+In this directory you find the .so library, the header file, a makefile and a
+exe.cpp which can be used as template to build your application. There is also
+a exec.h in which you find the command used to build the library.
+
+Let's walk through an example to see how use the shared library.
+
+Build the shared library for the function in function.py:
+
+python function.py
+
+the outputs show you where Theano puts the library. To see if everything
+works correctly go in that directory and launch the exec executable. You must
+get:
+
+After import numpy (hexvalue)
+after import_array1()
+after cinit()
+run() from the shared library returned=0
+[[  0.   2.   4.   6.]
+ [  8.  10.  12.  14.]
+ [ 16.  18.  20.  22.]]
+[ 20.  23.  26.  29.]
+main end, before Py_Finalize
+
+Please note that, in general case, the exec can give some errors for generic
+functions because it makes some assumption on the data the can be wrong. Take
+it as a simple template. 
+
+Theano compiles the function as a C++ class with variables mapped to internal
+variables. To run the function you initialized the class calling the cinit
+function. Then pass the values of inputs variables as numpy array and call the
+run method. If there is no errors you can get the outputs values from C++
+class.
+To C++ class variable must be set and get using the PyList_SetItem and
+PyList_GET_ITEM respectively.
+
+Open the exec.cpp with your preferred editor. After the includes  you find a
+comment with the mapping between the function variables and class variables
+that you can use to set inputs and get outputs.
+In main Python is initialized e numpy is imported. After the C++ is
+initialized calling the  cinit function, you find the can find the defintion
+of two numpy arrays and how they are set as function inputs. Then the run
+method is called and the outputs values are return if there are no errors.
+
+One thing you can do to better understand how code work, is to change the
+inputs values. As an example you can delete from 35 to 52 and substitute them
+with;
+
+npy_intp dims[2]={2,5};
+PyObject* V7=PyArray_SimpleNew(2,dims,NPY_FLOAT64);
+npy_float64 *V7_ptr =(npy_float64 *)PyArray_DATA((PyArrayObject*)V7);
+for(int i=0; i<10; i++)
+    V7_ptr[i]=i;
+ 
+PyList_SetItem(struct_ptr->storage_V7, 0, V7);
+  
+npy_intp dims2[1]={2};
+PyObject* V13=PyArray_SimpleNew(1,dims2,NPY_FLOAT64);
+npy_float64 *V13_ptr =(npy_float64 *)PyArray_DATA((PyArrayObject*)V13);
+for(int i=0; i<2; i++)
+     V13_ptr[i]=i;        
+
+PyList_SetItem(struct_ptr->storage_V13, 0, V13);
+
+Now x is a 2x5 matrix with all entries equal to one, and y is [1,2]. Now you
+can recompile exec with 
+
+make exec
+
+
+There are differents way to intialize numpy vectors with yours values, using numpy C api (http://docs.scipy.org/doc/numpy/reference/c-api.html) or using something like BoostNumpy (https://github.com/ndarray/Boost.NumPy).
+
+
+
+
+
+
+  
+
+
