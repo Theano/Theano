@@ -1773,6 +1773,7 @@ class CLinker(link.Linker):
                 //PyList_GET_ITEM return a borrowed reference
                 PyObject *tmp_%(name)s=PyList_GET_ITEM(struct_ptr->%(name)s, 0);
                 PyObject_Print(tmp_%(name)s, stdout, Py_PRINT_RAW);
+                printf("\\n");
                 """ % locals()
         else:
             # On Windows, when the python is compiled with a different run time
@@ -1821,12 +1822,12 @@ int main(int argc, char *argv[]) {
      Py_CLEAR(str_err);
    }
  }else{
-   printf("cinit() failed!");
+   printf("cinit() failed!\\n");
    return 1;
  }
  delete struct_ptr;
 
- printf("\\nmain end, before Py_Finalize\\n");
+ printf("main end, before Py_Finalize\\n");
  Py_Finalize();
  return run_ret;
 }
