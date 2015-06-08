@@ -184,11 +184,6 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
         kern = kern[:, :, ::kern_stride[0], ::kern_stride[1]]
         npy_kern = npy_kern[:, :, ::kern_stride[0], ::kern_stride[1]]
 
-    t2 = None
-
-    t0 = time.time()
-    cpuval = py_conv(npy_img, npy_kern, mode, subsample)
-    t1 = time.time()
     i = cuda.CudaNdarrayType(
         broadcastable=[sh == 1 for sh in npy_img.shape])()
     k = cuda.CudaNdarrayType(
@@ -198,21 +193,28 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
                                           version=version,
                                           verbose=verbose,
                                           kshp=compile_kshp)(i, k)
-    assert [(sh == 1) is br for
-            sh, br in zip(cpuval.shape[:2], op.type.broadcastable[:2])]
     f = theano.function([i, k], op, mode=theano_mode)
     if cls is not None:
         assert any([isinstance(node.op, cls)
                     for node in f.maker.fgraph.toposort()]), "Cannot find class %r in %r" % (cls, f.maker.fgraph.toposort())
-    gpuval = f(img, kern)
     t2 = time.time()
+    gpuval = f(img, kern)
+    t3 = time.time()
     for i in range(nb_iter):
         gpuval2 = f(img, kern)
         assert (numpy.asarray(gpuval) == numpy.asarray(gpuval2)).all()
     gpuval = numpy.asarray(gpuval)
+
+    # CPU val computed after GPU val to get the GPU errors.
+    t0 = time.time()
+    cpuval = py_conv(npy_img, npy_kern, mode, subsample)
+    t1 = time.time()
+
     assert gpuval.shape == cpuval.shape, ("shape mismatch", gpuval.shape, cpuval.shape)
     assert_allclose(cpuval, gpuval, rtol=rtol, atol=atol)
     assert numpy.all(numpy.isfinite(gpuval)), gpuval
+    assert [(sh == 1) is br for
+            sh, br in zip(cpuval.shape[:2], op.type.broadcastable[:2])]
 
     if (t2 is not None):
         if mode == 'valid':
@@ -222,7 +224,7 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
                          kshape[3] * ishape[2] * ishape[3] * 2)
         approx_fp /= 1e6
         cpu_mflops = approx_fp / (t1 - t0)
-        gpu_mflops = approx_fp / (t2 - t1)
+        gpu_mflops = approx_fp / (t3 - t2)
         if verbose > 0:
             print('%15s' % str(ishape), '%15s' % str(kshape), end=' ', file=sys.stdout)
             print('%12.5f  %7.2f %7.2f %7.1f' % (approx_fp,
@@ -408,6 +410,16 @@ def test_dnn_valid():
         raise SkipTest(cuda.dnn.dnn_available.msg)
     for t in _test_valid(DnnBase, mode=theano_mode.including("cudnn")):
         yield t
+
+
+def test_dnn_valid_err():
+    try:
+        _params_allgood((1, 2, 4, 4), (1, 1, 2, 2), 'valid',
+                        theano_mode=theano_mode.including("cudnn"),
+                        cls=DnnBase)
+        assert "Shape error not raised"
+    except ValueError:
+        pass
 
 
 def test_default_conv():
