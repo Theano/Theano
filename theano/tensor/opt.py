@@ -233,7 +233,8 @@ def inplace_elemwise_optimizer_op(OP):
 
         for node in list(graph.io_toposort(fgraph.inputs, fgraph.outputs)):
             op = node.op
-            if not isinstance(op, OP):
+            # gpuarray GpuElemwise inherit from Elemwise
+            if not type(op) == OP:
                 continue
             baseline = op.inplace_pattern
             protected_inputs = [
