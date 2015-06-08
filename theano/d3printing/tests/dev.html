@@ -92,10 +92,8 @@
 		var graph = {};
 		var nodes = [];
 		var edges = [];
-		// d3.text(path, function(dotGraphDef) {
-
-      var dotGraphDef = '%% DOT_GRAPH %%';
-			dotGraph = graphlibDot.parse(dotGraphDef);
+		d3.text(path, function(data) {
+			dotGraph = graphlibDot.parse(data);
 			
 			// Calculate width and height
 			var posMax = [0, 0];
@@ -275,7 +273,7 @@
 			
 			// Start force layout
 			layout.start();	
-		// });
+		});
 	</script>
 </body>
 </html>

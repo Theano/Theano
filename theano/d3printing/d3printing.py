@@ -51,8 +51,6 @@ def d3print(fct, outfile=None, return_html=False, print_message=True,
     f.close()
     replace = {
         '%% DOT_GRAPH %%': dot_graph,
-        '%% WIDTH %%': width,
-        '%% HEIGHT %%': height
     }
     html = replace_patterns(template, replace)
 
