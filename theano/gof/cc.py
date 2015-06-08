@@ -1821,12 +1821,12 @@ int main(int argc, char *argv[]) {
      Py_CLEAR(str_err);
    }
  }else{
-   printf("cinit() failed!\\n");
+   printf("cinit() failed!");
    return 1;
  }
  delete struct_ptr;
 
- printf("main end, before Py_Finalize\\n");
+ printf("\\nmain end, before Py_Finalize\\n");
  Py_Finalize();
  return run_ret;
 }
