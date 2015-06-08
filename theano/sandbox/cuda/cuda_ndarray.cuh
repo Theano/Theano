@@ -3,6 +3,8 @@
 
 #include <algorithm>
 
+#include "theano_mod_helper.h"
+
 // Defines for Python 2/3 compatibility.
 #if PY_MAJOR_VERSION >= 3
 // Py3k treats all ints as longs. This one is not caught by npy_3kcompat.h.
@@ -46,15 +48,15 @@
 #include <cublas_v2.h>
 
 #ifdef _WIN32
-#ifdef _CUDA_NDARRAY_C
-#define DllExport   __declspec( dllexport )
-#else
-#define DllExport   __declspec( dllimport )
-#endif
-#define ALWAYS_INLINE
+# ifdef _CUDA_NDARRAY_C
+#  define DllExport   __declspec( dllexport )
+# else
+#  define DllExport   __declspec( dllimport )
+# endif
+# define ALWAYS_INLINE
 #else //else _WIN32
-#define DllExport
-#define ALWAYS_INLINE __attribute__((always_inline))
+# define DllExport  MOD_PUBLIC
+# define ALWAYS_INLINE __attribute__((always_inline))
 #endif
 
 typedef float real;
