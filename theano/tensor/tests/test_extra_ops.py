@@ -2,8 +2,8 @@ from nose.plugins.attrib import attr
 import numpy as np
 import numpy
 import unittest
-
 import theano
+
 from theano.tests import unittest_tools as utt
 
 from theano.tensor.extra_ops import (CumsumOp, cumsum, CumprodOp, cumprod,
@@ -661,3 +661,66 @@ def test_to_one_hot():
          [0., 0., 0., 1., 0., 0., 0., 0., 0., 0.],
          [0., 0., 0., 0., 0., 1., 0., 0., 0., 0.],
          [0., 0., 0., 0., 0., 0., 1., 0., 0., 0.]])
+
+class test_Unique(utt.InferShapeTester):
+    
+    def setUp(self):
+        super(test_Unique, self).setUp()
+        self.op_class = Unique
+        self.ops = [Unique(), Unique(True), Unique(True, True), 
+					Unique(False, True)]#, Unique(True, True, True)]
+        
+    def test_basic_vector(self):           
+        """
+        Basic test for a vector.
+        Done by using the op and checking that it returns the right answer.
+        """
+        x = theano.tensor.vector()
+        inp = np.asarray([2,1,3,2], dtype=config.floatX)
+        list_outs_expected = [[[1., 2., 3.]],
+                              [[1., 2., 3.], [1, 0, 2]],
+                              [[1., 2., 3.], [1, 0, 2], [1, 0, 2, 1]],
+                              [[1., 2., 3.], [1, 0, 2, 1]]]
+        for op, outs_expected in zip(self.ops, list_outs_expected) :
+            f = theano.function(inputs=[x], outputs=op(x, return_list=True))
+            outs = f(inp)
+            print outs
+            # Compare the result computed to the expected value.
+            for out, out_exp in zip(outs, outs_expected):
+                print out
+                print out_exp
+                utt.assert_allclose(out, out_exp)
+        
+    def test_basic_matrix(self):            
+        """ Basic test for a matrix.
+        Done by using the op and checking that it returns the right answer.
+        """
+        x = theano.tensor.matrix()
+        inp = np.asarray([[2, 1], [3, 2], [2, 3]], dtype=config.floatX)
+        list_outs_expected = [[[1., 2., 3.]],
+                              [[1., 2., 3.], [1, 0, 2]],
+                              [[1., 2., 3.], [1, 0, 2], [1, 0, 2, 1, 1, 2]],
+                              [[1., 2., 3.], [1, 0, 2, 1, 1, 2]]]
+        for op, outs_expected in zip(self.ops, list_outs_expected):
+            f = theano.function(inputs=[x], outputs=op(x, return_list=True))
+            outs = f(inp)
+            print outs
+            # Compare the result computed to the expected value.
+            for out, out_exp in zip(outs, outs_expected):
+                print out
+                print out_exp
+                utt.assert_allclose(out, out_exp)
+        
+    def test_infer_shape_vector(self):                  
+        """ 
+        Testing the infer_shape with a vector.
+        """ 
+        # TODO
+       	pass
+        
+    def test_infer_shape_matrix(self):                  
+        """ 
+        Testing the infer_shape with a vector.
+        """ 
+        # TODO
+        pass
