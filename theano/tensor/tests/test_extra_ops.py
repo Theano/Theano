@@ -668,7 +668,7 @@ class test_Unique(utt.InferShapeTester):
         super(test_Unique, self).setUp()
         self.op_class = Unique
         self.ops = [Unique(), Unique(True), Unique(True, True), 
-					Unique(False, True)]#, Unique(True, True, True)]
+                    Unique(False, True)]#, Unique(True, True, True)]
         
     def test_basic_vector(self):           
         """
@@ -716,7 +716,7 @@ class test_Unique(utt.InferShapeTester):
         Testing the infer_shape with a vector.
         """ 
         # TODO
-       	pass
+        pass
         
     def test_infer_shape_matrix(self):                  
         """ 
