@@ -1031,14 +1031,11 @@ class Unique(theano.Op):
         outputs.append(output0)
         typ = basic.TensorType(broadcastable=[False], dtype='int64')
         if self.return_index :
-            output1 = typ()
-            outputs.append(output1)
+            outputs.append(typ())
         if self.return_inverse :
-            output2 = typ()
-            outputs.append(output2)
+            outputs.append(typ())
         if self.return_counts :
-            output3 = typ()
-            outputs.append(output3)
+            outputs.append(typ())
             
         return theano.Apply(self, [x], outputs)
 

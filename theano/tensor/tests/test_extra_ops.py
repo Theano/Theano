@@ -667,8 +667,16 @@ class test_Unique(utt.InferShapeTester):
     def setUp(self):
         super(test_Unique, self).setUp()
         self.op_class = Unique
-        self.ops = [Unique(), Unique(True), Unique(True, True), 
-                    Unique(False, True)]#, Unique(True, True, True)]
+        self.ops = [Unique(), 
+                    Unique(True), 
+                    Unique(False, True), 
+                    Unique(True, True)]
+        if np.__version__ >= "1.9.0" :
+            self.ops.extend([
+                        Unique(False, False, True), 
+                        Unique(True, False, True), 
+                        Unique(False, True, True), 
+                        Unique(True, True, True)])
         
     def test_basic_vector(self):           
         """
@@ -677,10 +685,16 @@ class test_Unique(utt.InferShapeTester):
         """
         x = theano.tensor.vector()
         inp = np.asarray([2,1,3,2], dtype=config.floatX)
-        list_outs_expected = [[[1., 2., 3.]],
-                              [[1., 2., 3.], [1, 0, 2]],
-                              [[1., 2., 3.], [1, 0, 2], [1, 0, 2, 1]],
-                              [[1., 2., 3.], [1, 0, 2, 1]]]
+        list_outs_expected = [[np.unique(inp)], 
+                              np.unique(inp, True), 
+                              np.unique(inp, False, True), 
+                              np.unique(inp, True, True)]
+        if np.__version__ >= "1.9.0" :
+            list_outs_expected.extend([
+                                np.unique(inp, False, False, True), 
+                                np.unique(inp, True, False, True), 
+                                np.unique(inp, False, True, True), 
+                                np.unique(inp, True, True, True)])
         for op, outs_expected in zip(self.ops, list_outs_expected) :
             f = theano.function(inputs=[x], outputs=op(x, return_list=True))
             outs = f(inp)
@@ -697,10 +711,16 @@ class test_Unique(utt.InferShapeTester):
         """
         x = theano.tensor.matrix()
         inp = np.asarray([[2, 1], [3, 2], [2, 3]], dtype=config.floatX)
-        list_outs_expected = [[[1., 2., 3.]],
-                              [[1., 2., 3.], [1, 0, 2]],
-                              [[1., 2., 3.], [1, 0, 2], [1, 0, 2, 1, 1, 2]],
-                              [[1., 2., 3.], [1, 0, 2, 1, 1, 2]]]
+        list_outs_expected = [[np.unique(inp)],
+                              np.unique(inp, True),
+                              np.unique(inp, False, True),
+                              np.unique(inp, True, True)]
+        if np.__version__ >= "1.9.0" :
+            list_outs_expected.extend([
+                                np.unique(inp, False, False, True),
+                                np.unique(inp, True, False, True),
+                                np.unique(inp, False, True, True),
+                                np.unique(inp, True, True, True)])                                       
         for op, outs_expected in zip(self.ops, list_outs_expected):
             f = theano.function(inputs=[x], outputs=op(x, return_list=True))
             outs = f(inp)
@@ -715,12 +735,22 @@ class test_Unique(utt.InferShapeTester):
         """ 
         Testing the infer_shape with a vector.
         """ 
-        # TODO
-        pass
+        x = theano.tensor.vector()
+        for op in self.ops :
+            self._compile_and_check([x],  
+                                    [op(x)], 
+                                    [np.asarray(np.array([2,1,3,2]),
+                                                dtype=config.floatX)],
+                                    self.op_class)
         
     def test_infer_shape_matrix(self):                  
         """ 
         Testing the infer_shape with a vector.
         """ 
-        # TODO
-        pass
+        x = theano.tensor.matrix()
+        self._compile_and_check([x],  
+                                [self.op(x)], 
+                                [np.asarray(np.array([[2, 1], [3, 2],[2, 3]]),
+                                            dtype=config.floatX)],
+                                self.op_class)
+
