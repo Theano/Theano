@@ -402,6 +402,8 @@ class FunctionGraph(utils.object2):
                  if var.clients]):
 
                 self.variables.remove(variable)
+                # This allow to quickly know if a var is still in the fgraph
+                # or not.
                 del variable.fgraph
 
     def __prune__(self, apply_node, reason=None):
