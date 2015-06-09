@@ -3322,6 +3322,69 @@ class T_Scan(unittest.TestCase):
                 if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         assert len(lssc) == 0
 
+    def test_oinp_iinp_iout_oout_mappings(self):
+        # Test the mapping produces by
+        # ScanOp.get_oinp_iinp_iout_oout_mappings()
+
+        rng = theano.tensor.shared_randomstreams.RandomStreams(123)
+
+        def inner_fct(seq, mitsot, sitsot, nitsot, nseq):
+            random_scalar = rng.uniform((1,))[0]
+            total = seq + mitsot + sitsot + nitsot + nseq + random_scalar
+            return total, total, total
+
+        # Assemble a scan with one sequence, one mitsot, one sitsot, one nitsot
+        # a non-sequence and a random state to test the mappings.
+        seq = [tensor.vector()]
+        non_seq = [tensor.scalar()]
+        outputs_info = [dict(initial=tensor.vector(), taps=[-3, -1]),
+                        tensor.scalar(), None]
+
+        scan_outputs, _ = theano.scan(fn=inner_fct, sequences=seq,
+                                      outputs_info=outputs_info,
+                                      non_sequences=non_seq)
+
+        # Compare the mappings with the expected values
+        scan_node = scan_outputs[0].owner.inputs[0].owner
+        mappings = scan_node.op.var_mappings
+
+        assert mappings['inner_inp_from_outer_inp'] == {0 : [], 1 : [0],
+                                                        2 : [1, 2], 3 : [3],
+                                                        4 : [4], 5 : [],
+                                                        6 : [5]}
+        assert mappings['inner_out_from_outer_inp'] == {0 : [], 1 : [],
+                                                        2 : [0], 3 : [1],
+                                                        4 : [3], 5 : [2],
+                                                        6 : []}
+        assert mappings['outer_out_from_outer_inp'] == {0 : -1, 1 : -1,
+                                                        2 : 0, 3 : 1,
+                                                        4 : 3, 5 : 2,
+                                                        6 : -1}
+
+        assert mappings['outer_inp_from_inner_inp'] == {0 : 1, 1 : 2,
+                                                        2 : 2, 3 : 3,
+                                                        4 : 4, 5 : 6}
+        assert mappings['inner_out_from_inner_inp'] == {0 : [], 1 : [0],
+                                                        2 : [0], 3 : [1],
+                                                        4 : [3], 5 : []}
+        assert mappings['outer_out_from_inner_inp'] == {0 : -1, 1 : 0,
+                                                        2 : 0, 3 : 1,
+                                                        4 : 3, 5 : -1}
+
+        assert mappings['outer_inp_from_inner_out'] == {0 : 2, 1 : 3,
+                                                        2 : 5, 3 : 4}
+        assert mappings['inner_inp_from_inner_out'] == {0 : [1, 2], 1 : [3],
+                                                        2 : [], 3 : [4]}
+        assert mappings['outer_out_from_inner_out'] == {0 : 0, 1 : 1,
+                                                        2 : 2, 3 : 3}
+
+        assert mappings['outer_inp_from_outer_out'] == {0 : 2, 1 : 3,
+                                                        2 : 5, 3 : 4}
+        assert mappings['inner_inp_from_outer_out'] == {0 : [1, 2], 1 : [3],
+                                                        2 : [], 3 : [4]}
+        assert mappings['inner_out_from_outer_out'] == {0 : [0], 1 : [1],
+                                                        2 : [2], 3 : [3]}
+
     def test_grad_duplicate_outputs(self):
         # This test validates that taking the gradient of a scan, in which
         # multiple outputs are the same theano variable, works.
