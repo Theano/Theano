@@ -1930,7 +1930,7 @@ class Scan(PureOp):
         dC_dXtm1s = []
         for pos, x in enumerate(dC_dinps_t[self.n_seqs:]):
 
-            # Get the index of the first outer input corresponding to the
+            # Get the index of the first inner input corresponding to the
             # pos-ieth inner input state
             idxs = self.get_inner_oidx_from_inner_iidx_seq()[self.n_seqs +
                                                              pos]
