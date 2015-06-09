@@ -413,13 +413,9 @@ def test_dnn_valid():
 
 
 def test_dnn_valid_err():
-    try:
-        _params_allgood((1, 2, 4, 4), (1, 1, 2, 2), 'valid',
-                        theano_mode=theano_mode.including("cudnn"),
-                        cls=DnnBase)
-        assert "Shape error not raised"
-    except ValueError:
-        pass
+    assert_raises(ValueError, _params_allgood, (1, 2, 4, 4), (1, 1, 2, 2),
+                  'valid', theano_mode=theano_mode.including("cudnn"),
+                  cls=DnnBase)
 
 
 def test_default_conv():
