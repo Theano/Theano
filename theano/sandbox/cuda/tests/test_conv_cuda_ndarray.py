@@ -413,6 +413,8 @@ def test_dnn_valid():
 
 
 def test_dnn_valid_err():
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
     assert_raises(ValueError, _params_allgood, (1, 2, 4, 4), (1, 1, 2, 2),
                   'valid', theano_mode=theano_mode.including("cudnn"),
                   cls=DnnBase)
