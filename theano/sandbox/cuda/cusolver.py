@@ -3,16 +3,24 @@ import theano
 from theano.sandbox.cuda import (CudaNdarrayType, as_cuda_ndarray_variable,
                                  GpuOp, cuda_ndarray, CudaNdarray)
 from theano.tensor import reshape
-from scikits.cuda.cusolver import (_libcusolver, cusolverDnCreate,
-                                   cusolverCheckStatus)
+try:
+    from scikits.cuda.cusolver import (_libcusolver, cusolverDnCreate,
+                                       cusolverCheckStatus)
+    cusolver_available = True
+except Exception:
+    cusolver_available = False
+
 dimshuffle = cuda_ndarray.cuda_ndarray.dimshuffle
 
-# Creating handle is costly, so re-use it for all ops
-# NOTE We don't destroy it using cusolverDnDestroy
-handle = cusolverDnCreate()
+
+class CuSolverOp(GpuOp):
+    def make_thunk(self, *args, **kwargs):
+        if not cusolver_available:
+            raise RuntimeError('cuSOLVER not available')
+        return self._make_thunk(*args, **kwargs)
 
 
-class GpuGeqrf(GpuOp):
+class GpuGeqrf(CuSolverOp):
     __props__ = ()
 
     def output_type(self, inp):
@@ -27,7 +35,7 @@ class GpuGeqrf(GpuOp):
 
         return theano.Apply(self, [inp], self.output_type(inp))
 
-    def make_thunk(self, node, storage_map, _, no_recycling=[]):
+    def _make_thunk(self, node, storage_map, _, no_recycling=[]):
         inputs = [storage_map[v] for v in node.inputs]
         outputs = [storage_map[v] for v in node.outputs]
 
@@ -57,37 +65,40 @@ class GpuGeqrf(GpuOp):
 geqrf = GpuGeqrf()
 
 
-_libcusolver.cusolverDnSgeqrf.restype = int
-_libcusolver.cusolverDnSgeqrf.argtypes = [ctypes.c_void_p,
-                                          ctypes.c_int,
-                                          ctypes.c_int,
-                                          ctypes.c_void_p,
-                                          ctypes.c_int,
-                                          ctypes.c_void_p,
-                                          ctypes.c_void_p,
-                                          ctypes.c_int,
-                                          ctypes.c_void_p]
+if cusolver_available:
+    # Creating handle is costly, so re-use it for all ops
+    # NOTE We don't destroy it using cusolverDnDestroy
+    handle = cusolverDnCreate()
 
+    _libcusolver.cusolverDnSgeqrf.restype = int
+    _libcusolver.cusolverDnSgeqrf.argtypes = [ctypes.c_void_p,
+                                              ctypes.c_int,
+                                              ctypes.c_int,
+                                              ctypes.c_void_p,
+                                              ctypes.c_int,
+                                              ctypes.c_void_p,
+                                              ctypes.c_void_p,
+                                              ctypes.c_int,
+                                              ctypes.c_void_p]
 
-def cusolverDnSgeqrf(handle, m, n, A, lda, TAU, Work, Lwork, devInfo):
-    status = _libcusolver.cusolverDnSgeqrf(handle, m, n, int(A), lda,
-                                           int(TAU), int(Work),
-                                           Lwork, int(devInfo))
-    cusolverCheckStatus(status)
+    def cusolverDnSgeqrf(handle, m, n, A, lda, TAU, Work, Lwork, devInfo):
+        status = _libcusolver.cusolverDnSgeqrf(handle, m, n, int(A), lda,
+                                               int(TAU), int(Work),
+                                               Lwork, int(devInfo))
+        cusolverCheckStatus(status)
 
+    _libcusolver.cusolverDnSgeqrf_bufferSize.restype = int
+    _libcusolver.cusolverDnSgeqrf_bufferSize.argtypes = [ctypes.c_void_p,
+                                                         ctypes.c_int,
+                                                         ctypes.c_int,
+                                                         ctypes.c_void_p,
+                                                         ctypes.c_int,
+                                                         ctypes.c_void_p]
 
-_libcusolver.cusolverDnSgeqrf_bufferSize.restype = int
-_libcusolver.cusolverDnSgeqrf_bufferSize.argtypes = [ctypes.c_void_p,
-                                                     ctypes.c_int,
-                                                     ctypes.c_int,
-                                                     ctypes.c_void_p,
-                                                     ctypes.c_int,
-                                                     ctypes.c_void_p]
-
-
-def cusolverDnSgeqrf_bufferSize(handle, m, n, A, lda):
-    Lwork = ctypes.c_int()
-    status = _libcusolver.cusolverDnSgeqrf_bufferSize(handle, m, n, int(A),
-                                                      lda, ctypes.byref(Lwork))
-    cusolverCheckStatus(status)
-    return Lwork.value
+    def cusolverDnSgeqrf_bufferSize(handle, m, n, A, lda):
+        Lwork = ctypes.c_int()
+        status = _libcusolver.cusolverDnSgeqrf_bufferSize(handle, m, n, int(A),
+                                                          lda,
+                                                          ctypes.byref(Lwork))
+        cusolverCheckStatus(status)
+        return Lwork.value
