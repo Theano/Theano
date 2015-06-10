@@ -1,7 +1,10 @@
 import numpy
 from nose.plugins.skip import SkipTest
 from numpy.testing import assert_allclose
-from scipy.linalg.lapack import dgeqrf
+try:
+    from scipy.linalg.lapack import dgeqrf
+except ImportError:
+    raise SkipTest('SciPy not available')
 
 import theano
 from theano.sandbox.cuda.cusolver import geqrf, cusolver_available
