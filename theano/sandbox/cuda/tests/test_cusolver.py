@@ -15,14 +15,10 @@ def test_geqrf():
         dgeqrf_ = theano.function([A_tensor], geqrf(A_tensor))
         qr_, tau_, work_, info_ = dgeqrf_(A)
         qr, tau, work, info = dgeqrf(A)
-        assert_allclose(qr, qr_, 1e-3)
+        assert_allclose(qr, qr_.eval(), 1e-3)
         assert_allclose(tau, tau_, 1e-3)
-        print(m, n, 'correct')
+        assert not info and not numpy.array(info_)
 
     yield assert_geqrf_allclose(10, 10)
     yield assert_geqrf_allclose(20, 10)
     yield assert_geqrf_allclose(10, 20)
-
-
-if __name__ == "__main__":
-    [_ for _ in test_geqrf()]

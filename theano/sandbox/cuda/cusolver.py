@@ -4,9 +4,12 @@ from theano.sandbox.cuda import (CudaNdarrayType, as_cuda_ndarray_variable,
                                  GpuOp, cuda_ndarray, CudaNdarray)
 from theano.tensor import reshape
 from scikits.cuda.cusolver import (_libcusolver, cusolverDnCreate,
-                                   cusolverCheckStatus, cusolverDnDestroy)
-
+                                   cusolverCheckStatus)
 dimshuffle = cuda_ndarray.cuda_ndarray.dimshuffle
+
+# Creating handle is costly, so re-use it for all ops
+# NOTE We don't destroy it using cusolverDnDestroy
+handle = cusolverDnCreate()
 
 
 class GpuGeqrf(GpuOp):
@@ -37,14 +40,12 @@ class GpuGeqrf(GpuOp):
 
             lda = max(1, m)
             TAU = CudaNdarray.zeros((min(m, n),))
-            handle = cusolverDnCreate()
             Lwork = cusolverDnSgeqrf_bufferSize(handle, m, n, A_copy.gpudata,
                                                 lda)
             Work = CudaNdarray.zeros((max(1, Lwork),))
             devInfo = CudaNdarray.zeros((1,))
             cusolverDnSgeqrf(handle, m, n, A_copy.gpudata, lda, TAU.gpudata,
                              Work.gpudata, Lwork, devInfo.gpudata)
-            cusolverDnDestroy(handle)
             outputs[0][0] = reshape(A_copy, (n, m)).dimshuffle((1, 0))
             outputs[1][0] = TAU
             outputs[2][0] = Work
