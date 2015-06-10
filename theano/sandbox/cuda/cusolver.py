@@ -7,8 +7,9 @@ try:
     from scikits.cuda.cusolver import (_libcusolver, cusolverDnCreate,
                                        cusolverCheckStatus)
     cusolver_available = True
-except Exception:
+except (ImportError, OSError):
     cusolver_available = False
+    raise
 
 dimshuffle = cuda_ndarray.cuda_ndarray.dimshuffle
 
