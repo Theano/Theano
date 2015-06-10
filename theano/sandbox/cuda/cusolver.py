@@ -54,7 +54,7 @@ class GpuGeqrf(CuSolverOp):
             A = inputs[0][0]
             m, n = A.shape
             # LAPACK routines expect Fortran order
-            A_T = dimshuffle(A, (1, 0)).reshape((m, n))
+            A_T = dimshuffle(A, (1, 0))
             A_copy = A_T.copy()
 
             lda = max(1, m)
@@ -65,7 +65,7 @@ class GpuGeqrf(CuSolverOp):
             devInfo = CudaNdarray.zeros((1,))
             cusolverDnSgeqrf(handle, m, n, A_copy.gpudata, lda, TAU.gpudata,
                              Work.gpudata, Lwork, devInfo.gpudata)
-            outputs[0][0] = reshape(A_copy, (n, m)).dimshuffle((1, 0))
+            outputs[0][0] = dimshuffle(A_copy, (1, 0))
             outputs[1][0] = TAU
             outputs[2][0] = Work
             outputs[3][0] = devInfo
