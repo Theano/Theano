@@ -198,6 +198,7 @@ def compile_cutils():
     code = ("""
         #include <Python.h>
         #include "numpy/arrayobject.h"
+        #include "theano_mod_helper.h"
 
         extern "C"{
         static PyObject *

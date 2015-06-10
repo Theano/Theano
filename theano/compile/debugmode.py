@@ -1753,6 +1753,14 @@ class _Linker(gof.link.LocalLinker):
             else:
                 thunks_py.append(None)
 
+            if not self.maker.mode.check_c_code and thunks_py[-1] is None:
+                _logger.warn(
+                    "Op %s don't have a perform, forcing check of the c code" %
+                    node.op)
+                thunk = node.op.make_c_thunk(node, storage_map, compute_map,
+                                             no_recycling)
+                thunks_c[-1] = thunk
+
             # If the op defined its own make_thunk, use the generated thunk
             if thunk_other is not None:
                 if thunks_py[-1] is None:
@@ -2090,6 +2098,12 @@ class _Linker(gof.link.LocalLinker):
                     for r in node.inputs:
                         storage_map[r][0] = None
                     _logger.debug("%i - done with node", i)
+                    for r in node.outputs:
+                        if r not in r_vals:
+                            idx = order.index(node)
+                            assert thunks_py[idx] is None
+                            assert thunks_c[idx] is None
+                            raise Exception("No code run for %s" % node)
 
                 if False:
                     # This could be useful to help finding refcount problem.

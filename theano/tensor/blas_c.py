@@ -345,7 +345,7 @@ def use_c_ger(node):
 
 @local_optimizer([CGer(False)])
 def make_c_ger_destructive(node):
-    if node.op == cger_no_inplace:
+    if isinstance(node.op, CGer) and not node.op.destructive:
         return [cger_inplace(*node.inputs)]
 
 
@@ -730,7 +730,9 @@ def check_force_gemv_init():
             f = theano.function(
                 [aa, yy, xx],
                 gemv_no_inplace(aa, 1., xx, yy, 0.),
-                theano.compile.Mode(optimizer='fast_compile')
+                theano.compile.Mode(optimizer='fast_compile').excluding('gpu',
+                                                                        'gpuarray'),
+                profile=False
                 )
         finally:
             theano.config.compute_test_value = tv
@@ -798,7 +800,7 @@ def use_c_gemv(node):
 
 @local_optimizer([CGemv(inplace=False)])
 def make_c_gemv_destructive(node):
-    if node.op == cgemv_no_inplace:
+    if isinstance(node.op, CGemv) and not node.op.inplace:
         return [cgemv_inplace(*node.inputs)]
 
 

@@ -6,6 +6,8 @@ from nose.tools import assert_raises
 import numpy
 
 from theano import config
+from theano.compat import PY3
+from theano.misc.pkl_utils import CompatUnpickler
 from theano.sandbox.cuda import cuda_available
 
 if cuda_available:
@@ -30,16 +32,18 @@ def test_unpickle_cudandarray_as_numpy_ndarray_flag0():
     try:
         testfile_dir = os.path.dirname(os.path.realpath(__file__))
         fname = 'CudaNdarray.pkl'
-        if sys.version_info[0] == 3:
-            fname = 'CudaNdarray_py3.pkl'
 
         with open(os.path.join(testfile_dir, fname), 'rb') as fp:
+            if PY3:
+                u = CompatUnpickler(fp, encoding="latin1")
+            else:
+                u = CompatUnpickler(fp)
             if cuda_available:
-                mat = cPickle.load(fp)
+                mat = u.load()
                 assert isinstance(mat, CudaNdarray)
                 assert numpy.asarray(mat)[0] == -42.0
             else:
-                assert_raises(ImportError, cPickle.load, fp)
+                assert_raises(ImportError, u.load)
 
     finally:
         config.experimental.unpickle_gpu_on_cpu = oldflag
@@ -52,11 +56,13 @@ def test_unpickle_cudandarray_as_numpy_ndarray_flag1():
     try:
         testfile_dir = os.path.dirname(os.path.realpath(__file__))
         fname = 'CudaNdarray.pkl'
-        if sys.version_info[0] == 3:
-            fname = 'CudaNdarray_py3.pkl'
 
         with open(os.path.join(testfile_dir, fname), 'rb') as fp:
-            mat = cPickle.load(fp)
+            if PY3:
+                u = CompatUnpickler(fp, encoding="latin1")
+            else:
+                u = CompatUnpickler(fp)
+            mat = u.load()
 
         assert isinstance(mat, numpy.ndarray)
         assert mat[0] == -42.0

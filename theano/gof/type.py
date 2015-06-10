@@ -548,7 +548,7 @@ class CDataType(Type):
 
     def __eq__(self, other):
         return (type(self) == type(other) and
-                self.ctype == other.ctype,
+                self.ctype == other.ctype and
                 self.freefunc == other.freefunc)
 
     def __hash__(self):

@@ -176,13 +176,18 @@ def default_blas_ldflags():
     yield flags
 
     # Now test it!
-    x = theano.tensor.fmatrix()
     try:
-        theano.function([x], theano.tensor.blas._dot22(x,x),
-                        profile=False)
-    except Exception as e:
-        print(e)
-        yield ""
+        old = config.compute_test_value
+        config.compute_test_value = 'off'
+        x = theano.tensor.fmatrix()
+        try:
+            theano.function([x], theano.tensor.blas._dot22(x, x),
+                            profile=False)
+        except Exception as e:
+            print(e)
+            yield ""
+    finally:
+        config.compute_test_value = old
 
 
 def static_default_blas_flags():

@@ -597,10 +597,13 @@ class MergeOptimizer(Optimizer):
                 # doing the full cycle check. The full cycle check is
                 # skipped by validate() if the graph don't contain
                 # destroyers.
-                node = pairs[0][0]
+                var = pairs[0][0]
                 candidate = pairs[0][1]
-                if node.owner and candidate.owner:
-                    node = node.owner
+                if (not hasattr(var, 'fgraph') or
+                        not hasattr(candidate, 'fgraph')):
+                    continue
+                if var.owner and candidate.owner:
+                    node = var.owner
                     candidate = candidate.owner
                     inputs_match = all(node_in is cand_in
                                        for node_in, cand_in in zip(
@@ -1690,7 +1693,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                  optimizers,
                  failure_callback=None,
                  ignore_newtrees=True,
-                 max_use_ratio=None):
+                 max_use_ratio=None,
+                 final_optimizers=None):
         """ Apply optimizations until equilibrium point.
 
         :param optimizers:  list or set of local or global optimizations to
@@ -1710,6 +1714,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         self.local_optimizers_map = dict()
         self.local_optimizers_all = []
         self.global_optimizers = []
+        self.final_optimizers = []
 
         for opt in optimizers:
             if isinstance(opt, LocalOptimizer):
@@ -1720,6 +1725,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         self.local_optimizers_map.setdefault(c, []).append(opt)
             else:
                 self.global_optimizers.append(opt)
+        if final_optimizers:
+            self.final_optimizers = final_optimizers
         self.max_use_ratio = max_use_ratio
         assert self.max_use_ratio is not None, (
                 'max_use_ratio has to be a number')
@@ -1740,6 +1747,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         for opt in self.get_local_optimizers():
             opt.add_requirements(fgraph)
         for opt in self.global_optimizers:
+            opt.add_requirements(fgraph)
+        for opt in self.final_optimizers:
             opt.add_requirements(fgraph)
 
     def apply(self, fgraph, start_from=None):
@@ -1766,7 +1775,9 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         io_toposort_timing = []
         nb_nodes = []
         node_created = {}
-        for opt in self.global_optimizers + list(self.get_local_optimizers()):
+        for opt in (self.global_optimizers +
+                    list(self.get_local_optimizers()) +
+                    self.final_optimizers):
             global_process_count.setdefault(opt, 0)
             time_opts.setdefault(opt, 0)
             node_created.setdefault(opt, 0)
@@ -1845,6 +1856,27 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             finally:
                 self.detach_updater(fgraph, u)
 
+            # Apply final optimizers
+            t_before_final_opt = time.time()
+            for gopt in self.final_optimizers:
+                change_tracker.reset()
+                nb = change_tracker.nb_imported
+                t_opt = time.time()
+                gopt.apply(fgraph)
+                time_opts[gopt] += time.time() - t_opt
+                if change_tracker.changed:
+                    process_count.setdefault(gopt, 0)
+                    process_count[gopt] += 1
+                    global_process_count[gopt] += 1
+                    changed = True
+                    node_created[gopt] += change_tracker.nb_imported - nb
+                    if global_process_count[gopt] > max_use:
+                        max_use_abort = True
+                        opt_name = (getattr(gopt, "name", None)
+                                    or getattr(gopt, "__name__", ""))
+
+            global_opt_timing[-1] += time.time() - t_before_final_opt
+
             loop_process_count.append(process_count)
             loop_timing.append(float(time.time() - t0))
 
@@ -1912,7 +1944,9 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         not_used = []
         not_used_time = 0
         process_count = {}
-        for o in opt.global_optimizers + list(opt.get_local_optimizers()):
+        for o in (opt.global_optimizers +
+                  list(opt.get_local_optimizers()) +
+                  opt.final_optimizers):
             process_count.setdefault(o, 0)
         for count in loop_process_count:
             for o, v in count.iteritems():
@@ -1950,9 +1984,15 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             prof2[0].get_local_optimizers())
         global_optimizers = set(prof1[0].global_optimizers).union(
             prof2[0].global_optimizers)
+        if len(prof1[0].final_optimizers) > 0 or len(prof2[0].final_optimizers) > 0:
+            final_optimizers = set(prof1[0].final_optimizers).union(
+                prof2[0].final_optimizers)
+        else:
+            final_optimizers = None
         new_opt = EquilibriumOptimizer(
             local_optimizers.union(global_optimizers),
-            max_use_ratio=1)
+            max_use_ratio=1,
+            final_optimizers=final_optimizers)
 
         def merge_list(l1, l2):
             l = copy.copy(l1)

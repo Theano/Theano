@@ -163,6 +163,8 @@ if (GpuKernel_init(&k_%(name)s, c->ops, c->ctx, 1, &bcode, &sz,
 @opt.register_opt()
 @opt.op_lifter([tensor.Dot])
 def local_dot_to_gemm16(node):
+    if nerv is None:
+        return
     A = node.inputs[0]
     B = node.inputs[1]
     if (A.ndim == 2 and B.ndim == 2 and

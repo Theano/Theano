@@ -233,7 +233,8 @@ def inplace_elemwise_optimizer_op(OP):
 
         for node in list(graph.io_toposort(fgraph.inputs, fgraph.outputs)):
             op = node.op
-            if not isinstance(op, OP):
+            # gpuarray GpuElemwise inherit from Elemwise
+            if not type(op) == OP:
                 continue
             baseline = op.inplace_pattern
             protected_inputs = [
@@ -379,7 +380,7 @@ def register_specialize_device(lopt, *tags, **kwargs):
 
 # Register merge_optimizer as a global opt during canonicalize
 compile.optdb['canonicalize'].register(
-        'canon_merge', merge_optimizer, 'fast_run')
+        'canon_merge', merge_optimizer, 'fast_run', final_opt=True)
 
 
 #####################

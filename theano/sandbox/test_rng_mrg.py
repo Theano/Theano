@@ -932,6 +932,57 @@ def test_multMatVect():
     assert numpy.allclose(r_a2, r_b[3:])
 
 
+def test_seed_fn():
+    test_use_cuda = [False]
+    if cuda_available:
+        test_use_cuda.append(True)
+    idx = tensor.ivector()
+    for use_cuda in test_use_cuda:
+        if config.mode == 'FAST_COMPILE' and use_cuda:
+            mode = 'FAST_RUN'
+        else:
+            mode = config.mode
+
+        for new_seed, same in [(234, True), (None, True), (23, False)]:
+            random = MRG_RandomStreams(234, use_cuda=use_cuda)
+            fn1 = theano.function([], random.uniform((2, 2), dtype='float32'),
+                                  mode=mode)
+            fn2 = theano.function([], random.uniform((3, 3), nstreams=2,
+                                                     dtype='float32'),
+                                  mode=mode)
+            fn3 = theano.function([idx],
+                                  random.uniform(idx, nstreams=3, ndim=1,
+                                                 dtype='float32'),
+                                  mode=mode)
+
+            fn1_val0 = fn1()
+            fn1_val1 = fn1()
+            assert not numpy.allclose(fn1_val0, fn1_val1)
+            fn2_val0 = fn2()
+            fn2_val1 = fn2()
+            assert not numpy.allclose(fn2_val0, fn2_val1)
+            fn3_val0 = fn3([4])
+            fn3_val1 = fn3([4])
+            assert not numpy.allclose(fn3_val0, fn3_val1)
+            assert fn1_val0.size == 4
+            assert fn2_val0.size == 9
+
+            random.seed(new_seed)
+
+            fn1_val2 = fn1()
+            fn1_val3 = fn1()
+            fn2_val2 = fn2()
+            fn2_val3 = fn2()
+            fn3_val2 = fn3([4])
+            fn3_val3 = fn3([4])
+            assert numpy.allclose(fn1_val0, fn1_val2) == same
+            assert numpy.allclose(fn1_val1, fn1_val3) == same
+            assert numpy.allclose(fn2_val0, fn2_val2) == same
+            assert numpy.allclose(fn2_val1, fn2_val3) == same
+            assert numpy.allclose(fn3_val0, fn3_val2) == same
+            assert numpy.allclose(fn3_val1, fn3_val3) == same
+
+
 if __name__ == "__main__":
     rng = MRG_RandomStreams(numpy.random.randint(2147462579))
     import time

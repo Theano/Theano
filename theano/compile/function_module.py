@@ -640,7 +640,7 @@ returned directly?"""
             if c.required:
                 c.storage[0] = None
 
-        # if we are allowing garbage collection, remove the input and
+        # if we are allowing garbage collection, remove the
         # output reference from the internal storage cells
         if getattr(self.fn, 'allow_gc', False):
             assert len(self.output_storage) == len(self.maker.fgraph.outputs)

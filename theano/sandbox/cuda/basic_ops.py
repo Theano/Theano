@@ -34,6 +34,13 @@ _logger = logging.getLogger(_logger_name)
 
 
 def as_cuda_ndarray_variable(x):
+    if getattr(x, 'owner', None):
+        if isinstance(x.owner.op, HostFromGpu):
+            return x.owner.inputs[0]
+        elif (isinstance(x.owner.op, GpuFromHost) and
+              x.owner.inputs[0].owner and
+              isinstance(x.owner.inputs[0].owner.op, HostFromGpu)):
+            return x.owner.inputs[0].owner.inputs[0]
     if hasattr(x, '_as_CudaNdarrayVariable'):
         return x._as_CudaNdarrayVariable()
     tensor_x = tensor.as_tensor_variable(x)
@@ -54,7 +61,7 @@ class HostFromGpu(GpuOp):
     Implement the transfer from gpu to the cpu.
     """
     check_input = False
-    
+
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -113,7 +120,7 @@ class GpuFromHost(GpuOp):
     Implement the transfer from cpu to the gpu.
     """
     check_input = False
-    
+
     def __eq__(self, other):
         return type(self) == type(other)
 
@@ -2556,6 +2563,11 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
         if x_.type.ndim == 0:
             raise TypeError('cannot index into a scalar')
 
+        # c code suppose it is int64
+        if x.ndim in [2, 3] and ilist_.dtype in [
+            'int8', 'int16', 'int32', 'uint8', 'uint16', 'uint32']:
+            ilist_ = tensor.cast(ilist_, 'int64')
+
         bcast = (ilist_.broadcastable[0],) + x_.broadcastable[1:]
         return Apply(self, [x_, ilist_],
                      [CudaNdarrayType(dtype=x.dtype,
@@ -2613,6 +2625,38 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
             for (j, i) in enumerate(idx):
                 o[j] = x[i]
             out[0] = o
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        x, idx = inputs
+        out, = outputs
+        fail = sub['fail']
+        if node.inputs[0].ndim not in [2, 3]:
+            raise NotImplementedError("This case does not have C code yet.")
+        if node.inputs[1].dtype != 'int64':
+            raise Exception("Index should have dtype int64. Check this node make_node().")
+        return """
+        //take(idx, 0, out, "raise", max_threads);
+        PyObject * ret = NULL;
+        PyObject * args = Py_BuildValue("OiOsi", %(idx)s, 0,
+                                        %(out)s == NULL ? Py_None : (PyObject *)%(out)s,
+                                        "raise", 512);
+        if(args == NULL){
+            //Error set by Py_BuildValue
+            %(fail)s;
+        }
+        ret = CudaNdarray_TakeFrom(%(x)s, args);
+
+        Py_DECREF(args);
+        if (ret == NULL){
+            %(fail)s;
+        }
+        // Even if we decref, we still try to reuse preallocated output
+        Py_XDECREF(%(out)s);
+        %(out)s = (CudaNdarray *) ret;
+        """ % locals()
+
+    def c_code_cache_version(self):
+        return (2,)
 
 
 class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
@@ -3208,7 +3252,7 @@ class GpuJoin(tensor.Join, GpuOp):
         # Test negative axis
         str += """
         if( axis < -nd ){
-            PyErr_Format(PyExc_IndexError, 
+            PyErr_Format(PyExc_IndexError,
                          "Join axis %%d out of bounds [0, %%d)", axis, nd);
             %(fail)s
         }

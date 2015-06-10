@@ -5,6 +5,11 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
                          CudaNdarray *om, cudnnConvolutionDescriptor_t desc,
                          float alpha, float beta, CudaNdarray **output) {
   cudnnStatus_t err = CUDNN_STATUS_SUCCESS;
+  if (CudaNdarray_HOST_DIMS(input)[1] != CudaNdarray_HOST_DIMS(kerns)[1]) {
+    PyErr_SetString(PyExc_ValueError,
+		    "GpuDnnConv images and kernel must have the same stack size\n");
+    return 1;
+  }
 
   if (c_set_tensor4d(input, APPLY_SPECIFIC(input)) == -1)
     return 1;

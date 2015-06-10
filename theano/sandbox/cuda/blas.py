@@ -199,6 +199,20 @@ class BatchedDotOp(GpuOp):
             } while (0)
         """
 
+    def grad(self, inp, grads):
+        x, y = inp
+        gz, = grads
+
+        xgrad = batched_dot(gz, y.dimshuffle(0, 2, 1))
+        ygrad = batched_dot(x.dimshuffle(0, 2, 1), gz)
+
+        rval = xgrad, ygrad
+
+        for elem in rval:
+            assert elem.dtype.find('float') != -1
+
+        return rval
+
 batched_dot = BatchedDotOp()
 
 class GpuDot22(GpuOp):

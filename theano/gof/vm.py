@@ -378,8 +378,8 @@ class Stack(VM):
             # destroy_dependencies
             # --------------------
             # The destroy_dependencies is a list of variables that are implicit
-            # dependencies induced by a destroy_map (compare node.inputs which
-            # are *explicit* dependencies). The variables in
+            # dependencies induced by destroy_map and view_map (compared to
+            # node.inputs which are *explicit* dependencies). The variables in
             # destroy_dependencies would be impossible to compute after the
             # current `node` runs, because node.thunk() is going to destroy a
             # common input variable needed by whatever node owns each variable
@@ -787,6 +787,12 @@ class VM_Linker(link.LocalLinker):
 
         N.B. gc means garbage collection
 
+        Note
+        ----
+        It don't take care of the view_map/destroy_map. So
+        it mean it rely on Python gc to don't free the object real
+        storage.
+
         """
         dependencies = {}
         for k in variables:
@@ -796,6 +802,9 @@ class VM_Linker(link.LocalLinker):
             # way of getting it back.
             #
             # XXX if k has no clients... what is it doing in the computation?
+            # Fred guess: it could happen for node with multiple outputs when
+            # we don't use all outputs.
+
             if k.owner and k.clients:
                 ls = []
                 for cl in k.clients:
