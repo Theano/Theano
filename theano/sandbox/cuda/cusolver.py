@@ -122,9 +122,9 @@ class GpuOrmqr(CuSolverOp):
             ldc = max(1, m)
 
             # LAPACK routines expect Fortran order
-            A_T = dimshuffle(A, (1, 0)).reshape((lda, k))
+            A_T = dimshuffle(A, (1, 0))
             A_copy = A_T.copy()
-            C_T = dimshuffle(C, (1, 0)).reshape((m, n))
+            C_T = dimshuffle(C, (1, 0))
             C_copy = C_T.copy()
 
             assert self.side in ('L', 'R')
@@ -147,7 +147,7 @@ class GpuOrmqr(CuSolverOp):
                              A_copy.gpudata, lda, TAU.gpudata, C_copy.gpudata,
                              ldc, Work.gpudata, self.Lwork, devInfo.gpudata)
 
-            outputs[0][0] = reshape(C_copy, (n, m)).dimshuffle((1, 0))
+            outputs[0][0] = dimshuffle(C_copy, (1, 0))
             outputs[1][0] = Work
             outputs[2][0] = devInfo
 

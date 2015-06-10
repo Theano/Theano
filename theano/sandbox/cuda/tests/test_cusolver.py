@@ -60,8 +60,8 @@ def test_ormqr():
         cq, work, info = dormqr(side, trans, a, tau, C, lwork)
         cq_, work_, info_ = dormqr_()
         cq_T, work_T, info_T = dormqr_T()
-        assert_allclose(cq, cq_.eval(), 1e-3)
-        assert_allclose(cq, cq_T.eval(), 1e-3)
+        assert_allclose(cq, numpy.array(cq_), 1e-3)
+        assert_allclose(cq, numpy.array(cq_T), 1e-3)
         assert not info and not numpy.array(info_)
 
     a, tau, _, _ = dgeqrf(numpy.random.rand(10, 10))
