@@ -2,9 +2,9 @@ import numpy
 import theano
 from numpy.testing import assert_allclose
 from theano import tensor
+from theano.sandbox.cuda.tests import test_basic_ops
 from theano.sandbox.cuda.cusolver import geqrf, cusolver_available
 from scipy.linalg.lapack import dgeqrf
-from theano.sandbox.cuda.tests import test_basic_ops
 from nose.plugins.skip import SkipTest
 if not cusolver_available:
     raise SkipTest('cuSOLVER not available')
