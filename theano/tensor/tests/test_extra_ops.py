@@ -12,7 +12,7 @@ from theano.tensor.extra_ops import (CumsumOp, cumsum, CumprodOp, cumprod,
                                      Bartlett, bartlett,
                                      FillDiagonal, fill_diagonal,
                                      FillDiagonalOffset, fill_diagonal_offset,
-                                     to_one_hot)
+                                     to_one_hot, Unique)
 from theano import tensor as T
 from theano import config, tensor, function
 
