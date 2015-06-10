@@ -402,6 +402,9 @@ class FunctionGraph(utils.object2):
                  if var.clients]):
 
                 self.variables.remove(variable)
+                # This allow to quickly know if a var is still in the fgraph
+                # or not.
+                del variable.fgraph
 
     def __prune__(self, apply_node, reason=None):
         """Always called on owner of pruned variable from the graph.
@@ -481,7 +484,7 @@ class FunctionGraph(utils.object2):
             verbose = config.optimizer_verbose
         if verbose:
             print(reason, r, new_r)
-        if r.fgraph is not self:
+        if hasattr(r, 'fgraph') and r.fgraph is not self:
             raise Exception("Cannot replace %s because it does not belong "
                             "to this FunctionGraph" % r, str(reason))
         if r.type != new_r.type:
