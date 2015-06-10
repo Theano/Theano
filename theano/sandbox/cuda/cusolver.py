@@ -2,7 +2,6 @@ import ctypes
 import theano
 from theano.sandbox.cuda import (CudaNdarrayType, as_cuda_ndarray_variable,
                                  GpuOp, cuda_ndarray, CudaNdarray)
-from theano.tensor import reshape
 try:
     from scikits.cuda.cusolver import (_libcusolver, cusolverDnCreate,
                                        cusolverCheckStatus)
