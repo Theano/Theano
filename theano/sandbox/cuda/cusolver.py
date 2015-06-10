@@ -2,6 +2,7 @@ import ctypes
 import theano
 from theano.sandbox.cuda import (CudaNdarrayType, as_cuda_ndarray_variable,
                                  GpuOp, cuda_ndarray, CudaNdarray)
+from theano.tensor import reshape
 from scikits.cuda.cusolver import (_libcusolver, cusolverDnCreate,
                                    cusolverCheckStatus, cusolverDnDestroy)
 
@@ -13,7 +14,9 @@ class GpuGeqrf(GpuOp):
 
     def output_type(self, inp):
         return [CudaNdarrayType(broadcastable=[False] * inp.type.ndim)(),
-                CudaNdarrayType(broadcastable=[False])()]
+                CudaNdarrayType(broadcastable=[False])(),
+                CudaNdarrayType(broadcastable=[False])(),
+                CudaNdarrayType(broadcastable=[])()]
 
     def make_node(self, inp):
         inp = as_cuda_ndarray_variable(inp)
@@ -42,8 +45,10 @@ class GpuGeqrf(GpuOp):
             cusolverDnSgeqrf(handle, m, n, A_copy.gpudata, lda, TAU.gpudata,
                              Work.gpudata, Lwork, devInfo.gpudata)
             cusolverDnDestroy(handle)
-            outputs[0][0] = A_copy
+            outputs[0][0] = reshape(A_copy, (n, m)).dimshuffle((1, 0))
             outputs[1][0] = TAU
+            outputs[2][0] = Work
+            outputs[3][0] = devInfo
 
         return thunk
 
