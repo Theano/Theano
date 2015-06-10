@@ -10,6 +10,7 @@ import theano
 from theano.sandbox.cuda.cusolver import (gpu_geqrf, gpu_ormqr,
                                           cusolver_available)
 from theano.sandbox.cuda import cuda_available, CudaNdarray
+from theano.tests.unittest_tools import fetch_seed
 
 if not cuda_available:
     raise SkipTest('CUDA not available')
@@ -18,7 +19,7 @@ if not cusolver_available:
 
 
 def test_geqrf():
-    rng = numpy.random.RandomState(1)
+    rng = numpy.random.RandomState(fetch_seed())
 
     def assert_geqrf_allclose(m, n):
         A = rng.rand(m, n).astype(theano.config.floatX)
@@ -41,7 +42,7 @@ def test_geqrf():
 
 
 def test_ormqr():
-    rng = numpy.random.RandomState(1)
+    rng = numpy.random.RandomState(fetch_seed())
 
     def assert_ormqr_allclose(side, trans, a, tau, m, n, lwork):
         a = a.astype(theano.config.floatX)
