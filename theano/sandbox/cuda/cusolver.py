@@ -15,6 +15,7 @@ dimshuffle = cuda_ndarray.cuda_ndarray.dimshuffle
 
 
 class CuSolverOp(GpuOp):
+    """cuSOLVER ops lazily raise an error when cuSOLVER is not available."""
     def make_thunk(self, *args, **kwargs):
         if not cusolver_available:
             raise RuntimeError('cuSOLVER not available')
@@ -22,6 +23,15 @@ class CuSolverOp(GpuOp):
 
 
 class GpuGeqrf(CuSolverOp):
+    """Wrapper of cuSOLVER's implementation of the geqrf LAPACK method.
+
+    Notes
+    -----
+    Wrapping of the methods is done as in `scikits.cuda.cusolver`. The
+    interface is made to match that of `scipy.linalg.lapac. The interface
+    is intendend to mimick `scipy.linalg.lapack`.
+
+    """
     __props__ = ()
 
     def output_type(self, inp):
