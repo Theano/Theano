@@ -11,7 +11,7 @@ def test_geqrf():
 
     def assert_geqrf_allclose(m, n):
         A = rng.rand(m, n).astype(theano.config.floatX)
-        A_tensor = tensor.matrix('A')
+        A_tensor = tensor.fmatrix('A')
         dgeqrf_ = theano.function([A_tensor], geqrf(A_tensor))
         qr_, tau_, work_, info_ = dgeqrf_(A)
         qr, tau, work, info = dgeqrf(A)
