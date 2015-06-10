@@ -222,6 +222,7 @@ def inplace_elemwise_optimizer_op(OP):
         # the solution is also applicable there.
 
         # We execute `validate` after this number of change.
+
         check_each_change = config.tensor.insert_inplace_optimizer_validate_nb
         if check_each_change == -1:
             if len(fgraph.apply_nodes) > 500:
@@ -232,78 +233,93 @@ def inplace_elemwise_optimizer_op(OP):
         nb_change_no_validate = 0
         chk = fgraph.checkpoint()
 
-        for node in list(graph.io_toposort(fgraph.inputs, fgraph.outputs)):
-            op = node.op
-            # gpuarray GpuElemwise inherit from Elemwise
-            if not type(op) == OP:
-                continue
-            baseline = op.inplace_pattern
-            protected_inputs = [
-                f.protected for f in node.fgraph._features if
-                isinstance(f, theano.compile.function_module.Supervisor)]
-            protected_inputs = sum(protected_inputs, [])  # flatten the list
-            protected_inputs.extend(fgraph.outputs)
-            candidate_outputs = [i for i in xrange(len(node.outputs))
-                                 if i not in baseline]
-            # node inputs that are Constant, already destroyed,
-            # fgraph protected inputs and fgraph outputs can't be used as inplace
-            # target.
-            # Remove here as faster.
-            candidate_inputs = [i for i in xrange(len(node.inputs))
-                                if i not in baseline.values() and
-                                not isinstance(node.inputs[i], Constant) and
-                                not fgraph.destroyers(node.inputs[i]) and
-                                node.inputs[i] not in protected_inputs]
+        # gpuarray GpuElemwise inherit from Elemwise
+        elemwise_nodelist = [node for node in
+                             list(graph.io_toposort(fgraph.inputs,
+                                                    fgraph.outputs))
+                             if type(node.op) == OP]
+        if len(elemwise_nodelist) > 0:
+            check_each_change = int(numpy.ceil(numpy.log(
+                len(elemwise_nodelist))))
+        failed_list = []
+        while check_each_change > 1:
+            for node in elemwise_nodelist:
+                op = node.op
+                baseline = op.inplace_pattern
+                protected_inputs = [
+                    f.protected for f in node.fgraph._features if
+                    isinstance(f, theano.compile.function_module.Supervisor)]
+                protected_inputs = sum(protected_inputs, [])  # flatten the list
+                protected_inputs.extend(fgraph.outputs)
+                candidate_outputs = [i for i in xrange(len(node.outputs))
+                                     if i not in baseline]
+                # node inputs that are Constant, already destroyed,
+                # fgraph protected inputs and fgraph outputs can't be used as
+                # inplace target.
+                # Remove here as faster.
+                candidate_inputs = [i for i in xrange(len(node.inputs))
+                                    if i not in baseline.values() and
+                                    not isinstance(node.inputs[i], Constant) and
+                                    not fgraph.destroyers(node.inputs[i]) and
+                                    node.inputs[i] not in protected_inputs]
 
-            verbose = False
+                verbose = False
 
-            raised_warning = not verbose
+                raised_warning = not verbose
 
-            for candidate_output in candidate_outputs:
-                for candidate_input in candidate_inputs:
-                    # remove inputs that don't have the same dtype as the output
-                    if node.inputs[candidate_input].type != node.outputs[
+                for candidate_output in candidate_outputs:
+                    for candidate_input in candidate_inputs:
+                        # remove inputs that don't have the same dtype as the
+                        # output
+                        if node.inputs[candidate_input].type != node.outputs[
                             candidate_output].type:
-                        continue
+                            continue
 
-                    inplace_pattern = dict(baseline)
-                    inplace_pattern[candidate_output] = candidate_input
-                    try:
-                        if hasattr(op.scalar_op, "make_new_inplace"):
-                            new_scal = op.scalar_op.make_new_inplace(
-                                scalar.transfer_type(
-                                    *[inplace_pattern.get(i, None)
-                                      for i in xrange(len(node.outputs))]))
-                        else:
-                            new_scal = op.scalar_op.__class__(
-                                scalar.transfer_type(
-                                    *[inplace_pattern.get(i, None)
-                                      for i in xrange(len(node.outputs))]))
-                        new_outputs = OP(new_scal, inplace_pattern)(
-                            *node.inputs, **dict(return_list=True))
-                        new_node = new_outputs[0].owner
+                        inplace_pattern = dict(baseline)
+                        inplace_pattern[candidate_output] = candidate_input
+                        try:
+                            if hasattr(op.scalar_op, "make_new_inplace"):
+                                new_scal = op.scalar_op.make_new_inplace(
+                                    scalar.transfer_type(
+                                        *[inplace_pattern.get(i, None)
+                                              for i in xrange(len(node.outputs))]))
+                            else:
+                                new_scal = op.scalar_op.__class__(
+                                    scalar.transfer_type(
+                                        *[inplace_pattern.get(i, None)
+                                              for i in xrange(len(node.outputs))]))
+                            new_outputs = OP(new_scal, inplace_pattern)(
+                                *node.inputs, **dict(return_list=True))
+                            new_node = new_outputs[0].owner
 
-                        for r, new_r in zip(node.outputs, new_outputs):
-                            fgraph.replace(r, new_r,
-                                           reason="inplace_elemwise_optimizer")
-                        nb_change_no_validate += 1
-                        if nb_change_no_validate >= check_each_change:
-                            fgraph.validate()
-                            chk = fgraph.checkpoint()
-                            nb_change_no_validate = 0
-                    except (ValueError, TypeError, InconsistencyError) as e:
-                        if check_each_change != 1 and not raised_warning:
-                            print(("Some inplace optimization was not "
-                                   "performed due to unexpected error:"),
-                                  file=sys.stderr)
-                            print(e, file=sys.stderr)
-                            raised_warning = True
-                        fgraph.revert(chk)
-                        continue
-                    candidate_inputs.remove(candidate_input)
-                    node = new_node
-                    baseline = inplace_pattern
-                    break
+                            for r, new_r in zip(node.outputs, new_outputs):
+                                fgraph.replace(r, new_r,
+                                            reason="inplace_elemwise_optimizer")
+                            nb_change_no_validate += 1
+                            if nb_change_no_validate >= check_each_change:
+                                fgraph.validate()
+                                chk = fgraph.checkpoint()
+                                nb_change_no_validate = 0
+                        except (ValueError, TypeError, InconsistencyError) as e:
+                            if check_each_change != 1 and not raised_warning:
+                                print((
+                                        "Some inplace optimization was not "
+                                        "performed due to unexpected error:"), file=sys.stderr)
+                                print(e, file=sys.stderr)
+                                raised_warning = True
+                            fgraph.revert(chk)
+                            failed_list.append(node)
+                            continue
+                        candidate_inputs.remove(candidate_input)
+                        node = new_node
+                        baseline = inplace_pattern
+                        break
+            elemwise_nodelist = failed_list
+            failed_list = []
+            if len(elemwise_nodelist) == 0:
+                break
+            check_each_change = int(numpy.floor(numpy.log(
+                len(elemwise_nodelist))))
 
         if nb_change_no_validate > 0:
             try:
