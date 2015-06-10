@@ -2140,7 +2140,9 @@ class ProdWithoutZeros(CAReduceDtype):
         CAReduceDtype.__init__(self, mul_without_zeros, axis=axis,
                                dtype=dtype, acc_dtype=acc_dtype)
     def grad(self, inp, grads):
-        raise NotImplementedError(
-                '2nd derivatives of `product(a)` is not currently supported.' 
-                'If `a` is guarenteed to contains no zeros, use `product(a, no_zeros_in_input=True)`.'
+        a, = inp
+        a_grad = theano.gradient.grad_not_implemented(self, 0, a,
+                "2nd derivatives of `product(a)` is not currently supported." 
+                "If `a` is guarenteed to contains no zeros, use `product(a, no_zeros_in_input=True)`."
                 )
+        return [a_grad]
