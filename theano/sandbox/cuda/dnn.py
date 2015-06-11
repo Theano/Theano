@@ -412,12 +412,19 @@ class GpuDnnConv(DnnBase, COp):
         else:
             if self.workmem == 'none':
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM'
+                choose_alg = '0'
             elif self.workmem == 'small':
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM'
+                choose_alg = '0'
             elif self.workmem == 'large':
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_GEMM'
+                choose_alg = '0'
+            elif self.workmem == 'time':
+                alg = "0"
+                choose_alg = '1'
             alg_def = ('CONV_ALGO', alg)
-        return [alg_def] + inpl_def
+            alg_choose_def = ('CHOOSE_ALGO', choose_alg)
+        return [alg_def, alg_choose_def] + inpl_def
 
     def make_node(self, img, kern, output, desc, alpha=None, beta=None):
         img = as_cuda_ndarray_variable(img)

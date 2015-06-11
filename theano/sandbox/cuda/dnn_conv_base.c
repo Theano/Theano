@@ -3,6 +3,15 @@ cudnnTensorDescriptor_t APPLY_SPECIFIC(input);
 cudnnTensorDescriptor_t APPLY_SPECIFIC(output);
 cudnnFilterDescriptor_t APPLY_SPECIFIC(kerns);
 
+/* Keep track, from one execution to another, of the dimension of the inputs
+and the algorithm, if any, that was selected according to these dimensions
+and the amount of memory available at that time.
+*/
+int APPLY_SPECIFIC(previous_input_shape)[4];
+int APPLY_SPECIFIC(previous_kerns_shape)[4];
+cudnnConvolutionFwdAlgo_t APPLY_SPECIFIC(previous_algo);
+
+
 #section init_code_struct
 
 cudnnStatus_t APPLY_SPECIFIC(err);
@@ -20,10 +29,19 @@ if ((APPLY_SPECIFIC(err) = cudnnCreateTensorDescriptor(&APPLY_SPECIFIC(output)))
   FAIL;
 }
 if ((APPLY_SPECIFIC(err) = cudnnCreateFilterDescriptor(&APPLY_SPECIFIC(kerns))) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_MemoryError, "could not allocate filter descriptor: %s", 
+  PyErr_Format(PyExc_MemoryError, "could not allocate filter descriptor: %s",
 	       cudnnGetErrorString(APPLY_SPECIFIC(err)));
   FAIL;
 }
+
+APPLY_SPECIFIC(previous_input_shape)[0] = 0;
+APPLY_SPECIFIC(previous_input_shape)[1] = 0;
+APPLY_SPECIFIC(previous_input_shape)[2] = 0;
+APPLY_SPECIFIC(previous_input_shape)[3] = 0;
+APPLY_SPECIFIC(previous_kerns_shape)[0] = 0;
+APPLY_SPECIFIC(previous_kerns_shape)[1] = 0;
+APPLY_SPECIFIC(previous_kerns_shape)[2] = 0;
+APPLY_SPECIFIC(previous_kerns_shape)[3] = 0;
 
 #section cleanup_code_struct
 
