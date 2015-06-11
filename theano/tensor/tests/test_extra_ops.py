@@ -732,24 +732,39 @@ class test_Unique(utt.InferShapeTester):
                 utt.assert_allclose(out, out_exp)
         
     def test_infer_shape_vector(self):                  
-        """ 
+        """
         Testing the infer_shape with a vector.
-        """ 
+        """
         x = theano.tensor.vector()
-        for op in self.ops :
+
+        for op in self.ops:
+            if not op.return_inverse:
+                continue
+            if op.return_index :
+                f = op(x)[2]
+            else:
+                f = op(x)[1]
             self._compile_and_check([x],  
-                                    [op(x)], 
+                                    [f], 
                                     [np.asarray(np.array([2,1,3,2]),
                                                 dtype=config.floatX)],
                                     self.op_class)
         
     def test_infer_shape_matrix(self):                  
-        """ 
-        Testing the infer_shape with a vector.
-        """ 
+        """
+        Testing the infer_shape with a matrix.
+        """
         x = theano.tensor.matrix()
-        self._compile_and_check([x],  
-                                [self.op(x)], 
+        
+        for op in self.ops:
+            if not op.return_inverse:
+                continue
+            if op.return_index :
+                f = op(x)[2]
+            else:
+                f = op(x)[1]
+            self._compile_and_check([x],  
+                                [f], 
                                 [np.asarray(np.array([[2, 1], [3, 2],[2, 3]]),
                                             dtype=config.floatX)],
                                 self.op_class)
