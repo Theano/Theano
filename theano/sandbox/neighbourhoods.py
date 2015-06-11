@@ -12,7 +12,8 @@ import theano
 from theano import gof, Op, tensor, Variable, Apply
 
 import numpy
-import __builtin__
+from six.moves import xrange
+import six.moves.builtins as builtins
 
 
 class NeighbourhoodsFromImages(Op):
@@ -216,7 +217,7 @@ class NeighbourhoodsFromImages(Op):
         for i in xrange(len(self.strides)):
             code += self._py_innerloop(i)
         code += self._py_assignment()
-        return code, __builtin__.compile(code, '<string>', 'exec')
+        return code, builtins.compile(code, '<string>', 'exec')
 
     def _py_outerloops(self):
         code_before = ""
@@ -257,9 +258,9 @@ class NeighbourhoodsFromImages(Op):
                     (i, i) for i in xrange(len(self.strides))])
         out_idx = "".join(\
                 ["outer_idx_%d," % (i,) for i in \
-                        range(self.n_dims_before)] + \
+                        xrange(self.n_dims_before)] + \
                 ["stride_idx_%d," % (i,) for i in \
-                        range(len(self.strides))])
+                        xrange(len(self.strides))])
         out_idx += self._py_flattened_idx()
 
         #return_val = '\t' * (self.n_dims_before + len(self.strides)*2)

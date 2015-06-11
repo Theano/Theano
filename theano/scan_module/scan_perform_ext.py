@@ -11,6 +11,7 @@ from theano import config
 from theano.compat import reload
 from theano.gof.compilelock import get_lock, release_lock
 from theano.gof import cmodule
+import imp
 
 
 _logger = logging.getLogger('theano.scan_module.scan_perform')
@@ -30,7 +31,7 @@ def try_import():
 
 def try_reload():
     sys.path[0:0] = [config.compiledir]
-    reload(scan_perform)
+    imp.reload(scan_perform)
     del sys.path[0]
 
 try:

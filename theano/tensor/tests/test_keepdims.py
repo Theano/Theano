@@ -13,7 +13,7 @@ class TestKeepDims(unittest.TestCase):
 
     def makeKeepDims_local(self, x, y, axis):
         if axis is None:
-            newaxis = range(x.ndim)
+            newaxis = list(range(x.ndim))
         elif isinstance(axis, int):
             if axis < 0:
                 newaxis = [axis + x.type.ndim]

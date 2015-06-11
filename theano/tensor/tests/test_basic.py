@@ -8,9 +8,11 @@ from tempfile import mkstemp
 import unittest
 import warnings
 from copy import copy, deepcopy
-from itertools import izip
 # Import builtin min to be able to use it after importing the tensor version.
-from __builtin__ import min as builtin_min
+from theano.compat import izip
+from six import iteritems
+from six.moves import xrange
+from six.moves.builtins import min as builtin_min
 from nose.tools import assert_raises
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
@@ -21,11 +23,10 @@ from distutils.version import LooseVersion
 
 import theano
 from theano.compat import PY3, exc_message, operator_div
-from theano.compat.six import StringIO
+from six.moves import StringIO, reduce
 from theano import compile, config, function, gof, tensor, shared
 from theano.compile import DeepCopyOp
 from theano.compile.mode import get_default_mode
-from theano.compat import combinations
 from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         argmin, max_and_argmax, cscalar, ctensor3, join,
         horizontal_stack, vertical_stack, argmax, get_vector_length,
@@ -336,7 +337,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
 
             good = self.add_memmap_values(self.good)
 
-            for testname, inputs in good.items():
+            for testname, inputs in iteritems(good):
                 inputs = [copy(input) for input in inputs]
                 inputrs = [TensorType(
                             dtype=input.dtype,
@@ -410,7 +411,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                                     atol=eps, rtol=eps),
                                 numpy.allclose(variable, expected)))
 
-                for description, check in self.checks.items():
+                for description, check in iteritems(self.checks):
                     if not check(inputs, variables):
                         self.fail(("Test %s::%s: Failed check: %s (inputs"
                             " were %s, outputs were %s)") % (
@@ -420,7 +421,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
         def test_bad_build(self):
             if skip:
                 raise SkipTest(skip)
-            for testname, inputs in self.bad_build.items():
+            for testname, inputs in iteritems(self.bad_build):
                 inputs = [copy(input) for input in inputs]
                 inputrs = [shared(input) for input in inputs]
                 self.assertRaises(Exception,
@@ -432,7 +433,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
         def test_bad_runtime(self):
             if skip:
                 raise SkipTest(skip)
-            for testname, inputs in self.bad_runtime.items():
+            for testname, inputs in iteritems(self.bad_runtime):
                 inputrs = [shared(input) for input in inputs]
                 try:
                     node = safe_make_node(self.op, *inputrs)
@@ -464,7 +465,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
             backup = config.warn.sum_div_dimshuffle_bug
             config.warn.sum_div_dimshuffle_bug = False
             try:
-                for testname, inputs in self.grad.items():
+                for testname, inputs in iteritems(self.grad):
                     inputs = [copy(input) for input in inputs]
                     try:
                         utt.verify_grad(self.op, inputs,
@@ -492,7 +493,7 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
                 # This is not actually an Op
                 return
 
-            for testname, inputs in self.good.items():
+            for testname, inputs in iteritems(self.good):
                 inputs = [copy(input) for input in inputs]
                 inputrs = [TensorType(
                             dtype=input.dtype,
@@ -830,7 +831,7 @@ def copymod(dct, without=None, **kwargs):
     for a in without:
         if a in rval:
             del rval[a]
-    for kw, val in kwargs.items():
+    for kw, val in iteritems(kwargs):
         rval[kw] = val
     return rval
 
@@ -845,7 +846,8 @@ _good_broadcast_div_mod_normal_float_no_complex = dict(
     uinteger=(randint(2, 3).astype("uint8"),
               randint_nonzero(2, 3).astype("uint8")),
     int8=[numpy.tile(numpy.arange(-127, 128, dtype='int8'), [254, 1]).T,
-          numpy.tile(numpy.array(range(-127, 0) + range(1, 128), dtype='int8'),
+          numpy.tile(numpy.array(list(range(-127, 0)) + list(range(1, 128)),
+                                 dtype='int8'),
                      [255, 1])],
     # This empty2 doesn't work for some tests. I don't remember why
     #empty2=(numpy.asarray([0]), numpy.asarray([])),
@@ -932,7 +934,7 @@ TrueDivInplaceTester = makeBroadcastTester(
 _good_inv = dict(
     normal=[5 * rand_nonzero((2, 3))],
     integers=[randint_nonzero(2, 3)],
-    int8=[numpy.array(range(-127, 0) + range(1, 127), dtype='int8')],
+    int8=[numpy.array(list(range(-127, 0)) + list(range(1, 127)), dtype='int8')],
     complex=[randcomplex_nonzero((2, 3))],
     empty=[numpy.asarray([], dtype=config.floatX)])
 
@@ -1928,7 +1930,7 @@ COMPLEX_DTYPES = ALL_DTYPES[-2:]
 
 
 def multi_dtype_checks(shape1, shape2, dtypes=ALL_DTYPES, nameprefix=''):
-    for dtype1, dtype2 in combinations(dtypes, 2):
+    for dtype1, dtype2 in itertools.combinations(dtypes, 2):
         name1 = '%s_%s_%s' % (nameprefix, dtype1, dtype2)
         name2 = '%s_%s_%s' % (nameprefix, dtype2, dtype1)
         obj1 = rand_of_dtype(shape1, dtype1)
@@ -1938,7 +1940,7 @@ def multi_dtype_checks(shape1, shape2, dtypes=ALL_DTYPES, nameprefix=''):
 
 
 def multi_dtype_cast_checks(shape, dtypes=ALL_DTYPES, nameprefix=''):
-    for dtype1, dtype2 in combinations(dtypes, 2):
+    for dtype1, dtype2 in itertools.combinations(dtypes, 2):
         name1 = '%s_%s_%s' % (nameprefix, dtype1, dtype2)
         name2 = '%s_%s_%s' % (nameprefix, dtype2, dtype1)
         obj1 = rand_of_dtype(shape, dtype1)
@@ -4980,7 +4982,7 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
 
     def test_reshape_long_in_shape(self):
         v = dvector('v')
-        r = v.reshape((v.shape[0], 1L))
+        r = v.reshape((v.shape[0], 1))
         print(r.eval({v: numpy.arange(5.)}))
         assert numpy.allclose(r.eval({v: numpy.arange(5.)}).T,
                               numpy.arange(5.))
@@ -6022,7 +6024,7 @@ def _test_autocast_numpy():
     def ok(z):
         assert tensor.constant(z).dtype == numpy.asarray(z).dtype
     for x in ([2 ** i for i in xrange(63)] +
-              [0, 0L, 1L, 2L ** 63 - 1] +
+              [0, 0, 1, 2 ** 63 - 1] +
               [0., 1., 1.1, 1.5]):
         n_x = numpy.asarray(x)
         # Make sure the data type is the same as the one found by numpy.
@@ -6055,7 +6057,7 @@ def _test_autocast_numpy_floatX():
             # into int64, as that is the maximal integer type that Theano
             # supports, and that is the maximal type in Python indexing.
             for x in ([2 ** i - 1 for i in xrange(64)] +
-                      [0, 0L, 1L, 2L ** 63 - 1] +
+                      [0, 0, 1, 2 ** 63 - 1] +
                       [0., 1., 1.1, 1.5]):
                 ok(x, floatX)
                 ok(-x, floatX)
@@ -6119,10 +6121,10 @@ class test_arithmetic_cast(unittest.TestCase):
                                           ('i_scalar', 'i_scalar'),
                                           ):
 
-                                theano_args = map(eval,
-                                        ['theano_%s' % c for c in combo])
-                                numpy_args = map(eval,
-                                        ['numpy_%s' % c for c in combo])
+                                theano_args = list(map(eval,
+                                        ['theano_%s' % c for c in combo]))
+                                numpy_args = list(map(eval,
+                                        ['numpy_%s' % c for c in combo]))
                                 try:
                                     theano_dtype = op(
                                         theano_args[0](a_type),
@@ -6137,8 +6139,17 @@ class test_arithmetic_cast(unittest.TestCase):
                                             config.int_division == 'raise')
                                     # This is the expected behavior.
                                     continue
-                                numpy_dtype = op(numpy_args[0](a_type),
-                                                 numpy_args[1](b_type)).dtype
+                                # For numpy we have a problem:
+                                #   http://projects.scipy.org/numpy/ticket/1827
+                                # As a result we only consider the highest data
+                                # type that numpy may return.
+                                numpy_dtypes = [
+                                        op(numpy_args[0](a_type),
+                                           numpy_args[1](b_type)).dtype,
+                                        op(numpy_args[1](b_type),
+                                           numpy_args[0](a_type)).dtype]
+                                numpy_dtype = theano.scalar.upcast(
+                                        *list(map(str, numpy_dtypes)))
                                 if numpy_dtype == theano_dtype:
                                     # Same data type found, all is good!
                                     continue
@@ -6215,7 +6226,7 @@ class test_arithmetic_cast(unittest.TestCase):
 class T_long_tensor(unittest.TestCase):
     def test_fit_int64(self):
         for exp in xrange(64):
-            val = 2L ** exp - 1
+            val = 2 ** exp - 1
             scalar_ct = constant(val)
             assert scalar_ct.dtype.startswith('int')
             assert scalar_ct.value == val
@@ -6229,7 +6240,7 @@ class T_long_tensor(unittest.TestCase):
             assert numpy.all(matrix_ct.value == val)
 
     def test_too_big(self):
-        val = 2L ** 63
+        val = 2 ** 63
         # NumPy 1.7 this will raise an exception
         # NumPy 1.7.1 this will work
         try:
@@ -6256,7 +6267,7 @@ class T_long_tensor(unittest.TestCase):
         except TypeError:
             pass
 
-        val = 2L ** 64
+        val = 2 ** 64
         # This fail for all NumPy version.
         self.assertRaises(Exception, constant, val)
         self.assertRaises(Exception, constant, [val, val])

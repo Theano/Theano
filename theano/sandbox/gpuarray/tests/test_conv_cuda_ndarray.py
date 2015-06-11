@@ -8,6 +8,7 @@ import unittest
 
 
 import numpy
+from six.moves import xrange
 
 from nose.plugins.skip import SkipTest
 imported_scipy_convolve2d = False

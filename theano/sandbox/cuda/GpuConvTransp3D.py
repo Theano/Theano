@@ -5,6 +5,7 @@ import theano.tensor as T
 from theano.misc import strutil
 import theano
 
+from six.moves import xrange
 from theano.tensor.nnet.ConvTransp3D import ConvTransp3D
 from theano.gof import local_optimizer
 

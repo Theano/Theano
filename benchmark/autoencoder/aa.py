@@ -8,6 +8,7 @@ import time
 import theano
 import theano.tensor as T
 import theano.sandbox
+from six.moves import xrange
 from theano.compile import module, Mode, ProfileMode
 from theano import gof, Op, Apply
 

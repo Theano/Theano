@@ -7,6 +7,7 @@ except ImportError:
 
 import theano
 from theano import gof
+from six import string_types
 
 
 def _is_sparse(x):
@@ -61,12 +62,12 @@ class SparseType(gof.Type):
             raise NotImplementedError('unsupported dtype "%s" not in list' %
                                       dtype, list(self.dtype_set))
 
-        assert isinstance(format, basestring)
+        assert isinstance(format, string_types)
         if format in self.format_cls:
             self.format = format
         else:
             raise NotImplementedError('unsupported format "%s" not in list' %
-                                      format, self.format_cls.keys())
+                                      format, list(self.format_cls.keys()))
 
     def filter(self, value, strict=False, allow_downcast=None):
         if isinstance(value, self.format_cls[self.format])\

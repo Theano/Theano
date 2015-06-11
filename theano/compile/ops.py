@@ -4,14 +4,17 @@ and Ops building class (:class:`FromFunctionOp`) and decorator
 
 """
 import copy
-import cPickle
+import six.moves.cPickle as pickle
 import warnings
 
 import theano
 from theano import gof
+from six import iteritems
+from six.moves import xrange
 
 
 import numpy
+import collections
 
 
 def register_view_op_c_code(type, code, version=()):
@@ -71,7 +74,7 @@ class ViewOp(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, v) in sorted(self.c_code_and_version.items(),
+        for t, (c, v) in sorted(iteritems(self.c_code_and_version),
                                 key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for ViewOp, but it has no "
@@ -166,7 +169,7 @@ class DeepCopyOp(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, v) in sorted(self.c_code_and_version.items(),
+        for t, (c, v) in sorted(iteritems(self.c_code_and_version),
                                 key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for DeepCopyOp, but it has "
@@ -287,7 +290,7 @@ class Shape(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, v) in sorted(self.c_code_and_version.items(),
+        for t, (c, v) in sorted(iteritems(self.c_code_and_version),
                                 key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for Shape, but it has no "
@@ -359,7 +362,7 @@ class Shape_i(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, ci, v) in sorted(self.c_code_and_version.items(),
+        for t, (c, ci, v) in sorted(iteritems(self.c_code_and_version),
                                     key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for Shape_i, but it has "
@@ -515,12 +518,12 @@ class FromFunctionOp(gof.Op):
         try:
             obj = load_back(mod, name)
         except (ImportError, KeyError, AttributeError):
-            raise cPickle.PicklingError(
+            raise pickle.PicklingError(
                 "Can't pickle as_op(), not found as %s.%s" %
                 (mod, name))
         else:
             if obj is not self:
-                raise cPickle.PicklingError(
+                raise pickle.PicklingError(
                     "Can't pickle as_op(), not the object "
                     "at %s.%s" % (mod, name))
         return load_back, (mod, name)
@@ -568,7 +571,8 @@ def as_op(itypes, otypes, infer_shape=None):
     itypes = list(itypes)
     otypes = list(otypes)
 
-    if infer_shape is not None and not callable(infer_shape):
+    if infer_shape is not None and not isinstance(infer_shape,
+                                                  collections.Callable):
         raise TypeError("infer_shape needs to be a callable")
 
     def make_op(fn):
@@ -619,7 +623,7 @@ class Rebroadcast(gof.Op):
 
     def __init__(self, *axis):
         self.axis = dict(axis)
-        for axis, broad in self.axis.iteritems():
+        for axis, broad in iteritems(self.axis):
             assert isinstance(axis, (numpy.integer, int)), (
                 "Rebroadcast needs integer axes. Got ", axis)
 
@@ -628,7 +632,7 @@ class Rebroadcast(gof.Op):
 
     def __hash__(self):
         # no ambiguity because each item key is unique
-        items = sorted(self.axis.iteritems())
+        items = sorted(iteritems(self.axis))
         return hash((type(self), tuple(items)))
 
     def __str__(self):
@@ -636,14 +640,14 @@ class Rebroadcast(gof.Op):
             broadcast_pattern = []
         else:
             broadcast_pattern = ['?' for i
-                                 in xrange(1 + numpy.max(self.axis.keys()))]
-        for k, v in self.axis.iteritems():
+                                 in xrange(1 + max(self.axis.keys()))]
+        for k, v in iteritems(self.axis):
             broadcast_pattern[k] = str(int(v))
         return '%s{%s}' % (self.__class__.__name__,
                            ','.join(broadcast_pattern))
 
     def make_node(self, x):
-        if self.axis.keys() and (x.ndim <= numpy.max(self.axis.keys())):
+        if self.axis.keys() and (x.ndim <= max(self.axis.keys())):
             raise ValueError('Trying to rebroadcast non-existent dimension')
         t = x.type.clone(
             broadcastable=[self.axis.get(i, b)
@@ -653,7 +657,7 @@ class Rebroadcast(gof.Op):
     def perform(self, node, inp, out_):
         x, = inp
         out, = out_
-        for axis, value in self.axis.iteritems():
+        for axis, value in iteritems(self.axis):
             if value and x.shape[axis] != 1:
                 raise ValueError('Dimension %s in Rebroadcast\'s input was'
                                  ' supposed to be 1 (got %s instead)' %
@@ -665,7 +669,7 @@ class Rebroadcast(gof.Op):
         gz, = grads
         # restore the broadcasting pattern of the input
         return Rebroadcast(*[(axis, x.type.broadcastable[axis])
-                             for axis, value in self.axis.iteritems()])(gz),
+                             for axis, value in iteritems(self.axis)])(gz),
 
     def infer_shape(self, node, ishapes):
         assert len(ishapes) == 1
@@ -693,7 +697,7 @@ class Rebroadcast(gof.Op):
         if itype in self.c_code_and_version:
             code, version = self.c_code_and_version[itype]
             final_code = ""
-            for axis, value in self.axis.iteritems():
+            for axis, value in iteritems(self.axis):
                 if value:
                     final_code += code % locals()
             return final_code + """
@@ -707,7 +711,7 @@ class Rebroadcast(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, v) in sorted(self.c_code_and_version.items(),
+        for t, (c, v) in sorted(iteritems(self.c_code_and_version),
                                 key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for Rebroadcast, but it "
@@ -850,7 +854,7 @@ class SpecifyShape(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, v, _) in sorted(self.c_code_and_version.items(),
+        for t, (c, v, _) in sorted(iteritems(self.c_code_and_version),
                                    key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for SpecifyShape, but it "

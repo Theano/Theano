@@ -17,7 +17,6 @@ import logging
 import numpy
 import os
 import re
-import StringIO
 import sys
 import traceback
 import warnings
@@ -26,6 +25,8 @@ import theano
 from theano import config
 
 import theano.gof.cc
+from six import itervalues
+from six.moves import StringIO
 from theano.gof import graph
 from theano.gof import utils
 from theano.gof.cmodule import GCC_compiler
@@ -459,7 +460,7 @@ class PureOp(object):
                     " have the requested type.\n")
                 tr = getattr(v.tag, 'trace', None)
                 if tr:
-                    sio = StringIO.StringIO()
+                    sio = StringIO()
                     traceback.print_list(tr, sio)
                     tr = sio.getvalue()
                     detailed_err_msg += (
@@ -538,7 +539,7 @@ class PureOp(object):
                 # copy the values of the inputs in destroy_map
                 destroyed_inputs_idx = set()
                 if getattr(node.op, 'destroy_map', None):
-                    for i_pos_list in node.op.destroy_map.itervalues():
+                    for i_pos_list in itervalues(node.op.destroy_map):
                         destroyed_inputs_idx.update(i_pos_list)
                 for inp_idx in destroyed_inputs_idx:
                     inp = node.inputs[inp_idx]

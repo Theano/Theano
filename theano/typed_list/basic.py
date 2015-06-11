@@ -2,7 +2,7 @@ import copy
 
 import numpy
 
-from type import TypedListType
+from .type import TypedListType
 import theano
 from theano.gof import Apply, Constant, Op, Variable
 from theano.tensor.type_other import SliceType

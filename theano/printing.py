@@ -12,6 +12,8 @@ import warnings
 import hashlib
 
 import numpy as np
+import collections
+from six import string_types, integer_types, iteritems
 
 try:
     import pydot as pd
@@ -25,7 +27,7 @@ except ImportError:
 import theano
 from theano import gof
 from theano import config
-from theano.compat.six import StringIO
+from six.moves import StringIO, reduce
 from theano.gof import Op, Apply
 from theano.compile import Function, debugmode
 from theano.compile.profilemode import ProfileMode
@@ -110,7 +112,7 @@ def debugprint(obj, depth=-1, print_type=False,
             results_to_print.extend(obj.outputs)
             profile_list.extend([None for item in obj.outputs])
             order = obj.toposort()
-        elif isinstance(obj, (int, long, float, np.ndarray)):
+        elif isinstance(obj, (integer_types, float, np.ndarray)):
             print(obj)
         elif isinstance(obj, (theano.In, theano.Out)):
             results_to_print.append(obj.variable)
@@ -189,7 +191,7 @@ N.B.:
 def _print_fn(op, xin):
     for attr in op.attrs:
         temp = getattr(xin, attr)
-        if callable(temp):
+        if isinstance(temp, collections.Callable):
             pmsg = temp()
         else:
             pmsg = temp
@@ -323,7 +325,7 @@ class PatternPrinter:
     def __init__(self, *patterns):
         self.patterns = []
         for pattern in patterns:
-            if isinstance(pattern, basestring):
+            if isinstance(pattern, string_types):
                 self.patterns.append((pattern, ()))
             else:
                 self.patterns.append((pattern[0], pattern[1:]))
@@ -466,7 +468,7 @@ class PPrinter:
             strings = []
         pprinter = self.clone_assign(lambda pstate, r: r.name is not None and
                                      r is not current, LeafPrinter())
-        inv_updates = dict((b, a) for (a, b) in updates.iteritems())
+        inv_updates = dict((b, a) for (a, b) in iteritems(updates))
         i = 1
         for node in gof.graph.io_toposort(list(inputs) + updates.keys(),
                                           list(outputs) +
@@ -821,7 +823,7 @@ def pydotprint(fct, outfile=None,
         astr = apply_name(node)
 
         use_color = None
-        for opName, color in colorCodes.items():
+        for opName, color in iteritems(colorCodes):
             if opName in node.op.__class__.__name__:
                 use_color = color
 
@@ -1014,7 +1016,7 @@ def pydotprint_variables(vars,
         my_list[app] = astr
 
         use_color = None
-        for opName, color in colorCodes.items():
+        for opName, color in iteritems(colorCodes):
             if opName in app.op.__class__.__name__:
                 use_color = color
 

@@ -4,7 +4,6 @@ Contains the FunctionGraph class and exception
 types that it can raise
 """
 from __future__ import print_function
-import StringIO
 import sys
 import time
 import traceback
@@ -17,6 +16,8 @@ from theano import config
 import warnings
 
 from theano.compat import OrderedDict
+from six import iteritems, itervalues
+from six.moves import StringIO
 from theano.misc.ordered_set import OrderedSet
 
 NullType = None
@@ -163,14 +164,14 @@ class FunctionGraph(utils.object2):
         if hasattr(node, 'fgraph') and node.fgraph is not self:
             raise Exception("%s is already owned by another fgraph" % node)
         if (hasattr(node.op, 'view_map') and
-            not all([isinstance(view, (list, tuple))
-                     for view in node.op.view_map.values()])):
+            not all(isinstance(view, (list, tuple))
+                    for view in itervalues(node.op.view_map))):
             raise Exception("Op '%s' have a bad view map '%s',"
                             " the values must be tuples or lists." % (
                                 str(node.op), str(node.op.view_map)))
         if (hasattr(node.op, 'destroy_map') and
-            not all([isinstance(destroy, (list, tuple))
-                     for destroy in node.op.destroy_map.values()])):
+            not all(isinstance(destroy, (list, tuple))
+                    for destroy in itervalues(node.op.destroy_map))):
             raise Exception("Op '%s' have a bad destroy map '%s',"
                             " the values must be tuples or lists." % (
                                 str(node.op), str(node.op.destroy_map)))
@@ -248,7 +249,7 @@ class FunctionGraph(utils.object2):
     def __import_r__(self, variable, reason):
         global NullType
         if NullType is None:
-            from null_type import NullType
+            from .null_type import NullType
         # Imports the owners of the variables
         if variable.owner and variable.owner not in self.apply_nodes:
                 self.__import__(variable.owner, reason=reason)
@@ -334,7 +335,7 @@ class FunctionGraph(utils.object2):
                             tr = getattr(r.tag, 'trace', None)
                             detailed_err_msg = ""
                             if tr:
-                                sio = StringIO.StringIO()
+                                sio = StringIO()
                                 traceback.print_list(tr, sio)
                                 tr = sio.getvalue()
                                 detailed_err_msg += "\nBacktrace when the variable is created:\n"
@@ -667,7 +668,7 @@ class FunctionGraph(utils.object2):
                                     str(feature.orderings) +
                                     ". Nondeterministic object is " +
                                     str(orderings))
-                for node, prereqs in orderings.items():
+                for node, prereqs in iteritems(orderings):
                     if not isinstance(prereqs, (list, OrderedSet)):
                         raise TypeError(
                             "prereqs must be a type with a "
@@ -675,7 +676,7 @@ class FunctionGraph(utils.object2):
                             " will be non-deterministic.")
                     ords.setdefault(node, []).extend(prereqs)
         # eliminate duplicate prereqs
-        for (node, prereqs) in ords.items():
+        for (node, prereqs) in iteritems(ords):
             ords[node] = list(OrderedSet(prereqs))
         return ords
 

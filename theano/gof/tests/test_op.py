@@ -5,6 +5,7 @@ import numpy
 
 import theano
 import theano.gof.op as op
+from six import string_types
 from theano.gof.type import Type, Generic
 from theano.gof.graph import Apply, Variable
 import theano.tensor as T
@@ -38,7 +39,7 @@ class MyType(Type):
     def filter(self, x, strict=False, allow_downcast=None):
         # Dummy filter: we want this type to represent strings that
         # start with `self.thingy`.
-        if not isinstance(x, basestring):
+        if not isinstance(x, string_types):
             raise TypeError("Invalid type")
         if not x.startswith(self.thingy):
             raise ValueError("Invalid value")
@@ -56,7 +57,7 @@ class MyType(Type):
 class MyOp(Op):
 
     def make_node(self, *inputs):
-        inputs = map(as_variable, inputs)
+        inputs = list(map(as_variable, inputs))
         for input in inputs:
             if not isinstance(input.type, MyType):
                 raise Exception("Error 1")
@@ -247,7 +248,7 @@ class TestMakeThunk(unittest.TestCase):
 
 
 def test_test_value_python_objects():
-    for x in (range(3), 0, 0.5, 1):
+    for x in (list(range(3)), 0, 0.5, 1):
         assert (op.get_test_value(x) == x).all()
 
 

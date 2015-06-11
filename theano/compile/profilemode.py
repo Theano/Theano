@@ -7,13 +7,14 @@ import warnings
 
 import theano
 from theano.gof.link import WrapLinker
+from six import string_types, iteritems, itervalues
 from theano.compile.mode import (Mode, register_mode,
                                  predefined_modes, predefined_linkers,
                                  predefined_optimizers)
 from theano.configparser import config, AddConfigVar, IntParam, BoolParam
 from theano.compile.function_module import FunctionMaker
 
-from profiling import ProfileStats
+from .profiling import ProfileStats
 
 run_cthunk = None  # Will be imported only when needed.
 import_time = time.time()
@@ -128,7 +129,7 @@ class ProfileMode(Mode):
 
     def __get_local_time(self):
         rval = 0
-        for ps in self.profile_stats.values():
+        for ps in itervalues(self.profile_stats):
             rval += sum(ps.apply_time.values())
         return rval
     local_time = property(__get_local_time)
@@ -192,7 +193,7 @@ class ProfileMode(Mode):
 
         self.provided_linker = linker
         self.provided_optimizer = optimizer
-        if isinstance(linker, basestring) or linker is None:
+        if isinstance(linker, string_types) or linker is None:
             linker = predefined_linkers[linker]
 
         if not config.ProfileMode.profile_memory:
@@ -202,7 +203,7 @@ class ProfileMode(Mode):
         linker = WrapLinker([linker], p_thunk)
 
         self.linker = linker
-        if isinstance(optimizer, basestring) or optimizer is None:
+        if isinstance(optimizer, string_types) or optimizer is None:
             optimizer = predefined_optimizers[optimizer]
         self._optimizer = optimizer
 
@@ -243,27 +244,27 @@ class ProfileMode(Mode):
                             in self.profile_stats.values()])
 
         fct_call = dict([(fn, ps.fct_callcount)
-                         for (fn, ps) in self.profile_stats.items()])
+                         for (fn, ps) in iteritems(self.profile_stats)])
 
         fct_call_time = dict([(fn, ps.fct_call_time)
-                              for (fn, ps) in self.profile_stats.items()])
+                              for (fn, ps) in iteritems(self.profile_stats)])
 
         apply_time = {}
-        for fn, ps in self.profile_stats.items():
+        for fn, ps in iteritems(self.profile_stats):
             for (i, node) in enumerate(fn.maker.fgraph.toposort()):
                 apply_time[(i, node)] = ps.apply_time[node]
-        for (i, n), t in apply_time.items():
+        for (i, n), t in iteritems(apply_time):
             if t == 0:
                 print(i, n)
 
         apply_cimpl = {}
-        for fn, ps in self.profile_stats.items():
+        for ps in itervalues(self.profile_stats):
             apply_cimpl.update(ps.apply_cimpl)
 
         message = self.message
 
         variable_shape = {}
-        for fn, ps in self.profile_stats.items():
+        for ps in itervalues(self.profile_stats):
             variable_shape.update(ps.variable_shape)
 
         other_time = dict(
@@ -296,13 +297,13 @@ class ProfileMode(Mode):
         def diff_dict(a_time, b_time_):
             r = {}
             b_time = copy.copy(b_time_)
-            for a, ta in a_time.items():
+            for a, ta in iteritems(a_time):
                 r.setdefault(a, 0)
                 tb = b_time.pop(a, 0)
                 r[a] += ta - tb
 
             # they are missing in a
-            for a, t in b_time.items():
+            for a, t in iteritems(b_time):
                 r.setdefault(a, 0)
                 r[a] += t
             return r
@@ -398,7 +399,7 @@ class ProfileMode(Mode):
         print('Theano fct summary:')
         print('<% total fct time> <total time> <time per call> <nb call> '
               '<fct name>')
-        for key in fct_call.keys():
+        for key in fct_call:
             if fct_call[key] > 0:
                 print('   %4.1f%% %.3fs %.2es %d %s' %
                       (fct_call_time[key]/total_fct_time*100,
@@ -415,14 +416,14 @@ class ProfileMode(Mode):
         op_apply = {}
         op_cimpl = {}
         sop_apply = {}
-        for (i, a), t in apply_time.items():
+        for (i, a), t in iteritems(apply_time):
             op = a.op
             op_time.setdefault(op, 0)
             op_call.setdefault(op, 0)
             op_apply.setdefault(op, 0)
             sop_apply.setdefault(type(a.op), 0)
             op_time[op] += t
-            nb_call = [v for k, v in fct_call.items()
+            nb_call = [v for k, v in iteritems(fct_call)
                        if k.maker.fgraph is a.fgraph][0]
             op_cimpl.setdefault(a.op, True)
             op_cimpl[a.op] = op_cimpl[a.op] and apply_cimpl.get(a, False)
@@ -439,7 +440,7 @@ class ProfileMode(Mode):
         sop_op = {}
         # map each op class to Bool. True iff all applies were done in c.
         sop_cimpl = {}
-        for a, t in op_time.items():
+        for a, t in iteritems(op_time):
             typ = type(a)
             sop_time.setdefault(typ, 0)
             sop_time[typ] += t
@@ -456,7 +457,7 @@ class ProfileMode(Mode):
               '<self seconds> <cumulative seconds> <time per call> [*] '
               '<nb_call> <nb_op> <nb_apply> <Op name>')
         sotimes = [(t*100/local_time, t, a, sop_cimpl[a], sop_call[a],
-                    sop_op[a], sop_apply[a]) for a, t in sop_time.items()]
+                    sop_op[a], sop_apply[a]) for a, t in iteritems(sop_time)]
         sotimes.sort()
         sotimes.reverse()
         tot = 0
@@ -483,7 +484,7 @@ class ProfileMode(Mode):
 
         # The summary per op
         op_flops = {}
-        for a, t in op_time.items():
+        for a, t in iteritems(op_time):
             if hasattr(a, 'flops'):
                 op_flops[a] = a.flops*op_call[a]/t/1e6
         flops_msg = ''
@@ -501,7 +502,7 @@ class ProfileMode(Mode):
 
         otimes = [(t*100/local_time, t, a, op_cimpl.get(a, 0),
                    op_call.get(a, 0), op_apply.get(a, 0))
-                  for a, t in op_time.items()]
+                  for a, t in iteritems(op_time)]
         otimes.sort()
         otimes.reverse()
         tot = 0
@@ -540,9 +541,9 @@ class ProfileMode(Mode):
                   '<apply time> <cumulative seconds> <time per call> [*] '
                   '<nb_call> <Apply position> <Apply Op name>')
             atimes = [(t*100/local_time, t, a,
-                       [v for k, v in fct_call.items()
+                       [v for k, v in iteritems(fct_call)
                         if k.maker.fgraph is a[1].fgraph][0])
-                      for a, t in apply_time.items()]
+                      for a, t in iteritems(apply_time)]
             atimes.sort()
             atimes.reverse()
             tot = 0
@@ -666,7 +667,7 @@ Test them first, as they are not guaranteed to always provide a speedup.""")
             printed_tip = True
 
         # tip 4
-        for a, t in apply_time.iteritems():
+        for a, t in iteritems(apply_time):
             node = a[1]
             if (isinstance(node.op, T.Dot) and
                     all([len(i.type.broadcastable) == 2
@@ -679,7 +680,7 @@ Test them first, as they are not guaranteed to always provide a speedup.""")
                 printed_tip = True
 
         # tip 5
-        for a, t in apply_time.iteritems():
+        for a, t in iteritems(apply_time):
             node = a[1]
             if isinstance(node.op, RandomFunction):
                 printed_tip = True

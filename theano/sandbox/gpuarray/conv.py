@@ -3,6 +3,7 @@ import os
 
 import theano
 from theano import config, gof
+from six.moves import reduce
 from .comp import NVCC_compiler
 from .type import GpuArrayType
 from .basic_ops import as_gpuarray_variable

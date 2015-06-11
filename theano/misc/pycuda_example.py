@@ -19,10 +19,13 @@ pycuda.elementwise.ElementwiseKernel. It must be wrapper by
 TheanoElementwiseKernel.
 
 """
+from itertools import chain
 
 import numpy
 
 import theano
+from six.moves import xrange
+from theano.compat import izip
 from theano.gof import Op, Apply, local_optimizer, EquilibriumDB
 from theano.sandbox.cuda import GpuElemwise, CudaNdarrayType, GpuOp
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
@@ -30,7 +33,7 @@ from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
 from theano.sandbox.cuda.opt import gpu_seqopt
 from theano.tensor.utils import hash_from_dict
 
-import pycuda_init
+from . import pycuda_init
 if not pycuda_init.pycuda_available:
     raise Exception("No pycuda available. You can't load pycuda_example.py")
 
@@ -63,7 +66,7 @@ class TheanoElementwiseKernel(pycuda.elementwise.ElementwiseKernel):
                  name="kernel", keep=False, options=None, **kwargs):
         if options is None:
             options = []
-        if isinstance(arguments, basestring):
+        if isinstance(arguments, string_types):
             arguments = [theano_parse_c_arg(arg)
                          for arg in arguments.split(",")]
         pycuda.elementwise.ElementwiseKernel.__init__(self, arguments,
@@ -192,7 +195,7 @@ class PycudaElemwiseSourceModuleOp(GpuOp):
     def __str__(self):
         if self.name is None:
             if self.inplace_pattern:
-                items = self.inplace_pattern.items()
+                items = list(self.inplace_pattern.items())
                 items.sort()
                 return self.__class__.__name__ + "{%s}%s" % (self.scalar_op,
                                                              str(items))
@@ -232,11 +235,12 @@ class PycudaElemwiseSourceModuleOp(GpuOp):
         c_code = self.scalar_op.c_code(out_node, "some_name",
                                        tuple([n + "[i]" for n in in_name]),
                                        tuple(n + "[i]" for n in out_name), {})
-        c_code_param = ", ".join([_replace_npy_types(var.type.dtype_specs()[1]) + " *" + name
-                                  for var, name in (zip(inputs, in_name) +
-                                                    zip(out_node.outputs,
-                                                        out_name))] +
-                                 ["int size"])
+        c_code_param = ", ".join([
+            _replace_npy_types(var.type.dtype_specs()[1]) + " *" + name
+                               for var, name in chain(izip(inputs, in_name),
+                                                      izip(out_node.outputs,
+                                                           out_name))
+        ] + ["int size"])
         mod = SourceModule("""
   __global__ void %s(%s)
   {
@@ -286,7 +290,7 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
     def __str__(self):
         if self.name is None:
             if self.inplace_pattern:
-                items = self.inplace_pattern.items()
+                items = list(self.inplace_pattern.items())
                 items.sort()
                 return self.__class__.__name__ + "{%s}%s" % (self.scalar_op,
                                                              str(items))
@@ -322,10 +326,12 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
         c_code = self.scalar_op.c_code(node, "some_name",
                                        tuple([n + "[i]" for n in in_name]),
                                        tuple(n + "[i]" for n in out_name), {})
-        c_code_param = ", ".join([_replace_npy_types(var.type.dtype_specs()[1]) + " *" + name
-                                  for var, name in
-                                  zip(node.inputs, in_name) +
-                                  zip(node.outputs, out_name)] + ["int size"])
+        c_code_param = ", ".join(
+            [_replace_npy_types(var.type.dtype_specs()[1]) + " *" + name
+             for var, name in chain(izip(node.inputs, in_name),
+                                    izip(node.outputs, out_name))]
+            + ["int size"])
+
         mod = SourceModule("""
   __global__ void %s(%s)
   {

@@ -1,4 +1,5 @@
 import warnings
+from six.moves import xrange
 
 
 def render_string(string, sub):

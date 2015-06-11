@@ -10,6 +10,7 @@ import time
 import unittest
 
 import numpy
+from six.moves import xrange
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
 from numpy.testing import dec
@@ -17,7 +18,7 @@ from numpy.testing.noseclasses import KnownFailureTest
 
 import theano
 import theano.scalar as scal
-from theano.compat.six import PY3, StringIO
+from six import PY3, StringIO
 from theano import compile
 from theano.compile import deep_copy_op, DeepCopyOp
 from theano import config
@@ -1059,7 +1060,7 @@ class test_fusion(unittest.TestCase):
             if shared_fn is None:
                 assert gpu is False
                 f = compile.function(list(sym_inputs), g, mode=mode)
-                for x in range(nb_repeat):
+                for x in xrange(nb_repeat):
                     out = f(*val_inputs)
                 t1 = time.time()
             else:
@@ -1067,7 +1068,7 @@ class test_fusion(unittest.TestCase):
                 assert out.dtype == g.dtype
                 f = function(sym_inputs, [], updates=[(out, g)], mode=mode)
                 t0 = time.time()
-                for x in range(nb_repeat):
+                for x in xrange(nb_repeat):
                     f(*val_inputs)
                 t1 = time.time()
                 out = out.get_value()
@@ -1185,16 +1186,16 @@ class test_fusion(unittest.TestCase):
     def test_fusion_35inputs(self):
         # Make sure a fused graph with more than 35 inputs does not segfault
         # or error.
-        inpts = vectors(['i%i' % i for i in range(35)])
+        inpts = vectors(['i%i' % i for i in xrange(35)])
         # Make an elemwise graph looking like:
         # sin(i34 + sin(i33 + sin(... i1 + sin(i0) ...)))
         out = tensor.sin(inpts[0])
-        for idx in range(1, 35):
+        for idx in xrange(1, 35):
             out = tensor.sin(inpts[idx] + out)
 
         f = function(inpts, out)
         # Test it on some dummy values
-        f(*[range(i, 4 + i) for i in range(35)])
+        f(*[list(range(i, 4 + i)) for i in xrange(35)])
 
     def test_pickle_big_fusion(self):
         """In the past, pickle of Composite generated in tha case
@@ -1217,7 +1218,7 @@ class test_fusion(unittest.TestCase):
         if theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
             n = 10
 
-        for i in range(n):
+        for i in xrange(n):
             f = (cst_m05 * sd ** cst_m2 * (ones - means[i]) ** cst_2 +
                  cst_05 * tensor.log(cst_05 * (sd ** cst_m2) / numpy.pi))
             factors.append(tensor.sum(f))
@@ -1320,7 +1321,7 @@ class test_fusion(unittest.TestCase):
         # TODO: if mode is Mode('py','merge') then their is no memory leak!
         from theano.compile.function_module import orig_function
         for id, [g, sym_inputs, val_inputs, out_dtype] in enumerate(cases):
-            for zzzz in range(nb_repeat):
+            for zzzz in xrange(nb_repeat):
                 v = numpy.zeros(shp, dtype=out_dtype)
                 gc.collect()
                 gc.collect()
@@ -1345,10 +1346,9 @@ class test_fusion(unittest.TestCase):
                     nd = objgraph.typestats()
                     print('key, old val, new val, diff')
                     for key in set(d.keys() + nd.keys()):
-                        if d.has_key(key) and nd.has_key(key) and nd[key] != d[key]:
+                        if key in d and key in nd and nd[key] != d[key]:
                             print(key, d.get(key), nd.get(key), end=' ')
-                            if d.has_key(
-                                key) and nd.has_key(key):
+                            if key in d and key in nd:
                                     print(nd[key] - d[key])
                             else:
                                 print(None)
@@ -1994,7 +1994,7 @@ class test_local_subtensor_merge(unittest.TestCase):
     def test_const(self):
         # var[const::][-1] -> var[-1]
         x = tensor.matrix('x')
-        for idx in range(-7, 6):
+        for idx in xrange(-7, 6):
             f = function([x], x[idx::][-1], mode=mode_opt)
             g = function([x], x[idx::][-1], mode=mode_opt.excluding(
                 'local_subtensor_merge'))
@@ -2035,7 +2035,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         for x_s in self.x_shapes:
             x_val = self.rng.uniform(size=x_s).astype(config.floatX)
 
-            for idx in range(-9, 8):
+            for idx in xrange(-9, 8):
                 if (idx < x_s[0]) and (x_s[0] > 0):
                     # The first subtensor is non-empty
                     f(x_val, idx)  # let debugmode test something
@@ -2047,7 +2047,7 @@ class test_local_subtensor_merge(unittest.TestCase):
     def test_const2(self):
         # var[::-1][const] -> var[-1]
         x = tensor.matrix('x')
-        for idx in range(-8, 7):
+        for idx in xrange(-8, 7):
             f = function([x], x[::-1][idx], mode=mode_opt)
             g = function([x], x[::-1][idx],
                          mode=mode_opt.excluding('local_subtensor_merge'))
@@ -2090,16 +2090,16 @@ class test_local_subtensor_merge(unittest.TestCase):
         for x_s in self.x_shapes:
             x_val = self.rng.uniform(size=x_s).astype(config.floatX)
 
-            for idx in range(-x_s[0], x_s[0]):
+            for idx in xrange(-x_s[0], x_s[0]):
                 f(x_val, idx)  # let debugmode test something
-            for idx in (range(x_s[0], 9) + range(-9, -x_s[0])):
+            for idx in (list(range(x_s[0], 9)) + list(range(-9, -x_s[0]))):
                 self.assertRaises(IndexError, f, x_val, idx)
                 self.assertRaises(IndexError, g, x_val, idx)
 
     def test_const3(self):
         # var[::-1][:const] -> var[-1]
         x = tensor.matrix('x')
-        for idx in range(-9, 8):
+        for idx in xrange(-9, 8):
             f = function([x], x[::-1][:idx], mode=mode_opt)
 
             #theano.printing.debugprint(f, print_type=True)
@@ -2130,14 +2130,14 @@ class test_local_subtensor_merge(unittest.TestCase):
 
         for x_s in self.x_shapes:
             x_val = self.rng.uniform(size=x_s).astype(config.floatX)
-            for idx in range(-7, 7):
+            for idx in xrange(-7, 7):
                 f(x_val, idx)  # let debugmode test something
 
     def test_const4(self):
         # var[const1::][:const2]
         x = tensor.matrix('x')
-        for idx1 in range(-7, 7):
-            for idx2 in range(-7, 7):
+        for idx1 in xrange(-7, 7):
+            for idx2 in xrange(-7, 7):
                 f = function([x], x[idx1:][:idx2], mode=mode_opt)
 
                 #theano.printing.debugprint(f, print_type=True)
@@ -2169,8 +2169,8 @@ class test_local_subtensor_merge(unittest.TestCase):
 
         for x_s in self.x_shapes:
             x_val = self.rng.uniform(size=x_s).astype(config.floatX)
-            for idx1 in range(-11, 11):
-                for idx2 in range(-11, 11):
+            for idx1 in xrange(-11, 11):
+                for idx2 in xrange(-11, 11):
                     f(x_val, idx1, idx2)  # let debugmode test something
 
     def test_const_general(self):
@@ -2211,10 +2211,10 @@ class test_local_subtensor_merge(unittest.TestCase):
         # print topo[-1].op
         assert isinstance(topo[-1].op, DeepCopyOp)
 
-        b1r = self.rng.permutation(range(-8, 8))[:2]
-        e1r = self.rng.permutation(range(-8, 8))[:2]
-        b2r = self.rng.permutation(range(-8, 8))[:2]
-        e2r = self.rng.permutation(range(-8, 8))[:2]
+        b1r = self.rng.permutation(list(range(-8, 8)))[:2]
+        e1r = self.rng.permutation(list(range(-8, 8)))[:2]
+        b2r = self.rng.permutation(list(range(-8, 8)))[:2]
+        e2r = self.rng.permutation(list(range(-8, 8)))[:2]
 
         s1r = self.rng.permutation([-7, -6, -5, -4, -3, -2, -1, 1,
                                     2, 3, 4, 5, 6, 7])[:2]
@@ -2294,9 +2294,9 @@ class test_local_subtensor_merge(unittest.TestCase):
         # print topo[-1].op
         assert isinstance(topo[-1].op, DeepCopyOp)
 
-        b_r = self.rng.permutation(range(-4, 4))[:3]
-        e_r = self.rng.permutation(range(-4, 4))[:3]
-        i_r = self.rng.permutation(range(-4, 4))[:3]
+        b_r = self.rng.permutation(list(range(-4, 4)))[:3]
+        e_r = self.rng.permutation(list(range(-4, 4)))[:3]
+        i_r = self.rng.permutation(list(range(-4, 4)))[:3]
 
         s_r = self.rng.permutation([-3, -2, -1, 1, 2, 3])[:3]
 
@@ -2343,10 +2343,10 @@ class test_local_subtensor_merge(unittest.TestCase):
         none_positions = numpy.ndindex(2, 2, 2, 2, 2, 2)
 
         # Ranges to be used when not None
-        b1r = self.rng.permutation(range(-4, 4))[:]
-        e1r = self.rng.permutation(range(-4, 4))[:]
-        b2r = self.rng.permutation(range(-4, 4))[:]
-        e2r = self.rng.permutation(range(-4, 4))[:]
+        b1r = self.rng.permutation(list(range(-4, 4)))[:]
+        e1r = self.rng.permutation(list(range(-4, 4)))[:]
+        b2r = self.rng.permutation(list(range(-4, 4)))[:]
+        e2r = self.rng.permutation(list(range(-4, 4)))[:]
         s1r = self.rng.permutation([-4, -3, -2, -1, 1, 2, 3, 4])[:]
         s2r = self.rng.permutation([-4, -3, -2, -1, 1, 2, 3, 4])[:]
 
@@ -2402,9 +2402,9 @@ class test_local_subtensor_merge(unittest.TestCase):
         none_positions = numpy.ndindex(2, 2, 2, 1)
 
         # Ranges to be used when not None
-        b_r = self.rng.permutation(range(-4, 4))[:]
-        e_r = self.rng.permutation(range(-4, 4))[:]
-        i_r = self.rng.permutation(range(-4, 4))[:]
+        b_r = self.rng.permutation(list(range(-4, 4)))[:]
+        e_r = self.rng.permutation(list(range(-4, 4)))[:]
+        i_r = self.rng.permutation(list(range(-4, 4)))[:]
         s_r = self.rng.permutation([-4, -3, -2, -1, 1, 2, 3, 4])[:]
 
         scalar_vars = [b, e, s, i]
@@ -3655,7 +3655,7 @@ def speed_local_pow_specialize_range():
     v = T.vector()
     mode = compile.mode.get_default_mode()
     mode_without_pow_opt = mode.excluding('local_pow_specialize')
-    for i in range(500, 513):
+    for i in xrange(500, 513):
         f1 = function([v], v ** i, mode=mode)
         f2 = function([v], v ** i, mode=mode_without_pow_opt)
         assert len(f1.maker.fgraph.toposort()) == 1
@@ -3667,7 +3667,7 @@ def speed_local_pow_specialize_range():
         print(i, t2 - t1, t3 - t2, t2 - t1 < t3 - t2)
         if not t2 - t1 < t3 - t2:
             print("WARNING WE ARE SLOWER")
-    for i in range(-3, -1500, -1):
+    for i in xrange(-3, -1500, -1):
         f1 = function([v], v ** i, mode=mode)
         f2 = function([v], v ** i, mode=mode_without_pow_opt)
         assert len(f1.maker.fgraph.toposort()) == 1
@@ -4070,7 +4070,7 @@ class T_local_switch_sink(unittest.TestCase):
                 f = theano.function([condition[0], x[0], c],
                                     [y], mode=self.mode)
                 if type(condition[1]) is list:
-                    for i in range(len(condition[1])):
+                    for i in xrange(len(condition[1])):
                         res = f(condition[1][i], x[1], -1)
                         assert (res == numpy.asarray(
                             self.resm[idx][i])).sum() == self.resm[idx][i].size
@@ -4097,7 +4097,7 @@ class T_local_switch_sink(unittest.TestCase):
                 f = theano.function([condition[0], x[0], c]
                     , [y], mode=self.mode)
                 if type(condition[1]) is list:
-                    for i in range(len(condition[1])):
+                    for i in xrange(len(condition[1])):
                         res = f(condition[1][i], x[1], -1)
                         assert (res == numpy.
                             asarray(self.resm[idx][i])).sum() == self.resm[idx][i].size
@@ -4587,14 +4587,14 @@ class T_local_sum_prod(unittest.TestCase):
             assert numpy.allclose(f(input), n_like(input).sum())
             assert len(f.maker.fgraph.apply_nodes) == nb_nodes[0]
 
-            for d in range(3):
+            for d in xrange(3):
                 f = theano.function([a], t_like(a).sum(d), mode=mode)
                 assert numpy.allclose(f(input), n_like(input).sum(d))
                 assert len(f.maker.fgraph.apply_nodes) == nb_nodes[1]
                 topo = f.maker.fgraph.toposort()
                 assert topo[-1].op == T.alloc
                 assert not any([isinstance(node.op, T.Sum) for node in topo])
-            for i in range(3):
+            for i in xrange(3):
                 f = theano.function([a], t_like(a).sum(i), mode=mode)
                 assert numpy.allclose(f(input), n_like(input).sum(i))
                 assert len(f.maker.fgraph.apply_nodes) == nb_nodes[2]
@@ -5199,7 +5199,7 @@ def test_local_useless_split():
 
 
 def test_local_flatten_lift():
-    for i in range(1, 4):
+    for i in xrange(1, 4):
         op = tensor.Flatten(i)
         x = tensor.tensor4()
         out = op(T.exp(x))

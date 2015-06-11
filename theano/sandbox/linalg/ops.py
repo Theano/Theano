@@ -3,6 +3,9 @@ import logging
 logger = logging.getLogger(__name__)
 import numpy
 
+from six import iteritems
+from six.moves import xrange
+
 from theano.gof import Op, Apply
 
 from theano.tensor import as_tensor_variable, dot, DimShuffle, Dot
@@ -186,7 +189,7 @@ class HintsFeature(object):
     def update_second_from_first(self, r0, r1):
         old_hints = self.hints[r0]
         new_hints = self.hints[r1]
-        for k, v in old_hints.items():
+        for k, v in iteritems(old_hints):
             if k in new_hints and new_hints[k] is not v:
                 raise NotImplementedError()
             if k not in new_hints:

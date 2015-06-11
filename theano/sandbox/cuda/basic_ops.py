@@ -4,12 +4,12 @@ import logging
 import sys
 
 import numpy
+from six import iteritems
+from six.moves import StringIO, xrange
 
 import theano
-
 from theano import gof, Type, Apply
 from theano import tensor, scalar, config
-from theano.compat.six import StringIO
 from theano.gradient import grad_undefined
 from theano.scalar import Scalar
 
@@ -228,7 +228,7 @@ class GpuElemwise(GpuOp):
                 self.sync == other.sync)
 
     def _rehash(self):
-        items = self.inplace_pattern.items()
+        items = list(self.inplace_pattern.items())
         items.sort()
         tuple_items = [k for k, v in items]
         for k, v in items:
@@ -248,7 +248,7 @@ class GpuElemwise(GpuOp):
 
     def __str__(self):
         if self.inplace_pattern:
-            items = self.inplace_pattern.items()
+            items = list(self.inplace_pattern.items())
             items.sort()
             # We need to print the scalar_op, not only the its class name
             # to have the full definition of composite op.
@@ -275,7 +275,7 @@ class GpuElemwise(GpuOp):
                 # TODO: use LComplete instead
                 args.append(GpuDimShuffle(
                     input.type.broadcastable,
-                    ['x'] * difference + range(length)
+                    ['x'] * difference + list(range(length))
                     )(input))
         _inputs = args
 
@@ -813,8 +813,8 @@ class GpuCAReduce(GpuOp):
         ndim = len(self.reduce_mask)
         nd_out = ndim - sum(self.reduce_mask)
         shapes_format = "shape=(%s)" % ",".join(["%d"] * node.inputs[0].ndim)
-        shapes_data = ",".join(["CudaNdarray_HOST_DIMS(%s)[%d]" % (x, i)
-                                for i in range(node.inputs[0].ndim)])
+        shapes_data = ",".join("CudaNdarray_HOST_DIMS(%s)[%d]" % (x, i)
+                               for i in xrange(node.inputs[0].ndim))
 
         print("""
             if (verbose)
@@ -3209,7 +3209,7 @@ class GpuJoin(tensor.Join, GpuOp):
 
         def construct_slices(curlen):
             slices = [slice(None, None, None) for i in \
-                            range(len(template_shape))]
+                            xrange(len(template_shape))]
             slices[axis] = slice(curpos, curpos + curlen, None)
             return tuple(slices)
 
@@ -3827,7 +3827,7 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
         cpu = 0
         gpu = 0
         trans = 0
-        for (_, node), t in apply_time.items():
+        for (_, node), t in iteritems(apply_time):
             if isinstance(node.op.__class__.__name__,
                           (HostFromGpu, GpuFromHost)):
                 trans += t
@@ -3843,7 +3843,7 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
         print()
         print("    Theano function input that are float64")
         print("    <fct name> <input name> <input type> <str input>")
-        for fct in fct_call.keys():
+        for fct in fct_call:
             for i in fct.input_storage:
                 if hasattr(i.type, 'dtype') and i.type.dtype == 'float64':
                     print('        ', fct.name, i.name, i.type, i)
@@ -3852,7 +3852,7 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
         print("    List of apply that don't have float64 as input but have float64 in outputs")
         print("    (Useful to know if we forgot some cast when using floatX=float32 or gpu code)")
         print('    <Apply> <Apply position> <fct name> <inputs type> <outputs type>')
-        for fct in fct_call.keys():
+        for fct in fct_call:
             for idx, node in enumerate(fct.maker.fgraph.toposort()):
                 if (any(hasattr(i, 'dtype') and i.dtype == 'float64'
                         for i in node.outputs) and

@@ -3,6 +3,8 @@ import linecache
 import traceback
 import sys
 
+from six import iteritems
+
 from theano import config
 
 
@@ -142,7 +144,7 @@ class scratchpad:
 
     def info(self):
         print("<theano.gof.utils.scratchpad instance at %i>" % id(self))
-        for k, v in self.__dict__.items():
+        for k, v in iteritems(self.__dict__):
             print("  %s: %s" % (k, v))
 
 
@@ -249,14 +251,14 @@ def toposort(prereqs_d):
 
 #     all1 = set(prereqs_d.keys())
 #     all2 = set()
-#     for x, y in prereqs_d.items():
+#     for x, y in iteritems(prereqs_d):
 #         all2.update(y)
 #     print all1.difference(all2)
 
     seq = []
     done = set()
     postreqs_d = {}
-    for x, prereqs in prereqs_d.items():
+    for x, prereqs in iteritems(prereqs_d):
         for prereq in prereqs:
             postreqs_d.setdefault(prereq, set()).add(x)
     next = set([k for k in prereqs_d if not prereqs_d[k]])
@@ -284,6 +286,11 @@ class Keyword:
         self.nonzero = nonzero
 
     def __nonzero__(self):
+        # Python 2.x
+        return self.__bool__()
+
+    def __bool__(self):
+        # Python 3.x
         return self.nonzero
 
     def __str__(self):
@@ -306,7 +313,7 @@ FALL_THROUGH = Keyword("FALL_THROUGH")
 
 def comm_guard(type1, type2):
     def wrap(f):
-        old_f = f.func_globals[f.__name__]
+        old_f = f.__globals__[f.__name__]
 
         def new_f(arg1, arg2, *rest):
             if ((type1 is ANY_TYPE or isinstance(arg1, type1)) and
@@ -345,7 +352,7 @@ def comm_guard(type1, type2):
 
 def type_guard(type1):
     def wrap(f):
-        old_f = f.func_globals[f.__name__]
+        old_f = f.__globals__[f.__name__]
 
         def new_f(arg1, *rest):
             if (type1 is ANY_TYPE or isinstance(arg1, type1)):
@@ -403,7 +410,7 @@ def give_variables_names(variables):
     """ Gives unique names to an iterable of variables. Modifies input.
 
     This function is idempotent."""
-    names = map(lambda var: var.name, variables)
+    names = [var.name for var in variables]
     h = hist(names)
 
     def bad_var(var):
@@ -412,7 +419,7 @@ def give_variables_names(variables):
     for i, var in enumerate(filter(bad_var, variables)):
         var.name = (var.name or "") + "_%d" % i
 
-    if not unique(map(str, variables)):
+    if not unique(list(map(str, variables))):
         raise ValueError("Not all variables have unique names. Maybe you've "
                          "named some of the variables identically")
     return variables
@@ -427,4 +434,4 @@ def remove(predicate, coll):
     >>> remove(even, [1, 2, 3, 4])
     [1, 3]
     """
-    return filter(lambda x: not predicate(x), coll)
+    return [x for x in coll if not predicate(x)]

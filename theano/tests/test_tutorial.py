@@ -15,6 +15,7 @@ import theano
 import theano.tensor as T
 from theano import function, compat
 
+from six.moves import xrange
 from theano import config
 from theano.tests import unittest_tools as utt
 from theano.sandbox.rng_mrg import MRG_RandomStreams
@@ -834,7 +835,7 @@ class T_loading_and_saving(unittest.TestCase):
 
     def test_loading_and_saving_1(self):
 
-        import cPickle
+        import six.moves.cPickle as pickle
         import theano, theano.tensor
 
         x = theano.tensor.matrix()
@@ -855,11 +856,11 @@ class T_loading_and_saving(unittest.TestCase):
                 os.chdir(tmpdir)
 
                 f = open('obj.save', 'wb')
-                cPickle.dump(my_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
+                pickle.dump(my_obj, f, protocol=pickle.HIGHEST_PROTOCOL)
                 f.close()
 
                 f = open('obj.save', 'rb')
-                loaded_obj = cPickle.load(f)
+                loaded_obj = pickle.load(f)
                 f.close()
 
                 obj1 = my_obj
@@ -868,13 +869,13 @@ class T_loading_and_saving(unittest.TestCase):
 
                 f = open('objects.save', 'wb')
                 for obj in [obj1, obj2, obj3]:
-                    cPickle.dump(obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
+                    pickle.dump(obj, f, protocol=pickle.HIGHEST_PROTOCOL)
                 f.close()
 
                 f = open('objects.save', 'rb')
                 loaded_objects = []
                 for i in range(3):
-                    loaded_objects.append(cPickle.load(f))
+                    loaded_objects.append(pickle.load(f))
                 f.close()
             finally:
                 # Get back to the orinal dir, and temporary one.

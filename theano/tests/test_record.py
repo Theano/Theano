@@ -1,7 +1,7 @@
 from theano.tests.record import *
 from theano import function
+from six.moves import xrange, StringIO
 from theano.tensor import iscalar
-import cStringIO
 
 
 def test_record_good():
@@ -13,7 +13,7 @@ def test_record_good():
     """
 
     # Record a sequence of events
-    output = cStringIO.StringIO()
+    output = StringIO()
 
     recorder = Record(file_object=output, replay=False)
 
@@ -29,7 +29,7 @@ def test_record_good():
 
     # Make sure that the playback functionality doesn't raise any errors
     # when we repeat them
-    output = cStringIO.StringIO(output_value)
+    output = StringIO(output_value)
 
     playback_checker = Record(file_object=output,  replay=True)
 
@@ -44,7 +44,7 @@ def test_record_bad():
     """
 
     # Record a sequence of events
-    output = cStringIO.StringIO()
+    output = StringIO()
 
     recorder = Record(file_object=output, replay=False)
 
@@ -56,7 +56,7 @@ def test_record_bad():
     # Make sure that the playback functionality doesn't raise any errors
     # when we repeat some of them
     output_value = output.getvalue()
-    output = cStringIO.StringIO(output_value)
+    output = StringIO(output_value)
 
     playback_checker = Record(file_object=output,  replay=True)
 
@@ -80,7 +80,7 @@ def test_record_mode_good():
     """
 
     # Record a sequence of events
-    output = cStringIO.StringIO()
+    output = StringIO()
 
     recorder = Record(file_object=output, replay=False)
 
@@ -98,7 +98,7 @@ def test_record_mode_good():
     # Make sure that the playback functionality doesn't raise any errors
     # when we repeat them
     output_value = output.getvalue()
-    output = cStringIO.StringIO(output_value)
+    output = StringIO(output_value)
 
     playback_checker = Record(file_object=output,  replay=True)
 
@@ -120,7 +120,7 @@ def test_record_mode_bad():
     """
 
     # Record a sequence of events
-    output = cStringIO.StringIO()
+    output = StringIO()
 
     recorder = Record(file_object=output, replay=False)
 
@@ -138,7 +138,7 @@ def test_record_mode_bad():
     # Make sure that the playback functionality doesn't raise any errors
     # when we repeat them
     output_value = output.getvalue()
-    output = cStringIO.StringIO(output_value)
+    output = StringIO(output_value)
 
     playback_checker = Record(file_object=output,  replay=True)
 

@@ -1,5 +1,7 @@
+from collections import defaultdict
+from six import iteritems
 from theano.gof.graph import list_of_nodes
-from theano.compat import cmp, defaultdict
+from theano.compat import cmp
 
 # {{{ http://code.activestate.com/recipes/578231/ (r1)
 # Copyright (c) Oren Tirosh 2012
@@ -104,7 +106,8 @@ def _toposort(edges):
     [2] http://en.wikipedia.org/wiki/Toposort#Algorithms
     """
     incoming_edges = reverse_dict(edges)
-    incoming_edges = dict((k, set(val)) for k, val in incoming_edges.items())
+    incoming_edges = dict((k, set(val))
+                          for k, val in iteritems(incoming_edges))
     S = set((v for v in edges if v not in incoming_edges))
     L = []
 
@@ -137,7 +140,7 @@ def posort(l, *cmps):
 
     >>> lower_tens = lambda a, b: a/10 - b/10 # prefer lower numbers div 10
     >>> prefer evens = lambda a, b: a%2 - b%2 # prefer even numbers
-    >>> posort(range(20), lower_tens, prefer_evens)
+    >>> posort(list(range(20)), lower_tens, prefer_evens)
     [0, 8, 2, 4, 6, 1, 3, 5, 7, 9, 16, 18, 10, 12, 14, 17, 19, 11, 13, 15]
 
     implemented with _toposort """

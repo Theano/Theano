@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+from six import reraise
 from theano import gof
 import sys
 
@@ -81,7 +82,7 @@ class DebugLinker(gof.WrapLinker):
                     exc.node = node
                     exc.thunk = thunk
                     exc.linker = linker
-                    raise DebugException, exc, exc_trace
+                    reraise(DebugException, exc, exc_trace)
 
     def compare_variables(self, i, node, *thunks):
         thunk0 = thunks[0]
@@ -146,7 +147,7 @@ class DebugLinker(gof.WrapLinker):
             exc.step = i
             exc.node = node
             exc.thunks = thunks
-            raise DebugException, exc, exc_trace
+            reraise(DebugException, exc, exc_trace)
 
 
 def print_info(i, node, *thunks):

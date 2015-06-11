@@ -45,6 +45,7 @@ __version__ = "1"
 import tokenize
 import os, shutil
 import sys
+from six.moves import xrange
 
 verbose    = 0
 recurse    = 0

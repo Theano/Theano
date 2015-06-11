@@ -7,7 +7,8 @@ import time
 import unittest
 import copy
 
-import cPickle
+import six.moves.cPickle as pickle
+from six.moves import xrange
 import numpy
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
@@ -248,12 +249,12 @@ class T_Scan(unittest.TestCase):
 
             f_out = open('tmp_scan_test_pickle.pkl', 'wb')
             try:
-                cPickle.dump(_my_f, f_out, protocol=-1)
+                pickle.dump(_my_f, f_out, protocol=-1)
             finally:
                 f_out.close()
             f_in = open('tmp_scan_test_pickle.pkl', 'rb')
             try:
-                my_f = cPickle.load(f_in)
+                my_f = pickle.load(f_in)
             finally:
                 f_in.close()
         finally:
@@ -1682,7 +1683,7 @@ class T_Scan(unittest.TestCase):
 
         # Also validate that the methods get_outer_iidx_from_outer_oidx_seq
         # and get_outer_iidx_from_inner_iidx_seq produce the correct results
-        scan_node = updates.values()[0].owner
+        scan_node = list(updates.values())[0].owner
 
         result = scan_node.op.get_outer_iidx_from_outer_oidx_seq()
         expected_result = [3, -1, 4]
@@ -3575,7 +3576,7 @@ class T_Scan(unittest.TestCase):
                                  n_steps=10,
                                  truncate_gradient=-1,
                                  go_backwards=False)
-        cost = updates.values()[0]
+        cost = list(updates.values())[0]
         g_sh = tensor.grad(cost, shared_var)
         fgrad = theano.function([], g_sh)
         assert fgrad() == 1
@@ -4393,7 +4394,7 @@ class ScanGpuTests:
         # Compute the cost and take the gradient wrt params
         cost = tensor.sum((l2_out - yout) ** 2)
         grads = tensor.grad(cost, nparams)
-        updates = zip(nparams, [n - g for n, g in zip(nparams, grads)])
+        updates = list(zip(nparams, (n - g for n, g in zip(nparams, grads))))
 
         # Compile the theano function
         feval_backprop = theano.function([xin, yout], cost, updates=updates,
@@ -4493,7 +4494,7 @@ class T_Scan_Cuda(unittest.TestCase, ScanGpuTests):
         # graph, detect the inconsistencies and raise a TypeError
         folder = os.path.dirname(os.path.abspath(__file__))
         path = os.path.join(folder, "inconsistent_scan.pkl")
-        assert_raises(TypeError, cPickle.load, open(path, "r"))
+        assert_raises(TypeError, pickle.load, open(path, "r"))
 
     def test_consistent_inner_fct(self):
         # Test that scan does not falsely detect inconsistencies in a valid
@@ -4502,7 +4503,7 @@ class T_Scan_Cuda(unittest.TestCase, ScanGpuTests):
         rs = theano.sandbox.rng_mrg.MRG_RandomStreams(use_cuda=True)
         output, _ = theano.scan(lambda : rs.uniform((3,), dtype="float32"),
                                 n_steps=3)
-        cPickle.loads(cPickle.dumps(output))
+        pickle.loads(pickle.dumps(output))
 
         # Also ensure that, after compilation, the Scan has been moved
         # on the gpu
@@ -4575,8 +4576,8 @@ def test_speed():
     else:
         while True:
             try:
-                tmp = r_i.next()
-                tmp += r_ii.next()
+                tmp = next(r_i)
+                tmp += next(r_ii)
             except StopIteration:
                 break
     t1 = time.time()
@@ -5003,7 +5004,7 @@ def test_compute_test_value_grad_cast():
         w = theano.shared(numpy.random.randn(4, 3).astype('float64'), name='w')
 
         outputs, _ = theano.scan(lambda i, h, w: (theano.dot(h[i], w), i),
-                                 outputs_info=[None, 0L], non_sequences=[h, w],
+                                 outputs_info=[None, 0], non_sequences=[h, w],
                                  n_steps=3)
 
         theano.grad(outputs[0].sum(), w)
