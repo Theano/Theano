@@ -42,6 +42,7 @@ APPLY_SPECIFIC(previous_kerns_shape)[0] = 0;
 APPLY_SPECIFIC(previous_kerns_shape)[1] = 0;
 APPLY_SPECIFIC(previous_kerns_shape)[2] = 0;
 APPLY_SPECIFIC(previous_kerns_shape)[3] = 0;
+APPLY_SPECIFIC(previous_algo) = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
 
 #section cleanup_code_struct
 
