@@ -67,8 +67,9 @@ def pyconv3d(signals, filters):
                 f_i = filters[nf, :, c, :, :]
                 r_i = rval[ns, :, nf, :, :]
                 o_i = ndimage.convolve(s_i, f_i, mode='constant', cval=1)
+                o_i_sh0 = o_i.shape[0]
                 # print s_i.shape, f_i.shape, r_i.shape, o_i.shape
-                r_i += o_i[Tf2:-Tf2, Hf2:-Hf2, Wf2:-Wf2]
+                r_i += o_i[Tf2:o_i_sh0-Tf2, Hf2:-Hf2, Wf2:-Wf2]
     return rval
 
 
