@@ -1,3 +1,4 @@
+from __future__ import print_function
 # For flag of bool type, we consider the strings 'False', 'false' and '0'
 # as False, and the string s'True', 'true', '1' as True.
 # We also accept the bool type as its corresponding value!
@@ -88,6 +89,37 @@ theano_raw_cfg = ConfigParser.RawConfigParser()
 theano_raw_cfg.read(config_files)
 
 
+def change_flags(**kwargs):
+    """
+    Use this as a decorator to change the value of Theano config variable.
+
+    Useful during tests.
+    """
+    def change_flags_exec(f):
+        def inner(*args, **kwargs_):
+            old_val = {}
+            for k in kwargs:
+                l = [v for v in theano.configparser._config_var_list
+                     if v.fullname == k]
+                assert len(l) == 1
+                old_val[k] = l[0].__get__()
+            try:
+                for k in kwargs:
+                    l = [v for v in theano.configparser._config_var_list
+                         if v.fullname == k]
+                    assert len(l) == 1
+                    l[0].__set__(None, kwargs[k])
+                return f(*args, **kwargs_)
+            finally:
+                for k in kwargs:
+                    l = [v for v in theano.configparser._config_var_list
+                         if v.fullname == k]
+                    assert len(l) == 1
+                    l[0].__set__(None, old_val[k])
+        return inner
+    return change_flags_exec
+
+
 def fetch_val_for_key(key):
     """Return the overriding config value for a key.
     A successful search returns a string value.
@@ -129,10 +161,10 @@ _config_var_list = []
 
 def _config_print(thing, buf):
     for cv in _config_var_list:
-        print >> buf, cv
-        print >> buf, "    Doc: ", cv.doc
-        print >> buf, "    Value: ", cv.__get__()
-        print >> buf, ""
+        print(cv, file=buf)
+        print("    Doc: ", cv.doc, file=buf)
+        print("    Value: ", cv.__get__(), file=buf)
+        print("", file=buf)
 
 
 def get_config_md5():

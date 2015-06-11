@@ -1,3 +1,4 @@
+from __future__ import print_function
 #
 # UNIT TEST
 #
@@ -464,7 +465,7 @@ def test_known_grads():
     true_grads = true_grads(*values)
 
     for layer in layers:
-        print 'Testing by separately computing ', layer
+        print('Testing by separately computing ', layer)
         first = theano.tensor.grad(cost, layer, disconnected_inputs='ignore')
         known = dict(zip(layer, first))
         full = theano.tensor.grad(cost=None,
@@ -474,13 +475,13 @@ def test_known_grads():
         assert len(true_grads) == len(full)
         for a, b, var in zip(true_grads, full, inputs):
             if not np.allclose(a, b):
-                print 'Failure'
-                print a
-                print b
-                print var
-                print layer
+                print('Failure')
+                print(a)
+                print(b)
+                print(var)
+                print(layer)
                 for v in known:
-                    print v, ':', theano.function(inputs, known[v])(*values)
+                    print(v, ':', theano.function(inputs, known[v])(*values))
                 assert False
 
 

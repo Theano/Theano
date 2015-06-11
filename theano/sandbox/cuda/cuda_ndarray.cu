@@ -2,6 +2,7 @@
 
 #include <Python.h>
 #include <structmember.h>
+#include "theano_mod_helper.h"
 
 #include <numpy/arrayobject.h>
 #include <iostream>
@@ -307,7 +308,7 @@ static size_t work_size = 0;
  * request a single chunk of memory at a time since it is reused.
  */
 void *get_work_mem(size_t sz) {
-    if (sz < work_size)
+    if (sz <= work_size)
         return work_mem;
     device_free(work_mem);
     work_mem = device_malloc(sz);
@@ -1012,28 +1013,24 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         if (verbose) printf("cudandarray indices\n");
         indices = (CudaNdarray*) indices_obj;
         Py_INCREF(indices);
-    } else if (0 && PyArray_Check(indices_obj)) {
-        PyErr_SetString(PyExc_NotImplementedError, "CudaNdarray_TakeFrom: The indices must cudandarray with float32 value.");
-        return NULL;
-
+    } else if (PyArray_Check(indices_obj)) {
         if (verbose) printf("ndarray indices\n");
-        if (PyArray_TYPE((PyArrayObject *)indices_obj) != NPY_INT32) {
-            PyErr_SetString(PyExc_TypeError, "CudaNdarray_TakeFrom: need a ndarray for indices with dtype int32");
+        if (PyArray_TYPE((PyArrayObject *)indices_obj) != NPY_INT64) {
+            PyErr_SetString(PyExc_TypeError,
+                            "CudaNdarray_TakeFrom: need a ndarray for indices"
+                            " with dtype int64");
             return NULL;
         }
         if (PyArray_NDIM(((PyArrayObject*)indices_obj)) != 1) {
-            PyErr_SetString(PyExc_TypeError, "CudaNdarray_TakeFrom: need a CudaNdarray of indices with only 1 dimensions");
+            PyErr_SetString(PyExc_TypeError,
+                            "CudaNdarray_TakeFrom: need a CudaNdarray of"
+                            " indices with only 1 dimensions");
             return NULL;
         }
         PyArray_Descr* float32_descr = PyArray_DescrFromType(NPY_FLOAT32);
         PyObject * indices_float32 = NULL;
         indices_float32 = PyArray_View((PyArrayObject*)indices_obj,
                                                   float32_descr, NULL);
-        Py_DECREF(float32_descr);
-        if (verbose) printf("ndarray indices\n");
-        //indices_float32 = PyArray_Cast((PyArrayObject*)indices_obj,
-        //                              NPY_FLOAT32);
-        //Py_INCREF(indices_float32);
         if (verbose) printf("ndarray indices\n");
         if (!indices_float32)
             return NULL;
@@ -1047,7 +1044,6 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         if (CudaNdarray_CopyFromArray(indices,
                                       (PyArrayObject *)indices_float32)){
             Py_DECREF(indices_float32);
-
             return NULL;
         }
         Py_DECREF(indices_float32);
@@ -1069,23 +1065,19 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     if(!CudaNdarray_is_c_contiguous(indices) != 0) {
         PyErr_SetString(PyExc_NotImplementedError,
                         "CudaNdarray_TakeFrom: The indices must be contiguous in memory.");
-        Py_DECREF(indices_obj);
+        Py_DECREF(indices);
         return NULL;
     }
     int nb_indices = CudaNdarray_SIZE((CudaNdarray *)indices) / 2;// int64 are 8 bytes, float32 are 4 bytes
 
     //Check argument axis
     //TODO: implement the default and other axis
-    PyObject * axis_iobj = PyNumber_Long(axis_obj);
-    if (!axis_iobj) {
-        PyErr_SetString(PyExc_NotImplementedError,"CudaNdarray_TakeFrom: axis must be convertable to a long");
-        Py_DECREF(indices);
-        return NULL;
-    }
-    long axis = PyInt_AsLong(axis_iobj);
-    Py_DECREF(axis_iobj); axis_iobj=NULL;
+    long axis = PyInt_AsLong(axis_obj);
+
     if (axis != 0) {
-        PyErr_SetString(PyExc_NotImplementedError,"CudaNdarray_TakeFrom: only axis=0 is currently supported");
+        PyErr_Format(PyExc_NotImplementedError,
+                     "CudaNdarray_TakeFrom: only axis=0 is currently supported."
+                     " Got %ld.", axis);
         Py_DECREF(indices);
         return NULL;
     }
@@ -2277,7 +2269,9 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
         }
         else
         {
-            PyErr_SetString(PyExc_IndexError, "index out of bounds");
+            PyErr_Format(PyExc_IndexError,
+                         "index out of bounds. Asked %d, but size of %d",
+                         d_idx, d_dim);
             return NULL;
         }
 
@@ -2449,7 +2443,9 @@ CudaNdarray_Subscript(PyObject * py_self, PyObject * key)
                     }
                     else
                     {
-                        PyErr_SetString(PyExc_IndexError, "index out of bounds");
+                        PyErr_Format(PyExc_IndexError,
+                                     "index out of bounds. Asked %d for dimensions %d, but size of %d",
+                                     d_idx, d, d_dim);
                         Py_DECREF(rval);
                         return NULL;
                     }
@@ -3470,10 +3466,6 @@ static PyMethodDef module_methods[] = {
      "Used to know if this version of cuda_ndarray is linked with cublas v2."},
     {NULL, NULL, NULL, NULL}  /* Sentinel */
 };
-
-#ifndef PyMODINIT_FUNC  /* declarations for DLL import/export */
-#define PyMODINIT_FUNC void
-#endif
 
 #define CNDA_MOD_NAME "cuda_ndarray"
 #define CNDA_DOCSTRING "CUDA implementation of a numpy ndarray-like object."

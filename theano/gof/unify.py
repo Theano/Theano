@@ -7,6 +7,7 @@ if there exists an assignment to all unification variables such that
     [A, [1, 2]] cannot be unified because there is no value for A that
     satisfies the constraints. That's useful for pattern matching.
 """
+from __future__ import print_function
 from copy import copy
 
 from theano.compat import partial
@@ -489,14 +490,14 @@ if __name__ == "__main__":
     U = unify_walk(pattern1, pattern2, Unification())
 
     if U:
-        print U[va]
-        print U[vx]
-        print U[vy]
-        print U[vz]
-        print unify_merge(pattern1, pattern2, U)
+        print(U[va])
+        print(U[vx])
+        print(U[vy])
+        print(U[vz])
+        print(unify_merge(pattern1, pattern2, U))
     else:
-        print "no match"
+        print("no match")
 
     U = unify_walk((1, 2), (va, va), Unification())
-    print U[va]
+    print(U[va])
 

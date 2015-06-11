@@ -123,6 +123,7 @@ instead. This optimization is `local_gemm_to_gemv`.
 
 
 """
+from __future__ import print_function
 import copy
 import logging
 import os
@@ -175,13 +176,18 @@ def default_blas_ldflags():
     yield flags
 
     # Now test it!
-    x = theano.tensor.fmatrix()
     try:
-        theano.function([x], theano.tensor.blas._dot22(x,x),
-                        profile=False)
-    except Exception as e:
-        print e
-        yield ""
+        old = config.compute_test_value
+        config.compute_test_value = 'off'
+        x = theano.tensor.fmatrix()
+        try:
+            theano.function([x], theano.tensor.blas._dot22(x, x),
+                            profile=False)
+        except Exception as e:
+            print(e)
+            yield ""
+    finally:
+        config.compute_test_value = old
 
 
 def static_default_blas_flags():
@@ -349,7 +355,7 @@ try:
             numpy.dtype('complex64'): fblas.cgemv,
             numpy.dtype('complex128'): fblas.zgemv,
             }
-except ImportError, e:
+except ImportError as e:
     have_fblas = False
     # This is used in Gemv and ScipyGer. We use CGemv and CGer
     # when theano.config.blas.ldflags is defined. So we don't need a
@@ -416,7 +422,8 @@ class Gemv(Op):
 
     def perform(self, node, inputs, out_storage):
         y, alpha, A, x, beta = inputs
-        if have_fblas and y.shape[0] != 0 and x.shape[0] != 0:
+        if (have_fblas and y.shape[0] != 0 and x.shape[0] != 0 and
+                y.dtype in _blas_gemv_fns):
             gemv = _blas_gemv_fns[y.dtype]
 
             if (A.shape[0] != y.shape[0] or A.shape[1] != x.shape[0]):
@@ -1561,7 +1568,7 @@ class GemmOptimizer(Optimizer):
                     time_canonicalize += time1
                     time_factor_can += time2
                     time_factor_list += time3
-                except InconsistencyError, e:
+                except InconsistencyError as e:
                     nb_inconsistency_make += 1
                     continue
                 if new_outputs:
@@ -1578,11 +1585,11 @@ class GemmOptimizer(Optimizer):
                         )
                         did_something = True
                         nb_replacement += 1
-                    except InconsistencyError, e:
+                    except InconsistencyError as e:
                         # TODO: retry other applications of gemm (see comment
                         # in _gemm_from_node)
                         nb_inconsistency_replace += 1
-                    except ReplacementDidntRemovedError, e:
+                    except ReplacementDidntRemovedError as e:
                         nb_replacement_didn_t_remove += 1
                         self.warned = True
         fgraph.remove_feature(u)
@@ -1609,23 +1616,23 @@ class GemmOptimizer(Optimizer):
     @staticmethod
     def print_profile(stream, prof, level=0):
         blanc = ('    ' * level)
-        print >> stream, blanc, "GemmOptimizer"
-        print >> stream, blanc, " nb_iter", prof[1]
-        print >> stream, blanc, " nb_replacement", prof[2]
-        print >> stream, blanc, " nb_replacement_didn_t_remove", prof[3]
-        print >> stream, blanc, " nb_inconsistency_make", prof[4]
-        print >> stream, blanc, " nb_inconsistency_replace", prof[5]
-        print >> stream, blanc, " time_canonicalize", prof[6]
-        print >> stream, blanc, " time_factor_can", prof[7]
-        print >> stream, blanc, " time_factor_list", prof[8]
-        print >> stream, blanc, " time_toposort", prof[9]
-        print >> stream, blanc, " validate_time", prof[10]
-        print >> stream, blanc, " callback_time", prof[11]
+        print(blanc, "GemmOptimizer", file=stream)
+        print(blanc, " nb_iter", prof[1], file=stream)
+        print(blanc, " nb_replacement", prof[2], file=stream)
+        print(blanc, " nb_replacement_didn_t_remove", prof[3], file=stream)
+        print(blanc, " nb_inconsistency_make", prof[4], file=stream)
+        print(blanc, " nb_inconsistency_replace", prof[5], file=stream)
+        print(blanc, " time_canonicalize", prof[6], file=stream)
+        print(blanc, " time_factor_can", prof[7], file=stream)
+        print(blanc, " time_factor_list", prof[8], file=stream)
+        print(blanc, " time_toposort", prof[9], file=stream)
+        print(blanc, " validate_time", prof[10], file=stream)
+        print(blanc, " callback_time", prof[11], file=stream)
         if prof[11] > 1:
-            print >> stream, blanc, " callbacks_time"
+            print(blanc, " callbacks_time", file=stream)
             for i in sorted(prof[12].iteritems(), key=lambda a: a[1]):
                 if i[1] > 0:
-                    print i
+                    print(i)
 
 
 class Dot22(GemmRelated):
@@ -1649,7 +1656,7 @@ class Dot22(GemmRelated):
         z, = out
         try:
             z[0] = numpy.asarray(numpy.dot(x, y))
-        except ValueError, e:
+        except ValueError as e:
             # The error raised by numpy has no shape information, we mean to
             # add that
             e.args = e.args + (x.shape, y.shape)
@@ -1726,7 +1733,7 @@ def local_dot_to_dot22(node):
                      x, y, x.type, y.type)
         return
 
-    if y.type.dtype.startswith('float') or y.type.dtype.startswith('complex'):
+    if y.type.dtype in ['float32', 'float64', 'complex64', 'complex128']:
         if x.ndim == 2 and y.ndim == 2:
             # print "local_dot_to_dot22: MM"
             return [_dot22(*node.inputs)]
@@ -1822,7 +1829,6 @@ def local_dot22_to_ger_or_gemv(node):
             # x and y are both vectors so this might qualifies for a GER
             xv = x.dimshuffle(0)
             yv = y.dimshuffle(1)
-
             zeros = T.zeros([x.shape[0], y.shape[1]], dtype=x.dtype)
             rval = ger(zeros, one, xv, yv)
             return [rval]
@@ -1830,19 +1836,19 @@ def local_dot22_to_ger_or_gemv(node):
             # x and y are both vectors so this qualifies for a sdot / ddot
             # TODO: Theano doesn't have a sdot, but gemv is better than _dot22
             xv = x.dimshuffle(1)
-            zeros = T.zeros([1], x.dtype)
+            zeros = T.AllocEmpty(x.dtype)(1)
             rval = gemv_no_inplace(zeros, one, y.T, xv, zero)
             return [rval.dimshuffle('x', 0)]
         if xb[0] and not yb[0] and not yb[1]:
             # x is vector, y is matrix so try gemv
             xv = x.dimshuffle(1)
-            zeros = T.zeros([y.shape[1]], x.dtype)
+            zeros = T.AllocEmpty(x.dtype)(y.shape[1])
             rval = gemv_no_inplace(zeros, one, y.T, xv, zero)
             return [rval.dimshuffle('x', 0)]
         if not xb[0] and not xb[1] and yb[1]:
             # x is matrix, y is vector, try gemv
             yv = y.dimshuffle(0)
-            zeros = T.zeros([x.shape[0]], dtype=x.dtype)
+            zeros = T.AllocEmpty(x.dtype)(x.shape[0])
             rval = gemv_no_inplace(zeros, one, x, yv, zero)
             return [rval.dimshuffle(0, 'x')]
 
@@ -1873,7 +1879,8 @@ blas_optdb.register('local_gemm_to_gemv',
             local_gemm_to_ger,
             local_dot22_to_ger_or_gemv,
             local_dimshuffle_lift],
-            max_use_ratio=5),
+            max_use_ratio=5,
+            ignore_newtrees=False),
         15, 'fast_run')
 
 
@@ -1921,7 +1928,7 @@ class Dot22Scalar(GemmRelated):
         z, = out
         try:
             z[0] = numpy.asarray(scalar * numpy.dot(x, y))
-        except ValueError, e:
+        except ValueError as e:
             # The error raised by numpy has no shape information, we
             # mean to add that
             e.args = e.args + (x.shape, y.shape)
@@ -1982,6 +1989,13 @@ _dot22scalar = Dot22Scalar()
 @local_optimizer([T.mul])
 def local_dot22_to_dot22scalar(node):
     """
+    :note: Previous attempts to alter this optimization to replace dot22 with
+        gemm instead of dot22scalar resulted in some Scan nodes being
+        duplicated and the ScanSaveMem optimization never running on them,
+        resulting in highly increased memory usage. Until this issue is
+        resolved, this optimization should keep using dot22scalar instead of
+        gemm.
+
     :note: we upcast the scalar if after the multiplication with the
         dot this give the same type.
 
@@ -2081,6 +2095,7 @@ def local_dot22_to_dot22scalar(node):
     else:
         return [T.mul(_dot22scalar(d.owner.inputs[0],
                                    d.owner.inputs[1], a), *o)]
+
 
 # must happen after gemm as the gemm optimizer don't understant
 # dot22scalar and gemm give more speed up then dot22scalar

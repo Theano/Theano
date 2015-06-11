@@ -96,9 +96,9 @@ def load_reduce(self):
             except Exception:
                 pass
 
-        if self.is_verbose:
-            print(sys.exc_info())
-            print(func, args)
+#        if self.is_verbose:
+#            print(sys.exc_info())
+#            print(func, args)
 
         raise
 
@@ -153,9 +153,6 @@ class PersistentNdarrayID(object):
 
 
 class PersistentCudaNdarrayID(PersistentNdarrayID):
-    def __init__(self, zip_file):
-        super(PersistentCudaNdarrayID, self).__init__(zip_file)
-
     def __call__(self, obj):
         if (cuda_ndarray is not None and
                 type(obj) is cuda_ndarray.cuda_ndarray.CudaNdarray):
@@ -166,7 +163,7 @@ class PersistentCudaNdarrayID(PersistentNdarrayID):
                 zipadd(write_array, self.zip_file, name)
                 self.seen[id(obj)] = 'cuda_ndarray.{0}'.format(name)
             return self.seen[id(obj)]
-        super(PersistentCudaNdarrayID, self).__call__(obj)
+        return super(PersistentCudaNdarrayID, self).__call__(obj)
 
 
 class PersistentSharedVariableID(PersistentCudaNdarrayID):
@@ -203,12 +200,12 @@ class PersistentSharedVariableID(PersistentCudaNdarrayID):
         if id(obj) in self.ndarray_names:
             name = self.ndarray_names[id(obj)]
             count = self.name_counter[name]
+            self.name_counter[name] += 1
             if count:
                 if not self.allow_duplicates:
                     raise ValueError("multiple shared variables with the name "
                                      "`{0}` found".format(name))
                 name = '{0}_{1}'.format(name, count + 1)
-            self.name_counter[name] += 1
             return name
         return super(PersistentSharedVariableID, self)._resolve_name(obj)
 

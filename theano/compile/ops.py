@@ -71,12 +71,13 @@ class ViewOp(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, v) in sorted(self.c_code_and_version.items(), key=lambda pair: str(pair[0])):
+        for t, (c, v) in sorted(self.c_code_and_version.items(),
+                                key=lambda pair: str(pair[0])):
             if not v:
-                warnings.warn("Type %s has C code for ViewOp, but it has "
-                        "no version. You should add a 'version' keyword arg "
-                        "when calling register_view_op_c_code." % t,
-                        stacklevel=2)
+                warnings.warn("Type %s has C code for ViewOp, but it has no "
+                              "version. You should add a 'version' keyword "
+                              "arg when calling register_view_op_c_code." % t,
+                              stacklevel=2)
                 return ()
             version.append((str(t), v))
 
@@ -165,12 +166,14 @@ class DeepCopyOp(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, v) in sorted(self.c_code_and_version.items(), key=lambda pair: str(pair[0])):
+        for t, (c, v) in sorted(self.c_code_and_version.items(),
+                                key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for DeepCopyOp, but it has "
-                        "no version. You should add a 'version' keyword arg "
-                        "when calling register_deep_copy_op_c_code." % t,
-                        stacklevel=2)
+                              "no version. You should add a 'version' keyword"
+                              " arg when calling "
+                              "register_deep_copy_op_c_code." % t,
+                              stacklevel=2)
                 return ()
             version.append((str(t), v))
 
@@ -215,6 +218,8 @@ class Shape(gof.Op):
 
     @note: Non-differentiable.
     """
+    _f16_ok = True
+
     # Mapping from Type to C code (and version) to use.
     # In the C code, the name of the input variable is %(iname)s,
     # the output variable is %(oname)s.
@@ -282,12 +287,13 @@ class Shape(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, v) in sorted(self.c_code_and_version.items(), key=lambda pair: str(pair[0])):
+        for t, (c, v) in sorted(self.c_code_and_version.items(),
+                                key=lambda pair: str(pair[0])):
             if not v:
-                warnings.warn("Type %s has C code for Shape, but it has "
-                        "no version. You should add a 'version' keyword arg "
-                        "when calling register_shape_c_code." % t,
-                        stacklevel=2)
+                warnings.warn("Type %s has C code for Shape, but it has no "
+                              "version. You should add a 'version' keyword "
+                              "arg when calling register_shape_c_code." % t,
+                              stacklevel=2)
                 return ()
             version.append((str(t), v))
 
@@ -299,7 +305,6 @@ class Shape(gof.Op):
 
 shape = Shape()
 _shape = shape  # was used in the past, now use shape directly.
-#pprint.assign(_shape, printing.MemberPrinter('shape'))
 
 
 class Shape_i(gof.Op):
@@ -308,6 +313,8 @@ class Shape_i(gof.Op):
 
     @note: Non-differentiable.
     """
+    _f16_ok = True
+
     # Mapping from Type to C code (and version) to use.
     # In the C code, the name of the input variable is %(iname)s,
     # the output variable is %(oname)s.
@@ -385,8 +392,11 @@ class Shape_i(gof.Op):
         return [()]
 
     def grad(self, inp, grads):
-        return [theano.gradient.grad_not_implemented(op=self, x_pos=0, x=inp[0],
-                comment="No gradient for the shape of a matrix is implemented.")]
+        return [theano.gradient.grad_not_implemented(
+                op=self, x_pos=0, x=inp[0],
+                comment=("No gradient for the shape of a matrix "
+                         "is implemented."))]
+
 
 def shape_i(var, i, fgraph=None):
     """Equivalent of var.shape[i], but apply if possible the shape
@@ -417,7 +427,7 @@ def shape_i(var, i, fgraph=None):
                 # If the output var isn't marked as being in the graph,
                 # we need to att it in the ShapeFeature.
                 shape_feature.on_import(fgraph, node,
-                                    'gof.ops.shape_i')
+                                        'gof.ops.shape_i')
         if var not in shape_of:
             recur(var.owner)
         return shape_of[var][i]
@@ -431,9 +441,10 @@ def shape_i(var, i, fgraph=None):
 def register_shape_i_c_code(typ, code, check_input, version=()):
     """ Tell Shape_i how to generate C code for a Theano Type
 
-    :param typ: A Theano type. It must be the Theano class itself and not an
-                instance of the class.
-    :param code: C code that gets the shape of dimensions %(i)s for the Theano type 'typ'.
+    :param typ: A Theano type. It must be the Theano class itself and not
+                an instance of the class.
+    :param code: C code that gets the shape of dimensions %(i)s for the
+                 Theano type 'typ'.
                  Use %(iname)s and %(oname)s for the input and output C
                  variable names respectively.
     :param version: A number indicating the version of the code, for cache.
@@ -598,6 +609,7 @@ class Rebroadcast(gof.Op):
     ..note: works inplace and works for CudaNdarrayType
     """
     view_map = {0: [0]}
+    _f16_ok = True
     # Mapping from Type to C code (and version) to use.
     # In the C code, the name of the input variable is %(iname)s,
     # the output variable is %(oname)s.
@@ -615,7 +627,8 @@ class Rebroadcast(gof.Op):
         return type(self) == type(other) and self.axis == other.axis
 
     def __hash__(self):
-        items = sorted(self.axis.iteritems())  # no ambiguity because each item key is unique
+        # no ambiguity because each item key is unique
+        items = sorted(self.axis.iteritems())
         return hash((type(self), tuple(items)))
 
     def __str__(self):
@@ -632,9 +645,9 @@ class Rebroadcast(gof.Op):
     def make_node(self, x):
         if self.axis.keys() and (x.ndim <= numpy.max(self.axis.keys())):
             raise ValueError('Trying to rebroadcast non-existent dimension')
-        t = x.type.clone(broadcastable=[self.axis.get(i, b)
-                                        for i, b in enumerate(
-                    x.type.broadcastable)])
+        t = x.type.clone(
+            broadcastable=[self.axis.get(i, b)
+                           for i, b in enumerate(x.type.broadcastable)])
         return gof.Apply(self, [x], [t()])
 
     def perform(self, node, inp, out_):
@@ -697,10 +710,11 @@ class Rebroadcast(gof.Op):
         for t, (c, v) in sorted(self.c_code_and_version.items(),
                                 key=lambda pair: str(pair[0])):
             if not v:
-                warnings.warn("Type %s has C code for Rebroadcast, but it has "
-                        "no version. You should add a 'version' keyword arg "
-                        "when calling register_rebroadcast_c_code." % t,
-                        stacklevel=2)
+                warnings.warn("Type %s has C code for Rebroadcast, but it "
+                              "has no version. You should add a 'version' "
+                              "keyword arg when calling "
+                              "register_rebroadcast_c_code." % t,
+                              stacklevel=2)
                 return ()
             version.append((str(t), v))
 
@@ -713,17 +727,18 @@ def register_specify_shape_c_code(typ, code, version=(),
                                   c_support_code_apply=None):
     """ Tell SpecifyShape how to generate C code for a Theano Type
 
-    :param typ: A Theano type. It must be the Theano class itself and not an
-                instance of the class.
-    :param code: C code that checks the shape and returns a view for the Theano type 'typ'.
-                 Use %(iname)s and %(oname)s for the input and output C
-                 variable names respectively.
-                 %(shape)s is the vector of shape of %(iname)s.
-                 Check that its length is good.
+    :param typ: A Theano type. It must be the Theano class itself and
+                not an instance of the class.
+    :param code: C code that checks the shape and returns a view for
+                 the Theano type 'typ'. Use %(iname)s and %(oname)s
+                 for the input and output C variable names
+                 respectively.  %(shape)s is the vector of shape of
+                 %(iname)s.  Check that its length is good.
     :param version: A number indicating the version of the code, for cache.
     :param c_support_code_apply: extra code.
     """
-    SpecifyShape.c_code_and_version[typ] = (code, version, c_support_code_apply)
+    SpecifyShape.c_code_and_version[typ] = (code, version,
+                                            c_support_code_apply)
 
 
 class SpecifyShape(gof.Op):
@@ -779,7 +794,8 @@ class SpecifyShape(gof.Op):
         new_shape = []
         for dim in xrange(node.inputs[0].ndim):
             try:
-                s = theano.tensor.get_scalar_constant_value(node.inputs[1][dim])
+                s = theano.tensor.get_scalar_constant_value(
+                    node.inputs[1][dim])
                 s = theano.tensor.as_tensor_variable(s)
                 new_shape.append(s)
             except theano.tensor.NotScalarConstantError:
@@ -827,19 +843,21 @@ class SpecifyShape(gof.Op):
             code, version, _ = self.c_code_and_version[itype]
             return code % locals()
 
-        return super(SpecifyShape, self).c_code(node, node, inames, onames, sub)
+        return super(SpecifyShape, self).c_code(node, node, inames,
+                                                onames, sub)
 
     def c_code_cache_version(self):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
         for t, (c, v, _) in sorted(self.c_code_and_version.items(),
-                                key=lambda pair: str(pair[0])):
+                                   key=lambda pair: str(pair[0])):
             if not v:
-                warnings.warn("Type %s has C code for SpecifyShape, but it has "
-                        "no version. You should add a 'version' keyword arg "
-                        "when calling register_specify_shape_c_code." % t,
-                        stacklevel=2)
+                warnings.warn("Type %s has C code for SpecifyShape, but it "
+                              "has no version. You should add a 'version' "
+                              "keyword arg when calling "
+                              "register_specify_shape_c_code." % t,
+                              stacklevel=2)
                 return ()
             version.append((str(t), v))
 

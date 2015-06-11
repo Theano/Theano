@@ -1,6 +1,7 @@
 """
 Tensor optimizations addressing the ops in basic.py
 """
+from __future__ import print_function
 # TODO: intelligent merge for mul/add
 # TODO: 0*x -> 0
 
@@ -232,7 +233,8 @@ def inplace_elemwise_optimizer_op(OP):
 
         for node in list(graph.io_toposort(fgraph.inputs, fgraph.outputs)):
             op = node.op
-            if not isinstance(op, OP):
+            # gpuarray GpuElemwise inherit from Elemwise
+            if not type(op) == OP:
                 continue
             baseline = op.inplace_pattern
             protected_inputs = [
@@ -289,12 +291,12 @@ def inplace_elemwise_optimizer_op(OP):
                             fgraph.validate()
                             chk = fgraph.checkpoint()
                             nb_change_no_validate = 0
-                    except (ValueError, TypeError, InconsistencyError), e:
+                    except (ValueError, TypeError, InconsistencyError) as e:
                         if check_each_change != 1 and not raised_warning:
-                            print >> sys.stderr, (
+                            print((
                                     "Some inplace optimization was not "
-                                    "performed due to unexpected error:")
-                            print >> sys.stderr, e
+                                    "performed due to unexpected error:"), file=sys.stderr)
+                            print(e, file=sys.stderr)
                             raised_warning = True
                         fgraph.revert(chk)
                         continue
@@ -308,8 +310,8 @@ def inplace_elemwise_optimizer_op(OP):
                 fgraph.validate()
             except Exception:
                 if not raised_warning:
-                    print >> sys.stderr, ("Some inplace optimization was not "
-                                          "performed due to unexpected error")
+                    print(("Some inplace optimization was not "
+                                          "performed due to unexpected error"), file=sys.stderr)
                 fgraph.revert(chk)
     return inplace_elemwise_optimizer
 
@@ -355,20 +357,30 @@ def register_specialize(lopt, *tags, **kwargs):
 
 
 def register_uncanonicalize(lopt, *tags, **kwargs):
-    name = (kwargs and kwargs.pop('name')) or lopt.__name__
-    compile.optdb['uncanonicalize'].register(name, lopt, 'fast_run', *tags)
-    return lopt
+    if type(lopt) == str:
+        def register(inner_lopt):
+            return register_uncanonicalize(inner_lopt, lopt, *tags, **kwargs)
+        return register
+    else:
+        name = (kwargs and kwargs.pop('name')) or lopt.__name__
+        compile.optdb['uncanonicalize'].register(name, lopt, 'fast_run', *tags)
+        return lopt
 
 
 def register_specialize_device(lopt, *tags, **kwargs):
-    name = (kwargs and kwargs.pop('name')) or lopt.__name__
-    compile.optdb['specialize_device'].register(name, lopt, 'fast_run', *tags)
-    return lopt
+    if type(lopt) == str:
+        def register(inner_lopt):
+            return register_specialize_device(inner_lopt, lopt, *tags, **kwargs)
+        return register
+    else:
+        name = (kwargs and kwargs.pop('name')) or lopt.__name__
+        compile.optdb['specialize_device'].register(name, lopt, 'fast_run', *tags)
+        return lopt
 
 
 # Register merge_optimizer as a global opt during canonicalize
 compile.optdb['canonicalize'].register(
-        'canon_merge', merge_optimizer, 'fast_run')
+        'canon_merge', merge_optimizer, 'fast_run', final_opt=True)
 
 
 #####################
@@ -1052,14 +1064,14 @@ class ShapeFeature(object):
         except ShapeError:
             o_shapes = self.default_infer_shape(node, [self.shape_of[r] for
                                                        r in node.inputs])
-        except NotImplementedError, e:
+        except NotImplementedError as e:
             raise NotImplementedError(
                     'Code called by infer_shape failed raising a '
                     'NotImplementedError. Raising NotImplementedError to '
                     'indicate that a shape cannot be computed is no longer '
                     'supported, and one should now use tensor.ShapeError '
                     'instead. The original exception message is: %s' % e)
-        except Exception, e:
+        except Exception as e:
             msg = ('Failed to infer_shape from Op %s.\nInput shapes: '
                    '%s\nException encountered during infer_shape: '
                    '%s\nException message: %s\nTraceback: %s') % (
@@ -1239,9 +1251,10 @@ class ShapeOptimizer(Optimizer):
     def apply(self, fgraph):
         pass
 
-# -1 should make it run right before the first merge
+# Register it after merge1 optimization at 0. We don't want to track
+# the shape of merged node.
 theano.compile.mode.optdb.register('ShapeOpt', ShapeOptimizer(),
-                                   -1, 'fast_run', 'fast_compile')
+                                   0.1, 'fast_run', 'fast_compile')
 
 
 @register_specialize
@@ -1563,6 +1576,7 @@ class Assert(T.Op):
     used in the function computing the graph, but it doesn't have to be
     returned.
     """
+    __props__ = ('msg',)
     view_map = {0: [0]}
 
     check_input = False
@@ -1582,23 +1596,17 @@ class Assert(T.Op):
         assert numpy.all([c.type.ndim == 0 for c in cond])
         return gof.Apply(self, [value] + cond, [value.type()])
 
-    def __str__(self):
-        return self.__class__.__name__
-
     def perform(self, node, inputs, out_):
         out, = out_
         v = inputs[0]
         out[0] = v
         assert numpy.all(inputs[1:]), self.msg
 
-    def __eq__(self, other):
-        return type(self) == type(other) and self.msg == other.msg
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.msg)
-
     def grad(self, input, output_gradients):
         return output_gradients + [DisconnectedType()()] * (len(input) - 1)
+
+    def connection_pattern(self, node):
+        return [[1]] + [[0]] * (len(node.inputs) - 1)
 
     def c_code(self, node, name, inames, onames, sub):
         value = inames[0]
@@ -3309,10 +3317,10 @@ if 0:
             def tmp(thing):
                 try:
                     return T.get_scalar_constant_value(thing)
-                except (TypeError, ValueError), e:
-                    print e, thing.owner.inputs[0]
+                except (TypeError, ValueError) as e:
+                    print(e, thing.owner.inputs[0])
                     return None
-            print 'LOCAL SUM EMPTY', [tmp(s) for s in y_shape]
+            print('LOCAL SUM EMPTY', [tmp(s) for s in y_shape])
 
 ##################
 # Middleman cuts #
@@ -3853,17 +3861,22 @@ register_canonicalize(local_neg_to_mul)
 
 
 @register_specialize
-@gof.local_optimizer([T.Sum])
-def local_sum_mul_by_scalar(node):
+@gof.local_optimizer([T.Sum, T.elemwise.Prod])
+def local_sum_prod_mul_by_scalar(node):
     """sum(scalar * smth) -> scalar * sum(smth)
        sum(-smth) -> -sum(smth)
+
+       or
+
+       prod(scalar * smth) -> scalar * prod(smth)
+       prod(-smth) -> -prod(smth)
     """
     # TODO: if the the thing inside the Sum is a division,
     # we should get at the numerator....
-    if isinstance(node.op, T.Sum):
-        thing_summed, = node.inputs
-        if thing_summed.owner and thing_summed.owner.op == T.mul:
-            terms = thing_summed.owner.inputs
+    if isinstance(node.op, T.Sum) or isinstance(node.op, T.elemwise.Prod):
+        node_inps, = node.inputs
+        if node_inps.owner and node_inps.owner.op == T.mul:
+            terms = node_inps.owner.inputs
             scalars = [t.dimshuffle() for t in terms if
                        numpy.all(t.type.broadcastable)]
             non_scalars = [t for t in terms if not numpy.all(t.broadcastable)]
@@ -3885,8 +3898,8 @@ def local_sum_mul_by_scalar(node):
                         return [T.mul(scalars[0], node.op(non_scalars[0]))]
                     else:
                         return [scalars[0]]
-        if thing_summed.owner and thing_summed.owner.op == T.neg:
-            return [T.neg(node.op(thing_summed.owner.inputs[0]))]
+        if isinstance(node.op, T.Sum) and node_inps.owner and node_inps.owner.op == T.neg:
+            return [T.neg(node.op(node_inps.owner.inputs[0]))]
 
 
 @register_specialize
@@ -3993,64 +4006,68 @@ def local_sum_div_dimshuffle(node):
 
 
 @register_canonicalize
-@gof.local_optimizer([T.Sum])
-def local_sum_all_to_none(node):
-    """Sum{0,1,...N} -> Sum{}"""
-    if isinstance(node.op, T.Sum):
+@gof.local_optimizer([T.Sum, T.elemwise.Prod])
+def local_sum_prod_all_to_none(node):
+    """Sum{0,1,...N} -> Sum{} or
+       Prod{0,1,...N} -> Prod{}
+    """
+    if isinstance(node.op, T.Sum) or isinstance(node.op, T.elemwise.Prod):
+        opt_type = T.Sum if isinstance(node.op, T.Sum) else T.elemwise.Prod
         # if all the axes are named, then use None as a shorthand
         # this permits more merging
         if node.op.axis is None:
             return
         if set(node.op.axis) == set(range(node.inputs[0].type.ndim)):
-            return [T.Sum(axis=None, dtype=node.op.dtype)(node.inputs[0])]
+            return [opt_type(axis=None, dtype=node.op.dtype)(node.inputs[0])]
 
 
 @register_canonicalize
-@gof.local_optimizer([T.Sum])
-def local_sum_sum(node):
+@gof.local_optimizer([T.Sum, T.elemwise.Prod])
+def local_op_of_op(node):
     """
-    Sum(Sum()) -> Sum
+    Prod(Prod()) -> single Prod()
+    or 
+    Sum(Sum()) -> single Sum()
     """
-    if isinstance(node.op, T.Sum):
-        summed, = node.inputs
+    if isinstance(node.op, T.elemwise.Prod) or isinstance(node.op, T.Sum):
+        opt_type = T.Sum if isinstance(node.op, T.Sum) else T.elemwise.Prod
+        node_inps, = node.inputs
         out_dtype = node.op.dtype
-        if len(summed.clients) == 1:
-            if (summed.owner and
-                    isinstance(summed.owner.op, T.Sum)):
+        # We manipulate the graph so this is done to make sure the opt
+        # doesn't affect other computations.
+        if len(node_inps.clients) == 1:
+            if (node_inps.owner and (isinstance(node_inps.owner.op, T.elemwise.Prod)
+                    or isinstance(node_inps.owner.op, T.elemwise.Sum))): 
 
-                if summed.owner.op.axis is None:
-                    # special case of local_cut_useless_reduce
-                    return [T.Sum(None, dtype=out_dtype)(
-                        summed.owner.inputs[0])]
-                if node.op.axis is None:
-                    # we're summing up everything anyway so lets
-                    # do it all at once
-                    return [T.Sum(None, dtype=out_dtype)(
-                        summed.owner.inputs[0])]
+                # check to see either the inner or outer prod is doing a 
+                # product over all axis, in which case we can remove it
+                if node_inps.owner.op.axis is None or node.op.axis is None:
+                    return [opt_type(None, dtype=out_dtype)(
+                        node_inps.owner.inputs[0])] 
 
-                newaxis = list(tuple(summed.owner.op.axis))
-                # figure out which dimensions of the original input
-                # are preserved
+                # figure out which axes were in the original sum
+                newaxis = list(tuple(node_inps.owner.op.axis))
                 for i in node.op.axis:
                     new_i = i
-                    for ii in summed.owner.op.axis:
+                    for ii in node_inps.owner.op.axis:
                         if new_i >= ii:
                             new_i += 1
                     assert new_i not in newaxis
                     newaxis.append(new_i)
 
-                assert len(newaxis) == len(list(summed.owner.op.axis) +
+                assert len(newaxis) == len(list(node_inps.owner.op.axis) +
                                            list(node.op.axis))
 
+ 
                 # The old bugged logic. We keep it there to generate a warning
                 # when we generated bad code.
-                alldims = range(summed.owner.inputs[0].type.ndim)
+                alldims = range(node_inps.owner.inputs[0].type.ndim)
                 alldims = [d for i, d in enumerate(alldims) if i
-                           in summed.owner.op.axis]
+                           in node_inps.owner.op.axis]
                 alldims = [d for i, d in enumerate(alldims)
                            if i in node.op.axis]
                 newaxis_old = [i for i in
-                               xrange(summed.owner.inputs[0].type.ndim)
+                               xrange(node_inps.owner.inputs[0].type.ndim)
                                if i not in alldims]
 
                 if (theano.config.warn.sum_sum_bug and
@@ -4069,8 +4086,9 @@ def local_sum_sum(node):
                             "been fixed) set the theano flag "
                             "`warn.sum_sum_bug` to False.")
 
-                combined_sum = T.Sum(newaxis, dtype=out_dtype)
-                return [combined_sum(summed.owner.inputs[0])]
+                combined = opt_type(newaxis, dtype=out_dtype)
+                return [combined(node_inps.owner.inputs[0])]
+
 
 ALL_REDUCE = [T.elemwise.CAReduce, T.elemwise.All, T.elemwise.Any,
               T.elemwise.Sum, T.elemwise.Prod,
@@ -4212,21 +4230,29 @@ def local_reduce_broadcastable(node):
 
 
 @register_specialize
-@gof.local_optimizer([T.Sum])
-def local_sum_alloc(node):
-    """ sum(alloc(constant,shapes...)) => constant*prod(shapes)"""
-    if isinstance(node.op, T.Sum):
-        summed, = node.inputs
-        if summed.owner and isinstance(summed.owner.op, T.Alloc):
-            input = summed.owner.inputs[0]
-            shapes = summed.owner.inputs[1:]
+@gof.local_optimizer([T.Sum, T.elemwise.Prod])
+def local_opt_alloc(node):
+    """ sum(alloc(constant,shapes...)) => constant*prod(shapes)
+        or 
+        prod(alloc(constant,shapes...)) => constant**prod(shapes)
+    """
+    if isinstance(node.op, T.Sum) or isinstance(node.op, T.elemwise.Prod):
+        node_inps, = node.inputs
+        if node_inps.owner and isinstance(node_inps.owner.op, T.Alloc):
+            input = node_inps.owner.inputs[0]
+            shapes = node_inps.owner.inputs[1:]
             if (node.op.axis is None or
                 node.op.axis == tuple(range(input.ndim))):
                 try:
                     val = get_scalar_constant_value(input)
                     assert val.size == 1
-                    val = val.reshape(1)[0] * T.mul(*shapes)
+                    # check which type of op
+                    if isinstance(node.op, T.Sum):
+                        val = val.reshape(1)[0] * T.mul(*shapes)
+                    else:
+                        val = val.reshape(1)[0] ** T.mul(*shapes)
                     return [T.cast(val, dtype=node.outputs[0].dtype)]
+
                 except NotScalarConstantError:
                     pass
             else:
@@ -4237,7 +4263,10 @@ def local_sum_alloc(node):
                     to_prod = [shapes[i] for i in xrange(len(shapes))
                                if i in node.op.axis]
                     if to_prod:
-                        val *= T.mul(*to_prod)
+                        if isinstance(node.op, T.Sum):
+                            val *= T.mul(*to_prod)
+                        else:
+                            val = val ** T.mul(*to_prod)
                     return [T.alloc(T.cast(val, dtype=node.outputs[0].dtype),
                                     *[shapes[i] for i in xrange(len(shapes))
                                       if i not in node.op.axis])]
@@ -5123,7 +5152,8 @@ def local_log_erfc(node):
                    T.log(1 - 1 / (2 * x ** 2) + 3 / (4 * x ** 4)
                          - 15 / (8 * x ** 6)))
 
-    if node.outputs[0].dtype == 'float32':
+    if (node.outputs[0].dtype == 'float32' or
+            node.outputs[0].dtype == 'float16'):
         threshold = 10.0541949
     elif node.outputs[0].dtype == 'float64':
         threshold = 26.641747557
@@ -5270,7 +5300,7 @@ def local_grad_log_erfc_neg(node):
                             3 / (4 * (x ** 4)) - 15 / (8 * (x ** 6)), -1)
                   * T.cast(T.sqrt(numpy.pi), dtype=x.dtype))
 
-    if x.dtype == 'float32':
+    if x.dtype == 'float32' or x.dtype == 'float16':
         threshold = 9.3
         #threshold = 10.1
     elif x.dtype == 'float64':
@@ -5453,7 +5483,7 @@ for i in xrange(1,len(p64)): print i, 64[i]-p64[i-1]
 # ###############
 # # Loop fusion #
 # ###############
-def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024,
+def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 32,
                              maker=None):
     """
     We parametrize it to make it work for Elemwise and GpuElemwise op.
@@ -5468,10 +5498,8 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 1024,
                           limit how many ops we fuse together to avoid busting
                           that 256 limit.
 
-                          On the CPU we limit to 1024 input variable
-                          to the resulting fused op. This is big
-                          enough that if we hit it, I'm not sure it
-                          will affect performance.
+                          On the CPU we limit to 32 input variables
+                          since that is the maximum numpy support.
     """
     if maker is None:
         def maker(node, scalar_op):
@@ -5761,18 +5789,18 @@ class FusionOptimizer(Optimizer):
     @staticmethod
     def print_profile(stream, prof, level=0):
         blanc = ('    ' * level)
-        print >> stream, blanc, "FusionOptimizer"
-        print >> stream, blanc, " nb_iter", prof[1]
-        print >> stream, blanc, " nb_replacement", prof[2]
-        print >> stream, blanc, " nb_inconsistency_replace", prof[3]
-        print >> stream, blanc, " validate_time", prof[4]
-        print >> stream, blanc, " callback_time", prof[5]
+        print(blanc, "FusionOptimizer", file=stream)
+        print(blanc, " nb_iter", prof[1], file=stream)
+        print(blanc, " nb_replacement", prof[2], file=stream)
+        print(blanc, " nb_inconsistency_replace", prof[3], file=stream)
+        print(blanc, " validate_time", prof[4], file=stream)
+        print(blanc, " callback_time", prof[5], file=stream)
         if prof[5] > 1:
-            print >> stream, blanc, " callbacks_time"
+            print(blanc, " callbacks_time", file=stream)
             for i in sorted(prof[6].iteritems(), key=lambda a: a[1]):
                 if i[1] > 0:
-                    print i
-        print >> stream, blanc, " time_toposort", prof[7]
+                    print(i)
+        print(blanc, " time_toposort", prof[7], file=stream)
 
 
 def local_add_mul_fusion(node):

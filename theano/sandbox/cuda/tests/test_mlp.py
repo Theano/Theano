@@ -1,3 +1,4 @@
+from __future__ import print_function
 import copy
 import logging
 import time
@@ -96,7 +97,7 @@ def run_nnet(use_gpu, n_batch=60, n_in=1024, n_hid=2048, n_out=10,
     out = tensor.tanh(tensor.dot(hid, v) + c)
     loss = tensor.sum(0.5 * (out - y) ** 2 * lr)
     if 0:
-        print 'loss type', loss.type
+        print('loss type', loss.type)
 
     params = [w, b, v, c]
     gparams = tensor.grad(loss, params)
@@ -109,7 +110,7 @@ def run_nnet(use_gpu, n_batch=60, n_in=1024, n_hid=2048, n_out=10,
 
     if 0:
         for i, n in enumerate(train.maker.fgraph.toposort()):
-            print i, n
+            print(i, n)
 
     xval = my_rand(n_batch, n_in)
     yval = my_rand(n_batch, n_out)
@@ -446,9 +447,9 @@ def run_conv_nnet2_classif(use_gpu, seed, isize, ksize, bsize,
 
     if pickle and isinstance(mode, theano.compile.ProfileMode):
         import pickle
-        print "BEGIN %s profile mode dump" % device
-        print pickle.dumps(mode)
-        print "END %s profile mode dump" % device
+        print("BEGIN %s profile mode dump" % device)
+        print(pickle.dumps(mode))
+        print("END %s profile mode dump" % device)
 
     # print "%s time: %.3f" % (device, t1-t0)
     # print "estimated time for one pass through MNIST with %s: %f" % (
@@ -549,12 +550,12 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
             # Compare results
             if (verbose or not
                     numpy.allclose(rval_cpu, rval_gpu, rtol=1e-5, atol=float_atol)):
-                print "At batch:", i + 1
-                print "CPU:", rval_cpu
-                print "GPU:", rval_gpu
-                print "abs diff:", numpy.absolute(rval_gpu - rval_cpu)
-                print "rel diff:", numpy.absolute((
-                    rval_gpu - rval_cpu) / rval_gpu)
+                print("At batch:", i + 1)
+                print("CPU:", rval_cpu)
+                print("GPU:", rval_gpu)
+                print("abs diff:", numpy.absolute(rval_gpu - rval_cpu))
+                print("rel diff:", numpy.absolute((
+                    rval_gpu - rval_cpu) / rval_gpu))
 
             if not ignore_error:
                 assert numpy.allclose(rval_cpu, rval_gpu,
@@ -571,14 +572,14 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
     if pickle:
         if isinstance(cpu_mode, theano.compile.ProfileMode):
             import pickle
-            print "BEGIN CPU profile mode dump"
-            print pickle.dumps(cpu_mode)
-            print "END CPU profile mode dump"
+            print("BEGIN CPU profile mode dump")
+            print(pickle.dumps(cpu_mode))
+            print("END CPU profile mode dump")
         if isinstance(gpu_mode, theano.compile.ProfileMode):
             import pickle
-            print "BEGIN GPU profile mode dump"
-            print pickle.dumps(gpu_mode)
-            print "END GPU profile mode dump"
+            print("BEGIN GPU profile mode dump")
+            print(pickle.dumps(gpu_mode))
+            print("END GPU profile mode dump")
 
     # print "CPU time: %.3f, GPU time: %.3f, speed up %f" % (
     #        (time_cpu, time_gpu, time_cpu/time_gpu))

@@ -62,7 +62,7 @@ import copy
 
 
 def get_version():
-    return 0.285
+    return 0.286
 
 @cython.boundscheck(False)
 def perform(
@@ -255,6 +255,8 @@ def perform(
     other_args = args[offset:]
     input_storage = fnct.input_storage
     output_storage = fnct.output_storage
+    old_output_storage = [None] * len_output_storage
+    old_output_data = [None] * len_output_storage
     offset = n_seqs
     for idx in range(n_outs):
         offset += tap_array_len[idx]
@@ -338,10 +340,23 @@ def perform(
             pdx = offset + n_shared_outs
             output_storage[<unsigned int>pdx].storage[0] = None
 
-        # 4.5. Keep a reference to the variables currently in the
-        # output_storage to be able to compare them with the actual
-        # outputs of the inner function after its execution
-        old_output_storage = [o.storage[0] for o in output_storage]
+        # 4.5. Keep a reference to the variables (ndarrays, CudaNdarrays,
+        # etc) currently in the output_storage to be able to compare them
+        # with the actual outputs of the inner function after its
+        # execution. Also keep pointers to their data to be able to detect
+        # cases where outputs reused the allocated object but alter the
+        # memory region they refer to.
+        for idx in range(len_output_storage):
+
+            var = output_storage[idx].storage[0]
+            old_output_storage[idx] = var
+
+            if hasattr(var, 'gpudata'):
+                old_output_data[idx] = var.gpudata
+            elif hasattr(var, 'data'):
+                old_output_data[idx] = var.data
+            else:
+                old_output_data[idx] = None
 
         # 5. compute outputs
         t0_fn = time.time()
@@ -366,9 +381,26 @@ def perform(
 
         # Check which of the pre-allocated outputs (if applicable) have
         # been reused by the inner function
-        for j in range(len_output_storage):
-            output_reused[j] = (old_output_storage[j] is
-                                output_storage[j].storage[0])
+        for idx in range(len_output_storage):
+            # If the storage map does not contain the same object, then
+            # the pre-allocated output has not been reused
+            new_var = output_storage[idx].storage[0]
+            if old_output_storage[idx] is new_var:
+
+                # The pre-allocated output is only considered as having
+                # been reused if it still points to the same data as it
+                # did before the execution of the inner function
+                if old_output_data[idx] is None:
+                    output_reused[idx] = False
+                else:
+                    if hasattr(new_var, 'gpudata'):
+                        output_reused[idx] = (new_var.gpudata ==
+                                              old_output_data[idx])
+                    elif hasattr(new_var, 'data'):
+                        output_reused[idx] = (new_var.data ==
+                                              old_output_data[idx])
+            else:
+                output_reused[idx] = False
 
         offset_out = 0
         # 5.1 Copy over the values for mit_mot outputs

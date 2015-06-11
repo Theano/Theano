@@ -377,6 +377,8 @@ class GpuDnnConv(DnnBase, COp):
     :param descr: the convolution descriptor
     """
     __props__ = ('workmem', 'inplace')
+    __input_name__ = ('image', 'kernel', 'output',
+                      'descriptor', 'alpha', 'beta')
 
     def __init__(self, workmem=None, inplace=False):
         """
@@ -501,6 +503,7 @@ class GpuDnnConvGradW(DnnBase, COp):
 
     """
     __props__ = ('inplace',)
+    __input_name__ = ('image', 'grad', 'output', 'descriptor', 'alpha', 'beta')
 
     def __init__(self, inplace=False):
         COp.__init__(self, ["dnn_base.c", "dnn_conv_base.c", "dnn_gw.c"],
@@ -573,6 +576,8 @@ class GpuDnnConvGradI(DnnBase, COp):
 
     """
     __props__ = ('inplace',)
+    __input_name__ = ('kernel', 'grad', 'output',
+                      'descriptor', 'alpha', 'beta')
 
     def __init__(self, inplace=False):
         COp.__init__(self, ["dnn_base.c", "dnn_conv_base.c", "dnn_gi.c"],
@@ -1672,6 +1677,8 @@ if True:
         if not dnn_available():
             return
         if isinstance(node.op, DownsampleFactorMaxGrad):
+            if not node.op.ignore_border:
+                return
             inp, out, inp_grad = node.inputs
             ds = node.op.ds
             st = node.op.st
@@ -1683,8 +1690,6 @@ if True:
                 (inp_grad.owner and isinstance(inp_grad.owner.op,
                                                HostFromGpu))):
                 desc = GpuDnnPoolDesc(ws=ds, stride=st, mode=mode, pad=pad)()
-                if not node.op.ignore_border:
-                    return
                 ret = GpuDnnPoolGrad()(gpu_contiguous(inp),
                                        gpu_contiguous(out),
                                        gpu_contiguous(inp_grad),
@@ -1718,17 +1723,19 @@ if True:
     @register_opt('cudnn')
     @local_optimizer([SoftmaxGrad])
     def local_softmax_dnn_grad(node):
-        if (
-            isinstance(node.op, SoftmaxGrad)
-            and (isinstance(node.inputs[0].owner.op, HostFromGpu)
-                 or isinstance(node.inputs[1].owner.op, HostFromGpu))
-        ):
+        if (isinstance(node.op, SoftmaxGrad) and
+            ((node.inputs[0].owner and
+              isinstance(node.inputs[0].owner.op, HostFromGpu))
+             or (node.inputs[1].owner and
+                 isinstance(node.inputs[1].owner.op, HostFromGpu)))):
             if not dnn_available():
                 return
             ins = []
             for n in node.inputs:
                 if isinstance(n.owner.op, HostFromGpu):
                     n = n.owner.inputs[0]
+                if n.ndim != 2:
+                    return
                 ins.append(n.dimshuffle(0, 1, 'x', 'x'))
 
             out = GpuDnnSoftmaxGrad(

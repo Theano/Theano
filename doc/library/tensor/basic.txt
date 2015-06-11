@@ -1197,6 +1197,35 @@ The six usual equality and inequality operators share the same interface.
 
     This is equivalent to ``numpy.isinf``.
 
+.. function:: isclose(a, b, rtol=1e-05, atol=1e-08, equal_nan=False)
+
+    Returns a symbolic ``'int8'`` tensor representing where two tensors are equal
+    within a tolerance.
+
+    The tolerance values are positive, typically very small numbers.
+    The relative difference `(rtol * abs(b))` and the absolute difference `atol` are
+    added together to compare against the absolute difference between `a` and `b`.
+
+    For finite values, isclose uses the following equation to test whether two
+    floating point values are equivalent:
+    ``|a - b| <= (atol + rtol * |b|)``
+
+    For infinite values, isclose checks if both values are the same signed inf value.
+
+    If equal_nan is True, isclose considers NaN values in the same position to be close.
+    Otherwise, NaN values are not considered close.
+
+    This is equivalent to ``numpy.isclose``.
+
+.. function:: allclose(a, b, rtol=1e-05, atol=1e-08, equal_nan=False)
+
+    Returns a symbolic ``'int8'`` value representing if all elements in two tensors are equal
+    within a tolerance.
+
+    See notes in `isclose` for determining values equal within a tolerance.
+
+    This is equivalent to ``numpy.allclose``.
+
 Condition
 ---------
 

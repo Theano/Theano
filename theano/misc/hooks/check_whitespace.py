@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 __docformat__ = 'restructuredtext en'
 
 import difflib
@@ -38,11 +39,11 @@ def get_parse_error(code):
     code_buffer = StringIO(code)
     try:
         tabnanny.process_tokens(tokenize.generate_tokens(code_buffer.readline))
-    except tokenize.TokenError, err:
+    except tokenize.TokenError as err:
         return "Could not parse code: %s" % err
-    except IndentationError, err:
+    except IndentationError as err:
         return "Indentation error: %s" % err
-    except tabnanny.NannyNag, err:
+    except tabnanny.NannyNag as err:
         return "Ambiguous tab at line %d; line is '%s'." % (err.get_lineno(), err.get_line())
     return None
 
@@ -105,9 +106,9 @@ def run_mercurial_command(hg_command):
         hg_command_tuple.insert(0, sys.executable)
     try:
         hg_subprocess = Popen(hg_command_tuple, stdout=PIPE, stderr=PIPE)
-    except OSError, e:
-        print >> sys.stderr, "Can't find the hg executable!"
-        print e
+    except OSError as e:
+        print("Can't find the hg executable!", file=sys.stderr)
+        print(e)
         sys.exit(1)
 
     hg_out, hg_err = hg_subprocess.communicate()
@@ -207,7 +208,7 @@ def main(argv=None):
     # -i and -s are incompatible; if you skip checking, you end up with a not-correctly-indented
     # file, which -i then causes you to ignore!
     if args.skip_after_failure and args.incremental:
-        print >> sys.stderr, "*** check whitespace hook misconfigured! -i and -s are incompatible."
+        print("*** check whitespace hook misconfigured! -i and -s are incompatible.", file=sys.stderr)
         return 1
 
     if is_merge():
@@ -231,7 +232,7 @@ def main(argv=None):
         code = get_file_contents(filename)
         parse_error = get_parse_error(code)
         if parse_error is not None:
-            print >> sys.stderr, "*** %s has parse error: %s" % (filename, parse_error)
+            print("*** %s has parse error: %s" % (filename, parse_error), file=sys.stderr)
             block_commit = True
         else:
             # parsing succeeded, it is safe to check indentation
@@ -252,21 +253,21 @@ def main(argv=None):
                         if was_clean or not args.incremental_with_patch:
                             block_commit = True
                         diffs.append(indentation_diff)
-                        print >> sys.stderr, "%s is not correctly indented" % filename
+                        print("%s is not correctly indented" % filename, file=sys.stderr)
 
     if len(diffs) > 0:
         diffs_filename = ".hg/indentation_fixes.patch"
         save_diffs(diffs, diffs_filename)
-        print >> sys.stderr, "*** To fix all indentation issues, run: cd `hg root` && patch -p0 < %s" % diffs_filename
+        print("*** To fix all indentation issues, run: cd `hg root` && patch -p0 < %s" % diffs_filename, file=sys.stderr)
 
     if block_commit:
         save_filename = ".hg/commit_message.saved"
         save_commit_message(save_filename)
-        print >> sys.stderr, "*** Commit message saved to %s" % save_filename
+        print("*** Commit message saved to %s" % save_filename, file=sys.stderr)
 
         if args.skip_after_failure:
             save_skip_next_commit()
-            print >> sys.stderr, "*** Next commit attempt will not be checked. To change this, rm %s" % SKIP_WHITESPACE_CHECK_FILENAME
+            print("*** Next commit attempt will not be checked. To change this, rm %s" % SKIP_WHITESPACE_CHECK_FILENAME, file=sys.stderr)
 
     return int(block_commit)
 

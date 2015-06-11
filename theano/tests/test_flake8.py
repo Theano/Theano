@@ -6,6 +6,7 @@ from nose.plugins.skip import SkipTest
 import os
 from fnmatch import fnmatch
 import theano
+from theano.compat import PY3
 try:
     import flake8.engine
     import flake8.main
@@ -19,7 +20,6 @@ __contact__ = "Saizheng Zhang <saizhenglisa..at..gmail.com>"
 
 whitelist_flake8 = [
     "__init__.py",
-    "version.py",
     "tests/test_gradient.py",
     "tests/test_config.py",
     "tests/diverse_tests.py",
@@ -30,37 +30,20 @@ whitelist_flake8 = [
     "tests/test_record.py",
     "tests/__init__.py",
     "tests/test_updates.py",
-    "tests/main.py",
     "tests/test_pickle_unpickle_theano_fn.py",
     "tests/test_determinism.py",
     "tests/record.py",
-    "tests/test_printing.py",
     "tests/test_tutorial.py",
-    "tests/disturb_mem.py",
     "tests/unittest_tools.py",
-    "compile/ops.py",
-    "compile/debugmode.py",
-    "compile/function.py",
-    "compile/pfunc.py",
-    "compile/mode.py",
-    "compile/profilemode.py",
-    "compile/builders.py",
     "compile/__init__.py",
     "compile/profiling.py",
-    "compile/function_module.py",
-    "compile/sharedvalue.py",
-    "compile/monitormode.py",
-    "compile/io.py",
-    "compile/module.py",
     "compile/tests/test_builders.py",
     "compile/tests/test_misc.py",
     "compile/tests/test_monitormode.py",
     "compile/tests/test_function_module.py",
-    "compile/tests/test_inplace_opt_for_value.py",
     "compile/tests/test_shared.py",
     "compile/tests/test_ops.py",
     "compile/tests/test_pfunc.py",
-    "compile/tests/test_module.py",
     "compile/tests/test_debugmode.py",
     "compile/tests/test_profiling.py",
     "typed_list/type.py",
@@ -93,16 +76,13 @@ whitelist_flake8 = [
     "tensor/io.py",
     "tensor/elemwise_cgen.py",
     "tensor/raw_random.py",
-    "tensor/randomstreams.py",
     "tensor/blas_scipy.py",
     "tensor/basic.py",
     "tensor/tests/test_subtensor.py",
     "tensor/tests/test_utils.py",
     "tensor/tests/test_nlinalg.py",
-    "tensor/tests/test_randomstreams.py",
     "tensor/tests/test_shared_randomstreams.py",
     "tensor/tests/test_misc.py",
-    "tensor/tests/test_naacl09.py",
     "tensor/tests/mlp_test.py",
     "tensor/tests/test_opt_uncanonicalize.py",
     "tensor/tests/test_opt.py",
@@ -154,7 +134,6 @@ whitelist_flake8 = [
     "sandbox/test_theano_object.py",
     "sandbox/test_scan.py",
     "sandbox/rng_mrg.py",
-    "sandbox/downsample.py",
     "sandbox/solve.py",
     "sandbox/theano_object.py",
     "sandbox/scan.py",
@@ -189,7 +168,6 @@ whitelist_flake8 = [
     "sandbox/cuda/nvcc_compiler.py",
     "sandbox/cuda/neighbours.py",
     "sandbox/cuda/tests/walltime.py",
-    "sandbox/cuda/tests/test_fftconv.py",
     "sandbox/cuda/tests/test_gradient.py",
     "sandbox/cuda/tests/test_neighbours.py",
     "sandbox/cuda/tests/test_conv_cuda_ndarray.py",
@@ -217,7 +195,6 @@ whitelist_flake8 = [
     "sandbox/scan_module/tests/test_utils.py",
     "sandbox/scan_module/tests/test_scan.py",
     "sandbox/linalg/ops.py",
-    "sandbox/linalg/kron.py",
     "sandbox/linalg/__init__.py",
     "sandbox/linalg/tests/test_linalg.py",
     "sandbox/gpuarray/comp.py",
@@ -227,7 +204,6 @@ whitelist_flake8 = [
     "sandbox/gpuarray/elemwise.py",
     "sandbox/gpuarray/type.py",
     "sandbox/gpuarray/__init__.py",
-    "sandbox/gpuarray/opt.py",
     "sandbox/gpuarray/blas.py",
     "sandbox/gpuarray/kernel_codegen.py",
     "sandbox/gpuarray/conv.py",
@@ -288,24 +264,12 @@ whitelist_flake8 = [
     "sparse/sandbox/truedot.py",
     "sparse/sandbox/sp.py",
     "gof/destroyhandler.py",
-    "gof/vm.py",
-    "gof/cutils.py",
-    "gof/compiledir.py",
     "gof/unify.py",
-    "gof/lazylinker_c.py",
-    "gof/optdb.py",
-    "gof/utils.py",
     "gof/graph.py",
-    "gof/callcache.py",
-    "gof/python25.py",
-    "gof/type.py",
     "gof/__init__.py",
     "gof/cc.py",
     "gof/opt.py",
-    "gof/compilelock.py",
     "gof/link.py",
-    "gof/sched.py",
-    "gof/toolbox.py",
     "gof/fg.py",
     "gof/op.py",
     "gof/cmodule.py",
@@ -322,9 +286,6 @@ whitelist_flake8 = [
     "gof/tests/test_cc.py",
     "gof/tests/test_compute_test_value.py",
     "gof/sandbox/equilibrium.py",
-    "sandbox/cuda/opt_util.py",
-    "gof/tests/test_utils.py",
-    "tensor/tests/_test_mpi_roundtrip.py",
 ]
 
 
@@ -347,6 +308,8 @@ def test_format_flake8():
     """
     if not flake8_available:
         raise SkipTest("flake8 is not installed")
+    if PY3:
+        raise SkipTest("not testing in python3 since 2to3 ran")
     total_errors = 0
     for path in list_files():
         rel_path = os.path.relpath(path, theano.__path__[0])

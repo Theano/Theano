@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy
 
 import theano
@@ -33,7 +34,7 @@ class GpuConvGrad3D(GpuOp):
 
     def perform_(self, node, inputs, output_storage):
         V, d, WShape, dCdH = inputs
-        print "GpuConvGrad3D python code (warning not updated to new format)"
+        print("GpuConvGrad3D python code (warning not updated to new format)")
 
         # partial C / partial W[j,z,k,l,m] = sum_i sum_p sum_q sum_r (partial C /partial H[i,j,p,q,r] ) *  V[i,z,dr*p+k,dc*q+l,dt*r+m]
 

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import atexit
 import errno
 import logging
@@ -26,10 +27,11 @@ def register_opt(*tags, **kwargs):
     if any([not isinstance(t, str) for t in tags]):
         raise RuntimeError("Bad call to register_opt."
                            " All tags must be strings.", tags)
+
     def f(local_opt):
         name = (kwargs and kwargs.pop('name')) or local_opt.__name__
         gpu_optimizer.register(name, local_opt, 'fast_run', 'fast_compile',
-                               'gpu', *tags)
+                               'gpu', *tags, **kwargs)
         return local_opt
     return f
 
@@ -178,7 +180,7 @@ if compile_cuda_ndarray and cuda_available:
                             libs=[config.cublas.lib],
                             preargs=['-O3'] + compiler.compile_args())
                     from cuda_ndarray.cuda_ndarray import *
-            except Exception, e:
+            except Exception as e:
                 _logger.error("Failed to compile cuda_ndarray.cu: %s", str(e))
                 set_cuda_disabled()
     finally:
@@ -211,7 +213,7 @@ if cuda_available:
         else:
             try:
                 os.symlink(cuda_ndarray_so, libcuda_ndarray_so)
-            except OSError, e:
+            except OSError as e:
                 # This may happen for instance when running multiple
                 # concurrent jobs, if two of them try to create the
                 # symlink simultaneously.
@@ -228,7 +230,7 @@ if cuda_available:
         cuda_initialization_error_message = ""
 # actively closing our gpu session presents segfault-on-exit on some systems
         atexit.register(gpu_shutdown)
-    except EnvironmentError, e:
+    except EnvironmentError as e:
         cuda_available = False
         cuda_initialization_error_message = " ".join(e.args)
 else:
@@ -401,8 +403,8 @@ def use(device,
                                  " this property")
 
             if config.print_active_device:
-                print >> sys.stderr, "Using gpu device %d: %s" % (
-                        active_device_number(), active_device_name())
+                print("Using gpu device %d: %s" % (
+                        active_device_number(), active_device_name()), file=sys.stderr)
             if device_properties(use.device_number)['regsPerBlock'] < 16384:
                 # We will try to use too much register per bloc at many places
                 # when there is only 8k register per multi-processor.
@@ -413,7 +415,7 @@ def use(device,
                         " crash when we try to use features"
                         " that your GPU does not support.")
 
-        except (EnvironmentError, ValueError, RuntimeError), e:
+        except (EnvironmentError, ValueError, RuntimeError) as e:
             _logger.error(("ERROR: Not using GPU."
                            " Initialisation of device %s failed:\n%s"),
                           str(device), e)
@@ -435,20 +437,20 @@ def use(device,
         cuda_enabled = True
 
     if default_to_move_computation_to_gpu:
+        # Do not add inplace tag here. We do not want to
+        # enable/disable gpu opt based on the inplace tag.
         optdb.add_tags('gpu_opt',
                        'fast_compile',
-                       'fast_run',
-                       'inplace')
+                       'fast_run')
         optdb.add_tags('gpu_after_fusion',
-                       'fast_run',
-                       'inplace')
+                       'fast_run')
 
     if force:
         try:
             # in case the device if just gpu,
             # we check that the driver init it correctly.
             cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((5, 5))
-        except (Exception, NameError), e:
+        except (Exception, NameError) as e:
             # NameError when no gpu present as cuda_ndarray is not loaded.
             e.args += ("ERROR: GPU forced but failed. ",)
             raise

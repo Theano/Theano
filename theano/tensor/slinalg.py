@@ -232,7 +232,8 @@ class Eigvalsh(Op):
             w = theano.tensor.vector(dtype=out_dtype)
             return Apply(self, [a, b], [w])
 
-    def perform(self, node, inputs, (w,)):
+    def perform(self, node, inputs, outputs):
+        (w,) = outputs
         if len(inputs) == 2:
             w[0] = scipy.linalg.eigvalsh(a=inputs[0], b=inputs[1], lower=self.lower)
         else:
@@ -288,7 +289,8 @@ class EigvalshGrad(Op):
         out2 = theano.tensor.matrix(dtype=out_dtype)
         return Apply(self, [a, b, gw], [out1, out2])
 
-    def perform(self, node, (a, b, gw), outputs):
+    def perform(self, node, inputs, outputs):
+        (a, b, gw) = inputs
         w, v = scipy.linalg.eigh(a, b, lower=self.lower)
         gA = v.dot(numpy.diag(gw).dot(v.T))
         gB = - v.dot(numpy.diag(gw*w).dot(v.T))
@@ -353,10 +355,14 @@ class Expm(Op):
         expm = theano.tensor.matrix(dtype=A.dtype)
         return Apply(self, [A, ], [expm, ])
 
-    def perform(self, node, (A,), (expm,)):
+    def perform(self, node, inputs, outputs):
+        (A,) = inputs
+        (expm,) = outputs
         expm[0] = scipy.linalg.expm(A)
 
-    def grad(self, (A,), (g_out,)):
+    def grad(self, inputs, outputs):
+        (A,) = inputs
+        (g_out,) = outputs
         return [ExpmGrad()(A, g_out)]
 
     def infer_shape(self, node, shapes):
@@ -378,10 +384,12 @@ class ExpmGrad(Op):
     def infer_shape(self, node, shapes):
         return [shapes[0]]
 
-    def perform(self, node, (A, gA), (out,)):
+    def perform(self, node, inputs, outputs):
         # Kalbfleisch and Lawless, J. Am. Stat. Assoc. 80 (1985) Equation 3.4
         # Kind of... You need to do some algebra from there to arrive at
         # this expression.
+        (A, gA) = inputs
+        (out,) = outputs
         w, V = scipy.linalg.eig(A, right=True)
         U = scipy.linalg.inv(V).T
 

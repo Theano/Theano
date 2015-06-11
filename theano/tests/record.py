@@ -1,3 +1,4 @@
+from __future__ import print_function
 __authors__ = "Ian Goodfellow"
 __credits__ = ["Ian Goodfellow"]
 __license__ = "3-clause BSD"
@@ -124,7 +125,7 @@ class RecordMode(Mode):
 
        # Then compile and call the function you wish to test, which uses
        # Apply nodes with record_mode as first parameter to record all the
-       # computations to file. For example, call a Theano function with the 
+       # computations to file. For example, call a Theano function with the
        # RecordMode object.
        x = theano.tensor.dscalar()
        f = theano.function([x], 2*x, mode=record_mode)
@@ -137,7 +138,7 @@ class RecordMode(Mode):
        playback_mode = RecordMode(playback)
 
        # Compile and call the function to test again with record_mode as
-       # first parameter. An exception will be thrown if the recorded 
+       # first parameter. An exception will be thrown if the recorded
        # computations are not identical between the two runs.
        x = theano.tensor.dscalar()
        f = theano.function([x], 2*x, mode=playback_mode)
@@ -194,20 +195,20 @@ class RecordMode(Mode):
             """
             try:
                 self.record.handle_line(line)
-            except MismatchError, e:
-                print 'Got this MismatchError:'
-                print e
-                print 'while processing node i='+str(i)+':'
-                print 'str(node):', str(node)
-                print 'Symbolic inputs: '
+            except MismatchError as e:
+                print('Got this MismatchError:')
+                print(e)
+                print('while processing node i='+str(i)+':')
+                print('str(node):', str(node))
+                print('Symbolic inputs: ')
                 for elem in node.inputs:
-                    print theano.printing.min_informative_str(elem)
-                print 'str(output) of outputs: '
+                    print(theano.printing.min_informative_str(elem))
+                print('str(output) of outputs: ')
                 for elem in fn.outputs:
                     assert isinstance(elem, list)
                     elem, = elem
-                    print str(elem)
-                print 'function name: '+node.fgraph.name
+                    print(str(elem))
+                print('function name: '+node.fgraph.name)
                 raise MismatchError("Non-determinism detected by WrapLinker")
 
         def callback(i, node, fn):

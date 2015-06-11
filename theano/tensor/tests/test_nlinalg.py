@@ -140,7 +140,7 @@ def test_qr_modes():
         f = function([A], qr(A, "complete"))
         t_qr = f(a)
         assert _allclose(n_qr, t_qr)
-    except TypeError, e:
+    except TypeError as e:
         assert "name 'complete' is not defined" in str(e)
 
 

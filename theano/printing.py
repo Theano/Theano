@@ -3,6 +3,7 @@
 They all allow different way to print a graph or the result of an Op
 in a graph(Print Op)
 """
+from __future__ import print_function
 from copy import copy
 import logging
 import os
@@ -34,7 +35,8 @@ VALID_ASSOC = set(['left', 'right', 'either'])
 
 
 def debugprint(obj, depth=-1, print_type=False,
-               file=None, ids='CHAR', stop_on_name=False):
+               file=None, ids='CHAR', stop_on_name=False,
+               done=None):
     """Print a computation graph as text to stdout or a file.
 
     :type obj: Variable, Apply, or Function instance
@@ -53,6 +55,9 @@ def debugprint(obj, depth=-1, print_type=False,
                 "" - don't print an identifier
     :param stop_on_name: When True, if a node in the graph has a name,
                          we don't print anything below it.
+    :type done: None or dict
+    :param done: A dict where we store the ids of printed node.
+        Useful to have multiple call to debugprint share the same ids.
 
     :returns: string if `file` == 'str', else file arg
 
@@ -80,7 +85,8 @@ def debugprint(obj, depth=-1, print_type=False,
         _file = sys.stdout
     else:
         _file = file
-    done = dict()
+    if done is None:
+        done = dict()
     results_to_print = []
     profile_list = []
     order = []
@@ -105,7 +111,7 @@ def debugprint(obj, depth=-1, print_type=False,
             profile_list.extend([None for item in obj.outputs])
             order = obj.toposort()
         elif isinstance(obj, (int, long, float, np.ndarray)):
-            print obj
+            print(obj)
         elif isinstance(obj, (theano.In, theano.Out)):
             results_to_print.append(obj.variable)
             profile_list.append(None)
@@ -121,7 +127,7 @@ def debugprint(obj, depth=-1, print_type=False,
                     scan_ops.append(r)
 
         if p is not None:
-            print >> _file, """
+            print("""
 Timing Info
 -----------
 --> <time> <% time> - <total time> <% total time>'
@@ -137,20 +143,20 @@ N.B.:
   if inputs to a node share a common ancestor and should be viewed as a
   loose upper bound. Their intended use is to help rule out potential nodes
   to remove when optimizing a graph because their <total time> is very low.
-"""
+""", file=_file)
 
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
                              file=_file, order=order, ids=ids,
                              scan_ops=scan_ops, stop_on_name=stop_on_name,
                              profile=p)
     if len(scan_ops) > 0:
-        print >> _file, ""
+        print("", file=_file)
         new_prefix = ' >'
         new_prefix_child = ' >'
-        print >> _file, "Inner graphs of the scan ops:"
+        print("Inner graphs of the scan ops:", file=_file)
 
         for s in scan_ops:
-            print >> _file, ""
+            print("", file=_file)
             debugmode.debugprint(s, depth=depth, done=done,
                                  print_type=print_type,
                                  file=_file, ids=ids,
@@ -187,7 +193,7 @@ def _print_fn(op, xin):
             pmsg = temp()
         else:
             pmsg = temp
-        print op.message, attr, '=', pmsg
+        print(op.message, attr, '=', pmsg)
 
 
 class Print(Op):
@@ -927,7 +933,7 @@ def pydotprint(fct, outfile=None,
     else:
         g.write(outfile, prog='dot', format=format)
         if print_output_file:
-            print 'The output file is available at', outfile
+            print('The output file is available at', outfile)
 
 
 def pydotprint_variables(vars,
@@ -957,7 +963,7 @@ def pydotprint_variables(vars,
     except ImportError:
         err = ("Failed to import pydot. You must install pydot for " +
                "`pydotprint_variables` to work.")
-        print err
+        print(err)
         return
     g = pd.Dot()
     my_list = {}
@@ -1079,7 +1085,7 @@ def pydotprint_variables(vars,
             plot_apply(nd.owner, depth)
     try:
         g.write(outfile, prog='dot', format=format)
-    except pd.InvocationException, e:
+    except pd.InvocationException as e:
         # Some version of pydot are bugged/don't work correctly with
         # empty label. Provide a better user error message.
         if pd.__version__ == "1.0.28" and "label=]" in e.message:
@@ -1094,7 +1100,7 @@ def pydotprint_variables(vars,
                             e.message)
         raise
 
-    print 'The output file is available at', outfile
+    print('The output file is available at', outfile)
 
 
 class _TagGenerator:
@@ -1258,7 +1264,7 @@ def var_descriptor(obj, _prev_obs=None, _tag_generator=None):
             # The __str__ method is encoding the object's id in its str
             name = position_independent_str(obj)
             if ' at 0x' in name:
-                print name
+                print(name)
                 assert False
 
     prefix = cur_tag + '='

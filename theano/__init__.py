@@ -41,6 +41,14 @@ from theano.configdefaults import config
 # Version information.
 from theano.version import version as __version__
 
+# This is the api version for ops that generate C code.  External ops
+# might need manual changes if this number goes up.  An undefined
+# __api_version__ can be understood to mean api version 0.
+#
+# This number is not tied to the release version and should change
+# very rarely.
+__api_version__ = 1
+
 from theano.gof import (
     CLinker, OpWiseCLinker, DualLinker, Linker, LocalLinker, PerformLinker,
     Container,
@@ -148,12 +156,12 @@ def dot(l, r):
     if rval == NotImplemented and hasattr(l, '__dot__'):
         try:
             rval = l.__dot__(r)
-        except Exception, e0:
+        except Exception as e0:
             rval = NotImplemented
     if rval == NotImplemented and hasattr(r, '__rdot__'):
         try:
             rval = r.__rdot__(l)
-        except Exception, e1:
+        except Exception as e1:
             rval = NotImplemented
     if rval == NotImplemented:
         raise NotImplementedError("Dot failed for the following reasons:",

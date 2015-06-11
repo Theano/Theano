@@ -1,4 +1,5 @@
 """Driver for gradient calculations."""
+from __future__ import print_function
 import __builtin__
 from itertools import izip
 import logging
@@ -1677,7 +1678,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
             # get new random projection for next test
             if test_num < n_tests - 1:
                 t_r.set_value(random_projection(), borrow=True)
-        except Exception, e:
+        except Exception as e:
             e.args += ("\nThe error happened with the following inputs:", pt,
                        "\nThe value of eps is:", eps,
                        "\nThe out_type is:", out_type)
@@ -2011,7 +2012,7 @@ def grad_clip(x, lower_bound, upper_bound):
 
         f = theano.function([x], outputs = [z, z2])
 
-        print f(2.0)  # output (1.0, 4.0)
+        print(f(2.0))  # output (1.0, 4.0)
 
     :note: We register an opt in tensor/opt.py that remove the GradClip.
        So it have 0 cost in the forward and only do work in the grad.

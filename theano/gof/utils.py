@@ -1,6 +1,6 @@
+from __future__ import print_function
 import linecache
 import traceback
-import re
 import sys
 
 from theano import config
@@ -14,7 +14,6 @@ def simple_extract_stack(f=None, limit=None):
 
     This is because this update cause an call to os.stat to get the
     line content. This cause too much long on cluster.
-
     """
     if f is None:
         try:
@@ -47,7 +46,7 @@ if sys.version_info[:2] > (3, 4):
     # I enable my implementation only for some python version just to
     # be sure the Python internal do not change. If this work with
     # other python version, you can enable it.
-    simple_extract_stack = traceback.extract_stack
+    simple_extract_stack = traceback.extract_stack  # noqa
 
 
 def add_tag_trace(thing, user_line=1):
@@ -80,7 +79,7 @@ def add_tag_trace(thing, user_line=1):
                   "theano/scan_module/",
                   "theano/sparse/",
                   "theano/typed_list/",
-        ]:
+                  ]:
             if p in file_path:
                 tr = tr[:-1]
                 rm = True
@@ -142,9 +141,9 @@ class scratchpad:
         return "scratchpad" + str(self.__dict__)
 
     def info(self):
-        print "<theano.gof.utils.scratchpad instance at %i>" % id(self)
+        print("<theano.gof.utils.scratchpad instance at %i>" % id(self))
         for k, v in self.__dict__.items():
-            print "  %s: %s" % (k, v)
+            print("  %s: %s" % (k, v))
 
 
 class D:
@@ -189,8 +188,8 @@ def deprecated(filename, msg=''):
 
         def g(*args, **kwargs):
             if printme[0]:
-                print 'WARNING: %s.%s deprecated. %s'\
-                        % (filename, f.__name__, msg)
+                print('WARNING: %s.%s deprecated. %s' %
+                      (filename, f.__name__, msg))
                 printme[0] = False
             return f(*args, **kwargs)
         return g
@@ -219,7 +218,7 @@ def difference(seq1, seq2):
             raise Exception('not worth it')
         set2 = set(seq2)
         return [x for x in seq1 if x not in set2]
-    except Exception, e:
+    except Exception:
         # maybe a seq2 element is not hashable
         # maybe seq2 is too short
         # -> use O(len(seq1) * len(seq2)) algo
@@ -310,11 +309,11 @@ def comm_guard(type1, type2):
         old_f = f.func_globals[f.__name__]
 
         def new_f(arg1, arg2, *rest):
-            if (type1 is ANY_TYPE or isinstance(arg1, type1)) \
-                   and (type2 is ANY_TYPE or isinstance(arg2, type2)):
+            if ((type1 is ANY_TYPE or isinstance(arg1, type1)) and
+                    (type2 is ANY_TYPE or isinstance(arg2, type2))):
                 pass
-            elif (type1 is ANY_TYPE or isinstance(arg2, type1)) \
-                     and (type2 is ANY_TYPE or isinstance(arg1, type2)):
+            elif ((type1 is ANY_TYPE or isinstance(arg2, type1)) and
+                  (type2 is ANY_TYPE or isinstance(arg1, type2))):
                 arg1, arg2 = arg2, arg1
             else:
                 return old_f(arg1, arg2, *rest)
@@ -336,8 +335,9 @@ def comm_guard(type1, type2):
                 return type.__name__
 
         new_f.__doc__ = (str(old_f.__doc__) + "\n" +
-                ", ".join([typename(type) for type in (type1, type2)]) +
-                "\n" + str(f.__doc__ or ""))
+                         ", ".join([typename(type)
+                                    for type in (type1, type2)]) +
+                         "\n" + str(f.__doc__ or ""))
         return new_f
 
     return wrap
@@ -368,8 +368,8 @@ def type_guard(type1):
                 return type.__name__
 
         new_f.__doc__ = (str(old_f.__doc__) + "\n" +
-                ", ".join([typename(type) for type in (type1,)]) +
-                "\n" + str(f.__doc__ or ""))
+                         ", ".join([typename(type) for type in (type1,)]) +
+                         "\n" + str(f.__doc__ or ""))
         return new_f
 
     return wrap
@@ -405,15 +405,16 @@ def give_variables_names(variables):
     This function is idempotent."""
     names = map(lambda var: var.name, variables)
     h = hist(names)
-    bad_var = lambda var: not var.name or h[var.name] > 1
+
+    def bad_var(var):
+        return not var.name or h[var.name] > 1
 
     for i, var in enumerate(filter(bad_var, variables)):
         var.name = (var.name or "") + "_%d" % i
 
     if not unique(map(str, variables)):
-        raise ValueError("Not all variables have unique names."
-                "Maybe you've named some of the variables identically")
-
+        raise ValueError("Not all variables have unique names. Maybe you've "
+                         "named some of the variables identically")
     return variables
 
 

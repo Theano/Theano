@@ -10,7 +10,7 @@ from ..elemwise import (GpuElemwise, GpuDimShuffle,
                         GpuCAReduceCuda, GpuCAReduceCPY)
 from ..type import GpuArrayType
 
-from pygpu.array import gpuarray
+from pygpu import ndgpuarray as gpuarray
 
 
 # This is acutally a test for GpuElemwise

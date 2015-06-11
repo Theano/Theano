@@ -1,3 +1,4 @@
+from __future__ import print_function
 import copy
 
 import numpy
@@ -54,7 +55,7 @@ class CudaNdarrayConstant(_operators, Constant):
             return self.name
         try:
             data = str(numpy.asarray(self.data))
-        except Exception, e:
+        except Exception as e:
             data = "error while transferring the value: " + str(e)
         return "CudaNdarrayConstant{"+data+"}"
 CudaNdarrayType.Constant = CudaNdarrayConstant
@@ -167,11 +168,11 @@ def cuda_shared_constructor(value, name=None, strict=False,
     if broadcastable is None:
         broadcastable = (False,) * len(value.shape)
     type = CudaNdarrayType(broadcastable=broadcastable)
-    print "trying to return?"
+    print("trying to return?")
     try:
         rval = CudaNdarraySharedVariable(type=type, value=_value, name=name, strict=strict)
-    except Exception, e:
-        print "ERROR", e
+    except Exception as e:
+        print("ERROR", e)
         raise
     return rval
 
@@ -210,8 +211,8 @@ def float32_shared_constructor(value, name=None, strict=False,
 
     try:
         rval = CudaNdarraySharedVariable(type=type, value=deviceval, name=name, strict=strict)
-    except Exception, e:
-        print "ERROR", e
+    except Exception as e:
+        print("ERROR", e)
         raise
 
     rval.get_value_return_ndarray = get_value_return_ndarray

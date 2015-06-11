@@ -318,7 +318,7 @@ def scan(fn,
 
     :param strict:
         If true, all the shared variables used in ``fn`` must be provided as a
-        part of ``non_sequences`` or ``sequences``. 
+        part of ``non_sequences`` or ``sequences``.
 
     :rtype: tuple
     :return: tuple of the form (outputs, updates); ``outputs`` is either a
@@ -480,7 +480,7 @@ def scan(fn,
                     try:
                         nw_slice.tag.test_value = gof.Op._get_test_value(
                             _seq_val_slice)
-                    except AttributeError, e:
+                    except AttributeError as e:
                         if config.compute_test_value != 'ignore':
                             # No need to print a warning or raise an error now,
                             # it will be done when fn will be called.
@@ -500,20 +500,18 @@ def scan(fn,
                     nw_slice.name = nw_name
 
                 # We cut the sequence such that seq[i] to correspond to
-                # seq[i-k]
-                if maxtap < 0:
-                    offset = abs(maxtap)
+                # seq[i-k]. For the purposes of cutting the sequences, we
+                # need to pretend tap 0 is used to avoid cutting the sequences
+                # too long if the taps are all lower or all higher than 0.
+                maxtap_proxy = max(maxtap, 0)
+                mintap_proxy = min(mintap, 0)
+                start = (k - mintap_proxy)
+                if k == maxtap_proxy:
+                    nw_seq = seq['input'][start:]
                 else:
-                    offset = 0
-                if maxtap == mintap and maxtap != 0:
-                    if maxtap < 0:
-                        nw_seq = seq['input'][:maxtap]
-                    else:
-                        nw_seq = seq['input'][maxtap:]
-                elif maxtap - k != 0:
-                    nw_seq = seq['input'][offset + k - mintap: -(maxtap - k)]
-                else:
-                    nw_seq = seq['input'][offset + k - mintap:]
+                    end = -(maxtap_proxy - k)
+                    nw_seq = seq['input'][start:end]
+
                 if go_backwards:
                     nw_seq = nw_seq[::-1]
 
@@ -612,7 +610,7 @@ def scan(fn,
             if config.compute_test_value != 'off':
                 try:
                     arg.tag.test_value = gof.Op._get_test_value(actual_arg)
-                except AttributeError, e:
+                except AttributeError as e:
                     if config.compute_test_value != 'ignore':
                         # No need to print a warning or raise an error now,
                         # it will be done when fn will be called.
@@ -672,7 +670,7 @@ def scan(fn,
                     try:
                         nw_slice.tag.test_value = gof.Op._get_test_value(
                             _init_out_var_slice)
-                    except AttributeError, e:
+                    except AttributeError as e:
                         if config.compute_test_value != 'ignore':
                             # No need to print a warning or raise an error now,
                             # it will be done when fn will be called.
@@ -962,21 +960,23 @@ def scan(fn,
                   shared_inner_outputs)
     if condition is not None:
         inner_outs.append(condition)
-    # Cuda is imported here, instead of being imported on top of the file
-    # because forces on the user some dependencies that we might do not want
-    # to. Currently we are working on removing the dependencies on sandbox
-    # code completeley.
-    from theano.sandbox import cuda
-    if cuda.cuda_available:
+    # Cuda and Gpuarray are imported here, instead of being imported on top of
+    # the file because that would force on the user some dependencies that we
+    # might do not want to. Currently we are working on removing the
+    # dependencies on sandbox code completeley.
+    from theano.sandbox import cuda, gpuarray
+    if cuda.cuda_available or gpuarray.pygpu_activated:
         # very often we end up in this situation when we want to
-        # replace w with w_copy, where w is CudaNdarray
+        # replace w with w_copy, where w is a GPU variable
         # and w_copy is TensorType. This is caused because shared
         # variables are put on GPU right aways >:| ,
         new_givens = OrderedDict()
 
         for w, w_copy in givens.iteritems():
-            if (isinstance(w.type, cuda.CudaNdarrayType)
-                and isinstance(w_copy.type, tensor.TensorType)):
+            if ((isinstance(w.type, cuda.CudaNdarrayType) or
+                 isinstance(w.type, gpuarray.GpuArrayType)) and
+                isinstance(w_copy.type, tensor.TensorType)):
+
                 for o in inner_outs:
                     new_givens = traverse(o, w, w_copy, new_givens)
             else:

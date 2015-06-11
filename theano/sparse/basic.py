@@ -3,6 +3,7 @@
 To read about different sparse formats, see
 http://www-users.cs.umn.edu/~saad/software/SPARSKIT/paper.ps
 """
+from __future__ import print_function
 
 # TODO
 # Automatic methods for determining best sparse format?
@@ -490,7 +491,8 @@ class CSMProperties(gof.Op):
         return gof.Apply(self, [csm],
                 [data, tensor.ivector(), tensor.ivector(), tensor.ivector()])
 
-    def perform(self, node, (csm,), out):
+    def perform(self, node, inputs, out):
+        (csm,) = inputs
         if self.kmap is None:
             out[0][0] = csm.data
         else:
@@ -503,7 +505,7 @@ class CSMProperties(gof.Op):
         out[2][0] = theano._asarray(csm.indptr, dtype='int32')
         out[3][0] = theano._asarray(csm.shape, dtype='int32')
 
-    def grad(self, (csm,), g):
+    def grad(self, inputs, g):
 
         # g[1:] is all integers, so their Jacobian in this op
         # is 0. We thus don't need to worry about what their values
@@ -513,6 +515,7 @@ class CSMProperties(gof.Op):
         # any gradient anywhere. but we know that at least one of
         # g[1:] is connected, or this grad method wouldn't have been
         # called, so we should report zeros
+        (csm,) = inputs
         if isinstance(g[0].type, DisconnectedType):
             return [csm.zeros_like()]
 
@@ -644,8 +647,10 @@ class CSM(gof.Op):
                          [SparseType(dtype=data.type.dtype,
                                      format=self.format).make_variable()])
 
-    def perform(self, node, (data, indices, indptr, shape), (out,)):
+    def perform(self, node, inputs, outputs):
         # for efficiency, if remap does nothing, then do not apply it
+        (data, indices, indptr, shape) = inputs
+        (out,) = outputs
         if self.kmap is not None:
             data = data[self.kmap]
 
@@ -672,7 +677,9 @@ class CSM(gof.Op):
     def connection_pattern(self, node):
         return [[True], [False], [False], [False]]
 
-    def grad(self, (x_data, x_indices, x_indptr, x_shape), (g_out,)):
+    def grad(self, inputs, gout):
+        (x_data, x_indices, x_indptr, x_shape) = inputs
+        (g_out,) = gout
         g_data, g_indices, g_indptr, g_shape = csm_properties(g_out)
         # unpack the data vector and wrap it as a 1d TensorType
         g_data = csm_grad(self.kmap)(x_data, x_indices, x_indptr, x_shape,
@@ -773,8 +780,10 @@ class CSMGrad(gof.op.Op):
         return gof.Apply(self, [x_data, x_indices, x_indptr, x_shape,
             g_data, g_indices, g_indptr, g_shape], [gout_data])
 
-    def perform(self, node, (x_data, x_indices, x_indptr, x_shape,
-                g_data, g_indices, g_indptr, g_shape), (g_out,)):
+    def perform(self, node, inputs, outputs):
+        (x_data, x_indices, x_indptr, x_shape,
+                g_data, g_indices, g_indptr, g_shape) = inputs
+        (g_out,) = outputs
         if len(x_indptr) - 1 == x_shape[0]:
             sp_dim = x_shape[1]
         else:
@@ -826,7 +835,9 @@ class Cast(gof.op.Op):
             self, [x],
             [SparseType(dtype=self.out_type, format=x.format).make_variable()])
 
-    def perform(self, node, (x, ), (out, )):
+    def perform(self, node, inputs, outputs):
+        (x,) = inputs
+        (out,) = outputs
         assert _is_sparse(x)
         out[0] = x.astype(self.out_type)
 
@@ -848,7 +859,7 @@ class Cast(gof.op.Op):
                 return [gz]
             else:
                 return [Cast(inputs[0].dtype)(gz)]
- 
+
     def infer_shape(self, node, ins_shapes):
         return ins_shapes
 
@@ -909,17 +920,21 @@ class DenseFromSparse(gof.op.Op):
                                             broadcastable=(False, False)
                                            ).make_variable()])
 
-    def perform(self, node, (x, ), (out, )):
+    def perform(self, node, inputs, outputs):
+        (x,) = inputs
+        (out,) = outputs
         if _is_dense(x):
-            print >> sys.stderr, (
+            print((
                 "WARNING: You just called DenseFromSparse on a dense matrix."
-            )
+            ), file=sys.stderr)
             out[0] = x
         else:
             out[0] = x.toarray()
         assert _is_dense(out[0])
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if self.sparse_grad:
             left = sp_ones_like(x)
             right = gz
@@ -989,10 +1004,14 @@ class SparseFromDense(gof.op.Op):
                                      format=self.format
                                     ).make_variable()])
 
-    def perform(self, node, (x, ), (out, )):
+    def perform(self, node, inputs, outputs):
+        (x,) = inputs
+        (out,) = outputs
         out[0] = SparseType.format_cls[self.format](x)
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         gx = dense_from_sparse(gz)
         gx = tensor.patternbroadcast(gx, x.broadcastable)
         return gx,
@@ -1035,7 +1054,8 @@ class GetItemList(gof.op.Op):
 
         return gof.Apply(self, [x, ind], [x.type()])
 
-    def perform(self, node, inp, (out, )):
+    def perform(self, node, inp, outputs):
+        (out,) = outputs
         x = inp[0]
         indices = inp[1]
         assert _is_sparse(x)
@@ -1051,7 +1071,7 @@ class GetItemList(gof.op.Op):
         return self.__class__.__name__
 
 get_item_list = GetItemList()
-"""Select row of sparse matrix, 
+"""Select row of sparse matrix,
 returning them as a new sparse matrix.
 
 :param x: Sparse matrix.
@@ -1090,7 +1110,8 @@ class GetItemListGrad(gof.op.Op):
 
         return gof.Apply(self, [x, ind, gz], [x.type()])
 
-    def perform(self, node, inp, (out, )):
+    def perform(self, node, inp, outputs):
+        (out,) = outputs
         x = inp[0]
         indices = inp[1]
         gz = inp[2]
@@ -1129,7 +1150,8 @@ class GetItem2Lists(gof.op.Op):
         return gof.Apply(self, [x, ind1, ind2],
                          [theano.tensor.vector()])
 
-    def perform(self, node, inp, (out, )):
+    def perform(self, node, inp, outputs):
+        (out,) = outputs
         x = inp[0]
         ind1 = inp[1]
         ind2 = inp[2]
@@ -1184,7 +1206,8 @@ class GetItem2ListsGrad(gof.op.Op):
 
         return gof.Apply(self, [x, ind1, ind2, gz], [x.type()])
 
-    def perform(self, node, inp, (out, )):
+    def perform(self, node, inp, outputs):
+        (out,) = outputs
         x = inp[0]
         ind1 = inp[1]
         ind2 = inp[2]
@@ -1292,7 +1315,9 @@ class GetItem2d(gof.op.Op):
 
         return gof.Apply(self, input_op, [x.type()])
 
-    def perform(self, node, (x, start1, stop1, step1, start2, stop2, step2), (out, )):
+    def perform(self, node, inputs, outputs):
+        (x, start1, stop1, step1, start2, stop2, step2) = inputs
+        (out,) = outputs
         assert _is_sparse(x)
         out[0] = x[start1:stop1:step1, start2:stop2:step2]
 
@@ -1364,7 +1389,9 @@ class GetItemScalar(gof.op.Op):
 
         return gof.Apply(self, input_op, [tensor.scalar(dtype=x.dtype)])
 
-    def perform(self, node, (x, ind1, ind2), (out, )):
+    def perform(self, node, inputs, outputs):
+        (x, ind1, ind2) = inputs
+        (out,) = outputs
         assert _is_sparse(x)
         out[0] = theano._asarray(x[ind1, ind2], x.dtype)
 
@@ -1413,11 +1440,15 @@ class Transpose(gof.op.Op):
                                      format=self.format_map[x.type.format]
                                  ).make_variable()])
 
-    def perform(self, node, (x, ), (out, )):
+    def perform(self, node, inputs, outputs):
+        (x,) = inputs
+        (out,) = outputs
         assert _is_sparse(x)
         out[0] = x.transpose()
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         assert _is_sparse_variable(x) and _is_sparse_variable(gz)
         return transpose(gz),
 
@@ -1454,11 +1485,15 @@ class Neg(gof.op.Op):
         assert x.format in ["csr", "csc"]
         return gof.Apply(self, [x], [x.type()])
 
-    def perform(self, node, (x, ), (out, )):
+    def perform(self, node, inputs, outputs):
+        (x,) = inputs
+        (out,) = outputs
         assert _is_sparse(x)
         out[0] = -x
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         assert _is_sparse_variable(x) and _is_sparse_variable(gz)
         return -gz,
 
@@ -1500,7 +1535,9 @@ class ColScaleCSC(gof.op.Op):
             raise ValueError('x was not a csc matrix')
         return gof.Apply(self, [x, s], [x.type()])
 
-    def perform(self, node, (x, s), (z,)):
+    def perform(self, node, inputs, outputs):
+        (x, s) = inputs
+        (z,) = outputs
         M, N = x.shape
         assert x.format == 'csc'
         assert s.shape == (N, )
@@ -1512,7 +1549,9 @@ class ColScaleCSC(gof.op.Op):
 
         z[0] = y
 
-    def grad(self, (x, s), (gz,)):
+    def grad(self, inputs, gout):
+        (x, s) = inputs
+        (gz,) = gout
         return [col_scale(gz, s), sp_sum(x * gz, axis=0)]
 
     def infer_shape(self, node, ins_shapes):
@@ -1549,10 +1588,12 @@ class RowScaleCSC(gof.op.Op):
         assert x.format in ["csr", "csc"]
         return gof.Apply(self, [x, s], [x.type()])
 
-    def perform(self, node, (x, s), (z,)):
+    def perform(self, node, inputs, outputs):
+        (x, s) = inputs
+        (z,) = outputs
         M, N = x.shape
         assert x.format == 'csc'
-        assert s.shape == (M, )
+        assert s.shape == (M,)
 
         indices = x.indices
         indptr = x.indptr
@@ -1565,7 +1606,9 @@ class RowScaleCSC(gof.op.Op):
 
         z[0] = scipy.sparse.csc_matrix((y_data, indices, indptr), (M, N))
 
-    def grad(self, (x, s), (gz,)):
+    def grad(self, inputs, gout):
+        (x, s) = inputs
+        (gz,) = gout
         return [row_scale(gz, s), sp_sum(x * gz, axis=1)]
 
     def infer_shape(self, node, ins_shapes):
@@ -1650,13 +1693,17 @@ class SpSum(gof.op.Op):
         z = tensor.TensorType(broadcastable=b, dtype=x.dtype)()
         return gof.Apply(self, [x], [z])
 
-    def perform(self, node, (x,), (z,)):
+    def perform(self, node, inputs, outputs):
+        (x,) = inputs
+        (z,) = outputs
         if self.axis is None:
             z[0] = numpy.asarray(x.sum())
         else:
             z[0] = numpy.asarray(x.sum(self.axis)).ravel()
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if x.dtype not in continuous_dtypes:
             return [x.zeros_like(dtype=theano.config.floatX)]
         if self.structured:
@@ -1738,13 +1785,17 @@ class Diag(gof.op.Op):
         return gof.Apply(self, [x], [tensor.tensor(broadcastable=(False,),
                                                    dtype=x.dtype)])
 
-    def perform(self, node, (x,), (z,)):
+    def perform(self, node, inputs, outputs):
+        (x,) = inputs
+        (z,) = outputs
         N, M = x.shape
         if N != M:
             raise ValueError('Diag only apply on square matrix')
         z[0] = x.diagonal()
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         return [square_diagonal(gz)]
 
     def infer_shape(self, nodes, shapes):
@@ -1782,7 +1833,8 @@ class SquareDiagonal(gof.op.Op):
         return gof.Apply(self, [diag],
                 [SparseType(dtype=diag.dtype, format='csc')()])
 
-    def perform(self, node, inputs, (z,)):
+    def perform(self, node, inputs, outputs):
+        (z,) = outputs
         diag, o_shape = inputs[0], inputs[0].shape * 2
 
         N = len(diag)
@@ -1793,7 +1845,8 @@ class SquareDiagonal(gof.op.Op):
 
         z[0] = scipy.sparse.csc_matrix(tup, copy=True)
 
-    def grad(self, inputs, (gz,)):
+    def grad(self, inputs, gout):
+        (gz,) = gout
         return [diag(gz)]
 
     def infer_shape(self, nodes, shapes):
@@ -1831,7 +1884,9 @@ class EnsureSortedIndices(gof.op.Op):
         assert x.format in ["csr", "csc"]
         return gof.Apply(self, [x], [x.type()])
 
-    def perform(self, node, (x, ), (z, )):
+    def perform(self, node, inputs, outputs):
+        (x,) = inputs
+        (z,) = outputs
         if self.inplace:
             z[0] = x.sort_indices()
         else:
@@ -1906,12 +1961,16 @@ class AddSS(gof.op.Op):
                                      format=x.type.format
                                     ).make_variable()])
 
-    def perform(self, node, (x, y), (out, )):
+    def perform(self, node, inputs, outputs):
+        (x, y) = inputs
+        (out,) = outputs
         assert _is_sparse(x) and _is_sparse(y)
         assert x.shape == y.shape
         out[0] = x + y
 
-    def grad(self, (x, y), (gz,)):
+    def grad(self, inputs, gout):
+        (x, y) = inputs
+        (gz,) = gout
         assert _is_sparse_variable(x) and _is_sparse_variable(y)
         assert _is_sparse_variable(gz)
         return gz, gz
@@ -1943,14 +2002,17 @@ class AddSSData(gof.op.Op):
                          [SparseType(dtype=x.type.dtype,
                                  format=x.type.format).make_variable()])
 
-    def perform(self, node, (x, y), (out, )):
+    def perform(self, node, inputs, outputs):
+        (x, y) = inputs
+        (out,) = outputs
         assert _is_sparse(x) and _is_sparse(y)
         assert x.shape == y.shape
         assert x.data.shape == y.data.shape
         out[0] = x.copy()
         out[0].data += y.data
 
-    def grad(self, inputs, (gz, )):
+    def grad(self, inputs, gout):
+        (gz,) = gout
         is_continuous = [(i.dtype in continuous_dtypes)
                          for i in inputs]
         derivative = {True: gz, False: None}
@@ -2006,14 +2068,18 @@ class AddSD(gof.op.Op):
                                             broadcastable=y.type.broadcastable
                                            ).make_variable()])
 
-    def perform(self, node, (x,  y), (out, )):
+    def perform(self, node, inputs, outputs):
+        (x,  y) = inputs
+        (out,) = outputs
         assert _is_dense(y)
 
         # The asarray is needed as in some case, this return a
         # numpy.matrixlib.defmatrix.matrix object and not an ndarray.
         out[0] = theano._asarray(x + y, dtype=node.outputs[0].type.dtype)
 
-    def grad(self, (x, y), (gz,)):
+    def grad(self, inputs, gout):
+        (x, y) = inputs
+        (gz,) = gout
         assert _is_sparse_variable(x) and _is_dense_variable(y)
         assert _is_dense_variable(gz)
         return sp_ones_like(x) * gz, gz
@@ -2045,12 +2111,16 @@ class StructuredAddSV(gof.op.Op):
                          [SparseType(dtype=x.type.dtype,
                                  format=x.type.format).make_variable()])
 
-    def perform(self, node, (x, y), (out, )):
+    def perform(self, node, inputs, outputs):
+        (x, y) = inputs
+        (out,) = outputs
         assert _is_sparse(x) and not _is_sparse(y)
         assert x.shape[1] == y.shape[0]
         out[0] = x.__class__(x + (x.toarray() != 0) * y)
 
-    def grad(self, (x, y), (gz,)):
+    def grad(self, inputs, gout):
+        (x, y) = inputs
+        (gz,) = gout
         assert _is_sparse_variable(x) and not _is_sparse_variable(y)
         assert _is_sparse_variable(gz)
         return gz, sp_sum(gz, axis=0, sparse_grad=True)
@@ -2156,7 +2226,9 @@ class MulSS(gof.op.Op):
                                      format=x.type.format
                                     )()])
 
-    def perform(self, node, (x, y), (out, )):
+    def perform(self, node, inputs, outputs):
+        (x, y) = inputs
+        (out,) = outputs
         assert _is_sparse(x) and _is_sparse(y)
         assert len(x.shape) == 2
         assert y.shape == x.shape
@@ -2164,7 +2236,9 @@ class MulSS(gof.op.Op):
         # x * y calls dot...
         out[0] = x.multiply(y)
 
-    def grad(self, (x, y), (gz,)):
+    def grad(self, inputs, gout):
+        (x, y) = inputs
+        (gz,) = gout
         return y * gz, x * gz
 
     def infer_shape(self, node, shapes):
@@ -2202,7 +2276,9 @@ class MulSD(gof.op.Op):
                          format=x.type.format)()
         return gof.Apply(self, [x, y], [out])
 
-    def perform(self, node, (x, y), (out, )):
+    def perform(self, node, inputs, outputs):
+        (x, y) = inputs
+        (out,) = outputs
         assert _is_sparse(x) and _is_dense(y)
         if len(y.shape) == 0:
             out_dtype = node.outputs[0].dtype
@@ -2253,12 +2329,14 @@ class MulSD(gof.op.Op):
                         z_data[j_idx] *= y[i, j]
                 out[0] = z
             else:
-                print >> sys.stderr, (
+                print((
                     "WARNING: crappy implementation of MulSD"
-                ), x.format
+                ), x.format, file=sys.stderr)
                 out[0] = type(x)(x.toarray() * y)
 
-    def grad(self, (x, y), (gz,)):
+    def grad(self, inputs, gout):
+        (x, y) = inputs
+        (gz,) = gout
         assert _is_sparse_variable(x) and _is_dense_variable(y)
         assert _is_sparse_variable(gz)
         return y * gz, dense_from_sparse(x * gz)
@@ -2291,12 +2369,16 @@ class MulSV(gof.op.Op):
                          [SparseType(dtype=x.type.dtype,
                                  format=x.type.format).make_variable()])
 
-    def perform(self, node, (x, y), (out, )):
+    def perform(self, node, inputs, outputs):
+        (x, y) = inputs
+        (out,) = outputs
         assert _is_sparse(x) and not _is_sparse(y)
         assert x.shape[1] == y.shape[0]
         out[0] = x.__class__(x.toarray() * y)
 
-    def grad(self, (x, y), (gz,)):
+    def grad(self, inputs, gout):
+        (x, y) = inputs
+        (gz,) = gout
         assert _is_sparse_variable(x) and _is_dense_variable(y)
         assert _is_sparse_variable(gz)
 
@@ -2402,7 +2484,9 @@ class __ComparisonOpSS(gof.op.Op):
                          [SparseType(dtype='uint8',
                                  format=x.type.format).make_variable()])
 
-    def perform(self, node, (x, y), (out, )):
+    def perform(self, node, inputs, outputs):
+        (x, y) = inputs
+        (out,) = outputs
         assert _is_sparse(x) and _is_sparse(y)
         assert x.shape == y.shape
         out[0] = self.comparison(x, y).astype('uint8')
@@ -2444,7 +2528,9 @@ class __ComparisonOpSD(gof.op.Op):
                          [SparseType(dtype='uint8',
                                  format=x.type.format).make_variable()])
 
-    def perform(self, node, (x, y), (out, )):
+    def perform(self, node, inputs, outputs):
+        (x, y) = inputs
+        (out,) = outputs
         assert _is_sparse(x)
         assert x.shape == y.shape
         assert _is_dense(y)
@@ -2682,7 +2768,8 @@ class HStack(gof.op.Op):
             self, var,
             [SparseType(dtype=self.dtype, format=self.format).make_variable()])
 
-    def perform(self, node, block, (out, )):
+    def perform(self, node, block, outputs):
+        (out,) = outputs
         for b in block:
             assert _is_sparse(b)
         out[0] = scipy.sparse.hstack(block, format=self.format,
@@ -2692,7 +2779,8 @@ class HStack(gof.op.Op):
         if out[0].dtype != self.dtype:
             out[0] = out[0].astype(self.dtype)
 
-    def grad(self, inputs, (gz, )):
+    def grad(self, inputs, gout):
+        (gz,) = gout
         is_continuous = [(inputs[i].dtype in tensor.continuous_dtypes)
                          for i in range(len(inputs))]
 
@@ -2749,7 +2837,8 @@ def hstack(blocks, format=None, dtype=None):
 
 class VStack(HStack):
     # See doc in instance of this Op or function after this class definition.
-    def perform(self, node, block, (out, )):
+    def perform(self, node, block, outputs):
+        (out,) = outputs
         for b in block:
             assert _is_sparse(b)
         out[0] = scipy.sparse.vstack(block, format=self.format,
@@ -2759,7 +2848,8 @@ class VStack(HStack):
         if out[0].dtype != self.dtype:
             out[0] = out[0].astype(self.dtype)
 
-    def grad(self, inputs, (gz, )):
+    def grad(self, inputs, gout):
+        (gz,) = gout
         is_continuous = [(inputs[i].dtype in tensor.continuous_dtypes)
                         for i in range(len(inputs))]
 
@@ -2836,7 +2926,9 @@ class Remove0(gof.Op):
         assert x.format in ["csr", "csc"]
         return gof.Apply(self, [x], [x.type()])
 
-    def perform(self, node, (x,), (z,)):
+    def perform(self, node, inputs, outputs):
+        (x,) = inputs
+        (z,) = outputs
         if self.inplace:
             c = x
         else:
@@ -2844,7 +2936,9 @@ class Remove0(gof.Op):
         c.eliminate_zeros()
         z[0] = c
 
-    def grad(self, (x,), (gz,)):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         return [gz]
 
     def infer_shape(self, node, i0_shapes):
@@ -3157,7 +3251,9 @@ class TrueDot(gof.op.Op):
                                                shape, copy=False)
         out[0] = rval
 
-    def grad(self, (x, y), (gz, )):
+    def grad(self, inputs, gout):
+        (x, y) = inputs
+        (gz,) = gout
         assert _is_sparse_variable(gz)
         assert _is_sparse_variable(x)
 
@@ -3246,7 +3342,9 @@ class StructuredDot(gof.Op):
                              [tensor.tensor(dtype_out,
                                             (False, b.type.broadcastable[1]))])
 
-    def perform(self, node, (a, b), (out,)):
+    def perform(self, node, inputs, outputs):
+        (a, b) = inputs
+        (out,) = outputs
         if a.shape[1] != b.shape[0]:
             raise ValueError('shape mismatch in StructuredDot.perform',
                              (a.shape, b.shape))
@@ -3287,10 +3385,12 @@ class StructuredDot(gof.Op):
         # theano._asarray function documentation.
         out[0] = theano._asarray(variable, str(variable.dtype))
 
-    def grad(self, (a, b), (g_out,)):
+    def grad(self, inputs, gout):
         # a is sparse, b is dense, g_out is dense
         # ga = g_out x b.T
         # gb = a.T x g_out
+        (a, b) = inputs
+        (g_out,) = gout
         return [structured_dot_grad(a, b, g_out), structured_dot(a.T, g_out)]
 
     def infer_shape(self, node, shapes):
@@ -3367,7 +3467,9 @@ class StructuredDotGradCSC(gof.Op):
         return gof.Apply(self, [a_indices, a_indptr, b, g_ab],
                                [tensor.tensor(g_ab.dtype, (False,))])
 
-    def perform(self, node, (a_indices, a_indptr, b, g_ab), (out,)):
+    def perform(self, node, inputs, outputs):
+        (a_indices, a_indptr, b, g_ab) = inputs
+        (out,) = outputs
         g_a_data = numpy.zeros(a_indices.shape, dtype=g_ab.dtype)
         for j in xrange(len(a_indptr) - 1):
             ind0 = a_indptr[j]
@@ -3386,8 +3488,10 @@ class StructuredDotGradCSC(gof.Op):
     def c_code_cache_version(self):
         return (1,)
 
-    def c_code(self, node, name, (_indices, _indptr, _d, _g), (_zout, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
 
+        (_indices, _indptr, _d, _g) = inputs
+        (_zout,) = outputs
         if node.inputs[2].type.dtype in ('complex64', 'complex128'):
             raise NotImplementedError('Complex types are not supported for b')
         if node.inputs[3].type.dtype in ('complex64', 'complex128'):
@@ -3501,7 +3605,9 @@ class StructuredDotGradCSR(gof.Op):
         return gof.Apply(self, [a_indices, a_indptr, b, g_ab],
                          [tensor.tensor(b.dtype, (False,))])
 
-    def perform(self, node, (a_indices, a_indptr, b, g_ab), (out,)):
+    def perform(self, node, inputs, outputs):
+        (a_indices, a_indptr, b, g_ab) = inputs
+        (out,) = outputs
         g_a_data = numpy.zeros(a_indices.shape, dtype=g_ab.dtype)
         for i in xrange(len(a_indptr) - 1):  # loop over rows
             ind0 = a_indptr[i]
@@ -3522,8 +3628,10 @@ class StructuredDotGradCSR(gof.Op):
     def c_code_cache_version(self):
         return (1,)
 
-    def c_code(self, node, name, (_indices, _indptr, _d, _g), (_zout, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
 
+        (_indices, _indptr, _d, _g) = inputs
+        (_zout,) = outputs
         if node.inputs[2].type.dtype in ('complex64', 'complex128'):
             raise NotImplementedError('Complex types are not supported for b')
         if node.inputs[3].type.dtype in ('complex64', 'complex128'):
@@ -3651,7 +3759,9 @@ class SamplingDot(gof.op.Op):
 
         return gof.Apply(self, [x, y, p], [p.type()])
 
-    def perform(self, node, (x, y, p), (out,)):
+    def perform(self, node, inputs, outputs):
+        (x, y, p) = inputs
+        (out,) = outputs
         if _is_sparse(x):
             raise TypeError(x)
 
@@ -3663,7 +3773,9 @@ class SamplingDot(gof.op.Op):
 
         out[0] = p.__class__(p.multiply(numpy.dot(x, y.T)))
 
-    def grad(self, (x, y, p), (gz,)):
+    def grad(self, inputs, gout):
+        (x, y, p) = inputs
+        (gz,) = gout
         rval = [
             dot(p * gz, y),
             dot((p * gz).T, x),
@@ -3787,7 +3899,9 @@ class Dot(gof.op.Op):
 
         out[0] = theano._asarray(rval, dtype=node.outputs[0].dtype)
 
-    def grad(self, (x, y), (gz,)):
+    def grad(self, inputs, gout):
+        (x, y) = inputs
+        (gz,) = gout
         assert _is_sparse_variable(x) or _is_sparse_variable(y)
         rval = []
 
@@ -3876,7 +3990,9 @@ class Usmm(gof.op.Op):
                          [tensor.tensor(dtype=dtype_out,
                                         broadcastable=(False, False))])
 
-    def perform(self, node, (alpha, x, y, z), (out, )):
+    def perform(self, node, inputs, outputs):
+        (alpha, x, y, z) = inputs
+        (out,) = outputs
         x_is_sparse = _is_sparse(x)
         y_is_sparse = _is_sparse(y)
 

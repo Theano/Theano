@@ -216,7 +216,7 @@ def test_badthunkoutput():
 
     try:
         f_inconsistent([1.0, 2.0, 3.0], [2, 3, 4])
-    except debugmode.BadThunkOutput, e:
+    except debugmode.BadThunkOutput as e:
         # print repr(e)
         assert e.r.owner.op is inconsistent
         return  # TEST PASS
@@ -242,7 +242,7 @@ def test_badoptimization():
 
     try:
         f([1.0, 2.0, 3.0], [2, 3, 4],)
-    except debugmode.BadOptimization, e:
+    except debugmode.BadOptimization as e:
         assert str(e.reason) == 'insert_broken_add'
         return  # TEST PASS
 
@@ -275,7 +275,7 @@ def test_badoptimization_opt_err():
 
     try:
         f([1.0, 2.0, 3.0], [2, 3, 4],)
-    except Exception, e:
+    except Exception as e:
         assert 'insert_bigger_b_add' in exc_message(e)
         return  # TEST PASS
 
@@ -534,7 +534,7 @@ class Test_ViewMap(unittest.TestCase):
         try:
             f([1, 2, 3, 4], [5, 6, 7, 8])
             assert False  # DebugMode should have caught the error
-        except debugmode.BadViewMap, e:
+        except debugmode.BadViewMap as e:
             # print e
             pass
 

@@ -53,7 +53,7 @@ The equivalent Theano code would be:
 
   # compiled function that returns A**k
   power = theano.function(inputs=[A,k], outputs=final_result, updates=updates)
-  
+
   print power(range(10),2)
   print power(range(10),4)
 
@@ -110,7 +110,7 @@ from a list of its coefficients:
     test_coefficients = numpy.asarray([1, 0, 2], dtype=numpy.float32)
     test_value = 3
     print calculate_polynomial(test_coefficients, test_value)
-    print 1.0 * (3 ** 0) + 0.0 * (3 ** 1) + 2.0 * (3 ** 2) 
+    print 1.0 * (3 ** 0) + 0.0 * (3 ** 1) + 2.0 * (3 ** 2)
 
 There are a few things to note here.
 
@@ -137,10 +137,10 @@ Simple accumulation into a scalar, ditching lambda
 --------------------------------------------------
 
 Although this example would seem almost self-explanatory, it stresses a
-pitfall to be careful of: the initial output state that is supplied, that is 
-``output_info``, must be of a **shape similar to that of the output variable**
+pitfall to be careful of: the initial output state that is supplied, that is
+``outputs_info``, must be of a **shape similar to that of the output variable**
 generated at each iteration and moreover, it **must not involve an implicit
-downcast** of the latter. 
+downcast** of the latter.
 
 .. code-block:: python
 
@@ -209,6 +209,8 @@ with all values set to zero except at the provided array indices.
 
 This demonstrates that you can introduce new Theano variables into a scan function.
 
+
+.. _lib_scan_shared_variables:
 
 Using shared variables - Gibbs sampling
 ---------------------------------------
@@ -282,7 +284,7 @@ function applied at each step) you do not need to pass them as arguments.
 Scan will find them on its own and add them to the graph.
 However, passing them to the scan function is a good practice, as it avoids
 Scan Op calling any earlier (external) Op over and over. This results in a
-simpler computational graph, which speeds up the optimization and the 
+simpler computational graph, which speeds up the optimization and the
 execution. To pass the shared variables to Scan you need to put them in a list
 and give it to the ``non_sequences`` argument. Here is the Gibbs sampling code
 updated:
@@ -296,7 +298,7 @@ updated:
     bhid = theano.shared(bhid_values)
 
     trng = T.shared_randomstreams.RandomStreams(1234)
-    
+
     # OneStep, with explicit use of the shared variables (W, bvis, bhid)
     def OneStep(vsample, W, bvis, bhid):
         hmean = T.nnet.sigmoid(theano.dot(vsample, W) + bhid)
@@ -306,7 +308,7 @@ updated:
                          dtype=theano.config.floatX)
 
     sample = theano.tensor.vector()
-    
+
     # The new scan, with the shared variables passed as non_sequences
     values, updates = theano.scan(fn=OneStep,
                                   outputs_info=sample,
@@ -316,6 +318,7 @@ updated:
     gibbs10 = theano.function([sample], values[-1], updates=updates)
 
 
+.. _lib_scan_strict:
 
 Using shared variables - the strict flag
 ----------------------------------------
@@ -422,11 +425,11 @@ will start scaning from ``uvals[4]`` towards the end.
 Conditional ending of Scan
 --------------------------
 
-Scan can also be used as a ``repeat-until`` block. In such a case scan 
+Scan can also be used as a ``repeat-until`` block. In such a case scan
 will stop when either the maximal number of iteration is reached, or the
 provided condition evaluates to True.
 
-For an example, we will compute all powers of two smaller then some provided 
+For an example, we will compute all powers of two smaller then some provided
 value ``max_value``.
 
 .. code-block:: python
@@ -453,6 +456,78 @@ expressed in terms of the arguments of the inner function (in this case
 As a rule, scan always expects the condition to be the last thing returned
 by the inner function, otherwise an error will be raised.
 
+
+Optimizing Scan's performance
+-----------------------------
+
+This section covers some ways to improve performance of a Theano function
+using Scan.
+
+
+Minimizing Scan usage
+^^^^^^^^^^^^^^^^^^^^^
+
+Scan makes it possible to define simple and compact graphs that can do the
+same work as much larger and more complicated graphs. However, it comes with
+a significant overhead. As such, when performance is the objective, a good
+rule of thumb is to perform as much of the computation as possible outside of
+Scan. This may have the effect of increasing memory usage but can also
+reduce the overhead introduces by using Scan.
+
+
+Explicitly passing inputs of the inner function to scan
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It is possible, inside of Scan, to use variables previously defined outside of
+the Scan without explicitly passing them as inputs to the Scan. However, it is
+often more efficient to explicitly pass them as non-sequence inputs instead.
+Section :ref:`lib_scan_shared_variables` provides an explanation for this and
+section :ref:`lib_scan_strict` describes the *strict* flag, a tool that Scan
+provides to help ensure that the inputs to the function inside Scan have all
+been provided as explicit inputs to the ``scan()`` function.
+
+
+Deactivating garbage collecting in Scan
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Deactivating the garbage collection for Scan can allow it to reuse memory
+between executions instead of always having to allocate new memory. This can
+improve performance at the cost of increased memory usage. By default, Scan
+reuses memory between iterations of the same execution but frees the memory
+after the last iteration.
+
+There are two ways to achieve this, using the Theano flag
+``config.scan.allow_gc`` and setting it to False, or using the argument
+``allow_gc`` of the function theano.scan() and set it to False (when a value
+is not provided for this argument, the value of the flag
+``config.scan.allow_gc`` is used).
+
+
+Graph optimizations
+^^^^^^^^^^^^^^^^^^^
+
+This one is simple but still worth pointing out. Theano is able to
+automatically recognize and optimize many computation patterns. However, there
+are patterns that Theano doesn't optimize because doing so would change the
+user interface (such as merging shared variables together into a single one,
+for instance). Additionaly, Theano doesn't catch every case that it could
+optimize and so it remains useful for performance that the user defines an
+efficient graph in the first place. This is also the case, and sometimes even
+more so, for the graph inside of Scan. This is because it will be executed
+many times for every execution of the Theano function that contains it.
+
+The `LSTM tutorial <http://deeplearning.net/tutorial/lstm.html>`_ on
+`DeepLearning.net <http://deeplearning.net>`_ provides an example of an
+optimization that Theano cannot perform. Instead of performing many matrix
+multiplications between matrix :math:`x_t` and each of the shared matrices
+:math:`W_i`, :math:`W_c`, :math:`W_f` and :math:`W_o`, the matrices
+:math:`W_*`, are merged into a single shared matrix :math:`W` and the graph
+performs a single larger matrix multiplication between :math:`W` and
+:math:`x_t`. The resulting matrix is then sliced to obtain the results of that
+the small individual matrix multiplications would have produced. This
+optimization replaces several small and inefficient matrix multiplications by
+a single larger one and thus improves performance at the cost of a potentially
+higher memory usage.
 
 
 reference

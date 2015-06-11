@@ -97,7 +97,7 @@ def scan(fn,
 
         The order of the sequences is the same as the one in the list
         `sequences` given to scan. The order of the outputs is the same
-        as the order of ``output_info``. For any sequence or output the
+        as the order of ``outputs_info``. For any sequence or output the
         order of the time slices is the same as the one in which they have
         been given as taps. For example if one writes the following :
 

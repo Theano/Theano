@@ -1,3 +1,4 @@
+from __future__ import print_function
 import copy
 import StringIO
 import numpy
@@ -20,6 +21,8 @@ from .comp import NVCC_compiler
 
 
 class GpuSubtensor(HideC, Subtensor):
+    _f16_ok = True
+
     def make_node(self, x, *inputs):
         rval = tensor.Subtensor.make_node(self, x, *inputs)
         otype = GpuArrayType(dtype=rval.outputs[0].type.dtype,
@@ -89,7 +92,7 @@ class GpuSubtensor(HideC, Subtensor):
 """ % dict(out=outputs[0], inp=inp, fail=sub['fail'])
 
         sio = StringIO.StringIO()
-        print >> sio, """
+        print("""
         ssize_t starts[%(sz)s];
         ssize_t stops[%(sz)s];
         ssize_t steps[%(sz)s];
@@ -100,7 +103,7 @@ class GpuSubtensor(HideC, Subtensor):
             PyErr_SetString(PyExc_IndexError, "invalid index");
             %(fail)s
         }
-        """ % dict(sz=len(idx_list), inp=inp, fail=sub['fail'])
+        """ % dict(sz=len(idx_list), inp=inp, fail=sub['fail']), file=sio)
 
         def fix_idx(idx):
             if idx is None:
@@ -117,7 +120,7 @@ class GpuSubtensor(HideC, Subtensor):
                 start, start_n = fix_idx(idx.start)
                 stop, stop_n = fix_idx(idx.stop)
                 step, step_n = fix_idx(idx.step)
-                print >>sio, """
+                print("""
                 starts[%(i)s] = %(start)s;
                 stops[%(i)s] = %(stop)s;
                 steps[%(i)s] = %(step)s;
@@ -128,7 +131,7 @@ class GpuSubtensor(HideC, Subtensor):
                 }
                 """ % dict(i=i, start=start, stop=stop, step=step,
                            start_n=start_n, stop_n=stop_n, step_n=step_n,
-                           fail=sub['fail'], inp=inp)
+                           fail=sub['fail'], inp=inp), file=sio)
             else:
                 if isinstance(idx, gof.Type):
                     start = indices.pop(0)
@@ -136,19 +139,19 @@ class GpuSubtensor(HideC, Subtensor):
                     start = idx
                 else:
                     assert 0, idx
-                print >>sio, """
+                print("""
                 cur = %(start)s;
                 if (cur < 0)
                     cur += %(inp)s->ga.dimensions[%(i)s];
                 starts[%(i)s] = cur;
                 steps[%(i)s] = 0;
-                """ % dict(i=i, start=start, fail=sub['fail'], inp=inp)
+                """ % dict(i=i, start=start, fail=sub['fail'], inp=inp), file=sio)
 
-        print >>sio, """
+        print("""
         Py_XDECREF(%(out)s);
         %(out)s = pygpu_index(%(inp)s, starts, stops, steps);
         if (!%(out)s) { %(fail)s }
-""" % dict(name=name, fail=sub['fail'], inp=inp, out=outputs[0])
+""" % dict(name=name, fail=sub['fail'], inp=inp, out=outputs[0]), file=sio)
 
         return sio.getvalue()
 
@@ -166,6 +169,10 @@ class GpuIncSubtensor(IncSubtensor):
           The helper methods like do_type_checking, copy_of_x, etc. specialize
           the c_code for this Op.
     """
+    @property
+    def _f16_ok(self):
+        return self.iadd_node.op._f16_ok
+
     def c_headers(self):
         return self.iadd_node.op.c_headers()
 
@@ -322,7 +329,6 @@ class GpuIncSubtensor(IncSubtensor):
                                                     PyGpuArrayObject* src){
            PyGpuArrayObject* ret = NULL;
         """ % locals()
-        # def c_code(self, node, name, inputs, outputs, sub):
         inputs = ["dst", "src"]
         outputs = ["ret"]
         sub = {"fail": "return NULL;"}
@@ -334,7 +340,6 @@ class GpuIncSubtensor(IncSubtensor):
         return ret
 
     def add_to_zview(self, nodename, x, fail):
-        # TODO
         return """
         PyGpuArrayObject * add_result = inc_sub_iadd_%(nodename)s(zview, %(x)s);
 
@@ -354,7 +359,7 @@ class GpuIncSubtensor(IncSubtensor):
         elemwise_version = self.iadd_node.c_code_cache_version()
         if not parent_version or not elemwise_version:
             return
-        return parent_version + elemwise_version + (1,)
+        return parent_version + elemwise_version + (2,)
 
 
 class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
@@ -388,6 +393,9 @@ class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
         return gof.Apply(self, [x_, y_, ilist_], [x_.type()])
 
     def getInplElemwiseAdditionKernel(self, a, b):
+        if a.dtype == 'float16' or b.dtype == 'float16':
+            raise NotImplementedError('float16 is not supported by pygpu '
+                                      'elemwise')
         a_arg = pygpu.tools.as_argument(a, 'a')
         b_arg = pygpu.tools.as_argument(b, 'b')
         args = [a_arg, b_arg]
@@ -403,58 +411,53 @@ class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
         x, y, idx = inp
         out, = out_
 
+        if not self.inplace:
+            x = x.copy()
+
+        out[0] = x
+
+        if len(idx) == 0:
+            return
+
         # Make sure idx is not a GpuArray otherwise we cannot use its content
         # to index x and y
         if isinstance(idx, gpuarray.GpuArray):
             idx = numpy.asarray(idx)
 
-        if not self.inplace:
-            x = x.copy()
-        if self.set_instead_of_inc:
-            assert y.ndim <= x.ndim   # Should be guaranteed by `make_node`
-            if y.ndim == x.ndim:
-                assert len(y) == len(idx)
+        # If `y` has as many dimensions as `x`, then we want to iterate
+        # jointly on `x` and `y`. Otherwise, it means `y` should be
+        # broadcasted to fill all relevant rows of `x`.
+        if y.ndim == x.ndim and y.shape[0] != 1:
+            assert len(y) == len(idx)
+            if self.set_instead_of_inc:
                 for (j, i) in enumerate(idx):
                     x[i] = y[j]
             else:
-                for i in idx:
-                    x[i] = y
-        else:
-            # If `y` has as many dimensions as `x`, then we want to iterate
-            # jointly on `x` and `y`. Otherwise, it means `y` should be
-            # broadcasted to fill all relevant rows of `x`.
-            assert y.ndim <= x.ndim   # Should be guaranteed by `make_node`
-
-            if len(idx) == 0:
-                pass
-            # if len(y) == 1, we need to broadcast it.
-            elif y.ndim == x.ndim and len(y) != 1:
-                assert len(y) == len(idx)
-
                 k = self.getInplElemwiseAdditionKernel(x[0], y[0])
-
                 for (j, i) in enumerate(idx):
-                    k(x[i], y[j], broadcast=False)
+                    k(x[i], y[j], broadcast=True)
+        else:
+            if y.ndim == x.ndim:
+                # First dim is always 1 in this case.
+                reshaped_y = y.reshape(y.shape[1:])
             else:
                 nb_dims_to_add = (x.ndim - 1) - y.ndim
                 reshaped_y = y.reshape((1,)*nb_dims_to_add + y.shape)
-                k = self.getInplElemwiseAdditionKernel(x[0],
-                                                       reshaped_y)
 
+            if self.set_instead_of_inc:
+                for i in idx:
+                    x[i] = reshaped_y
+            else:
+                k = self.getInplElemwiseAdditionKernel(x[0], reshaped_y)
                 for i in idx:
                     k(x[i], reshaped_y, broadcast=True)
-
-        out[0] = x
 
 
 class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
     """Implement AdvancedIncSubtensor1 on the gpu, but use function
     only avail on compute capability 2.0 and more recent.
     """
-
-    def __init__(self, inplace=False, set_instead_of_inc=False):
-        # The python implementation in the parent class is not applicable here
-        GpuAdvancedIncSubtensor1.__init__(self, inplace, set_instead_of_inc)
+    _f16_ok = True
 
     def make_node(self, x, y, ilist):
         """It defer from GpuAdvancedIncSubtensor1 in that it make sure
@@ -486,7 +489,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
         return gof.Apply(self, [x_, y_, ilist_], [x_.type()])
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
@@ -541,6 +544,30 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
         itemsize_out = numpy.dtype(dtype_out).itemsize
         return """
 
+/*
+ * This is a version of atomicAdd that works for half-floats.  It may
+ * read and write 2 bytes more than the size of the array if the array
+ * has an uneven number of elements.  The actual value at that spot
+ * will not be modified.
+ */
+
+__device__ npy_float16 atomicAdd(npy_float16 *addr, npy_float16 val) {
+  npy_uint32 *base = (npy_uint32 *)((size_t)addr & ~2);
+  npy_uint32 old, assumed, sum, new_;
+  old = *base;
+  do {
+    assumed = old;
+    sum = __float2half_rn(
+      __half2float(val) +
+      __half2float((npy_float16)__byte_perm(old, 0,
+                     ((size_t)addr & 2) ? 0x4432 : 0x4410)));
+    new_ = __byte_perm(old, sum, ((size_t)addr & 2) ? 0x5410 : 0x3254);
+    old = atomicCAS(base, assumed, new_);
+  } while (assumed != old);
+  return (npy_float16)__byte_perm(old, 0,
+                                  ((size_t)addr & 2) ? 0x4432 : 0x4410);
+}
+
         __global__ void k_vector_add_fast(int numRowsX,
                                           int numColsX,
                                           int stridesX0,
@@ -580,17 +607,17 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
                 dim3 n_threads(num_threads_per_block);
 
                 k_vector_add_fast<<<n_blocks, n_threads>>>(
-                        PyGpuArray_DIMS(py_self)[0],
-                        PyGpuArray_DIMS(py_self)[1],
-                        PyGpuArray_STRIDES(py_self)[0] / %(itemsize_x)s,
-                        PyGpuArray_STRIDES(py_self)[1] / %(itemsize_x)s,
+                        PyGpuArray_DIM(py_self, 0),
+                        PyGpuArray_DIM(py_self, 1),
+                        PyGpuArray_STRIDE(py_self, 0) / %(itemsize_x)s,
+                        PyGpuArray_STRIDE(py_self, 1) / %(itemsize_x)s,
                         (npy_%(dtype_x)s*)(
                             ((char *)cuda_get_ptr(py_self->ga.data)) +
                             py_self->ga.offset),
-                        PyGpuArray_DIMS(py_other)[0],
-                        PyGpuArray_DIMS(py_other)[1],
-                        PyGpuArray_STRIDES(py_other)[0] / %(itemsize_y)s,
-                        PyGpuArray_STRIDES(py_other)[1] / %(itemsize_y)s,
+                        PyGpuArray_DIM(py_other, 0),
+                        PyGpuArray_DIM(py_other, 1),
+                        PyGpuArray_DIM(py_other, 0) == 1 ? 0 : PyGpuArray_STRIDE(py_other, 0) / %(itemsize_y)s,
+                        PyGpuArray_DIM(py_other, 1) == 1 ? 0 : PyGpuArray_STRIDE(py_other, 1) / %(itemsize_y)s,
                         (npy_%(dtype_x)s*)(
                             ((char *)cuda_get_ptr(py_other->ga.data)) +
                             py_other->ga.offset),

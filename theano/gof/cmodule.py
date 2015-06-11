@@ -1,9 +1,9 @@
 """Generate and compile C modules for Python,
 """
+from __future__ import print_function
 import atexit
 import cPickle
 import logging
-import operator
 import os
 import re
 import shutil
@@ -24,12 +24,12 @@ except ImportError:
 import numpy.distutils  # TODO: TensorType should handle this
 
 import theano
-from theano.compat import PY3, next, decode, decode_iter
+from theano.compat import PY3, decode, decode_iter
 from theano.compat.six import b, BytesIO, StringIO
 from theano.gof.utils import flatten
 from theano.configparser import config
 from theano.gof.cc import hash_from_code
-from theano.misc.windows import (subprocess_Popen, call_subprocess_Popen,
+from theano.misc.windows import (subprocess_Popen,
                                  output_subprocess_Popen)
 
 # we will abuse the lockfile mechanism when reading and writing the registry
@@ -92,7 +92,7 @@ def debug_counter(name, every=1):
     setattr(debug_counter, name, getattr(debug_counter, name, 0) + 1)
     n = getattr(debug_counter, name)
     if n % every == 0:
-        print >>sys.stderr, "debug_counter [%s]: %s" % (name, n)
+        print("debug_counter [%s]: %s" % (name, n), file=sys.stderr)
 
 
 class ExtFunction(object):
@@ -149,19 +149,19 @@ class DynamicModule(object):
 
         self.support_code = []
         self.functions = []
-        self.includes = ["<Python.h>", "<iostream>"]
+        self.includes = ["<Python.h>", "<iostream>", '"theano_mod_helper.h"']
         self.init_blocks = []
 
     def print_methoddef(self, stream):
-        print >> stream, "static PyMethodDef MyMethods[] = {"
+        print("static PyMethodDef MyMethods[] = {", file=stream)
         for f in self.functions:
-            print >> stream, f.method_decl(), ','
-        print >> stream, "\t{NULL, NULL, 0, NULL}"
-        print >> stream, "};"
+            print(f.method_decl(), ',', file=stream)
+        print("\t{NULL, NULL, 0, NULL}", file=stream)
+        print("};", file=stream)
 
     def print_init(self, stream):
         if PY3:
-            print >> stream, """\
+            print("""\
 static struct PyModuleDef moduledef = {{
       PyModuleDef_HEAD_INIT,
       "{name}",
@@ -169,21 +169,21 @@ static struct PyModuleDef moduledef = {{
       -1,
       MyMethods,
 }};
-""".format(name=self.hash_placeholder)
-            print >> stream, ("PyMODINIT_FUNC PyInit_%s(void) {" %
-                              self.hash_placeholder)
+""".format(name=self.hash_placeholder), file=stream)
+            print(("PyMODINIT_FUNC PyInit_%s(void) {" %
+                              self.hash_placeholder), file=stream)
             for block in self.init_blocks:
-                print >> stream, '  ', block
-            print >> stream, "    PyObject *m = PyModule_Create(&moduledef);"
-            print >> stream, "    return m;"
+                print('  ', block, file=stream)
+            print("    PyObject *m = PyModule_Create(&moduledef);", file=stream)
+            print("    return m;", file=stream)
         else:
-            print >> stream, ("PyMODINIT_FUNC init%s(void){" %
-                              self.hash_placeholder)
+            print(("PyMODINIT_FUNC init%s(void){" %
+                              self.hash_placeholder), file=stream)
             for block in self.init_blocks:
-                print >> stream, '  ', block
-            print >> stream, '  ', ('(void) Py_InitModule("%s", MyMethods);'
-                                    % self.hash_placeholder)
-        print >> stream, "}"
+                print('  ', block, file=stream)
+            print('  ', ('(void) Py_InitModule("%s", MyMethods);'
+                                    % self.hash_placeholder), file=stream)
+        print("}", file=stream)
 
     def add_include(self, str):
         assert not self.finalized
@@ -208,25 +208,25 @@ static struct PyModuleDef moduledef = {{
             if not inc:
                 continue
             if inc[0] == '<' or inc[0] == '"':
-                print >> sio, "#include", inc
+                print("#include", inc, file=sio)
             else:
-                print >> sio, '#include "%s"' % inc
+                print('#include "%s"' % inc, file=sio)
 
-        print >> sio, "//////////////////////"
-        print >> sio, "////  Support Code"
-        print >> sio, "//////////////////////"
+        print("//////////////////////", file=sio)
+        print("////  Support Code", file=sio)
+        print("//////////////////////", file=sio)
         for sc in self.support_code:
-            print >> sio, sc
+            print(sc, file=sio)
 
-        print >> sio, "//////////////////////"
-        print >> sio, "////  Functions"
-        print >> sio, "//////////////////////"
+        print("//////////////////////", file=sio)
+        print("////  Functions", file=sio)
+        print("//////////////////////", file=sio)
         for f in self.functions:
-            print >> sio, f.code_block
+            print(f.code_block, file=sio)
 
-        print >> sio, "//////////////////////"
-        print >> sio, "////  Module init"
-        print >> sio, "//////////////////////"
+        print("//////////////////////", file=sio)
+        print("////  Module init", file=sio)
+        print("//////////////////////", file=sio)
         self.print_methoddef(sio)
         self.print_init(sio)
 
@@ -242,7 +242,7 @@ static struct PyModuleDef moduledef = {{
     def list_code(self, ofile=sys.stdout):
         """Print out the code with line numbers to `ofile` """
         for i, line in enumerate(self.code().split('\n')):
-            print >> ofile, ('%4i' % (i + 1)), line
+            print(('%4i' % (i + 1)), line, file=ofile)
         ofile.flush()
 
     # TODO: add_type
@@ -845,14 +845,15 @@ class ModuleCache(object):
                                     get_safe_part(key),
                                     []).append(key)
                         else:
+                            dir1 = os.path.dirname(self.entry_from_key[key])
+                            dir2 = os.path.dirname(entry)
                             _logger.warning(
                                 "The same cache key is associated to "
                                 "different modules (%s and %s). This "
                                 "is not supposed to happen! You may "
                                 "need to manually delete your cache "
                                 "directory to fix this.",
-                                self.entry_from_key[key],
-                                entry)
+                                dir1, dir2)
                     # Clean up the name space to prevent bug.
                     if key_data.keys:
                         del key
@@ -959,9 +960,12 @@ class ModuleCache(object):
                 except cPickle.PicklingError:
                     key_data.remove_key(key)
                     key_broken = True
-            if (key[0] and not key_broken and
-                self.check_for_broken_eq):
-                self.check_key(key, key_data.key_pkl)
+                # We need the lock while we check in case of parallel
+                # process that could be changing the file at the same
+                # time.
+                if (key[0] and not key_broken and
+                    self.check_for_broken_eq):
+                    self.check_key(key, key_data.key_pkl)
             self._update_mappings(key, key_data, module.__file__, check_in_keys=not key_broken)
             return module
         else:
@@ -1046,8 +1050,6 @@ class ModuleCache(object):
         if module is not None:
             return module
 
-        lock_taken = False
-
         src_code = lnk.get_src_code()
         # Is the source code already in the cache?
         module_hash = get_module_hash(src_code, key)
@@ -1091,7 +1093,7 @@ class ModuleCache(object):
                 assert name not in self.module_from_name
                 self.module_from_name[name] = module
                 nocleanup = True
-            except OSError, e:
+            except OSError as e:
                 _logger.error(e)
                 if e.errno == 31:
                     _logger.error('There are %i files in %s',
@@ -1387,7 +1389,7 @@ def _rmtree(parent, ignore_nocleanup=False, msg='', level=logging.DEBUG,
                 log_msg += ' (%s)' % msg
             _logger.log(level, '%s: %s', log_msg, parent)
             shutil.rmtree(parent)
-    except Exception, e:
+    except Exception as e:
         # If parent still exists, mark it for deletion by a future refresh()
         _logger.debug('In _rmtree, encountered exception: %s(%s)',
                       type(e), e)
@@ -1395,7 +1397,7 @@ def _rmtree(parent, ignore_nocleanup=False, msg='', level=logging.DEBUG,
             try:
                 _logger.info('placing "delete.me" in %s', parent)
                 open(os.path.join(parent, 'delete.me'), 'w').close()
-            except Exception, ee:
+            except Exception as ee:
                 _logger.warning("Failed to remove or mark cache directory %s "
                                 "for removal %s", parent, ee)
 
@@ -1445,7 +1447,8 @@ def std_include_dirs():
     py_plat_spec_inc = distutils.sysconfig.get_python_inc(plat_specific=True)
     python_inc_dirs = ([py_inc] if py_inc == py_plat_spec_inc
                        else [py_inc, py_plat_spec_inc])
-    return numpy_inc_dirs + python_inc_dirs
+    gof_inc_dir = os.path.abspath(os.path.dirname(__file__))
+    return numpy_inc_dirs + python_inc_dirs + [gof_inc_dir]
 
 
 def std_lib_dirs_and_libs():
@@ -1482,10 +1485,10 @@ def std_lib_dirs_and_libs():
 
             for f, lib in [('libpython27.a', 'libpython 1.2')]:
                 if not os.path.exists(os.path.join(libdir, f)):
-                    print ("Your Python version is from Canopy. " +
+                    print(("Your Python version is from Canopy. " +
                            "You need to install the package '" + lib +
                            "' from Canopy package manager."
-                           )
+                           ))
             libdirs = [
                 # Used in older Canopy
                 os.path.join(sys.prefix, 'libs'),
@@ -1494,12 +1497,12 @@ def std_lib_dirs_and_libs():
                              r'EGG-INFO\mingw\usr\x86_64-w64-mingw32\lib')]
             for f, lib in [('libmsvcr90.a',
                             'mingw 4.5.2 or 4.8.1-2 (newer could work)')]:
-                if not any([os.path.exists(os.path.join(libdir, f))
-                            for libdir in libdirs]):
-                    print ("Your Python version is from Canopy. " +
+                if not any([os.path.exists(os.path.join(tmp_libdir, f))
+                            for tmp_libdir in libdirs]):
+                    print(("Your Python version is from Canopy. " +
                            "You need to install the package '" + lib +
                            "' from Canopy package manager."
-                           )
+                           ))
             python_lib_dirs.insert(0, libdir)
         std_lib_dirs_and_libs.data = [libname], python_lib_dirs
 
@@ -1606,7 +1609,7 @@ class Compiler(object):
                         os.remove(exe_path)
                     if os.path.exists(exe_path + ".exe"):
                         os.remove(exe_path + ".exe")
-        except OSError, e:
+        except OSError as e:
             if err is None:
                 err = str(e)
             else:
@@ -1925,7 +1928,7 @@ class GCC_compiler(Compiler):
     @staticmethod
     def compile_str(module_name, src_code, location=None,
                     include_dirs=None, lib_dirs=None, libs=None,
-                    preargs=None, py_module=True):
+                    preargs=None, py_module=True, hide_symbols=True):
         """
         :param module_name: string (this has been embedded in the src_code
 
@@ -1947,6 +1950,10 @@ class GCC_compiler(Compiler):
 
         :param py_module: if False, compile to a shared library, but do not
             import it as a Python module.
+
+        :param hide_symbols: if True (the default) all symbols will be
+        hidden from the library symbol table (which means that other
+        objects can't use them.
 
         :returns: dynamically-imported python module of the compiled code.
             (unless py_module is False, in that case returns None.)
@@ -2002,6 +2009,14 @@ class GCC_compiler(Compiler):
         else:
             cmd.extend(preargs)
         cmd.extend('-I%s' % idir for idir in include_dirs)
+        if hide_symbols and sys.platform != 'win32':
+            # This has been available since gcc 4.0 so we suppose it
+            # is always available. We pass it here since it
+            # significantly reduces the size of the symbol table for
+            # the objects we want to share. This in turns leads to
+            # improved loading times on most platforms (win32 is
+            # different, as usual).
+            cmd.append('-fvisibility=hidden')
         cmd.extend(['-o', lib_filename])
         cmd.append(cppfilename)
         cmd.extend(['-L%s' % ldir for ldir in lib_dirs])
@@ -2011,10 +2026,10 @@ class GCC_compiler(Compiler):
 
         def print_command_line_error():
             # Print command line when a problem occurred.
-            print >> sys.stderr, (
+            print((
                     "Problem occurred during compilation with the "
-                    "command line below:")
-            print >> sys.stderr, ' '.join(cmd)
+                    "command line below:"), file=sys.stderr)
+            print(' '.join(cmd), file=sys.stderr)
 
         try:
             p_out = output_subprocess_Popen(cmd)
@@ -2027,14 +2042,14 @@ class GCC_compiler(Compiler):
         status = p_out[2]
 
         if status:
-            print '==============================='
+            print('===============================')
             for i, l in enumerate(src_code.split('\n')):
                 # gcc put its messages to stderr, so we add ours now
-                print >> sys.stderr, '%05i\t%s' % (i + 1, l)
-            print '==============================='
+                print('%05i\t%s' % (i + 1, l), file=sys.stderr)
+            print('===============================')
             print_command_line_error()
             # Print errors just below the command line.
-            print compile_stderr
+            print(compile_stderr)
             # We replace '\n' by '. ' in the error message because when Python
             # prints the exception, having '\n' in the text makes it more
             # difficult to read.
@@ -2042,7 +2057,7 @@ class GCC_compiler(Compiler):
                             (status, compile_stderr.replace('\n', '. ')))
         elif config.cmodule.compilation_warning and compile_stderr:
             # Print errors just below the command line.
-            print compile_stderr
+            print(compile_stderr)
 
         if py_module:
             # touch the __init__ file

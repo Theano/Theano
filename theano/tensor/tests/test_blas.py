@@ -1,3 +1,4 @@
+from __future__ import print_function
 from copy import copy
 from unittest import TestCase
 
@@ -102,7 +103,7 @@ class t_gemm(TestCase):
         Gemm.debug = True
         try:
             g = gemm_inplace([1.], 1., [1.], [1.], 1.)
-        except TypeError, e:
+        except TypeError as e:
             if exc_message(e) is Gemm.E_rank:
                 return
         self.fail()
@@ -110,7 +111,7 @@ class t_gemm(TestCase):
     def test0(self):
         try:
             self.cmp(1., 0., 1.0, 1.0, 1.0)
-        except TypeError, e:
+        except TypeError as e:
             if exc_message(e) is Gemm.E_rank:
                 return
         self.fail()
@@ -118,7 +119,7 @@ class t_gemm(TestCase):
     def test2(self):
         try:
             self.cmp(2., 1.0, [3, 2, 1.], [[1], [2], [3.]], 1.0)
-        except TypeError, e:
+        except TypeError as e:
             self.assertTrue(exc_message(e) == Gemm.E_rank)
             return
         self.fail()
@@ -209,7 +210,7 @@ class t_gemm(TestCase):
         Z = as_tensor_variable(self.rand(2, 2))
         try:
             gemm_inplace(Z, 1.0, Z, Z, 1.0)
-        except InconsistencyError, e:
+        except InconsistencyError as e:
             if exc_message(e) == Gemm.E_z_uniq:
                 return
         self.fail()
@@ -220,7 +221,7 @@ class t_gemm(TestCase):
         A = as_tensor_variable(self.rand(2, 2))
         try:
             gemm_inplace(Z, 1.0, A, inplace.transpose_inplace(Z), 1.0)
-        except InconsistencyError, e:
+        except InconsistencyError as e:
             if exc_message(e) == Gemm.E_z_uniq:
                 return
         self.fail()
@@ -231,7 +232,7 @@ class t_gemm(TestCase):
         A = as_tensor_variable(self.rand(2, 2))
         try:
             gemm_inplace(Z, 1.0, inplace.transpose_inplace(Z), A, 1.0)
-        except InconsistencyError, e:
+        except InconsistencyError as e:
             if exc_message(e) == Gemm.E_z_uniq:
                 return
         self.fail()
@@ -242,7 +243,7 @@ class t_gemm(TestCase):
         A = as_tensor_variable(self.rand(2, 2))
         try:
             gemm_inplace(Z, 1.0, Z, A, 1.0)
-        except InconsistencyError, e:
+        except InconsistencyError as e:
             if exc_message(e) == Gemm.E_z_uniq:
                 return
         self.fail()
@@ -311,7 +312,7 @@ class t_gemm(TestCase):
 
         try:
             t(C.T, A[:2, :], B[:, :2].T)
-        except ValueError, e:
+        except ValueError as e:
             if exc_message(e).find('aligned') >= 0:
                 return
         self.fail()
@@ -431,7 +432,7 @@ class T_real_matrix(TestCase):
 
 
 def fail(msg):
-    print 'FAIL', msg
+    print('FAIL', msg)
     assert False
 
 
@@ -493,7 +494,7 @@ def just_gemm(i, o, ishapes=[(4, 3), (3, 5), (4, 5), (), ()],
                           max_abs_err)
     except Failure:
         for node in f.maker.fgraph.toposort():
-            print 'GRAPH', node
+            print('GRAPH', node)
         raise
 
 
@@ -568,7 +569,7 @@ def test_gemm_opt_double_gemm():
                 max_abs_err)
     except Failure:
         for node in f.maker.fgraph.toposort():
-            print 'GRAPH', node
+            print('GRAPH', node)
         raise
 
 
@@ -805,7 +806,7 @@ def test_inplace0():
     f = inplace_func([Z, b, R, S],
             [Z * (Z + b * T.dot(R, S).T)], mode='FAST_RUN')
     if (gemm_inplace in [n.op for n in f.maker.fgraph.apply_nodes]):
-        print pp(f.maker.fgraph.outputs[0])
+        print(pp(f.maker.fgraph.outputs[0]))
         raise Failure('gemm_inplace in graph')
     assert gemm_no_inplace in [n.op for n in f.maker.fgraph.apply_nodes]
 
@@ -877,8 +878,10 @@ def test_dot22scalar():
                     def check_dot22scalar(func, len_topo_scalar=-1):
                         topo = func.maker.fgraph.toposort()
                         ops = [x.op for x in topo]
+                        classes = [type(x.op) for x in topo]
                         dtype4_upcast = theano.scalar.upcast(dtype4, dtype1,
                                                              dtype2)
+
                         if dtype1 == dtype2 == dtype3 == dtype4_upcast:
                             if len_topo_scalar > 0:
                                 assert len(topo) == len_topo_scalar

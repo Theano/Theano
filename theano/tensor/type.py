@@ -220,7 +220,7 @@ class TensorType(Type):
     def value_validity_msg(self, a):
         try:
             self.filter(a, strict=True)
-        except Exception, e:
+        except Exception as e:
             return str(e)
         return "value is valid"
 
@@ -234,6 +234,7 @@ class TensorType(Type):
         # complex64, etc.
         try:
             return {
+                'float16': (float, 'npy_float16', 'NPY_FLOAT16'),
                 'float32': (float, 'npy_float32', 'NPY_FLOAT32'),
                 'float64': (float, 'npy_float64', 'NPY_FLOAT64'),
                 'uint8': (int, 'npy_uint8', 'NPY_UINT8'),

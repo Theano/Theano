@@ -744,3 +744,9 @@ efficiency over the basic solution that is asked here, the two operations would
 have to be jointly optimized explicitly in the code.)
 
 Modify and execute to support *stride* (i.e. to avoid constraining the input to be *C-contiguous*).
+
+Note
+----
+
+See :ref:`example_other_random` to know how to handle random numbers
+on the GPU.

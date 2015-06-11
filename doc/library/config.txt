@@ -208,6 +208,17 @@ import theano and print the config variable, as in:
     significant speed up on functions with many ops that are fast to
     execute, but this increases Theano's memory usage.
 
+.. attribute:: scan.allow_output_prealloc
+
+    Bool value, either ``True`` or ``False``
+
+    Default: ``True``
+
+    This enables, or not, an optimization in Scan in which it tries to
+    pre-allocate memory for its outputs. Enabling the optimization can
+    give a significant speed up with Scan at the cost of slightly increased
+    memory usage.
+
 .. attribute:: openmp
 
     Bool value: either True or False

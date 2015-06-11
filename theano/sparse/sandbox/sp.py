@@ -42,18 +42,20 @@ class ConvolutionIndices(Op):
     """
 
     @staticmethod
-    def sparse_eval(inshp, kshp, nkern, (dx, dy)=(1, 1), mode='valid'):
+    def sparse_eval(inshp, kshp, nkern, strides=(1, 1), mode='valid'):
+        (dx, dy) = strides
         return convolution_indices.evaluate(inshp, kshp, (dx, dy),
                                             nkern, mode=mode, ws=False)
 
     @staticmethod
-    def conv_eval(inshp, kshp, (dx, dy)=(1, 1), mode='valid'):
+    def conv_eval(inshp, kshp, strides=(1, 1), mode='valid'):
+        (dx, dy) = strides
         return convolution_indices.evaluate(inshp, kshp, (dx, dy),
                                             mode=mode, ws=True)
 
     # img_shape and ker_shape are (height,width)
     @staticmethod
-    def evaluate(inshp, kshp, (dx, dy)=(1, 1), nkern=1, mode='valid', ws=True):
+    def evaluate(inshp, kshp, strides=(1, 1), nkern=1, mode='valid', ws=True):
         """Build a sparse matrix which can be used for performing...
         * convolution: in this case, the dot product of this matrix
         with the input images will generate a stack of images
@@ -79,6 +81,7 @@ class ConvolutionIndices(Op):
         :returns: the structure of a sparse matrix, and the logical dimensions
                   of the image which will be the result of filtering.
         """
+        (dx, dy) = strides
         N = numpy
 
         # inshp contains either 2 entries (height,width) or 3 (nfeatures,h,w)
@@ -251,8 +254,9 @@ class ConvolutionIndices(Op):
 
         return rval
 
-    def perform(self, node, (inshp, kshp),\
-                (out_indices, out_indptr, spmat_shape)):
+    def perform(self, node, inputs, outputs):
+        (inshp, kshp) = inputs
+        (out_indices, out_indptr, spmat_shape) = outputs
         indices, indptr, spmatshp, outshp = self.evaluate(inshp, kshp)
         out_indices[0] = indices
         out_indptr[0] = indptr

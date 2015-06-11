@@ -2,7 +2,6 @@ from functools import wraps
 
 import numpy
 
-import theano
 from theano import scalar as scal, Constant
 from theano.gof import local_optimizer
 from theano.tensor import (DimShuffle, get_scalar_constant_value,
@@ -18,7 +17,7 @@ def grab_cpu_scalar(v, nd):
     if v.owner is not None:
         n = v.owner
         if (isinstance(n.op, GpuDimShuffle) and
-            n.op.new_order == ('x',) * nd):
+                n.op.new_order == ('x',) * nd):
             return host_from_gpu(n.inputs[0])
         elif (isinstance(n.op, DimShuffle) and
               n.op.new_order == ('x',) * nd):
@@ -29,7 +28,7 @@ def grab_cpu_scalar(v, nd):
             return None
     else:
         if (isinstance(v, Constant) and
-            v.broadcastable == (True,) * nd):
+                v.broadcastable == (True,) * nd):
             return v.dimshuffle(())
 
 
@@ -63,8 +62,8 @@ def alpha_merge(cls, alpha_in, beta_in, nd):
         @wraps(maker)
         def opt(node):
             if (isinstance(node.op, GpuElemwise) and
-                node.op.scalar_op == scal.mul and
-                node.nin == 2):
+                    node.op.scalar_op == scal.mul and
+                    node.nin == 2):
                 targ = find_node(node.inputs[0], cls)
                 if targ is None:
                     targ = find_node(node.inputs[1], cls)
@@ -87,8 +86,8 @@ def output_merge(cls, alpha_in, beta_in, out_in, nd):
         @wraps(maker)
         def opt(node):
             if (isinstance(node.op, GpuElemwise) and
-                node.op.scalar_op == scal.add and
-                node.nin == 2):
+                    node.op.scalar_op == scal.add and
+                    node.nin == 2):
                 targ = find_node(node.inputs[0], cls)
                 W = node.inputs[1]
                 if targ is None:

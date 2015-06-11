@@ -1,3 +1,4 @@
+from __future__ import print_function
 from theano_object import *
 
 
@@ -7,7 +8,7 @@ RUN_TESTS = False
 def run(TF):
     def deco(f):
         if TF and RUN_TESTS:
-            print 'running test', f.__name__
+            print('running test', f.__name__)
             f()
         if RUN_TESTS:
             return f
@@ -69,39 +70,39 @@ def test_submodule():
 @run(False)
 def test_misc_prints():
     MM = MyModule()
-    print MM
-    print 'add', MM.add(4)
-    print 'b', MM.value(MM.b)
-    print 'sub', MM.sub(45)
-    print 'b', MM.value(MM.b)
-    print MM.sub(23)
-    print MM.add(9)
-    print MM.add(19)
-    print 'b', MM.value(MM.b)
-    print 'a', MM.value(MM.a)
+    print(MM)
+    print('add', MM.add(4))
+    print('b', MM.value(MM.b))
+    print('sub', MM.sub(45))
+    print('b', MM.value(MM.b))
+    print(MM.sub(23))
+    print(MM.add(9))
+    print(MM.add(19))
+    print('b', MM.value(MM.b))
+    print('a', MM.value(MM.a))
     MM.value_set(MM.a, 6)
     MM.value_set(MM.b, 6)
-    print MM.add(6)
+    print(MM.add(6))
 
     try:
         MM.b = 5
-    except Exception, e:
-        print e
+    except Exception as e:
+        print(e)
     MM.del_member(MM.b)
     try:
-        print 'b', MM.value(MM.b)
-    except Exception, e:
-        print e
+        print('b', MM.value(MM.b))
+    except Exception as e:
+        print(e)
     MM.b = 'asdffd'
     try:
-        print 'b', MM.value(MM.b)
-    except Exception, e:
-        print e
+        print('b', MM.value(MM.b))
+    except Exception as e:
+        print(e)
     try:
-        print 'b', MM.value(MM.b)
-    except Exception, e:
-        print 'E', e
-    print MM.b
-    print 'a', MM.value(MM.a)
+        print('b', MM.value(MM.b))
+    except Exception as e:
+        print('E', e)
+    print(MM.b)
+    print('a', MM.value(MM.a))
 
 

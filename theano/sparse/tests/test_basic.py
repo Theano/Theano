@@ -186,11 +186,15 @@ class T_verify_grad_sparse(unittest.TestCase):
             x = as_sparse_variable(x)
             return gof.Apply(self, [x], [x.type()])
 
-        def perform(self, node, (x, ), (out, )):
+        def perform(self, node, inputs, outputs):
+            (x,) = inputs
+            (out,) = outputs
             assert _is_sparse(x)
             out[0] = -x
 
-        def grad(self, (x,), (gz,)):
+        def grad(self, inputs, gout):
+            (x,) = inputs
+            (gz,) = gout
             assert _is_sparse_variable(x) and _is_sparse_variable(gz)
             if self.structured:
                 return sp_ones_like(x) * dense_from_sparse(gz),
@@ -2061,7 +2065,7 @@ class Test_getitem(unittest.TestCase):
 
         try:
             verify_grad_sparse(op_with_fixed_index, x_val)
-        except NotImplementedError, e:
+        except NotImplementedError as e:
             assert "Scipy version is to old" in str(e)
 
     def test_GetItem2Lists(self):
@@ -2366,6 +2370,9 @@ class CastTester(utt.InferShapeTester):
         for format in sparse.sparse_formats:
             for i_dtype in sparse.float_dtypes:
                 for o_dtype in tensor.float_dtypes:
+                    if o_dtype == 'float16':
+                        # Don't test float16 output.
+                        continue
                     _, data = sparse_random_inputs(
                         format,
                         shape=(4, 7),

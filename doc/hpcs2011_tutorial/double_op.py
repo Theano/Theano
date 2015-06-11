@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy
 import theano
 
@@ -23,5 +24,5 @@ f = theano.function([x], DoubleOp()(x))
 inp = numpy.random.rand(5,5)
 out = f(inp)
 assert numpy.allclose(inp*2, out)
-print inp
-print out
+print(inp)
+print(out)

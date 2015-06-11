@@ -1,5 +1,5 @@
 try:
-    from theano.generated_version import *
+    from theano.generated_version import *  # noqa
 except ImportError:
     short_version = 'unknown'
     version = 'unknown'

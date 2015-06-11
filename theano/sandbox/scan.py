@@ -211,7 +211,7 @@ def scan(fn,
             try:
                 nw_slice.tag.test_value = gof.Op._get_test_value(
                     _seq_val_slice)
-            except AttributeError, e:
+            except AttributeError as e:
                 if config.compute_test_value != 'ignore':
                     # No need to print a warning or raise an error now,
                     # it will be done when fn will be called.
@@ -286,7 +286,7 @@ def scan(fn,
             if config.compute_test_value != 'off':
                 try:
                     arg.tag.test_value = gof.Op._get_test_value(actual_arg)
-                except AttributeError, e:
+                except AttributeError as e:
                     if config.compute_test_value != 'ignore':
                         # No need to print a warning or raise an error now,
                         # it will be done when fn will be called.
@@ -338,7 +338,7 @@ def scan(fn,
                     try:
                         nw_slice.tag.test_value = gof.Op._get_test_value(
                             _init_out_var_slice)
-                    except AttributeError, e:
+                    except AttributeError as e:
                         if config.compute_test_value != 'ignore':
                             # No need to print a warning or raise an error now,
                             # it will be done when fn will be called.
@@ -503,7 +503,7 @@ def scan(fn,
     if as_while:
         tmp_dummy_f_outs -= 1
     if not (tmp_dummy_f_outs == n_outs or outs_info == []):
-        raise ValueError('Please provide None as output_info for '
+        raise ValueError('Please provide None as outputs_info for '
                          'any output that does not feed back into '
                          'scan (i.e. it behaves like a map) ')
 

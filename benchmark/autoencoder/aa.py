@@ -1,4 +1,5 @@
-#!/usr/bin/env python2.5
+#!/usr/bin/env python
+from __future__ import print_function
 from __future__ import absolute_import
 import numpy
 import sys
@@ -38,18 +39,18 @@ if 0:
                         )
                     ),
                     (
-                        T.gemm, 
+                        T.gemm,
                         (
                             T.gemm,
-                            'd', 
+                            'd',
                             (T.neg, 'a'),
                             (T.transpose_inplace, 'g'),
                             (T.transpose_inplace, 'f'),
                             T.constant(1.0)
                         ),
-                        (T.neg, 'a'), 
-                        'b', 
-                        'c', 
+                        (T.neg, 'a'),
+                        'b',
+                        'c',
                         T.constant(1.0)
                     ),
                     allow_multiple_clients = False))
@@ -122,7 +123,7 @@ if 0:
             self.merge(env)
             #eliminate identities
             if 0:
-                print 'SKIPPING optimizations'
+                print('SKIPPING optimizations')
             else:
 
                 for opt in self.ident_opt_list:
@@ -143,13 +144,14 @@ def print_graph_linker(print_prog=True):
             imap[node] = str(i)
             if print_prog:# and node.op.__class__ is T.DimShuffle:
                 if False and  node.op == T.DimShuffle((), ['x', 'x'], inplace = True):
-                    print node.op == T.DimShuffle((), ['x', 'x'], inplace = True),
-                    print node.inputs[0], type(node.inputs[0]), 
-                    print node.inputs[0].equals(T.constant(2)), 
+                    print(node.op == T.DimShuffle((), ['x', 'x'],
+                                                  inplace=True), end=' ')
+                    print(node.inputs[0], type(node.inputs[0]), end=' ')
+                    print(node.inputs[0].equals(T.constant(2)), end=' ')
                 outputs = node.outputs
                 inputs = theano.gof.graph.inputs(outputs)
-                print 'node ', i, node,
-                print ':'.join([imap[inp.owner] for inp in node.inputs])
+                print('node ', i, node, end=' ')
+                print(':'.join([imap[inp.owner] for inp in node.inputs]))
                 #print theano.sandbox.pprint.pp.process_graph(inputs, outputs)
         return theano.sandbox.wraplinker.WrapLinkerMany(
                 [theano.gof.OpWiseCLinker()],
@@ -193,7 +195,7 @@ mode = 'FAST_RUN'
 mode = Mode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker(nice_errors=True))
 mode = Mode(optimizer='fast_run', linker='c')
 mode = Mode(optimizer='fast_run', linker='c|py')
-print mod.pretty(mode=mode)
+print(mod.pretty(mode=mode))
 m = mod.make(mode=mode)
 
 neg, nout, nhid, niter = [int(a) for a in sys.argv[1:]]
@@ -207,7 +209,7 @@ x = (rng.rand(neg, nout)-0.5) * 1.5
 t = time.time()
 for i in xrange(niter):
     err = m.step(x)
-print 'time: ',time.time() - t, 'err: ', err
+print('time: ',time.time() - t, 'err: ', err)
 try:
     mode.print_summary()
     pass

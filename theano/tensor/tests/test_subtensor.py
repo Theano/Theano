@@ -109,7 +109,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         n = self.shared(numpy.ones((), dtype=self.dtype))
         try:
             t = n[0]
-        except ValueError, e:
+        except ValueError as e:
             self.assertTrue(hasattr(e, 'subtensor_invalid'))
             return
         self.fail()
@@ -130,7 +130,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         try:
             try:
                 self.eval_output_and_check(t)
-            except IndexError, e:
+            except IndexError as e:
                 return
             self.fail()
         finally:
@@ -140,7 +140,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         n = self.shared(numpy.ones(3, dtype=self.dtype))
         try:
             t = n[slice(0, slice(1, 2, None), None)]
-        except Exception, e:
+        except Exception as e:
             # Relax constraint on the type of Exception,
             # since this might be handled by AvancedSubtensor
             # if e[0] != Subtensor.e_indextype:
@@ -177,7 +177,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         n = self.shared(numpy.ones(1, dtype=self.dtype))
         try:
             t = n[0, 0]
-        except ValueError, e:
+        except ValueError as e:
             self.assertTrue(hasattr(e, 'subtensor_invalid'))
             return
         self.fail()
@@ -314,6 +314,12 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         # This test checks that using a long that does not fit raises an error.
         n = self.shared(numpy.arange(12, dtype=self.dtype).reshape((4, 3)))
         self.assertRaises(Exception, lambda: n[:(2L ** 63)])
+
+    def test_list_slice(self):
+        x = theano.tensor.arange(100).reshape((5, 5, 4))
+        res = x[[slice(1, -1)] * x.ndim].eval()
+        x = numpy.arange(100).reshape((5, 5, 4))
+        numpy.allclose(res, x[[slice(1, -1)] * x.ndim])
 
     def test_newaxis(self):
         """
@@ -500,7 +506,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         f = self.function([idx], t, op=self.adv_sub1)
         topo = f.maker.fgraph.toposort()
         topo_ = [node for node in topo if not isinstance(node.op,
-             self.ignore_topo)]
+                                                         self.ignore_topo)]
         assert len(topo_) == 1
         self.assertTrue(isinstance(topo_[0].op, self.adv_sub1))
         f_0 = f([0])
@@ -547,7 +553,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         f = self.function([idx], t, op=self.adv_sub1)
         topo = f.maker.fgraph.toposort()
         topo_ = [node for node in topo if not isinstance(node.op,
-             self.ignore_topo)]
+                                                         self.ignore_topo)]
         assert len(topo_) == 1
         self.assertTrue(isinstance(topo_[0].op, self.adv_sub1))
         f_0 = f([0])
@@ -914,6 +920,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                     data_num_init = data_num_init.reshape(data_shape)
                     inc_shapes = [data_shape[i:]
                                   for i in xrange(0, len(data_shape) + 1)]
+                    # Test broadcasting of y.
+                    inc_shapes += [(1,) + inc_shapes[-1][1:]]
                     for inc_shape in inc_shapes:
                         inc_n_dims = len(inc_shape)
                         # We copy the numeric value to be 100% sure there is no
@@ -928,6 +936,11 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                         # Symbolic variable with rows to be incremented.
                         idx_var = theano.tensor.vector(dtype='int64')
                         n_to_inc = rng.randint(data_shape[0])
+                        if (n_to_inc == 1 and
+                                len(inc_shape) > 0 and
+                                inc_shape[0] == 1 and
+                                data_shape[0] > 1):
+                            n_to_inc = 2
                         # Corresponding numeric variable.
                         idx_num = rng.randint(0, data_shape[0], n_to_inc)
                         idx_num = idx_num.astype('int64')
@@ -939,7 +952,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                         # `data_shape`: what we actually want is the first
                         # shape element to be equal to the number of rows to
                         # increment.
-                        if len(inc_shape) == len(data_shape):
+                        if len(inc_shape) == len(data_shape) and (
+                                len(inc_shapes) == 0 or inc_shape[0] != 1):
                             inc_shape = (n_to_inc,) + inc_shape[1:]
                         inc_size = numpy.product(inc_shape)
                         # Corresponding numeric variable.
@@ -958,11 +972,19 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                         data_copy = data_num.copy()
                         for j, idx in enumerate(idx_num):
                             if len(inc_shape) == len(data_shape):
-                                # Special case where there is no broadcasting.
-                                if set_instead_of_inc:
-                                    data_copy[idx] = inc_num[j]
+                                if inc_shape[0] == 1:
+                                    # Allow broadcasting of y[0]
+                                    inc_num0 = inc_num[0]
+                                    if set_instead_of_inc:
+                                        data_copy[idx] = inc_num0
+                                    else:
+                                        data_copy[idx] += inc_num0
                                 else:
-                                    data_copy[idx] += inc_num[j]
+                                    # Special case where there is no broadcasting.
+                                    if set_instead_of_inc:
+                                        data_copy[idx] = inc_num[j]
+                                    else:
+                                        data_copy[idx] += inc_num[j]
                             else:
                                 if set_instead_of_inc:
                                     data_copy[idx] = inc_num

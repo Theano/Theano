@@ -5,6 +5,7 @@ Generator code in SSJ package (L'Ecuyer & Simard)
 http://www.iro.umontreal.ca/~simardr/ssj/indexe.html
 
 """
+from __future__ import print_function
 import warnings
 
 import numpy
@@ -27,6 +28,7 @@ if cuda_available:
 
 from theano.sandbox.gpuarray.basic_ops import GpuKernelBase, Kernel
 from theano.sandbox.gpuarray.type import GpuArrayType
+from theano.sandbox.gpuarray.fp16_help import write_w
 
 
 def matVecModM(A, s, m):
@@ -51,7 +53,7 @@ def multMatVect(v, A, m1, B, m2):
         m2_sym = tensor.iscalar('m2')
         o = DotModulo()(A_sym, s_sym, m_sym, A2_sym, s2_sym, m2_sym)
         multMatVect.dot_modulo = function(
-            [A_sym, s_sym, m_sym, A2_sym, s2_sym, m2_sym], o)
+            [A_sym, s_sym, m_sym, A2_sym, s2_sym, m2_sym], o, profile=False)
 
     # This way of calling the Theano fct is done to bypass Theano overhead.
     f = multMatVect.dot_modulo
@@ -84,7 +86,9 @@ class DotModulo(Op):
     def make_node(self, A, s, m, A2, s2, m2):
         return Apply(self, [A, s, m, A2, s2, m2], [s.type()])
 
-    def perform(self, node, (A, s, m, A2, s2, m2), (out, )):
+    def perform(self, node, inputs, outputs):
+        (A, s, m, A2, s2, m2) = inputs
+        (out,) = outputs
         o1 = matVecModM(A, s, m)
         o2 = matVecModM(A2, s2, m2)
         out[0] = numpy.concatenate((o1, o2))
@@ -92,7 +96,9 @@ class DotModulo(Op):
     def c_code_cache_version(self):
         return (6,)
 
-    def c_code(self, node, name, (_A, _s, _m, _A2, _s2, _m2), (_z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (_A, _s, _m, _A2, _s2, _m2) = inputs
+        (_z,) = outputs
         return """
         int osize = -1;
         if (PyArray_NDIM(%(_A)s) != 2) {PyErr_SetString(PyExc_NotImplementedError, "rank(A) != 2"); %(fail)s;}
@@ -335,15 +341,6 @@ class mrg_uniform(mrg_uniform_base):
     def perform(self, node, inp, out):
         rstate, size = inp
         o_rstate, o_sample = out
-        numpy_version = numpy.__version__.split('.')
-
-        if (not self.warned_numpy_version and
-            int(numpy_version[0]) <= 1 and
-            int(numpy_version[1]) < 3):
-
-            print "Warning: you must use numpy version 1.3.0 or higher with the python version of this op. Otherwise numpy leak memory. and numpy"
-            self.warned_numpy_version = True
-
         n_elements = 1
 
         rstate = numpy.asarray(rstate)  # bring state from GPU if necessary
@@ -372,6 +369,10 @@ class mrg_uniform(mrg_uniform_base):
 
     def c_code(self, node, name, inp, out, sub):
         rstate, size = inp
+        # If we try to use the C code here with something else than a
+        # TensorType, something is wrong (likely one of the GPU ops
+        # not defining C code correctly).
+        assert isinstance(node.inputs[0].type, TensorType)
         o_rstate, o_sample = out
         if self.inplace:
             o_rstate_requirement = 'NPY_ARRAY_C_CONTIGUOUS|NPY_ARRAY_ALIGNED'
@@ -772,6 +773,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
 
 class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
     # GpuArray version
+    _f16_ok = True
 
     @classmethod
     def new(cls, rstate, ndim, dtype, size):
@@ -785,14 +787,27 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         return super(GPUA_mrg_uniform, self).c_headers() + ['numpy_compat.h']
 
     def gpu_kernels(self, node, name):
-        if self.output_type.dtype == 'float32':
+        write = write_w(self.output_type.dtype)
+        if self.output_type.dtype == 'float16':
+            otype = 'ga_half'
+            # limit the values of the state that we use.
+            mask = '& 0x7fff'
+            NORM = '3.0518e-05f'  # numpy.float16(1.0/(2**15+8))
+            # this was determined by finding the biggest number such that
+            # numpy.float16(number * (M1 & 0x7fff)) < 1.0
+        elif self.output_type.dtype == 'float32':
             otype = 'float'
+            mask = ''
             NORM = '4.6566126e-10f'  # numpy.float32(1.0/(2**31+65))
             # this was determined by finding the biggest number such that
             # numpy.float32(number * M1) < 1.0
-        else:
+        elif self.output_type.dtype == 'float64':
             otype = 'double'
+            mask = ''
             NORM = '4.656612873077392578125e-10'
+        else:
+            raise ValueError('Unsupported data type for output',
+                             self.output_type.dtype)
         code = """
         KERNEL void mrg_uniform(
                 GLOBAL_MEM %(otype)s *sample_data,
@@ -855,11 +870,11 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
                 x21 = y2;
 
                 if (x11 <= x21) {
-                    sample_data[i] = (x11 - x21 + M1) * %(NORM)s;
+                    sample_data[i] = %(write)s(((x11 - x21 + M1) %(mask)s) * %(NORM)s);
                 }
                 else
                 {
-                    sample_data[i] = (x11 - x21) * %(NORM)s;
+                    sample_data[i] = %(write)s(((x11 - x21) %(mask)s) * %(NORM)s);
                 }
             }
 
@@ -891,17 +906,9 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         o_type_num = numpy.asarray(0, dtype=self.output_type.dtype).dtype.num
         fail = sub['fail']
         kname = self.gpu_kernels(node, nodename)[0].objvar
-
-        if self.output_type.dtype == 'float32':
-            otype = 'float'
-            otypecode = 'GA_FLOAT'
-        else:
-            otype = 'double'
-            otypecode = 'GA_DOUBLE'
+        otypecode = str(self.output_type.typecode)
 
         return """
-        //////// <code generated by mrg_uniform>
-
         size_t odims[%(ndim)s];
         unsigned int n_elements = 1;
         unsigned int n_streams;
@@ -987,23 +994,28 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
 
         {
           void *args[4];
-          args[0] = &%(o_sample)s->ga;
-          args[1] = &%(o_rstate)s->ga;
+          size_t ls = 0, gs = 0;
+          args[0] = %(o_sample)s->ga.data;
+          args[1] = %(o_rstate)s->ga.data;
           args[2] = &n_elements;
           args[3] = &n_streams;
-          int err = GpuKernel_call(&%(kname)s, n_elements, 0, 0, args);
+          int err = GpuKernel_sched(&%(kname)s, n_elements, &ls, &gs);
+          if (err != GA_NO_ERROR) {
+              PyErr_Format(PyExc_RuntimeError, "GpuKernel_sched: %%s\\n",
+                           GpuKernel_error(&%(kname)s, err));
+              %(fail)s
+          }
+          err = GpuKernel_call(&%(kname)s, 1, &ls, &gs, 0, args);
           if (err != GA_NO_ERROR) {
               PyErr_Format(PyExc_RuntimeError, "GpuKernel_call: %%s\\n",
                            GpuKernel_error(&%(kname)s, err));
               %(fail)s
           }
         }
-
-        //////// </ code generated by mrg_uniform>
         """ % locals()
 
     def c_code_cache_version(self):
-        return (3, self.GpuKernelBase_version)
+        return (7, self.GpuKernelBase_version)
 
 
 def guess_n_streams(size, warn=False):
@@ -1065,28 +1077,68 @@ class MRG_RandomStreams(object):
         self.state_updates = []
 
         super(MRG_RandomStreams, self).__init__()
+
+        # Needed to reset the streams.
+        self.default_instance_seed = seed
+
+        self.set_rstate(seed)
+
+        if use_cuda is None:
+            self.use_cuda = cuda_enabled
+        else:
+            self.use_cuda = use_cuda
+
+    def set_rstate(self, seed):
         if isinstance(seed, int):
             if seed == 0:
                 raise ValueError('seed should not be 0', seed)
             elif seed >= M2:
                 raise ValueError('seed should be less than %i' % M2, seed)
-            self.rstate = numpy.asarray([seed]*6, dtype='int32')
+            self.rstate = numpy.asarray([seed] * 6, dtype='int32')
         elif len(seed) == 6:
             if seed[0] == 0 and seed[1] == 0 and seed[2] == 0:
-                raise ValueError('The first 3 values of seed should not be all 0', seed)
+                raise ValueError(
+                    'The first 3 values of seed should not be all 0', seed)
             if seed[3] == 0 and seed[4] == 0 and seed[5] == 0:
-                raise ValueError('The last 3 values of seed should not be all 0', seed)
+                raise ValueError(
+                    'The last 3 values of seed should not be all 0', seed)
             if seed[0] >= M1 or seed[1] >= M1 or seed[2] >= M1:
-                raise ValueError('The first 3 values of seed should be less than %i' % M1, seed)
+                raise ValueError(
+                    'The first 3 values of seed should be less than %i' % M1,
+                    seed)
             if seed[3] >= M2 or seed[4] >= M2 or seed[5] >= M2:
-                raise ValueError('The last 3 values of seed should be less than %i' % M2, seed)
+                raise ValueError(
+                    'The last 3 values of seed should be less than %i' % M2,
+                    seed)
             self.rstate = numpy.asarray(seed, dtype='int32')
         else:
             raise TypeError("seed should be 1 integer or 6 integers")
-        if use_cuda is None:
-            self.use_cuda = cuda_enabled
-        else:
-            self.use_cuda = use_cuda
+
+    def seed(self, seed=None):
+        """Re-initialize each random stream
+
+        :param seed: each random stream will be assigned a unique
+        state that depends deterministically on this value.
+
+        :type seed: None or integer in range 0 to 2**30
+
+        :rtype: None
+
+        """
+        if seed is None:
+            seed = self.default_instance_seed
+        self.set_rstate(seed)
+
+        for old_r, new_r, size, nstreams in self.state_updates:
+            if nstreams is None:
+                nstreams = self.n_streams(size)
+            rstates = self.get_substream_rstates(nstreams,
+                                                 new_r.owner.outputs[1].dtype)
+            assert (old_r.get_value(borrow=True,
+                                    return_internal_type=True).shape ==
+                    rstates.shape)
+            assert rstates.dtype == old_r.dtype
+            old_r.set_value(rstates, borrow=True)
 
     def inc_rstate(self):
         """Update self.rstate to be skipped 2^134 steps forward to the next stream start"""
@@ -1094,10 +1146,11 @@ class MRG_RandomStreams(object):
         self.rstate = multMatVect(self.rstate, A1p134, M1, A2p134, M2)
         assert self.rstate.dtype == numpy.int32
 
-    def get_substream_rstates(self, n_streams, inc_rstate=True):
+    def get_substream_rstates(self, n_streams, dtype, inc_rstate=True):
         """Initialize a matrix in which each row is a MRG stream state,
         and they are spaced by 2**72 samples.
         """
+        assert isinstance(dtype, str)
         assert n_streams < 2**72
         assert n_streams > 0
         rval = numpy.zeros((n_streams, 6), dtype='int32')
@@ -1124,15 +1177,25 @@ class MRG_RandomStreams(object):
 
         if inc_rstate:
             self.inc_rstate()
+        if self.use_cuda and dtype == 'float32':
+            rval = rval.flatten()
+            # HACK - we use fact that int32 and float32 have same size to
+            # sneak ints into the CudaNdarray type.
+            # these *SHOULD NEVER BE USED AS FLOATS*
+            tmp_float_buf = numpy.frombuffer(rval.data, dtype='float32')
+            assert tmp_float_buf.shape == rval.shape
+            assert (tmp_float_buf.view('int32') == rval).all()
+            rval = tmp_float_buf
+
         return rval
 
     def n_streams(self, size):
         return guess_n_streams(size)
 
-    def pretty_return(self, node_rstate, new_rstate, sample):
+    def pretty_return(self, node_rstate, new_rstate, sample, size, nstreams):
         sample.rstate = node_rstate
         sample.update = (node_rstate, new_rstate)
-        self.state_updates.append((node_rstate, new_rstate))
+        self.state_updates.append((node_rstate, new_rstate, size, nstreams))
         node_rstate.default_update = new_rstate
         return sample
 
@@ -1189,21 +1252,13 @@ class MRG_RandomStreams(object):
                 raise TypeError("size must be a tuple of int or a Theano "
                                 "Variable with 1 dimension, got " + str(size) +
                                 " of type " + str(type(size)))
-
+        orig_nstreams = nstreams
         if nstreams is None:
             nstreams = self.n_streams(size)
+        rstates = self.get_substream_rstates(nstreams, dtype)
 
         if self.use_cuda and dtype == 'float32':
-            rstates = self.get_substream_rstates(nstreams)
-            rstates = rstates.flatten()
-            # HACK - we use fact that int32 and float32 have same size to
-            # sneak ints into the CudaNdarray type.
-            # these *SHOULD NEVER BE USED AS FLOATS*
-            tmp_float_buf = numpy.frombuffer(rstates.data, dtype='float32')
-            assert tmp_float_buf.shape == rstates.shape
-            assert (tmp_float_buf.view('int32') == rstates).all()
-            # transfer to device
-            node_rstate = float32_shared_constructor(tmp_float_buf)
+            node_rstate = float32_shared_constructor(rstates)
             assert isinstance(node_rstate.type, CudaNdarrayType)
 
             # we can't use the normal mrg_uniform constructor + later
@@ -1213,12 +1268,14 @@ class MRG_RandomStreams(object):
             # reinterpretation.
             u = self.pretty_return(node_rstate,
                                    *GPU_mrg_uniform.new(node_rstate,
-                                                        ndim, dtype, size))
+                                                        ndim, dtype, size),
+                                   size=size, nstreams=orig_nstreams)
         else:
-            node_rstate = shared(self.get_substream_rstates(nstreams))
+            node_rstate = shared(rstates)
             u = self.pretty_return(node_rstate,
                                    *mrg_uniform.new(node_rstate,
-                                                    ndim, dtype, size))
+                                                    ndim, dtype, size),
+                                   size=size, nstreams=orig_nstreams)
         # Add a reference to distinguish from other shared variables
         node_rstate.tag.is_rng = True
         r = u * (high - low) + low

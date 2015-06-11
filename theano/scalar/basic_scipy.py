@@ -85,6 +85,41 @@ class Erfc(UnaryScalarOp):
 erfc = Erfc(upgrade_to_float_no_complex, name='erfc')
 
 
+class Erfcx(UnaryScalarOp):
+    """
+    Implements the scaled complementary error function exp(x**2)*erfc(x) in a numerically stable way for large x. This
+    is useful for calculating things like log(erfc(x)) = log(erfcx(x)) - x ** 2 without causing underflow. Should only
+    be used if x is known to be large and positive, as using erfcx(x) for large negative x may instead introduce
+    overflow problems.
+
+    Note: This op can still be executed on GPU, despite not having c_code.  When
+    running on GPU, sandbox.cuda.opt.local_gpu_elemwise_[0,1] replaces this op
+    with sandbox.cuda.elemwise.ErfcxGPU.
+    """
+    def impl(self, x):
+        if imported_scipy_special:
+            return scipy.special.erfcx(x)
+        else:
+            super(Erfcx, self).impl(x)
+
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
+        if x.type in complex_types:
+            raise NotImplementedError()
+        if self(x).type in discrete_types:
+            if x.type in discrete_types:
+                return [x.zeros_like(dtype=theano.config.floatX)]
+            else:
+                return [x.zeros_like()]
+
+        cst = numpy.asarray(2. / numpy.sqrt(numpy.pi),
+                            dtype=upcast(x.type.dtype, gz.type.dtype))
+        return gz * (-cst + (2. * x) * erfcx(x)),
+
+erfcx = Erfcx(upgrade_to_float_no_complex, name='erfcx')
+
+
 class Erfinv(UnaryScalarOp):
     """
     Implements the inverse error function.
@@ -171,7 +206,9 @@ class Gamma(UnaryScalarOp):
         else:
             super(Gamma, self).impl(x)
 
-    def grad(self, (x, ), (gz, )):
+    def grad(self, inputs, gout):
+        (x,) = inputs
+        (gz,) = gout
         if x.type in complex_types:
             raise NotImplementedError()
         if self(x).type in discrete_types:
@@ -182,7 +219,9 @@ class Gamma(UnaryScalarOp):
 
         return gz * gamma(x) * psi(x),
 
-    def c_code(self, node, name, (x, ), (z, ), sub):
+    def c_code(self, node, name, inputs, outputs, sub):
+        (x,) = inputs
+        (z,) = outputs
         if node.inputs[0].type in float_types:
             return """%(z)s = tgamma(%(x)s);""" % locals()
         raise NotImplementedError('only floating point is implemented')

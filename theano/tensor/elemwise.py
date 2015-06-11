@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 from copy import copy
 from itertools import izip
@@ -94,6 +95,7 @@ class DimShuffle(Op):
     transpose function.
     Adding, subtracting dimensions can be done with reshape.
     """
+    _f16_ok = True
 
     check_input = False
 
@@ -364,16 +366,16 @@ PyArray_SetBaseObject(%(res)s, (PyObject*)%(basename)s);
                 + close_bracket)
 
         if 0:
-            print 'C_CODE'
-            print ''
-            print self
-            print "IN BROAD", self.input_broadcastable
-            print "NEW ORDER", self.new_order
-            print "SHUFFLE", self.shuffle
-            print "AUGMENT", self.augment
-            print '------------'
-            print ''
-            print full_code
+            print('C_CODE')
+            print('')
+            print(self)
+            print("IN BROAD", self.input_broadcastable)
+            print("NEW ORDER", self.new_order)
+            print("SHUFFLE", self.shuffle)
+            print("AUGMENT", self.augment)
+            print('------------')
+            print('')
+            print(full_code)
 
             if 0:
                 sys.exit()
@@ -1170,6 +1172,12 @@ class Elemwise(OpenMPOp):
         return decl, checks, alloc, loop
 
     def c_code(self, node, nodename, inames, onames, sub):
+        if (any(i.dtype == 'float16' for i in node.inputs) or
+                any(o.dtype == 'float16' for o in node.outputs) or
+                # This is for Composite
+                getattr(self.scalar_op, 'inner_float16', False)):
+            # Disable C code for float16 vars
+            super(Elemwise, self).c_code(node, nodename, inames, onames, sub)
         code = "\n".join(self._c_all(node, nodename, inames, onames, sub))
         return code
 
@@ -1185,7 +1193,7 @@ class Elemwise(OpenMPOp):
         return support_code
 
     def c_code_cache_version_apply(self, node):
-        version = [11]  # the version corresponding to the c code in this Op
+        version = [12]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
@@ -1805,6 +1813,7 @@ class CAReduceDtype(CAReduce):
                     uint8='uint64',
                     uint16='uint64',
                     uint32='uint64',
+                    float16='float32',
                     float32='float64',
                     complex64='complex128',
                     ).get(idtype, idtype)
@@ -2130,3 +2139,10 @@ class ProdWithoutZeros(CAReduceDtype):
     def __init__(self, axis=None, dtype=None, acc_dtype=None):
         CAReduceDtype.__init__(self, mul_without_zeros, axis=axis,
                                dtype=dtype, acc_dtype=acc_dtype)
+    def grad(self, inp, grads):
+        a, = inp
+        a_grad = theano.gradient.grad_not_implemented(self, 0, a,
+                "2nd derivatives of `product(a)` is not currently supported." 
+                "If `a` is guarenteed to contains no zeros, use `product(a, no_zeros_in_input=True)`."
+                )
+        return [a_grad]

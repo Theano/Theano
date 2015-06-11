@@ -102,8 +102,8 @@ def get_lock(lock_dir=None, **kw):
                 # the lock state and raise an error.
                 while get_lock.n_lock > 0:
                     release_lock()
-                raise Exception("For some unknow reason, the lock was already taken,"
-                                " but no start time was registered.")
+                raise Exception("For some unknow reason, the lock was already "
+                                "taken, but no start time was registered.")
             now = time.time()
             if now - get_lock.start_time > config.compile.timeout/2:
                 lockpath = os.path.join(get_lock.lock_dir, 'lock')
@@ -242,7 +242,7 @@ def lock(tmp_dir, timeout=notset, min_wait=None, max_wait=None, verbosity=1):
                     continue
                 if last_owner == read_owner:
                     if (timeout is not None and
-                        time.time() - time_start >= timeout):
+                            time.time() - time_start >= timeout):
                         # Timeout exceeded or locking process dead.
                         if not no_display:
                             if read_owner == 'failure':
@@ -299,7 +299,7 @@ def lock(tmp_dir, timeout=notset, min_wait=None, max_wait=None, verbosity=1):
                 # We got the lock, hoorray!
                 return
 
-        except Exception, e:
+        except Exception as e:
             # If something wrong happened, we try again.
             _logger.warning("Something wrong happened: %s %s", type(e), e)
             nb_error += 1

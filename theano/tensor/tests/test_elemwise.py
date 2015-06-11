@@ -6,6 +6,7 @@ import unittest
 import numpy
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
+from nose.tools import raises
 
 import theano
 from theano import gof, scalar, config
@@ -27,6 +28,7 @@ def FunctionGraph(i, o):
 class test_DimShuffle(unittest_tools.InferShapeTester):
     op = DimShuffle
     type = TensorType
+    dtype = theano.config.floatX
 
     def with_linker(self, linker):
         for xsh, shuffle, zsh in [((2, 3), (1, 'x', 0), (3, 1, 2)),
@@ -40,25 +42,25 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
                                   ((1, 1, 1), (), ()),
                                   ((1,), ('x', 'x'), (1, 1))]:
             ib = [(entry == 1) for entry in xsh]
-            x = self.type('float64', ib)('x')
+            x = self.type(self.dtype, ib)('x')
             e = self.op(ib, shuffle)(x)
             f = copy(linker).accept(FunctionGraph([x], [e])).make_function()
-            assert f(numpy.ones(xsh)).shape == zsh
+            assert f(numpy.ones(xsh, dtype=self.dtype)).shape == zsh
             # test that DimShuffle.infer_shape work correctly
-            x = self.type('float64', ib)('x')
+            x = self.type(self.dtype, ib)('x')
             e = self.op(ib, shuffle)(x)
             f = copy(linker).accept(FunctionGraph([x],
                                                   [e.shape])).make_function()
-            assert all(f(numpy.ones(xsh))) == all(zsh)
+            assert all(f(numpy.ones(xsh, dtype=self.dtype))) == all(zsh)
 
         # Test when we drop a axis that is not broadcastable
         ib = [False, True, False]
-        x = self.type('float64', ib)('x')
+        x = self.type(self.dtype, ib)('x')
         self.assertRaises(ValueError, self.op, ib, shuffle)
 
         # Test when we drop a axis that don't have shape 1
         ib = [True, True, False]
-        x = self.type('float64', ib)('x')
+        x = self.type(self.dtype, ib)('x')
         e = self.op(ib, (1, 2))(x)
         f = copy(linker).accept(FunctionGraph([x], [e.shape])).make_function()
         self.assertRaises(TypeError, f, numpy.ones((2, 1, 4)))
@@ -66,7 +68,7 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
         # Test that we can't take a dimensions multiple time
         xsh, shuffle, zsh = ((1, 1, 4), (0, 1, 2, 0), (1, 4))
         ib = [False, True, False]
-        x = self.type('float64', ib)('x')
+        x = self.type(self.dtype, ib)('x')
         self.assertRaises(ValueError, DimShuffle, ib, shuffle)
 
     def test_perform(self):
@@ -89,15 +91,15 @@ class test_DimShuffle(unittest_tools.InferShapeTester):
                              ((1, 1, 1), ()),
                              ((1,), ('x', 'x'))]:
             ib = [(entry == 1) for entry in xsh]
-            adtens = self.type('float64', ib)('x')
-            adtens_val = numpy.ones(xsh)
+            adtens = self.type(self.dtype, ib)('x')
+            adtens_val = numpy.ones(xsh, dtype=self.dtype)
             self._compile_and_check([adtens],
                                     [self.op(ib, shuffle)(adtens)],
                                     [adtens_val], self.op,
                                     warn=False)
 
     def test_too_big_rank(self):
-        x = self.type('float64', broadcastable=())()
+        x = self.type(self.dtype, broadcastable=())()
         y = x.dimshuffle(('x',) * (numpy.MAXDIMS + 1))
         self.assertRaises(ValueError, y.eval, {x: 0})
 
@@ -670,6 +672,13 @@ class test_Prod(unittest.TestCase):
         fn_a0 = theano.function([x], pwz_a0, mode=self.mode)
         assert numpy.allclose(fn_a0(x_val), [1, 10, 162])
 
+    @raises(theano.gradient.NullTypeGradError)
+    def test_prod_without_zeros_grad(self):
+        x = theano.tensor.dmatrix()
+        pwz_a1 = ProdWithoutZeros(axis=0)(x)
+        pwz_grad = theano.grad(theano.tensor.sum(pwz_a1), x)
+        fn_a1 = theano.function([x], pwz_grad, mode=self.mode)
+
     @attr('slow')
     def test_other_grad_tests(self):
         x = theano.tensor.dmatrix()
@@ -1024,6 +1033,7 @@ class T_prod_without_zeros_dtype(unittest.TestCase):
                     uint8='uint64',
                     uint16='uint64',
                     uint32='uint64',
+                    float16='float32',
                     float32='float64',
                     complex64='complex128'
                     ).get(dtype, dtype)
@@ -1233,7 +1243,9 @@ def test_not_implemented_elemwise_grad():
         def impl(self, n, x):
             return x * n
 
-        def grad(self, (n, x), (gz,)):
+        def grad(self, inputs, gout):
+            (n, x) = inputs
+            (gz,) = gout
             dy_dx = n
             return [theano.gradient.grad_not_implemented(self, 0, n),
                     gz * dy_dx]

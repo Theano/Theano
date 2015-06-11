@@ -1,3 +1,4 @@
+from __future__ import print_function
 import distutils
 import logging
 import os
@@ -161,18 +162,18 @@ class NVCC_compiler(Compiler):
         # to use the new API, but not everywhere. When finished, enable
         # the following macro to assert that we don't bring new code
         # that use the old API.
-        flags.append("-D NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
+        flags.append("-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
 
         # numpy 1.7 deprecated the following macro but the didn't
         # existed in the past
         numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
         if bool(numpy_ver < [1, 7]):
-            flags.append("-D NPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
-            flags.append("-D NPY_ARRAY_ALIGNED=NPY_ALIGNED")
-            flags.append("-D NPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
-            flags.append("-D NPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
-            flags.append("-D NPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
-            flags.append("-D NPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
+            flags.append("-DNPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
+            flags.append("-DNPY_ARRAY_ALIGNED=NPY_ALIGNED")
+            flags.append("-DNPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
+            flags.append("-DNPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
+            flags.append("-DNPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
+            flags.append("-DNPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
 
         # If the user didn't specify architecture flags add them
         if not any(['-arch=sm_' in f for f in flags]):
@@ -207,7 +208,7 @@ class NVCC_compiler(Compiler):
     def compile_str(
             module_name, src_code,
             location=None, include_dirs=[], lib_dirs=[], libs=[], preargs=[],
-            rpaths=rpath_defaults, py_module=True):
+            rpaths=rpath_defaults, py_module=True, hide_symbols=True):
         """:param module_name: string (this has been embedded in the src_code
         :param src_code: a complete c or c++ source listing for the module
         :param location: a pre-existing filesystem directory where the
@@ -223,6 +224,9 @@ class NVCC_compiler(Compiler):
                        Defaults to `rpath_defaults`.
         :param py_module: if False, compile to a shared library, but
             do not import as a Python module.
+
+        :param hide_symbols: if True (the default), hide all symbols
+        from the library symbol table unless explicitely exported.
 
         :returns: dynamically-imported python module of the compiled code.
             (unless py_module is False, in that case returns None.)
@@ -319,6 +323,9 @@ class NVCC_compiler(Compiler):
             # in both math_functions.h and pymath.h,
             # by not including the one in pymath.h
             cmd.extend(['-D HAVE_ROUND'])
+        else:
+            if hide_symbols:
+                preargs2.append('-fvisibility=hidden')
 
         if local_bitwidth() == 64:
             cmd.append('-m64')
@@ -363,7 +370,7 @@ class NVCC_compiler(Compiler):
                 indexof = cmd.index('-u')
                 cmd.pop(indexof)  # Remove -u
                 cmd.pop(indexof)  # Remove argument to -u
-            except ValueError, e:
+            except ValueError as e:
                 done = True
 
         # CUDA Toolkit v4.1 Known Issues:
@@ -400,8 +407,8 @@ class NVCC_compiler(Compiler):
 
         if p.returncode:
             for i, l in enumerate(src_code.split('\n')):
-                print >> sys.stderr,  i + 1, l
-            print >> sys.stderr, '==============================='
+                print(i + 1, l, file=sys.stderr)
+            print('===============================', file=sys.stderr)
             # filter the output from the compiler
             for l in nvcc_stderr.split('\n'):
                 if not l:
@@ -415,17 +422,17 @@ class NVCC_compiler(Compiler):
                         continue
                 except Exception:
                     pass
-                print >> sys.stderr, l
-            print nvcc_stdout
-            print cmd
+                print(l, file=sys.stderr)
+            print(nvcc_stdout)
+            print(cmd)
             raise Exception('nvcc return status', p.returncode,
                             'for cmd', ' '.join(cmd))
         elif config.cmodule.compilation_warning and nvcc_stdout:
-            print nvcc_stdout
+            print(nvcc_stdout)
 
         if nvcc_stdout:
             # this doesn't happen to my knowledge
-            print >> sys.stderr, "DEBUG: nvcc STDOUT", nvcc_stdout
+            print("DEBUG: nvcc STDOUT", nvcc_stdout, file=sys.stderr)
 
         if py_module:
             # touch the __init__ file

@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 
 import numpy
@@ -10,14 +11,14 @@ from theano.configparser import AddConfigVar, FloatParam
 from theano import config
 
 AddConfigVar('optdb.position_cutoff',
-        'Where to stop eariler during optimization. It represent the'
+             'Where to stop eariler during optimization. It represent the'
              ' position of the optimizer where to stop.',
-        FloatParam(numpy.inf),
-        in_c_key=False)
+             FloatParam(numpy.inf),
+             in_c_key=False)
 AddConfigVar('optdb.max_use_ratio',
-        'A ratio that prevent infinite loop in EquilibriumOptimizer.',
-        FloatParam(5),
-        in_c_key=False)
+             'A ratio that prevent infinite loop in EquilibriumOptimizer.',
+             FloatParam(5),
+             in_c_key=False)
 
 
 class DB(object):
@@ -31,7 +32,7 @@ class DB(object):
         self.__db__ = DefaultOrderedDict(OrderedSet)
         self._names = set()
         self.name = None  # will be reset by register
-        #(via obj.name by the thing doing the registering)
+        # (via obj.name by the thing doing the registering)
 
     def register(self, name, obj, *tags, **kwargs):
         """
@@ -149,9 +150,9 @@ multiple time in a DB. Tryed to register "%s" again under the new name "%s".
             return variable
 
     def print_summary(self, stream=sys.stdout):
-        print >> stream, "%s (id %i)" % (self.__class__.__name__, id(self))
-        print >> stream, "  names", self._names
-        print >> stream, "  db", self.__db__
+        print("%s (id %i)" % (self.__class__.__name__, id(self)), file=stream)
+        print("  names", self._names, file=stream)
+        print("  db", self.__db__, file=stream)
 
 
 class Query(object):
@@ -174,8 +175,10 @@ class Query(object):
             self.exclude = OrderedSet(self.exclude)
 
     def __str__(self):
-        return "Query{inc=%s,ex=%s,require=%s,subquery=%s,position_cutoff=%d}" % (
-            self.include, self.exclude, self.require, self.subquery, self.position_cutoff)
+        return ("Query{inc=%s,ex=%s,require=%s,subquery=%s,"
+                "position_cutoff=%d}" %
+                (self.include, self.exclude, self.require, self.subquery,
+                 self.position_cutoff))
 
     # add all opt with this tag
     def including(self, *tags):
@@ -222,14 +225,31 @@ class EquilibriumDB(DB):
     def __init__(self, ignore_newtrees=True):
         super(EquilibriumDB, self).__init__()
         self.ignore_newtrees = ignore_newtrees
+        self.__final__ = {}
+
+    def register(self, name, obj, *tags, **kwtags):
+        # if name == 'cut_gpua_constant_transfers':
+        #     import ipdb;ipdb.set_trace()
+        if 'final_opt' in kwtags:
+            final_opt = kwtags['final_opt']
+            kwtags.pop('final_opt', None)
+        else:
+            final_opt = False
+        super(EquilibriumDB, self).register(name, obj, *tags, **kwtags)
+        self.__final__[name] = final_opt
 
     def query(self, *tags, **kwtags):
-        opts = super(EquilibriumDB, self).query(*tags, **kwtags)
+        _opts = super(EquilibriumDB, self).query(*tags, **kwtags)
+        final_opts = [o for o in _opts if self.__final__.get(o.name, False)]
+        opts = [o for o in _opts if o not in final_opts]
+        if len(final_opts) == 0:
+            final_opts = None
         return opt.EquilibriumOptimizer(
             opts,
             max_use_ratio=config.optdb.max_use_ratio,
             ignore_newtrees=self.ignore_newtrees,
-            failure_callback=opt.NavigatorOptimizer.warn_inplace)
+            failure_callback=opt.NavigatorOptimizer.warn_inplace,
+            final_optimizers=final_opts)
 
 
 class SequenceDB(DB):
@@ -267,7 +287,7 @@ class SequenceDB(DB):
         position_cutoff = kwtags.pop('position_cutoff',
                                      config.optdb.position_cutoff)
         if len(tags) >= 1 and isinstance(tags[0], Query):
-# the call to super should have raise an error with a good message
+            # the call to super should have raise an error with a good message
             assert len(tags) == 1
             if getattr(tags[0], 'position_cutoff', None):
                 position_cutoff = tags[0].position_cutoff
@@ -288,16 +308,16 @@ class SequenceDB(DB):
         return ret
 
     def print_summary(self, stream=sys.stdout):
-        print >> stream, self.__class__.__name__ + " (id %i)" % id(self)
+        print(self.__class__.__name__ + " (id %i)" % id(self), file=stream)
         positions = self.__position__.items()
 
         def c(a, b):
             return cmp(a[1], b[1])
         positions.sort(c)
 
-        print >> stream, "  position", positions
-        print >> stream, "  names", self._names
-        print >> stream, "  db", self.__db__
+        print("  position", positions, file=stream)
+        print("  names", self._names, file=stream)
+        print("  db", self.__db__, file=stream)
 
     def __str__(self):
         sio = StringIO()

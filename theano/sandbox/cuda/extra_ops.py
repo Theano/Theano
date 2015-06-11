@@ -69,7 +69,7 @@ class GpuCumsum(CumsumOp, GpuOp):
         return "%s{%s}" % (self.__class__.__name__, self.axis)
 
     def c_code_cache_version(self):
-        return (8,)
+        return (9,)
 
     def c_support_code_apply(self, node, nodename):
         return """
@@ -306,6 +306,7 @@ class GpuCumsum(CumsumOp, GpuOp):
                     if (dimGridX > 1) {
                         // Do a cumsum over the blockSum (recursive).
                         if (cumSum_%(nodename)s(deviceBlockSum, deviceBlockSum, 0, maxThreads, maxGridY, maxGridZ) == -1){
+                            Py_DECREF(deviceBlockSum);
                             return -1;
                         }
 
@@ -342,8 +343,7 @@ class GpuCumsum(CumsumOp, GpuOp):
                     }
                 }
             }
-
-            cudaFree(CudaNdarray_DEV_DATA(deviceBlockSum));
+            Py_DECREF(deviceBlockSum);
             CNDA_THREAD_SYNC;
             return 0;
         }

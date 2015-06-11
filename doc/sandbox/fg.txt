@@ -1,16 +1,19 @@
 
 .. _fgraph:
 
-===
+=============
 FunctionGraph
-===
+=============
 
+TODO: clean up/update the doc/check if complete
 WRITEME
+
+.. autoclass:: theano.gof.fg.FunctionGraph
 
 .. _fgraphfeature:
 
 Feature
 =======
 
-WRITEME
-
+.. autoclass:: theano.gof.toolbox.Feature
+    :members:

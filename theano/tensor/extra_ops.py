@@ -456,6 +456,7 @@ def bincount(x, weights=None, minlength=None, assert_nonneg=False):
     :param assert_nonneg: A flag that inserts an assert_op to check if
         every input x is nonnegative.
         Optional.
+
     .. versionadded:: 0.6
     """
     compatible_type = ('int8', 'int16', 'int32', 'int64',
@@ -521,7 +522,7 @@ def compress(condition, x, axis=None):
     :param x: Input data, tensor variable
 
     :param condition: 1 dimensional array of non-zero and zero values
-    corresponding to indices of slices along a selected axis
+        corresponding to indices of slices along a selected axis
 
     :return: `x` with selected slices
 
@@ -593,7 +594,9 @@ class RepeatOp(theano.Op):
 
         return [[True], [False]]
 
-    def grad(self, (x, repeats), (gz, )):
+    def grad(self, inputs, gout):
+        (x, repeats) = inputs
+        (gz,) = gout
         if repeats.ndim == 0:
             if self.axis is None:
                 axis = x.ndim

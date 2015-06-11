@@ -1,3 +1,4 @@
+from __future__ import print_function
 import unittest
 import theano
 from theano.tensor import *
@@ -68,9 +69,9 @@ class TestRealImag(unittest.TestCase):
         aval = numpy.asarray(rng.randn(2, 5))
         try:
             utt.verify_grad(f, [aval])
-        except utt.verify_grad.E_grad, e:
-            print e.num_grad.gf
-            print e.analytic_grad
+        except utt.verify_grad.E_grad as e:
+            print(e.num_grad.gf)
+            print(e.analytic_grad)
             raise
 
     @dec.knownfailureif(True, "Complex grads not enabled, see #178")
@@ -84,9 +85,9 @@ class TestRealImag(unittest.TestCase):
         aval = numpy.asarray(rng.randn(2, 5))
         try:
             utt.verify_grad(f, [aval])
-        except utt.verify_grad.E_grad, e:
-            print e.num_grad.gf
-            print e.analytic_grad
+        except utt.verify_grad.E_grad as e:
+            print(e.num_grad.gf)
+            print(e.analytic_grad)
             raise
 
     @dec.knownfailureif(True, "Complex grads not enabled, see #178")
@@ -101,9 +102,9 @@ class TestRealImag(unittest.TestCase):
         bval = rng.randn(5)
         try:
             utt.verify_grad(f, [aval, bval])
-        except utt.verify_grad.E_grad, e:
-            print e.num_grad.gf
-            print e.analytic_grad
+        except utt.verify_grad.E_grad as e:
+            print(e.num_grad.gf)
+            print(e.analytic_grad)
             raise
 
     @dec.knownfailureif(True, "Complex grads not enabled, see #178")

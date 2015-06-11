@@ -10,15 +10,17 @@ which value to report. Note also that `switch` is an elemwise operation (so
 it picks each entry of a matrix according to the condition) while `ifelse`
 is a global operation with a scalar condition.
 """
+from __future__ import print_function
 from copy import deepcopy
 from itertools import izip
 import logging
 
-from theano.gof import PureOp, Apply
+import numpy
 
 import theano.tensor
 from theano.tensor import TensorType
 from theano import gof
+from theano.gof import PureOp, Apply
 
 from theano.compile import optdb
 from theano.tensor import opt
@@ -225,7 +227,6 @@ class IfElse(PureOp):
                 if_false_op(*if_false, **dict(return_list=True)))
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
-        outtypes = [out.type for out in node.outputs]
         cond = node.inputs[0]
         ts = node.inputs[1:][:self.n_outs]
         fs = node.inputs[1:][self.n_outs:]
@@ -242,14 +243,16 @@ class IfElse(PureOp):
                     if len(ls) > 0:
                         return ls
                     else:
-                        for out, outtype, t in izip(outputs, outtypes, ts):
+                        for out, t in izip(outputs, ts):
                             compute_map[out][0] = 1
+                            val = storage_map[t][0]
                             if self.as_view:
-                                oval = outtype.filter(storage_map[t][0])
+                                storage_map[out][0] = val
+                            # Work around broken numpy deepcopy
+                            elif type(val) in (numpy.ndarray, numpy.memmap):
+                                storage_map[out][0] = val.copy()
                             else:
-                                oval = outtype.filter(
-                                    deepcopy(storage_map[t][0]))
-                            storage_map[out][0] = oval
+                                storage_map[out][0] = deepcopy(val)
                         return []
                 else:
                     ls = [1 + idx + self.n_outs for idx in xrange(self.n_outs)
@@ -257,13 +260,16 @@ class IfElse(PureOp):
                     if len(ls) > 0:
                         return ls
                     else:
-                        for out, outtype, f in izip(outputs, outtypes, fs):
+                        for out, f in izip(outputs, fs):
                             compute_map[out][0] = 1
                             # can't view both outputs unless destroyhandler
                             # improves
-                            oval = outtype.filter(
-                                deepcopy(storage_map[f][0]))
-                            storage_map[out][0] = oval
+                            # Work around broken numpy deepcopy
+                            val = storage_map[f][0]
+                            if type(val) in (numpy.ndarray, numpy.memmap):
+                                storage_map[out][0] = val.copy()
+                            else:
+                                storage_map[out][0] = deepcopy(val)
                         return []
 
         thunk.lazy = True
@@ -576,7 +582,7 @@ class CondMerge(gof.Optimizer):
                     as_view=False,
                     gpu=False,
                     name=mn_name + '&' + pl_name)
-                print 'here'
+                print('here')
                 new_outs = new_ifelse(*new_ins, **dict(return_list=True))
                 new_outs = [clone(x) for x in new_outs]
                 old_outs = []

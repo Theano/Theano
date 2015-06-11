@@ -1,3 +1,4 @@
+from __future__ import print_function
 import unittest
 
 import numpy
@@ -1213,7 +1214,7 @@ def test_asymptotic_32():
                             tensor.grad(c.sum(), x)], mode='FAST_RUN')
         if 0:
             for i, n in enumerate(f.maker.fgraph.toposort()):
-                print i, n
+                print(i, n)
 
         xval = numpy.zeros((5, 5), dtype=dtype).astype(dtype)
         x2val = numpy.zeros(5, dtype=xval.dtype).astype(dtype)

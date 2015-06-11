@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys, time, unittest
 
 import numpy
@@ -64,9 +65,9 @@ def exec_multilayer_conv_nnet_old(conv_mode, ss, bsize, imshp, kshps, nkerns,
 
         for kshp, kern, nkern, n_layer in zip(kshps, kerns, nkerns, range(len(nkerns))):
             if do_print:
-                print '************* layer %i ***************' % n_layer
+                print('************* layer %i ***************' % n_layer)
                 
-                print conv_mode, ss, n_layer, kshp, nkern
+                print(conv_mode, ss, n_layer, kshp, nkern)
 
             # actual values
             w = global_rng.random_sample(N.r_[nkern, imshp[0], kshp])
@@ -159,9 +160,9 @@ def exec_multilayer_conv_nnet(conv_mode, ss, bsize, imshp, kshps, nkerns,
 
         for kshp, kern, nkern, n_layer in zip(kshps, kerns, nkerns, range(len(nkerns))):
             if do_print:
-                print '************* layer %i ***************' % n_layer
+                print('************* layer %i ***************' % n_layer)
                 
-                print conv_mode, ss, n_layer, kshp, nkern
+                print(conv_mode, ss, n_layer, kshp, nkern)
 
             # actual values
             w = global_rng.random_sample(N.r_[nkern, imshp[0], kshp])
@@ -226,7 +227,7 @@ def speed_multilayer_conv():
         t_b_k = []
         # calculate the timing with unrolling
 
-        print 'time unroll batch kern'
+        print('time unroll batch kern')
         best = []
         worst = []
         t_ = []
@@ -255,7 +256,7 @@ def speed_multilayer_conv():
             t = t_
         t = N.asarray(t)
         # calculate the old timing
-        print 'time old version'
+        print('time old version')
         tctot, tpytot, ntot = [], [], []
         tctot_ = []
         if not tctot_:
@@ -267,23 +268,23 @@ def speed_multilayer_conv():
                     tpytot += [tpytot_]
                     ntot += [ntot_]
         else: tctot = N.asarray(tctot_)
-        print "old code timing %.3fs"%sum(tctot), tctot
+        print("old code timing %.3fs"%sum(tctot), tctot)
         best = N.asarray(best)
         worst = N.asarray(worst)
-        print "timing for unrolled version"
-        print "unroll_batch/unroll_kern valid_mode full_mode"
+        print("timing for unrolled version")
+        print("unroll_batch/unroll_kern valid_mode full_mode")
         for n_b in range(len(unroll_batch)):
             for n_k in range(len(unroll_kern)):
-                print (unroll_batch[n_b], unroll_kern[n_k]) + tuple(t[n_b, n_k]), ','
+                print((unroll_batch[n_b], unroll_kern[n_k]) + tuple(t[n_b, n_k]), ',')
         t_detail = t
         t = t.sum(axis=2)
-        print "max %.3fs"%t.max(), "max param(batch unloop size/kernel unloop size)", t_b_k[t.argmax()]
-        print "min %.3fs"%t.min(), "min param(batch unloop size/kernel unloop size)", t_b_k[t.argmin()]
-        print "speedup vs (1/1)%.3fx, vs old %.3fx" % (t.max()/t.min(), sum(tctot)/t.min())
-        print worst/best, tctot/best
+        print("max %.3fs"%t.max(), "max param(batch unloop size/kernel unloop size)", t_b_k[t.argmax()])
+        print("min %.3fs"%t.min(), "min param(batch unloop size/kernel unloop size)", t_b_k[t.argmin()])
+        print("speedup vs (1/1)%.3fx, vs old %.3fx" % (t.max()/t.min(), sum(tctot)/t.min()))
+        print(worst/best, tctot/best)
 
         # calculate the timing of unroll_patch
-        print 'time unroll_patch'
+        print('time unroll_patch')
         tctot_patch = []
         tctot_patch_size = []
         for conv_mode, n_mode in zip(convmodes, range(len(convmodes))):
@@ -296,13 +297,13 @@ def speed_multilayer_conv():
                 tctot_patch_size += [tctot_]
 
         t_patch = sum(tctot_patch)
-        print "unroll_patch without shape time", tctot_patch
-        print "speedup vs (1/1)%.3fx, vs old %.3fx" % (t.max()/t_patch, sum(tctot)/t_patch)
-        print best/tctot_patch, worst/tctot_patch
+        print("unroll_patch without shape time", tctot_patch)
+        print("speedup vs (1/1)%.3fx, vs old %.3fx" % (t.max()/t_patch, sum(tctot)/t_patch))
+        print(best/tctot_patch, worst/tctot_patch)
         t_patch_size = sum(tctot_patch_size)
-        print "unroll_patch with shape time", tctot_patch_size
-        print "speedup vs (1/1)%.3fx, vs old %.3fx" % (t.max()/t_patch_size, sum(tctot)/t_patch_size)
-        print best/tctot_patch_size, worst/tctot_patch_size
+        print("unroll_patch with shape time", tctot_patch_size)
+        print("speedup vs (1/1)%.3fx, vs old %.3fx" % (t.max()/t_patch_size, sum(tctot)/t_patch_size))
+        print(best/tctot_patch_size, worst/tctot_patch_size)
         
         return
 

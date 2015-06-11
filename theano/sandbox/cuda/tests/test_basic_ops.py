@@ -1,3 +1,4 @@
+from __future__ import print_function
 import time
 import unittest
 
@@ -172,7 +173,7 @@ def test_careduce():
             f_caused_value_error = False
             try:
                 f_out = f(val)
-            except ValueError, e:
+            except ValueError as e:
                 exc = e
                 f_caused_value_error = True
             except NotImplementedError:
@@ -184,23 +185,23 @@ def test_careduce():
             f2_caused_value_error = False
             try:
                 f2_out = f2(val)
-            except ValueError, e:
+            except ValueError as e:
                 exc2 = e
                 f2_caused_value_error = True
 
             if f_caused_value_error != f2_caused_value_error:
                 if f_caused_value_error:
-                    print 'f caused this value error:'
-                    print exc
+                    print('f caused this value error:')
+                    print(exc)
                 else:
-                    print 'f did not raise a value error, but should have'
+                    print('f did not raise a value error, but should have')
                 if f2_caused_value_error:
-                    print 'f2 caused this value error:'
-                    print exc2
+                    print('f2 caused this value error:')
+                    print(exc2)
                 else:
-                    print 'f should not have raised a value error'
-                print 'shape was: ', shape
-                print 'pattern was: ', pattern
+                    print('f should not have raised a value error')
+                print('shape was: ', shape)
+                print('pattern was: ', pattern)
                 assert False
 
             try:
@@ -303,7 +304,9 @@ def test_careduce():
 
 def test_flatten():
     x = cuda.fmatrix('x')
-    f = theano.function([x], x.flatten())
+    f = theano.function([x], x.flatten(), mode=mode_with_gpu)
+    assert any([node for node in f.maker.fgraph.toposort()
+                if isinstance(node.op, B.GpuFlatten)])
     assert len(f([[0., 0.], [0., 0.]]).shape) == 1
 
 
@@ -379,7 +382,7 @@ def test_alloc_empty():
     assert out.shape == (2, 3)
     assert out.dtype == 'float32'
 
-    # Test that we do not merge them.
+    # Test that we merge them.
     f = theano.function([], [cuda.basic_ops.gpu_alloc_empty(2, 3),
                              cuda.basic_ops.gpu_alloc_empty(2, 3)])
     out = f()
@@ -388,7 +391,7 @@ def test_alloc_empty():
     assert out[1].shape == (2, 3)
     assert out[1].dtype == 'float32'
     assert len([node for node in f.maker.fgraph.apply_nodes
-                if isinstance(node.op, cuda.basic_ops.GpuAllocEmpty)]) == 2
+                if isinstance(node.op, cuda.basic_ops.GpuAllocEmpty)]) == 1
 
 
 def test_elemwise_empty():
@@ -1318,7 +1321,7 @@ def speed_adv_sub1():
         f = theano.function([vec], var[vec], mode=mode_with_gpu)
         for i in range(100):
             f(idx)
-        print "ProfileMode with batch size", batch_size
+        print("ProfileMode with batch size", batch_size)
         mode_with_gpu.print_summary()
 
 

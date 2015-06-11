@@ -33,7 +33,9 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         out_shp.append(input.shape[-1] / ds[1] + yi)
         output_val = numpy.zeros(out_shp)
         func = numpy.max
-        if mode != 'max':
+        if mode == 'sum':
+            func = numpy.sum
+        elif mode != 'max':
             func = numpy.average
 
         for k in numpy.ndindex(*input.shape[:-2]):
@@ -76,7 +78,9 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         tt = []
         y = pad_img(x)
         func = numpy.max
-        if mode != 'max':
+        if mode == 'sum':
+            func = numpy.sum
+        elif mode != 'max':
             func = numpy.average
         inc_pad = mode == 'average_inc_pad'
 
@@ -145,7 +149,9 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         out_shp.append(out_c)
 
         func = numpy.max
-        if mode != 'max':
+        if mode == 'sum':
+            func = numpy.sum
+        elif mode != 'max':
             func = numpy.average
 
         output_val = numpy.zeros(out_shp)
@@ -169,6 +175,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         for maxpoolshp, ignore_border, mode in product(maxpoolshps,
                                                        [True, False],
                                                        ['max',
+                                                        'sum',
                                                         'average_inc_pad',
                                                         'average_exc_pad']):
                 # print 'maxpoolshp =', maxpoolshp
@@ -182,7 +189,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                                      mode=mode)
                 f = function([images, ], [output, ])
                 output_val = f(imval)
-                assert numpy.all(output_val == numpy_output_val)
+                utt.assert_allclose(output_val, numpy_output_val)
 
                 # DownsampleFactorMax op
                 maxpool_op = DownsampleFactorMax(maxpoolshp,
@@ -198,23 +205,23 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         stridesizes = ((1, 1), (3, 3), (5, 7))
         # generate random images
         imval = rng.rand(4, 10, 16, 16)
+        # The same for each mode
         outputshps = ((4, 10, 16, 16), (4, 10, 6, 6), (4, 10, 4, 3),
                       (4, 10, 16, 16), (4, 10, 6, 6), (4, 10, 4, 3),
                       (4, 10, 14, 14), (4, 10, 5, 5), (4, 10, 3, 2),
                       (4, 10, 14, 14), (4, 10, 6, 6), (4, 10, 4, 3),
                       (4, 10, 12, 14), (4, 10, 4, 5), (4, 10, 3, 2),
                       (4, 10, 12, 14), (4, 10, 5, 6), (4, 10, 4, 3))
-        # The same for each mode
-        outputshps = outputshps + outputshps + outputshps
         images = tensor.dtensor4()
         indx = 0
         for mode, maxpoolshp, ignore_border in product(['max',
+                                                        'sum',
                                                         'average_inc_pad',
                                                         'average_exc_pad'],
                                                        maxpoolshps,
                                                        [True, False]):
                 for stride in stridesizes:
-                    outputshp = outputshps[indx]
+                    outputshp = outputshps[indx % len(outputshps)]
                     indx += 1
                     # DownsampleFactorMax op
                     numpy_output_val = \
@@ -251,7 +258,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
             stride = stridesizes[indx]
             maxpoolshp = maxpoolshps[indx]
             for ignore_border, mode in product([True, False],
-                                               ['max', 'average_inc_pad',
+                                               ['max', 'sum',
+                                                'average_inc_pad',
                                                 'average_exc_pad']):
                 indx_out = indx * 2
                 if not ignore_border:
@@ -283,7 +291,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         c = 2  # channel size
         images = tensor.dtensor4()
         for indx, mode in product(numpy.arange(len(maxpoolsizes)),
-                                  ['max', 'average_inc_pad',
+                                  ['max', 'sum', 'average_inc_pad',
                                    'average_exc_pad']):
             imgsize = imgsizes[indx]
             imval = rng.rand(m, c, imgsize[0], imgsize[1]) - 0.5
@@ -308,20 +316,24 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         maxpoolsizes = ((5, 3), (3, 5), (3, 3))
         stridesizes = ((3, 2), (2, 3), (3, 3))
         paddingsizes = ((2, 2), (2, 1), (2, 2))
-        for i in range(len(imgsizes)):
-            imgsize = imgsizes[i]
-            imval = rng.rand(1, 1, imgsize[0], imgsize[1]) * 10.0
-            maxpoolsize = maxpoolsizes[i]
-            stridesize = stridesizes[i]
-            paddingsize = paddingsizes[i]
+        # average_inc_pad and average_exc_pad do not
+        # support grad with padding
+        for mode in ['max', 'sum']:
+            for i in range(len(imgsizes)):
+                imgsize = imgsizes[i]
+                imval = rng.rand(1, 1, imgsize[0], imgsize[1]) * 10.0
+                maxpoolsize = maxpoolsizes[i]
+                stridesize = stridesizes[i]
+                paddingsize = paddingsizes[i]
 
-            def mp(input):
-                return DownsampleFactorMax(
-                    maxpoolsize, ignore_border=True,
-                    st=stridesize,
-                    padding=paddingsize,
-                    )(input)
-            utt.verify_grad(mp, [imval], rng=rng)
+                def mp(input):
+                    return DownsampleFactorMax(
+                        maxpoolsize, ignore_border=True,
+                        st=stridesize,
+                        padding=paddingsize,
+                        mode=mode,
+                        )(input)
+                utt.verify_grad(mp, [imval], rng=rng)
 
     def test_DownsampleFactorMax_grad(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -329,14 +341,17 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         imval = rng.rand(2, 3, 3, 4) * 10.0
         # more variance means numeric gradient will be more accurate
 
-        for maxpoolshp in maxpoolshps:
-            for ignore_border in [True, False]:
-                # print 'maxpoolshp =', maxpoolshp
-                # print 'ignore_border =', ignore_border
-                def mp(input):
-                    return DownsampleFactorMax(maxpoolshp,
-                                               ignore_border=ignore_border)(input)
-                utt.verify_grad(mp, [imval], rng=rng)
+        for maxpoolshp, ignore_border, mode in product(maxpoolshps,
+                                                       [True, False],
+                                                       ['max',
+                                                        'sum',
+                                                        'average_inc_pad',
+                                                        'average_exc_pad']):
+            def mp(input):
+                return DownsampleFactorMax(maxpoolshp,
+                                           ignore_border=ignore_border,
+                                           mode=mode)(input)
+            utt.verify_grad(mp, [imval], rng=rng)
 
     def test_DownsampleFactorMax_grad_st(self):
         """checks the gradient for the case that stride is used"""
@@ -345,14 +360,18 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         stridesizes = ((1, 1), (3, 3), (5, 7))
         imval = rng.rand(1, 2, 16, 16)
 
-        for maxpoolshp in maxpoolshps:
-            for ignore_border in [True, False]:
-                for stride in stridesizes:
-                    def mp(input):
-                        return DownsampleFactorMax(maxpoolshp,
-                                                   ignore_border=ignore_border,
-                                                   st=stride)(input)
-                    utt.verify_grad(mp, [imval], rng=rng)
+        for maxpoolshp, ignore_border, mode, stride in product(maxpoolshps,
+                                                       [True, False],
+                                                       ['max',
+                                                        'sum',
+                                                        'average_inc_pad',
+                                                        'average_exc_pad'],
+                                                       stridesizes):
+            def mp(input):
+                return DownsampleFactorMax(maxpoolshp,
+                                           ignore_border=ignore_border,
+                                           st=stride, mode=mode)(input)
+            utt.verify_grad(mp, [imval], rng=rng)
 
     def test_DownsampleFactorMax_grad_st_extra(self):
         """checks the gradient for the case
@@ -364,17 +383,19 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         imvsizs = ((16, 16), (16, 16), (16, 16), (8, 5),
                    (8, 5), (8, 5), (8, 5))
 
-        for indx in numpy.arange(len(maxpoolshps)):
-            imvsize = imvsizs[indx]
-            imval = rng.rand(1, 2, imvsize[0], imvsize[1])
-            stride = stridesizes[indx]
-            maxpoolshp = maxpoolshps[indx]
-            for ignore_border in [True, False]:
-                def mp(input):
-                    return DownsampleFactorMax(maxpoolshp,
-                                               ignore_border=ignore_border,
-                                               st=stride)(input)
-                utt.verify_grad(mp, [imval], rng=rng)
+        for mode in ['max', 'sum', 'average_inc_pad', 'average_exc_pad']:
+            for indx in numpy.arange(len(maxpoolshps)):
+                imvsize = imvsizs[indx]
+                imval = rng.rand(1, 2, imvsize[0], imvsize[1])
+                stride = stridesizes[indx]
+                maxpoolshp = maxpoolshps[indx]
+                for ignore_border in [True, False]:
+                    def mp(input):
+                        return DownsampleFactorMax(maxpoolshp,
+                                                   ignore_border=ignore_border,
+                                                   st=stride,
+                                                   mode=mode)(input)
+                    utt.verify_grad(mp, [imval], rng=rng)
 
     def test_DownsampleFactorMaxGrad_grad(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -486,7 +507,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
         for maxpoolshp, ignore_border, mode in product(maxpoolshps,
                                                        [True, False],
-                                                       ['max',
+                                                       ['max', 'sum',
                                                         'average_inc_pad',
                                                         'average_exc_pad']):
                 # print 'maxpoolshp =', maxpoolshp
@@ -537,7 +558,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
         for maxpoolshp, ignore_border, mode in product(maxpoolshps,
                                                        [True, False],
-                                                       ['max',
+                                                       ['max', 'sum',
                                                         'average_inc_pad',
                                                         'average_exc_pad']):
                 # print 'maxpoolshp =', maxpoolshp
@@ -574,7 +595,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
         for maxpoolshp, ignore_border, mode in product(maxpoolshps,
                                                        [True, False],
-                                                       ['max',
+                                                       ['max', 'sum',
                                                         'average_inc_pad',
                                                         'average_exc_pad']):
                 # print 'maxpoolshp =', maxpoolshp
@@ -601,31 +622,45 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         maxpoolshps = ((1, 1), (2, 2), (3, 3), (2, 3), (3, 2))
 
         image_val = rng.rand(4, 6, 7, 9)
-        out_shapes = [[[4, 6, 7, 9], [4, 6, 7, 9]],
-                      [[4, 6, 3, 4], [4, 6, 4, 5]],
-                      [[4, 6, 2, 3], [4, 6, 3, 3]],
-                      [[4, 6, 3, 3], [4, 6, 4, 3]],
-                      [[4, 6, 2, 4], [4, 6, 3, 5]]]
+        out_shapes = [[[[4, 6, 7, 9], [4, 6, 7, 9]],
+                       [[4, 6, 3, 4], [4, 6, 4, 5]],
+                       [[4, 6, 2, 3], [4, 6, 3, 3]],
+                       [[4, 6, 3, 3], [4, 6, 4, 3]],
+                       [[4, 6, 2, 4], [4, 6, 3, 5]]],
+                      [[None, None],
+                       [[4, 6, 4, 5], None],
+                       [[4, 6, 3, 3], None],
+                       [[4, 6, 4, 3], None],
+                       [[4, 6, 3, 5], None]],
+                      [[None, None],
+                       [None, None],
+                       [[4, 6, 3, 4], None],
+                       [[4, 6, 4, 4], None],
+                       [None, None]]]
 
         for i, maxpoolshp in enumerate(maxpoolshps):
             for j, ignore_border in enumerate([True, False]):
+                for k, padding in enumerate([(0,0), (1,1), (1,2)]):
+                    if out_shapes[k][i][j] == None:
+                        continue
+                    # checking shapes generated by DownsampleFactorMax
+                    self._compile_and_check([image],
+                                            [DownsampleFactorMax(maxpoolshp,
+                                            ignore_border=ignore_border,
+                                            padding=padding)(image)],
+                                            [image_val], DownsampleFactorMax)
 
-                # checking shapes generated by DownsampleFactorMax
-                self._compile_and_check([image],
-                                        [DownsampleFactorMax(maxpoolshp,
-                                        ignore_border=ignore_border)(image)],
-                                        [image_val], DownsampleFactorMax)
-
-                # checking shapes generated by DownsampleFactorMaxGrad
-                maxout_val = rng.rand(*out_shapes[i][j])
-                gz_val = rng.rand(*out_shapes[i][j])
-                self._compile_and_check([image, maxout, gz],
-                                        [DownsampleFactorMaxGrad(maxpoolshp,
-                                        ignore_border=ignore_border)
-                                        (image, maxout, gz)],
-                                        [image_val, maxout_val, gz_val],
-                                        DownsampleFactorMaxGrad,
-                                        warn=False)
+                    # checking shapes generated by DownsampleFactorMaxGrad
+                    maxout_val = rng.rand(*out_shapes[k][i][j])
+                    gz_val = rng.rand(*out_shapes[k][i][j])
+                    self._compile_and_check([image, maxout, gz],
+                                            [DownsampleFactorMaxGrad(maxpoolshp,
+                                            ignore_border=ignore_border,
+                                            padding=padding)
+                                            (image, maxout, gz)],
+                                            [image_val, maxout_val, gz_val],
+                                            DownsampleFactorMaxGrad,
+                                            warn=False)
 
 
 if __name__ == '__main__':

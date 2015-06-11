@@ -53,7 +53,8 @@ AddConfigVar('vm.lazy',
              in_c_key=False)
 
 
-def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re, dependencies):
+def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
+                              dependencies):
     reallocated_info = {}
     viewed_by = {}
     for var in fgraph.variables:
@@ -74,14 +75,14 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re, depend
             ins = None
             if dmap and idx_o in dmap:
                 idx_v = dmap[idx_o]
-                assert len(
-                    idx_v) == 1, "Here we only support the possibility to destroy one input"
+                assert len(idx_v) == 1, ("Here we only support the possibility"
+                                         " to destroy one input")
                 ins = node.inputs[idx_v[0]]
             if vmap and idx_o in vmap:
                 assert ins is None
                 idx_v = vmap[idx_o]
-                assert len(
-                    idx_v) == 1, "Here we only support the possibility to view one input"
+                assert len(idx_v) == 1, ("Here we only support the possibility"
+                                         " to view one input")
                 ins = node.inputs[idx_v[0]]
             if ins is not None:
                 assert isinstance(ins, theano.Variable)
@@ -92,10 +93,11 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re, depend
 
         for ins in node.inputs:
             assert not (ins in view_of and viewed_by[ins])
-            if (getattr(ins, 'ndim', None) == 0 and not storage_map[ins][0]
-                    and ins not in fgraph.outputs and ins.owner
-                    and all([compute_map_re[v][0] for v in dependencies.get(ins, [])])
-                    and ins not in allocated):
+            if (getattr(ins, 'ndim', None) == 0 and not storage_map[ins][0] and
+                    ins not in fgraph.outputs and ins.owner and
+                    all([compute_map_re[v][0]
+                         for v in dependencies.get(ins, [])]) and
+                    ins not in allocated):
                 # Constant Memory cannot be changed
                 # Constant and shared variables' storage_map value is not empty
                 reuse_out = None
@@ -105,8 +107,9 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re, depend
                         if reuse_out:
                             break
                         for out in order[i].outputs:
-                            if (getattr(out, 'ndim', None) == 0 and out not in pre_allocated
-                                    and ins.type == out.type):
+                            if (getattr(out, 'ndim', None) == 0 and
+                                    out not in pre_allocated and
+                                    ins.type == out.type):
                                 reuse_out = out
                                 pre_allocated.add(out)
                                 allocated.add(ins)
@@ -122,8 +125,9 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re, depend
                             if reuse_out:
                                 break
                             for out in order[i].outputs:
-                                if (getattr(out, 'ndim', None) == 0 and out not in pre_allocated
-                                        and ins.type == out.type):
+                                if (getattr(out, 'ndim', None) == 0 and
+                                        out not in pre_allocated and
+                                        ins.type == out.type):
                                     reuse_out = out
                                     pre_allocated.add(out)
                                     allocated.add(ins)
@@ -374,8 +378,8 @@ class Stack(VM):
             # destroy_dependencies
             # --------------------
             # The destroy_dependencies is a list of variables that are implicit
-            # dependencies induced by a destroy_map (compare node.inputs which
-            # are *explicit* dependencies). The variables in
+            # dependencies induced by destroy_map and view_map (compared to
+            # node.inputs which are *explicit* dependencies). The variables in
             # destroy_dependencies would be impossible to compute after the
             # current `node` runs, because node.thunk() is going to destroy a
             # common input variable needed by whatever node owns each variable
@@ -508,9 +512,10 @@ class Stack(VM):
                                     st = "c"
                                 self.variable_strides[var] = st
                     except Exception:
-                        link.raise_with_op(current_apply,
-                                           self.thunks[self.node_idx[current_apply]],
-                                           storage_map=storage_map)
+                        link.raise_with_op(
+                            current_apply,
+                            self.thunks[self.node_idx[current_apply]],
+                            storage_map=storage_map)
                     for o in current_apply.outputs:
                         compute_map[o][0] = 1
 
@@ -521,9 +526,9 @@ class Stack(VM):
                         for i in current_apply.inputs:
                             # Garbage Collection -> check if anybody else uses
                             # this input
-                            if (dependencies[i]
-                                    and i.owner
-                                    and i not in self.outputs):
+                            if (dependencies[i] and
+                                    i.owner and
+                                    i not in self.outputs):
                                 if all(compute_map[v][0]
                                         for v in dependencies[i]):
                                     storage_map[i][0] = None
@@ -544,10 +549,13 @@ class Stack(VM):
                                                 'destroy_map',
                                                 False)):
                                         warnings.warn(
-                                            "There was a bug that existed in the default Theano configuration,"
-                                            " only in the development version between July 5th 2012"
-                                            " and July 30th 2012. This was not in a released version."
-                                            " The bug was affecting this script.",
+                                            "There was a bug that existed in "
+                                            "the default Theano configuration,"
+                                            " only in the development version "
+                                            "between July 5th 2012 and "
+                                            "July 30th 2012. This was not in "
+                                            "a released version. The bug was "
+                                            "affecting this script.",
                                             # The stack level is not good when
                                             # inside a Scan.
                                             stacklevel=3
@@ -578,9 +586,10 @@ class Stack(VM):
                     self.call_times[current_idx] += dt
 
                 except Exception:
-                    link.raise_with_op(current_apply,
-                                       self.thunks[self.node_idx[current_apply]],
-                                       storage_map=storage_map)
+                    link.raise_with_op(
+                        current_apply,
+                        self.thunks[self.node_idx[current_apply]],
+                        storage_map=storage_map)
 
                 if requires:
                     for r in requires:
@@ -639,7 +648,7 @@ class Stack(VM):
 
         if self.allow_gc:
             for v in storage_map:
-                if v.owner and not v in self.outputs:
+                if v.owner and v not in self.outputs:
                     if compute_map[v][0] == 2:
                         continue
                     else:
@@ -660,7 +669,7 @@ try:
             # skip VM.__init__
 except ImportError:
     pass
-except (OSError, theano.gof.cmodule.MissingGXX), e:
+except (OSError, theano.gof.cmodule.MissingGXX) as e:
     # OSError happens when g++ is not installed.  In that case, we
     # already changed the default linker to something else then CVM.
     # Currently this is the py linker.
@@ -778,6 +787,12 @@ class VM_Linker(link.LocalLinker):
 
         N.B. gc means garbage collection
 
+        Note
+        ----
+        It don't take care of the view_map/destroy_map. So
+        it mean it rely on Python gc to don't free the object real
+        storage.
+
         """
         dependencies = {}
         for k in variables:
@@ -787,6 +802,9 @@ class VM_Linker(link.LocalLinker):
             # way of getting it back.
             #
             # XXX if k has no clients... what is it doing in the computation?
+            # Fred guess: it could happen for node with multiple outputs when
+            # we don't use all outputs.
+
             if k.owner and k.clients:
                 ls = []
                 for cl in k.clients:
@@ -840,7 +858,6 @@ class VM_Linker(link.LocalLinker):
                 vars_idx_inv[i] = var
 
             # put storage_map and compute_map into a int-based scheme
-            n_applies = len(nodes)
             storage_map_list = [storage_map[vars_idx_inv[i]]
                                 for i in xrange(len(vars_idx_inv))]
             compute_map_list = [compute_map[vars_idx_inv[i]]
@@ -988,7 +1005,8 @@ class VM_Linker(link.LocalLinker):
         else:
             dependencies = self.compute_gc_dependencies(storage_map)
 
-        reallocated_info = calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,dependencies)
+        reallocated_info = calculate_reallocate_info(
+            order, fgraph, storage_map, compute_map_re, dependencies)
 
         for node in order:
             try:
@@ -1001,7 +1019,7 @@ class VM_Linker(link.LocalLinker):
                     # So if they didn't specify that its lazy or not, it isn't.
                     # If this member isn't present, it will crash later.
                     thunks[-1].lazy = False
-            except Exception, e:
+            except Exception as e:
                 e.args = ("The following error happened while"
                           " compiling the node", node, "\n") + e.args
                 raise
@@ -1014,7 +1032,8 @@ class VM_Linker(link.LocalLinker):
             lazy = config.vm.lazy
         if lazy is None:
             lazy = not all([(not th.lazy) for th in thunks])
-        if not (lazy or (config.profile and config.profile_memory) or self.use_cloop or self.callback):
+        if not (lazy or (config.profile and config.profile_memory) or
+                self.use_cloop or self.callback):
             for pair in reallocated_info.values():
                 storage_map[pair[1]] = storage_map[pair[0]]
 
@@ -1024,10 +1043,10 @@ class VM_Linker(link.LocalLinker):
             for node in order:
                 clear_after_this_thunk = []
                 for input in node.inputs:
-                    if ((input in computed)
-                            and (input not in fgraph.outputs)
-                            and (node == last_user[input])
-                            and input not in reallocated_info.keys()):
+                    if (input in computed and
+                            input not in fgraph.outputs and
+                            node == last_user[input] and
+                            input not in reallocated_info.keys()):
                         clear_after_this_thunk.append(storage_map[input])
                 post_thunk_clear.append(clear_after_this_thunk)
         else:

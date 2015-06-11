@@ -1,3 +1,4 @@
+from __future__ import print_function
 import time, copy, sys, unittest
 # Skip test if cuda_ndarray is not available.
 from nose.plugins.skip import SkipTest
@@ -458,7 +459,7 @@ def test_reshape():
 
         try:
             bb = b.reshape(shape_2)
-        except Exception, ValueError:
+        except Exception as ValueError:
             return
         assert False
 
@@ -565,8 +566,8 @@ def test_mapping_getitem_w_int():
     def _cmp(x, y):
         assert x.shape == y.shape
         if not numpy.all(x == y):
-            print x
-            print y
+            print(x)
+            print(y)
         assert numpy.all(x == y)
 
     def _cmpf(x, *y):
@@ -750,7 +751,7 @@ def test_setitem_matrix_bad_shape():
         # attempt to assign the ndarray b with setitem
         _a[:, 1, 1] = _b
         assert False
-    except ValueError, e:
+    except ValueError as e:
         # print e
         assert True
 
@@ -759,7 +760,7 @@ def test_setitem_matrix_bad_shape():
         # attempt to assign the ndarray b with setitem
         _a[1, 1, :] = b
         assert False
-    except ValueError, e:
+    except ValueError as e:
         # print e
         assert True
 
@@ -777,7 +778,7 @@ def test_setitem_matrix_bad_ndim():
         # attempt to assign the ndarray b with setitem
         _a[:, :, 1] = _b
         assert False
-    except ValueError, e:
+    except ValueError as e:
         # print e
         assert True
 
@@ -786,7 +787,7 @@ def test_setitem_matrix_bad_ndim():
         # attempt to assign the ndarray b with setitem
         _a[1, :, :] = b
         assert False
-    except ValueError, e:
+    except ValueError as e:
         # print e
         assert True
 
@@ -804,7 +805,7 @@ def test_setitem_matrix_bad_type():
         # attempt to assign the ndarray b with setitem
         _a[1, :, :] = b
         assert False
-    except TypeError, e:
+    except TypeError as e:
         # print e
         assert True
 
@@ -941,7 +942,7 @@ def test_setitem_rightvalue_ndarray_fails():
         _a[0, :, :] = mat
         #a[0, :, :] = mat
         #assert numpy.allclose(numpy.asarray(_a), a)
-    except ValueError, e:
+    except ValueError as e:
         pass
 
     # test direct transfert from numpy with broadcast

@@ -1,6 +1,7 @@
 """
 Tests of printing functionality
 """
+from __future__ import print_function
 import logging
 
 from nose.plugins.skip import SkipTest
@@ -147,8 +148,8 @@ def test_min_informative_str():
   E. E"""
 
     if mis != reference:
-        print '--' + mis + '--'
-        print '--' + reference + '--'
+        print('--' + mis + '--')
+        print('--' + reference + '--')
 
     assert mis == reference
 
@@ -172,18 +173,19 @@ def test_debugprint():
     debugprint(G, file=s, ids='int')
     s = s.getvalue()
     # The additional white space are needed!
-    reference = """Elemwise{add,no_inplace} [@0] ''   
- |Elemwise{add,no_inplace} [@1] 'C'   
- | |A [@2]
- | |B [@3]
- |Elemwise{add,no_inplace} [@4] ''   
-   |D [@5]
-   |E [@6]
-"""
+    reference = '\n'.join([
+        "Elemwise{add,no_inplace} [@0] ''   ",
+        " |Elemwise{add,no_inplace} [@1] 'C'   ",
+        " | |A [@2]",
+        " | |B [@3]",
+        " |Elemwise{add,no_inplace} [@4] ''   ",
+        "   |D [@5]",
+        "   |E [@6]",
+    ]) + '\n'
 
     if s != reference:
-        print '--' + s + '--'
-        print '--' + reference + '--'
+        print('--' + s + '--')
+        print('--' + reference + '--')
 
     assert s == reference
 
@@ -192,18 +194,19 @@ def test_debugprint():
     debugprint(G, file=s, ids='CHAR')
     s = s.getvalue()
     # The additional white space are needed!
-    reference = """Elemwise{add,no_inplace} [@A] ''   
- |Elemwise{add,no_inplace} [@B] 'C'   
- | |A [@C]
- | |B [@D]
- |Elemwise{add,no_inplace} [@E] ''   
-   |D [@F]
-   |E [@G]
-"""
+    reference = "\n".join([
+        "Elemwise{add,no_inplace} [@A] ''   ",
+        " |Elemwise{add,no_inplace} [@B] 'C'   ",
+        " | |A [@C]",
+        " | |B [@D]",
+        " |Elemwise{add,no_inplace} [@E] ''   ",
+        "   |D [@F]",
+        "   |E [@G]",
+    ]) + '\n'
 
     if s != reference:
-        print '--' + s + '--'
-        print '--' + reference + '--'
+        print('--' + s + '--')
+        print('--' + reference + '--')
 
     assert s == reference
 
@@ -212,16 +215,17 @@ def test_debugprint():
     debugprint(G, file=s, ids='CHAR', stop_on_name=True)
     s = s.getvalue()
     # The additional white space are needed!
-    reference = """Elemwise{add,no_inplace} [@A] ''   
- |Elemwise{add,no_inplace} [@B] 'C'   
- |Elemwise{add,no_inplace} [@C] ''   
-   |D [@D]
-   |E [@E]
-"""
+    reference = '\n'.join([
+        "Elemwise{add,no_inplace} [@A] ''   ",
+        " |Elemwise{add,no_inplace} [@B] 'C'   ",
+        " |Elemwise{add,no_inplace} [@C] ''   ",
+        "   |D [@D]",
+        "   |E [@E]",
+    ]) + '\n'
 
     if s != reference:
-        print '--' + s + '--'
-        print '--' + reference + '--'
+        print('--' + s + '--')
+        print('--' + reference + '--')
 
     assert s == reference
 
@@ -230,16 +234,17 @@ def test_debugprint():
     debugprint(G, file=s, ids='')
     s = s.getvalue()
     # The additional white space are needed!
-    reference = """Elemwise{add,no_inplace}  ''   
- |Elemwise{add,no_inplace}  'C'   
- | |A 
- | |B 
- |Elemwise{add,no_inplace}  ''   
-   |D 
-   |E 
-"""
+    reference = '\n'.join([
+        "Elemwise{add,no_inplace}  ''   ",
+        " |Elemwise{add,no_inplace}  'C'   ",
+        " | |A ",
+        " | |B ",
+        " |Elemwise{add,no_inplace}  ''   ",
+        "   |D ",
+        "   |E ",
+    ]) + '\n'
     if s != reference:
-        print '--' + s + '--'
-        print '--' + reference + '--'
+        print('--' + s + '--')
+        print('--' + reference + '--')
 
     assert s == reference

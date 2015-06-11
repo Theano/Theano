@@ -4,6 +4,7 @@ Planned:
 DownsampleFactorMax, DownsampleAvg, DownsampleSoftmax.
 
 """
+from __future__ import print_function
 # This file should move along with conv.py
 import __builtin__
 
@@ -15,15 +16,15 @@ from theano import gof, Op, tensor, Variable, Apply
 
 def max_pool2D(*args, **kwargs):
     import sys
-    print >> sys.stderr, "DEPRECATION: max_pool2D renamed to max_pool_2d"
+    print("DEPRECATION: max_pool2D renamed to max_pool_2d", file=sys.stderr)
     return max_pool_2d(*args, **kwargs)
 
 
 def max_pool_2d_same_size(input, patch_size):
     """
-    Takes as input a 4-D tensor. It sets all non maximum values 
-    of non-overlapping patches of size (patch_size[0],patch_size[1]) to zero, 
-    keeping only the maximum values. The output has the same dimensions as 
+    Takes as input a 4-D tensor. It sets all non maximum values
+    of non-overlapping patches of size (patch_size[0],patch_size[1]) to zero,
+    keeping only the maximum values. The output has the same dimensions as
     the input.
 
     :type input: 4-D theano tensor of input images.
@@ -63,10 +64,10 @@ def max_pool_2d(input, ds, ignore_border=False, st=None, padding=(0, 0),
             of the images, pad_h is the size of the top and bottom margins,
             and pad_w is the size of the left and right margins.
     :type padding: tuple of two ints
-    :param mode: 'max', 'average_inc_pad' or 'average_exc_pad'.
-        Operation executed on each window.  `max` always excludes the padding
-        in the computation. `average` gives you the choice to include or
-        exclude it.
+    :param mode: 'max', 'sum', 'average_inc_pad' or 'average_exc_pad'.
+        Operation executed on each window.  `max` and `sum` always exclude
+        the padding in the computation. `average` gives you the choice to
+        include or exclude it.
     :type mode: string
     """
     if input.ndim < 2:
@@ -103,7 +104,7 @@ def max_pool_2d(input, ds, ignore_border=False, st=None, padding=(0, 0),
 class DownsampleFactorMax(Op):
     """For N-dimensional tensors, consider that the last two
     dimensions span images.  This Op downsamples these images by
-    taking the max or average over different patch.
+    taking the max, sum or average over different patch.
 
     """
     __props__ = ('ds', 'ignore_border', 'st', 'padding', 'mode')
@@ -187,7 +188,7 @@ class DownsampleFactorMax(Op):
 
     def __init__(self, ds, ignore_border=False, st=None, padding=(0, 0),
                  mode='max'):
-        """ Take the max or average or different input patches.
+        """ Take the max, sum or average or different input patches.
 
         :param ds: downsample factor over rows and column.
                    ds indicates the pool region size.
@@ -209,8 +210,8 @@ class DownsampleFactorMax(Op):
             and pad_w is the size of the left and right margins.
         :type padding: tuple of two ints
 
-        :param mode: 'max', 'average_inc_pad', 'average_exc_pad'.
-            ('average_inc_pad' exclude the padding from the count,
+        :param mode: 'max', 'sum', 'average_inc_pad', 'average_exc_pad'.
+            ('average_inc_pad' excludes the padding from the count,
             'average_exc_pad' include it)
 
         """
@@ -231,9 +232,9 @@ class DownsampleFactorMax(Op):
         if self.padding[0] >= self.ds[0] or self.padding[1] >= self.ds[1]:
             raise NotImplementedError(
                 'padding_h and padding_w must be smaller than strides')
-        if mode not in ['max', 'average_inc_pad', 'average_exc_pad']:
+        if mode not in ['max', 'average_inc_pad', 'average_exc_pad', 'sum']:
             raise ValueError(
-                "DownsampleFactorMax mode parameter only support 'max',"
+                "DownsampleFactorMax mode parameter only support 'max', 'sum',"
                 " 'average_inc_pad' and 'average_exc_pad'. Got %s" % mode)
         self.mode = mode
 
@@ -276,7 +277,9 @@ class DownsampleFactorMax(Op):
         else:
             y = x
         func = numpy.max
-        if self.mode != 'max':
+        if self.mode == 'sum':
+            func = numpy.sum
+        elif self.mode != 'max':
             func = numpy.average
 
         for n in xrange(x.shape[0]):
@@ -316,7 +319,7 @@ class DownsampleFactorMax(Op):
         return ['<algorithm>']
 
     def c_code(self, node, name, inp, out, sub):
-        if self.mode != 'max':
+        if self.mode not in ('max', 'sum', 'average_exc_pad', 'average_inc_pad'):
             raise theano.gof.utils.MethodNotDefined()
         x, = inp
         z, = out
@@ -325,7 +328,7 @@ class DownsampleFactorMax(Op):
         ds0, ds1 = self.ds
         st0, st1 = self.st
         pd0, pd1 = self.padding
-        return """
+        ccode = """
         int typenum = PyArray_ObjectType((PyObject*)%(x)s, 0);
         int z_r, z_c; // shape of the output
         int r, c; // shape of the padded_input
@@ -347,7 +350,7 @@ class DownsampleFactorMax(Op):
             }
         if (%(ignore_border)s)
         {
-            
+
             // '/' in C is different from '/' in python
             if (r - %(ds0)s < 0)
             {
@@ -408,7 +411,7 @@ class DownsampleFactorMax(Op):
 
         // used for indexing a pool region inside the input
         int r_st, r_end, c_st, c_end;
-        dtype_%(x)s maximum; // temp var for maximum value in a region
+        dtype_%(x)s collector; // temp var for the value in a region
         if (z_r && z_c)
         {
             for(int b=0; b<PyArray_DIMS(%(x)s)[0]; b++){
@@ -444,28 +447,59 @@ class DownsampleFactorMax(Op):
                     {
                       c_end = c_end > c ? c : c_end;
                     }
-                    // use the first element as the initial value of maximum
-                    maximum = ((dtype_%(x)s*)(PyArray_GETPTR4(%(x)s,b,k,r_st,c_st)))[0];
+        """
+        if self.mode == 'max':
+            ccode += """
+                    // use the first element as the initial value of collector
+                    collector = ((dtype_%(x)s*)(PyArray_GETPTR4(%(x)s,b,k,r_st,c_st)))[0];
                     // go through the pooled region in the unpadded input
                     for(int m=r_st; m<r_end; m++)
                     {
                       for(int n=c_st; n<c_end; n++)
                       {
                         dtype_%(x)s a = ((dtype_%(x)s*)(PyArray_GETPTR4(%(x)s,b,k,m,n)))[0];
-                        maximum = (a > maximum) ? a : maximum;
+                        collector = (a > collector) ? a : collector;
                       }
                     }
-                    z[0] = maximum;
+                    z[0] = collector;
+            """
+        elif self.mode in ('sum', 'average_exc_pad', 'average_inc_pad'):
+            ccode += """
+                    // initialize the sum at zero
+                    collector = ((dtype_%(x)s)(0));
+                    // go through the pooled region in the unpadded input
+                    for(int m=r_st; m<r_end; m++)
+                    {
+                      for(int n=c_st; n<c_end; n++)
+                      {
+                        dtype_%(x)s a = ((dtype_%(x)s*)(PyArray_GETPTR4(%(x)s,b,k,m,n)))[0];
+                        collector += a;
+                      }
+                    }
+            """
+            if self.mode == "sum":
+                ccode += """
+                    z[0] = collector;
+                """
+            elif self.mode == 'average_inc_pad' and self.ignore_border:
+                ccode += """
+                    z[0] = collector / (%(ds0)s * %(ds1)s);
+                """
+            else:
+                ccode += """
+                    z[0] = collector / ((r_end-r_st)*(c_end-c_st));
+                """
+        ccode += """
                   }
                 }
               }
             }
         }
-        """ % locals()
+        """
+        return ccode % locals()
 
     def c_code_cache_version(self):
-        return (0, 6)
-
+        return (0, 6, 8, 3)
 
 class DownsampleFactorMaxGrad(Op):
     __props__ = ('ds', 'ignore_border', 'st', 'padding', 'mode')
@@ -477,9 +511,9 @@ class DownsampleFactorMaxGrad(Op):
             st = ds
         self.st = tuple(st)
         self.padding = tuple(padding)
-        if mode not in ['max', 'average_inc_pad', 'average_exc_pad']:
+        if mode not in ['max', 'sum', 'average_inc_pad', 'average_exc_pad']:
             raise ValueError(
-                "DownsampleFactorMax mode parameter only support 'max',"
+                "DownsampleFactorMax mode parameter only support 'max', 'sum',"
                 " 'average_inc_pad' and 'average_exc_pad'. Got %s" % mode)
         self.mode = mode
 
@@ -496,7 +530,7 @@ class DownsampleFactorMaxGrad(Op):
         return Apply(self, [x, maxout, gz], [x.type()])
 
     def perform(self, node, inp, out):
-        if self.mode != 'max' and self.padding != (0, 0):
+        if self.mode not in ('max', 'sum') and self.padding != (0, 0):
             raise NotImplementedError()
         x, maxout, gz = inp
         gx_stg, = out
@@ -511,6 +545,7 @@ class DownsampleFactorMaxGrad(Op):
         img_rows = x.shape[-2] + 2 * pad_h
         img_cols = x.shape[-1] + 2 * pad_w
         inc_pad = self.mode == 'average_inc_pad'
+        sum_mode = self.mode == 'sum'
 
         # pad the image
         if self.padding != (0, 0):
@@ -538,20 +573,23 @@ class DownsampleFactorMaxGrad(Op):
             for n in xrange(x.shape[0]):
                 for k in xrange(x.shape[1]):
                     for r in xrange(pr):
-                        if inc_pad:
+                        if sum_mode or inc_pad:
                             row_st = r * st0
                         else:
                             row_st = __builtin__.max(r * st0, self.padding[0])
                         row_end = __builtin__.min(row_st + ds0, img_rows)
                         for c in xrange(pc):
-                            if inc_pad:
+                            if sum_mode or inc_pad:
                                 col_st = c * st1
                             else:
                                 col_st = __builtin__.max(c * st1,
                                                          self.padding[1])
                             col_end = __builtin__.min(col_st + ds1, img_cols)
-                            val = gz[n, k, r, c] / ((row_end - row_st) *
-                                                    (col_end - col_st))
+                            if sum_mode:
+                              val = gz[n, k, r, c]
+                            else:
+                              val = gz[n, k, r, c] / ((row_end - row_st) *
+                                                      (col_end - col_st))
                             gx[n, k, row_st:row_end, col_st:col_end] += val
         # unpad the image
         gx = gx[:, :, pad_h:(img_rows-pad_h), pad_w:(img_cols-pad_w)]
@@ -572,12 +610,10 @@ class DownsampleFactorMaxGrad(Op):
         else:
             return [theano.tensor.zeros_like(x),
                     theano.tensor.zeros_like(maxout),
-                    theano.gradients.grad_not_implemented(
+                    theano.gradient.grad_not_implemented(
                         self, 2, gz, 'Hessian not implemented with padding')]
 
     def c_code(self, node, name, inp, out, sub):
-        if self.ds != self.st or self.padding != (0, 0):
-            raise theano.gof.utils.MethodNotDefined()
         if self.mode != 'max':
             raise theano.gof.utils.MethodNotDefined()
         x, z, gz = inp
@@ -585,13 +621,14 @@ class DownsampleFactorMaxGrad(Op):
         fail = sub['fail']
         ignore_border = int(self.ignore_border)
         ds0, ds1 = self.ds
+        st0, st1 = self.st
+        pd0, pd1 = self.padding
         return """
+        // sanity checks
         int x_typenum = PyArray_ObjectType((PyObject*)%(x)s, 0);
         int z_typenum = PyArray_ObjectType((PyObject*)%(z)s, 0);
         int gz_typenum = PyArray_ObjectType((PyObject*)%(gz)s, 0);
-        int x_shp0_usable;
-        int x_shp1_usable;
-        int z_shp0, z_shp1;
+        
         if ((x_typenum != z_typenum) || (x_typenum != gz_typenum))
         {
             PyErr_SetString(PyExc_ValueError, "input types must all match");
@@ -612,19 +649,20 @@ class DownsampleFactorMaxGrad(Op):
             PyErr_SetString(PyExc_ValueError, "gz must be a 4d ndarray");
             %(fail)s;
         }
-        z_shp0 = PyArray_DIMS(%(z)s)[2];
-        z_shp1 = PyArray_DIMS(%(z)s)[3];
-        if (%(ignore_border)s)
-        {
-            x_shp0_usable = z_shp0 * %(ds0)s;
-            x_shp1_usable = z_shp1 * %(ds1)s;
-        }
-        else
-        {
-            x_shp0_usable = PyArray_DIMS(%(x)s)[2];
-            x_shp1_usable = PyArray_DIMS(%(x)s)[3];
-        }
+        
+        int z_r, z_c;
+        z_r = PyArray_DIMS(%(z)s)[2];
+        z_c = PyArray_DIMS(%(z)s)[3];
+        
+        int r, c; // shape of the padded_input
+        r = PyArray_DIMS(%(x)s)[2];
+        c = PyArray_DIMS(%(x)s)[3];
+        r += %(pd0)s * 2;
+        c += %(pd1)s * 2;
+
+        // allocating memory for gx
         if ((!%(gx)s)
+          || !PyArray_ISCONTIGUOUS(%(gx)s)
           || *PyArray_DIMS(%(gx)s)!=4
           ||(PyArray_DIMS(%(gx)s)[0] != PyArray_DIMS(%(x)s)[0])
           ||(PyArray_DIMS(%(gx)s)[1] != PyArray_DIMS(%(x)s)[1])
@@ -635,45 +673,63 @@ class DownsampleFactorMaxGrad(Op):
           Py_XDECREF(%(gx)s);
           %(gx)s = (PyArrayObject*) PyArray_ZEROS(4, PyArray_DIMS(%(x)s), x_typenum,0);
         }
+        else {
+          PyArray_FILLWBYTE(%(gx)s, 0);
+        }
+        int r_st, r_end, c_st, c_end; // used to index into the input img x
+        dtype_%(z)s maximum; // temp var for maximum value in a region
+        if (z_r && z_c)
+        {
+            for(int b=0; b<PyArray_DIMS(%(x)s)[0]; b++){
+              for(int k=0; k<PyArray_DIMS(%(x)s)[1]; k++){
+                for(int i=0; i< z_r; i++){
+                  r_st = i * %(st0)s;
+                  r_end = r_st + %(ds0)s;
+                  // skip the padding
+                  r_st = r_st < %(pd0)s ? %(pd0)s : r_st;
+                  r_end = r_end > (r - %(pd0)s) ? r - %(pd0)s : r_end;
+                  // from padded_img space to img space
+                  r_st -= %(pd0)s;
+                  r_end -= %(pd0)s;
 
-        for(int b=0;b<PyArray_DIMS(%(x)s)[0];b++){
-          for(int k=0;k<PyArray_DIMS(%(x)s)[1];k++){
-            int mini_i = 0;
-            int zi = 0;
-            for(int i=0;i< x_shp0_usable; i++){
-               int mini_j = 0;
-               int zj = 0;
-               for(int j=0; j< x_shp1_usable; j++){
-                 dtype_%(x)s * __restrict__ xp = ((dtype_%(x)s*)(PyArray_GETPTR4(%(x)s,b,k,i,j)));
-                 dtype_%(gx)s * __restrict__ gxp = ((dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s,b,k,i,j)));
-                 dtype_%(z)s * __restrict__ zp = ((dtype_%(z)s*)(PyArray_GETPTR4(%(z)s,b,k,zi,zj)));
-                 dtype_%(gz)s * __restrict__ gzp = ((dtype_%(gz)s*)(PyArray_GETPTR4(%(gz)s,b,k,zi,zj)));
-                 gxp[0] = (zp[0] == xp[0]) ? gzp[0] : 0;
-                 mini_j = (mini_j + 1 == %(ds1)s) ? 0 : mini_j+1;
-                 zj += (mini_j == 0);
-              }//for j
-              mini_i = (mini_i + 1 == %(ds0)s) ? 0 : mini_i+1;
-              zi += (mini_i == 0);
-
-              for (int j = x_shp1_usable; j < PyArray_DIMS(%(x)s)[3]; ++j) {
-                dtype_%(gx)s * gxp = ((dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s,b,k,i,j)));
-                gxp[0] = 0;
-              }
-            }//for i
-
-            for(int i = x_shp0_usable; i < PyArray_DIMS(%(x)s)[2]; i++){
-                for (int j = 0; j < PyArray_DIMS(%(x)s)[3]; ++j) {
-                    dtype_%(gx)s * gxp = ((dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s,b,k,i,j)));
-                    gxp[0] = 0;
+                  for(int j=0; j<z_c; j++){
+                    c_st = j * %(st1)s;
+                    c_end = c_st + %(ds1)s;
+                    // skip the padding
+                    c_st = c_st < %(pd1)s ? %(pd1)s : c_st;
+                    c_end = c_end > (c - %(pd1)s) ? c - %(pd1)s : c_end;
+                    
+                    // change coordinates from padding_img space into img space
+                    c_st -= %(pd1)s;
+                    c_end -= %(pd1)s;
+                    // the maximum value
+                    maximum = ((dtype_%(z)s*)(PyArray_GETPTR4(%(z)s,b,k,i,j)))[0];
+                    // the gradient corresponding to this maximum value in z
+                    dtype_%(gz)s * gz = (
+                          (dtype_%(gz)s*)(PyArray_GETPTR4(%(gz)s, b, k, i, j)));
+                    // go through the pooled region in the unpadded input
+                    for(int m=r_st; m<r_end; m++)
+                    {
+                      for(int n=c_st; n<c_end; n++)
+                      {
+                        dtype_%(x)s a = ((dtype_%(x)s*)(PyArray_GETPTR4(%(x)s,b,k,m,n)))[0];
+                        dtype_%(gx)s * gx = (
+                          (dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s, b, k, m, n)));
+                        if (a == maximum){
+                          gx[0] = gx[0] + gz[0]; 
+                        }
+                      }
+                    }
+                  }
                 }
+              }
             }
-          }//for k
-        }//for b
+            
+        }
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 2)
-
+        return (0, 7)
 
 class DownsampleFactorMaxGradGrad(Op):
     __props__ = ('ds', 'ignore_border', 'st')

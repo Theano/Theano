@@ -1,3 +1,4 @@
+from __future__ import print_function
 
 import sys
 import os
@@ -67,15 +68,15 @@ if __name__ == '__main__':
                       'o:',
                       ['epydoc', 'rst', 'help', 'nopdf', 'cache', 'test'])[0]))
     if options['--help']:
-        print 'Usage: %s [OPTIONS]' % sys.argv[0]
-        print '  -o <dir>: output the html files in the specified dir'
-        print '  --cache: use the doctree cache'
-        print '  --rst: only compile the doc (requires sphinx)'
-        print '  --nopdf: do not produce a PDF file from the doc, only HTML'
-        print '  --epydoc: only compile the api documentation',
-        print '(requires epydoc)'
-        print '  --test: run all the code samples in the documentaton'
-        print '  --help: this help'
+        print('Usage: %s [OPTIONS]' % sys.argv[0])
+        print('  -o <dir>: output the html files in the specified dir')
+        print('  --cache: use the doctree cache')
+        print('  --rst: only compile the doc (requires sphinx)')
+        print('  --nopdf: do not produce a PDF file from the doc, only HTML')
+        print('  --epydoc: only compile the api documentation', end=' ')
+        print('(requires epydoc)')
+        print('  --test: run all the code samples in the documentaton')
+        print('  --help: this help')
         sys.exit(0)
 
     if not (options['--epydoc'] or options['--rst'] or options['--test']):
@@ -140,10 +141,10 @@ if __name__ == '__main__':
                 shutil.copy(os.path.join(workdir, 'theano.pdf'), outdir)
                 os.chdir(outdir)
                 shutil.rmtree(workdir)
-            except OSError, e:
-                print 'OSError:', e
-            except IOError, e:
-                print 'IOError:', e
+            except OSError as e:
+                print('OSError:', e)
+            except IOError as e:
+                print('IOError:', e)
 
     if options['--test']:
         mkdir("doc")

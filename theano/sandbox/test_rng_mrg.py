@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import sys
 import time
@@ -612,60 +613,48 @@ def test_binomial():
                 # test empty size (scalar)
                 ((), (), [], []),
                 ]:
+            yield (t_binomial, mean, size, const_size, var_input, input,
+                   steps, rtol)
 
-            # print ''
-            # print 'ON CPU with size=(%s) and mean(%d):' % (str(size), mean)
-            R = MRG_RandomStreams(234, use_cuda=False)
-            # Note: we specify `nstreams` to avoid a warning.
-            u = R.binomial(size=size, p=mean,
-                           nstreams=rng_mrg.guess_n_streams(size, warn=False))
-            f = theano.function(var_input, u, mode=mode)
-            # theano.printing.debugprint(f)
-            out = f(*input)
-            # print 'random?[:10]\n', out[0, 0:10]
-            # print 'random?[-1,-10:]\n', out[-1, -10:]
 
-            # Increase the number of steps if sizes implies only a few samples
-            if numpy.prod(const_size) < 10:
-                steps_ = steps * 100
-            else:
-                steps_ = steps
-            basictest(f, steps_, const_size, prefix='mrg  cpu',
-                      inputs=input, allow_01=True,
-                      target_avg=mean, mean_rtol=rtol)
+def t_binomial(mean, size, const_size, var_input, input, steps, rtol):
+    R = MRG_RandomStreams(234, use_cuda=False)
+    u = R.binomial(size=size, p=mean)
+    f = theano.function(var_input, u, mode=mode)
+    out = f(*input)
 
-            if mode != 'FAST_COMPILE' and cuda_available:
-                # print ''
-                # print 'ON GPU with size=(%s) and mean(%d):' % (str(size), mean)
-                R = MRG_RandomStreams(234, use_cuda=True)
-                u = R.binomial(size=size, p=mean, dtype='float32',
-                               nstreams=rng_mrg.guess_n_streams(size,
-                                                                warn=False))
-                # well, it's really that this test w GPU doesn't make sense otw
-                assert u.dtype == 'float32'
-                f = theano.function(var_input, theano.Out(
-                    theano.sandbox.cuda.basic_ops.gpu_from_host(u),
-                    borrow=True), mode=mode_with_gpu)
-                # theano.printing.debugprint(f)
-                gpu_out = numpy.asarray(f(*input))
-                # print 'random?[:10]\n', gpu_out[0, 0:10]
-                # print 'random?[-1,-10:]\n', gpu_out[-1, -10:]
-                basictest(f, steps_, const_size, prefix='mrg  gpu',
-                          inputs=input, allow_01=True,
-                          target_avg=mean, mean_rtol=rtol)
-                numpy.testing.assert_array_almost_equal(out, gpu_out,
-                                                        decimal=6)
+    # Increase the number of steps if sizes implies only a few samples
+    if numpy.prod(const_size) < 10:
+        steps_ = steps * 100
+    else:
+        steps_ = steps
+    basictest(f, steps_, const_size, prefix='mrg  cpu',
+              inputs=input, allow_01=True,
+              target_avg=mean, mean_rtol=rtol)
 
-            # print ''
-            # print 'ON CPU w NUMPY with size=(%s) and mean(%d):' % (str(size),
-            #                                                       mean)
-            RR = theano.tensor.shared_randomstreams.RandomStreams(234)
+    if mode != 'FAST_COMPILE' and cuda_available:
+        R = MRG_RandomStreams(234, use_cuda=True)
+        u = R.binomial(size=size, p=mean, dtype='float32')
+        # well, it's really that this test w GPU doesn't make sense otw
+        assert u.dtype == 'float32'
+        f = theano.function(var_input, theano.Out(
+                theano.sandbox.cuda.basic_ops.gpu_from_host(u),
+                borrow=True), mode=mode_with_gpu)
+        gpu_out = numpy.asarray(f(*input))
 
-            uu = RR.binomial(size=size, p=mean)
-            ff = theano.function(var_input, uu, mode=mode)
-            # It's not our problem if numpy generates 0 or 1
-            basictest(ff, steps_, const_size, prefix='numpy', allow_01=True,
-                      inputs=input, target_avg=mean, mean_rtol=rtol)
+        basictest(f, steps_, const_size, prefix='mrg  gpu',
+                  inputs=input, allow_01=True,
+                  target_avg=mean, mean_rtol=rtol)
+        numpy.testing.assert_array_almost_equal(out, gpu_out,
+                                                decimal=6)
+
+    RR = theano.tensor.shared_randomstreams.RandomStreams(234)
+
+    uu = RR.binomial(size=size, p=mean)
+    ff = theano.function(var_input, uu, mode=mode)
+    # It's not our problem if numpy generates 0 or 1
+    basictest(ff, steps_, const_size, prefix='numpy', allow_01=True,
+              inputs=input, target_avg=mean, mean_rtol=rtol)
 
 
 @attr('slow')
@@ -783,13 +772,13 @@ def basic_multinomialtest(f, steps, sample_size, target_pvals,
         avg_pvals += ival
     avg_pvals /= steps
 
-    print 'random?[:10]\n', numpy.asarray(f()[:10])
-    print prefix, 'mean', avg_pvals
+    print('random?[:10]\n', numpy.asarray(f()[:10]))
+    print(prefix, 'mean', avg_pvals)
     # < mean_rtol, 'bad mean? %s %s' % (str(avg_pvals), str(target_pvals))
-    print numpy.mean(abs(avg_pvals - target_pvals))
-    print prefix, 'time', dt
-    print prefix, 'elements', steps * numpy.prod(target_pvals.shape)
-    print prefix, 'samples/sec', steps * numpy.prod(target_pvals.shape) / dt
+    print(numpy.mean(abs(avg_pvals - target_pvals)))
+    print(prefix, 'time', dt)
+    print(prefix, 'elements', steps * numpy.prod(target_pvals.shape))
+    print(prefix, 'samples/sec', steps * numpy.prod(target_pvals.shape) / dt)
 
 
 def test_multinomial():
@@ -943,12 +932,63 @@ def test_multMatVect():
     assert numpy.allclose(r_a2, r_b[3:])
 
 
+def test_seed_fn():
+    test_use_cuda = [False]
+    if cuda_available:
+        test_use_cuda.append(True)
+    idx = tensor.ivector()
+    for use_cuda in test_use_cuda:
+        if config.mode == 'FAST_COMPILE' and use_cuda:
+            mode = 'FAST_RUN'
+        else:
+            mode = config.mode
+
+        for new_seed, same in [(234, True), (None, True), (23, False)]:
+            random = MRG_RandomStreams(234, use_cuda=use_cuda)
+            fn1 = theano.function([], random.uniform((2, 2), dtype='float32'),
+                                  mode=mode)
+            fn2 = theano.function([], random.uniform((3, 3), nstreams=2,
+                                                     dtype='float32'),
+                                  mode=mode)
+            fn3 = theano.function([idx],
+                                  random.uniform(idx, nstreams=3, ndim=1,
+                                                 dtype='float32'),
+                                  mode=mode)
+
+            fn1_val0 = fn1()
+            fn1_val1 = fn1()
+            assert not numpy.allclose(fn1_val0, fn1_val1)
+            fn2_val0 = fn2()
+            fn2_val1 = fn2()
+            assert not numpy.allclose(fn2_val0, fn2_val1)
+            fn3_val0 = fn3([4])
+            fn3_val1 = fn3([4])
+            assert not numpy.allclose(fn3_val0, fn3_val1)
+            assert fn1_val0.size == 4
+            assert fn2_val0.size == 9
+
+            random.seed(new_seed)
+
+            fn1_val2 = fn1()
+            fn1_val3 = fn1()
+            fn2_val2 = fn2()
+            fn2_val3 = fn2()
+            fn3_val2 = fn3([4])
+            fn3_val3 = fn3([4])
+            assert numpy.allclose(fn1_val0, fn1_val2) == same
+            assert numpy.allclose(fn1_val1, fn1_val3) == same
+            assert numpy.allclose(fn2_val0, fn2_val2) == same
+            assert numpy.allclose(fn2_val1, fn2_val3) == same
+            assert numpy.allclose(fn3_val0, fn3_val2) == same
+            assert numpy.allclose(fn3_val1, fn3_val3) == same
+
+
 if __name__ == "__main__":
     rng = MRG_RandomStreams(numpy.random.randint(2147462579))
     import time
-    print theano.__file__
+    print(theano.__file__)
     pvals = theano.tensor.fmatrix()
     for i in range(10):
         t0 = time.time()
         multinomial = rng.multinomial(pvals=pvals)
-        print time.time() - t0
+        print(time.time() - t0)

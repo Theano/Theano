@@ -1,3 +1,4 @@
+from __future__ import print_function
 import time
 
 import numpy
@@ -25,9 +26,9 @@ n_times = 10
 tic = time.clock()
 for i in xrange(n_times):
     f_switch(val1, val2, big_mat1, big_mat2)
-print 'time spent evaluating both values %f sec' % (time.clock() - tic)
+print('time spent evaluating both values %f sec' % (time.clock() - tic))
 
 tic = time.clock()
 for i in xrange(n_times):
     f_lazyifelse(val1, val2, big_mat1, big_mat2)
-print 'time spent evaluating one value %f sec' % (time.clock() - tic)
+print('time spent evaluating one value %f sec' % (time.clock() - tic))

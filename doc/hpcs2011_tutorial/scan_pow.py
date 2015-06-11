@@ -1,3 +1,4 @@
+from __future__ import print_function
 import theano
 import theano.tensor as T
 
@@ -16,4 +17,4 @@ final_result = result[-1]
 power = theano.function(inputs=[A,k], outputs=final_result,
                         updates=updates)
 
-print power(range(10),2)
+print(power(range(10),2))
