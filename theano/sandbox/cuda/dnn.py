@@ -350,7 +350,13 @@ class GpuDnnConvDesc(GpuOp):
 
 AddConfigVar('dnn.conv.workmem',
              "Default value for the workmem attribute of cudnn convolutions.",
-             EnumStr('small', 'none', 'large', 'guess', 'time'),
+             EnumStr('small', 'none', 'large', 'fft', 'guess', 'time'),
+             in_c_key=False)
+
+AddConfigVar('dnn.conv.workmem_bwd',
+             "Default value for the workmem attribute of cudnn gradient "
+             "convolutions.",
+             EnumStr('none', 'deterministic', 'fft', 'guess'),
              in_c_key=False)
 
 # scalar constants
