@@ -1,5 +1,6 @@
 import unittest
 import numpy
+from numpy.testing import assert_allclose
 
 import theano
 from theano.tests import unittest_tools as utt
@@ -10,6 +11,7 @@ import theano.sandbox.cuda as cuda_ndarray
 from theano.misc.pycuda_init import pycuda_available
 from theano.sandbox.cuda.cula import cula_available
 
+from theano.sandbox import cuda
 from theano.sandbox.cuda import cula
 
 if not cuda_ndarray.cuda_available:
@@ -67,3 +69,37 @@ class TestCula(unittest.TestCase):
         x_val = numpy.random.uniform(-0.4, 0.4,
                                      (A_val.shape[1], 4)).astype("float32")
         self.run_gpu_solve(A_val, x_val)
+
+
+def test_syev():
+    try:
+        from scipy.linalg.lapack import dsyev
+    except ImportError:
+        raise SkipTest('SciPy unavailable')
+
+    rng = numpy.random.RandomState(utt.fetch_seed())
+
+    def assert_geqrf_allclose(compute_v, lower, n):
+        A = rng.rand(n, n).astype(theano.config.floatX)
+        A = A + A.T - numpy.diag(numpy.diag(A))
+        A_ = theano.shared(cuda.CudaNdarray(A), borrow=True)
+        A_T = theano.shared(cuda.CudaNdarray(A.T), borrow=True)
+        dsyev_ = theano.function([], cula.gpu_syev(A_, compute_v, lower))
+        dsyev_T = theano.function([], cula.gpu_syev(A_T.T, compute_v, lower))
+        w, v, _ = dsyev(A, compute_v, lower)
+        w_, v_ = dsyev_()
+        w_T, v_T = dsyev_T()
+        assert_allclose(w, numpy.array(w_), 1e-4)
+        assert_allclose(w, numpy.array(w_T), 1e-4)
+        if compute_v:
+            # Eigenvector signs can be different
+            v_ = numpy.sign(v[:1, :]) * numpy.sign(v_[:1, :]) * numpy.array(v_)
+            v_T = (numpy.sign(v[:1, :]) * numpy.sign(v_T[:1, :]) *
+                   numpy.array(v_T))
+            assert_allclose(v, v_, 1e-4)
+            assert_allclose(v, v_T, 1e-4)
+
+    yield assert_geqrf_allclose, 1, 0, 5
+    yield assert_geqrf_allclose, 1, 1, 7
+    yield assert_geqrf_allclose, 0, 1, 50
+    yield assert_geqrf_allclose, 0, 0, 15

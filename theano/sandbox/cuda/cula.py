@@ -6,7 +6,7 @@ from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
 
 try:
-    from theano.sandbox.cuda import cuda_ndarray
+    from theano.sandbox.cuda import cuda_ndarray, CudaNdarray
     dimshuffle = cuda_ndarray.cuda_ndarray.dimshuffle
 except ImportError:
     pass
@@ -20,6 +20,22 @@ except (ImportError, OSError, pkg_resources.DistributionNotFound):
     pass
 
 cula_initialized = False
+
+
+class CulaOp(GpuOp):
+    def make_thunk(self, *args, **kwargs):
+        # Initialize CULA the first time it is needed
+        global cula_initialized
+
+        if not cula_available:
+            raise RuntimeError('Cula is not available and '
+                               'GpuSolve Op can not be constructed.')
+
+        if not cula_initialized:
+            cula.culaInitialize()
+            cula_initialized = True
+
+        return self._make_thunk(*args, **kwargs)
 
 
 class GpuSolve(GpuOp):
@@ -46,22 +62,7 @@ class GpuSolve(GpuOp):
         assert inp2.ndim == 2
         return theano.Apply(self, [inp1, inp2], [self.output_type(inp1)()])
 
-    def make_thunk(self,
-                   node,
-                   storage_map, _,
-                   no_recycling=[]):
-
-        # Initialize CULA the first time it is needed
-        global cula_initialized
-
-        if not cula_available:
-            raise RuntimeError('Cula is not available and '
-                               'GpuSolve Op can not be constructed.')
-
-        if not cula_initialized:
-            cula.culaInitialize()
-            cula_initialized = True
-
+    def _make_thunk(self, node, storage_map, _, no_recycling=[]):
         inputs = [storage_map[v] for v in node.inputs]
         outputs = [storage_map[v] for v in node.outputs]
 
@@ -136,3 +137,58 @@ class GpuSolve(GpuOp):
         return thunk
 
 gpu_solve = GpuSolve()
+
+
+class GpuSyev(CulaOp):
+    """
+    CULA symmetric real matrix eigendecomposition (LAPACK's SYEV).
+
+    :param: compute_v: Whether to compute the eigenvectors or not.
+    :param: lower: Whether to store the lower or upper triangular.
+
+    """
+    __props__ = ('jobz', 'uplo')
+
+    def __init__(self, jobz=1, uplo=0):
+        self.jobz = ('N', 'V')[jobz]
+        # LAPACK expects Fortran order
+        self.uplo = ('U', 'L')[1 - uplo]
+
+    def output_type(self):
+        return [CudaNdarrayType(broadcastable=[False])(),
+                CudaNdarrayType(broadcastable=[False, False])()]
+
+    def make_node(self, inp):
+        inp = as_cuda_ndarray_variable(inp)
+
+        assert inp.ndim == 2
+        return theano.Apply(self, [inp], self.output_type())
+
+    def _make_thunk(self, node, storage_map, _, no_recycling=[]):
+        inputs = [storage_map[v] for v in node.inputs]
+        outputs = [storage_map[v] for v in node.outputs]
+
+        def thunk():
+            # Matrix
+            A = inputs[0][0]
+            n, m = A.shape
+            assert m == n
+            lda = max(1, n)
+
+            A_copy = A.copy()
+
+            # Allocate array for the eigenvectors
+            w = CudaNdarray.zeros((n,))
+
+            cula.culaDeviceSsyev(self.jobz, self.uplo, n, A_copy.gpudata,
+                                 lda, w.gpudata)
+
+            # Assign outputs
+            outputs[0][0] = w
+            outputs[1][0] = dimshuffle(A_copy, (1, 0))
+
+        return thunk
+
+
+def gpu_syev(a, compute_v=1, lower=0):
+    return GpuSyev(compute_v, lower)(a)
