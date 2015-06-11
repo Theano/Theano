@@ -83,8 +83,14 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
                                                      requestedCount,
                                                      &count,
                                                      &choosen_algo_perf);
+          if (err != CUDNN_STATUS_SUCCESS) {
+            PyErr_Format(PyExc_RuntimeError,
+                         "GpuDnnConv: error selecting convolution algo: %s",
+                         cudnnGetErrorString(err));
+            return 1;
+          }
+
           chosen_algo = choosen_algo_perf.algo;
-          fprintf(stdout, "Choose algo %i\n", chosen_algo);
         }
         else
         {
@@ -97,13 +103,13 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
                                                     CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
                                                     free,
                                                     &chosen_algo);
-        }
 
-        if (err != CUDNN_STATUS_SUCCESS) {
-          PyErr_Format(PyExc_RuntimeError,
-                       "GpuDnnConv: error selecting convolution algo: %s",
-                       cudnnGetErrorString(err));
-          return 1;
+          if (err != CUDNN_STATUS_SUCCESS) {
+            PyErr_Format(PyExc_RuntimeError,
+                         "GpuDnnConv: error selecting convolution algo: %s",
+                         cudnnGetErrorString(err));
+            return 1;
+          }
         }
 
         // Store the shapes of the inputs and kernels as well as the chosen
