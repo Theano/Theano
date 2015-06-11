@@ -129,7 +129,7 @@ def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):
 
     t0 = time.time()
     pyres = pyconv3d(signals, filters)
-    print time.time() - t0
+    print(time.time() - t0)
 
     s_signals = shared(signals)
     s_filters = shared(filters)
@@ -145,7 +145,7 @@ def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):
 
     t0 = time.time()
     newconv3d()
-    print time.time() - t0
+    print(time.time() - t0)
     utt.assert_allclose(pyres, s_output.get_value(borrow=True))
     gsignals, gfilters = theano.grad(out.sum(), [s_signals, s_filters])
     gnewconv3d = theano.function([], [],
@@ -156,7 +156,7 @@ def test_conv3d(mode=mode_without_gpu, shared=theano.tensor._shared):
 
     t0 = time.time()
     gnewconv3d()
-    print 'grad', time.time() - t0
+    print('grad', time.time() - t0)
 
     Ns, Ts, C, Hs, Ws = 3, 3, 3, 5, 5
     Nf, Tf, C, Hf, Wf = 4, 1, 3, 2, 2
