@@ -386,8 +386,8 @@ class GpuDnnConv(DnnBase, COp):
 
     def __init__(self, workmem=None, inplace=False):
         """
-        :param workmem: either 'none', 'small' or 'large'.  Default is
-        the value of :attr:`config.dnn.conv.workmem`.
+        :param workmem: either 'none', 'small', 'large', 'fft', 'time' or
+        'guess'. Default is the value of :attr:`config.dnn.conv.workmem`.
         """
         COp.__init__(self, ["dnn_base.c", "dnn_conv_base.c", "dnn_fwd.c"],
                      "APPLY_SPECIFIC(conv_fwd)")
