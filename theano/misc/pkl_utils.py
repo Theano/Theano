@@ -96,9 +96,9 @@ def load_reduce(self):
             except Exception:
                 pass
 
-        if self.is_verbose:
-            print(sys.exc_info())
-            print(func, args)
+#        if self.is_verbose:
+#            print(sys.exc_info())
+#            print(func, args)
 
         raise
 

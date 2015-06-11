@@ -377,6 +377,8 @@ class GpuDnnConv(DnnBase, COp):
     :param descr: the convolution descriptor
     """
     __props__ = ('workmem', 'inplace')
+    __input_name__ = ('image', 'kernel', 'output',
+                      'descriptor', 'alpha', 'beta')
 
     def __init__(self, workmem=None, inplace=False):
         """
@@ -501,6 +503,7 @@ class GpuDnnConvGradW(DnnBase, COp):
 
     """
     __props__ = ('inplace',)
+    __input_name__ = ('image', 'grad', 'output', 'descriptor', 'alpha', 'beta')
 
     def __init__(self, inplace=False):
         COp.__init__(self, ["dnn_base.c", "dnn_conv_base.c", "dnn_gw.c"],
@@ -573,6 +576,8 @@ class GpuDnnConvGradI(DnnBase, COp):
 
     """
     __props__ = ('inplace',)
+    __input_name__ = ('kernel', 'grad', 'output',
+                      'descriptor', 'alpha', 'beta')
 
     def __init__(self, inplace=False):
         COp.__init__(self, ["dnn_base.c", "dnn_conv_base.c", "dnn_gi.c"],

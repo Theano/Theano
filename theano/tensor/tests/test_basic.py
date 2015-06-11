@@ -47,7 +47,8 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         itensor3, Tile, switch, Diagonal, Diag,
         nonzero, flatnonzero, nonzero_values,
         stacklists, DimShuffle, hessian, ptp, power,
-        swapaxes, choose, Choose, NoneConst, AllocEmpty
+        swapaxes, choose, Choose, NoneConst, AllocEmpty,
+        isclose, allclose,
         )
 
 from theano.tests import unittest_tools as utt
@@ -1129,7 +1130,8 @@ _grad_broadcast_unary_abs1_no_complex = dict(
         )
 
 _grad_broadcast_unary_0_2_no_complex = dict(
-        normal=[numpy.asarray(rand_ranged(0, 2, (2, 3)), dtype=floatX)],
+    # Don't go too close to 2 for tests in float32
+        normal=[numpy.asarray(rand_ranged(0, 1.9, (2, 3)), dtype=floatX)],
         )
 
 # inplace ops when the input is integer and the output is float*
@@ -1759,7 +1761,7 @@ _good_broadcast_unary_gammaln = dict(
     empty=(numpy.asarray([], dtype=config.floatX),),)
 _grad_broadcast_unary_gammaln = dict(
     # smaller range as our grad method does not estimate it well enough.
-    normal=(rand_ranged(1e-8, 8, (2, 3)),),)
+    normal=(rand_ranged(1e-1, 8, (2, 3)),),)
 
 GammaTester = makeBroadcastTester(
     op=tensor.gamma,
@@ -4118,6 +4120,75 @@ class test_comparison(unittest.TestCase):
                     self.assertTrue(numpy.all(v == (l != r)), (v, (l != r)))
                 except TypeError:
                     assert err
+
+    def test_isclose(self):
+        for dtype in ['float64', 'float32', 'complex64', 'complex128']:
+            l = numpy.asarray(
+                [0., 1., -1., 0.,
+                 numpy.nan, numpy.inf, -numpy.inf, numpy.inf],
+                dtype=dtype)
+            r = numpy.asarray(
+                [0., 1.0001, -1.000000000001, numpy.nan,
+                 numpy.nan, numpy.inf, numpy.inf, 0.],
+                dtype=dtype)
+            for x, y, err in [
+                (shared(l.astype(dtype)), shared(r.astype(dtype)), False),
+                (l, shared(r.astype(dtype)), True),
+                (constant(l), shared(r.astype(dtype)), False),
+                (shared(l.astype(dtype)), r, False),
+                (shared(l.astype(dtype)), constant(r), False),
+            ]:
+                try:
+                    fn1 = inplace_func([], isclose(x, y, equal_nan=False))
+                    fn2 = inplace_func([], isclose(x, y, equal_nan=True))
+                    v1 = fn1()
+                    v2 = fn2()
+                    self.assertTrue(
+                        numpy.all(
+                            v1 == numpy.asarray(
+                                [True, False, True, False,
+                                 False, True, False, False],
+                                dtype="bool"
+                            )
+                        ),
+                        numpy.all(
+                            v2 == numpy.asarray(
+                                [True, False, True, False,
+                                 True, True, False, False],
+                                dtype="bool"
+                            )
+                        )
+                    )
+                except TypeError:
+                    if not dtype.startswith('complex'):
+                        assert err
+
+    def test_allclose(self):
+        # equal_nan argument not in current version of numpy allclose,
+        # force it to False.
+        for dtype in ['float64', 'float32', 'complex64', 'complex128']:
+            l = numpy.asarray(
+                [0., 1., -1., 0.,
+                 numpy.nan, numpy.inf, -numpy.inf, numpy.inf],
+                dtype=dtype)
+            r = numpy.asarray(
+                [0., 1.0001, -1.000000000001, numpy.nan,
+                 numpy.nan, numpy.inf, numpy.inf, 0.],
+                dtype=dtype)
+            for x, y, err in [
+                (shared(l.astype(dtype)), shared(r.astype(dtype)), False),
+                (l, shared(r.astype(dtype)), True),
+                (constant(l), shared(r.astype(dtype)), False),
+                (shared(l.astype(dtype)), r, False),
+                (shared(l.astype(dtype)), constant(r), False),
+            ]:
+                try:
+                    fn = inplace_func([], allclose(x, y, equal_nan=False))
+                    v = fn()
+                    self.assertTrue(numpy.all(v == numpy.allclose(l, r)))
+                except TypeError:
+                    if not dtype.startswith('complex'):
+                        assert err
 
 
 class test_bitwise(unittest.TestCase):

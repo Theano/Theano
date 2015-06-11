@@ -345,7 +345,7 @@ def use_c_ger(node):
 
 @local_optimizer([CGer(False)])
 def make_c_ger_destructive(node):
-    if node.op == cger_no_inplace:
+    if isinstance(node.op, CGer) and not node.op.destructive:
         return [cger_inplace(*node.inputs)]
 
 
@@ -800,7 +800,7 @@ def use_c_gemv(node):
 
 @local_optimizer([CGemv(inplace=False)])
 def make_c_gemv_destructive(node):
-    if node.op == cgemv_no_inplace:
+    if isinstance(node.op, CGemv) and not node.op.inplace:
         return [cgemv_inplace(*node.inputs)]
 
 

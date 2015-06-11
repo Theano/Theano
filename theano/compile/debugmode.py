@@ -185,6 +185,13 @@ class BadThunkOutput(DebugModeError):
                                   for val in self.inputs_val], file=sio)
         print("  Inputs Strides:", [getattr(val, 'strides', None)
                                     for val in self.inputs_val], file=sio)
+        scalar_values = []
+        for ipt in self.inputs_val:
+            if getattr(ipt, "size", -1) <= 10:
+                scalar_values.append(ipt)
+            else:
+                scalar_values.append("not shown")
+        print("  Inputs values: %s" % scalar_values, file=sio)
         print("  Bad Variable:", self.r, file=sio)
         print("  thunk1  :", self.thunk1, file=sio)
         print("  thunk2  :", self.thunk2, file=sio)

@@ -225,14 +225,31 @@ class EquilibriumDB(DB):
     def __init__(self, ignore_newtrees=True):
         super(EquilibriumDB, self).__init__()
         self.ignore_newtrees = ignore_newtrees
+        self.__final__ = {}
+
+    def register(self, name, obj, *tags, **kwtags):
+        # if name == 'cut_gpua_constant_transfers':
+        #     import ipdb;ipdb.set_trace()
+        if 'final_opt' in kwtags:
+            final_opt = kwtags['final_opt']
+            kwtags.pop('final_opt', None)
+        else:
+            final_opt = False
+        super(EquilibriumDB, self).register(name, obj, *tags, **kwtags)
+        self.__final__[name] = final_opt
 
     def query(self, *tags, **kwtags):
-        opts = super(EquilibriumDB, self).query(*tags, **kwtags)
+        _opts = super(EquilibriumDB, self).query(*tags, **kwtags)
+        final_opts = [o for o in _opts if self.__final__.get(o.name, False)]
+        opts = [o for o in _opts if o not in final_opts]
+        if len(final_opts) == 0:
+            final_opts = None
         return opt.EquilibriumOptimizer(
             opts,
             max_use_ratio=config.optdb.max_use_ratio,
             ignore_newtrees=self.ignore_newtrees,
-            failure_callback=opt.NavigatorOptimizer.warn_inplace)
+            failure_callback=opt.NavigatorOptimizer.warn_inplace,
+            final_optimizers=final_opts)
 
 
 class SequenceDB(DB):

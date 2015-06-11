@@ -109,7 +109,8 @@ except ImportError:
                     preargs.append("-D NPY_F_CONTIGUOUS=NPY_ARRAY_F_CONTIGUOUS")
 
             cmodule.GCC_compiler.compile_str(dirname, code, location=loc,
-                                             preargs=preargs)
+                                             preargs=preargs,
+                                             hide_symbols=False)
             # Save version into the __init__.py file.
             init_py = os.path.join(loc, '__init__.py')
             open(init_py, 'w').write('_version = %s\n' % version)

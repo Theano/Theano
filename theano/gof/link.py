@@ -144,8 +144,11 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
         clients = [[c[0] for c in var.clients] for var in node.outputs]
         detailed_err_msg += ("Inputs shapes: %s" % shapes +
                              "\nInputs strides: %s" % strides +
-                             "\nInputs values: %s" % scalar_values +
-                             "\nOutputs clients: %s\n" % clients)
+                             "\nInputs values: %s" % scalar_values)
+        if hasattr(node.op, '__input_name__'):
+            detailed_err_msg += "\nInputs name: %s\n" % str(node.op.__input_name__)
+
+        detailed_err_msg += "\nOutputs clients: %s\n" % clients
     else:
         hints.append(
             "HINT: Use another linker then the c linker to"

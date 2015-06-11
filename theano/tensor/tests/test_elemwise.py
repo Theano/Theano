@@ -6,6 +6,7 @@ import unittest
 import numpy
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
+from nose.tools import raises
 
 import theano
 from theano import gof, scalar, config
@@ -670,6 +671,13 @@ class test_Prod(unittest.TestCase):
         pwz_a0 = ProdWithoutZeros(axis=0)(x)
         fn_a0 = theano.function([x], pwz_a0, mode=self.mode)
         assert numpy.allclose(fn_a0(x_val), [1, 10, 162])
+
+    @raises(theano.gradient.NullTypeGradError)
+    def test_prod_without_zeros_grad(self):
+        x = theano.tensor.dmatrix()
+        pwz_a1 = ProdWithoutZeros(axis=0)(x)
+        pwz_grad = theano.grad(theano.tensor.sum(pwz_a1), x)
+        fn_a1 = theano.function([x], pwz_grad, mode=self.mode)
 
     @attr('slow')
     def test_other_grad_tests(self):
