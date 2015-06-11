@@ -346,7 +346,7 @@ class GpuDnnConvDesc(GpuOp):
 
 AddConfigVar('dnn.conv.workmem',
              "Default value for the workmem attribute of cudnn convolutions.",
-             EnumStr('small', 'none', 'large'),
+             EnumStr('small', 'none', 'large', 'guess', 'time'),
              in_c_key=False)
 
 # scalar constants
@@ -393,7 +393,8 @@ class GpuDnnConv(DnnBase, COp):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [2]}
-        assert self.workmem in ['none', 'small', 'large']
+        assert self.workmem in ['none', 'small', 'large', 'fft', 'time',
+                                'guess']
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -413,18 +414,37 @@ class GpuDnnConv(DnnBase, COp):
             if self.workmem == 'none':
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM'
                 choose_alg = '0'
+                choose_alg_time = '0'
             elif self.workmem == 'small':
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM'
                 choose_alg = '0'
+                choose_alg_time = '0'
             elif self.workmem == 'large':
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_GEMM'
                 choose_alg = '0'
-            elif self.workmem == 'time':
-                alg = "0"
+                choose_alg_time = '0'
+            elif self.workmem == 'fft':
+                alg = 'CUDNN_CONVOLUTION_FWD_ALGO_FFT'
+                choose_alg = '0'
+                choose_alg_time = '0'
+            elif self.workmem == 'guess':
+                # The convolution implementation should be choosen according
+                # to a heuristic
+                alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM'
                 choose_alg = '1'
+                choose_alg_time = '0'
+            elif self.workmem == 'time':
+                # The convolution implementation should be choosen by timing
+                # every available implementation
+                alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM'
+                choose_alg = '1'
+                choose_alg_time = '1'
+
             alg_def = ('CONV_ALGO', alg)
             alg_choose_def = ('CHOOSE_ALGO', choose_alg)
-        return [alg_def, alg_choose_def] + inpl_def
+            alg_choose_time_def = ('CHOOSE_ALGO_TIME', choose_alg_time)
+
+        return [alg_def, alg_choose_def, alg_choose_time_def] + inpl_def
 
     def make_node(self, img, kern, output, desc, alpha=None, beta=None):
         img = as_cuda_ndarray_variable(img)

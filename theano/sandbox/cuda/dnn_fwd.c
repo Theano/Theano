@@ -7,7 +7,7 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
   cudnnStatus_t err = CUDNN_STATUS_SUCCESS;
   if (CudaNdarray_HOST_DIMS(input)[1] != CudaNdarray_HOST_DIMS(kerns)[1]) {
     PyErr_SetString(PyExc_ValueError,
-		    "GpuDnnConv images and kernel must have the same stack size\n");
+                    "GpuDnnConv images and kernel must have the same stack size\n");
     return 1;
   }
 
@@ -35,7 +35,8 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
     void *workspace;
     cudnnConvolutionFwdAlgo_t chosen_algo;
 
-    if (CHOOSE_ALGO){
+    if (CHOOSE_ALGO)
+    {
 
       // Check if the input and the kernels have the same shape as they have
       // last time the apply node was executed
@@ -48,7 +49,7 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
                           APPLY_SPECIFIC(previous_kerns_shape)[i]);
       }
 
-      if (same_shapes)
+      if (!same_shapes)
       {
         // The shape of the inputs and/or the kernels is different from the
         // last execution. Use the current shapes to infer the implementation
@@ -62,18 +63,41 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
           fprintf(stderr,
                   "Error when trying to find the memory information"
                   " on the GPU: %s\n", cudaGetErrorString(err2));
+          return 1;
         }
 
         // Obtain a convolution algorithm appropriate for the input and kernel
-        // shapes
-        err = cudnnGetConvolutionForwardAlgorithm(_handle,
-                                                  APPLY_SPECIFIC(input),
-                                                  APPLY_SPECIFIC(kerns),
-                                                  desc,
-                                                  APPLY_SPECIFIC(output),
-                                                  CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
-                                                  free,
-                                                  &chosen_algo);
+        // shapes. Either by choosing one according to heuristics or by making
+        // CuDNN time every implementation and choose the best one.
+        if (CHOOSE_ALGO_TIME)
+        {
+          // Time the different implementations to choose the best one
+          int requestedCount = 2;
+          int count;
+          cudnnConvolutionFwdAlgoPerf_t choosen_algo_perf;
+          err = cudnnFindConvolutionForwardAlgorithm(_handle,
+                                                     APPLY_SPECIFIC(input),
+                                                     APPLY_SPECIFIC(kerns),
+                                                     desc,
+                                                     APPLY_SPECIFIC(output),
+                                                     requestedCount,
+                                                     &count,
+                                                     &choosen_algo_perf);
+          chosen_algo = choosen_algo_perf.algo;
+          fprintf(stdout, "Choose algo %i\n", chosen_algo);
+        }
+        else
+        {
+          // Use heuristics to choose the implementation
+          err = cudnnGetConvolutionForwardAlgorithm(_handle,
+                                                    APPLY_SPECIFIC(input),
+                                                    APPLY_SPECIFIC(kerns),
+                                                    desc,
+                                                    APPLY_SPECIFIC(output),
+                                                    CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
+                                                    free,
+                                                    &chosen_algo);
+        }
 
         if (err != CUDNN_STATUS_SUCCESS) {
           PyErr_Format(PyExc_RuntimeError,
