@@ -72,7 +72,7 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
         if (CHOOSE_ALGO_TIME)
         {
           // Time the different implementations to choose the best one
-          int requestedCount = 2;
+          int requestedCount = 1;
           int count;
           cudnnConvolutionFwdAlgoPerf_t choosen_algo_perf;
           err = cudnnFindConvolutionForwardAlgorithm(_handle,
