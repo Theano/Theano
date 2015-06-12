@@ -1692,6 +1692,7 @@ class _Linker(gof.link.LocalLinker):
         self.no_recycling = no_recycling
         return self
 
+
     def make_all(self, profiler=None, input_storage=None,
                  output_storage=None, storage_map=None):
         # can't import at toplevel because of circular import TODO:

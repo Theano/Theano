@@ -253,7 +253,7 @@ class T_function(unittest.TestCase):
         fgraph_ori = ori.maker.fgraph
         fgraph_cpy = cpy.maker.fgraph
 
-        # assert intermediate and Constants storages are shared. 
+        # assert intermediate and Constants storages are shared.
         # and output stoarges are not shared
         i_o_variables = fgraph_cpy.inputs + fgraph_cpy.outputs
         ori_storages = storage_map_ori.values()
