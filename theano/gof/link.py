@@ -490,18 +490,24 @@ def map_storage(fgraph, order, input_storage, output_storage, storage_map=None):
     """
     # each Apply argument's data is stored in a list of length 1 (these lists act like pointers)
 
+    if storage_map is None:
+        storage_map = {}
+
     # input_storage is a list of data-containers for the inputs.
     if input_storage is None:
         input_storage = [[None] for input in fgraph.inputs]
     else:
         assert len(fgraph.inputs) == len(input_storage)
 
-    if storage_map is None:
-        storage_map = {}
-
     # add input storage into storage_map
     for r, storage in zip(fgraph.inputs, input_storage):
-        storage_map[r] = storage
+        if r in storage_map:
+            assert storage_map[r] is storage, (
+              "Given input_storage conflicts with storage in given"
+              "storage_map. Given input_storage: ", storage,
+              "Storage in storage_map: ", storage_map[r])
+        else:
+            storage_map[r] = storage
 #     for orphan in fgraph.orphans:
 #         if not isinstance(orphan, Constant):
 #             raise TypeError("Cannot link a graph with non-constant orphans.", orphan)
@@ -511,7 +517,13 @@ def map_storage(fgraph, order, input_storage, output_storage, storage_map=None):
     if output_storage is not None:
         assert len(fgraph.outputs) == len(output_storage)
         for r, storage in zip(fgraph.outputs, output_storage):
-            storage_map[r] = storage
+            if r in storage_map:
+                assert storage_map[r] is storage, (
+                 "Given output_storage conflicts with storage in given"
+                 "storage_map. Given output_storage: ", storage,
+                 "Storage in storage_map: ", storage_map[r])
+            else:
+                storage_map[r] = storage
 
     # allocate storage for intermediate computation
     for node in order:

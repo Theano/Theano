@@ -510,9 +510,9 @@ returned directly?"""
             share_memory -- { boolean } Default is False. When True, two
             function share intermediate storages(storages except input and
             output storages). Otherwise two function will only share partial
-            storages( see method __copy__() ). If two functions share memory
-            and allow_gc=False, this will increase executing speed and save 
-            memory.
+            storages( see method __copy__() ) and same maker. If two functions
+            share memory and allow_gc=False, this will increase executing speed
+            and save memory.
         ---------------------
         Returns:
             func -- Copied theano.Function
@@ -560,6 +560,13 @@ returned directly?"""
                 else:
                     storage = getattr(in_cpy, 'value', None)
                 input_storage.append(storage)
+
+            # pop out input_storage in storage_map and only use storage of In
+            # instances to initialize the make, so that we can avoid 
+            # storage conflictions in link.map_storage()
+            assert len(fg_cpy.inputs) == len(input_storage)
+            for in_var in fg_cpy.inputs:
+                new_storage_map.pop(in_var)
 
             # reinitialize new maker and create new function
             return maker.__class__(inputs=ins, outputs=maker.outputs,
