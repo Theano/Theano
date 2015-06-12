@@ -245,18 +245,10 @@ class FunctionGraph(utils.object2):
         return False
 
     ### import ###
-
-    def __import_r__(self, variables, reason):
+    def __import_r__(self, variable, reason):
         """
         Import variables to this FunctionGraph and also their apply_node,
         if those nodes are not in this graph.
-        ----------------------
-        Parameters;
-            variables -- Iterable if variables needed to import
-            reason -- String. Reason.
-        ----------------------
-        Returns:
-            None
         """
         global NullType
         if NullType is None:
