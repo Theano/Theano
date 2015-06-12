@@ -38,7 +38,7 @@ class CulaOp(GpuOp):
         return self._make_thunk(*args, **kwargs)
 
 
-class GpuSolve(GpuOp):
+class GpuSolve(CulaOp):
     """
     CULA GPU solver OP.
 
