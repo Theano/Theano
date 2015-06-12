@@ -509,7 +509,10 @@ returned directly?"""
         Params:
             share_memory -- { boolean } Default is False. When True, two
             function share intermediate storages(storages except input and
-            output storages)
+            output storages). Otherwise two function will only share partial
+            storages( see method __copy__() ). If two functions share memory
+            and allow_gc=False, this will increase executing speed and save 
+            memory.
         ---------------------
         Returns:
             func -- Copied theano.Function
