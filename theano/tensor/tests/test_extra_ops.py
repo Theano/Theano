@@ -2,10 +2,9 @@ from nose.plugins.attrib import attr
 import numpy as np
 import numpy
 import unittest
+
 import theano
-
 from theano.tests import unittest_tools as utt
-
 from theano.tensor.extra_ops import (CumsumOp, cumsum, CumprodOp, cumprod,
                                      BinCountOp, bincount, DiffOp, diff,
                                      squeeze, compress, RepeatOp, repeat,
@@ -671,7 +670,7 @@ class test_Unique(utt.InferShapeTester):
                     Unique(True), 
                     Unique(False, True), 
                     Unique(True, True)]
-        if np.__version__ >= "1.9.0" :
+        if bool(numpy_ver >= [1, 9]) :
             self.ops.extend([
                         Unique(False, False, True), 
                         Unique(True, False, True), 
@@ -689,7 +688,7 @@ class test_Unique(utt.InferShapeTester):
                               np.unique(inp, True), 
                               np.unique(inp, False, True), 
                               np.unique(inp, True, True)]
-        if np.__version__ >= "1.9.0" :
+        if bool(numpy_ver >= [1, 9]) :
             list_outs_expected.extend([
                                 np.unique(inp, False, False, True), 
                                 np.unique(inp, True, False, True), 
@@ -698,11 +697,8 @@ class test_Unique(utt.InferShapeTester):
         for op, outs_expected in zip(self.ops, list_outs_expected) :
             f = theano.function(inputs=[x], outputs=op(x, return_list=True))
             outs = f(inp)
-            print outs
             # Compare the result computed to the expected value.
             for out, out_exp in zip(outs, outs_expected):
-                print out
-                print out_exp
                 utt.assert_allclose(out, out_exp)
         
     def test_basic_matrix(self):            
@@ -715,7 +711,7 @@ class test_Unique(utt.InferShapeTester):
                               np.unique(inp, True),
                               np.unique(inp, False, True),
                               np.unique(inp, True, True)]
-        if np.__version__ >= "1.9.0" :
+        if bool(numpy_ver >= [1, 9]) :
             list_outs_expected.extend([
                                 np.unique(inp, False, False, True),
                                 np.unique(inp, True, False, True),
@@ -724,11 +720,8 @@ class test_Unique(utt.InferShapeTester):
         for op, outs_expected in zip(self.ops, list_outs_expected):
             f = theano.function(inputs=[x], outputs=op(x, return_list=True))
             outs = f(inp)
-            print outs
             # Compare the result computed to the expected value.
             for out, out_exp in zip(outs, outs_expected):
-                print out
-                print out_exp
                 utt.assert_allclose(out, out_exp)
         
     def test_infer_shape_vector(self):                  

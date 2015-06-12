@@ -1,11 +1,10 @@
 import numpy as np
 import numpy
 import warnings
-import theano
 
+import theano
 from theano.tensor import basic
 from theano.tensor import nlinalg
-
 from theano import gof, scalar
 from theano.gradient import DisconnectedType
 tensor = basic
@@ -1014,29 +1013,24 @@ class Unique(theano.Op):
                  return_counts=False):
         self.return_index = return_index
         self.return_inverse = return_inverse
-        self.return_counts = return_counts
-        if self.return_counts == True and np.__version__ < "1.9.0" :
+        self.return_counts = return_counts   
+        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+        if self.return_counts == True and bool(numpy_ver < [1, 9]) :
             raise RuntimeError(
                 "Numpy version = " + np.__version__ +
                 ". Option 'return_counts=True' works starting"
                 " from version 1.9.0.")
 
     def make_node(self, x):
-        x = basic.as_tensor_variable(x)
-        #x = x.flatten()
-        
-        outputs = []
-        # output0 = basic.TensorType(broadcastable=[False], dtype=x.dtype)()
-        output0 = x.flatten().type()
-        outputs.append(output0)
+        x = basic.as_tensor_variable(x)        
+        outputs = [basic.TensorType(broadcastable=[False], dtype=x.dtype)()]
         typ = basic.TensorType(broadcastable=[False], dtype='int64')
         if self.return_index :
             outputs.append(typ())
         if self.return_inverse :
             outputs.append(typ())
         if self.return_counts :
-            outputs.append(typ())
-            
+            outputs.append(typ())            
         return theano.Apply(self, [x], outputs)
 
     def perform(self, node, inputs, output_storage):
@@ -1061,7 +1055,7 @@ class Unique(theano.Op):
     def infer_shape(self, node, i0_shapes):
         ret = node.fgraph.shape_feature.default_infer_shape(node, i0_shapes)
         if self.return_inverse :
-            shape = (np.prod(i0_shapes[0]), )
+            shape = (basic.prod(i0_shapes[0]), )
             if self.return_index :
                 ret[2] = shape
                 return ret
