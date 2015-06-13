@@ -517,7 +517,6 @@ returned directly?"""
         Returns:
             func -- Copied theano.Function
         """
-
         if not share_memory:
             return self.__copy__()
         else:
@@ -528,26 +527,26 @@ returned directly?"""
             # copy fgraph and get memo
             fg_cpy, memo = maker.fgraph.clone_get_equiv(attach_feature=False)
 
-            # construct new storage_map that map new variable to old storage
+            # Construct new storage_map that map new variable to old storage,
             # so that the ensuing function shares storage with the original one
-            new_storage_map = {}
-            storage_map = self.fn.storage_map
-
             # TODO: We could share the output storage, but we must make sure
             # 2 different function call won't override each other values. This
             # is already done elsewhere, so to reuse it the user would need to
             # use Out(var, borrow=True) and maybe the mutable=True flag too.
             # But to be safe for now as it isn't documented and we aren't sure
             # it is well tested, we don't share the part of the storage_map.
+            storage_map = self.fn.storage_map
+            new_storage_map = {}
             for key in storage_map.keys():
                 if key not in maker.fgraph.outputs:
                     new_storage_map[memo[key]] = storage_map[key]
 
             input_storage = []
-            for in_ori, in_cpy in zip(maker.inputs, ins):
-                # Since we reuse original Out instances, the copied In
-                # instances should use the original variabls as their variables
-                # and updates. Otherwise the compilation will fail at function
+            assert len(ins) == len(fg_cpy.inputs)
+            for in_ori, in_cpy, in_v in zip(maker.inputs, ins, fg_cpy.inputs):
+                # Since we reuse original Out instances, copied In instances
+                # should use the original variabls as their variables and
+                # updates. Otherwise the compilation will fail at function
                 # FunctionMaker._check_unused_inputs()
                 in_cpy.variable = in_ori.variable
                 in_cpy.update = in_ori.update
@@ -561,12 +560,10 @@ returned directly?"""
                     storage = getattr(in_cpy, 'value', None)
                 input_storage.append(storage)
 
-            # pop out input_storage in storage_map and only use storage of In
-            # instances to initialize the make, so that we can avoid 
-            # storage conflictions in link.map_storage()
-            assert len(fg_cpy.inputs) == len(input_storage)
-            for in_var in fg_cpy.inputs:
-                new_storage_map.pop(in_var)
+                # pop out input_storage in storage_map and only use storage of
+                # In instances to initialize the make, to avoid storage
+                # conflictions in link.map_storage()
+                new_storage_map.pop(in_v)
 
             # reinitialize new maker and create new function
             return maker.__class__(inputs=ins, outputs=maker.outputs,

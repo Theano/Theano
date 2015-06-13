@@ -241,38 +241,42 @@ class T_function(unittest.TestCase):
 
     def test_copy_share_memory(self):
         x = T.fscalar('x')
-        y = T.tanh((x+2)/(x-0.2)**2)
+        # SharedVariable for tests, one of them has update
+        y = theano.shared(value=1)
+        z = theano.shared(value=2)
+        out = T.tanh((x+y+2)/(x+z-0.2)**2)
 
-        # test for PerformaLinker, will cover VM_linker later
-        ori = theano.function([x], [y], mode="FAST_COMPILE")
-        cpy = ori.copy(share_memory=True)
+        # Test for different linkers
+        for mode in ["FAST_RUN","FAST_COMPILE"]:
+            ori = theano.function([x], [out], mode=mode,updates={z:z+1})
+            cpy = ori.copy(share_memory=True)
 
-        # test if memories shared
-        storage_map_ori = ori.fn.storage_map
-        storage_map_cpy = cpy.fn.storage_map
-        fgraph_ori = ori.maker.fgraph
-        fgraph_cpy = cpy.maker.fgraph
+            # Test if memories shared
+            storage_map_ori = ori.fn.storage_map
+            storage_map_cpy = cpy.fn.storage_map
+            fgraph_ori = ori.maker.fgraph
+            fgraph_cpy = cpy.maker.fgraph
 
-        # assert intermediate and Constants storages are shared.
-        # and output stoarges are not shared
-        i_o_variables = fgraph_cpy.inputs + fgraph_cpy.outputs
-        ori_storages = storage_map_ori.values()
-        for key in storage_map_cpy.keys():
-            storage = storage_map_cpy[key]
-            storage_is_shared = any([ storage is s for s in ori_storages])
-            if key not in i_o_variables or isinstance(key, theano.tensor.Constant):
-                self.assertTrue(storage_is_shared)
-            elif key in fgraph_cpy.outputs:
-                self.assertFalse(storage_is_shared)
+            # Assert intermediate and Constants storages are shared.
+            # and output stoarges are not shared
+            i_o_variables = fgraph_cpy.inputs + fgraph_cpy.outputs
+            ori_storages = storage_map_ori.values()
+            for key in storage_map_cpy.keys():
+                storage = storage_map_cpy[key]
+                storage_is_shared = any([ storage is s for s in ori_storages])
+                if key not in i_o_variables or isinstance(key, theano.tensor.Constant):
+                    self.assertTrue(storage_is_shared)
+                elif key in fgraph_cpy.outputs:
+                    self.assertFalse(storage_is_shared)
 
-        # assert storages of SharedVariable without updates are shared
-        for (input, _1, _2), here, there in zip(ori.indices,
-                                                ori.input_storage,
-                                                cpy.input_storage):
-            if not input.mutable:
-                self.assertTrue(here.data is there.data)
-            else:
-                self.assertFalse(here.data is there.data)
+            # Assert storages of SharedVariable without updates are shared
+            for (input, _1, _2), here, there in zip(ori.indices,
+                                                    ori.input_storage,
+                                                    cpy.input_storage):
+                if not input.mutable:
+                    self.assertTrue(here.data is there.data)
+                else:
+                    self.assertFalse(here.data is there.data)
 
     def test_shared_state0(self):
         a = T.scalar()  # the a is for 'anonymous' (un-named).
