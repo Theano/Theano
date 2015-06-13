@@ -223,12 +223,8 @@ def inplace_elemwise_optimizer_op(OP):
 
         # We execute `validate` after this number of change.
 
-        check_each_change = config.tensor.insert_inplace_optimizer_validate_nb
-        if check_each_change == -1:
-            if len(fgraph.apply_nodes) > 500:
-                check_each_change = 10
-            else:
-                check_each_change = 1
+        # TODO: delete config.tensor.insert_inplace_optimizer_validate_nb
+        # check_each_change = config.tensor.insert_inplace_optimizer_validate_nb
 
         nb_change_no_validate = 0
         chk = fgraph.checkpoint()
@@ -241,8 +237,11 @@ def inplace_elemwise_optimizer_op(OP):
         if len(elemwise_nodelist) > 0:
             check_each_change = int(numpy.ceil(numpy.log(
                 len(elemwise_nodelist))))
+        else:
+            check_each_change = 0
         failed_list = []
-        while check_each_change > 1:
+        changed_node_since_validate = []
+        while check_each_change > 0:
             for node in elemwise_nodelist:
                 op = node.op
                 baseline = op.inplace_pattern
@@ -272,7 +271,7 @@ def inplace_elemwise_optimizer_op(OP):
                         # remove inputs that don't have the same dtype as the
                         # output
                         if node.inputs[candidate_input].type != node.outputs[
-                            candidate_output].type:
+                                candidate_output].type:
                             continue
 
                         inplace_pattern = dict(baseline)
@@ -292,13 +291,22 @@ def inplace_elemwise_optimizer_op(OP):
                                 *node.inputs, **dict(return_list=True))
                             new_node = new_outputs[0].owner
 
+                            # Add changed node into changed_node_since_validate
+                            if node not in changed_node_since_validate:
+                                changed_node_since_validate.append(node)
+                            # And also add it to failed_list
+                            if node not in failed_list:
+                                failed_list.append(node)
+
                             for r, new_r in zip(node.outputs, new_outputs):
                                 fgraph.replace(r, new_r,
                                             reason="inplace_elemwise_optimizer")
                             nb_change_no_validate += 1
+
                             if nb_change_no_validate >= check_each_change:
                                 fgraph.validate()
                                 chk = fgraph.checkpoint()
+                                changed_node_since_validate = []
                                 nb_change_no_validate = 0
                         except (ValueError, TypeError, InconsistencyError) as e:
                             if check_each_change != 1 and not raised_warning:
@@ -308,7 +316,11 @@ def inplace_elemwise_optimizer_op(OP):
                                 print(e, file=sys.stderr)
                                 raised_warning = True
                             fgraph.revert(chk)
-                            failed_list.append(node)
+
+                            changed_node_since_validate = []
+                            # Add failed node to failed_list
+                            if node not in failed_list:
+                                failed_list.append(node)
                             continue
                         candidate_inputs.remove(candidate_input)
                         node = new_node
@@ -318,7 +330,7 @@ def inplace_elemwise_optimizer_op(OP):
             failed_list = []
             if len(elemwise_nodelist) == 0:
                 break
-            check_each_change = int(numpy.floor(numpy.log(
+            check_each_change = int(numpy.ceil(numpy.log(
                 len(elemwise_nodelist))))
 
         if nb_change_no_validate > 0:
