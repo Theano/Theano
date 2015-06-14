@@ -27,6 +27,12 @@ def d3dot(fct, node_colors=None, *args, **kwargs):
     return dot_graph
 
 
+def d3write(fct, path, *args, **kwargs):
+    dot = d3dot(fct, *args, **kwargs)
+    with open(path, 'w') as f:
+        f.write(dot)
+
+
 def d3print(fct, outfile=None, return_html=False, print_message=True,
             width=800, height=600,
             *args, **kwargs):

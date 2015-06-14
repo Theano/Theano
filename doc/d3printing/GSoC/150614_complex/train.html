@@ -14,7 +14,7 @@
 			display:block;
 			position: fixed;
 			border: 0px solid black;
-			top:0%; left:0%; right:0% bottom=0%
+			top:5%; left:0%; right:0% bottom=10%
 		}
 		.nodeRect {
 			stroke: black;
@@ -28,7 +28,6 @@
 			color: black;
 		}
 		.edge {
-			stroke: black;
 			stroke-width: 3px;
 			cursor: pointer;
 		}
@@ -43,17 +42,33 @@
 			text-anchor: start;
 		}
 		.arrowHead {
-			stroke: black;
+			stroke: green;
+			stroke-width: 1px;
+		}
+		.arrowHead_n {
+			stroke: green;
+		}
+		.arrowHead_r {
 			stroke-width: 3px;
-			fill: black;
+			fill: red;
+			stroke: red;
+		}
+		.arrowHead_b {
+			stroke: dodgerblue;
 		}
 	</style>
-	
-	
+	<div>
+	    <input name="resetNodes" 
+	           type="button" 
+	           value="Reset nodes" 
+	           onclick="resetNodes()"/>
+	    <input name="releaseNodes" 
+	           type="button" 
+	           value="Release nodes" 
+	           onclick="releaseNodes()"/>
+	</div>
 	<script type="text/javascript">
-		var path='logreg.dot';
-		var width = 1200;
-		var height = 900;
+		var path='train.dot';
 		
 		// Global attributes
 		var pad = 10;
@@ -61,12 +76,16 @@
 		var svg = d3.select('body').append('svg')
 			.attr('class', 'svg')
 			.attr('width', '100%')
-			.attr('height', '100%');
+			.attr('height', '95%');
 		var pane = svg.append('g');
 		
 		// Definition head of edges
-		svg.append("defs").append("marker")
-		    .attr("id", 'edgeArrow')
+		var markerData = [
+			{'id': 'n', 'color': 'black'},
+			{'id': 'r', 'color': 'red'},
+			{'id': 'b', 'color': 'dodgerblue'}];
+		svg.append("defs").selectAll('marker').data(markerData).enter().append("marker")
+		    .attr("id", function(d) { return 'edgeArrow_' + d.id;})
 		    .attr("markerWidth", 6)
 		    .attr("markerHeight", 6)
 		    .attr("refX", 3)
@@ -74,7 +93,7 @@
 		    .attr("orient", "auto")
 		  	.append("path")
 		    .attr("d", "M0,0 L6,3 L0,6 Z")
-		    .attr('style', 'arrowHead');
+		    .attr('fill', function(d) { return d.color;});
 			
     	function textSize(text, attr) {
     		var t = svg.append('text').text(text);
@@ -87,11 +106,21 @@
     		t.remove();
     		return bbox;
     	}
+    	
+    	function exists(x) {
+    		return typeof(x) != 'undefined';
+    	}
+    	
+
 		
 		var dotGraph;
 		var graph = {};
 		var nodes = [];
 		var edges = [];
+		var layout;
+		var scaleDotX;
+		var scaleDotY;
+		
 		d3.text(path, function(data) {
 			dotGraph = graphlibDot.parse(data);
 			
@@ -107,10 +136,10 @@
 			}
 			dotWidth = posMax[0];
 			dotHeight = posMax[1];
-			svg.attr('viewBox', '0,0,' + width + ',' + height);
+			svg.attr('viewBox', '0,0,' + dotWidth + ',' + dotHeight);
 			
-			var scaleDotX = d3.scale.linear().domain([0, dotWidth + 100]).range([0, width]);
-			var scaleDotY = d3.scale.linear().domain([-25, dotHeight + 100]).range([0, height]);
+			scaleDotX = d3.scale.linear().domain([0, dotWidth]).range([0, dotWidth]);
+			scaleDotY = d3.scale.linear().domain([0, dotHeight]).range([0, dotHeight]);
 			
 			// Parse nodes
 			var i = 0;
@@ -139,6 +168,19 @@
 				var size = textSize(edge.value.label, {'class': 'edgeLabelText'});
 				edge.value.width = size.width + 2 * pad;
 				edge.value.height = size.height + 2 * pad;
+				if (!exists(edge.value.color)) {
+					edge.value.color = 'black';
+				}
+				switch (edge.value.color) {
+					case 'dodgerblue':
+						edge.value.type = 'b';
+						break;
+					case 'red':
+						edge.value.type = 'r';
+						break;
+					default:
+						edge.value.type = 'n';
+				}
 				edges.push(edge);
 				dotGraph._edges[edgeId] = edge;
 			}
@@ -153,7 +195,8 @@
 			// Add edges
 			edges = pane.append('g').attr('id', 'edges').selectAll('path').data(graph['edges']).enter().append('path')
 				.attr('class', 'edge')
-				.attr('marker-mid', 'url(#edgeArrow)')
+				.attr('stroke', function(d) {return d.value.color;})
+				.attr('marker-mid', function(d) { return 'url(#edgeArrow_' + d.value.type + ')';})
 				.on('mouseover', function(d) {
 					var edgeLabel = pane.select('#edgeLabels .' + d.id);
 					edgeLabel.attr('style', 'display: inline');
@@ -218,25 +261,16 @@
 				}
 				shape.attr('fill', fillColor(d.value.fillcolor));
 			});
+			nodes.on('dblclick', releaseNode);
+			
 			var nodesText = nodes.append('text')
 				.attr('class', 'nodeText')
 				.attr('x', pad)
 				.attr('dy', function(d) {return d.value.height - pad - 5;})
-				.text(function(d) {return d.value.label;});
+				.text(function(d) {return d.value.label;})
+				.on('dblclick', releaseNode);
 
-			// Update graph
-			function updateGraph() {
-				// Update nodes
-				nodes.attr('transform', function(d) { return 'translate(' + (d.x - d.value.cx) + ' ' + (d.y - d.value.cy) + ')'; });
-				// Update edges
-				edges.attr('d', function(d) {
-					return 'M' + d.source.x + ',' + d.source.y + ' L' + 0.5 * (d.source.x + d.target.x) + ',' + 0.5 * (d.source.y + d.target.y) + ' L' + d.target.x + ',' + d.target.y;
-				});
-				// Update edge labels
-				edgeLabels.attr('transform', function(d) {
-					return 'translate(' + (0.5 * (d.source.x + d.target.x - d.value.width)) + ',' + (0.5 * (d.source.y + d.target.y - d.value.height)) + ')';
-				});
-			}
+
 			
 			// Drag-start event handler
 			function dragStart(d) {
@@ -244,18 +278,18 @@
 				d.fixed = true;
 			}
 			
+			
 			// Zoom and translate event handler
 			function zoom(d) {
 				pane.attr('transform', 'translate(' + d3.event.translate + ') scale(' + d3.event.scale + ')');
 			}
 			
 			// Force layout
-			var layout = d3.layout.force()
+			layout = d3.layout.force()
 				.nodes(graph['nodes'])
 				.links(graph['edges'])
-				.size([width, height])
-				.gravity(0.00)
-				.charge(-1000)
+				.size([dotWidth, dotHeight])
+				.charge(-3000)
 				.linkDistance(50)
 				.linkStrength(0.1)
 				.on('tick', updateGraph);
@@ -268,12 +302,54 @@
 			// Zoom behaviour
 			var bZoom = d3.behavior.zoom()
 				.scaleExtent([0.2, 8])
+				//.on("dblclick.zoom", null)
 				.on('zoom', zoom);
 			svg.call(bZoom);
+			svg.on("dblclick.zoom", null);
 			
 			// Start force layout
 			layout.start();	
 		});
+		
+		// Update graph
+		function updateGraph() {
+			// Update nodes
+			nodes.attr('transform', function(d) { return 'translate(' + (d.x - d.value.cx) + ' ' + (d.y - d.value.cy) + ')'; });
+			// Update edges
+			edges.attr('d', function(d) {
+				return 'M' + d.source.x + ',' + d.source.y + ' L' + 0.5 * (d.source.x + d.target.x) + ',' + 0.5 * (d.source.y + d.target.y) + ' L' + d.target.x + ',' + d.target.y;
+			});
+			// Update edge labels
+			edgeLabels.attr('transform', function(d) {
+				return 'translate(' + (0.5 * (d.source.x + d.target.x - d.value.width)) + ',' + (0.5 * (d.source.y + d.target.y - d.value.height)) + ')';
+			});
+		}
+		
+		function releaseNode(d) {
+			d.fixed = false;
+			layout.start();
+		}
+		
+		function releaseNodes() {
+			graph['nodes'].forEach (function (d) {
+				d.fixed = false;
+			});
+			layout.start();
+		}
+		
+    	function resetNodes() {
+    		layout.stop();
+    		var nodes = graph['nodes'];
+    		nodes.forEach(function (node, i){
+				nodes[i].x = scaleDotX(node.value.pos[0]);
+				nodes[i].y = scaleDotY(dotHeight - (node.value.pos[1] + node.value.height));
+				nodes[i].px = nodes[i].x;
+				nodes[i].py = nodes[i].y;
+				nodes[i].fixed = true;
+    		});
+    		updateGraph();
+			layout.start();
+    	}
 	</script>
 </body>
 </html>
