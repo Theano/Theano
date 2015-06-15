@@ -21,7 +21,7 @@ from theano.scalar.basic import (floats, float32, float64,
                                  ints, int8, int32, complex64,
                                  ComplexError, IntDiv, TrueDiv,
                                  Composite, add, div_proxy,
-                                 and_, eq, neq, invert, mul, Scalar)
+                                 and_, eq, neq, invert, mul, Scalar, InRange)
 from theano.scalar.basic import (
     true_div, inv, log, log2, log10, log1p, exp, exp2, expm1, sqrt, deg2rad,
     rad2deg, cos, arccos, sin, arcsin, tan, arctan, arctan2, cosh, arccosh,
@@ -412,6 +412,11 @@ def test_grad_identity():
     l = y.sum(dtype=theano.config.floatX)
     theano.gradient.grad(l, x)
 
+def test_grad_InRange():
+    op = InRange(True, True)
+    x = theano.tensor.fscalar('x')
+    out = op(x, 5, 12)
+    gx = theano.tensor.grad(out, x)
 
 # Testing of Composite is done in tensor/tests/test_opt.py
 # in test_fusion, TestCompositeCodegen
