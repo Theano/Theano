@@ -347,6 +347,7 @@ class Unlocker(object):
         # Keep a pointer to the 'os' module, otherwise it may not be accessible
         # anymore in the __del__ method.
         self.os = os
+        self.path = os.path
 
     def __del__(self):
         self.unlock()
@@ -368,7 +369,7 @@ class Unlocker(object):
         # remove the file may fail (e.g. because for some reason this file does
         # not exist), we still want to try and remove the directory.
         try:
-            self.os.remove(self.os.path.join(self.tmp_dir, 'lock'))
+            self.os.remove(self.path.join(self.tmp_dir, 'lock'))
         except Exception:
             pass
         try:
