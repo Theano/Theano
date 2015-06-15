@@ -240,7 +240,7 @@ def inplace_elemwise_optimizer_op(OP):
             check_each_change = int(numpy.ceil(numpy.log(
                 len(elemwise_nodelist))))
         else:
-            check_each_change = 0
+            return
         failed_list = []
         pred_len_elemlist = 0
         changed_node_since_validate = []
