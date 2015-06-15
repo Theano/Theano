@@ -239,6 +239,7 @@ def inplace_elemwise_optimizer_op(OP):
         if len(elemwise_nodelist) > 0:
             check_each_change = int(numpy.ceil(numpy.log(
                 len(elemwise_nodelist))))
+            check_each_change = min(check_each_change, 1)
         else:
             return
         failed_list = []
@@ -298,9 +299,6 @@ def inplace_elemwise_optimizer_op(OP):
                             # Add changed node into changed_node_since_validate
                             if node not in changed_node_since_validate:
                                 changed_node_since_validate.append(node)
-                            # And also add it to failed_list
-                            if node not in failed_list:
-                                failed_list.append(node)
 
                             for r, new_r in zip(node.outputs, new_outputs):
                                 fgraph.replace(r, new_r,
@@ -321,7 +319,10 @@ def inplace_elemwise_optimizer_op(OP):
                                 raised_warning = True
                             fgraph.revert(chk)
 
-                            changed_node_since_validate = []
+                            # Add changed node to failed_list
+                            if len(changed_node_since_validate) > 1:
+                                failed_list.extend(changed_node_since_validate)
+                                changed_node_since_validate = []
                             # Add failed node to failed_list
                             if node not in failed_list:
                                 failed_list.append(node)
@@ -336,6 +337,7 @@ def inplace_elemwise_optimizer_op(OP):
                 break
             check_each_change = int(numpy.ceil(numpy.log(
                 len(elemwise_nodelist))))
+            check_each_change = min(check_each_change, 1)
 
         if nb_change_no_validate > 0:
             try:
