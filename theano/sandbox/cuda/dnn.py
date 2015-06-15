@@ -638,16 +638,25 @@ class GpuDnnConvGradI(DnnBase, COp):
     :param descr: the convolution descriptor
 
     """
-    __props__ = ('inplace',)
+    __props__ = ('workmem', 'inplace',)
     __input_name__ = ('kernel', 'grad', 'output',
                       'descriptor', 'alpha', 'beta')
 
-    def __init__(self, inplace=False):
+    def __init__(self, inplace=False, workmem=None):
         COp.__init__(self, ["dnn_base.c", "dnn_conv_base.c", "dnn_gi.c"],
                      "APPLY_SPECIFIC(conv_gi)")
+        if workmem is None:
+            workmem = config.dnn.conv.workmem_bwd
+        self.workmem = workmem
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [2]}
+        assert self.workmem in ['none', 'deterministic', 'fft', 'guess']
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, 'workmem'):
+            self.workmem = 'none'
 
     def grad(self, inp, grads):
         kerns, top, output, desc, alpha, beta = inp
@@ -669,9 +678,29 @@ class GpuDnnConvGradI(DnnBase, COp):
 
     def get_op_params(self):
         if self.inplace:
-            return [('CONV_INPLACE', '1')]
+            inplace_def = [('CONV_INPLACE', '1')]
         else:
-            return []
+            inplace_def = []
+
+        if version() == -1:
+            alg_def = ('CONV_ALGO', '0')
+        else:
+            if self.workmem == 'none':
+                alg_def = ('CONV_ALGO', 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_0')
+                alg_choose_def = ('CHOOSE_ALGO', '0')
+            elif self.workmem == 'deterministic':
+                alg_def = ('CONV_ALGO', 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_1')
+                alg_choose_def = ('CHOOSE_ALGO', '0')
+            elif self.workmem == 'fft':
+                alg_def = ('CONV_ALGO', 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT')
+                alg_choose_def = ('CHOOSE_ALGO', '0')
+            elif self.workmem == 'guess':
+                # The convolution implementation should be choosen according
+                # to a heuristic
+                alg_def = ('CONV_ALGO', 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_0')
+                alg_choose_def = ('CHOOSE_ALGO', '1')
+
+        return inplace_def + [alg_def, alg_choose_def]
 
     def make_node(self, kern, topgrad, output, desc, alpha=None, beta=None):
         kern = as_cuda_ndarray_variable(kern)
