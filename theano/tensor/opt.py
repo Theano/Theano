@@ -234,6 +234,8 @@ def inplace_elemwise_optimizer_op(OP):
                              list(graph.io_toposort(fgraph.inputs,
                                                     fgraph.outputs))
                              if type(node.op) == OP]
+
+        # See: https://github.com/Theano/Theano/issues/2962
         if len(elemwise_nodelist) > 0:
             check_each_change = int(numpy.ceil(numpy.log(
                 len(elemwise_nodelist))))
