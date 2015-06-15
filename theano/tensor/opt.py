@@ -240,8 +240,10 @@ def inplace_elemwise_optimizer_op(OP):
         else:
             check_each_change = 0
         failed_list = []
+        pred_len_elemlist = 0
         changed_node_since_validate = []
-        while check_each_change > 0:
+        while check_each_change > 0 and pred_len_elemlist > len(elemwise_nodelist):
+            pred_len_elemlist = len(elemwise_nodelist)
             for node in elemwise_nodelist:
                 op = node.op
                 baseline = op.inplace_pattern
