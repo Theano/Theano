@@ -57,15 +57,11 @@ def test_unpickle_cudandarray_as_numpy_ndarray_flag1():
         fname = 'CudaNdarray.pkl'
 
         with open(os.path.join(testfile_dir, fname), 'rb') as fp:
-<<<<<<< HEAD
             if PY3:
                 u = CompatUnpickler(fp, encoding="latin1")
             else:
                 u = CompatUnpickler(fp)
             mat = u.load()
-=======
-            mat = pickle.load(fp)
->>>>>>> Import rewrites and renames to 3.x names.
 
         assert isinstance(mat, numpy.ndarray)
         assert mat[0] == -42.0
