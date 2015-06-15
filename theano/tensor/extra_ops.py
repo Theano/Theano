@@ -1007,6 +1007,11 @@ def to_one_hot(y, nb_class, dtype=None):
     return ret
 
 class Unique(theano.Op):
+    """
+    Wraps numpy.unique.
+    
+    This op is not implemented on the GPU. 
+    """     
     __props__ = ("return_index", "return_inverse", "return_counts")
 
     def __init__(self, return_index=False, return_inverse=False, 
