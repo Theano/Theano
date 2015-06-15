@@ -657,18 +657,17 @@ class T_Scan(unittest.TestCase):
 
         tensor.grad(a[-1], a0)
 
-        # Also validate that the methods get_outer_iidx_from_outer_oidx_seq
-        # and get_outer_iidx_from_inner_iidx_seq produce the correct results
+        # Also validate that the mappings outer_inp_from_outer_out and
+        # outer_inp_from_inner_inp produce the correct results
         scan_node = a.owner.inputs[0].owner
 
-        result = scan_node.op.get_outer_iidx_from_outer_oidx_seq()
-        expected_result = [1, 2]
+        result = scan_node.op.var_mappings['outer_inp_from_outer_out']
+        expected_result = {0: 1, 1: 2}
         assert(result == expected_result)
 
-        result = scan_node.op.get_outer_iidx_from_inner_iidx_seq()
-        expected_result = [1, 1, 2, 2]
+        result = scan_node.op.var_mappings['outer_inp_from_inner_inp']
+        expected_result = {0: 1, 1: 1, 2: 2, 3: 2}
         assert(result == expected_result)
-
 
     def test_connection_pattern2(self):
         # This tests for a crash in connection_pattern() when a scan node
@@ -690,17 +689,41 @@ class T_Scan(unittest.TestCase):
         scan_node = g_out[0].owner.inputs[1].owner.inputs[1].owner.inputs[0].owner
         connection_pattern = scan_node.op.connection_pattern(scan_node)
 
-        # Also validate that the methods get_outer_iidx_from_outer_oidx_seq
-        # and get_outer_iidx_from_inner_iidx_seq produce the correct results
+        # Also validate that the mappings outer_inp_from_outer_out and
+        # outer_inp_from_inner_inp produce the correct results
         scan_node = out.owner.inputs[0].owner
 
-        result = scan_node.op.get_outer_iidx_from_outer_oidx_seq()
-        expected_result = [2]
+        result = scan_node.op.var_mappings['outer_inp_from_outer_out']
+        expected_result = {0: 2}
         assert(result == expected_result)
 
-        result = scan_node.op.get_outer_iidx_from_inner_iidx_seq()
-        expected_result = [1, 2, 2]
+        result = scan_node.op.var_mappings['outer_inp_from_inner_inp']
+        expected_result = {0: 1, 1: 2, 2: 2}
         assert(result == expected_result)
+
+    def test_grad_grad_mitsot_sitsot(self):
+        # Test for an index error when taking the second derivative
+        # through a Scan node with one sitsot and one mitsot.
+
+        def inner_fct(mitsot_m2, mitsot_m1, sitsot):
+            total = mitsot_m2 + mitsot_m1 + sitsot
+            output = total ** 2
+            return output, output
+
+        inputs = [tensor.matrix(), tensor.vector()]
+        outputs_info = [dict(initial=inputs[0], taps=[-2, -1]), inputs[1]]
+
+        scan_outputs, updates = theano.scan(fn=inner_fct,
+                                            outputs_info=outputs_info,
+                                            n_steps=5)
+
+        # Take the gradient of each output wrt its corresponding initial state
+        gradients = [theano.grad(scan_outputs[0].sum(), inputs[0]),
+                     theano.grad(scan_outputs[1].sum(), inputs[1])]
+
+        # Take the gradient of the sum of gradients wrt the inputs
+        sum_of_grads = sum([g.sum() for g in gradients])
+        second_gradients = theano.grad(sum_of_grads, inputs[0])
 
     def test_grad_two_scans(self):
 
@@ -1680,16 +1703,16 @@ class T_Scan(unittest.TestCase):
                              analytic_grad[max_err_pos],
                              num_grad.gx[max_err_pos]))
 
-        # Also validate that the methods get_outer_iidx_from_outer_oidx_seq
-        # and get_outer_iidx_from_inner_iidx_seq produce the correct results
+        # Also validate that the mappings outer_inp_from_outer_out and
+        # outer_inp_from_inner_inp produce the correct results
         scan_node = updates.values()[0].owner
 
-        result = scan_node.op.get_outer_iidx_from_outer_oidx_seq()
-        expected_result = [3, -1, 4]
+        result = scan_node.op.var_mappings['outer_inp_from_outer_out']
+        expected_result = {0: 3, 1: 5, 2: 4}
         assert(result == expected_result)
 
-        result = scan_node.op.get_outer_iidx_from_inner_iidx_seq()
-        expected_result = [1, 2, 3, 4, 6]
+        result = scan_node.op.var_mappings['outer_inp_from_inner_inp']
+        expected_result = {0: 1, 1: 2, 2: 3, 3: 4, 4: 6}
         assert(result == expected_result)
 
     def test_grad_multiple_outs_some_truncate(self):
@@ -3298,6 +3321,69 @@ class T_Scan(unittest.TestCase):
         lssc = [x for x in f.maker.fgraph.toposort()
                 if isinstance(x.op, theano.scan_module.scan_op.Scan)]
         assert len(lssc) == 0
+
+    def test_oinp_iinp_iout_oout_mappings(self):
+        # Test the mapping produces by
+        # ScanOp.get_oinp_iinp_iout_oout_mappings()
+
+        rng = theano.tensor.shared_randomstreams.RandomStreams(123)
+
+        def inner_fct(seq, mitsot, sitsot, nitsot, nseq):
+            random_scalar = rng.uniform((1,))[0]
+            total = seq + mitsot + sitsot + nitsot + nseq + random_scalar
+            return total, total, total
+
+        # Assemble a scan with one sequence, one mitsot, one sitsot, one nitsot
+        # a non-sequence and a random state to test the mappings.
+        seq = [tensor.vector()]
+        non_seq = [tensor.scalar()]
+        outputs_info = [dict(initial=tensor.vector(), taps=[-3, -1]),
+                        tensor.scalar(), None]
+
+        scan_outputs, _ = theano.scan(fn=inner_fct, sequences=seq,
+                                      outputs_info=outputs_info,
+                                      non_sequences=non_seq)
+
+        # Compare the mappings with the expected values
+        scan_node = scan_outputs[0].owner.inputs[0].owner
+        mappings = scan_node.op.var_mappings
+
+        assert mappings['inner_inp_from_outer_inp'] == {0 : [], 1 : [0],
+                                                        2 : [1, 2], 3 : [3],
+                                                        4 : [4], 5 : [],
+                                                        6 : [5]}
+        assert mappings['inner_out_from_outer_inp'] == {0 : [], 1 : [],
+                                                        2 : [0], 3 : [1],
+                                                        4 : [3], 5 : [2],
+                                                        6 : []}
+        assert mappings['outer_out_from_outer_inp'] == {0 : -1, 1 : -1,
+                                                        2 : 0, 3 : 1,
+                                                        4 : 3, 5 : 2,
+                                                        6 : -1}
+
+        assert mappings['outer_inp_from_inner_inp'] == {0 : 1, 1 : 2,
+                                                        2 : 2, 3 : 3,
+                                                        4 : 4, 5 : 6}
+        assert mappings['inner_out_from_inner_inp'] == {0 : [], 1 : [0],
+                                                        2 : [0], 3 : [1],
+                                                        4 : [3], 5 : []}
+        assert mappings['outer_out_from_inner_inp'] == {0 : -1, 1 : 0,
+                                                        2 : 0, 3 : 1,
+                                                        4 : 3, 5 : -1}
+
+        assert mappings['outer_inp_from_inner_out'] == {0 : 2, 1 : 3,
+                                                        2 : 5, 3 : 4}
+        assert mappings['inner_inp_from_inner_out'] == {0 : [1, 2], 1 : [3],
+                                                        2 : [], 3 : [4]}
+        assert mappings['outer_out_from_inner_out'] == {0 : 0, 1 : 1,
+                                                        2 : 2, 3 : 3}
+
+        assert mappings['outer_inp_from_outer_out'] == {0 : 2, 1 : 3,
+                                                        2 : 5, 3 : 4}
+        assert mappings['inner_inp_from_outer_out'] == {0 : [1, 2], 1 : [3],
+                                                        2 : [], 3 : [4]}
+        assert mappings['inner_out_from_outer_out'] == {0 : [0], 1 : [1],
+                                                        2 : [2], 3 : [3]}
 
     def test_grad_duplicate_outputs(self):
         # This test validates that taking the gradient of a scan, in which
