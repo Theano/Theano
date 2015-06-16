@@ -239,7 +239,7 @@ def inplace_elemwise_optimizer_op(OP):
         if len(elemwise_nodelist) > 0:
             check_each_change = int(numpy.ceil(numpy.log(
                 len(elemwise_nodelist))))
-            check_each_change = min(check_each_change, 1)
+            check_each_change = max(check_each_change, 1)
         else:
             return
         failed_list = []
