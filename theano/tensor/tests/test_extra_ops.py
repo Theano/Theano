@@ -5,14 +5,13 @@ import unittest
 
 import theano
 from theano.tests import unittest_tools as utt
-
 from theano.tensor.extra_ops import (CumsumOp, cumsum, CumprodOp, cumprod,
                                      BinCountOp, bincount, DiffOp, diff,
                                      squeeze, compress, RepeatOp, repeat,
                                      Bartlett, bartlett,
                                      FillDiagonal, fill_diagonal,
                                      FillDiagonalOffset, fill_diagonal_offset,
-                                     to_one_hot)
+                                     to_one_hot, Unique)
 from theano import tensor as T
 from theano import config, tensor, function
 
@@ -661,3 +660,105 @@ def test_to_one_hot():
          [0., 0., 0., 1., 0., 0., 0., 0., 0., 0.],
          [0., 0., 0., 0., 0., 1., 0., 0., 0., 0.],
          [0., 0., 0., 0., 0., 0., 1., 0., 0., 0.]])
+
+class test_Unique(utt.InferShapeTester):
+    
+    def setUp(self):
+        super(test_Unique, self).setUp()
+        self.op_class = Unique
+        self.ops = [Unique(), 
+                    Unique(True), 
+                    Unique(False, True), 
+                    Unique(True, True)]
+        if bool(numpy_ver >= [1, 9]) :
+            self.ops.extend([
+                        Unique(False, False, True), 
+                        Unique(True, False, True), 
+                        Unique(False, True, True), 
+                        Unique(True, True, True)])
+        
+    def test_basic_vector(self):           
+        """
+        Basic test for a vector.
+        Done by using the op and checking that it returns the right answer.
+        """
+        x = theano.tensor.vector()
+        inp = np.asarray([2,1,3,2], dtype=config.floatX)
+        list_outs_expected = [[np.unique(inp)], 
+                              np.unique(inp, True), 
+                              np.unique(inp, False, True), 
+                              np.unique(inp, True, True)]
+        if bool(numpy_ver >= [1, 9]) :
+            list_outs_expected.extend([
+                                np.unique(inp, False, False, True), 
+                                np.unique(inp, True, False, True), 
+                                np.unique(inp, False, True, True), 
+                                np.unique(inp, True, True, True)])
+        for op, outs_expected in zip(self.ops, list_outs_expected) :
+            f = theano.function(inputs=[x], outputs=op(x, return_list=True))
+            outs = f(inp)
+            # Compare the result computed to the expected value.
+            for out, out_exp in zip(outs, outs_expected):
+                utt.assert_allclose(out, out_exp)
+        
+    def test_basic_matrix(self):            
+        """ Basic test for a matrix.
+        Done by using the op and checking that it returns the right answer.
+        """
+        x = theano.tensor.matrix()
+        inp = np.asarray([[2, 1], [3, 2], [2, 3]], dtype=config.floatX)
+        list_outs_expected = [[np.unique(inp)],
+                              np.unique(inp, True),
+                              np.unique(inp, False, True),
+                              np.unique(inp, True, True)]
+        if bool(numpy_ver >= [1, 9]) :
+            list_outs_expected.extend([
+                                np.unique(inp, False, False, True),
+                                np.unique(inp, True, False, True),
+                                np.unique(inp, False, True, True),
+                                np.unique(inp, True, True, True)])                                       
+        for op, outs_expected in zip(self.ops, list_outs_expected):
+            f = theano.function(inputs=[x], outputs=op(x, return_list=True))
+            outs = f(inp)
+            # Compare the result computed to the expected value.
+            for out, out_exp in zip(outs, outs_expected):
+                utt.assert_allclose(out, out_exp)
+        
+    def test_infer_shape_vector(self):                  
+        """
+        Testing the infer_shape with a vector.
+        """
+        x = theano.tensor.vector()
+
+        for op in self.ops:
+            if not op.return_inverse:
+                continue
+            if op.return_index :
+                f = op(x)[2]
+            else:
+                f = op(x)[1]
+            self._compile_and_check([x],  
+                                    [f], 
+                                    [np.asarray(np.array([2,1,3,2]),
+                                                dtype=config.floatX)],
+                                    self.op_class)
+        
+    def test_infer_shape_matrix(self):                  
+        """
+        Testing the infer_shape with a matrix.
+        """
+        x = theano.tensor.matrix()
+        
+        for op in self.ops:
+            if not op.return_inverse:
+                continue
+            if op.return_index :
+                f = op(x)[2]
+            else:
+                f = op(x)[1]
+            self._compile_and_check([x],  
+                                [f], 
+                                [np.asarray(np.array([[2, 1], [3, 2],[2, 3]]),
+                                            dtype=config.floatX)],
+                                self.op_class)
+
