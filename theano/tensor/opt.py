@@ -337,7 +337,7 @@ def inplace_elemwise_optimizer_op(OP):
                 break
             check_each_change = int(numpy.ceil(numpy.log(
                 len(elemwise_nodelist))))
-            check_each_change = min(check_each_change, 1)
+            check_each_change = max(check_each_change, 1)
 
         if nb_change_no_validate > 0:
             try:
