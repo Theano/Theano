@@ -323,7 +323,9 @@ class Mode(object):
 # If a string is passed as the mode argument in function or
 # FunctionMaker, the Mode will be taken from this dictionary using the
 # string as the key
-FAST_COMPILE = Mode('py', 'fast_compile')
+# Use VM_linker to allow lazy evaluation by default.
+FAST_COMPILE = Mode(theano.gof.vm.VM_Linker(use_cloop=False, c_thunks=False),
+                    'fast_compile')
 if theano.config.cxx:
     FAST_RUN = Mode('cvm', 'fast_run')
 else:

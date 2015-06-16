@@ -686,7 +686,7 @@ class VM_Linker(link.LocalLinker):
     """
 
     def __init__(self, allow_gc=None, use_cloop=False, callback=None,
-                 lazy=None, schedule=None):
+                 lazy=None, schedule=None, c_thunks=None):
         """
         allow_gc - force the virtual machine to clean up unnecessary
             references, in order to allow garbage collection on
@@ -705,6 +705,8 @@ class VM_Linker(link.LocalLinker):
             version. If lazy is True or False, we force the version used
             between Loop/LoopGC and Stack.
 
+        c_thunks - If None or True, don't change the default. If False,
+            don't compile c code for the thunks.
         """
         # Note: if more parameters are added to __init__, make sure to forward
         # them in the "type(self)(...)" call in the "accept" method below.
@@ -715,6 +717,7 @@ class VM_Linker(link.LocalLinker):
         self.use_cloop = use_cloop
         self.callback = callback
         self.lazy = lazy
+        self.c_thunks = c_thunks
         self.updated_vars = {}
         if schedule:
             self.schedule = schedule
@@ -1010,6 +1013,8 @@ class VM_Linker(link.LocalLinker):
 
         for node in order:
             try:
+                if self.c_thunks is False:
+                    node.op._op_use_c_code = False
                 thunks.append(node.op.make_thunk(node,
                                                  storage_map,
                                                  compute_map,
