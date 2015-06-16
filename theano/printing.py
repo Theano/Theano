@@ -12,7 +12,6 @@ import warnings
 import hashlib
 
 import numpy as np
-import collections
 from six import string_types, integer_types, iteritems
 
 try:
@@ -212,7 +211,7 @@ N.B.:
 def _print_fn(op, xin):
     for attr in op.attrs:
         temp = getattr(xin, attr)
-        if isinstance(temp, collections.Callable):
+        if callable(temp):
             pmsg = temp()
         else:
             pmsg = temp

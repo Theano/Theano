@@ -1,6 +1,7 @@
 import errno
 import logging
 import os
+from six.moves import reload_module as reload
 import sys
 import warnings
 
@@ -11,7 +12,6 @@ from theano import config
 from theano.compat import reload
 from theano.gof.compilelock import get_lock, release_lock
 from theano.gof import cmodule
-import imp
 
 
 _logger = logging.getLogger('theano.scan_module.scan_perform')
@@ -31,7 +31,7 @@ def try_import():
 
 def try_reload():
     sys.path[0:0] = [config.compiledir]
-    imp.reload(scan_perform)
+    reload(scan_perform)
     del sys.path[0]
 
 try:

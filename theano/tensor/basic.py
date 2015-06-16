@@ -246,7 +246,7 @@ class NumpyAutocaster(object):
 
     def __call__(self, x):
         # Make sure we only deal with scalars.
-        assert (isinstance(x, int) or
+        assert (isinstance(x, integer_types) or
                 isinstance(x, float) or
                 (isinstance(x, numpy.ndarray) and x.ndim == 0))
 
@@ -354,23 +354,15 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
         # In this case, this function should infer the dtype according to the
         # autocasting rules. See autocasting above.
         x_ = None
-        if rtype is TensorConstant and isinstance(x, int):
-            x_ = autocast_int(x)
+        if rtype is TensorConstant and isinstance(x, integer_types):
+            try:
+                x_ = autocast_int(x)
+            except OverflowError:
+                # This is to imitate numpy behavior which tries to fit
+                # bigger numbers into a uint64.
+                x_ = theano._asarray(x, dtype='uint64')
         elif rtype is TensorConstant and isinstance(x, float):
             x_ = autocast_float(x)
-        elif rtype is TensorConstant and isinstance(x, integer_types):
-            # We need to address the case where a long number is used in a
-            # Theano graph, because on Windows 64, all shapes are expressed
-            # with longs.
-            # If a long fits in int64, we convert it into an int64, like
-            # numpy.asarray() does up to 1.7. NumPy 1.7.1 upcasts to int64
-            # if possible, but falls back to uint64 if int64 isn't possible but
-            # uint64 is. We always do as NumPy 1.7.1  here.
-            # If x is too big, an OverflowError will be raised by numpy.
-            try:
-                x_ = theano._asarray(x, dtype='int64')
-            except OverflowError:
-                x_ = theano._asarray(x, dtype='uint64')
         elif isinstance(x, numpy.ndarray):
             x_ = x
             # Currently we do not have a bool dtype in Theano.

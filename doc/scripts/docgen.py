@@ -34,7 +34,7 @@ def Op_to_RoutineDoc(op, routine_doc, module_name=None):
         routine_doc.posarg_defaults = [None] * len(args)
 
         # Set the routine's line number.
-        if hasattr(func, 'func_code'):
+        if hasattr(func, '__code__'):
             routine_doc.lineno = func.__code__.co_firstlineno
     else:
         # [XX] I should probably use UNKNOWN here??

@@ -248,7 +248,7 @@ class TestMakeThunk(unittest.TestCase):
 
 
 def test_test_value_python_objects():
-    for x in (list(range(3)), 0, 0.5, 1):
+    for x in ([0, 1, 2], 0, 0.5, 1):
         assert (op.get_test_value(x) == x).all()
 
 

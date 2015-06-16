@@ -267,7 +267,7 @@ def AddConfigVar(name, doc, configparam, root=config, in_c_key=True):
         configparam.in_c_key = in_c_key
         # Trigger a read of the value from config files and env vars
         # This allow to filter wrong value from the user.
-        if not isinstance(configparam.default, collections.Callable):
+        if not callable(configparam.default):
             configparam.__get__()
         else:
             # We do not want to evaluate now the default value
@@ -311,7 +311,7 @@ class ConfigParam(object):
                     for v in self.default():
                         val_str = v
                         self.__set__(None, val_str)
-                elif isinstance(self.default, collections.Callable):
+                elif callable(self.default):
                     val_str = self.default()
                 else:
                     val_str = self.default
@@ -367,7 +367,7 @@ class TypedParam(ConfigParam):
 
         def filter(val):
             cast_val = mytype(val)
-            if isinstance(is_valid, collections.Callable):
+            if callable(is_valid):
                 if is_valid(cast_val):
                     return cast_val
                 else:

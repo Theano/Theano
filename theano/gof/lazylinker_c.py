@@ -1,6 +1,7 @@
 import errno
 import logging
 import os
+from six.moves import reload_module as reload
 import sys
 import warnings
 
@@ -9,7 +10,6 @@ import theano
 from theano import config
 from theano.gof.compilelock import get_lock, release_lock
 from theano.gof import cmodule
-import imp
 
 _logger = logging.getLogger('theano.gof.lazylinker_c')
 
@@ -27,7 +27,7 @@ def try_import():
 
 def try_reload():
     sys.path[0:0] = [config.compiledir]
-    imp.reload(lazylinker_ext)
+    reload(lazylinker_ext)
     del sys.path[0]
 
 try:

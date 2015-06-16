@@ -10,7 +10,7 @@ from __future__ import print_function
 # so state is ignored
 
 # since this job is not restartable, channel is also ignored
-import logging, io, time, sys
+import logging, time, sys
 
 import numpy
 from six.moves import xrange

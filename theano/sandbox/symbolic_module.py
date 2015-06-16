@@ -2,7 +2,6 @@ from __future__ import print_function
 import copy, inspect
 import theano
 import theano.tensor as T
-import collections
 
 from six import string_types, add_metaclass, iteritems
 from six.moves import xrange
@@ -39,7 +38,7 @@ class InitGraph(type):
             # print '  adding class attribute', key
             if isinstance(val, theano.Variable) and val.name is None:
                 val.name = key
-            if isinstance(val, collections.Callable):
+            if callable(val):
                 setattr(cls, key, staticmethod(val))
             else:
                 setattr(cls, key, val)
@@ -319,7 +318,7 @@ if 0:
                 except Exception:
                     kres = klass.KlassVariable(val)
                 setattr(SymMod, key, kres)
-            elif isinstance(val, collections.Callable) and getattr(val, '__is_symbolic'):
+            elif callable(val) and getattr(val, '__is_symbolic'):
                 setattr(SymMod, key, val)
 
         return SymMod()

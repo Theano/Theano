@@ -2290,8 +2290,9 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
             inputs = [inputs]
 
         # Wrap them in In or Out instances if needed.
-        inputs, outputs = (list(map(self.wrap_in, inputs)),
-                           list(map(self.wrap_out, outputs)))
+        inputs = [self.wrap_in(i) for i in inputs]
+        outputs = [self.wrap_out(o) for o in outputs]
+
         _inputs = gof.graph.inputs([o.variable for o in outputs] +
                                    [i.update for i in inputs
                                     if getattr(i, 'update', False)])

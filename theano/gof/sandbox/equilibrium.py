@@ -102,7 +102,7 @@ if 0:
                 tasks[node].extend(lopt for track, i, lopt in self.fetch_tracks0(node.op))
 
             u = self.attach_updater(fgraph, importer, pruner, chin)
-            print('KEYS', list(map(hash, list(tasks.keys()))))
+            print('KEYS', [hash(t) for t in tasks.keys()])
             while tasks:
                 for node in tasks:
                     todo = tasks.pop(node)
