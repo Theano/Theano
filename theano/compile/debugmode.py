@@ -55,7 +55,7 @@ AddConfigVar('DebugMode.check_finite',
 AddConfigVar('DebugMode.check_strides',
              ("Check that Python- and C-produced ndarrays have same strides. "
               "On difference: (0) - ignore, (1) warn, or (2) raise error"),
-             IntParam(1, lambda i: i in (0, 1, 2)),
+             IntParam(0, lambda i: i in (0, 1, 2)),
              in_c_key=False)
 
 AddConfigVar('DebugMode.warn_input_not_reused',
