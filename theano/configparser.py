@@ -15,7 +15,6 @@ from six import StringIO
 import theano
 from theano.compat import configparser as ConfigParser
 from six import string_types
-import collections
 
 _logger = logging.getLogger('theano.configparser')
 
