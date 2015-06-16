@@ -503,8 +503,8 @@ returned directly?"""
     def copy(self, share_memory=False):
         """
         Copy this function. Copied function will have separated maker and
-        fgraph with original function. User can choose whether to separate
-        storage by changing the share_memory arguments
+        fgraph with original function if share_memory=True. User can choose
+        whether to separate storage by changing the share_memory arguments
         ---------------------
         Params:
             share_memory -- { boolean } Default is False. When True, two
