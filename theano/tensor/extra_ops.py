@@ -1,11 +1,10 @@
 import numpy as np
 import numpy
 import warnings
-import theano
 
+import theano
 from theano.tensor import basic
 from theano.tensor import nlinalg
-
 from theano import gof, scalar
 from theano.gradient import DisconnectedType
 tensor = basic
@@ -1006,3 +1005,65 @@ def to_one_hot(y, nb_class, dtype=None):
     ret = theano.tensor.set_subtensor(ret[theano.tensor.arange(y.shape[0]), y],
                                       1)
     return ret
+
+class Unique(theano.Op):
+    """
+    Wraps numpy.unique.
+    
+    This op is not implemented on the GPU. 
+    """     
+    __props__ = ("return_index", "return_inverse", "return_counts")
+
+    def __init__(self, return_index=False, return_inverse=False, 
+                 return_counts=False):
+        self.return_index = return_index
+        self.return_inverse = return_inverse
+        self.return_counts = return_counts   
+        numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
+        if self.return_counts == True and bool(numpy_ver < [1, 9]) :
+            raise RuntimeError(
+                "Numpy version = " + np.__version__ +
+                ". Option 'return_counts=True' works starting"
+                " from version 1.9.0.")
+
+    def make_node(self, x):
+        x = basic.as_tensor_variable(x)        
+        outputs = [basic.TensorType(broadcastable=[False], dtype=x.dtype)()]
+        typ = basic.TensorType(broadcastable=[False], dtype='int64')
+        if self.return_index :
+            outputs.append(typ())
+        if self.return_inverse :
+            outputs.append(typ())
+        if self.return_counts :
+            outputs.append(typ())            
+        return theano.Apply(self, [x], outputs)
+
+    def perform(self, node, inputs, output_storage):
+        x = inputs[0]
+        z = output_storage
+        param = {}       
+        if self.return_index : 
+            param['return_index'] = True
+        if self.return_inverse :
+            param['return_inverse'] = True
+        if self.return_counts:
+            param['return_counts'] = True
+        outs = np.unique(x,**param)
+        if ((not self.return_inverse) and
+                (not self.return_index) and
+                (not self.return_counts)):
+            z[0][0]=outs
+        else :
+            for i in range(len(outs)): 
+                z[i][0] = outs[i]
+                
+    def infer_shape(self, node, i0_shapes):
+        ret = node.fgraph.shape_feature.default_infer_shape(node, i0_shapes)
+        if self.return_inverse :
+            shape = (basic.prod(i0_shapes[0]), )
+            if self.return_index :
+                ret[2] = shape
+                return ret
+            ret[1] = shape
+            return ret
+        return ret
