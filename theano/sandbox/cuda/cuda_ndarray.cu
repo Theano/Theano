@@ -1027,25 +1027,41 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
                             " indices with only 1 dimensions");
             return NULL;
         }
+        // We need indices_obj to be contiguous, in order to take a view
+        // with a different dtype.
+        if (!PyArray_IS_C_CONTIGUOUS((PyArrayObject*) indices_obj)) {
+            PyObject* indices_obj_contig = PyArray_NewCopy((PyArrayObject*) indices_obj, NPY_CORDER);
+            if (!indices_obj_contig)
+                return NULL;
+            indices_obj = indices_obj_contig;
+        } else {
+            // Keep the refcount consistent
+            Py_INCREF(indices_obj);
+        }
         PyArray_Descr* float32_descr = PyArray_DescrFromType(NPY_FLOAT32);
         PyObject * indices_float32 = NULL;
         indices_float32 = PyArray_View((PyArrayObject*)indices_obj,
                                                   float32_descr, NULL);
         if (verbose) printf("ndarray indices\n");
-        if (!indices_float32)
+        if (!indices_float32) {
+            Py_DECREF(indices_obj);
             return NULL;
+        }
 
         indices = (CudaNdarray*) CudaNdarray_New();
         if (verbose) printf("\nndarray after new\n");
         if (! indices){
+            Py_DECREF(indices_obj);
             Py_DECREF(indices_float32);
             return NULL;
         }
         if (CudaNdarray_CopyFromArray(indices,
                                       (PyArrayObject *)indices_float32)){
+            Py_DECREF(indices_obj);
             Py_DECREF(indices_float32);
             return NULL;
         }
+        Py_DECREF(indices_obj);
         Py_DECREF(indices_float32);
     } else {
         PyErr_SetString(PyExc_TypeError,
