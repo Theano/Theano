@@ -184,7 +184,9 @@ if compile_cuda_ndarray and cuda_available:
                             location=cuda_ndarray_loc,
                             include_dirs=[cuda_path],
                             libs=[config.cublas.lib],
-                            preargs=['-O3'] + compiler.compile_args())
+                            preargs=['-O3'] + compiler.compile_args(),
+                            hide_symbols=False,
+                    )
                     from cuda_ndarray.cuda_ndarray import *
             except Exception as e:
                 _logger.error("Failed to compile cuda_ndarray.cu: %s", str(e))
