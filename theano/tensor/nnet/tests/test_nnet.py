@@ -1011,7 +1011,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             try:
                 g = theano.function([x, b, y], T.grad(expr, x), mode=mode)
             finally:
-                config.warn.sum_div_dimshuffle_qbug = backup
+                config.warn.sum_div_dimshuffle_bug = backup
 
             if verbose:
                 printing.debugprint(g)
@@ -1026,7 +1026,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 theano.printing.debugprint(g)
                 raise
 
-    def test_scrossentropy_softmax_1hot_with_bias_dxcale_cost(self):
+    def test_crossentropy_softmax_1hot_with_bias_dxcale_cost(self):
         # TODO: add the optimization in FAST_COMPILE?
         # In the mean time, run it as 'FAST_RUN' instead
         mode = theano.compile.mode.get_default_mode()
@@ -1130,7 +1130,7 @@ def test_argmax_pushdown():
 
     # test that the max_and_argmax is pushed down if the max is not used
     out = tensor.max_and_argmax(
-            softmax(tensor.exp(tensor.tanh(sigmoid(x)))),
+            softmax_graph(tensor.exp(tensor.tanh(sigmoid(x)))),
             axis=-1)[1]
     fgraph = gof.FunctionGraph(
             [x],
@@ -1147,7 +1147,7 @@ def test_argmax_pushdown():
     x = tensor.matrix()
     # test that the max_and_argmax is not pushed down if the max is used
     out = tensor.max_and_argmax(
-            softmax(tensor.exp(tensor.tanh(sigmoid(x)))),
+            softmax_op(tensor.exp(tensor.tanh(sigmoid(x)))),
             axis=-1)[0]
     fgraph = gof.FunctionGraph(
             [x],

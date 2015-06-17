@@ -86,8 +86,8 @@ class SoftmaxWithBias(gof.Op):
 
         x_plus_b = x + b[None, :]
         e_x = numpy.exp(x_plus_b - x_plus_b.max(axis=1)[:, None])
-        sm = e_x / e_x.sum(axis=1)[:, None]
-        output_storage[0][0] = sm
+        e_x *= 1.0 / e_x.sum(axis=1)[:, None]
+        output_storage[0][0] = e_x
 
     def grad(self, inp, grads):
         x, b = inp
@@ -1469,7 +1469,7 @@ def local_softmax_grad_to_crossentropy_with_softmax_grad(node):
 def local_argmax_pushdown(node):
     if node.op == tensor._max_and_argmax and node.inputs[0].owner and \
             len(node.outputs[0].clients) > 0 and node.inputs[0].owner.op in \
-            (softmax, softplus, tensor.exp, tensor.log, tensor.tanh, sigmoid,
+            (softmax_op, softplus, tensor.exp, tensor.log, tensor.tanh, sigmoid,
              softmax_with_bias):
         if theano.config.warn.argmax_pushdown_bug:
             logging.getLogger('theano.tensor.nnet.nnet').warn("WARNING: there "
@@ -1485,7 +1485,7 @@ def local_argmax_pushdown(node):
         x_max, x_argmax = node.outputs
         x, axis = node.inputs
         # TODO: Make a list/set of monotonic ops...
-        if x.owner and x.owner.op in (softmax, softplus, tensor.exp,
+        if x.owner and x.owner.op in (softmax_op, softplus, tensor.exp,
                                       tensor.log, tensor.tanh, sigmoid):
             pre_x, = x.owner.inputs
             return tensor._max_and_argmax(pre_x, axis)
