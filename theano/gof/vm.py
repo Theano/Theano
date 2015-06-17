@@ -1075,3 +1075,8 @@ class VM_Linker(link.LocalLinker):
                  for output, storage in zip(fgraph.outputs, output_storage)],
                 thunks,
                 order)
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, 'c_thunks'):
+            self.c_thunks = True
