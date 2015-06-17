@@ -5079,14 +5079,15 @@ def test_compute_test_value_grad_cast():
     # Test for test values when variables have to be casted
     # Reported by Daniel Renshaw at
     # https://groups.google.com/d/topic/theano-users/o4jK9xDe5WI/discussion
+    floatX = theano.config.floatX
     backup = theano.config.compute_test_value
     theano.config.compute_test_value = 'raise'
     try:
         h = tensor.matrix('h')
         h.tag.test_value = numpy.array([[1, 2, 3, 4], [5, 6, 7, 8]],
-                                       dtype=numpy.float64)
+                                       dtype=floatX)
 
-        w = theano.shared(numpy.random.randn(4, 3).astype('float64'), name='w')
+        w = theano.shared(numpy.random.randn(4, 3).astype(floatX), name='w')
 
         outputs, _ = theano.scan(lambda i, h, w: (theano.dot(h[i], w), i),
                                  outputs_info=[None, 0L], non_sequences=[h, w],
