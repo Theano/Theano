@@ -104,7 +104,7 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
                 if ins not in view_of and not viewed_by.get(ins, []):
                     # where gc
                     for i in range(idx + 1, len(order)):
-                        if reuse_out:
+                        if reuse_out is not None:
                             break
                         for out in order[i].outputs:
                             if (getattr(out, 'ndim', None) == 0 and
@@ -756,7 +756,8 @@ class VM_Linker(link.LocalLinker):
                 use_cloop=self.use_cloop,
                 callback=self.callback,
                 lazy=self.lazy,
-                schedule=self.schedule
+                schedule=self.schedule,
+                c_thunks=self.c_thunks,
             ).accept(fgraph, no_recycling)
         self.fgraph = fgraph
         self.no_recycling = no_recycling
