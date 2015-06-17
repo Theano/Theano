@@ -137,7 +137,6 @@ whitelist_flake8 = [
     "sandbox/rng_mrg.py",
     "sandbox/theano_object.py",
     "sandbox/scan.py",
-    "sandbox/multinomial.py",
     "sandbox/neighbourhoods.py",
     "sandbox/fourier.py",
     "sandbox/test_multinomial.py",
