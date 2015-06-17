@@ -863,7 +863,8 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
             raise ValueError('b must have same number of columns as x')
         if y_idx.shape[0] != x.shape[0]:
             raise ValueError('y_idx must have same number of rows as x')
-
+        if any(y_idx < 0):
+            raise ValueError("y_i value out of bounds")
         sm = numpy.zeros_like(x)  # softmax
         nll = numpy.zeros(x.shape[0], dtype=node.outputs[0].type.
             dtype)  # nll(y | softmax(x))
@@ -1066,6 +1067,8 @@ class CrossentropySoftmax1HotWithBiasDx(gof.Op):
 
     def perform(self, node, input_storage, output_storage):
         dy, sm, y_idx = input_storage
+        if any(y_idx < 0):
+            raise ValueError("y_i value out of bounds")
         dx = numpy.zeros_like(sm)
         if dy.ndim == 0:
             dy = dy[None]
@@ -1096,7 +1099,7 @@ class CrossentropySoftmax1HotWithBiasDx(gof.Op):
         return [g_dy, g_sm, g_y_idx]
 
     def c_code_cache_version(self):
-        return (5,)
+        return (6,)
 
     def c_code(self, node, name, inp, out, sub):
         dnll, sm, y_idx = inp
@@ -1193,9 +1196,9 @@ class CrossentropySoftmax1HotWithBiasDx(gof.Op):
             {
                 dx_i[j * Sdx] = dnll_i * sm_i[j * Ssm];
             }
-            if (y_i >= PyArray_DIMS(%(dx)s)[1])
+            if (y_i >= PyArray_DIMS(%(dx)s)[1] || (y_i < 0))
             {
-                PyErr_SetString(PyExc_ValueError, "y_i >= dx dimensions[1]");
+                PyErr_SetString(PyExc_ValueError, "y_i >= dx dimensions[1] or y_i < 0.");
                 %(fail)s;
             }
             dx_i[y_i * Sdx] -= dnll_i;
