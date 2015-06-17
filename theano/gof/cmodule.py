@@ -2114,8 +2114,8 @@ class GCC_compiler(Compiler):
     @staticmethod
     def compile_command(module_name, location=None,
                         include_dirs=None, lib_dirs=None, libs=None,
-                        preargs=None, py_module=True, shared=True,
-                        code_filename='mod.cpp',
+                        preargs=None, py_module=True, hide_symbols=False,
+                        shared=True, code_filename='mod.cpp',
                         out_filename=None):
         """
         The parameters are the same as compile_str
@@ -2168,6 +2168,14 @@ class GCC_compiler(Compiler):
             cmd.extend(p for p in preargs if not p.startswith('-O'))
         else:
             cmd.extend(preargs)
+        if hide_symbols and sys.platform != 'win32':
+            # This has been available since gcc 4.0 so we suppose it
+            # is always available. We pass it here since it
+            # significantly reduces the size of the symbol table for
+            # the objects we want to share. This in turns leads to
+            # improved loading times on most platforms (win32 is
+            # different, as usual).
+            cmd.append('-fvisibility=hidden')
         cmd.extend('-I%s' % idir for idir in include_dirs)
         cmd.extend(['-o', out_filename])
         cmd.append(cpp_filename)
@@ -2178,11 +2186,12 @@ class GCC_compiler(Compiler):
     @staticmethod
     def compile_str(module_name, src_code, location=None,
                     include_dirs=None, lib_dirs=None, libs=None,
-                    preargs=None, py_module=True, shared=True,
-                    code_filename='mod.cpp',
+                    preargs=None, py_module=True, hide_symbols=True,
+                    shared=True, code_filename='mod.cpp',
                     out_filename=None):
         """
 
+<<<<<<< HEAD
         Parameters
         ----------
         module_name : str
@@ -2224,8 +2233,6 @@ class GCC_compiler(Compiler):
         :param out_filename: The filename of the output of g++ when not doing
             a shared module
 
-        :returns: dynamically-imported python module of the compiled code.
-            (unless py_module is False, in that case returns None.)
         """
         # TODO: Do not do the dlimport in this function
 
@@ -2256,12 +2263,16 @@ class GCC_compiler(Compiler):
         if python_lib not in lib_dirs:
             lib_dirs.append(python_lib)
 
+        if shared:
+            hide_symbols = False
+
         cpp_filename, out_filename, cmd = GCC_compiler.compile_command(
             module_name,
             location,
             include_dirs,
             lib_dirs, libs,
             preargs, py_module,
+            hide_symbols,
             shared,
             code_filename,
             out_filename)
@@ -2276,33 +2287,6 @@ class GCC_compiler(Compiler):
             cppfile.write('\n')
         cppfile.close()
 
-        if shared:
-            assert out_filename is None
-            out_filename = os.path.join(location, '%s.%s' %
-                                        (module_name, get_lib_extension()))
-
-        _logger.debug('Generating shared lib %s', lib_filename)
-        cmd = [theano.config.cxx, get_gcc_shared_library_arg(), '-g']
-
-        if config.cmodule.remove_gxx_opt:
-            cmd.extend(p for p in preargs if not p.startswith('-O'))
-        else:
-            cmd.extend(preargs)
-        cmd.extend('-I%s' % idir for idir in include_dirs)
-
-        if hide_symbols and sys.platform != 'win32':
-            # This has been available since gcc 4.0 so we suppose it
-            # is always available. We pass it here since it
-            # significantly reduces the size of the symbol table for
-            # the objects we want to share. This in turns leads to
-            # improved loading times on most platforms (win32 is
-            # different, as usual).
-            cmd.append('-fvisibility=hidden')
-        cmd.extend(['-o', lib_filename])
-        cmd.append(cppfilename)
-        cmd.extend(['-L%s' % ldir for ldir in lib_dirs])
-        cmd.extend(['-l%s' % l for l in libs])
-        # print >> sys.stderr, 'COMPILING W CMD', cmd
         _logger.debug('Running cmd: %s', ' '.join(cmd))
 
         def print_command_line_error():
