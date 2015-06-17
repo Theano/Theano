@@ -146,7 +146,6 @@ whitelist_flake8 = [
     "sandbox/symbolic_module.py",
     "sandbox/conv.py",
     "sandbox/debug.py",
-    "sandbox/neighbours.py",
     "sandbox/cuda/dnn.py",
     "sandbox/cuda/var.py",
     "sandbox/cuda/GpuConvGrad3D.py",
