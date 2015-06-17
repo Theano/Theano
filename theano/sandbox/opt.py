@@ -7,7 +7,6 @@ import logging
 
 from theano.compile import optdb
 from theano.gof import local_optimizer, EquilibriumOptimizer
-from theano.tensor.opt import register_specialize
 from theano.sandbox.blocksparse import (
     SparseBlockGemv, 
     SparseBlockOuter,
@@ -19,9 +18,10 @@ _logger = logging.getLogger('theano.sandbox.opt')
 
 
 def register_meta_opt(op_class, order, *tags):
+
     def call(fct):
         idx = bisect.bisect_left((order, fct), 
-                op_class.registered_opts)
+                                 op_class.registered_opts)
         op_class.registered_opts.insert(idx, (order, fct))
         optdb.register("meta_%s.%s" % (str(op_class.__name__), str(fct.__name__)), 
                        EquilibriumOptimizer([fct],max_use_ratio=1), order, *tags)
