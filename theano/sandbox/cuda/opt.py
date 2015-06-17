@@ -2386,6 +2386,8 @@ optdb.register('gpu_scanOp_make_inplace',
                'inplace',
                'scan')
 
+def _owner_isinstance(inp, test_class):
+    return inp.owner and isinstance(inp.owner.op, test_class)
 
 @register_opt()
 @local_optimizer([gpu_sparse_block_gemv], inplace=True)
@@ -2424,23 +2426,20 @@ def _clear_host_from_gpu(inputs):
     """
     clean_inputs = []
     for inp in inputs:
-        if inp.owner and isinstance(inp.owner.op, HostFromGpu):
+        if _owner_isinstance(inp, HostFromGpu):
             clean_inputs.append(inp.owner.inputs[0])
         else:
             clean_inputs.append(inp)
     return clean_inputs
 
-def owner_isinstance(inp, test_class):
-    return inp.owner and isinstance(inp.owner.op, test_class)
-
-@register_meta_opt(SparseBlockGemv, 48.55, "fast_run")
+@register_meta_opt(SparseBlockGemv, 48.55, 'fast_run', 'fast_compile', 'gpu')
 @local_optimizer([SparseBlockGemv, GpuFromHost])
 def gpu_sparse_block_gemv_opt(node):
     """
         TODO: WRITEME
     """
     if isinstance(node.op, SparseBlockGemv) and \
-       any(owner_isinstance(inp, HostFromGpu) for inp in node.inputs):
+       any(_owner_isinstance(inp, HostFromGpu) for inp in node.inputs):
 
         inputs = _clear_host_from_gpu(node.inputs)
 
@@ -2450,25 +2449,25 @@ def gpu_sparse_block_gemv_opt(node):
             return [host_from_gpu(gpu_sparse_block_gemv(*inputs))]
 
     elif isinstance(node.op, GpuFromHost) and \
-         owner_isinstance(node.inputs[0], SparseBlockGemv):
+         _owner_isinstance(node.inputs[0], SparseBlockGemv):
 
         meta_node = node.inputs[0].owner
         inputs = _clear_host_from_gpu(meta_node.inputs)
 
         if meta_node.op.inplace:
-            return [gpu_sparse_block_gemv_inplace(*meta_node.inputs)]
+            return [gpu_sparse_block_gemv_inplace(*inputs)]
         else:
-            return [gpu_sparse_block_gemv_inplace(*meta_node.inputs)]
+            return [gpu_sparse_block_gemv(*inputs)]
 
 
-@register_meta_opt(SparseBlockOuter, 48.55, "fast_run")
+@register_meta_opt(SparseBlockOuter, 48.55, 'fast_run', 'fast_compile', 'gpu')
 @local_optimizer([SparseBlockOuter, GpuFromHost])
 def gpu_sparse_block_outer_opt(node):
     """
         TODO: WRITEME
     """
     if isinstance(node.op, SparseBlockOuter) and \
-       any(owner_isinstance(inp, HostFromGpu) for inp in node.inputs):
+       any(_owner_isinstance(inp, HostFromGpu) for inp in node.inputs):
 
         inputs = _clear_host_from_gpu(node.inputs)
 
@@ -2478,7 +2477,7 @@ def gpu_sparse_block_outer_opt(node):
             return [host_from_gpu(gpu_sparse_block_outer(*inputs))]
 
     elif isinstance(node.op, GpuFromHost) and \
-        owner_isinstance(node.inputs[0], SparseBlockOuter):
+        _owner_isinstance(node.inputs[0], SparseBlockOuter):
 
         meta_node = node.inputs[0].owner
         inputs = _clear_host_from_gpu(meta_node.inputs)
