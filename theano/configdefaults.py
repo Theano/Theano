@@ -538,6 +538,12 @@ AddConfigVar(
     BoolParam(True, allow_override=True),
     in_c_key=False)
 
+AddConfigVar(
+    'list_rejected_optimizers',
+    "List all optimizers rejected during optimization",
+    BoolParam(True, allow_override=True),
+    in_c_key=False)
+
 
 """Note to developers:
     Generally your exceptions should use an apply node's __str__
