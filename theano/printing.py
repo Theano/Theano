@@ -167,8 +167,8 @@ N.B.:
             outer_inputs = s.owner.inputs
             inner_to_outer_inputs = \
                 dict([(inner_inputs[i], outer_inputs[o])
-                      for i, o in enumerate(
-                              s.owner.op.get_outer_iidx_from_inner_iidx_seq())])
+                      for i, o in
+                      s.owner.op.var_mappings['outer_inp_from_inner_inp'].items()])
 
             print("", file=_file)
             debugmode.debugprint(s, depth=depth, done=done,
