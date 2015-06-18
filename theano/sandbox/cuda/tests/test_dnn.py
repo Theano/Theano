@@ -764,13 +764,12 @@ def test_dnn_conv_grad():
     utt.verify_grad(dconvw, [img_val, kern_val, out_val])
 
 
-def test_conv3d_valid():
+def test_conv3d_fwd():
 
-    print dnn.version()
-    if not cuda.dnn.dnn_available():
+    if not cuda.dnn.dnn_available() and dnn.version()[0] >= 3000 :
         raise SkipTest('"3D conv not supported in cudnn v1')
 
-    def run_conv3d_valid(inputs_shape, filters_shape,
+    def run_conv3d_fwd(inputs_shape, filters_shape,
                          subsample=(1, 1, 1)):
 
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
@@ -791,29 +790,124 @@ def test_conv3d_valid():
         res_ref = f_ref()
         res = f()
 
-        print res_ref.shape, res.shape
         utt.assert_allclose(res_ref, res)
 
-    run_conv3d_valid(inputs_shape=(128, 3, 5, 5, 5),
+    run_conv3d_fwd(inputs_shape=(128, 3, 5, 5, 5),
                      filters_shape=(64, 3, 1, 2, 4))
-    run_conv3d_valid(inputs_shape=(16, 4, 20, 12, 15),
+    run_conv3d_fwd(inputs_shape=(16, 4, 20, 12, 15),
                      filters_shape=(10, 4, 6, 12, 4),
                      subsample=(2, 2, 2))
-    run_conv3d_valid(inputs_shape=(16, 4, 20, 12, 15),
+    run_conv3d_fwd(inputs_shape=(16, 4, 20, 12, 15),
                      filters_shape=(10, 4, 6, 12, 4),
                      subsample=(2, 2, 2))
-    run_conv3d_valid(inputs_shape=(16, 1, 20, 12, 15),
+    run_conv3d_fwd(inputs_shape=(16, 1, 20, 12, 15),
                      filters_shape=(10, 1, 6, 12, 4),
                      subsample=(3, 3, 3))
-    run_conv3d_valid(inputs_shape=(16, 2, 20, 12, 15),
+    run_conv3d_fwd(inputs_shape=(16, 2, 20, 12, 15),
                      filters_shape=(10, 2, 6, 12, 4),
                      subsample=(3, 3, 3))
-    run_conv3d_valid(inputs_shape=(16, 1, 20, 12, 15),
+    run_conv3d_fwd(inputs_shape=(16, 1, 20, 12, 15),
                      filters_shape=(10, 1, 6, 12, 4),
                      subsample=(3, 2, 1))
-    run_conv3d_valid(inputs_shape=(16, 1, 20, 12, 15),
+    run_conv3d_fwd(inputs_shape=(16, 1, 20, 12, 15),
                      filters_shape=(10, 1, 6, 12, 4),
                      subsample=(1, 2, 3))
+
+
+
+
+def test_conv3d_gradweight():
+
+    if not cuda.dnn.dnn_available() and dnn.version()[0] >= 3000 :
+        raise SkipTest('"3D conv not supported in cudnn v1')
+
+    def run_gradweight(inputs_shape, filters_shape, dCdH_shape,
+                       subsample=(1, 1, 1)):
+        inputs_val = numpy.random.random(inputs_shape).astype('float32')
+        dCdH_val = numpy.random.random(dCdH_shape).astype('float32')
+        kern_val = numpy.random.random(filters_shape).astype('float32')
+        inputs = shared(inputs_val)
+        dCdH = shared(dCdH_val)
+        kern = shared(kern_val)
+        filters_shape_s = (filters_shape[0], filters_shape[2],
+                           filters_shape[3], filters_shape[4],
+                           filters_shape[1])
+        conv = theano.tensor.nnet.convGrad3D(V=inputs.dimshuffle(0, 2, 3, 4, 1),
+                                             dCdH=dCdH.dimshuffle(0, 2, 3, 4, 1),
+                                             WShape=filters_shape_s,
+                                             d=subsample)
+        desc = dnn.GpuDnnConv3dDesc(border_mode='valid', subsample=subsample,
+                                    conv_mode='cross')(inputs.shape, kern.shape)
+        gradW = dnn.GpuDnnConv3dGradW()(inputs, dCdH, kern, desc)
+        f_ref = theano.function([], conv.dimshuffle(0, 4, 1, 2, 3))
+        f = theano.function([], gradW, mode=mode_with_gpu)
+        res_ref = f_ref()
+        res = f()
+        utt.assert_allclose(res_ref, res)
+
+    run_gradweight(inputs_shape=(16, 1, 10, 12, 16),
+                   filters_shape=(10, 1, 6, 12, 4),
+                   dCdH_shape=(16, 10, 5, 1, 13),
+                   subsample=(1, 1, 1))
+    run_gradweight(inputs_shape=(16, 1, 20, 10, 16),
+                   filters_shape=(10, 1, 6, 4, 4),
+                   dCdH_shape=(16, 10, 8, 4, 7),
+                   subsample=(2, 2, 2))
+    run_gradweight(inputs_shape=(16, 1, 20, 10, 16),
+                   filters_shape=(10, 1, 6, 3, 4),
+                   dCdH_shape=(16, 10, 5, 3, 5),
+                   subsample=(3, 3, 3))
+    run_gradweight(inputs_shape=(16, 1, 20, 12, 16),
+                   filters_shape=(10, 1, 6, 12, 4),
+                   dCdH_shape=(16, 10, 8, 1, 5),
+                   subsample=(2, 1, 3))
+
+
+def test_conv3d_gradinput():
+
+    if not cuda.dnn.dnn_available() and dnn.version()[0] >= 3000 :
+        raise SkipTest('"3D conv not supported in cudnn v1')
+
+    def run_gradinput(inputs_shape, filters_shape,
+                      subsample=(1, 1, 1)):
+
+        inputs_val = numpy.random.random(inputs_shape).astype('float32')
+        filters_val = numpy.random.random(filters_shape).astype('float32')
+        inputs = shared(inputs_val)
+        filters = shared(filters_val)
+
+        bias = shared(numpy.zeros(filters_shape[1]).astype('float32'))
+        conv = theano.tensor.nnet.convTransp3D(W=filters.dimshuffle(0, 2, 3, 4, 1),
+                                               b=bias, d=subsample,
+                                               H=inputs.dimshuffle(0, 2, 3, 4, 1))
+
+        f_ref = theano.function([], conv.dimshuffle(0, 4, 1, 2, 3))
+        res_ref = f_ref()
+
+        bottom_shape = res_ref.shape
+        bottom_val = numpy.random.random(bottom_shape).astype('float32')
+        bottom = shared(bottom_val)
+
+        desc = dnn.GpuDnnConv3dDesc(border_mode='valid', subsample=subsample,
+                                    conv_mode='cross')(bottom.shape, filters.shape)
+        gradI = dnn.GpuDnnConv3dGradI()(filters, inputs, bottom, desc)
+        f = theano.function([], gradI, mode=mode_with_gpu)
+        res = f()
+
+        utt.assert_allclose(res_ref, res)
+
+    run_gradinput(inputs_shape=(16, 10, 15, 12, 12),
+                  filters_shape=(10, 1, 6, 12, 4))
+    run_gradinput(inputs_shape=(16, 10, 15, 12, 12),
+                  filters_shape=(10, 1, 6, 12, 4),
+                  subsample=(2, 2, 2))
+    run_gradinput(inputs_shape=(16, 10, 15, 12, 12),
+                  filters_shape=(10, 1, 6, 12, 4),
+                  subsample=(3, 3, 3))
+    run_gradinput(inputs_shape=(16, 10, 15, 12, 12),
+                  filters_shape=(10, 1, 6, 12, 4),
+                  subsample=(3, 1, 2))
+
 
 
 def test_version():

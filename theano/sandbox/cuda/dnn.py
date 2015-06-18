@@ -908,7 +908,7 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
 
     def __init__(self, inplace=False, workmem=None):
         ### Only workmem = 'none' work with cudnn conv 3d
-        super(GpuDnnConv3dGradW, self).__init(inplace=inplace, workmem='none')
+        super(GpuDnnConv3dGradW, self).__init__(inplace=inplace, workmem='none')
 
     def grad(self, inp, grads):
         img, top, output, desc, alpha, beta, nb_dim = inp
@@ -1051,7 +1051,7 @@ class GpuDnnConvGradI(DnnBase, COp):
 
 
 
-class GpuDnnConvGrad3dI(GpuDnnConvGradI):
+class GpuDnnConv3dGradI(GpuDnnConvGradI):
     """
     The convolution gradient with respect to the inputs.
 
@@ -1065,7 +1065,7 @@ class GpuDnnConvGrad3dI(GpuDnnConvGradI):
                       'descriptor', 'alpha', 'beta')
 
     def __init__(self, inplace=False):
-        super(GpuDnnConvGradI, self).__init__(inplace)
+        super(GpuDnnConv3dGradI, self).__init__(inplace)
 
 
     def grad(self, inp, grads):
@@ -1091,7 +1091,7 @@ class GpuDnnConvGrad3dI(GpuDnnConvGradI):
             raise TypeError('kern must be 5D tensor')
         if topgrad.type.ndim != 5:
             raise TypeError('topgrad must be 5D tensor')
-        if output.type.ndim != 4:
+        if output.type.ndim != 5:
             raise TypeError('output must be 5D tensor')
 
         if not isinstance(desc.type, CDataType) \
@@ -1105,90 +1105,6 @@ class GpuDnnConvGrad3dI(GpuDnnConvGradI):
         return Apply(self, [kern, topgrad, output, desc, alpha, beta, nb_dim],
                      [output.type()])
 
-
-
-def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
-             conv_mode='conv', direction_hint=None, workmem=None):
-    """
-    GPU convolution using cuDNN from NVIDIA.
-
-    The memory layout to use is 'bc01', that is 'batch', 'channel',
-    'first dim', 'second dim' in that order.
-
-    :param img: images to do the convolution over
-    :param kerns: convolution filters
-    :param border_mode: one of 'valid', 'full'; additionally, the padding size
-        could be directly specified by an integer or a pair of integers
-    :param subsample: perform subsampling of the output (default: (1, 1))
-    :param conv_mode: perform convolution (kernels flipped) or cross-correlation.
-        One of 'conv', 'cross'. (default: 'conv')
-    :param direction_hint: Used by graph optimizers to change algorithm choice.
-        By default, GpuDnnConv will be used to carry out the convolution.
-        If border_mode is 'valid', subsample is (1,1) and direction_hint is
-        'bprop weights', it will use GpuDnnConvGradW.
-        If border_mode is 'full', subsample is (1,1) and direction_hint is
-        *not* 'forward!', it will use GpuDnnConvGradI.
-        This parameter is used internally by graph optimizers and may be
-        removed at any time without a deprecation period. You have been warned.
-    :param workmem: Specify the amount of working memory allowed.
-      More memory is usually faster.  One of 'none', 'small' or
-      'large'.  (default is None which takes its value from
-      :attr:`config.dnn.conv.workmem`)
-
-
-    :warning: The cuDNN library only works with GPU that have a compute
-      capability of 3.0 or higer.  This means that older GPU will not
-      work with this Op.
-    """
-    fgraph = getattr(img, 'fgraph', None) or getattr(kerns, 'fgraph', None)
-    if (border_mode == 'valid' and subsample == (1, 1) and
-        direction_hint == 'bprop weights'):
-        # Special case: We are asked to use GpuDnnConvGradW. We need to set
-        # up a suitable 'fake' convolution to compute the gradient for.
-        img = gpu_contiguous(img.dimshuffle(1, 0, 2, 3))
-        if conv_mode == 'conv':
-            # We need to flip manually. These 'kerns' are not the kernels
-            # that would be flipped by conv_mode='conv' in GpuDnnConvGradW.
-            kerns = kerns[:, :, ::-1, ::-1]
-        kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3))
-        shape2 = shape_i(img, 2, fgraph) - shape_i(kerns, 2, fgraph) + 1
-        shape3 = shape_i(img, 3, fgraph) - shape_i(kerns, 3, fgraph) + 1
-        out = gpu_alloc_empty(shape_i(kerns, 1, fgraph),
-                        shape_i(img, 1, fgraph), shape2, shape3)
-        desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
-                              conv_mode='cross')(img.shape, out.shape)
-        conv = GpuDnnConvGradW()(img, kerns, out, desc)
-        return as_cuda_ndarray_variable(conv.dimshuffle(1, 0, 2, 3))
-
-    elif (border_mode == 'full' and subsample == (1, 1) and
-          direction_hint != 'forward!'):
-        # Special case: We can be faster by using GpuDnnConvGradI to compute
-        # the full convolution as the backward pass of a valid convolution.
-        # We just need to set up a suitable 'fake' valid convolution.
-        img = gpu_contiguous(img)  # cudnn v1 and v2 rc3 need contiguous data
-        kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3))
-        conv_mode = 'cross' if conv_mode == 'conv' else 'conv'
-        shape2 = shape_i(img, 2, fgraph) + shape_i(kerns, 2, fgraph) - 1
-        shape3 = shape_i(img, 3, fgraph) + shape_i(kerns, 3, fgraph) - 1
-        out = gpu_alloc_empty(shape_i(img, 0, fgraph),
-                        shape_i(kerns, 1, fgraph), shape2, shape3)
-        desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
-                              conv_mode=conv_mode)(out.shape, kerns.shape)
-        return GpuDnnConvGradI()(kerns, img, out, desc)
-
-    # Standard case: We use GpuDnnConv with suitable padding.
-    # contig_version will return a gpu_contiguous copy
-    # if the img contains negative strides
-    img = gpu_contiguous(img)
-    kerns = gpu_contiguous(kerns)
-    desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
-                          conv_mode=conv_mode)(img.shape, kerns.shape)
-    desc_op = desc.owner.op
-    out_shp = GpuDnnConv.get_out_shape(img.shape, kerns.shape,
-                                       desc_op.border_mode,
-                                       desc_op.subsample)
-    out = gpu_alloc_empty(*out_shp)
-    return GpuDnnConv(workmem=workmem)(img, kerns, out, desc)
 
 
 def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),

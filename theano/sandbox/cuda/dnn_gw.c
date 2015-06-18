@@ -48,7 +48,7 @@ APPLY_SPECIFIC(conv_gw)(CudaNdarray *input, CudaNdarray *output,
       // Check if the input and the output have the same shape as they have
       // last time the apply node was executed
       bool same_shapes = true;
-      for (int i = 0; (i < 4) && same_shapes; i++)
+      for (int i = 0; (i < nb_dim) && same_shapes; i++)
       {
           same_shapes &= (CudaNdarray_HOST_DIMS(input)[i] !=
                           APPLY_SPECIFIC(previous_input_shape)[i]);
@@ -93,7 +93,7 @@ APPLY_SPECIFIC(conv_gw)(CudaNdarray *input, CudaNdarray *output,
         // Store the shapes of the inputs and kernels as well as the chosen
         // algorithm for future use.
         APPLY_SPECIFIC(previous_bwd_f_algo) = chosen_algo;
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < nb_dim; i++)
         {
             APPLY_SPECIFIC(previous_input_shape)[i] =
                                             CudaNdarray_HOST_DIMS(input)[i];
