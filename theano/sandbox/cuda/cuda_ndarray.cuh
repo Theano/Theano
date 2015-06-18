@@ -504,6 +504,11 @@ DllExport PyObject * CudaNdarray_Copy(const CudaNdarray * self);
 DllExport PyObject * CudaNdarray_ReduceSum(CudaNdarray * self, PyObject * py_reduce_mask);
 
 /**
+ * Reshape self to the new shape gived by the tuple shape.
+ */
+DllExport PyObject * CudaNdarray_Reshape(CudaNdarray * self, PyObject * shape);
+
+/**
  * Transfer the contents of numpy array `obj` to `self`.
  *
  * self is reallocated to have the correct dimensions if necessary.
