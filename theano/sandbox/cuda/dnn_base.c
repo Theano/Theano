@@ -7,17 +7,15 @@ c_set_tensorNd(CudaNdarray *var, int dim, cudnnTensorDescriptor_t desc) {
 
 
   int strides[dim];
+  int default_str = 1;
 
-  for (int i = 0; i < dim; ++i)
+  for (int i = dim-1; i >= 0; i--)
   {
     if (CudaNdarray_HOST_STRIDES(var)[i])
       strides[i] = CudaNdarray_HOST_STRIDES(var)[i];
     else
-    {
-      strides[i] = 1;
-      for (int j = i + 1; j < dim; ++j)
-        strides[i] *= CudaNdarray_HOST_DIMS(var)[j];
-    }
+      strides[i] = default_str;
+    default_str *= CudaNdarray_HOST_DIMS(var)[i];
   }
 
   cudnnStatus_t err = cudnnSetTensorNdDescriptor(desc, CUDNN_DATA_FLOAT, dim,
