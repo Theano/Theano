@@ -3,7 +3,8 @@
 int
 APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
                          CudaNdarray *om, cudnnConvolutionDescriptor_t desc,
-                         float alpha, float beta, CudaNdarray **output) {
+                         float alpha, float beta, int nb_dim, CudaNdarray **output) {
+
   cudnnStatus_t err = CUDNN_STATUS_SUCCESS;
   if (CudaNdarray_HOST_DIMS(input)[1] != CudaNdarray_HOST_DIMS(kerns)[1]) {
     PyErr_SetString(PyExc_ValueError,
@@ -11,29 +12,41 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
     return 1;
   }
 
-  if (c_set_tensor4d(input, APPLY_SPECIFIC(input)) == -1)
+  if (c_set_tensorNd(input, nb_dim, APPLY_SPECIFIC(input)) == -1)
     return 1;
-  if (c_set_filter(kerns, APPLY_SPECIFIC(kerns)) == -1)
+  if (c_set_filterNd(kerns, nb_dim, APPLY_SPECIFIC(kerns)) == -1)
     return 1;
+  /* if (c_set_tensor4d(input, APPLY_SPECIFIC(input)) == -1) */
+  /*   return 1; */
+  /* if (c_set_filter(kerns, APPLY_SPECIFIC(kerns)) == -1) */
+  /*   return 1; */
 
 #ifdef CONV_INPLACE
   Py_XDECREF(*output);
   *output = om;
   Py_INCREF(*output);
 #else
-  if (CudaNdarray_prep_output(output, 4, CudaNdarray_HOST_DIMS(om)) != 0)
+  if (CudaNdarray_prep_output(output, nb_dim, CudaNdarray_HOST_DIMS(om)) != 0)
     return 1;
   if (beta != 0.0 && CudaNdarray_CopyFromCudaNdarray(*output, om))
     return 1;
 #endif
 
-  if (c_set_tensor4d(*output, APPLY_SPECIFIC(output)) == -1)
-    return 1;
+   if (c_set_tensorNd(*output, nb_dim, APPLY_SPECIFIC(output)) == -1)
+     return 1;
+
+  /* if (c_set_tensor4d(*output, APPLY_SPECIFIC(output)) == -1) */
+  /*   return 1; */
 
   {
     size_t worksize;
     void *workspace;
     cudnnConvolutionFwdAlgo_t chosen_algo;
+
+     for (int i = 0; (i < nb_dim); i++)
+       std::cout << i << "/" << nb_dim << ", "
+                 << CudaNdarray_HOST_DIMS(input)[i] << ", "
+                 << CudaNdarray_HOST_DIMS(kerns)[i] << std::endl;
 
     if (CHOOSE_ALGO)
     {
@@ -41,7 +54,7 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
       // Check if the input and the kernels have the same shape as they have
       // last time the apply node was executed
       bool same_shapes = true;
-      for (int i = 0; (i < 4) && same_shapes; i++)
+      for (int i = 0; (i < nb_dim) && same_shapes; i++)
       {
           same_shapes &= (CudaNdarray_HOST_DIMS(input)[i] !=
                           APPLY_SPECIFIC(previous_input_shape)[i]);
@@ -115,7 +128,7 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
         // Store the shapes of the inputs and kernels as well as the chosen
         // algorithm for future use.
         APPLY_SPECIFIC(previous_algo) = chosen_algo;
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < nb_dim; i++)
         {
             APPLY_SPECIFIC(previous_input_shape)[i] =
                                             CudaNdarray_HOST_DIMS(input)[i];
@@ -142,7 +155,8 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
     // If the chosen implementation is FFT, validate that it can be used
     // on the current data and default on a safe implementation if it
     // can't.
-    if (chosen_algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT)
+    // Following code is 2d-specific, but it is fine as ftt is define only for 2d-filters
+    if (chosen_algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT && nb_dim == 4)
     {
 
       // Extract the properties of the convolution descriptor
@@ -186,12 +200,12 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
                                                   chosen_algo,
                                                   &worksize);
     if (err != CUDNN_STATUS_SUCCESS) {
+      std::cout << "here" << std::endl;
       PyErr_Format(PyExc_RuntimeError,
                    "GpuDnnConv: error getting worksize: %s",
-                   cudnnGetErrorString(err));
+                     cudnnGetErrorString(err));
       return 1;
     }
-
     workspace = get_work_mem(worksize);
     if (workspace == NULL && worksize != 0)
       return 1;
@@ -208,6 +222,7 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
       APPLY_SPECIFIC(output), CudaNdarray_DEV_DATA(*output));
   }
   if (err != CUDNN_STATUS_SUCCESS) {
+    std::cout << "here2" << std::endl;
     PyErr_Format(PyExc_RuntimeError, "GpuDnnConv: error doing operation: %s",
 		 cudnnGetErrorString(err));
     return 1;

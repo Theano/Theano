@@ -3,7 +3,7 @@
 int
 APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
                         CudaNdarray *im, cudnnConvolutionDescriptor_t desc,
-                        float alpha, float beta, CudaNdarray **input) {
+                        float alpha, float beta, int nb_dim, CudaNdarray **input) {
   cudnnStatus_t err = CUDNN_STATUS_SUCCESS;
 
   if (CudaNdarray_HOST_DIMS(im)[1] != CudaNdarray_HOST_DIMS(kerns)[1]) {
@@ -12,9 +12,14 @@ APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
     return 1;
   }
 
-  if (c_set_tensor4d(output, APPLY_SPECIFIC(output)) == -1)
+  /* if (c_set_tensor4d(output, APPLY_SPECIFIC(output)) == -1) */
+  /*   return 1; */
+  /* if (c_set_filter(kerns, APPLY_SPECIFIC(kerns)) == -1) */
+  /*   return 1; */
+
+  if (c_set_tensorNd(output, nb_dim, APPLY_SPECIFIC(output)) == -1)
     return 1;
-  if (c_set_filter(kerns, APPLY_SPECIFIC(kerns)) == -1)
+  if (c_set_filterNd(kerns, nb_dim, APPLY_SPECIFIC(kerns)) == -1)
     return 1;
 
 #ifdef CONV_INPLACE
@@ -22,13 +27,16 @@ APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
   *input = im;
   Py_INCREF(*input);
 #else
-  if (CudaNdarray_prep_output(input, 4, CudaNdarray_HOST_DIMS(im)) != 0)
+  if (CudaNdarray_prep_output(input, nb_dim, CudaNdarray_HOST_DIMS(im)) != 0)
     return 1;
   if (beta != 0.0 && CudaNdarray_CopyFromCudaNdarray(*input, im))
     return 1;
 #endif
 
-  if (c_set_tensor4d(*input, APPLY_SPECIFIC(input)) == -1)
+  /* if (c_set_tensor4d(*input, APPLY_SPECIFIC(input)) == -1) */
+  /*   return 1; */
+
+  if (c_set_tensorNd(*input, nb_dim, APPLY_SPECIFIC(input)) == -1)
     return 1;
 
   {

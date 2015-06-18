@@ -13,6 +13,7 @@ from theano.tensor.signal.downsample import max_pool_2d
 from theano.tensor.signal.downsample import DownsampleFactorMaxGrad
 import theano.sandbox.cuda.dnn as dnn
 from theano.sandbox.cuda.basic_ops import GpuAllocEmpty, gpu_alloc_empty
+from theano.sandbox.cuda import float32_shared_constructor as shared
 
 # Skip test if cuda_ndarray is not available.
 import theano.sandbox.cuda as cuda
@@ -761,6 +762,58 @@ def test_dnn_conv_grad():
     utt.verify_grad(dconv, [img_val, kern_val, out_val])
     utt.verify_grad(dconvi, [img_val, kern_val, out_val])
     utt.verify_grad(dconvw, [img_val, kern_val, out_val])
+
+
+def test_conv3d_valid():
+
+    print dnn.version()
+    if not cuda.dnn.dnn_available():
+        raise SkipTest('"3D conv not supported in cudnn v1')
+
+    def run_conv3d_valid(inputs_shape, filters_shape,
+                         subsample=(1, 1, 1)):
+
+        inputs_val = numpy.random.random(inputs_shape).astype('float32')
+        filters_val = numpy.random.random(filters_shape).astype('float32')
+
+        inputs = shared(inputs_val)
+        filters = shared(filters_val)
+        bias = shared(numpy.zeros(filters_shape[0]).astype('float32'))
+        conv_ref = theano.tensor.nnet.conv3D(V=inputs.dimshuffle(0, 2, 3, 4, 1),
+                                             W=filters.dimshuffle(0, 2, 3, 4, 1),
+                                             b=bias, d=subsample)
+        conv = dnn.dnn_conv3d(img=inputs, kerns=filters,
+                              border_mode="valid", subsample=subsample, conv_mode='cross')
+        f_ref = theano.function([], conv_ref.dimshuffle(0, 4, 1, 2, 3))
+        f = theano.function([], conv, mode=mode_with_gpu)
+
+
+        res_ref = f_ref()
+        res = f()
+
+        print res_ref.shape, res.shape
+        utt.assert_allclose(res_ref, res)
+
+    run_conv3d_valid(inputs_shape=(128, 3, 5, 5, 5),
+                     filters_shape=(64, 3, 1, 2, 4))
+    run_conv3d_valid(inputs_shape=(16, 4, 20, 12, 15),
+                     filters_shape=(10, 4, 6, 12, 4),
+                     subsample=(2, 2, 2))
+    run_conv3d_valid(inputs_shape=(16, 4, 20, 12, 15),
+                     filters_shape=(10, 4, 6, 12, 4),
+                     subsample=(2, 2, 2))
+    run_conv3d_valid(inputs_shape=(16, 1, 20, 12, 15),
+                     filters_shape=(10, 1, 6, 12, 4),
+                     subsample=(3, 3, 3))
+    run_conv3d_valid(inputs_shape=(16, 2, 20, 12, 15),
+                     filters_shape=(10, 2, 6, 12, 4),
+                     subsample=(3, 3, 3))
+    run_conv3d_valid(inputs_shape=(16, 1, 20, 12, 15),
+                     filters_shape=(10, 1, 6, 12, 4),
+                     subsample=(3, 2, 1))
+    run_conv3d_valid(inputs_shape=(16, 1, 20, 12, 15),
+                     filters_shape=(10, 1, 6, 12, 4),
+                     subsample=(1, 2, 3))
 
 
 def test_version():
