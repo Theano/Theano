@@ -7,9 +7,9 @@ cudnnFilterDescriptor_t APPLY_SPECIFIC(kerns);
 and the algorithms, if any, that were selected according to these dimensions
 and according to the amount of memory available at that time.
 */
-int APPLY_SPECIFIC(previous_input_shape)[4];
-int APPLY_SPECIFIC(previous_kerns_shape)[4];
-int APPLY_SPECIFIC(previous_output_shape)[4];
+int APPLY_SPECIFIC(previous_input_shape)[5];
+int APPLY_SPECIFIC(previous_kerns_shape)[5];
+int APPLY_SPECIFIC(previous_output_shape)[5];
 cudnnConvolutionFwdAlgo_t APPLY_SPECIFIC(previous_algo);
 cudnnConvolutionBwdFilterAlgo_t APPLY_SPECIFIC(previous_bwd_f_algo);
 cudnnConvolutionBwdDataAlgo_t APPLY_SPECIFIC(previous_bwd_d_algo);
@@ -21,12 +21,12 @@ APPLY_SPECIFIC(input) = NULL;
 APPLY_SPECIFIC(output) = NULL;
 APPLY_SPECIFIC(kerns) = NULL;
 if ((APPLY_SPECIFIC(err) = cudnnCreateTensorDescriptor(&APPLY_SPECIFIC(input))) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
+  PyErr_Format(PyExc_MemoryError, "could not allocate tensor descriptor "
 	       "(inp): %s", cudnnGetErrorString(APPLY_SPECIFIC(err)));
   FAIL;
 }
 if ((APPLY_SPECIFIC(err) = cudnnCreateTensorDescriptor(&APPLY_SPECIFIC(output))) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
+  PyErr_Format(PyExc_MemoryError, "could not allocate tensor descriptor "
                "(out): %s", cudnnGetErrorString(APPLY_SPECIFIC(err)));
   FAIL;
 }
@@ -36,7 +36,7 @@ if ((APPLY_SPECIFIC(err) = cudnnCreateFilterDescriptor(&APPLY_SPECIFIC(kerns))) 
   FAIL;
 }
 
-for (int i = 0; i < 4; i++)
+for (int i = 0; i < 5; i++)
 {
   APPLY_SPECIFIC(previous_input_shape)[i] = 0;
   APPLY_SPECIFIC(previous_kerns_shape)[i] = 0;
