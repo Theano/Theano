@@ -331,10 +331,10 @@ def inplace_elemwise_optimizer_op(OP):
                         node = new_node
                         baseline = inplace_pattern
                         break
+            if len(failed_list) == 0:
+                break
             elemwise_nodelist = failed_list
             failed_list = set()
-            if len(elemwise_nodelist) == 0:
-                break
             check_each_change = int(numpy.ceil(numpy.log(
                 len(elemwise_nodelist))))
             check_each_change = max(check_each_change, 1)
