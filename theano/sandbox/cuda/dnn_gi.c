@@ -12,11 +12,6 @@ APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
     return 1;
   }
 
-  /* if (c_set_tensor4d(output, APPLY_SPECIFIC(output)) == -1) */
-  /*   return 1; */
-  /* if (c_set_filter(kerns, APPLY_SPECIFIC(kerns)) == -1) */
-  /*   return 1; */
-
   if (c_set_tensorNd(output, nb_dim, APPLY_SPECIFIC(output)) == -1)
     return 1;
   if (c_set_filterNd(kerns, nb_dim, APPLY_SPECIFIC(kerns)) == -1)
@@ -32,9 +27,6 @@ APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
   if (beta != 0.0 && CudaNdarray_CopyFromCudaNdarray(*input, im))
     return 1;
 #endif
-
-  /* if (c_set_tensor4d(*input, APPLY_SPECIFIC(input)) == -1) */
-  /*   return 1; */
 
   if (c_set_tensorNd(*input, nb_dim, APPLY_SPECIFIC(input)) == -1)
     return 1;
