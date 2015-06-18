@@ -234,6 +234,11 @@ def inplace_elemwise_optimizer_op(OP):
                              list(graph.io_toposort(fgraph.inputs,
                                                     fgraph.outputs))
                              if type(node.op) == OP]
+        protected_inputs = [
+            f.protected for f in fgraph._features if
+            isinstance(f, theano.compile.function_module.Supervisor)]
+        protected_inputs = sum(protected_inputs, [])  # flatten the list
+        protected_inputs.extend(fgraph.outputs)
 
         # See: https://github.com/Theano/Theano/issues/2962
         if len(elemwise_nodelist) > 0:
@@ -242,19 +247,14 @@ def inplace_elemwise_optimizer_op(OP):
             check_each_change = max(check_each_change, 1)
         else:
             return
-        failed_list = []
+        failed_list = set()
         prev_len_elemlist = len(elemwise_nodelist) + 1
-        changed_node_since_validate = []
+        changed_node_since_validate = set()
         while check_each_change > 0 and prev_len_elemlist > len(elemwise_nodelist):
             prev_len_elemlist = len(elemwise_nodelist)
             for node in elemwise_nodelist:
                 op = node.op
                 baseline = op.inplace_pattern
-                protected_inputs = [
-                    f.protected for f in node.fgraph._features if
-                    isinstance(f, theano.compile.function_module.Supervisor)]
-                protected_inputs = sum(protected_inputs, [])  # flatten the list
-                protected_inputs.extend(fgraph.outputs)
                 candidate_outputs = [i for i in xrange(len(node.outputs))
                                      if i not in baseline]
                 # node inputs that are Constant, already destroyed,
@@ -297,8 +297,7 @@ def inplace_elemwise_optimizer_op(OP):
                             new_node = new_outputs[0].owner
 
                             # Add changed node into changed_node_since_validate
-                            if node not in changed_node_since_validate:
-                                changed_node_since_validate.append(node)
+                            changed_node_since_validate.add(node)
 
                             for r, new_r in zip(node.outputs, new_outputs):
                                 fgraph.replace(r, new_r,
@@ -308,7 +307,7 @@ def inplace_elemwise_optimizer_op(OP):
                             if nb_change_no_validate >= check_each_change:
                                 fgraph.validate()
                                 chk = fgraph.checkpoint()
-                                changed_node_since_validate = []
+                                changed_node_since_validate = set()
                                 nb_change_no_validate = 0
                         except (ValueError, TypeError, InconsistencyError) as e:
                             if check_each_change != 1 and not raised_warning:
@@ -321,18 +320,19 @@ def inplace_elemwise_optimizer_op(OP):
 
                             # Add changed node to failed_list
                             if len(changed_node_since_validate) > 1:
-                                failed_list.extend(changed_node_since_validate)
-                                changed_node_since_validate = []
+                                failed_list.update(list(changed_node_since_validate))
+                                changed_node_since_validate = set()
                             # Add failed node to failed_list
-                            if node not in failed_list:
-                                failed_list.append(node)
+                            # node is in changed_node_since_validate already, so there
+                            # is no need to add it here.
+                            #failed_list.add(node)
                             continue
                         candidate_inputs.remove(candidate_input)
                         node = new_node
                         baseline = inplace_pattern
                         break
             elemwise_nodelist = failed_list
-            failed_list = []
+            failed_list = set()
             if len(elemwise_nodelist) == 0:
                 break
             check_each_change = int(numpy.ceil(numpy.log(
