@@ -1262,7 +1262,7 @@ class GpuDnnPoolDesc(GpuOp):
         padX is the size of the left and right borders,
         padY is the size of the top and bottom borders.
     """
-    __props__ = ('ws', 'stride', 'mode', 'pad')
+    __props__ = ('ws', 'stride', 'mode', 'pad', 'nd')
 
     def c_headers(self):
         return ['cudnn.h', 'cudnn_helper.h']
@@ -1279,19 +1279,23 @@ class GpuDnnPoolDesc(GpuOp):
     def do_constant_folding(self, node):
         return False
 
-    def __init__(self, ws=(1, 1), stride=(1, 1), mode='max', pad=(0, 0)):
+    def __init__(self, ws=(1, 1), stride=(1, 1), mode='max', pad=(0, 0), nd=2):
         if mode == 'average':
             mode = 'average_inc_pad'
         assert mode in ('max', 'average_inc_pad', 'average_exc_pad')
         self.mode = mode
-        assert len(ws) == 2
+        assert len(ws) == nd
         self.ws = ws
-        assert len(stride) == 2
+        assert len(stride) == nd
         self.stride = stride
-        assert len(stride) == 2
+        assert len(stride) == nd
         self.pad = pad
         if (pad[0] != 0 or pad[1] != 0) and version() == -1:
             raise RuntimeError("CuDNN pooling with padding requires CuDNN v2")
+        assert nd in (2, 3)
+        if nd == 3 and version() < (3000, 3000):
+            raise RuntimeError("3 pooling only supported on CuDNN v3")
+        self.nd = nd
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -1328,22 +1332,14 @@ class GpuDnnPoolDesc(GpuOp):
                  "descriptor: %%s", cudnnGetErrorString(err));
     %(fail)s
   }
-#ifndef CUDNN_VERSION
-  err = cudnnSetPoolingDescriptor(
-  %(desc)s,
-  %(mode_flag)s,
-  %(wsX)d, %(wsY)d,
-  %(stridex)d, %(stridey)d
-  );
-#else
-  err = cudnnSetPooling2dDescriptor(
-  %(desc)s,
-  %(mode_flag)s,
-  %(wsX)d, %(wsY)d,
-  %(padX)d, %(padY)d,
-  %(stridex)d, %(stridey)d
-  );
-#endif
+  {
+    int win[%(nd)d] = {%(win)s};
+    int pad[%(nd)d] = {%(pad)s};
+    int str[%(nd)d] = {%(str)s};
+    err = cudnnSetPoolingNdDescriptor(
+      %(desc)s, %(mode_flag)s, %(nd)d,
+      win, pad, str);
+  }
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError, "could not set op descriptor: %%s",
                  cudnnGetErrorString(err));
@@ -1351,46 +1347,49 @@ class GpuDnnPoolDesc(GpuOp):
   }
 }
 """ % dict(name=name, desc=desc, mode_flag=mode_flag, fail=sub['fail'],
-           wsX=self.ws[0], wsY=self.ws[1],
-           stridex=self.stride[0], stridey=self.stride[1],
-           padX=self.pad[0], padY=self.pad[1])
+           nd=self.nd, win=', '.join(str(w) for w in self.ws),
+           pad=', '.join(str(p) for p in self.pad),
+           str=', '.join(str(s) for s in self.stride))
 
     def c_code_cache_version(self):
-        return (2, version())
+        return (3, version())
 
 
 class GpuDnnPool(DnnBase):
     """
     Pooling.
 
-    :param img: the image 4d tensor.
+    :param img: the image 4d or 5d tensor.
     :param desc: the pooling descriptor.
     """
     __props__ = ()
 
     def make_node(self, img, desc):
         img = as_cuda_ndarray_variable(img)
-        if img.type.ndim != 4:
-            raise TypeError('img must be 4D tensor')
-
         if not isinstance(desc.type, CDataType) \
                 or desc.type.ctype != 'cudnnPoolingDescriptor_t':
             raise TypeError('desc must be cudnnPoolingDescriptor_t')
 
-        return Apply(self, [img, desc],
-                     [img.type()])
+        dop = desc.owner.op
+        e_ndim = dop.nd + 2  # 4 or 5
+
+        if img.type.ndim != e_ndim:
+            raise TypeError('img must be %dD tensor' % e_ndim)
+
+        return Apply(self, [img, desc], [img.type()])
 
     def infer_shape(self, node, shape):
         desc = node.inputs[1].owner.op
-        kh, kw = desc.ws
-        sh, sw = desc.stride
-        padh, padw = desc.pad
-        return [(
-            shape[0][0],
-            shape[0][1],
-            (shape[0][2] + 2*padh - kh)//sh + 1,
-            (shape[0][3] + 2*padw - kw)//sw + 1
-        )]
+        nd = desc.nd
+        w = desc.ws
+        s = desc.stride
+        p = desc.pad
+        ret = [shape[0][0], shape[0][1],
+               (shape[0][2] + 2 * p[0] - w[0]) // s[0] + 1,
+               (shape[0][3] + 2 * p[1] - w[1]) // s[1] + 1]
+        if nd == 3:
+            ret.append((shape[0][4] + 2 * p[2] - w[2]) // s[2] + 1)
+        return [ret]
 
     def c_support_code_struct(self, node, name):
         return """
@@ -1404,12 +1403,12 @@ cudnnStatus_t err%(name)s;
 input%(name)s = NULL;
 output%(name)s = NULL;
 if ((err%(name)s = cudnnCreateTensorDescriptor(&input%(name)s)) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
+  PyErr_Format(PyExc_MemoryError, "could not allocate tensor descriptor "
                "(inp): %%s", cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
 if ((err%(name)s = cudnnCreateTensorDescriptor(&output%(name)s)) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
+  PyErr_Format(PyExc_MemoryError, "could not allocate tensor descriptor "
                "(out): %%s", cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
@@ -1425,65 +1424,51 @@ if (output%(name)s != NULL) { cudnnDestroyTensorDescriptor(output%(name)s); }
         desc = inputs[1]
         out, = outputs
 
-        set_in = c_set_tensor4d(inputs[0], "input" + str(name),
-                                'err' + name, sub['fail'])
-
-        set_out = c_set_tensor4d(out, "output" + str(name),
-                                 'err' + name, sub['fail'])
-
         return """
 cudnnStatus_t err%(name)s;
 
-int %(out)s_dims[4];
+int %(out)s_dims[5];
 
 if (!CudaNdarray_is_c_contiguous(%(input)s)) {
   PyErr_SetString(PyExc_ValueError, "Only contiguous inputs are supported.");
   %(fail)s
 }
 
-%(set_in)s
+if (c_set_tensorNd(%(input)s, %(input)s->nd, %(input_desc)s) != 0)
+  %(fail)s
 
 cudnnPoolingMode_t mode;
-int wsX, wsY, vpad, hpad, strideX, strideY;
-#ifndef CUDNN_VERSION
-err%(name)s = cudnnGetPoolingDescriptor(
-        %(desc)s, &mode,
-        &wsX, &wsY,
-        &strideX, &strideY);
-#else
-err%(name)s = cudnnGetPooling2dDescriptor(
-        %(desc)s, &mode,
-        &wsX, &wsY,
-        &vpad, &hpad,
-        &strideX, &strideY);
-#endif
+int win[3];
+int pad[3];
+int str[3];
+int ndims;
+err%(name)s = cudnnGetPoolingNdDescriptor(
+        %(desc)s, 3,
+        &mode, &ndims,
+        win, pad, str);
 
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_RuntimeError,
-               "GpuDnnPool: error doing cudnnGetPoolingDescriptor operation: %%s",
+               "GpuDnnPool: error doing cudnnGetPoolingNdDescriptor operation: %%s",
                cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
 
 %(out)s_dims[0] = CudaNdarray_HOST_DIMS(%(input)s)[0];
 %(out)s_dims[1] = CudaNdarray_HOST_DIMS(%(input)s)[1];
-%(out)s_dims[2] = (CudaNdarray_HOST_DIMS(%(input)s)[2] + (vpad*2) - wsX) / strideX + 1;
-%(out)s_dims[3] = (CudaNdarray_HOST_DIMS(%(input)s)[3] + (hpad*2) - wsY) / strideY + 1;
+%(out)s_dims[2] = (CudaNdarray_HOST_DIMS(%(input)s)[2] + (pad[0]*2) - win[0]) / str[0] + 1;
+%(out)s_dims[3] = (CudaNdarray_HOST_DIMS(%(input)s)[3] + (pad[1]*2) - win[1]) / str[1] + 1;
+if (ndims == 3)
+  %(out)s_dims[4] = (CudaNdarray_HOST_DIMS(%(input)s)[4] + (pad[2]*2) - win[2]) / str[2] + 1;
 
-if (CudaNdarray_prep_output(&%(out)s, 4, %(out)s_dims) != 0)
+if (CudaNdarray_prep_output(&%(out)s, ndims+2, %(out)s_dims) != 0)
 {
   %(fail)s
 }
 
-%(set_out)s
-#ifndef CUDNN_VERSION
-err%(name)s = cudnnPoolingForward(
-_handle,
-%(desc)s,
-%(input_desc)s, CudaNdarray_DEV_DATA(%(input)s),
-%(output_desc)s, CudaNdarray_DEV_DATA(%(out)s)
-);
-#else
+if (c_set_tensorNd(%(out)s, %(out)s->nd, %(output_desc)s) != 0)
+  %(fail)s
+
 {
 const float alpha = 1;
 const float beta = 0;
@@ -1496,7 +1481,6 @@ _handle,
 %(output_desc)s, CudaNdarray_DEV_DATA(%(out)s)
 );
 }
-#endif
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_RuntimeError,
                "GpuDnnPool: error doing cudnnPoolingForward operation: %%s",
@@ -1504,8 +1488,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
   %(fail)s
 }
 """ % dict(out=out, desc=desc, fail=sub['fail'],
-           name=name, set_in=set_in,
-           set_out=set_out, input=inputs[0],
+           name=name, input=inputs[0],
            input_desc="input"+name,
            output_desc="output"+name)
 
@@ -1526,7 +1509,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
         return [[1], [0]]
 
     def c_code_cache_version(self):
-        return (6, version())
+        return (7, version())
 
 
 class GpuDnnPoolGrad(DnnBase):
@@ -1541,21 +1524,23 @@ class GpuDnnPoolGrad(DnnBase):
     __props__ = ()
 
     def make_node(self, inp, out, inp_grad, desc):
-        inp = as_cuda_ndarray_variable(inp)
-        if inp.type.ndim != 4:
-            raise TypeError('inp must be 4D tensor')
-
-        inp_grad = as_cuda_ndarray_variable(inp_grad)
-        if inp_grad.type.ndim != 4:
-            raise TypeError('inp_grad must be 4D tensor')
-
-        out = as_cuda_ndarray_variable(out)
-        if out.type.ndim != 4:
-            raise TypeError('out must be 4D tensor')
-
         if not isinstance(desc.type, CDataType) \
                 or desc.type.ctype != 'cudnnPoolingDescriptor_t':
             raise TypeError('desc must be cudnnPoolingDescriptor_t')
+
+        nd = desc.owner.op.nd + 2  # 4 or 5
+
+        inp = as_cuda_ndarray_variable(inp)
+        if inp.type.ndim != nd:
+            raise TypeError('inp must be %dD tensor' % (nd,))
+
+        inp_grad = as_cuda_ndarray_variable(inp_grad)
+        if inp_grad.type.ndim != nd:
+            raise TypeError('inp_grad must be %dD tensor' % (nd,))
+
+        out = as_cuda_ndarray_variable(out)
+        if out.type.ndim != nd:
+            raise TypeError('out must be %dD tensor' % (nd,))
 
         return Apply(self, [inp, out, inp_grad, desc],
                      [inp.type()])
@@ -1616,18 +1601,6 @@ if (output_grad%(name)s != NULL) { cudnnDestroyTensorDescriptor(output_grad%(nam
         out, inp, inp_grad, desc = inputs
         out_grad, = outputs
 
-        set_in = "\n".join([
-            c_set_tensor4d(inp, "input" + name,
-                           'err' + name, sub['fail']),
-            c_set_tensor4d(inp_grad, "input_grad" + name,
-                           'err' + name, sub['fail']),
-            c_set_tensor4d(out, "output" + name,
-                           'err' + name, sub['fail'])
-        ])
-
-        set_out = c_set_tensor4d(out, "output_grad" + name,
-                                 'err' + name, sub['fail'])
-
         return """
 cudnnStatus_t err%(name)s;
 
@@ -1649,25 +1622,23 @@ if (!CudaNdarray_is_c_contiguous(%(output)s)) {
   %(fail)s
 }
 
-%(set_in)s
+if (c_set_tensorNd(%(input)s, %(input)s->nd, %(input_desc)s) != 0)
+  %(fail)s
+if (c_set_tensorNd(%(input_grad)s, %(input_grad)s->nd, %(input_grad_desc)s) != 0)
+  %(fail)s
+if (c_set_tensorNd(%(output)s, %(output)s->nd, %(output_desc)s) != 0)
+  %(fail)s
 
-if (CudaNdarray_prep_output(&%(output_grad)s, 4,
+if (CudaNdarray_prep_output(&%(output_grad)s,
+                            %(output)s->nd,
                             CudaNdarray_HOST_DIMS(%(output)s)) != 0)
 {
   %(fail)s
 }
 
-%(set_out)s
-#ifndef CUDNN_VERSION
-err%(name)s = cudnnPoolingBackward(
-_handle,
-%(desc)s,
-%(input_desc)s, CudaNdarray_DEV_DATA(%(input)s),
-%(input_grad_desc)s, CudaNdarray_DEV_DATA(%(input_grad)s),
-%(output_desc)s, CudaNdarray_DEV_DATA(%(output)s),
-%(output_grad_desc)s, CudaNdarray_DEV_DATA(%(output_grad)s)
-);
-#else
+if (c_set_tensorNd(%(output_grad)s, %(output_grad)s->nd, %(output_grad_desc)s) != 0)
+  %(fail)s
+
 {
 const float alpha = 1;
 const float beta = 0;
@@ -1682,51 +1653,28 @@ _handle,
 %(output_grad_desc)s, CudaNdarray_DEV_DATA(%(output_grad)s)
 );
 }
-#endif
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_RuntimeError,
-               "GpuDnnPoolGrad: error doing operation: %%s. "
-               "input.shape=(%%d, %%d, %%d, %%d) "
-               "input_grad.shape=(%%d, %%d, %%d, %%d) "
-               "output.shape=(%%d, %%d, %%d, %%d) "
-               "output_grad.shape=(%%d, %%d, %%d, %%d)",
-               cudnnGetErrorString(err%(name)s),
-               CudaNdarray_HOST_DIMS(%(input)s)[0],
-               CudaNdarray_HOST_DIMS(%(input)s)[1],
-               CudaNdarray_HOST_DIMS(%(input)s)[2],
-               CudaNdarray_HOST_DIMS(%(input)s)[3],
-               CudaNdarray_HOST_DIMS(%(input_grad)s)[0],
-               CudaNdarray_HOST_DIMS(%(input_grad)s)[1],
-               CudaNdarray_HOST_DIMS(%(input_grad)s)[2],
-               CudaNdarray_HOST_DIMS(%(input_grad)s)[3],
-               CudaNdarray_HOST_DIMS(%(output)s)[0],
-               CudaNdarray_HOST_DIMS(%(output)s)[1],
-               CudaNdarray_HOST_DIMS(%(output)s)[2],
-               CudaNdarray_HOST_DIMS(%(output)s)[3],
-               CudaNdarray_HOST_DIMS(%(output_grad)s)[0],
-               CudaNdarray_HOST_DIMS(%(output_grad)s)[1],
-               CudaNdarray_HOST_DIMS(%(output_grad)s)[2],
-               CudaNdarray_HOST_DIMS(%(output_grad)s)[3]
-               );
-  %(fail)s
+               "GpuDnnPoolGrad: error doing operation: %%s.",
+               cudnnGetErrorString(err%(name)s));
+ %(fail)s
 }
 """ % dict(output_grad=out_grad, desc=desc,
-           fail=sub['fail'],
-           name=name, set_in=set_in,
-           set_out=set_out, input=inp, input_grad=inp_grad, output=out,
+           fail=sub['fail'], name=name,
+           input=inp, input_grad=inp_grad, output=out,
            input_desc="input"+name,
            input_grad_desc="input_grad"+name,
            output_desc="output"+name,
            output_grad_desc="output_grad"+name)
 
     def c_code_cache_version(self):
-        return (5, version())
+        return (6, version())
 
     def infer_shape(self, node, shape):
         return [shape[0]]
 
 
-def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
+def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0), nd=2):
     """
     GPU pooling using cuDNN from NVIDIA.
 
@@ -1741,6 +1689,9 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
     :param pad: (padX, padY) padding information.
         padX is the size of the left and right borders,
         padY is the size of the top and bottom borders.
+    :param nd: dimensions of pooling, can be 2 or 3 for 2d or 3d pooling
+        If set to 3 all other params (except mode) must have an extra
+        dimension to match. 3 is only available for cudnn v3
 
     :warning: The cuDNN library only works with GPU that have a compute
       capability of 3.0 or higer.  This means that older GPU will not
@@ -1748,7 +1699,7 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
     :note: This Op implements the ignore_border=True of max_pool_2d.
     """
     img = gpu_contiguous(img)
-    desc = GpuDnnPoolDesc(ws=ws, stride=stride, mode=mode, pad=pad)()
+    desc = GpuDnnPoolDesc(ws=ws, stride=stride, mode=mode, pad=pad, nd=nd)()
     return GpuDnnPool()(img, desc)
 
 
