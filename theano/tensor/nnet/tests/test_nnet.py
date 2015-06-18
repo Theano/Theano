@@ -26,7 +26,8 @@ from theano.tensor.nnet import (categorical_crossentropy,
                                 softmax_grad,
                                 softmax_with_bias, SoftmaxGrad,
                                 Prepend_scalar_constant_to_each_row,
-                                Prepend_scalar_to_each_row)
+                                Prepend_scalar_to_each_row,
+                                relu)
 from theano.tensor import matrix, vector, lvector, scalar
 
 
@@ -1393,6 +1394,31 @@ def test_stabilize_log_softmax():
     # version matches the unoptimized version
     rng = numpy.random.RandomState([2012, 8, 22])
     f(numpy.cast[config.floatX](rng.randn(2, 3)))
+
+
+def test_relu():
+    x = matrix('x')
+    seed = theano.tests.unittest_tools.fetch_seed()
+    rng = numpy.random.RandomState(seed)
+    X = rng.randn(20, 30).astype(config.floatX)
+
+    # test the base case, without custom alpha value
+    y = theano.tensor.nnet.relu(x).eval({x: X})
+    assert numpy.allclose(y, numpy.maximum(X, 0))
+
+    # test for different constant alpha values (also outside of [0, 1])
+    for alpha in 0, 0.3, 1, 2, -0.3, -1, -2:
+        y = theano.tensor.nnet.relu(x, alpha).eval({x: X})
+        assert numpy.allclose(y, numpy.where(X > 0, X, alpha * X))
+
+    # test for variable alpha (scalar, vector and matrix)
+    for alpha in scalar(), vector(), matrix():
+        # create value for alpha (correct ndim and broadcastable against X)
+        A = numpy.array(rng.randn(*X.shape[::-1][:alpha.ndim][::-1]),
+                        dtype=config.floatX)
+        y = theano.tensor.nnet.relu(x, alpha).eval({x: X, alpha: A})
+        assert numpy.allclose(y, numpy.where(X > 0, X, A * X), rtol=3e-5)
+
 
 if __name__ == '__main__':
     unittest.main()
