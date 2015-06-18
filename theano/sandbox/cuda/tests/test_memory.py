@@ -62,14 +62,15 @@ def test_memory():
         This test can fail if there is other process running on the gpu.
     """
     shapes = (200, 100)
-    # more_alloc1 and more_alloc2 is not the same for both dtype.
+    # more_alloc1 was different for each dtype in the past.
+    # more_alloc2 is still currently not the same for both dtype.
     # when dtype is float32, the computation is done on the gpu.
     # This insert constant on the gpu during compilation
     # that raise the number of alloc.
     # When dtype is float64, only the shared is on the gpu and it is transferd
     # to the cpu for computation. So no extra alloc after compilation.
     # more_alloc1 if after the first compilation, more_alloc2 after the second.
-    for dtype, more_alloc1, more_alloc2 in [("float32", 1, 4),
+    for dtype, more_alloc1, more_alloc2 in [("float32", 0, 3),
                                             ("float64", 0, 0)]:
         print(dtype)
         test_params = np.asarray(np.random.randn(np.prod(shapes)), dtype)
@@ -93,13 +94,13 @@ def test_memory():
         obj = theano.function([some_vector], derp, mode=mode_with_gpu)
         mem3 = freemem()
         print("After function compilation 1", mem3)
-        assert mem2_1 == mem3, (mem2_1, mem3)
+        assert mem2_1 == mem3, (mem2_1, mem3, dtype)
 
         grad_derp = tensor.grad(derp, some_vector)
         grad = theano.function([some_vector], grad_derp, mode=mode_with_gpu)
         mem4 = freemem()
         print("After function compilation 2", mem4)
-        assert mem2_2 == mem4, (mem2_2, mem4)
+        assert mem2_2 == mem4, (mem2_2, mem4, dtype)
 
         for i in range(3):
             obj(test_params)

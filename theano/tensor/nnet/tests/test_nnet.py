@@ -235,6 +235,20 @@ class T_CrossentropySoftmax1HotWithBiasDx(utt.InferShapeTester):
                     [advec_val, admat_val, alvec_val],
                     CrossentropySoftmax1HotWithBiasDx)
 
+    def test_neg_idx(self):
+        admat = matrix()
+        advec = vector()
+        alvec = lvector()
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        admat_val = rng.rand(10, 5).astype(config.floatX)
+        admat_val /= admat_val.sum(axis=1).reshape(10, 1)
+        advec_val = rng.rand(10).astype(config.floatX)
+        alvec_val = rng.randint(low=0, high=5, size=10)
+        alvec_val[1] = -1
+        out = CrossentropySoftmax1HotWithBiasDx()(advec, admat, alvec)
+        f = theano.function([advec, admat, alvec], out)
+        self.assertRaises(ValueError, f, advec_val, admat_val, alvec_val)
+
 
 class T_CrossentropySoftmaxArgmax1HotWithBias(utt.InferShapeTester):
 
@@ -277,6 +291,19 @@ class T_CrossentropySoftmaxArgmax1HotWithBias(utt.InferShapeTester):
                 CrossentropySoftmaxArgmax1HotWithBias()(admat, advec, alvec),
                 [admat_val, advec_val, alvec_val],
                 CrossentropySoftmaxArgmax1HotWithBias)
+
+    def test_neg_idx(self):
+        admat = matrix()
+        advec = vector()
+        alvec = lvector()
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        admat_val = rng.rand(3, 5).astype(config.floatX)
+        advec_val = rng.rand(5).astype(config.floatX)
+        alvec_val = rng.randint(low=0, high=5, size=3)
+        alvec_val[1] = -1
+        out = CrossentropySoftmaxArgmax1HotWithBias()(admat, advec, alvec)
+        f = theano.function([admat, advec, alvec], out)
+        self.assertRaises(ValueError, f, admat_val, advec_val, alvec_val)
 
 
 class T_prepend(utt.InferShapeTester):
