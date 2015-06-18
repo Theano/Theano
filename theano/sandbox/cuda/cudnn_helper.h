@@ -42,6 +42,20 @@ static inline const char *cudnnGetErrorString(cudnnStatus_t err) {
 typedef cudnnTensor4dDescriptor_t cudnnTensorDescriptor_t;
 
 static inline cudnnStatus_t
+cudnnSetTensorNdDescriptor(
+  cudnnTensorDescriptor_t tensorDesc,
+  cudnnDataType_t dataType,
+  int nbDims,
+  const int dimA[],
+  const int strideA[]) {
+  if (ndDims != 4) return CUDNN_STATUS_NOT_SUPPORTED;
+  return cudnnSetTensor4dDescriptorEx(
+    tensorDesc, dataType,
+    dimA[0], dimA[1], dimA[2], dimA[3],
+    strideA[0], strideA[1], strideA[2], strideA[3]);
+}
+
+static inline cudnnStatus_t
 cudnnGetConvolution2dForwardOutputDim(
   const cudnnConvolutionDescriptor_t convDesc,
   const cudnnTensorDescriptor_t inputTensorDesc,
