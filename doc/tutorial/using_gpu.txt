@@ -215,6 +215,10 @@ Tips for Improving Performance on GPU
   enable all of them with the `nvcc.flags=--use_fast_math` Theano
   flag or you can enable them individually as in this example:
   `nvcc.flags=-ftz=true --prec-div=false`.
+* To investigate whether if all the Ops in the computational graph are running on GPU. 
+  It is possible to debug or check your code by providing a value to `assert_no_cpu_op`
+  flag, i.e. `warn`, for warning `raise` for raising an error or `pdb` for putting a breakpoint
+  in the computational graph if there is a CPU Op.
 
 .. _gpu_async:
 
