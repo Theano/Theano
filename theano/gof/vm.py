@@ -113,6 +113,7 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
                                 reuse_out = out
                                 pre_allocated.add(out)
                                 allocated.add(ins)
+                                break
                 elif ins in view_of:
                     origin = view_of[ins]
                     if ins in viewed_by[origin]:
@@ -122,7 +123,7 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
                             not isinstance(origin, theano.Constant)):
                         # where gc
                         for i in range(idx + 1, len(order)):
-                            if reuse_out:
+                            if reuse_out is not None:
                                 break
                             for out in order[i].outputs:
                                 if (getattr(out, 'ndim', None) == 0 and
@@ -131,8 +132,8 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
                                     reuse_out = out
                                     pre_allocated.add(out)
                                     allocated.add(ins)
-
-                if reuse_out:
+                                    break
+                if reuse_out is not None:
                     reallocated_info[ins] = [ins, reuse_out]
 
     return reallocated_info
