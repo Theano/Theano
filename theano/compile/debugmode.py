@@ -25,8 +25,7 @@ from theano.configparser import (config, AddConfigVar, BoolParam, IntParam,
                                  StrParam)
 from theano.compile.function_module import (
     FunctionMaker, Function, infer_reuse_pattern,
-    SymbolicInputKit, SymbolicOutput, Supervisor, std_fgraph
-    )
+    SymbolicInputKit, SymbolicOutput, Supervisor, std_fgraph)
 from theano.compile.mode import Mode, register_mode
 from theano.compile.ops import OutputGuard
 
@@ -1617,7 +1616,7 @@ class _VariableEquivalenceTracker(object):
                  r,
                  debugprint(r, prefix='  ', depth=6,
                             file=StringIO(), done=done).getvalue(),
-                 debugprint(new_r, prefix='  ',  depth=6,
+                 debugprint(new_r, prefix='  ', depth=6,
                             file=StringIO(), done=done).getvalue()))
             self.replaced_by[r].append((reason, new_r))
 

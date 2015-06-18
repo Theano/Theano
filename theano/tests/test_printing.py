@@ -697,4 +697,3 @@ def test_scan_debugprint5():
 
     for truth,out in zip(expected_output.split("\n"), lines):
         assert truth.strip() == out.strip()
-
