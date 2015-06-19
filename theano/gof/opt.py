@@ -1928,6 +1928,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         print(blanc, "  time in local optimizers %.3fs" % s, file=stream)
         s = sum([time_opts[o] for o in opt.global_optimizers])
         print(blanc, "  time in global optimizers %.3fs" % s, file=stream)
+        s = sum([time_opts[o] for o in opt.final_optimizers])
+        print(blanc, "  time in final optimizers %.3fs" % s, file=stream)
         for i in range(len(loop_timing)):
             lopt = ""
             if loop_process_count[i]:
