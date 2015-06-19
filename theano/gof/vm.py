@@ -107,8 +107,8 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
         for ins in node.inputs:
             assert not (ins in view_of and viewed_by[ins])
             cm = all([compute_map_re[v][0] for v in dependencies.get(ins, [])])
-            if (storage_map[ins][0] is None and ins not in fgraph.outputs
-                    and ins.owner and cm and ins not in allocated):
+            if (storage_map[ins][0] is None and ins not in fgraph.outputs and
+                    ins.owner and cm and ins not in allocated):
                 # Constant Memory cannot be changed
                 # Constant and shared variables' storage_map value is not empty
                 reuse_out = None
@@ -118,9 +118,9 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
                         if reuse_out:
                             break
                         for out in order[i].outputs:
-                            if (same_shape(ins, out)
-                                and out not in pre_allocated
-                                    and ins.type == out.type):
+                            if (same_shape(ins, out) and
+                                out not in pre_allocated and
+                                    ins.type == out.type):
                                 reuse_out = out
                                 pre_allocated.add(out)
                                 allocated.add(ins)
@@ -136,9 +136,9 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
                             if reuse_out:
                                 break
                             for out in order[i].outputs:
-                                if (same_shape(ins, out)
-                                    and out not in pre_allocated
-                                        and ins.type == out.type):
+                                if (same_shape(ins, out) and
+                                    out not in pre_allocated and
+                                        ins.type == out.type):
                                     reuse_out = out
                                     pre_allocated.add(out)
                                     allocated.add(ins)
@@ -1047,8 +1047,8 @@ class VM_Linker(link.LocalLinker):
         if lazy is None:
             lazy = not all([(not th.lazy) for th in thunks])
         if config.memory_realloc and not (lazy or (config.profile and
-                                          config.profile_memory)
-                                          or self.use_cloop or self.callback):
+                                          config.profile_memory) or
+                                          self.use_cloop or self.callback):
             for pair in reallocated_info.values():
                 storage_map[pair[1]] = storage_map[pair[0]]
 
