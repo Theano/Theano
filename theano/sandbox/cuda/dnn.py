@@ -417,28 +417,21 @@ class GpuDnnConv(DnnBase, COp):
         if version() == -1:
             alg_def = ('CONV_ALGO', "0")
         else:
+            choose_alg = '0'
+            choose_alg_time = '0'
             if self.workmem == 'none':
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM'
-                choose_alg = '0'
-                choose_alg_time = '0'
             elif self.workmem == 'small':
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM'
-                choose_alg = '0'
-                choose_alg_time = '0'
             elif self.workmem == 'large':
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_GEMM'
-                choose_alg = '0'
-                choose_alg_time = '0'
             elif self.workmem == 'fft':
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_FFT'
-                choose_alg = '0'
-                choose_alg_time = '0'
             elif self.workmem == 'guess':
                 # The convolution implementation should be choosen according
                 # to a heuristic
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM'
                 choose_alg = '1'
-                choose_alg_time = '0'
             elif self.workmem == 'time':
                 # The convolution implementation should be choosen by timing
                 # every available implementation
