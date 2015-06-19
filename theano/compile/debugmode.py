@@ -25,8 +25,7 @@ from theano.configparser import (config, AddConfigVar, BoolParam, IntParam,
                                  StrParam)
 from theano.compile.function_module import (
     FunctionMaker, Function, infer_reuse_pattern,
-    SymbolicInputKit, SymbolicOutput, Supervisor, std_fgraph
-    )
+    SymbolicInputKit, SymbolicOutput, Supervisor, std_fgraph)
 from theano.compile.mode import Mode, register_mode
 from theano.compile.ops import OutputGuard
 
@@ -521,7 +520,8 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                file=sys.stdout, print_destroy_map=False,
                print_view_map=False, order=None, ids='CHAR',
                stop_on_name=False, prefix_child=None,
-               scan_ops=None, profile=None):
+               scan_ops=None, profile=None,
+               scan_inner_to_outer_inputs=None):
     """Print the graph leading to `r` to given depth.
 
     :param r: Variable instance
@@ -544,6 +544,9 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                          we don't print anything below it.
     :param scan_ops: Scan ops in the graph will be added inside this list
                      for later printing purposes.
+    :param scan_inner_to_outer_inputs: a dictionary mapping a scan ops
+    inner function inputs to the scan op inputs (outer inputs) for
+    printing purposes.
 
     """
     if depth == 0:
@@ -578,6 +581,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
         elif ids == "":
             id_str = ""
         done[obj] = id_str
+
         return id_str
 
     if hasattr(r.owner, 'op'):
@@ -678,16 +682,30 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                                       theano.scan_module.scan_op.Scan):
                             scan_ops.append(i)
 
-                    debugprint(i, new_prefix, depth=depth - 1, done=done,
-                               print_type=print_type, file=file, order=order,
-                               ids=ids, stop_on_name=stop_on_name,
-                               prefix_child=new_prefix_child,
-                               scan_ops=scan_ops, profile=profile)
-
+                    debugprint(
+                        i, new_prefix, depth=depth - 1, done=done,
+                        print_type=print_type, file=file, order=order,
+                        ids=ids, stop_on_name=stop_on_name,
+                        prefix_child=new_prefix_child, scan_ops=scan_ops,
+                        profile=profile,
+                        scan_inner_to_outer_inputs=scan_inner_to_outer_inputs)
     else:
-        # this is an input variable
-        id_str = get_id_str(r)
-        print('%s%s %s%s' % (prefix, r, id_str, type_str), file=file)
+        if scan_inner_to_outer_inputs is not None and\
+           r in scan_inner_to_outer_inputs:
+
+            id_str = get_id_str(r)
+            outer_r = scan_inner_to_outer_inputs[r]
+
+            if hasattr(outer_r.owner, 'op'):
+                outer_id_str = get_id_str(outer_r.owner)
+            else:
+                outer_id_str = get_id_str(outer_r)
+            print('%s%s %s%s -> %s' % (prefix, r, id_str, type_str,
+                                       outer_id_str), file=file)
+        else:
+            # this is an input variable
+            id_str = get_id_str(r)
+            print('%s%s %s%s' % (prefix, r, id_str, type_str), file=file)
 
     return file
 
@@ -1601,7 +1619,7 @@ class _VariableEquivalenceTracker(object):
                  r,
                  debugprint(r, prefix='  ', depth=6,
                             file=StringIO(), done=done).getvalue(),
-                 debugprint(new_r, prefix='  ',  depth=6,
+                 debugprint(new_r, prefix='  ', depth=6,
                             file=StringIO(), done=done).getvalue()))
             self.replaced_by[r].append((reason, new_r))
 
