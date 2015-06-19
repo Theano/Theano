@@ -545,12 +545,12 @@ returned directly?"""
 
         # reinitialize new maker and create new function
         f_cpy = maker.__class__(inputs=ins, outputs=maker.outputs,
-                               fgraph=fg_cpy,
-                               mode=maker.mode, profile=maker.profile,
-                               on_unused_input=maker.on_unused_input,
-                               function_builder=maker.function_builder,
-                               accept_inplace=maker.accept_inplace).create(
-                               input_storage, storage_map=new_storage_map)
+                                fgraph=fg_cpy,
+                                mode=maker.mode, profile=maker.profile,
+                                on_unused_input=maker.on_unused_input,
+                                function_builder=maker.function_builder,
+                                accept_inplace=maker.accept_inplace).create(
+                                input_storage, storage_map=new_storage_map)
 
         # Share immutable and constant input storage
         for in_ori, in_cpy, ori, cpy in zip(maker.inputs, f_cpy.maker.inputs,
