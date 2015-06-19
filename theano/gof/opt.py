@@ -658,17 +658,15 @@ class MergeOptimizer(Optimizer):
 
         blanc = ('    ' * level)
         print(blanc, "MergeOptimizer", file=stream)
-        print(blanc, "  nb_fail", nb_fail, file=stream)
-        print(blanc, "  replace_time", replace_time, file=stream)
-        print(blanc, "  validate_time", validate_time, file=stream)
-        print(blanc, "  callback_time", callback_time, file=stream)
+        print(blanc, "  nb fail=%5d merged=%5d constant=%5d" % (
+              nb_fail, nb_merged, nb_constant), file=stream)
+        print(blanc, "  time replace=%2.2f validate=%2.2f callback=%2.2f" % (
+              replace_time, validate_time, callback_time), file=stream)
         if callback_time > 1:
             print(blanc, "  callbacks_time", file=stream)
             for i in sorted(iteritems(callbacks_time), key=lambda a: a[1]):
                 if i[1] > 0:
                     print(i)
-        print(blanc, "  nb_merged", nb_merged, file=stream)
-        print(blanc, "  nb_constant", nb_constant, file=stream)
 
 
 merge_optimizer = MergeOptimizer()
