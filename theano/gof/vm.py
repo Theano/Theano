@@ -106,9 +106,9 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
 
         for ins in node.inputs:
             assert not (ins in view_of and viewed_by[ins])
-            if (storage_map[ins][0] is None and ins not in fgraph.outputs and ins.owner
-                    and all([compute_map_re[v][0] for v in dependencies.get(ins, [])])
-                    and ins not in allocated):
+            cm = all([compute_map_re[v][0] for v in dependencies.get(ins, [])])
+            if (storage_map[ins][0] is None and ins not in fgraph.outputs
+                    and ins.owner and cm and ins not in allocated):
                 # Constant Memory cannot be changed
                 # Constant and shared variables' storage_map value is not empty
                 reuse_out = None
@@ -118,7 +118,8 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
                         if reuse_out:
                             break
                         for out in order[i].outputs:
-                            if (same_shape(ins, out) and out not in pre_allocated
+                            if (same_shape(ins, out)
+                                and out not in pre_allocated
                                     and ins.type == out.type):
                                 reuse_out = out
                                 pre_allocated.add(out)
@@ -135,7 +136,8 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
                             if reuse_out:
                                 break
                             for out in order[i].outputs:
-                                if (same_shape(ins, out) and out not in pre_allocated
+                                if (same_shape(ins, out)
+                                    and out not in pre_allocated
                                         and ins.type == out.type):
                                     reuse_out = out
                                     pre_allocated.add(out)
@@ -1015,7 +1017,8 @@ class VM_Linker(link.LocalLinker):
             else:
                 dependencies = self.compute_gc_dependencies(storage_map)
 
-            reallocated_info = calculate_reallocate_info(order, fgraph, storage_map, compute_map_re, dependencies)
+            reallocated_info = calculate_reallocate_info(
+                order, fgraph, storage_map, compute_map_re, dependencies)
         else:
             reallocated_info = {}
 
