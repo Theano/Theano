@@ -588,7 +588,6 @@ class Function(object):
 
         input_storage = []
         assert len(ins) == len(fg_cpy.inputs)
-
         for in_ori, in_cpy, in_v in zip(maker.inputs, ins, fg_cpy.inputs):
             # Since we reuse original Out instances, copied In instances
             # should use the original variabls as their variables and

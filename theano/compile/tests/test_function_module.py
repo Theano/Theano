@@ -280,6 +280,18 @@ class T_function(unittest.TestCase):
                 else:
                     self.assertFalse(here.data is there.data)
 
+    # def test_swap_SharedVariable(self):
+    #     x = T.fscalar('x')
+    #     # SharedVariable for tests, one of them has update
+    #     y = theano.shared(value=1)
+    #     z = theano.shared(value=2)
+    #     out = T.tanh((x+y+2)/(x+z-0.2)**2)
+
+    #     # Test for different linkers
+    #     for mode in ["FAST_RUN","FAST_COMPILE"]:
+    #         ori = theano.function([x], [out], mode=mode,updates={z:z+1})
+    #         cpy = ori.copy(share_memory=True)
+
     def test_shared_state0(self):
         a = T.scalar()  # the a is for 'anonymous' (un-named).
         x, s = T.scalars('xs')
