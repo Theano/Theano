@@ -1603,16 +1603,18 @@ class TopoOptimizer(NavigatorOptimizer):
 
         callback_time = fgraph.execute_callbacks_time - callback_before
         nb_nodes_end = len(fgraph.apply_nodes)
-        return (nb, nb_nodes_start, nb_nodes_end,
+        return (self, nb, nb_nodes_start, nb_nodes_end,
                 io_t, loop_t, callback_time)
 
     @staticmethod
     def print_profile(stream, prof, level=0):
-        (nb, nb_nodes_start, nb_nodes_end,
+        (opt, nb, nb_nodes_start, nb_nodes_end,
          io_t, loop_t, callback_time) = prof
 
         blanc = ('    ' * level)
-        print(blanc, "TopoOptimizer", file=stream)
+        print(blanc, "TopoOptimizer ",
+              getattr(opt, "name", getattr(opt, "__name__", "")), file=stream)
+
         print(blanc, "  nb_node (start, end, changed)", (
             nb_nodes_start, nb_nodes_end, nb), file=stream)
         print(blanc, "  init io_toposort", io_t, file=stream)
@@ -1780,6 +1782,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         io_toposort_timing = []
         nb_nodes = []
         node_created = {}
+        global_sub_profs = []
+        final_sub_profs = []
         for opt in (self.global_optimizers +
                     list(self.get_local_optimizers()) +
                     self.final_optimizers):
@@ -1793,12 +1797,14 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             changed = False
 
             # apply global optimizers
+            sub_profs = []
             for gopt in self.global_optimizers:
                 change_tracker.reset()
                 nb = change_tracker.nb_imported
                 t_opt = time.time()
-                gopt.apply(fgraph)
+                sub_prof = gopt.apply(fgraph)
                 time_opts[gopt] += time.time() - t_opt
+                sub_profs.append(sub_prof)
                 if change_tracker.changed:
                     process_count.setdefault(gopt, 0)
                     process_count[gopt] += 1
@@ -1809,6 +1815,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         max_use_abort = True
                         opt_name = (getattr(gopt, "name", None)
                                     or getattr(gopt, "__name__", ""))
+            global_sub_profs.append(sub_profs)
 
             global_opt_timing.append(float(time.time() - t0))
 
@@ -1862,13 +1869,15 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 self.detach_updater(fgraph, u)
 
             # Apply final optimizers
+            sub_profs = []
             t_before_final_opt = time.time()
             for gopt in self.final_optimizers:
                 change_tracker.reset()
                 nb = change_tracker.nb_imported
                 t_opt = time.time()
-                gopt.apply(fgraph)
+                sub_prof = gopt.apply(fgraph)
                 time_opts[gopt] += time.time() - t_opt
+                sub_profs.append(sub_prof)
                 if change_tracker.changed:
                     process_count.setdefault(gopt, 0)
                     process_count[gopt] += 1
@@ -1879,6 +1888,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         max_use_abort = True
                         opt_name = (getattr(gopt, "name", None)
                                     or getattr(gopt, "__name__", ""))
+            final_sub_profs.append(sub_profs)
 
             global_opt_timing[-1] += time.time() - t_before_final_opt
 
@@ -1896,7 +1906,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         return (self, loop_timing, loop_process_count,
                 (start_nb_nodes, end_nb_nodes, max_nb_nodes),
                 global_opt_timing, nb_nodes, time_opts, io_toposort_timing,
-                node_created)
+                node_created, global_sub_profs, final_sub_profs)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         name = getattr(self, 'name', None)
@@ -1912,7 +1922,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         (opt, loop_timing, loop_process_count,
          (start_nb_nodes, end_nb_nodes, max_nb_nodes),
          global_opt_timing, nb_nodes, time_opts, io_toposort_timing,
-         node_created) = prof
+         node_created, global_sub_profs, final_sub_profs) = prof
 
         blanc = ('    ' * level)
         print(blanc, "EquilibriumOptimizer", end=' ', file=stream)
@@ -2027,6 +2037,15 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                     l.append(nb)
             return l
 
+        def merge_dict(d1, d2):
+            d = d1.copy()
+            for k, v in iteritems(d2):
+                if k in d:
+                    d[k] += v
+                else:
+                    d[k] = v
+            return d
+
         loop_timing = merge_list(prof1[1], prof2[1])
 
         loop_process_count = list(prof1[2])
@@ -2045,18 +2064,16 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
         nb_nodes = merge_list(prof1[5], prof2[5])
 
-        time_opts = prof1[6].copy()
-        for opt, t in iteritems(prof2[6]):
-            if opt in time_opts:
-                time_opts[opt] += t
-            else:
-                time_opts[opt] = t
-
+        time_opts = merge_dict(prof1[6], prof2[6])
         io_toposort_timing = merge_list(prof1[7], prof2[7])
 
         assert (len(loop_timing) == len(global_opt_timing) ==
                 len(io_toposort_timing) == len(nb_nodes))
         assert len(loop_timing) == max(len(prof1[1]), len(prof2[1]))
+
+        node_created = merge_dict(prof1[8], prof2[8])
+        global_sub_profs = merge_list(prof1[9], prof2[9])
+        final_sub_profs = merge_list(prof1[10], prof2[10])
         return (new_opt,
                 loop_timing,
                 loop_process_count,
@@ -2064,7 +2081,10 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 global_opt_timing,
                 nb_nodes,
                 time_opts,
-                io_toposort_timing)
+                io_toposort_timing,
+                node_created,
+                global_sub_profs,
+                final_sub_profs)
 
 #################
 ### Utilities ###
