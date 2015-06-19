@@ -1459,10 +1459,14 @@ _good_broadcast_unary_arcsin = dict(
     int8=[numpy.arange(-1, 2, dtype='int8')],
     complex=(randc128_ranged(-1, 1, (2, 3)),),
     empty=(numpy.asarray([], dtype=config.floatX),),)
+
 _good_broadcast_unary_arcsin_float = copymod(
     _good_broadcast_unary_arcsin,
     without=['integers', 'int8'])
-_grad_broadcast_unary_arcsin = dict(normal=(rand_ranged(-1, 1, (2, 3)),),)
+
+# The actual range is [-1, 1] but the numerical gradient is too
+# unstable near those values
+_grad_broadcast_unary_arcsin = dict(normal=(rand_ranged(-0.9, 0.9, (2, 3)),),)
 
 ArcsinTester = makeBroadcastTester(op=tensor.arcsin,
                                    expected=upcast_float16_ufunc(numpy.arcsin),

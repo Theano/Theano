@@ -25,7 +25,6 @@ def test_no_reuse():
 def test_gc_never_pickles_temporaries():
     x = T.dvector()
 
-    #print >> sys.stderr, 'BUILDING GRAPH'
     for i in xrange(2):  # TODO: 30 causes like LONG compilation due to MERGE
         if i:
             r = r + r/10
@@ -45,7 +44,6 @@ def test_gc_never_pickles_temporaries():
 
         # g_linker has no garbage collection
 
-        #print >> sys.stderr, 'COMPILING'
         f = theano.function([x], r, mode=theano.Mode(optimizer=optimizer,
                                                      linker=f_linker))
         g = theano.function([x], r, mode=theano.Mode(optimizer=optimizer,
@@ -95,7 +93,7 @@ def test_gc_never_pickles_temporaries():
         # that weren't collected shouldn't be pickled anyway
         # Allow for a couple of bytes of difference, since timing info,
         # for instance, can be represented as text of varying size.
-        assert abs(len_post_f - len_post_g) < 55, (
+        assert abs(len_post_f - len_post_g) < 128, (
             f_linker, len_post_f, len_post_g)
 
 
