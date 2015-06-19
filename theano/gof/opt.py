@@ -1991,23 +1991,23 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                     # Skip opt that have 0 times, they probably wasn't even tried.
                     print(blanc + "  ", '  %.3fs - %s' % (t, o), file=stream)
             print(file=stream)
-        if (len(opt.global_optimizers) + len(opt.final_optimizers) == 0 or
-#            sum([time_opts[o] for o in opt.global_optimizers + opt.final_optimizers]) < 1 or
-            False):
+        gf_opts = [o for o in opt.global_optimizers + opt.final_optimizers
+                   if o.print_profile.func_code is not
+                   Optimizer.print_profile.func_code]
+        if not gf_opts:
             return
+        print(blanc, "Global and final optimizer", file=stream)
         for i in range(len(loop_timing)):
             print(blanc, "Iter %d" % i, file=stream)
             for o, prof in zip(opt.global_optimizers, global_sub_profs[i]):
                 try:
                     o.print_profile(stream, prof, level + 2)
                 except NotImplementedError:
-                    import pdb;pdb.set_trace()
                     print(blanc, "merge not implemented for ", o)
             for o, prof in zip(opt.final_optimizers, final_sub_profs[i]):
                 try:
                     o.print_profile(stream, prof, level + 2)
                 except NotImplementedError:
-                    import pdb;pdb.set_trace()
                     print(blanc, "merge not implemented for ", o)
 
     @staticmethod
