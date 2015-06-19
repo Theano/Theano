@@ -544,8 +544,9 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                          we don't print anything below it.
     :param scan_ops: Scan ops in the graph will be added inside this list
                      for later printing purposes.
-    :param scan_inner_to_outer_inputs: a dictionary mapping a scan ops inner function
-    inputs to the scan op inputs (outer inputs) for printing purposes.
+    :param scan_inner_to_outer_inputs: a dictionary mapping a scan ops
+    inner function inputs to the scan op inputs (outer inputs) for
+    printing purposes.
 
     """
     if depth == 0:
@@ -681,12 +682,13 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                                       theano.scan_module.scan_op.Scan):
                             scan_ops.append(i)
 
-                    debugprint(i, new_prefix, depth=depth - 1, done=done,
-                               print_type=print_type, file=file, order=order,
-                               ids=ids, stop_on_name=stop_on_name,
-                               prefix_child=new_prefix_child, scan_ops=scan_ops,
-                               profile=profile,
-                               scan_inner_to_outer_inputs=scan_inner_to_outer_inputs)
+                    debugprint(
+                        i, new_prefix, depth=depth - 1, done=done,
+                        print_type=print_type, file=file, order=order,
+                        ids=ids, stop_on_name=stop_on_name,
+                        prefix_child=new_prefix_child, scan_ops=scan_ops,
+                        profile=profile,
+                        scan_inner_to_outer_inputs=scan_inner_to_outer_inputs)
     else:
         if scan_inner_to_outer_inputs is not None and\
            r in scan_inner_to_outer_inputs:
@@ -698,7 +700,8 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                 outer_id_str = get_id_str(outer_r.owner)
             else:
                 outer_id_str = get_id_str(outer_r)
-            print('%s%s %s%s -> %s' % (prefix, r, id_str, type_str, outer_id_str), file=file)
+            print('%s%s %s%s -> %s' % (prefix, r, id_str, type_str,
+                                       outer_id_str), file=file)
         else:
             # this is an input variable
             id_str = get_id_str(r)

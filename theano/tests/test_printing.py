@@ -303,8 +303,9 @@ def test_scan_debugprint1():
      > |<TensorType(float64, vector)> [@Y] -> [@E]
      > |A_copy [@Z] -> [@N]"""
 
-    for truth,out in zip(expected_output.split("\n"), lines):
+    for truth, out in zip(expected_output.split("\n"), lines):
         assert truth.strip() == out.strip()
+
 
 def test_scan_debugprint2():
     coefficients = theano.tensor.vector("coefficients")
@@ -313,11 +314,14 @@ def test_scan_debugprint2():
     max_coefficients_supported = 10000
 
     # Generate the components of the polynomial
-    components, updates = theano.scan(fn=lambda coefficient, power, free_variable:
+    components, updates = theano.scan(fn=lambda coefficient, power,
+                                      free_variable:
                                       coefficient * (free_variable ** power),
                                       outputs_info=None,
-                                      sequences=[coefficients,
-                                                 theano.tensor.arange(max_coefficients_supported)],
+                                      sequences=[
+                                          coefficients,
+                                          theano.tensor.arange(
+                                              max_coefficients_supported)],
                                       non_sequences=x)
     # Sum them up
     polynomial = components.sum()
@@ -327,7 +331,7 @@ def test_scan_debugprint2():
     for line in output_str.split('\n'):
         lines += [line]
 
-    expected_output= """Sum{acc_dtype=float64} [@A] ''
+    expected_output = """Sum{acc_dtype=float64} [@A] ''
      |for{cpu,scan_fn} [@B] ''
        |Elemwise{minimum,no_inplace} [@C] ''
        | |Subtensor{int64} [@D] ''
@@ -365,7 +369,7 @@ def test_scan_debugprint2():
      >   |x_copy [@BA] -> [@W]
      >   |<TensorType(int16, scalar)> [@BB] -> [@U]"""
 
-    for truth,out in zip(expected_output.split("\n"), lines):
+    for truth, out in zip(expected_output.split("\n"), lines):
         assert truth.strip() == out.strip()
 
 
@@ -379,7 +383,8 @@ def test_scan_debugprint3():
     # compute A**k
     def compute_A_k(A, k):
         # Symbolic description of the result
-        result, updates = theano.scan(fn=lambda prior_result, A: prior_result * A,
+        result, updates = theano.scan(fn=lambda prior_result,
+                                      A: prior_result * A,
                                       outputs_info=tensor.ones_like(A),
                                       non_sequences=A,
                                       n_steps=k)
@@ -389,11 +394,15 @@ def test_scan_debugprint3():
         return A_k
 
     # Generate the components of the polynomial
-    components, updates = theano.scan(fn=lambda coefficient, power, some_A, some_k:
-                                      coefficient * (compute_A_k(some_A, some_k) ** power),
+    components, updates = theano.scan(fn=lambda coefficient,
+                                      power, some_A, some_k:
+                                      coefficient *
+                                      (compute_A_k(some_A, some_k) ** power),
                                       outputs_info=None,
-                                      sequences=[coefficients,
-                                                 theano.tensor.arange(max_coefficients_supported)],
+                                      sequences=[
+                                          coefficients,
+                                          theano.tensor.arange(
+                                              max_coefficients_supported)],
                                       non_sequences=[A, k])
     # Sum them up
     polynomial = components.sum()
@@ -405,7 +414,7 @@ def test_scan_debugprint3():
     for line in output_str.split('\n'):
         lines += [line]
 
-    expected_output="""Sum{acc_dtype=float64} [@A] ''
+    expected_output = """Sum{acc_dtype=float64} [@A] ''
      |for{cpu,scan_fn} [@B] ''
        |Elemwise{minimum,no_inplace} [@C] ''
        | |Subtensor{int64} [@D] ''
@@ -478,7 +487,7 @@ def test_scan_debugprint3():
      > |<TensorType(float64, vector)> [@CC] -> [@BG]
      > |A_copy [@CD] -> [@BP]"""
 
-    for truth,out in zip(expected_output.split("\n"), lines):
+    for truth, out in zip(expected_output.split("\n"), lines):
         assert truth.strip() == out.strip()
 
 
@@ -490,8 +499,9 @@ def test_scan_debugprint4():
     a0 = theano.shared(numpy.arange(2))
     b0 = theano.shared(numpy.arange(2))
 
-    (a, b), _ = theano.scan(fn, outputs_info=[{'initial': a0, 'taps': [-2, -1]},
-                                              {'initial': b0, 'taps': [-2, -1]}],
+    (a, b), _ = theano.scan(fn, outputs_info=[
+        {'initial': a0, 'taps': [-2, -1]},
+        {'initial': b0, 'taps': [-2, -1]}],
                             n_steps=5)
 
     final_result = a+b
@@ -551,11 +561,7 @@ def test_scan_debugprint4():
      >Elemwise{add,no_inplace} [@BC] ''
      >Elemwise{add,no_inplace} [@BF] ''"""
 
-    # output = "\n".join(lines)
-    # with open('output5.txt', 'w') as f:
-    #     f.write(output)
-
-    for truth,out in zip(expected_output.split("\n"), lines):
+    for truth, out in zip(expected_output.split("\n"), lines):
         assert truth.strip() == out.strip()
 
 
@@ -695,5 +701,5 @@ def test_scan_debugprint5():
     for{cpu,scan_fn} [@BP] ''
      >Elemwise{mul,no_inplace} [@CS] ''"""
 
-    for truth,out in zip(expected_output.split("\n"), lines):
+    for truth, out in zip(expected_output.split("\n"), lines):
         assert truth.strip() == out.strip()
