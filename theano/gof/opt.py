@@ -100,7 +100,8 @@ class Optimizer(object):
         print("%s%s %s id=%i" % (
                 (' ' * level), self.__class__.__name__, name, id(self)), file=stream)
 
-    def print_profile(self, prof):
+    @staticmethod
+    def print_profile(stream, prof, level=0):
         if prof is not None:
             raise NotImplementedError(
                 "The function print_profile must be overrided if the"
