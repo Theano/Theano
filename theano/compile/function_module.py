@@ -582,6 +582,7 @@ class Function(object):
         # But to be safe for now as it isn't documented and we aren't sure
         # it is well tested, we don't share the part of the storage_map.
         if share_memory:
+            i_o_vars = maker.fgraph.inputs + maker.fgraph.outputs
             for key in storage_map.keys():
                 if key not in i_o_vars:
                     new_storage_map[memo[key]] = storage_map[key]
@@ -635,7 +636,7 @@ class Function(object):
             """
             Assert two SharedVariable follow some restirctions:
                 1. same type
-                2. same shape????
+                2. same shape or dim?
             """
             assert sv_ori.type == sv_rpl.type, (
                 "Type of given SharedVariable conflicts with origianl one",

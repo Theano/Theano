@@ -280,17 +280,28 @@ class T_function(unittest.TestCase):
                 else:
                     self.assertFalse(here.data is there.data)
 
-    # def test_swap_SharedVariable(self):
-    #     x = T.fscalar('x')
-    #     # SharedVariable for tests, one of them has update
-    #     y = theano.shared(value=1)
-    #     z = theano.shared(value=2)
-    #     out = T.tanh((x+y+2)/(x+z-0.2)**2)
+    def test_swap_SharedVariable(self):
+        x = T.fscalar('x')
+        # SharedVariable for tests, one of them has update
+        y = theano.shared(value=1, name='y')
+        z = theano.shared(value=2, name='z')
 
-    #     # Test for different linkers
-    #     for mode in ["FAST_RUN","FAST_COMPILE"]:
-    #         ori = theano.function([x], [out], mode=mode,updates={z:z+1})
-    #         cpy = ori.copy(share_memory=True)
+        # SharedVariable to replace
+        y_rpl = theano.shared(value=3)
+        z_rpl = theano.shared(value=4)
+
+        out = T.tanh((x+y+2)/(x+z-0.2)**2)
+
+        # Test for different linkers
+        for mode in ["FAST_RUN","FAST_COMPILE"]:
+            ori = theano.function([x], [out], mode=mode,updates={z:z+1})
+            cpy = ori.copy(swap={'y':y_rpl, 'z':z_rpl})
+
+            # test what:
+            # 1. is swapped( value equal, use = or is? )
+            # 2. is updatable( run several time and check value)
+            # 3. is/isn't separated in two function
+            # 4. consistence in In and Variable
 
     def test_shared_state0(self):
         a = T.scalar()  # the a is for 'anonymous' (un-named).
