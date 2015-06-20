@@ -31,10 +31,10 @@ class SparseBlockGemv(Op):
         Parameters
         ----------
         var: shape, comment
+        o: (batch, oWin, oSize) output vector
         W: (iBlocks, oBlocks, iSize, oSize), weight matrix
         h: (batch, iWin, iSize), input from lower layer (sparse)
         inputIdx: (batch, iWin), indexes of the input blocks
-        o: (batch, oWin, oSize) output vector
         outputIdx: (batch, oWin), indexes of the output blocks
         returns (batch, oWin, oSize), dot(W[i, j], h[i]) + o[j]
 
@@ -120,9 +120,31 @@ class SparseBlockOuter(Op):
 
     def make_node(self, o, x, y, xIdx, yIdx, alpha=None):
         """
-            o: (iBlocks, oBlocks, iSize, oSize), weight matrix
 
-            TODO: WRITEME
+        Compute the dot product of the specified pieces of vectors
+        and matrices. 
+
+        Parameters
+        ----------
+        var: shape, comment
+        o: (xBlocks, yBlocks, xSize, ySize)
+        x: (batch, xWin, xSize)
+        y: (batch, yWin, ySize)
+        xIdx: (batch, iWin), indexes of the x blocks
+        yIdx: (batch, oWin), indexes of the y blocks
+        returns (xBlocks, yBlocks, xSize, ySize), outer(x[i], y[j]) + o[i, j]
+
+        Notation
+        --------
+        - `batch` is the number of examples in a minibatch (batch size).
+        - `xBlocks` is the total number of blocks in x.
+        - `xSize` is the size of each of these x blocks.
+        - `xWin` is the number of blocks that will be used as x. Which blocks
+          will be used is specified in `xIdx`.
+        - `yBlocks` is the number or possible y blocks.
+        - `ySize` is the size of each of these y blocks.
+        - `yWin` is the number of y blocks that will actually be computed.
+          Which blocks will be computed is specified in `yIdx`.
         """
         one = tensor.constant(numpy.asarray(1.0, dtype='float32'))
         o = theano.tensor.as_tensor_variable(o)
@@ -197,19 +219,19 @@ def cpu_sparse_block_outer(o, x, y, xIdx, yIdx, alpha=1.0):
         def _loop_over_outputIdx(i, b, x, y, xIdx, yIdx):
 
             def _loop_over_inputIdx(j, i, b, x, y, xIdx, yIdx):
-                return tensor.outer(y[b, yIdx[b, i], :], x[b, xIdx[b, j], :])
+                return tensor.outer(x[b, xIdx[b, i], :], y[b, yIdx[b, j], :])
 
             res3 = theano.scan(fn=_loop_over_inputIdx,
-                               sequences=tensor.arange(0, xIdx.shape[1]),
+                               sequences=tensor.arange(0, yIdx.shape[1]),
                                non_sequences=[i, b, x, y, xIdx, yIdx],
-                               name='_loop_over_inputIdx')[0]
+                               name='_loop_over_yIdx')[0]
 
             return res3
 
         res2 = theano.scan(fn=_loop_over_outputIdx,
-                           sequences=tensor.arange(0, yIdx.shape[1]),
+                           sequences=tensor.arange(0, xIdx.shape[1]),
                            non_sequences=[b, x, y, xIdx, yIdx],
-                           name='_loop_over_outputIdx')[0]
+                           name='_loop_over_xIdx')[0]
 
         return res2
 
@@ -218,7 +240,7 @@ def cpu_sparse_block_outer(o, x, y, xIdx, yIdx, alpha=1.0):
                        non_sequences=[x, y, xIdx, yIdx],
                        name='_loop_over_batch')[0]
 
-    return alpha * res1.sum(axis=0) + o
+    return (alpha * res1).sum(axis=0) + o
 
 
 def sparse_block_dot(W, h, inputIdx, b, outputIdx, inplace=False):
