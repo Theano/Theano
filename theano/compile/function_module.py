@@ -545,7 +545,11 @@ class Function(object):
         """
         Copy this function. Copied function will have separated maker and
         fgraph with original function. User can choose whether to separate
-        storage by changing the share_memory arguments
+        storage by changing the share_memory arguments. 
+        Note:
+        We reuse original Out instances but In instances, therefore variables
+        in Ins and Outs are not in the same graph. Please avoid using variables
+        is Ins and Outs to reinitialize another Function or FunctionGraoh.
         ---------------------
         Params:
             share_memory -- { boolean } Default is False. When True, two
@@ -554,6 +558,10 @@ class Function(object):
             storages( see method __copy__() ) and same maker. If two functions
             share memory and allow_gc=False, this will increase executing speed
             and save memory.
+
+            swap -- { dict } Dictionary<String, theano.SharedVariable> that
+            map old SharedVariable's name to new SharedVariable. Default is
+            None.
         ---------------------
         Returns:
             func -- Copied theano.Function
@@ -607,7 +615,7 @@ class Function(object):
                                 accept_inplace=maker.accept_inplace).create(
                                 input_storage, storage_map=new_storage_map)
 
-        # Share immutable and constant input storage
+        # Share immutable and constant input's storage
         for in_ori, in_cpy, ori, cpy in zip(maker.inputs, f_cpy.maker.inputs,
                                             self.input_storage,
                                             f_cpy.input_storage):
@@ -615,6 +623,10 @@ class Function(object):
             if is_const or not in_ori.mutable:
                 cpy.data = ori.data
                 in_cpy.value = in_ori.value
+
+            # swap SharedVariable in In instances
+            if in_cpy.variable.name in swap.keys():
+                in_cpy.variable = swap[in_cpy.variable.name]
 
         return f_cpy
 
