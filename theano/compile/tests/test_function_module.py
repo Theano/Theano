@@ -287,21 +287,36 @@ class T_function(unittest.TestCase):
         z = theano.shared(value=2, name='z')
 
         # SharedVariable to replace
-        y_rpl = theano.shared(value=3)
-        z_rpl = theano.shared(value=4)
+        y_rpl = theano.shared(value=3,name ='y_rpl')
+        z_rpl = theano.shared(value=4, name='z_rpl')
+        swap = {'y':y_rpl, 'z':z_rpl}
+        map_SV = {'y_rpl':y_rpl, 'z_rpl':z_rpl}
 
-        out = T.tanh((x+y+2)/(x+z-0.2)**2)
+        out = x+y+z
 
         # Test for different linkers
+        # for mode in ["FAST_RUN","FAST_COMPILE"]:
+        second_time = False
         for mode in ["FAST_RUN","FAST_COMPILE"]:
             ori = theano.function([x], [out], mode=mode,updates={z:z+1})
-            cpy = ori.copy(swap={'y':y_rpl, 'z':z_rpl})
+            cpy = ori.copy(swap=swap)
 
-            # test what:
-            # 1. is swapped( value equal, use = or is? )
-            # 2. is updatable( run several time and check value)
-            # 3. is/isn't separated in two function
-            # 4. consistence in In and Variable
+            # run fuction several time
+            ori(1), cpy(1),cpy(2)
+
+            # test cpy function:
+            # 2. SharedVariable is updatable -> values did update(z == 5)
+            # 1. sharedvariable is swap ->  Rpl sharedvariables share storage
+            names = map_SV.keys()
+            for key in cpy.fn.storage_map:
+                if key.name in names:
+                    assert map_SV[key.name].container.storage[0] ==\
+                           cpy.fn.storage_map[key][0]
+                    if key.name == 'z_rpl' and not second_time:
+                        assert cpy.fn.storage_map[key][0] == 6
+                        second_time = True
+                    elif key.name == 'z_rpl' and second_time:
+                        assert cpy.fn.storage_map[key][0] == 8
 
     def test_shared_state0(self):
         a = T.scalar()  # the a is for 'anonymous' (un-named).

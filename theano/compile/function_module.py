@@ -575,7 +575,7 @@ class Function(object):
 
         # swap SharedVariable if need
         if swap != None:
-            self._swapSV(swap, ins, fg_cpy, memo)
+            self.__swapSV(swap, ins, fg_cpy, memo)
             #used to prevent 
             swapped_sv = swap.keys()
 
@@ -620,17 +620,19 @@ class Function(object):
                                             self.input_storage,
                                             f_cpy.input_storage):
             is_const = isinstance(in_ori.variable, theano.tensor.Constant)
-            if is_const or not in_ori.mutable:
+            swapped = swap != None and in_ori.name in swapped_sv
+
+            if (is_const or not in_ori.mutable) and not swapped:
                 cpy.data = ori.data
                 in_cpy.value = in_ori.value
 
             # swap SharedVariable in In instances
-            if in_cpy.variable.name in swap.keys():
+            if swapped and in_cpy.variable.name in swap.keys():
                 in_cpy.variable = swap[in_cpy.variable.name]
 
         return f_cpy
 
-    def _swapSV(self, swap, ins, fg_cpy, memo):
+    def __swapSV(self, swap, ins, fg_cpy, memo):
         """
         Hidden auxiliary function, used to swap SharedVariable in maker.inputs
         and maker.fgraph.
@@ -667,7 +669,6 @@ class Function(object):
 
             # we don't use the originally defined variable
             sv = sv.clone()
-
             # replace SharedVariable in maker's In instances
             for i in ins:
                 if i.variable.name == name:
@@ -675,16 +676,16 @@ class Function(object):
                     i.variable, i.value = sv, sv.container
                     break
 
+            # modify fg_cpy.iputs
+            for i in xrange(len(fg_cpy.inputs)):
+                if fg_cpy.inputs[i].name == name:
+                    fg_cpy.inputs[i] = sv
+                    break
+
             # replace SharedVariable in fgraph and memo
             for var_ori, var_cpy in memo.iteritems():
                 if isinstance(var_ori, theano.compile.SharedVariable) and var_ori.name == name:
                     checkSV(var_cpy, sv)
-                    # replace variable in fgraph
-                    # modify fg_cpy.iputs
-                    for i in xrange(len(fg_cpy.inputs)):
-                        if fg_cpy.inputs[i].name == name:
-                            fg_cpy.inputs[i] = sv
-                            break
                     fg_cpy.replace(var_cpy, sv)
                     # modify memo so that ori_var->this shared var
                     memo[var_ori] = sv
