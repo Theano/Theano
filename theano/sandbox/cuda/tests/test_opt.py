@@ -770,11 +770,11 @@ def test_blocksparse_gpu_outer_opt():
 
     o = sparse_block_dot(W, h, iIdx, b, oIdx)
 
-    f = theano.function([W, h, iIdx, b, oIdx], tensor.grad(o.sum(),wrt=W), 
+    theano.printing.debugprint(tensor.grad(o.sum(),wrt=W))
+
+    f = theano.function([W, h, iIdx, b, oIdx], [o, tensor.grad(o.sum(),wrt=W)], 
                         mode=mode_with_gpu)
     
-    print f.maker.fgraph.toposort()
-
     assert isinstance(f.maker.fgraph.toposort()[-2].op, GpuSparseBlockOuter)
 
 
