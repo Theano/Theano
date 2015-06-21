@@ -153,6 +153,29 @@ class test_dimshuffle_lift(unittest.TestCase):
         self.assertTrue(str(g) in (opt_str_g_inplace, opt_str_g_noinplace),
                         str(g))
 
+    def test_recursive_lift(self):
+        v = T.vector(dtype="float64")
+        m = T.matrix(dtype="float64")
+        out = ((v + 42) * (m + 84)).T
+        g = FunctionGraph([v, m], [out])
+        init_str_g = ("[DimShuffle{1,0}(Elemwise{mul,no_inplace}"
+                      "(DimShuffle{x,0}(Elemwise{add,no_inplace}"
+                      "(<TensorType(float64, vector)>, "
+                      "DimShuffle{x}(TensorConstant{42}))), "
+                      "Elemwise{add,no_inplace}"
+                      "(<TensorType(float64, matrix)>, "
+                      "DimShuffle{x,x}(TensorConstant{84}))))]")
+        self.assertTrue(str(g) == init_str_g)
+        new_out = local_dimshuffle_lift.transform(g.outputs[0].owner)[0]
+        new_g = FunctionGraph(g.inputs, [new_out])
+        opt_str_g = ("[Elemwise{mul,no_inplace}(Elemwise{add,no_inplace}"
+                     "(DimShuffle{0,x}(<TensorType(float64, vector)>), "
+                     "DimShuffle{x,x}(TensorConstant{42})), "
+                     "Elemwise{add,no_inplace}(DimShuffle{1,0}"
+                     "(<TensorType(float64, matrix)>), "
+                     "DimShuffle{x,x}(TensorConstant{84})))]")
+        self.assertTrue(str(new_g) == opt_str_g)
+
 
 def test_add_canonizer_problem0():
     n_segments = 10

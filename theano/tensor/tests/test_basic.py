@@ -1130,7 +1130,8 @@ _grad_broadcast_unary_abs1_no_complex = dict(
         )
 
 _grad_broadcast_unary_0_2_no_complex = dict(
-        normal=[numpy.asarray(rand_ranged(0, 2, (2, 3)), dtype=floatX)],
+    # Don't go too close to 2 for tests in float32
+        normal=[numpy.asarray(rand_ranged(0, 1.9, (2, 3)), dtype=floatX)],
         )
 
 # inplace ops when the input is integer and the output is float*
@@ -1760,7 +1761,7 @@ _good_broadcast_unary_gammaln = dict(
     empty=(numpy.asarray([], dtype=config.floatX),),)
 _grad_broadcast_unary_gammaln = dict(
     # smaller range as our grad method does not estimate it well enough.
-    normal=(rand_ranged(1e-8, 8, (2, 3)),),)
+    normal=(rand_ranged(1e-1, 8, (2, 3)),),)
 
 GammaTester = makeBroadcastTester(
     op=tensor.gamma,

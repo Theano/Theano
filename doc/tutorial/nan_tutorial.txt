@@ -1,0 +1,66 @@
+
+.. _nan_tutorial:
+
+=================
+Dealing with NaNs
+=================
+
+Having a model yielding NaNs or Infs is quite common if some of the tiny
+components in your model are not set properly. NaNs are hard to deal with
+because sometimes it is caused by a bug or error in the code, sometimes it's
+because of the numerical stability of your computational environment (library
+versions, etc.), and even, sometimes it relates to your algorithm. Here we try
+to outline common issues which cause the model to yield NaNs, as well as
+provide nails and hammers to diagnose it. 
+
+
+Check Superparameters and Weight Initialization
+-----------------------------------------------
+
+Most frequently, the cause would be that some of the hyperparameters, especially
+learning rates, are set incorrectly. A high learning rate can blow up your whole
+model into NaN outputs even within one epoch of training. So the first and
+easiest solution is try to lower it. Keep halving your learning rate until you
+start to get resonable output values.
+
+Other hyperparameters may also play a role. For example, are your training
+algorithms involve regularization terms? If so, are their corresponding
+penalties set reasonably? Search a wider hyperparameter space with a few (one or
+two) training eopchs each to see if the NaNs could disappear.
+
+Some models can be very sensitive to the initialization of weight vectors. If
+those weights are not initialized in a proper range, then it is not surprising
+that the model ends up with yielding NaNs. 
+
+
+Run in DebugMode
+-----------------
+
+If adjusting hyperparameters doesn't work for you, you can still get help from
+Theano's DebugMode. Run your code in DebugMode with flag mode=DebugMode,
+DebugMode.check_py=False. This will give you clue about which op is causing this
+problem, and then you can inspect into that op in more detail. For a detailed
+of using DebugMode, please refere to :ref:`debugmode`.
+
+Theano's MonitorMode can also help. It can be used to step through the execution
+of a function. You can inspect the inputs and outputs of each node being
+executed when the function is called. For how to use that, please check
+:ref:`faq_monitormode`. 
+
+
+Numerical Stability
+-------------------
+
+After you have located the op which causes the problem, it may turn out that the
+NaNs yielded by that op are related to numerical issues. For example, :math:
+`1 / log(p(x) + 1)` may result in NaNs for those nodes who have learned to yield
+a low probability p(x) for some input x.
+
+
+Algorithm Related
+-----------------
+
+In the most difficult situations, you may go through the above steps and find
+nothing wrong. If the above methods fail to uncover the cause, there is a good
+chance that something is wrong with your algorithm. Go back to the mathematics
+and find out if everything is derived correctly.

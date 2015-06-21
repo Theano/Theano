@@ -108,6 +108,7 @@ after the ``T.exp(x)`` is replaced by a GPU version of ``exp()``.
 .. code-block:: python
 
     from theano import function, config, shared, sandbox
+    import theano.sandbox.cuda.basic_ops
     import theano.tensor as T
     import numpy
     import time
