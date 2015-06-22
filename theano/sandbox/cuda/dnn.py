@@ -127,31 +127,6 @@ if (%(err)s != CUDNN_STATUS_SUCCESS) {
 
         """ % dict(var=var, err=err, desc=desc, fail=fail)
 
-def c_set_tensorNd(var, nb_dim, desc, err, fail):
-    return """CudaNdarra
-{
-    int* stride = CudaNdarray_HOST_STRIDES(%(var)s);
-
-%(err)s = cudnnSetTensorNdDescriptorEx(
-    %(desc)s, nb_dim, CUDNN_DATA_FLOAT,
-    CudaNdarray_HOST_DIMS(%(var)s),
-    CudaNdarray_HOST_STRIDES(%(var)s));
-
-);
-if (%(err)s != CUDNN_STATUS_SUCCESS) {
-    PyErr_Format(PyExc_RuntimeError,
-    "could not set tensorNd descriptor: %%s, %d"
-    cudnnGetErrorString(%(err)s),
-    nb_dim,
-    );
-    %(fail)s
-}
-}
-
-        """ % dict(var=var, nb_dim=nb_dim, err=err, desc=desc, fail=fail)
-
-
-
 class DnnBase(GpuOp, COp):
     """
     Creates a handle for cudnn and pulls in the cudnn libraries and headers.
@@ -511,15 +486,12 @@ class GpuDnnConv3dDesc(GpuOp):
            pad_d_spec=pad_d_spec, pad_h_spec=pad_h_spec, pad_w_spec=pad_w_spec)
 
     def c_code_cache_version(self):
-        return None
-#        return (2, version())
-
+        return (2, version())
 
 
 # scalar constants
 _zero = constant(numpy.asarray(0.0, dtype='float32'))
 _one = constant(numpy.asarray(1.0, dtype='float32'))
-
 _ifour = constant(numpy.asarray(4, dtype='int32'))
 _ifive = constant(numpy.asarray(5, dtype='int32'))
 
@@ -561,7 +533,7 @@ class GpuDnnConv(DnnBase, COp):
     """
     __props__ = ('workmem', 'inplace')
     __input_name__ = ('image', 'kernel', 'output',
-                      'descriptor', 'alpha', 'beta')
+                      'descriptor', 'alpha', 'beta', 'nb_dim')
 
     def __init__(self, workmem=None, inplace=False):
         """
@@ -709,7 +681,7 @@ class GpuDnnConv3d(GpuDnnConv):
     """
     __props__ = ('workmem', 'inplace')
     __input_name__ = ('image', 'kernel', 'output',
-                      'descriptor', 'alpha', 'beta')
+                      'descriptor', 'alpha', 'beta', 'nb_dim')
 
     def __init__(self, workmem=None, inplace=False):
         """
@@ -736,7 +708,6 @@ class GpuDnnConv3d(GpuDnnConv):
         alpha = ensure_float(alpha, _one, 'alpha')
         beta = ensure_float(beta, _zero, 'beta')
         nb_dim = ensure_int(nb_dim, _ifive, 'nb_dim')
-
 
         return Apply(self, [img, kern, output, desc, alpha, beta, nb_dim],
                      [output.type()])
@@ -803,7 +774,7 @@ class GpuDnnConvGradW(DnnBase, COp):
 
     """
     __props__ = ('workmem', 'inplace',)
-    __input_name__ = ('image', 'grad', 'output', 'descriptor', 'alpha', 'beta')
+    __input_name__ = ('image', 'grad', 'output', 'descriptor', 'alpha', 'beta', 'nb_dim')
 
     def __init__(self, inplace=False, workmem=None):
         COp.__init__(self, ["dnn_base.c", "dnn_conv_base.c", "dnn_gw.c"],
@@ -904,7 +875,7 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
 
     """
     __props__ = ('workmem', 'inplace',)
-    __input_name__ = ('image', 'grad', 'output', 'descriptor', 'alpha', 'beta')
+    __input_name__ = ('image', 'grad', 'output', 'descriptor', 'alpha', 'beta', 'nb_dim')
 
     def __init__(self, inplace=False, workmem=None):
         super(GpuDnnConv3dGradW, self).__init__(inplace=inplace, workmem='none')
@@ -961,7 +932,7 @@ class GpuDnnConvGradI(DnnBase, COp):
     """
     __props__ = ('workmem', 'inplace',)
     __input_name__ = ('kernel', 'grad', 'output',
-                      'descriptor', 'alpha', 'beta')
+                      'descriptor', 'alpha', 'beta', 'nb_dim')
 
     def __init__(self, inplace=False, workmem=None):
         COp.__init__(self, ["dnn_base.c", "dnn_conv_base.c", "dnn_gi.c"],
@@ -1062,9 +1033,12 @@ class GpuDnnConv3dGradI(GpuDnnConvGradI):
     """
     __props__ = ('inplace',)
     __input_name__ = ('kernel', 'grad', 'output',
-                      'descriptor', 'alpha', 'beta')
+                      'descriptor', 'alpha', 'beta', 'nb_dim')
 
     def __init__(self, inplace=False, workmem=None):
+        ### deterministic (default value) is not yet supported for conv3d
+        if workmem == None:
+            workmem = 'none'
         super(GpuDnnConv3dGradI, self).__init__(inplace, workmem)
         assert self.workmem in ['none', 'time','guess']
 
@@ -1193,7 +1167,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
 
 
 def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
-               conv_mode='conv', direction_hint=None, workmem=None):
+               conv_mode='conv', direction_hint=None, workmem='none'):
     """
     GPU convolution using cuDNN from NVIDIA.
 
@@ -1216,15 +1190,12 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
         This parameter is used internally by graph optimizers and may be
         removed at any time without a deprecation period. You have been warned.
     :param workmem: Specify the amount of working memory allowed.
-      More memory is usually faster.  One of 'none', 'small' or
-      'large'.  (default is None which takes its value from
-      :attr:`config.dnn.conv.workmem`)
-
+        Only 'none' is implemented for the conv3d
 
     :warning: The cuDNN library only works with GPU that have a compute
       capability of 3.0 or higer.  This means that older GPU will not
       work with this Op.
-    :warning: dnn_conv"d only works with cuDNN library 3.0
+    :warning: dnn_conv3d only works with cuDNN library 3.0
 
     """
     fgraph = getattr(img, 'fgraph', None) or getattr(kerns, 'fgraph', None)
