@@ -709,11 +709,11 @@ class GpuDnnConv3d(GpuDnnConv):
 
     def __init__(self, workmem=None, inplace=False):
         """
-        :param workmem: either 'none', 'small', 'large', 'fft', 'time' or
-        'guess'. Default is the value of :attr:`config.dnn.conv.workmem`.
+        :param workmem: either 'none' 'time' or 'guess'.
+        Default is the value of :attr:`config.dnn.conv.workmem`.
         """
-        ### Only workmem = 'none' work with cudnn conv 3d
-        super(GpuDnnConv3d, self).__init__(workmem='none', inplace=inplace)
+        super(GpuDnnConv3d, self).__init__(workmem='guess', inplace=inplace)
+        assert self.workmem in ['none' 'time','guess']
 
     def make_node(self, img, kern, output, desc, alpha=None, beta=None, nb_dim=None):
 
