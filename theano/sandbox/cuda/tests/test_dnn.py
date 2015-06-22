@@ -325,6 +325,23 @@ def test_pooling_opt():
                 for n in f.maker.fgraph.toposort()])
 
 
+def test_log_softmax_opt():
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+
+    x = T.ftensor4()
+    softmax_out = dnn.GpuDnnSoftmax('bc01', 'accurate', 'channel')(x)
+    log_out = T.log(T.as_tensor_variable(softmax_out))
+
+    f = theano.function([x], log_out, mode=mode_with_gpu)
+
+    dnn_softmax_nodes = [n for n in f.maker.fgraph.toposort() if
+                         isinstance(n.op, cuda.dnn.GpuDnnSoftmax)]
+
+    assert len(dnn_softmax_nodes) == 1
+    assert dnn_softmax_nodes[0].op.algo == "log"
+
+
 def test_dnn_tag():
     """
     Test that if cudnn isn't avail we crash and that if it is avail, we use it.
