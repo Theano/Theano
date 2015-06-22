@@ -12,11 +12,6 @@ APPLY_SPECIFIC(conv_gw)(CudaNdarray *input, CudaNdarray *output,
     return 1;
   }
 
-  /* if (c_set_tensor4d(input, APPLY_SPECIFIC(input)) == -1) */
-  /*   return 1; */
-  /* if (c_set_tensor4d(output, APPLY_SPECIFIC(output)) == -1) */
-  /*   return 1; */
-
   if (c_set_tensorNd(input, nb_dim, APPLY_SPECIFIC(input)) == -1)
     return 1;
   if (c_set_tensorNd(output, nb_dim, APPLY_SPECIFIC(output)) == -1)
@@ -33,8 +28,6 @@ APPLY_SPECIFIC(conv_gw)(CudaNdarray *input, CudaNdarray *output,
     return 1;
 #endif
 
-  /* if (c_set_filter(*kerns, APPLY_SPECIFIC(kerns)) == -1) */
-  /*   return 1; */
   if (c_set_filterNd(*kerns, nb_dim, APPLY_SPECIFIC(kerns)) == -1)
     return 1;
 
@@ -50,9 +43,9 @@ APPLY_SPECIFIC(conv_gw)(CudaNdarray *input, CudaNdarray *output,
       bool same_shapes = true;
       for (int i = 0; (i < nb_dim) && same_shapes; i++)
       {
-          same_shapes &= (CudaNdarray_HOST_DIMS(input)[i] !=
+          same_shapes &= (CudaNdarray_HOST_DIMS(input)[i] ==
                           APPLY_SPECIFIC(previous_input_shape)[i]);
-          same_shapes &= (CudaNdarray_HOST_DIMS(output)[i] !=
+          same_shapes &= (CudaNdarray_HOST_DIMS(output)[i] ==
                           APPLY_SPECIFIC(previous_output_shape)[i]);
       }
 

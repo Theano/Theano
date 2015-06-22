@@ -36,17 +36,17 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
     void *workspace;
     cudnnConvolutionFwdAlgo_t chosen_algo;
 
+
     if (CHOOSE_ALGO)
     {
-
       // Check if the input and the kernels have the same shape as they have
       // last time the apply node was executed
       bool same_shapes = true;
       for (int i = 0; (i < nb_dim) && same_shapes; i++)
       {
-          same_shapes &= (CudaNdarray_HOST_DIMS(input)[i] !=
+          same_shapes &= (CudaNdarray_HOST_DIMS(input)[i] ==
                           APPLY_SPECIFIC(previous_input_shape)[i]);
-          same_shapes &= (CudaNdarray_HOST_DIMS(kerns)[i] !=
+          same_shapes &= (CudaNdarray_HOST_DIMS(kerns)[i] ==
                           APPLY_SPECIFIC(previous_kerns_shape)[i]);
       }
 
@@ -66,6 +66,7 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
                   " on the GPU: %s\n", cudaGetErrorString(err2));
           return 1;
         }
+
 
         // Obtain a convolution algorithm appropriate for the input and kernel
         // shapes. Either by choosing one according to heuristics or by making
@@ -131,7 +132,6 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
           // be used here
           chosen_algo = APPLY_SPECIFIC(previous_algo);
       }
-
     }
     else
     {
@@ -179,7 +179,6 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
       }
     }
 
-
     err = cudnnGetConvolutionForwardWorkspaceSize(_handle,
                                                   APPLY_SPECIFIC(input),
                                                   APPLY_SPECIFIC(kerns),
@@ -188,10 +187,9 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
                                                   chosen_algo,
                                                   &worksize);
     if (err != CUDNN_STATUS_SUCCESS) {
-      std::cout << "here" << std::endl;
       PyErr_Format(PyExc_RuntimeError,
                    "GpuDnnConv: error getting worksize: %s",
-                     cudnnGetErrorString(err));
+                   cudnnGetErrorString(err));
       return 1;
     }
     workspace = get_work_mem(worksize);
