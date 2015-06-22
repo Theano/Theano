@@ -238,11 +238,10 @@ static struct PyModuleDef moduledef = {{
         # We need a finalized module to have self.code_hash
         assert self.finalized
         f = open(filename, 'w')
-        print >>f, """#include <Python.h>
-        """
+        print("#include <Python.h>", file=f)
         for code in self.header_code:
             code = re.sub(self.hash_placeholder, self.code_hash, code)
-            print >>f, code
+            print(code, file=f)
         f.close()
 
     def code(self, executable=False):
@@ -1243,6 +1242,7 @@ class ModuleCache(object):
                     with compilelock.lock_ctx():
                         with open(key_pkl, 'rb') as f:
                             key_data = pickle.load(f)
+
                 time.sleep(2)
 
         found = sum(key == other_key for other_key in key_data.keys)
@@ -2190,8 +2190,6 @@ class GCC_compiler(Compiler):
                     shared=True, code_filename='mod.cpp',
                     out_filename=None):
         """
-
-<<<<<<< HEAD
         Parameters
         ----------
         module_name : str
