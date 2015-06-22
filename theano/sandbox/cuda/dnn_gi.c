@@ -41,11 +41,11 @@ APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
       // Check if the kernels and the output have the same shape as they have
       // last time the apply node was executed
       bool same_shapes = true;
-      for (int i = 0; (i < 4) && same_shapes; i++)
+      for (int i = 0; (i < nb_dim) && same_shapes; i++)
       {
-          same_shapes &= (CudaNdarray_HOST_DIMS(kerns)[i] !=
+          same_shapes &= (CudaNdarray_HOST_DIMS(kerns)[i] ==
                           APPLY_SPECIFIC(previous_kerns_shape)[i]);
-          same_shapes &= (CudaNdarray_HOST_DIMS(output)[i] !=
+          same_shapes &= (CudaNdarray_HOST_DIMS(output)[i] ==
                           APPLY_SPECIFIC(previous_output_shape)[i]);
       }
 
@@ -86,7 +86,7 @@ APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
         // Store the shapes of the kernels and output as well as the chosen
         // algorithm for future use.
         APPLY_SPECIFIC(previous_bwd_d_algo) = chosen_algo;
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < nb_dim; i++)
         {
             APPLY_SPECIFIC(previous_kerns_shape)[i] =
                                             CudaNdarray_HOST_DIMS(kerns)[i];
@@ -113,7 +113,7 @@ APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
     // If the chosen implementation is FFT, validate that it can be used
     // on the current data and default on a safe implementation if it
     // can't.
-    if (chosen_algo == CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT)
+    if (chosen_algo == CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT && nb_dim == 4)
     {
 
       // Extract the properties of the convolution descriptor
