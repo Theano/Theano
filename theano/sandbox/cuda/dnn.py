@@ -3,7 +3,7 @@ import numpy
 
 import theano
 from theano import Apply, gof, tensor, config, Variable
-from theano.scalar import as_scalar, constant
+from theano.scalar import as_scalar, constant, Log
 from theano.gradient import DisconnectedType, grad_not_implemented
 from theano.gof import Optimizer, local_optimizer, COp
 from theano.gof.type import CDataType, Generic
@@ -17,7 +17,8 @@ from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            host_from_gpu,
                                            gpu_contiguous, HostFromGpu,
-                                           gpu_alloc_empty, GpuAllocEmpty)
+                                           gpu_alloc_empty, GpuAllocEmpty,
+                                           GpuElemwise)
 from theano.sandbox.cuda.blas import (GpuConv, GpuDownsampleFactorMax,
                                       GpuDownsampleFactorMaxGrad)
 from theano.sandbox.cuda.nnet import GpuSoftmax
@@ -2246,6 +2247,25 @@ if True:
             out = GpuDnnSoftmax('bc01', 'accurate', 'channel')(ins)
             out = as_cuda_ndarray_variable(out.dimshuffle(0, 1))
             return [out]
+
+    @register_opt('cudnn')
+    @local_optimizer([GpuElemwise])
+    def local_log_softmax_dnn(node):
+        if not dnn_available():
+            return
+        if (isinstance(node.op, GpuElemwise) and
+            isinstance(node.op.scalar_op, Log) and
+            node.inputs[0].owner and
+            isinstance(node.inputs[0].owner.op, GpuDnnSoftmax) and
+            len(node.inputs[0].owner.out.clients) == 1):
+
+            log_input = node.inputs[0]
+            softmax_node = log_input.owner
+
+            new_softmax_node = GpuDnnSoftmax(softmax_node.op.tensor_format,
+                                             'log', softmax_node.op.mode)
+            new_log_softmax = new_softmax_node(softmax_node.inputs[0])
+            return [new_log_softmax]
 
     class NoCuDNNRaise(Optimizer):
         def apply(self, fgraph):
