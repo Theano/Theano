@@ -866,8 +866,11 @@ def multinomial(random_state, size=None, n=1, pvals=[0.5, 0.5],
 def random_make_inplace(node):
     op = node.op
     if isinstance(op, RandomFunction) and not op.inplace:
-        new_op = RandomFunction(op.fn, op.outtype, inplace=True,
-                                ndim_added=op.ndim_added)
+        # Read op_fn from op.state, not from op.fn, since op.fn
+        # may not be picklable.
+        op_fn, op_outtype, op_inplace, op_ndim_added = op.__getstate__()
+        new_op = RandomFunction(op_fn, op_outtype, inplace=True,
+                                ndim_added=op_ndim_added)
         return new_op.make_node(*node.inputs).outputs
     return False
 
