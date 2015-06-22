@@ -113,7 +113,7 @@ APPLY_SPECIFIC(conv_gw)(CudaNdarray *input, CudaNdarray *output,
     // If the chosen implementation is FFT, validate that it can be used
     // on the current data and default on a safe implementation if it
     // can't.
-    if (chosen_algo == CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT)
+    if (chosen_algo == CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT && nb_dim == 4)
     {
 
       // Extract the properties of the convolution descriptor

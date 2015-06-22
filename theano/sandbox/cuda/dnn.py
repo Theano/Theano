@@ -374,7 +374,7 @@ class GpuDnnConvDesc(GpuOp):
 
 AddConfigVar('dnn.conv.workmem',
              "Default value for the workmem attribute of cudnn convolutions.",
-             EnumStr('small', 'none', 'large', 'fft', 'guess', 'time'),
+             EnumStr('none', 'small', 'large', 'fft', 'guess', 'time'),
              in_c_key=False)
 
 AddConfigVar('dnn.conv.workmem_bwd',
@@ -713,11 +713,11 @@ class GpuDnnConv3d(GpuDnnConv):
 
     def __init__(self, workmem=None, inplace=False):
         """
-        :param workmem: either 'none' 'time' or 'guess'.
+        :param workmem: either 'none', 'time' or 'guess'.
         Default is the value of :attr:`config.dnn.conv.workmem`.
         """
         super(GpuDnnConv3d, self).__init__(workmem='guess', inplace=inplace)
-        assert self.workmem in ['none' 'time','guess']
+        assert self.workmem in ['none', 'time','guess']
 
     def make_node(self, img, kern, output, desc, alpha=None, beta=None, nb_dim=None):
 
@@ -907,8 +907,8 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
     __input_name__ = ('image', 'grad', 'output', 'descriptor', 'alpha', 'beta')
 
     def __init__(self, inplace=False, workmem=None):
-        ### Only workmem = 'none' work with cudnn conv 3d
         super(GpuDnnConv3dGradW, self).__init__(inplace=inplace, workmem='none')
+        assert self.workmem in ['none', 'time','guess']
 
     def grad(self, inp, grads):
         img, top, output, desc, alpha, beta, nb_dim = inp
@@ -1064,8 +1064,9 @@ class GpuDnnConv3dGradI(GpuDnnConvGradI):
     __input_name__ = ('kernel', 'grad', 'output',
                       'descriptor', 'alpha', 'beta')
 
-    def __init__(self, inplace=False):
-        super(GpuDnnConv3dGradI, self).__init__(inplace)
+    def __init__(self, inplace=False, workmem=None):
+        super(GpuDnnConv3dGradI, self).__init__(inplace, workmem)
+        assert self.workmem in ['none', 'time','guess']
 
 
     def grad(self, inp, grads):
