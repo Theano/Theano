@@ -493,7 +493,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
             dtype='float32'
         )
         kern_vals = numpy.asarray(
-            numpy.random.rand(13, 14, 15, 16),
+            numpy.random.rand(4, 14, 15, 16),
             dtype='float32'
         )
 
