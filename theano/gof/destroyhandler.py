@@ -13,6 +13,7 @@ from theano.compat import OrderedDict
 from theano.misc.ordered_set import OrderedSet
 
 from .fg import InconsistencyError
+from Queue import Queue
 
 
 class ProtocolError(Exception):
@@ -211,6 +212,10 @@ def get_impact(root, view_o):
 
 def add_impact(r, view_o, impact):
     """
+    This function has been integrated as an inline function. See function
+    _build_droot_impact. For the inline version, code without recursion is
+    used as the commented code.
+
     In opposition to getroot, which finds the variable that is viewed *by* r, this function
     returns all the variables that are views of r.
 
@@ -223,6 +228,13 @@ def add_impact(r, view_o, impact):
           IG thinks so, based on reading the code. It looks like get_impact
           does what this docstring said this function does.
     """
+    # queue = Queue()
+    # queue.put(r)
+    # while not queue.empty():
+    #     v = queue.get()
+    #     for n in view_o.get(v, []):
+    #         impact.add(n)
+    #         queue.put(n)
     for v in view_o.get(r, []):
         impact.add(v)
         add_impact(v, view_o, impact)
@@ -257,7 +269,14 @@ def _build_droot_impact(destroy_handler):
 
             # Here is the inline version of original get_impact function
             input_impact = OrderedSet()
-            add_impact(input_root, destroy_handler.view_o, input_impact)
+            # Here is the inline version of original add_impact function
+            queue = Queue()
+            queue.put(input_root)
+            while not queue.empty():
+                v = queue.get()
+                for n in destroy_handler.view_o.get(v, []):
+                    input_impact.add(n)
+                    queue.put(n)
 
             for v in input_impact:
                 assert v not in droot
