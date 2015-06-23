@@ -6,7 +6,10 @@
 #ifndef _WIN32
 #define MOD_PUBLIC __attribute__((visibility ("default")))
 #else
-#define MOD_PUBLIC
+/* MOD_PUBLIC is only used in PyMODINIT_FUNC, which is declared
+ * and implemented in mod.cu/cpp, not in headers, so dllexport
+ * is always correct. */
+#define MOD_PUBLIC __declspec( dllexport )
 #endif
 
 #ifdef __cplusplus
