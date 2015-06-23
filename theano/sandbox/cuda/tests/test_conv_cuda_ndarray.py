@@ -8,6 +8,7 @@ import unittest
 import traceback
 
 import numpy
+from six.moves import xrange
 
 from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises

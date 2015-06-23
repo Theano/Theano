@@ -20,7 +20,7 @@ except ImportError:
         " You can install it with this command 'pip install argparse'")
 
 import reindent
-from theano.compat.six import StringIO
+from six import StringIO
 
 SKIP_WHITESPACE_CHECK_FILENAME = ".hg/skip_whitespace_check"
 
@@ -120,7 +120,7 @@ def run_mercurial_command(hg_command):
 def parse_stdout_filelist(hg_out_filelist):
     files = hg_out_filelist.split()
     files = [f.strip(string.whitespace + "'") for f in files]
-    files = filter(operator.truth, files)  # get rid of empty entries
+    files = list(filter(operator.truth, files))  # get rid of empty entries
     return files
 
 

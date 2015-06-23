@@ -23,7 +23,7 @@ __docformat__ = "restructuredtext en"
 
 import numpy
 from theano.compile import SharedVariable
-from basic import Scalar, _scalar_py_operators
+from .basic import Scalar, _scalar_py_operators
 
 
 class ScalarSharedVariable(_scalar_py_operators, SharedVariable):

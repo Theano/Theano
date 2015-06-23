@@ -46,7 +46,7 @@ def test_dump_zip_names():
     foo_3 = theano.shared(2, name='foo')
     with open('model.zip', 'wb') as f:
         dump((foo_1, foo_2, foo_3, numpy.array(3)), f)
-    keys = numpy.load('model.zip').keys()
+    keys = list(numpy.load('model.zip').keys())
     assert keys == ['foo', 'foo_2', 'foo_3', 'array_0', 'pkl']
     foo_3 = numpy.load('model.zip')['foo_3']
     assert foo_3 == numpy.array(2)

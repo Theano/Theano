@@ -1,5 +1,6 @@
 """WRITEME Defines the `Type` class."""
 from theano.compat import PY3
+from six import string_types
 
 from theano.gof import utils
 from theano.gof.utils import MethodNotDefined, object2
@@ -540,10 +541,10 @@ class CDataType(Type):
                          function must have a `void` return and take a
                          single pointer argument.
         """
-        assert isinstance(ctype, basestring)
+        assert isinstance(ctype, string_types)
         self.ctype = ctype
         if freefunc is not None:
-            assert isinstance(freefunc, basestring)
+            assert isinstance(freefunc, string_types)
         self.freefunc = freefunc
 
     def __eq__(self, other):

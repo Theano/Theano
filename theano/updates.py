@@ -3,6 +3,7 @@
 """
 from theano.compat import OrderedDict
 
+from six import iteritems
 from theano.compile.sharedvalue import SharedVariable
 import logging
 import warnings
@@ -70,7 +71,7 @@ class OrderedUpdates(OrderedDict):
                           'non-ordered dictionary with 2+ elements could '
                           'make your code non-deterministic',
                           stacklevel=2)
-        for key, val in OrderedDict(other).iteritems():
+        for key, val in iteritems(OrderedDict(other)):
             if key in self:
                 if self[key] == val:
                     continue

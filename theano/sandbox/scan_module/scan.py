@@ -42,19 +42,20 @@ __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 
-from itertools import izip
 import logging
 import numpy
+from six.moves import xrange
 
 from theano import gof
+from theano.compat import izip
 from theano.tensor import opt, TensorVariable
 from theano.tensor.sharedvar import TensorSharedVariable
 from theano import tensor
 from theano.scalar.sharedvar import shared as scalar_shared
 from theano.compile.pfunc import rebuild_collect_shared
 
-import scan_op
-import scan_utils
+from . import scan_op
+from . import scan_utils
 
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module.scan')

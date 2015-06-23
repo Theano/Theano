@@ -1,18 +1,19 @@
 """Driver for gradient calculations."""
 from __future__ import print_function
-import __builtin__
-from itertools import izip
+import six.moves.builtins as builtins
 import logging
 import time
 import warnings
 
 import numpy  # for numeric_grad
+from six import itervalues
 
 import theano
 
 from theano import gof
 from theano.gof import Variable
-from theano.compat import OrderedDict
+from theano.compat import OrderedDict, izip
+from six.moves import xrange, reduce
 from theano.gof.null_type import NullType, null_type
 from theano.gof.op import get_debug_values
 from theano.compile import ViewOp
@@ -450,7 +451,7 @@ def grad(cost, wrt, consider_constant=None,
     if cost is not None:
         outputs.append(cost)
     if known_grads is not None:
-        outputs.extend(known_grads.keys())
+        outputs.extend(list(known_grads.keys()))
 
     var_to_app_to_idx = _populate_var_to_app_to_idx(
         outputs, wrt, consider_constant)
@@ -699,7 +700,7 @@ def subgraph_grad(wrt, end, start=None, cost=None, details=False):
             for i in range(len(grads)):
                 grads[i] += cost_grads[i]
 
-    pgrads = OrderedDict(zip(params, grads))
+    pgrads = OrderedDict(izip(params, grads))
     # separate wrt from end grads:
     wrt_grads = list(pgrads[k] for k in wrt)
     end_grads = list(pgrads[k] for k in end)
@@ -1011,7 +1012,7 @@ def _populate_grad_dict(var_to_app_to_idx,
                 # copies of each destroyed input.
                 try:
                     dinputs = [node.inputs[x[0]] for x in
-                               node.op.destroy_map.values()]
+                               itervalues(node.op.destroy_map)]
                 except AttributeError:
                     dinputs = []
 
@@ -1386,9 +1387,9 @@ class numeric_grad(object):
         # if not dtypes == [dtypes[0]] * len(apt):
         #      raise TypeError('All function arguments must have same dtype')
 
-        total_size = __builtin__.sum(prod(sh) for sh in shapes)
+        total_size = builtins.sum(prod(sh) for sh in shapes)
 
-        working_dtype = __builtin__.min(
+        working_dtype = builtins.min(
             (self.type_eps[dt], dt) for dt in dtypes)[1]
 
         # create un-initialized memory
@@ -1400,7 +1401,7 @@ class numeric_grad(object):
             gx = numpy.ndarray((total_size,), dtype=working_dtype)
 
         if eps is None:
-            eps = __builtin__.max(self.type_eps[dt] for dt in dtypes)
+            eps = builtins.max(self.type_eps[dt] for dt in dtypes)
 
         # set up aliases so that apt[i] is backed by memory in x
         # and self.gf is backed by memory in gx
@@ -1585,9 +1586,9 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
         float64=1e-4)
 
     if abs_tol is None:
-        abs_tol = __builtin__.max(_type_tol[str(p.dtype)] for p in pt)
+        abs_tol = builtins.max(_type_tol[str(p.dtype)] for p in pt)
     if rel_tol is None:
-        rel_tol = __builtin__.max(_type_tol[str(p.dtype)] for p in pt)
+        rel_tol = builtins.max(_type_tol[str(p.dtype)] for p in pt)
 
     if rng is None:
         raise TypeError(('rng should be a valid instance of '

@@ -1,5 +1,5 @@
 from theano import scalar as scal
-import elemwise
+from . import elemwise
 from theano import printing
 from theano.printing import pprint
 
@@ -356,7 +356,7 @@ pprint.assign(pow_inplace, printing.OperatorPrinter('**=', 1, 'right'))
 
 def transpose_inplace(x, **kwargs):
     """Perform a transpose on a tensor without copying the underlying storage"""
-    dims = range(x.ndim-1, -1, -1)
+    dims = list(range(x.ndim - 1, -1, -1))
     return elemwise.DimShuffle(x.broadcastable, dims, inplace=True)(x)
 
 #pprint.assign(transpose_inplace, printing.MemberPrinter('T'))

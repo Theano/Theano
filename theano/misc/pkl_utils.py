@@ -14,7 +14,7 @@ import warnings
 from collections import defaultdict
 from contextlib import closing
 from pickle import HIGHEST_PROTOCOL
-from theano.compat.six import BytesIO
+from six import BytesIO
 try:
     from pickle import DEFAULT_PROTOCOL
 except ImportError:
@@ -23,7 +23,7 @@ except ImportError:
 import theano
 from theano import config
 from theano.compat import PY3
-from theano.compat.six import string_types
+from six import string_types
 from theano.compile.sharedvalue import SharedVariable
 try:
     from theano.sandbox.cuda import cuda_ndarray

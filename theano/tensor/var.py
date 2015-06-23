@@ -5,6 +5,7 @@ import traceback as tb
 import warnings
 
 import numpy
+from six.moves import xrange
 
 import theano
 from theano.compat import PY3
@@ -67,7 +68,12 @@ class _tensor_py_operators:
         rval._is_nonzero = False
         return rval
 
+
     def __nonzero__(self):
+        # Python 2.x
+        return self.__bool__()
+
+    def __bool__(self):
         # This is meant to prohibit stuff like a < b < c, which is internally
         # implemented as (a < b) and (b < c). The trouble with this is the
         # side-effect that checking for a non-NULL a by typing "if a: ..."
@@ -75,6 +81,8 @@ class _tensor_py_operators:
         # it seems impossible.  Currently, all vars evaluate to nonzero except
         # the return values of comparison operators, which raise this
         # exception.  If you can think of a better solution, go for it!
+        #
+        # __bool__ is Python 3.x data model. __nonzero__ is Python 2.x.
         if self._is_nonzero:
             return True
         else:

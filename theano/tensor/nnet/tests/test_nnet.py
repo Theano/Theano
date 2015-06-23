@@ -3,6 +3,7 @@ import unittest
 
 import numpy
 from nose.plugins.skip import SkipTest
+from six.moves import xrange
 
 import theano
 from theano import config

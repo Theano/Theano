@@ -12,6 +12,8 @@ from theano.tensor.basic import Alloc, Join, Split
 from theano.gof import HideC
 from theano.gof.utils import MethodNotDefined
 from theano.compat import PY3
+from six import string_types
+from six.moves import xrange
 
 try:
     import pygpu
@@ -65,14 +67,14 @@ class Kernel(object):
     @staticmethod
     def get_flags(*types):
         def get_dtype(t):
-            if isinstance(t, (str, unicode)):
+            if isinstance(t, string_types):
                 return numpy.dtype(t)
             elif isinstance(t, Type):
                 return t.dtype
             elif isinstance(t, Variable):
                 return t.type.dtype
             else:
-                raise TypeError, "can't get a dtype from %s" % (type(t),)
+                raise TypeError("can't get a dtype from %s" % (type(t),))
         dtypes = [get_dtype(t) for t in types]
         flags = dict(cluda=True)
         if any(d == numpy.float64 for d in dtypes):
@@ -115,7 +117,7 @@ class GpuKernelBase(object):
         iterable of Kernel objects that describe the kernels this op
         will need.
         """
-        raise MethodNotDefined, 'gpu_kernels'
+        raise MethodNotDefined('gpu_kernels')
 
     def c_headers(self):
         try:
@@ -888,8 +890,8 @@ class GpuJoin(HideC, Join):
     def make_node(self, axis, *tensors):
         node = Join.make_node(self, axis, *tensors)
 
-        return Apply(self, [node.inputs[0]] + map(as_gpuarray_variable,
-                                                  tensors),
+        return Apply(self, [node.inputs[0]] + list(map(as_gpuarray_variable,
+                                                  tensors)),
                      [GpuArrayType(broadcastable=node.outputs[0].broadcastable,
                                    dtype=node.outputs[0].dtype)()])
 

@@ -1,6 +1,6 @@
 from itertools import product
 import unittest
-import __builtin__
+import six.moves.builtins as builtins
 
 import numpy
 
@@ -87,16 +87,16 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         for k in numpy.ndindex(*x.shape[:-2]):
             for i in range(output_val.shape[-2]):
                 ii_st = i * st[0]
-                ii_end = __builtin__.min(ii_st + ds[0], img_rows)
+                ii_end = builtins.min(ii_st + ds[0], img_rows)
                 if not inc_pad:
-                    ii_st = __builtin__.max(ii_st, pad_h)
-                    ii_end = __builtin__.min(ii_end, h + pad_h)
+                    ii_st = builtins.max(ii_st, pad_h)
+                    ii_end = builtins.min(ii_end, h + pad_h)
                 for j in range(output_val.shape[-1]):
                     jj_st = j * st[1]
-                    jj_end = __builtin__.min(jj_st + ds[1], img_cols)
+                    jj_end = builtins.min(jj_st + ds[1], img_cols)
                     if not inc_pad:
-                        jj_st = __builtin__.max(jj_st, pad_w)
-                        jj_end = __builtin__.min(jj_end, w + pad_w)
+                        jj_st = builtins.max(jj_st, pad_w)
+                        jj_end = builtins.min(jj_end, w + pad_w)
                     patch = y[k][ii_st:ii_end, jj_st:jj_end]
                     output_val[k][i, j] = func(patch)
         return output_val
@@ -158,10 +158,10 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         for k in numpy.ndindex(*input.shape[:-2]):
             for i in range(output_val.shape[-2]):
                 ii_st = i * st[0]
-                ii_end = __builtin__.min(ii_st + ds[0], img_rows)
+                ii_end = builtins.min(ii_st + ds[0], img_rows)
                 for j in range(output_val.shape[-1]):
                     jj_st = j * st[1]
-                    jj_end = __builtin__.min(jj_st + ds[1], img_cols)
+                    jj_end = builtins.min(jj_st + ds[1], img_cols)
                     patch = input[k][ii_st:ii_end, jj_st:jj_end]
                     output_val[k][i, j] = func(patch)
         return output_val

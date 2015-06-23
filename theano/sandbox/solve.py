@@ -58,7 +58,7 @@ class T_solve(unittest.TestCase):
 
     def test0(self):
         A = self.rng.randn(5, 5)
-        b = numpy.array(range(5), dtype=float)
+        b = numpy.arange(5, dtype=float)
         x = scipy.linalg.solve(A, b)
         Ax = numpy.dot(A, x)
         are = tensor.numeric_grad.abs_rel_err(Ax, b)

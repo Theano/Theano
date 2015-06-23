@@ -32,7 +32,7 @@ class MakeSlice(Op):
         else:
             inp = [slc, stop, step]
         return Apply(self,
-                     map(as_int_none_variable, inp),
+                     list(map(as_int_none_variable, inp)),
                      [slicetype()])
 
     def perform(self, node, inp, out_):

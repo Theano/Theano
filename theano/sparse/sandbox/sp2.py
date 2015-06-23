@@ -1,4 +1,5 @@
 import numpy
+from six.moves import xrange
 import theano
 import scipy.sparse
 

@@ -7,7 +7,7 @@ _logger = logging.getLogger(__name__)
 import theano
 from theano import Apply
 from theano import tensor
-from theano.compat.six import StringIO
+from six.moves import StringIO, reduce
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,

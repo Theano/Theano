@@ -1,6 +1,7 @@
 import numpy as np
 import numpy
 import warnings
+from six.moves import xrange
 
 import theano
 from theano.tensor import basic

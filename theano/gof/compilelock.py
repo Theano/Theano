@@ -57,7 +57,10 @@ def lock_ctx(lock_dir=None, keep_lock=False, **kw):
         release_lock()
 
 
-def get_lock(lock_dir=None, **kw):
+# We define this name with an underscore so that python shutdown
+# deletes this before non-underscore names (like os).  We need to do
+# it this way to avoid errors on shutdown.
+def _get_lock(lock_dir=None, **kw):
     """
     Obtain lock on compilation directory.
 
@@ -111,6 +114,9 @@ def get_lock(lock_dir=None, **kw):
                 refresh_lock(lockpath)
                 get_lock.start_time = now
     get_lock.n_lock += 1
+
+
+get_lock = _get_lock
 
 
 def release_lock():
@@ -344,9 +350,6 @@ class Unlocker(object):
 
     def __init__(self, tmp_dir):
         self.tmp_dir = tmp_dir
-        # Keep a pointer to the 'os' module, otherwise it may not be accessible
-        # anymore in the __del__ method.
-        self.os = os
 
     def __del__(self):
         self.unlock()
@@ -359,7 +362,6 @@ class Unlocker(object):
         should be allowed for multiple jobs running in parallel to
         unlock the same directory at the same time (e.g. when reaching
         their timeout limit).
-
         """
         # If any error occurs, we assume this is because someone else tried to
         # unlock this directory at the same time.
@@ -368,10 +370,10 @@ class Unlocker(object):
         # remove the file may fail (e.g. because for some reason this file does
         # not exist), we still want to try and remove the directory.
         try:
-            self.os.remove(self.os.path.join(self.tmp_dir, 'lock'))
+            os.remove(os.path.join(self.tmp_dir, 'lock'))
         except Exception:
             pass
         try:
-            self.os.rmdir(self.tmp_dir)
+            os.rmdir(self.tmp_dir)
         except Exception:
             pass
