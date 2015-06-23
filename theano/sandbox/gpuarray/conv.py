@@ -188,7 +188,7 @@ class GpuConv(gof.Op):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 20)
+        return (0, 21)
 
     def c_init_code(self):
         return ['cuda_get_ptr_raw = (CUdeviceptr (*)(gpudata *g))gpuarray_get_extension("cuda_get_ptr");']
