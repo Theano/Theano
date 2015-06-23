@@ -247,6 +247,8 @@ def inplace_elemwise_optimizer_op(OP):
             check_each_change = max(check_each_change, 1)
         else:
             return
+        if len(elemwise_nodelist) > 500:
+            check_each_change = max(check_each_change, 10)
         failed_set = set()
         prev_len_elemlist = len(elemwise_nodelist) + 1
         changed_node_since_validate = set()
