@@ -318,6 +318,24 @@ class T_function(unittest.TestCase):
                     elif key.name == 'z_rpl' and second_time:
                         assert cpy.fn.storage_map[key][0] == 8
 
+    def test_copy_delete_updates(self):
+        x = T.fscalar('x')
+        # SharedVariable for tests, one of them has update
+        y = theano.shared(value=1, name='y')
+        z = theano.shared(value=2, name='z')
+        out = x+y+z
+
+        # Test for different linkers
+        # for mode in ["FAST_RUN","FAST_COMPILE"]:
+        second_time = False
+        for mode in ["FAST_RUN","FAST_COMPILE"]:
+            ori = theano.function([x], out, mode=mode,updates={z:z*2})
+            cpy = ori.copy(delete_updates=True)
+            print cpy(1)
+            assert cpy(1)[0] == 4
+            assert cpy(1)[0] == 4
+            assert cpy(1)[0] == 4
+
     def test_shared_state0(self):
         a = T.scalar()  # the a is for 'anonymous' (un-named).
         x, s = T.scalars('xs')
