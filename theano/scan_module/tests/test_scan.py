@@ -739,7 +739,7 @@ class T_Scan(unittest.TestCase):
 
         def forward_scanner(x_t):
             a2_t = tensor.dot(x_t, W)
-            y_t = tensor.nnet.softmax(a2_t)
+            y_t = tensor.nnet.softmax_graph(a2_t)
             return y_t
 
         y, _ = theano.scan(fn=forward_scanner, sequences=x,
