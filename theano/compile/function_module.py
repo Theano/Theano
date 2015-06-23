@@ -548,9 +548,9 @@ class Function(object):
         fgraph with original function. User can choose whether to separate
         storage by changing the share_memory arguments.
         Note:
-        We reuse original Out instances but In instances, therefore variables
-        in Ins and Outs are not in the same graph. Please avoid using variables
-        is Ins and Outs to reinitialize another Function or FunctionGraoh.
+        Originally, variables in In and Out instances are those variables
+        that defined by user. After being copied, variables in In/Outs are
+        those variables in Function.maker.fgraph.
         ---------------------
         Params:
             share_memory -- { boolean } Default is False. When True, two
@@ -562,7 +562,9 @@ class Function(object):
 
             swap -- { dict } Dictionary<String, theano.SharedVariable> that
             map old SharedVariable's name to new SharedVariable. Default is
-            None.
+            None. The computational relationship is modified within the inner
+            fgraph, especially for this copied function. SharedVariables aren't
+            swapped in the relationship that user defined.
 
             delete_updates -- { boolean } Default is False. If True, Copied
             function will not have update.
@@ -576,11 +578,12 @@ class Function(object):
 
         # Delete update output in fgraph and updates In instancesis needed
         if delete_updates:
-            # The first len(outs) variabels would be original variables.
-            # The rest variables in fgraph.outputs are the updates.
+            # The first len(outs) variabels are original variables.
+            # The rest are the updates.
             out_vars = maker.fgraph.outputs[:len(outs)]
         else:
             out_vars = maker.fgraph.outputs
+
         # Init new fgraph using copied variables and get memo
         # memo: a dict that map old variables to new variabls
         memo = graph.clone_get_equiv(maker.fgraph.inputs, out_vars)
@@ -597,6 +600,7 @@ class Function(object):
         update_i = len(outs)
         for i, in_var in zip(ins, fg_cpy.inputs):
             i.variable = in_var
+            # Delete update if needed
             if not delete_updates and i.update is not None:
                 i.update = fg_cpy.outputs[update_i]
                 update_i += 1
@@ -608,8 +612,6 @@ class Function(object):
             self.__swapSV(swap, ins, fg_cpy)
             # the name of SV we swapped
             swapped_sv = swap.keys()
-
-            print (fg_cpy)
 
         storage_map = self.fn.storage_map
         new_storage_map = {}
