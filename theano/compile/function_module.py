@@ -546,7 +546,7 @@ class Function(object):
         """
         Copy this function. Copied function will have separated maker and
         fgraph with original function. User can choose whether to separate
-        storage by changing the share_memory arguments. 
+        storage by changing the share_memory arguments.
         Note:
         We reuse original Out instances but In instances, therefore variables
         in Ins and Outs are not in the same graph. Please avoid using variables
@@ -565,7 +565,7 @@ class Function(object):
             None.
 
             delete_updates -- { boolean } Default is False. If True, Copied
-            function will not have update. 
+            function will not have update.
         ---------------------
         Returns:
             func -- Copied theano.Function
@@ -597,14 +597,14 @@ class Function(object):
         update_i = len(outs)
         for i, in_var in zip(ins, fg_cpy.inputs):
             i.variable = in_var
-            if not delete_updates and i.update != None:
+            if not delete_updates and i.update is not None:
                 i.update = fg_cpy.outputs[update_i]
                 update_i += 1
             else:
                 i.update = None
 
         # swap SharedVariable
-        if swap != None:
+        if swap is not None:
             self.__swapSV(swap, ins, fg_cpy)
             # the name of SV we swapped
             swapped_sv = swap.keys()
@@ -627,7 +627,7 @@ class Function(object):
                 if key not in i_o_vars:
                     new_storage_map[memo[key]] = storage_map[key]
 
-        input_storage = [ i.value for i in ins ]
+        input_storage = [i.value for i in ins]
         # reinitialize new maker and create new function
         f_cpy = maker.__class__(inputs=ins, outputs=outs,
                                 fgraph=fg_cpy,
@@ -643,7 +643,7 @@ class Function(object):
                                             f_cpy.input_storage):
             is_const = isinstance(in_ori.variable, theano.tensor.Constant)
             # In instances' name default to vairables' name
-            swapped = swap != None and in_ori.name in swapped_sv
+            swapped = swap is not None and in_ori.name in swapped_sv
 
             if (is_const or not in_ori.mutable) and not swapped:
                 cpy.data = ori.data
@@ -652,7 +652,7 @@ class Function(object):
         # Reconstruct Function.finder.
         # Function.value and Function.data work
         for ori, cpy in zip(maker.inputs, f_cpy.maker.inputs):
-            swapped = swap != None and ori.name in swapped_sv
+            swapped = swap is not None and ori.name in swapped_sv
             if not swapped:
                 f_cpy.finder[ori.variable] = f_cpy.finder.pop(cpy.variable)
             else:
@@ -666,14 +666,14 @@ class Function(object):
         and maker.fgraph.
         --------------------
         Params:
-            swap -- { dict } The same as docs in copy() 
+            swap -- { dict } The same as docs in copy()
             ins -- { list } List of In instances to be modified.
             fg_cpy -- { FounctionGraph } Copied FunctionGraph.
         --------------------
         Returns:
             None
         """
-        def checkSV( sv_ori, sv_rpl ):
+        def checkSV(sv_ori, sv_rpl):
             """
             Assert two SharedVariable follow some restirctions:
                 1. same type
@@ -682,7 +682,7 @@ class Function(object):
             assert sv_ori.type == sv_rpl.type, (
                 "Type of given SharedVariable conflicts with origianl one",
                 "Type of given SharedVariable:", sv_rpl.type,
-                "Type of original SharedVariable:", sv_ori.type )
+                "Type of original SharedVariable:", sv_ori.type)
 
         exist_names = [i.variable.name for i in ins]
         swap_names = swap.keys()
@@ -690,7 +690,7 @@ class Function(object):
         # Check if given names exist
         for name in swap_names:
             if name not in exist_names:
-                warnings.warn( "Given name: %s wasn't found" % (name) )
+                warnings.warn("Given name: %s wasn't found" % (name))
 
         # Swap SharedVairable in fgraph and ins
         for index, (i, in_v) in enumerate(zip(ins, fg_cpy.inputs)):
@@ -699,11 +699,11 @@ class Function(object):
             if in_v.name in swap_names:
                 # In the fgraph we use the cloned SharedVariable
                 swap_sv = swap[in_v.name].clone()
-                checkSV( in_v, swap_sv)
+                checkSV(in_v, swap_sv)
 
                 # Swap SharedVariable in fgraph
                 fg_cpy.inputs[index] = swap_sv
-                fg_cpy.replace( in_v, swap_sv, reason="Swap SV")
+                fg_cpy.replace(in_v, swap_sv, reason="Swap SV")
 
                 # swap variable and value of In instances
                 i.variable = swap_sv

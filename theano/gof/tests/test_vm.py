@@ -230,7 +230,7 @@ if run_memory_usage_tests:
             a = cuda.CudaNdarray(n)
             a.sum()
             assert c == sys.getrefcount(n)
-            
+            del a
             if not i % 1000:
                 print('.', end=' ')
                 print(gc.collect(), end=' ')
