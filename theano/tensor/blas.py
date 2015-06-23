@@ -291,20 +291,27 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
                                           "mk2_rt"]])
         # Anaconda
         if "Anaconda" in sys.version and sys.platform == "win32":
-            lib_path = os.path.join(sys.prefix, 'pkgs')
-            for dir in os.listdir(lib_path):
-                if dir.startswith("mkl-rt-"):
-                    lib_path = os.path.join(lib_path, dir, "DLLs")
-                    break
-            if os.path.exists(lib_path):
-                #-LC:\\Users\\*\\Anaconda\\libs
+            # If the "mkl-service" conda package (available through Python
+            # package "mkl") is installed and importable, then the libraries
+            # (installed by conda package "mkl-rt") are actually available.
+            # Using "conda install mkl" will install both, as well as
+            # optimized versions of numpy and scipy.
+            try:
+                import mkl
+            except ImportError as e:
+                _logger.info('Conda mkl is not available: %s', e)
+            else:
+                # This branch is executed if no exception was raised
+                lib_path = os.path.join(sys.prefix, 'DLLs')
                 flags = ['-L%s' % lib_path]
                 flags += ['-l%s' % l for l in ["mkl_core",
                                                "mkl_intel_thread",
                                                "mkl_rt"]]
-                return ' '.join(flags)
+                if GCC_compiler.try_flags(flags):
+                    return ' '.join(flags)
 
-        # if numpy was linked with library that are not installed, we
+        # If numpy was linked with library that are not installed or
+        # the dev version of the package is not currently available, we
         # can't reuse them.
         if any(os.path.exists(dir) for dir in blas_info['library_dirs']):
             ret = (
@@ -316,10 +323,6 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
                 ['-L%s' % l for l in blas_info['library_dirs']] +
                 ['-l%s' % l for l in blas_info['libraries']] +
                 [])
-#               ['-I%s' % l for l in blas_info['include_dirs']])
-            # if numpy was linked with library that are not installed or
-            # the dev version of the package is not currently available, we
-            # can't reuse them.
             if GCC_compiler.try_flags(ret):
                 return ' '.join(ret)
 
