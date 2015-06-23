@@ -2061,3 +2061,38 @@ local_log_softmax = gof.PatternSub(in_pattern=(tensor.log, (softmax, 'x')),
 # only after another more specific optimization that stabilizes cross entropy
 #opt.register_stabilize(local_log_softmax, name = 'local_log_softmax')
 opt.register_specialize(local_log_softmax, 'fast_compile_gpu', name='local_log_softmax')
+
+
+def relu(x, alpha=0):
+    """
+    Compute the element-wise rectified linear activation function.
+
+    :type x: symbolic tensor
+    :param x: Tensor to compute the activation function for.
+
+    :type alpha: scalar or tensor, optional
+    :param alpha: Slope for negative input, usually between 0 and 1. The
+        default value of 0 will lead to the standard rectifier, 1 will lead to
+        a linear activation function, and any value in between will give a
+        leaky rectifier. A shared variable (broadcastable against `x`) will
+        result in a parameterized rectifier with learnable slope(s).
+
+    :rtype: symbolic tensor
+    :return: element-wise rectifier applied to `x`
+
+    .. note:: This is numerically equivalent to
+        ``T.switch(x > 0, x, alpha * x)``
+        (or ``T.maximum(x, alpha * x)`` for ``alpha < 1``), but uses a faster
+        formulation or an optimized Op, so we encourage to use this function.
+
+    """
+    # This is probably the fastest implementation for GPUs. Both the forward
+    # pass and the gradient get compiled into a single GpuElemwise call.
+    # TODO: Check if it's optimal for CPU as well; add an "if" clause if not.
+    # TODO: Check if there's a faster way for the gradient; create an Op if so.
+    if alpha == 0:
+        return 0.5 * (x + abs(x))
+    else:
+        f1 = 0.5 * (1 + alpha)
+        f2 = 0.5 * (1 - alpha)
+        return f1 * x + f2 * abs(x)
