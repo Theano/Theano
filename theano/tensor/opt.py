@@ -247,7 +247,7 @@ def inplace_elemwise_optimizer_op(OP):
             check_each_change = max(check_each_change, 1)
         else:
             return
-        failed_list = set()
+        failed_set = set()
         prev_len_elemlist = len(elemwise_nodelist) + 1
         changed_node_since_validate = set()
         while check_each_change > 0 and prev_len_elemlist > len(elemwise_nodelist):
@@ -263,9 +263,10 @@ def inplace_elemwise_optimizer_op(OP):
                 # Remove here as faster.
                 candidate_inputs = [i for i in xrange(len(node.inputs))
                                     if i not in baseline.values() and
-                                    not isinstance(node.inputs[i], Constant) and
-                                    not fgraph.destroyers(node.inputs[i]) and
-                                    node.inputs[i] not in protected_inputs]
+                                    not isinstance(node.inputs[i], Constant)
+                                    and
+                                    node.inputs[i] not in protected_inputs and
+                                    not fgraph.destroyers(node.inputs[i])]
 
                 verbose = False
 
@@ -318,23 +319,23 @@ def inplace_elemwise_optimizer_op(OP):
                                 raised_warning = True
                             fgraph.revert(chk)
 
-                            # Add changed node to failed_list
+                            # Add changed node to failed_set
                             if len(changed_node_since_validate) > 1:
-                                failed_list.update(list(changed_node_since_validate))
+                                failed_set.update(changed_node_since_validate)
                                 changed_node_since_validate = set()
-                            # Add failed node to failed_list
+                            # Add failed node to failed_set
                             # node is in changed_node_since_validate already, so there
                             # is no need to add it here.
-                            #failed_list.add(node)
+                            #failed_set.add(node)
                             continue
                         candidate_inputs.remove(candidate_input)
                         node = new_node
                         baseline = inplace_pattern
                         break
-            if len(failed_list) == 0:
+            if len(failed_set) == 0:
                 break
-            elemwise_nodelist = failed_list
-            failed_list = set()
+            elemwise_nodelist = list(failed_set)
+            failed_set = set()
             check_each_change = int(numpy.ceil(numpy.log(
                 len(elemwise_nodelist))))
             check_each_change = max(check_each_change, 1)
