@@ -883,6 +883,82 @@ class GpuReshape(HideC, tensor.Reshape):
                 raise ValueError("total size of new array must be unchanged")
         out[0] = x.reshape(tuple(shp))
 
+    def c_code_cache_version(self):
+        return (1,)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        x, shape = inputs
+        output, = outputs
+        new_ndim = self.ndim
+        sdtype = node.inputs[1].type.dtype_specs()[1]
+        fail = sub['fail']
+        return """
+        size_t old_size = 1, new_size = 1;
+        size_t new_dims[%(new_ndim)s];
+        int compute_axis = -1;
+
+        assert (PyArray_NDIM(%(shape)s) == 1);
+        if (PyArray_DIM(%(shape)s, 0) != %(new_ndim)s)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "GpuReshape: given shape is of incorrect "
+                         "length (%%d should be %%d).",
+                         PyArray_DIM(%(shape)s, 0), %(new_ndim)s);
+            %(fail)s;
+        }
+
+        for (size_t i = 0; i < %(x)s->ga.nd; ++i)
+            old_size *= %(x)s->ga.dimensions[i];
+
+        for (size_t i = 0; i < %(new_ndim)s; ++i)
+        {
+            new_dims[i] = ((%(sdtype)s*)(
+                    PyArray_BYTES(%(shape)s) +
+                    i * PyArray_STRIDES(%(shape)s)[0]))[0];
+            if (new_dims[i] == -1)
+            {
+                if (compute_axis != -1)
+                {
+                    PyErr_Format(PyExc_ValueError,
+                                 "GpuReshape: only one -1 is accepted "
+                                 "in the new shape, but got two at "
+                                 "indices %%d and %%zu.",
+                                 compute_axis, i);
+                    %(fail)s;
+                }
+                compute_axis = i;
+            }
+            else
+                new_size *= new_dims[i];
+        }
+
+        if (compute_axis == -1 && new_size != old_size)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "GpuReshape: trying to reshape an array of "
+                         "total size %%zu into an array of total size "
+                         "%%zu.", old_size, new_size);
+            %(fail)s;
+        }
+        else if (compute_axis != -1 && old_size %% new_size != 0)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "GpuReshape: -1 axis found at index %%d in "
+                         "new shape but the total size of the array "
+                         "(%%zu) is not divisible by the given shapes "
+                         "(%%zu).", compute_axis, old_size, new_size);
+            %(fail)s;
+        }
+
+        Py_XDECREF(%(output)s);
+        %(output)s = pygpu_reshape(%(x)s, %(new_ndim)s, new_dims,
+                                   GA_C_ORDER, 0, compute_axis);
+        if (%(output)s == NULL)
+        {
+            %(fail)s;
+        }
+        """ % locals()
+
 
 class GpuJoin(HideC, Join):
     _f16_ok = True
