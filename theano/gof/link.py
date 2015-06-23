@@ -468,7 +468,7 @@ class Container(object):
         return r
 
 
-def map_storage(fgraph, order, input_storage, output_storage):
+def map_storage(fgraph, order, input_storage, output_storage, storage_map=None):
     """Ensure there is storage (a length-1 list) for inputs, outputs, and interior nodes.
 
     :param fgraph: The current fgraph.  This function uses the inputs and outputs attributes.
@@ -490,25 +490,42 @@ def map_storage(fgraph, order, input_storage, output_storage):
     """
     # each Apply argument's data is stored in a list of length 1 (these lists act like pointers)
 
+    if storage_map is None:
+        storage_map = {}
+
     # input_storage is a list of data-containers for the inputs.
     if input_storage is None:
         input_storage = [[None] for input in fgraph.inputs]
     else:
         assert len(fgraph.inputs) == len(input_storage)
 
-    storage_map = {}
+    # add input storage into storage_map
     for r, storage in zip(fgraph.inputs, input_storage):
-        storage_map[r] = storage
+        if r in storage_map:
+            assert storage_map[r] is storage, (
+              "Given input_storage conflicts with storage in given"
+              "storage_map. Given input_storage: ", storage,
+              "Storage in storage_map: ", storage_map[r])
+        else:
+            storage_map[r] = storage
 #     for orphan in fgraph.orphans:
 #         if not isinstance(orphan, Constant):
 #             raise TypeError("Cannot link a graph with non-constant orphans.", orphan)
 #         storage_map[orphan] = [orphan.data]
 
+    # allocate output storage
     if output_storage is not None:
         assert len(fgraph.outputs) == len(output_storage)
         for r, storage in zip(fgraph.outputs, output_storage):
-            storage_map[r] = storage
+            if r in storage_map:
+                assert storage_map[r] is storage, (
+                 "Given output_storage conflicts with storage in given"
+                 "storage_map. Given output_storage: ", storage,
+                 "Storage in storage_map: ", storage_map[r])
+            else:
+                storage_map[r] = storage
 
+    # allocate storage for intermediate computation
     for node in order:
         for r in node.inputs:
             if r not in storage_map:
@@ -520,6 +537,7 @@ def map_storage(fgraph, order, input_storage, output_storage):
         if isinstance(r, graph.Constant):
             storage_map.setdefault(r, [r.data])
 
+    # extract output storage
     if output_storage is None:
         output_storage = [storage_map[r] for r in fgraph.outputs]
 
@@ -601,9 +619,10 @@ class LocalLinker(Linker):
     thunk associated with each node.
     """
 
-    def make_thunk(self, input_storage=None, output_storage=None):
+    def make_thunk(self, input_storage=None, output_storage=None, storage_map=None):
         return self.make_all(input_storage=input_storage,
-                             output_storage=output_storage)[:3]
+                             output_storage=output_storage,
+                             storage_map=storage_map)[:3]
 
     def make_all(self, input_storage, output_storage):
         # By convention, subclasses of LocalLinker should implement this function!
@@ -677,7 +696,7 @@ class PerformLinker(LocalLinker):
         self.no_recycling = no_recycling
         return self
 
-    def make_all(self, input_storage=None, output_storage=None):
+    def make_all(self, input_storage=None, output_storage=None, storage_map=None):
         """
         :param input_storage: WRITEME
         :param output_storage: WRITEME
@@ -689,7 +708,7 @@ class PerformLinker(LocalLinker):
         order = self.schedule(fgraph)
         no_recycling = self.no_recycling
 
-        input_storage, output_storage, storage_map = map_storage(fgraph, order, input_storage, output_storage)
+        input_storage, output_storage, storage_map = map_storage(fgraph, order, input_storage, output_storage, storage_map)
 
         compute_map = {}
         for k in storage_map:

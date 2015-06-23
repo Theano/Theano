@@ -246,6 +246,10 @@ class FunctionGraph(utils.object2):
 
     ### import ###
     def __import_r__(self, variable, reason):
+        """
+        Import variables to this FunctionGraph and also their apply_node,
+        if those nodes are not in this graph.
+        """
         global NullType
         if NullType is None:
             from null_type import NullType
@@ -264,6 +268,12 @@ class FunctionGraph(utils.object2):
         self.variables.add(variable)
 
     def __import__(self, apply_node, check=True, reason=None):
+        """
+        Given an apply_node, recursively search from this node to know graph,
+        and then add all unknown variables and apply_nodes to this graph.
+        """
+        node = apply_node
+
         # We import the nodes in topological order. We only are interested
         # in new nodes, so we use all variables we know of as if they were the input set.
         # (the functions in the graph module only use the input set to
@@ -741,17 +751,32 @@ class FunctionGraph(utils.object2):
         """WRITEME"""
         return self.clone_get_equiv(check_integrity)[0]
 
-    def clone_get_equiv(self, check_integrity=True):
-        """WRITEME"""
+    def clone_get_equiv(self, check_integrity=True, attach_feature=True):
+        """Clone the graph and get a memo( a dict )that map old node to new node
+        ----------------------------
+        Parameters:
+            check_integrity - { bool } Whether to check integrity. 
+                                Default is True.
+            attach_feature - { bool } Whether to attach feature of origin graph to
+                                cloned graph. Default is True.
+        ----------------------------
+        Returns:
+            e - { FunctionGraph } Cloned fgraph. Every node in cloned graph is cloned.
+            equiv - { dict } A dict that map old node to new node.
+        """
         equiv = graph.clone_get_equiv(self.inputs, self.outputs)
+        
         if check_integrity:
             self.check_integrity()
         e = FunctionGraph([equiv[i] for i in self.inputs],
-                          [equiv[o] for o in self.outputs])
+                          [equiv[o] for o in self.outputs],
+                          clone=False)
         if check_integrity:
             e.check_integrity()
-        for feature in self._features:
-            e.attach_feature(feature)
+
+        if attach_feature:
+            for feature in self._features:
+                e.attach_feature(feature)
         return e, equiv
 
     def __getstate__(self):

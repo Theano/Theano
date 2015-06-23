@@ -981,14 +981,14 @@ class VM_Linker(link.LocalLinker):
         return vm
 
     def make_all(self, profiler=None, input_storage=None,
-                 output_storage=None,
+                 output_storage=None, storage_map=None,
                  ):
         fgraph = self.fgraph
         order = self.schedule(fgraph)
         no_recycling = self.no_recycling
 
         input_storage, output_storage, storage_map = link.map_storage(
-            fgraph, order, input_storage, output_storage)
+            fgraph, order, input_storage, output_storage, storage_map)
         compute_map = {}
         for k in storage_map:
             compute_map[k] = [k.owner is None]

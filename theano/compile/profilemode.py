@@ -42,7 +42,9 @@ AddConfigVar('ProfileMode.profile_memory',
 
 
 class Profile_Maker(FunctionMaker):
-    def create(self, input_storage=None, trustme=False):
+    # storage_map does not work in Profile_Maker
+    # I just add this argument to fit the interface.  -- ChienliMa 03.June.2015
+    def create(self, input_storage=None, trustme=False, storage_map=None):
         ret = super(Profile_Maker, self).create(input_storage, trustme)
 
         if (hasattr(theano, 'sandbox') and
