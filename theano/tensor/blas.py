@@ -162,37 +162,6 @@ _logger = logging.getLogger('theano.tensor.blas')
 # We need to define blas.ldflag before we try to import scipy.
 # Otherwise, we give an optimization warning for no reason in some cases.
 def default_blas_ldflags():
-    """This is a generator. It work in 2 step. The first we guess a
-    default blas, then we test it. If it fail, we return an empty
-    blas.
-
-    This is needed for Anaconda on Windows. I wasn't able to find how
-    to detect if the mkl from Anaconda can be reused or not. I was not
-    able to find a way to test it with try_flags correctly. Also, this
-    will test the real code, so we do not need to update the test in
-    case the software change. This also enables the test for all
-    cases.
-
-    """
-    flags = static_default_blas_flags()
-    yield flags
-
-    # Now test it!
-    try:
-        old = config.compute_test_value
-        config.compute_test_value = 'off'
-        x = theano.tensor.fmatrix()
-        try:
-            theano.function([x], theano.tensor.blas._dot22(x, x),
-                            profile=False)
-        except Exception as e:
-            print(e)
-            yield ""
-    finally:
-        config.compute_test_value = old
-
-
-def static_default_blas_flags():
     try:
         if (hasattr(numpy.distutils, '__config__') and
             numpy.distutils.__config__):
