@@ -181,22 +181,6 @@ def _contains_cycle(fgraph, orderings):
     return visited != len(parent_counts)
 
 
-def getroot(r, view_i):
-    """
-    TODO: what is view_i ? based on add_impact's docstring, IG is guessing
-          it might be a dictionary mapping variables to views, but what is
-          a view? In these old docstrings I'm not sure if "view" always
-          means "view variable" or if it also sometimes means "viewing
-          pattern."
-    For views: Return non-view variable which is ultimatly viewed by r.
-    For non-views: return self.
-    """
-    try:
-        return getroot(view_i[r], view_i)
-    except KeyError:
-        return r
-
-
 def add_impact(r, view_o, impact):
     """
     In opposition to getroot, which finds the variable that is viewed *by* r, this function
@@ -216,10 +200,37 @@ def add_impact(r, view_o, impact):
         add_impact(v, view_o, impact)
 
 
-def get_impact(root, view_o):
-    impact = OrderedSet()
-    add_impact(root, view_o, impact)
-    return impact
+def _build_droot_impact(destroy_handler):
+    droot = {}   # destroyed view + nonview variables -> foundation
+    impact = {}  # destroyed nonview variable -> it + all views of it
+    root_destroyer = {}  # root -> destroyer apply
+
+    for app in destroy_handler.destroyers:
+        for output_idx, input_idx_list in app.op.destroy_map.items():
+            if len(input_idx_list) != 1:
+                raise NotImplementedError()
+            input_idx = input_idx_list[0]
+            input = app.inputs[input_idx]
+            _r = input
+            while _r is not None:
+                r = _r
+                _r = destroy_handler.view_i.get(r)
+            input_root = r
+            if input_root in droot:
+                raise InconsistencyError(
+                    "Multiple destroyers of %s" % input_root)
+            droot[input_root] = input_root
+            root_destroyer[input_root] = app
+            input_impact = OrderedSet()
+            add_impact(input_root, destroy_handler.view_o, input_impact)
+            for v in input_impact:
+                assert v not in droot
+                droot[v] = input_root
+
+            impact[input_root] = input_impact
+            impact[input_root].add(input_root)
+
+    return droot, impact, root_destroyer
 
 
 def fast_inplace_check(inputs):
@@ -341,38 +352,9 @@ if 0:
 
         def refresh_droot_impact(self):
             if self.stale_droot:
-                self.droot, self.impact, self.root_destroyer = self._build_droot_impact()
+                self.droot, self.impact, self.root_destroyer = _build_droot_impact(self)
                 self.stale_droot = False
             return self.droot, self.impact, self.root_destroyer
-
-        def _build_droot_impact(self):
-            droot = {}   # destroyed view + nonview variables -> foundation
-            impact = {}  # destroyed nonview variable -> it + all views of it
-            root_destroyer = {}  # root -> destroyer apply
-
-            for app in self.destroyers:
-                for output_idx, input_idx_list in iteritems(app.op.destroy_map):
-                    if len(input_idx_list) != 1:
-                        raise NotImplementedError()
-                    input_idx = input_idx_list[0]
-                    input = app.inputs[input_idx]
-                    input_root = getroot(input, self.view_i)
-                    if input_root in droot:
-                        raise InconsistencyError(
-                            "Multiple destroyers of %s" % input_root)
-                    droot[input_root] = input_root
-                    root_destroyer[input_root] = app
-                    #input_impact = set([input_root])
-                    #add_impact(input_root, self.view_o, input_impact)
-                    input_impact = get_impact(input_root, self.view_o)
-                    for v in input_impact:
-                        assert v not in droot
-                        droot[v] = input_root
-
-                    impact[input_root] = input_impact
-                    impact[input_root].add(input_root)
-
-            return droot, impact, root_destroyer
 
         def on_detach(self, fgraph):
             if fgraph is not self.fgraph:
@@ -746,36 +728,8 @@ class DestroyHandler(toolbox.Bookkeeper):
         fgraph.destroyers = get_destroyers_of
 
     def refresh_droot_impact(self):
-        """
-        Makes sure self.droot, self.impact, and self.root_destroyer are
-        up to date, and returns them.
-        (see docstrings for these properties above)
-        """
         if self.stale_droot:
-            droot = OrderedDict()   # destroyed view + nonview variables -> foundation
-            impact = OrderedDict()  # destroyed nonview variable -> it + all views of it
-            root_destroyer = OrderedDict()  # root -> destroyer apply
-
-            for app in self.destroyers:
-                for output_idx, input_idx_list in iteritems(app.op.destroy_map):
-                    if len(input_idx_list) != 1:
-                        raise NotImplementedError()
-                    input_idx = input_idx_list[0]
-                    input = app.inputs[input_idx]
-                    input_root = getroot(input, self.view_i)
-                    if input_root in droot:
-                        raise InconsistencyError(
-                            "Multiple destroyers of %s" % input_root)
-                    droot[input_root] = input_root
-                    root_destroyer[input_root] = app
-                    input_impact = get_impact(input_root, self.view_o)
-                    for v in input_impact:
-                        assert v not in droot
-                        droot[v] = input_root
-
-                    impact[input_root] = input_impact
-                    impact[input_root].add(input_root)
-            self.droot, self.impact, self.root_destroyer = droot, impact, root_destroyer
+            self.droot, self.impact, self.root_destroyer = _build_droot_impact(self)
             self.stale_droot = False
         return self.droot, self.impact, self.root_destroyer
 
