@@ -325,6 +325,37 @@ def test_pooling_opt():
                 for n in f.maker.fgraph.toposort()])
 
 
+def test_log_softmax():
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+
+    x = T.ftensor4()
+    softmax_out = dnn.GpuDnnSoftmax('bc01', 'accurate', 'channel')(x)
+    log_out = T.log(T.as_tensor_variable(softmax_out))
+
+    f = theano.function([x], log_out, mode=mode_with_gpu)
+
+    # Ensure that the output of the function is valid
+    input_shapes = [(3, 4, 5, 6),
+                    (1025, 2, 3, 4),
+                    (2, 1025, 3, 4),
+                    (2, 3, 1025, 4),
+                    (2, 3, 4, 1025),
+                    (66000, 2, 3, 4),
+                    (2, 66000, 3, 4),
+                    (2, 3, 66000, 4),
+                    (2, 3, 4, 66000),]
+
+    for inp_shape in input_shapes:
+        input_val = numpy.random.normal(0, 1, inp_shape).astype("float32")
+
+        out = f(input_val)
+        expected_out = numpy.log(numpy.exp(input_val) /
+                                 numpy.exp(input_val).sum(1)[:, None, :, :])
+
+        utt.assert_allclose(out, expected_out)
+
+
 def test_log_softmax_opt():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
