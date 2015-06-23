@@ -364,6 +364,7 @@ We can test this by running the following segment:
     assert numpy.allclose(4 * inp + 5, f(inp))
     assert numpy.allclose(2 * inp + 3, g(inp))
 
+
 How To Test it
 ==============
 
