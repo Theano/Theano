@@ -181,6 +181,34 @@ def _contains_cycle(fgraph, orderings):
     return visited != len(parent_counts)
 
 
+def getroot(r, view_i):
+    """
+    This function has been integrated as an inline function. See function
+    _build_droot_impact
+
+    TODO: what is view_i ? based on add_impact's docstring, IG is guessing
+          it might be a dictionary mapping variables to views, but what is
+          a view? In these old docstrings I'm not sure if "view" always
+          means "view variable" or if it also sometimes means "viewing
+          pattern."
+    For views: Return non-view variable which is ultimatly viewed by r.
+    For non-views: return self.
+    """
+    try:
+        return getroot(view_i[r], view_i)
+    except KeyError:
+        return r
+
+def get_impact(root, view_o):
+    """
+    This function has been integrated as an inline function. See function
+    _build_droot_impact
+    """
+    impact = OrderedSet()
+    add_impact(root, view_o, impact)
+    return impact
+
+
 def add_impact(r, view_o, impact):
     """
     In opposition to getroot, which finds the variable that is viewed *by* r, this function
@@ -211,18 +239,26 @@ def _build_droot_impact(destroy_handler):
                 raise NotImplementedError()
             input_idx = input_idx_list[0]
             input = app.inputs[input_idx]
-            _r = input
-            while _r is not None:
-                r = _r
-                _r = destroy_handler.view_i.get(r)
+
+            # This part is the inline version of original getroot function
+            r = input
+            try:
+                while True:
+                    r = destroy_handler.view_i[r]
+            except KeyError:
+                pass
             input_root = r
+
             if input_root in droot:
                 raise InconsistencyError(
                     "Multiple destroyers of %s" % input_root)
             droot[input_root] = input_root
             root_destroyer[input_root] = app
+
+            # Here is the inline version of original get_impact function
             input_impact = OrderedSet()
             add_impact(input_root, destroy_handler.view_o, input_impact)
+
             for v in input_impact:
                 assert v not in droot
                 droot[v] = input_root
