@@ -295,8 +295,8 @@ Tips:
   of type *float64*.
 
 
-"Why is my GPU function seems to be slow?"
-------------------------------------
+"Why does my GPU function seem to be slow?"
+------------------------------------------
 
 When you compile a theano function, if you do not get the speedup that you expect over the 
 CPU performance of the same code. It is oftentimes due to the fact that some Ops might be running
@@ -310,7 +310,10 @@ options:
 if there is a CPU Op in the computational graph.
 
 It is possible to use this mode by providing the flag in THEANO_FLAGS, such as:
-``THEANO_FLAGS="float32,assert_no_cpu_op='raise'" python test.py``
+``THEANO_FLAGS="float32,device=gpu,assert_no_cpu_op='raise'" python test.py``
+
+But note that this optimization will not catch all the CPU Ops, it might miss some 
+errors.
 
 .. _faq_monitormode:
 
