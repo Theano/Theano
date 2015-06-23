@@ -313,7 +313,7 @@ It is possible to use this mode by providing the flag in THEANO_FLAGS, such as:
 ``THEANO_FLAGS="float32,device=gpu,assert_no_cpu_op='raise'" python test.py``
 
 But note that this optimization will not catch all the CPU Ops, it might miss some 
-errors.
+Ops.
 
 .. _faq_monitormode:
 
