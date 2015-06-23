@@ -4639,17 +4639,21 @@ class _nd_grid(object):
     def __getitem__(self, *args):
 
         ndim = len(args[0])
+        for sl in args[0]:
+            if isinstance(sl.step, python_complex):
+                raise NotImplementedError("Not implemented for slices "
+                                          "whose step is complex")
         ranges = [arange(sl.start or 0,
                          sl.stop or None,
                          sl.step or 1) for sl in args[0]]
         shapes = [tuple([1] * j + [r.shape[0]] + [1] * (ndim - 1 - j))
                   for j, r in enumerate(ranges)]
         ranges = [r.reshape(shape) for r, shape in zip(ranges, shapes)]
-        ones = [ones_like(r) for r in ranges]
         if self.sparse:
             grids = ranges
         else:
             grids = []
+            ones = [ones_like(r) for r in ranges]
             for i in range(ndim):
                 grid = 1
                 for j in range(ndim):
