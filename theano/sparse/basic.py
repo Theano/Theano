@@ -12,6 +12,7 @@ import sys
 
 import numpy
 from numpy.lib.stride_tricks import as_strided
+from six.moves import xrange
 import scipy.sparse
 
 import theano
@@ -1839,8 +1840,8 @@ class SquareDiagonal(gof.op.Op):
 
         N = len(diag)
         data = diag[:N]
-        indices = range(N)
-        indptr = range(N + 1)
+        indices = list(range(N))
+        indptr = list(range(N + 1))
         tup = (data, indices, indptr)
 
         z[0] = scipy.sparse.csc_matrix(tup, copy=True)

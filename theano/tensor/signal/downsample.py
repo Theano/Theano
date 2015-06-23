@@ -6,7 +6,8 @@ DownsampleFactorMax, DownsampleAvg, DownsampleSoftmax.
 """
 from __future__ import print_function
 # This file should move along with conv.py
-import __builtin__
+from six.moves import xrange
+import six.moves.builtins as builtins
 
 import numpy
 
@@ -286,16 +287,16 @@ class DownsampleFactorMax(Op):
             for k in xrange(x.shape[1]):
                 for r in xrange(pr):
                     row_st = r * st0
-                    row_end = __builtin__.min(row_st + ds0, img_rows)
+                    row_end = builtins.min(row_st + ds0, img_rows)
                     if not inc_pad:
-                        row_st = __builtin__.max(row_st, self.padding[0])
-                        row_end = __builtin__.min(row_end, x.shape[-2] + pad_h)
+                        row_st = builtins.max(row_st, self.padding[0])
+                        row_end = builtins.min(row_end, x.shape[-2] + pad_h)
                     for c in xrange(pc):
                         col_st = c * st1
-                        col_end = __builtin__.min(col_st + ds1, img_cols)
+                        col_end = builtins.min(col_st + ds1, img_cols)
                         if not inc_pad:
-                            col_st = __builtin__.max(col_st, self.padding[1])
-                            col_end = __builtin__.min(col_end,
+                            col_st = builtins.max(col_st, self.padding[1])
+                            col_end = builtins.min(col_end,
                                                       x.shape[-1] + pad_w)
                         zz[n, k, r, c] = func(y[
                             n, k, row_st:row_end, col_st:col_end])
@@ -560,11 +561,11 @@ class DownsampleFactorMaxGrad(Op):
             for n in xrange(x.shape[0]):
                 for k in xrange(x.shape[1]):
                     for r in xrange(pr):
-                        row_st = __builtin__.max(r * st0, self.padding[0])
-                        row_end = __builtin__.min(row_st + ds0, img_rows)
+                        row_st = builtins.max(r * st0, self.padding[0])
+                        row_end = builtins.min(row_st + ds0, img_rows)
                         for c in xrange(pc):
-                            col_st = __builtin__.max(c * st1, self.padding[1])
-                            col_end = __builtin__.min(col_st + ds1, img_cols)
+                            col_st = builtins.max(c * st1, self.padding[1])
+                            col_end = builtins.min(col_st + ds1, img_cols)
                             for row_ind in xrange(row_st, row_end):
                                 for col_ind in xrange(col_st, col_end):
                                     if (maxout[n, k, r, c] == y[n, k, row_ind, col_ind]):
@@ -576,15 +577,15 @@ class DownsampleFactorMaxGrad(Op):
                         if sum_mode or inc_pad:
                             row_st = r * st0
                         else:
-                            row_st = __builtin__.max(r * st0, self.padding[0])
-                        row_end = __builtin__.min(row_st + ds0, img_rows)
+                            row_st = builtins.max(r * st0, self.padding[0])
+                        row_end = builtins.min(row_st + ds0, img_rows)
                         for c in xrange(pc):
                             if sum_mode or inc_pad:
                                 col_st = c * st1
                             else:
-                                col_st = __builtin__.max(c * st1,
+                                col_st = builtins.max(c * st1,
                                                          self.padding[1])
-                            col_end = __builtin__.min(col_st + ds1, img_cols)
+                            col_end = builtins.min(col_st + ds1, img_cols)
                             if sum_mode:
                               val = gz[n, k, r, c]
                             else:
@@ -628,7 +629,7 @@ class DownsampleFactorMaxGrad(Op):
         int x_typenum = PyArray_ObjectType((PyObject*)%(x)s, 0);
         int z_typenum = PyArray_ObjectType((PyObject*)%(z)s, 0);
         int gz_typenum = PyArray_ObjectType((PyObject*)%(gz)s, 0);
-        
+
         if ((x_typenum != z_typenum) || (x_typenum != gz_typenum))
         {
             PyErr_SetString(PyExc_ValueError, "input types must all match");
@@ -649,11 +650,11 @@ class DownsampleFactorMaxGrad(Op):
             PyErr_SetString(PyExc_ValueError, "gz must be a 4d ndarray");
             %(fail)s;
         }
-        
+
         int z_r, z_c;
         z_r = PyArray_DIMS(%(z)s)[2];
         z_c = PyArray_DIMS(%(z)s)[3];
-        
+
         int r, c; // shape of the padded_input
         r = PyArray_DIMS(%(x)s)[2];
         c = PyArray_DIMS(%(x)s)[3];
@@ -698,7 +699,7 @@ class DownsampleFactorMaxGrad(Op):
                     // skip the padding
                     c_st = c_st < %(pd1)s ? %(pd1)s : c_st;
                     c_end = c_end > (c - %(pd1)s) ? c - %(pd1)s : c_end;
-                    
+
                     // change coordinates from padding_img space into img space
                     c_st -= %(pd1)s;
                     c_end -= %(pd1)s;
@@ -716,7 +717,7 @@ class DownsampleFactorMaxGrad(Op):
                         dtype_%(gx)s * gx = (
                           (dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s, b, k, m, n)));
                         if (a == maximum){
-                          gx[0] = gx[0] + gz[0]; 
+                          gx[0] = gx[0] + gz[0];
                         }
                       }
                     }
@@ -724,7 +725,7 @@ class DownsampleFactorMaxGrad(Op):
                 }
               }
             }
-            
+
         }
         """ % locals()
 
@@ -850,10 +851,10 @@ class DownsampleFactorMaxGradGrad(Op):
             for k in xrange(x.shape[1]):
                 for r in xrange(pr):
                     row_st = r * st0
-                    row_end = __builtin__.min(row_st + ds0, img_rows)
+                    row_end = builtins.min(row_st + ds0, img_rows)
                     for c in xrange(pc):
                         col_st = c * st1
-                        col_end = __builtin__.min(col_st + ds1, img_cols)
+                        col_end = builtins.min(col_st + ds1, img_cols)
                         for row_ind in xrange(row_st, row_end):
                             for col_ind in xrange(col_st, col_end):
                                 if (maxout[n, k, r, c] == x[n, k, row_ind, col_ind]):

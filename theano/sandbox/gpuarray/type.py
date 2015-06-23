@@ -296,7 +296,7 @@ class GpuArrayType(Type):
 
 class _operators(_tensor_py_operators):
     def _as_TensorVariable(self):
-        from basic_ops import host_from_gpu
+        from .basic_ops import host_from_gpu
         return host_from_gpu(self)
 
     def _as_GpuArrayVariable(self):

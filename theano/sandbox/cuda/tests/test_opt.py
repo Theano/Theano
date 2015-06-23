@@ -9,6 +9,7 @@ from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises
 
 import theano
+from six.moves import reduce
 from theano.compile.pfunc import pfunc
 from theano import config, tensor
 import theano.tensor.tests.test_nlinalg

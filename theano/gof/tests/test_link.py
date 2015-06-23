@@ -39,7 +39,7 @@ class MyOp(Op):
 
     def make_node(self, *inputs):
         assert len(inputs) == self.nin
-        inputs = map(as_variable, inputs)
+        inputs = [as_variable(i) for i in inputs]
         for input in inputs:
             if input.type is not tdouble:
                 raise Exception("Error 1")

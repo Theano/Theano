@@ -12,7 +12,7 @@ is a global operation with a scalar condition.
 """
 from __future__ import print_function
 from copy import deepcopy
-from itertools import izip
+from theano.compat import izip
 import logging
 
 import numpy
@@ -22,6 +22,8 @@ from theano.tensor import TensorType
 from theano import gof
 from theano.gof import PureOp, Apply
 
+from six import iteritems
+from six.moves import xrange
 from theano.compile import optdb
 from theano.tensor import opt
 from theano.scan_module.scan_utils import find_up
@@ -514,11 +516,11 @@ def cond_merge_ifs_true(node):
                 ins_t = tval.owner.inputs[1:][:ins_op.n_outs]
                 replace[idx + 1] = ins_t[tval.owner.outputs.index(tval)]
 
-    if len(replace.items()) == 0:
+    if len(replace) == 0:
         return False
 
     old_ins = list(node.inputs)
-    for pos, var in replace.items():
+    for pos, var in iteritems(replace):
         old_ins[pos] = var
     return op(*old_ins, **dict(return_list=True))
 
@@ -539,11 +541,11 @@ def cond_merge_ifs_false(node):
                 replace[idx + 1 + op.n_outs] = \
                     ins_t[fval.owner.outputs.index(fval)]
 
-    if len(replace.items()) == 0:
+    if len(replace) == 0:
         return False
 
     old_ins = list(node.inputs)
-    for pos, var in replace.items():
+    for pos, var in iteritems(replace):
         old_ins[pos] = var
     return op(*old_ins, **dict(return_list=True))
 
@@ -555,7 +557,7 @@ class CondMerge(gof.Optimizer):
 
     def apply(self, fgraph):
         nodelist = list(fgraph.toposort())
-        cond_nodes = filter(lambda s: isinstance(s.op, IfElse), nodelist)
+        cond_nodes = [s for s in nodelist if isinstance(s.op, IfElse)]
         if len(cond_nodes) < 2:
             return False
         merging_node = cond_nodes[0]
@@ -594,7 +596,7 @@ class CondMerge(gof.Optimizer):
                     old_outs += [proposal.outputs]
                 else:
                     old_outs += proposal.outputs
-                pairs = zip(old_outs, new_outs)
+                pairs = list(zip(old_outs, new_outs))
                 fgraph.replace_all_validate(pairs, reason='cond_merge')
 
 
@@ -617,7 +619,7 @@ def cond_remove_identical(node):
                         jdx not in out_map):
                     out_map[jdx] = idx
 
-    if len(out_map.keys()) == 0:
+    if len(out_map) == 0:
         return False
 
     nw_ts = []
@@ -641,7 +643,7 @@ def cond_remove_identical(node):
 
     rval = []
     for idx in xrange(len(node.outputs)):
-        if idx in out_map.keys():
+        if idx in out_map:
             rval += [new_outs[inv_map[out_map[idx]]]]
         else:
             rval += [new_outs[inv_map[idx]]]
@@ -698,7 +700,7 @@ def cond_merge_random_op(main_node):
                 old_outs += [proposal.outputs]
             else:
                 old_outs += proposal.outputs
-            pairs = zip(old_outs, new_outs)
+            pairs = list(zip(old_outs, new_outs))
             main_outs = clone(main_node.outputs, replace=pairs)
             return main_outs
 

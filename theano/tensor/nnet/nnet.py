@@ -11,6 +11,7 @@
 """
 import logging
 import numpy
+from six.moves import xrange
 
 import theano
 from theano import gof
@@ -77,12 +78,17 @@ class SoftmaxWithBias(gof.Op):
         if b.shape[0] != x.shape[1]:
             raise ValueError('b must have same number of columns as x')
 
-        sm = numpy.zeros_like(x)
-        for i in xrange(sm.shape[0]):
-            row = x[i] + b
-            sm[i] = numpy.exp(row - numpy.max(row))
-            sm[i] *= 1.0 / numpy.sum(sm[i])
-        output_storage[0][0] = sm
+        # sm = numpy.zeros_like(x)
+        # for i in xrange(sm.shape[0]):
+            # row = x[i] + b
+            # sm[i] = numpy.exp(row - numpy.max(row))
+            # sm[i] *= 1.0 / numpy.sum(sm[i])
+        # output_storage[0][0] = sm
+
+        x_plus_b = x + b[None, :]
+        e_x = numpy.exp(x_plus_b - x_plus_b.max(axis=1)[:, None])
+        e_x *= 1.0 / e_x.sum(axis=1)[:, None]
+        output_storage[0][0] = e_x
 
     def grad(self, inp, grads):
         x, b = inp
@@ -303,8 +309,17 @@ class SoftmaxGrad(gof.Op):
             dx[i] = dy_times_sm_i - sum(dy_times_sm_i) * sm[i]
         output_storage[0][0] = dx
 
-    def grad(self, *args):
-        raise NotImplementedError()
+    def grad(self, inp, grads):
+        dy, sm = inp
+        g, = grads
+        
+        tmp = g + tensor.neg(tensor.sum(g*sm, axis=1).dimshuffle((0, 'x')))
+        g_dy = tmp * sm
+        
+        tmp2 = tensor.sum(dy*sm, axis=1).dimshuffle((0, 'x'))
+        g_sm = tmp*dy - g *tmp2
+    
+        return g_dy, g_sm
 
     def infer_shape(self, node, shape):
         return [shape[1]]
@@ -413,7 +428,7 @@ class Softmax(gof.Op):
     def grad(self, inp, grads):
         x, = inp
         g_sm, = grads
-        sm = softmax(x)
+        sm = softmax_op(x)
         return [softmax_grad(g_sm, sm)]
 
     def R_op(self, inputs, eval_points):
@@ -567,15 +582,20 @@ class Softmax(gof.Op):
     def c_code_cache_version():
         return (3,)
 
-softmax = Softmax()
+softmax_op = Softmax()
 
+def softmax_graph(c):
+    return tensor.exp(c) / tensor.exp(c).sum(axis=-1, keepdims=True)
+
+def softmax(c):
+    return softmax_op(c)
 
 @opt.register_specialize('fast_compile_gpu')
-@gof.local_optimizer([softmax])
+@gof.local_optimizer([softmax_op])
 def local_softmax_with_bias(node):
     """Try to turn softmax(sum_of_stuff) -> softmax_w_bias(matrix, bias)
     """
-    if node.op == softmax:
+    if node.op == softmax_op:
         x, = node.inputs
         if x.owner and x.owner.op == tensor.add:
             vectors = []
@@ -637,7 +657,7 @@ def softmax_simplifier(numerators, denominators):
         if not numerator.type.dtype.startswith('float'):
             continue
 
-        if not numerator.type.broadcastable == (False, False):
+        if numerator.ndim != 2:
             continue
         if numerator.owner and numerator.owner.op == tensor.exp:
             x = numerator.owner.inputs[0]
@@ -663,7 +683,8 @@ def softmax_simplifier(numerators, denominators):
         if matching_denom:
             numerators.remove(numerator)
             denominators.remove(matching_denom)
-            numerators.append(softmax(x))
+            numerators.append(softmax_op(x))
+
     return numerators, denominators
 opt.local_mul_canonizer.add_simplifier(softmax_simplifier,
      'softmax_simplifier')
@@ -1403,7 +1424,7 @@ def crossentropy_to_crossentropy_with_softmax(fgraph):
             if node.op == crossentropy_categorical_1hot:
                 nll, = node.outputs
                 sm, one_of_n = node.inputs
-                if sm.owner and sm.owner.op == softmax:
+                if sm.owner and sm.owner.op == softmax_op:
                     x, = sm.owner.inputs
                     new_nll, new_sm, new_am = crossentropy_softmax_argmax_1hot_with_bias(x,
                             tensor.zeros_like(x[0]), one_of_n)
@@ -1449,7 +1470,7 @@ def local_softmax_grad_to_crossentropy_with_softmax_grad(node):
 def local_argmax_pushdown(node):
     if node.op == tensor._max_and_argmax and node.inputs[0].owner and \
             len(node.outputs[0].clients) > 0 and node.inputs[0].owner.op in \
-            (softmax, softplus, tensor.exp, tensor.log, tensor.tanh, sigmoid,
+            (softmax_op, softplus, tensor.exp, tensor.log, tensor.tanh, sigmoid,
              softmax_with_bias):
         if theano.config.warn.argmax_pushdown_bug:
             logging.getLogger('theano.tensor.nnet.nnet').warn("WARNING: there "
@@ -1465,7 +1486,7 @@ def local_argmax_pushdown(node):
         x_max, x_argmax = node.outputs
         x, axis = node.inputs
         # TODO: Make a list/set of monotonic ops...
-        if x.owner and x.owner.op in (softmax, softplus, tensor.exp,
+        if x.owner and x.owner.op in (softmax_op, softplus, tensor.exp,
                                       tensor.log, tensor.tanh, sigmoid):
             pre_x, = x.owner.inputs
             return tensor._max_and_argmax(pre_x, axis)
@@ -1553,7 +1574,7 @@ def local_advanced_indexing_crossentropy_onehot(node):
             except Exception:
                 pass
 
-    if sm is not None and sm.owner and sm.owner.op in (softmax,
+    if sm is not None and sm.owner and sm.owner.op in (softmax_op,
                                                        softmax_with_bias):
         sm_w_bias = local_softmax_with_bias.transform(sm.owner)
         if sm_w_bias:
@@ -1583,7 +1604,7 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
     except Exception:
         return
 
-    if (sm is not None) and sm.owner and (sm.owner.op in (softmax,
+    if (sm is not None) and sm.owner and (sm.owner.op in (softmax_op,
                                                           softmax_with_bias)):
         sm_w_bias = local_softmax_with_bias.transform(sm.owner)
         if sm_w_bias:
@@ -2053,7 +2074,7 @@ def make_out_pattern(X):
     return out_var
 
 
-local_log_softmax = gof.PatternSub(in_pattern=(tensor.log, (softmax, 'x')),
+local_log_softmax = gof.PatternSub(in_pattern=(tensor.log, (softmax_op, 'x')),
                                    out_pattern=(make_out_pattern, 'x'),
                                    allow_multiple_clients=True)
 
@@ -2061,3 +2082,38 @@ local_log_softmax = gof.PatternSub(in_pattern=(tensor.log, (softmax, 'x')),
 # only after another more specific optimization that stabilizes cross entropy
 #opt.register_stabilize(local_log_softmax, name = 'local_log_softmax')
 opt.register_specialize(local_log_softmax, 'fast_compile_gpu', name='local_log_softmax')
+
+
+def relu(x, alpha=0):
+    """
+    Compute the element-wise rectified linear activation function.
+
+    :type x: symbolic tensor
+    :param x: Tensor to compute the activation function for.
+
+    :type alpha: scalar or tensor, optional
+    :param alpha: Slope for negative input, usually between 0 and 1. The
+        default value of 0 will lead to the standard rectifier, 1 will lead to
+        a linear activation function, and any value in between will give a
+        leaky rectifier. A shared variable (broadcastable against `x`) will
+        result in a parameterized rectifier with learnable slope(s).
+
+    :rtype: symbolic tensor
+    :return: element-wise rectifier applied to `x`
+
+    .. note:: This is numerically equivalent to
+        ``T.switch(x > 0, x, alpha * x)``
+        (or ``T.maximum(x, alpha * x)`` for ``alpha < 1``), but uses a faster
+        formulation or an optimized Op, so we encourage to use this function.
+
+    """
+    # This is probably the fastest implementation for GPUs. Both the forward
+    # pass and the gradient get compiled into a single GpuElemwise call.
+    # TODO: Check if it's optimal for CPU as well; add an "if" clause if not.
+    # TODO: Check if there's a faster way for the gradient; create an Op if so.
+    if alpha == 0:
+        return 0.5 * (x + abs(x))
+    else:
+        f1 = 0.5 * (1 + alpha)
+        f2 = 0.5 * (1 - alpha)
+        return f1 * x + f2 * abs(x)

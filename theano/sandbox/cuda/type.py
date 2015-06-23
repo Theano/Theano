@@ -2,7 +2,7 @@
 """
 from __future__ import print_function
 import os
-import copy_reg
+import six.moves.copyreg as copyreg
 import warnings
 
 import numpy
@@ -11,7 +11,7 @@ import theano
 from theano import Type, Variable
 from theano import tensor, config
 from theano import scalar as scal
-from theano.compat.six import StringIO
+from six import StringIO
 
 try:
     # We must do those import to be able to create the full doc when nvcc
@@ -546,7 +546,7 @@ def CudaNdarray_unpickler(npa):
     else:
         raise ImportError("Cuda not found. Cannot unpickle CudaNdarray")
 
-copy_reg.constructor(CudaNdarray_unpickler)
+copyreg.constructor(CudaNdarray_unpickler)
 
 
 def CudaNdarray_pickler(cnda):
@@ -554,5 +554,5 @@ def CudaNdarray_pickler(cnda):
 
 # In case cuda is not imported.
 if cuda is not None:
-    copy_reg.pickle(cuda.CudaNdarray, CudaNdarray_pickler,
+    copyreg.pickle(cuda.CudaNdarray, CudaNdarray_pickler,
                     CudaNdarray_unpickler)

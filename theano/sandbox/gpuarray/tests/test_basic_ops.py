@@ -1,6 +1,8 @@
 import unittest
-from itertools import izip
+from theano.compat import izip
 from copy import copy, deepcopy
+
+from six import iteritems
 
 import numpy
 import theano
@@ -104,7 +106,7 @@ def rand_gpuarray(*shape, **kwargs):
     dtype = kwargs.pop('dtype', theano.config.floatX)
     cls = kwargs.pop('cls', None)
     if len(kwargs) != 0:
-        raise TypeError('Unexpected argument %s', kwargs.keys()[0])
+        raise TypeError('Unexpected argument %s', list(kwargs.keys())[0])
     return gpuarray.array(r, dtype=dtype, cls=cls)
 
 
@@ -133,7 +135,7 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
             if skip:
                 raise SkipTest(skip)
 
-            for testname, inputs in cases.items():
+            for testname, inputs in iteritems(cases):
                 self.run_case(testname, inputs)
 
         def run_case(self, testname, inputs):
@@ -200,7 +202,7 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
                             self.op, testname, i, inputs, expected,
                             expected.dtype, variable, variable.dtype))
 
-            for description, check in self.checks.items():
+            for description, check in iteritems(self.checks):
                 if not check(inputs, variables):
                     self.fail(("Test %s::%s: Failed check: %s "
                                "(inputs were %s, ouputs were %s)") %

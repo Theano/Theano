@@ -7,6 +7,7 @@ from theano import tensor
 
 import numpy.fft
 import numpy
+from six.moves import xrange
 
 
 class GradTodo(Op):

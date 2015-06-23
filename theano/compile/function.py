@@ -1,11 +1,12 @@
 """Define the `function` function
 """
-import cPickle
+import six.moves.cPickle as pickle
 import logging
 
 import traceback as tb
 import re
 
+from six import string_types
 from theano.compile.io import In
 from theano.compile.function_module import orig_function
 from theano.compile.pfunc import pfunc
@@ -40,7 +41,7 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
     calling set_value(...) on them before calling `function_dump`.
 
     """
-    assert isinstance(filename, basestring)
+    assert isinstance(filename, string_types)
     d = dict(inputs=inputs, outputs=outputs, mode=mode, updates=updates,
              givens=givens, no_default_updates=no_default_updates,
              accept_inplace=accept_inplace, name=name,
@@ -48,7 +49,7 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
              allow_input_downcast=allow_input_downcast, profile=profile,
              on_unused_input=on_unused_input)
     with open(filename, 'wb') as f:
-        cPickle.dump(d, f, -1)
+        pickle.dump(d, f, -1)
 
 
 def function(inputs, outputs=None, mode=None, updates=None, givens=None,
@@ -209,10 +210,10 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
                CVM stands for C Virtual Machine.
     """
     if isinstance(outputs, dict):
-        output_items = outputs.items()
+        output_items = list(outputs.items())
 
         for item_pair in output_items:
-            assert isinstance(item_pair[0], basestring)
+            assert isinstance(item_pair[0], string_types)
 
         output_items_sorted = sorted(output_items)
 

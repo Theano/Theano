@@ -10,9 +10,10 @@ from __future__ import print_function
 # so state is ignored
 
 # since this job is not restartable, channel is also ignored
-import logging, StringIO, time, sys
+import logging, time, sys
 
 import numpy
+from six.moves import xrange
 
 import theano
 from theano.compile import shared, pfunc

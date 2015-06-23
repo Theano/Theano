@@ -9,15 +9,14 @@ from __future__ import print_function
 
 __docformat__ = "restructuredtext en"
 
-
+from collections import deque
 from copy import copy
 from itertools import count
-
 
 import theano
 import warnings
 from theano.gof import utils
-from theano.compat import deque
+from six import string_types, integer_types, iteritems
 from theano.misc.ordered_set import OrderedSet
 
 # Lazy imports to avoid circular dependencies.
@@ -148,7 +147,7 @@ class Apply(Node):
             else:
                 raise AttributeError(
                     "%s.default_output should be an output index." % self.op)
-        elif not isinstance(do, (int, long)):
+        elif not isinstance(do, integer_types):
             raise AttributeError("%s.default_output should be an int or long" %
                                  self.op)
         elif do < 0 or do >= len(self.outputs):
@@ -341,7 +340,7 @@ class Variable(Node):
         if index is not None and not isinstance(index, int):
             raise TypeError("index must be an int", index)
         self.index = index
-        if name is not None and not isinstance(name, basestring):
+        if name is not None and not isinstance(name, string_types):
             raise TypeError("name must be a string", name)
         self.name = name
         self.auto_name = 'auto_' + str(next(self.__count__))
@@ -928,7 +927,7 @@ def is_same_graph(var1, var2, givens=None, debug=False):
         in_xs = []
         in_ys = []
         # Compute the sets of all variables found in each computational graph.
-        inputs_var = map(inputs, ([var1], [var2]))
+        inputs_var = list(map(inputs, ([var1], [var2])))
         all_vars = [set(variables(v_i, v_o))
                     for v_i, v_o in ((inputs_var[0], [var1]),
                                      (inputs_var[1], [var2]))]
@@ -937,7 +936,7 @@ def is_same_graph(var1, var2, givens=None, debug=False):
             # Return True iff `x` is in computation graph of variable `vark`.
             return x in all_vars[k - 1]
 
-        for to_replace, replace_by in givens.iteritems():
+        for to_replace, replace_by in iteritems(givens):
             # Map a substitution variable to the computational graphs it
             # belongs to.
             inside = dict((v, [in_var(v, k) for k in (1, 2)])
@@ -1066,7 +1065,8 @@ def view_roots(r):
     if owner is not None:
         try:
             view_map = owner.op.view_map
-            view_map = dict([(owner.outputs[o], i) for o, i in view_map.items()])
+            view_map = dict((owner.outputs[o], i)
+                            for o, i in iteritems(view_map))
         except AttributeError:
             return [r]
         if r in view_map:

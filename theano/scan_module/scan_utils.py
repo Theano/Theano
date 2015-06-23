@@ -16,11 +16,13 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 import copy
 import logging
 import warnings
-from itertools import izip
 
 import numpy
 
 import theano
+from theano.compat import izip
+from six import string_types, iteritems
+from six.moves import xrange
 from theano.compile.pfunc import rebuild_collect_shared
 from theano import gof, compat
 from theano import tensor, scalar
@@ -169,7 +171,7 @@ def traverse(out, x, x_copy, d, visited=None):
 def hash_listsDictsTuples(x):
     hash_value = 0
     if isinstance(x, dict):
-        for k, v in x.iteritems():
+        for k, v in iteritems(x):
             hash_value ^= hash_listsDictsTuples(k)
             hash_value ^= hash_listsDictsTuples(v)
     elif isinstance(x, (list, tuple)):
@@ -215,7 +217,7 @@ def clone(output,
         share_inputs = copy_inputs
 
     if isinstance(replace, dict):
-        items = replace.items()
+        items = list(replace.items())
     elif isinstance(replace, (list, tuple)):
         items = replace
     elif replace is None:
@@ -289,7 +291,7 @@ def get_updates_and_outputs(ls):
         else:
             return [x]
 
-    def filter(x):
+    def _filter(x):
         """
         Ensure `x` is made only of allowed data types.
 
@@ -301,14 +303,14 @@ def get_updates_and_outputs(ls):
         if isinstance(x, list) or isinstance(x, tuple):
             iter_on = x
         elif isinstance(x, dict):
-            iter_on = x.iteritems()
+            iter_on = iteritems(x)
         if iter_on is not None:
-            return all(filter(y) for y in iter_on)
+            return all(_filter(y) for y in iter_on)
         else:
             return (isinstance(x, theano.Variable) or
                     isinstance(x, theano.scan_module.until))
 
-    if not filter(ls):
+    if not _filter(ls):
         raise ValueError(
                 'The return value of your scan lambda expression may only be '
                 'made of lists, tuples, or dictionaries containing Theano '
@@ -367,7 +369,7 @@ def isNaN_or_Inf_or_None(x):
     try:
         isNaN = numpy.isnan(x)
         isInf = numpy.isinf(x)
-        isStr = isinstance(x, basestring)
+        isStr = isinstance(x, string_types)
     except Exception:
         isNaN = False
         isInf = False
@@ -380,7 +382,7 @@ def isNaN_or_Inf_or_None(x):
         except Exception:
             isNaN = False
             isInf = False
-    if isinstance(x, gof.Constant) and isinstance(x.data, basestring):
+    if isinstance(x, gof.Constant) and isinstance(x.data, string_types):
         isStr = True
     else:
         isStr = False
@@ -609,8 +611,8 @@ class Validator(object):
 
         # Mapping from invalid variables to equivalent valid ones.
         self.valid_equivalent = valid_equivalent.copy()
-        self.valid.update(valid_equivalent.values())
-        self.invalid.update(valid_equivalent.keys())
+        self.valid.update(list(valid_equivalent.values()))
+        self.invalid.update(list(valid_equivalent.keys()))
 
     def check(self, out):
         '''

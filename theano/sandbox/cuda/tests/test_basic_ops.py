@@ -6,6 +6,7 @@ from theano.compile.pfunc import pfunc
 from theano import tensor
 
 import numpy
+from six.moves import xrange
 import theano
 import theano.tensor as T
 
@@ -230,7 +231,7 @@ def test_careduce():
             pat = tensor_pattern_to_gpu_pattern(shape, pattern)
 
             a = tensor.TensorType('float32', (False,) * len(shape))()
-            dim_pattern = range(len(shape))
+            dim_pattern = list(range(len(shape)))
             dim_pattern[0] = 1
             dim_pattern[1] = 0
             a = a.dimshuffle(dim_pattern)
@@ -420,7 +421,8 @@ def test_elemwise0():
     f = pfunc([b], [], updates=[(a, a + b)], mode=mode_with_gpu)
 
     # check that we work inplace.
-    assert f.maker.fgraph.toposort()[1].op.destroy_map.items() == [(0, [0])]
+    assert (list(f.maker.fgraph.toposort()[1].op.destroy_map.items())
+            == [(0, [0])])
 
     a0 = a.get_value() * 1.0
     f(numpy.ones((4, 4), dtype='float32'))

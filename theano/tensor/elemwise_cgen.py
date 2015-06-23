@@ -1,3 +1,4 @@
+from six.moves import xrange
 import theano
 
 
@@ -236,7 +237,7 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub, openmp=None):
 
     s = ""
 
-    for i, (pre_task, task), indices in reversed(zip(xrange(len(loop_tasks) - 1), loop_tasks, zip(*loop_orders))):
+    for i, (pre_task, task), indices in reversed(list(zip(xrange(len(loop_tasks) - 1), loop_tasks, list(zip(*loop_orders))))):
             s = loop_over(preloops.get(i, "") + pre_task, s + task, indices, i)
 
     s += loop_tasks[-1]
@@ -372,7 +373,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
         var = sub["lv%i" % i]
         declare_strides += """
         %(ovar)s_loops_rit = %(ovar)s_loops.rbegin();""" % locals()
-        for j in reversed(range(nnested)):
+        for j in reversed(xrange(nnested)):
             declare_strides += """
             int %(var)s_stride_l%(j)i = init_strides[%(i)i][%(ovar)s_loops_rit->second];
             ++%(ovar)s_loops_rit;
@@ -521,7 +522,7 @@ def make_loop_careduce(loop_orders, dtypes, loop_tasks, sub):
         s = preloops.get(0, "")
     else:
         s = ""
-        for i, (pre_task, task), indices in reversed(zip(xrange(len(loop_tasks) - 1), loop_tasks, zip(*loop_orders))):
+        for i, (pre_task, task), indices in reversed(list(zip(xrange(len(loop_tasks) - 1), loop_tasks, list(zip(*loop_orders))))):
             s = loop_over(preloops.get(i, "") + pre_task, s + task, indices, i)
 
     s += loop_tasks[-1]

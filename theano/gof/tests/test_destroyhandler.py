@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import unittest
 
+from six.moves import xrange
 from theano.gof.type import Type
 from theano.gof import graph
 from theano.gof.graph import Variable, Apply
@@ -64,7 +65,7 @@ class MyOp(Op):
 
     def make_node(self, *inputs):
         assert len(inputs) == self.nin
-        inputs = map(as_variable, inputs)
+        inputs = list(map(as_variable, inputs))
         for input in inputs:
             if not isinstance(input.type, MyType):
                 raise Exception("Error 1")

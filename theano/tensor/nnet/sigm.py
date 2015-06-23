@@ -5,12 +5,13 @@ These functions implement special cases of exp and log to improve numerical stab
 from __future__ import print_function
 
 import warnings
-from itertools import imap
 
 import numpy
+from six.moves import xrange
 
 import theano
 from theano import config, gof, printing, scalar
+from theano.compat import imap
 from theano.configparser import AddConfigVar, BoolParam
 from theano.printing import pprint
 from theano.tensor import basic as tensor
@@ -614,7 +615,7 @@ def parse_mul_tree(root):
             return [not neg, sub_tree]
     else:
         # Recurse into inputs.
-        return [False, map(parse_mul_tree, mul_info)]
+        return [False, list(map(parse_mul_tree, mul_info))]
 
 
 def replace_leaf(arg, leaves, new_leaves, op, neg):
@@ -708,7 +709,7 @@ def compute_mul(tree):
             'call `simplify_mul` on the tree first?')
     elif isinstance(inputs, list):
         # Recurse through inputs.
-        rval = tensor.mul(*map(compute_mul, inputs))
+        rval = tensor.mul(*list(map(compute_mul, inputs)))
     else:
         rval = inputs
     if neg:

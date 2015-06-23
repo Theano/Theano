@@ -3,6 +3,7 @@ import itertools
 
 from nose.plugins.skip import SkipTest
 import numpy as np
+from six.moves import xrange
 
 import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.cuda_available is False:

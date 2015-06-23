@@ -4,6 +4,7 @@ import time, copy, sys, unittest
 from nose.plugins.skip import SkipTest
 
 import numpy
+from six.moves import xrange
 
 import theano
 import theano.sandbox.cuda as cuda_ndarray

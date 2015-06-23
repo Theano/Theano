@@ -3,6 +3,8 @@ from collections import MutableSet
 from theano.compat import OrderedDict
 import types
 
+from six import string_types
+
 
 def check_deterministic(iterable):
     # Most places where OrderedSet is used, theano interprets any exception
@@ -13,7 +15,7 @@ def check_deterministic(iterable):
     # theano to use exceptions correctly, so that this can be a TypeError.
     if iterable is not None:
         assert isinstance(iterable, (
-            list, tuple, OrderedSet, types.GeneratorType, basestring))
+            list, tuple, OrderedSet, types.GeneratorType, string_types))
 
 # Copyright (C) 2009 Raymond Hettinger
 # Permission is hereby granted, free of charge, to any person obtaining a

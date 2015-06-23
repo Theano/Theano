@@ -1,10 +1,9 @@
-from itertools import izip
-
 import numpy
 import scipy
 
 import theano
 from theano import gof, scalar, tensor
+from theano.compat import izip
 from theano.tensor import blas
 from theano.tensor.opt import register_specialize, register_canonicalize
 from theano.sparse import (CSC, CSR, csm_properties,

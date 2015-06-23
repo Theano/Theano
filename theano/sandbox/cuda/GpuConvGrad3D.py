@@ -3,6 +3,7 @@ import numpy
 
 import theano
 import theano.tensor as T
+from six.moves import xrange
 from theano.gof import local_optimizer
 from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
 from theano.misc import strutil
