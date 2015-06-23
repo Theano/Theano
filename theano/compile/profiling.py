@@ -741,8 +741,9 @@ class ProfileStats(object):
 
             # two data structure used to mimic Python gc
             viewed_by = {}  # {var1: [vars that view var1]}
-            # The len of the list is the value of python ref
-            # count. But we use a list, not just the ref count value.
+
+            # The len of the list is the value of python ref count. But we use
+            # a list, not just the ref count value.
             # This is more safe to help detect potential bug  in the algo
             for var in fgraph.variables:
                 viewed_by[var] = []
@@ -1017,6 +1018,7 @@ class ProfileStats(object):
 
             # two data structure used to mimic Python gc
             viewed_by = {}  # {var1: [vars that view var1]}
+
             # The len of the list is the value of python ref
             # count. But we use a list, not just the ref count value.
             # This is more safe to help detect potential bug  in the algo

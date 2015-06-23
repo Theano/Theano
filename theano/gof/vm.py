@@ -31,6 +31,10 @@ AddConfigVar('profile_memory',
              "If VM should collect memory profile information and print it",
              BoolParam(False),
              in_c_key=False)
+AddConfigVar('memory_realloc',
+             "If VM should do ndarray reallocation to reduce memory usage",
+             BoolParam(False),
+             in_c_key=False)
 
 
 def filter_vm_lazy(val):
@@ -91,13 +95,20 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
                 viewed_by[origin].append(out)
             idx_o += 1
 
+        if hasattr(node.fgraph, 'shape_feature'):
+            same_shape = node.fgraph.shape_feature.same_shape
+        else:
+            def same_shape(x, y):
+                if x.ndim == 0 and y.ndim == 0:
+                    return True
+                else:
+                    return False
+
         for ins in node.inputs:
             assert not (ins in view_of and viewed_by[ins])
-            if (getattr(ins, 'ndim', None) == 0 and not storage_map[ins][0] and
-                    ins not in fgraph.outputs and ins.owner and
-                    all([compute_map_re[v][0]
-                         for v in dependencies.get(ins, [])]) and
-                    ins not in allocated):
+            cm = all([compute_map_re[v][0] for v in dependencies.get(ins, [])])
+            if (storage_map[ins][0] is None and ins not in fgraph.outputs and
+                    ins.owner and cm and ins not in allocated):
                 # Constant Memory cannot be changed
                 # Constant and shared variables' storage_map value is not empty
                 reuse_out = None
@@ -107,8 +118,8 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
                         if reuse_out:
                             break
                         for out in order[i].outputs:
-                            if (getattr(out, 'ndim', None) == 0 and
-                                    out not in pre_allocated and
+                            if (same_shape(ins, out) and
+                                out not in pre_allocated and
                                     ins.type == out.type):
                                 reuse_out = out
                                 pre_allocated.add(out)
@@ -125,8 +136,8 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
                             if reuse_out:
                                 break
                             for out in order[i].outputs:
-                                if (getattr(out, 'ndim', None) == 0 and
-                                        out not in pre_allocated and
+                                if (same_shape(ins, out) and
+                                    out not in pre_allocated and
                                         ins.type == out.type):
                                     reuse_out = out
                                     pre_allocated.add(out)
@@ -995,18 +1006,21 @@ class VM_Linker(link.LocalLinker):
 
         thunks = []
 
-        # Collect Reallocation Info
-        compute_map_re = defaultdict(lambda: [0])
-        for var in fgraph.inputs:
-            compute_map_re[var][0] = 1
+        if config.memory_realloc:
+            # Collect Reallocation Info
+            compute_map_re = defaultdict(lambda: [0])
+            for var in fgraph.inputs:
+                compute_map_re[var][0] = 1
 
-        if getattr(fgraph.profile, 'dependencies', None):
-            dependencies = getattr(fgraph.profile, 'dependencies')
+            if getattr(fgraph.profile, 'dependencies', None):
+                dependencies = getattr(fgraph.profile, 'dependencies')
+            else:
+                dependencies = self.compute_gc_dependencies(storage_map)
+
+            reallocated_info = calculate_reallocate_info(
+                order, fgraph, storage_map, compute_map_re, dependencies)
         else:
-            dependencies = self.compute_gc_dependencies(storage_map)
-
-        reallocated_info = calculate_reallocate_info(
-            order, fgraph, storage_map, compute_map_re, dependencies)
+            reallocated_info = {}
 
         for node in order:
             try:
@@ -1032,8 +1046,9 @@ class VM_Linker(link.LocalLinker):
             lazy = config.vm.lazy
         if lazy is None:
             lazy = not all([(not th.lazy) for th in thunks])
-        if not (lazy or (config.profile and config.profile_memory) or
-                self.use_cloop or self.callback):
+        if config.memory_realloc and not (lazy or (config.profile and
+                                          config.profile_memory) or
+                                          self.use_cloop or self.callback):
             for pair in reallocated_info.values():
                 storage_map[pair[1]] = storage_map[pair[0]]
 
