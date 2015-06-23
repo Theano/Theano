@@ -352,6 +352,7 @@ def test_log_softmax_opt():
     dnn_softmax_nodes = [n for n in f.maker.fgraph.toposort() if
                          isinstance(n.op, cuda.dnn.GpuDnnSoftmax)]
 
+    # Ensure that the optimization has been applied
     assert len(dnn_softmax_nodes) == 1
     assert dnn_softmax_nodes[0].op.algo == "log"
 
