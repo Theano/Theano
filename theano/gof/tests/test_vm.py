@@ -62,7 +62,7 @@ def test_c_thunks():
     if theano.config.cxx:
         cases.append(True)
     for c_thunks in cases:
-        f = function([a, b, c], ifelse(a, a*b, b*c),
+        f = function([a, b, c], ifelse(a, a * b, b * c),
                      mode=Mode(
                          optimizer=None,
                          linker=vm.VM_Linker(c_thunks=c_thunks,
