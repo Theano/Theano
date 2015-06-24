@@ -54,6 +54,16 @@ class MonitorMode(Mode):
 
         super(MonitorMode, self).__init__(wrap_linker, optimizer=optimizer)
 
+    def __getstate__(self):
+        lnk, opt = super(MonitorMode, self).__getstate__()
+        return (lnk, opt, self.pre_func, self.post_func)
+
+    def __setstate__(self, state):
+        lnk, opt, pre_func, post_func = state
+        self.pre_func = pre_func
+        self.post_func = post_func
+        super(MonitorMode, self).__setstate__((lnk, opt))
+
     def eval(self, i, node, fn):
         """
         The method that calls the thunk `fn`.
@@ -82,10 +92,24 @@ class MonitorMode(Mode):
         ret.post_func = self.post_func
         return ret
 
+    def clone(self, link_kwargs=None, **kwargs):
+        """
+        Create a new instance of this Mode.
+
+        Keyword arguments can be provided for the linker,
+        but they will be ignored, because ProfileMode needs
+        to use its own linker.
+        """
+        new_mode = type(self)(pre_func=self.pre_func,
+                              post_func=self.post_func,
+                              linker=None,
+                              optimizer=self.provided_optimizer)
+        return new_mode
+
 
 def detect_nan(i, node, fn):
     for output in fn.outputs:
-        if (not isinstance(numpy.random.RandomState, output[0]) and
+        if (not isinstance(output[0], numpy.random.RandomState) and
                 numpy.isnan(output[0]).any()):
             print('*** NaN detected ***')
             theano.printing.debugprint(node)

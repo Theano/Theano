@@ -2646,4 +2646,5 @@ class DebugMode(Mode):
         return "DebugMode(linker=%s, optimizer=%s)" % (
             self.provided_linker, self.provided_optimizer)
 
+
 register_mode('DEBUG_MODE', DebugMode(optimizer='fast_run'))

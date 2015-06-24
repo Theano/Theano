@@ -173,25 +173,16 @@ class Scan(PureOp):
             self.output_types = self.output_types[:-1]
 
         mode_instance = compile.mode.get_mode(self.mode)
-        # if the default mode is used, and that mode is ProfileMode
-        # then we need to copy the mode otherwise the time for a given
-        # op will be counted multiple times
-        if (self.mode is None and
-            isinstance(mode_instance, compile.profilemode.ProfileMode)):
-            mode_instance = compile.profilemode.ProfileMode(
-                optimizer=mode_instance.provided_optimizer,
-                linker=mode_instance.linker.clone(allow_gc=self.allow_gc))
-            compile.profilemode.prof_mode_instance_to_print.append(
-                                                    mode_instance)
-            self.mode_instance = mode_instance
-            if self.name:
-                self.mode_instance.message = self.name + " sub profile"
-            else:
-                self.mode_instance.message = "Scan sub profile"
+        # Clone mode_instance, altering "allow_gc" for the linker,
+        # and adding a message if the mode is a ProfileMode.
+        if self.name:
+            message = self.name + " sub profile"
         else:
-            self.mode_instance = type(mode_instance)(
-                optimizer=mode_instance.provided_optimizer,
-                linker=mode_instance.linker.clone(allow_gc=self.allow_gc))
+            message = "Scan sub profile"
+
+        self.mode_instance = mode_instance.clone(
+            link_kwargs=dict(allow_gc=self.allow_gc),
+            message=message)
 
         # Now that scan has its mode instance, if memory pre-allocation is
         # activated for the outputs, we activate the optimization

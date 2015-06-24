@@ -696,6 +696,29 @@ Test them first, as they are not guaranteed to always provide a speedup.""")
         if not printed_tip:
             print("  Sorry, no tip for today.")
 
+    def clone(self, link_kwargs=None, message=None):
+        """
+        Create a new instance of this Mode.
+
+        Keyword arguments can be provided for the linker,
+        in which case its `clone` method will be called with these
+        arguments.
+        """
+        new_linker = self.linker.clone(**link_kwargs)
+        new_optimizer = self.provided_optimizer
+        new_mode = type(self)(linker=new_linker,
+                              optimizer=new_optimizer)
+        # If self is in the list or profiles to print, then add the
+        # new one as well
+        if self in prof_mode_instance_to_print:
+            prof_mode_instance_to_print.append(new_mode)
+
+        if message:
+            new_mode.message = message
+
+        return new_mode
+
+
 register_mode('PROFILE_MODE', ProfileMode())
 
 
