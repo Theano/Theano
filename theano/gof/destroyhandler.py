@@ -182,64 +182,6 @@ def _contains_cycle(fgraph, orderings):
     return visited != len(parent_counts)
 
 
-def getroot(r, view_i):
-    """
-    This function has been integrated as an inline function. See function
-    _build_droot_impact
-
-    TODO: what is view_i ? based on add_impact's docstring, IG is guessing
-          it might be a dictionary mapping variables to views, but what is
-          a view? In these old docstrings I'm not sure if "view" always
-          means "view variable" or if it also sometimes means "viewing
-          pattern."
-    For views: Return non-view variable which is ultimatly viewed by r.
-    For non-views: return self.
-    """
-    try:
-        return getroot(view_i[r], view_i)
-    except KeyError:
-        return r
-
-def get_impact(root, view_o):
-    """
-    This function has been integrated as an inline function. See function
-    _build_droot_impact
-    """
-    impact = OrderedSet()
-    add_impact(root, view_o, impact)
-    return impact
-
-
-def add_impact(r, view_o, impact):
-    """
-    This function has been integrated as an inline function. See function
-    _build_droot_impact. For the inline version, code without recursion is
-    used as the commented code.
-
-    In opposition to getroot, which finds the variable that is viewed *by* r, this function
-    returns all the variables that are views of r.
-
-    :param impact: is a set of variables that are views of r
-    :param droot: a dictionary mapping views -> r
-
-    TODO: this docstring is hideously wrong, the function doesn't return anything.
-          has droot been renamed to view_o?
-          does it add things to the impact argument instead of returning them?
-          IG thinks so, based on reading the code. It looks like get_impact
-          does what this docstring said this function does.
-    """
-    # queue = Queue()
-    # queue.put(r)
-    # while not queue.empty():
-    #     v = queue.get()
-    #     for n in view_o.get(v, []):
-    #         impact.add(n)
-    #         queue.put(n)
-    for v in view_o.get(r, []):
-        impact.add(v)
-        add_impact(v, view_o, impact)
-
-
 def _build_droot_impact(destroy_handler):
     droot = {}   # destroyed view + nonview variables -> foundation
     impact = {}  # destroyed nonview variable -> it + all views of it
@@ -252,7 +194,7 @@ def _build_droot_impact(destroy_handler):
             input_idx = input_idx_list[0]
             input = app.inputs[input_idx]
 
-            # This part is the inline version of original getroot function
+            # Find non-view variable which is ultimatly viewed by input.
             view_i = destroy_handler.view_i
             _r = input
             while _r is not None:
@@ -266,9 +208,9 @@ def _build_droot_impact(destroy_handler):
             droot[input_root] = input_root
             root_destroyer[input_root] = app
 
-            # Here is the inline version of original get_impact function
+            # The code here add all the variables that are views of r into
+            # an OrderedSet input_impact
             input_impact = OrderedSet()
-            # Here is the inline version of original add_impact function
             queue = Queue()
             queue.put(input_root)
             while not queue.empty():
