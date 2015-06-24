@@ -331,7 +331,7 @@ class T_function(unittest.TestCase):
         for mode in ["FAST_RUN","FAST_COMPILE"]:
             ori = theano.function([x], out, mode=mode,updates={z:z*2})
             cpy = ori.copy(delete_updates=True)
-            print cpy(1)
+
             assert cpy(1)[0] == 4
             assert cpy(1)[0] == 4
             assert cpy(1)[0] == 4
