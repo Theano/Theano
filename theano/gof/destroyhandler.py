@@ -253,12 +253,11 @@ def _build_droot_impact(destroy_handler):
             input = app.inputs[input_idx]
 
             # This part is the inline version of original getroot function
-            r = input
-            try:
-                while True:
-                    r = destroy_handler.view_i[r]
-            except KeyError:
-                pass
+            view_i = destroy_handler.view_i
+            _r = input
+            while _r is not None:
+                r = _r
+                _r = view_i.get(r)
             input_root = r
 
             if input_root in droot:
