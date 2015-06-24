@@ -17,11 +17,12 @@ import numpy
 
 import theano
 from theano import config
-from theano.compat import izip
+from theano.compat import izip, OrderedDict
 from six import string_types, iteritems, itervalues
 from six.moves import reduce
 from theano.gof import graph, op, utils, unify, toolbox
 from theano.gof.fg import InconsistencyError
+from theano.misc.ordered_set import OrderedSet
 
 from . import destroyhandler as dh
 
@@ -100,7 +101,8 @@ class Optimizer(object):
         print("%s%s %s id=%i" % (
                 (' ' * level), self.__class__.__name__, name, id(self)), file=stream)
 
-    def print_profile(self, prof):
+    @staticmethod
+    def print_profile(stream, prof, level=0):
         if prof is not None:
             raise NotImplementedError(
                 "The function print_profile must be overrided if the"
@@ -656,17 +658,15 @@ class MergeOptimizer(Optimizer):
 
         blanc = ('    ' * level)
         print(blanc, "MergeOptimizer", file=stream)
-        print(blanc, "  nb_fail", nb_fail, file=stream)
-        print(blanc, "  replace_time", replace_time, file=stream)
-        print(blanc, "  validate_time", validate_time, file=stream)
-        print(blanc, "  callback_time", callback_time, file=stream)
+        print(blanc, "  nb fail=%5d merged=%5d constant=%5d" % (
+              nb_fail, nb_merged, nb_constant), file=stream)
+        print(blanc, "  time replace=%2.2f validate=%2.2f callback=%2.2f" % (
+              replace_time, validate_time, callback_time), file=stream)
         if callback_time > 1:
             print(blanc, "  callbacks_time", file=stream)
             for i in sorted(iteritems(callbacks_time), key=lambda a: a[1]):
                 if i[1] > 0:
                     print(i)
-        print(blanc, "  nb_merged", nb_merged, file=stream)
-        print(blanc, "  nb_constant", nb_constant, file=stream)
 
 
 merge_optimizer = MergeOptimizer()
@@ -1601,16 +1601,18 @@ class TopoOptimizer(NavigatorOptimizer):
 
         callback_time = fgraph.execute_callbacks_time - callback_before
         nb_nodes_end = len(fgraph.apply_nodes)
-        return (nb, nb_nodes_start, nb_nodes_end,
+        return (self, nb, nb_nodes_start, nb_nodes_end,
                 io_t, loop_t, callback_time)
 
     @staticmethod
     def print_profile(stream, prof, level=0):
-        (nb, nb_nodes_start, nb_nodes_end,
+        (opt, nb, nb_nodes_start, nb_nodes_end,
          io_t, loop_t, callback_time) = prof
 
         blanc = ('    ' * level)
-        print(blanc, "TopoOptimizer", file=stream)
+        print(blanc, "TopoOptimizer ",
+              getattr(opt, "name", getattr(opt, "__name__", "")), file=stream)
+
         print(blanc, "  nb_node (start, end, changed)", (
             nb_nodes_start, nb_nodes_end, nb), file=stream)
         print(blanc, "  init io_toposort", io_t, file=stream)
@@ -1714,7 +1716,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             None,
             ignore_newtrees=ignore_newtrees,
             failure_callback=failure_callback)
-        self.local_optimizers_map = dict()
+        self.local_optimizers_map = OrderedDict()
         self.local_optimizers_all = []
         self.global_optimizers = []
         self.final_optimizers = []
@@ -1778,6 +1780,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         io_toposort_timing = []
         nb_nodes = []
         node_created = {}
+        global_sub_profs = []
+        final_sub_profs = []
         for opt in (self.global_optimizers +
                     list(self.get_local_optimizers()) +
                     self.final_optimizers):
@@ -1791,12 +1795,14 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             changed = False
 
             # apply global optimizers
+            sub_profs = []
             for gopt in self.global_optimizers:
                 change_tracker.reset()
                 nb = change_tracker.nb_imported
                 t_opt = time.time()
-                gopt.apply(fgraph)
+                sub_prof = gopt.apply(fgraph)
                 time_opts[gopt] += time.time() - t_opt
+                sub_profs.append(sub_prof)
                 if change_tracker.changed:
                     process_count.setdefault(gopt, 0)
                     process_count[gopt] += 1
@@ -1807,6 +1813,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         max_use_abort = True
                         opt_name = (getattr(gopt, "name", None)
                                     or getattr(gopt, "__name__", ""))
+            global_sub_profs.append(sub_profs)
 
             global_opt_timing.append(float(time.time() - t0))
 
@@ -1860,13 +1867,15 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 self.detach_updater(fgraph, u)
 
             # Apply final optimizers
+            sub_profs = []
             t_before_final_opt = time.time()
             for gopt in self.final_optimizers:
                 change_tracker.reset()
                 nb = change_tracker.nb_imported
                 t_opt = time.time()
-                gopt.apply(fgraph)
+                sub_prof = gopt.apply(fgraph)
                 time_opts[gopt] += time.time() - t_opt
+                sub_profs.append(sub_prof)
                 if change_tracker.changed:
                     process_count.setdefault(gopt, 0)
                     process_count[gopt] += 1
@@ -1877,6 +1886,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         max_use_abort = True
                         opt_name = (getattr(gopt, "name", None)
                                     or getattr(gopt, "__name__", ""))
+            final_sub_profs.append(sub_profs)
 
             global_opt_timing[-1] += time.time() - t_before_final_opt
 
@@ -1894,7 +1904,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         return (self, loop_timing, loop_process_count,
                 (start_nb_nodes, end_nb_nodes, max_nb_nodes),
                 global_opt_timing, nb_nodes, time_opts, io_toposort_timing,
-                node_created)
+                node_created, global_sub_profs, final_sub_profs)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         name = getattr(self, 'name', None)
@@ -1910,7 +1920,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         (opt, loop_timing, loop_process_count,
          (start_nb_nodes, end_nb_nodes, max_nb_nodes),
          global_opt_timing, nb_nodes, time_opts, io_toposort_timing,
-         node_created) = prof
+         node_created, global_sub_profs, final_sub_profs) = prof
 
         blanc = ('    ' * level)
         print(blanc, "EquilibriumOptimizer", end=' ', file=stream)
@@ -1926,6 +1936,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         print(blanc, "  time in local optimizers %.3fs" % s, file=stream)
         s = sum([time_opts[o] for o in opt.global_optimizers])
         print(blanc, "  time in global optimizers %.3fs" % s, file=stream)
+        s = sum([time_opts[o] for o in opt.final_optimizers])
+        print(blanc, "  time in final optimizers %.3fs" % s, file=stream)
         for i in range(len(loop_timing)):
             lopt = ""
             if loop_process_count[i]:
@@ -1954,41 +1966,58 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         for count in loop_process_count:
             for o, v in iteritems(count):
                 process_count[o] += v
-        for opt, count in iteritems(process_count):
+        for o, count in iteritems(process_count):
             if count > 0:
-                count_opt.append((time_opts[opt], count,
-                                  node_created[opt], opt))
+                count_opt.append((time_opts[o], count,
+                                  node_created[o], o))
             else:
-                not_used.append((time_opts[opt], opt))
-                not_used_time += time_opts[opt]
+                not_used.append((time_opts[o], o))
+                not_used_time += time_opts[o]
 
         if count_opt:
             print(blanc, \
                     '  times - times applied - nb node created - name:', file=stream)
             count_opt.sort()
-            for (t, count, n_created, opt) in count_opt[::-1]:
+            for (t, count, n_created, o) in count_opt[::-1]:
                 print(blanc, '  %.3fs - %d - %d - %s' % (
-                    t, count, n_created, opt), file=stream)
+                    t, count, n_created, o), file=stream)
             print(blanc, '  %.3fs - in %d optimization that where not used (display only those with a runtime > 0)' % (
                 not_used_time, len(not_used)), file=stream)
             not_used.sort()
-            for (t, opt) in not_used[::-1]:
+            for (t, o) in not_used[::-1]:
                 if t > 0:
                     # Skip opt that have 0 times, they probably wasn't even tried.
-                    print(blanc + "  ", '  %.3fs - %s' % (t, opt), file=stream)
+                    print(blanc + "  ", '  %.3fs - %s' % (t, o), file=stream)
             print(file=stream)
+        gf_opts = [o for o in opt.global_optimizers + opt.final_optimizers
+                   if o.print_profile.func_code is not
+                   Optimizer.print_profile.func_code]
+        if not gf_opts:
+            return
+        print(blanc, "Global and final optimizer", file=stream)
+        for i in range(len(loop_timing)):
+            print(blanc, "Iter %d" % i, file=stream)
+            for o, prof in zip(opt.global_optimizers, global_sub_profs[i]):
+                try:
+                    o.print_profile(stream, prof, level + 2)
+                except NotImplementedError:
+                    print(blanc, "merge not implemented for ", o)
+            for o, prof in zip(opt.final_optimizers, final_sub_profs[i]):
+                try:
+                    o.print_profile(stream, prof, level + 2)
+                except NotImplementedError:
+                    print(blanc, "merge not implemented for ", o)
 
     @staticmethod
     def merge_profile(prof1, prof2):
         #(opt, loop_timing, loop_process_count, max_nb_nodes,
         # global_opt_timing, nb_nodes, time_opts, io_toposort_timing) = prof1
-
-        local_optimizers = set(prof1[0].get_local_optimizers()).union(
+        local_optimizers = OrderedSet(prof1[0].get_local_optimizers()).union(
             prof2[0].get_local_optimizers())
-        global_optimizers = set(prof1[0].global_optimizers).union(
+        global_optimizers = OrderedSet(prof1[0].global_optimizers).union(
             prof2[0].global_optimizers)
         if len(prof1[0].final_optimizers) > 0 or len(prof2[0].final_optimizers) > 0:
-            final_optimizers = set(prof1[0].final_optimizers).union(
+            final_optimizers = OrderedSet(prof1[0].final_optimizers).union(
                 prof2[0].final_optimizers)
         else:
             final_optimizers = None
@@ -2005,6 +2034,15 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 else:
                     l.append(nb)
             return l
+
+        def merge_dict(d1, d2):
+            d = d1.copy()
+            for k, v in iteritems(d2):
+                if k in d:
+                    d[k] += v
+                else:
+                    d[k] = v
+            return d
 
         loop_timing = merge_list(prof1[1], prof2[1])
 
@@ -2024,18 +2062,16 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
         nb_nodes = merge_list(prof1[5], prof2[5])
 
-        time_opts = prof1[6].copy()
-        for opt, t in iteritems(prof2[6]):
-            if opt in time_opts:
-                time_opts[opt] += t
-            else:
-                time_opts[opt] = t
-
+        time_opts = merge_dict(prof1[6], prof2[6])
         io_toposort_timing = merge_list(prof1[7], prof2[7])
 
         assert (len(loop_timing) == len(global_opt_timing) ==
                 len(io_toposort_timing) == len(nb_nodes))
         assert len(loop_timing) == max(len(prof1[1]), len(prof2[1]))
+
+        node_created = merge_dict(prof1[8], prof2[8])
+        global_sub_profs = merge_list(prof1[9], prof2[9])
+        final_sub_profs = merge_list(prof1[10], prof2[10])
         return (new_opt,
                 loop_timing,
                 loop_process_count,
@@ -2043,7 +2079,10 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 global_opt_timing,
                 nb_nodes,
                 time_opts,
-                io_toposort_timing)
+                io_toposort_timing,
+                node_created,
+                global_sub_profs,
+                final_sub_profs)
 
 #################
 ### Utilities ###

@@ -26,8 +26,8 @@ if [ "$1" == "--buildbot" ]; then
     NOSETESTS=${ROOT_CWD}/Theano/bin/theano-nose
     export PYTHONPATH=${ROOT_CWD}:$PYTHONPATH
 else
-    COMPILEDIR=`python -c "from __future__ import print_function; import theano; print(theano.config.compiledir)"`
-    NOSETESTS=`python -c "from __future__ import print_function; import theano; print(theano.__path__[0])"`/../bin/theano-nose
+    COMPILEDIR=`python -c "from __future__ import print_function; import theano; print(theano.config.compiledir)"|tail -1`
+    NOSETESTS=`python -c "from __future__ import print_function; import theano; print(theano.__path__[0])"|tail -1`/../bin/theano-nose
 fi
 
 echo "Number of elements in the compiledir:"
