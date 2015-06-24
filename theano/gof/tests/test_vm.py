@@ -55,6 +55,24 @@ class TestCallbacks(unittest.TestCase):
         assert self.n_callbacks['IfElse'] == 2
 
 
+def test_c_thunks():
+    a = tensor.scalars('a')
+    b, c = tensor.vectors('bc')
+    cases = [False]
+    if theano.config.cxx:
+        cases.append(True)
+    for c_thunks in cases:
+        f = function([a, b, c], ifelse(a, a*b, b*c),
+                     mode=Mode(
+                         optimizer=None,
+                         linker=vm.VM_Linker(c_thunks=c_thunks,
+                                             use_cloop=False)))
+        f(1, [2], [3, 2])
+        from nose.tools import assert_raises
+        assert_raises(ValueError, f, 0, [2], [3, 4])
+        assert any([hasattr(t, 'cthunk') for t in f.fn.thunks]) == c_thunks
+
+
 def test_speed():
     if not theano.config.cxx:
         raise SkipTest("G++ not available, so we need to skip this test.")

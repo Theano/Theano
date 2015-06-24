@@ -106,7 +106,7 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
                 if ins not in view_of and not viewed_by.get(ins, []):
                     # where gc
                     for i in range(idx + 1, len(order)):
-                        if reuse_out:
+                        if reuse_out is not None:
                             break
                         for out in order[i].outputs:
                             if (getattr(out, 'ndim', None) == 0 and
@@ -115,6 +115,7 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
                                 reuse_out = out
                                 pre_allocated.add(out)
                                 allocated.add(ins)
+                                break
                 elif ins in view_of:
                     origin = view_of[ins]
                     if ins in viewed_by[origin]:
@@ -124,7 +125,7 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
                             not isinstance(origin, theano.Constant)):
                         # where gc
                         for i in range(idx + 1, len(order)):
-                            if reuse_out:
+                            if reuse_out is not None:
                                 break
                             for out in order[i].outputs:
                                 if (getattr(out, 'ndim', None) == 0 and
@@ -133,8 +134,8 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
                                     reuse_out = out
                                     pre_allocated.add(out)
                                     allocated.add(ins)
-
-                if reuse_out:
+                                    break
+                if reuse_out is not None:
                     reallocated_info[ins] = [ins, reuse_out]
 
     return reallocated_info
@@ -688,7 +689,7 @@ class VM_Linker(link.LocalLinker):
     """
 
     def __init__(self, allow_gc=None, use_cloop=False, callback=None,
-                 lazy=None, schedule=None):
+                 lazy=None, schedule=None, c_thunks=None):
         """
         allow_gc - force the virtual machine to clean up unnecessary
             references, in order to allow garbage collection on
@@ -707,6 +708,8 @@ class VM_Linker(link.LocalLinker):
             version. If lazy is True or False, we force the version used
             between Loop/LoopGC and Stack.
 
+        c_thunks - If None or True, don't change the default. If False,
+            don't compile c code for the thunks.
         """
         # Note: if more parameters are added to __init__, make sure to forward
         # them in the "type(self)(...)" call in the "accept" method below.
@@ -717,6 +720,7 @@ class VM_Linker(link.LocalLinker):
         self.use_cloop = use_cloop
         self.callback = callback
         self.lazy = lazy
+        self.c_thunks = c_thunks
         self.updated_vars = {}
         if schedule:
             self.schedule = schedule
@@ -755,7 +759,8 @@ class VM_Linker(link.LocalLinker):
                 use_cloop=self.use_cloop,
                 callback=self.callback,
                 lazy=self.lazy,
-                schedule=self.schedule
+                schedule=self.schedule,
+                c_thunks=self.c_thunks,
             ).accept(fgraph, no_recycling)
         self.fgraph = fgraph
         self.no_recycling = no_recycling
@@ -1012,6 +1017,8 @@ class VM_Linker(link.LocalLinker):
 
         for node in order:
             try:
+                if self.c_thunks is False:
+                    node.op._op_use_c_code = False
                 thunks.append(node.op.make_thunk(node,
                                                  storage_map,
                                                  compute_map,
@@ -1071,3 +1078,8 @@ class VM_Linker(link.LocalLinker):
                  for output, storage in zip(fgraph.outputs, output_storage)],
                 thunks,
                 order)
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, 'c_thunks'):
+            self.c_thunks = True
