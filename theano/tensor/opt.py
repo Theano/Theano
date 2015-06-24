@@ -252,7 +252,18 @@ def inplace_elemwise_optimizer_op(OP):
         failed_set = set()
         prev_len_elemlist = len(elemwise_nodelist) + 1
         changed_node_since_validate = set()
-        while check_each_change > 0 and prev_len_elemlist > len(elemwise_nodelist):
+
+        # n_pass_count is used to make sure that the following while loop
+        # iterates for only one pass, or it will be much slower if it 
+        # iterates for multi passes. This variable can be removed when
+        # a faster validate() is implemented.
+        #
+        # reference: https://github.com/Theano/Theano/pull/3033
+        n_pass_count = 0
+        while (n_pass_count < 1 and
+               check_each_change > 0 and
+               prev_len_elemlist > len(elemwise_nodelist)):
+            n_pass_count += 1
             prev_len_elemlist = len(elemwise_nodelist)
             for node in elemwise_nodelist:
                 op = node.op
