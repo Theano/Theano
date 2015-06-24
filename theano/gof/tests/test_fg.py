@@ -6,7 +6,7 @@ import unittest
 from nose.plugins.skip import SkipTest
 
 import theano
-from theano.compat.six import PY3
+from theano.compat import PY3
 from theano.gof import CachedConstantError, FunctionGraph
 from theano import tensor as tt
 

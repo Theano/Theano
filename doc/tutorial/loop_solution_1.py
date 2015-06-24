@@ -6,6 +6,7 @@ import numpy
 
 import theano
 import theano.tensor as tt
+from six.moves import xrange
 
 # 1. First example
 
@@ -30,7 +31,7 @@ final_result = result[-1]
 power = theano.function(inputs=[A, k], outputs=final_result,
                         updates=updates)
 
-print(power(range(10), 2))
+print(power(list(range(10)), 2))
 # [  0.   1.   4.   9.  16.  25.  36.  49.  64.  81.]
 
 

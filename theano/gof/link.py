@@ -2,12 +2,14 @@
 from __future__ import print_function
 from copy import copy, deepcopy
 from sys import getsizeof
-import StringIO
 import sys
 import traceback
 import numpy
 
 import theano
+from theano.compat import PY3, izip
+from six import reraise
+from six.moves import StringIO
 from theano.gof import utils
 from theano.gof import graph
 from theano.gof.type import Type
@@ -100,7 +102,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
     exc_type, exc_value, exc_trace = exc_info
     if exc_type == KeyboardInterrupt:
         # print a simple traceback from KeyboardInterrupt
-        raise exc_type, exc_value, exc_trace
+        reraise(exc_type, exc_value, exc_trace)
     try:
         trace = node.outputs[0].tag.trace
     except AttributeError:
@@ -157,7 +159,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
     # Print node backtrace
     tr = getattr(node.outputs[0].tag, 'trace', None)
     if tr:
-        sio = StringIO.StringIO()
+        sio = StringIO()
         traceback.print_list(tr, sio)
         tr = sio.getvalue()
         detailed_err_msg += "\nBacktrace when the node is created:\n"
@@ -172,7 +174,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
 
     if theano.config.exception_verbosity == 'high':
 
-        f = StringIO.StringIO()
+        f = StringIO()
         theano.printing.debugprint(node, file=f, stop_on_name=True,
                                    print_type=True)
         detailed_err_msg += "\nDebugprint of the apply node: \n"
@@ -190,7 +192,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
         storage_map_list = []
         total_size = 0
         total_size_inputs = 0
-        for k in storage_map.keys():
+        for k in storage_map:
             storage_map_item = []
 
             # storage_map_item[0]: the variable
@@ -290,7 +292,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
 
     exc_value = exc_type(str(exc_value) + detailed_err_msg +
                          '\n' + '\n'.join(hints))
-    raise exc_type, exc_value, exc_trace
+    reraise(exc_type, exc_value, exc_trace)
 
 
 class Linker(object):
@@ -352,7 +354,7 @@ class Linker(object):
                         % (takes, ['argument', 'arguments'][takes > 1], got)
             if (len(args) != len(inputs)):
                 raise TypeError(e_arity(len(inputs), len(args)))
-            for arg, variable in zip(args, inputs):
+            for arg, variable in izip(args, inputs):
                 variable.data = arg
             thunk()
             if unpack_single:
@@ -497,7 +499,7 @@ def map_storage(fgraph, order, input_storage, output_storage):
         assert len(fgraph.inputs) == len(input_storage)
 
     storage_map = {}
-    for r, storage in zip(fgraph.inputs, input_storage):
+    for r, storage in izip(fgraph.inputs, input_storage):
         storage_map[r] = storage
 #     for orphan in fgraph.orphans:
 #         if not isinstance(orphan, Constant):
@@ -506,7 +508,7 @@ def map_storage(fgraph, order, input_storage, output_storage):
 
     if output_storage is not None:
         assert len(fgraph.outputs) == len(output_storage)
-        for r, storage in zip(fgraph.outputs, output_storage):
+        for r, storage in izip(fgraph.outputs, output_storage):
             storage_map[r] = storage
 
     for node in order:
@@ -563,8 +565,8 @@ def streamline(fgraph, thunks, order, post_thunk_old_storage=None,
             for x in no_recycling:
                 x[0] = None
             try:
-                for thunk, node, old_storage in zip(thunks, order,
-                                                    post_thunk_old_storage):
+                for thunk, node, old_storage in izip(thunks, order,
+                                                     post_thunk_old_storage):
                     thunk()
                     for old_s in old_storage:
                         old_s[0] = None
@@ -572,13 +574,11 @@ def streamline(fgraph, thunks, order, post_thunk_old_storage=None,
                 raise_with_op(node, thunk)
         f = streamline_default_f
     elif nice_errors:
-        thunk_node_list = zip(thunks, order)
-
         def streamline_nice_errors_f():
             for x in no_recycling:
                 x[0] = None
             try:
-                for thunk, node in thunk_node_list:
+                for thunk, node in izip(thunks, order):
                     thunk()
             except Exception:
                 raise_with_op(node, thunk)
@@ -728,7 +728,7 @@ class PerformLinker(LocalLinker):
         if no_recycling is True:
             # True seems like some special code for *everything*?? -JB
             # FunctionMaker always passes a list I think   -JB
-            no_recycling = storage_map.values()
+            no_recycling = list(storage_map.values())
             no_recycling = utils.difference(no_recycling, input_storage)
         else:
             no_recycling = [storage_map[r] for r in no_recycling if r not in fgraph.inputs]
@@ -741,9 +741,13 @@ class PerformLinker(LocalLinker):
         add_clear_storage(f, computed, storage_map)
         f.storage_map = storage_map
 
-        return f, [Container(input, storage) for input, storage in zip(fgraph.inputs, input_storage)], \
-            [Container(output, storage, True) for output, storage in zip(fgraph.outputs, output_storage)], \
-            thunks, order
+        return (f,
+                [Container(input, storage)
+                 for input, storage in izip(fgraph.inputs, input_storage)],
+                [Container(output, storage, True)
+                 for output, storage in izip(fgraph.outputs, output_storage)],
+                thunks,
+                order)
 
 
 def add_clear_storage(f, computed, storage_map):
@@ -862,11 +866,11 @@ class WrapLinker(Linker):
         inputs0 = input_lists[0]
         outputs0 = output_lists[0]
 
-        thunk_groups = zip(*thunk_lists)
+        thunk_groups = list(zip(*thunk_lists))
         order = [x[0] for x in zip(*order_lists)]
 
         to_reset = []
-        for thunks, node in zip(thunk_groups, order):
+        for thunks, node in izip(thunk_groups, order):
             for j, output in enumerate(node.outputs):
                 if output in no_recycling:
                     for thunk in thunks:
@@ -877,13 +881,13 @@ class WrapLinker(Linker):
 
         def f():
             for inputs in input_lists[1:]:
-                for input1, input2 in zip(inputs0, inputs):
+                for input1, input2 in izip(inputs0, inputs):
                     input2.storage[0] = copy(input1.storage[0])
             for x in to_reset:
                 x[0] = None
             pre(self, [input.data for input in input_lists[0]],
                 order, thunk_groups)
-            for i, (thunks, node) in enumerate(zip(thunk_groups, order)):
+            for i, (thunks, node) in enumerate(izip(thunk_groups, order)):
                 try:
                     wrapper(i, node, *thunks)
                 except Exception:

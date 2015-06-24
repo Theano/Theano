@@ -2,6 +2,7 @@
 This code can only work if gnumpy and theano are initialized on the
 same gpu as theano.
 """
+from six.moves import reduce
 
 try:
     import gnumpy

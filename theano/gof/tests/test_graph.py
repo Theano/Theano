@@ -46,7 +46,7 @@ def MyVariable(thingy):
 class MyOp(Op):
 
     def make_node(self, *inputs):
-        inputs = map(as_variable, inputs)
+        inputs = list(map(as_variable, inputs))
         for input in inputs:
             if not isinstance(input.type, MyType):
                 print(input, input.type, type(input), type(input.type))
@@ -317,8 +317,8 @@ class TestEval(unittest.TestCase):
         self.w = 2 * self.z
 
     def test_eval(self):
-        self.assertEquals(self.w.eval({self.x : 1., self.y : 2.}), 6.)
-        self.assertEquals(self.w.eval({self.z : 3}), 6.)
+        self.assertEqual(self.w.eval({self.x : 1., self.y : 2.}), 6.)
+        self.assertEqual(self.w.eval({self.z : 3}), 6.)
         self.assertTrue(hasattr(self.w, "_fn_cache"),
                 "variable must have cache after eval")
         self.assertFalse(hasattr(pickle.loads(pickle.dumps(self.w)), '_fn_cache'),

@@ -19,6 +19,7 @@ __copyright__ = "(c) 2015, Universite de Montreal"
 __contact__ = "Saizheng Zhang <saizhenglisa..at..gmail.com>"
 
 whitelist_flake8 = [
+    "compat/six.py",  # This is bundled code that will be deleted, don't fix it
     "__init__.py",
     "tests/test_gradient.py",
     "tests/test_config.py",
@@ -197,7 +198,6 @@ whitelist_flake8 = [
     "sandbox/linalg/ops.py",
     "sandbox/linalg/__init__.py",
     "sandbox/linalg/tests/test_linalg.py",
-    "sandbox/gpuarray/comp.py",
     "sandbox/gpuarray/basic_ops.py",
     "sandbox/gpuarray/nnet.py",
     "sandbox/gpuarray/subtensor.py",

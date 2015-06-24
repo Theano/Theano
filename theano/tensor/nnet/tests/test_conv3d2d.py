@@ -7,6 +7,7 @@ try:
     from scipy import ndimage
 except ImportError:
     ndimage = None
+from six.moves import xrange
 
 import theano
 from theano.tensor.nnet.conv3d2d import *

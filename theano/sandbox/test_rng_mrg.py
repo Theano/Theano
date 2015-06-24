@@ -5,6 +5,7 @@ import time
 import copy
 
 import numpy
+from six.moves import xrange
 import theano
 from theano import tensor, config
 from theano.sandbox import rng_mrg

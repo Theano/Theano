@@ -14,12 +14,15 @@ __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 import logging
-from itertools import izip
 
 import numpy
 
+from six import iteritems
+from six.moves import xrange
+
 import theano
 from theano import compile
+from theano.compat import izip
 from theano.gof import PureOp, Apply
 from theano import gof
 from theano.tensor import TensorType
@@ -357,7 +360,7 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
         total_super_scan_time = 0
         total_scan_fct_time = 0
         total_scan_op_time = 0
-        for (_, node), v in apply_time.items():
+        for (_, node), v in iteritems(apply_time):
             if isinstance(node.op, Scan):
                 if v > 0:
                     scan_fct_time = node.op.mode_instance.fn_time

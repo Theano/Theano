@@ -5,13 +5,14 @@ from __future__ import print_function
 import logging
 
 from nose.plugins.skip import SkipTest
+import numpy
+
+from six.moves import StringIO
 
 import theano
 import theano.tensor as tensor
 
 from theano.printing import min_informative_str, debugprint
-from theano.compat.six import StringIO
-import numpy
 
 
 def test_pydotprint_cond_highlight():

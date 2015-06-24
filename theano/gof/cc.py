@@ -7,12 +7,13 @@ from __future__ import print_function
 from copy import copy
 import os
 import sys
-from itertools import izip
+from theano.compat import izip
 
 import numpy
 
 from theano.compat import PY3
-from theano.compat.six import StringIO
+from six import string_types, reraise
+from six.moves import StringIO, xrange
 from theano.gof.utils import MethodNotDefined
 
 import theano
@@ -702,7 +703,7 @@ class CLinker(link.Linker):
                 pass
             else:
                 # The following will be executed if the "try" block succeeds
-                assert isinstance(c_support_code_apply[-1], basestring), (
+                assert isinstance(c_support_code_apply[-1], string_types), (
                     str(node.op) +
                     " didn't return a string for c_support_code_apply")
 
@@ -711,13 +712,13 @@ class CLinker(link.Linker):
             except utils.MethodNotDefined:
                 pass
             else:
-                assert isinstance(c_init_code_apply[-1], basestring), (
+                assert isinstance(c_init_code_apply[-1], string_types), (
                     str(node.op) +
                     " didn't return a string for c_init_code_apply")
 
             try:
                 struct_init = op.c_init_code_struct(node, name, sub_struct)
-                assert isinstance(struct_init, basestring), (
+                assert isinstance(struct_init, string_types), (
                     str(node.op) +
                     " didn't return a string for c_init_code_struct")
             except utils.MethodNotDefined:
@@ -725,7 +726,7 @@ class CLinker(link.Linker):
 
             try:
                 struct_support = op.c_support_code_struct(node, name)
-                assert isinstance(struct_support, basestring), (
+                assert isinstance(struct_support, string_types), (
                     str(node.op) +
                     " didn't return a string for c_support_code_struct")
             except utils.MethodNotDefined:
@@ -733,7 +734,7 @@ class CLinker(link.Linker):
 
             try:
                 struct_cleanup = op.c_cleanup_code_struct(node, name)
-                assert isinstance(struct_cleanup, basestring), (
+                assert isinstance(struct_cleanup, string_types), (
                     str(node.op) +
                     " didn't return a string for c_cleanup_code_struct")
             except utils.MethodNotDefined:
@@ -744,7 +745,7 @@ class CLinker(link.Linker):
                 behavior = op.c_code(node, name, isyms, osyms, sub)
             except utils.MethodNotDefined:
                 raise NotImplementedError("%s cannot produce C code" % op)
-            assert isinstance(behavior, basestring), (
+            assert isinstance(behavior, string_types), (
                 str(node.op) + " didn't return a string for c_code")
             # To help understand what is following. It help read the c code.
             # This prevent different op that generate the same c code
@@ -1536,8 +1537,7 @@ class _CThunk(object):
                                       ' Was the error set in the c code?'), end=' ', file=sys.stderr)
                 print(self.error_storage, file=sys.stderr)
                 raise
-
-            raise exc_type, exc_value, exc_trace
+            reraise(exc_type, exc_value, exc_trace)
 
 
 class OpWiseCLinker(link.LocalLinker):
@@ -1648,7 +1648,7 @@ class OpWiseCLinker(link.LocalLinker):
                             node == last_user[input])])
 
             if no_recycling is True:
-                no_recycling = storage_map.values()
+                no_recycling = list(storage_map.values())
                 no_recycling = utils.difference(no_recycling, input_storage)
             else:
                 no_recycling = [storage_map[r]

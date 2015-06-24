@@ -2,6 +2,7 @@
 Test for jacobian/hessian functions in Theano
 """
 import unittest
+from six.moves import xrange
 from theano.tests  import unittest_tools as utt
 from theano import function
 import theano

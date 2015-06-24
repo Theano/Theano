@@ -4,7 +4,7 @@ import unittest
 
 import theano
 from theano.tensor import as_tensor_variable
-import test_basic as TT
+from . import test_basic as TT
 
 import random
 import numpy.random

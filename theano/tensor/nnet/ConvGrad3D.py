@@ -2,6 +2,7 @@ import theano
 from theano.tensor import basic as T
 from theano.misc import strutil
 import numpy as N
+from six.moves import xrange
 from theano.gradient import grad_undefined
 from theano.gradient import DisconnectedType
 

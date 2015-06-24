@@ -9,7 +9,6 @@ import logging
 _logger = logging.getLogger('theano.tensor.opt')
 
 import itertools
-from itertools import izip
 import operator
 import sys
 import time
@@ -18,12 +17,15 @@ import warnings
 
 import numpy
 import numpy as N  # guys... please don't do this in the library :(
+from six.moves import xrange
 
 import theano
 from theano import gof
+from theano.compat import izip
+from six import integer_types, iteritems
+from six.moves import reduce
 from theano.gof import opt, InconsistencyError, TopoOptimizer, graph
 from theano.gof import Variable, Constant
-from theano.compat import maxsize
 from theano.gof.utils import MethodNotDefined
 from theano.gradient import DisconnectedType
 from theano.configparser import config
@@ -52,7 +54,7 @@ from theano.gof.opt import (Optimizer, pre_constant_merge,
 from theano.gof.opt import merge_optimizer
 from theano.gof import toolbox
 from theano.tensor.basic import get_scalar_constant_value, ShapeError, NotScalarConstantError
-from theano.compat.six import StringIO
+from six import StringIO
 
 theano.configparser.AddConfigVar('on_shape_error',
                                  "warn: print a warning and use the default"
@@ -487,8 +489,8 @@ def local_dimshuffle_lift(node):
         inplace = op.inplace and inode.op.inplace
         iinput = inode.inputs[0]
         # remove useless dimshuffle
-        if new_order == range(len(new_order)) and (len(new_order) ==
-                                                   iinput.type.ndim):
+        if (new_order == list(range(len(new_order))) and
+                len(new_order) == iinput.type.ndim):
             return [iinput]
         else:
             ret = op.__class__(iinput.type.broadcastable, new_order,
@@ -598,7 +600,7 @@ class MakeVector(T.Op):
         return hash(type(self)) ^ hash(self.dtype)
 
     def make_node(self, *inputs):
-        inputs = map(T.as_tensor_variable, inputs)
+        inputs = list(map(T.as_tensor_variable, inputs))
         if not all(a.type == inputs[0].type for a in inputs) or (
             len(inputs) > 0 and inputs[0].dtype != self.dtype):
             dtype = theano.scalar.upcast(self.dtype,
@@ -840,7 +842,7 @@ class ShapeFeature(object):
             # don't make the optimizer merge a zillion ones together
             # by always returning the same object to represent 1
             return self.lscalar_one
-        if (type(s_i) in (int, long) or
+        if (type(s_i) in integer_types or
             isinstance(s_i, numpy.integer) or
             (isinstance(s_i, numpy.ndarray) and s_i.ndim == 0)):
             # this shape is a constant
@@ -906,7 +908,7 @@ class ShapeFeature(object):
                         len(s), r.ndim, sio.getvalue()))
 
             shape_vars = []
-            for i in range(r.ndim):
+            for i in xrange(r.ndim):
                 if (hasattr(r.type, 'broadcastable') and
                     r.type.broadcastable[i]):
                     shape_vars.append(self.lscalar_one)
@@ -919,7 +921,7 @@ class ShapeFeature(object):
                         self.lscalar_one.equals(shape_vars[i]) or
                         self.lscalar_one.equals(
                             T.extract_constant(shape_vars[i]))
-                        for i in range(r.ndim)])
+                        for i in xrange(r.ndim)])
             self.shape_of[r] = tuple(shape_vars)
             for sv in shape_vars:
                 self.shape_of_reverse_index.setdefault(sv, set()).add(r)
@@ -995,7 +997,7 @@ class ShapeFeature(object):
                     self.lscalar_one.equals(merged_shape[i]) or
                     self.lscalar_one.equals(
                         T.extract_constant(merged_shape[i]))
-                    for i in range(r.ndim)])
+                    for i in xrange(r.ndim)])
         self.shape_of[r] = tuple(merged_shape)
         for sv in self.shape_of[r]:
             self.shape_of_reverse_index.setdefault(sv, set()).add(r)
@@ -1018,7 +1020,7 @@ class ShapeFeature(object):
                     # But we never timed this speed optimization!
                     self.lscalar_one.equals(new_shape[idx]) or
                     self.lscalar_one.equals(T.extract_constant(new_shape[idx]))
-                    for idx in range(r.ndim)])
+                    for idx in xrange(r.ndim)])
         self.shape_of[r] = tuple(new_shape)
         for sv in self.shape_of[r]:
             self.shape_of_reverse_index.setdefault(sv, set()).add(r)
@@ -1429,7 +1431,7 @@ def local_subtensor_make_vector(node):
             except NotScalarConstantError:
                 pass
         elif idx.ndim == 1 and isinstance(idx, T.Constant):
-            values = map(int, list(idx.value))
+            values = list(map(int, list(idx.value)))
             return [make_vector(*[x.owner.inputs[v] for v in values])]
         else:
             raise TypeError('case not expected')
@@ -1824,7 +1826,7 @@ def local_elemwise_alloc_op(ElemwiseOP, AllocOP, DimShuffleOP):
                     nb_dim_to_add = i.owner.inputs[0].ndim - alloc_input.ndim
                     alloc_input = alloc_input.dimshuffle(
                         ['x'] * nb_dim_to_add +
-                        range(alloc_input.ndim))
+                        list(range(alloc_input.ndim)))
 
                 # We need to keep the dimshuffle. It could swap axes or
                 # add dimensions anywhere.
@@ -2081,7 +2083,7 @@ def local_useless_subtensor(node):
             length_pos = shape_of[node.inputs[0]][pos]
 
             if isinstance(idx.stop, (int, numpy.integer)):
-                length_pos_data = maxsize
+                length_pos_data = sys.maxsize
                 try:
                     length_pos_data = get_scalar_constant_value(length_pos)
                 except NotScalarConstantError:
@@ -2881,14 +2883,14 @@ def local_useless_rebroadcast(node):
         else:
             # Keep the flags that modify something
             new_axis = {}
-            for dim, bc in node.op.axis.items():
+            for dim, bc in list(node.op.axis.items()):
                 if x.broadcastable[dim] != bc:
                     new_axis[dim] = bc
             if new_axis == node.op.axis:
                 # All flags are useful
                 return
             else:
-                return [T.Rebroadcast(*new_axis.items())(x)]
+                return [T.Rebroadcast(*list(new_axis.items()))(x)]
 
 
 @register_canonicalize
@@ -2914,7 +2916,7 @@ def local_rebroadcast_lift(node):
         # by the `unbroadcast` function before we are in the actual function
         # compilation phase.
         if hasattr(input, 'clients') and len(input.clients) == 1:
-            rval = inode.op.make_node(T.Rebroadcast(*op.axis.items())(
+            rval = inode.op.make_node(T.Rebroadcast(*list(op.axis.items()))(
                     inode.inputs[0])).outputs
             return rval
     if inode and isinstance(inode.op, T.Rebroadcast):
@@ -2923,7 +2925,7 @@ def local_rebroadcast_lift(node):
         axis = inode.op.axis.copy()
         axis.update(op.axis)
         iinput = inode.inputs[0]
-        rval = [T.Rebroadcast(*axis.items())(iinput)]
+        rval = [T.Rebroadcast(*list(axis.items()))(iinput)]
         return rval
 
 
@@ -2988,7 +2990,7 @@ def local_join_empty(node):
         join_idx = get_scalar_constant_value(node.inputs[0])
     except NotScalarConstantError:
         return
-    for idx in range(1, len(node.inputs)):
+    for idx in xrange(1, len(node.inputs)):
         inp = node.inputs[idx]
         # We can not use size == 0,, as this can change shape from 3,0
         # to 2,0.  This trigger DebugMode error. This happen with
@@ -3027,7 +3029,7 @@ def local_join_make_vector(node):
     if not isinstance(node.op, T.Join) or node.outputs[0].ndim != 1:
         return
     new_inputs = [node.inputs[1]]
-    for idx in range(2, len(node.inputs)):
+    for idx in xrange(2, len(node.inputs)):
         inp = node.inputs[idx]
         if (inp.owner and
             isinstance(inp.owner.op, MakeVector) and
@@ -3200,7 +3202,7 @@ def local_useless_tile(node):
                         # implement the opt and test it.
                         return
                         x_nd = node.inputs[0].ndim
-                        broad = ['x'] * (l - x_nd) + range(x_nd)
+                        broad = ['x'] * (l - x_nd) + xrange(x_nd)
                         return [node.inputs[0].dimshuffle(broad)]
                 except ValueError:
                     return
@@ -3946,7 +3948,7 @@ def local_sum_div_dimshuffle(node):
     if isinstance(node.op, T.Sum):
         axis = node.op.axis
         if axis is None:
-            axis = range(node.inputs[0].ndim)
+            axis = list(range(node.inputs[0].ndim))
         # print 'axis =', axis
         thing_summed = node.inputs[0]
         if thing_summed.owner and thing_summed.owner.op == T.true_div:
@@ -4042,7 +4044,7 @@ def local_sum_prod_all_to_none(node):
 def local_op_of_op(node):
     """
     Prod(Prod()) -> single Prod()
-    or 
+    or
     Sum(Sum()) -> single Sum()
     """
     if isinstance(node.op, T.elemwise.Prod) or isinstance(node.op, T.Sum):
@@ -4053,13 +4055,13 @@ def local_op_of_op(node):
         # doesn't affect other computations.
         if len(node_inps.clients) == 1:
             if (node_inps.owner and (isinstance(node_inps.owner.op, T.elemwise.Prod)
-                    or isinstance(node_inps.owner.op, T.elemwise.Sum))): 
+                    or isinstance(node_inps.owner.op, T.elemwise.Sum))):
 
-                # check to see either the inner or outer prod is doing a 
+                # check to see either the inner or outer prod is doing a
                 # product over all axis, in which case we can remove it
                 if node_inps.owner.op.axis is None or node.op.axis is None:
                     return [opt_type(None, dtype=out_dtype)(
-                        node_inps.owner.inputs[0])] 
+                        node_inps.owner.inputs[0])]
 
                 # figure out which axes were in the original sum
                 newaxis = list(tuple(node_inps.owner.op.axis))
@@ -4074,10 +4076,10 @@ def local_op_of_op(node):
                 assert len(newaxis) == len(list(node_inps.owner.op.axis) +
                                            list(node.op.axis))
 
- 
+
                 # The old bugged logic. We keep it there to generate a warning
                 # when we generated bad code.
-                alldims = range(node_inps.owner.inputs[0].type.ndim)
+                alldims = list(range(node_inps.owner.inputs[0].type.ndim))
                 alldims = [d for i, d in enumerate(alldims) if i
                            in node_inps.owner.op.axis]
                 alldims = [d for i, d in enumerate(alldims)
@@ -4225,7 +4227,7 @@ def local_reduce_broadcastable(node):
                 new_axis = []
                 pattern = []
                 ii = 0
-                for p in range(reduced.ndim):
+                for p in xrange(reduced.ndim):
                     if p not in cuttable:
                         if p in axis:
                             new_axis.append(ii)
@@ -4249,7 +4251,7 @@ def local_reduce_broadcastable(node):
 @gof.local_optimizer([T.Sum, T.elemwise.Prod])
 def local_opt_alloc(node):
     """ sum(alloc(constant,shapes...)) => constant*prod(shapes)
-        or 
+        or
         prod(alloc(constant,shapes...)) => constant**prod(shapes)
     """
     if isinstance(node.op, T.Sum) or isinstance(node.op, T.elemwise.Prod):
@@ -4823,8 +4825,8 @@ def attempt_distribution(factor, num, denum, out_type):
     pos, neg = local_add_canonizer.get_num_denum(factor)
     if len(pos) == 1 and not neg:
         return False, factor, num, denum
-    pos_pairs = map(local_mul_canonizer.get_num_denum, pos)
-    neg_pairs = map(local_mul_canonizer.get_num_denum, neg)
+    pos_pairs = list(map(local_mul_canonizer.get_num_denum, pos))
+    neg_pairs = list(map(local_mul_canonizer.get_num_denum, neg))
     change = False
     for n in list(num):
         success, pos_pairs, neg_pairs = distribute_greedy(pos_pairs,
@@ -5775,7 +5777,7 @@ class FusionOptimizer(Optimizer):
                         assert len(new_outputs) == len(node.outputs)
                         try:
                             fgraph.replace_all_validate(
-                                zip(node.outputs, new_outputs),
+                                list(zip(node.outputs, new_outputs)),
                                 reason=self.__class__.__name__)
                             did_something = True
                             nb_replacement += 1
@@ -5788,7 +5790,7 @@ class FusionOptimizer(Optimizer):
             validate_time = fgraph.profile.validate_time - validate_before
             callback_time = fgraph.execute_callbacks_time - callback_before
             callbacks_time = {}
-            for k, v in fgraph.execute_callbacks_times.iteritems():
+            for k, v in iteritems(fgraph.execute_callbacks_times):
                 if k in callbacks_before:
                     callbacks_time[k] = v - callbacks_before[k]
                 else:
@@ -5813,7 +5815,7 @@ class FusionOptimizer(Optimizer):
         print(blanc, " callback_time", prof[5], file=stream)
         if prof[5] > 1:
             print(blanc, " callbacks_time", file=stream)
-            for i in sorted(prof[6].iteritems(), key=lambda a: a[1]):
+            for i in sorted(iteritems(prof[6]), key=lambda a: a[1]):
                 if i[1] > 0:
                     print(i)
         print(blanc, " time_toposort", prof[7], file=stream)

@@ -4,6 +4,7 @@ amount of useful generic optimization tools.
 """
 from __future__ import print_function
 
+from collections import deque
 import copy
 import logging
 import pdb
@@ -16,9 +17,11 @@ import numpy
 
 import theano
 from theano import config
+from theano.compat import izip
+from six import string_types, iteritems, itervalues
+from six.moves import reduce
 from theano.gof import graph, op, utils, unify, toolbox
 from theano.gof.fg import InconsistencyError
-from theano.compat import deque
 
 from . import destroyhandler as dh
 
@@ -250,7 +253,7 @@ class SeqOptimizer(Optimizer, list):
             else:
                 ll.append((opt.name, opt.__class__.__name__,
                            opts.index(opt)))
-        lll = zip(prof, ll)
+        lll = list(zip(prof, ll))
 
         def cmp(a, b):
             if a[0] == b[0]:
@@ -299,7 +302,7 @@ class SeqOptimizer(Optimizer, list):
                 new_sub_profile.append(None)
 
         # merge not common opt
-        from theano.compat.six import StringIO
+        from six import StringIO
         for l in set(prof1[0]).symmetric_difference(set(prof2[0])):
             # The set trick above only work for the same object optimization
             # It don't work for equivalent optimization.
@@ -536,7 +539,7 @@ class MergeFeature(object):
                     continue
 
                 # Schedule transfer of clients from node to candidate
-                pairs = zip(node.outputs, candidate.outputs)
+                pairs = list(zip(node.outputs, candidate.outputs))
 
                 # transfer names
                 for node_output, cand_output in pairs:
@@ -629,7 +632,7 @@ class MergeOptimizer(Optimizer):
             validate_time = fgraph.profile.validate_time - validate_before
             callback_time = fgraph.execute_callbacks_time - callback_before
             callbacks_time = {}
-            for k, v in fgraph.execute_callbacks_times.iteritems():
+            for k, v in iteritems(fgraph.execute_callbacks_times):
                 if k in callbacks_before:
                     callbacks_time[k] = v - callbacks_before[k]
                 else:
@@ -659,7 +662,7 @@ class MergeOptimizer(Optimizer):
         print(blanc, "  callback_time", callback_time, file=stream)
         if callback_time > 1:
             print(blanc, "  callbacks_time", file=stream)
-            for i in sorted(callbacks_time.iteritems(), key=lambda a: a[1]):
+            for i in sorted(iteritems(callbacks_time), key=lambda a: a[1]):
                 if i[1] > 0:
                     print(i)
         print(blanc, "  nb_merged", nb_merged, file=stream)
@@ -687,7 +690,7 @@ def is_same_graph_with_merge(var1, var2, givens=None):
     # break the mapping in givens.
     fgraph = theano.gof.fg.FunctionGraph(inputs, vars, clone=False)
     # Perform Variable substitution.
-    for to_replace, replace_by in givens.iteritems():
+    for to_replace, replace_by in iteritems(givens):
         fgraph.replace(to_replace, replace_by)
     # Perform merge optimization.
     merge_optimizer.optimize(fgraph)
@@ -754,7 +757,7 @@ def pre_constant_merge(vars):
                 var.owner.inputs[idx] = recursive_merge(inp)
         return var
 
-    return map(recursive_merge, vars)
+    return list(map(recursive_merge, vars))
 
 
 ########################
@@ -940,10 +943,10 @@ def local_optimizer(tracks, inplace=False):
         """WRITEME"""
         if tracks is not None:
             if len(tracks) is 0:
-                raise ValueError, ("Use None instead of an empty list to apply to all nodes.", f.__module__, f.__name__)
+                raise ValueError("Use None instead of an empty list to apply to all nodes.", f.__module__, f.__name__)
             for t in tracks:
                 if not (isinstance(t, op.Op) or issubclass(t, op.PureOp)):
-                    raise ValueError, ("Tracks are op classes or instances", f.__module__, f.__name__)
+                    raise ValueError("Tracks are op classes or instances", f.__module__, f.__name__)
         requirements = ()
         if inplace:
             dh_handler = dh.DestroyHandler
@@ -1209,7 +1212,7 @@ class PatternSub(LocalOptimizer):
                 ret = self.transform(real_node, get_nodes=False)
                 if ret is not False and ret is not None:
                     assert len(real_node.outputs) == len(ret)
-                    return dict(zip(real_node.outputs, ret))
+                    return dict(izip(real_node.outputs, ret))
 
         if node.op != self.op:
             return False
@@ -1254,7 +1257,7 @@ class PatternSub(LocalOptimizer):
                                              allow_multiple_clients))
                 else:
                     return retry_with_equiv()
-            elif isinstance(pattern, basestring):
+            elif isinstance(pattern, string_types):
                 v = unify.Var(pattern)
                 if u[v] is not v and u[v] is not expr:
                     return retry_with_equiv()
@@ -1285,7 +1288,7 @@ class PatternSub(LocalOptimizer):
                 if isinstance(pattern, (list, tuple)):
                     args = [build(p, u) for p in pattern[1:]]
                     return pattern[0](*args)
-                elif isinstance(pattern, basestring):
+                elif isinstance(pattern, string_types):
                     return u[unify.Var(pattern)]
                 elif isinstance(pattern, (int, float)):
                     return pattern
@@ -1498,8 +1501,8 @@ class NavigatorOptimizer(Optimizer):
             return False
         old_vars = node.outputs
         if isinstance(replacements, dict):
-            old_vars = replacements.keys()
-            replacements = replacements.values()
+            old_vars = list(replacements.keys())
+            replacements = list(replacements.values())
         elif not isinstance(replacements, (tuple, list)):
             raise TypeError('Optimizer %s gave wrong type of replacement. '
                             'Expected list or tuple. Got %s' % (
@@ -1736,7 +1739,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             yield opt
         # if repeat is not a problem we can drop the set
         s = set()
-        for lopt in self.local_optimizers_map.values():
+        for lopt in itervalues(self.local_optimizers_map):
             for opt in lopt:
                 if opt not in s:
                     yield opt
@@ -1926,7 +1929,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         for i in range(len(loop_timing)):
             lopt = ""
             if loop_process_count[i]:
-                d = list(reversed(sorted(loop_process_count[i].iteritems(),
+                d = list(reversed(sorted(iteritems(loop_process_count[i]),
                                          key=lambda a: a[1])))
                 lopt = " ".join([str((str(k), v)) for k, v
                                  in d[:5]])
@@ -1949,9 +1952,9 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                   opt.final_optimizers):
             process_count.setdefault(o, 0)
         for count in loop_process_count:
-            for o, v in count.iteritems():
+            for o, v in iteritems(count):
                 process_count[o] += v
-        for opt, count in process_count.iteritems():
+        for opt, count in iteritems(process_count):
             if count > 0:
                 count_opt.append((time_opts[opt], count,
                                   node_created[opt], opt))
@@ -2008,7 +2011,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         loop_process_count = list(prof1[2])
         for i in range(min(len(loop_process_count), len(prof2[2]))):
             process_count = loop_process_count[i]
-            for process, count in prof2[2][i].iteritems():
+            for process, count in iteritems(prof2[2][i]):
                 if process in process_count:
                     process_count[process] += count
                 else:
@@ -2022,7 +2025,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         nb_nodes = merge_list(prof1[5], prof2[5])
 
         time_opts = prof1[6].copy()
-        for opt, t in prof2[6].iteritems():
+        for opt, t in iteritems(prof2[6]):
             if opt in time_opts:
                 time_opts[opt] += t
             else:

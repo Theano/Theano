@@ -140,6 +140,8 @@ except ImportError:
     pass
 
 from theano.configparser import config, AddConfigVar, StrParam
+from six import iteritems
+from six.moves import reduce, xrange
 from theano.gof import (utils, Op, view_roots,
                         local_optimizer, Optimizer,
                         InconsistencyError, toolbox, SequenceDB,
@@ -964,7 +966,7 @@ class Gemm(GemmRelated):
         return dict(inplace=self.inplace)
 
     def make_node(self, *inputs):
-        inputs = map(T.as_tensor_variable, inputs)
+        inputs = list(map(T.as_tensor_variable, inputs))
         if len(inputs) != 5:
             raise TypeError(
                 "Wrong number of inputs for %s (expected 5, got %s)" %
@@ -974,7 +976,7 @@ class Gemm(GemmRelated):
         # For the consistency check we don't want z to be a cached constant.
         if getattr(z, 'cached', False):
             z = copy.copy(z)
-        zr, xr, yr = [set(view_roots(i)) for i in z, x, y]
+        zr, xr, yr = [set(view_roots(i)) for i in (z, x, y)]
 
         # We want the gemm to be inplace. When this op is inplace, it
         # declare to be inplace only on z. So to make it safe, we
@@ -1576,7 +1578,7 @@ class GemmOptimizer(Optimizer):
                     assert len(new_outputs) == len(node.outputs)
                     try:
                         fgraph.replace_all_validate_remove(
-                            zip(node.outputs, new_outputs),
+                            list(zip(node.outputs, new_outputs)),
                             [old_dot22],
                             reason='GemmOptimizer',
                             # For now we disable the warning as we know case
@@ -1597,7 +1599,7 @@ class GemmOptimizer(Optimizer):
             validate_time = fgraph.profile.validate_time - validate_before
             callback_time = fgraph.execute_callbacks_time - callback_before
             callbacks_time = {}
-            for k, v in fgraph.execute_callbacks_times.iteritems():
+            for k, v in iteritems(fgraph.execute_callbacks_times):
                 if k in callbacks_before:
                     callbacks_time[k] = v - callbacks_before[k]
                 else:
@@ -1630,7 +1632,7 @@ class GemmOptimizer(Optimizer):
         print(blanc, " callback_time", prof[11], file=stream)
         if prof[11] > 1:
             print(blanc, " callbacks_time", file=stream)
-            for i in sorted(prof[12].iteritems(), key=lambda a: a[1]):
+            for i in sorted(iteritems(prof[12]), key=lambda a: a[1]):
                 if i[1] > 0:
                     print(i)
 
