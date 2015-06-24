@@ -555,10 +555,9 @@ class Function(object):
         Params:
             share_memory -- { boolean } Default is False. When True, two
             function share intermediate storages(storages except input and
-            output storages). Otherwise two function will only share partial
-            storages( see method __copy__() ) and same maker. If two functions
-            share memory and allow_gc=False, this will increase executing speed
-            and save memory.
+            output storages). Otherwise two functions will only share partial
+            storages and same maker. If two functions share memory and 
+            allow_gc=False, this will increase executing speed and save memory.
 
             swap -- { dict } Dictionary<String, theano.SharedVariable> that
             map old SharedVariable's name to new SharedVariable. Default is
