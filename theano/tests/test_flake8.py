@@ -305,8 +305,6 @@ def test_format_flake8():
     """
     if not flake8_available:
         raise SkipTest("flake8 is not installed")
-    if PY3:
-        raise SkipTest("not testing in python3 since 2to3 ran")
     total_errors = 0
     for path in list_files():
         rel_path = os.path.relpath(path, theano.__path__[0])
