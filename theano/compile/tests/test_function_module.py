@@ -289,7 +289,7 @@ class T_function(unittest.TestCase):
         # SharedVariable to replace
         y_rpl = theano.shared(value=3,name ='y_rpl')
         z_rpl = theano.shared(value=4, name='z_rpl')
-        swap = {'y':y_rpl, 'z':z_rpl}
+        swap = {y:y_rpl, y:z_rpl}
         map_SV = {'y_rpl':y_rpl, 'z_rpl':z_rpl}
 
         out = x+y+z
