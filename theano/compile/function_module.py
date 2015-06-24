@@ -573,13 +573,13 @@ class Function(object):
         """
         maker = self.maker
         # Copy Ins, so that they have different storage as their value
-        ins, outs = copy.deepcopy([maker.inputs, maker.outputs])
+        ins = copy.deepcopy(maker.inputs)
 
         # Delete update output in fgraph and updates In instancesis needed
         if delete_updates:
-            # The first len(outs) variabels are original variables.
+            # The first len(maker.outputs) variabels are original variables.
             # The rest are the updates.
-            out_vars = maker.fgraph.outputs[:len(outs)]
+            out_vars = maker.fgraph.outputs[:len(maker.outputs)]
         else:
             out_vars = maker.fgraph.outputs
 
@@ -591,8 +591,7 @@ class Function(object):
                                       clone=False)
 
         # Swap varaible in Outs.
-        for i in xrange(len(outs)):
-            outs[i].variable = fg_cpy.outputs[i]
+        outs = map(SymbolicOutput, maker.fgraph.outputs[:len(maker.outputs)])
 
         # Swap update and variable in Ins
         # By doing this, we can pass FunctionMaker._check_unused_inputs()
@@ -644,10 +643,10 @@ class Function(object):
                     i.variable = swap_sv
                     i.value = swap_sv.container
 
-        storage_map = self.fn.storage_map
-        new_storage_map = {}
         # Construct new storage_map that map new variable to old storage,
         # so that the ensuing function shares storage with the original one
+        storage_map = self.fn.storage_map
+        new_storage_map = {}
         # TODO: We could share the output storage, but we must make sure
         # 2 different function call won't override each other values. This
         # is already done elsewhere, so to reuse it the user would need to
