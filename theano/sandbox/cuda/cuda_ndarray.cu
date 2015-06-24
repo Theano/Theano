@@ -1066,6 +1066,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     } else {
         PyObject* py_s = PyObject_Str(indices_obj);
         const char* s = PyString_AsString(py_s);
+        Py_DECREF(py_s);
         PyErr_Format(PyExc_TypeError,
                      "CudaNdarray_TakeFrom: need an ndarray of int64 or a"
                      " CudaNdarray(float32) that is a view from int64 data"
