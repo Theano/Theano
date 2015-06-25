@@ -2,7 +2,7 @@ import os
 import numpy
 
 import theano
-from theano import Apply, gof, tensor, config, Variable
+from theano import Apply, tensor, config, Variable
 from theano.scalar import as_scalar, constant
 from theano.gradient import DisconnectedType, grad_not_implemented
 from theano.gof import Optimizer, local_optimizer, COp
@@ -485,8 +485,8 @@ class GpuDnnConv(DnnBase, COp):
 
         return (
             b, nb,
-            (h + 2*padh - kh)//sh + 1,
-            (w + 2*padw - kw)//sw + 1
+            (h + 2 * padh - kh) // sh + 1,
+            (w + 2 * padw - kw) // sw + 1
         )
 
     def infer_shape(self, node, shape):
@@ -670,7 +670,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     """
     fgraph = getattr(img, 'fgraph', None) or getattr(kerns, 'fgraph', None)
     if (border_mode == 'valid' and subsample == (1, 1) and
-        direction_hint == 'bprop weights'):
+            direction_hint == 'bprop weights'):
         # Special case: We are asked to use GpuDnnConvGradW. We need to set
         # up a suitable 'fake' convolution to compute the gradient for.
         img = gpu_contiguous(img.dimshuffle(1, 0, 2, 3))
@@ -682,7 +682,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         shape2 = shape_i(img, 2, fgraph) - shape_i(kerns, 2, fgraph) + 1
         shape3 = shape_i(img, 3, fgraph) - shape_i(kerns, 3, fgraph) + 1
         out = gpu_alloc_empty(shape_i(kerns, 1, fgraph),
-                        shape_i(img, 1, fgraph), shape2, shape3)
+                              shape_i(img, 1, fgraph), shape2, shape3)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                               conv_mode='cross')(img.shape, out.shape)
         conv = GpuDnnConvGradW()(img, kerns, out, desc)
@@ -699,7 +699,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         shape2 = shape_i(img, 2, fgraph) + shape_i(kerns, 2, fgraph) - 1
         shape3 = shape_i(img, 3, fgraph) + shape_i(kerns, 3, fgraph) - 1
         out = gpu_alloc_empty(shape_i(img, 0, fgraph),
-                        shape_i(kerns, 1, fgraph), shape2, shape3)
+                              shape_i(kerns, 1, fgraph), shape2, shape3)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                               conv_mode=conv_mode)(out.shape, kerns.shape)
         return GpuDnnConvGradI()(kerns, img, out, desc)
@@ -858,8 +858,8 @@ class GpuDnnPool(DnnBase):
         return [(
             shape[0][0],
             shape[0][1],
-            (shape[0][2] + 2*padh - kh)//sh + 1,
-            (shape[0][3] + 2*padw - kw)//sw + 1
+            (shape[0][2] + 2 * padh - kh) // sh + 1,
+            (shape[0][3] + 2 * padw - kw) // sw + 1
         )]
 
     def c_support_code_struct(self, node, name):
@@ -976,8 +976,8 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
 """ % dict(out=out, desc=desc, fail=sub['fail'],
            name=name, set_in=set_in,
            set_out=set_out, input=inputs[0],
-           input_desc="input"+name,
-           output_desc="output"+name)
+           input_desc="input" + name,
+           output_desc="output" + name)
 
     def grad(self, inp, grads):
         img, desc = inp
@@ -1184,10 +1184,10 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
            fail=sub['fail'],
            name=name, set_in=set_in,
            set_out=set_out, input=inp, input_grad=inp_grad, output=out,
-           input_desc="input"+name,
-           input_grad_desc="input_grad"+name,
-           output_desc="output"+name,
-           output_grad_desc="output_grad"+name)
+           input_desc="input" + name,
+           input_grad_desc="input_grad" + name,
+           output_desc="output" + name,
+           output_grad_desc="output_grad" + name)
 
     def c_code_cache_version(self):
         return (5, version())
@@ -1725,9 +1725,9 @@ if True:
     def local_softmax_dnn_grad(node):
         if (isinstance(node.op, SoftmaxGrad) and
             ((node.inputs[0].owner and
-              isinstance(node.inputs[0].owner.op, HostFromGpu))
-             or (node.inputs[1].owner and
-                 isinstance(node.inputs[1].owner.op, HostFromGpu)))):
+              isinstance(node.inputs[0].owner.op, HostFromGpu)) or
+             (node.inputs[1].owner and
+              isinstance(node.inputs[1].owner.op, HostFromGpu)))):
             if not dnn_available():
                 return
             ins = []
