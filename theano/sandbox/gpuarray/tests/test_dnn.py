@@ -11,25 +11,27 @@ import theano.tests.unittest_tools as utt
 from theano.sandbox.neighbours import images2neibs
 from theano.tensor.signal.downsample import max_pool_2d
 from theano.tensor.signal.downsample import DownsampleFactorMaxGrad
-import theano.sandbox.cuda.dnn as dnn
+from  theano.sandbox import gpuarray
+import theano.sandbox.gpuarray.dnn as dnn
 
-# Skip test if cuda_ndarray is not available.
-import theano.sandbox.cuda as cuda
-if not cuda.cuda_available:
-    raise SkipTest('Optional package cuda disabled')
+# Skip test if pygpu is not available.
+if not gpuarray.pygpu_activated:
+    raise SkipTest('Optional package pygpu disabled')
 
 if theano.config.mode == 'FAST_COMPILE':
-    mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
+    mode_with_gpu = theano.compile.mode.get_mode(
+        'FAST_RUN').including('gpuarray')
     mode_without_gpu = theano.compile.mode.get_mode(
-        'FAST_RUN').excluding('gpu')
+        'FAST_RUN').excluding('gpuarray')
 else:
-    mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
-    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpu')
+    default_mode = theano.compile.mode.get_default_mode()
+    mode_with_gpu = default_mode.including('gpuarray')
+    mode_without_gpu = default_mode.excluding('gpuarray')
 
 
 def test_log_softmax():
-    if not cuda.dnn.dnn_available():
-        raise SkipTest(cuda.dnn.dnn_available.msg)
+    if not gpuarray.dnn.dnn_available():
+        raise SkipTest(gpuarray.dnn.dnn_available.msg)
 
     x = T.ftensor4()
     softmax_out = dnn.GpuDnnSoftmax('bc01', 'accurate', 'channel')(x)
@@ -59,8 +61,8 @@ def test_log_softmax():
 
 
 def test_log_softmax_opt():
-    if not cuda.dnn.dnn_available():
-        raise SkipTest(cuda.dnn.dnn_available.msg)
+    if not gpuarray.dnn.dnn_available():
+        raise SkipTest(gpuarray.dnn.dnn_available.msg)
 
     x = T.ftensor4()
     softmax_out = dnn.GpuDnnSoftmax('bc01', 'accurate', 'channel')(x)
@@ -69,48 +71,14 @@ def test_log_softmax_opt():
     f = theano.function([x], log_out, mode=mode_with_gpu)
 
     dnn_softmax_nodes = [n for n in f.maker.fgraph.toposort() if
-                         isinstance(n.op, cuda.dnn.GpuDnnSoftmax)]
+                         isinstance(n.op, gpuarray.dnn.GpuDnnSoftmax)]
 
     # Ensure that the optimization has been applied
     assert len(dnn_softmax_nodes) == 1
     assert dnn_softmax_nodes[0].op.algo == "log"
 
 
-def test_dnn_tag():
-    """
-    Test that if cudnn isn't avail we crash and that if it is avail, we use it.
-    """
-    x = T.ftensor4()
-    old = theano.config.on_opt_error
-    theano.config.on_opt_error = "raise"
-
-    sio = StringIO()
-    handler = logging.StreamHandler(sio)
-    logging.getLogger('theano.compile.tests.test_dnn').addHandler(handler)
-    # Silence original handler when intentionnally generating warning messages
-    logging.getLogger('theano').removeHandler(theano.logging_default_handler)
-    raised = False
-    try:
-        f = theano.function(
-            [x],
-            max_pool_2d(x, ds=(2, 2), ignore_border=True),
-            mode=mode_with_gpu.including("cudnn"))
-    except (AssertionError, RuntimeError):
-        assert not cuda.dnn.dnn_available()
-        raised = True
-    finally:
-        theano.config.on_opt_error = old
-        logging.getLogger(
-            'theano.compile.tests.test_dnn').removeHandler(handler)
-        logging.getLogger('theano').addHandler(theano.logging_default_handler)
-
-    if not raised:
-        assert cuda.dnn.dnn_available()
-        assert any([isinstance(n.op, cuda.dnn.GpuDnnPool)
-                    for n in f.maker.fgraph.toposort()])
-
-
 def test_version():
-    if not cuda.dnn.dnn_available():
-        raise SkipTest(cuda.dnn.dnn_available.msg)
-    assert isinstance(cuda.dnn.version(), (int, tuple))
+    if not gpuarray.dnn.dnn_available():
+        raise SkipTest(gpuarray.dnn.dnn_available.msg)
+    assert isinstance(gpuarray.dnn.version(), (int, tuple))
