@@ -245,7 +245,7 @@ def cpu_sparse_block_outer(o, x, y, xIdx, yIdx, alpha=1.0):
         outputs_info=[o],
         name='_loop_over_batch')
 
-    return (alpha * res1[-1]), updates1
+    return (alpha * res1[-1])
 
 
 def sparse_block_dot(W, h, inputIdx, b, outputIdx, inplace=False):
