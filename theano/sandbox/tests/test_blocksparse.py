@@ -88,7 +88,7 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         for b in range(x.shape[0]):
             for i in range(xIdx.shape[1]):
                 for j in range(yIdx.shape[1]):
-                    o[i, j] += numpy.outer(x[b, xIdx[b, i], :],
+                    o[xIdx[b, i], yIdx[b, j]] += numpy.outer(x[b, xIdx[b, i], :],
                                            y[b, yIdx[b, j], :])
         return o
 
@@ -243,9 +243,9 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         xIdx = tensor.imatrix()
         yIdx = tensor.imatrix()
 
-        out = self.outer_op(o, x, y, xIdx, yIdx)
+        out, updates = self.outer_op(o, x, y, xIdx, yIdx)
 
-        f = theano.function([o, x, y, xIdx, yIdx], out, on_unused_input="warn")
+        f = theano.function([o, x, y, xIdx, yIdx], out, updates=updates, on_unused_input="warn")
 
         o_val, x_val, y_val, xIdx_val, yIdx_val = \
             BlockSparse_Gemv_and_Outer.outer_data()
@@ -258,3 +258,8 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         print ref_out.shape
 
         utt.assert_allclose(ref_out, th_out)
+
+
+# a = BlockSparse_Gemv_and_Outer()
+# a.setUp()
+# a.test_sparse_block_outer()
