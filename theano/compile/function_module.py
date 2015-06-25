@@ -604,7 +604,7 @@ class Function(object):
 
         # Re initialize Outs and swap update and variable in Ins
         # By doing this, we can pass FunctionMaker._check_unused_inputs()
-        outs = map(SymbolicOutput, fg_cpy.outputs[:len(maker.outputs)])
+        outs = list(map(SymbolicOutput, fg_cpy.outputs[:len(maker.outputs)]))
 
         update_i = len(outs)
         for i, in_var in zip(ins, fg_cpy.inputs):
@@ -1386,7 +1386,7 @@ class FunctionMaker(object):
             # fgraph is already an optimized one
             need_opt = False
             updates = [spec.update for spec in inputs if spec.update]
-            additional_outputs = map(SymbolicOutput, updates)
+            additional_outputs = list(map(SymbolicOutput, updates))
 
         self.fgraph = fgraph
 
