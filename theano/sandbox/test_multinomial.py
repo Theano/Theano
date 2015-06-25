@@ -1,12 +1,67 @@
 import copy
-
+import unittest
 import numpy
-
 import theano
 from theano import config, function, tensor
 from . import multinomial
 from theano.compile.mode import get_default_mode, predefined_linkers
 import theano.sandbox.cuda as cuda
+from rng_mrg import MRG_RandomStreams
+
+
+class TestMultinomial(unittest.TestCase):
+
+    def setUp(self):
+        self.mrng = MRG_RandomStreams(seed=1234)
+
+    def test_pval_ok(self):
+        p_vals = numpy.asarray([[0.96, 0.01, 0.01, 0.01, 0.01]], dtype=theano.config.floatX)
+
+        mult = self.mrng.multinomial(
+            pvals=p_vals,
+            dtype=theano.config.floatX
+        ).eval()
+
+        self.assertEqual(mult.sum(), 1.)
+
+    def test_pval_ok_big(self):
+        p_vals = numpy.asarray([5000 * [0.0001] + [0.49, 0.01]], dtype=theano.config.floatX)
+
+        mult = self.mrng.multinomial(
+            pvals=p_vals,
+            dtype=theano.config.floatX
+        ).eval()
+
+        self.assertEqual(mult.sum(), 1.)
+
+    def test_pval_0(self):
+        # Tests that the remaning probability is assing to the last element if the
+        # sum is below 1
+        p_vals = numpy.zeros((1, 10), dtype=theano.config.floatX)
+
+        mult = self.mrng.multinomial(
+            pvals=p_vals,
+            dtype=theano.config.floatX
+        ).eval()
+
+        self.assertEqual(mult[0][-1], 1.)
+        self.assertTrue(numpy.all(mult[0][:-1] == 0.))
+
+    def test_pval_greater_1(self):
+        # Tests that an error is trown if the sum of pvals is bigger than 1
+
+        # This pvals is a special case where if the precise Kahan sum is use it sums
+        # above 1 and if the normal sum is used it sums below 1
+        p_vals = numpy.float32(1e-8) * numpy.ones(int(1e7) + 1, dtype=theano.config.floatX)
+        p_vals[0] = numpy.float32(0.96)
+
+        self.assertRaises(
+            ValueError,
+            self.mrng.multinomial(
+                pvals=numpy.tile(p_vals, (1, 1)),
+                dtype=theano.config.floatX
+            ).eval
+        )
 
 
 def get_mode(gpu):
@@ -37,7 +92,7 @@ def test_multinomial_0():
 
     def body(mode, gpu):
         # the m*2 allows the multinomial to reuse output
-        f = function([p, u], m*2, allow_input_downcast=True, mode=mode)
+        f = function([p, u], m * 2, allow_input_downcast=True, mode=mode)
         if gpu:
             assert any([type(node.op) is multinomial.GpuMultinomialFromUniform
                         for node in f.maker.fgraph.toposort()])
@@ -72,12 +127,12 @@ def test_multinomial_large():
         p = tensor.fmatrix()
         u = tensor.fvector()
         m = multinomial.MultinomialFromUniform('auto')(p, u)
-        f = function([p, u], m*2, allow_input_downcast=True, mode=mode)
+        f = function([p, u], m * 2, allow_input_downcast=True, mode=mode)
         if gpu:
             assert any([type(node.op) is multinomial.GpuMultinomialFromUniform
                         for node in f.maker.fgraph.toposort()])
 
-        pval = numpy.arange(10000 * 4, dtype='float32').reshape((10000, 4))+0.1
+        pval = numpy.arange(10000 * 4, dtype='float32').reshape((10000, 4)) + 0.1
         pval = pval / pval.sum(axis=1)[:, None]
         uval = numpy.ones_like(pval[:, 0]) * 0.5
         mval = f(pval, uval)
@@ -92,7 +147,7 @@ def test_multinomial_large():
         else:
             raise NotImplementedError(config.cast_policy)
         assert numpy.allclose(mval.sum(axis=1), 2)
-        asdf = numpy.asarray([0, 0, 2, 0])+0*pval
+        asdf = numpy.asarray([0, 0, 2, 0]) + 0 * pval
         assert numpy.allclose(mval, asdf)  # broadcast over all rows
     run_with_c(body)
     if cuda.cuda_available:
@@ -133,7 +188,7 @@ def test_gpu_opt():
     f = function([p, u], m_gpu, allow_input_downcast=True, mode=get_mode(True))
     assert any([type(node.op) is multinomial.GpuMultinomialFromUniform
                 for node in f.maker.fgraph.toposort()])
-    pval = numpy.arange(10000 * 4, dtype='float32').reshape((10000, 4))+0.1
+    pval = numpy.arange(10000 * 4, dtype='float32').reshape((10000, 4)) + 0.1
     pval = pval / pval.sum(axis=1)[:, None]
     uval = numpy.ones_like(pval[:, 0]) * 0.5
     mval = f(pval, uval)
@@ -147,7 +202,7 @@ def test_gpu_opt():
     f = function([r, u], m_gpu, allow_input_downcast=True, mode=get_mode(True))
     assert any([type(node.op) is multinomial.GpuMultinomialFromUniform
                 for node in f.maker.fgraph.toposort()])
-    pval = numpy.arange(1 * 4, dtype='float32').reshape((1, 4))+0.1
+    pval = numpy.arange(1 * 4, dtype='float32').reshape((1, 4)) + 0.1
     pval = pval / pval.sum(axis=1)[:, None]
     uval = numpy.ones_like(pval[:, 0]) * 0.5
     mval2 = f(pval, uval)

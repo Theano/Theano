@@ -13,7 +13,9 @@ if cuda_available:
 
 
 class MultinomialFromUniform(Op):
+
     '''Converts samples from a uniform into sample from a multinomial.'''
+
     def __init__(self, odtype):
         self.odtype = odtype
 
@@ -53,7 +55,7 @@ class MultinomialFromUniform(Op):
         return [T.zeros_like(x) for x in ins]
 
     def c_code_cache_version(self):
-        return (5,)
+        return (6,)
 
     def c_code(self, node, name, ins, outs, sub):
         (pvals, unis) = ins
@@ -112,24 +114,43 @@ class MultinomialFromUniform(Op):
         //
         for (int n = 0; n < nb_multi; ++n)
         {
-            int waiting = 1;
+            float waiting = 1.;
             dtype_%(pvals)s cummul = 0.;
+            dtype_%(pvals)s c = 0.;
             const dtype_%(unis)s* unis_n = (dtype_%(unis)s*)PyArray_GETPTR1(%(unis)s, n);
-            for (int m = 0; m < nb_outcomes; ++m)
+
+            for (int m = 0; m < nb_outcomes-1; ++m)
             {
                 dtype_%(z)s* z_nm = (dtype_%(z)s*)PyArray_GETPTR2(%(z)s, n,m);
                 const dtype_%(pvals)s* pvals_nm = (dtype_%(pvals)s*)PyArray_GETPTR2(%(pvals)s, n,m);
-                cummul += *pvals_nm;
+
+                dtype_%(pvals)s y = *pvals_nm - c;
+                dtype_%(pvals)s t = cummul + y;
+                c = (t - cummul) - y;
+                cummul = t;
+
                 if (waiting && (cummul > *unis_n))
                 {
                     *z_nm = 1.;
-                    waiting = 0;
+                    waiting = 0.;
                 }
                 else
                 {
                     // if we re-used old z pointer, we have to clear it out.
                     *z_nm = 0.;
                 }
+            }
+            // Assigning the last one separately to ensure that no precision error rendered the multinomial invalid.
+            *(dtype_%(z)s*)PyArray_GETPTR2(%(z)s, n, nb_outcomes-1) = waiting;
+            const dtype_%(pvals)s* pvals_nm = (dtype_%(pvals)s*)PyArray_GETPTR2(%(pvals)s, n, nb_outcomes-1);
+            dtype_%(pvals)s y = *pvals_nm - c;
+            dtype_%(pvals)s t = cummul + y;
+            c = (t - cummul) - y;
+            cummul = t;
+
+            if (cummul > 1.)
+            {
+                PyErr_Format(PyExc_ValueError, "sum(pvals) > 1.0");
             }
         }
         } // END NESTED SCOPE
@@ -151,20 +172,27 @@ class MultinomialFromUniform(Op):
         # For each multinomial, loop over each possible outcome
         for n in range(nb_multi):
             waiting = True
-            cummul = 0
+            cummul = 0.
             unis_n = unis[n]
 
-            for m in range(nb_outcomes):
-                z_nm = z[0][n, m]
+            for m in range(nb_outcomes - 1):
                 cummul += pvals[n, m]
                 if (waiting and (cummul > unis_n)):
-                    z[0][n, m] = 1
+                    z[0][n, m] = 1.
                     waiting = False
                 else:
-                    z[0][n, m] = 0
+                    z[0][n, m] = 0.
+            # Assigning the last one separately to ensure that
+            # no precision error rendered the multinomial invalid.
+            z[0][n, -1] = waiting
+            cummul += pvals[n, (nb_outcomes - 1)]
+
+            if cummul > 1.:
+                raise ValueError("sum(pvals) > 1.0")
 
 
 class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
+
     """
     The output is transposed compared to MultinomialFromUniform.
     We must insert a Transpose op after it.
@@ -198,7 +226,7 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
         return Op.perform(self, node, ins, outs)
 
     def c_code_cache_version(self):
-        return (8,)
+        return (9,)
 
     def c_support_code_apply(self, node, nodename):
         return """
@@ -212,42 +240,74 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
             const int unis_stride,
             float * global_outs,
             const int outs_row_stride,
-            const int outs_col_stride
+            const int outs_col_stride,
+            int* err
         )
         {
             // each thread takes care of one multinomial draw
             int n = blockDim.x*blockIdx.x + threadIdx.x;
             if (n < nb_multi)
             {
-            float cummul = 0.;
-            bool done = false;
-            const float unis_n = global_unis[n*unis_stride];
-            for (int m = 0; m < nb_outcomes; ++m)
-            {
-                float current_out = 0.;
-                if (!done)
+                float cummul = 0.;
+                float c = 0.;
+                bool waiting = true;
+                const float unis_n = global_unis[n*unis_stride];
+
+                for (int m = 0; m < nb_outcomes-1; ++m)
                 {
-                    cummul += global_pvals[m * pvals_col_stride + n * pvals_row_stride];
-                    if (unis_n < cummul)
+                    float current_out = 0.;
+                    float y = global_pvals[m * pvals_col_stride + n * pvals_row_stride] - c;
+                    float t = cummul + y;
+                    c = (t - cummul) - y;
+                    cummul = t;
+
+                    if (waiting && unis_n < cummul)
                     {
                         current_out = 1.;
-                        done = true;
+                        waiting = false;
                     }
+
+                    //write out transposed for speed.
+                    global_outs[n * outs_col_stride + m * outs_row_stride] = current_out;
                 }
-                //write out transposed for speed.
-                global_outs[n * outs_col_stride + m * outs_row_stride] = current_out;
-            }
+                // Assigning the last one separately to ensure that no precision error rendered the multinomial invalid.
+                global_outs[n * outs_col_stride + (nb_outcomes-1) * outs_row_stride] = waiting;
+                float y = global_pvals[(nb_outcomes-1) * pvals_col_stride + n * pvals_row_stride] - c;
+                float t = cummul + y;
+                c = (t - cummul) - y;
+                cummul = t;
+
+                if (cummul > 1.)
+                {
+                    *err = 0xFFFF;
+                }
             }
         }
-
         """ % locals()
 
     def c_code(self, node, name, ins, outs, sub):
         (pvals, unis) = ins
         (z,) = outs
-
         fail = sub['fail']
         return """
+        // Create the memory place that will store the error information.
+        cudaError_t err;
+        int* err_var = (int*)device_malloc(sizeof(int));
+        if (!err_var) { // PyErr set by device_malloc
+            %(fail)s;
+        }
+
+        err = cudaMemset((void*)err_var, 0, sizeof(int));
+        if (cudaSuccess != err) {
+            // Clear the error flag, cudaMemset doesn't do it.
+            // Currently this returns the same thing as err, but if in future
+            // it returns something else I still don't see why we should ignore
+            // it.  All we want to do here is reset the flag.
+            cudaGetLastError();
+            PyErr_Format(PyExc_RuntimeError,"Error setting device error code to 0. %%s", cudaGetErrorString(err));
+            %(fail)s;
+        }
+
         if (CudaNdarray_NDIM(%(pvals)s) != 2)
         {
             PyErr_Format(PyExc_TypeError, "pvals wrong rank");
@@ -321,7 +381,8 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
                 CudaNdarray_HOST_STRIDES(%(unis)s)[0],
                 CudaNdarray_DEV_DATA(%(z)s),
                 CudaNdarray_HOST_STRIDES(%(z)s)[0],
-                CudaNdarray_HOST_STRIDES(%(z)s)[1]
+                CudaNdarray_HOST_STRIDES(%(z)s)[1],
+                err_var
             );
             CNDA_THREAD_SYNC;
             cudaError_t sts = cudaGetLastError();
@@ -336,6 +397,33 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
                     n_threads.y,
                     n_threads.z,
                     n_shared);
+                %(fail)s;
+            }
+
+            //-10 could be any value different then 0.
+            int cpu_err_var=-10;
+
+            // As we execute cudaMemcpy on the default stream, it waits for all
+            // kernels (on all streams) to be finished before starting to copy
+            err = cudaMemcpy(&cpu_err_var, err_var, sizeof(int), cudaMemcpyDeviceToHost);
+
+            if (cudaSuccess != err) {
+                PyErr_Format(
+                    PyExc_RuntimeError,
+                    "Cuda error: %%s: %%s when trying to get the error value.\\n",
+                    "CudaNdarray_TakeFrom",
+                    cudaGetErrorString(err));
+                %(fail)s;
+            }
+
+            if (cpu_err_var != 0) {
+                PyErr_Format(PyExc_ValueError, "sum(pvals) > 1.0");
+                // Must reset it to 0 to don't reset it before each use.
+                err = cudaMemset((void*)err_var, 0, sizeof(int));
+                if (cudaSuccess != err) {
+                    PyErr_Format(PyExc_MemoryError, "Error setting device error code to 0 after having an index error. %%s", cudaGetErrorString(err));
+                    %(fail)s;
+                }
                 %(fail)s;
             }
 
@@ -355,9 +443,10 @@ def local_gpu_multinomial(node):
             gpu_op = GpuMultinomialFromUniform(node.op.odtype)
             return [host_from_gpu(gpu_op(*[gpu_from_host(i)
                                            for i in node.inputs])).T]
+
     if (isinstance(node.op, theano.sandbox.cuda.GpuFromHost) and
-        node.inputs[0].owner and type(node.inputs[0].owner.op)
-        is MultinomialFromUniform):
+            node.inputs[0].owner and
+            type(node.inputs[0].owner.op) is MultinomialFromUniform):
         multi = node.inputs[0].owner
         p, u = multi.inputs
         m, = multi.outputs

@@ -798,8 +798,8 @@ def test_multinomial():
     # print ''
     # print 'ON CPU:'
 
-    pvals = numpy.asarray(numpy.random.uniform(size=sample_size))
-    pvals = numpy.apply_along_axis(lambda row: row / numpy.sum(row), 1, pvals)
+    pvals = numpy.asarray(numpy.random.uniform(size=sample_size), dtype='float32')
+    pvals = numpy.apply_along_axis(lambda row: numpy.float64(row) / row.sum(dtype='float64'), 1, pvals)
     R = MRG_RandomStreams(234, use_cuda=False)
     # Note: we specify `nstreams` to avoid a warning.
     m = R.multinomial(pvals=pvals, dtype=config.floatX, nstreams=30 * 256)
