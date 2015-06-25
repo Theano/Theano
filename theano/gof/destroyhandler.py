@@ -13,7 +13,7 @@ from theano.compat import OrderedDict
 from theano.misc.ordered_set import OrderedSet
 
 from .fg import InconsistencyError
-from Queue import Queue
+from  six.moves.queue import Queue
 
 
 class ProtocolError(Exception):
