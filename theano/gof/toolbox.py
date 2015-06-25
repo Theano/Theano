@@ -272,6 +272,8 @@ class ReplaceValidate(History, Validator):
             fgraph.validate()
         except Exception as e:
             fgraph.revert(chk)
+            if verbose:
+                print("validate failed on node %s.\n Reason: %s, %s" % (r, reason, e))
             raise
         if verbose:
             print(reason, r, new_r)
