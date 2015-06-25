@@ -783,6 +783,10 @@ if (theano_prep_output(&%(zz)s, %(ndim)s, shape, %(type)s, GA_C_ORDER,
         raise NotImplementedError("grad disabled")
 
 
+def empty_like(var):
+    return GpuAllocEmpty(var.type.dtype)(*var.shape)
+
+
 class GpuContiguous(Op):
     """
     Always return a c contiguous output. Copy the input only if it is
