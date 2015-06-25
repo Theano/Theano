@@ -298,7 +298,7 @@ You can try it as follows:
 
 
 Example for properties of a Op
-==========
+==============================
 
 We can modify the previous piece of code in order to demonstrate
 the usage of the :attr:`__props__` attribute.
@@ -342,6 +342,7 @@ and ``b`` are equal.
 
 The use of :attr:`__props__` saves
 the user the trouble of implementing :func:`__eq__` and :func:`__hash__` manually.
+It also generates a default :func:`__str__` method that prints the attribute names and their values.
 
 We can test this by running the following segment:
 
@@ -362,12 +363,6 @@ We can test this by running the following segment:
     inp = numpy.random.rand(5, 4).astype(numpy.float32)
     assert numpy.allclose(4 * inp + 5, f(inp))
     assert numpy.allclose(2 * inp + 3, g(inp))
-
-
-
-
-
-
 
 How To Test it
 ==============
