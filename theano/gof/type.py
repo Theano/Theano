@@ -282,11 +282,7 @@ class PureType(object):
                 'Cannot convert Type %(othertype)s '
                 '(of Variable %(other)s) into Type %(self)s. '
                 'You can try to manually convert %(other)s into a %(self)s.'
-                % dict(
-                    othertype=other.type,
-                    other=other,
-                    self=self)
-                )
+                % dict(othertype=other.type, other=other, self=self))
         return other
 
     def is_valid_value(self, a):

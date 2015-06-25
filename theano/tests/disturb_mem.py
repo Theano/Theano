@@ -20,4 +20,4 @@ def disturb_mem():
     ms = int(ms)
     n = ms % 1000
     m = ms // 1000
-    l = [[0]*m for i in xrange(n)]
+    l = [[0] * m for i in xrange(n)]

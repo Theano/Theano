@@ -35,7 +35,7 @@ def ElemwiseOpTime(N, script=False, loops=1000):
     x = T.vector('x')
     np.random.seed(1235)
     v = np.random.random(N).astype(theano.config.floatX)
-    f = theano.function([x], 2*x + x*x)
+    f = theano.function([x], 2 * x + x * x)
     f1 = theano.function([x], T.tanh(x))
     if not script:
         if theano.config.openmp:

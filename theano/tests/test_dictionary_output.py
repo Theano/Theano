@@ -12,8 +12,8 @@ class dictionary_output_checker(unittest.TestCase):
         '''
 
         x = T.scalar()
-        f = theano.function([x], outputs={'a': x, 'c': x*2,
-                                          'b': x*3, '1': x*4})
+        f = theano.function([x], outputs={'a': x, 'c': x * 2,
+                                          'b': x * 3, '1': x * 4})
 
         outputs = f(10.0)
 

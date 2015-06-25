@@ -63,8 +63,7 @@ compiledir_format_dict = {
     "theano_version": theano.__version__,
     "numpy_version": numpy.__version__,
     "gxx_version": gcc_version_str.replace(" ", "_"),
-    "hostname": socket.gethostname(),
-    }
+    "hostname": socket.gethostname()}
 
 
 def short_platform(r=None, p=None):
