@@ -5393,6 +5393,32 @@ def test_assert_op_gradient():
     assert func(x_val) == 1
 
 
+class TestDivByOne(unittest.TestCase):
+    def test1(self):
+        y = T.tensor4('y')
+
+        mode = theano.compile.mode.get_default_mode()
+        mode_wo_fusion = mode.excluding('fusion')
+
+        f = theano.function([y], y[::-1][::-1], mode=mode_wo_fusion)
+
+        graph = f.maker.fgraph.toposort()
+        divs = [node for node in graph
+                if isinstance(node.op, T.elemwise.Elemwise) and
+                isinstance(node.op.scalar_op, theano.scalar.IntDiv)]
+        assert len(divs) == 0
+
+    def test2(self):
+        y = T.tensor4('y')
+        z = y // 1
+        f = theano.function([y], z)
+        graph = f.maker.fgraph.toposort()
+        divs = [node for node in graph
+                if isinstance(node.op, T.elemwise.Elemwise) and
+                isinstance(node.op.scalar_op, theano.scalar.IntDiv)]
+        assert len(divs) == 0
+
+
 if __name__ == '__main__':
     t = TestMakeVector('setUp')
     t.setUp()
