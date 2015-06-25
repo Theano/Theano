@@ -2,7 +2,7 @@ import os
 import numpy
 
 import theano
-from theano import Apply, tensor, config, Variable
+from theano import Op, Apply, tensor, config, Variable
 from theano.scalar import as_scalar, constant
 from theano.gradient import DisconnectedType, grad_not_implemented
 from theano.gof import Optimizer, local_optimizer, COp
@@ -13,39 +13,47 @@ from theano.configparser import AddConfigVar, EnumStr
 from theano.tensor.nnet import SoftmaxGrad
 from theano.tensor.signal.downsample import (
     DownsampleFactorMax, DownsampleFactorMaxGrad)
-from theano.sandbox.cuda import GpuOp
-from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
-                                           host_from_gpu,
-                                           gpu_contiguous, HostFromGpu,
-                                           gpu_alloc_empty, GpuAllocEmpty)
-from theano.sandbox.cuda.blas import (GpuConv, GpuDownsampleFactorMax,
-                                      GpuDownsampleFactorMaxGrad)
-from theano.sandbox.cuda.nnet import GpuSoftmax
-from theano.sandbox.cuda.opt_util import alpha_merge, output_merge
-from theano.sandbox.cuda import gpu_seqopt, register_opt
 
-from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
+from . import pygpu, init_dev
+from .basic_ops import (as_gpuarray_variable,
+                        host_from_gpu,
+                        gpu_contiguous, HostFromGpu,
+                        # No GpuAllocEmpty (yet)
+                        gpu_alloc, GpuAlloc)
+from .conv import GpuConv
+
+# These don't exist in gpuarray
+# GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad
+from .nnet import GpuSoftmax
+from .opt import gpu_seqopt, register_opt
+from .opt_util import alpha_merge, output_merge
+from .comp import NVCC_compiler
 
 
 def dnn_available():
-    if dnn_available.avail is None:
-        if not theano.sandbox.cuda.cuda_available:
-            dnn_available.msg = "CUDA not available"
-            dnn_available.avail = False
-            return False
-        dev = theano.sandbox.cuda.active_device_number()
-        if theano.sandbox.cuda.device_properties(dev)['major'] < 3:
-            dnn_available.msg = "Device not supported by cuDNN"
-            dnn_available.avail = False
-        else:
-            preambule = """
+    if dnn_available.avail is not None:
+        return dnn_available.avail
+    if pygpu is None:
+        dnn_available.msg = "PyGPU not available"
+        dnn_available.avail = False
+        return False
+    if not init_dev.device.startswith('cuda'):
+        dnn_available.msg = "Not on a CUDA device"
+        dnn_available.avail = False
+        return False
+    # This is a hack because bin_id is in the from of
+    # "sm_<major><minor>" for cuda devices.
+    if pygpu.get_default_context().bin_id < 'sm_30':
+        dnn_available.msg = "Device not supported by cuDNN"
+        dnn_available.avail = False
+    preambule = """
 #include <stdio.h>
 #include <cuda.h>
 #include <cudnn.h>
 #include <cudnn_helper.h>
-            """
+"""
 
-            body = """
+    body = """
 cudnnHandle_t _handle = NULL;
 cudnnStatus_t err;
 if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
@@ -54,40 +62,38 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
   return 1;
 }
 """
-            # Do not run here the test program. It would run on the
-            # default gpu, not the one selected by the user. If mixed
-            # GPU are installed or if the GPUs are configured in
-            # exclusive mode, this cause bad detection.
-            comp, out, err = NVCC_compiler.try_flags(
-                ["-l", "cudnn", "-I" + os.path.dirname(__file__),
-                 "-I" + os.path.join(theano.config.cuda.root, 'include'),
-                 "-L" + os.path.join(theano.config.cuda.root, 'lib64')],
-                preambule=preambule, body=body,
-                try_run=False, output=True)
+    # Do not run here the test program. It would run on the
+    # default gpu, not the one selected by the user. If mixed
+    # GPU are installed or if the GPUs are configured in
+    # exclusive mode, this cause bad detection.
+    comp, out, err = NVCC_compiler.try_flags(
+        ["-l", "cudnn", "-I" + os.path.dirname(__file__),
+         "-I" + os.path.join(theano.config.cuda.root, 'include'),
+         "-L" + os.path.join(theano.config.cuda.root, 'lib64')],
+        preambule=preambule, body=body,
+        try_run=False, output=True)
 
-            dnn_available.avail = comp
-            if not dnn_available.avail:
-                dnn_available.msg = (
-                    "Theano can not compile with cuDNN. We got this error:\n" +
-                    str(err))
-            else:
-                # If we can compile, check that we can import and run.
-                v = version()
-                if isinstance(v, tuple) and v[0] != v[1]:
-                    dnn_available.avail = False
-                    dnn_available.msg = ("Mixed dnn version. The header is"
-                                         " from one version, but we link with"
-                                         " a different version %s" % str(v))
-                    raise RuntimeError(dnn_available.msg)
-                if version() == (20, 20):
-                    dnn_available.avail = False
-                    dnn_available.msg = (
-                        "You have installed a release candidate of CuDNN v2."
-                        " This isn't supported anymore."
-                        " Update to CuDNN v2 final version.")
-                    raise RuntimeError(dnn_available.msg)
-
-    return dnn_available.avail
+    dnn_available.avail = comp
+    if not dnn_available.avail:
+        dnn_available.msg = (
+            "Theano can not compile with cuDNN. We got this error:\n" +
+            str(err))
+    else:
+        # If we can compile, check that we can import and run.
+        v = version()
+        if isinstance(v, tuple) and v[0] != v[1]:
+            dnn_available.avail = False
+            dnn_available.msg = ("Mixed dnn version. The header is"
+                                 " from one version, but we link with"
+                                 " a different version %s" % str(v))
+            raise RuntimeError(dnn_available.msg)
+        if version() == (20, 20):
+            dnn_available.avail = False
+            dnn_available.msg = (
+                "You have installed a release candidate of CuDNN v2."
+                " This isn't supported anymore."
+                " Update to CuDNN v2 final version.")
+            raise RuntimeError(dnn_available.msg)
 
 
 dnn_available.avail = None
@@ -124,11 +130,10 @@ if (%(err)s != CUDNN_STATUS_SUCCESS) {
     %(fail)s
 }
 }
-
         """ % dict(var=var, err=err, desc=desc, fail=fail)
 
 
-class DnnBase(GpuOp, COp):
+class DnnBase(COp):
     """
     Creates a handle for cudnn and pulls in the cudnn libraries and headers.
     """
@@ -140,16 +145,18 @@ class DnnBase(GpuOp, COp):
         COp.__init__(self, "dnn_base.c")
 
     def c_headers(self):
-        return ['cudnn.h', 'cudnn_helper.h']
+        return ['cudnn.h', 'cudnn_helper.h',
+                'gpuarray/types.h', 'gpuarray/array.h',
+                'gpuarray_api.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__)]
+        return [os.path.dirname(__file__), pygpu.get_include()]
 
     def c_libraries(self):
-        return ['cudnn']
+        return ['cudnn', 'gpuarray']
 
 
-class DnnVersion(GpuOp):
+class DnnVersion(Op):
     def c_compiler(self):
         return NVCC_compiler
 
@@ -210,7 +217,7 @@ def version():
 version.v = None
 
 
-class GpuDnnConvDesc(GpuOp):
+class GpuDnnConvDesc(Op):
     """This Op builds a convolution descriptor for use in the other
     convolution operations.
 
@@ -343,11 +350,13 @@ class GpuDnnConvDesc(GpuOp):
     def c_code_cache_version(self):
         return (2, version())
 
-
-AddConfigVar('dnn.conv.workmem',
-             "Default value for the workmem attribute of cudnn convolutions.",
-             EnumStr('small', 'none', 'large'),
-             in_c_key=False)
+# This is to avoid conflict with the one in cuda/dnn.py
+if not hasattr(config, 'dnn'):
+    AddConfigVar('dnn.conv.workmem',
+                 "Default value for the workmem attribute of cudnn "
+                 "convolutions.",
+                 EnumStr('small', 'none', 'large'),
+                 in_c_key=False)
 
 # scalar constants
 _zero = constant(numpy.asarray(0.0, dtype='float32'))
@@ -566,7 +575,7 @@ class GpuDnnConvGradW(DnnBase, COp):
         return [shape[2]]
 
 
-class GpuDnnConvGradI(DnnBase, COp):
+class GpuDnnConvGradI(DnnBase):
     """
     The convolution gradient with respect to the inputs.
 
@@ -719,7 +728,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     return GpuDnnConv(workmem=workmem)(img, kerns, out, desc)
 
 
-class GpuDnnPoolDesc(GpuOp):
+class GpuDnnPoolDesc(Op):
     """
     This Op builds a pooling descriptor for use in the other
     pooling operations.
@@ -1488,7 +1497,7 @@ err%(name)s = cudnnSoftmaxBackward(
 
 
 # Intentation for history
-if True:
+if False:
     # @register_opt('cudnn')  # this optimizer is registered in opt.py instead.
     @local_optimizer([GpuConv])
     def local_conv_dnn(node):
