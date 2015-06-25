@@ -312,7 +312,7 @@ class SequenceDB(DB):
         positions = list(self.__position__.items())
 
         def c(a, b):
-            return cmp(a[1], b[1])
+            return ((a > b) - (a < b))
         positions.sort(c)
 
         print("  position", positions, file=stream)

@@ -6,7 +6,6 @@ from nose.plugins.skip import SkipTest
 import os
 from fnmatch import fnmatch
 import theano
-from theano.compat import PY3
 try:
     import flake8.engine
     import flake8.main
