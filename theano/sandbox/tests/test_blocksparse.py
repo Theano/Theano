@@ -10,17 +10,11 @@ import theano
 from theano import tensor
 import theano.tests.unittest_tools as utt
 
-from theano.sandbox.blocksparse import sparse_block_dot, cpu_sparse_block_gemv, cpu_sparse_block_outer
-
-# debug
-from theano.sandbox.blocksparse import sparse_block_outer
-
+from theano.sandbox.blocksparse import sparse_block_dot, cpu_sparse_block_gemv, \
+    cpu_sparse_block_outer, sparse_block_outer
 
 
 class BlockSparse_Gemv_and_Outer(unittest.TestCase):
-    """
-        ?
-    """
 
     def runTest(self):
         pass
@@ -83,21 +77,19 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         for b in range(o.shape[0]):
             for j in range(o.shape[1]):
                 outputIdx = oIdx[b, j]
-
                 for i in range(h.shape[1]):
                     inputIdx = iIdx[b, i]
                     w = W[inputIdx, outputIdx]
-                    # this below is a gemv I think
                     o[b, j, :] += numpy.dot(h[b, i], w)
         return o
 
     @staticmethod
     def outer_numpy(o, x, y, xIdx, yIdx):
-
         for b in range(x.shape[0]):
             for i in range(xIdx.shape[1]):
                 for j in range(yIdx.shape[1]):
-                    o[xIdx[b, i], yIdx[b, j]] += numpy.outer(x[b, xIdx[b, i], :], y[b, yIdx[b, j], :])
+                    o[i, j] += numpy.outer(x[b, xIdx[b, i], :],
+                                           y[b, yIdx[b, j], :])
         return o
 
     def test_sparseblockdot(self):

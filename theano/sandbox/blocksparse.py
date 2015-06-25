@@ -11,11 +11,11 @@ from theano.gradient import grad_undefined
 class SparseBlockGemv(Op):
     """
     This op computes the dot product of specified pieces of vectors
-    and matrices, returning pieces of vectors.
-    It computes something like this for each j:
-      o[j] = sum_over_i(dot(W[i, j], h[i])) + o[j]
-    The i and j are taken from the inputIdx and outputIdx lists
-    respectively.
+    and matrices, returning pieces of vectors:
+        for b in range(batch_size):
+            for j in range(o.shape[1]):
+                for i in range(h.shape[1]):
+                    o[b, j, :] += numpy.dot(h[b, i], W[iIdx[b, i], oIdx[b, j]])
     """
 
     registered_opts = []
@@ -102,13 +102,10 @@ sparse_block_gemv_inplace = SparseBlockGemv(True)
 class SparseBlockOuter(Op):
     """
     This computes the outer product of two sets of pieces of vectors
-    updating a full matrix with the results.
-    It computes something like this:
-      o[i, j] = (alpha * outer(x[i], y[j])) + o[i, j]
-    The i and j are taken from the xIdx and yIdx lists respectively.
-    This op should not be called directly since its interface is
-    subject to change without notice.  It is involved in the gradient
-    of SparseBlockGemvSS.
+    updating a full matrix with the results:
+      for b in range(batch_size):
+        o[i, j] += (alpha * outer(x[xIdx[b, i]], y[yIdx[b, j]]))
+    This op is involved in the gradient of SparseBlockGemv.
     """
 
     registered_opts = []
@@ -246,7 +243,8 @@ def cpu_sparse_block_outer(o, x, y, xIdx, yIdx, alpha=1.0):
 def sparse_block_dot(W, h, inputIdx, b, outputIdx, inplace=False):
     """
     Compute the dot product (plus bias) of the specified pieces of vectors
-    and matrices.
+    and matrices. See SparseBlockGemv to get more information.
+
     Parameters
     ----------
     var: shape, comment
@@ -268,6 +266,7 @@ def sparse_block_dot(W, h, inputIdx, b, outputIdx, inplace=False):
     - `oSize` is the size of each of these output blocks.
     - `oWin` is the number of output blocks that will actually be computed.
       Which blocks will be computed is specified in `outputIdx`.
+
     """
     assert inputIdx.ndim == h.ndim - 1
     assert outputIdx.ndim == inputIdx.ndim
