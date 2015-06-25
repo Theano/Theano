@@ -1,70 +1,51 @@
 #section support_code
 static cudnnHandle_t _handle = NULL;
 
-static int
-c_set_tensor4d(PyGpuArrayObject *var, cudnnTensorDescriptor_t desc) {
-  cudnnDataType_t dt;
-  size_t ds;
-  switch (var->ga.typecode) {
-  case GA_FLOAT:
-    dt = CUDNN_DATA_FLOAT;
-    break;
-  case GA_DOUBLE:
-    dt = CUDNN_DATA_DOUBLE;
-    break;
-  default:
-    PyErr_SetString(PyExc_TypeError, "Non-float datatype in c_set_tensor4d");
-    return -1;
-  }
-  ds = gpuarray_get_elsize(var->ga.typecode);
 
-  int str0, str1, str2, str3;
-  // cudnn do not like 0s in strides
-  str3 = PyGpuArray_STRIDES(var)[3]?PyGpuArray_STRIDES(var)[3]/ds:1;
-  str2 = PyGpuArray_STRIDES(var)[2]?PyGpuArray_STRIDES(var)[2]/ds:PyGpuArray_DIMS(var)[3];
-  str1 = PyGpuArray_STRIDES(var)[1]?PyGpuArray_STRIDES(var)[1]/ds:PyGpuArray_DIMS(var)[2]*PyGpuArray_DIMS(var)[3];
-  str0 = PyGpuArray_STRIDES(var)[0]?PyGpuArray_STRIDES(var)[0]/ds:PyGpuArray_DIMS(var)[2]*PyGpuArray_DIMS(var)[3]*PyGpuArray_DIMS(var)[1];
-  cudnnStatus_t err = cudnnSetTensor4dDescriptorEx(
-    desc, dt,
-    PyGpuArray_DIM(var, 0), PyGpuArray_DIM(var, 1),
-    PyGpuArray_DIM(var, 2), PyGpuArray_DIM(var, 3),
-    str0, str1, str2, str3);
+static int
+c_set_tensorNd(CudaNdarray *var, int dim, cudnnTensorDescriptor_t desc) {
+
+
+  int strides[dim];
+  int default_str = 1;
+
+  for (int i = dim-1; i >= 0; i--)
+  {
+    if (CudaNdarray_HOST_STRIDES(var)[i])
+      strides[i] = CudaNdarray_HOST_STRIDES(var)[i];
+    else
+      strides[i] = default_str;
+    default_str *= CudaNdarray_HOST_DIMS(var)[i];
+  }
+
+  cudnnStatus_t err = cudnnSetTensorNdDescriptor(desc, CUDNN_DATA_FLOAT, dim,
+                                                 CudaNdarray_HOST_DIMS(var),
+                                                 strides);
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError,
-		 "Could not set tensor4d descriptor: %s",
-		 cudnnGetErrorString(err));
+		 "Could not set tensorNd descriptor: %s"
+		 "dim=%d",
+		 cudnnGetErrorString(err), dim);
     return -1;
   }
   return 0;
 }
 
+
 static int
-c_set_filter(PyGpuArrayObject *var, cudnnFilterDescriptor_t desc) {
-  cudnnDataType_t dt;
-  if (!GpuArray_IS_C_CONTIGUOUS(&var->ga)) {
+c_set_filterNd(CudaNdarray *var, int dim, cudnnFilterDescriptor_t desc) {
+  if (!CudaNdarray_is_c_contiguous(var)) {
     PyErr_SetString(PyExc_ValueError,
 		    "Only contiguous filters (kernels) are supported.");
     return -1;
   }
-  switch (var->ga.typecode) {
-  case GA_FLOAT:
-    dt = CUDNN_DATA_FLOAT;
-    break;
-  case GA_DOUBLE:
-    dt = CUDNN_DATA_DOUBLE;
-    break;
-  default:
-    PyErr_SetString(PyExc_TypeError, "Non-float datatype in c_set_filter");
-    return -1;
-  }
-  cudnnStatus_t err = cudnnSetFilter4dDescriptor(
-    desc, dt,
-    PyGpuArray_DIMS(var)[0], PyGpuArray_DIMS(var)[1],
-    PyGpuArray_DIMS(var)[2], PyGpuArray_DIMS(var)[3]);
+  cudnnStatus_t err = cudnnSetFilterNdDescriptor(desc, CUDNN_DATA_FLOAT, dim,
+                                                 CudaNdarray_HOST_DIMS(var));
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError,
-		 "Could not set filter descriptor: %s.",
-		 cudnnGetErrorString(err));
+		 "Could not set filter descriptor: %s."
+		 " dims= %d",
+		 cudnnGetErrorString(err), dim);
     return -1;
   }
   return 0;
