@@ -3,7 +3,6 @@ from __future__ import print_function
 # as False, and the string s'True', 'true', '1' as True.
 # We also accept the bool type as its corresponding value!
 
-import inspect
 import logging
 import os
 import shlex
@@ -306,11 +305,7 @@ class ConfigParam(object):
             try:
                 val_str = fetch_val_for_key(self.fullname)
             except KeyError:
-                if inspect.isgeneratorfunction(self.default):
-                    for v in self.default():
-                        val_str = v
-                        self.__set__(None, val_str)
-                elif callable(self.default):
+                if callable(self.default):
                     val_str = self.default()
                 else:
                     val_str = self.default

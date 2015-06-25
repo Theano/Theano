@@ -162,37 +162,6 @@ _logger = logging.getLogger('theano.tensor.blas')
 # We need to define blas.ldflag before we try to import scipy.
 # Otherwise, we give an optimization warning for no reason in some cases.
 def default_blas_ldflags():
-    """This is a generator. It work in 2 step. The first we guess a
-    default blas, then we test it. If it fail, we return an empty
-    blas.
-
-    This is needed for Anaconda on Windows. I wasn't able to find how
-    to detect if the mkl from Anaconda can be reused or not. I was not
-    able to find a way to test it with try_flags correctly. Also, this
-    will test the real code, so we do not need to update the test in
-    case the software change. This also enables the test for all
-    cases.
-
-    """
-    flags = static_default_blas_flags()
-    yield flags
-
-    # Now test it!
-    try:
-        old = config.compute_test_value
-        config.compute_test_value = 'off'
-        x = theano.tensor.fmatrix()
-        try:
-            theano.function([x], theano.tensor.blas._dot22(x, x),
-                            profile=False)
-        except Exception as e:
-            print(e)
-            yield ""
-    finally:
-        config.compute_test_value = old
-
-
-def static_default_blas_flags():
     try:
         if (hasattr(numpy.distutils, '__config__') and
             numpy.distutils.__config__):
@@ -291,20 +260,27 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
                                           "mk2_rt"]])
         # Anaconda
         if "Anaconda" in sys.version and sys.platform == "win32":
-            lib_path = os.path.join(sys.prefix, 'pkgs')
-            for dir in os.listdir(lib_path):
-                if dir.startswith("mkl-rt-"):
-                    lib_path = os.path.join(lib_path, dir, "DLLs")
-                    break
-            if os.path.exists(lib_path):
-                #-LC:\\Users\\*\\Anaconda\\libs
+            # If the "mkl-service" conda package (available through Python
+            # package "mkl") is installed and importable, then the libraries
+            # (installed by conda package "mkl-rt") are actually available.
+            # Using "conda install mkl" will install both, as well as
+            # optimized versions of numpy and scipy.
+            try:
+                import mkl
+            except ImportError as e:
+                _logger.info('Conda mkl is not available: %s', e)
+            else:
+                # This branch is executed if no exception was raised
+                lib_path = os.path.join(sys.prefix, 'DLLs')
                 flags = ['-L%s' % lib_path]
                 flags += ['-l%s' % l for l in ["mkl_core",
                                                "mkl_intel_thread",
                                                "mkl_rt"]]
-                return ' '.join(flags)
+                if GCC_compiler.try_flags(flags):
+                    return ' '.join(flags)
 
-        # if numpy was linked with library that are not installed, we
+        # If numpy was linked with library that are not installed or
+        # the dev version of the package is not currently available, we
         # can't reuse them.
         if any(os.path.exists(dir) for dir in blas_info['library_dirs']):
             ret = (
@@ -316,10 +292,6 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
                 ['-L%s' % l for l in blas_info['library_dirs']] +
                 ['-l%s' % l for l in blas_info['libraries']] +
                 [])
-#               ['-I%s' % l for l in blas_info['include_dirs']])
-            # if numpy was linked with library that are not installed or
-            # the dev version of the package is not currently available, we
-            # can't reuse them.
             if GCC_compiler.try_flags(ret):
                 return ' '.join(ret)
 
@@ -529,20 +501,59 @@ ger = Ger(destructive=False)
 ger_destructive = Ger(destructive=True)
 
 
-@utils.memoize
 def ldflags(libs=True, flags=False, libs_dir=False, include_dir=False):
-    """Return a list of libraries against which an Op's object file should be
-    linked to benefit from a BLAS implementation.
+    """Extract a list of compilation flags from config.blas.ldflags.
 
-    Default: ['blas'], but configuration variable config.blas.ldflags
-    overrides this.
+    Depending on the options, different type of flags will be kept.
+    It returns a list of libraries against which an Op's object file
+    should be linked to benefit from a BLAS implementation.
+
+    :type libs: bool, defaults to True
+    :param libs: extract flags starting with "-l"
+    :type libs_dir: bool, defaults to False
+    :param libs_dir: extract flags starting with "-L"
+    :type include_dir: bool, defaults to False
+    :param include_dir: extract flags starting with "-I"
+    :type flags: bool, defaults to False
+    :param flags: extract all the other flags
+    :rtype: list of strings
+    :returns: extracted flags
+    """
+    ldflags_str = theano.config.blas.ldflags
+    return _ldflags(ldflags_str=ldflags_str,
+                    libs=libs,
+                    flags=flags,
+                    libs_dir=libs_dir,
+                    include_dir=include_dir)
+
+
+@utils.memoize
+def _ldflags(ldflags_str, libs, flags, libs_dir, include_dir):
+    """Extract list of compilation flags from a string.
+
+    Depending on the options, different type of flags will be kept.
+
+    :type ldflags_str: string
+    :param ldflags_str: the string to process. Typically, this will
+        be the content of `theano.config.blas.ldflags`
+    :type libs: bool
+    :param libs: extract flags starting with "-l"
+    :type libs_dir: bool
+    :param libs_dir: extract flags starting with "-L"
+    :type include_dir: bool
+    :param include_dir: extract flags starting with "-I"
+    :type flags: bool
+    :param flags: extract all the other flags
+    :rtype: list of strings
+    :returns: extracted flags
     """
     rval = []
     if libs_dir:
         found_dyn = False
-        dirs = [x[2:] for x in config.blas.ldflags.split()
+        dirs = [x[2:] for x in ldflags_str.split()
                 if x.startswith('-L')]
-        l = ldflags()
+        l = _ldflags(ldflags_str=ldflags_str, libs=True,
+                     flags=False, libs_dir=False, include_dir=False)
         for d in dirs:
             for f in os.listdir(d):
                 if (f.endswith('.so') or f.endswith('.dylib') or
@@ -554,7 +565,7 @@ def ldflags(libs=True, flags=False, libs_dir=False, include_dir=False):
                     "library_dir of the library we use for blas. If you use "
                     "ATLAS, make sure to compile it with dynamics library.")
 
-    for t in config.blas.ldflags.split():
+    for t in ldflags_str.split():
         # Remove extra quote.
         if t.startswith("'") or t.startswith('"'):
             t = t[1:]
@@ -565,7 +576,8 @@ def ldflags(libs=True, flags=False, libs_dir=False, include_dir=False):
             t0, t1, t2 = t[0:3]
             assert t0 == '-'
         except Exception:
-            raise ValueError('invalid token in config.blas.ldflags', t)
+            raise ValueError('invalid token "%s" in ldflags_str: "%s"'
+                             % (t, ldflags_str))
         if libs_dir and t1 == 'L':
             rval.append(t[2:])
         elif include_dir and t1 == 'I':
