@@ -619,16 +619,16 @@ class Function(object):
         # swap SharedVariable
         if swap is not None:
             swap_svs_ori = swap.keys()
+            exist_svs = [i.variable for i in maker.inputs]
 
             # Check if given ShareVariables exist
             for sv in swap_svs_ori:
-                exist_svs = [i.variable for i in maker.inputs]
                 if sv not in exist_svs:
                     warnings.warn("SharedVairable: %s not found" % (sv.name))
 
             # Swap SharedVairable in fgraph and ins
             for index, (i, in_v) in enumerate(zip(ins, fg_cpy.inputs)):
-                # Variables in maker.ipnuts are defined by user, therefore we
+                # Variables in maker.inputs are defined by user, therefore we
                 # use them to make comparision and do the mapping.
                 # Otherwise we don't touch them.
                 swap_sv = maker.inputs[index].variable
