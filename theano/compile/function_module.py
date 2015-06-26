@@ -605,7 +605,9 @@ class Function(object):
         # Re initialize Outs and swap update and variable in Ins
         # By doing this, we can pass FunctionMaker._check_unused_inputs()
         outs = list(map(SymbolicOutput, fg_cpy.outputs[:len(maker.outputs)]))
-
+        for out_ori, out_cpy in zip(maker.outputs, outs):
+            out_cpy.borrow = out_ori.borrow
+            
         update_i = len(outs)
         for i, in_var in zip(ins, fg_cpy.inputs):
             i.variable = in_var
