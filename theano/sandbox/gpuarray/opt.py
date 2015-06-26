@@ -12,11 +12,13 @@ from theano import tensor, scalar, gof
 from theano.compile import optdb
 from theano.gof import (local_optimizer, EquilibriumDB,
                         SequenceDB, Optimizer, toolbox)
+from theano.gof.optdb import LocalGroupDB
 
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
 from theano.tensor.nnet.conv import ConvOp
 from theano.tests.breakpoint import PdbBreakpoint
+
 from .type import GpuArrayType, GpuArrayConstant
 from .basic_ops import (host_from_gpu, gpu_from_host,
                         HostFromGpu, GpuFromHost,
@@ -38,6 +40,10 @@ gpu_optimizer = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
 
 gpu_seqopt = SequenceDB()
+
+# Don't register this right now
+conv_groupopt = LocalGroupDB()
+conv_groupopt.__name__ = "gpua_conv_opts"
 
 gpu_seqopt.register('gpuarray_local_optimiziations', gpu_optimizer, 1,
                     'fast_compile', 'fast_run', 'inplace', 'gpuarray')
@@ -688,6 +694,9 @@ def local_gpu_conv(node):
     out = gpu_from_host(out)
     out.values_eq_approx = values_eq_approx
     return [out]
+
+# Register this here so that it goes after 'local_gpu_conv'
+register_opt()(conv_groupopt)
 
 
 @register_opt("low_memory")
