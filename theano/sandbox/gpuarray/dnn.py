@@ -1487,263 +1487,257 @@ err%(name)s = cudnnSoftmaxBackward(
         """
 
 
-# Intentation for history
-if False:
-    # @register_opt('cudnn')  # this optimizer is registered in opt.py instead.
-    @local_optimizer([GpuConv])
-    def local_conv_dnn(node):
+# @register_opt('cudnn')  # this optimizer is registered in opt.py instead.
+@local_optimizer([GpuConv])
+def local_conv_dnn(node):
+    if not dnn_available():
+        return
+    if isinstance(node.op, GpuConv):
+        if node.op.border_mode not in ['full', 'valid']:
+            return
+        img, kern = node.inputs
+        border_mode = node.op.border_mode
+        subsample = node.op.subsample
+        direction_hint = node.op.direction_hint
+        rval = dnn_conv(img, kern,
+                        border_mode=border_mode, subsample=subsample,
+                        direction_hint=direction_hint)
+        if node.outputs[0].broadcastable != rval.broadcastable:
+            rval = tensor.patternbroadcast(
+                rval, node.outputs[0].type.broadcastable)
+        return [rval]
+
+# This optimizer is registered in opt.py as part of the meta-optimizer.
+# It tries exactly the opposite code path of what local_conv_dnn() uses,
+# because for some input/kernel shape configurations, this is faster.
+@local_optimizer([GpuConv])
+def local_conv_dnn_alternative(node):
+    if not dnn_available():
+        return
+    if isinstance(node.op, GpuConv):
+        border_mode = node.op.border_mode
+        subsample = node.op.subsample
+        if border_mode not in ['full', 'valid'] or subsample != (1, 1):
+            return
+        img, kern = node.inputs
+        direction_hint = node.op.direction_hint
+        if border_mode == 'full':
+            # for a full convolution, try using the forward pass instead
+            # of the backward pass wrt. inputs
+            direction_hint = 'forward!'
+        elif border_mode == 'valid':
+            # for a valid convolution, try using the backward pass wrt.
+            # weights instead of the forward pass and vice versa
+            if direction_hint == 'bprop weights':
+                direction_hint = 'forward'
+            else:
+                direction_hint = 'bprop weights'
+        rval = dnn_conv(img, kern,
+                        border_mode=border_mode, subsample=subsample,
+                        direction_hint=direction_hint)
+        if node.outputs[0].broadcastable != rval.broadcastable:
+            rval = tensor.patternbroadcast(
+                rval, node.outputs[0].type.broadcastable)
+        return [rval]
+
+@local_optimizer([GpuDnnConv], inplace=True)
+def local_dnn_conv_inplace(node):
+    if type(node.op) != GpuDnnConv or node.op.inplace:
+        return
+    inputs = list(node.inputs)
+    dest = inputs[2]
+    if (dest.owner and
+            isinstance(dest.owner.op, GpuAllocEmpty) and
+            len(dest.clients) > 1):
+        inputs[2] = GpuAllocEmpty(dest.owner.op.dtype)(*dest.owner.inputs)
+    return [GpuDnnConv(workmem=node.op.workmem, inplace=True)(*inputs)]
+
+@local_optimizer([GpuDnnConvGradW], inplace=True)
+def local_dnn_convgw_inplace(node):
+    if type(node.op) != GpuDnnConvGradW or node.op.inplace:
+        return
+    inputs = list(node.inputs)
+    dest = inputs[2]
+    if (dest.owner and
+            isinstance(dest.owner.op, GpuAllocEmpty) and
+            len(dest.clients) > 1):
+        inputs[2] = GpuAllocEmpty(dest.owner.op.dtype)(*dest.owner.inputs)
+    return [GpuDnnConvGradW(inplace=True)(*inputs)]
+
+@local_optimizer([GpuDnnConvGradI], inplace=True)
+def local_dnn_convgi_inplace(node):
+    if type(node.op) != GpuDnnConvGradI or node.op.inplace:
+        return
+    inputs = list(node.inputs)
+    dest = inputs[2]
+    if (dest.owner and
+            isinstance(dest.owner.op, GpuAllocEmpty) and
+            len(dest.clients) > 1):
+        inputs[2] = GpuAllocEmpty(dest.owner.op.dtype)(*dest.owner.inputs)
+    return [GpuDnnConvGradI(inplace=True)(*inputs)]
+
+optdb.register('local_dnn_conv_inplace',
+               tensor.opt.in2out(local_dnn_conv_inplace,
+                                 local_dnn_convgw_inplace,
+                                 local_dnn_convgi_inplace,
+                                 name="local_dnn_conv_inplace"),
+               70.0, 'fast_run', 'inplace', 'gpu', 'cudnn')
+
+@register_opt('cudnn')
+@alpha_merge(GpuDnnConv, alpha_in=4, beta_in=5, nd=4)
+def local_dnn_conv_alpha_merge(node, *inputs):
+    if not dnn_available() or version() == -1:
+        return None
+    return [GpuDnnConv(workmem=node.op.workmem)(*inputs)]
+
+@register_opt('cudnn')
+@alpha_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5, nd=4)
+def local_dnn_convw_alpha_merge(node, *inputs):
+    if not dnn_available() or version() == -1:
+        return None
+    return [GpuDnnConvGradW()(*inputs)]
+
+@register_opt('cudnn')
+@alpha_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5, nd=4)
+def local_dnn_convi_alpha_merge(node, *inputs):
+    if not dnn_available() or version() == -1:
+        return None
+    return [GpuDnnConvGradI()(*inputs)]
+
+@register_opt('cudnn')
+@output_merge(GpuDnnConv, alpha_in=4, beta_in=5, out_in=2, nd=4)
+def local_dnn_conv_output_merge(node, *inputs):
+    inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
+    return [GpuDnnConv(workmem=node.op.workmem)(*inputs)]
+
+@register_opt('cudnn')
+@output_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5, out_in=2, nd=4)
+def local_dnn_convw_output_merge(node, *inputs):
+    inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
+    return [GpuDnnConvGradW()(*inputs)]
+
+@register_opt('cudnn')
+@output_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5, out_in=2, nd=4)
+def local_dnn_convi_output_merge(node, *inputs):
+    inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
+    return [GpuDnnConvGradI()(*inputs)]
+
+@register_opt('cudnn')
+@local_optimizer([GpuDownsampleFactorMax])
+def local_pool_dnn(node):
+    if not dnn_available():
+        return
+    if isinstance(node.op, GpuDownsampleFactorMax):
+        if not node.op.ignore_border:
+            return
+        img, = node.inputs
+        ds = node.op.ds
+        return [dnn_pool(gpu_contiguous(img), ds, ds)]
+
+@register_opt('cudnn')
+@local_optimizer([DownsampleFactorMax])
+def local_pool_dnn_alternative(node):
+    if not dnn_available():
+        return
+    if isinstance(node.op, DownsampleFactorMax):
+        if not node.op.ignore_border:
+            return
+        img, = node.inputs
+        ds = node.op.ds
+        stride = node.op.st
+        pad = node.op.padding
+        mode = node.op.mode
+        if (img.owner and isinstance(img.owner.op, HostFromGpu)):
+            ret = dnn_pool(gpu_contiguous(img.owner.inputs[0]),
+                           ds, stride=stride, pad=pad, mode=mode)
+            return [host_from_gpu(ret)]
+
+@register_opt('cudnn')
+@local_optimizer([GpuDownsampleFactorMaxGrad])
+def local_pool_dnn_grad(node):
+    if not dnn_available():
+        return
+    if isinstance(node.op, GpuDownsampleFactorMaxGrad):
+        if not node.op.ignore_border:
+            return
+        inp, out, inp_grad = node.inputs
+        ds = node.op.ds
+
+        desc = GpuDnnPoolDesc(ws=ds, stride=ds, mode="max")()
+        return [GpuDnnPoolGrad()(gpu_contiguous(inp),
+                                 gpu_contiguous(out),
+                                 gpu_contiguous(inp_grad),
+                                 desc)]
+
+@register_opt('cudnn')
+@local_optimizer([DownsampleFactorMaxGrad])
+def local_pool_dnn_grad_stride(node):
+    if not dnn_available():
+        return
+    if isinstance(node.op, DownsampleFactorMaxGrad):
+        if not node.op.ignore_border:
+            return
+        inp, out, inp_grad = node.inputs
+        ds = node.op.ds
+        st = node.op.st
+        pad = node.op.padding
+        mode = node.op.mode
+
+        if ((inp.owner and isinstance(inp.owner.op, HostFromGpu)) or
+            (out.owner and isinstance(out.owner.op, HostFromGpu)) or
+            (inp_grad.owner and isinstance(inp_grad.owner.op,
+                                           HostFromGpu))):
+            desc = GpuDnnPoolDesc(ws=ds, stride=st, mode=mode, pad=pad)()
+            ret = GpuDnnPoolGrad()(gpu_contiguous(inp),
+                                   gpu_contiguous(out),
+                                   gpu_contiguous(inp_grad),
+                                   desc)
+            return [host_from_gpu(ret)]
+
+@register_opt('cudnn')
+@local_optimizer([GpuSoftmax])
+def local_softmax_dnn(node):
+    if not dnn_available():
+        return
+    if isinstance(node.op, GpuSoftmax):
+        ins = node.inputs[0].dimshuffle(0, 1, 'x', 'x')
+        ins = gpu_contiguous(ins)
+        out = GpuDnnSoftmax('bc01', 'accurate', 'channel')(ins)
+        out = as_gpuarray_variable(out.dimshuffle(0, 1))
+        return [out]
+
+class NoCuDNNRaise(Optimizer):
+    def apply(self, fgraph):
+        """ Raise a RuntimeError if cudnn can't be used"""
+        if not dnn_available():
+            # Make an assert error as we want Theano to fail, not
+            # just skip this optimization.
+            raise AssertionError(
+                "cuDNN optimization was enabled, but Theano was not able"
+                " to use it. We got this error: \n" +
+                dnn_available.msg)
+gpu_seqopt.register("NoCuDNNRaise", NoCuDNNRaise(), 0, 'cudnn')
+
+@register_opt('cudnn')
+@local_optimizer([SoftmaxGrad])
+def local_softmax_dnn_grad(node):
+    if (isinstance(node.op, SoftmaxGrad) and
+        ((node.inputs[0].owner and
+          isinstance(node.inputs[0].owner.op, HostFromGpu)) or
+         (node.inputs[1].owner and
+          isinstance(node.inputs[1].owner.op, HostFromGpu)))):
         if not dnn_available():
             return
-        if isinstance(node.op, GpuConv):
-            if node.op.border_mode not in ['full', 'valid']:
+        ins = []
+        for n in node.inputs:
+            if isinstance(n.owner.op, HostFromGpu):
+                n = n.owner.inputs[0]
+            if n.ndim != 2:
                 return
-            img, kern = node.inputs
-            border_mode = node.op.border_mode
-            subsample = node.op.subsample
-            direction_hint = node.op.direction_hint
-            rval = dnn_conv(img, kern,
-                            border_mode=border_mode, subsample=subsample,
-                            direction_hint=direction_hint)
-            if node.outputs[0].broadcastable != rval.broadcastable:
-                rval = tensor.patternbroadcast(
-                    rval, node.outputs[0].type.broadcastable)
-            return [rval]
+            ins.append(n.dimshuffle(0, 1, 'x', 'x'))
 
-    # This optimizer is registered in opt.py as part of the meta-optimizer.
-    # It tries exactly the opposite code path of what local_conv_dnn() uses,
-    # because for some input/kernel shape configurations, this is faster.
-    @local_optimizer([GpuConv])
-    def local_conv_dnn_alternative(node):
-        if not dnn_available():
-            return
-        if isinstance(node.op, GpuConv):
-            border_mode = node.op.border_mode
-            subsample = node.op.subsample
-            if border_mode not in ['full', 'valid'] or subsample != (1, 1):
-                return
-            img, kern = node.inputs
-            direction_hint = node.op.direction_hint
-            if border_mode == 'full':
-                # for a full convolution, try using the forward pass instead
-                # of the backward pass wrt. inputs
-                direction_hint = 'forward!'
-            elif border_mode == 'valid':
-                # for a valid convolution, try using the backward pass wrt.
-                # weights instead of the forward pass and vice versa
-                if direction_hint == 'bprop weights':
-                    direction_hint = 'forward'
-                else:
-                    direction_hint = 'bprop weights'
-            rval = dnn_conv(img, kern,
-                            border_mode=border_mode, subsample=subsample,
-                            direction_hint=direction_hint)
-            if node.outputs[0].broadcastable != rval.broadcastable:
-                rval = tensor.patternbroadcast(
-                    rval, node.outputs[0].type.broadcastable)
-            return [rval]
-
-    @local_optimizer([GpuDnnConv], inplace=True)
-    def local_dnn_conv_inplace(node):
-        if type(node.op) != GpuDnnConv or node.op.inplace:
-            return
-        inputs = list(node.inputs)
-        dest = inputs[2]
-        if (dest.owner and
-                isinstance(dest.owner.op, GpuAllocEmpty) and
-                len(dest.clients) > 1):
-            inputs[2] = GpuAllocEmpty(dest.owner.op.dtype)(*dest.owner.inputs)
-        return [GpuDnnConv(workmem=node.op.workmem, inplace=True)(*inputs)]
-
-    @local_optimizer([GpuDnnConvGradW], inplace=True)
-    def local_dnn_convgw_inplace(node):
-        if type(node.op) != GpuDnnConvGradW or node.op.inplace:
-            return
-        inputs = list(node.inputs)
-        dest = inputs[2]
-        if (dest.owner and
-                isinstance(dest.owner.op, GpuAllocEmpty) and
-                len(dest.clients) > 1):
-            inputs[2] = GpuAllocEmpty(dest.owner.op.dtype)(*dest.owner.inputs)
-        return [GpuDnnConvGradW(inplace=True)(*inputs)]
-
-    @local_optimizer([GpuDnnConvGradI], inplace=True)
-    def local_dnn_convgi_inplace(node):
-        if type(node.op) != GpuDnnConvGradI or node.op.inplace:
-            return
-        inputs = list(node.inputs)
-        dest = inputs[2]
-        if (dest.owner and
-                isinstance(dest.owner.op, GpuAllocEmpty) and
-                len(dest.clients) > 1):
-            inputs[2] = GpuAllocEmpty(dest.owner.op.dtype)(*dest.owner.inputs)
-        return [GpuDnnConvGradI(inplace=True)(*inputs)]
-
-    optdb.register('local_dnn_conv_inplace',
-                   tensor.opt.in2out(local_dnn_conv_inplace,
-                                     local_dnn_convgw_inplace,
-                                     local_dnn_convgi_inplace,
-                                     name="local_dnn_conv_inplace"),
-                   70.0, 'fast_run', 'inplace', 'gpu', 'cudnn')
-
-    @register_opt('cudnn')
-    @alpha_merge(GpuDnnConv, alpha_in=4, beta_in=5, nd=4)
-    def local_dnn_conv_alpha_merge(node, *inputs):
-        if not dnn_available() or version() == -1:
-            return None
-        return [GpuDnnConv(workmem=node.op.workmem)(*inputs)]
-
-    @register_opt('cudnn')
-    @alpha_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5, nd=4)
-    def local_dnn_convw_alpha_merge(node, *inputs):
-        if not dnn_available() or version() == -1:
-            return None
-        return [GpuDnnConvGradW()(*inputs)]
-
-    @register_opt('cudnn')
-    @alpha_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5, nd=4)
-    def local_dnn_convi_alpha_merge(node, *inputs):
-        if not dnn_available() or version() == -1:
-            return None
-        return [GpuDnnConvGradI()(*inputs)]
-
-    @register_opt('cudnn')
-    @output_merge(GpuDnnConv, alpha_in=4, beta_in=5, out_in=2, nd=4)
-    def local_dnn_conv_output_merge(node, *inputs):
-        inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
-        return [GpuDnnConv(workmem=node.op.workmem)(*inputs)]
-
-    @register_opt('cudnn')
-    @output_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5, out_in=2, nd=4)
-    def local_dnn_convw_output_merge(node, *inputs):
-        inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
-        return [GpuDnnConvGradW()(*inputs)]
-
-    @register_opt('cudnn')
-    @output_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5, out_in=2, nd=4)
-    def local_dnn_convi_output_merge(node, *inputs):
-        inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
-        return [GpuDnnConvGradI()(*inputs)]
-
-    @register_opt('cudnn')
-    @local_optimizer([GpuDownsampleFactorMax])
-    def local_pool_dnn(node):
-        if not dnn_available():
-            return
-        if isinstance(node.op, GpuDownsampleFactorMax):
-            if not node.op.ignore_border:
-                return
-            img, = node.inputs
-            ds = node.op.ds
-            return [dnn_pool(gpu_contiguous(img), ds, ds)]
-
-    @register_opt('cudnn')
-    @local_optimizer([DownsampleFactorMax])
-    def local_pool_dnn_alternative(node):
-        if not dnn_available():
-            return
-        if isinstance(node.op, DownsampleFactorMax):
-            if not node.op.ignore_border:
-                return
-            img, = node.inputs
-            ds = node.op.ds
-            stride = node.op.st
-            pad = node.op.padding
-            mode = node.op.mode
-            if (img.owner and isinstance(img.owner.op, HostFromGpu)):
-                ret = dnn_pool(gpu_contiguous(img.owner.inputs[0]),
-                               ds, stride=stride, pad=pad, mode=mode)
-                return [host_from_gpu(ret)]
-
-    @register_opt('cudnn')
-    @local_optimizer([GpuDownsampleFactorMaxGrad])
-    def local_pool_dnn_grad(node):
-        if not dnn_available():
-            return
-        if isinstance(node.op, GpuDownsampleFactorMaxGrad):
-            if not node.op.ignore_border:
-                return
-            inp, out, inp_grad = node.inputs
-            ds = node.op.ds
-
-            desc = GpuDnnPoolDesc(ws=ds, stride=ds, mode="max")()
-            return [GpuDnnPoolGrad()(gpu_contiguous(inp),
-                                     gpu_contiguous(out),
-                                     gpu_contiguous(inp_grad),
-                                     desc)]
-
-    @register_opt('cudnn')
-    @local_optimizer([DownsampleFactorMaxGrad])
-    def local_pool_dnn_grad_stride(node):
-        if not dnn_available():
-            return
-        if isinstance(node.op, DownsampleFactorMaxGrad):
-            if not node.op.ignore_border:
-                return
-            inp, out, inp_grad = node.inputs
-            ds = node.op.ds
-            st = node.op.st
-            pad = node.op.padding
-            mode = node.op.mode
-
-            if ((inp.owner and isinstance(inp.owner.op, HostFromGpu)) or
-                (out.owner and isinstance(out.owner.op, HostFromGpu)) or
-                (inp_grad.owner and isinstance(inp_grad.owner.op,
-                                               HostFromGpu))):
-                desc = GpuDnnPoolDesc(ws=ds, stride=st, mode=mode, pad=pad)()
-                ret = GpuDnnPoolGrad()(gpu_contiguous(inp),
-                                       gpu_contiguous(out),
-                                       gpu_contiguous(inp_grad),
-                                       desc)
-                return [host_from_gpu(ret)]
-
-    @register_opt('cudnn')
-    @local_optimizer([GpuSoftmax])
-    def local_softmax_dnn(node):
-        if not dnn_available():
-            return
-        if isinstance(node.op, GpuSoftmax):
-            ins = node.inputs[0].dimshuffle(0, 1, 'x', 'x')
-            ins = gpu_contiguous(ins)
-            out = GpuDnnSoftmax('bc01', 'accurate', 'channel')(ins)
-            out = as_gpuarray_variable(out.dimshuffle(0, 1))
-            return [out]
-
-    class NoCuDNNRaise(Optimizer):
-        def apply(self, fgraph):
-            """ Raise a RuntimeError if cudnn can't be used"""
-            if not dnn_available():
-                # Make an assert error as we want Theano to fail, not
-                # just skip this optimization.
-                raise AssertionError(
-                    "cuDNN optimization was enabled, but Theano was not able"
-                    " to use it. We got this error: \n" +
-                    dnn_available.msg)
-    gpu_seqopt.register("NoCuDNNRaise", NoCuDNNRaise(), 0, 'cudnn')
-
-    @register_opt('cudnn')
-    @local_optimizer([SoftmaxGrad])
-    def local_softmax_dnn_grad(node):
-        if (isinstance(node.op, SoftmaxGrad) and
-            ((node.inputs[0].owner and
-              isinstance(node.inputs[0].owner.op, HostFromGpu)) or
-             (node.inputs[1].owner and
-              isinstance(node.inputs[1].owner.op, HostFromGpu)))):
-            if not dnn_available():
-                return
-            ins = []
-            for n in node.inputs:
-                if isinstance(n.owner.op, HostFromGpu):
-                    n = n.owner.inputs[0]
-                if n.ndim != 2:
-                    return
-                ins.append(n.dimshuffle(0, 1, 'x', 'x'))
-
-            out = GpuDnnSoftmaxGrad(
-                'bc01',
-                'accurate',
-                'channel'
-            )(
-                gpu_contiguous(ins[0]),
-                gpu_contiguous(ins[1])
-            )
-            return [out.dimshuffle(0, 1)]
+        out = GpuDnnSoftmaxGrad('bc01',
+                                'accurate',
+                                'channel')(gpu_contiguous(ins[0]),
+                                           gpu_contiguous(ins[1]))
+        return [out.dimshuffle(0, 1)]
