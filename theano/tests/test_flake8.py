@@ -58,7 +58,6 @@ whitelist_flake8 = [
     "typed_list/tests/test_opt.py",
     "typed_list/tests/test_basic.py",
     "tensor/blas_headers.py",
-    "tensor/utils.py",
     "tensor/type.py",
     "tensor/fourier.py",
     "tensor/sort.py",
