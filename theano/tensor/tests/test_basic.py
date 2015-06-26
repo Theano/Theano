@@ -5516,6 +5516,20 @@ class TestNdGrid(unittest.TestCase):
             for ng, tg in zip(n, t):
                 assert_array_equal(ng, tg)
 
+    def test_ogrid_theano_variable_numpy_equiv(self):
+        nfogrid = numpy.ogrid[0:1:.1, 1:10:1., 10:100:10.]
+        niogrid = numpy.ogrid[0:2:1, 1:10:1, 10:100:10]
+        i,j,k = dscalars('i','j','k')
+        l,m,n = iscalars('l','m','n')
+        tfogrid = ogrid[i:1:.1, 1:j:1., 10:100:k]
+        tiogrid = ogrid[l:2:1, 1:m:1, 10:100:n]
+        ff = theano.function([i, j, k], tfogrid)
+        fi = theano.function([l, m, n], tiogrid)
+        for n, t in zip((nfogrid,niogrid), (ff(0, 10, 10.),fi(0, 10, 10))):
+            for ng, tg in zip(n, t):
+                assert_array_equal(ng, tg)
+                
+                
 class TestInversePermutation(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
