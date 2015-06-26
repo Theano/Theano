@@ -3072,11 +3072,8 @@ def floor_div(a, b):
     # see decorator for function body
 
 
-# not a c/p error, floor_div and int_div are the same thing
-@_scal_elemwise_with_nfunc('floor_divide', 2, 1)
-def int_div(a, b):
-    """elementwise integer-division"""
-    # see decorator for function body
+# floor_div and int_div are the same thing
+int_div = floor_div
 
 
 def ceil_intdiv(a, b):
