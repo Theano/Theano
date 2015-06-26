@@ -62,6 +62,53 @@ theano.configparser.AddConfigVar('on_shape_error',
 
 # Utilities
 
+def copy_stack_trace(from_var, to_var):
+    """
+    Copies the stack trace from one or more tensor variables to 
+    one or more tensor variables. 
+
+    :param from_var: tensor variable or list of tensor variables to 
+                     copy stack traces from.
+    :param to_var: tensor variable or list of tensor variables to 
+                     copy stack traces to.
+
+    .. note:: The stacktrace is assumed to be of the form of a list of lists 
+    of tuples. Each tuple contains the filename, line number, function name 
+    and so on. Each list of tuples contains the truples belonging to a 
+    particular variable.
+    """
+    
+    # Store stack traces from from_var
+    tr = []
+    if type(from_var) is list:
+        # If from_var is a list, store concatenated stack traces
+        if len(from_var) > 0:
+            for v in from_var:
+                if hasattr(v.tag, 'trace') and len(v.tag.trace) > 0:
+                    tr = tr + v.tag.trace
+    else:
+        # If from_var is not a list, it must be a single tensor
+        # variable, so just store that particular stack trace
+        if hasattr(from_var.tag, 'trace'):
+            tr = from_var.tag.trace
+
+    # Copy over stack traces to to_var
+    if type(to_var) is list:
+        # Copy over stack traces from from_var to each variable in
+        # to_var, including the stack_trace of the to_var before
+        for v in to_var:
+            if hasattr(v.tag, 'trace'):
+                v.tag.trace = v.tag.trace + tr
+            else:
+                v.tag.trace = tr
+    else:
+        # Copy over stack traces from from_var to each variable to
+        # to_var, including the stack_trace of the to_var before
+        if hasattr(to_var.tag, 'trace'):
+            to_var.tag.trace = to_var.tag.trace + tr
+        else:
+            to_var.tag.trace = tr
+
 
 def out2in(*local_opts, **kwargs):
     """WRITEME """
@@ -480,6 +527,7 @@ def local_dimshuffle_lift(node):
                                    op.new_order,
                                    op.inplace)(inp)
             new_inputs.append(apply_local_dimshuffle_lift(new_inp))
+        copy_stack_trace(node.outputs[0], new_inputs)
         ret = inode.op(*new_inputs, **dict(return_list=True))
         return ret
     if inode and isinstance(inode.op, DimShuffle):
@@ -487,6 +535,7 @@ def local_dimshuffle_lift(node):
                      op.new_order]
         inplace = op.inplace and inode.op.inplace
         iinput = inode.inputs[0]
+
         # remove useless dimshuffle
         if (new_order == list(range(len(new_order))) and
                 len(new_order) == iinput.type.ndim):
@@ -494,8 +543,9 @@ def local_dimshuffle_lift(node):
         else:
             ret = op.__class__(iinput.type.broadcastable, new_order,
                                inplace)(iinput)
-            return [apply_local_dimshuffle_lift(ret)]
-
+            ret = apply_local_dimshuffle_lift(ret)
+            copy_stack_trace(node.outputs[0], ret)
+            return [ret]
 
 @register_canonicalize
 @gof.local_optimizer([T.DimShuffle])
@@ -528,7 +578,9 @@ def dimshuffle_as_view(node):
     if not isinstance(op, DimShuffle) or op.inplace:
         return False
     new_op = op.__class__(op.input_broadcastable, op.new_order, inplace=True)
-    return [new_op(*node.inputs)]
+    v = new_op(*node.inputs)
+    copy_stack_trace(node.outputs[0], v)
+    return [v]
 
 # Step 60 is the inplace optimization stage.
 compile.optdb.register('dimshuffle_as_view',
@@ -1290,7 +1342,9 @@ def local_fill_to_alloc(node):
             rval = [T.cast(v, node.outputs[0].type.dtype)]
         elif r.type.broadcastable == node.outputs[0].type.broadcastable:
             # we are broadcasting v somehow, but not r
-            rval = [broadcast_like(v, r, node.fgraph, dtype=v.dtype)]
+            o = broadcast_like(v, r, node.fgraph, dtype=v.dtype)
+            copy_stack_trace(node.outputs[0], o)
+            rval = [o]
         else:
             # we are broadcasting both v and r,
             # the output shape must be computed
@@ -1857,7 +1911,7 @@ theano.configparser.AddConfigVar(
     theano.configparser.BoolParam(True),
     in_c_key=False)
 
-############################
+#######################
 # Constant Canonicalization
 ############################
 
@@ -4974,7 +5028,11 @@ def constant_folding(node):
             constant = output.type.Constant
         except AttributeError:
             constant = Constant
-        rval.append(constant(output.type, storage_map[output][0]))
+
+        v = constant(output.type, storage_map[output][0])
+        copy_stack_trace(output, v)
+
+        rval.append(v)
     return rval
 
 
@@ -5854,7 +5912,10 @@ def local_add_mul_fusion(node):
                 isinstance(inp.owner.op.scalar_op, s_op)):
             l = list(node.inputs)
             l.remove(inp)
-            return [node.op(*(l + inp.owner.inputs))]
+            output_node = node.op(*(l + inp.owner.inputs))
+
+            copy_stack_trace(node.outputs[0], output_node)
+            return [output_node]
 
 if config.tensor.local_elemwise_fusion:
     _logger.debug("enabling optimization fusion elemwise in fast_run")
