@@ -2429,7 +2429,6 @@ def local_subtensor_merge(node):
                 lambda x: isinstance(x, T.Variable))
             # Do not call make_node for test_value
             out = subtens(x, *sl_ins)
-
             return [out]
 
 
@@ -4397,6 +4396,17 @@ def local_mul_to_sqr(node):
         if len(node.inputs) == 2:
             if node.inputs[0] is node.inputs[1]:
                 return [T.sqr(node.inputs[0])]
+
+
+@register_canonicalize
+@gof.local_optimizer([T.int_div, T.floor_div])
+def local_intdiv_by_one(node):
+    """x // 1 -> x
+    """
+    if node.op in [T.int_div]:
+        if isinstance(node.inputs[1], T.TensorConstant) and \
+           numpy.all(node.inputs[1].value == 1):
+            return [node.inputs[0]]
 
 
 @gof.local_optimizer([T.pow])
