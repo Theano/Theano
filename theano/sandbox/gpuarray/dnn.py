@@ -92,6 +92,7 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
                 " This isn't supported anymore."
                 " Update to CuDNN v2 final version.")
             raise RuntimeError(dnn_available.msg)
+    return dnn_available.avail
 
 
 dnn_available.avail = None
@@ -365,7 +366,7 @@ def ensure_double(val, default, name):
     if val is None:
         return default.clone()
     if not isinstance(val, Variable):
-        val = constant(val, dtype='float64')
+        val = constant(val).astype('float64')
     if hasattr(val, 'ndim') and val.ndim == 0:
         val = as_scalar(val)
     if not isinstance(val.type, theano.scalar.Scalar):
