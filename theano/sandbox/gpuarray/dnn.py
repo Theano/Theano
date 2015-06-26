@@ -1588,7 +1588,7 @@ optdb.register('local_dnna_conv_inplace',
                                  local_dnn_convgw_inplace,
                                  local_dnn_convgi_inplace,
                                  name="local_dnn_conv_inplace"),
-               70.0, 'fast_run', 'inplace', 'gpu', 'cudnn')
+               70.0, 'fast_run', 'inplace', 'gpuarray', 'cudnn')
 
 
 @register_opt('cudnn')
