@@ -46,7 +46,7 @@ class TestCallbacks(unittest.TestCase):
 
     def test_callback_with_ifelse(self):
         a, b, c = tensor.scalars('abc')
-        f = function([a, b, c], ifelse(a, 2*b, 2*c),
+        f = function([a, b, c], ifelse(a, 2 * b, 2 * c),
                      mode=Mode(
                          optimizer=None,
                          linker=vm.VM_Linker(callback=self.callback)))
@@ -62,7 +62,7 @@ def test_c_thunks():
     if theano.config.cxx:
         cases.append(True)
     for c_thunks in cases:
-        f = function([a, b, c], ifelse(a, a*b, b*c),
+        f = function([a, b, c], ifelse(a, a * b, b * c),
                      mode=Mode(
                          optimizer=None,
                          linker=vm.VM_Linker(c_thunks=c_thunks,
@@ -86,7 +86,7 @@ def test_speed():
     def numpy_version(x, depth):
         z = x
         for d in xrange(depth):
-            z = (z+z)
+            z = (z + z)
         return z
 
     def time_numpy():
@@ -136,7 +136,7 @@ def test_speed():
 
         print("%s takes %f s/Kop" % (
             name,
-            (1000*(t_b-t_a) / (steps_b - steps_a))))
+            (1000 * (t_b - t_a) / (steps_b - steps_a))))
 
     time_linker('c|py', OpWiseCLinker)
     time_linker('vmLinker', vm.VM_Linker)
@@ -185,7 +185,7 @@ def test_speed_lazy():
 
         print("%s takes %f s/Kop" % (
             name,
-            (1000*(t_b-t_a) / (steps_b - steps_a))))
+            (1000 * (t_b - t_a) / (steps_b - steps_a))))
 
     time_linker('vmLinker', vm.VM_Linker)
     time_linker('vmLinker_nogc', lambda: vm.VM_Linker(allow_gc=False))
@@ -230,6 +230,8 @@ if run_memory_usage_tests:
             a = cuda.CudaNdarray(n)
             a.sum()
             assert c == sys.getrefcount(n)
+            # This is to confuse flake8
+            a = a
             del a
             if not i % 1000:
                 print('.', end=' ')

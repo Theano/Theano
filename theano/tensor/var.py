@@ -389,17 +389,15 @@ class _tensor_py_operators:
                     axis = i
 
         if advanced:
-            if (axis is not None
-                and all(isinstance(a, slice) and
-                        equal_slices(a, slice(None)) for a in args[:axis])
-                and all(isinstance(a, slice) and
-                        equal_slices(a, slice(None)) for a in args[axis + 1:])
-                and isinstance(args[axis], (
-                    numpy.ndarray,
-                    list,
-                    TensorVariable,
-                    TensorConstant,
-                    theano.tensor.sharedvar.TensorSharedVariable))):
+            if (axis is not None and
+                all(isinstance(a, slice) and
+                    equal_slices(a, slice(None)) for a in args[:axis]) and
+                all(isinstance(a, slice) and
+                    equal_slices(a, slice(None)) for a in args[axis + 1:]) and
+                isinstance(args[axis],
+                           (numpy.ndarray, list,
+                            TensorVariable, TensorConstant,
+                            theano.tensor.sharedvar.TensorSharedVariable))):
                 return self.take(args[axis], axis)
             else:
                 return theano.tensor.subtensor.advanced_subtensor(self, *args)

@@ -71,8 +71,7 @@ predefined_linkers = {
     'vm': gof.vm.VM_Linker(use_cloop=False),  # Use allow_gc Theano flag
     'cvm': gof.vm.VM_Linker(use_cloop=True),  # Use allow_gc Theano flag
     'vm_nogc': gof.vm.VM_Linker(allow_gc=False, use_cloop=False),
-    'cvm_nogc': gof.vm.VM_Linker(allow_gc=False, use_cloop=True),
-    }
+    'cvm_nogc': gof.vm.VM_Linker(allow_gc=False, use_cloop=True)}
 
 
 def register_linker(name, linker):
@@ -115,8 +114,7 @@ predefined_optimizers = {
     'fast_run': OPT_FAST_RUN,
     'fast_run_stable': OPT_FAST_RUN_STABLE,
     'fast_compile': OPT_FAST_COMPILE,
-    'stabilize': OPT_STABILIZE
-    }
+    'stabilize': OPT_STABILIZE}
 
 
 def register_optimizer(name, opt):

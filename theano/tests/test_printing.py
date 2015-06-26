@@ -495,17 +495,17 @@ def test_scan_debugprint3():
 def test_scan_debugprint4():
 
     def fn(a_m2, a_m1, b_m2, b_m1):
-        return a_m1+a_m2, b_m1+b_m2
+        return a_m1 + a_m2, b_m1 + b_m2
 
     a0 = theano.shared(numpy.arange(2))
     b0 = theano.shared(numpy.arange(2))
 
-    (a, b), _ = theano.scan(fn, outputs_info=[
-        {'initial': a0, 'taps': [-2, -1]},
-        {'initial': b0, 'taps': [-2, -1]}],
-                            n_steps=5)
+    (a, b), _ = theano.scan(
+        fn, outputs_info=[{'initial': a0, 'taps': [-2, -1]},
+                          {'initial': b0, 'taps': [-2, -1]}],
+        n_steps=5)
 
-    final_result = a+b
+    final_result = a + b
     output_str = theano.printing.debugprint(final_result, file='str')
     lines = []
     for line in output_str.split('\n'):

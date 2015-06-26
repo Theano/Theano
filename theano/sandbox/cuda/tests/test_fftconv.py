@@ -194,7 +194,7 @@ class TestConv3dFFT(unittest.TestCase):
 
         res_ref = f_ref()
         res_fft = f_fft()
-        utt.assert_allclose(res_ref, res_fft,  rtol=1e-05, atol=1e-05)
+        utt.assert_allclose(res_ref, res_fft, rtol=1e-05, atol=1e-05)
 
     def run_conv_full(self, inputs_shape, filters_shape, pad=False):
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
@@ -220,7 +220,7 @@ class TestConv3dFFT(unittest.TestCase):
 
         res_ref = f_ref()
         res_fft = f_fft()
-        utt.assert_allclose(res_ref, res_fft,  rtol=1e-04, atol=1e-04)
+        utt.assert_allclose(res_ref, res_fft, rtol=1e-04, atol=1e-04)
 
     def test_valid(self):
         self.run_conv_valid(inputs_shape=(16, 20, 32, 16, 1),
@@ -299,7 +299,7 @@ class TestConv3dFFT(unittest.TestCase):
         res_ref = f_ref()
         res_fft = f_fft()
 
-        utt.assert_allclose(res_ref, res_fft,  rtol=1e-04, atol=1e-04)
+        utt.assert_allclose(res_ref, res_fft, rtol=1e-04, atol=1e-04)
 
     def test_opt_convtransp3d_fft(self):
         inputs_shape = (2, 9, 16, 12, 10)

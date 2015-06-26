@@ -108,7 +108,7 @@ def _get_lock(lock_dir=None, **kw):
                 raise Exception("For some unknow reason, the lock was already "
                                 "taken, but no start time was registered.")
             now = time.time()
-            if now - get_lock.start_time > config.compile.timeout/2:
+            if now - get_lock.start_time > config.compile.timeout / 2:
                 lockpath = os.path.join(get_lock.lock_dir, 'lock')
                 _logger.info('Refreshing lock %s', str(lockpath))
                 refresh_lock(lockpath)

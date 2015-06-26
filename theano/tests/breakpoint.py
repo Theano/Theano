@@ -88,7 +88,7 @@ class PdbBreakpoint(Op):
         for i in range(len(monitored_vars)):
             # Every output i is a view of the input i+1 because of the input
             # condition.
-            new_op.view_map[i] = [i+1]
+            new_op.view_map[i] = [i + 1]
             new_op.inp_types.append(monitored_vars[i].type)
 
         # Build the Apply node
@@ -125,7 +125,7 @@ class PdbBreakpoint(Op):
         else:
             # Simply return views on the monitored variables
             for i in range(len(output_storage)):
-                output_storage[i][0] = inputs[i+1]
+                output_storage[i][0] = inputs[i + 1]
 
     def grad(self, inputs, output_gradients):
         return ([DisconnectedType()()] + output_gradients)

@@ -255,7 +255,7 @@ def local_gpu_elemwise(node):
     scal_op = op.scalar_op
     name = op.name
     if name:
-        name = 'Gpu'+name
+        name = 'Gpu' + name
     res = GpuElemwise(scal_op, name=name,
                       inplace_pattern=copy.copy(op.inplace_pattern),
                       nfunc_spec=op.nfunc_spec)
@@ -349,7 +349,7 @@ def local_gpu_pdbbreakpoint_op(node):
         nb_monitored_vars = len(node.outputs)
         for i in range(nb_monitored_vars):
 
-            inp = old_inputs[i+1]
+            inp = old_inputs[i + 1]
             out = old_outputs[i]
 
             input_is_from_gpu = (inp.owner and

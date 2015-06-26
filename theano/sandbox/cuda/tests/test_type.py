@@ -1,6 +1,4 @@
-import six.moves.cPickle as pickle
 import os.path
-import sys
 
 from nose.tools import assert_raises
 import numpy
