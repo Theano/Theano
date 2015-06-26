@@ -6,10 +6,11 @@ from theano import Op, Apply, tensor, config, Variable
 from theano.scalar import as_scalar, constant
 from theano.gradient import DisconnectedType, grad_not_implemented
 from theano.gof import Optimizer, local_optimizer, COp
+from theano.gof.cmodule import GCC_compiler
 from theano.gof.type import CDataType, Generic
 from theano.compile import optdb
 from theano.compile.ops import shape_i
-from theano.configparser import AddConfigVar, EnumStr
+from theano.configparser import AddConfigVar, EnumStr, StrParam
 from theano.tensor.nnet import SoftmaxGrad
 from theano.tensor.signal.downsample import (
     DownsampleFactorMax, DownsampleFactorMaxGrad)
@@ -25,7 +26,22 @@ from .conv import GpuConv
 from .nnet import GpuSoftmax
 from .opt import gpu_seqopt, register_opt, conv_groupopt, op_lifter
 from .opt_util import alpha_merge, output_merge
-from .comp import NVCC_compiler
+
+# This is to avoid conflict with the one in cuda/dnn.py
+if not hasattr(config, 'dnn'):
+    AddConfigVar('dnn.conv.workmem',
+                 "Default value for the workmem attribute of cudnn "
+                 "convolutions.",
+                 EnumStr('small', 'none', 'large'),
+                 in_c_key=False)
+
+AddConfigVar('dnn.include_path',
+             "Location of the cudnn header (defaults to the cuda root)",
+             StrParam(lambda: os.path.join(config.cuda.root, 'include')))
+
+AddConfigVar('dnn.library_path',
+             "Location of the cudnn header (defaults to the cuda root)",
+             StrParam(lambda: os.path.join(config.cuda.root, 'lib64')))
 
 
 def dnn_available():
@@ -64,17 +80,17 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
     # default gpu, not the one selected by the user. If mixed
     # GPU are installed or if the GPUs are configured in
     # exclusive mode, this cause bad detection.
-    comp, out, err = NVCC_compiler.try_flags(
+    comp, out, err = GCC_compiler.try_flags(
         ["-l", "cudnn", "-I" + os.path.dirname(__file__),
-         "-I" + os.path.join(theano.config.cuda.root, 'include'),
-         "-L" + os.path.join(theano.config.cuda.root, 'lib64')],
+         "-I" + config.dnn.include_path,
+         "-L" + config.dnn.library_path],
         preambule=preambule, body=body,
         try_run=False, output=True)
 
     dnn_available.avail = comp
     if not dnn_available.avail:
         dnn_available.msg = (
-            "Theano can not compile with cuDNN. We got this error:\n" +
+            "Theano cannot compile with cuDNN. We got this error:\n" +
             str(err))
     else:
         # If we can compile, check that we can import and run.
@@ -149,21 +165,28 @@ class DnnBase(COp):
                 'gpuarray_api.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__), pygpu.get_include()]
+        return [os.path.dirname(__file__), pygpu.get_include(),
+                config.dnn.include_path]
 
     def c_libraries(self):
         return ['cudnn', 'gpuarray']
 
+    def c_lib_dirs(self):
+        return [config.dnn.library_path]
+
 
 class DnnVersion(Op):
-    def c_compiler(self):
-        return NVCC_compiler
-
     def c_headers(self):
         return ['cudnn.h']
 
+    def c_header_dirs(self):
+        return [config.dnn.include_path]
+
     def c_libraries(self):
         return ['cudnn']
+
+    def c_lib_dirs(self):
+        return [config.dnn.library_path]
 
     def c_support_code(self):
         return """
@@ -229,13 +252,13 @@ class GpuDnnConvDesc(Op):
         return ['cudnn.h', 'cudnn_helper.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__)]
+        return [os.path.dirname(__file__), config.dnn.include_path]
 
     def c_libraries(self):
         return ['cudnn']
 
-    def c_compiler(self):
-        return NVCC_compiler
+    def c_lib_dirs(self):
+        return [config.dnn.library_path]
 
     def __init__(self, border_mode, subsample=(1, 1), conv_mode='conv'):
         if isinstance(border_mode, int):
@@ -348,14 +371,6 @@ class GpuDnnConvDesc(Op):
 
     def c_code_cache_version(self):
         return (1, version())
-
-# This is to avoid conflict with the one in cuda/dnn.py
-if not hasattr(config, 'dnn'):
-    AddConfigVar('dnn.conv.workmem',
-                 "Default value for the workmem attribute of cudnn "
-                 "convolutions.",
-                 EnumStr('small', 'none', 'large'),
-                 in_c_key=False)
 
 # scalar constants
 _zero = constant(numpy.asarray(0.0, dtype='float64'))
@@ -735,13 +750,13 @@ class GpuDnnPoolDesc(Op):
         return ['cudnn.h', 'cudnn_helper.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__)]
+        return [os.path.dirname(__file__), config.dnn.include_path]
 
     def c_libraries(self):
         return ['cudnn']
 
-    def c_compiler(self):
-        return NVCC_compiler
+    def c_lib_dirs(self):
+        return [config.dnn.library_path]
 
     def do_constant_folding(self, node):
         return False
