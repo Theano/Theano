@@ -1770,7 +1770,9 @@ def local_gpu_downsample_factor_max_grad(node):
         node.op.ds == node.op.st):
         assert node.op.__props__ == ('ds', 'ignore_border', 'st', 'padding',
                                      'mode')
-        if node.op.padding != (0, 0) or node.op.mode != 'max':
+        if (node.op.padding != (0, 0) or
+            node.op.mode != 'max' or
+            node.op.st != node.op.ds):
             return
         x, z, gz = node.inputs
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
