@@ -63,7 +63,6 @@ whitelist_flake8 = [
     "tensor/sort.py",
     "tensor/__init__.py",
     "tensor/opt_uncanonicalize.py",
-    "tensor/opt.py",
     "tensor/blas.py",
     "tensor/extra_ops.py",
     "tensor/nlinalg.py",
