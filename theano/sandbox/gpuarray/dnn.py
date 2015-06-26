@@ -385,17 +385,17 @@ _zero = constant(numpy.asarray(0.0, dtype='float64'))
 _one = constant(numpy.asarray(1.0, dtype='float64'))
 
 
-def ensure_double(val, default, name):
+def ensure_dt(val, default, name, dtype):
     if val is None:
-        return default.clone()
+        val = default.clone()
     if not isinstance(val, Variable):
-        val = constant(val).astype('float64')
+        val = constant(val)
     if hasattr(val, 'ndim') and val.ndim == 0:
         val = as_scalar(val)
     if not isinstance(val.type, theano.scalar.Scalar):
         raise TypeError("%s: expected a scalar value" % (name,))
-    if not val.type.dtype == 'float64':
-        raise TypeError("%s: type is not float64" % (name,))
+    if not val.type.dtype == dtype:
+        val = val.astype(dtype)
     return val
 
 
@@ -456,8 +456,8 @@ class GpuDnnConv(DnnBase, COp):
                 or desc.type.ctype != 'cudnnConvolutionDescriptor_t':
             raise TypeError('desc must be cudnnConvolutionDescriptor_t')
 
-        alpha = ensure_double(alpha, _one, 'alpha')
-        beta = ensure_double(beta, _zero, 'beta')
+        alpha = ensure_dt(alpha, _one, 'alpha', img.dtype)
+        beta = ensure_dt(beta, _zero, 'beta', img.dtype)
 
         return Apply(self, [img, kern, output, desc, alpha, beta],
                      [output.type()])
@@ -577,8 +577,8 @@ class GpuDnnConvGradW(DnnBase, COp):
                 or desc.type.ctype != 'cudnnConvolutionDescriptor_t':
             raise TypeError('desc must be cudnnConvolutionDescriptor_t')
 
-        alpha = ensure_double(alpha, _one, 'alpha')
-        beta = ensure_double(beta, _zero, 'beta')
+        alpha = ensure_dt(alpha, _one, 'alpha', img.dtype)
+        beta = ensure_dt(beta, _zero, 'beta', img.dtype)
 
         return Apply(self, [img, topgrad, output, desc, alpha, beta],
                      [output.type()])
@@ -644,8 +644,8 @@ class GpuDnnConvGradI(DnnBase):
                 or desc.type.ctype != 'cudnnConvolutionDescriptor_t':
             raise TypeError('desc must be cudnnConvolutionDescriptor_t')
 
-        alpha = ensure_double(alpha, _one, 'alpha')
-        beta = ensure_double(beta, _zero, 'beta')
+        alpha = ensure_dt(alpha, _one, 'alpha', kern.dtype)
+        beta = ensure_dt(beta, _zero, 'beta', kern.dtype)
 
         return Apply(self, [kern, topgrad, output, desc, alpha, beta],
                      [output.type()])
