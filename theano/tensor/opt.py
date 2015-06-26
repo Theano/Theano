@@ -4397,16 +4397,15 @@ def local_mul_to_sqr(node):
             if node.inputs[0] is node.inputs[1]:
                 return [T.sqr(node.inputs[0])]
 
-@register_specialize
+@register_canonicalize
 @gof.local_optimizer([T.int_div, T.floor_div])
-def local_div_by_one(node):
+def local_intdiv_by_one(node):
     """x // 1 -> x
     """
     if node.op in [T.int_div]:
-        if len(node.inputs) == 2:
-            if isinstance(node.inputs[1], T.TensorConstant) and \
-               node.inputs[1].value == 1:
-                return [node.inputs[0]]
+        if isinstance(node.inputs[1], T.TensorConstant) and \
+           node.inputs[1].value == 1:
+            return [node.inputs[0]]
 
 
 @gof.local_optimizer([T.pow])
