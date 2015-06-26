@@ -1785,8 +1785,10 @@ def local_gpu_downsample_factor_max_grad(node):
 @local_optimizer([downsample.DownsampleFactorMaxGradGrad])
 def local_gpu_downsample_factor_max_grad_grad(node):
     if isinstance(node.op, downsample.DownsampleFactorMaxGradGrad):
-        assert node.op.__props__ == ('ds', 'ignore_border', 'st')
-
+        assert node.op.__props__ == ('ds', 'ignore_border', 'st',
+                                     'padding', 'mode')
+        if node.op.padding != (0, 0) or node.op.mode != 'max':
+            return
         x, z, gx = node.inputs
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
             op = GpuDownsampleFactorMaxGradGrad(node.op.ds,
