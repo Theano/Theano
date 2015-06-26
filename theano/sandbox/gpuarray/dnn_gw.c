@@ -41,7 +41,8 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
   Py_INCREF(*kerns);
 #else
   if (theano_prep_output(kerns, PyGpuArray_NDIM(km), PyGpuArray_DIMS(km),
-                         km->ga.typecode, GA_C_ORDER) != 0)
+                         km->ga.typecode, GA_C_ORDER,
+                         pygpu_default_context()) != 0)
     return 1;
   if (beta != 0.0 && pygpu_move(*kerns, km))
     return 1;

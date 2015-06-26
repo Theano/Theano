@@ -21,7 +21,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
   if (c_set_filter(kerns, APPLY_SPECIFIC(kerns)) == -1)
     return 1;
 
-  switch (input->ga.typecode) {
+  switch (im->ga.typecode) {
   case GA_DOUBLE:
     alpha_p = (void *)&alpha;
     beta_p = (void *)&beta;
@@ -41,7 +41,8 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
   Py_INCREF(*input);
 #else
   if (theano_prep_output(input, PyGpuArray_NDIM(im), PyGpuArray_DIMS(im),
-                         im->ga.typecode, GA_C_ORDER) != 0)
+                         im->ga.typecode, GA_C_ORDER,
+                         pygpu_default_context()) != 0)
     return 1;
   if (beta != 0.0 && pygpu_move(*input, im))
     return 1;

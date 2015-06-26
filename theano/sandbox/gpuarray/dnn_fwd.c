@@ -42,7 +42,8 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
   Py_INCREF(*output);
 #else
   if (theano_prep_output(output, PyGpuArray_NDIM(om), PyGpuArray_DIMS(om),
-                         om->ga.typecode, GA_C_ORDER) != 0)
+                         om->ga.typecode, GA_C_ORDER,
+                         pygpu_default_context()) != 0)
     return 1;
   if (beta != 0.0 && pygpu_move(*output, om))
     return 1;
@@ -54,6 +55,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
   {
     size_t worksize;
     gpudata *workspace;
+    PyGpuContextObject *c;
 
     err = cudnnGetConvolutionForwardWorkspaceSize(_handle,
                                                   APPLY_SPECIFIC(input),
@@ -75,8 +77,8 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
      * to place a nice get_work_mem() function in.
      */
     if (worksize != 0) {
-      workspace = pygpu_default_context->ops->buffer_alloc(
-        pygpu_default_context->ctx, worksize, NULL, 0, NULL);
+      c = pygpu_default_context();
+      workspace = c->ops->buffer_alloc(c->ctx, worksize, NULL, 0, NULL);
       if (workspace == NULL) {
         PyErr_SetString(PyExc_RuntimeError,
                         "Could not allocate working memory");
@@ -93,9 +95,10 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
       worksize == 0 ? NULL : *(void **)workspace, worksize,
       beta_p,
       APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(*output));
-  }
 
-  pygpu_default_context->ops->buffer_release(workspace);
+    if (worksize != 0)
+      c->ops->buffer_release(workspace);
+  }
 
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError, "GpuDnnConv: error doing operation: %s",

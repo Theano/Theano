@@ -4,6 +4,7 @@ static cudnnHandle_t _handle = NULL;
 static int
 c_set_tensor4d(PyGpuArrayObject *var, cudnnTensorDescriptor_t desc) {
   cudnnDataType_t dt;
+  size_t ds;
   switch (var->ga.typecode) {
   case GA_FLOAT:
     dt = CUDNN_DATA_FLOAT;
@@ -18,25 +19,17 @@ c_set_tensor4d(PyGpuArrayObject *var, cudnnTensorDescriptor_t desc) {
     PyErr_SetString(PyExc_TypeError, "Non-float datatype in c_set_tensor4d");
     return -1;
   }
+  ds = gpuarray_get_elsize(var->ga.typecode);
   cudnnStatus_t err = cudnnSetTensor4dDescriptorEx(
     desc, dt,
     PyGpuArray_DIM(var, 0), PyGpuArray_DIM(var, 1),
     PyGpuArray_DIM(var, 2), PyGpuArray_DIM(var, 3),
-    PyGpuArray_STRIDE(var, 0), PyGpuArray_STRIDE(var, 1),
-    PyGpuArray_STRIDE(var, 2), PyGpuArray_STRIDE(var, 3));
+    PyGpuArray_STRIDE(var, 0) / ds, PyGpuArray_STRIDE(var, 1) / ds,
+    PyGpuArray_STRIDE(var, 2) / ds, PyGpuArray_STRIDE(var, 3) / ds);
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError,
-		 "Could not set tensor4d descriptor: %s"
-		 "shapes=%d %d %d %d strides=%d %d %d %d",
-		 cudnnGetErrorString(err),
-		 PyGpuArray_DIMS(var)[0],
-		 PyGpuArray_DIMS(var)[1],
-		 PyGpuArray_DIMS(var)[2],
-		 PyGpuArray_DIMS(var)[3],
-		 PyGpuArray_STRIDES(var)[0],
-		 PyGpuArray_STRIDES(var)[1],
-		 PyGpuArray_STRIDES(var)[2],
-		 PyGpuArray_STRIDES(var)[3]);
+		 "Could not set tensor4d descriptor: %s",
+		 cudnnGetErrorString(err));
     return -1;
   }
   return 0;
@@ -45,7 +38,7 @@ c_set_tensor4d(PyGpuArrayObject *var, cudnnTensorDescriptor_t desc) {
 static int
 c_set_filter(PyGpuArrayObject *var, cudnnFilterDescriptor_t desc) {
   cudnnDataType_t dt;
-  if (!GpuArray_IS_C_CONTIGUOUS(&var->ga))
+  if (!GpuArray_IS_C_CONTIGUOUS(&var->ga)) {
     PyErr_SetString(PyExc_ValueError,
 		    "Only contiguous filters (kernels) are supported.");
     return -1;
@@ -70,13 +63,8 @@ c_set_filter(PyGpuArrayObject *var, cudnnFilterDescriptor_t desc) {
     PyGpuArray_DIMS(var)[2], PyGpuArray_DIMS(var)[3]);
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError,
-		 "Could not set filter descriptor: %s."
-		 " dims= %d %d %d %d",
-		 cudnnGetErrorString(err),
-		 PyGpuArray_DIMS(var)[0],
-		 PyGpuArray_DIMS(var)[1],
-		 PyGpuArray_DIMS(var)[2],
-		 PyGpuArray_DIMS(var)[3]);
+		 "Could not set filter descriptor: %s.",
+		 cudnnGetErrorString(err));
     return -1;
   }
   return 0;

@@ -118,30 +118,38 @@ dnn_available.msg = None
 def c_set_tensor4d(var, desc, err, fail):
     return """
 {
+  cudnnDataType_t dt;
+  size_t ds;
+  switch (%(var)s->ga.typecode) {
+  case GA_FLOAT:
+    dt = CUDNN_DATA_FLOAT;
+    break;
+  case GA_DOUBLE:
+    dt = CUDNN_DATA_DOUBLE;
+    break;
+  case GA_HALF:
+    dt = CUDNN_DATA_HALF;
+    break;
+  default:
+    PyErr_SetString(PyExc_TypeError, "Non-float datatype in c_set_tensor4d");
+    return -1;
+  }
+  ds = gpuarray_get_elsize(%(var)s->ga.typecode);
   %(err)s = cudnnSetTensor4dDescriptorEx(
-    %(desc)s, CUDNN_DATA_FLOAT,
+    %(desc)s, dt,
     PyGpuArray_DIMS(%(var)s)[0],
     PyGpuArray_DIMS(%(var)s)[1],
     PyGpuArray_DIMS(%(var)s)[2],
     PyGpuArray_DIMS(%(var)s)[3],
-    PyGpuArray_STRIDES(%(var)s)[0],
-    PyGpuArray_STRIDES(%(var)s)[1],
-    PyGpuArray_STRIDES(%(var)s)[2],
-    PyGpuArray_STRIDES(%(var)s)[3]);
+    PyGpuArray_STRIDES(%(var)s)[0] / ds,
+    PyGpuArray_STRIDES(%(var)s)[1] / ds,
+    PyGpuArray_STRIDES(%(var)s)[2] / ds,
+    PyGpuArray_STRIDES(%(var)s)[3] / ds);
 
   if (%(err)s != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError,
-    "could not set tensor4d descriptor: %%s"
-    "shapes=%%d %%d %%d %%d strides=%%d %%d %%d %%d",
-    cudnnGetErrorString(%(err)s),
-    PyGpuArray_DIMS(%(var)s)[0],
-    PyGpuArray_DIMS(%(var)s)[1],
-    PyGpuArray_DIMS(%(var)s)[2],
-    PyGpuArray_DIMS(%(var)s)[3],
-    PyGpuArray_STRIDES(%(var)s)[0],
-    PyGpuArray_STRIDES(%(var)s)[1],
-    PyGpuArray_STRIDES(%(var)s)[2],
-    PyGpuArray_STRIDES(%(var)s)[3]);
+    "could not set tensor4d descriptor: %%s",
+    cudnnGetErrorString(%(err)s));
     %(fail)s
   }
 }
@@ -160,9 +168,9 @@ class DnnBase(COp):
         COp.__init__(self, "dnn_base.c")
 
     def c_headers(self):
-        return ['cudnn.h', 'cudnn_helper.h',
-                'gpuarray/types.h', 'gpuarray/array.h',
-                'gpuarray_api.h']
+        return ['cudnn.h', 'cudnn_helper.h', 'gpuarray_helper.h',
+                'gpuarray/types.h', 'gpuarray/array.h', 'gpuarray/util.h',
+                'gpuarray_api.h', 'numpy_compat.h']
 
     def c_header_dirs(self):
         return [os.path.dirname(__file__), pygpu.get_include(),
@@ -953,7 +961,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
 %(out)s_dims[3] = (PyGpuArray_DIMS(%(input)s)[3] + (hpad*2) - wsY) / strideY + 1;
 
 if (theano_prep_output(&%(out)s, 4, %(out)s_dims, %(input)s->ga.typecode,
-                       GA_C_ORDER) != 0) {
+                       GA_C_ORDER, pygpu_default_context()) != 0) {
   %(fail)s
 }
 
@@ -1008,7 +1016,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
         return [[1], [0]]
 
     def c_code_cache_version(self):
-        return (6, version())
+        return (7, version())
 
 
 class GpuDnnPoolGrad(DnnBase):
@@ -1125,7 +1133,7 @@ if (!GpuArray_IS_C_CONTIGUOUS(&%(input_grad)s->ga)) {
   %(fail)s
 }
 
-if (!GpuArray_IS_C_CONTIGUOUS(%(output)s)) {
+if (!GpuArray_IS_C_CONTIGUOUS(&%(output)s->ga)) {
   PyErr_SetString(PyExc_ValueError,
                   "GpuDnnPoolGrad: Only contiguous outputs are supported.");
   %(fail)s
@@ -1134,8 +1142,8 @@ if (!GpuArray_IS_C_CONTIGUOUS(%(output)s)) {
 %(set_in)s
 
 if (theano_prep_output(&%(output_grad)s, PyGpuArray_NDIM(%(output)s),
-                       PyGpuArray_DIMS(%(output)s, %(output)s->ga.typecode,
-                       GA_C_ORDER)) != 0)
+                       PyGpuArray_DIMS(%(output)s), %(output)s->ga.typecode,
+                       GA_C_ORDER, pygpu_default_context()) != 0)
 {
   %(fail)s
 }
@@ -1168,29 +1176,8 @@ _handle,
 #endif
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_RuntimeError,
-               "GpuDnnPoolGrad: error doing operation: %%s. "
-               "input.shape=(%%d, %%d, %%d, %%d) "
-               "input_grad.shape=(%%d, %%d, %%d, %%d) "
-               "output.shape=(%%d, %%d, %%d, %%d) "
-               "output_grad.shape=(%%d, %%d, %%d, %%d)",
-               cudnnGetErrorString(err%(name)s),
-               PyGpuArray_DIMS(%(input)s)[0],
-               PyGpuArray_DIMS(%(input)s)[1],
-               PyGpuArray_DIMS(%(input)s)[2],
-               PyGpuArray_DIMS(%(input)s)[3],
-               PyGpuArray_DIMS(%(input_grad)s)[0],
-               PyGpuArray_DIMS(%(input_grad)s)[1],
-               PyGpuArray_DIMS(%(input_grad)s)[2],
-               PyGpuArray_DIMS(%(input_grad)s)[3],
-               PyGpuArray_DIMS(%(output)s)[0],
-               PyGpuArray_DIMS(%(output)s)[1],
-               PyGpuArray_DIMS(%(output)s)[2],
-               PyGpuArray_DIMS(%(output)s)[3],
-               PyGpuArray_DIMS(%(output_grad)s)[0],
-               PyGpuArray_DIMS(%(output_grad)s)[1],
-               PyGpuArray_DIMS(%(output_grad)s)[2],
-               PyGpuArray_DIMS(%(output_grad)s)[3]
-               );
+               "GpuDnnPoolGrad: error doing operation: %%s.",
+               cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
 """ % dict(output_grad=out_grad, desc=desc,
@@ -1363,7 +1350,7 @@ if (%(mode)d == 1)
         result += """
 if (theano_prep_output(&%(outs)s, PyGpuArray_NDIM(%(ins)s),
                        PyGpuArray_DIMS(%(ins)s), %(ins)s->ga.typecode,
-                       GA_C_ORDER) != 0)
+                       GA_C_ORDER, pygpu_default_context()) != 0)
 {
   %(fail)s
 }
