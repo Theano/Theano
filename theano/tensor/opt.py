@@ -62,6 +62,29 @@ theano.configparser.AddConfigVar('on_shape_error',
 
 # Utilities
 
+def copy_stack_trace(from_var, to_var):
+    """
+    Copies the stack trace from one or more tensor variables to 
+    another tensor variable.
+
+    :param from_var: tensor variable or list of tensor variables to 
+                     copy stack trace from
+    :param to_var: tensor variable to copy stack trace to
+    """
+    
+    if type(from_var) is list:
+        # If from_var is a list, copy over concatenated stack traces
+        if len(from_var) > 0:
+            tr = [list(v.tag.trace[0]) if hasattr(v.tag, 'trace')
+                  and len(v.tag.trace) > 0 else '' for v in from_var]
+            to_var.tag.trace = tr
+    else: 
+        # If from_var is not a list, it must be a single tensor
+        # variable, so we just copy it over
+        if hasattr(from_var.tag, 'trace'):
+            tr = from_var.tag.trace
+            to_var.tag.trace = tr
+
 
 def out2in(*local_opts, **kwargs):
     """WRITEME """
@@ -472,10 +495,12 @@ def local_dimshuffle_lift(node):
         iinput = inode.inputs[0]
         if new_order == range(len(new_order)) and (len(new_order) ==
                                                    iinput.type.ndim):
+            copy_stack_trace(input, iinput)
             return [iinput]
         else:
             ret = op.__class__(iinput.type.broadcastable, new_order,
                                inplace)(iinput, **dict(return_list=True))
+            copy_stack_trace(input, ret)
             return ret
 
 
@@ -511,7 +536,9 @@ def dimshuffle_as_view(node):
     if not isinstance(op, DimShuffle) or op.inplace:
         return False
     new_op = op.__class__(op.input_broadcastable, op.new_order, inplace=True)
-    return [new_op(*node.inputs)]
+    v = new_op(*node.inputs)
+    copy_stack_trace(node.inputs[0], v)
+    return [v]
 
 # Step 60 is the inplace optimization stage.
 compile.optdb.register('dimshuffle_as_view',
@@ -545,6 +572,7 @@ def local_tensor_scalar_tensor(node):
         s = node.inputs[0]
         if s.owner and isinstance(s.owner.op, T.ScalarFromTensor):
             t = s.owner.inputs[0]
+            copy_stack_trace(s, t)
             return [t]
 
 
@@ -557,6 +585,7 @@ def local_scalar_tensor_scalar(node):
         t = node.inputs[0]
         if t.owner and isinstance(t.owner.op, T.TensorFromScalar):
             s = t.owner.inputs[0]
+            copy_stack_trace(t, s)
             return [s]
 
 #####################################
@@ -1277,7 +1306,9 @@ def local_fill_to_alloc(node):
             rval = [T.cast(v, node.outputs[0].type.dtype)]
         elif r.type.broadcastable == node.outputs[0].type.broadcastable:
             # we are broadcasting v somehow, but not r
-            rval = [broadcast_like(v, r, node.fgraph, dtype=v.dtype)]
+            o = broadcast_like(v, r, node.fgraph, dtype=v.dtype)
+            copy_stack_trace([v, r], o)
+            rval = [o]
         else:
             # we are broadcasting both v and r,
             # the output shape must be computed
@@ -4943,7 +4974,11 @@ def constant_folding(node):
             constant = output.type.Constant
         except AttributeError:
             constant = Constant
-        rval.append(constant(output.type, storage_map[output][0]))
+
+        v = constant(output.type, storage_map[output][0])
+        copy_stack_trace(output, v)
+
+        rval.append(v)
     return rval
 
 
@@ -5821,7 +5856,26 @@ def local_add_mul_fusion(node):
             isinstance(inp.owner.op.scalar_op, s_op)):
             l = list(node.inputs)
             l.remove(inp)
-            return [node.op(*(l + inp.owner.inputs))]
+            output_node = node.op(*(l + inp.owner.inputs))
+            
+            #tr = getattr(node.outputs[0].tag, 'trace', None)
+            #print ('tr')
+            #print(tr)
+            #print ('node.outputs')
+            #print (node.outputs)
+            #
+            #if node.outputs[0].tags.stack_trace:
+            #    output_node.tags.stack_trace = node.outputs[0].tags.stack_trace
+            #tr = getattr(node.outputs[0].tag, 'trace', None)
+            #tr = node.outputs[0].tag.trace
+            #print ('tr')
+            #print(tr)
+            #if tr:
+            #    output_node.tag.trace = tr
+            
+            copy_stack_trace(node.outputs[0], output_node)
+            
+            return [output_node]
 
 if config.tensor.local_elemwise_fusion:
     _logger.debug("enabling optimization fusion elemwise in fast_run")
