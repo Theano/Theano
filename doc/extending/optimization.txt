@@ -623,8 +623,8 @@ Profiling Theano function compilation
 
 You find that compiling a Theano function is taking too much time? You
 can get profiling information about Theano optimization. The normal
-:ref:`Theano profiler <tut_profiling>` will provide you with very high
-level information. The indentation show the included in/subset
+:ref:`Theano profiler <tut_profiling>` will provide you with very
+high-level information. The indentation shows the included in/subset
 relationship between sections. The top of its output look like this:
 
 .. code-block:: none
@@ -643,18 +643,18 @@ relationship between sections. The top of its output look like this:
 
 Explanations:
 
-* ``Total compile time: 1.131874e+01s`` give the total time spend in inside `theano.function`.
-* ``Number of Apply nodes: 50`` mean that after optimization, there is 50 apply node in the graph.
-* ``Theano Optimizer time: 1.152431e+00s`` mean that we spend 1.15s in the ``theano.function`` phase where we optimize(modify) the graph to make it faster/more stable numerically/work on GPU/...
-* ``Theano validate time: 2.790451e-02s`` mean that we spend 2.8e-2s  in the validate subset of the optimization phase.
-* ``Theano Linker time (includes C, CUDA code generation/compiling): 7.893991e-02s`` mean that we spend 7.9e-2s in the ``theano.function`` linker phase.
+* ``Total compile time: 1.131874e+01s`` gives the total time spent inside `theano.function`.
+* ``Number of Apply nodes: 50`` means that after optimization, there are 50 apply node in the graph.
+* ``Theano Optimizer time: 1.152431e+00s`` means that we spend 1.15s in the ``theano.function`` phase where we optimize (modify) the graph to make it faster / more stable numerically / work on GPU /...
+* ``Theano validate time: 2.790451e-02s`` means that we spent 2.8e-2s in the *validate* subset of the optimization phase.
+* ``Theano Linker time (includes C, CUDA code generation/compiling): 7.893991e-02s`` means that we spent 7.9e-2s in *linker* phase of ``theano.function``.
 * ``Import time 1.153541e-02s`` is a subset of the linker time where we import the compiled module.
-* ``Time in all call to theano.grad() 4.732513e-02s`` tell that we spent a total of 4.7e-2s in all calls to theano.grad. This is outside call to ``theano.function``.
+* ``Time in all call to theano.grad() 4.732513e-02s`` tells that we spent a total of 4.7e-2s in all calls to ``theano.grad``. This is outside of the calls to ``theano.function``.
 
-The linker phase include the generation of the C code, the time spent
+The *linker* phase includes the generation of the C code, the time spent
 by g++ to compile and the time needed by Theano to build the object we
 return. The C code generation and compilation is cached, so the first
-time you compile a function and the following one could take different
+time you compile a function and the following ones could take different
 amount of execution time.
 
 Detailed profiling of Theano optimizer
@@ -854,15 +854,15 @@ This will output something like this:
     ...
 
 
-To understand this profile here is some explanation of how optimization work:
+To understand this profile here is some explanation of how optimizations work:
 
-* Optimization are organized in an hierarchy. At the top level, there
-  is a SeqOptimizer(Sequence Optimizer). It contain other optimizer
-  and apply them in the order it was told. Those sub optimizer can be
-  of other Type, but are global optimizer.
+* Optimizations are organized in an hierarchy. At the top level, there
+  is a ``SeqOptimizer`` (Sequence Optimizer). It contains other optimizers,
+  and applies them in the order they were specified. Those sub-optimizers can be
+  of other types, but are all *global* optimizers.
 
 * Each Optimizer in the hierarchy will print some stats about
-  itself. The information that it print depend of the type of the
+  itself. The information that it prints depends of the type of the
   optimizer.
 
 * The SeqOptimizer will print some stats at the start:
@@ -876,20 +876,20 @@ To understand this profile here is some explanation of how optimization work:
            0.131s for callback
            time      - (name, class, index) - validate time
 
-      Then it will print with some indentation each sub optimizer profile
-      information. It sort them by the time they took. This isn't the
-      order they where used.
+      Then it will print, with some additional indentation, each sub-optimizer's profile
+      information. These sub-profiles are ordered by the time they took to execute,
+      not by their execution order.
 
   * ``OPT_FAST_RUN`` is the name of the optimizer
   * 1.152s is the total time spent in that optimizer
-  * 123/50 mean that before this optimization, there was 123 apply node in the function and after only 50.
-  * 0.028s mean it spent that time in the fgraph.validate()
-  * 0.131s mean it is spent that time for callback. This is a mechanism that can trigger other execution when there is a change to the FunctionGraph.
-  * ``time      - (name, class, index) - validate time`` Tell how the information for each sub optimizer get printed.
-  * All other SeqOptimizer are described like this. There is some sub optimizer from OPT_FAST_RUN that are SeqOptimizer
+  * 123/50 means that before this optimization, there were 123 apply node in the function graph, and after only 50.
+  * 0.028s means it spent that time calls to ``fgraph.validate()``
+  * 0.131s means it spent that time for callbacks. This is a mechanism that can trigger other execution when there is a change to the FunctionGraph.
+  * ``time      - (name, class, index) - validate time`` tells how the information for each sub-optimizer get printed.
+  * All other instances of ``SeqOptimizer`` are described like this. In particular, some sub-optimizer from OPT_FAST_RUN that are also ``SeqOptimizer``s.
 
 
-* The SeqOptimizer will print some stats at the start:
+* The ``SeqOptimizer`` will print some stats at the start:
 
     .. code-block:: none
 
@@ -960,45 +960,49 @@ To understand this profile here is some explanation of how optimization work:
              0.000s - local_subtensor_merge
 
   * ``0.751816s - ('canonicalize', 'EquilibriumOptimizer', 4) - 0.004s``
-    This line is from SeqOptimizer. Is mean that this sub optimizer took
-    a total of .7s. Its name is canonicalize. It is an
-    'EquilibriumOptimizer'. It was executed at index 4 by the
-    SeqOptimizer. It spent 0.004s in the validate phase.
-  * All other lines are from the profiler of the EquilibriumOptimizer.
+    This line is from ``SeqOptimizer``, and indicates information related
+    to a sub-optimizer. It means that this sub-optimizer took
+    a total of .7s. Its name is ``'canonicalize'``. It is an
+    ``EquilibriumOptimizer``. It was executed at index 4 by the
+    ``SeqOptimizer``. It spent 0.004s in the *validate* phase.
+  * All other lines are from the profiler of the ``EquilibriumOptimizer`.
 
-  * An EquilibriumOptimizer do multiple pass on the Apply nodes from
-    the graph. Conceptually, it try to execute all optimization on all
-    node in the graph. If no optimization got applied in a pass, it
-    stop. So it try to find an equilibrium state for all the
-    optimization. This is useful when we don't know a fixed order for
+  * An ``EquilibriumOptimizer`` does multiple passes on the Apply nodes from
+    the graph, trying to apply local and global optimizations.
+    Conceptually, it tries to execute all global optimizations,
+    and to apply all local optimizations on all
+    nodes in the graph. If no optimization got applied during a pass, it
+    stops. So it tries to find an equilibrium state where none of the
+    optimizations get applied. This is useful when we do not know a fixed order for
     the execution of the optimization.
-  * ``time 0.751s for 14 passes`` mean that it took .7s and did 14 pass over the graph.
+  * ``time 0.751s for 14 passes`` means that it took .7s and did 14 passes over the graph.
 
-  * ``nb nodes (start, end, max) 108 81 117`` mean that at the start,
+  * ``nb nodes (start, end, max) 108 81 117`` means that at the start,
     the graph had 108 node, at the end, it had 81 and the maximum size
-    was 177.
+    was 117.
 
-  * Then it print some global timing, like is spent 0.029s in
-    io_toposort, all local optimizer took 0.687s together for all
-    passes and global optimizer took a total of 0.010s.
+  * Then it prints some global timing information: it spent 0.029s in
+    ``io_toposort``, all local optimizers took 0.687s together for all
+    passes, and global optimizers took a total of 0.010s.
 
-  * Then we print the timing for each pass and the optimization that
-    got applied and the number of time they got applied. For example,
-    in pass 0, the local_dimshuffle_lift optimizer changed the graph 9
+  * Then we print the timing for each pass, the optimization that
+    got applied, and the number of time they got applied. For example,
+    in pass 0, the ``local_dimshuffle_lift`` optimizer changed the graph 9
     time.
 
-  * Then we print the time spend in each optimizer, the number of time
-    they changed the graph and the number of node they introduced in
+  * Then we print the time spent in each optimizer, the number of times
+    they changed the graph and the number of nodes they introduced in
     the graph.
 
-  * Optimization with that pattern `local_op_lift` mean that a node
+  * Optimizations with that pattern `local_op_lift` means that a node
     with that op will be replaced by another node, with the same op,
     but will do computation closer to the inputs of the graph.
+    For instance, ``local_op(f(x))`` getting replaced by ``f(local_op(x))``.
 
   * Optimization with that pattern `local_op_sink` is the opposite of
-    `lift`.
+    `lift`. For instance ``f(local_op(x))`` getting replaced by ``local_op(f(x))``.
 
-  * Local optimizer can replace any arbitrary node in the graph, not
+  * Local optimizers can replace any arbitrary node in the graph, not
     only the node it received as input. For this, it must return a
     dict. The keys being nodes to replace and the
     values being the corresponding replacement.
