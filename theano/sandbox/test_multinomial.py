@@ -18,6 +18,8 @@ def get_mode(gpu):
                               'local_gpu_multinomial')
     if isinstance(mode.linker, theano.gof.PerformLinker):
         mode.linker = predefined_linkers['c|py']
+    if not getattr(mode.linker, 'c_thunks', True):
+        mode.linker.c_thunks = True
     return mode
 
 
