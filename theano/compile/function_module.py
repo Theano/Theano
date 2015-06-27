@@ -626,7 +626,8 @@ class Function(object):
             # Check if given ShareVariables exist
             for sv in swap_svs_ori:
                 if sv not in exist_svs:
-                    warnings.warn("SharedVairable: %s not found" % (sv.name))
+                    raise ValueError("SharedVairable: %s not found" %
+                                     (sv.name))
 
             # Swap SharedVairable in fgraph and ins
             for index, (i, in_v) in enumerate(zip(ins, fg_cpy.inputs)):
