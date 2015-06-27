@@ -3133,7 +3133,7 @@ def local_mul_switch_sink(node):
 
 
 @register_canonicalize
-@gof.local_optimizer([T.true_div, T.int_div, T.floor_div])
+@gof.local_optimizer([T.true_div, T.int_div])
 def local_div_switch_sink(node):
     """
     This optimization makes the folowing changes in the graph:
@@ -3145,8 +3145,7 @@ def local_div_switch_sink(node):
     NaN or inf values for cases where the switch returns 0.
     See local_mul_switch_sink for more details.
     """
-    if (node.op != T.true_div and node.op != T.int_div
-        and node.op != T.floor_div):
+    if (node.op != T.true_div and node.op != T.int_div):
         return False
     op = node.op
     if node.inputs[0].owner and node.inputs[0].owner.op == T.switch:
@@ -4399,7 +4398,7 @@ def local_mul_to_sqr(node):
 
 
 @register_canonicalize
-@gof.local_optimizer([T.int_div, T.floor_div])
+@gof.local_optimizer([T.int_div])
 def local_intdiv_by_one(node):
     """x // 1 -> x
     """

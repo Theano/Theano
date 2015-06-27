@@ -3067,16 +3067,13 @@ def true_div(a, b):
 
 
 @_scal_elemwise_with_nfunc('floor_divide', 2, 1)
-def floor_div(a, b):
+def int_div(a, b):
     """elementwise [floor] division (inverse of multiplication)"""
     # see decorator for function body
 
 
-# not a c/p error, floor_div and int_div are the same thing
-@_scal_elemwise_with_nfunc('floor_divide', 2, 1)
-def int_div(a, b):
-    """elementwise integer-division"""
-    # see decorator for function body
+# floor_div and int_div are the same thing
+floor_div = int_div
 
 
 def ceil_intdiv(a, b):
