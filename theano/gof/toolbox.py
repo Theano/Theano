@@ -215,8 +215,8 @@ class Validator(Feature):
             if uf_info.function == 'replace_all_validate':
                 raise
             else:
-                verbose = uf.f_locals['verbose']
-                r = uf.f_locals['r']
+                verbose = uf.f_locals.get('verbose', False)
+                r = uf.f_locals.get('r', "")
                 reason = uf_info.function
                 if verbose:
                     print("validate failed on node %s.\n Reason: %s, %s" % (r, reason, e))
