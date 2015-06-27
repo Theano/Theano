@@ -556,10 +556,9 @@ class Function(object):
             allow_gc=False, this will increase executing speed and save memory.
 
             swap -- { dict } Dictionary that map old SharedVariables to new
-            SharedVariables. Default is None. The computational relationship is
-            modified within the inner fgraph, especially for this copied
-            function. SharedVariables aren't swapped in the relationship that
-            user defined.
+            SharedVariables. Default is None.
+            NOTE: The shared variable swap in only done in the new returned
+            function, not in the user graph.
 
             delete_updates -- { boolean } Default is False. If True, Copied
             function will not have update.
