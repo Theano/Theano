@@ -5896,3 +5896,23 @@ register_canonicalize(gof.OpRemove(theano.gradient.disconnected_grad_),
 def local_grad_clip(node):
     if isinstance(node.op, theano.gradient.GradClip):
         return node.inputs
+
+@register_canonicalize
+@register_stabilize
+@register_specialize
+@gof.local_optimizer([T.alloc])
+def local_double_alloc(node):
+    # Alloc(Alloc(m, x, 1), x, y) -> Alloc(m, x, y)
+    if node.op != T.alloc:
+        return False
+    if not node.inputs[0].owner or node.inputs[0].owner.op != T.alloc:
+        return False
+    if len(node.inputs) != 3 or len(node.inputs[0].owner.inputs) != 3:
+        return False
+    m, x, y = node.inputs[0].owner.inputs
+    x_, y_ = node.inputs[1:]
+    if x == x_ and isinstance(y, Constant) and y.data == 1:
+        return [T.alloc(m, x, y_)]
+    else:
+        return False
+
