@@ -9,6 +9,9 @@
 
 #include "cuda_ndarray.cuh"
 
+#include "cumem.h"
+#include "cumem.cpp"
+
 //If true, when there is a gpu malloc or free error, we print the size of allocated memory on the device.
 #define COMPUTE_GPU_MEM_USED 0
 
@@ -81,6 +84,58 @@ void * device_malloc(size_t size)
     return device_malloc(size, VERBOSE_DEVICE_MALLOC);
 }
 
+///@TODO: thejaswi: link this option to a theano config variable?
+static bool g_use_cumem = false;
+static const int g_max_devices = 8;
+int initCumem(int card_number_provided, int card_nb) {
+    static bool cumemInitialized = false;
+    if(cumemInitialized) {
+        return 0;
+    }
+    printf("Initializing cumem...\n");
+    int numDevices = 0;
+    cumemDevice_t devices[g_max_devices];
+    if(cudaGetDeviceCount(&numDevices) != cudaSuccess) {
+        PyErr_Format(PyExc_RuntimeError,
+                     "initCumem: 'cudaGetDeviceCount' failed! Reason=%s\n",
+                     cudaGetErrorString(cudaGetLastError()));
+        return -1;
+    }
+    if(card_number_provided){
+        numDevices = 1;
+        int i = 0;
+        devices[i].device = card_nb;
+        ///@TODO: thejaswi: support for choosing mem size to be allocated before-hand?
+        devices[i].size = 0;
+        ///@TODO: thejaswi: add support for multiple streams
+        devices[i].numStreams = 0;
+        devices[i].streams = NULL;
+        devices[i].granularity = 0;
+
+    }else{
+        for(int i=0;i<numDevices;++i) {
+            devices[i].device = i;
+            ///@TODO: thejaswi: support for choosing mem size to be allocated before-hand?
+            devices[i].size = 0;
+            ///@TODO: thejaswi: add support for multiple streams
+            devices[i].numStreams = 0;
+            devices[i].streams = NULL;
+            devices[i].granularity = 0;
+        }
+    }
+
+    ///@TODO: thejaswi: passing custom cumem flags?
+    cumemStatus_t status = cumemInit(numDevices, devices, CUMEM_FLAGS_DEFAULT);
+    if(status != CUMEM_STATUS_SUCCESS) {
+        PyErr_Format(PyExc_RuntimeError,
+                     "initCumem: cumemInit call failed! Reason=%s. numdev=%d\n",
+                     cumemGetErrorString(status), numDevices);
+        return -1;
+    }
+    cumemInitialized = true;
+    return 0;
+}
+
 void * device_malloc(size_t size, int verbose)
 {
     #if PRECHECK_ERROR
@@ -95,42 +150,54 @@ void * device_malloc(size_t size, int verbose)
         }
     #endif
     void * rval=NULL;
-    cudaError_t err = cudaMalloc(&rval, size);
-    if (cudaSuccess != err)
-    {
-        // Clear the error flag, cudaMalloc doesn't do it.
-        // Currently this returns the same thing as err, but if in future
-        // it returns something else I still don't see why we should ignore
-        // it.  All we want to do here is reset the flag.
-        cudaGetLastError();
-        if (verbose)
-        {
-            size_t free = 0, total = 0;
-            cudaError_t err2 = cudaMemGetInfo(&free, &total);
-            if (err2 != cudaSuccess){
-                cudaGetLastError();
-                fprintf(stderr,
-                        "Error when trying to find the memory information"
-                        " on the GPU: %s\n", cudaGetErrorString(err2));
-            }
-            #if COMPUTE_GPU_MEM_USED
-                fprintf(stderr,
-                        "Error allocating %zd bytes of device memory (%s)."
-                        " new total bytes allocated: %d."
-                        " Driver report %zd bytes free and %zd bytes total \n",
-                        size, cudaGetErrorString(err), _allocated_size,
-                        free, total);
-            #else
-                fprintf(stderr,
-                        "Error allocating %zd bytes of device memory (%s)."
-                        " Driver report %zd bytes free and %zd bytes total \n",
-                        size, cudaGetErrorString(err), free, total);
-            #endif
+    ///@TODO: thejaswi: support for multiple-streams?
+    if(g_use_cumem) {
+        cumemStatus_t status = cumemMalloc(&rval, size, NULL);
+        if(status != CUMEM_STATUS_SUCCESS) {
+            PyErr_Format(PyExc_MemoryError,
+                         "Error allocating %zd bytes of device memory (%s).",
+                         size, cumemGetErrorString(status));
+            return NULL;
         }
-        PyErr_Format(PyExc_MemoryError,
-                     "Error allocating %zd bytes of device memory (%s).",
-                     size, cudaGetErrorString(err));
-        return NULL;
+    }
+    else {
+        cudaError_t err = cudaMalloc(&rval, size);
+        if (cudaSuccess != err)
+        {
+            // Clear the error flag, cudaMalloc doesn't do it.
+            // Currently this returns the same thing as err, but if in future
+            // it returns something else I still don't see why we should ignore
+            // it.  All we want to do here is reset the flag.
+            cudaGetLastError();
+            if (verbose)
+            {
+                size_t free = 0, total = 0;
+                cudaError_t err2 = cudaMemGetInfo(&free, &total);
+                if (err2 != cudaSuccess){
+                    cudaGetLastError();
+                    fprintf(stderr,
+                            "Error when trying to find the memory information"
+                            " on the GPU: %s\n", cudaGetErrorString(err2));
+                }
+                #if COMPUTE_GPU_MEM_USED
+                    fprintf(stderr,
+                            "Error allocating %zd bytes of device memory (%s)."
+                            " new total bytes allocated: %d."
+                            " Driver report %zd bytes free and %zd bytes total \n",
+                            size, cudaGetErrorString(err), _allocated_size,
+                            free, total);
+                #else
+                    fprintf(stderr,
+                            "Error allocating %zd bytes of device memory (%s)."
+                            " Driver report %zd bytes free and %zd bytes total \n",
+                            size, cudaGetErrorString(err), free, total);
+                #endif
+            }
+            PyErr_Format(PyExc_MemoryError,
+                         "Error allocating %zd bytes of device memory (%s).",
+                         size, cudaGetErrorString(err));
+            return NULL;
+        }
     }
     if (rval != NULL){
         // Can it happen that cudaMalloc return cudaSuccess, but return a NULL ptr?
@@ -216,62 +283,72 @@ int device_free(void *ptr)
         return 0;
     }
 
-    // We need sync as the Theano's GC could remove intermediate variable that
-    // are still needed as the gpu kernel are running or in the queue.
-    CNDA_BEGIN_ALLOW_THREADS
-    cudaThreadSynchronize();
-    CNDA_END_ALLOW_THREADS
+    ///@TODO: thejaswi: multi-stream support
+    if(g_use_cumem) {
+        cumemStatus_t status = cumemFree(ptr, NULL);
+        if(status != CUMEM_STATUS_SUCCESS) {
+            fprintf(stderr, "device_free: cumemFree call failed! Reason=%s\n",
+                    cumemGetErrorString(status));
+        }
+    }
+    else {
+        // We need sync as the Theano's GC could remove intermediate variable that
+        // are still needed as the gpu kernel are running or in the queue.
+        CNDA_BEGIN_ALLOW_THREADS
+        cudaThreadSynchronize();
+        CNDA_END_ALLOW_THREADS
 
-    cudaError_t err =  cudaFree(ptr);
-    if (cudaSuccess != err)
-    {
-        // Clear the error flag, cudaFree doesn't do it.
-        // Currently this returns the same thing as err, but if in future
-        // it returns something else I still don't see why we should ignore
-        // it.  All we want to do here is reset the flag.
-        cudaGetLastError();
-        size_t free = 0, total = 0;
-        cudaError_t err2 = cudaMemGetInfo(&free, &total);
-        if (err2 != cudaSuccess){
-            cudaGetLastError();
-            fprintf(stderr,
-                    "Error when tring to find the memory information"
-                    " on the GPU: %s\n", cudaGetErrorString(err2));
-        }
-        #if COMPUTE_GPU_MEM_USED
+        cudaError_t err =  cudaFree(ptr);
+        if (cudaSuccess != err)
         {
-            int i = 0;
-            for(;i<TABLE_SIZE;i++)
-                if(_alloc_size_table[i].ptr==ptr){
-                    break;
-                }
-            assert(i<TABLE_SIZE);
-            fprintf(stderr,
-                    "Error freeing device pointer %p (%s) of size %d. %zd byte already allocated."
-                    " Driver report %zd bytes free and %zd bytes total \n",
-                    ptr, cudaGetErrorString(err),
-                    _alloc_size_table[i].size, _allocated_size, free, total);
-        }
-        #else
-            fprintf(stderr,
-                    "Error freeing device pointer %p (%s)."
-                    " Driver report %zd bytes free and %zd bytes total \n",
+            // Clear the error flag, cudaFree doesn't do it.
+            // Currently this returns the same thing as err, but if in future
+            // it returns something else I still don't see why we should ignore
+            // it.  All we want to do here is reset the flag.
+            cudaGetLastError();
+            size_t free = 0, total = 0;
+            cudaError_t err2 = cudaMemGetInfo(&free, &total);
+            if (err2 != cudaSuccess){
+                cudaGetLastError();
+                fprintf(stderr,
+                        "Error when tring to find the memory information"
+                        " on the GPU: %s\n", cudaGetErrorString(err2));
+            }
+            #if COMPUTE_GPU_MEM_USED
+            {
+                int i = 0;
+                for(;i<TABLE_SIZE;i++)
+                    if(_alloc_size_table[i].ptr==ptr){
+                        break;
+                    }
+                assert(i<TABLE_SIZE);
+                fprintf(stderr,
+                        "Error freeing device pointer %p (%s) of size %d. %zd byte already allocated."
+                        " Driver report %zd bytes free and %zd bytes total \n",
+                        ptr, cudaGetErrorString(err),
+                        _alloc_size_table[i].size, _allocated_size, free, total);
+            }
+            #else
+                fprintf(stderr,
+                        "Error freeing device pointer %p (%s)."
+                        " Driver report %zd bytes free and %zd bytes total \n",
+                        ptr,
+                        cudaGetErrorString(err), free, total);
+            #endif
+            if (NULL != PyErr_Occurred()){
+                fprintf(stderr,
+                        "device_free: cudaFree() returned an error, but there is already an"
+                        " Python error set. This happen during the clean up when there is a"
+                        " first error and the CUDA driver is in a so bad state that it don't"
+                        " work anymore. We keep the previous error set to help debugging it.");
+                return -1;
+            }
+            PyErr_Format(PyExc_MemoryError,
+                    "error freeing device pointer %p (%s)",
                     ptr,
-                    cudaGetErrorString(err), free, total);
-        #endif
-        if (NULL != PyErr_Occurred()){
-            fprintf(stderr,
-                    "device_free: cudaFree() returned an error, but there is already an"
-                    " Python error set. This happen during the clean up when there is a"
-                    " first error and the CUDA driver is in a so bad state that it don't"
-                    " work anymore. We keep the previous error set to help debugging it.");
+                    cudaGetErrorString(err));
             return -1;
         }
-        PyErr_Format(PyExc_MemoryError,
-                "error freeing device pointer %p (%s)",
-                ptr,
-                cudaGetErrorString(err));
-        return -1;
     }
     _outstanding_mallocs[0] -= (ptr != NULL);
     #if COMPUTE_GPU_MEM_USED
@@ -2940,6 +3017,32 @@ CudaNdarray_cublasv2(PyObject* _unused, PyObject* dummy)
     return Py_True;
 }
 
+PyObject *
+CudaNdarray_select_a_gpu(PyObject* _unused, PyObject* dummy)
+{
+    void * rval = NULL;
+
+    cudaError_t err = cudaMalloc(&rval, 4);
+    if (cudaSuccess != err){
+        printf("ERR!\\n");
+            PyErr_Format(PyExc_RuntimeError,
+                         "Not able to do basic stuff on the GPU (alloc of 4 bytes) (%s).",
+                         cudaGetErrorString(err));
+            return NULL;
+    }
+    err = cudaFree(rval);
+    if (cudaSuccess != err){
+        printf("ERR!\\n");
+            PyErr_Format(PyExc_RuntimeError,
+                         "Not able to do basic stuff on the GPU (cudaFree failed) (%s).",
+                         cudaGetErrorString(err));
+            return NULL;
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 #if COMPUTE_GPU_MEM_USED
 /*
  * Return the size in bytes that Theano currently have allocated on the gpu.
@@ -3107,18 +3210,22 @@ CudaNdarray_ptr_int_size(PyObject* _unused, PyObject* args)
 static int cublas_init();
 static void cublas_shutdown();
 // Initialize the gpu.
-// Takes one optional parameter, the device number.
-// If provided, it sets that device to be the active device.
+// Takes two optional parameters, the device number and if we should use cumem.
+// If the device number is provided, it sets that device to be the active device.
 // If not provided (usually just to test whether the gpu is available at all),
 // it does not set an active device.
 // Raises EnvironmentError or ValueError (as appropriate) if the initialization failed.
+// cumem is threaded like a bool. If converted to 0, don't use cumem. Otherwise, use it.
 PyObject *
 CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
 {
     int card_nb = 0;
     int card_number_provided = 1;
-
-    PyArg_ParseTuple(args, "|i", &card_nb); // if we're given something wildly invalid, this will throw a TypeError
+    int cumem = 0; // 0 False, 1 True
+    // if we're given something wildly invalid, this will throw a TypeError
+    PyArg_ParseTuple(args, "|ii", &card_nb, &cumem);
+    if(cumem)
+        g_use_cumem = true;
 
     if(PyTuple_Size(args) == 0) {
         card_number_provided = 0;
@@ -3173,6 +3280,11 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
         if (cublas_init() == -1)
             return NULL;
     }
+    if(card_number_provided && g_use_cumem) {
+        if(initCumem(card_number_provided, card_nb) == -1){
+            return NULL;
+        }
+    }
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -3203,8 +3315,21 @@ PyObject *
 CudaNdarray_gpu_shutdown(PyObject* _unused, PyObject* _unused_args) {
     // Don't handle errors here
     cublas_shutdown();
-    cudaThreadExit();
     g_gpu_context_active = 0; // context has now been closed down
+    if(g_use_cumem) {
+        printf("Shutting down cumem...\n");
+        cumemStatus_t status = cumemFinalize();
+        if(status != CUMEM_STATUS_SUCCESS) {
+            fprintf(stderr, "CudaNdarray_gpu_shutdown: cumemFinalize failed! Reason=%s\n",
+                    cumemGetErrorString(status));
+            if(status == CUMEM_STATUS_CUDA_ERROR) {
+                fprintf(stderr, "  Cuda-Reason=%s\n",
+                        cudaGetErrorString(cudaGetLastError()));
+            }
+        }
+    }
+    cudaThreadExit();
+
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -3469,6 +3594,7 @@ static PyMethodDef module_methods[] = {
     {"dimshuffle", CudaNdarray_Dimshuffle, METH_VARARGS, "Returns the dimshuffle of a CudaNdarray."},
     {"dot", CudaNdarray_Dot, METH_VARARGS, "Returns the matrix product of two CudaNdarray arguments."},
     {"gpu_init", CudaNdarray_gpu_init, METH_VARARGS, "Select the gpu card to use; also usable to test whether CUDA is available."},
+    {"select_a_gpu", CudaNdarray_select_a_gpu, METH_NOARGS, "Call this method if you want to select a GPU before gpu_init call and let the driver choose the GPU."},
     {"active_device_name", CudaNdarray_active_device_name, METH_VARARGS, "Get the name of the active device."},
     {"active_device_number", CudaNdarray_active_device_number, METH_VARARGS, "Get the number of the active device."},
     {"gpu_shutdown", CudaNdarray_gpu_shutdown, METH_VARARGS, "Shut down the gpu."},

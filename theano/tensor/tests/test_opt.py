@@ -5434,13 +5434,20 @@ class TestIntDivByOne(unittest.TestCase):
                 isinstance(node.op.scalar_op, theano.scalar.IntDiv)]
         assert len(divs) == 0
 
-
+def test_alloc_alloc():
+    # test local optimization: Alloc(Alloc(m, x, 1), x, y) -> Alloc(m, x, y)
+    x = T.iscalar()
+    y = T.iscalar()
+    output = T.alloc(T.alloc(0., x, 1), x, y)
+    fg = FunctionGraph([x,y], [output])
+    f = optimize(fg)
+    
 if __name__ == '__main__':
     t = TestMakeVector('setUp')
     t.setUp()
     # t.test_perform()
     t.test_infer_shape()
-
+    
     """
 #    unittest.main()
     test_fusion().tes_memory_leak()
