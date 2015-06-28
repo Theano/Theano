@@ -10,7 +10,7 @@ if there exists an assignment to all unification variables such that
 from __future__ import print_function
 from copy import copy
 
-from theano.compat import partial
+from functools import partial
 from theano.gof.utils import *
 
 
@@ -36,7 +36,9 @@ class Variable:
     def __init__(self, name="?"):
         self.name = name
     def __str__(self):
-        return self.__class__.__name__ + "(" + ", ".join(["%s=%s" % (key, value) for key, value in self.__dict__.items()]) + ")"
+        return (self.__class__.__name__ + "(" +
+                ", ".join("%s=%s" % (key, value)
+                          for key, value in iteritems(self.__dict__)) + ")")
     def __repr__(self):
         return str(self)
 
@@ -136,7 +138,7 @@ class Unification:
         else:
             # Copy all the unification data.
             U = Unification(self.inplace)
-            for var, (best, pool) in self.unif.items():
+            for var, (best, pool) in iteritems(self.unif):
                 # The pool of a variable is the set of all the variables that
                 # are unified to it (all the variables that must have the same
                 # value). The best is the Variable that represents a set of
@@ -332,8 +334,8 @@ def unify_walk(d1, d2, U):
     """
     Tries to unify values of corresponding keys.
     """
-    for (k1, v1) in d1.items():
-        if d2.has_key(k1):
+    for (k1, v1) in iteritems(d1):
+        if k1 in d2:
             U = unify_walk(v1, d2[k1], U)
             if U is False:
                 return False
@@ -410,13 +412,13 @@ def unify_merge(l1, l2, U):
 @comm_guard(dict, dict)
 def unify_merge(d1, d2, U):
     d = d1.__class__()
-    for k1, v1 in d1.items():
-        if d2.has_key(k1):
+    for k1, v1 in iteritems(d1):
+        if k1 in d2:
             d[k1] = unify_merge(v1, d2[k1], U)
         else:
             d[k1] = unify_merge(v1, v1, U)
-    for k2, v2 in d2.items():
-        if not d1.has_key(k2):
+    for k2, v2 in iteritems(d2):
+        if k2 not in d1:
             d[k2] = unify_merge(v2, v2, U)
     return d
 

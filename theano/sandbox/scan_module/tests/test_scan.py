@@ -6,7 +6,8 @@ import time
 import sys
 import unittest
 
-import cPickle
+import six.moves.cPickle as pickle
+from six.moves import xrange
 import numpy
 from numpy.testing import dec
 
@@ -17,7 +18,7 @@ from theano.compile.pfunc import rebuild_collect_shared
 from theano.tests  import unittest_tools as utt
 from numpy.testing.noseclasses import KnownFailureTest
 
-from test_utils import *
+from .test_utils import *
 import theano.sandbox.scan_module as scan_module
 from theano.sandbox.scan_module.scan_op import ScanOp
 
@@ -136,8 +137,7 @@ class TestScan(unittest.TestCase):
                 shared_outs = [sh * 5 for sh in shared_vars]
                 states_out = [x for x in states_out]
                 pure_outs = [2 for x in xrange(n_outputs)]
-            return states_out + pure_outs, dict(zip(shared_vars,
-                                                    shared_outs))
+            return states_out + pure_outs, dict(izip(shared_vars, shared_outs))
 
         def execute_inner_graph(*args):
             """

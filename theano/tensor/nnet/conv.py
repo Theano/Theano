@@ -14,6 +14,7 @@ __docformat__ = "restructuredtext en"
 import logging
 
 import numpy
+from six.moves import xrange
 
 import theano
 from theano.tensor import (as_tensor_variable, blas, get_scalar_constant_value,

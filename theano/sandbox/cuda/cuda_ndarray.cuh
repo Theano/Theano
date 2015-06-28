@@ -3,8 +3,6 @@
 
 #include <algorithm>
 
-#include "theano_mod_helper.h"
-
 // Defines for Python 2/3 compatibility.
 #if PY_MAJOR_VERSION >= 3
 // Py3k treats all ints as longs. This one is not caught by npy_3kcompat.h.
@@ -55,7 +53,7 @@
 # endif
 # define ALWAYS_INLINE
 #else //else _WIN32
-# define DllExport  MOD_PUBLIC
+# define DllExport __attribute__((visibility ("default")))
 # define ALWAYS_INLINE __attribute__((always_inline))
 #endif
 
@@ -502,6 +500,11 @@ DllExport PyObject * CudaNdarray_Copy(const CudaNdarray * self);
  * Return a new object obtained by summing over the dimensions for which there is a 1 in the mask.
  */
 DllExport PyObject * CudaNdarray_ReduceSum(CudaNdarray * self, PyObject * py_reduce_mask);
+
+/**
+ * Reshape self to the new shape gived by the tuple shape.
+ */
+DllExport PyObject * CudaNdarray_Reshape(CudaNdarray * self, PyObject * shape);
 
 /**
  * Transfer the contents of numpy array `obj` to `self`.

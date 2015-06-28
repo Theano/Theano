@@ -5,7 +5,7 @@ import numpy
 
 from theano.compat import DefaultOrderedDict
 from theano.misc.ordered_set import OrderedSet
-from theano.compat.six import StringIO
+from six import StringIO
 from theano.gof import opt
 from theano.configparser import AddConfigVar, FloatParam
 from theano import config
@@ -309,10 +309,10 @@ class SequenceDB(DB):
 
     def print_summary(self, stream=sys.stdout):
         print(self.__class__.__name__ + " (id %i)" % id(self), file=stream)
-        positions = self.__position__.items()
+        positions = list(self.__position__.items())
 
         def c(a, b):
-            return cmp(a[1], b[1])
+            return ((a[1] > b[1]) - (a[1] < b[1]))
         positions.sort(c)
 
         print("  position", positions, file=stream)

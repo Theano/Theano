@@ -388,7 +388,7 @@ class CompressTester(utt.InferShapeTester):
 
 class TestRepeatOp(utt.InferShapeTester):
     def _possible_axis(self, ndim):
-        return [None] + range(ndim) + [-i for i in range(ndim)]
+        return [None] + list(range(ndim)) + [-i for i in range(ndim)]
 
     def setUp(self):
         super(TestRepeatOp, self).setUp()

@@ -13,26 +13,28 @@ you probably want to use theano.tensor.[c,z,f,d,b,w,i,l,]scalar!
 """
 from __future__ import print_function
 
+from itertools import chain
 import math
 import warnings
 from copy import copy
-from itertools import imap
 from textwrap import dedent
 
 import numpy
+from six.moves import xrange
 
 import theano
-from theano.compat import PY3
+from theano.compat import PY3, imap, izip
 from theano import gof, printing
 from theano.gof import (Op, utils, Variable, Constant, Type, Apply,
                         FunctionGraph)
-from theano.compat import partial
+from functools import partial
 from theano.configparser import config
 
 from theano.gradient import DisconnectedType
 from theano.gradient import grad_undefined
 
 from theano.printing import pprint
+import collections
 
 builtin_complex = complex
 builtin_int = int
@@ -837,7 +839,7 @@ class ScalarOp(Op):
     def __init__(self, output_types_preference=None, name=None):
         self.name = name
         if output_types_preference is not None:
-            if not callable(output_types_preference):
+            if not isinstance(output_types_preference, collections.Callable):
                 raise TypeError(
                     "Expected a callable for the 'output_types_preference' argument to %s. (got: %s)" %
                     (self.__class__, output_types_preference))
@@ -1903,7 +1905,7 @@ class Clip(ScalarOp):
                 return v.zeros_like().astype(config.floatX)
             return v
 
-        return map(handle_int, [gx, gmn, gmx])
+        return list(map(handle_int, [gx, gmn, gmx]))
 
 # Don't allow complex even if numpy do
 # As there is no mathematical reason for this function on complex
@@ -3292,11 +3294,9 @@ class Composite(ScalarOp):
 
     def init_c_code(self):
         """Return the C code for this Composite Op.  """
-        subd = dict(
-                zip(self.fgraph.inputs,
-                    ["%%(i%i)s" % i for i in xrange(len(self.fgraph.inputs))])
-                + zip(self.fgraph.outputs,
-                    ["%%(o%i)s" % i for i in xrange(len(self.fgraph.outputs))]))
+        subd = dict(chain(
+            ((e, "%%(i%i)s" % i) for i, e in enumerate(self.fgraph.inputs)),
+            ((e, "%%(o%i)s" % i) for i, e in enumerate(self.fgraph.outputs))))
 
         for var in self.fgraph.variables:
             if var.owner is None:
@@ -3425,7 +3425,7 @@ class Composite(ScalarOp):
             res2 = theano.compile.rebuild_collect_shared(
                 inputs=outputs[0].owner.op.inputs,
                 outputs=outputs[0].owner.op.outputs,
-                replace=dict(zip(outputs[0].owner.op.inputs, res[1]))
+                replace=dict(izip(outputs[0].owner.op.inputs, res[1]))
             )
             assert len(res2[1]) == len(outputs)
             assert len(res[0]) == len(inputs)
@@ -3461,7 +3461,7 @@ class Composite(ScalarOp):
             assert len(inputs) == self.nin
             res = theano.compile.rebuild_collect_shared(
                 self.outputs,
-                replace=dict(zip(self.inputs, inputs)),
+                replace=dict(izip(self.inputs, inputs)),
                 rebuild_strict=False)
             # After rebuild_collect_shared, the Variable in inputs
             # are not necessarily in the graph represented by res.
@@ -3485,11 +3485,9 @@ class Composite(ScalarOp):
         raise NotImplementedError("grad is not implemented for Composite")
 
     def c_code(self, node, nodename, inames, onames, sub):
-        d = dict(zip(["i%i" % i for i in xrange(len(inames))],
-                     inames) +
-                 zip(["o%i" % i for i in xrange(len(onames))],
-                     onames),
-                 **sub)
+        d = dict(chain(izip(("i%i" % i for i in xrange(len(inames))), inames),
+                       izip(("o%i" % i for i in xrange(len(onames))),
+                            onames)), **sub)
         d['nodename'] = nodename
         if not 'id' in sub:
             # The use of a dummy id is safe as the code is in a separate block.

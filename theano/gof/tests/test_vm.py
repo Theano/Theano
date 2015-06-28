@@ -6,10 +6,12 @@ import unittest
 
 from nose.plugins.skip import SkipTest
 import numpy
+from six import itervalues
 
 from theano import function
 from theano.gof import vm
 from theano.gof import OpWiseCLinker
+from six.moves import xrange
 from theano.compile import Mode
 
 from theano import tensor
@@ -44,13 +46,31 @@ class TestCallbacks(unittest.TestCase):
 
     def test_callback_with_ifelse(self):
         a, b, c = tensor.scalars('abc')
-        f = function([a, b, c], ifelse(a, 2*b, 2*c),
+        f = function([a, b, c], ifelse(a, 2 * b, 2 * c),
                      mode=Mode(
                          optimizer=None,
                          linker=vm.VM_Linker(callback=self.callback)))
 
         f(1, 2, 3)
         assert self.n_callbacks['IfElse'] == 2
+
+
+def test_c_thunks():
+    a = tensor.scalars('a')
+    b, c = tensor.vectors('bc')
+    cases = [False]
+    if theano.config.cxx:
+        cases.append(True)
+    for c_thunks in cases:
+        f = function([a, b, c], ifelse(a, a * b, b * c),
+                     mode=Mode(
+                         optimizer=None,
+                         linker=vm.VM_Linker(c_thunks=c_thunks,
+                                             use_cloop=False)))
+        f(1, [2], [3, 2])
+        from nose.tools import assert_raises
+        assert_raises(ValueError, f, 0, [2], [3, 4])
+        assert any([hasattr(t, 'cthunk') for t in f.fn.thunks]) == c_thunks
 
 
 def test_speed():
@@ -66,7 +86,7 @@ def test_speed():
     def numpy_version(x, depth):
         z = x
         for d in xrange(depth):
-            z = (z+z)
+            z = (z + z)
         return z
 
     def time_numpy():
@@ -116,7 +136,7 @@ def test_speed():
 
         print("%s takes %f s/Kop" % (
             name,
-            (1000*(t_b-t_a) / (steps_b - steps_a))))
+            (1000 * (t_b - t_a) / (steps_b - steps_a))))
 
     time_linker('c|py', OpWiseCLinker)
     time_linker('vmLinker', vm.VM_Linker)
@@ -165,7 +185,7 @@ def test_speed_lazy():
 
         print("%s takes %f s/Kop" % (
             name,
-            (1000*(t_b-t_a) / (steps_b - steps_a))))
+            (1000 * (t_b - t_a) / (steps_b - steps_a))))
 
     time_linker('vmLinker', vm.VM_Linker)
     time_linker('vmLinker_nogc', lambda: vm.VM_Linker(allow_gc=False))
@@ -210,6 +230,8 @@ if run_memory_usage_tests:
             a = cuda.CudaNdarray(n)
             a.sum()
             assert c == sys.getrefcount(n)
+            # This is to confuse flake8
+            a = a
             del a
             if not i % 1000:
                 print('.', end=' ')
@@ -360,9 +382,9 @@ def test_reallocation():
 
         def check_storage(storage_map):
             from theano.tensor.var import TensorConstant
-            for i in storage_map.keys():
+            for i in storage_map:
                 if not isinstance(i, TensorConstant):
-                    keys_copy = storage_map.keys()[:]
+                    keys_copy = list(storage_map.keys())[:]
                     keys_copy.remove(i)
                     for o in keys_copy:
                         if (storage_map[i][0] and
@@ -371,5 +393,5 @@ def test_reallocation():
             return [False, None]
 
         assert check_storage(storage_map)[0]
-        assert len(set([id(v) for v in
-                        storage_map.values()])) < len(storage_map)
+        assert len(set(id(v) for v in
+                       itervalues(storage_map))) < len(storage_map)

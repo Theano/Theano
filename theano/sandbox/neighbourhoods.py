@@ -1,4 +1,3 @@
-#!/usr/bin/python
 """WARNING: This code is not recommanded. It is not finished, it is
 slower then the version in sandbox/neighbours.py, and it do not work
 on the GPU.
@@ -8,16 +7,17 @@ it cover more cases. But thoses cases aren't needed frequently, so you
 probably don't want to use this version, go see neighbours.py!!!!!!!
 
 """
-import theano
-from theano import gof, Op, tensor, Variable, Apply
-
 import numpy
-import __builtin__
+from six.moves import xrange
+import six.moves.builtins as builtins
+
+import theano
+from theano import gof, Op
 
 
 class NeighbourhoodsFromImages(Op):
     def __init__(self, n_dims_before, dims_neighbourhoods,
-                    strides=None, ignore_border=False, inverse=False):
+                 strides=None, ignore_border=False, inverse=False):
         """
         This extracts neighbourhoods from "images", but in a
         dimension-generic manner.
@@ -74,7 +74,7 @@ class NeighbourhoodsFromImages(Op):
         """
         self.n_dims_before = n_dims_before
         self.dims_neighbourhoods = dims_neighbourhoods
-        if not strides is None:
+        if strides is not None:
             self.strides = strides
         else:
             self.strides = dims_neighbourhoods
@@ -84,35 +84,26 @@ class NeighbourhoodsFromImages(Op):
 
         self.code_string, self.code = self.make_py_code()
 
-    def _compute_neigh_strides(self):
-        neigh_strides = [1 for i in xrange(len(self.strides))]
-        cur_stride = 1
-        for i in xrange(len(self.strides)-1, -1, -1):
-            neigh_strides[i] = cur_stride
-            cur_stride *= self.dims_neighbourhoods[i]
-        return neigh_strides
-
     def __eq__(self, other):
         return type(self) == type(other) and \
-                self.n_dims_before == other.n_dims_before and \
-                self.dims_neighbourhoods == other.dims_neighbourhoods and \
-                self.strides == other.strides and \
-                self.ignore_border == other.ignore_border
+            self.n_dims_before == other.n_dims_before and \
+            self.dims_neighbourhoods == other.dims_neighbourhoods and \
+            self.strides == other.strides and \
+            self.ignore_border == other.ignore_border
 
     def __hash__(self):
         return hash(type(self)) ^ \
-                hash(self.n_dims_before) ^ \
-                hash(self.dims_neighbourhoods) ^ \
-                hash(self.strides) ^ \
-                hash(self.ignore_border)
+            hash(self.n_dims_before) ^ \
+            hash(self.dims_neighbourhoods) ^ \
+            hash(self.strides) ^ \
+            hash(self.ignore_border)
 
     def __str__(self):
-        return '%s{%s,%s,%s,%s}' % \
-                (self.__class__.__name__,
-                 self.n_dims_before,
-                 self.dims_neighbourhoods,
-                 self.strides,
-                 self.ignore_border)
+        return '%s{%s,%s,%s,%s}' % (self.__class__.__name__,
+                                    self.n_dims_before,
+                                    self.dims_neighbourhoods,
+                                    self.strides,
+                                    self.ignore_border)
 
     def out_shape(self, input_shape):
         dims = list(input_shape[:self.n_dims_before])
@@ -162,12 +153,12 @@ class NeighbourhoodsFromImages(Op):
         x = theano.tensor.as_tensor_variable(x)
         if self.inverse:
             # +1 in the inverse case
-            if x.type.ndim != (self.n_dims_before + \
-                            len(self.dims_neighbourhoods) + 1):
+            if x.type.ndim != (self.n_dims_before +
+                               len(self.dims_neighbourhoods) + 1):
                 raise TypeError()
         else:
-            if x.type.ndim != (self.n_dims_before + \
-                    len(self.dims_neighbourhoods)):
+            if x.type.ndim != (self.n_dims_before +
+                               len(self.dims_neighbourhoods)):
                 raise TypeError()
         return gof.Apply(self, [x], [x.type()])
 
@@ -176,22 +167,24 @@ class NeighbourhoodsFromImages(Op):
         z, = out
         if self.inverse:
             # +1 in the inverse case
-            if len(x.shape) != (self.n_dims_before + \
-                            len(self.dims_neighbourhoods) + 1):
-                raise ValueError("Images passed as input don't match the " +\
-                 "dimensions passed when this (inversed) Apply node was created")
+            if len(x.shape) != (self.n_dims_before +
+                                len(self.dims_neighbourhoods) + 1):
+                raise ValueError("Images passed as input don't match the "
+                                 "dimensions passed when this (inversed) "
+                                 "Apply node was created")
             prod = 1
             for dim in self.dims_neighbourhoods:
                 prod *= dim
             if x.shape[-1] != prod:
-                raise ValueError(("Last dimension of neighbourhoods (%s) is not " +\
-                        "the product of the neighbourhoods dimensions (%s)") % \
-                         (str(x.shape[-1]), str(prod)))
+                raise ValueError("Last dimension of neighbourhoods (%s) is not"
+                                 " the product of the neighbourhoods dimensions"
+                                 " (%s)" % (str(x.shape[-1]), str(prod)))
         else:
-            if len(x.shape) != (self.n_dims_before + \
-                            len(self.dims_neighbourhoods)):
-                raise ValueError("Images passed as input don't match the " +\
-                        "dimensions passed when this Apply node was created")
+            if len(x.shape) != (self.n_dims_before +
+                                len(self.dims_neighbourhoods)):
+                raise ValueError("Images passed as input don't match the "
+                                 "dimensions passed when this Apply node "
+                                 "was created")
 
         if self.inverse:
             input_shape, num_strides = self.in_shape(x.shape)
@@ -199,8 +192,6 @@ class NeighbourhoodsFromImages(Op):
         else:
             input_shape = x.shape
             out_shape, num_strides = self.out_shape(input_shape)
-
-        neigh_strides = self._compute_neigh_strides()
 
         if z[0] is None:
             if self.inverse:
@@ -216,7 +207,7 @@ class NeighbourhoodsFromImages(Op):
         for i in xrange(len(self.strides)):
             code += self._py_innerloop(i)
         code += self._py_assignment()
-        return code, __builtin__.compile(code, '<string>', 'exec')
+        return code, builtins.compile(code, '<string>', 'exec')
 
     def _py_outerloops(self):
         code_before = ""
@@ -227,45 +218,42 @@ class NeighbourhoodsFromImages(Op):
         return code_before
 
     def _py_innerloop(self, inner_dim_no):
-        base_indent = ('\t' * (self.n_dims_before + inner_dim_no*2))
+        base_indent = ('\t' * (self.n_dims_before + inner_dim_no * 2))
         code_before = base_indent + \
-                "for stride_idx_%d in xrange(num_strides[%d]):\n" % \
-                    (inner_dim_no, inner_dim_no)
+            "for stride_idx_%d in xrange(num_strides[%d]):\n" % \
+            (inner_dim_no, inner_dim_no)
         base_indent += '\t'
         code_before += base_indent + \
-                "dim_%d_offset = stride_idx_%d * self.strides[%d]\n" %\
-                         (inner_dim_no, inner_dim_no, inner_dim_no)
+            "dim_%d_offset = stride_idx_%d * self.strides[%d]\n" %\
+            (inner_dim_no, inner_dim_no, inner_dim_no)
         code_before += base_indent + \
-                "max_neigh_idx_%d = input_shape[%d] - dim_%d_offset\n" %\
-                 (inner_dim_no,
-                    self.n_dims_before+inner_dim_no, inner_dim_no)
+            "max_neigh_idx_%d = input_shape[%d] - dim_%d_offset\n" % \
+            (inner_dim_no, self.n_dims_before + inner_dim_no, inner_dim_no)
         code_before += base_indent + \
-                ("for neigh_idx_%d in xrange(min(max_neigh_idx_%d,"\
-                + " self.dims_neighbourhoods[%d])):\n") % \
-                    (inner_dim_no, inner_dim_no, inner_dim_no)
+            ("for neigh_idx_%d in xrange(min(max_neigh_idx_%d,"
+             " self.dims_neighbourhoods[%d])):\n") %\
+            (inner_dim_no, inner_dim_no, inner_dim_no)
 
         return code_before
 
     def _py_flattened_idx(self):
-        return "+".join(["neigh_strides[%d]*neigh_idx_%d" % (i, i) \
-                    for i in xrange(len(self.strides))])
+        return "+".join(["neigh_strides[%d]*neigh_idx_%d" % (i, i)
+                        for i in xrange(len(self.strides))])
 
     def _py_assignment(self):
-        input_idx = "".join(["outer_idx_%d," % (i,) \
-                    for i in xrange(self.n_dims_before)])
-        input_idx += "".join(["dim_%d_offset+neigh_idx_%d," % \
-                    (i, i) for i in xrange(len(self.strides))])
-        out_idx = "".join(\
-                ["outer_idx_%d," % (i,) for i in \
-                        range(self.n_dims_before)] + \
-                ["stride_idx_%d," % (i,) for i in \
-                        range(len(self.strides))])
+        input_idx = "".join(["outer_idx_%d," % (i,)
+                            for i in xrange(self.n_dims_before)])
+        input_idx += "".join(["dim_%d_offset+neigh_idx_%d," %
+                             (i, i) for i in xrange(len(self.strides))])
+        out_idx = "".join(
+            ["outer_idx_%d," % (i,) for i in xrange(self.n_dims_before)] +
+            ["stride_idx_%d," % (i,) for i in xrange(len(self.strides))])
         out_idx += self._py_flattened_idx()
 
-        #return_val = '\t' * (self.n_dims_before + len(self.strides)*2)
-        #return_val += "print "+input_idx+"'\\n',"+out_idx+"\n"
+        # return_val = '\t' * (self.n_dims_before + len(self.strides)*2)
+        # return_val += "print "+input_idx+"'\\n',"+out_idx+"\n"
 
-        return_val = '\t' * (self.n_dims_before + len(self.strides)*2)
+        return_val = '\t' * (self.n_dims_before + len(self.strides) * 2)
 
         if self.inverse:
             # remember z and x are inversed:
@@ -280,9 +268,10 @@ class NeighbourhoodsFromImages(Op):
 
 class ImagesFromNeighbourhoods(NeighbourhoodsFromImages):
     def __init__(self, n_dims_before, dims_neighbourhoods,
-                        strides=None, ignore_border=False):
-        NeighbourhoodsFromImages.__init__(self, n_dims_before, dims_neighbourhoods,
-                                strides=strides, ignore_border=ignore_border,
-                                inverse=True)
+                 strides=None, ignore_border=False):
+        NeighbourhoodsFromImages.__init__(self, n_dims_before,
+                                          dims_neighbourhoods,
+                                          strides=strides,
+                                          ignore_border=ignore_border,
+                                          inverse=True)
         # and that's all there is to it
-

@@ -7,7 +7,8 @@ import time
 import unittest
 import copy
 
-import cPickle
+import six.moves.cPickle as pickle
+from six.moves import xrange
 import numpy
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
@@ -248,12 +249,12 @@ class T_Scan(unittest.TestCase):
 
             f_out = open('tmp_scan_test_pickle.pkl', 'wb')
             try:
-                cPickle.dump(_my_f, f_out, protocol=-1)
+                pickle.dump(_my_f, f_out, protocol=-1)
             finally:
                 f_out.close()
             f_in = open('tmp_scan_test_pickle.pkl', 'rb')
             try:
-                my_f = cPickle.load(f_in)
+                my_f = pickle.load(f_in)
             finally:
                 f_in.close()
         finally:
@@ -738,7 +739,7 @@ class T_Scan(unittest.TestCase):
 
         def forward_scanner(x_t):
             a2_t = tensor.dot(x_t, W)
-            y_t = tensor.nnet.softmax(a2_t)
+            y_t = tensor.nnet.softmax_graph(a2_t)
             return y_t
 
         y, _ = theano.scan(fn=forward_scanner, sequences=x,
@@ -1705,7 +1706,7 @@ class T_Scan(unittest.TestCase):
 
         # Also validate that the mappings outer_inp_from_outer_out and
         # outer_inp_from_inner_inp produce the correct results
-        scan_node = updates.values()[0].owner
+        scan_node = list(updates.values())[0].owner
 
         result = scan_node.op.var_mappings['outer_inp_from_outer_out']
         expected_result = {0: 3, 1: 5, 2: 4}
@@ -3661,7 +3662,7 @@ class T_Scan(unittest.TestCase):
                                  n_steps=10,
                                  truncate_gradient=-1,
                                  go_backwards=False)
-        cost = updates.values()[0]
+        cost = list(updates.values())[0]
         g_sh = tensor.grad(cost, shared_var)
         fgrad = theano.function([], g_sh)
         assert fgrad() == 1
@@ -4193,6 +4194,40 @@ class T_Scan(unittest.TestCase):
         f_strict = theano.function([x0_], ret_strict[0][-1])
         result_strict = f_strict(x0)
 
+    def test_monitor_mode(self):
+        # Test that it is possible to pass an instance of MonitorMode
+        # to the inner function
+        k = tensor.iscalar("k")
+        A = tensor.vector("A")
+
+        # Build a MonitorMode that counts how many values are greater than 10
+        def detect_large_outputs(i, node, fn):
+            for output in fn.outputs:
+                if isinstance(output[0], numpy.ndarray):
+                    detect_large_outputs.large_count += (output[0] > 10).sum()
+        detect_large_outputs.large_count = 0
+
+        mode = theano.compile.MonitorMode(post_func=detect_large_outputs)
+
+        # Symbolic description of the result
+        result, updates = theano.scan(
+            fn=lambda prior_result, A: prior_result * A,
+            outputs_info=tensor.ones_like(A),
+            non_sequences=A,
+            n_steps=k,
+            mode=mode)
+
+        final_result = result[-1]
+
+        f = theano.function(inputs=[A, k],
+                            outputs=final_result,
+                            updates=updates)
+        f([2, 3, .1, 0, 1], 4)
+
+        # There should be 3 outputs greater than 10: prior_result[0] at step 3,
+        # and prior_result[1] at steps 2 and 3.
+        assert detect_large_outputs.large_count == 3
+
 
 class ScanGpuTests:
     """ This class defines a number of tests for Scan on GPU as well as a few
@@ -4479,7 +4514,7 @@ class ScanGpuTests:
         # Compute the cost and take the gradient wrt params
         cost = tensor.sum((l2_out - yout) ** 2)
         grads = tensor.grad(cost, nparams)
-        updates = zip(nparams, [n - g for n, g in zip(nparams, grads)])
+        updates = list(zip(nparams, (n - g for n, g in zip(nparams, grads))))
 
         # Compile the theano function
         feval_backprop = theano.function([xin, yout], cost, updates=updates,
@@ -4579,7 +4614,7 @@ class T_Scan_Cuda(unittest.TestCase, ScanGpuTests):
         # graph, detect the inconsistencies and raise a TypeError
         folder = os.path.dirname(os.path.abspath(__file__))
         path = os.path.join(folder, "inconsistent_scan.pkl")
-        assert_raises(TypeError, cPickle.load, open(path, "r"))
+        assert_raises(TypeError, pickle.load, open(path, "r"))
 
     def test_consistent_inner_fct(self):
         # Test that scan does not falsely detect inconsistencies in a valid
@@ -4588,7 +4623,7 @@ class T_Scan_Cuda(unittest.TestCase, ScanGpuTests):
         rs = theano.sandbox.rng_mrg.MRG_RandomStreams(use_cuda=True)
         output, _ = theano.scan(lambda : rs.uniform((3,), dtype="float32"),
                                 n_steps=3)
-        cPickle.loads(cPickle.dumps(output))
+        pickle.loads(pickle.dumps(output))
 
         # Also ensure that, after compilation, the Scan has been moved
         # on the gpu
@@ -4661,8 +4696,8 @@ def test_speed():
     else:
         while True:
             try:
-                tmp = r_i.next()
-                tmp += r_ii.next()
+                tmp = next(r_i)
+                tmp += next(r_ii)
             except StopIteration:
                 break
     t1 = time.time()
@@ -5090,7 +5125,7 @@ def test_compute_test_value_grad_cast():
         w = theano.shared(numpy.random.randn(4, 3).astype(floatX), name='w')
 
         outputs, _ = theano.scan(lambda i, h, w: (theano.dot(h[i], w), i),
-                                 outputs_info=[None, 0L], non_sequences=[h, w],
+                                 outputs_info=[None, 0], non_sequences=[h, w],
                                  n_steps=3)
 
         theano.grad(outputs[0].sum(), w)

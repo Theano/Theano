@@ -11,6 +11,7 @@ U{http://www-users.cs.umn.edu/~saad/software/SPARSKIT/paper.ps}.
 import numpy
 import scipy
 from scipy import sparse as scipy_sparse
+from six.moves import xrange
 
 import theano
 import theano.sparse

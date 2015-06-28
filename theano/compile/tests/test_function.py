@@ -1,4 +1,4 @@
-import cPickle
+import six.moves.cPickle as pickle
 import os
 import shutil
 import tempfile
@@ -17,7 +17,7 @@ def test_function_dump():
         fname = os.path.join(tmpdir, 'test_function_dump.pkl')
         theano.function_dump(fname, [v], v + 1)
         f = open(fname, 'rb')
-        l = cPickle.load(f)
+        l = pickle.load(f)
         f.close()
     finally:
         if tmpdir is not None:

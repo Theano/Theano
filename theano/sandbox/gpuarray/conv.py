@@ -3,6 +3,7 @@ import os
 
 import theano
 from theano import config, gof
+from six.moves import reduce
 from .comp import NVCC_compiler
 from .type import GpuArrayType
 from .basic_ops import as_gpuarray_variable
@@ -187,7 +188,7 @@ class GpuConv(gof.Op):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 20)
+        return (0, 21)
 
     def c_init_code(self):
         return ['cuda_get_ptr_raw = (CUdeviceptr (*)(gpudata *g))gpuarray_get_extension("cuda_get_ptr");']

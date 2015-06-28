@@ -18,6 +18,7 @@
 - Others
    - :func:`softplus`
    - :func:`softmax`
+   - :func:`relu() <theano.tensor.nnet.relu>`
    - :func:`binary_crossentropy`
    - :func:`.categorical_crossentropy`
 
@@ -135,6 +136,8 @@
        x,y,b = T.dvectors('x','y','b')
        W = T.dmatrix('W')
        y = T.nnet.softmax(T.dot(W,x) + b)
+
+.. autofunction:: theano.tensor.nnet.relu
 
 .. function:: binary_crossentropy(output,target)
 

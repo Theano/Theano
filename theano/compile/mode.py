@@ -10,6 +10,7 @@ from theano import gof
 import theano.gof.vm
 from theano.configparser import config, AddConfigVar, StrParam
 from theano.compile.ops import _output_guard
+from six import string_types
 
 
 _logger = logging.getLogger('theano.compile.mode')
@@ -70,8 +71,7 @@ predefined_linkers = {
     'vm': gof.vm.VM_Linker(use_cloop=False),  # Use allow_gc Theano flag
     'cvm': gof.vm.VM_Linker(use_cloop=True),  # Use allow_gc Theano flag
     'vm_nogc': gof.vm.VM_Linker(allow_gc=False, use_cloop=False),
-    'cvm_nogc': gof.vm.VM_Linker(allow_gc=False, use_cloop=True),
-    }
+    'cvm_nogc': gof.vm.VM_Linker(allow_gc=False, use_cloop=True)}
 
 
 def register_linker(name, linker):
@@ -114,8 +114,7 @@ predefined_optimizers = {
     'fast_run': OPT_FAST_RUN,
     'fast_run_stable': OPT_FAST_RUN_STABLE,
     'fast_compile': OPT_FAST_COMPILE,
-    'stabilize': OPT_STABILIZE
-    }
+    'stabilize': OPT_STABILIZE}
 
 
 def register_optimizer(name, opt):
@@ -253,7 +252,7 @@ class Mode(object):
             linker = config.linker
         if optimizer is 'default':
             optimizer = config.optimizer
-        self.__setstate__((linker, optimizer))
+        Mode.__setstate__(self, (linker, optimizer))
 
         # self.provided_optimizer - typically the `optimizer` arg.
         # But if the `optimizer` arg is keyword corresponding to a predefined
@@ -271,10 +270,10 @@ class Mode(object):
         linker, optimizer = state
         self.provided_linker = linker
         self.provided_optimizer = optimizer
-        if isinstance(linker, basestring) or linker is None:
+        if isinstance(linker, string_types) or linker is None:
             linker = predefined_linkers[linker]
         self.linker = linker
-        if isinstance(optimizer, basestring) or optimizer is None:
+        if isinstance(optimizer, string_types) or optimizer is None:
             optimizer = predefined_optimizers[optimizer]
         if isinstance(optimizer, gof.Query):
             self.provided_optimizer = optimizer
@@ -297,9 +296,9 @@ class Mode(object):
     optimizer = property(__get_optimizer)
 
     def get_linker_optimizer(self, linker, optimizer):
-        if isinstance(linker, basestring) or linker is None:
+        if isinstance(linker, string_types) or linker is None:
             linker = predefined_linkers[linker]
-        if isinstance(optimizer, basestring) or optimizer is None:
+        if isinstance(optimizer, string_types) or optimizer is None:
             optimizer = predefined_optimizers[optimizer]
         return (linker, optimizer)
 
@@ -320,10 +319,27 @@ class Mode(object):
                                               self.provided_optimizer)
         return self.__class__(linker=link, optimizer=opt.requiring(*tags))
 
+    def clone(self, link_kwargs=None, **kwargs):
+        """
+        Create a new instance of this Mode.
+
+        Keyword arguments can be provided for the linker,
+        in which case its `clone` method will be called with these
+        arguments.
+        """
+        new_linker = self.linker.clone(**link_kwargs)
+        new_optimizer = self.provided_optimizer
+        new_mode = type(self)(linker=new_linker,
+                              optimizer=new_optimizer)
+        return new_mode
+
+
 # If a string is passed as the mode argument in function or
 # FunctionMaker, the Mode will be taken from this dictionary using the
 # string as the key
-FAST_COMPILE = Mode('py', 'fast_compile')
+# Use VM_linker to allow lazy evaluation by default.
+FAST_COMPILE = Mode(theano.gof.vm.VM_Linker(use_cloop=False, c_thunks=False),
+                    'fast_compile')
 if theano.config.cxx:
     FAST_RUN = Mode('cvm', 'fast_run')
 else:
@@ -341,7 +357,7 @@ def get_mode(orig_string):
         string = config.mode
     else:
         string = orig_string
-    if not isinstance(string, basestring):
+    if not isinstance(string, string_types):
         return string  # it is hopefully already a mode...
 
     global instanciated_default_mode
@@ -359,13 +375,13 @@ def get_mode(orig_string):
     if string in ['Mode', 'ProfileMode', 'DebugMode']:
         if string == 'DebugMode':
             # need to import later to break circular dependency.
-            from debugmode import DebugMode
+            from .debugmode import DebugMode
             # DebugMode use its own linker.
             ret = DebugMode(optimizer=config.optimizer)
         else:
             # This might be required if the string is 'ProfileMode'
-            from profilemode import ProfileMode  # noqa
-            from profilemode import prof_mode_instance_to_print
+            from .profilemode import ProfileMode  # noqa
+            from .profilemode import prof_mode_instance_to_print
             ret = eval(string +
                        '(linker=config.linker, optimizer=config.optimizer)')
     elif string in predefined_modes:

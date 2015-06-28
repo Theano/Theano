@@ -12,6 +12,8 @@ from theano.tensor.basic import Alloc, Join, Split
 from theano.gof import HideC
 from theano.gof.utils import MethodNotDefined
 from theano.compat import PY3
+from six import string_types
+from six.moves import xrange
 
 try:
     import pygpu
@@ -65,14 +67,14 @@ class Kernel(object):
     @staticmethod
     def get_flags(*types):
         def get_dtype(t):
-            if isinstance(t, (str, unicode)):
+            if isinstance(t, string_types):
                 return numpy.dtype(t)
             elif isinstance(t, Type):
                 return t.dtype
             elif isinstance(t, Variable):
                 return t.type.dtype
             else:
-                raise TypeError, "can't get a dtype from %s" % (type(t),)
+                raise TypeError("can't get a dtype from %s" % (type(t),))
         dtypes = [get_dtype(t) for t in types]
         flags = dict(cluda=True)
         if any(d == numpy.float64 for d in dtypes):
@@ -115,7 +117,7 @@ class GpuKernelBase(object):
         iterable of Kernel objects that describe the kernels this op
         will need.
         """
-        raise MethodNotDefined, 'gpu_kernels'
+        raise MethodNotDefined('gpu_kernels')
 
     def c_headers(self):
         try:
@@ -881,6 +883,82 @@ class GpuReshape(HideC, tensor.Reshape):
                 raise ValueError("total size of new array must be unchanged")
         out[0] = x.reshape(tuple(shp))
 
+    def c_code_cache_version(self):
+        return (1,)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        x, shape = inputs
+        output, = outputs
+        new_ndim = self.ndim
+        sdtype = node.inputs[1].type.dtype_specs()[1]
+        fail = sub['fail']
+        return """
+        size_t old_size = 1, new_size = 1;
+        size_t new_dims[%(new_ndim)s];
+        int compute_axis = -1;
+
+        assert (PyArray_NDIM(%(shape)s) == 1);
+        if (PyArray_DIM(%(shape)s, 0) != %(new_ndim)s)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "GpuReshape: given shape is of incorrect "
+                         "length (%%d should be %%d).",
+                         PyArray_DIM(%(shape)s, 0), %(new_ndim)s);
+            %(fail)s;
+        }
+
+        for (size_t i = 0; i < %(x)s->ga.nd; ++i)
+            old_size *= %(x)s->ga.dimensions[i];
+
+        for (size_t i = 0; i < %(new_ndim)s; ++i)
+        {
+            new_dims[i] = ((%(sdtype)s*)(
+                    PyArray_BYTES(%(shape)s) +
+                    i * PyArray_STRIDES(%(shape)s)[0]))[0];
+            if (new_dims[i] == -1)
+            {
+                if (compute_axis != -1)
+                {
+                    PyErr_Format(PyExc_ValueError,
+                                 "GpuReshape: only one -1 is accepted "
+                                 "in the new shape, but got two at "
+                                 "indices %%d and %%zu.",
+                                 compute_axis, i);
+                    %(fail)s;
+                }
+                compute_axis = i;
+            }
+            else
+                new_size *= new_dims[i];
+        }
+
+        if (compute_axis == -1 && new_size != old_size)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "GpuReshape: trying to reshape an array of "
+                         "total size %%zu into an array of total size "
+                         "%%zu.", old_size, new_size);
+            %(fail)s;
+        }
+        else if (compute_axis != -1 && old_size %% new_size != 0)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "GpuReshape: -1 axis found at index %%d in "
+                         "new shape but the total size of the array "
+                         "(%%zu) is not divisible by the given shapes "
+                         "(%%zu).", compute_axis, old_size, new_size);
+            %(fail)s;
+        }
+
+        Py_XDECREF(%(output)s);
+        %(output)s = pygpu_reshape(%(x)s, %(new_ndim)s, new_dims,
+                                   GA_C_ORDER, 0, compute_axis);
+        if (%(output)s == NULL)
+        {
+            %(fail)s;
+        }
+        """ % locals()
+
 
 class GpuJoin(HideC, Join):
     _f16_ok = True
@@ -888,8 +966,8 @@ class GpuJoin(HideC, Join):
     def make_node(self, axis, *tensors):
         node = Join.make_node(self, axis, *tensors)
 
-        return Apply(self, [node.inputs[0]] + map(as_gpuarray_variable,
-                                                  tensors),
+        return Apply(self, [node.inputs[0]] + list(map(as_gpuarray_variable,
+                                                  tensors)),
                      [GpuArrayType(broadcastable=node.outputs[0].broadcastable,
                                    dtype=node.outputs[0].dtype)()])
 

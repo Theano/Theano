@@ -6,7 +6,6 @@ from nose.plugins.skip import SkipTest
 import os
 from fnmatch import fnmatch
 import theano
-from theano.compat import PY3
 try:
     import flake8.engine
     import flake8.main
@@ -18,7 +17,12 @@ __authors__ = ("Saizheng Zhang")
 __copyright__ = "(c) 2015, Universite de Montreal"
 __contact__ = "Saizheng Zhang <saizhenglisa..at..gmail.com>"
 
+# This corresponds to "line too long" and it's too much of a pain with
+# all of the C code
+ignore = ('E501',)
+
 whitelist_flake8 = [
+    "compat/six.py",  # This is bundled code that will be deleted, don't fix it
     "__init__.py",
     "tests/test_gradient.py",
     "tests/test_config.py",
@@ -73,7 +77,6 @@ whitelist_flake8 = [
     "tensor/extra_ops.py",
     "tensor/nlinalg.py",
     "tensor/blas_c.py",
-    "tensor/io.py",
     "tensor/elemwise_cgen.py",
     "tensor/raw_random.py",
     "tensor/blas_scipy.py",
@@ -92,7 +95,6 @@ whitelist_flake8 = [
     "tensor/tests/test_merge.py",
     "tensor/tests/test_gc.py",
     "tensor/tests/test_complex.py",
-    "tensor/tests/test_type_other.py",
     "tensor/tests/test_io.py",
     "tensor/tests/test_sharedvar.py",
     "tensor/tests/test_fourier.py",
@@ -134,20 +136,14 @@ whitelist_flake8 = [
     "sandbox/test_theano_object.py",
     "sandbox/test_scan.py",
     "sandbox/rng_mrg.py",
-    "sandbox/solve.py",
     "sandbox/theano_object.py",
     "sandbox/scan.py",
-    "sandbox/multinomial.py",
-    "sandbox/neighbourhoods.py",
-    "sandbox/fourier.py",
     "sandbox/test_multinomial.py",
-    "sandbox/minimal.py",
     "sandbox/test_rng_mrg.py",
     "sandbox/test_neighbourhoods.py",
     "sandbox/symbolic_module.py",
     "sandbox/conv.py",
     "sandbox/debug.py",
-    "sandbox/neighbours.py",
     "sandbox/cuda/dnn.py",
     "sandbox/cuda/var.py",
     "sandbox/cuda/GpuConvGrad3D.py",
@@ -159,8 +155,6 @@ whitelist_flake8 = [
     "sandbox/cuda/opt.py",
     "sandbox/cuda/blas.py",
     "sandbox/cuda/blocksparse.py",
-    "sandbox/cuda/GpuConv3D.py",
-    "sandbox/cuda/extra_ops.py",
     "sandbox/cuda/rng_curand.py",
     "sandbox/cuda/fftconv.py",
     "sandbox/cuda/kernel_codegen.py",
@@ -171,7 +165,6 @@ whitelist_flake8 = [
     "sandbox/cuda/tests/test_gradient.py",
     "sandbox/cuda/tests/test_neighbours.py",
     "sandbox/cuda/tests/test_conv_cuda_ndarray.py",
-    "sandbox/cuda/tests/test_type.py",
     "sandbox/cuda/tests/test_var.py",
     "sandbox/cuda/tests/test_opt.py",
     "sandbox/cuda/tests/test_blas.py",
@@ -197,7 +190,6 @@ whitelist_flake8 = [
     "sandbox/linalg/ops.py",
     "sandbox/linalg/__init__.py",
     "sandbox/linalg/tests/test_linalg.py",
-    "sandbox/gpuarray/comp.py",
     "sandbox/gpuarray/basic_ops.py",
     "sandbox/gpuarray/nnet.py",
     "sandbox/gpuarray/subtensor.py",
@@ -235,7 +227,6 @@ whitelist_flake8 = [
     "misc/pycuda_utils.py",
     "misc/pycuda_example.py",
     "misc/ordered_set.py",
-    "misc/windows.py",
     "misc/strutil.py",
     "misc/gnumpy_utils.py",
     "misc/may_share_memory.py",
@@ -250,7 +241,6 @@ whitelist_flake8 = [
     "misc/tests/test_pycuda_example.py",
     "misc/hooks/reindent.py",
     "misc/hooks/check_whitespace.py",
-    "sparse/sharedvar.py",
     "sparse/type.py",
     "sparse/__init__.py",
     "sparse/opt.py",
@@ -308,15 +298,13 @@ def test_format_flake8():
     """
     if not flake8_available:
         raise SkipTest("flake8 is not installed")
-    if PY3:
-        raise SkipTest("not testing in python3 since 2to3 ran")
     total_errors = 0
     for path in list_files():
         rel_path = os.path.relpath(path, theano.__path__[0])
         if rel_path in whitelist_flake8:
             continue
         else:
-            error_num = flake8.main.check_file(path)
+            error_num = flake8.main.check_file(path, ignore=ignore)
             total_errors += error_num
     if total_errors > 0:
         raise AssertionError("FLAKE8 Format not respected")
@@ -332,7 +320,8 @@ def print_files_information_flake8():
     non_infracting_files = []
     for path in list_files():
         rel_path = os.path.relpath(path, theano.__path__[0])
-        number_of_infractions = flake8.main.check_file(path)
+        number_of_infractions = flake8.main.check_file(path,
+                                                       ignore=ignore)
         if number_of_infractions > 0:
             if rel_path not in whitelist_flake8:
                 infracting_files.append(rel_path)
@@ -359,7 +348,8 @@ def check_all_files(dir_path=theano.__path__[0], pattern='*.py'):
     for (dir, _, files) in os.walk(dir_path):
         for f in files:
             if fnmatch(f, pattern):
-                error_num = flake8.main.check_file(os.path.join(dir, f))
+                error_num = flake8.main.check_file(os.path.join(dir, f),
+                                                   ignore=ignore)
                 if error_num > 0:
                     path = os.path.relpath(os.path.join(dir, f),
                                            theano.__path__[0])

@@ -3,16 +3,19 @@
 from __future__ import print_function
 
 import copy
-import copy_reg
-import cPickle
-import itertools
+from six import string_types, iteritems
+from six.moves import xrange
+import six.moves.copyreg as copyreg
+import six.moves.cPickle as pickle
+from itertools import chain
 import time
 import warnings
 import numpy
 
 import theano
 from theano import gof
-from theano.compat import partial
+from functools import partial
+from theano.compat import izip
 import theano.compile.mode
 from theano.compile.io import (
     In, SymbolicInput, SymbolicInputKit, SymbolicOutput)
@@ -61,7 +64,7 @@ def view_tree_set(v, treeset):
             continue
         vmap = getattr(cl.op, 'view_map', {})
         dmap = getattr(cl.op, 'destroy_map', {})
-        for opos, iposlist in vmap.items() + dmap.items():
+        for opos, iposlist in chain(iteritems(vmap), iteritems(dmap)):
             if v_input_pos_to_cl in iposlist:
                 if cl.outputs[opos] not in treeset:
                     view_tree_set(cl.outputs[opos], treeset)
@@ -97,7 +100,7 @@ def fgraph_updated_vars(fgraph, expanded_inputs):
     potential_values = list(fgraph.outputs)  # copy the list
     if len(expanded_inputs) != len(fgraph.inputs):
         raise ValueError('expanded_inputs must match len(fgraph.inputs)')
-    for e_input, ivar in reversed(zip(expanded_inputs, fgraph.inputs)):
+    for e_input, ivar in reversed(list(zip(expanded_inputs, fgraph.inputs))):
         if e_input.update is not None:
             updated_vars[ivar] = potential_values.pop()
     return updated_vars
@@ -163,7 +166,7 @@ def std_fgraph(input_specs, output_specs, accept_inplace=False):
     # If named nodes are replaced, keep the name
     for feature in std_fgraph.features:
         fgraph.attach_feature(feature())
-    return fgraph, map(SymbolicOutput, updates)
+    return fgraph, list(map(SymbolicOutput, updates))
 
 
 std_fgraph.features = [gof.toolbox.PreserveNames]
@@ -472,7 +475,7 @@ returned directly?"""
                 self.n_returned_outputs -= 1
 
         for node in self.maker.fgraph.apply_nodes:
-            if node.op in ops_with_inner_function.keys():
+            if node.op in ops_with_inner_function:
                 self.nodes_with_inner_function.append(node.op)
 
     def __contains__(self, item):
@@ -542,7 +545,7 @@ returned directly?"""
 
         # Set keyword arguments
         if kwargs:  # for speed, skip the iteritems for empty kwargs
-            for k, arg in kwargs.iteritems():
+            for k, arg in iteritems(kwargs):
                 self[k] = arg
 
         if (not self.trust_input and
@@ -556,7 +559,7 @@ returned directly?"""
                     is_aliased = False
                     for j in xrange(len(args_share_memory)):
 
-                        group_j = itertools.izip(
+                        group_j = izip(
                             [self.maker.inputs[k].variable for k
                              in args_share_memory[j]],
                             [self.input_storage[k].storage[0] for k
@@ -653,8 +656,8 @@ returned directly?"""
 
         if getattr(self.fn, 'need_update_inputs', True):
             # Update the inputs that have an update function
-            for input, storage in reversed(zip(self.maker.expanded_inputs,
-                                               self.input_storage)):
+            for input, storage in reversed(list(zip(self.maker.expanded_inputs,
+                                                    self.input_storage))):
                 if input.update is not None:
                     storage.data = outputs.pop()
         else:
@@ -690,7 +693,7 @@ returned directly?"""
 
                 assert len(self.output_keys) == len(outputs)
 
-                return dict(itertools.izip(self.output_keys, outputs))
+                return dict(izip(self.output_keys, outputs))
 
             return outputs
 
@@ -711,7 +714,7 @@ returned directly?"""
         # 1.no allow_gc return False
         # 2.has allow_gc, if allow_gc is False, return True
         if not getattr(self.fn, 'allow_gc', True):
-            for key in self.fn.storage_map.keys():
+            for key in self.fn.storage_map:
                 if not isinstance(key, theano.gof.Constant):
                     self.fn.storage_map[key][0] = None
 
@@ -774,7 +777,7 @@ def _constructor_Function(maker, input_storage, inputs_data):
             (container.data == x)
     return f
 
-copy_reg.pickle(Function, _pickle_Function)
+copyreg.pickle(Function, _pickle_Function)
 
 
 ###
@@ -955,7 +958,7 @@ class FunctionMaker(object):
                 # finish. Should be changed in definitive version.
                 tmp = theano.config.unpickle_function
                 theano.config.unpickle_function = False
-                graph_db = cPickle.load(f)
+                graph_db = pickle.load(f)
 
                 # hack end
                 f.close()
@@ -977,7 +980,7 @@ class FunctionMaker(object):
             # The sole purpose of this loop is to set 'need_optimize' by
             # going through graph_db, looking for graph that has the same
             # computation performed.
-            for graph_old, graph_optimized in graph_db.iteritems():
+            for graph_old, graph_optimized in iteritems(graph_db):
                 inputs_old = graph_old.inputs
                 outputs_old = graph_old.outputs
                 size_old = len(graph_old.apply_nodes)
@@ -1011,8 +1014,8 @@ class FunctionMaker(object):
                     continue
                 else:
                     flags = []
-                    for output_new, output_old, i in zip(
-                            outputs_new, outputs_old, range(len(outputs_new))):
+                    for i, (output_new, output_old) in enumerate(
+                            zip(outputs_new, outputs_old)):
                         print('loop through outputs node for both graphs')
                         graph_old.variables = set(gof.graph.variables(
                             graph_old.inputs, graph_old.outputs))
@@ -1043,16 +1046,16 @@ class FunctionMaker(object):
 
                         t2 = removeAllFgraph(t2)
 
-                        givens = dict(zip(gof.graph.inputs([t1]),
-                                          gof.graph.inputs([t2])))
+                        givens = dict(izip(gof.graph.inputs([t1]),
+                                           gof.graph.inputs([t2])))
 
-                        temp = dict(zip(gof.graph.inputs([t1]),
-                                        gof.graph.inputs([t2])))
+                        temp = dict(izip(gof.graph.inputs([t1]),
+                                         gof.graph.inputs([t2])))
 
                         # hack to remove inconstent entry in givens
                         # seems to work that but source of inconsistency
                         # could be worth investigating.
-                        for key, value in temp.iteritems():
+                        for key, value in iteritems(temp):
                             if key.type != value.type:
                                 del givens[key]
 
@@ -1088,7 +1091,7 @@ class FunctionMaker(object):
             optimizer_profile = optimizer(self.fgraph)
             graph_db.update({before_opt: self.fgraph})
             f = open(graph_db_file, 'wb')
-            cPickle.dump(graph_db, f, -1)
+            pickle.dump(graph_db, f, -1)
             f.close()
             print('new graph saved into graph_db')
         release_lock()
@@ -1158,8 +1161,8 @@ class FunctionMaker(object):
             inputs = [inputs]
 
         # Wrap them in In or Out instances if needed.
-        inputs = map(self.wrap_in, inputs)
-        outputs = map(self.wrap_out, outputs)
+        inputs = [self.wrap_in(i) for i in inputs]
+        outputs = [self.wrap_out(o) for o in outputs]
         _inputs = gof.graph.inputs([o.variable for o in outputs] +
                                    [i.update for i in inputs
                                     if getattr(i, 'update', False)])
@@ -1227,7 +1230,8 @@ class FunctionMaker(object):
         if not hasattr(linker, 'accept'):
             raise ValueError("'linker' parameter of FunctionMaker should be "
                              "a Linker with an accept method or one of %s" %
-                             theano.compile.mode.predefined_linkers.keys())
+                             list(theano.compile.mode
+                                  .predefined_linkers.keys()))
 
         # the 'no_borrow' outputs are the ones for which that we can't
         # return the internal storage pointer.
@@ -1413,8 +1417,7 @@ def _pickle_FunctionMaker(self):
         accept_inplace=self.accept_inplace,
         function_builder=self.function_builder,
         profile=self.profile,
-        on_unused_input=self.on_unused_input,
-        )
+        on_unused_input=self.on_unused_input)
     return (_constructor_FunctionMaker, (kwargs,))
 
 
@@ -1426,7 +1429,7 @@ def _constructor_FunctionMaker(kwargs):
     else:
         return None
 
-copy_reg.pickle(FunctionMaker, _pickle_FunctionMaker)
+copyreg.pickle(FunctionMaker, _pickle_FunctionMaker)
 
 __checkers = []
 
@@ -1500,10 +1503,10 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
     t1 = time.time()
     mode = theano.compile.mode.get_mode(mode)
 
-    inputs = map(convert_function_input, inputs)
+    inputs = list(map(convert_function_input, inputs))
     if outputs is not None:
         if isinstance(outputs, (list, tuple)):
-            outputs = map(FunctionMaker.wrap_out, outputs)
+            outputs = list(map(FunctionMaker.wrap_out, outputs))
         else:
             outputs = FunctionMaker.wrap_out(outputs)
 
@@ -1563,7 +1566,7 @@ def convert_function_input(input):
         orig = input
         if not input:
             raise TypeError("Nonsensical input specification: %s" % input)
-        if isinstance(input[0], basestring):
+        if isinstance(input[0], string_types):
             name = input[0]
             input = input[1:]
         else:

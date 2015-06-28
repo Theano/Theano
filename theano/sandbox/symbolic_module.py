@@ -3,6 +3,8 @@ import copy, inspect
 import theano
 import theano.tensor as T
 
+from six import string_types, add_metaclass, iteritems
+from six.moves import xrange
 #import klass
 
 
@@ -24,15 +26,15 @@ class InitGraph(type):
                     return True
                 return isinstance(v, theano.Variable) and not k.startswith('_')
             r = {}
-            for key, val in dct.items():
-                if filter(key, val):
+            for key, val in iteritems(dct):
+                if list(filter(key, val)):
                     r[key] = val
             return r
         build_graph_rval = cls.build_graph()
         if not isinstance(build_graph_rval, dict):
             raise TypeError('%s.build_graph did not return dictionary' % cls)
         dct = just_symbolic(build_graph_rval)
-        for key, val in dct.items():
+        for key, val in iteritems(dct):
             # print '  adding class attribute', key
             if isinstance(val, theano.Variable) and val.name is None:
                 val.name = key
@@ -42,10 +44,9 @@ class InitGraph(type):
                 setattr(cls, key, val)
 
 
+# installs class attributes from build_graph after declaration
+@add_metaclass(InitGraph)
 class SymbolicModule(object):
-    # installs class attributes from build_graph after declaration
-    __metaclass__ = InitGraph
-
     # if we call this function, it will return a new SymbolicModule
     def __new__(self, **kwargs):
         class SymMod(SymbolicModule):
@@ -132,7 +133,7 @@ def compile(smod, initial_values=None):
                 elif issymbolicmodule(val):
                     for s in modwalker(val.__dict__, [v for k, v in sym_items(val)]):
                         yield s
-                elif isinstance(val, (basestring, int, float)):
+                elif isinstance(val, (string_types, int, float)):
                     pass
                 elif isinstance(val, theano.Variable):
                     pass
@@ -183,7 +184,7 @@ def compile(smod, initial_values=None):
                 reflected[thing] = cmod
                 for key, val in sym_items(thing):
                     setattr(CMod, key, reflect(val))
-            elif isinstance(thing, (basestring, int, float)):
+            elif isinstance(thing, (string_types, int, float)):
                 reflected[thing] = thing
             elif isinstance(thing, theano.Variable):
                 if thing.owner is None:
@@ -310,7 +311,7 @@ if 0:
                 return deco(dummy)
 
         locals_dict = f()
-        for key, val in locals_dict.items():
+        for key, val in iteritems(locals_dict):
             if isinstance(val, theano.Variable):
                 try:
                     kres = klass.KlassMember(val)

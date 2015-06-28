@@ -1,5 +1,6 @@
 from __future__ import print_function
 import unittest
+from six.moves import xrange
 import theano
 from theano.tensor import *
 from theano.tests import unittest_tools as utt

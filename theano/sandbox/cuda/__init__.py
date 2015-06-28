@@ -14,7 +14,7 @@ from theano.gof import EquilibriumDB, SequenceDB
 from theano.gof.cmodule import get_lib_extension
 from theano.gof.compilelock import get_lock, release_lock
 from theano.configparser import config, AddConfigVar, StrParam, BoolParam
-import nvcc_compiler
+from . import nvcc_compiler
 
 # ignore_newtrees is to speed the optimization as this is the pattern
 # we use for optimization. Otherwise, we can iterate 100s of time on

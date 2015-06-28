@@ -1,5 +1,5 @@
 from __future__ import print_function
-import cPickle
+import six.moves.cPickle as pickle
 import errno
 import logging
 import os
@@ -14,6 +14,7 @@ import textwrap
 import numpy
 
 import theano
+from six import string_types, iteritems
 from theano.configparser import config, AddConfigVar, ConfigParam, StrParam
 from theano.gof.utils import flatten
 from theano.misc.windows import output_subprocess_Popen
@@ -62,8 +63,7 @@ compiledir_format_dict = {
     "theano_version": theano.__version__,
     "numpy_version": numpy.__version__,
     "gxx_version": gcc_version_str.replace(" ", "_"),
-    "hostname": socket.gethostname(),
-    }
+    "hostname": socket.gethostname()}
 
 
 def short_platform(r=None, p=None):
@@ -185,7 +185,7 @@ def filter_compiledir(path):
                 " or listing permissions." % path)
     else:
         try:
-            os.makedirs(path, 0770)  # read-write-execute for user and group
+            os.makedirs(path, 0o770)  # read-write-execute for user and group
         except OSError as e:
             # Maybe another parallel execution of theano was trying to create
             # the same directory at the same time.
@@ -279,7 +279,7 @@ def cleanup():
                 file = open(filename, 'rb')
                 # print file
                 try:
-                    keydata = cPickle.load(file)
+                    keydata = pickle.load(file)
                     for key in list(keydata.keys):
                         have_npy_abi_version = False
                         have_c_compiler = False
@@ -289,7 +289,7 @@ def cleanup():
                                 # force the removing of key
                                 have_npy_abi_version = False
                                 break
-                            elif isinstance(obj, basestring):
+                            elif isinstance(obj, string_types):
                                 if obj.startswith('NPY_ABI_VERSION=0x'):
                                     have_npy_abi_version = True
                                 elif obj.startswith('c_compiler_str='):
@@ -351,7 +351,7 @@ def print_compiledir_content():
             try:
                 filename = os.path.join(compiledir, dir, "key.pkl")
                 file = open(filename, 'rb')
-                keydata = cPickle.load(file)
+                keydata = pickle.load(file)
                 ops = list(set([x for x in flatten(keydata.keys)
                                 if isinstance(x, theano.gof.Op)]))
                 if len(ops) == 0:
@@ -389,7 +389,7 @@ def print_compiledir_content():
     print()
     print(("List of %d individual compiled Op classes and "
            "the number of times they got compiled" % len(table_op_class)))
-    table_op_class = sorted(table_op_class.iteritems(), key=lambda t: t[1])
+    table_op_class = sorted(iteritems(table_op_class), key=lambda t: t[1])
     for op_class, nb in table_op_class:
         print(op_class, nb)
 
@@ -405,7 +405,7 @@ def print_compiledir_content():
         for dir, size, ops in big_key_files:
             print(dir, size, ops)
 
-    nb_keys = sorted(nb_keys.iteritems())
+    nb_keys = sorted(iteritems(nb_keys))
     print()
     print("Number of keys for a compiled module")
     print("number of keys/number of modules with that number of keys")

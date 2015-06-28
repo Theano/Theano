@@ -615,3 +615,397 @@ Navigator
 -------------------
 
 WRITEME
+
+.. _profiling_opt:
+
+Profiling Theano function compilation
+=====================================
+
+You find that compiling a Theano function is taking too much time? You
+can get profiling information about Theano optimization. The normal
+:ref:`Theano profiler <tut_profiling>` will provide you with very
+high-level information. The indentation shows the included in/subset
+relationship between sections. The top of its output look like this:
+
+.. code-block:: none
+
+    Function profiling
+    ==================
+      Message: PATH_TO_A_FILE:23
+      Time in 0 calls to Function.__call__: 0.000000e+00s
+      Total compile time: 1.131874e+01s
+        Number of Apply nodes: 50
+        Theano Optimizer time: 1.152431e+00s
+           Theano validate time: 2.790451e-02s
+        Theano Linker time (includes C, CUDA code generation/compiling): 7.893991e-02s
+           Import time 1.153541e-02s
+      Time in all call to theano.grad() 4.732513e-02s
+
+Explanations:
+
+* ``Total compile time: 1.131874e+01s`` gives the total time spent inside `theano.function`.
+* ``Number of Apply nodes: 50`` means that after optimization, there are 50 apply node in the graph.
+* ``Theano Optimizer time: 1.152431e+00s`` means that we spend 1.15s in the ``theano.function`` phase where we optimize (modify) the graph to make it faster / more stable numerically / work on GPU /...
+* ``Theano validate time: 2.790451e-02s`` means that we spent 2.8e-2s in the *validate* subset of the optimization phase.
+* ``Theano Linker time (includes C, CUDA code generation/compiling): 7.893991e-02s`` means that we spent 7.9e-2s in *linker* phase of ``theano.function``.
+* ``Import time 1.153541e-02s`` is a subset of the linker time where we import the compiled module.
+* ``Time in all call to theano.grad() 4.732513e-02s`` tells that we spent a total of 4.7e-2s in all calls to ``theano.grad``. This is outside of the calls to ``theano.function``.
+
+The *linker* phase includes the generation of the C code, the time spent
+by g++ to compile and the time needed by Theano to build the object we
+return. The C code generation and compilation is cached, so the first
+time you compile a function and the following ones could take different
+amount of execution time.
+
+Detailed profiling of Theano optimizer
+--------------------------------------
+
+You can get more detailed profiling information about the Theano
+optimizer phase by setting to `True` the Theano flags
+:attr:`config.profile_optimizer`.
+
+This will output something like this:
+
+.. code-block:: none
+
+    Optimizer Profile
+    -----------------
+     SeqOptimizer  OPT_FAST_RUN  time 1.152s for 123/50 nodes before/after optimization
+       0.028s for fgraph.validate()
+       0.131s for callback
+       time      - (name, class, index) - validate time
+       0.751816s - ('canonicalize', 'EquilibriumOptimizer', 4) - 0.004s
+         EquilibriumOptimizer      canonicalize
+           time 0.751s for 14 passes
+           nb nodes (start, end,  max) 108 81 117
+           time io_toposort 0.029s
+           time in local optimizers 0.687s
+           time in global optimizers 0.010s
+            0 - 0.050s 27 (0.000s in global opts, 0.002s io_toposort) - 108 nodes - ('local_dimshuffle_lift', 9) ('local_upcast_elemwise_constant_inputs', 5) ('local_shape_to_shape_i', 3) ('local_fill_sink', 3) ('local_fill_to_alloc', 2) ...
+            1 - 0.288s 26 (0.002s in global opts, 0.002s io_toposort) - 117 nodes - ('local_dimshuffle_lift', 8) ('local_fill_sink', 4) ('constant_folding', 4) ('local_useless_elemwise', 3) ('local_subtensor_make_vector', 3) ...
+            2 - 0.044s 13 (0.002s in global opts, 0.003s io_toposort) - 96 nodes - ('constant_folding', 4) ('local_dimshuffle_lift', 3) ('local_fill_sink', 3) ('local_useless_elemwise', 1) ('local_fill_to_alloc', 1) ...
+            3 - 0.045s 11 (0.000s in global opts, 0.002s io_toposort) - 91 nodes - ('constant_folding', 3) ('local_fill_to_alloc', 2) ('local_dimshuffle_lift', 2) ('local_mul_canonizer', 2) ('MergeOptimizer', 1) ...
+            4 - 0.035s 8 (0.002s in global opts, 0.002s io_toposort) - 93 nodes - ('local_fill_sink', 3) ('local_dimshuffle_lift', 2) ('local_fill_to_alloc', 1) ('MergeOptimizer', 1) ('constant_folding', 1)
+            5 - 0.035s 6 (0.000s in global opts, 0.002s io_toposort) - 88 nodes - ('local_fill_sink', 2) ('local_dimshuffle_lift', 2) ('local_fill_to_alloc', 1) ('local_mul_canonizer', 1)
+            6 - 0.038s 10 (0.001s in global opts, 0.002s io_toposort) - 95 nodes - ('local_fill_sink', 3) ('local_dimshuffle_lift', 3) ('constant_folding', 2) ('local_fill_to_alloc', 1) ('MergeOptimizer', 1)
+            7 - 0.032s 5 (0.001s in global opts, 0.002s io_toposort) - 91 nodes - ('local_fill_sink', 3) ('MergeOptimizer', 1) ('local_dimshuffle_lift', 1)
+            8 - 0.034s 5 (0.000s in global opts, 0.002s io_toposort) - 92 nodes - ('local_fill_sink', 3) ('MergeOptimizer', 1) ('local_greedy_distributor', 1)
+            9 - 0.031s 6 (0.001s in global opts, 0.002s io_toposort) - 90 nodes - ('local_fill_sink', 2) ('local_fill_to_alloc', 1) ('MergeOptimizer', 1) ('local_dimshuffle_lift', 1) ('local_greedy_distributor', 1)
+           10 - 0.032s 5 (0.000s in global opts, 0.002s io_toposort) - 89 nodes - ('local_dimshuffle_lift', 2) ('local_fill_to_alloc', 1) ('MergeOptimizer', 1) ('local_fill_sink', 1)
+           11 - 0.030s 5 (0.000s in global opts, 0.002s io_toposort) - 88 nodes - ('local_dimshuffle_lift', 2) ('local_fill_to_alloc', 1) ('MergeOptimizer', 1) ('constant_folding', 1)
+           12 - 0.026s 1 (0.000s in global opts, 0.003s io_toposort) - 81 nodes - ('MergeOptimizer', 1)
+           13 - 0.031s 0 (0.000s in global opts, 0.003s io_toposort) - 81 nodes -
+           times - times applied - nb node created - name:
+           0.263s - 15 - 0 - constant_folding
+           0.096s - 2 - 14 - local_greedy_distributor
+           0.066s - 4 - 19 - local_mul_canonizer
+           0.046s - 28 - 57 - local_fill_sink
+           0.042s - 35 - 78 - local_dimshuffle_lift
+           0.018s - 5 - 15 - local_upcast_elemwise_constant_inputs
+           0.010s - 11 - 4 - MergeOptimizer
+           0.009s - 4 - 0 - local_useless_elemwise
+           0.005s - 11 - 2 - local_fill_to_alloc
+           0.004s - 3 - 6 - local_neg_to_mul
+           0.002s - 1 - 3 - local_lift_transpose_through_dot
+           0.002s - 3 - 4 - local_shape_to_shape_i
+           0.002s - 2 - 4 - local_subtensor_lift
+           0.001s - 3 - 0 - local_subtensor_make_vector
+           0.001s - 1 - 1 - local_sum_all_to_none
+           0.131s - in 62 optimization that where not used (display only those with a runtime > 0)
+             0.050s - local_add_canonizer
+             0.018s - local_mul_zero
+             0.016s - local_one_minus_erf
+             0.010s - local_func_inv
+             0.006s - local_0_dot_x
+             0.005s - local_track_shape_i
+             0.004s - local_mul_switch_sink
+             0.004s - local_fill_cut
+             0.004s - local_one_minus_erf2
+             0.003s - local_remove_switch_const_cond
+             0.003s - local_cast_cast
+             0.002s - local_IncSubtensor_serialize
+             0.001s - local_sum_div_dimshuffle
+             0.001s - local_div_switch_sink
+             0.001s - local_dimshuffle_no_inplace_at_canonicalize
+             0.001s - local_cut_useless_reduce
+             0.001s - local_reduce_join
+             0.000s - local_sum_sum
+             0.000s - local_useless_alloc
+             0.000s - local_reshape_chain
+             0.000s - local_useless_subtensor
+             0.000s - local_reshape_lift
+             0.000s - local_flatten_lift
+             0.000s - local_useless_slice
+             0.000s - local_subtensor_of_alloc
+             0.000s - local_subtensor_of_dot
+             0.000s - local_subtensor_merge
+       0.101733s - ('elemwise_fusion', 'SeqOptimizer', 13) - 0.000s
+         SeqOptimizer      elemwise_fusion  time 0.102s for 78/50 nodes before/after optimization
+           0.000s for fgraph.validate()
+           0.004s for callback
+           0.095307s - ('composite_elemwise_fusion', 'FusionOptimizer', 1) - 0.000s
+             FusionOptimizer
+              nb_iter 3
+              nb_replacement 10
+              nb_inconsistency_replace 0
+              validate_time 0.000249624252319
+              callback_time 0.00316381454468
+              time_toposort 0.00375390052795
+           0.006412s - ('local_add_mul_fusion', 'FusionOptimizer', 0) - 0.000s
+             FusionOptimizer
+              nb_iter 2
+              nb_replacement 3
+              nb_inconsistency_replace 0
+              validate_time 6.43730163574e-05
+              callback_time 0.000783205032349
+              time_toposort 0.0035240650177
+       0.090089s - ('inplace_elemwise_optimizer', 'FromFunctionOptimizer', 30) - 0.019s
+       0.048993s - ('BlasOpt', 'SeqOptimizer', 8) - 0.000s
+         SeqOptimizer      BlasOpt  time 0.049s for 81/80 nodes before/after optimization
+           0.000s for fgraph.validate()
+           0.003s for callback
+           0.035997s - ('gemm_optimizer', 'GemmOptimizer', 1) - 0.000s
+             GemmOptimizer
+              nb_iter 2
+              nb_replacement 2
+              nb_replacement_didn_t_remove 0
+              nb_inconsistency_make 0
+              nb_inconsistency_replace 0
+              time_canonicalize 0.00720071792603
+              time_factor_can 9.05990600586e-06
+              time_factor_list 0.00128507614136
+              time_toposort 0.00311398506165
+              validate_time 4.60147857666e-05
+              callback_time 0.00174236297607
+           0.004569s - ('local_dot_to_dot22', 'TopoOptimizer', 0) - 0.000s
+             TopoOptimizer
+               nb_node (start, end, changed) (81, 81, 5)
+               init io_toposort 0.00139284133911
+               loop time 0.00312399864197
+               callback_time 0.00172805786133
+           0.002283s - ('local_dot22_to_dot22scalar', 'TopoOptimizer', 2) - 0.000s
+             TopoOptimizer
+               nb_node (start, end, changed) (80, 80, 0)
+               init io_toposort 0.00171804428101
+               loop time 0.000502109527588
+               callback_time 0.0
+           0.002257s - ('local_gemm_to_gemv', 'EquilibriumOptimizer', 3) - 0.000s
+             EquilibriumOptimizer          local_gemm_to_gemv
+               time 0.002s for 1 passes
+               nb nodes (start, end,  max) 80 80 80
+               time io_toposort 0.001s
+               time in local optimizers 0.000s
+               time in global optimizers 0.000s
+                0 - 0.002s 0 (0.000s in global opts, 0.001s io_toposort) - 80 nodes -
+           0.002227s - ('use_c_blas', 'TopoOptimizer', 4) - 0.000s
+             TopoOptimizer
+               nb_node (start, end, changed) (80, 80, 0)
+               init io_toposort 0.0014750957489
+               loop time 0.00068998336792
+               callback_time 0.0
+           0.001632s - ('use_scipy_ger', 'TopoOptimizer', 5) - 0.000s
+             TopoOptimizer
+               nb_node (start, end, changed) (80, 80, 0)
+               init io_toposort 0.00138401985168
+               loop time 0.000202178955078
+               callback_time 0.0
+       0.031740s - ('specialize', 'EquilibriumOptimizer', 9) - 0.000s
+         EquilibriumOptimizer      specialize
+           time 0.031s for 2 passes
+           nb nodes (start, end,  max) 80 78 80
+           time io_toposort 0.003s
+           time in local optimizers 0.022s
+           time in global optimizers 0.004s
+            0 - 0.017s 6 (0.002s in global opts, 0.001s io_toposort) - 80 nodes - ('constant_folding', 2) ('local_mul_to_sqr', 1) ('local_elemwise_alloc', 1) ('local_div_to_inv', 1) ('local_mul_specialize', 1)
+            1 - 0.014s 0 (0.002s in global opts, 0.001s io_toposort) - 78 nodes -
+           times - times applied - nb node created - name:
+           0.003s - 1 - 1 - local_mul_specialize
+           0.002s - 1 - 2 - local_elemwise_alloc
+           0.002s - 2 - 0 - constant_folding
+           0.001s - 1 - 1 - local_div_to_inv
+           0.001s - 1 - 1 - local_mul_to_sqr
+           0.016s - in 69 optimization that where not used (display only those with a runtime > 0)
+             0.004s - crossentropy_to_crossentropy_with_softmax_with_bias
+             0.002s - local_one_minus_erf
+             0.002s - Elemwise{sub,no_inplace}(z, Elemwise{mul,no_inplace}(alpha subject to <function <lambda> at 0x7f475e4da050>, SparseDot(x, y))) -> Usmm{no_inplace}(Elemwise{neg,no_inplace}(alpha), x, y, z)
+             0.002s - local_add_specialize
+             0.001s - local_func_inv
+             0.001s - local_useless_elemwise
+             0.001s - local_abs_merge
+             0.001s - local_track_shape_i
+             0.000s - local_one_minus_erf2
+             0.000s - local_sum_mul_by_scalar
+             0.000s - local_elemwise_sub_zeros
+             0.000s - local_cast_cast
+             0.000s - local_alloc_unary
+             0.000s - Elemwise{log,no_inplace}(Softmax(x)) -> <function make_out_pattern at 0x7f47619a8410>(x)
+             0.000s - local_sum_div_dimshuffle
+             0.000s - local_sum_alloc
+             0.000s - local_dimshuffle_lift
+             0.000s - local_reduce_broadcastable
+             0.000s - local_grad_log_erfc_neg
+             0.000s - local_advanced_indexing_crossentropy_onehot
+             0.000s - local_log_erfc
+             0.000s - local_log1p
+             0.000s - local_log_add
+             0.000s - local_useless_alloc
+             0.000s - local_neg_neg
+             0.000s - local_neg_div_neg
+    ...
+
+
+To understand this profile here is some explanation of how optimizations work:
+
+* Optimizations are organized in an hierarchy. At the top level, there
+  is a ``SeqOptimizer`` (Sequence Optimizer). It contains other optimizers,
+  and applies them in the order they were specified. Those sub-optimizers can be
+  of other types, but are all *global* optimizers.
+
+* Each Optimizer in the hierarchy will print some stats about
+  itself. The information that it prints depends of the type of the
+  optimizer.
+
+* The SeqOptimizer will print some stats at the start:
+
+    .. code-block:: none
+
+        Optimizer Profile
+        -----------------
+         SeqOptimizer  OPT_FAST_RUN  time 1.152s for 123/50 nodes before/after optimization
+           0.028s for fgraph.validate()
+           0.131s for callback
+           time      - (name, class, index) - validate time
+
+      Then it will print, with some additional indentation, each sub-optimizer's profile
+      information. These sub-profiles are ordered by the time they took to execute,
+      not by their execution order.
+
+  * ``OPT_FAST_RUN`` is the name of the optimizer
+  * 1.152s is the total time spent in that optimizer
+  * 123/50 means that before this optimization, there were 123 apply node in the function graph, and after only 50.
+  * 0.028s means it spent that time calls to ``fgraph.validate()``
+  * 0.131s means it spent that time for callbacks. This is a mechanism that can trigger other execution when there is a change to the FunctionGraph.
+  * ``time      - (name, class, index) - validate time`` tells how the information for each sub-optimizer get printed.
+  * All other instances of ``SeqOptimizer`` are described like this. In particular, some sub-optimizer from OPT_FAST_RUN that are also ``SeqOptimizer``s.
+
+
+* The ``SeqOptimizer`` will print some stats at the start:
+
+    .. code-block:: none
+
+       0.751816s - ('canonicalize', 'EquilibriumOptimizer', 4) - 0.004s
+         EquilibriumOptimizer      canonicalize
+           time 0.751s for 14 passes
+           nb nodes (start, end,  max) 108 81 117
+           time io_toposort 0.029s
+           time in local optimizers 0.687s
+           time in global optimizers 0.010s
+            0 - 0.050s 27 (0.000s in global opts, 0.002s io_toposort) - 108 nodes - ('local_dimshuffle_lift', 9) ('local_upcast_elemwise_constant_inputs', 5) ('local_shape_to_shape_i', 3) ('local_fill_sink', 3) ('local_fill_to_alloc', 2) ...
+            1 - 0.288s 26 (0.002s in global opts, 0.002s io_toposort) - 117 nodes - ('local_dimshuffle_lift', 8) ('local_fill_sink', 4) ('constant_folding', 4) ('local_useless_elemwise', 3) ('local_subtensor_make_vector', 3) ...
+            2 - 0.044s 13 (0.002s in global opts, 0.003s io_toposort) - 96 nodes - ('constant_folding', 4) ('local_dimshuffle_lift', 3) ('local_fill_sink', 3) ('local_useless_elemwise', 1) ('local_fill_to_alloc', 1) ...
+            3 - 0.045s 11 (0.000s in global opts, 0.002s io_toposort) - 91 nodes - ('constant_folding', 3) ('local_fill_to_alloc', 2) ('local_dimshuffle_lift', 2) ('local_mul_canonizer', 2) ('MergeOptimizer', 1) ...
+            4 - 0.035s 8 (0.002s in global opts, 0.002s io_toposort) - 93 nodes - ('local_fill_sink', 3) ('local_dimshuffle_lift', 2) ('local_fill_to_alloc', 1) ('MergeOptimizer', 1) ('constant_folding', 1)
+            5 - 0.035s 6 (0.000s in global opts, 0.002s io_toposort) - 88 nodes - ('local_fill_sink', 2) ('local_dimshuffle_lift', 2) ('local_fill_to_alloc', 1) ('local_mul_canonizer', 1)
+            6 - 0.038s 10 (0.001s in global opts, 0.002s io_toposort) - 95 nodes - ('local_fill_sink', 3) ('local_dimshuffle_lift', 3) ('constant_folding', 2) ('local_fill_to_alloc', 1) ('MergeOptimizer', 1)
+            7 - 0.032s 5 (0.001s in global opts, 0.002s io_toposort) - 91 nodes - ('local_fill_sink', 3) ('MergeOptimizer', 1) ('local_dimshuffle_lift', 1)
+            8 - 0.034s 5 (0.000s in global opts, 0.002s io_toposort) - 92 nodes - ('local_fill_sink', 3) ('MergeOptimizer', 1) ('local_greedy_distributor', 1)
+            9 - 0.031s 6 (0.001s in global opts, 0.002s io_toposort) - 90 nodes - ('local_fill_sink', 2) ('local_fill_to_alloc', 1) ('MergeOptimizer', 1) ('local_dimshuffle_lift', 1) ('local_greedy_distributor', 1)
+           10 - 0.032s 5 (0.000s in global opts, 0.002s io_toposort) - 89 nodes - ('local_dimshuffle_lift', 2) ('local_fill_to_alloc', 1) ('MergeOptimizer', 1) ('local_fill_sink', 1)
+           11 - 0.030s 5 (0.000s in global opts, 0.002s io_toposort) - 88 nodes - ('local_dimshuffle_lift', 2) ('local_fill_to_alloc', 1) ('MergeOptimizer', 1) ('constant_folding', 1)
+           12 - 0.026s 1 (0.000s in global opts, 0.003s io_toposort) - 81 nodes - ('MergeOptimizer', 1)
+           13 - 0.031s 0 (0.000s in global opts, 0.003s io_toposort) - 81 nodes -
+           times - times applied - nb node created - name:
+           0.263s - 15 - 0 - constant_folding
+           0.096s - 2 - 14 - local_greedy_distributor
+           0.066s - 4 - 19 - local_mul_canonizer
+           0.046s - 28 - 57 - local_fill_sink
+           0.042s - 35 - 78 - local_dimshuffle_lift
+           0.018s - 5 - 15 - local_upcast_elemwise_constant_inputs
+           0.010s - 11 - 4 - MergeOptimizer
+           0.009s - 4 - 0 - local_useless_elemwise
+           0.005s - 11 - 2 - local_fill_to_alloc
+           0.004s - 3 - 6 - local_neg_to_mul
+           0.002s - 1 - 3 - local_lift_transpose_through_dot
+           0.002s - 3 - 4 - local_shape_to_shape_i
+           0.002s - 2 - 4 - local_subtensor_lift
+           0.001s - 3 - 0 - local_subtensor_make_vector
+           0.001s - 1 - 1 - local_sum_all_to_none
+           0.131s - in 62 optimization that where not used (display only those with a runtime > 0)
+             0.050s - local_add_canonizer
+             0.018s - local_mul_zero
+             0.016s - local_one_minus_erf
+             0.010s - local_func_inv
+             0.006s - local_0_dot_x
+             0.005s - local_track_shape_i
+             0.004s - local_mul_switch_sink
+             0.004s - local_fill_cut
+             0.004s - local_one_minus_erf2
+             0.003s - local_remove_switch_const_cond
+             0.003s - local_cast_cast
+             0.002s - local_IncSubtensor_serialize
+             0.001s - local_sum_div_dimshuffle
+             0.001s - local_div_switch_sink
+             0.001s - local_dimshuffle_no_inplace_at_canonicalize
+             0.001s - local_cut_useless_reduce
+             0.001s - local_reduce_join
+             0.000s - local_sum_sum
+             0.000s - local_useless_alloc
+             0.000s - local_reshape_chain
+             0.000s - local_useless_subtensor
+             0.000s - local_reshape_lift
+             0.000s - local_flatten_lift
+             0.000s - local_useless_slice
+             0.000s - local_subtensor_of_alloc
+             0.000s - local_subtensor_of_dot
+             0.000s - local_subtensor_merge
+
+  * ``0.751816s - ('canonicalize', 'EquilibriumOptimizer', 4) - 0.004s``
+    This line is from ``SeqOptimizer``, and indicates information related
+    to a sub-optimizer. It means that this sub-optimizer took
+    a total of .7s. Its name is ``'canonicalize'``. It is an
+    ``EquilibriumOptimizer``. It was executed at index 4 by the
+    ``SeqOptimizer``. It spent 0.004s in the *validate* phase.
+  * All other lines are from the profiler of the ``EquilibriumOptimizer`.
+
+  * An ``EquilibriumOptimizer`` does multiple passes on the Apply nodes from
+    the graph, trying to apply local and global optimizations.
+    Conceptually, it tries to execute all global optimizations,
+    and to apply all local optimizations on all
+    nodes in the graph. If no optimization got applied during a pass, it
+    stops. So it tries to find an equilibrium state where none of the
+    optimizations get applied. This is useful when we do not know a fixed order for
+    the execution of the optimization.
+  * ``time 0.751s for 14 passes`` means that it took .7s and did 14 passes over the graph.
+
+  * ``nb nodes (start, end, max) 108 81 117`` means that at the start,
+    the graph had 108 node, at the end, it had 81 and the maximum size
+    was 117.
+
+  * Then it prints some global timing information: it spent 0.029s in
+    ``io_toposort``, all local optimizers took 0.687s together for all
+    passes, and global optimizers took a total of 0.010s.
+
+  * Then we print the timing for each pass, the optimization that
+    got applied, and the number of time they got applied. For example,
+    in pass 0, the ``local_dimshuffle_lift`` optimizer changed the graph 9
+    time.
+
+  * Then we print the time spent in each optimizer, the number of times
+    they changed the graph and the number of nodes they introduced in
+    the graph.
+
+  * Optimizations with that pattern `local_op_lift` means that a node
+    with that op will be replaced by another node, with the same op,
+    but will do computation closer to the inputs of the graph.
+    For instance, ``local_op(f(x))`` getting replaced by ``f(local_op(x))``.
+
+  * Optimization with that pattern `local_op_sink` is the opposite of
+    `lift`. For instance ``f(local_op(x))`` getting replaced by ``local_op(f(x))``.
+
+  * Local optimizers can replace any arbitrary node in the graph, not
+    only the node it received as input. For this, it must return a
+    dict. The keys being nodes to replace and the
+    values being the corresponding replacement.
+
+    This is useful to replace a client of the node received as
+    parameter.

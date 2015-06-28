@@ -397,6 +397,17 @@ import theano and print the config variable, as in:
     the user and skip this optimization ('warn'), raise the exception
     ('raise'), or fall into the pdb debugger ('pdb').
 
+
+.. attribute:: assert_no_cpu_op
+
+    String value: 'ignore' or 'warn' or 'raise' or 'pdb'
+
+    Default: 'ignore'
+
+    If there is a CPU op in the computational graph, depending on its value;
+    this flag can either raise a warning, an exception or stop the 
+    compilation with pdb.
+
 .. attribute:: on_shape_error
 
     String value: 'warn' or 'raise'
@@ -406,6 +417,7 @@ import theano and print the config variable, as in:
     When an exception is raised when inferring the shape of some apply
     node, either warn the user and use a default value ('warn'), or
     raise the exception ('raise').
+
 
 .. attribute:: config.warn.ignore_bug_before
 

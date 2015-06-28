@@ -1,10 +1,11 @@
 from __future__ import print_function
+from functools import partial
 import sys
 import time
 
 import theano
 from theano import config
-from theano.compat import partial, OrderedDict
+from theano.compat import OrderedDict
 from theano.gof import graph
 
 
@@ -412,7 +413,7 @@ class NoOutputFromInplace(Feature):
             node = out.owner
             op = node.op
             out_idx = node.outputs.index(out)
-            if hasattr(op, 'destroy_map') and out_idx in op.destroy_map.keys():
+            if hasattr(op, 'destroy_map') and out_idx in op.destroy_map:
                 raise theano.gof.InconsistencyError(
                     "A function graph Feature has requested (probably for ",
                     "efficiency reasons for scan) that outputs of the graph",

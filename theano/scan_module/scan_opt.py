@@ -59,13 +59,16 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 import logging
 import copy
+from sys import maxsize
 import numpy
 
 import theano
 from theano import tensor
 from theano.tensor import opt, get_scalar_constant_value
 from theano import gof
-from theano.compat import maxsize, OrderedDict
+from theano.compat import OrderedDict
+from six import integer_types, iteritems
+from six.moves import xrange
 from theano.gof.opt import Optimizer
 from theano.gof import toolbox, DestroyHandler, InconsistencyError
 from theano.compile import optdb
@@ -344,7 +347,7 @@ class PushOutNonSeqScan(gof.Optimizer):
                              **dict(return_list=True))[0].owner
 
             fgraph.replace_all_validate_remove(
-                zip(node.outputs, nw_node.outputs),
+                list(zip(node.outputs, nw_node.outputs)),
                 remove=[node],
                 reason='scanOp_pushout_nonseqs_ops')
             return True
@@ -556,7 +559,7 @@ class PushOutSeqScan(gof.Optimizer):
                              **dict(return_list=True))[0].owner
 
             fgraph.replace_all_validate_remove(
-                zip(node.outputs, nw_node.outputs),
+                list(zip(node.outputs, nw_node.outputs)),
                 remove=[node],
                 reason='scanOp_pushout_seqs_ops')
             return True
@@ -588,7 +591,7 @@ class PushOutSeqScan(gof.Optimizer):
             # We need to add one extra dimension to the outputs
             if replace_with and len(replace_with) == len(node.outputs):
                 fgraph.replace_all_validate_remove(
-                    replace_with.items(),
+                    list(replace_with.items()),
                     remove=[node],
                     reason='scanOp_pushout_seqs_ops')
                 return True
@@ -919,7 +922,7 @@ class PushOutScanOutput(gof.Optimizer):
                 new_scan_node.outputs[new_node_new_outputs_idx+nb_new_outs:])
 
         fgraph.replace_all_validate_remove(
-            zip(old_scan_node.outputs, new_node_old_outputs),
+            list(zip(old_scan_node.outputs, new_node_old_outputs)),
             remove=[old_scan_node],
             reason='scanOp_pushout_output')
 
@@ -979,7 +982,7 @@ class ScanInplaceOptimizer(Optimizer):
                 new_outs = new_op(*inputs, **dict(return_list=True))
                 try:
                     fgraph.replace_all_validate_remove(
-                        zip(node.outputs, new_outs),
+                        list(zip(node.outputs, new_outs)),
                         remove=[node],
                         reason='scanOp_make_inplace')
                     op = new_op
@@ -1162,15 +1165,15 @@ class ScanSaveMem(gof.Optimizer):
                         if isinstance(stop, tensor.Variable):
                             global_nsteps['sym'] += [stop]
                         # not if it is maxsize
-                        elif (type(stop) in (int, long) and
+                        elif (type(stop) in integer_types and
                               stop == maxsize):
                             global_nsteps = None
                         # yes if it is a int k, 0 < k < maxsize
-                        elif (type(stop) in (int, long) and
+                        elif (type(stop) in integer_types and
                               global_nsteps['real'] < stop):
                             global_nsteps['real'] = stop
                         # yes if it is a int k, 0 < k < maxsize
-                        elif (type(stop) in (int, long) and stop > 0):
+                        elif (type(stop) in integer_types and stop > 0):
                             pass
                         # not otherwise
                         else:
@@ -1408,7 +1411,7 @@ class ScanSaveMem(gof.Optimizer):
             (inps, outs, info, node_ins, compress_map) = \
                     scan_utils.compress_outs(op, not_required, nw_inputs)
             inv_compress_map = OrderedDict()
-            for k, v in compress_map.items():
+            for k, v in iteritems(compress_map):
                 inv_compress_map[v] = k
 
             node_ins = [pre_greedy_local_optimizer(list_opt_slice, x) for x in
@@ -1700,7 +1703,7 @@ class ScanMerge(gof.Optimizer):
         if not isinstance(new_outs, (list, tuple)):
             new_outs = [new_outs]
 
-        return zip(outer_outs, new_outs)
+        return list(zip(outer_outs, new_outs))
 
     def belongs_to_set(self, node, set_nodes):
         """
@@ -2124,10 +2127,10 @@ class PushOutDot1(gof.Optimizer):
                             new_out = tensor.dot(val, out_seq)
 
                         pos = node.outputs.index(outer_out)
-                        old_new = zip(node.outputs[:pos], new_outs[:pos])
+                        old_new = list(zip(node.outputs[:pos], new_outs[:pos]))
                         old = node.outputs[pos].clients[0][0].outputs[0]
                         old_new.append((old, new_out))
-                        old_new += zip(node.outputs[pos+1:], new_outs[pos:])
+                        old_new += list(zip(node.outputs[pos+1:], new_outs[pos:]))
                         fgraph.replace_all_validate_remove(
                             old_new, remove=[node], reason='scan_pushout_dot1')
 

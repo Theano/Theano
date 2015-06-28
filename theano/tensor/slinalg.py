@@ -3,6 +3,7 @@ import logging
 logger = logging.getLogger(__name__)
 import numpy
 import warnings
+from six.moves import xrange
 
 from theano.gof import Op, Apply
 
@@ -24,15 +25,14 @@ except ImportError:
     imported_scipy = False
 
 MATRIX_STRUCTURES = (
-        'general',
-        'symmetric',
-        'lower_triangular',
-        'upper_triangular',
-        'hermitian',
-        'banded',
-        'diagonal',
-        'toeplitz',
-        )
+    'general',
+    'symmetric',
+    'lower_triangular',
+    'upper_triangular',
+    'hermitian',
+    'banded',
+    'diagonal',
+    'toeplitz')
 
 
 class Cholesky(Op):
@@ -167,8 +167,8 @@ class Solve(Op):
         assert A.ndim == 2
         assert b.ndim in [1, 2]
         otype = tensor.tensor(
-                broadcastable=b.broadcastable,
-                dtype=(A * b).dtype)
+            broadcastable=b.broadcastable,
+            dtype=(A * b).dtype)
         return Apply(self, [A, b], [otype])
 
     def perform(self, node, inputs, output_storage):
@@ -293,7 +293,7 @@ class EigvalshGrad(Op):
         (a, b, gw) = inputs
         w, v = scipy.linalg.eigh(a, b, lower=self.lower)
         gA = v.dot(numpy.diag(gw).dot(v.T))
-        gB = - v.dot(numpy.diag(gw*w).dot(v.T))
+        gB = - v.dot(numpy.diag(gw * w).dot(v.T))
 
         # See EighGrad comments for an explanation of these lines
         out1 = self.tri0(gA) + self.tri1(gA).T
@@ -331,14 +331,14 @@ def kron(a, b):
     o = tensor.outer(a, b)
     o = o.reshape(tensor.concatenate((a.shape, b.shape)),
                   a.ndim + b.ndim)
-    shf = o.dimshuffle(0, 2, 1, * range(3, o.ndim))
+    shf = o.dimshuffle(0, 2, 1, * list(range(3, o.ndim)))
     if shf.ndim == 3:
         shf = o.dimshuffle(1, 0, 2)
         o = shf.flatten()
     else:
         o = shf.reshape((o.shape[0] * o.shape[2],
                          o.shape[1] * o.shape[3]) +
-                        tuple([o.shape[i] for i in range(4, o.ndim)]))
+                        tuple(o.shape[i] for i in xrange(4, o.ndim)))
     return o
 
 

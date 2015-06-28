@@ -9,6 +9,7 @@ from __future__ import print_function
 import warnings
 
 import numpy
+from six.moves import xrange
 
 from theano import Op, Apply, shared, config, Variable, Out
 from theano import gradient, function
@@ -19,7 +20,7 @@ from theano.tensor import sqrt, log, sin, cos, join, prod
 from theano.compile import optdb
 from theano.gof import local_optimizer
 
-import multinomial
+from . import multinomial
 
 from theano.sandbox.cuda import cuda_available, cuda_enabled, GpuOp
 if cuda_available:

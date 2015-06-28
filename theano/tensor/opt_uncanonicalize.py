@@ -36,7 +36,6 @@ import logging
 _logger = logging.getLogger('theano.tensor.opt')
 
 from theano import gof
-from theano.compat import deque
 from theano.tensor.elemwise import CAReduce
 from theano.tensor import basic as T
 

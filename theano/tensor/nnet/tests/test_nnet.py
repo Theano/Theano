@@ -3,6 +3,7 @@ import unittest
 
 import numpy
 from nose.plugins.skip import SkipTest
+from six.moves import xrange
 
 import theano
 from theano import config
@@ -21,12 +22,13 @@ from theano.tensor.nnet import (categorical_crossentropy,
                                 CrossentropySoftmaxArgmax1HotWithBias,
                                 CrossentropyCategorical1Hot,
                                 CrossentropyCategorical1HotGrad,
-                                sigmoid, softplus,
-                                Softmax, softmax, SoftmaxWithBias,
+                                sigmoid, softplus, Softmax, softmax,
+                                softmax_op, softmax_graph, SoftmaxWithBias,
                                 softmax_grad,
                                 softmax_with_bias, SoftmaxGrad,
                                 Prepend_scalar_constant_to_each_row,
-                                Prepend_scalar_to_each_row)
+                                Prepend_scalar_to_each_row,
+                                relu)
 from theano.tensor import matrix, vector, lvector, scalar
 
 
@@ -52,40 +54,40 @@ class T_Softmax(utt.InferShapeTester):
 
     def test0(self):
         def f(a):
-            return softmax(a)[:, 0]
+            return softmax_op(a)[:, 0]
         utt.verify_grad(f, [numpy.random.rand(3, 4)])
 
     def test1(self):
         def f(a):
-            return softmax(a)[:, 1]
+            return softmax_op(a)[:, 1]
         utt.verify_grad(f, [numpy.random.rand(3, 4)])
 
     def test2(self):
         def f(a):
-            return softmax(a)[:, 2]
+            return softmax_op(a)[:, 2]
         utt.verify_grad(f, [numpy.random.rand(3, 4)])
 
     def test3(self):
         def f(a):
-            return softmax(a)[:, 3]
+            return softmax_op(a)[:, 3]
         utt.verify_grad(f, [numpy.random.rand(3, 4)])
 
     def test_infer_shape(self):
         admat = matrix()
         admat_val = numpy.random.rand(3, 4).astype(config.floatX)
         self._compile_and_check([admat], [Softmax()(admat)],
-                            [admat_val], Softmax)
+                                [admat_val], Softmax)
 
     def test_vector(self):
         x = T.vector()
-        f = theano.function([x], softmax(x))
+        f = theano.function([x], softmax_op(x))
 
         xv = numpy.random.randn(6).astype(config.floatX)
         assert numpy.allclose(f(xv), numpy.exp(xv) / numpy.exp(xv).sum())
 
     def test_vector_grad(self):
         def f(a):
-            return softmax(a)
+            return softmax_op(a)
         utt.verify_grad(f, [numpy.random.rand(4)])
 
 
@@ -127,10 +129,10 @@ class T_SoftmaxWithBias(utt.InferShapeTester):
         vbias = theano.shared(value=0.1, name='vbias')  # 0.01
         hid = T.vector('hid')
         f = theano.function([hid],
-                            T.nnet.softmax(T.dot(hid, W.T) + vbias))
+                            T.nnet.softmax_op(T.dot(hid, W.T) + vbias))
         ops = [node.op for node in f.maker.fgraph.toposort()]
         assert softmax_with_bias not in ops
-        assert softmax in ops
+        assert softmax_op in ops
 
         f([0, 1, 0])
         # print f.maker.fgraph.toposort()
@@ -398,7 +400,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
         fgraph = gof.FunctionGraph(
                 [x, one_of_n],
-                [op(softmax(x), one_of_n)])
+                [op(softmax_op(x), one_of_n)])
         assert fgraph.outputs[0].owner.op == op
 
         theano.compile.mode.optdb.query(
@@ -414,7 +416,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         op = crossentropy_categorical_1hot
         fgraph = gof.FunctionGraph(
                 [x, one_of_n],
-                [op(softmax(x), one_of_n)])
+                [op(softmax_op(x), one_of_n)])
         assert fgraph.outputs[0].owner.op == op
 
         theano.compile.mode.optdb.query(
@@ -432,7 +434,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
         fgraph = gof.FunctionGraph(
                 [x, b, one_of_n],
-                [op(softmax(x + b), one_of_n)])
+                [op(softmax_op(x + b), one_of_n)])
         assert fgraph.outputs[0].owner.op == op
 
         # print 'BEFORE'
@@ -464,7 +466,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
         fgraph = gof.FunctionGraph(
                 [x, b, c, one_of_n],
-                [op(softmax(T.add(x, b, c)), one_of_n)])
+                [op(softmax_op(T.add(x, b, c)), one_of_n)])
         assert fgraph.outputs[0].owner.op == op
 
         # print 'BEFORE'
@@ -492,7 +494,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         op = crossentropy_categorical_1hot
         fgraph = gof.FunctionGraph(
                 [x, b, one_of_n],
-                [op(softmax(x + b), one_of_n)])
+                [op(softmax_op(x + b), one_of_n)])
         assert fgraph.outputs[0].owner.op == op
         # print 'BEFORE'
         # for node in fgraph.toposort():
@@ -515,7 +517,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         x = tensor.matrix('x')
         one_of_n = tensor.lvector('one_of_n')
         op = crossentropy_categorical_1hot
-        xe = op(softmax(x), one_of_n)
+        xe = op(softmax_op(x), one_of_n)
         sum_xe = tensor.sum(xe)
         g_x = tensor.grad(sum_xe, x)
         fgraph = gof.FunctionGraph(
@@ -544,7 +546,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 has_cx1hot = True
             if node.op == crossentropy_softmax_1hot_with_bias_dx:
                 has_cx1hotdx = True
-            if node.op == softmax:
+            if node.op == softmax_op:
                 has_softmax = True
             if node.op == softmax_grad:
                 has_softmaxdx = True
@@ -557,7 +559,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         x = tensor.vector('x')
         one_of_n = tensor.lvector('one_of_n')
         op = crossentropy_categorical_1hot
-        xe = op(softmax(x), one_of_n)
+        xe = op(softmax_op(x), one_of_n)
         sum_xe = tensor.sum(xe)
         g_x = tensor.grad(sum_xe, x)
         fgraph = gof.FunctionGraph(
@@ -586,7 +588,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 has_cx1hot = True
             if node.op == crossentropy_softmax_1hot_with_bias_dx:
                 has_cx1hotdx = True
-            if node.op == softmax:
+            if node.op == softmax_op:
                 has_softmax = True
             if node.op == softmax_grad:
                 has_softmaxdx = True
@@ -641,7 +643,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 ops = [node.op for node in g.maker.fgraph.toposort()]
                 assert len(ops) == 2
                 assert crossentropy_softmax_1hot_with_bias_dx in ops
-                assert softmax in ops
+                assert softmax_op in ops
                 assert softmax_grad not in ops
                 g(x_val, y_val)
             except Exception:
@@ -712,7 +714,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 #there's an extra dimshuffle in there
                 # but I can't think of a good rule to get rid of it
                 assert crossentropy_softmax_1hot_with_bias_dx in ops
-                assert softmax in ops
+                assert softmax_op in ops
                 assert softmax_grad not in ops
                 g(x_val, y_val)
             except Exception:
@@ -794,7 +796,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 ops = [node.op for node in g.maker.fgraph.toposort()]
                 assert len(ops) == 3
                 assert crossentropy_softmax_1hot_with_bias_dx in ops
-                assert softmax in ops
+                assert softmax_op in ops
                 assert softmax_grad not in ops
                 g(x_val, y_val)
             except Exception:
@@ -839,7 +841,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 ops = [node.op for node in g.maker.fgraph.toposort()]
                 assert len(ops) == 4
                 assert crossentropy_softmax_1hot_with_bias_dx in ops
-                assert softmax in ops
+                assert softmax_op in ops
                 assert softmax_grad not in ops
                 g(x_val, y_val)
             except Exception:
@@ -1026,7 +1028,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 theano.printing.debugprint(g)
                 raise
 
-    def test_scale_cost(self):
+    def test_crossentropy_softmax_1hot_with_bias_dxcale_cost(self):
         # TODO: add the optimization in FAST_COMPILE?
         # In the mean time, run it as 'FAST_RUN' instead
         mode = theano.compile.mode.get_default_mode()
@@ -1046,7 +1048,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             for node in func.maker.fgraph.toposort():
                 if node.op == crossentropy_softmax_argmax_1hot_with_bias:
                     has_cx1hot = True
-                if node.op == softmax:
+                if node.op == softmax_op:
                     has_softmax = True
 
             assert has_cx1hot
@@ -1060,7 +1062,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
             for node in func.maker.fgraph.toposort():
                 if node.op == crossentropy_softmax_1hot_with_bias_dx:
                     has_cx1hotdx = True
-                if node.op == softmax:
+                if node.op == softmax_op:
                     has_softmax = True
                 if node.op == softmax_grad:
                     has_softmaxdx = True
@@ -1127,49 +1129,49 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
 def test_argmax_pushdown():
     x = tensor.matrix()
-
-    # test that the max_and_argmax is pushed down if the max is not used
-    out = tensor.max_and_argmax(
-            softmax(tensor.exp(tensor.tanh(sigmoid(x)))),
-            axis=-1)[1]
-    fgraph = gof.FunctionGraph(
-            [x],
-            [out])
-    theano.compile.mode.optdb.query(
-            theano.compile.mode.OPT_FAST_RUN).optimize(fgraph)
-
-    # print 'AFTER'
-    # for node in fgraph.toposort():
-        # print node.op
-    assert len(fgraph.toposort()) == 2  # an output_guard is second
-    assert fgraph.toposort()[0].op == tensor.basic._max_and_argmax
-    assert str(fgraph.toposort()[1].op) == 'OutputGuard'
-    x = tensor.matrix()
-    # test that the max_and_argmax is not pushed down if the max is used
-    out = tensor.max_and_argmax(
-            softmax(tensor.exp(tensor.tanh(sigmoid(x)))),
-            axis=-1)[0]
-    fgraph = gof.FunctionGraph(
-            [x],
-            [out])
-
-    backup = config.warn.argmax_pushdown_bug
-    config.warn.argmax_pushdown_bug = False
-    try:
+    for softmax in [softmax_graph, softmax_op]:
+        # test that the max_and_argmax is pushed down if the max is not used
+        out = tensor.max_and_argmax(
+                softmax(tensor.exp(tensor.tanh(sigmoid(x)))),
+                axis=-1)[1]
+        fgraph = gof.FunctionGraph(
+                [x],
+                [out])
         theano.compile.mode.optdb.query(
                 theano.compile.mode.OPT_FAST_RUN).optimize(fgraph)
-    finally:
-        config.warn.argmax_pushdown_bug = backup
 
-    # print 'AFTER'
-    # for node in fgraph.toposort():
-        # print node.op
-    assert len(fgraph.toposort()) == 4  # an output_guard is second
-    assert isinstance(fgraph.toposort()[0].op, tensor.Elemwise)
-    assert isinstance(fgraph.toposort()[1].op, Softmax)
-    assert isinstance(fgraph.toposort()[2].op, tensor.CAReduce)
-    assert isinstance(fgraph.toposort()[2].op.scalar_op, theano.scalar.Maximum)
-    assert str(fgraph.toposort()[3].op) == 'OutputGuard'
+        # print 'AFTER'
+        # for node in fgraph.toposort():
+            # print node.op
+        assert len(fgraph.toposort()) == 2  # an output_guard is second
+        assert fgraph.toposort()[0].op == tensor.basic._max_and_argmax
+        assert str(fgraph.toposort()[1].op) == 'OutputGuard'
+        x = tensor.matrix()
+        # test that the max_and_argmax is not pushed down if the max is used
+        out = tensor.max_and_argmax(
+                softmax(tensor.exp(tensor.tanh(sigmoid(x)))),
+                axis=-1)[0]
+        fgraph = gof.FunctionGraph(
+                [x],
+                [out])
+
+        backup = config.warn.argmax_pushdown_bug
+        config.warn.argmax_pushdown_bug = False
+        try:
+            theano.compile.mode.optdb.query(
+                theano.compile.mode.OPT_FAST_RUN).optimize(fgraph)
+        finally:
+            config.warn.argmax_pushdown_bug = backup
+
+        # print 'AFTER'
+        # for node in fgraph.toposort():
+            # print node.op
+        assert len(fgraph.toposort()) == 4  # an output_guard is second
+        assert isinstance(fgraph.toposort()[0].op, tensor.Elemwise)
+        assert isinstance(fgraph.toposort()[1].op, Softmax)
+        assert isinstance(fgraph.toposort()[2].op, tensor.CAReduce)
+        assert isinstance(fgraph.toposort()[2].op.scalar_op, theano.scalar.Maximum)
+        assert str(fgraph.toposort()[3].op) == 'OutputGuard'
 
 
 def test_argmax_pushdown_bias():
@@ -1293,7 +1295,7 @@ class Test_softmax_opt:
         # printing.debugprint(f)
         # print '==='
         assert len(f_ops) == 1
-        assert softmax in f_ops
+        assert softmax_op in f_ops
         f(self.rng.rand(3, 4).astype(config.floatX))
 
     def test_basic_keepdims(self):
@@ -1307,7 +1309,7 @@ class Test_softmax_opt:
         # printing.debugprint(f)
         # print '==='
         assert len(f_ops) == 1
-        assert softmax in f_ops
+        assert softmax_op in f_ops
         f(self.rng.rand(3, 4).astype(config.floatX))
 
     def test_grad(self):
@@ -1329,7 +1331,7 @@ class Test_softmax_opt:
 
         raise SkipTest('Optimization not enabled for the moment')
         assert len(g_ops) == 2
-        assert softmax in g_ops
+        assert softmax_op in g_ops
         assert softmax_grad in g_ops
         g(self.rng.rand(3, 4), self.rng.uniform(.5, 1, (3, 4)))
 
@@ -1375,12 +1377,33 @@ class Test_softmax_opt:
     # etc.
 
 
+def test_softmax_graph():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    x = theano.shared(rng.normal(size=(3, 4)))
+
+    def f(inputs):
+        y = softmax_graph(x)
+        return theano.grad(None, x, known_grads={y: inputs})
+
+    utt.verify_grad(f, [rng.rand(3, 4)])
+
+
+def test_grad_softmax_grad():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    x = theano.shared(rng.normal(size=(3, 4)))
+
+    def f(inputs):
+        y = softmax_op(x)
+        return theano.grad(None, x, known_grads={y: inputs})
+    utt.verify_grad(f, [rng.rand(3, 4)])
+
+
 def test_stabilize_log_softmax():
     mode = theano.compile.mode.get_default_mode()
     mode = mode.including('local_log_softmax', 'specialize')
 
     x = matrix()
-    y = theano.tensor.nnet.softmax(x)
+    y = softmax(x)
     z = theano.tensor.log(y)
 
     f = theano.function([x], z, mode=mode)
@@ -1393,6 +1416,31 @@ def test_stabilize_log_softmax():
     # version matches the unoptimized version
     rng = numpy.random.RandomState([2012, 8, 22])
     f(numpy.cast[config.floatX](rng.randn(2, 3)))
+
+
+def test_relu():
+    x = matrix('x')
+    seed = theano.tests.unittest_tools.fetch_seed()
+    rng = numpy.random.RandomState(seed)
+    X = rng.randn(20, 30).astype(config.floatX)
+
+    # test the base case, without custom alpha value
+    y = theano.tensor.nnet.relu(x).eval({x: X})
+    assert numpy.allclose(y, numpy.maximum(X, 0))
+
+    # test for different constant alpha values (also outside of [0, 1])
+    for alpha in 0, 0.3, 1, 2, -0.3, -1, -2:
+        y = theano.tensor.nnet.relu(x, alpha).eval({x: X})
+        assert numpy.allclose(y, numpy.where(X > 0, X, alpha * X))
+
+    # test for variable alpha (scalar, vector and matrix)
+    for alpha in scalar(), vector(), matrix():
+        # create value for alpha (correct ndim and broadcastable against X)
+        A = numpy.array(rng.randn(*X.shape[::-1][:alpha.ndim][::-1]),
+                        dtype=config.floatX)
+        y = theano.tensor.nnet.relu(x, alpha).eval({x: X, alpha: A})
+        assert numpy.allclose(y, numpy.where(X > 0, X, A * X), rtol=3e-5)
+
 
 if __name__ == '__main__':
     unittest.main()

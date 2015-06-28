@@ -33,7 +33,7 @@ class MyOp(Op):
         self.x = x
 
     def make_node(self, *inputs):
-        inputs = map(as_variable, inputs)
+        inputs = list(map(as_variable, inputs))
         for input in inputs:
             if not isinstance(input.type, MyType):
                 raise Exception("Error 1")

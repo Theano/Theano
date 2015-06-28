@@ -42,11 +42,13 @@ __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 
-import itertools
 import logging
 import numpy
 import warnings
 
+from theano.compat import ifilter, izip
+from six import iteritems
+from six.moves import xrange
 from theano.compile import SharedVariable, function
 from theano import compile
 from theano import gof
@@ -789,9 +791,9 @@ def scan(fn,
     # as non sequences at the end of our args
     fake_nonseqs = [x.type() for x in non_seqs]
     fake_outputs = scan_utils.clone(outputs,
-                                    replace=OrderedDict(zip(non_seqs,
-                                                     fake_nonseqs)))
-    all_inputs = itertools.ifilter(
+                                    replace=OrderedDict(izip(non_seqs,
+                                                             fake_nonseqs)))
+    all_inputs = ifilter(
         lambda x: (isinstance(x, gof.Variable) and
                    not isinstance(x, SharedVariable) and
                    not isinstance(x, gof.Constant)),
@@ -914,7 +916,7 @@ def scan(fn,
                          if (not isinstance(arg, SharedVariable) and
                              not isinstance(arg, tensor.Constant))]
 
-    givens.update(OrderedDict(zip(other_scan_args, other_inner_args)))
+    givens.update(OrderedDict(izip(other_scan_args, other_inner_args)))
 
     if strict:
         non_seqs_set = set(non_sequences if non_sequences != None else [])
@@ -938,8 +940,8 @@ def scan(fn,
                             in dummy_f.maker.expanded_inputs
                             if (isinstance(arg.variable, SharedVariable) and
                                 not arg.update)]
-    givens.update(OrderedDict(zip(other_shared_scan_args,
-                           other_shared_inner_args)))
+    givens.update(OrderedDict(izip(other_shared_scan_args,
+                                   other_shared_inner_args)))
 
     ##
     # Step 6. Re-order the outputs and clone them replacing things
@@ -972,11 +974,10 @@ def scan(fn,
         # variables are put on GPU right aways >:| ,
         new_givens = OrderedDict()
 
-        for w, w_copy in givens.iteritems():
+        for w, w_copy in iteritems(givens):
             if ((isinstance(w.type, cuda.CudaNdarrayType) or
                  isinstance(w.type, gpuarray.GpuArrayType)) and
                 isinstance(w_copy.type, tensor.TensorType)):
-
                 for o in inner_outs:
                     new_givens = traverse(o, w, w_copy, new_givens)
             else:

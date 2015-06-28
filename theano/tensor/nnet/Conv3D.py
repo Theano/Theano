@@ -1,4 +1,5 @@
 from __future__ import print_function
+from six.moves import xrange
 import theano
 from theano.tensor import basic as T
 import numpy as N
@@ -623,5 +624,5 @@ def computeH(V, W, b, d):
     return H
 
 
-import ConvGrad3D
-import ConvTransp3D
+from . import ConvGrad3D
+from . import ConvTransp3D

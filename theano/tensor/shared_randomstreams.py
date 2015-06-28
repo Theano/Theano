@@ -24,11 +24,11 @@ def randomstate_constructor(value, name=None, strict=False,
     if not borrow:
         value = copy.deepcopy(value)
     return RandomStateSharedVariable(
-            type=raw_random.random_state_type,
-            value=value,
-            name=name,
-            strict=strict,
-            allow_downcast=allow_downcast)
+        type=raw_random.random_state_type,
+        value=value,
+        name=name,
+        strict=strict,
+        allow_downcast=allow_downcast)
 
 
 class RandomStreams(raw_random.RandomStreamsBase):

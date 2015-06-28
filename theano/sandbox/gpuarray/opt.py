@@ -1,6 +1,7 @@
 import copy
 import theano
 import numpy
+from six.moves import xrange
 
 try:
     import pygpu
@@ -254,7 +255,7 @@ def local_gpu_elemwise(node):
     scal_op = op.scalar_op
     name = op.name
     if name:
-        name = 'Gpu'+name
+        name = 'Gpu' + name
     res = GpuElemwise(scal_op, name=name,
                       inplace_pattern=copy.copy(op.inplace_pattern),
                       nfunc_spec=op.nfunc_spec)
@@ -348,7 +349,7 @@ def local_gpu_pdbbreakpoint_op(node):
         nb_monitored_vars = len(node.outputs)
         for i in range(nb_monitored_vars):
 
-            inp = old_inputs[i+1]
+            inp = old_inputs[i + 1]
             out = old_outputs[i]
 
             input_is_from_gpu = (inp.owner and
@@ -787,8 +788,8 @@ def local_scan_to_gpua(node):
         scan_outs = [safe_to_gpu(x) for x in node.op.outputs]
     scan_outs = scan_utils.clone(
         scan_outs,
-        replace=zip(node.op.inputs,
-                    [safe_to_cpu(x) for x in scan_ins]))
+        replace=list(zip(node.op.inputs,
+                         (safe_to_cpu(x) for x in scan_ins))))
 
     # We need to construct the hash here, because scan
     # __init__ does not know about the gpu and can not

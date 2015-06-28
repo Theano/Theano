@@ -4,12 +4,12 @@ import logging
 import sys
 
 import numpy
+from six import iteritems
+from six.moves import StringIO, xrange
 
 import theano
-
 from theano import gof, Type, Apply
 from theano import tensor, scalar, config
-from theano.compat.six import StringIO
 from theano.gradient import grad_undefined
 from theano.scalar import Scalar
 
@@ -228,7 +228,7 @@ class GpuElemwise(GpuOp):
                 self.sync == other.sync)
 
     def _rehash(self):
-        items = self.inplace_pattern.items()
+        items = list(self.inplace_pattern.items())
         items.sort()
         tuple_items = [k for k, v in items]
         for k, v in items:
@@ -248,7 +248,7 @@ class GpuElemwise(GpuOp):
 
     def __str__(self):
         if self.inplace_pattern:
-            items = self.inplace_pattern.items()
+            items = list(self.inplace_pattern.items())
             items.sort()
             # We need to print the scalar_op, not only the its class name
             # to have the full definition of composite op.
@@ -275,7 +275,7 @@ class GpuElemwise(GpuOp):
                 # TODO: use LComplete instead
                 args.append(GpuDimShuffle(
                     input.type.broadcastable,
-                    ['x'] * difference + range(length)
+                    ['x'] * difference + list(range(length))
                     )(input))
         _inputs = args
 
@@ -813,8 +813,8 @@ class GpuCAReduce(GpuOp):
         ndim = len(self.reduce_mask)
         nd_out = ndim - sum(self.reduce_mask)
         shapes_format = "shape=(%s)" % ",".join(["%d"] * node.inputs[0].ndim)
-        shapes_data = ",".join(["CudaNdarray_HOST_DIMS(%s)[%d]" % (x, i)
-                                for i in range(node.inputs[0].ndim)])
+        shapes_data = ",".join("CudaNdarray_HOST_DIMS(%s)[%d]" % (x, i)
+                               for i in xrange(node.inputs[0].ndim))
 
         print("""
             if (verbose)
@@ -2437,6 +2437,102 @@ class GpuReshape(tensor.Reshape, GpuOp):
 
         out[0] = x.reshape(tuple(shp))
 
+    def c_code_cache_version(self):
+        return (1,)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        x, shape = inputs
+        output, = outputs
+        new_ndim = self.ndim
+        sdtype = node.inputs[1].type.dtype_specs()[1]
+        fail = sub['fail']
+        return """
+        PyObject *new_shape = PyTuple_New(%(new_ndim)s);
+        size_t total = 1;
+        int compute_axis = -1;
+
+        assert (PyArray_NDIM(%(shape)s) == 1);
+        if (PyArray_DIM(%(shape)s, 0) != %(new_ndim)s)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "GpuReshape: given shape is of incorrect "
+                         "length (%%d should be %%d).",
+                         PyArray_DIM(%(shape)s, 0), %(new_ndim)s);
+            %(fail)s;
+        }
+
+        for (size_t i = 0; i < %(new_ndim)s; ++i)
+        {
+            long dimension = ((%(sdtype)s*)(
+                    PyArray_BYTES(%(shape)s) +
+                    i * PyArray_STRIDES(%(shape)s)[0]))[0];
+            if (dimension == -1)
+            {
+                if (compute_axis != -1)
+                {
+                    PyErr_Format(PyExc_ValueError,
+                                 "GpuReshape: only one -1 is accepted "
+                                 "in the new shape, but got two at "
+                                 "indices %%d and %%zu.",
+                                 compute_axis, i);
+                    %(fail)s;
+                }
+                compute_axis = i;
+            }
+            else
+            {
+                total *= dimension;
+                PyObject *py_dimension = PyInt_FromLong(dimension);
+                PyTuple_SetItem(new_shape, i, py_dimension);
+            }
+        }
+
+        if (compute_axis != -1)
+        {
+            long dimension = CudaNdarray_SIZE(%(x)s) / total;
+            total *= dimension;
+            PyObject *py_dimension = PyInt_FromLong(dimension);
+            PyTuple_SetItem(new_shape, compute_axis, py_dimension);
+        }
+
+        if (total != CudaNdarray_SIZE(%(x)s))
+        {
+            const int *shape_from_py = CudaNdarray_HOST_DIMS(%(x)s);
+
+            char shape_from[128];
+            size_t offset = 0;
+            for (size_t i = 0; i < %(x)s->nd; ++i)
+            {
+                int ws = snprintf(shape_from + offset, 128 - offset,
+                        " %%d,", shape_from_py[i]);
+                offset += ws; 
+                if ( ws < 0 || offset >= 128 )
+                    break;
+            }   
+
+            shape_from[0]='(';
+            if(offset < 128)
+                shape_from[offset>0 ? offset-1 : 1] = ')';
+            else
+                for(size_t i=124; i<127; ++i)
+                    shape_from[i] = '.';
+
+            PyObject *shape_to_py = PyObject_Str(new_shape);
+            const char *shape_to = PyString_AsString(shape_to_py);
+            PyErr_Format(PyExc_ValueError,
+                         "GpuReshape: cannot reshape input of shape "
+                         "%%s to shape %%s.", shape_from, shape_to);
+            %(fail)s;
+        }
+
+        Py_XDECREF(%(output)s);
+        %(output)s = (CudaNdarray*) CudaNdarray_Reshape(%(x)s, new_shape);
+        if (%(output)s == NULL)
+        {
+            %(fail)s;
+        }
+        """ % locals()
+
 
 class GpuSubtensor(GpuOp, tensor.Subtensor):
     """
@@ -3209,7 +3305,7 @@ class GpuJoin(tensor.Join, GpuOp):
 
         def construct_slices(curlen):
             slices = [slice(None, None, None) for i in \
-                            range(len(template_shape))]
+                            xrange(len(template_shape))]
             slices[axis] = slice(curpos, curpos + curlen, None)
             return tuple(slices)
 
@@ -3827,7 +3923,7 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
         cpu = 0
         gpu = 0
         trans = 0
-        for (_, node), t in apply_time.items():
+        for (_, node), t in iteritems(apply_time):
             if isinstance(node.op.__class__.__name__,
                           (HostFromGpu, GpuFromHost)):
                 trans += t
@@ -3843,7 +3939,7 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
         print()
         print("    Theano function input that are float64")
         print("    <fct name> <input name> <input type> <str input>")
-        for fct in fct_call.keys():
+        for fct in fct_call:
             for i in fct.input_storage:
                 if hasattr(i.type, 'dtype') and i.type.dtype == 'float64':
                     print('        ', fct.name, i.name, i.type, i)
@@ -3852,7 +3948,7 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
         print("    List of apply that don't have float64 as input but have float64 in outputs")
         print("    (Useful to know if we forgot some cast when using floatX=float32 or gpu code)")
         print('    <Apply> <Apply position> <fct name> <inputs type> <outputs type>')
-        for fct in fct_call.keys():
+        for fct in fct_call:
             for idx, node in enumerate(fct.maker.fgraph.toposort()):
                 if (any(hasattr(i, 'dtype') and i.dtype == 'float64'
                         for i in node.outputs) and
