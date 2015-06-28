@@ -61,7 +61,6 @@ import logging
 import copy
 from sys import maxsize
 import numpy
-from itertools import chain
 
 import theano
 from theano import tensor
