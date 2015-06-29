@@ -5827,7 +5827,7 @@ def test_sum_overflow():
     assert f([1] * 300) == 300
 
 
-@dec.knownfailureif(
+@dec.skipif(
         isinstance(get_default_mode(), theano.compile.debugmode.DebugMode),
         ("This test fails in DEBUG_MODE, but the generated code is OK. "
          "It is actually a problem of DEBUG_MODE, see #626."))
@@ -5840,7 +5840,7 @@ def test_default():
     assert f(1, None) == 1
 
 
-@dec.knownfailureif(
+@dec.skipif(
         isinstance(get_default_mode(), theano.compile.debugmode.DebugMode),
         ("This test fails in DEBUG_MODE, but the generated code is OK. "
          "It is actually a problem of DEBUG_MODE, see #626."))

@@ -48,7 +48,7 @@ class TestRealImag(unittest.TestCase):
         assert numpy.all(rval == mval[0]), (rval, mval[0])
         assert numpy.all(ival == mval[1]), (ival, mval[1])
 
-    @dec.knownfailureif(True, "Complex grads not enabled, see #178")
+    @dec.skipif(True, "Complex grads not enabled, see #178")
     def test_complex_grads(self):
         def f(m):
             c = complex(m[0], m[1])
@@ -58,7 +58,7 @@ class TestRealImag(unittest.TestCase):
         mval = numpy.asarray(rng.randn(2, 5))
         utt.verify_grad(f, [mval])
 
-    @dec.knownfailureif(True, "Complex grads not enabled, see #178")
+    @dec.skipif(True, "Complex grads not enabled, see #178")
     def test_mul_mixed0(self):
 
         def f(a):
@@ -74,7 +74,7 @@ class TestRealImag(unittest.TestCase):
             print(e.analytic_grad)
             raise
 
-    @dec.knownfailureif(True, "Complex grads not enabled, see #178")
+    @dec.skipif(True, "Complex grads not enabled, see #178")
     def test_mul_mixed1(self):
 
         def f(a):
@@ -90,7 +90,7 @@ class TestRealImag(unittest.TestCase):
             print(e.analytic_grad)
             raise
 
-    @dec.knownfailureif(True, "Complex grads not enabled, see #178")
+    @dec.skipif(True, "Complex grads not enabled, see #178")
     def test_mul_mixed(self):
 
         def f(a, b):
@@ -107,7 +107,7 @@ class TestRealImag(unittest.TestCase):
             print(e.analytic_grad)
             raise
 
-    @dec.knownfailureif(True, "Complex grads not enabled, see #178")
+    @dec.skipif(True, "Complex grads not enabled, see #178")
     def test_polar_grads(self):
         def f(m):
             c = complex_from_polar(abs(m[0]), m[1])
@@ -117,7 +117,7 @@ class TestRealImag(unittest.TestCase):
         mval = numpy.asarray(rng.randn(2, 5))
         utt.verify_grad(f, [mval])
 
-    @dec.knownfailureif(True, "Complex grads not enabled, see #178")
+    @dec.skipif(True, "Complex grads not enabled, see #178")
     def test_abs_grad(self):
         def f(m):
             c = complex(m[0], m[1])

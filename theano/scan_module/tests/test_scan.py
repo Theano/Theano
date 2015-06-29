@@ -214,7 +214,7 @@ class T_Scan(unittest.TestCase):
 
     # generator network, only one output , type scalar ; no sequence or
     # non sequence arguments
-    @dec.knownfailureif(
+    @dec.skipif(
         isinstance(theano.compile.mode.get_default_mode(),
                    theano.compile.debugmode.DebugMode),
         ("This test fails in DebugMode, because it is not yet picklable."))
@@ -3350,7 +3350,7 @@ class T_Scan(unittest.TestCase):
         # One scan node gets optimnized out
         assert len(lssc) == 1
 
-    @dec.knownfailureif(True,
+    @dec.skipif(True,
                         ("This test fails because not typed outputs_info "
                          "are always gived the smallest dtype. There is "
                          "no upcast of outputs_info in scan for now."))
