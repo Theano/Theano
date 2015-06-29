@@ -69,7 +69,6 @@ whitelist_flake8 = [
     "tensor/elemwise_cgen.py",
     "tensor/raw_random.py",
     "tensor/blas_scipy.py",
-    "tensor/basic.py",
     "tensor/tests/test_subtensor.py",
     "tensor/tests/test_utils.py",
     "tensor/tests/test_nlinalg.py",
