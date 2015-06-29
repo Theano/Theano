@@ -216,10 +216,11 @@ class Validator(Feature):
                 raise
             else:
                 verbose = uf.f_locals.get('verbose', False)
-                r = uf.f_locals.get('r', "")
-                reason = uf_info.function
                 if verbose:
-                    print("validate failed on node %s.\n Reason: %s, %s" % (r, reason, e))
+                    r = uf.f_locals.get('r', "")
+                    reason = uf_info.function
+                    print("validate failed on node %s.\n Reason: %s, %s" %
+                          (r, reason, e))
                 raise
         t1 = time.time()
         if fgraph.profile:
