@@ -113,8 +113,8 @@ def remove_constants_and_unused_inputs_scan(node):
     op = node.op
     # We only need to take care of sequences and other arguments
     st = op.n_seqs
-    st += int(numpy.sum([len(x) for x in
-                         op.tap_array[:(op.n_mit_mot + op.n_mit_sot)]]))
+    st += int(sum([len(x) for x in
+                   op.tap_array[:(op.n_mit_mot + op.n_mit_sot)]]))
     st += op.n_sit_sot
     st += op.n_shared_outs
 
@@ -463,7 +463,7 @@ class PushOutSeqScan(gof.Optimizer):
                     depends_on_seqs = False
 
                     for x in nd.inputs:
-                        if x in inner_non_seqs:
+                        if x in inner_non_seqs_set:
                             _idx = inner_non_seqs_map[x]
                             outside_ins.append(outer_non_seqs[_idx])
                         elif x in inner_seqs_set:
@@ -609,7 +609,7 @@ class PushOutSeqScan(gof.Optimizer):
                     if out in op.inner_mitsot_outs(ls):
                         odx = op.inner_mitsot_outs(ls).index(out)
                         inp = op.outer_mitsot(node)[odx]
-                        st = abs(numpy.min(op.mitsot_taps()))
+                        st = abs(min(op.mitsot_taps()))
                         y = tensor.set_subtensor(inp[st:], _y)
                     elif out in op.inner_sitsot_outs(ls):
                         odx = op.inner_sitsot_outs(ls).index(out)
@@ -1081,7 +1081,7 @@ class ScanSaveMem(gof.Optimizer):
         c_outs = op.n_mit_mot + op.n_mit_sot + op.n_sit_sot + op.n_nit_sot
 
         init_l = [0 for x in xrange(op.n_mit_mot)]
-        init_l += [abs(numpy.min(v)) for v in op.tap_array[op.n_mit_mot:]]
+        init_l += [abs(min(v)) for v in op.tap_array[op.n_mit_mot:]]
         init_l += [0 for x in xrange(op.n_nit_sot)]
         # 2. Check the clients of each output and see for how many steps
         # does scan need to run
