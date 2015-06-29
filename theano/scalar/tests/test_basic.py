@@ -412,11 +412,32 @@ def test_grad_identity():
     l = y.sum(dtype=theano.config.floatX)
     theano.gradient.grad(l, x)
 
-def test_grad_InRange():
-    op = InRange(True, True)
-    x = theano.tensor.fscalar('x')
-    out = op(x, 5, 12)
-    gx = theano.tensor.grad(out, x)
+
+def test_grad_inrange():
+    for bound_definition in [(True, True), (False, False)]:
+        # Instantiate op, and then take the gradient
+        op = InRange(*bound_definition)
+        x = theano.tensor.fscalar('x')
+        low = theano.tensor.fscalar('low')
+        high = theano.tensor.fscalar('high')
+        out = op(x, low, high)
+        gx, glow, ghigh = theano.tensor.grad(out, [x, low, high])
+
+        # We look if the gradient are equal to zero
+        # if x is lower than the lower bound,
+        # equal to the lower bound, between lower and higher bound,
+        # equal to the higher bound and higher than the higher
+        # bound.
+        # Mathematically we should have an infinite gradient when
+        # x is equal to the lower or higher bound but in that case
+        # Theano defines the gradient to be zero for stability.
+        f = theano.function([x, low, high], [gx, glow, ghigh])
+        utt.assert_allclose(f(0, 1, 5), [0, 0, 0])
+        utt.assert_allclose(f(1, 1, 5), [0, 0, 0])
+        utt.assert_allclose(f(2, 1, 5), [0, 0, 0])
+        utt.assert_allclose(f(5, 1, 5), [0, 0, 0])
+        utt.assert_allclose(f(7, 1, 5), [0, 0, 0])
+
 
 # Testing of Composite is done in tensor/tests/test_opt.py
 # in test_fusion, TestCompositeCodegen
