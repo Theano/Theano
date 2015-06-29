@@ -25,8 +25,6 @@ import theano.scalar.sharedvar
 from theano.scan_module.scan_op import Scan
 from theano.compat import PY3, OrderedDict
 
-from numpy.testing.noseclasses import KnownFailureTest
-
 
 '''
   Questions and notes about scan that should be answered :
@@ -218,7 +216,7 @@ class T_Scan(unittest.TestCase):
 
     # generator network, only one output , type scalar ; no sequence or
     # non sequence arguments
-    @dec.knownfailureif(
+    @dec.skipif(
         isinstance(theano.compile.mode.get_default_mode(),
                    theano.compile.debugmode.DebugMode),
         ("This test fails in DebugMode, because it is not yet picklable."))
@@ -3055,9 +3053,8 @@ class T_Scan(unittest.TestCase):
                     if isinstance(x.op, theano.tensor.Elemwise)]) == 0
 
     def test_alloc_inputs2(self):
-        raise KnownFailureTest((
-            "This tests depends on an optimization for scan "
-            "that has not been implemented yet."))
+        raise SkipTest("This tests depends on an optimization for "
+                       "scan that has not been implemented yet.")
         W1 = tensor.matrix()
         W2 = tensor.matrix()
         h0 = tensor.vector()
@@ -3135,7 +3132,7 @@ class T_Scan(unittest.TestCase):
         # One scan node gets optimnized out
         assert len(lssc) == 1
 
-    @dec.knownfailureif(True,
+    @dec.skipif(True,
                         ("This test fails because not typed outputs_info "
                          "are always gived the smallest dtype. There is "
                          "no upcast of outputs_info in scan for now."))
@@ -3284,8 +3281,9 @@ class T_Scan(unittest.TestCase):
         assert out == 24
 
     def test_infershape_seq_shorter_nsteps(self):
-        raise KnownFailureTest('This is a generic problem with infershape'
-                               ' that has to be discussed and figured out')
+        raise SkipTest("This is a generic problem with "
+                       "infershape that has to be discussed "
+                       "and figured out")
         x = tensor.vector('x')
         [o1, o2], _ = theano.scan(lambda x, y: (x + 1, y + x),
                          sequences=x,

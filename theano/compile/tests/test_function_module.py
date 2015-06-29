@@ -11,13 +11,13 @@ from theano.compile import function
 from theano.compile import UnusedInputError
 from theano.gof import MissingInputError
 from theano.compat import exc_message
+from theano.tests.unittest_tools import SkipTest
 
 from theano import tensor
 from theano import tensor as T
 import theano
 
 import numpy as N
-from numpy.testing.noseclasses import KnownFailureTest
 
 PatternOptimizer = lambda p1, p2, ign=True: gof.OpKeyOptimizer(gof.PatternSub(p1, p2), ignore_newtrees=ign)
 
@@ -41,7 +41,8 @@ class T_function(unittest.TestCase):
         fn = function([], None)  # ok
         rval = fn()
         if rval == []:
-            raise KnownFailureTest('See #254: Using None as function output leads to [] return value')
+            raise SkipTest("See #254: Using None as function output leads "
+                           "to [] return value")
         else:
             assert rval is None
 

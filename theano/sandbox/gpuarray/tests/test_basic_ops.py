@@ -14,7 +14,6 @@ from theano.tensor.basic import alloc
 from theano.tensor.tests import test_basic
 from theano.tensor.tests.test_basic import rand, safe_make_node
 from theano.tests.unittest_tools import SkipTest
-from numpy.testing.noseclasses import KnownFailureTest
 
 import theano.sandbox.gpuarray
 
@@ -73,7 +72,7 @@ def may_fail(msg, EClass):
                 f()
             except Exception as e:
                 if isinstance(e, EClass):
-                    raise KnownFailureTest(msg, e)
+                    raise SkipTest(msg, e)
                 raise
         wrapper.__name__ = f.__name__
         return wrapper

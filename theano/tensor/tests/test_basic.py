@@ -18,7 +18,6 @@ from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
 import numpy
 from numpy.testing import dec, assert_array_equal, assert_allclose
-from numpy.testing.noseclasses import KnownFailureTest
 from distutils.version import LooseVersion
 
 import theano
@@ -5911,7 +5910,7 @@ def test_sum_overflow():
     assert f([1] * 300) == 300
 
 
-@dec.knownfailureif(
+@dec.skipif(
         isinstance(get_default_mode(), theano.compile.debugmode.DebugMode),
         ("This test fails in DEBUG_MODE, but the generated code is OK. "
          "It is actually a problem of DEBUG_MODE, see #626."))
@@ -5924,7 +5923,7 @@ def test_default():
     assert f(1, None) == 1
 
 
-@dec.knownfailureif(
+@dec.skipif(
         isinstance(get_default_mode(), theano.compile.debugmode.DebugMode),
         ("This test fails in DEBUG_MODE, but the generated code is OK. "
          "It is actually a problem of DEBUG_MODE, see #626."))
@@ -6209,17 +6208,12 @@ class test_arithmetic_cast(unittest.TestCase):
                                     bool(numpy_version >= [1, 6]) and
                                     theano_dtype == 'complex128' and
                                     numpy_dtype == 'complex64'):
-                                    # In numpy 1.6.x adding a
-                                    # complex128 with a float32 or
-                                    # float16 may result in a
-                                    # complex64. This may be a bug
-                                    # (investigation is currently in
-                                    # progress), so in the meantime we
-                                    # just mark this test as a known
-                                    # failure.
-                                    raise KnownFailureTest('Known issue with '
-                                            'numpy >= 1.6.x see #761')
-
+                                    # In numpy 1.6.x adding a complex128 with
+                                    # a float32 may result in a complex64. As
+                                    # of 1.9.2. this is still the case so it is
+                                    # probably by design
+                                    raise SkipTest("Known issue with"
+                                                   "numpy >= 1.6.x see #761")
                                 # In any other situation: something wrong is
                                 # going on!
                                 assert False
