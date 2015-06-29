@@ -284,9 +284,8 @@ class PushOutNonSeqScan(gof.Optimizer):
                             outside_ins.append(outer_non_seqs[_idx])
                         elif x in to_replace_set:
                             outside_ins.append(replace_with_out[to_replace_map[x]])
-
                         elif isinstance(x, theano.Constant):
-                            outside_ins += [x.clone()]
+                            outside_ins.append(x.clone())
                         else:
                             raise Exception(
                                 ('Error in the `scan_pushout_non_seq_'
@@ -349,8 +348,8 @@ class PushOutNonSeqScan(gof.Optimizer):
                 if isinstance(repl_out, theano.Constant):
                     repl_in = repl_out.clone()
                 else:
-                    nw_inner += [repl_in]
-                    nw_outer += [repl_out]
+                    nw_inner.append(repl_in)
+                    nw_outer.append(repl_out)
                 givens[to_repl] = repl_in
 
             _op_outs = scan_utils.clone(clean_outputs,
