@@ -6120,7 +6120,8 @@ class test_arithmetic_cast(unittest.TestCase):
                                     # a float32 may result in a complex64. As
                                     # of 1.9.2. this is still the case so it is
                                     # probably by design
-                                    raise SkipTest("Known issue with numpy >= 1.6.x see #761")
+                                    raise SkipTest("Known issue with"
+                                                   "numpy >= 1.6.x see #761")
                                 # In any other situation: something wrong is
                                 # going on!
                                 assert False
