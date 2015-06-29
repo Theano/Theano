@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
+	<script type='text/javascript' src="http://cpettitt.github.io/project/dagre-d3/v0.1.5/dagre-d3.min.js"></script>
+	<script type='text/javascript' src="http://cpettitt.github.io/project/graphlib-dot/v0.4.10/graphlib-dot.min.js"></script>
+</head>
+
+<body>
+	<style>
+		svg {
+			margin-left:auto;
+			margin-right:auto;
+			display:block;
+			position: fixed;
+			border: 0px solid black;
+			top:5%; left:0%; right:0% bottom=10%
+		}
+		.nodeRect {
+			stroke: black;
+			border: 3px solid black;
+		}
+		.nodeEllipse {
+			stroke: black;
+			border: 3px solid black;
+		}
+		.nodeText {
+			color: black;
+		}
+		.edge {
+			stroke-width: 3px;
+			fill: transparent;
+			cursor: pointer;
+			opacity: 0.4;
+		}
+		.edgeLabelRect {
+			stroke: black;
+			border: 1px solid black;
+			fill: skyblue;
+			opacity: 0.9;
+		}
+		.edgeLabelText {
+			fill: black;
+			text-anchor: start;
+		}
+		.arrowHead {
+			stroke: green;
+			stroke-width: 1px;
+		}
+		.arrowHead_n {
+			stroke: green;
+		}
+		.arrowHead_r {
+			stroke-width: 3px;
+			fill: red;
+			stroke: red;
+		}
+		.arrowHead_b {
+			stroke: dodgerblue;
+		}
+		
+		.tooltip {
+			position: absolute;
+			text-align: center;
+			vertical-align: middle;
+			min-width: 10px;
+			min-height: 10px;
+			padding: 5px;
+			background: lightsteelblue;
+			border: 1px solid black;
+			border-radius: 8px;
+			pointer-events: none;
+		}
+	</style>
+	
+	<div>
+	    <input name="resetNodes" 
+	           type="button" 
+	           value="Reset nodes" 
+	           onclick="resetNodes()"/>
+	    <input name="releaseNodes" 
+	           type="button" 
+	           value="Release nodes" 
+	           onclick="releaseNodes()"/>
+	</div>
+
+	<script type="text/javascript">
+		var path='predict.dot';
+		
+		// Global attributes
+		var pad = 10;
+		d3.select('body').select('svg').remove();
+		var svg = d3.select('body').append('svg')
+			.attr('width', '100%')
+			.attr('height', '95%');
+		var pane = svg.append('g');
+		
+		var edgeDiv = d3.select('body').append('div')
+			.attr('class', 'tooltip')
+			.style('opacity', 0.0);
+		
+		// Definition head of edges
+		var markerData = [
+			{'id': 'n', 'color': 'black'},
+			{'id': 'r', 'color': 'red'},
+			{'id': 'b', 'color': 'dodgerblue'}];
+		svg.append("defs").selectAll('marker').data(markerData).enter().append("marker")
+		    .attr("id", function(d) { return 'edgeArrow_' + d.id;})
+		    .attr("markerWidth", 4)
+		    .attr("markerHeight", 4)
+		    .attr("refX", 2)
+		    .attr("refY", 2)
+		    .attr("orient", "auto")
+		  	.append("path")
+		    .attr("d", "M0,0 L4,2 L0,4 Z")
+		    .attr('fill', function(d) { return d.color;});
+			
+    	function textSize(text, attr) {
+    		var t = svg.append('text').text(text);
+    		if (typeof(attr) != 'undefined') {
+    			for (a in attr) {
+    				t.attr(a, attr[a]);
+    			}
+    		}
+    		var bbox = t.node().getBBox();
+    		t.remove();
+    		return bbox;
+    	}
+    	
+    	function exists(x) {
+    		return typeof(x) != 'undefined';
+    	}
+    
+		
+		var dotGraph;
+		var graph = {};
+		var nodes = [];
+		var edges = [];
+		var layout;
+		var scaleDotX;
+		var scaleDotY;
+		
+		d3.text(path, function(data) {
+			dotGraph = graphlibDot.parse(data);
+			
+			// Calculate width and height
+			var posMax = [0, 0];
+			for (var nodeId in dotGraph._nodes) {
+				var node = dotGraph._nodes[nodeId];
+				node.value.pos = node.value.pos.split(',').map(function(d) {return parseInt(d);});
+				node.value.width = parseInt(node.value.width);
+				node.value.height = parseInt(node.value.height);
+				posMax[0] = Math.max(posMax[0], node.value.pos[0] + node.value.width);
+				posMax[1] = Math.max(posMax[1], node.value.pos[1] + node.value.height);
+			}
+			dotWidth = posMax[0];
+			dotHeight = posMax[1];
+			//svg.attr('viewBox', '0,0,' + dotWidth + ',' + dotHeight);
+			
+			scaleDotX = d3.scale.linear().domain([0, dotWidth]).range([20, dotWidth * 1.2]);
+			scaleDotY = d3.scale.linear().domain([0, dotHeight]).range([20, dotHeight * 1.2]);
+			
+			// Parse nodes
+			var nodeIdx = 0;
+			var nodesA = [];
+			for (nodeId in dotGraph._nodes) {
+				var node = dotGraph._nodes[nodeId];
+				node.index = nodeIdx++;
+				// x, y is center of node (not corner)
+				node.x = scaleDotX(node.value.pos[0]);
+				node.y = scaleDotY(dotHeight - (node.value.pos[1] + node.value.height));
+				var size = textSize(node.value.label, {'class': 'nodeText'});
+				node.value.width = size.width + 2 * pad;
+				node.value.height = size.height + 2 * pad;
+				node.value.cx = node.value.width / 2;
+				node.value.cy = node.value.height / 2;
+				node.value.isValue = false;
+
+				node.fixed = false;
+				nodesA.push(node);
+				nodes.push(node);
+				dotGraph._nodes[nodeId] = node;
+			}
+			
+			// Parse edges
+			var nodesB = [];
+			for (edgeId in dotGraph._edges) {
+				var edge = dotGraph._edges[edgeId];
+				var sourceNode = dotGraph._nodes[edge.u];
+				var targetNode = dotGraph._nodes[edge.v];
+				edge.source = sourceNode.index;
+				edge.target = targetNode.index;
+				if (!exists(edge.value.color)) {
+					edge.value.color = 'black';
+				}
+				switch (edge.value.color) {
+					case 'dodgerblue':
+						edge.value.type = 'b';
+						break;
+					case 'red':
+						edge.value.type = 'r';
+						break;
+					default:
+						edge.value.type = 'n';
+				}
+			
+				node = {};
+				node.index = nodeIdx++;
+				node.value = {};
+				node.value.isHelper = true;
+				node.x = 0.5 * (sourceNode.x + targetNode.x);
+				node.y = 0.5 * (sourceNode.y + targetNode.y);
+				node.fixed = false;
+				nodes.push(node);
+				nodesB.push(node);
+				
+				edge.middle = node;
+				edges.push(edge);
+			}
+			
+			// Setup graph
+			graph['nodes'] = nodes;
+			graph['nodesA'] = nodesA;
+			graph['nodesB'] = nodesB;
+			graph['edges'] = edges;
+			
+			var isEdgeOver = false;
+			var isEdgeLabelOver = false;
+			
+			// Add edges
+			edges = pane.append('g').attr('id', 'edges').selectAll('path').data(graph['edges']).enter().append('path')
+				.attr('class', 'edge')
+				.attr('stroke', function(d) {return d.value.color;})
+				.attr('marker-start', function(d) { return 'url(#edgeArrow_' + d.value.type + ')';})
+				.on('mouseover', function(d) {
+					var edge = d3.select(this);
+					edge.transition()
+						.duration(200)
+						.style('opacity', 1.0);
+				    edgeDiv.transition()        
+				        .duration(200)      
+				        .style('opacity', .9);
+				    edgeDiv
+				    	.html(d.value.label)  
+				        .style('left', (d3.event.pageX) + 'px')     
+				        .style('top', (d3.event.pageY - 28) + 'px');    
+					})
+				.on('mouseout', function(d) {
+					var edge = d3.select(this);
+					edge.transition()
+						.duration(200)
+						.style('opacity', 0.4);
+					edgeDiv.transition()
+						.duration(200)
+						.style('opacity', 0);
+						
+					});
+					
+			// Add nodes
+			nodes = pane.append('g').attr('id', 'nodes').selectAll('g').data(graph['nodesA']).enter().append('g');
+			function fillColor(f) {
+				return typeof(f) == 'undefined' ? 'white' : f;
+			}
+			nodes.each(function(d) {
+				sel = d3.select(this);
+				var shape;
+				if (d.value.shape == 'ellipse') {
+					shape = sel.append('ellipse')
+						.attr('class', 'nodeEllipse')
+						.attr('cx', d.value.cx)
+						.attr('cy', d.value.cy)
+						.attr('rx', d.value.width * 0.6)
+						.attr('ry', d.value.height * 0.6);
+
+				} else {
+					shape = sel.append('rect')
+						.attr('class', 'nodeRect')
+						.attr('width', d.value.width)
+						.attr('height', d.value.height);
+				}
+				shape.attr('fill', fillColor(d.value.fillcolor));
+			});
+			nodes.on('dblclick', releaseNode);
+			
+			// Add nodes text
+			var nodesText = nodes.append('text')
+				.attr('class', 'nodeText')
+				.attr('x', pad)
+				.attr('dy', function(d) {return d.value.height - pad - 5;})
+				.text(function(d) {return d.value.label;})
+				.attr('contenteditable', "true")
+				.on('dblclick', releaseNode);
+			
+			// Drag-start event handler
+			function dragStart(d) {
+				d3.event.sourceEvent.stopPropagation();
+				d.fixed = true;
+			}
+			
+			
+			// Zoom and translate event handler
+			function zoom(d) {
+				pane.attr('transform', 'translate(' + d3.event.translate + ') scale(' + d3.event.scale + ')');
+			}
+			
+			// Force layout
+			layout = d3.layout.force()
+				.nodes(graph['nodes'])
+				.links(graph['edges'])
+				.size([dotWidth, dotHeight])
+				.charge(-3000)
+				.linkDistance(25)
+				.linkStrength(0.1)
+				.on('tick', updateGraph);
+				
+			// Drag behavour
+			var drag = layout.drag()
+				.on('dragstart', dragStart);
+			nodes.call(drag);
+			
+			// Zoom behaviour
+			var bZoom = d3.behavior.zoom()
+				.scaleExtent([0.2, 8])
+				//.on("dblclick.zoom", null)
+				.on('zoom', zoom);
+			svg.call(bZoom);
+			svg.on("dblclick.zoom", null);
+			
+			// Start force layout
+			layout.start();	
+		});
+		
+		function length(x1, y1, x2, y2) {
+			return Math.sqrt(Math.pow(x1-x2, 2) + Math.pow(y1-y2, 2));
+		}
+		
+		function pathPos(x1, y1, x2, y2, c) {
+			x = (1 - c) * x1 + c * x2;
+			y = (1 - c) * y1 + c * y2;
+			p = x + ',' + y;
+			return p;
+		}
+		// Update graph
+		function updateGraph() {
+			// Update nodes
+			nodes.attr('transform', function(d) { return 'translate(' + (d.x - d.value.cx) + ' ' + (d.y - d.value.cy) + ')'; });
+			// Update edges
+			edges.attr('d', function(d) {
+				var dist = 100;
+				var l = length(d.source.x, d.source.y, d.target.x, d.target.y);
+				var n = Math.max(2, Math.floor(l / dist));
+				var marker = [];
+				for (var i = 1; i < n; ++i) {
+					marker.push(i / n);
+				}
+				var markerPos = marker.map(function(c) {return pathPos(d.source.x, d.source.y, d.target.x, d.target.y, c);});
+				var markerPos = ' L' + markerPos.join(' L');
+				var p = 'M' + d.source.x + ',' + d.source.y + ' C' + d.source.x + ',' + d.source.y + ' ' + d.middle.x + ',' + d.middle.y + ' ' + d.target.x + ',' + d.target.y;
+				//var p = 'M' + d.source.x + ',' + d.source.y + markerPos + ' L' + d.target.x + ',' + d.target.y;
+				return p;
+			});
+		}
+		
+		function releaseNode(d) {
+			d.fixed = false;
+			layout.start();
+		}
+		
+		function releaseNodes() {
+			graph['nodes'].forEach (function (d) {
+				d.fixed = false;
+			});
+			layout.start();
+		}
+		
+    	function resetNodes() {
+    		layout.stop();
+    		var nodes = graph['nodes'];
+    		nodes.forEach(function (node, i){
+				nodes[i].x = scaleDotX(node.value.pos[0]);
+				nodes[i].y = scaleDotY(dotHeight - (node.value.pos[1] + node.value.height));
+				nodes[i].px = nodes[i].x;
+				nodes[i].py = nodes[i].y;
+				nodes[i].fixed = true;
+    		});
+    		updateGraph();
+			layout.start();
+    	}
+	</script>
+</body>
+</html>
