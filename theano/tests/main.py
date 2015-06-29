@@ -107,6 +107,20 @@ class TheanoNoseTester(NoseTester):
         :returns: Returns the result of running the tests as a
                   ``nose.result.TextTestResult`` object.
         """
+        # Many Theano tests suppose device=cpu, so we need to raise an
+        # error if device==gpu.
+        if not os.path.exists('theano/__init__.py'):
+            try:
+                from theano import config
+                if config.device != "cpu":
+                    raise ValueError("Theano tests must be run with device=cpu."
+                                     " This will also run GPU tests when possible.\n"
+                                     " If you want GPU-related tests to run on a"
+                                     " specific GPU device, and not the default one,"
+                                     " you should use the init_gpu_device theano flag.")
+            except ImportError:
+                pass
+
         # cap verbosity at 3 because nose becomes *very* verbose beyond that
         verbose = min(verbose, 3)
         self._show_system_info()
