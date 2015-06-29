@@ -276,11 +276,11 @@ def sparse_block_dot(W, h, inputIdx, b, outputIdx, inplace=False):
       Which blocks will be computed is specified in `outputIdx`.
 
     """
-    # assert inputIdx.ndim == h.ndim - 1
-    # assert outputIdx.ndim == inputIdx.ndim
-    # if h.ndim == 2:
-    #     h = h.dimshuffle('x', 0, 1)
-    #     inputIdx = inputIdx.dimshuffle('x', 0)
-    #     outputIdx = outputIdx.dimshuffle('x', 0)
+    assert inputIdx.ndim == h.ndim - 1
+    assert outputIdx.ndim == inputIdx.ndim
+    if h.ndim == 2:
+        h = h.dimshuffle('x', 0, 1)
+        inputIdx = inputIdx.dimshuffle('x', 0)
+        outputIdx = outputIdx.dimshuffle('x', 0)
     return SparseBlockGemv(inplace)(b.take(outputIdx, axis=0), W, h,
                                 inputIdx, outputIdx)
