@@ -1,6 +1,7 @@
 from __future__ import print_function
 from nose.plugins.skip import SkipTest
 import numpy
+import unittest
 
 import theano
 import theano.tensor as T
@@ -291,6 +292,7 @@ def softmax_unittest_template(dtypeInput):
     cmp(128, 16 * 1024)
     cmp(128, 64 * 1024)
 
+
 class test_SoftMax(unittest.TestCase):
     def _test_softmax(
         self,
@@ -356,7 +358,7 @@ class test_SoftMax(unittest.TestCase):
 
     def test_softmax(self):
         x = T.fmatrix('x')
-        z = T.nnet.softmax
+        z = T.nnet.softmax_op
 
         def check_types_without_cudnn(graph, graph_gpu):
             self._check_types(
@@ -364,7 +366,7 @@ class test_SoftMax(unittest.TestCase):
                 graph_gpu,
                 -2,
                 type(z),
-                cuda.nnet.GpuSoftmax
+                GpuSoftmax
             )
 
         mode_wo_cudnn = mode_with_gpu.excluding("cudnn")
@@ -384,10 +386,11 @@ class test_SoftMax(unittest.TestCase):
         self._cmp(0, 10, f, f_gpu)
 
     def test_softmax_cudnn(self):
-        if not cuda.dnn.dnn_available():
-            raise SkipTest(cuda.dnn.dnn_available.msg)
+        from .. import dnn
+        if not dnn.dnn_available():
+            raise SkipTest(dnn.dnn_available.msg)
         x = T.fmatrix('x')
-        z = T.nnet.softmax
+        z = T.nnet.softmax_op
 
         def check_types_with_cudnn(graph, graph_gpu):
             self._check_types(
@@ -395,7 +398,7 @@ class test_SoftMax(unittest.TestCase):
                 graph_gpu,
                 -3,
                 type(z),
-                theano.sandbox.cuda.dnn.GpuDnnSoftmax
+                dnn.GpuDnnSoftmax
             )
 
         f, f_gpu = self._test_softmax(
@@ -409,20 +412,22 @@ class test_SoftMax(unittest.TestCase):
         )
 
     def test_cudnn_softmax_grad(self):
-        if not cuda.dnn.dnn_available():
-            raise SkipTest(cuda.dnn.dnn_available.msg)
+        from .. import dnn
+        if not dnn.dnn_available():
+            raise SkipTest(dnn.dnn_available.msg)
 
         def cmp(n, m, f, f_gpu):
             data = numpy.arange(n * m, dtype='float32').reshape(n, m)
             gdata = numpy.asarray(data)[:, :, None, None]
+
             out = f(data)
             gout = numpy.asarray(f_gpu(gdata))[:, :, 0, 0]
             assert numpy.allclose(out, gout), numpy.absolute(out - gout)
 
         x = T.matrix('x', 'float32')
         x_gpu = T.tensor4('x_gpu', 'float32')
-        f_z = T.nnet.softmax
-        f_gpu = theano.sandbox.cuda.dnn.GpuDnnSoftmax(
+        f_z = T.nnet.softmax_op
+        f_gpu = dnn.GpuDnnSoftmax(
             'bc01',
             'accurate',
             'channel'
@@ -443,7 +448,7 @@ class test_SoftMax(unittest.TestCase):
                 graph_gpu,
                 -1,
                 type(f_z),
-                theano.sandbox.cuda.dnn.GpuDnnSoftmax
+                dnn.GpuDnnSoftmax
             )
 
         def check_types_opt(graph, graph_gpu):
@@ -451,11 +456,12 @@ class test_SoftMax(unittest.TestCase):
             assert len([n for n in graph_gpu.maker.fgraph.toposort()
                         if isinstance(
                             n.op,
-                            theano.sandbox.cuda.dnn.GpuDnnSoftmax
+                            dnn.GpuDnnSoftmax
                         )]) == 1
 
         # Verify that the CPU and GPU implementations return the same results
         # up to a tolerance.
+
         self._test_softmax(
             x,
             x_gpu,
@@ -485,7 +491,7 @@ class test_SoftMax(unittest.TestCase):
                     for i in sorted_f
                     if isinstance(
                         i.op,
-                        theano.sandbox.cuda.dnn.GpuDnnSoftmaxGrad
+                        dnn.GpuDnnSoftmaxGrad
                     )]) == 1)
         assert(len([i
                     for i in sorted_f
@@ -508,7 +514,7 @@ class test_SoftMax(unittest.TestCase):
                     for i in sorted_f
                     if isinstance(
                         i.op,
-                        theano.sandbox.cuda.dnn.GpuDnnSoftmaxGrad
+                        dnn.GpuDnnSoftmaxGrad
                     )]) == 0)
         assert(len([i
                     for i in sorted_f
@@ -527,7 +533,7 @@ class test_SoftMax(unittest.TestCase):
                     for i in sorted_f
                     if isinstance(
                         i.op,
-                        theano.sandbox.cuda.dnn.GpuDnnSoftmaxGrad
+                        dnn.GpuDnnSoftmaxGrad
                     )]) == 1)
         assert(len([i
                     for i in sorted_f
