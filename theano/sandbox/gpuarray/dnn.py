@@ -135,16 +135,20 @@ def c_set_tensor4d(var, desc, err, fail):
     return -1;
   }
   ds = gpuarray_get_elsize(%(var)s->ga.typecode);
+
+  int str0, str1, str2, str3;
+  // cudnn do not like 0s in strides
+  str3 = PyGpuArray_STRIDES(%(var)s)[3]?PyGpuArray_STRIDES(%(var)s)[3]/ds:1;
+  str2 = PyGpuArray_STRIDES(%(var)s)[2]?PyGpuArray_STRIDES(%(var)s)[2]/ds:PyGpuArray_DIMS(%(var)s)[3];
+  str1 = PyGpuArray_STRIDES(%(var)s)[1]?PyGpuArray_STRIDES(%(var)s)[1]/ds:PyGpuArray_DIMS(%(var)s)[2]*PyGpuArray_DIMS(%(var)s)[3];
+  str0 = PyGpuArray_STRIDES(%(var)s)[0]?PyGpuArray_STRIDES(%(var)s)[0]/ds:PyGpuArray_DIMS(%(var)s)[2]*PyGpuArray_DIMS(%(var)s)[3]*PyGpuArray_DIMS(%(var)s)[1];
   %(err)s = cudnnSetTensor4dDescriptorEx(
     %(desc)s, dt,
     PyGpuArray_DIMS(%(var)s)[0],
     PyGpuArray_DIMS(%(var)s)[1],
     PyGpuArray_DIMS(%(var)s)[2],
     PyGpuArray_DIMS(%(var)s)[3],
-    PyGpuArray_STRIDES(%(var)s)[0] / ds,
-    PyGpuArray_STRIDES(%(var)s)[1] / ds,
-    PyGpuArray_STRIDES(%(var)s)[2] / ds,
-    PyGpuArray_STRIDES(%(var)s)[3] / ds);
+    str0, str1, str2, str3);
 
   if (%(err)s != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError,
@@ -1365,7 +1369,7 @@ if (theano_prep_output(&%(outs)s, PyGpuArray_NDIM(%(ins)s),
         return result
 
     def c_code_cache_version(self):
-        return (0, 6, version())
+        return (0, 7, version())
 
     def method(self):
         raise NotImplementedError('GpuDnnSoftmaxBase::method')
