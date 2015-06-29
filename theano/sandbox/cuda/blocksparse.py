@@ -30,8 +30,10 @@ class GpuSparseBlockGemv(GpuOp):
     respectively.
 
     This should not be directly called since the interface is subject
-    to change without notice.  Use the sparse_block_dot_SS() function
-    for a stable interface.
+    to change without notice.  Use the sandbox.blocksparse.sparse_block_dot()
+    function for a stable interface.
+
+    Check sandbox.blocksparse.SparseBlockGemv for more information.
     """
     def __init__(self, inplace=False):
         self.inplace = inplace
@@ -365,6 +367,8 @@ class GpuSparseBlockOuter(GpuOp):
     This op should not be called directly since its interface is
     subject to change without notice.  It is involved in the gradient
     of GpuSparseBlockGemv.
+
+    Check sandbox.blocksparse.SparseBlockOuter for more information.
     """
     def __init__(self, inplace=False):
         self.inplace = inplace
@@ -633,47 +637,3 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
 
 gpu_sparse_block_outer = GpuSparseBlockOuter(False)
 gpu_sparse_block_outer_inplace = GpuSparseBlockOuter(True)
-
-
-def sparse_block_dot_SS(W, h, inputIdx, b, outputIdx):
-    """
-    Compute the dot product (plus bias) of the specified pieces of vectors
-    and matrices.
-
-    Parameters
-    ----------
-    var: shape, comment
-    W: (iBlocks, oBlocks, iSize, oSize), weight matrix
-    h: (batch, iWin, iSize), input from lower layer (sparse)
-    inputIdx: (batch, iWin), indexes of the input blocks
-    b: (oBlocks, oSize), bias vector
-    outputIdx: (batch, oWin), indexes of the output blocks
-
-    returns (batch, oWin, oSize), dot(W[i, j], h[i]) + b[j]
-         but b[j] is only added once
-
-    Notation
-    --------
-    - `batch` is the number of examples in a minibatch (batch size).
-    - `iBlocks` is the total number of blocks in the input (from lower layer).
-    - `iSize` is the size of each of these input blocks.
-    - `iWin` is the number of blocks that will be used as inputs. Which blocks
-      will be used is specified in `inputIdx`.
-    - `oBlocks` is the number or possible output blocks.
-    - `oSize` is the size of each of these output blocks.
-    - `oWin` is the number of output blocks that will actually be computed.
-      Which blocks will be computed is specified in `outputIdx`.
-    """
-    _logger.warning("theano.sandbox.cuda.blocksparse.sparse_block_dot_SS "
-                    "is deprecated. Use "
-                    "theano.sandbox.blocksparse.sparse_block_dot instead."
-                    "theano.sandbox.cuda.blocksparse.sparse_block_dot_SS "
-                    "will be removed on or after 19 Dec 2015.")
-    assert inputIdx.ndim == h.ndim - 1
-    assert outputIdx.ndim == inputIdx.ndim
-    if h.ndim == 2:
-        h = h.dimshuffle('x', 0, 1)
-        inputIdx = inputIdx.dimshuffle('x', 0)
-        outputIdx = outputIdx.dimshuffle('x', 0)
-    return gpu_sparse_block_gemv(b.take(outputIdx, axis=0), W, h,
-                                 inputIdx, outputIdx)

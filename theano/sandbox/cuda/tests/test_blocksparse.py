@@ -1,26 +1,16 @@
 import numpy
-from numpy.random import randn
-
-from unittest import TestCase
-
 from nose.plugins.skip import SkipTest
 
 import theano
 from theano import tensor
 import theano.tests.unittest_tools as utt
-
 import theano.sandbox.tests.test_blocksparse
+
 import theano.sandbox.cuda as cuda_ndarray
 if not cuda_ndarray.cuda_available:
     raise SkipTest('Optional package cuda disabled')
-
-from theano.sandbox.cuda.basic_ops import (GpuDimShuffle,
-                                           as_cuda_ndarray_variable)
-from theano.sandbox.cuda.blocksparse import (sparse_block_dot_SS,
-                                             gpu_sparse_block_gemv,
-                                             gpu_sparse_block_outer,
-                                             gpu_sparse_block_outer_inplace,
-                                             GpuSparseBlockOuter)
+from theano.sandbox.cuda.blocksparse import (gpu_sparse_block_gemv,
+                                             gpu_sparse_block_outer)
 from theano.sandbox.cuda.var import float32_shared_constructor
 
 
@@ -32,9 +22,6 @@ else:
 
 class BlockSparse_Gemv_and_Outer(
         theano.sandbox.tests.test_blocksparse.BlockSparse_Gemv_and_Outer):
-    """
-        ?
-    """
     def setUp(self):
         utt.seed_rng()
         self.mode = mode_with_gpu.excluding('constant_folding')

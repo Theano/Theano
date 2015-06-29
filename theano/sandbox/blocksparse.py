@@ -1,5 +1,4 @@
 import numpy
-from collections import defaultdict
 
 import theano
 from theano import Op, Apply
@@ -41,9 +40,11 @@ class SparseBlockGemv(Op):
         Notation
         --------
         - `batch` is the number of examples in a minibatch (batch size).
-        - `iBlocks` is the total number of blocks in the input (from lower layer).
+        - `iBlocks` is the total number of blocks in the input (from lower
+            layer).
         - `iSize` is the size of each of these input blocks.
-        - `iWin` is the number of blocks that will be used as inputs. Which blocks
+        - `iWin` is the number of blocks that will be used as inputs. Which
+            blocks
           will be used is specified in `inputIdx`.
         - `oBlocks` is the number or possible output blocks.
         - `oSize` is the size of each of these output blocks.
@@ -103,8 +104,9 @@ class SparseBlockOuter(Op):
     """
     This computes the outer product of two sets of pieces of vectors
     updating a full matrix with the results:
-      for b in range(batch_size):
-        o[xIdx[b, i], yIdx[b, j]] += (alpha * outer(x[xIdx[b, i]], y[yIdx[b, j]]))
+        for b in range(batch_size):
+            o[xIdx[b, i], yIdx[b, j]] += (alpha * outer(x[xIdx[b, i]],
+            y[yIdx[b, j]]))
     This op is involved in the gradient of SparseBlockGemv.
     """
 
@@ -161,9 +163,8 @@ class SparseBlockOuter(Op):
         raise NotImplementedError('Optimization of SparseBlockOuter failed.')
 
     def grad(self, inputs, output_gradients):
-        # TODO!
-        meta_grad_op = MetaGradSparseBlockGemv(output_gradients)
-        return [meta_grad_op(inp) for inp in inputs]
+        raise NotImplementedError("SparseBlockOuter has no gradient "
+                                  "implemented")
 
 
 sparse_block_outer = SparseBlockOuter(False)

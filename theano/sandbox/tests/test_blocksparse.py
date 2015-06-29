@@ -93,6 +93,9 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         return o
 
     def test_sparseblockdot(self):
+        """
+        Compares the numpy version of sparseblockgemv to sparse_block_dot.
+        """
         b = tensor.fmatrix()
         W = tensor.ftensor4()
         h = tensor.ftensor3()
@@ -114,7 +117,9 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         utt.assert_allclose(ref_out, th_out)
 
     def test_sparseblockgemv(self):
-
+        """
+        Compares the numpy and theano versions of sparseblockgemv.
+        """
         b = tensor.fmatrix()
         W = tensor.ftensor4()
         h = tensor.ftensor3()
@@ -258,8 +263,3 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         print ref_out.shape
 
         utt.assert_allclose(ref_out, th_out)
-
-
-a = BlockSparse_Gemv_and_Outer()
-a.setUp()
-a.test_sparseblockgemv_grad()
