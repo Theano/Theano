@@ -323,8 +323,11 @@ and ``b`` are equal.
             super(AXPBOp, self).__init__()
 
         def make_node(self, x):
-            # check that the theano version has support for __props__
-            assert hasattr(self, '__props__')
+            # check that the theano version has support for __props__.
+            # This next line looks like it has a typo,
+            # but it's actually a way to detect the theano version
+            # is sufficiently recent to support the use of __props__.
+            assert hasattr(self, '_props'), "Your version of theano is too old to support __props__."
             x = theano.tensor.as_tensor_variable(x)
             return theano.Apply(self, [x], [x.type()])
 
