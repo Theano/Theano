@@ -61,7 +61,6 @@ import logging
 import copy
 from sys import maxsize
 import numpy
-from itertools import izip
 
 import theano
 from theano import tensor
@@ -269,13 +268,13 @@ class PushOutNonSeqScan(gof.Optimizer):
                                (x.owner in to_remove_set) or
                                isinstance(x, tensor.Constant)
                                for x in nd.inputs]) and
-                        # we can do this because the assumption is that a
-                        # viewOp or deepCopyOp will be just at the end of the
-                        # function and not somewhere in the middle ..
-                        not isinstance(nd.op, theano.compile.ViewOp) and
-                        not isinstance(nd.op, theano.compile.DeepCopyOp) and
-                        # and we didn't already looked at this node
-                        nd not in to_remove_set):
+                               # we can do this because the assumption is that a
+                               # viewOp or deepCopyOp will be just at the end of the
+                               # function and not somewhere in the middle ..
+                               not isinstance(nd.op, theano.compile.ViewOp) and
+                               not isinstance(nd.op, theano.compile.DeepCopyOp) and
+                               # and we didn't already looked at this node
+                               nd not in to_remove_set):
 
                     # We have a candidate node to removable
                     # Step 1. Reconstruct it on outside
@@ -297,7 +296,7 @@ class PushOutNonSeqScan(gof.Optimizer):
                                  'which is not allowed to move. Report '
                                  'this on theano-users list'), x)
                     outside_ins = [x.type.filter_variable(y) for x, y in
-                                   izip(nd.inputs, outside_ins)]
+                                   zip(nd.inputs, outside_ins)]
 
                     # Do not call make_node for test_value
                     nw_outer_node = nd.op(*outside_ins,
@@ -345,7 +344,7 @@ class PushOutNonSeqScan(gof.Optimizer):
             givens = OrderedDict()
             nw_outer = []
             nw_inner = []
-            for to_repl, repl_in, repl_out in izip(clean_to_replace,
+            for to_repl, repl_in, repl_out in zip(clean_to_replace,
                                                   clean_replace_with_in,
                                                   clean_replace_with_out):
                 if isinstance(repl_out, theano.Constant):
@@ -467,7 +466,7 @@ class PushOutSeqScan(gof.Optimizer):
                                isinstance(x, tensor.Constant) or
                                (x in inner_seqs_set)
                                for x in nd.inputs]) and
-                    not nd in to_remove_set):
+                               nd not in to_remove_set):
                     to_remove_add(nd)
                     outside_ins = []
                     depends_on_seqs = False
@@ -580,7 +579,7 @@ class PushOutSeqScan(gof.Optimizer):
             givens = OrderedDict()
             nw_outer = []
             nw_inner = []
-            for to_repl, repl_in, repl_out in izip(clean_to_replace,
+            for to_repl, repl_in, repl_out in zip(clean_to_replace,
                                                   clean_replace_with_in,
                                                   clean_replace_with_out):
                 if isinstance(repl_out, theano.Constant):
@@ -621,7 +620,7 @@ class PushOutSeqScan(gof.Optimizer):
                     if out in op.inner_mitsot_outs(ls):
                         odx = op.inner_mitsot_outs(ls).index(out)
                         inp = op.outer_mitsot(node)[odx]
-                        st = abs(min(op.mitsot_taps()))
+                        st = abs(numpy.min(op.mitsot_taps()))
                         y = tensor.set_subtensor(inp[st:], _y)
                     elif out in op.inner_sitsot_outs(ls):
                         odx = op.inner_sitsot_outs(ls).index(out)
