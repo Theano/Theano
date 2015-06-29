@@ -40,7 +40,7 @@ class T_function(unittest.TestCase):
         fn = function([], None)  # ok
         rval = fn()
         if rval == []:
-            raise SkipTest("See #254: Using None as function output leads"
+            raise SkipTest("See #254: Using None as function output leads "
                            "to [] return value")
         else:
             assert rval is None

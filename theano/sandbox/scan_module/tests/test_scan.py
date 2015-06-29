@@ -472,7 +472,7 @@ class TestScan(unittest.TestCase):
         # soon, and it is in the sandbox and not for user consumption, the
         # error is marked as KnownFailure
 
-        raise SkipTest("Work-in-progress sandbox ScanOp is"
+        raise SkipTest("Work-in-progress sandbox ScanOp is "
                        "not fully functional yet")
 
         def f_pow2(x_tm1):
@@ -509,7 +509,7 @@ class TestScan(unittest.TestCase):
         # place (even when told not to by DebugMode). As this op will change
         # soon, and it is in the sandbox and not for user consumption, the
         # error is marked as KnownFailure
-        raise SkipTest("Work-in-progress sandbox"
+        raise SkipTest("Work-in-progress sandbox "
                        "ScanOp is not fully functional yet")
 
         def f_rnn(u_t, x_tm1, W_in, W):
