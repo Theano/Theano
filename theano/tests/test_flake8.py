@@ -60,7 +60,6 @@ whitelist_flake8 = [
     "tensor/blas_headers.py",
     "tensor/type.py",
     "tensor/fourier.py",
-    "tensor/sort.py",
     "tensor/__init__.py",
     "tensor/opt_uncanonicalize.py",
     "tensor/blas.py",
