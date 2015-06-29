@@ -1189,12 +1189,15 @@ class T_random_function(utt.InferShapeTester):
         # binomial was created by calling RandomFunction on a string,
         # random_integers by calling it on a function.
         rng_r = random_state_type()
+        mode = None
+        if theano.config.mode in ["DEBUG_MODE", "DebugMode"]:
+            mode = 'FAST_COMPILE'
         post_bin_r, bin_sample = binomial(rng_r, (3, 5), 1, .3)
-        f = theano.function([rng_r], [post_bin_r, bin_sample])
+        f = theano.function([rng_r], [post_bin_r, bin_sample], mode=mode)
         pkl_f = pickle.dumps(f)
 
         post_int_r, int_sample = random_integers(rng_r, (3, 5), -1, 8)
-        g = theano.function([rng_r], [post_int_r, int_sample])
+        g = theano.function([rng_r], [post_int_r, int_sample], mode=mode)
         pkl_g = pickle.dumps(g)
 
 
