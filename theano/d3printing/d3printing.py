@@ -3,6 +3,7 @@
 # Authors: Christof Angermueller <cangermueller@gmail.com>
 
 import os.path
+
 from theano.printing import pydotprint
 
 
@@ -46,8 +47,11 @@ def d3print(fct, outfile=None, return_html=False, print_message=True,
     :param *args, **kwargs: Parameters passed to pydotprint
     """
 
-    # Generate dot graph definition by calling pydotprint
+    # Generate dot graph by pydotprint and write to file
     dot_graph = d3dot(fct, *args, **kwargs)
+    dot_file = os.path.splitext(outfile)[0] + '.dot'
+    with open(dot_file, 'w') as f:
+        f.write(dot_graph)
 
     # Read template HTML file and replace variables
     template_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
@@ -56,7 +60,7 @@ def d3print(fct, outfile=None, return_html=False, print_message=True,
     template = f.read()
     f.close()
     replace = {
-        '%% DOT_GRAPH %%': dot_graph,
+        '%% DOT_FILE %%': dot_file,
     }
     html = replace_patterns(template, replace)
 
