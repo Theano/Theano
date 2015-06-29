@@ -324,13 +324,13 @@ class PushOutNonSeqScan(gof.Optimizer):
         clean_replace_with_out = []
         existent_nodes = [nd for nd in local_fgraph_topo
                           if nd not in to_remove_set]
-
+        existent_nodes_set = set(existent_nodes)
         to_keep = []; [to_keep.extend(nd.inputs) for nd in existent_nodes]
         to_keep_set = set(to_keep)
 
         for out, idx in to_replace_map.iteritems():
             if (out in to_keep_set
-                    and out.owner not in existent_nodes
+                    and out.owner not in existent_nodes_set
                     # If types are different, conversion Op will be inserted,
                     # and it may trigger an infinite loop.
                     and replace_with_in[idx].type == out.type):
@@ -554,12 +554,13 @@ class PushOutSeqScan(gof.Optimizer):
 
         existent_nodes = [nd for nd in local_fgraph_topo
                           if nd not in to_remove_set]
+        existent_nodes_set = set(existent_nodes)
         to_keep = []; [to_keep.extend(nd.inputs) for nd in existent_nodes]
         to_keep_set = set(to_keep)
 
         for out, idx in to_replace_map.iteritems():
             if (out in to_keep_set
-                    and out.owner not in existent_nodes
+                    and out.owner not in existent_nodes_set
                     # If types are different, conversion Op will be inserted,
                     # and it may trigger an infinite loop.
                     and replace_with_in[idx].type == out.type):
