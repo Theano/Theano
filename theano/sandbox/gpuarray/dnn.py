@@ -52,7 +52,7 @@ def dnn_available():
         dnn_available.avail = False
         return False
     if not init_dev.device.startswith('cuda'):
-        dnn_available.msg = "Not on a CUDA device"
+        dnn_available.msg = "Not on a CUDA device. Got %s." % init_dev.device
         dnn_available.avail = False
         return False
     # This is a hack because bin_id is in the from of
