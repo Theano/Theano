@@ -206,7 +206,10 @@ def remove_constants_and_unused_inputs_scan(node):
 # This is a global opt for historical reason
 # It should be possible to change it to a local opt.
 class PushOutNonSeqScan(gof.Optimizer):
-
+    """
+        A global optimizer for pushing out the variables from scan that are not
+    used inside the scan.
+    """
     def __init__(self):
         gof.Optimizer.__init__(self)
 
@@ -220,24 +223,31 @@ class PushOutNonSeqScan(gof.Optimizer):
             self.process_node(fgraph, node)
 
     def process_node(self, fgraph, node):
+        """
+            Important note: This function uses set and dictionary data structure.
+        By default they are not ordered for efficiency reasons. Take care and make
+        sure of changing them to Ordered versions if you need to iterate over those
+        variables.
+        """
         # this flag tells if there was any change during the last iterations
-        changed = True
         clean_inputs, clean_outputs = scan_utils.reconstruct_graph(
             node.op.inputs, node.op.outputs)
 
-        local_fgraph = gof.FunctionGraph(clean_inputs, clean_outputs, clone=False)
+        local_fgraph = gof.FunctionGraph(clean_inputs,
+                                         clean_outputs,
+                                         clone=False)
+
         local_fgraph_topo = local_fgraph.toposort()
         local_fgraph_outs_set = set(local_fgraph.outputs)
         local_fgraph_outs_map = dict([(v, k) for k,v in enumerate(local_fgraph.outputs)])
 
-        max_iterations = 2 * len(local_fgraph_topo) + 3
-        counts = 0
         to_remove_set = set()
         to_remove_add = to_remove_set.add
         to_replace_set = set()
         to_replace_add = to_replace_set.add
-        to_replace_map = {}
+        to_replace_map = OrderedDict()
         nto_replace = 0
+
         def add_to_replace(y, nto_replace):
             to_replace_add(y)
             to_replace_map[y] = nto_replace
@@ -245,6 +255,7 @@ class PushOutNonSeqScan(gof.Optimizer):
 
         replace_with_in = []
         replace_with_out = []
+
         op = node.op
         # Construct the list of non_sequences to simplify a few things
         inner_non_seqs = op.inner_non_seqs(clean_inputs)
@@ -259,65 +270,55 @@ class PushOutNonSeqScan(gof.Optimizer):
         assert len(inner_non_seqs) == len(outer_non_seqs)
         assert len(inner_seqs) == len(outer_seqs)
 
-        while changed and counts < max_iterations:
-            counts += 1
-            changed = False
+        for nd in local_fgraph_topo:
+            if (# we haven't already looked at this node
+                nd not in to_remove_set and
+                all([((x in inner_non_seqs_set) or
+                    (x.owner in to_remove_set) or
+                    isinstance(x, tensor.Constant))
+                    for x in nd.inputs]) and
+                # we can do this because the assumption is that a
+                # viewOp or deepCopyOp will be just at the end of the
+                # function and not somewhere in the middle ..
+                not isinstance(nd.op, theano.compile.ViewOp) and
+                not isinstance(nd.op, theano.compile.DeepCopyOp)):
 
-            for nd in local_fgraph_topo:
-                if (all([(x in inner_non_seqs_set) or
-                               (x.owner in to_remove_set) or
-                               isinstance(x, tensor.Constant)
-                               for x in nd.inputs]) and
-                               # we can do this because the assumption is that a
-                               # viewOp or deepCopyOp will be just at the end of the
-                               # function and not somewhere in the middle ..
-                               not isinstance(nd.op, theano.compile.ViewOp) and
-                               not isinstance(nd.op, theano.compile.DeepCopyOp) and
-                               # and we didn't already looked at this node
-                               nd not in to_remove_set):
+                # We have a candidate node to removable
+                # Step 1. Reconstruct it on outside
+                to_remove_add(nd)
+                outside_ins = []
+                for x in nd.inputs:
+                    if x in inner_non_seqs_set:
+                        _idx = inner_non_seqs_map[x]
+                        outside_ins.append(outer_non_seqs[_idx])
+                    elif x in to_replace_set:
+                        outside_ins.append(replace_with_out[to_replace_map[x]])
+                    elif isinstance(x, theano.Constant):
+                        outside_ins.append(x.clone())
+                    else:
+                        raise Exception(
+                            ('Error in the `scan_pushout_non_seq_'
+                             'operations`. The optimization tries '
+                             'to move some computation fron scan '
+                             'which is not allowed to move. Report '
+                             'this on theano-users list'), x)
+                outside_ins = [x.type.filter_variable(y) for x, y in
+                               zip(nd.inputs, outside_ins)]
 
-                    # We have a candidate node to removable
-                    # Step 1. Reconstruct it on outside
-                    to_remove_add(nd)
-                    outside_ins = []
-                    for x in nd.inputs:
-                        if x in inner_non_seqs_set:
-                            _idx = inner_non_seqs_map[x]
-                            outside_ins.append(outer_non_seqs[_idx])
-                        elif x in to_replace_set:
-                            outside_ins.append(replace_with_out[to_replace_map[x]])
-                        elif isinstance(x, theano.Constant):
-                            outside_ins.append(x.clone())
-                        else:
-                            raise Exception(
-                                ('Error in the `scan_pushout_non_seq_'
-                                 'operations`. The optimization tries '
-                                 'to move some computation fron scan '
-                                 'which is not allowed to move. Report '
-                                 'this on theano-users list'), x)
-                    outside_ins = [x.type.filter_variable(y) for x, y in
-                                   zip(nd.inputs, outside_ins)]
+                # Do not call make_node for test_value
+                nw_outer_node = nd.op(*outside_ins,
+                                      **dict(return_list=True))[0].owner
 
-                    # Do not call make_node for test_value
-                    nw_outer_node = nd.op(*outside_ins,
-                                          **dict(return_list=True))[0].owner
+                # Step 2. Create variables for replacements
+                for idx, y in enumerate(nd.outputs):
+                    y_place_holder = scan_utils.safe_new(y, '_replace')
+                    nto_replace = add_to_replace(y, nto_replace)
+                    replace_with_in.append(y_place_holder)
+                    assert isinstance(y, type(nw_outer_node.outputs[idx]))
+                    replace_with_out.append(nw_outer_node.outputs[idx])
 
-                    # Step 2. Create variables for replacements
-                    for idx, y in enumerate(nd.outputs):
-                        y_place_holder = scan_utils.safe_new(y, '_replace')
-                        nto_replace = add_to_replace(y, nto_replace)
-                        replace_with_in.append(y_place_holder)
-                        assert isinstance(y, type(nw_outer_node.outputs[idx]))
-                        replace_with_out.append(nw_outer_node.outputs[idx])
-
-                    changed = True
-        if counts >= max_iterations:
-            raise Exception('Error in the `scan_pushout_non_seq_operations`.'
-                            ' The optimization exhausted the maximal number '
-                            'of iterations allowed!')
         # We need to check all candidate replacements and choose those that
         # make sense for us
-
         # Step 1. which elements of `to_replace` are used by remaining
         # components of the inner function
         clean_to_replace = []
@@ -330,11 +331,11 @@ class PushOutNonSeqScan(gof.Optimizer):
         to_keep_set = set(to_keep)
 
         for out, idx in to_replace_map.items():
-            if (out in to_keep_set
-                    and out.owner not in existent_nodes_set
-                    # If types are different, conversion Op will be inserted,
-                    # and it may trigger an infinite loop.
-                    and replace_with_in[idx].type == out.type):
+            if (# If types are different, conversion Op will be inserted,
+                # and it may trigger an infinite loop.
+                replace_with_in[idx].type == out.type and
+                out in to_keep_set and
+                out.owner not in existent_nodes_set):
                 clean_to_replace.append(out)
                 clean_replace_with_in.append(replace_with_in[idx])
                 clean_replace_with_out.append(replace_with_out[idx])
@@ -356,6 +357,7 @@ class PushOutNonSeqScan(gof.Optimizer):
 
             _op_outs = scan_utils.clone(clean_outputs,
                                         replace=givens)
+
             _op_ins = clean_inputs + nw_inner
             op_ins, op_outs = scan_utils.reconstruct_graph(_op_ins, _op_outs)
             # Reconstruct node
@@ -398,7 +400,10 @@ class PushOutNonSeqScan(gof.Optimizer):
 # This is a global opt for historical reason
 # It should be possible to change it to a local opt.
 class PushOutSeqScan(gof.Optimizer):
-
+    """
+        A global optimizer for pushing out the input variables that are not being
+    used inside the scan and provided in the sequences.
+    """
     def __init__(self):
         gof.Optimizer.__init__(self)
 
@@ -412,8 +417,13 @@ class PushOutSeqScan(gof.Optimizer):
             self.process_node(fgraph, node)
 
     def process_node(self, fgraph, node):
+        """
+            Important note: This function uses set and dictionary data structure.
+        By default they are not ordered for efficiency reasons. Take care and make
+        sure of changing them to Ordered versions if you need to iterate over those
+        variables.
+        """
         # this flag tells if there was any change during the last iterations
-        changed = True
         clean_inputs, clean_outputs = scan_utils.reconstruct_graph(
             node.op.inputs, node.op.outputs)
 
@@ -422,14 +432,11 @@ class PushOutSeqScan(gof.Optimizer):
         local_fgraph_outs_set = set(local_fgraph.outputs)
         local_fgraph_outs_map = dict([(v,k) for k,v in enumerate(local_fgraph.outputs)])
 
-        max_iterations = 2 * len(local_fgraph_topo) + 3
-        counts = 0
-
         to_remove_set = set()
         to_remove_add = to_remove_set.add
         to_replace_set = set()
         to_replace_add = to_replace_set.add
-        to_replace_map = {}
+        to_replace_map = OrderedDict()
         nto_replace = 0
 
         def add_to_replace(y, nto_replace):
@@ -455,102 +462,90 @@ class PushOutSeqScan(gof.Optimizer):
         assert len(inner_non_seqs) == len(outer_non_seqs)
         assert len(inner_seqs) == len(outer_seqs)
 
-        while changed and counts < max_iterations:
-            counts += 1
-            changed = False
+        for nd in local_fgraph_topo:
+            if (nd not in to_remove_set and
+               all([(x in inner_non_seqs_set) or
+               (x.owner in to_remove_set) or
+               isinstance(x, tensor.Constant) or
+               (x in inner_seqs_set) for x in nd.inputs]) and
+               isinstance(nd.op, theano.tensor.Elemwise)):
 
-            for nd in local_fgraph_topo:
-                if (isinstance(nd.op, theano.tensor.Elemwise) and
-                    all([(x in inner_non_seqs_set) or
-                               (x.owner in to_remove_set) or
-                               isinstance(x, tensor.Constant) or
-                               (x in inner_seqs_set)
-                               for x in nd.inputs]) and
-                               nd not in to_remove_set):
-                    to_remove_add(nd)
-                    outside_ins = []
-                    depends_on_seqs = False
+                to_remove_add(nd)
+                outside_ins = []
+                depends_on_seqs = False
 
-                    for x in nd.inputs:
-                        if x in inner_non_seqs_set:
-                            _idx = inner_non_seqs_map[x]
-                            outside_ins.append(outer_non_seqs[_idx])
-                        elif x in inner_seqs_set:
-                            outside_ins.append(outer_seqs[inner_seqs_map[x]])
-                            depends_on_seqs = True
-                        elif x in to_replace_set:
-                            outside_ins.append(replace_with_out[
-                                to_replace_map[x]])
-                            depends_on_seqs = True
-                        elif isinstance(x, theano.Constant):
-                            outside_ins.append(x.clone())
-                        else:
-                            raise Exception(
-                                ('Error in the `scan_pushout_seq_'
-                                 'operations`. The optimization tries '
-                                 'to move some computation fron scan '
-                                 'which is not allowed to move. Report '
-                                 'this on theano-users list'), x)
-
-                    if not depends_on_seqs:
-                        # Removing this node from the inner graph of scan
-                        # should be handled by the PushOutNonSeqScan
-                        # optimization. The current optimization only tries
-                        # to pull sequence-dependant computation out of
-                        # scan.
-                        continue
-
-                    # Do not call make_node for test_value
-                    nw_outer_node = nd.op(*outside_ins,
-                                          **dict(return_list=True))[0].owner
-
-                    # Step 2. Create variables for replacements
-                    for idx, y in enumerate(nd.outputs):
-                        y_place_holder = scan_utils.safe_new(y, '_replace')
-                        nto_replace = add_to_replace(y, nto_replace)
-                        replace_with_in.append(y_place_holder)
-                        replace_with_out.append(nw_outer_node.outputs[idx])
-
-                    changed = True
-
-                elif (isinstance(nd.op, theano.tensor.DimShuffle) and
-                      (nd.inputs[0] in inner_seqs_set or
-                       nd.inputs[0].owner in to_remove_set) and
-                      not nd in to_remove_set):
-                    to_remove_add(nd)
-                    x = nd.inputs[0]
-                    if x in inner_seqs_set:
-                        outside_ins = outer_seqs[inner_seqs_map[x]]
+                for x in nd.inputs:
+                    if x in inner_non_seqs_set:
+                        _idx = inner_non_seqs_map[x]
+                        outside_ins.append(outer_non_seqs[_idx])
+                    elif x in inner_seqs_set:
+                        outside_ins.append(outer_seqs[inner_seqs_map[x]])
+                        depends_on_seqs = True
                     elif x in to_replace_set:
-                        outside_ins = replace_with_out[to_replace_map[x]]
-                    new_ord = (0,)
-                    for old_ord in nd.op.new_order:
-                        if (old_ord == 'x'):
-                            new_ord += (old_ord,)
-                        else:
-                            new_ord += (old_ord + 1,)
-                    new_outer = outside_ins.dimshuffle(new_ord)
-                    y = nd.outputs[0]
+                        outside_ins.append(replace_with_out[
+                            to_replace_map[x]])
+                        depends_on_seqs = True
+                    elif isinstance(x, theano.Constant):
+                        outside_ins.append(x.clone())
+                    else:
+                        raise Exception(
+                            ('Error in the `scan_pushout_seq_'
+                             'operations`. The optimization tries '
+                             'to move some computation fron scan '
+                             'which is not allowed to move. Report '
+                             'this on theano-users list'), x)
+
+                if not depends_on_seqs:
+                    # Removing this node from the inner graph of scan
+                    # should be handled by the PushOutNonSeqScan
+                    # optimization. The current optimization only tries
+                    # to pull sequence-dependant computation out of
+                    # scan.
+                    continue
+
+                # Do not call make_node for test_value
+                nw_outer_node = nd.op(*outside_ins,
+                                      **dict(return_list=True))[0].owner
+
+                # Step 2. Create variables for replacements
+                for idx, y in enumerate(nd.outputs):
                     y_place_holder = scan_utils.safe_new(y, '_replace')
                     nto_replace = add_to_replace(y, nto_replace)
                     replace_with_in.append(y_place_holder)
-                    replace_with_out.append(new_outer)
+                    replace_with_out.append(nw_outer_node.outputs[idx])
 
-                    if hasattr(new_outer.tag, "test_value"):
-                        new_sh = new_outer.tag.test_value.shape
-                        ref_sh = (outside_ins.tag.test_value.shape[0],)
-                        ref_sh += nd.outputs[0].tag.test_value.shape
-                        assert new_sh == ref_sh
+            elif (nd not in to_remove_set and
+                  isinstance(nd.op, theano.tensor.DimShuffle) and
+                  (nd.inputs[0] in inner_seqs_set or
+                  nd.inputs[0].owner in to_remove_set)):
 
-                    changed = True
+                to_remove_add(nd)
+                x = nd.inputs[0]
+                if x in inner_seqs_set:
+                    outside_ins = outer_seqs[inner_seqs_map[x]]
+                elif x in to_replace_set:
+                    outside_ins = replace_with_out[to_replace_map[x]]
+                new_ord = (0,)
+                for old_ord in nd.op.new_order:
+                    if (old_ord == 'x'):
+                        new_ord += (old_ord,)
+                    else:
+                        new_ord += (old_ord + 1,)
+                new_outer = outside_ins.dimshuffle(new_ord)
+                y = nd.outputs[0]
+                y_place_holder = scan_utils.safe_new(y, '_replace')
+                nto_replace = add_to_replace(y, nto_replace)
+                replace_with_in.append(y_place_holder)
+                replace_with_out.append(new_outer)
 
-        if counts >= max_iterations:
-            raise Exception('Error in the `scan_pushout_seq_operations`.'
-                            ' The optimization exhausted the maximal number '
-                            'of iterations allowed!')
+                if hasattr(new_outer.tag, "test_value"):
+                    new_sh = new_outer.tag.test_value.shape
+                    ref_sh = (outside_ins.tag.test_value.shape[0],)
+                    ref_sh += nd.outputs[0].tag.test_value.shape
+                    assert new_sh == ref_sh
+
         # We need to check all candidate replacements and choose those that
         # make sense for us
-
         # Step 1. which elements of `to_replace` are used by remaining
         # components of the inner function
         clean_to_replace = []
@@ -565,10 +560,10 @@ class PushOutSeqScan(gof.Optimizer):
 
         for out, idx in to_replace_map.items():
             if (out in to_keep_set
-                    and out.owner not in existent_nodes_set
-                    # If types are different, conversion Op will be inserted,
-                    # and it may trigger an infinite loop.
-                    and replace_with_in[idx].type == out.type):
+               and out.owner not in existent_nodes_set
+               # If types are different, conversion Op will be inserted,
+               # and it may trigger an infinite loop.
+               and replace_with_in[idx].type == out.type):
 
                 clean_to_replace.append(out)
                 clean_replace_with_in.append(replace_with_in[idx])
@@ -684,10 +679,8 @@ class PushOutScanOutput(gof.Optimizer):
         new_scan_node = None
         local_fgraph_topo = local_fgraph.toposort()
         for nd in local_fgraph_topo:
-
             if (isinstance(nd.op, theano.tensor.Dot) and
                 nd.out in args.inner_out_nit_sot):
-
                 """
                 The following optimization involves pushing out, after the
                 scan, a Dot whose output is nitsot (not feed back to the inner
@@ -857,9 +850,7 @@ class PushOutScanOutput(gof.Optimizer):
         outer_var = scan_args.outer_out_sit_sot[idx]
 
         if len(outer_var.clients) == 1:
-
             client = outer_var.clients[0][0]
-
             if (client != 'output' and
                 isinstance(client.op, theano.tensor.Subtensor)):
                 lst = theano.tensor.subtensor.get_idx_list(
