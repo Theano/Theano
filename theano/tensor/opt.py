@@ -3600,9 +3600,9 @@ def local_fill_sink(node):
         if (hasattr(client, 'op') and
                 isinstance(client.op, T.Elemwise) and
                 not client.op == T.fill):
-            node_sub_c = client.op([v for v in client.inputs if v is not c])
+            # node_sub_c = client.op([v for v in client.inputs if v is not c])
             # import ipdb; ipdb.set_trace()
-            r = local_fill_sink.transform(node_sub_c)
+            r = local_fill_sink.transform(client)
             if r:
                 return {client: r}
     return [c]
