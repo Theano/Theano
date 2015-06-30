@@ -186,9 +186,10 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     }
 
     // Create temporary columns
-    int col_dim[2];
-    col_dim[0] = nChannels * kW * kH;
-    col_dim[1] = topHeight * topWidth;
+    npy_intp col_dim[2];
+    //int col_dim[2];
+    col_dim[0] = (npy_intp)(nChannels * kW * kH);
+    col_dim[1] = (npy_intp)(topHeight * topWidth);
     PyArrayObject* col = (PyArrayObject*)PyArray_EMPTY(2,
 		                           col_dim,
 					   PyArray_TYPE(top),
@@ -223,8 +224,8 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         // Iterate over batch
         for (int n = 0; n < batchSize; n++) {
             // First, im2col
-            im2col(bottom + n * bottom_stride, nChannels, bottomHeight,
-                    bottomWidth, kH, kW, padH, padW, dH, dW, col);
+            im2col((npy_float*)PyArray_DATA(bottom) + n * bottom_stride, nChannels, bottomHeight,
+                    bottomWidth, kH, kW, padH, padW, dH, dW, (npy_float*)PyArray_DATA(col));
 	    // TODO What to check here?
 	    /*
             cudaError_t err = cudaGetLastError();
@@ -243,24 +244,26 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
               case NPY_FLOAT:
               {
                 sgemm_(&NTrans, &NTrans,
-                       N_, M_, K_,
+                       &N_, &M_, &K_,
                        &one_f,
-                       col, N_,
-                       weight, K_,
+                       (npy_float*)PyArray_DATA(col), &N_,
+                       (npy_float*)PyArray_DATA(weight), &K_,
                        &zero_f,
-                       top + n * top_stride, N_);
+                       (npy_float*)PyArray_DATA(top) + n * top_stride, &N_);
               };
 	      break;
+	      /* TODO
               case NPY_DOUBLE:
               {
                 dgemm_(&NTrans, &NTrans,
-                       N_, M_, K_,
+                       &N_, &M_, &K_,
                        &one_d,
-                       col, N_,
-                       weight, K_,
+                       col, &N_,
+                       weight, &K_,
                        &zero_d,
-                       top + n * top_stride, N_);
+                       top + n * top_stride, &N_);
               };
+	      */
 	      break;
             };
 	    // TODO What to check here?
@@ -312,8 +315,8 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         // Iterate over batch
         for (int n = 0; n < batchSize; n++) {
             // First, im2col
-            im2col(bottom + n * bottom_stride, nChannels, bottomHeight,
-                    bottomWidth, kH, kW, padH, padW, dH, dW, col);
+            im2col((npy_float*)PyArray_DATA(bottom) + n * bottom_stride, nChannels, bottomHeight,
+                    bottomWidth, kH, kW, padH, padW, dH, dW, (npy_float*)PyArray_DATA(col));
 	    /* TODO
             cudaError_t err = cudaGetLastError();
             if (err != cudaSuccess) {
@@ -335,24 +338,26 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
               case NPY_FLOAT:
               {
                 sgemm_(&Trans, &NTrans,
-                       K_, M_, N_,
+                       &K_, &M_, &N_,
                        &one_f,
-                       col, N_,
-                       top + n * top_stride, N_,
+                       (npy_float*)PyArray_DATA(col), &N_,
+                       (npy_float*)PyArray_DATA(top) + n * top_stride, &N_,
                        (n == 0) ? &zero_f : &one_f,
-                       weight, K_);
+                       (npy_float*)PyArray_DATA(weight), &K_);
               };
 	      break;
+	      /*
               case NPY_DOUBLE:
               {
                 dgemm_(&Trans, &NTrans,
-                       K_, M_, N_,
+                       &K_, &M_, &N_,
                        &one_d,
-                       col, N_,
-                       top + n * top_stride, N_,
+                       col, &N_,
+                       top + n * top_stride, &N_,
                        (n == 0) ? &zero_d : &one_d,
-                       weight, K_);
+                       weight, &K_);
               };
+	      */
 	      break;
             };
 	    /* TODO
@@ -405,24 +410,26 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
               case NPY_FLOAT:
               {
                 sgemm_(&NTrans, &Trans,
-                       N_, K_, M_,
+                       &N_, &K_, &M_,
                        &one_f,
-                       top + n * top_stride, N_,
-                       weight, K_,
+                       (npy_float*)PyArray_DATA(top) + n * top_stride, &N_,
+                       (npy_float*)PyArray_DATA(weight), &K_,
                        &zero_f,
-                       col, N_);
+                       (npy_float*)PyArray_DATA(col), &N_);
               };
 	      break;
+	      /*
               case NPY_DOUBLE:
               {
                 dgemm_(&NTrans, &Trans,
-                       N_, K_, M_,
+                       &N_, &K_, &M_,
                        &one_d,
-                       top + n * top_stride, N_,
-                       weight, K_,
+                       top + n * top_stride, &N_,
+                       weight, &K_,
                        &zero_d,
-                       col, N_);
+                       col, &N_);
               };
+	      */
 	      break;
             };
 	    /* TODO
@@ -437,8 +444,8 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
             }
 	    */
             // col2im back to the data
-            col2im(col, nChannels, bottomHeight, bottomWidth,
-                    kH, kW, padH, padW, dH, dW, bottom + n * bottom_stride);
+            col2im((npy_float*)PyArray_DATA(col), nChannels, bottomHeight, bottomWidth,
+                    kH, kW, padH, padW, dH, dW, (npy_float*)PyArray_DATA(bottom) + n * bottom_stride);
 	    /* TODO
             cudaError_t err = cudaGetLastError();
             if (err != cudaSuccess) {

@@ -56,7 +56,7 @@ class BaseCpuCorrMM(gof.Op):
     def pad(self):
         if self.border_mode != 'valid':
             return self.border_mode
-        return (0, 0)
+        return (0, 1)
 
     def __str__(self):
         return '%s{%s, %s}' % (
@@ -99,7 +99,7 @@ class BaseCpuCorrMM(gof.Op):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 1)
+        return (0, 3)
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -254,31 +254,32 @@ class BaseCpuCorrMM(gof.Op):
     }
 
     // Infer output shape
-    int out_dim[4];
+    npy_intp out_dim[4];
+    //int out_dim[4];
     switch(direction) {
     case 0:  // forward pass
         // output is top: (batchsize, num_filters, height, width)
         // height and width: top = (bottom + 2*pad - weight) / sample + 1
-        out_dim[0] = PyArray_DIMS(bottom)[0];
-        out_dim[1] = PyArray_DIMS(weights)[0];
-        out_dim[2] = (PyArray_DIMS(bottom)[2] + 2*padH - PyArray_DIMS(weights)[2]) / dH + 1;
-        out_dim[3] = (PyArray_DIMS(bottom)[3] + 2*padW - PyArray_DIMS(weights)[3]) / dW + 1;
+        out_dim[0] = (npy_intp)PyArray_DIMS(bottom)[0];
+        out_dim[1] = (npy_intp)PyArray_DIMS(weights)[0];
+        out_dim[2] = (npy_intp)((PyArray_DIMS(bottom)[2] + 2*padH - PyArray_DIMS(weights)[2]) / dH + 1);
+        out_dim[3] = (npy_intp)((PyArray_DIMS(bottom)[3] + 2*padW - PyArray_DIMS(weights)[3]) / dW + 1);
         break;
     case 1:  // backprop wrt. weights
         // output is weights: (num_filters, num_channels, height, width)
         // height and width: weights = bottom + 2*pad - (top - 1) * sample
-        out_dim[0] = PyArray_DIMS(top)[1];
-        out_dim[1] = PyArray_DIMS(bottom)[1];
-        out_dim[2] = kH;  // already inferred further above
-        out_dim[3] = kW;  // how convenient
+        out_dim[0] = (npy_intp)PyArray_DIMS(top)[1];
+        out_dim[1] = (npy_intp)PyArray_DIMS(bottom)[1];
+        out_dim[2] = (npy_intp)kH;  // already inferred further above
+        out_dim[3] = (npy_intp)kW;  // how convenient
         break;
     case 2:  // backprop wrt. inputs
         // output is bottom: (batchsize, num_channels, height, width)
         // height and width: bottom = (top - 1) * sample + weights - 2*pad
-        out_dim[0] = PyArray_DIMS(top)[0];
-        out_dim[1] = PyArray_DIMS(weights)[1];
-        out_dim[2] = (dH != 1) ? %(height)s : (PyArray_DIMS(top)[2] - 1) * dH + PyArray_DIMS(weights)[2] - 2*padH;
-        out_dim[3] = (dW != 1) ? %(width)s : (PyArray_DIMS(top)[3] - 1) * dW + PyArray_DIMS(weights)[3] - 2*padW;
+        out_dim[0] = (npy_intp)PyArray_DIMS(top)[0];
+        out_dim[1] = (npy_intp)PyArray_DIMS(weights)[1];
+        out_dim[2] = (npy_intp)((dH != 1) ? %(height)s : (PyArray_DIMS(top)[2] - 1) * dH + PyArray_DIMS(weights)[2] - 2*padH);
+        out_dim[3] = (npy_intp)((dW != 1) ? %(width)s : (PyArray_DIMS(top)[3] - 1) * dW + PyArray_DIMS(weights)[3] - 2*padW);
         break;
     default:
         PyErr_SetString(PyExc_ValueError, "BaseCpuCorrMM: direction must be 0, 1, or 2\\n");
