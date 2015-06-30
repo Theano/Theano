@@ -39,7 +39,7 @@ class TestFourier(utt.InferShapeTester):
                                     [numpy.random.rand(12, 4), 0],
                                     self.op_class)
 
-    @dec.knownfailureif(True, "Complex grads not enabled, see #178")
+    @dec.skipif(True, "Complex grads not enabled, see #178")
     def test_gradient(self):
         def fft_test1(a):
             return self.op(a, None, None)

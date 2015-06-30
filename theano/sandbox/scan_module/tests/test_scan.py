@@ -16,7 +16,7 @@ import theano.sandbox.rng_mrg
 from theano import tensor
 from theano.compile.pfunc import rebuild_collect_shared
 from theano.tests  import unittest_tools as utt
-from numpy.testing.noseclasses import KnownFailureTest
+from theano.tests.unittest_tools import SkipTest
 
 from .test_utils import *
 import theano.sandbox.scan_module as scan_module
@@ -471,8 +471,9 @@ class TestScan(unittest.TestCase):
         # place (even when told not to by DebugMode). As this op will change
         # soon, and it is in the sandbox and not for user consumption, the
         # error is marked as KnownFailure
-        raise KnownFailureTest('Work-in-progress sandbox ScanOp is not fully '
-                               'functional yet')
+
+        raise SkipTest("Work-in-progress sandbox ScanOp is "
+                       "not fully functional yet")
 
         def f_pow2(x_tm1):
             return 2 * x_tm1
@@ -508,9 +509,8 @@ class TestScan(unittest.TestCase):
         # place (even when told not to by DebugMode). As this op will change
         # soon, and it is in the sandbox and not for user consumption, the
         # error is marked as KnownFailure
-
-        raise KnownFailureTest('Work-in-progress sandbox ScanOp is not fully '
-                               'functional yet')
+        raise SkipTest("Work-in-progress sandbox "
+                       "ScanOp is not fully functional yet")
 
         def f_rnn(u_t, x_tm1, W_in, W):
             return u_t * W_in + x_tm1 * W

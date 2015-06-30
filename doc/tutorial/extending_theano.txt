@@ -258,8 +258,11 @@ Op Example
         __props__ = ()
 
         def make_node(self, x):
-            # check that the theano version has support for __props__
-            assert hasattr(self, '_props')
+            # check that the theano version has support for __props__.
+            # This next line looks like it has a typo,
+            # but it's actually a way to detect the theano version
+            # is sufficiently recent to support the use of __props__.
+            assert hasattr(self, '_props'), "Your version of theano is too old to support __props__."
             x = theano.tensor.as_tensor_variable(x)
             return theano.Apply(self, [x], [x.type()])
 
@@ -295,6 +298,74 @@ You can try it as follows:
     assert numpy.allclose(inp * 2, out)
     print inp
     print out
+
+
+Example for properties of a Op
+==============================
+
+We can modify the previous piece of code in order to demonstrate
+the usage of the :attr:`__props__` attribute.
+
+We create an Op that takes a variable ``x`` and returns ``a*x+b``.
+We want to say that two such ops are equal when their values of ``a``
+and ``b`` are equal.
+
+.. code-block:: python
+
+    import theano
+
+    class AXPBOp(theano.Op):
+        """
+        This creates an Op that takes x to a*x+b.
+        """
+        __props__ = ("a", "b")
+
+        def __init__(self, a, b):
+            self.a = a
+            self.b = b
+            super(AXPBOp, self).__init__()
+
+        def make_node(self, x):
+            # check that the theano version has support for __props__.
+            assert hasattr(self, '_props'), "Your version of theano is too old to support __props__."
+            x = theano.tensor.as_tensor_variable(x)
+            return theano.Apply(self, [x], [x.type()])
+
+        def perform(self, node, inputs, output_storage):
+            x = inputs[0]
+            z = output_storage[0]
+            z[0] = self.a * x + self.b
+
+        def infer_shape(self, node, i0_shapes):
+            return i0_shapes
+
+        def grad(self, inputs, output_grads):
+            return [a * output_grads[0] + b]
+
+
+The use of :attr:`__props__` saves
+the user the trouble of implementing :func:`__eq__` and :func:`__hash__` manually.
+It also generates a default :func:`__str__` method that prints the attribute names and their values.
+
+We can test this by running the following segment:
+
+.. code-block:: python
+
+    mult4plus5op = AXPBOp(4, 5)
+    another_mult4plus5op = AXPBOp(4, 5)
+    mult2plus3op = AXPBOp(2, 3)
+
+    assert mult4plus5op == another_mult4plus5op
+    assert mult4plus5op != mult2plus3op
+
+    x = theano.tensor.matrix()
+    f = theano.function([x], mult4plus5op(x))
+    g = theano.function([x], mult2plus3op(x))
+
+    import numpy
+    inp = numpy.random.rand(5, 4).astype(numpy.float32)
+    assert numpy.allclose(4 * inp + 5, f(inp))
+    assert numpy.allclose(2 * inp + 3, g(inp))
 
 
 How To Test it

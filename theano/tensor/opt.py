@@ -2429,7 +2429,6 @@ def local_subtensor_merge(node):
                 lambda x: isinstance(x, T.Variable))
             # Do not call make_node for test_value
             out = subtens(x, *sl_ins)
-
             return [out]
 
 
@@ -3134,7 +3133,7 @@ def local_mul_switch_sink(node):
 
 
 @register_canonicalize
-@gof.local_optimizer([T.true_div, T.int_div, T.floor_div])
+@gof.local_optimizer([T.true_div, T.int_div])
 def local_div_switch_sink(node):
     """
     This optimization makes the folowing changes in the graph:
@@ -3146,8 +3145,7 @@ def local_div_switch_sink(node):
     NaN or inf values for cases where the switch returns 0.
     See local_mul_switch_sink for more details.
     """
-    if (node.op != T.true_div and node.op != T.int_div
-        and node.op != T.floor_div):
+    if (node.op != T.true_div and node.op != T.int_div):
         return False
     op = node.op
     if node.inputs[0].owner and node.inputs[0].owner.op == T.switch:
@@ -4397,6 +4395,17 @@ def local_mul_to_sqr(node):
         if len(node.inputs) == 2:
             if node.inputs[0] is node.inputs[1]:
                 return [T.sqr(node.inputs[0])]
+
+
+@register_canonicalize
+@gof.local_optimizer([T.int_div])
+def local_intdiv_by_one(node):
+    """x // 1 -> x
+    """
+    if node.op in [T.int_div]:
+        if isinstance(node.inputs[1], T.TensorConstant) and \
+           numpy.all(node.inputs[1].value == 1):
+            return [node.inputs[0]]
 
 
 @gof.local_optimizer([T.pow])

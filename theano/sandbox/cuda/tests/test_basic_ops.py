@@ -1069,7 +1069,7 @@ class T_subtensor(theano.tensor.tests.test_subtensor.T_subtensor):
             val = numpy.asarray(val)
             good = data[idx]
             self.assertTrue(val.ndim == data.ndim)
-            self.assertTrue(numpy.allclose(val, good), (val, good))
+            utt.assert_allclose(val, good)
 
             # Test with input strided
             t = self.adv_sub1()(n[::-1], idx)
@@ -1082,7 +1082,7 @@ class T_subtensor(theano.tensor.tests.test_subtensor.T_subtensor):
             val = numpy.asarray(val)
             good = data[::-1][idx]
             self.assertTrue(val.ndim == data.ndim)
-            self.assertTrue(numpy.allclose(val, good), (val, good))
+            utt.assert_allclose(val, good)
 
 
 def test_advinc_subtensor1():
@@ -1103,7 +1103,7 @@ def test_advinc_subtensor1():
         rval = f(yval)
         rep = xval.copy()
         rep[[0, 2]] += yval
-        assert numpy.allclose(rval, rep)
+        utt.assert_allclose(rval, rep)
 
 
 def test_inc_subtensor():
@@ -1121,8 +1121,8 @@ def test_inc_subtensor():
     assert sum([isinstance(node.op, cuda.GpuIncSubtensor) and
                 node.op.set_instead_of_inc == False
                 for node in f.maker.fgraph.toposort()]) == 1
-    assert numpy.allclose(f(xval, yval), [[1., 12., 13.],
-                                          [4., 15., 16.], [7., 18., 19.]])
+    utt.assert_allclose(f(xval, yval), [[1., 12., 13.],
+                                        [4., 15., 16.], [7., 18., 19.]])
 
 
 def test_set_subtensor():
@@ -1180,11 +1180,11 @@ def test_many_arg_elemwise():
                     if mode is mode_with_gpu:
                         assert any([isinstance(node.op, cuda.GpuElemwise)
                                     for node in f.maker.fgraph.apply_nodes])
-                    assert numpy.allclose(out, outputs[-1])
+                    utt.assert_allclose(out, outputs[-1])
 
                 results_gpu, results_cpu = outputs
 
-                assert numpy.allclose(results_gpu, results_cpu)
+                utt.assert_allclose(results_gpu, results_cpu)
 
 
 def test_duplicate_arg_elemwise():
@@ -1196,7 +1196,7 @@ def test_duplicate_arg_elemwise():
     Aval = numpy.random.RandomState([1, 2, 3]).randn(5, 5).astype('float32')
     Bval = Aval + Aval
 
-    assert numpy.allclose(Bval, f(Aval))
+    utt.assert_allclose(Bval, f(Aval))
 
 
 def test_shared_float32():
@@ -1235,7 +1235,7 @@ def test_gpueye():
                             B.as_cuda_ndarray_variable(out),
                             mode=mode_with_gpu)
         result = numpy.asarray(f(N, M))
-        assert numpy.allclose(result, numpy.eye(N, M_, dtype=dtype))
+        utt.assert_allclose(result, numpy.eye(N, M_, dtype=dtype))
         assert result.dtype == numpy.dtype(dtype)
         assert any([isinstance(node.op, B.GpuEye)
                     for node in f.maker.fgraph.toposort()])
