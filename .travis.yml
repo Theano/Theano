@@ -1,6 +1,11 @@
 # After changing this file, check it on:
 # http://lint.travis-ci.org/
 sudo: false
+cache:
+  directories:
+    - $HOME/download
+    - $HOME/.cache/pip
+
 language: python
 python:
   - "2.6"
@@ -9,9 +14,12 @@ python:
 # command to install dependencies
 before_install:
 # Install miniconda to avoid compiling scipy
-  - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
+  - mkdir -p download
+  - cd download
+  - wget -c http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
   - chmod +x miniconda.sh
   - ./miniconda.sh -b
+  - cd ..
   - export PATH=/home/travis/miniconda/bin:$PATH
   - conda update --yes conda
 
