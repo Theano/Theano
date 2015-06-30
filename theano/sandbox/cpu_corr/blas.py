@@ -194,10 +194,10 @@ class BaseCpuCorrMM(gof.Op):
     int padH = %(padH)s;
     int padW = %(padW)s;
     
-    PyArray * bottom = %(bottom)s;
-    PyArray * weights = %(weights)s;
-    PyArray * top = %(top)s;
-    PyArray * out2 = NULL;
+    PyArrayObject * bottom = %(bottom)s;
+    PyArrayObject * weights = %(weights)s;
+    PyArrayObject * top = %(top)s;
+    PyArrayObject * out2 = NULL;
 
     // Obtain or infer kernel width and height
     // (we need to know it early to be able to handle auto-padding)
@@ -295,7 +295,7 @@ class BaseCpuCorrMM(gof.Op):
            && PyArray_DIMS(%(out)s)[3]==out_dim[3]))
     {
         Py_XDECREF(%(out)s);
-        %(out)s = (PyArray*)PyArray_EMPTY(4,
+        %(out)s = (PyArrayObject*)PyArray_EMPTY(4,
                                           out_dim,
                                           PyArray_TYPE(%(top)s),
                                           0);

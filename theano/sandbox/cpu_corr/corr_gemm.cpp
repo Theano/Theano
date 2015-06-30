@@ -30,11 +30,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // (borrowed from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/util/im2col.cpp)
 // Loops for fast unfold + copy
-void im2col(const float* data_im, const int channels,
+void im2col(const npy_float* data_im, const int channels,
     const int height, const int width, const int kernel_h, const int kernel_w,
     const int pad_h, const int pad_w,
     const int stride_h, const int stride_w,
-    float* data_col) {
+    npy_float* data_col) {
   int height_col = (height + 2 * pad_h - kernel_h) / stride_h + 1;
   int width_col = (width + 2 * pad_w - kernel_w) / stride_w + 1;
   int channels_col = channels * kernel_h * kernel_w;
@@ -56,10 +56,10 @@ void im2col(const float* data_im, const int channels,
   }
 }
 
-void col2im(const float* data_col, const int channels,
+void col2im(const npy_float* data_col, const int channels,
     const int height, const int width, const int patch_h, const int patch_w,
     const int pad_h, const int pad_w, const int stride_h,
-    const int stride_w, float* data_im) {
+    const int stride_w, npy_float* data_im) {
   int height_col = (height + 2 * pad_h - patch_h) / stride_h + 1;
   int width_col = (width + 2 * pad_w - patch_w) / stride_w + 1;
   int num_kernels = channels * height * width;
@@ -87,7 +87,7 @@ void col2im(const float* data_col, const int channels,
 //   and https://github.com/torch/cunn/blob/master/SpatialConvolutionMM.cu
 // CPU version author: Jesse Livezey
 // TODO const?
-PyArray corrMM(PyArrayObject* bottom,
+PyArrayObject* corrMM(PyArrayObject* bottom,
                            PyArrayObject* weight,
                            PyArrayObject* top,
                            const int direction,
@@ -189,7 +189,7 @@ PyArray corrMM(PyArrayObject* bottom,
     int col_dim[2];
     col_dim[0] = nChannels * kW * kH;
     col_dim[1] = topHeight * topWidth;
-    PyArray* col = (PyArray*)PyArray_EMPTY(2,
+    PyArrayObject* col = (PyArrayObject*)PyArray_EMPTY(2,
 		                           col_dim,
 					   PyArray_TYPE(top),
 					   0);
@@ -209,12 +209,14 @@ PyArray corrMM(PyArrayObject* bottom,
     const int K_ = col_dim[0];
     const int N_ = col_dim[1];
     const int M_ = nFilters;
-    const float one = 1.0f;
-    const float zero = 0.0f;
-    const char N = 'N';
-    const char T = 'T';
+    const float one_f = 1.0f;
+    const double one_d = 1.0;
+    const float zero_f = 0.0f;
+    const double zero_d = 0.0;
+    char NTrans = 'N';
+    char Trans = 'T';
 
-    PyArray *output;
+    PyArrayObject *output;
     if (direction == 0) {  // forward pass
         output = top;
         // valid correlation: im2col, then gemm
@@ -240,23 +242,23 @@ PyArray corrMM(PyArrayObject* bottom,
             {
               case NPY_FLOAT:
               {
-                sgemm_(&N, &N,
+                sgemm_(&NTrans, &NTrans,
                        N_, M_, K_,
-                       &one,
+                       &one_f,
                        col, N_,
                        weight, K_,
-                       &zero,
+                       &zero_f,
                        top + n * top_stride, N_);
               };
 	      break;
               case NPY_DOUBLE:
               {
-                dgemm_(&N, &N,
+                dgemm_(&NTrans, &NTrans,
                        N_, M_, K_,
-                       &one,
+                       &one_d,
                        col, N_,
                        weight, K_,
-                       &zero,
+                       &zero_d,
                        top + n * top_stride, N_);
               };
 	      break;
@@ -332,23 +334,23 @@ PyArray corrMM(PyArrayObject* bottom,
             {
               case NPY_FLOAT:
               {
-                sgemm_(&T, &N,
+                sgemm_(&Trans, &NTrans,
                        K_, M_, N_,
-                       &one,
+                       &one_f,
                        col, N_,
                        top + n * top_stride, N_,
-                       (n == 0) ? &zero : &one,
+                       (n == 0) ? &zero_f : &one_f,
                        weight, K_);
               };
 	      break;
               case NPY_DOUBLE:
               {
-                dgemm_(&T, &N,
+                dgemm_(&Trans, &NTrans,
                        K_, M_, N_,
-                       &one,
+                       &one_d,
                        col, N_,
                        top + n * top_stride, N_,
-                       (n == 0) ? &zero : &one,
+                       (n == 0) ? &zero_d : &one_d,
                        weight, K_);
               };
 	      break;
@@ -402,23 +404,23 @@ PyArray corrMM(PyArrayObject* bottom,
             {
               case NPY_FLOAT:
               {
-                sgemm_(&N, &T,
+                sgemm_(&NTrans, &Trans,
                        N_, K_, M_,
-                       &one,
+                       &one_f,
                        top + n * top_stride, N_,
                        weight, K_,
-                       &zero,
+                       &zero_f,
                        col, N_);
               };
 	      break;
               case NPY_DOUBLE:
               {
-                sgemm_(&N, &T,
+                dgemm_(&NTrans, &Trans,
                        N_, K_, M_,
-                       &one,
+                       &one_d,
                        top + n * top_stride, N_,
                        weight, K_,
-                       &zero,
+                       &zero_d,
                        col, N_);
               };
 	      break;
