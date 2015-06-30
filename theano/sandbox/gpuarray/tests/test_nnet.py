@@ -304,8 +304,7 @@ class test_SoftMax(unittest.TestCase):
         x_gpu,
         f_z,
         f_gpu_z,
-        cmp,
-        gpu_mode
+        cmp
     ):
         """
         This is basic test for GpuSoftmax and GpuDnnSoftmax
@@ -366,8 +365,7 @@ class test_SoftMax(unittest.TestCase):
             x,
             z,
             z,
-            self._cmp,
-            self.mode,
+            self._cmp
         )
 
         # cuDNN R1 cannot handle these test cases but the Theano softmax can so
@@ -383,8 +381,7 @@ class test_SoftMax(unittest.TestCase):
             x,
             z,
             z,
-            self._cmp,
-            self.mode,
+            self._cmp
         )
         # Theano can handle that case, but cudnn can't
         self._cmp(0, 10, f, f_gpu)
