@@ -82,11 +82,12 @@ void col2im(const float* data_col, const int channels,
 
 
 // Theano op code
-// GPU version authors: Arjun Jain, Frédéric Bastien, Jan Schlüter
+// GPU version authors: Arjun Jain, Frederic Bastien, Jan Schlueter
 // Reference code: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu
 //   and https://github.com/torch/cunn/blob/master/SpatialConvolutionMM.cu
 // CPU version author: Jesse Livezey
-PyArrayObject APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
+// TODO const?
+PyArray corrMM(PyArrayObject* bottom,
                            PyArrayObject* weight,
                            PyArrayObject* top,
                            const int direction,
@@ -95,14 +96,13 @@ PyArrayObject APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
                            const int padH = 0,
                            const int padW = 0)
 {
-    if (PyArray_NDIM(bottom)[0] != 4)
+    if (PyArray_NDIM(bottom) != 4)
     {
         PyErr_SetString(PyExc_ValueError, "CpuCorrMM requires bottom of 4D");
-        return 1;
+        return NULL;
     }
     // TODO Is this check needed?
-    /*
-    if (!PyArray_is_c_contiguous(bottom))
+    if (!PyArray_ISCONTIGUOUS(bottom))
     {
         PyErr_Format(PyExc_ValueError,
                 "CpuCorrMM requires bottom to be C-contiguous, "
@@ -113,16 +113,14 @@ PyArrayObject APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
                 PyArray_STRIDES(bottom)[3]);
         return NULL;
     }
-    */
     
-    if (PyArray_NDIM(weight)[0] != 4)
+    if (PyArray_NDIM(weight) != 4)
     {
         PyErr_SetString(PyExc_ValueError, "CpuCorrMM requires weight of 4D");
         return NULL;
     }
     // TODO Is this check needed?
-    /*
-    if (PyArray_is_c_contiguous(weight))
+    if (PyArray_ISCONTIGUOUS(weight))
     {
         PyErr_Format(PyExc_ValueError,
                 "CpuCorrMM requires weight to be C-contiguous, "
@@ -133,16 +131,14 @@ PyArrayObject APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
                 PyArray_STRIDES(weight)[3]);
         return NULL;
     }
-    */
 
-    if (PyArray_NDIM(top)[0] != 4)
+    if (PyArray_NDIM(top) != 4)
     {
         PyErr_SetString(PyExc_ValueError, "CpuCorrMM requires top of 4D");
         return NULL;
     }
     // TODO Is this check needed?
-    /*
-    if (!PyArray_is_c_contiguous(top))
+    if (!PyArray_ISCONTIGUOUS(top))
     {
         PyErr_Format(PyExc_ValueError,
                 "CpuCorrMM requires top to be C-contiguous, "
@@ -153,7 +149,6 @@ PyArrayObject APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
                 PyArray_STRIDES(top)[3]);
         return NULL;
     }
-    */
 
     // Extract some shape information for later and check shape consistency
     // bottom: (batchSize, nChannels, bottomHeight, bottomWidth)
@@ -194,7 +189,10 @@ PyArrayObject APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
     int col_dim[2];
     col_dim[0] = nChannels * kW * kH;
     col_dim[1] = topHeight * topWidth;
-    PyArray* col = (PyArray*)PyArray_EMPTY(2, col_dim);
+    PyArray* col = (PyArray*)PyArray_EMPTY(2,
+		                           col_dim,
+					   PyArray_TYPE(top),
+					   0);
     if (NULL == col)
     {
         PyErr_Format(PyExc_RuntimeError,
@@ -213,6 +211,8 @@ PyArrayObject APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
     const int M_ = nFilters;
     const float one = 1.0f;
     const float zero = 0.0f;
+    const char N = 'N';
+    const char T = 'T';
 
     PyArray *output;
     if (direction == 0) {  // forward pass
@@ -242,7 +242,7 @@ PyArrayObject APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
               {
                 sgemm_(&N, &N,
                        N_, M_, K_,
-                       &a,
+                       &one,
                        col, N_,
                        weight, K_,
                        &zero,
@@ -253,7 +253,7 @@ PyArrayObject APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
               {
                 dgemm_(&N, &N,
                        N_, M_, K_,
-                       &a,
+                       &one,
                        col, N_,
                        weight, K_,
                        &zero,
@@ -334,7 +334,7 @@ PyArrayObject APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
               {
                 sgemm_(&T, &N,
                        K_, M_, N_,
-                       &a,
+                       &one,
                        col, N_,
                        top + n * top_stride, N_,
                        (n == 0) ? &zero : &one,
@@ -345,7 +345,7 @@ PyArrayObject APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
               {
                 dgemm_(&T, &N,
                        K_, M_, N_,
-                       &a,
+                       &one,
                        col, N_,
                        top + n * top_stride, N_,
                        (n == 0) ? &zero : &one,
@@ -404,8 +404,8 @@ PyArrayObject APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
               {
                 sgemm_(&N, &T,
                        N_, K_, M_,
-                       &a,
-                       top + n * top_strike, N_,
+                       &one,
+                       top + n * top_stride, N_,
                        weight, K_,
                        &zero,
                        col, N_);
@@ -415,8 +415,8 @@ PyArrayObject APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
               {
                 sgemm_(&N, &T,
                        N_, K_, M_,
-                       &a,
-                       top + n * top_strike, N_,
+                       &one,
+                       top + n * top_stride, N_,
                        weight, K_,
                        &zero,
                        col, N_);

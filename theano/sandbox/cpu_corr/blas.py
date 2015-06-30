@@ -82,7 +82,7 @@ class BaseCpuCorrMM(gof.Op):
     def c_support_code(self):
         return blas_header_text()
 
-    def c_libraried(self):
+    def c_libraries(self):
         return ldflags()
 
     def c_compile_args(self):
@@ -287,15 +287,18 @@ class BaseCpuCorrMM(gof.Op):
 
     // Prepare output array
     if ( !(%(out)s
-           && %(out)s->nd==4
-           && PyArray_is_c_contiguous(%(out)s)
+           && PyArray_NDIM(%(out)s)==4
+           && PyArray_ISCONTIGUOUS(%(out)s)
            && PyArray_DIMS(%(out)s)[0]==out_dim[0]
            && PyArray_DIMS(%(out)s)[1]==out_dim[1]
            && PyArray_DIMS(%(out)s)[2]==out_dim[2]
            && PyArray_DIMS(%(out)s)[3]==out_dim[3]))
     {
         Py_XDECREF(%(out)s);
-        %(out)s = (PyArray*)PyArray_NewDims(4,out_dim);
+        %(out)s = (PyArray*)PyArray_EMPTY(4,
+                                          out_dim,
+                                          PyArray_TYPE(%(top)s),
+                                          0);
         if (NULL == %(out)s)
         {
             PyErr_Format(PyExc_RuntimeError,
