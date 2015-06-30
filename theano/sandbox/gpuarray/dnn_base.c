@@ -12,20 +12,23 @@ c_set_tensor4d(PyGpuArrayObject *var, cudnnTensorDescriptor_t desc) {
   case GA_DOUBLE:
     dt = CUDNN_DATA_DOUBLE;
     break;
-  case GA_HALF:
-    dt = CUDNN_DATA_HALF;
-    break;
   default:
     PyErr_SetString(PyExc_TypeError, "Non-float datatype in c_set_tensor4d");
     return -1;
   }
   ds = gpuarray_get_elsize(var->ga.typecode);
+
+  int str0, str1, str2, str3;
+  // cudnn do not like 0s in strides
+  str3 = PyGpuArray_STRIDES(var)[3]?PyGpuArray_STRIDES(var)[3]/ds:1;
+  str2 = PyGpuArray_STRIDES(var)[2]?PyGpuArray_STRIDES(var)[2]/ds:PyGpuArray_DIMS(var)[3];
+  str1 = PyGpuArray_STRIDES(var)[1]?PyGpuArray_STRIDES(var)[1]/ds:PyGpuArray_DIMS(var)[2]*PyGpuArray_DIMS(var)[3];
+  str0 = PyGpuArray_STRIDES(var)[0]?PyGpuArray_STRIDES(var)[0]/ds:PyGpuArray_DIMS(var)[2]*PyGpuArray_DIMS(var)[3]*PyGpuArray_DIMS(var)[1];
   cudnnStatus_t err = cudnnSetTensor4dDescriptorEx(
     desc, dt,
     PyGpuArray_DIM(var, 0), PyGpuArray_DIM(var, 1),
     PyGpuArray_DIM(var, 2), PyGpuArray_DIM(var, 3),
-    PyGpuArray_STRIDE(var, 0) / ds, PyGpuArray_STRIDE(var, 1) / ds,
-    PyGpuArray_STRIDE(var, 2) / ds, PyGpuArray_STRIDE(var, 3) / ds);
+    str0, str1, str2, str3);
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError,
 		 "Could not set tensor4d descriptor: %s",
@@ -49,9 +52,6 @@ c_set_filter(PyGpuArrayObject *var, cudnnFilterDescriptor_t desc) {
     break;
   case GA_DOUBLE:
     dt = CUDNN_DATA_DOUBLE;
-    break;
-  case GA_HALF:
-    dt = CUDNN_DATA_HALF;
     break;
   default:
     PyErr_SetString(PyExc_TypeError, "Non-float datatype in c_set_filter");

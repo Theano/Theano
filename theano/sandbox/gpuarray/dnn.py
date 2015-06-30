@@ -127,9 +127,6 @@ def c_set_tensor4d(var, desc, err, fail):
   case GA_DOUBLE:
     dt = CUDNN_DATA_DOUBLE;
     break;
-  case GA_HALF:
-    dt = CUDNN_DATA_HALF;
-    break;
   default:
     PyErr_SetString(PyExc_TypeError, "Non-float datatype in c_set_tensor4d");
     return -1;

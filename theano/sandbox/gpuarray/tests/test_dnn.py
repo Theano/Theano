@@ -732,13 +732,11 @@ class test_SoftMax(test_nnet.test_SoftMax):
             x_gpu,
             f_z,
             f_gpu,
-            cmp,
-            self.mode,
+            cmp
         )
 
         self._test_softmax(
-            x, x, f_z, f_z, self._cmp,
-            self.mode
+            x, x, f_z, f_z, self._cmp
         )
 
         # Verify that the SoftmaxGrad -> Gpu[Dnn]SoftmaxGrad
