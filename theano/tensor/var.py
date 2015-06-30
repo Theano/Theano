@@ -66,7 +66,6 @@ class _tensor_py_operators:
         rval._is_nonzero = False
         return rval
 
-
     def __nonzero__(self):
         # Python 2.x
         return self.__bool__()
