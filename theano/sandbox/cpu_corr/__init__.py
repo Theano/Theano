@@ -1,1 +1,1 @@
-from blas import conv
+from blas import CpuCorrMM

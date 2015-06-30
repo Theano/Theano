@@ -7,7 +7,7 @@ import numpy
 import theano
 import theano.tensor as T
 from theano.tests import unittest_tools as utt
-from theano.sandbox.cpu_corr import conv
+from theano.tensor.nnet import conv
 from theano.tensor.basic import _allclose, NotScalarConstantError
 
 
@@ -28,7 +28,6 @@ class TestConv2D(utt.InferShapeTester):
                  border_mode='valid', subsample=(1, 1),
                  N_image_shape=None, N_filter_shape=None,
                  input=None, filters=None,
-                 unroll_batch=None, unroll_kern=None, unroll_patch=None,
                  verify_grad=True, should_raise=False):
         """
         :param image_shape: The constant shape info passed to conv2d.
@@ -57,18 +56,17 @@ class TestConv2D(utt.InferShapeTester):
         ############# THEANO IMPLEMENTATION ############
 
         # we create a symbolic function so that verify_grad can work
-        def sym_conv2d(input, filters):
+        def sym_CpuCorrMM(input, filters):
             # define theano graph and function
             input.name = 'input'
             filters.name = 'filters'
-            rval =  conv.conv2d(input, filters, image_shape, filter_shape,
-                          border_mode, subsample, unroll_batch=unroll_batch,
-                          unroll_kern=unroll_kern, unroll_patch=unroll_patch)
+            rval =  conv.CpuCorrMM()(input, filters, image_shape, filter_shape,
+                          border_mode, subsample)
             rval.name = 'conv_output'
             return rval
 
-        output = sym_conv2d(input, filters)
-        output.name = 'conv2d(%s,%s)' % (input.name, filters.name)
+        output = sym_CpuCorrMM(input, filters)
+        output.name = 'CpuCorrMM()(%s,%s)' % (input.name, filters.name)
         theano_conv = theano.function([input, filters], output, mode=self.mode)
 
         # initialize input and compute result
@@ -124,7 +122,7 @@ class TestConv2D(utt.InferShapeTester):
 
         ############# TEST GRADIENT ############
         if verify_grad:
-            utt.verify_grad(sym_conv2d, [orig_image_data, filter_data])
+            utt.verify_grad(sym_CpuCorrMM, [orig_image_data, filter_data])
 
     def test_basic1(self):
         """Tests that basic convolutions work for odd and even
@@ -150,104 +148,6 @@ class TestConv2D(utt.InferShapeTester):
     def test_img_kernel_same_shape(self):
         self.validate((3, 2, 3, 3), (4, 2, 3, 3), 'full')
         self.validate((3, 2, 3, 3), (4, 2, 3, 3), 'valid')
-
-    def test_unroll_patch_true(self):
-        """
-        Test basic convs with True.
-        """
-        self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'valid', unroll_patch=True)
-        self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'full', unroll_patch=True)
-        self.validate((3, 2, 3, 3), (4, 2, 3, 3), 'valid',
-             unroll_patch=True, verify_grad=False)
-
-    def test_unroll_patch_false(self):
-        """
-        Test basic convs with False.
-        """
-        self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'valid', unroll_patch=False)
-        self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'full', unroll_patch=False)
-        self.validate((3, 2, 3, 3), (4, 2, 3, 3), 'valid',
-             unroll_patch=False, verify_grad=False)
-
-    def test_unroll_patch_true_fail(self):
-        """
-        Test basic convs with True.
-        """
-        self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'valid', unroll_patch=True,
-                      N_image_shape=(1, 3, 3, 3),  N_filter_shape=(6, 3, 2, 2),
-                      should_raise=True)
-        self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'full', unroll_patch=True,
-                      N_image_shape=(1, 3, 3, 3),  N_filter_shape=(6, 3, 2, 2),
-                      should_raise=True)
-        self.validate((3, 2, 3, 3), (4, 2, 3, 3), 'valid', unroll_patch=True,
-                      N_image_shape=(1, 3, 3, 3),  N_filter_shape=(6, 3, 2, 2),
-                      should_raise=True)
-
-    def test_unroll_special(self):
-        """
-        (unroll_kern, unroll_batch) in (0,1),(1,0) is special case.
-        """
-        self.validate((6, 2, 3, 3), (3, 2, 2, 2), 'valid', unroll_batch=1)
-
-    def test_unroll_batch(self):
-        """
-        Test mini-batch unrolling for various legal values.
-        """
-        # mini-batch of size 6 is multiple of 2 and 3. Should work.
-        self.validate((6, 2, 3, 3), (3, 2, 2, 2), 'valid',
-             unroll_batch=2, verify_grad=False)
-        self.validate((6, 2, 3, 3), (3, 2, 2, 2), 'valid',
-             unroll_batch=3, verify_grad=False)
-
-    def test_unroll_kern(self):
-        """
-        Test kernel unrolling for various legal values.
-        """
-        # 6 filters is a multiple of 2 and 3. Should work.
-        self.validate((2, 3, 3, 3), (6, 3, 2, 2), 'valid', unroll_kern=2,
-             verify_grad=False)
-        self.validate((2, 3, 3, 3), (6, 3, 2, 2), 'valid', unroll_kern=3,
-             verify_grad=False)
-
-    def test_unroll_batch_kern(self):
-        """Test mini-batch unrolling with kernel unrolling for various
-        legal values.
-
-        """
-        # mini-batch of size 6 is multiple of 2 and 3. Should work.
-        self.validate((6, 2, 3, 3), (3, 2, 2, 2), 'valid',
-             unroll_batch=2, unroll_kern=3, verify_grad=False)
-        self.validate((6, 2, 3, 3), (3, 2, 2, 2), 'valid',
-             unroll_batch=3, unroll_kern=3, verify_grad=False)
-        # 6 filters is a multiple of 2 and 3. Should work.
-        self.validate((2, 3, 3, 3), (6, 3, 2, 2), 'valid',
-             unroll_batch=2, unroll_kern=2, verify_grad=False)
-        self.validate((2, 3, 3, 3), (6, 3, 2, 2), 'valid',
-             unroll_batch=2, unroll_kern=3, verify_grad=False)
-
-    def test_unroll_batch_kern_fail(self):
-        """Test mini-batch unrolling with kernel unrolling for various
-        legal values, but pass bad input.  All those test must
-        generate errors
-
-        """
-        # mini-batch of size 6 is multiple of 2 and 3. Should work.
-        self.validate((6, 2, 3, 3), (3, 2, 2, 2), 'valid',
-                      unroll_batch=2, unroll_kern=3,
-                      N_image_shape=(7, 2, 3, 3), N_filter_shape=(3, 2, 2, 2),
-                      should_raise=True)
-        self.validate((6, 2, 3, 3), (3, 2, 2, 2), 'valid',
-                      unroll_batch=3, unroll_kern=3,
-                      N_image_shape=(6, 2, 3, 3), N_filter_shape=(4, 2, 2, 2),
-                      should_raise=True)
-        self.validate((2, 3, 3, 3), (6, 3, 2, 2), 'valid',
-                      unroll_batch=2, unroll_kern=2,
-                      N_image_shape=(1, 3, 3, 3),  N_filter_shape=(6, 3, 2, 2),
-                      should_raise=True)
-        self.validate((2, 3, 3, 3), (6, 3, 2, 2), 'valid',
-                      unroll_batch=2, unroll_kern=3,
-                      N_image_shape=(2, 3, 3, 3),  N_filter_shape=(5, 3, 2, 2),
-                      should_raise=True)
 
     @attr('slow')
     def test_subsample(self):
@@ -292,59 +192,32 @@ class TestConv2D(utt.InferShapeTester):
         Tests that when the shape gived at build time is not the same as
         run time we raise an error
         """
-        for unroll_batch in [None, 1, 3]:
-            for unroll_kern in [None, 2, 4]:
-                for unroll_patch in [None, True, False]:
-                    for mode in ['valid', 'full']:
-                        self.assertRaises(ValueError, self.validate,
-                                          (3, 2, 8, 8), (4, 2, 5, 5),
-                                          mode, N_image_shape=(2, 2, 8, 8),
-                                          unroll_batch=unroll_batch,
-                                          unroll_kern=unroll_kern,
-                                          unroll_patch=unroll_patch)
-                        self.assertRaises(ValueError, self.validate,
-                                          (3, 2, 8, 8), (4, 2, 5, 5),
-                                          mode, N_image_shape=(3, 1, 8, 8),
-                                          unroll_batch=unroll_batch,
-                                          unroll_kern=unroll_kern,
-                                          unroll_patch=unroll_patch)
-                        self.assertRaises(ValueError, self.validate,
-                                          (3, 2, 8, 8), (4, 2, 5, 5),
-                                          mode, N_image_shape=(3, 2, 7, 8),
-                                          unroll_batch=unroll_batch,
-                                          unroll_kern=unroll_kern,
-                                          unroll_patch=unroll_patch)
-                        self.assertRaises(ValueError, self.validate,
-                                          (3, 2, 8, 8), (4, 2, 5, 5),
-                                          mode, N_image_shape=(3, 2, 8, 7),
-                                          unroll_batch=unroll_batch,
-                                          unroll_kern=unroll_kern,
-                                          unroll_patch=unroll_patch)
+        for mode in ['valid', 'full']:
+            self.assertRaises(ValueError, self.validate,
+                              (3, 2, 8, 8), (4, 2, 5, 5),
+                              mode, N_image_shape=(2, 2, 8, 8))
+            self.assertRaises(ValueError, self.validate,
+                              (3, 2, 8, 8), (4, 2, 5, 5),
+                              mode, N_image_shape=(3, 1, 8, 8))
+            self.assertRaises(ValueError, self.validate,
+                              (3, 2, 8, 8), (4, 2, 5, 5),
+                              mode, N_image_shape=(3, 2, 7, 8))
+            self.assertRaises(ValueError, self.validate,
+                              (3, 2, 8, 8), (4, 2, 5, 5),
+                              mode, N_image_shape=(3, 2, 8, 7))
 
-                        self.assertRaises(ValueError, self.validate,
-                                          (3, 2, 8, 8), (4, 2, 5, 5),
-                                          mode, N_filter_shape=(3, 2, 5, 5),
-                                          unroll_batch=unroll_batch,
-                                          unroll_kern=unroll_kern,
-                                          unroll_patch=unroll_patch)
-                        self.assertRaises(ValueError, self.validate,
-                                          (3, 2, 8, 8), (4, 2, 5, 5),
-                                          mode, N_filter_shape=(4, 1, 5, 5),
-                                          unroll_batch=unroll_batch,
-                                          unroll_kern=unroll_kern,
-                                          unroll_patch=unroll_patch)
-                        self.assertRaises(ValueError, self.validate,
-                                          (3, 2, 8, 8), (4, 2, 5, 5),
-                                          mode, N_filter_shape=(4, 2, 6, 5),
-                                          unroll_batch=unroll_batch,
-                                          unroll_kern=unroll_kern,
-                                          unroll_patch=unroll_patch)
-                        self.assertRaises(ValueError, self.validate,
-                                          (3, 2, 8, 8), (4, 2, 5, 5),
-                                          mode, N_filter_shape=(4, 2, 5, 6),
-                                          unroll_batch=unroll_batch,
-                                          unroll_kern=unroll_kern,
-                                          unroll_patch=unroll_patch)
+            self.assertRaises(ValueError, self.validate,
+                              (3, 2, 8, 8), (4, 2, 5, 5),
+                              mode, N_filter_shape=(3, 2, 5, 5))
+            self.assertRaises(ValueError, self.validate,
+                              (3, 2, 8, 8), (4, 2, 5, 5),
+                              mode, N_filter_shape=(4, 1, 5, 5))
+            self.assertRaises(ValueError, self.validate,
+                              (3, 2, 8, 8), (4, 2, 5, 5),
+                              mode, N_filter_shape=(4, 2, 6, 5))
+            self.assertRaises(ValueError, self.validate,
+                              (3, 2, 8, 8), (4, 2, 5, 5),
+                              mode, N_filter_shape=(4, 2, 5, 6))
 
     def test_missing_info(self):
         """
@@ -418,36 +291,32 @@ class TestConv2D(utt.InferShapeTester):
         for border_mode in ['valid', 'full']:
             print
             print border_mode
-            for openmp in [False, True]:
-                print "OpenMP", openmp
-                image_shapes = [(1, 5, 6, 6),
-                                (10, 5, 6, 6),
-                                #(10, 10, 16, 16),
-                                #(10, 10, 32, 32)
-                ]
-                print "image_shape", image_shapes
-                for image_shape in image_shapes:
-                    filter_shapes = [(1, 5, 4, 4), (2, 5, 4, 4), (5, 5, 4, 4)]
-                    print "filter_shapes", filter_shapes
-                    for filter_shape in filter_shapes:
+            image_shapes = [(1, 5, 6, 6),
+                            (10, 5, 6, 6),
+                            #(10, 10, 16, 16),
+                            #(10, 10, 32, 32)
+            ]
+            print "image_shape", image_shapes
+            for image_shape in image_shapes:
+                filter_shapes = [(1, 5, 4, 4), (2, 5, 4, 4), (5, 5, 4, 4)]
+                print "filter_shapes", filter_shapes
+                for filter_shape in filter_shapes:
 
-                        input = theano.shared(numpy.random.random(image_shape))
-                        filters = theano.shared(numpy.random.random(filter_shape))
+                    input = theano.shared(numpy.random.random(image_shape))
+                    filters = theano.shared(numpy.random.random(filter_shape))
 
-                        output = conv.conv2d(input, filters,
-                                             image_shape, filter_shape,
-                                             border_mode,
-                                             unroll_patch=True,
-                                             openmp=openmp)
-                        mode = theano.Mode(linker=theano.gof.vm.VM_Linker(
-                            allow_gc=False,
-                            use_cloop=True))
-                        theano_conv = theano.function([], output, mode=mode)
-                        t1 = time.time()
-                        theano_conv.fn(n_calls=n_calls)
-                        t2 = time.time()
-                        print t2 - t1,
-                    print
+                    output = conv.CpuCorrMM()(input, filters,
+                                         image_shape, filter_shape,
+                                         border_mode)
+                    mode = theano.Mode(linker=theano.gof.vm.VM_Linker(
+                        allow_gc=False,
+                        use_cloop=True))
+                    theano_conv = theano.function([], output, mode=mode)
+                    t1 = time.time()
+                    theano_conv.fn(n_calls=n_calls)
+                    t2 = time.time()
+                    print t2 - t1,
+                print
 
     def test_infer_shape(self):
     # Note: infer_shape is incomplete and thus input and filter shapes
@@ -464,11 +333,11 @@ class TestConv2D(utt.InferShapeTester):
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                [conv.CpuCorrMM()(adtens, bdtens, aivec_val, bivec_val,
                 border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
 
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                [conv.CpuCorrMM()(adtens, bdtens, aivec_val, bivec_val,
                 border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
 
         aivec_val = [6, 2, 8, 3]
@@ -476,11 +345,11 @@ class TestConv2D(utt.InferShapeTester):
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                [conv.CpuCorrMM()(adtens, bdtens, aivec_val, bivec_val,
                 border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
 
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                [conv.CpuCorrMM()(adtens, bdtens, aivec_val, bivec_val,
                 border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
 
         aivec_val = [3, 6, 7, 5]
@@ -488,11 +357,11 @@ class TestConv2D(utt.InferShapeTester):
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                [conv.CpuCorrMM()(adtens, bdtens, aivec_val, bivec_val,
                 border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
 
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                [conv.CpuCorrMM()(adtens, bdtens, aivec_val, bivec_val,
                 border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
 
         aivec_val = [3, 6, 7, 5]
@@ -500,11 +369,11 @@ class TestConv2D(utt.InferShapeTester):
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                [conv.CpuCorrMM()(adtens, bdtens, aivec_val, bivec_val,
                 border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
 
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                [conv.CpuCorrMM()(adtens, bdtens, aivec_val, bivec_val,
                 border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
 
         aivec_val = [5, 2, 4, 3]
@@ -512,11 +381,11 @@ class TestConv2D(utt.InferShapeTester):
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                [conv.CpuCorrMM()(adtens, bdtens, aivec_val, bivec_val,
                 border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
 
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                [conv.CpuCorrMM()(adtens, bdtens, aivec_val, bivec_val,
                 border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
 
 

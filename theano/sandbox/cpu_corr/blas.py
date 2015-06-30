@@ -5,16 +5,14 @@ _logger = logging.getLogger(__name__)
 
 import theano
 from theano import Apply
-from theano import tensor
+#from theano import tensor
 from theano.compat.six import StringIO
-from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda import GpuOp
-from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
-                                           gpu_contiguous)
+from theano import gof
 from theano.tensor import as_tensor_variable
+from theano.tensor import blas_headers
 
 
-class BaseCpuCorrMM(GpuOp):
+class BaseCpuCorrMM(gof.COp):
     """Base class for `CpuCorrMM`, `CpuCorrMM_gradWeights` and
     `CpuCorrMM_gradInputs`. Cannot be used directly.
 
@@ -80,16 +78,16 @@ class BaseCpuCorrMM(GpuOp):
         return flops
 
     def c_headers(self):
-        return ['cuda_ndarray.cuh', '<stdio.h>']
+        return [blas_headers(), '<stdio.h>']
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 24)
+        return (0, 0)
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
         # these files
-        files = ['corr_gemm.cu']
+        files = ['corr_gemm.cpp']
         codes = [open(os.path.join(os.path.split(__file__)[0], f)).read()
                 for f in files]
         return reduce(str.__add__, codes)
