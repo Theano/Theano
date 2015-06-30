@@ -73,6 +73,7 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
         // CuDNN time every implementation and choose the best one.
         if (CHOOSE_ALGO_TIME)
         {
+#if defined(CUDNN_VERSION) && CUDNN_VERSION >= 3000
           // Time the different implementations to choose the best one
           int requestedCount = 1;
           int count;
@@ -93,6 +94,7 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
           }
 
           chosen_algo = choosen_algo_perf.algo;
+#endif
         }
         else
         {
@@ -138,12 +140,14 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
       chosen_algo = CONV_ALGO;
     }
 
-    // The FFT implementation does not support strides, 1x1 filters or
-    // inputs with a spatial dimension larger than 1024.
+    // The FFT implementation (only in V3 and onward) does not support strides,
+    // 1x1 filters or inputs with a spatial dimension larger than 1024.
     // If the chosen implementation is FFT, validate that it can be used
     // on the current data and default on a safe implementation if it
     // can't.
-    // Following code is 2d-specific, but it is fine as ftt is define only for 2d-filters
+    // Following code is 2d-specific, but it is fine as ftt is defined only for
+    // 2d-filters
+#if defined(CUDNN_VERSION) && CUDNN_VERSION >= 3000
     if (chosen_algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT && nb_dim == 4)
     {
 
@@ -178,6 +182,7 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
         chosen_algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
       }
     }
+#endif
 
     err = cudnnGetConvolutionForwardWorkspaceSize(_handle,
                                                   APPLY_SPECIFIC(input),

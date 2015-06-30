@@ -545,6 +545,18 @@ class GpuDnnConv(DnnBase, COp):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [2]}
+
+        # In CuDNN version older than V3, the FFT implementation and the
+        # option to time the different implementations to get the fastest
+        # are both unavailable.
+        if version() < (3000, 3000):
+            if self.workmem == 'fft':
+                raise RuntimeError("CuDNN's FFT convolution is only available "
+                                   "starting at CuDNN v3")
+            elif self.workmem == 'time':
+                raise RuntimeError("CuDNN's convolution timing option is only "
+                                   "available starting at CuDNN v3")
+
         assert self.workmem in ['none', 'small', 'large', 'fft', 'time',
                                 'guess']
 
@@ -560,11 +572,12 @@ class GpuDnnConv(DnnBase, COp):
             inpl_def = [('CONV_INPLACE', '1')]
         else:
             inpl_def = []
+
+        choose_alg = '0'
+        choose_alg_time = '0'
         if version() == -1:
-            alg_def = ('CONV_ALGO', "0")
+            alg = "0"
         else:
-            choose_alg = '0'
-            choose_alg_time = '0'
             if self.workmem == 'none':
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM'
             elif self.workmem == 'small':
@@ -585,9 +598,9 @@ class GpuDnnConv(DnnBase, COp):
                 choose_alg = '1'
                 choose_alg_time = '1'
 
-            alg_def = ('CONV_ALGO', alg)
-            alg_choose_def = ('CHOOSE_ALGO', choose_alg)
-            alg_choose_time_def = ('CHOOSE_ALGO_TIME', choose_alg_time)
+        alg_def = ('CONV_ALGO', alg)
+        alg_choose_def = ('CHOOSE_ALGO', choose_alg)
+        alg_choose_time_def = ('CHOOSE_ALGO_TIME', choose_alg_time)
 
         return [alg_def, alg_choose_def, alg_choose_time_def] + inpl_def
 
