@@ -60,8 +60,7 @@ class TestConv2D(utt.InferShapeTester):
             # define theano graph and function
             input.name = 'input'
             filters.name = 'filters'
-            rval =  conv.CpuCorrMM()(input, filters, image_shape, filter_shape,
-                          border_mode, subsample)
+            rval =  conv.CpuCorrMM(border_mode, subsample)(input, filters)
             rval.name = 'conv_output'
             return rval
 
@@ -333,60 +332,51 @@ class TestConv2D(utt.InferShapeTester):
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.CpuCorrMM()(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
+                [conv.CpuCorrMM(border_mode='valid')(adtens, bdtens)],
+                [adtens_val, bdtens_val], conv.ConvOp)
 
         self._compile_and_check([adtens, bdtens],
-                [conv.CpuCorrMM()(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
+                [conv.CpuCorrMM(border_mode='full')(adtens, bdtens)], [adtens_val, bdtens_val], conv.ConvOp)
 
         aivec_val = [6, 2, 8, 3]
         bivec_val = [4, 2, 5, 3]
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.CpuCorrMM()(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
+                [conv.CpuCorrMM(border_mode='valid')(adtens, bdtens)], [adtens_val, bdtens_val], conv.ConvOp)
 
         self._compile_and_check([adtens, bdtens],
-                [conv.CpuCorrMM()(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
+                [conv.CpuCorrMM(border_mode='full')(adtens, bdtens)], [adtens_val, bdtens_val], conv.ConvOp)
 
         aivec_val = [3, 6, 7, 5]
         bivec_val = [5, 6, 3, 2]
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.CpuCorrMM()(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
+                [conv.CpuCorrMM(border_mode='valid')(adtens, bdtens, aivec_val, bivec_val)], [adtens_val, bdtens_val], conv.ConvOp)
 
         self._compile_and_check([adtens, bdtens],
-                [conv.CpuCorrMM()(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
+                [conv.CpuCorrMM(border_mode='full')(adtens, bdtens)], [adtens_val, bdtens_val], conv.ConvOp)
 
         aivec_val = [3, 6, 7, 5]
         bivec_val = [5, 6, 2, 3]
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.CpuCorrMM()(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
+                [conv.CpuCorrMM(border_mode='valid')(adtens, bdtens)], [adtens_val, bdtens_val], conv.ConvOp)
 
         self._compile_and_check([adtens, bdtens],
-                [conv.CpuCorrMM()(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
+                [conv.CpuCorrMM(border_mode='full')(adtens, bdtens)], [adtens_val, bdtens_val], conv.ConvOp)
 
         aivec_val = [5, 2, 4, 3]
         bivec_val = [6, 2, 4, 3]
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.CpuCorrMM()(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
+                [conv.CpuCorrMM(border_mode='valid')(adtens, bdtens)], [adtens_val, bdtens_val], conv.ConvOp)
 
         self._compile_and_check([adtens, bdtens],
-                [conv.CpuCorrMM()(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
+                [conv.CpuCorrMM(border_mode='full')(adtens, bdtens)], [adtens_val, bdtens_val], conv.ConvOp)
 
 
 if __name__ == '__main__':

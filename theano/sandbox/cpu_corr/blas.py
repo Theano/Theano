@@ -9,10 +9,12 @@ from theano import Apply
 from theano.compat.six import StringIO
 from theano import gof
 from theano.tensor import as_tensor_variable
-from theano.tensor import blas_headers
+from theano.tensor.blas_headers import (blas_header_text,
+                                        blas_header_version)
+from theano.tensor.blas import ldflags
 
 
-class BaseCpuCorrMM(gof.COp):
+class BaseCpuCorrMM(gof.Op):
     """Base class for `CpuCorrMM`, `CpuCorrMM_gradWeights` and
     `CpuCorrMM_gradInputs`. Cannot be used directly.
 
@@ -77,12 +79,27 @@ class BaseCpuCorrMM(gof.COp):
         flops *= inputs[1] * filters[0] * inputs[0]
         return flops
 
+    def c_support_code(self):
+        return blas_header_text()
+
+    def c_libraried(self):
+        return ldflags()
+
+    def c_compile_args(self):
+        return ldflags(libs=False, flags=True)
+
+    def c_lib_dirs(self):
+        return ldflags(libs=False, libs_dir=True)
+    
+    def c_header_dirs(self):
+        return ldflags(libs=False, include_dir=True)
+
     def c_headers(self):
-        return [blas_headers(), '<stdio.h>']
+        return ['<stdio.h>']
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 0)
+        return (0, 1)
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -177,18 +194,18 @@ class BaseCpuCorrMM(gof.COp):
     int padH = %(padH)s;
     int padW = %(padW)s;
     
-    CudaNdarray * bottom = %(bottom)s;
-    CudaNdarray * weights = %(weights)s;
-    CudaNdarray * top = %(top)s;
-    CudaNdarray * out2 = NULL;
+    PyArray * bottom = %(bottom)s;
+    PyArray * weights = %(weights)s;
+    PyArray * top = %(top)s;
+    PyArray * out2 = NULL;
 
     // Obtain or infer kernel width and height
     // (we need to know it early to be able to handle auto-padding)
     int kH, kW;
     if (direction != 1) {
         // weight is an input variable, we can just read its shape
-        kH = CudaNdarray_HOST_DIMS(weights)[2];
-        kW = CudaNdarray_HOST_DIMS(weights)[3];
+        kH = PyArray_DIMS(weights)[2];
+        kW = PyArray_DIMS(weights)[3];
     }
     else {
         if ((dH != 1) || (padH == -1)) {
@@ -197,20 +214,20 @@ class BaseCpuCorrMM(gof.COp):
         }
         else if (padH == -2) {
             // vertical full padding, we can infer the kernel height
-            kH = 2 - CudaNdarray_HOST_DIMS(bottom)[2] + (CudaNdarray_HOST_DIMS(top)[2] - 1) * dH;
+            kH = 2 - PyArray_DIMS(bottom)[2] + (PyArray_DIMS(top)[2] - 1) * dH;
         }
         else {
             // explicit padding, we can infer the kernel height
-            kH = CudaNdarray_HOST_DIMS(bottom)[2] + 2*padH - (CudaNdarray_HOST_DIMS(top)[2] - 1) * dH;
+            kH = PyArray_DIMS(bottom)[2] + 2*padH - (PyArray_DIMS(top)[2] - 1) * dH;
         }
         if ((dW != 1) || (padW == -1)) {
             kW = %(width)s;
         }
         else if (padW == -2) {
-            kW = 2 - CudaNdarray_HOST_DIMS(bottom)[3] + (CudaNdarray_HOST_DIMS(top)[3] - 1) * dW;
+            kW = 2 - PyArray_DIMS(bottom)[3] + (PyArray_DIMS(top)[3] - 1) * dW;
         }
         else {
-            kW = CudaNdarray_HOST_DIMS(bottom)[3] + 2*padW - (CudaNdarray_HOST_DIMS(top)[3] - 1) * dW;
+            kW = PyArray_DIMS(bottom)[3] + 2*padW - (PyArray_DIMS(top)[3] - 1) * dW;
         }
     }
 
@@ -242,26 +259,26 @@ class BaseCpuCorrMM(gof.COp):
     case 0:  // forward pass
         // output is top: (batchsize, num_filters, height, width)
         // height and width: top = (bottom + 2*pad - weight) / sample + 1
-        out_dim[0] = CudaNdarray_HOST_DIMS(bottom)[0];
-        out_dim[1] = CudaNdarray_HOST_DIMS(weights)[0];
-        out_dim[2] = (CudaNdarray_HOST_DIMS(bottom)[2] + 2*padH - CudaNdarray_HOST_DIMS(weights)[2]) / dH + 1;
-        out_dim[3] = (CudaNdarray_HOST_DIMS(bottom)[3] + 2*padW - CudaNdarray_HOST_DIMS(weights)[3]) / dW + 1;
+        out_dim[0] = PyArray_DIMS(bottom)[0];
+        out_dim[1] = PyArray_DIMS(weights)[0];
+        out_dim[2] = (PyArray_DIMS(bottom)[2] + 2*padH - PyArray_DIMS(weights)[2]) / dH + 1;
+        out_dim[3] = (PyArray_DIMS(bottom)[3] + 2*padW - PyArray_DIMS(weights)[3]) / dW + 1;
         break;
     case 1:  // backprop wrt. weights
         // output is weights: (num_filters, num_channels, height, width)
         // height and width: weights = bottom + 2*pad - (top - 1) * sample
-        out_dim[0] = CudaNdarray_HOST_DIMS(top)[1];
-        out_dim[1] = CudaNdarray_HOST_DIMS(bottom)[1];
+        out_dim[0] = PyArray_DIMS(top)[1];
+        out_dim[1] = PyArray_DIMS(bottom)[1];
         out_dim[2] = kH;  // already inferred further above
         out_dim[3] = kW;  // how convenient
         break;
     case 2:  // backprop wrt. inputs
         // output is bottom: (batchsize, num_channels, height, width)
         // height and width: bottom = (top - 1) * sample + weights - 2*pad
-        out_dim[0] = CudaNdarray_HOST_DIMS(top)[0];
-        out_dim[1] = CudaNdarray_HOST_DIMS(weights)[1];
-        out_dim[2] = (dH != 1) ? %(height)s : (CudaNdarray_HOST_DIMS(top)[2] - 1) * dH + CudaNdarray_HOST_DIMS(weights)[2] - 2*padH;
-        out_dim[3] = (dW != 1) ? %(width)s : (CudaNdarray_HOST_DIMS(top)[3] - 1) * dW + CudaNdarray_HOST_DIMS(weights)[3] - 2*padW;
+        out_dim[0] = PyArray_DIMS(top)[0];
+        out_dim[1] = PyArray_DIMS(weights)[1];
+        out_dim[2] = (dH != 1) ? %(height)s : (PyArray_DIMS(top)[2] - 1) * dH + PyArray_DIMS(weights)[2] - 2*padH;
+        out_dim[3] = (dW != 1) ? %(width)s : (PyArray_DIMS(top)[3] - 1) * dW + PyArray_DIMS(weights)[3] - 2*padW;
         break;
     default:
         PyErr_SetString(PyExc_ValueError, "BaseCpuCorrMM: direction must be 0, 1, or 2\\n");
@@ -271,14 +288,14 @@ class BaseCpuCorrMM(gof.COp):
     // Prepare output array
     if ( !(%(out)s
            && %(out)s->nd==4
-           && CudaNdarray_is_c_contiguous(%(out)s)
-           && CudaNdarray_HOST_DIMS(%(out)s)[0]==out_dim[0]
-           && CudaNdarray_HOST_DIMS(%(out)s)[1]==out_dim[1]
-           && CudaNdarray_HOST_DIMS(%(out)s)[2]==out_dim[2]
-           && CudaNdarray_HOST_DIMS(%(out)s)[3]==out_dim[3]))
+           && PyArray_is_c_contiguous(%(out)s)
+           && PyArray_DIMS(%(out)s)[0]==out_dim[0]
+           && PyArray_DIMS(%(out)s)[1]==out_dim[1]
+           && PyArray_DIMS(%(out)s)[2]==out_dim[2]
+           && PyArray_DIMS(%(out)s)[3]==out_dim[3]))
     {
         Py_XDECREF(%(out)s);
-        %(out)s = (CudaNdarray*)CudaNdarray_NewDims(4,out_dim);
+        %(out)s = (PyArray*)PyArray_NewDims(4,out_dim);
         if (NULL == %(out)s)
         {
             PyErr_Format(PyExc_RuntimeError,
@@ -344,8 +361,9 @@ class CpuCorrMM(BaseCpuCorrMM):
         super(CpuCorrMM, self).__init__(border_mode, subsample, pad)
 
     def make_node(self, img, kern):
-        img = as_cuda_ndarray_variable(img)
-        kern = as_cuda_ndarray_variable(kern)
+        # TODO broadcastable checks
+        img = as_tensor_variable(img)
+        kern = as_tensor_variable(kern)
         if img.type.ndim != 4:
             raise TypeError('img must be 4D tensor')
         if kern.type.ndim != 4:
@@ -353,7 +371,7 @@ class CpuCorrMM(BaseCpuCorrMM):
 
         broadcastable = [img.type.broadcastable[0], kern.type.broadcastable[0],
                          False, False]
-        return Apply(self, [img, kern], [CudaNdarrayType(broadcastable)()])
+        return Apply(self, [img, kern], [img.type()])
 
     def c_code(self, node, nodename, inp, out_, sub):
         bottom, weights = inp
@@ -387,8 +405,8 @@ class CpuCorrMM_gradWeights(BaseCpuCorrMM):
         super(CpuCorrMM_gradWeights, self).__init__(border_mode, subsample, pad)
 
     def make_node(self, img, topgrad, shape=None):
-        img = as_cuda_ndarray_variable(img)
-        topgrad = as_cuda_ndarray_variable(topgrad)
+        img = as_tensor_variable(img)
+        topgrad = as_tensor_variable(topgrad)
         if img.type.ndim != 4:
             raise TypeError('img must be 4D tensor')
         if topgrad.type.ndim != 4:
@@ -403,7 +421,7 @@ class CpuCorrMM_gradWeights(BaseCpuCorrMM):
 
         broadcastable = [topgrad.type.broadcastable[1], img.type.broadcastable[1],
                          False, False]
-        return Apply(self, [img, topgrad] + height_width, [CudaNdarrayType(broadcastable)()])
+        return Apply(self, [img, topgrad] + height_width, [img.type()])
 
     def c_code(self, node, nodename, inp, out_, sub):
         bottom, top = inp[:2]
@@ -445,8 +463,8 @@ class CpuCorrMM_gradInputs(BaseCpuCorrMM):
         super(CpuCorrMM_gradInputs, self).__init__(border_mode, subsample, pad)
 
     def make_node(self, kern, topgrad, shape=None):
-        kern = as_cuda_ndarray_variable(kern)
-        topgrad = as_cuda_ndarray_variable(topgrad)
+        kern = as_tensor_variable(kern)
+        topgrad = as_tensor_variable(topgrad)
         if kern.type.ndim != 4:
             raise TypeError('kern must be 4D tensor')
         if topgrad.type.ndim != 4:
@@ -457,7 +475,7 @@ class CpuCorrMM_gradInputs(BaseCpuCorrMM):
 
         broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
                          False, False]
-        return Apply(self, [kern, topgrad] + height_width, [CudaNdarrayType(broadcastable)()])
+        return Apply(self, [kern, topgrad] + height_width, [kern.type()])
 
     def c_code(self, node, nodename, inp, out_, sub):
         weights, top = inp[:2]

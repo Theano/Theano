@@ -86,7 +86,7 @@ void col2im(const float* data_col, const int channels,
 // Reference code: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu
 //   and https://github.com/torch/cunn/blob/master/SpatialConvolutionMM.cu
 // CPU version author: Jesse Livezey
-int APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
+PyArrayObject APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
                            PyArrayObject* weight,
                            PyArrayObject* top,
                            const int direction,
@@ -100,7 +100,7 @@ int APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
         PyErr_SetString(PyExc_ValueError, "CpuCorrMM requires bottom of 4D");
         return 1;
     }
-    // TODO Is this needed?
+    // TODO Is this check needed?
     /*
     if (True || !PyArray_is_c_contiguous(bottom))
     {
@@ -118,9 +118,9 @@ int APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
     if (PyArray_NDIM(weight)[0] != 4)
     {
         PyErr_SetString(PyExc_ValueError, "CpuCorrMM requires weight of 4D");
-        return 1;
+        return NULL;
     }
-    // TODO Is this needed?
+    // TODO Is this check needed?
     /*
     if (True || !PyArray_is_c_contiguous(weight))
     {
@@ -140,7 +140,7 @@ int APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
         PyErr_SetString(PyExc_ValueError, "CpuCorrMM requires top of 4D");
         return NULL;
     }
-    // TODO Is this needed?
+    // TODO Is this check needed?
     /*
     if (!PyArray_is_c_contiguous(top))
     {
@@ -194,7 +194,7 @@ int APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
     int col_dim[2];
     col_dim[0] = nChannels * kW * kH;
     col_dim[1] = topHeight * topWidth;
-    PyArray* col = (PyArray*)PyArray_NewDims(2, col_dim);
+    PyArray* col = (PyArray*)PyArray_EMPTY(2, col_dim);
     if (NULL == col)
     {
         PyErr_Format(PyExc_RuntimeError,
@@ -206,6 +206,8 @@ int APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
     // Define some useful variables
     const int bottom_stride = PyArray_STRIDES(bottom)[0];
     const int top_stride = PyArray_STRIDES(top)[0];
+    int type_num = PyArray_DESCR(bottom)->type_num;
+    // TODO More careful type checking for all arrays
     const int K_ = col_dim[0];
     const int N_ = col_dim[1];
     const int M_ = nFilters;
@@ -219,32 +221,48 @@ int APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
         // Iterate over batch
         for (int n = 0; n < batchSize; n++) {
             // First, im2col
-            im2col(bottom->devdata + n * bottom_stride, nChannels, bottomHeight,
-                    bottomWidth, kH, kW, padH, padW, dH, dW, col->devdata);
-	    // TODO What to get here?
+            im2col(bottom + n * bottom_stride, nChannels, bottomHeight,
+                    bottomWidth, kH, kW, padH, padW, dH, dW, col);
+	    // TODO What to check here?
 	    /*
             cudaError_t err = cudaGetLastError();
             if (err != cudaSuccess) {
                 PyErr_Format(PyExc_RuntimeError,
-                             "CpuCorrMM encountered a CUDA error in im2col: %s\n"
-                             "This could be a known bug in CUDA, please see the "
-                             "CpuCorrMM() documentation.\n",
+                             "CpuCorrMM encountered an error in im2col: %s.\n"
                              cudaGetErrorString(err));
                 Py_DECREF(col);
                 return NULL;
             }
 	    */
             // Second, gemm
-	    // TODO How to get {S/D}GEMM?
+	    // TODO Is this correct?
+            switch (type_num)
+            {
+              case NPY_FLOAT:
+              {
+                sgemm_(&N, &N,
+                       N_, M_, K_,
+                       &a,
+                       col, N_,
+                       weight, K_,
+                       &zero,
+                       top + n * top_stride, N_);
+              };
+	      break;
+              case NPY_DOUBLE:
+              {
+                dgemm_(&N, &N,
+                       N_, M_, K_,
+                       &a,
+                       col, N_,
+                       weight, K_,
+                       &zero,
+                       top + n * top_stride, N_);
+              };
+	      break;
+            };
+	    // TODO What to check here?
 	    /*
-            cublasStatus_t status = cublasSgemm(handle,
-                    CUBLAS_OP_N, CUBLAS_OP_N,
-                    N_, M_, K_,
-                    &one,
-                    col->devdata, N_,
-                    weight->devdata, K_,
-                    &zero,
-                    top->devdata + n * top_stride, N_);
             if (status != CUBLAS_STATUS_SUCCESS) {
                 PyErr_Format(PyExc_RuntimeError,
                         "CpuCorrMM encountered a CUBLAS error: %s\n"
@@ -292,8 +310,9 @@ int APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
         // Iterate over batch
         for (int n = 0; n < batchSize; n++) {
             // First, im2col
-            im2col(bottom->devdata + n * bottom_stride, nChannels, bottomHeight,
-                    bottomWidth, kH, kW, padH, padW, dH, dW, col->devdata);
+            im2col(bottom + n * bottom_stride, nChannels, bottomHeight,
+                    bottomWidth, kH, kW, padH, padW, dH, dW, col);
+	    /* TODO
             cudaError_t err = cudaGetLastError();
             if (err != cudaSuccess) {
                 PyErr_Format(PyExc_RuntimeError,
@@ -304,18 +323,37 @@ int APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
                 Py_DECREF(col);
                 return NULL;
             }
+	    */
             // Second, gemm
             // Note that we accumulate into weight. We do so by setting beta = 0
             // for the first iteration and beta = 1 for subsequent ones. (This
             // is faster than setting weight to all zeros before the loop.)
-            cublasStatus_t status = cublasSgemm(handle,
-                    CUBLAS_OP_T, CUBLAS_OP_N,
-                    K_, M_, N_,
-                    &one,
-                    col->devdata, N_,
-                    top->devdata + n * top_stride, N_,
-                    (n == 0) ? &zero : &one,
-                    weight->devdata, K_);
+            switch (type_num)
+            {
+              case NPY_FLOAT:
+              {
+                sgemm_(&T, &N,
+                       K_, M_, N_,
+                       &a,
+                       col, N_,
+                       top + n * top_stride, N_,
+                       (n == 0) ? &zero : &one,
+                       weight, K_);
+              };
+	      break;
+              case NPY_DOUBLE:
+              {
+                dgemm_(&T, &N,
+                       K_, M_, N_,
+                       &a,
+                       col, N_,
+                       top + n * top_stride, N_,
+                       (n == 0) ? &zero : &one,
+                       weight, K_);
+              };
+	      break;
+            };
+	    /* TODO
             if (status != CUBLAS_STATUS_SUCCESS) {
                 PyErr_Format(PyExc_RuntimeError,
                         "CpuCorrMM encountered a CUBLAS error: %s\n"
@@ -325,6 +363,7 @@ int APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
                 Py_DECREF(col);
                 return NULL;
             }
+	    */
         }
         /*
         // Original caffe code for comparison
@@ -359,14 +398,32 @@ int APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
         // Iterate over batch
         for (int n = 0; n < batchSize; n++) {
             // gemm into columns
-            cublasStatus_t status = cublasSgemm(handle,
-                    CUBLAS_OP_N, CUBLAS_OP_T,
-                    N_, K_, M_,
-                    &one,
-                    top->devdata + n * top_stride, N_,
-                    weight->devdata, K_,
-                    &zero,
-                    col->devdata, N_);
+            switch (type_num)
+            {
+              case NPY_FLOAT:
+              {
+                sgemm_(&N, &T,
+                       N_, K_, M_,
+                       &a,
+                       top + n * top_strike, N_,
+                       weight, K_,
+                       &zero,
+                       col, N_);
+              };
+	      break;
+              case NPY_DOUBLE:
+              {
+                sgemm_(&N, &T,
+                       N_, K_, M_,
+                       &a,
+                       top + n * top_strike, N_,
+                       weight, K_,
+                       &zero,
+                       col, N_);
+              };
+	      break;
+            };
+	    /* TODO
             if (status != CUBLAS_STATUS_SUCCESS) {
                 PyErr_Format(PyExc_RuntimeError,
                         "CpuCorrMM encountered a CUBLAS error: %s\n"
@@ -376,9 +433,11 @@ int APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
                 Py_DECREF(col);
                 return NULL;
             }
+	    */
             // col2im back to the data
-            col2im(col->devdata, nChannels, bottomHeight, bottomWidth,
-                    kH, kW, padH, padW, dH, dW, bottom->devdata + n * bottom_stride);
+            col2im(col, nChannels, bottomHeight, bottomWidth,
+                    kH, kW, padH, padW, dH, dW, bottom + n * bottom_stride);
+	    /* TODO
             cudaError_t err = cudaGetLastError();
             if (err != cudaSuccess) {
                 PyErr_Format(PyExc_RuntimeError,
@@ -389,6 +448,7 @@ int APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
                 Py_DECREF(col);
                 return NULL;
             }
+	    */
         }
         /*
         // Original caffe code for comparison
