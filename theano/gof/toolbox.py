@@ -208,20 +208,14 @@ class Validator(Feature):
             uf = cf.f_back
             uf_info = inspect.getframeinfo(uf)
 
-            # If the caller is replace_all_validate, just raise the
-            # exception. replace_all_validate will print out the
-            # verbose output.
-            # Or it has to be done here before raise.
-            if uf_info.function == 'replace_all_validate':
-                raise
-            else:
-                verbose = uf.f_locals.get('verbose', False)
-                if verbose:
-                    r = uf.f_locals.get('r', "")
-                    reason = uf_info.function
-                    print("validate failed on node %s.\n Reason: %s, %s" %
-                          (r, reason, e))
-                raise
+            # Print if verbose, then raise
+            verbose = uf.f_locals.get('verbose', False)
+            if verbose:
+                r = uf.f_locals.get('r', "")
+                reason = uf_info.function
+                print("validate failed on node %s.\n Reason: %s, %s" %
+                      (r, reason, e))
+            raise
         t1 = time.time()
         if fgraph.profile:
             fgraph.profile.validate_time += t1 - t0
@@ -293,8 +287,6 @@ class ReplaceValidate(History, Validator):
             fgraph.validate()
         except Exception as e:
             fgraph.revert(chk)
-            if verbose:
-                print("validate failed on node %s.\n Reason: %s, %s" % (r, reason, e))
             raise
         if verbose:
             print(reason, r, new_r)
