@@ -6,13 +6,19 @@ cudnnFilterDescriptor_t APPLY_SPECIFIC(kerns);
 /* Keep track, from one execution to another, of the dimension of the data
 and the algorithms, if any, that were selected according to these dimensions
 and according to the amount of memory available at that time.
+
+Note : Implementation selection for backward convolution only exists starting
+at V3.
 */
 int APPLY_SPECIFIC(previous_input_shape)[5];
 int APPLY_SPECIFIC(previous_kerns_shape)[5];
 int APPLY_SPECIFIC(previous_output_shape)[5];
 cudnnConvolutionFwdAlgo_t APPLY_SPECIFIC(previous_algo);
+
+#if defined(CUDNN_VERSION) && CUDNN_VERSION >= 3000
 cudnnConvolutionBwdFilterAlgo_t APPLY_SPECIFIC(previous_bwd_f_algo);
 cudnnConvolutionBwdDataAlgo_t APPLY_SPECIFIC(previous_bwd_d_algo);
+#endif
 
 #section init_code_struct
 
