@@ -102,7 +102,7 @@ PyArrayObject APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
     }
     // TODO Is this check needed?
     /*
-    if (True || !PyArray_is_c_contiguous(bottom))
+    if (!PyArray_is_c_contiguous(bottom))
     {
         PyErr_Format(PyExc_ValueError,
                 "CpuCorrMM requires bottom to be C-contiguous, "
@@ -122,7 +122,7 @@ PyArrayObject APPLY_SPECIFIC(corrMM)(PyArrayObject* *const bottom,
     }
     // TODO Is this check needed?
     /*
-    if (True || !PyArray_is_c_contiguous(weight))
+    if (PyArray_is_c_contiguous(weight))
     {
         PyErr_Format(PyExc_ValueError,
                 "CpuCorrMM requires weight to be C-contiguous, "

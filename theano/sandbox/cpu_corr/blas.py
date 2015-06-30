@@ -305,7 +305,7 @@ class BaseCpuCorrMM(gof.Op):
         }
     }
 
-    // Call CUDA code
+    // Call corrMM code
     out2 = corrMM(%(bottom)s, %(weights)s, %(top)s, direction, dH, dW, padH, padW);
     if (out2==NULL){
        %(fail)s
@@ -316,7 +316,7 @@ class BaseCpuCorrMM(gof.Op):
 
 
 class CpuCorrMM(BaseCpuCorrMM):
-    """GPU correlation implementation using Matrix Multiplication.
+    """CPU correlation implementation using Matrix Multiplication.
 
     :param border_mode: currently supports "valid" only; "full" can be
         simulated by setting `pad="full"` (at the cost of performance), or
@@ -345,15 +345,6 @@ class CpuCorrMM(BaseCpuCorrMM):
         `CpuCorrMM(subsample=...)(image, filters)`. The latter is currently
         faster, but note that it computes a correlation -- if you need to
         compute a convolution, flip the filters as `filters[:,:,::-1,::-1]`.
-
-    :warning: For 700 series Nvidia GPUs of compute capability 3.5 and CUDA 5.0
-        to 6.0, there is a bug in CUBLAS' matrix multiplication function that
-        can make CpuCorrMM or its gradients crash for some input and filter
-        shapes. So if you have a Tesla K20, Tesla K40, Quadro K6000, GeForce GT
-        640 (DDR5), GeForce GTX 780 (or Ti), GeForce GTX TITAN (or Black or Z)
-        and experience a crash, switching to CUDA 6.5 or CUDA 4.2 should fix it.
-        If this is not possible, changing the input or filter shapes (e.g., the
-        batchsize or number of filters) may also work around the CUBLAS bug.
     """
     def __init__(self, border_mode="valid",
                  subsample=(1, 1),
@@ -361,7 +352,6 @@ class CpuCorrMM(BaseCpuCorrMM):
         super(CpuCorrMM, self).__init__(border_mode, subsample, pad)
 
     def make_node(self, img, kern):
-        # TODO broadcastable checks
         img = as_tensor_variable(img)
         kern = as_tensor_variable(kern)
         if img.type.ndim != 4:
@@ -371,6 +361,7 @@ class CpuCorrMM(BaseCpuCorrMM):
 
         broadcastable = [img.type.broadcastable[0], kern.type.broadcastable[0],
                          False, False]
+        # TODO broadcastable checks
         return Apply(self, [img, kern], [img.type()])
 
     def c_code(self, node, nodename, inp, out_, sub):
@@ -421,6 +412,7 @@ class CpuCorrMM_gradWeights(BaseCpuCorrMM):
 
         broadcastable = [topgrad.type.broadcastable[1], img.type.broadcastable[1],
                          False, False]
+        # TODO broadcastable checks
         return Apply(self, [img, topgrad] + height_width, [img.type()])
 
     def c_code(self, node, nodename, inp, out_, sub):
@@ -475,6 +467,7 @@ class CpuCorrMM_gradInputs(BaseCpuCorrMM):
 
         broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
                          False, False]
+        # TODO broadcastable checks
         return Apply(self, [kern, topgrad] + height_width, [kern.type()])
 
     def c_code(self, node, nodename, inp, out_, sub):
