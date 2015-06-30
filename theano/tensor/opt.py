@@ -1898,10 +1898,11 @@ def local_upcast_elemwise_constant_inputs(node):
                                 i.ndim))
                         else:
                             if shape_i is None:
-                                return new_inputs.append(
-                                    T.alloc(T.cast(cval_i, output_dtype),
-                                            *[shape_i(d)(i)
-                                              for d in xrange(i.ndim)]))
+                                return
+                            new_inputs.append(
+                                T.alloc(T.cast(cval_i, output_dtype),
+                                        *[shape_i(d)(i)
+                                          for d in xrange(i.ndim)]))
                             # print >> sys.stderr, "AAA",
                             # *[Shape_i(d)(i) for d in xrange(i.ndim)]
                     except NotScalarConstantError:
