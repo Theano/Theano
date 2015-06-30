@@ -24,8 +24,7 @@ install:
 
 # command to run tests
 env:
-  - PART="scan_module"
-  - PART="sandbox sparse scalar tensor/nnet"
+  - PART="sandbox sparse scalar tensor/nnet scan_module"
   - PART="tensor/tests/test_basic.py tensor/signal compile gof misc tests compat"
   - PART="-e test_basic.py tensor/tests"
 
