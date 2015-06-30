@@ -12,11 +12,11 @@ from theano.tensor.opt import in2out
 if have_fblas:
     from theano.tensor.blas import fblas
     _blas_ger_fns = {
-            numpy.dtype('float32'): fblas.sger,
-            numpy.dtype('float64'): fblas.dger,
-            numpy.dtype('complex64'): fblas.cgeru,
-            numpy.dtype('complex128'): fblas.zgeru,
-            }
+        numpy.dtype('float32'): fblas.sger,
+        numpy.dtype('float64'): fblas.dger,
+        numpy.dtype('complex64'): fblas.cgeru,
+        numpy.dtype('complex128'): fblas.zgeru,
+    }
 
 
 class ScipyGer(Ger):
@@ -47,10 +47,10 @@ class ScipyGer(Ger):
                     A = A.copy()
             elif A.flags['C_CONTIGUOUS']:
                 A = local_ger(calpha[0], cy[0], cx[0], a=A.T,
-                        overwrite_a=int(self.destructive)).T
+                              overwrite_a=int(self.destructive)).T
             else:
                 A = local_ger(calpha[0], cx[0], cy[0], a=A,
-                        overwrite_a=int(self.destructive))
+                              overwrite_a=int(self.destructive))
             cZ[0] = A
             for o in node_output_compute:
                 o[0] = True
@@ -87,10 +87,10 @@ if have_fblas:
     # precedence. Once the original Ger is replaced, then these optimizations
     # have no effect.
     blas_optdb.register('scipy_blas',
-        use_scipy_blas,
-        100, 'fast_run')
+                        use_scipy_blas,
+                        100, 'fast_run')
 
     # this matches the InplaceBlasOpt defined in blas.py
     optdb.register('make_scipy_blas_destructive',
-            make_scipy_blas_destructive,
-            70.0, 'fast_run', 'inplace')
+                   make_scipy_blas_destructive,
+                   70.0, 'fast_run', 'inplace')
