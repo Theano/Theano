@@ -451,7 +451,9 @@ def test_log_softmax():
 
 
 def test_log_softmax_opt():
-    if not cuda.dnn.dnn_available():
+    # This is a test for an optimization that depends on CuDNN v3 or
+    # more recent. Don't test if the CuDNN version is too old.
+    if not cuda.dnn.dnn_available() or cuda.dnn.version() < (3000, 3000):
         raise SkipTest(cuda.dnn.dnn_available.msg)
 
     x = T.ftensor4()

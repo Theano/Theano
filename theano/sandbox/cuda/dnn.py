@@ -1723,6 +1723,10 @@ class GpuDnnSoftmaxBase(DnnBase):
         DnnBase.__init__(self)
         self.tensor_format = tensor_format
 
+        if algo == 'log' and version() < (3000, 3000):
+            raise RuntimeError("CuDNN's log-softmax implementation is only "
+                               "supported starting at CuDNN v3")
+
         assert(algo in ('fast', 'accurate', 'log'))
         self.algo = algo
 
@@ -1796,11 +1800,11 @@ cudnnStatus_t err%(name)s;
             mode = 0
 
         if self.algo == 'fast':
-            algo = 1
+            algo = "CUDNN_SOFTMAX_FAST"
         elif self.algo == "log":
-            algo = 2
+            algo = "CUDNN_SOFTMAX_LOG"
         else:
-            algo = 0
+            algo = "CUDNN_SOFTMAX_ACCURATE"
 
         # Setup configuration variables.
         result = """
@@ -1809,11 +1813,7 @@ cudnnTensorFormat_t format%(name)s = CUDNN_TENSOR_NCHW;
 if (%(tensor_format)d == 1)
   format%(name)s = CUDNN_TENSOR_NHWC;
 
-cudnnSoftmaxAlgorithm_t algo%(name)s = CUDNN_SOFTMAX_ACCURATE;
-if (%(algo)d == 1)
-  algo%(name)s = CUDNN_SOFTMAX_FAST;
-if (%(algo)d == 2)
-  algo%(name)s = CUDNN_SOFTMAX_LOG;
+cudnnSoftmaxAlgorithm_t algo%(name)s = %(algo)s;
 
 cudnnSoftmaxMode_t mode%(name)s = CUDNN_SOFTMAX_MODE_CHANNEL;
 if (%(mode)d == 1)
@@ -2197,7 +2197,8 @@ if True:
     @register_opt('cudnn')
     @local_optimizer([GpuElemwise])
     def local_log_softmax_dnn(node):
-        if not dnn_available():
+        # The log-softmax implementation is only available starting at CuDNN V3.
+        if not dnn_available() or version() < (3000, 3000):
             return
         if (isinstance(node.op, GpuElemwise) and
             isinstance(node.op.scalar_op, Log) and
