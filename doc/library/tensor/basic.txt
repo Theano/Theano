@@ -1643,16 +1643,26 @@ Linear Algebra
     :note: See :func:`tensordot` and :func:`batched_dot` for
         supplementary documentation.
 
-.. class:: _nd_grid(object)
+.. function:: mgrid()
 
-    Create a dense n-dimensional 'meshgrid' with equally spaced points.
-    Used to create the instance ''mgrid'' and ''ogrid'' which act similarly
-    to their numpy equivalents.
+    :param
     
-    :param sparse: boolean, optional, default=True. Specifying False leads to 
-                   the equivalent of numpy's mgrid functionality. Specifying 
-                   True leads to the equivalent of ogrid.
+    :returns: a dense (or fleshed out) mesh-grid when indexed, so that 
+	      each returned argument has the same shape. The dimensions 
+	      and number of the output arrays are equal to the number of 
+	      indexing dimensions. If the step length is not a complex 
+	      number, then the stop is not inclusive.
 
+.. function:: ogrid()
+
+    :param
+    
+    :returns: an open (i.e. not fleshed out) mesh-grid when indexed, 
+              so that only one dimension of each returned array is 
+              greater than 1. The dimension and number of the output 
+              arrays are equal to the number of indexing dimensions. 
+              If the step length is not a complex number, then the 
+              stop is not inclusive.
 
 
 Gradient / Differentiation
