@@ -593,7 +593,7 @@ def get_scalar_constant_value(orig_v, elemwise=True,
             # mess with the stabilization optimization and be too slow.
             # We put all the scalar Ops used by get_canonical_form_slice()
             # to allow it to determine the broadcast pattern correctly.
-            elif isinstance(v.owner.op, ScalarFromTensor):
+            elif isinstance(v.owner.op, (ScalarFromTensor, TensorFromScalar)):
                 return get_scalar_constant_value(v.owner.inputs[0])
             elif isinstance(v.owner.op, scal.ScalarOp):
                 if isinstance(v.owner.op, scal.Second):

@@ -42,4 +42,9 @@ static PyGpuArrayObject *theano_try_copy(PyGpuArrayObject *out,
   return out;
 }
 
+/* This is guaranteed to work and return the raw CUDA/OpenCL object on
+ * all recent (as of June 2015) version of libgpuarray. This is also
+ * promised to keep working in future versions. */
+#define PyGpuArray_DEV_DATA(ary) (*(void **)((ary)->ga.data))
+
 #endif
