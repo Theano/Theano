@@ -3603,8 +3603,10 @@ def local_fill_sink(node):
             # node_sub_c = client.op([v for v in client.inputs if v is not c])
             # import ipdb; ipdb.set_trace()
             r = local_fill_sink.transform(client)
-            if r:
-                return {client: r}
+            if isinstance(r, list):
+                return {client.outputs[0]: r[0]}
+            elif isinstance(r, dict):
+                return r
     return [c]
 
 register_canonicalize(local_fill_sink)
