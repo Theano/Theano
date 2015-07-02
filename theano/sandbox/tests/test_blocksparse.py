@@ -2,6 +2,7 @@
     Tests for block sparse dot
 """
 import unittest
+import time
 
 import numpy
 from numpy.random import randn
@@ -82,6 +83,72 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
                     w = W[inputIdx, outputIdx]
                     o[b, j, :] += numpy.dot(h[b, i], w)
         return o
+
+    @staticmethod
+    def gemv_numpy2(o, W, h, iIdx, oIdx):
+        from numpy import ix_
+        for b in range(o.shape[0]):
+            w = W[ix_(iIdx[b], oIdx[b])].swapaxes(1, 2)
+            w = w.reshape((w.shape[0] * w.shape[1], w.shape[2] * w.shape[3]))
+            o[b] += numpy.dot(h[b].ravel(), w).reshape(o.shape[1:])
+        return o
+
+    @staticmethod
+    def gemv_numpy3(o, W, h, iIdx, oIdx):
+        from numpy import ix_
+        for b in range(o.shape[0]):
+            w = W[ix_(iIdx[b], oIdx[b])]
+            # o[b] += (h[b][:, None, :, None] * w).sum(axis=(0, 2))
+            # o[b] += numpy.tensordot(h[b], w, [(0,1),(0,2)])
+            o[b] += numpy.einsum('ik,ijkl', h[b], w)
+        return o
+
+    @staticmethod
+    def gemv_data2():
+
+        nInputBlock = 100
+        nOutputBlock = 100
+        inputSize = 50
+        outputSize = 50
+        inputWindowSize = 30
+        outputWindowSize = 30
+        batchSize = 1
+
+        input = randn(batchSize, inputWindowSize, inputSize).astype('float32')
+        permutation = numpy.random.permutation
+        inputIndice = numpy.vstack(permutation(nInputBlock)[:inputWindowSize]
+                                   for _ in range(batchSize)).astype('int32')
+        outputIndice = numpy.vstack(
+            permutation(nOutputBlock)[:outputWindowSize]
+            for _ in range(batchSize)).astype('int32')
+        weight = randn(nInputBlock, nOutputBlock,
+                       inputSize, outputSize).astype('float32')
+        bias = randn(nOutputBlock, outputSize).astype('float32')
+
+        return weight, input, inputIndice, bias, outputIndice
+
+
+    @staticmethod
+    def compare():
+        W_val, h_val, iIdx_val, b_val, oIdx_val = \
+            BlockSparse_Gemv_and_Outer.gemv_data2()
+
+        start = time.clock()
+        ref_out = BlockSparse_Gemv_and_Outer.gemv_numpy(
+             b_val.take(oIdx_val, axis=0), W_val, h_val, iIdx_val, oIdx_val)
+        v1 = time.clock()
+        ref_out_2 = BlockSparse_Gemv_and_Outer.gemv_numpy2(
+             b_val.take(oIdx_val, axis=0), W_val, h_val, iIdx_val, oIdx_val)
+        v2 = time.clock()
+        ref_out_3 = BlockSparse_Gemv_and_Outer.gemv_numpy3(
+             b_val.take(oIdx_val, axis=0), W_val, h_val, iIdx_val, oIdx_val)
+        v3 = time.clock()
+
+        print v1 - start
+        print v2 - v1
+        print v3 - v2
+        # utt.assert_allclose(ref_out, ref_out_2)
+
 
     @staticmethod
     def outer_numpy(o, x, y, xIdx, yIdx):
@@ -263,3 +330,6 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         print ref_out.shape
 
         utt.assert_allclose(ref_out, th_out)
+
+
+# BlockSparse_Gemv_and_Outer.compare()
