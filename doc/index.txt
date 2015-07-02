@@ -160,13 +160,67 @@ Community
 
 * Register to `theano-buildbot`_ if you want to receive our daily buildbot email.
 
-* Ask/view questions/answers at `metaoptimize/qa/tags/theano`_ (it's like stack overflow for machine learning)
+* Ask/view questions/answers at `StackOverflow`_
 
 * We use `Github tickets <http://github.com/Theano/Theano/issues>`__ to keep track of issues
   (however, some old tickets can still be found on
   `Assembla <http://www.assembla.com/spaces/theano/tickets>`__).
 
 * Come visit us in Montreal! Most developers are students in the LISA_ group at the `University of Montreal`_.
+
+
+.. _support:
+
+Help!
+=====
+
+How to get help
+---------------
+
+The appropriate venue for seeking help depends on the kind of question you have.
+
+* How do I? -- `theano-users`_ mailing list or `StackOverflow`_
+* I got this error, why? -- `theano-users`_ mailing list or `StackOverflow`_ (please include the *full* error message, even if it's long)
+* I got this error and I'm sure it's a bug -- `Github ticket <http://github.com/Theano/Theano/issues>`__
+* I have an idea/request -- post the suggestion to `theano-dev`_ or, even better, implement the idea and submit a `GitHub <https://github.com/Theano/Theano/pulls>`__ pull request!
+* Why do you? -- `theano-users`_ mailing list (not appropriate for StackOverflow)
+* When will you? -- `theano-dev`_ mailing list (not appropriate for StackOverflow)
+
+When asking questions on StackOverflow, please use the *theano* tag, so your question can be found, and follow
+StackOverflow's guidance on `asking questions <http://stackoverflow.com/help/asking>`__. Consider also using the
+*python* and *numpy* tags, especially if you are unsure which library your problem relates to.
+
+It is often helpful to include the following details with your question:
+
+* If you have an error, the *full* error message, even if it's long
+* The versions of Python and Theano are you using
+* Whether you're using a CPU or GPU device
+* Details of your Theano configuration settings (you can print this in Python via `print theano.config <http://deeplearning.net/software/theano/library/config.html>`__)
+
+Spending the time to create a minimal specific example of a problem is likely to get you to an answer quicker than
+posting something quickly that has too much irrelevant detail or is too vague. A minimal example may take you a bit more
+time to create but the first response is very likely to be the answer you need instead of being a frustrated request for
+clarification.
+
+
+How to provide help
+-------------------
+
+If you see a question on the `theano-users`_ mailing list, or on `StackOverflow`_, that you
+feel reasonably confident you know an answer to, please do support the community by helping others.
+
+We were all newbies to Theano once and, as the community expands, there is a constant stream of new Theano users looking
+for help. Perhaps you asked a question when you were first starting out? Now you can pay it forward by helping others.
+It's also a good way to reinforce your own Theano knowledge.
+
+Often it is easiest to answer a question directly but sometimes it may be better to refer people to a good answer that
+was provided in the past. Pointing people to relevant sections in the documentation, or to a Theano tutorial, can also
+be helpful.
+
+When answering questions please `be nice <http://stackoverflow.com/help/be-nice>`__ (as always!) and, on
+StackOverflow, follow their guidance for `answering questions <http://stackoverflow.com/help/answering>`__.
+
+
 
 .. toctree::
    :maxdepth: 1
@@ -195,7 +249,7 @@ Community
 .. _theano-buildbot: http://groups.google.com/group/theano-buildbot
 .. _tickets: http://pylearn.org/theano/trac/query?status=accepted&status=assigned&status=new&status=reopened&group=milestone&max=200&col=id&col=summary&col=status&col=owner&col=type&col=priority&col=component&col=time&report=9&order=priority
 
-.. _metaoptimize/qa/tags/theano: http://metaoptimize.com/qa/tags/theano/
+.. _StackOverflow: http://stackoverflow.com/questions/tagged/theano
 
 .. _LISA: http://www.iro.umontreal.ca/~lisa
 .. _University of Montreal: http://www.umontreal.ca
