@@ -160,13 +160,55 @@ Community
 
 * Register to `theano-buildbot`_ if you want to receive our daily buildbot email.
 
-* Ask/view questions/answers at `stackoverflow/questions/tagged/theano`_
+* Ask/view questions/answers at `StackOverflow`_
 
 * We use `Github tickets <http://github.com/Theano/Theano/issues>`__ to keep track of issues
   (however, some old tickets can still be found on
   `Assembla <http://www.assembla.com/spaces/theano/tickets>`__).
 
 * Come visit us in Montreal! Most developers are students in the LISA_ group at the `University of Montreal`_.
+
+.. _support:
+
+Help!
+=====
+
+How to get help
+---------------
+
+The appropriate venue for seeking help depends on the kind of question you have.
+
+* How do I? -- `theano-users`_ mailing list or `StackOverflow`_
+* I got this error, why? -- `theano-users`_ mailing list or `StackOverflow`_
+* I got this error and I'm sure it's a bug -- `Github ticket <http://github.com/Theano/Theano/issues>`__
+* I have an idea/request -- post the suggestion to `theano-dev`_ or, even better, implement the idea and submit a `GitHub <https://github.com/Theano/Theano/pulls>`__ pull request!
+* Why do you? -- `theano-users`_ mailing list (not appropriate for StackOverflow)
+* When will you? -- `theano-dev`_ mailing list (not appropriate for StackOverflow)
+
+When asking questions on StackOverflow, please make sure you use the *theano* tag, so others in our community can find
+your question, and follow StackOverflow's guidance on `asking questions <http://stackoverflow.com/help/asking>`__.
+Consider also using the *python* and *numpy* tags, especially if you are unsure whether the problem relates to Theano,
+Python, or numpy.
+
+
+How to provide help
+-------------------
+
+If you see a question on the `theano-users`_ mailing list, or on `StackOverflow`_, that you
+feel reasonably confident you know an answer to, please do support the community by helping others.
+
+We were all newbies to Theano once and, as the community expands, there is a constant stream of new Theano users looking
+for help. Perhaps you asked a question when you were first starting out? Now you can pay it forward by helping others.
+It's also a good way to reinforce your own Theano knowledge.
+
+Often it is easiest to answer a question directly but sometimes it may be better to refer people to a good answer that
+was provided in the past. Pointing people to relevant sections in the documentation, or to a Theano tutorial, can also
+be helpful.
+
+If answering questions on StackOverflow, please `be nice <http://stackoverflow.com/help/be-nice>`__ and follow
+StackOverflow's guidance on `answering questions <http://stackoverflow.com/help/answering>`__.
+
+
 
 .. toctree::
    :maxdepth: 1
@@ -195,7 +237,7 @@ Community
 .. _theano-buildbot: http://groups.google.com/group/theano-buildbot
 .. _tickets: http://pylearn.org/theano/trac/query?status=accepted&status=assigned&status=new&status=reopened&group=milestone&max=200&col=id&col=summary&col=status&col=owner&col=type&col=priority&col=component&col=time&report=9&order=priority
 
-.. _stackoverflow/questions/tagged/theano: http://stackoverflow.com/questions/tagged/theano
+.. _StackOverflow: http://stackoverflow.com/questions/tagged/theano
 
 .. _LISA: http://www.iro.umontreal.ca/~lisa
 .. _University of Montreal: http://www.umontreal.ca
