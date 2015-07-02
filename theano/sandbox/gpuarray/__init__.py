@@ -56,7 +56,7 @@ if pygpu:
             init_dev(config.device)
             import theano.compile
             theano.compile.shared_constructor(gpuarray_shared_constructor)
-            optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile')
+            optdb.add_tags('gpuarray', 'fast_run', 'fast_compile')
         elif config.gpuarray.init_device != '':
             init_dev(config.gpuarray.init_device)
 

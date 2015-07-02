@@ -7,10 +7,10 @@ from theano.gof import local_optimizer
 from theano.tensor import (DimShuffle, get_scalar_constant_value,
                            NotScalarConstantError)
 
-from .basic_ops import GpuFromHost, HostFromGpu, host_from_gpu
+from .basic_ops import GpuFromHost, HostFromGpu
 from .elemwise import GpuDimShuffle, GpuElemwise
 
-_one = scal.constant(numpy.asarray(1.0, dtype='float32'))
+_one = scal.constant(numpy.asarray(1.0, dtype='float64'))
 
 
 def grab_cpu_scalar(v, nd):
@@ -18,10 +18,10 @@ def grab_cpu_scalar(v, nd):
         n = v.owner
         if (isinstance(n.op, GpuDimShuffle) and
                 n.op.new_order == ('x',) * nd):
-            return host_from_gpu(n.inputs[0])
+            return grab_cpu_scalar(n.inputs[0])
         elif (isinstance(n.op, DimShuffle) and
               n.op.new_order == ('x',) * nd):
-            return n.inputs[0]
+            return grab_cpu_scalar(n.inputs[0])
         elif isinstance(n.op, GpuFromHost):
             return grab_cpu_scalar(n.inputs[0], nd=nd)
         else:
@@ -37,7 +37,7 @@ def find_node(v, cls, ignore_clients=False):
     # that has the op class specified. If ignore_clients is False (the
     # default) it will only dig through nodes that have a single
     # client.
-    if v.owner is not None and (ignore_clients or v.clients == 1):
+    if v.owner is not None and (ignore_clients or len(v.clients) == 1):
         if isinstance(v.owner.op, cls):
             return v.owner
         elif (isinstance(v.owner.op, GpuFromHost) and
