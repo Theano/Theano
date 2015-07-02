@@ -22,7 +22,9 @@ class SparseBlockGemv(Op):
     registered_opts = []
 
     def __init__(self, inplace=False):
-        self.inplace = False
+        self.inplace = inplace 
+        if self.inplace:
+            self.destroy_map = {0: [0]}
 
     def make_node(self, o, W, h, inputIdx, outputIdx):
         """
@@ -174,6 +176,10 @@ class CpuSparseBlockGemv(SparseBlockGemv):
 
     def perform(self, node, inp, out_):
         o, W, h, iIdx, oIdx = inp[:5]
+
+        if not self.inplace:
+            o = o.copy()
+
         for b in range(o.shape[0]):
             for j in range(o.shape[1]):
                 outputIdx = oIdx[b, j]
@@ -194,6 +200,9 @@ class CpuSparseBlockOuter(SparseBlockOuter):
 
     def perform(self, node, inp, out_):
         o, x, y, xIdx, yIdx, alpha = inp[:6]
+
+        if not self.inplace:
+            o = o.copy()
 
         print x.shape, xIdx
         print y.shape, yIdx
