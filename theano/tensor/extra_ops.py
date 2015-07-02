@@ -1017,7 +1017,7 @@ class Unique(theano.Op):
 
     >>> x = theano.tensor.vector()
     >>> f = theano.function([x], Unique(True, True, False)(x))
-    >>> f([1,2.,3,4,3,2,1.])
+    >>> f([1, 2., 3, 4, 3, 2, 1.])
     [array([ 1.,  2.,  3.,  4.]), array([0, 1, 2, 3]), array([0, 1, 2, 3, 2, 1, 0])]
 
     >>> y = theano.tensor.matrix()
