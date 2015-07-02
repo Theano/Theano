@@ -9,7 +9,8 @@ import theano.sandbox.tests.test_blocksparse
 import theano.sandbox.cuda as cuda_ndarray
 if not cuda_ndarray.cuda_available:
     raise SkipTest('Optional package cuda disabled')
-from theano.sandbox.cuda.blocksparse import (gpu_sparse_block_gemv,
+from theano.sandbox.cuda.blocksparse import (GpuSparseBlockOuter,
+                                             gpu_sparse_block_gemv,
                                              gpu_sparse_block_outer)
 from theano.sandbox.cuda.var import float32_shared_constructor
 
@@ -31,13 +32,13 @@ class BlockSparse_Gemv_and_Outer(
     # This test is temporarily disabled since we disabled the output_merge
     # and alpha_merge optimizations for blocksparse due to brokeness.
     # Re-enable when those are re-added.
-    def Xtest_blocksparse_grad_merge():
+    def Xtest_blocksparse_grad_merge(self):
         b = tensor.fmatrix()
         h = tensor.ftensor3()
         iIdx = tensor.lmatrix()
         oIdx = tensor.lmatrix()
 
-        W_val, h_val, iIdx_val, b_val, oIdx_val = blocksparse_data()
+        W_val, h_val, iIdx_val, b_val, oIdx_val = self.gemv_data()
         W = float32_shared_constructor(W_val)
 
         o = gpu_sparse_block_gemv(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
@@ -51,7 +52,8 @@ class BlockSparse_Gemv_and_Outer(
                              mode=mode_with_gpu)
 
         # Make sure the lr update was merged.
-        assert isinstance(f1.maker.fgraph.outputs[0].owner.op, SparseBlockOuterSS)
+        assert isinstance(f1.maker.fgraph.outputs[0].owner.op,
+                          GpuSparseBlockOuter)
 
         # Exclude the merge optimizations.
         mode = mode_with_gpu.excluding('local_merge_blocksparse_alpha')
@@ -61,7 +63,7 @@ class BlockSparse_Gemv_and_Outer(
 
         # Make sure the lr update is not merged.
         assert not isinstance(f2.maker.fgraph.outputs[0].owner.op,
-                              SparseBlockOuterSS)
+                              GpuSparseBlockOuter)
 
         f2(h_val, iIdx_val, b_val, oIdx_val)
         W_ref = W.get_value()

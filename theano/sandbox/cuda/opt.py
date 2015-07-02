@@ -33,9 +33,9 @@ from theano.sandbox.cuda.basic_ops import (
 
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (gpu_dot22, gpu_dot22scalar,
-        gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv,
-        GpuCorrMM, GpuCorrMM_gradInputs, GpuCorrMM_gradWeights,
-        GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights)
+    gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv,
+    GpuCorrMM, GpuCorrMM_gradInputs, GpuCorrMM_gradWeights,
+    GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights)
 
 from theano.sandbox.cuda.blas import gpu_gemv_inplace
 from theano.sandbox.cuda.cula import gpu_solve
@@ -44,10 +44,10 @@ from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace
 from theano.sandbox.cuda.blas import gpu_ger_no_inplace
 from theano.sandbox.cuda.blas import (GpuDownsampleFactorMax,
-        GpuDownsampleFactorMaxGrad, GpuDownsampleFactorMaxGradGrad)
+    GpuDownsampleFactorMaxGrad, GpuDownsampleFactorMaxGradGrad)
 
 from theano.sandbox.blocksparse import SparseBlockGemv, SparseBlockOuter
-from theano.sandbox.cuda.blocksparse import gpu_sparse_block_gemv, gpu_sparse_block_gemv_inplace, gpu_sparse_block_outer, gpu_sparse_block_outer_inplace
+from theano.sandbox.cuda.blocksparse import GpuSparseBlockGemv, GpuSparseBlockOuter
 
 from theano.sandbox.cuda.nnet import (
         GpuCrossentropySoftmaxArgmax1HotWithBias,
@@ -262,8 +262,8 @@ def local_gpu_elemwise_0(node):
                                   'uint16'])
                 # case 1 - all inputs are already float32
                 if all([i.type.dtype == 'float32' for i in node.inputs]):
-                    # TODO: change this when fusion makes Elemwise with multiple
-                    # outputs
+                    # TODO: change this when fusion makes Elemwise with 
+                    # multiple outputs
                     gpu_elemwise = new_op(*(gpu_from_host(i)
                                             for i in node.inputs))
                 # case 2 - it is still ok if some inputs were upcast to float32
@@ -382,8 +382,8 @@ def local_gpu_specifyShape_0(node):
     if isinstance(node.op, tensor.SpecifyShape):
         input = node.inputs[0]
         if input.owner and isinstance(input.owner.op, HostFromGpu):
-            return [host_from_gpu(tensor.specify_shape(as_cuda_ndarray_variable(input),
-                                                      *node.inputs[1:]))]
+            return [host_from_gpu(tensor.specify_shape(gpu_from_host(input),
+                                                       *node.inputs[1:]))]
     if isinstance(node.op, GpuFromHost):
         host_input = node.inputs[0]
         if host_input.owner and isinstance(host_input.owner.op,
@@ -620,8 +620,8 @@ def local_gpu_solve(node):
                 for i in node.inputs]):
             x, y = node.inputs
             return [host_from_gpu(
-                    gpu_solve(as_cuda_ndarray_variable(x),
-                                as_cuda_ndarray_variable(y)))]
+                    gpu_solve(gpu_from_host(x),
+                              gpu_from_host(y)))]
     return False
 
 
@@ -635,7 +635,7 @@ def local_gpu_gemv(node):
     """
     gemvs = (tensor.blas.Gemv,
              tensor.blas_c.CGemv,
-            )
+             )
     if isinstance(node.op, GpuFromHost):
         host_input = node.inputs[0]
         if host_input.owner and isinstance(host_input.owner.op, gemvs):
@@ -674,7 +674,7 @@ def local_gpu_ger(node):
     gers = (tensor.blas_c.CGer,
             tensor.blas.Ger,
             tensor.blas_scipy.ScipyGer,
-        )
+            )
 
     if isinstance(node.op, GpuFromHost):
         host_input = node.inputs[0]
@@ -726,11 +726,11 @@ def local_gpu_gemm(node):
         y_on_gpu = (y.owner and isinstance(y.owner.op, HostFromGpu))
         z_on_gpu = (z.owner and isinstance(z.owner.op, HostFromGpu))
         if x_on_gpu or y_on_gpu or z_on_gpu:
-            return [host_from_gpu(gpu_gemm_no_inplace(as_cuda_ndarray_variable(z),
-                                                 a,
-                                                 as_cuda_ndarray_variable(x),
-                                                 as_cuda_ndarray_variable(y),
-                                                 b))]
+            return [host_from_gpu(gpu_gemm_no_inplace(gpu_from_host(z),
+                                                      a,
+                                                      gpu_from_host(x),
+                                                      gpu_from_host(y),
+                                                      b))]
     return False
 
 
@@ -981,7 +981,8 @@ def local_gpu_advanced_subtensor1(node):
     if node.op.__class__ is tensor.AdvancedSubtensor1:
         x = node.inputs[0]
         coords = node.inputs[1:]
-        if x.owner and isinstance(x.owner.op, HostFromGpu) and x.dtype == "float32":
+        if (x.owner and isinstance(x.owner.op, HostFromGpu) and
+            x.dtype == "float32"):
             gpu_x, = x.owner.inputs
             return [host_from_gpu(GpuAdvancedSubtensor1()(gpu_x, *coords))]
     return False
@@ -1375,19 +1376,19 @@ def local_gpu_conv(node):
         # print op.kshp, op.imshp[1:3]
         # print op.kshp_logical, logical_img_hw
         ret = GpuConv(border_mode=op.out_mode,
-                    subsample=(op.dx, op.dy),
-                    logical_img_hw=logical_img_hw,
-                    logical_kern_hw=op.kshp_logical,
-                    logical_kern_align_top=op.kshp_logical_top_aligned,
-                    kshp=op.kshp,
-                    version=op.version,
-                    direction_hint=op.direction_hint,
-                    verbose=op.verbose,
-                    imshp=op.imshp,
-                    nkern=op.nkern,
-                    bsize=op.bsize,
-                    fft_opt=op.fft_opt
-                    )
+                      subsample=(op.dx, op.dy),
+                      logical_img_hw=logical_img_hw,
+                      logical_kern_hw=op.kshp_logical,
+                      logical_kern_align_top=op.kshp_logical_top_aligned,
+                      kshp=op.kshp,
+                      version=op.version,
+                      direction_hint=op.direction_hint,
+                      verbose=op.verbose,
+                      imshp=op.imshp,
+                      nkern=op.nkern,
+                      bsize=op.bsize,
+                      fft_opt=op.fft_opt
+                      )
         if op.imshp_logical is not None:
             logical_img_hw = op.imshp_logical[1:3]
             if logical_img_hw != op.imshp[1:3]:
@@ -2386,21 +2387,6 @@ optdb.register('gpu_scanOp_make_inplace',
                'inplace',
                'scan')
 
-def _owner_isinstance(inp, test_class):
-    return inp.owner and isinstance(inp.owner.op, test_class)
-
-@register_opt()
-@local_optimizer([gpu_sparse_block_gemv], inplace=True)
-def local_inplace_blocksparse_gemv(node):
-    if node.op == gpu_sparse_block_gemv:
-        return [gpu_sparse_block_gemv_inplace(*node.inputs)]
-
-
-@register_opt()
-@local_optimizer([gpu_sparse_block_outer], inplace=True)
-def local_inplace_blocksparse_outer(node):
-    if node.op == gpu_sparse_block_outer:
-        return [gpu_sparse_block_outer_inplace(*node.inputs)]
 
 # XXX: these optimisations were badly broken and now require a working
 # beta param (could only be a 0/1 thing for outer_merge, but
@@ -2419,8 +2405,14 @@ def local_inplace_blocksparse_outer(node):
 #    def local_merge_blocksparse_output(node, *inputs):
 #        return [gpu_sparse_block_outer(*inputs)]
 
+
 def _owner_isinstance(inp, test_class):
+    """
+        Tests whether input has an owner and if its owner is
+        of type `test_class`
+    """
     return bool(inp.owner) and isinstance(inp.owner.op, test_class)
+
 
 def _clear_host_from_gpu(inputs):
     """
@@ -2435,64 +2427,61 @@ def _clear_host_from_gpu(inputs):
     return clean_inputs
 
 
-@register_meta_opt(SparseBlockGemv, ["gpu_opt", "gpu_local_optimizations"], 0., 'fast_run', 'fast_compile', 'gpu')
+@register_meta_opt(SparseBlockGemv, ["gpu_opt", "gpu_local_optimizations"],
+                   0., 'fast_run', 'fast_compile', 'gpu')
 @local_optimizer([SparseBlockGemv, GpuFromHost])
 def gpu_sparse_block_gemv_opt(node):
     """
-        TODO: WRITEME
+        SparseBlockGemv(HostFromGpu(input)) ->
+        HostFromGpu(GpuSparseBlockGemv(input))
+
+        or
+
+        GpuFromHost(SparseBlockGemv) -> GpuSparseBlockGemv
     """
     if isinstance(node.op, SparseBlockGemv) and \
-       any(_owner_isinstance(inp, HostFromGpu) for inp in node.inputs):
+            any(_owner_isinstance(inp, HostFromGpu) for inp in node.inputs):
 
         inputs = _clear_host_from_gpu(node.inputs)
 
-        if node.op.inplace:
-            print "inplace"
-            return [host_from_gpu(gpu_sparse_block_gemv_inplace(*inputs))]
-        else:
-            print "not inplace"
-            return [host_from_gpu(gpu_sparse_block_gemv(*inputs))]
+        return [host_from_gpu(GpuSparseBlockGemv(node.op.inplace)(*inputs))]
 
     elif isinstance(node.op, GpuFromHost) and \
-         _owner_isinstance(node.inputs[0], SparseBlockGemv):
+            _owner_isinstance(node.inputs[0], SparseBlockGemv):
 
         meta_node = node.inputs[0].owner
         inputs = _clear_host_from_gpu(meta_node.inputs)
 
-        if meta_node.op.inplace:
-            return [gpu_sparse_block_gemv_inplace(*inputs)]
-        else:
-            return [gpu_sparse_block_gemv(*inputs)]
+        return [GpuSparseBlockGemv(meta_node.op.inplace)(*inputs)]
 
 
-@register_meta_opt(SparseBlockOuter, ["gpu_opt", "gpu_local_optimizations"], 0., 'fast_run', 'fast_compile', 'gpu')
+@register_meta_opt(SparseBlockOuter, ["gpu_opt", "gpu_local_optimizations"],
+                   0., 'fast_run', 'fast_compile', 'gpu')
 @local_optimizer([SparseBlockOuter, GpuFromHost])
 def gpu_sparse_block_outer_opt(node):
     """
-        TODO: WRITEME
+        SparseBlockOuter(HostFromGpu(input)) ->
+        HostFromGpu(GpuSparseBlockOuter(input))
+
+        or
+
+        GpuFromHost(SparseBlockOuter) -> GpuSparseBlockOuter
     """
 
     if isinstance(node.op, SparseBlockOuter) and \
-       any(_owner_isinstance(inp, HostFromGpu) for inp in node.inputs):
+            any(_owner_isinstance(inp, HostFromGpu) for inp in node.inputs):
 
         inputs = _clear_host_from_gpu(node.inputs)
 
-        if node.op.inplace:
-            return [host_from_gpu(gpu_sparse_block_outer_inplace(*inputs))]
-        else:
-            return [host_from_gpu(gpu_sparse_block_outer(*inputs))]
+        return [host_from_gpu(GpuSparseBlockOuter(node.op.inplace)(*inputs))]
 
     elif isinstance(node.op, GpuFromHost) and \
-        _owner_isinstance(node.inputs[0], SparseBlockOuter):
+            _owner_isinstance(node.inputs[0], SparseBlockOuter):
 
         meta_node = node.inputs[0].owner
         inputs = _clear_host_from_gpu(meta_node.inputs)
 
-        if meta_node.op.inplace:
-            return [gpu_sparse_block_outer_inplace(*inputs)]
-        else:
-            return [gpu_sparse_block_outer(*inputs)]
-
+        return [GpuSparseBlockOuter(meta_node.op.inplace)(*inputs)]
 
 
 import theano.sandbox.cuda.extra_ops

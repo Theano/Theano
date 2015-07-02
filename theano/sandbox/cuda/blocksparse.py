@@ -1,20 +1,17 @@
 import logging
 
 import numpy
-import theano
-from theano import Apply, tensor, scalar
+from theano import Apply, tensor
 from theano.tensor import discrete_dtypes
 
 from theano.gradient import grad_undefined
 
-from theano.sandbox.cuda import cuda_available, GpuOp, GpuElemwise
+from theano.sandbox.cuda import cuda_available, GpuOp
 
 _logger = logging.getLogger('theano.sandbox.cuda.blocksparse')
 
 if cuda_available:
-    
     from theano.sandbox.cuda import basic_ops
-    from theano.sandbox.cuda.opt_util import alpha_merge, output_merge
 
 
 class GpuSparseBlockGemv(GpuOp):
@@ -215,19 +212,29 @@ static int SparseBlockGemv_copy(PyArrayObject *a, npy_intp *b) {
             cudaFree(%(n)s_inp_list);
             cudaFree(%(n)s_out_list);
             cudaFree(%(n)s_W_list);
-            if (cudaMalloc(&%(n)s_inp_list, s*sizeof(float *)) != cudaSuccess) return -1;
-            if (cudaMalloc(&%(n)s_out_list, s*sizeof(float *)) != cudaSuccess) return -1;
-            if (cudaMalloc(&%(n)s_W_list, s*sizeof(float *)) != cudaSuccess) return -1;
+            if (cudaMalloc(&%(n)s_inp_list, s*sizeof(float *)) != cudaSuccess){
+              return -1;
+            }
+            if (cudaMalloc(&%(n)s_out_list, s*sizeof(float *)) != cudaSuccess){
+              return -1;
+            }
+            if (cudaMalloc(&%(n)s_W_list, s*sizeof(float *)) != cudaSuccess) {
+              return -1;
+            }
             %(n)s_list_len = s;
           }
           if (%(n)s_iIdx_len < b*i) {
             cudaFree(%(n)s_iIdx);
-            if (cudaMalloc(&%(n)s_iIdx, b*i*sizeof(npy_intp)) != cudaSuccess) return -1;
+            if (cudaMalloc(&%(n)s_iIdx, b*i*sizeof(npy_intp)) != cudaSuccess){
+              return -1;
+            }
             %(n)s_iIdx_len = b*i;
           }
           if (%(n)s_oIdx_len < b*j) {
             cudaFree(%(n)s_oIdx);
-            if (cudaMalloc(&%(n)s_oIdx, b*j*sizeof(npy_intp)) != cudaSuccess) return -1;
+            if (cudaMalloc(&%(n)s_oIdx, b*j*sizeof(npy_intp)) != cudaSuccess){
+              return -1;
+            }
             %(n)s_oIdx_len = b*j;
           }
           return 0;
@@ -337,11 +344,11 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
         go = grads[0]
 
         Wgrad = gpu_sparse_block_outer(W.zeros_like(),
-                                      h, go, inputIdx, outputIdx)
+                                       h, go, inputIdx, outputIdx)
         hgrad = gpu_sparse_block_gemv(h.zeros_like(),
-                                     W.dimshuffle((1, 0, 3, 2)),
-                                     go,
-                                     outputIdx, inputIdx)
+                                      W.dimshuffle((1, 0, 3, 2)),
+                                      go,
+                                      outputIdx, inputIdx)
         return [go, Wgrad, hgrad,
                 grad_undefined(self, 3, inputIdx,
                                "grad of inputIdx makes no sense"),
@@ -520,7 +527,9 @@ static int %(n)s_prep(int b, int i, int j) {
     cudaFree(%(n)s_out_list);
     if (cudaMalloc(&%(n)s_x_list, s*sizeof(float *)) != cudaSuccess) return -1;
     if (cudaMalloc(&%(n)s_y_list, s*sizeof(float *)) != cudaSuccess) return -1;
-    if (cudaMalloc(&%(n)s_out_list, s*sizeof(float *)) != cudaSuccess) return -1;
+    if (cudaMalloc(&%(n)s_out_list, s*sizeof(float *)) != cudaSuccess) {
+      return -1;
+    }
     %(n)s_list_len = s;
   }
   if (%(n)s_xIdx_len < b*i) {
@@ -591,8 +600,10 @@ CudaNdarray_HOST_DIMS(%(x)s)[1], CudaNdarray_HOST_DIMS(%(y)s)[1],
 %(name)s_x_list,
 %(name)s_y_list,
 %(name)s_out_list,
-CudaNdarray_DEV_DATA(%(x)s), CudaNdarray_HOST_STRIDES(%(x)s)[0], CudaNdarray_HOST_STRIDES(%(x)s)[1],
-CudaNdarray_DEV_DATA(%(y)s), CudaNdarray_HOST_STRIDES(%(y)s)[0], CudaNdarray_HOST_STRIDES(%(y)s)[1],
+CudaNdarray_DEV_DATA(%(x)s), CudaNdarray_HOST_STRIDES(%(x)s)[0],
+CudaNdarray_HOST_STRIDES(%(x)s)[1],
+CudaNdarray_DEV_DATA(%(y)s), CudaNdarray_HOST_STRIDES(%(y)s)[0],
+CudaNdarray_HOST_STRIDES(%(y)s)[1],
 CudaNdarray_DEV_DATA(%(out)s),
 CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
 %(name)s_xIdx, PyArray_DIM(%(xIdx)s, 1),

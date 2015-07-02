@@ -12,7 +12,7 @@ from theano import tensor
 import theano.tests.unittest_tools as utt
 
 from theano.sandbox.blocksparse import sparse_block_dot, cpu_sparse_block_gemv, \
-    cpu_sparse_block_outer, sparse_block_outer
+    cpu_sparse_block_outer
 
 
 class BlockSparse_Gemv_and_Outer(unittest.TestCase):
@@ -135,7 +135,6 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
 
         return weight, input, inputIndice, bias, outputIndice
 
-
     @staticmethod
     def compare():
         W_val, h_val, iIdx_val, b_val, oIdx_val = \
@@ -157,14 +156,13 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         print v3 - v2
         # utt.assert_allclose(ref_out, ref_out_2)
 
-
     @staticmethod
     def outer_numpy(o, x, y, xIdx, yIdx):
         for b in range(x.shape[0]):
             for i in range(xIdx.shape[1]):
                 for j in range(yIdx.shape[1]):
                     o[xIdx[b, i], yIdx[b, j]] += numpy.outer(x[b,  i, :],
-                                           y[b, j, :])
+                                                             y[b, j, :])
         return o
 
     def test_sparseblockdot(self):
@@ -243,11 +241,6 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         utt.assert_allclose(ref_out, th_out)
 
     def test_sparseblockgemv_grad(self):
-#        h_val = randn(1, 2, 3).astype('float32')
-#        iIdx_val = numpy.random.permutation(3)[:2][None, :]
-#        oIdx_val = numpy.random.permutation(3)[:2][None, :]
-#        W_val = randn(3, 3, 3, 4).astype('float32')
-#        b_val = randn(3, 4).astype('float32')
 
         W_val, h_val, iIdx_val, b_val, oIdx_val = \
             BlockSparse_Gemv_and_Outer.gemv_data()
@@ -333,8 +326,3 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
             o_val, x_val, y_val, xIdx_val, yIdx_val)
 
         utt.assert_allclose(ref_out, th_out)
-
-
-a = BlockSparse_Gemv_and_Outer()
-a.setUp()
-a.test_sparseblockgemv_grad()
