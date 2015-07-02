@@ -1,8 +1,12 @@
+from six.moves import xrange
+
+import numpy as N
+
 import theano
 from theano.tensor import basic as T
+from theano.tensor.nnet.Conv3D import conv3D
+from theano.tensor.nnet.ConvTransp3D import convTransp3D
 from theano.misc import strutil
-import numpy as N
-from six.moves import xrange
 from theano.gradient import grad_undefined
 from theano.gradient import DisconnectedType
 
@@ -23,11 +27,15 @@ class ConvGrad3D(theano.Op):
         WShape_ = T.as_tensor_variable(WShape)
         dCdH_ = T.as_tensor_variable(dCdH)
 
-        return theano.Apply(self, inputs=[V_, d_, WShape_, dCdH_], outputs=[ T.TensorType(V_.dtype, (False, False, False, False, False))() ] )
+        return theano.Apply(self,
+                            inputs=[V_, d_, WShape_, dCdH_],
+                            outputs=[T.TensorType(
+                                V_.dtype,
+                                (False, False, False, False, False))()])
 
     def infer_shape(self, node, input_shapes):
         V, d, W_shape, dCdH = node.inputs
-        return [ ( W_shape[0], W_shape[1], W_shape[2], W_shape[3], W_shape[4] ) ]
+        return [(W_shape[0], W_shape[1], W_shape[2], W_shape[3], W_shape[4])]
 
     def connection_pattern(self, node):
 
@@ -54,15 +62,10 @@ class ConvGrad3D(theano.Op):
         # partial C / partial W[j,z,k,l,m] = sum_i sum_p sum_q sum_r (partial C /partial H[i,j,p,q,r] ) *  V[i,z,dr*p+k,dc*q+l,dt*r+m]
 
         batchSize = dCdH.shape[0]
-        outputFilters = dCdH.shape[4]
         outputHeight = dCdH.shape[1]
         outputWidth = dCdH.shape[2]
         outputDur = dCdH.shape[3]
         assert V.shape[0] == batchSize
-        inputFilters = V.shape[4]
-        inputHeight = V.shape[1]
-        inputWidth = V.shape[2]
-        inputDur = V.shape[3]
         dr, dc, dt = d
 
         dCdW = N.zeros(WShape, dtype=V.dtype)
@@ -78,7 +81,10 @@ class ConvGrad3D(theano.Op):
                                 for r in xrange(0, outputDur):
                                     for j in xrange(0, WShape[0]):
                                         for z in xrange(0, WShape[4]):
-                                            dCdW[j, k, l, m, z] +=  dCdH[i, p, q, r, j] * V[i, dr*p+k, dc*q+l, dt*r+m, z]
+                                            dCdW[j, k, l, m, z] += (
+                                                dCdH[i, p, q, r, j] *
+                                                V[i, dr * p + k, dc * q + l,
+                                                  dt * r + m, z])
 
         output_storage[0][0] = dCdW
 
@@ -272,6 +278,3 @@ class ConvGrad3D(theano.Op):
 
 
 convGrad3D = ConvGrad3D()
-
-from theano.tensor.nnet.Conv3D import conv3D
-from theano.tensor.nnet.ConvTransp3D import convTransp3D
