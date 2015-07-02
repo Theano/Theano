@@ -3,9 +3,6 @@ from __future__ import print_function
 import numpy as N
 from six.moves import xrange
 
-from . import ConvGrad3D
-from . import ConvTransp3D
-
 import theano
 from theano.tensor import basic as T
 # from util import strutil
@@ -623,3 +620,6 @@ def computeH(V, W, b, d):
                                         #    print 'setting H[0] += '+str(w*v)+'   W['+str((j,z,k,l,m))+']='+str(w)+'   V['+str((i,d[0]*x+k,d[1]*y+l,d[2]*t+m,z))+']='+str(v)
                                         H[i, x, y, t, j] += w * v
     return H
+    
+from . import ConvGrad3D
+from . import ConvTransp3D
