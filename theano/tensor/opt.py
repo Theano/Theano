@@ -4164,7 +4164,7 @@ def local_reduce_join(node):
                     '"Reduce{scalar.op}(Join(axis=0, a, b), axis=0)", '
                     'did not check the reduction axis. So if the '
                     'reduction axis was not 0, you got a wrong answer.'))
-                return
+            return
 
         # We add the new check late to don't add extra warning.
         try:
