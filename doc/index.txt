@@ -160,7 +160,7 @@ Community
 
 * Register to `theano-buildbot`_ if you want to receive our daily buildbot email.
 
-* Ask/view questions/answers at `metaoptimize/qa/tags/theano`_ (it's like stack overflow for machine learning)
+* Ask/view questions/answers at `stackoverflow/questions/tagged/theano`_
 
 * We use `Github tickets <http://github.com/Theano/Theano/issues>`__ to keep track of issues
   (however, some old tickets can still be found on
@@ -195,7 +195,7 @@ Community
 .. _theano-buildbot: http://groups.google.com/group/theano-buildbot
 .. _tickets: http://pylearn.org/theano/trac/query?status=accepted&status=assigned&status=new&status=reopened&group=milestone&max=200&col=id&col=summary&col=status&col=owner&col=type&col=priority&col=component&col=time&report=9&order=priority
 
-.. _metaoptimize/qa/tags/theano: http://metaoptimize.com/qa/tags/theano/
+.. _stackoverflow/questions/tagged/theano: http://stackoverflow.com/questions/tagged/theano
 
 .. _LISA: http://www.iro.umontreal.ca/~lisa
 .. _University of Montreal: http://www.umontreal.ca
