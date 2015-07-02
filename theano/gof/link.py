@@ -157,7 +157,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
             " have the inputs shapes and strides printed.")
 
     # Print node backtraces
-    tr = getattr(node.outputs[0].tag, 'trace', None)
+    tr = getattr(node.outputs[0].tag, 'trace', [])
     if len(tr) > 0:
         detailed_err_msg += "\nBacktrace when the node is created:\n"
         

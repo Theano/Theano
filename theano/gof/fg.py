@@ -331,7 +331,7 @@ class FunctionGraph(utils.object2):
                             # if there is no path then r isn't really a graph input so we shouldn't be running error
                             # handler code in the first place
                             assert path is not None
-                            tr = getattr(r.tag, 'trace', None)
+                            tr = getattr(r.tag, 'trace', [])
                             detailed_err_msg = ""
                             if len(tr) > 0:
                                 detailed_err_msg += "\nBacktrace when the variable is created:\n"

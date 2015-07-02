@@ -458,7 +458,7 @@ class PureOp(object):
                 detailed_err_msg = (
                     "For compute_test_value, one input test value does not"
                     " have the requested type.\n")
-                tr = getattr(v.tag, 'trace', None)
+                tr = getattr(v.tag, 'trace', [])
                 if len(tr) > 0:
                     detailed_err_msg += (
                         " \nBacktrace when that variable is created:\n")
