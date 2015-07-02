@@ -788,7 +788,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
         # Verify that the SoftmaxGrad -> GpuDnnSoftmaxGrad do not
         # crash with manual graph
         y = T.fvector('y')
-        o = theano.tensor.nnet.SoftmaxGrad()(y, y*2)
+        o = theano.tensor.nnet.SoftmaxGrad()(y, y * 2)
         f = theano.function([y], o, mode=mode_with_gpu)
         sorted_f = f.maker.fgraph.toposort()
         assert(len([i
