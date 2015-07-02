@@ -1,21 +1,8 @@
 import logging
-
-logger = logging.getLogger(__name__)
-import numpy
 import warnings
 from six.moves import xrange
 
-from theano.gof import Op, Apply
-
-from theano.tensor import as_tensor_variable, dot, DimShuffle, Dot
-from theano.tensor.blas import Dot22
-from theano import tensor
-import theano.tensor
-from theano.tensor.opt import (register_stabilize,
-        register_specialize, register_canonicalize)
-from theano.gof import local_optimizer
-from theano.gof.opt import Optimizer
-from theano.gradient import DisconnectedType
+import numpy
 
 try:
     import scipy.linalg
@@ -23,6 +10,13 @@ try:
 except ImportError:
     # some ops (e.g. Cholesky, Solve, A_Xinv_b) won't work
     imported_scipy = False
+
+from theano import tensor
+import theano.tensor
+from theano.tensor import as_tensor_variable
+from theano.gof import Op, Apply
+
+logger = logging.getLogger(__name__)
 
 MATRIX_STRUCTURES = (
     'general',
@@ -123,7 +117,6 @@ class CholeskyGrad(Op):
                 F[k, k] /= (2 * L[k, k])
         else:
             F = numpy.triu(dz)
-            M = N - 1
             for k in xrange(N - 1, -1, -1):
                 for j in xrange(k + 1, N):
                     for i in xrange(j, N):
@@ -182,7 +175,7 @@ class Solve(Op):
         else:
             rval = scipy.linalg.solve(A, b)
         output_storage[0][0] = rval
-        
+
     # computes shape of x where x = inv(A) * b
     def infer_shape(self, node, shapes):
         Ashape, Bshape = shapes

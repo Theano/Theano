@@ -28,7 +28,6 @@ def _scal_inplace(symbol):
     def chk(pstate, r):
         if not r.owner:
             return False
-        op = r.owner.op
         return r.owner.op == rval
 
     pprint.assign(chk, printing.FunctionPrinter(symbolname.replace('_inplace', '=')))

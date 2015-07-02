@@ -1,6 +1,4 @@
 import copy
-import pdb
-import sys
 import traceback as tb
 import warnings
 
@@ -41,9 +39,9 @@ class _tensor_py_operators:
     # CASTS
     # REMOVED THESE BECAUSE PYTHON appears to require __int__ to return
     # an int. -JB 20081112
-    #def __int__(self): return convert_to_int32(self)
-    #def __float__(self): return convert_to_float64(self)
-    #def __complex__(self): return convert_to_complex128(self)
+    # def __int__(self): return convert_to_int32(self)
+    # def __float__(self): return convert_to_float64(self)
+    # def __complex__(self): return convert_to_complex128(self)
 
     # COMPARISONS
     _is_nonzero = True
@@ -67,7 +65,6 @@ class _tensor_py_operators:
         rval = theano.tensor.basic.ge(self, other)
         rval._is_nonzero = False
         return rval
-
 
     def __nonzero__(self):
         # Python 2.x
@@ -215,7 +212,7 @@ class _tensor_py_operators:
 
     # DO NOT USE THESE BECAUSE INPLACE OPS SHOULD BE INSERTED
     # BY OPTIMIZATIONS ONLY
-    ## ARITHMETIC - INPLACE
+    # ARITHMETIC - INPLACE
     # def __iadd__(self, other):
     #    return _add_inplace(self, other)
     # def __isub__(self, other):
@@ -642,7 +639,8 @@ class TensorVariable(_tensor_py_operators, Variable):
             elif config.warn_float64 == "raise":
                 raise Exception(msg)
             elif config.warn_float64 == 'pdb':
-                import pdb; pdb.set_trace()
+                import pdb
+                pdb.set_trace()
 TensorType.Variable = TensorVariable
 
 
@@ -744,8 +742,8 @@ class TensorConstant(_tensor_py_operators, Constant):
     def __init__(self, type, data, name=None):
         Constant.__init__(self, type, data, name)
         if (isinstance(data, numpy.ndarray) and
-            data.ndim > 0 and
-            len(numpy.unique(data)) == 1):
+                data.ndim > 0 and
+                len(numpy.unique(data)) == 1):
             self.tag.unique_value = numpy.unique(data)[0]
         else:
             self.tag.unique_value = None
