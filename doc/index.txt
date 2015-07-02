@@ -28,7 +28,7 @@ News
 
 * Ian Goodfellow did a `12h class with exercises on Theano <https://github.com/goodfeli/theano_exercises>`_.
 
-* Theano 0.6 was released. Everybody is encouraged to update.
+* Theano 0.7 was released 26th March 2015. Everybody is encouraged to update.
 
 * New technical report on Theano: `Theano: new features and speed improvements <http://arxiv.org/abs/1211.5590>`_.
 
@@ -193,13 +193,13 @@ StackOverflow's guidance on `asking questions <http://stackoverflow.com/help/ask
 It is often helpful to include the following details with your question:
 
 * If you have an error, the *full* error message, even if it's long
-* The versions of Python and Theano are you using
+* The versions of Python and Theano you're using
 * Whether you're using a CPU or GPU device
 * Details of your Theano configuration settings (you can print this in Python via `print theano.config <http://deeplearning.net/software/theano/library/config.html>`__)
 
 Spending the time to create a minimal specific example of a problem is likely to get you to an answer quicker than
 posting something quickly that has too much irrelevant detail or is too vague. A minimal example may take you a bit more
-time to create but the first response is very likely to be the answer you need instead of being a frustrated request for
+time to create but the first response is more likely to be the answer you need than a frustrated request for
 clarification.
 
 
