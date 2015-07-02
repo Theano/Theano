@@ -74,9 +74,9 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         x = randn(batchSize, xWindowSize, xSize).astype('float32')
         y = randn(batchSize, yWindowSize, ySize).astype('float32')
         randint = numpy.random.randint
-        xIdx = numpy.vstack(randint(0, xWindowSize)
+        xIdx = numpy.vstack(randint(0, nInputBlock, size=xWindowSize)
                             for _ in range(batchSize)).astype('int32')
-        yIdx = numpy.vstack(randint(0, yWindowSize)
+        yIdx = numpy.vstack(randint(0, nOutputBlock, size=yWindowSize)
                             for _ in range(batchSize)).astype('int32')
 
         return o, x, y, xIdx, yIdx
@@ -331,9 +331,6 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         th_out = f(o_val, x_val, y_val, xIdx_val, yIdx_val)
         ref_out = BlockSparse_Gemv_and_Outer.outer_numpy(
             o_val, x_val, y_val, xIdx_val, yIdx_val)
-
-        print th_out.shape
-        print ref_out.shape
 
         utt.assert_allclose(ref_out, th_out)
 
