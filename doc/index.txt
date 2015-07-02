@@ -168,6 +168,7 @@ Community
 
 * Come visit us in Montreal! Most developers are students in the LISA_ group at the `University of Montreal`_.
 
+
 .. _support:
 
 Help!
@@ -179,16 +180,27 @@ How to get help
 The appropriate venue for seeking help depends on the kind of question you have.
 
 * How do I? -- `theano-users`_ mailing list or `StackOverflow`_
-* I got this error, why? -- `theano-users`_ mailing list or `StackOverflow`_
+* I got this error, why? -- `theano-users`_ mailing list or `StackOverflow`_ (please include the *full* error message, even if it's long)
 * I got this error and I'm sure it's a bug -- `Github ticket <http://github.com/Theano/Theano/issues>`__
 * I have an idea/request -- post the suggestion to `theano-dev`_ or, even better, implement the idea and submit a `GitHub <https://github.com/Theano/Theano/pulls>`__ pull request!
 * Why do you? -- `theano-users`_ mailing list (not appropriate for StackOverflow)
 * When will you? -- `theano-dev`_ mailing list (not appropriate for StackOverflow)
 
-When asking questions on StackOverflow, please make sure you use the *theano* tag, so others in our community can find
-your question, and follow StackOverflow's guidance on `asking questions <http://stackoverflow.com/help/asking>`__.
-Consider also using the *python* and *numpy* tags, especially if you are unsure whether the problem relates to Theano,
-Python, or numpy.
+When asking questions on StackOverflow, please use the *theano* tag, so your question can be found, and follow
+StackOverflow's guidance on `asking questions <http://stackoverflow.com/help/asking>`__. Consider also using the
+*python* and *numpy* tags, especially if you are unsure which library your problem relates to.
+
+It is often helpful to include the following details with your question:
+
+* If you have an error, the *full* error message, even if it's long
+* The versions of Python and Theano are you using
+* Whether you're using a CPU or GPU device
+* Details of your Theano configuration settings (you can print this in Python via `print theano.config <http://deeplearning.net/software/theano/library/config.html>`__)
+
+Spending the time to create a minimal specific example of a problem is likely to get you to an answer quicker than
+posting something quickly that has too much irrelevant detail or is too vague. A minimal example may take you a bit more
+time to create but the first response is very likely to be the answer you need instead of being a frustrated request for
+clarification.
 
 
 How to provide help
@@ -205,8 +217,8 @@ Often it is easiest to answer a question directly but sometimes it may be better
 was provided in the past. Pointing people to relevant sections in the documentation, or to a Theano tutorial, can also
 be helpful.
 
-If answering questions on StackOverflow, please `be nice <http://stackoverflow.com/help/be-nice>`__ and follow
-StackOverflow's guidance on `answering questions <http://stackoverflow.com/help/answering>`__.
+When answering questions please `be nice <http://stackoverflow.com/help/be-nice>`__ (as always!) and, on
+StackOverflow, follow their guidance for `answering questions <http://stackoverflow.com/help/answering>`__.
 
 
 
