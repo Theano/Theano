@@ -829,8 +829,9 @@ class GpuDnnConvGradW(DnnBase, COp):
         else:
             inplace_def = []
 
-        if version() == -1:
+        if version() == -1 or version() < (3000, 3000):
             alg_def = ('CONV_ALGO', '0')
+            alg_choose_def = ('CHOOSE_ALGO', '0')
         else:
             if self.workmem == 'none':
                 alg_def = ('CONV_ALGO', 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0')
@@ -985,8 +986,9 @@ class GpuDnnConvGradI(DnnBase, COp):
         else:
             inplace_def = []
 
-        if version() == -1:
+        if version() == -1 or version() < (3000, 3000):
             alg_def = ('CONV_ALGO', '0')
+            alg_choose_def = ('CHOOSE_ALGO', '0')
         else:
             if self.workmem == 'none':
                 alg_def = ('CONV_ALGO', 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_0')
