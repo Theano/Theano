@@ -52,8 +52,10 @@ for (int i = 0; i < 5; i++)
 // Select default implementations for the case where the convolution
 // implementations should be selected based on the size of the data.
 APPLY_SPECIFIC(previous_algo) = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
-APPLY_SPECIFIC(previous_bwd_f_algo) = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
-APPLY_SPECIFIC(previous_bwd_d_algo) = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
+#if defined(CUDNN_VERSION) && CUDNN_VERSION >= 3000
+APPLY_SPECIFIC(previous_bwd_f_algo) = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
+APPLY_SPECIFIC(previous_bwd_d_algo) = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
+#endif
 
 #section cleanup_code_struct
 

@@ -31,6 +31,7 @@ APPLY_SPECIFIC(conv_gw)(CudaNdarray *input, CudaNdarray *output,
   if (c_set_filterNd(*kerns, nb_dim, APPLY_SPECIFIC(kerns)) == -1)
     return 1;
 
+#if defined(CUDNN_VERSION) && CUDNN_VERSION >= 3000
   {
     size_t worksize;
     void *workspace;
@@ -181,6 +182,16 @@ APPLY_SPECIFIC(conv_gw)(CudaNdarray *input, CudaNdarray *output,
       APPLY_SPECIFIC(kerns), CudaNdarray_DEV_DATA(*kerns));
 
   }
+#else
+  err = cudnnConvolutionBackwardFilter(
+    _handle,
+    (void *)&alpha,
+    APPLY_SPECIFIC(input), CudaNdarray_DEV_DATA(input),
+    APPLY_SPECIFIC(output), CudaNdarray_DEV_DATA(output),
+    desc,
+    (void *)&beta,
+    APPLY_SPECIFIC(kerns), CudaNdarray_DEV_DATA(*kerns));
+#endif
 
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError, "GpuDnnConvGradW: error doing operation: %s",
