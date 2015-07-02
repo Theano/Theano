@@ -88,7 +88,6 @@ whitelist_flake8 = [
     "tensor/signal/conv.py",
     "tensor/signal/tests/test_conv.py",
     "tensor/signal/tests/test_downsample.py",
-    "tensor/nnet/Conv3D.py",
     "tensor/nnet/__init__.py",
     "tensor/nnet/ConvTransp3D.py",
     "tensor/nnet/sigm.py",
