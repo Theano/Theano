@@ -6,6 +6,8 @@ from theano import tensor
 from theano.tensor import discrete_dtypes
 from theano.gradient import grad_undefined
 
+#from theano.tests.breakpoint import PdbBreakpoint
+
 
 class SparseBlockGemv(Op):
     """
@@ -166,87 +168,138 @@ class SparseBlockOuter(Op):
         raise NotImplementedError("SparseBlockOuter has no gradient "
                                   "implemented")
 
+class CpuSparseBlockGemv(SparseBlockGemv):
+    """
+    """
+
+    def perform(self, node, inp, out_):
+        o, W, h, iIdx, oIdx = inp[:5]
+        for b in range(o.shape[0]):
+            for j in range(o.shape[1]):
+                outputIdx = oIdx[b, j]
+                for i in range(h.shape[1]):
+                    inputIdx = iIdx[b, i]
+                    w = W[inputIdx, outputIdx]
+                    o[b, j, :] += numpy.dot(h[b, i], w)
+        out_[0][0] = o
+
+class CpuSparseBlockOuter(SparseBlockOuter):
+    """
+    This computes the outer product of two sets of pieces of vectors
+    updating a full matrix with the results:
+      for b in range(batch_size):
+        o[xIdx[b, i], yIdx[b, j]] += (alpha * outer(x[xIdx[b, i]], y[yIdx[b, j]]))
+    This op is involved in the gradient of SparseBlockGemv.
+    """
+
+    def perform(self, node, inp, out_):
+        o, x, y, xIdx, yIdx, alpha = inp[:6]
+
+        print x.shape, xIdx
+        print y.shape, yIdx
+
+#        raise RuntimeError("Outer")
+
+#        import pdb; pdb.set_trace()
+
+        for b in range(x.shape[0]):
+            print b
+            for i in range(xIdx.shape[1]):
+                print "    ", i
+                print "    ", xIdx[b, i]
+                print "    ", x[b, i, :]
+                for j in range(yIdx.shape[1]):
+                    print "        ", j
+                    print "        ", yIdx[b, j]
+                    print "        ", y[b, j, :]
+                    o[xIdx[b, i], yIdx[b, j]] += numpy.outer(x[b, i, :],
+                                                             y[b, j, :])
+        out_[0][0] = o
+
 
 sparse_block_outer = SparseBlockOuter(False)
 sparse_block_outer_inplace = SparseBlockOuter(True)
 
+cpu_sparse_block_gemv = CpuSparseBlockGemv(False)
+cpu_sparse_block_outer = CpuSparseBlockOuter(False)
 
-def cpu_sparse_block_gemv(o, W, h, inputIdx, outputIdx):
-    """
-    Creates a graph for the sparse block dot operation. Check SparseBlockGemv's
-    docstring for information about the arguments.
-    """
-    def _loop_over_batch(b, W, h, inputIdx, outputIdx):
-
-        def _loop_over_outputIdx(i, b, W, h, inputIdx, outputIdx):
-
-            def _loop_over_inputIdx(j, b, i, W, h, inputIdx, outputIdx):
-                return tensor.dot(h[b, j, :], W[inputIdx[b, j],
-                                         outputIdx[b, i], :, :])
-
-            res3 = theano.scan(fn=_loop_over_inputIdx,
-                               sequences=tensor.arange(0, inputIdx.shape[1]),
-                               non_sequences=[b, i, W, h, inputIdx, outputIdx],
-                               name='_loop_over_inputIdx')[0]
-
-            return res3.sum(axis=0)
-
-        res2 = theano.scan(fn=_loop_over_outputIdx,
-                           sequences=tensor.arange(0, outputIdx.shape[1]),
-                           non_sequences=[b, W, h, inputIdx, outputIdx],
-                           name='_loop_over_outputIdx')[0]
-
-        return res2
-
-    res1 = theano.scan(fn=_loop_over_batch,
-                       sequences=tensor.arange(0, inputIdx.shape[0]),
-                       non_sequences=[W, h, inputIdx, outputIdx],
-                       name='_loop_over_batch')[0]
-
-    return res1 + o
-
-
-def cpu_sparse_block_outer(o, x, y, xIdx, yIdx, alpha=1.0):
-    """
-    Creates a graph for the sparse block outer operation. Check
-    SparseBlockOuter's docstring for information about the arguments.
-    """
-
-    def _loop_over_batch(b, o1, x, y, xIdx, yIdx):
-
-        def _loop_over_xIdx(i, o2, b, x, y, xIdx, yIdx):
-
-            def _loop_over_yIdx(j, o3, i, b, x, y, xIdx, yIdx):
-                return tensor.inc_subtensor(
-                    o3[xIdx[b, i], yIdx[b, j]],
-                    tensor.outer(x[b, xIdx[b, i], :], y[b, yIdx[b, j], :]))
-
-            res3, updates3 = theano.scan(
-                fn=_loop_over_yIdx,
-                sequences=tensor.arange(0, yIdx.shape[1]),
-                non_sequences=[i, b, x, y, xIdx, yIdx],
-                outputs_info=[o2],
-                name='_loop_over_yIdx')
-
-            return res3[-1], updates3
-
-        res2, updates2 = theano.scan(
-            fn=_loop_over_xIdx,
-            sequences=tensor.arange(0, xIdx.shape[1]),
-            non_sequences=[b, x, y, xIdx, yIdx],
-            outputs_info=[o1],
-            name='_loop_over_xIdx')
-
-        return res2[-1], updates2
-
-    res1, updates1 = theano.scan(
-        fn=_loop_over_batch,
-        sequences=tensor.arange(0, xIdx.shape[0]),
-        non_sequences=[x, y, xIdx, yIdx],
-        outputs_info=[o],
-        name='_loop_over_batch')
-
-    return (alpha * res1[-1])
+#def cpu_sparse_block_gemv(o, W, h, inputIdx, outputIdx):
+#    """
+#    Creates a graph for the sparse block dot operation. Check SparseBlockGemv's
+#    docstring for information about the arguments.
+#    """
+#    def _loop_over_batch(b, W, h, inputIdx, outputIdx):
+#
+#        def _loop_over_outputIdx(i, b, W, h, inputIdx, outputIdx):
+#
+#            def _loop_over_inputIdx(j, b, i, W, h, inputIdx, outputIdx):
+#                return tensor.dot(h[b, j, :], W[inputIdx[b, j],
+#                                         outputIdx[b, i], :, :])
+#
+#            res3 = theano.scan(fn=_loop_over_inputIdx,
+#                               sequences=tensor.arange(0, inputIdx.shape[1]),
+#                               non_sequences=[b, i, W, h, inputIdx, outputIdx],
+#                               name='_loop_over_inputIdx')[0]
+#
+#            return res3.sum(axis=0)
+#
+#        res2 = theano.scan(fn=_loop_over_outputIdx,
+#                           sequences=tensor.arange(0, outputIdx.shape[1]),
+#                           non_sequences=[b, W, h, inputIdx, outputIdx],
+#                           name='_loop_over_outputIdx')[0]
+#
+#        return res2
+#
+#    res1 = theano.scan(fn=_loop_over_batch,
+#                       sequences=tensor.arange(0, inputIdx.shape[0]),
+#                       non_sequences=[W, h, inputIdx, outputIdx],
+#                       name='_loop_over_batch')[0]
+#
+#    return res1 + o
+#
+#
+#def xcpu_sparse_block_outer(o, x, y, xIdx, yIdx, alpha=1.0):
+#    """
+#    Creates a graph for the sparse block outer operation. Check
+#    SparseBlockOuter's docstring for information about the arguments.
+#    """
+#
+#    def _loop_over_batch(b, o1, x, y, xIdx, yIdx):
+#
+#        def _loop_over_xIdx(i, o2, b, x, y, xIdx, yIdx):
+#
+#            def _loop_over_yIdx(j, o3, i, b, x, y, xIdx, yIdx):
+#
+#                return tensor.inc_subtensor(
+#                     o3[xIdx[b, i], yIdx[b, j]],
+#                     tensor.outer(x[b, i, :], y[b, j, :]))
+#
+#            res3, updates3 = theano.scan(
+#                fn=_loop_over_yIdx,
+#                sequences=tensor.arange(0, yIdx.shape[1]),
+#                non_sequences=[i, b, x, y, xIdx, yIdx],
+#                outputs_info=[o2],
+#                name='_loop_over_yIdx')
+#
+#            return res3[-1], updates3
+#
+#        res2, updates2 = theano.scan(
+#            fn=_loop_over_xIdx,
+#            sequences=tensor.arange(0, xIdx.shape[1]),
+#            non_sequences=[b, x, y, xIdx, yIdx],
+#            outputs_info=[o1],
+#            name='_loop_over_xIdx')
+#
+#        return res2[-1], updates2
+#
+#    res1, updates1 = theano.scan(
+#        fn=_loop_over_batch,
+#        sequences=tensor.arange(0, xIdx.shape[0]),
+#        non_sequences=[x, y, xIdx, yIdx],
+#        outputs_info=[o],
+#        name='_loop_over_batch')
+#
+#    return (alpha * res1[-1])
 
 
 def sparse_block_dot(W, h, inputIdx, b, outputIdx, inplace=False):

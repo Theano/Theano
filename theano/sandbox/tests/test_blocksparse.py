@@ -39,6 +39,14 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         outputWindowSize = 3
         batchSize = 2
 
+#        nInputBlock = 2
+#        nOutputBlock = 2
+#        inputSize = 2
+#        outputSize = 2
+#        inputWindowSize = 1
+#        outputWindowSize = 1
+#        batchSize = 1
+
         input = randn(batchSize, inputWindowSize, inputSize).astype('float32')
         permutation = numpy.random.permutation
         inputIndice = numpy.vstack(permutation(nInputBlock)[:inputWindowSize]
@@ -66,9 +74,9 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         x = randn(batchSize, xWindowSize, xSize).astype('float32')
         y = randn(batchSize, yWindowSize, ySize).astype('float32')
         randint = numpy.random.randint
-        xIdx = numpy.vstack(randint(0, xWindowSize, nInputBlock)
+        xIdx = numpy.vstack(randint(0, xWindowSize)
                             for _ in range(batchSize)).astype('int32')
-        yIdx = numpy.vstack(randint(0, yWindowSize, nOutputBlock)
+        yIdx = numpy.vstack(randint(0, yWindowSize)
                             for _ in range(batchSize)).astype('int32')
 
         return o, x, y, xIdx, yIdx
@@ -155,8 +163,8 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         for b in range(x.shape[0]):
             for i in range(xIdx.shape[1]):
                 for j in range(yIdx.shape[1]):
-                    o[xIdx[b, i], yIdx[b, j]] += numpy.outer(x[b, xIdx[b, i], :],
-                                           y[b, yIdx[b, j], :])
+                    o[xIdx[b, i], yIdx[b, j]] += numpy.outer(x[b,  i, :],
+                                           y[b, j, :])
         return o
 
     def test_sparseblockdot(self):
@@ -244,22 +252,20 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         W_val, h_val, iIdx_val, b_val, oIdx_val = \
             BlockSparse_Gemv_and_Outer.gemv_data()
 
+        h_val = randn(1, 1, 1).astype('float32')
+        iIdx_val = numpy.random.permutation(1)[:1][None, :]
+        oIdx_val = numpy.random.permutation(1)[:1][None, :]
+        W_val = randn(1, 1, 1, 1).astype('float32')
+        b_val = randn(1, 1).astype('float32')
+
         iIdx = theano.tensor.constant(iIdx_val)
         oIdx = theano.tensor.constant(oIdx_val)
 
         def metaop(b, h, W):
-            print b, h, W
-            print iIdx.dtype, oIdx.dtype
             return sparse_block_dot(W, h, iIdx, b, oIdx)
 
         def op(b, h, W):
             return self.gemv_op(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
-
-        print W_val.shape
-        print h_val.shape
-        print b_val.shape
-        print iIdx_val.shape
-        print oIdx_val.shape
 
         utt.verify_grad(metaop, [b_val, h_val, W_val], mode=self.mode)
         utt.verify_grad(op, [b_val, h_val, W_val], mode=self.mode)
@@ -308,7 +314,7 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         assert h_g.shape == h_val.shape
         assert W_g.shape == W_val.shape
 
-    def test_sparse_block_outer(self):
+    def test_sparseblockouter(self):
         o = tensor.ftensor4()
         x = tensor.ftensor3()
         y = tensor.ftensor3()
@@ -332,4 +338,6 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         utt.assert_allclose(ref_out, th_out)
 
 
-# BlockSparse_Gemv_and_Outer.compare()
+a = BlockSparse_Gemv_and_Outer()
+a.setUp()
+a.test_sparseblockgemv_grad()
