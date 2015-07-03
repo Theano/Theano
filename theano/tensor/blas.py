@@ -133,7 +133,6 @@ import warnings
 
 import numpy
 import numpy.distutils
-import numpy.distutils.system_info
 try:
     import numpy.distutils.__config__
 except ImportError:
@@ -162,6 +161,7 @@ _logger = logging.getLogger('theano.tensor.blas')
 # We need to define blas.ldflag before we try to import scipy.
 # Otherwise, we give an optimization warning for no reason in some cases.
 def default_blas_ldflags():
+    global numpy
     try:
         if (hasattr(numpy.distutils, '__config__') and
             numpy.distutils.__config__):
@@ -169,6 +169,16 @@ def default_blas_ldflags():
             # don't print information to the user.
             blas_info = numpy.distutils.__config__.blas_opt_info
         else:
+            # We do this import only here, as in some setup, if we
+            # just import theano and exit, with the import at global
+            # scope, we get this error at exit: "Exception TypeError:
+            # "'NoneType' object is not callable" in <bound method
+            # Popen.__del__ of <subprocess.Popen object at 0x21359d0>>
+            # ignored"
+
+            # This happen with Python 2.7.3 |EPD 7.3-1 and numpy 1.8.1
+            import numpy.distutils.system_info # noqa
+
             # We need to catch warnings as in some cases NumPy print
             # stuff that we don't want the user to see like this:
             """
