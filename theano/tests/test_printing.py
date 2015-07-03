@@ -254,7 +254,7 @@ def test_debugprint():
 
 def test_scan_debugprint1():
     k = tensor.iscalar("k")
-    A = tensor.vector("A")
+    A = tensor.dvector("A")
 
     # Symbolic description of the result
     result, updates = theano.scan(fn=lambda prior_result, A: prior_result * A,
@@ -375,11 +375,11 @@ def test_scan_debugprint2():
 
 
 def test_scan_debugprint3():
-    coefficients = theano.tensor.vector("coefficients")
+    coefficients = theano.tensor.dvector("coefficients")
     max_coefficients_supported = 10
 
     k = tensor.iscalar("k")
-    A = tensor.vector("A")
+    A = tensor.dvector("A")
 
     # compute A**k
     def compute_A_k(A, k):
@@ -569,7 +569,7 @@ def test_scan_debugprint4():
 def test_scan_debugprint5():
 
     k = tensor.iscalar("k")
-    A = tensor.vector("A")
+    A = tensor.dvector("A")
 
     # Symbolic description of the result
     result, updates = theano.scan(fn=lambda prior_result, A: prior_result * A,

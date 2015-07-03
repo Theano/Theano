@@ -4257,7 +4257,7 @@ class T_Scan(unittest.TestCase):
         f = theano.function(inputs=[A, k],
                             outputs=final_result,
                             updates=updates)
-        f([2, 3, .1, 0, 1], 4)
+        f(numpy.asarray([2, 3, .1, 0, 1], dtype=theano.config.floatX), 4)
 
         # There should be 3 outputs greater than 10: prior_result[0] at step 3,
         # and prior_result[1] at steps 2 and 3.
