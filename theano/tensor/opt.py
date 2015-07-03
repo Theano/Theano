@@ -4393,7 +4393,7 @@ def local_intdiv_by_one(node):
     if node.op in [T.int_div]:
         if isinstance(node.inputs[1], T.TensorConstant) and \
            numpy.all(node.inputs[1].value == 1):
-            return [node.inputs[0]]
+            return [node.inputs[0].astype(node.outputs[0].dtype)]
 
 
 @gof.local_optimizer([T.pow])
