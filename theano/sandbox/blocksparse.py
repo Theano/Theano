@@ -20,7 +20,7 @@ class SparseBlockGemv(Op):
     registered_opts = []
 
     def __init__(self, inplace=False):
-        self.inplace = inplace 
+        self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
 
@@ -85,12 +85,12 @@ class SparseBlockGemv(Op):
         o, W, h, inputIdx, outputIdx = inputs
         go = grads[0]
 
-        Wgrad = sparse_block_outer(W.zeros_like(),
-                                   h, go, inputIdx, outputIdx)
-        hgrad = sparse_block_gemv(h.zeros_like(),
-                                  W.dimshuffle((1, 0, 3, 2)),
-                                  go,
-                                  outputIdx, inputIdx)
+        outer_fun = SparseBlockOuter(self.inplace)
+        gemv_fun = SparseBlockGemv(self.inplace)
+
+        Wgrad = outer_fun(W.zeros_like(), h, go, inputIdx, outputIdx)
+        hgrad = gemv_fun(h.zeros_like(), W.dimshuffle((1, 0, 3, 2)),
+                         go, outputIdx, inputIdx)
         return [go, Wgrad, hgrad,
                 grad_undefined(self, 3, inputIdx,
                                "grad of inputIdx makes no sense"),
@@ -104,8 +104,7 @@ class SparseBlockOuter(Op):
     This computes the outer product of two sets of pieces of vectors
     updating a full matrix with the results:
         for b in range(batch_size):
-            o[xIdx[b, i], yIdx[b, j]] += (alpha * outer(x[xIdx[b, i]],
-            y[yIdx[b, j]]))
+            o[xIdx[b, i], yIdx[b, j]] += (alpha * outer(x[b, i], y[b, j]))
     This op is involved in the gradient of SparseBlockGemv.
     """
 
@@ -168,7 +167,12 @@ class SparseBlockOuter(Op):
 
 class CpuSparseBlockGemv(SparseBlockGemv):
     """
-        TODO
+    CPU version of SparseBlockGemv. Check SparseBlockGemv's docstring for more
+    information.
+
+    This should not be directly called since the interface is subject
+    to change without notice.  Use the sandbox.blocksparse.sparse_block_dot()
+    function for a stable interface.
     """
 
     def perform(self, node, inp, out_):
@@ -189,7 +193,12 @@ class CpuSparseBlockGemv(SparseBlockGemv):
 
 class CpuSparseBlockOuter(SparseBlockOuter):
     """
-        TODO
+    CPU version of SparseBlockOuter. See SparseBlockOuter's docstring for more
+    information.
+
+    This op should not be called directly since its interface is
+    subject to change without notice.  It is involved in the gradient
+    of GpuSparseBlockGemv. The gradient is not implemented.
     """
 
     def perform(self, node, inp, out_):
@@ -201,7 +210,7 @@ class CpuSparseBlockOuter(SparseBlockOuter):
         for b in range(x.shape[0]):
             for i in range(xIdx.shape[1]):
                 for j in range(yIdx.shape[1]):
-                    o[xIdx[b, i], yIdx[b, j]] += numpy.outer(x[b, i, :],
+                    o[xIdx[b, i], yIdx[b, j]] += numpy.outer(x[b, i],
                                                              y[b, j, :])
         out_[0][0] = o
 
@@ -252,4 +261,4 @@ def sparse_block_dot(W, h, inputIdx, b, outputIdx, inplace=False):
         inputIdx = inputIdx.dimshuffle('x', 0)
         outputIdx = outputIdx.dimshuffle('x', 0)
     return SparseBlockGemv(inplace)(b.take(outputIdx, axis=0), W, h,
-                                inputIdx, outputIdx)
+                                    inputIdx, outputIdx)

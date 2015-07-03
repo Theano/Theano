@@ -16,21 +16,12 @@ if cuda_available:
 
 class GpuSparseBlockGemv(GpuOp):
     """
-    This op computes the dot product of specified pieces of vectors
-    and matrices, returning pieces of vectors.
-
-    It computes something like this for each j:
-
-      o[j] = sum_over_i(dot(W[i, j], h[i])) + o[j]
-
-    The i and j are taken from the inputIdx and outputIdx lists
-    respectively.
+    GPU version of SparseBlockGemv. Check SparseBlockGemv's docstring for more
+    information.
 
     This should not be directly called since the interface is subject
     to change without notice.  Use the sandbox.blocksparse.sparse_block_dot()
     function for a stable interface.
-
-    Check sandbox.blocksparse.SparseBlockGemv for more information.
     """
     def __init__(self, inplace=False):
         self.inplace = inplace
@@ -362,20 +353,12 @@ gpu_sparse_block_gemv_inplace = GpuSparseBlockGemv(True)
 
 class GpuSparseBlockOuter(GpuOp):
     """
-    This computes the outer product of two sets of pieces of vectors
-    updating a full matrix with the results.
-
-    It computes something like this:
-
-      o[i, j] = (alpha * outer(x[i], y[j])) + o[i, j]
-
-    The i and j are taken from the xIdx and yIdx lists respectively.
+    CPU version of SparseBlockOuter. See SparseBlockOuter's docstring for more
+    information.
 
     This op should not be called directly since its interface is
     subject to change without notice.  It is involved in the gradient
-    of GpuSparseBlockGemv.
-
-    Check sandbox.blocksparse.SparseBlockOuter for more information.
+    of GpuSparseBlockGemv. The gradient is not implemented.
     """
     def __init__(self, inplace=False):
         self.inplace = inplace
