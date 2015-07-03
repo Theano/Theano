@@ -15,6 +15,8 @@ class SparseBlockGemv(Op):
             for j in range(o.shape[1]):
                 for i in range(h.shape[1]):
                     o[b, j, :] += numpy.dot(h[b, i], W[iIdx[b, i], oIdx[b, j]])
+
+    .. image:: ../../images/blocksparse.png
     """
 
     registered_opts = []

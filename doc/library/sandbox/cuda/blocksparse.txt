@@ -1,0 +1,16 @@
+.. _libdoc_cuda_blocksparse:
+
+===================================================================
+:mod:`sandbox.cuda.blocksparse` --  Cuda Sparse block dot operations
+===================================================================
+
+.. module:: sandbox.cuda.blocksparse
+   :platform: Unix, Windows
+   :synopsis: Cuda Sparse block dot operations
+.. moduleauthor:: LISA
+
+API
+===
+
+.. automodule:: theano.sandbox.cuda.blocksparse
+    :members:

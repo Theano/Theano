@@ -1,0 +1,16 @@
+.. _libdoc_blocksparse:
+
+===================================================================
+:mod:`sandbox.blocksparse` --  Sparse block dot operations
+===================================================================
+
+.. module:: sandbox.blocksparse
+   :platform: Unix, Windows
+   :synopsis: Sparse block dot operations
+.. moduleauthor:: LISA
+
+API
+===
+
+.. automodule:: theano.sandbox.blocksparse
+    :members:
