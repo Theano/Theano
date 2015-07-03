@@ -48,7 +48,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         nonzero, flatnonzero, nonzero_values,
         stacklists, DimShuffle, hessian, ptp, power,
         swapaxes, choose, Choose, NoneConst, AllocEmpty,
-        isclose, allclose,
+        isclose, allclose, mgrid, ogrid,
         )
 
 from theano.tests import unittest_tools as utt
@@ -5491,6 +5491,56 @@ class TestARange(unittest.TestCase):
         assert numpy.all(f(0) == len(numpy.arange(0, 0)))
 
 
+class TestNdGrid(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def test_mgrid_numpy_equiv(self):
+        nmgrid = (numpy.mgrid[0:1:.1, 1:10:1., 10:100:10.],
+                  numpy.mgrid[0:2:1, 1:10:1, 10:100:10])
+        tmgrid = (mgrid[0:1:.1, 1:10:1., 10:100:10.],
+                  mgrid[0:2:1, 1:10:1, 10:100:10])         
+        for n, t in zip(nmgrid, tmgrid):
+            for ng, tg in zip(n, t):
+                assert_array_equal(ng, tg.eval())
+
+    def test_ogrid_numpy_equiv(self):
+        nogrid = (numpy.ogrid[0:1:.1, 1:10:1., 10:100:10.],
+                  numpy.ogrid[0:2:1, 1:10:1, 10:100:10])
+        togrid = (ogrid[0:1:.1, 1:10:1., 10:100:10.], 
+                  ogrid[0:2:1, 1:10:1, 10:100:10])
+        for n, t in zip(nogrid, togrid):
+            for ng, tg in zip(n, t):
+                assert_array_equal(ng, tg.eval())
+
+    def test_mgrid_theano_variable_numpy_equiv(self):
+        nfmgrid = numpy.mgrid[0:1:.1, 1:10:1., 10:100:10.]
+        nimgrid = numpy.mgrid[0:2:1, 1:10:1, 10:100:10]
+        i,j,k = dscalars('i','j','k')
+        l,m,n = iscalars('l','m','n')
+        tfmgrid = mgrid[i:1:.1, 1:j:1., 10:100:k]
+        timgrid = mgrid[l:2:1, 1:m:1, 10:100:n]
+        ff = theano.function([i, j, k], tfmgrid)
+        fi = theano.function([l, m, n], timgrid)
+        for n, t in zip((nfmgrid,nimgrid), (ff(0, 10, 10.),fi(0, 10, 10))):
+            for ng, tg in zip(n, t):
+                assert_array_equal(ng, tg)
+
+    def test_ogrid_theano_variable_numpy_equiv(self):
+        nfogrid = numpy.ogrid[0:1:.1, 1:10:1., 10:100:10.]
+        niogrid = numpy.ogrid[0:2:1, 1:10:1, 10:100:10]
+        i,j,k = dscalars('i','j','k')
+        l,m,n = iscalars('l','m','n')
+        tfogrid = ogrid[i:1:.1, 1:j:1., 10:100:k]
+        tiogrid = ogrid[l:2:1, 1:m:1, 10:100:n]
+        ff = theano.function([i, j, k], tfogrid)
+        fi = theano.function([l, m, n], tiogrid)
+        for n, t in zip((nfogrid,niogrid), (ff(0, 10, 10.),fi(0, 10, 10))):
+            for ng, tg in zip(n, t):
+                assert_array_equal(ng, tg)
+                
+                
 class TestInversePermutation(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
