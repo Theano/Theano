@@ -3253,6 +3253,50 @@ def local_flatten_lift(node):
 ##################
 
 
+@register_canonicalize
+@register_specialize
+@gof.local_optimizer([T.Reshape])
+def local_useless_reshape(node):
+    """ Reshape{ndim=1}(vector) -> vector
+
+    Remove Reshape when both the input and the output have a single
+    dimension.
+    If the shape of the input can't be inferred, an Assert is inserted to
+    ensure that the given new shape is the same as the original one.
+    """
+    if isinstance(node.op, T.Reshape):
+        x, shape = node.inputs
+        if node.op.ndim == 1 and x.ndim == 1:
+            out = x
+
+            new_shape_len = None
+            try:
+                new_shape_len = get_scalar_constant_value(shape.shape[0])
+            except NotScalarConstantError:
+                pass
+            if new_shape_len != 1:
+                out = assert_op(out, T.eq(shape.shape[0], 1))
+
+            try:
+                new_shape = get_scalar_constant_value(shape[0])
+                if new_shape == -1:
+                    return [out]
+
+                if new_shape == 1:
+                    out = T.addbroadcast(out, 0)
+
+                shape_of_x = node.fgraph.shape_feature.shape_of[x][0]
+                shape_of_x = get_scalar_constant_value(shape_of_x)
+                if shape_of_x == new_shape:
+                    return [out]
+            except (KeyError, AttributeError, NotScalarConstantError):
+                pass
+
+            out = assert_op(out,
+                            T.eq(shape[0], x.shape[0]) + T.eq(shape[0], -1))
+            return [out]
+
+
 @gof.local_optimizer([T.Reshape])
 def local_reshape_chain(node):
     """

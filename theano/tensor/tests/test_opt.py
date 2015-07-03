@@ -5229,6 +5229,42 @@ def test_local_useless_split():
     assert isinstance(graph_nonopt[0].op, tensor.Split)
 
 
+def test_local_useless_reshape():
+    x = tensor.vector('x')
+    mode = compile.get_default_mode().including("local_useless_reshape")
+
+    y1 = x.reshape([2])
+    f1 = theano.function([x], y1, mode=mode)
+    assert all([node != tensor.Reshape for node in f1.maker.fgraph.toposort()])
+    assert numpy.all(f1([0., 1.]) == [0., 1.])
+    try:
+        f1([0.])
+        raise Exception("Theano should have raised an error")
+    except AssertionError:
+        pass
+
+    y2 = x.reshape([-1])
+    f2 = theano.function([x], y2, mode=mode)
+    graph = f2.maker.fgraph.toposort()
+    assert len(graph) == 1
+    assert isinstance(graph[0].op, DeepCopyOp)
+    assert numpy.all(f2([0., 1.]) == [0., 1.])
+
+    z = tensor.lvector('z')
+    y3 = x.reshape(tensor.concatenate(([-1], z), axis=0), ndim=1)
+    f3 = theano.function([x, z], y3, mode=mode)
+    f3([0., 1.], [])
+    try:
+        f3([0., 1.], [1.])
+        raise Exception("Theano should have raised an error")
+    except AssertionError:
+        pass
+
+    y4 = x.reshape([1])
+    f4 = theano.function([x], y4, mode=mode)
+    f4([0.])
+
+
 def test_local_flatten_lift():
     for i in xrange(1, 4):
         op = tensor.Flatten(i)
