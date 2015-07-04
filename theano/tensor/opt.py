@@ -275,10 +275,10 @@ def inplace_elemwise_optimizer_op(OP):
                 # inplace target.
                 # Remove here as faster.
                 candidate_inputs = [i for i in xrange(len(node.inputs))
-                                    if i not in baseline.values() and
-                                    not isinstance(node.inputs[i], Constant)
-                                    and node.inputs[i] not in protected_inputs
-                                    and not fgraph.destroyers(node.inputs[i])]
+                                    if i not in baseline.values() and not
+                                    isinstance(node.inputs[i], Constant) and
+                                    node.inputs[i] not in protected_inputs and
+                                    not fgraph.destroyers(node.inputs[i])]
 
                 verbose = False
 
