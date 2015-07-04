@@ -254,7 +254,7 @@ def inplace_elemwise_optimizer_op(OP):
         changed_node_since_validate = set()
 
         # n_pass_count is used to make sure that the following while loop
-        # iterates for only one pass, or it will be much slower if it 
+        # iterates for only one pass, or it will be much slower if it
         # iterates for multi passes. This variable can be removed when
         # a faster validate() is implemented.
         #
@@ -277,9 +277,8 @@ def inplace_elemwise_optimizer_op(OP):
                 candidate_inputs = [i for i in xrange(len(node.inputs))
                                     if i not in baseline.values() and
                                     not isinstance(node.inputs[i], Constant)
-                                    and
-                                    node.inputs[i] not in protected_inputs and
-                                    not fgraph.destroyers(node.inputs[i])]
+                                    and node.inputs[i] not in protected_inputs
+                                    and not fgraph.destroyers(node.inputs[i])]
 
                 verbose = False
 
@@ -300,12 +299,12 @@ def inplace_elemwise_optimizer_op(OP):
                                 new_scal = op.scalar_op.make_new_inplace(
                                     scalar.transfer_type(
                                         *[inplace_pattern.get(i, None)
-                                              for i in xrange(len(node.outputs))]))
+                                          for i in xrange(len(node.outputs))]))
                             else:
                                 new_scal = op.scalar_op.__class__(
                                     scalar.transfer_type(
                                         *[inplace_pattern.get(i, None)
-                                              for i in xrange(len(node.outputs))]))
+                                          for i in xrange(len(node.outputs))]))
                             new_outputs = OP(new_scal, inplace_pattern)(
                                 *node.inputs, **dict(return_list=True))
                             new_node = new_outputs[0].owner
@@ -314,8 +313,9 @@ def inplace_elemwise_optimizer_op(OP):
                             changed_node_since_validate.add(node)
 
                             for r, new_r in zip(node.outputs, new_outputs):
-                                fgraph.replace(r, new_r,
-                                            reason="inplace_elemwise_optimizer")
+                                fgraph.replace(
+                                    r, new_r,
+                                    reason="inplace_elemwise_optimizer")
                             nb_change_no_validate += 1
 
                             if nb_change_no_validate >= check_each_change:
@@ -323,11 +323,14 @@ def inplace_elemwise_optimizer_op(OP):
                                 chk = fgraph.checkpoint()
                                 changed_node_since_validate = set()
                                 nb_change_no_validate = 0
-                        except (ValueError, TypeError, InconsistencyError) as e:
+                        except (ValueError,
+                                TypeError,
+                                InconsistencyError) as e:
                             if check_each_change != 1 and not raised_warning:
-                                print((
-                                        "Some inplace optimization was not "
-                                        "performed due to unexpected error:"), file=sys.stderr)
+                                print(
+                                    ("Some inplace optimization was not "
+                                     "performed due to unexpected error:"),
+                                    file=sys.stderr)
                                 print(e, file=sys.stderr)
                                 raised_warning = True
                             fgraph.revert(chk)
@@ -337,9 +340,10 @@ def inplace_elemwise_optimizer_op(OP):
                                 failed_set.update(changed_node_since_validate)
                                 changed_node_since_validate = set()
                             # Add failed node to failed_set
-                            # node is in changed_node_since_validate already, so there
-                            # is no need to add it here.
-                            #failed_set.add(node)
+                            # node is in changed_node_since_validate already,
+                            # so there is no need to add it here.
+
+                            # failed_set.add(node)
                             continue
                         candidate_inputs.remove(candidate_input)
                         node = new_node
