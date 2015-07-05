@@ -5,6 +5,8 @@
 import os.path
 
 from theano.printing import pydotprint
+from formatting import GraphFormatter
+
 
 
 def replace_patterns(x, replace):
@@ -29,13 +31,13 @@ def d3dot(fct, node_colors=None, *args, **kwargs):
 
 
 def d3write(fct, path, *args, **kwargs):
-    dot = d3dot(fct, *args, **kwargs)
-    with open(path, 'w') as f:
-        f.write(dot)
+    # Convert theano graph to pydot graph and write to file
+    gf = GraphFormatter(*args, **kwargs)
+    g = gf.to_pydot(fct)
+    g.write_dot(path)
 
 
 def d3print(fct, outfile=None, return_html=False, print_message=True,
-            width=800, height=600,
             *args, **kwargs):
     """Creates dynamic graph visualization using d3.js javascript library.
 
@@ -47,11 +49,10 @@ def d3print(fct, outfile=None, return_html=False, print_message=True,
     :param *args, **kwargs: Parameters passed to pydotprint
     """
 
-    # Generate dot graph by pydotprint and write to file
-    dot_graph = d3dot(fct, *args, **kwargs)
+    # Create dot file
     dot_file = os.path.splitext(outfile)[0] + '.dot'
-    with open(dot_file, 'w') as f:
-        f.write(dot_graph)
+    d3write(fct, dot_file, *args, **kwargs)
+
 
     # Read template HTML file and replace variables
     template_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),

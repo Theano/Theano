@@ -146,6 +146,7 @@
 			var posMax = [0, 0];
 			for (var nodeId in dotGraph._nodes) {
 				var node = dotGraph._nodes[nodeId];
+        node.value.label = node.id;
 				node.value.pos = node.value.pos.split(',').map(function(d) {return parseInt(d);});
 				node.value.width = parseInt(node.value.width);
 				node.value.height = parseInt(node.value.height);

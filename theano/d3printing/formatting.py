@@ -59,9 +59,9 @@ class GraphFormatter(object):
                             'Elemwise': '#FFAABB',  # dark pink
                             'Subtensor': '#FFAAFF',  # purple
                             'Alloc': '#FFAA22'}  # orange
-        self.node_colors = {'input': 'green',
-                            'output': 'blue',
-                            'unused': 'grey'
+        self.node_colors = {'input': 'limegreen',
+                            'output': 'dodgerblue',
+                            'unused': 'lightgrey'
                             }
         self.max_label_size = 70
 
@@ -168,7 +168,7 @@ class GraphFormatter(object):
                 nw_node = pd.Node(astr, shape=apply_shape)
             elif self.high_contrast:
                 nw_node = pd.Node(astr, style='filled', fillcolor=use_color,
-                                shape=apply_shape)
+                                shape=apply_shape, type='colored')
             else:
                 nw_node = pd.Node(astr, color=use_color, shape=apply_shape)
             g.add_node(nw_node)
