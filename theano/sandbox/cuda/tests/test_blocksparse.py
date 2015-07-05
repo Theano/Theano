@@ -7,13 +7,13 @@ import theano.tests.unittest_tools as utt
 import theano.sandbox.tests.test_blocksparse
 
 import theano.sandbox.cuda as cuda_ndarray
-if not cuda_ndarray.cuda_available:
-    raise SkipTest('Optional package cuda disabled')
 from theano.sandbox.cuda.blocksparse import (GpuSparseBlockOuter,
                                              gpu_sparse_block_gemv,
                                              gpu_sparse_block_outer)
 from theano.sandbox.cuda.var import float32_shared_constructor
 
+if not cuda_ndarray.cuda_available:
+    raise SkipTest('Optional package cuda disabled')
 
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')

@@ -16,6 +16,7 @@ class SparseBlockGemv(Op):
                 for i in range(h.shape[1]):
                     o[b, j, :] += numpy.dot(h[b, i], W[iIdx[b, i], oIdx[b, j]])
 
+    where b, h, W, o iIdx, oIdx are defined in the docstring of make_node.
     .. image:: ../../images/blocksparse.png
     """
 
@@ -29,7 +30,7 @@ class SparseBlockGemv(Op):
     def make_node(self, o, W, h, inputIdx, outputIdx):
         """
         Compute the dot product of the specified pieces of vectors
-        and matrices. 
+        and matrices.
 
         Parameters
         ----------
@@ -76,7 +77,7 @@ class SparseBlockGemv(Op):
         assert outputIdx.type.dtype in discrete_dtypes
 
         output = o.type.__class__(dtype=o.type.dtype,
-                                  broadcastable=(False,)*o.ndim)()
+                                  broadcastable=(False,) * o.ndim)()
 
         return Apply(self, [o, W, h, inputIdx, outputIdx], [output])
 
@@ -100,7 +101,6 @@ class SparseBlockGemv(Op):
                                "grad of outputIdx makes no sense")]
 
 
-
 class SparseBlockOuter(Op):
     """
     This computes the outer product of two sets of pieces of vectors
@@ -121,7 +121,7 @@ class SparseBlockOuter(Op):
         """
 
         Compute the dot product of the specified pieces of vectors
-        and matrices. 
+        and matrices.
 
         Parameters
         ----------
@@ -154,7 +154,7 @@ class SparseBlockOuter(Op):
             alpha = one
 
         output = o.type.__class__(dtype=o.type.dtype,
-                                  broadcastable=(False,)*o.ndim)()
+                                  broadcastable=(False,) * o.ndim)()
 
         return Apply(self, [o, x, y, xIdx, yIdx, alpha],
                      [output])

@@ -766,11 +766,10 @@ def test_blocksparse_gpu_outer_opt():
 
     o = sparse_block_dot(W, h, iIdx, b, oIdx)
 
-    theano.printing.debugprint(tensor.grad(o.sum(),wrt=W))
-
-    f = theano.function([W, h, iIdx, b, oIdx], [o, tensor.grad(o.sum(),wrt=W)], 
+    f = theano.function([W, h, iIdx, b, oIdx], [o, tensor.grad(o.sum(),
+                                                               wrt=W)],
                         mode=mode_with_gpu)
-    
+
     assert isinstance(f.maker.fgraph.toposort()[-2].op, GpuSparseBlockOuter)
 
 
@@ -785,10 +784,8 @@ class test_diag(theano.tensor.tests.test_nlinalg.test_diag):
               self).__init__(name)
 
 
-
 if __name__ == '__main__':
     test_gpualloc()
     test_opt_gpujoin_onlyajoin()
     test_opt_gpujoin_joinvectors_elemwise_then_minusone()
     test_opt_gpujoin_joinvectors_negativeaxes()
-
