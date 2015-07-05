@@ -303,7 +303,8 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
 
         out = self.outer_op(o, x, y, xIdx, yIdx)
 
-        f = theano.function([o, x, y, xIdx, yIdx], out, on_unused_input="warn")
+        f = theano.function([o, x, y, xIdx, yIdx], out,
+                            on_unused_input="warn")
 
         o_val, x_val, y_val, xIdx_val, yIdx_val = \
             BlockSparse_Gemv_and_Outer.outer_data()
