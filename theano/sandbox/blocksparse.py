@@ -17,7 +17,9 @@ class SparseBlockGemv(Op):
                     o[b, j, :] += numpy.dot(h[b, i], W[iIdx[b, i], oIdx[b, j]])
 
     where b, h, W, o iIdx, oIdx are defined in the docstring of make_node.
+
     .. image:: ../../images/blocksparse.png
+        :scale: 50 %
     """
 
     registered_opts = []
@@ -119,7 +121,6 @@ class SparseBlockOuter(Op):
 
     def make_node(self, o, x, y, xIdx, yIdx, alpha=None):
         """
-
         Compute the dot product of the specified pieces of vectors
         and matrices.
 
