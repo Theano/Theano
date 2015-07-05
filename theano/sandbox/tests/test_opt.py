@@ -1,6 +1,7 @@
 import theano
 from theano import tensor
-from theano.sandbox.blocksparse import CpuSparseBlockGemv, CpuSparseBlockOuter, sparse_block_dot
+from theano.sandbox.blocksparse import CpuSparseBlockGemv, \
+    CpuSparseBlockOuter, sparse_block_dot
 
 
 def test_blocksparse_cpu_gemv_opt():
@@ -26,8 +27,9 @@ def test_blocksparse_cpu_outer_opt():
 
     o = sparse_block_dot(W, h, iIdx, b, oIdx)
 
-    theano.printing.debugprint(tensor.grad(o.sum(),wrt=W))
+    theano.printing.debugprint(tensor.grad(o.sum(), wrt=W))
 
-    f = theano.function([W, h, iIdx, b, oIdx], [o, tensor.grad(o.sum(),wrt=W)])
-    
+    f = theano.function([W, h, iIdx, b, oIdx],
+                        [o, tensor.grad(o.sum(), wrt=W)])
+
     assert isinstance(f.maker.fgraph.toposort()[-1].op, CpuSparseBlockOuter)

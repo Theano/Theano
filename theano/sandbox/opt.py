@@ -126,7 +126,7 @@ def register_meta_opt(op_class, db_name, position, *args):
         idx = bisect.bisect_left((positions, local_meta_opt),
                                  op_class.registered_opts)
         op_class.registered_opts.insert(idx,
-                (positions, local_meta_opt.__name__))
+                                        (positions, local_meta_opt.__name__))
 
         return local_meta_opt
 

@@ -2,7 +2,6 @@
     Tests for block sparse dot
 """
 import unittest
-import time
 
 import numpy
 from numpy.random import randn
@@ -11,8 +10,8 @@ import theano
 from theano import tensor
 import theano.tests.unittest_tools as utt
 
-from theano.sandbox.blocksparse import sparse_block_dot, cpu_sparse_block_gemv, \
-    cpu_sparse_block_outer
+from theano.sandbox.blocksparse import sparse_block_dot, \
+    cpu_sparse_block_gemv, cpu_sparse_block_outer
 
 
 class BlockSparse_Gemv_and_Outer(unittest.TestCase):
@@ -94,6 +93,9 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
 
     @staticmethod
     def gemv_numpy2(o, W, h, iIdx, oIdx):
+        """
+        Other implementation
+        """
         from numpy import ix_
         for b in range(o.shape[0]):
             w = W[ix_(iIdx[b], oIdx[b])].swapaxes(1, 2)
@@ -103,9 +105,14 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
 
     @staticmethod
     def gemv_numpy3(o, W, h, iIdx, oIdx):
+        """
+        Other implementation
+        """
         from numpy import ix_
         for b in range(o.shape[0]):
             w = W[ix_(iIdx[b], oIdx[b])]
+            # The next three lines do the same operation. The last one is the
+            # fastest
             # o[b] += (h[b][:, None, :, None] * w).sum(axis=(0, 2))
             # o[b] += numpy.tensordot(h[b], w, [(0,1),(0,2)])
             o[b] += numpy.einsum('ik,ijkl', h[b], w)
@@ -136,27 +143,6 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         return weight, input, inputIndice, bias, outputIndice
 
     @staticmethod
-    def compare():
-        W_val, h_val, iIdx_val, b_val, oIdx_val = \
-            BlockSparse_Gemv_and_Outer.gemv_data2()
-
-        start = time.clock()
-        ref_out = BlockSparse_Gemv_and_Outer.gemv_numpy(
-             b_val.take(oIdx_val, axis=0), W_val, h_val, iIdx_val, oIdx_val)
-        v1 = time.clock()
-        ref_out_2 = BlockSparse_Gemv_and_Outer.gemv_numpy2(
-             b_val.take(oIdx_val, axis=0), W_val, h_val, iIdx_val, oIdx_val)
-        v2 = time.clock()
-        ref_out_3 = BlockSparse_Gemv_and_Outer.gemv_numpy3(
-             b_val.take(oIdx_val, axis=0), W_val, h_val, iIdx_val, oIdx_val)
-        v3 = time.clock()
-
-        print v1 - start
-        print v2 - v1
-        print v3 - v2
-        # utt.assert_allclose(ref_out, ref_out_2)
-
-    @staticmethod
     def outer_numpy(o, x, y, xIdx, yIdx):
         for b in range(x.shape[0]):
             for i in range(xIdx.shape[1]):
@@ -185,7 +171,7 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         th_out = f(W_val, h_val, iIdx_val, b_val, oIdx_val)
 
         ref_out = BlockSparse_Gemv_and_Outer.gemv_numpy(
-             b_val.take(oIdx_val, axis=0), W_val, h_val, iIdx_val, oIdx_val)
+            b_val.take(oIdx_val, axis=0), W_val, h_val, iIdx_val, oIdx_val)
 
         utt.assert_allclose(ref_out, th_out)
 
@@ -208,7 +194,7 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
 
         th_out = f(W_val, h_val, iIdx_val, b_val, oIdx_val)
         ref_out = BlockSparse_Gemv_and_Outer.gemv_numpy(
-             b_val.take(oIdx_val, axis=0), W_val, h_val, iIdx_val, oIdx_val)
+            b_val.take(oIdx_val, axis=0), W_val, h_val, iIdx_val, oIdx_val)
 
         utt.assert_allclose(ref_out, th_out)
 
@@ -224,9 +210,10 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         oIdx = tensor.imatrix()
 
         o = self.gemv_op(b.take(oIdx, axis=0),
-            tensor.DimShuffle((False, False, False, False),
-                              (0, 1, 3, 2))(tensor.as_tensor_variable(W)),
-            h, iIdx, oIdx)
+                         tensor.DimShuffle((False, False, False, False),
+                                           (0, 1, 3, 2))
+                         (tensor.as_tensor_variable(W)),
+                         h, iIdx, oIdx)
 
         f = theano.function([W, h, iIdx, b, oIdx], o, mode=self.mode)
 
@@ -236,7 +223,7 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         th_out = f(numpy.swapaxes(W_val, 2, 3), h_val, iIdx_val, b_val,
                    oIdx_val)
         ref_out = BlockSparse_Gemv_and_Outer.gemv_numpy(
-             b_val.take(oIdx_val, axis=0), W_val, h_val, iIdx_val, oIdx_val)
+            b_val.take(oIdx_val, axis=0), W_val, h_val, iIdx_val, oIdx_val)
 
         utt.assert_allclose(ref_out, th_out)
 
