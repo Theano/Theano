@@ -534,7 +534,7 @@ class GpuDnnConv(DnnBase, COp):
     """
     __props__ = ('workmem', 'inplace')
     __input_name__ = ('image', 'kernel', 'output',
-                      'descriptor', 'alpha', 'beta', 'nb_dim')
+                      'descriptor', 'alpha', 'beta')
 
     def __init__(self, workmem=None, inplace=False):
         """
@@ -608,7 +608,7 @@ class GpuDnnConv(DnnBase, COp):
 
         return [alg_def, alg_choose_def, alg_choose_time_def] + inpl_def
 
-    def make_node(self, img, kern, output, desc, alpha=None, beta=None, nb_dim=None):
+    def make_node(self, img, kern, output, desc, alpha=None, beta=None):
         img = as_cuda_ndarray_variable(img)
         kern = as_cuda_ndarray_variable(kern)
         output = as_cuda_ndarray_variable(output)
@@ -625,13 +625,12 @@ class GpuDnnConv(DnnBase, COp):
 
         alpha = ensure_float(alpha, _one, 'alpha')
         beta = ensure_float(beta, _zero, 'beta')
-        nb_dim = ensure_int(nb_dim, _ifour, 'nb_dim')
 
-        return Apply(self, [img, kern, output, desc, alpha, beta, nb_dim],
+        return Apply(self, [img, kern, output, desc, alpha, beta],
                      [output.type()])
 
     def grad(self, inp, grads):
-        img, kerns, output, desc, alpha, beta, nb_dim = inp
+        img, kerns, output, desc, alpha, beta = inp
         top, = grads
 
         top = gpu_contiguous(top)
@@ -640,14 +639,13 @@ class GpuDnnConv(DnnBase, COp):
         d_kerns = GpuDnnConvGradW()(img, top, gpu_alloc_empty(*kerns.shape), desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
         d_beta = grad_not_implemented(self, 5, beta)
-        d_nb_dim = grad_not_implemented(self, 6, nb_dim)
 
         return [d_img * alpha, d_kerns * alpha, top * beta,
-                DisconnectedType()(), d_alpha, d_beta, d_nb_dim]
+                DisconnectedType()(), d_alpha, d_beta]
 
     def connection_pattern(self, node):
         # not connected to desc
-        return [[1], [1], [1], [0], [1], [1], [1]]
+        return [[1], [1], [1], [0], [1], [1]]
 
     @staticmethod
     def get_out_shape(ishape, kshape, border_mode, subsample):
@@ -695,7 +693,7 @@ class GpuDnnConv3d(GpuDnnConv):
     """
     __props__ = ('workmem', 'inplace')
     __input_name__ = ('image', 'kernel', 'output',
-                      'descriptor', 'alpha', 'beta', 'nb_dim')
+                      'descriptor', 'alpha', 'beta')
 
     def __init__(self, workmem=None, inplace=False):
         """
@@ -705,7 +703,7 @@ class GpuDnnConv3d(GpuDnnConv):
         super(GpuDnnConv3d, self).__init__(workmem='guess', inplace=inplace)
         assert self.workmem in ['none', 'time','guess']
 
-    def make_node(self, img, kern, output, desc, alpha=None, beta=None, nb_dim=None):
+    def make_node(self, img, kern, output, desc, alpha=None, beta=None):
 
         img = as_cuda_ndarray_variable(img)
         kern = as_cuda_ndarray_variable(kern)
@@ -721,13 +719,12 @@ class GpuDnnConv3d(GpuDnnConv):
             raise TypeError('desc must be cudnnConvolutionDescriptor_t')
         alpha = ensure_float(alpha, _one, 'alpha')
         beta = ensure_float(beta, _zero, 'beta')
-        nb_dim = ensure_int(nb_dim, _ifive, 'nb_dim')
 
-        return Apply(self, [img, kern, output, desc, alpha, beta, nb_dim],
+        return Apply(self, [img, kern, output, desc, alpha, beta],
                      [output.type()])
 
     def grad(self, inp, grads):
-        img, kerns, output, desc, alpha, beta, nb_dim = inp
+        img, kerns, output, desc, alpha, beta = inp
         top, = grads
 
         top = gpu_contiguous(top)
@@ -736,10 +733,9 @@ class GpuDnnConv3d(GpuDnnConv):
         d_kerns = GpuDnnConvGrad3dW()(img, top, gpu_alloc_empty(*kerns.shape), desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
         d_beta = grad_not_implemented(self, 5, beta)
-        d_nb_dim = grad_not_implemented(self, 6, nb_dim)
 
         return [d_img * alpha, d_kerns * alpha, top * beta,
-                DisconnectedType()(), d_alpha, d_beta, d_nb_dim]
+                DisconnectedType()(), d_alpha, d_beta]
 
     @staticmethod
     def get_out_shape(ishape, kshape, border_mode, subsample):
@@ -788,7 +784,7 @@ class GpuDnnConvGradW(DnnBase, COp):
 
     """
     __props__ = ('workmem', 'inplace',)
-    __input_name__ = ('image', 'grad', 'output', 'descriptor', 'alpha', 'beta', 'nb_dim')
+    __input_name__ = ('image', 'grad', 'output', 'descriptor', 'alpha', 'beta')
 
     def __init__(self, inplace=False, workmem=None):
         COp.__init__(self, ["dnn_base.c", "dnn_conv_base.c", "dnn_gw.c"],
@@ -809,7 +805,7 @@ class GpuDnnConvGradW(DnnBase, COp):
             self.inplace = False
 
     def grad(self, inp, grads):
-        img, top, output, desc, alpha, beta, nb_dim = inp
+        img, top, output, desc, alpha, beta = inp
         kerns, = grads
 
         kerns = gpu_contiguous(kerns)
@@ -818,14 +814,13 @@ class GpuDnnConvGradW(DnnBase, COp):
         d_top = GpuDnnConv()(img, kerns, gpu_alloc_empty(*top.shape), desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
         d_beta = grad_not_implemented(self, 5, beta)
-        d_nb_dim = grad_not_implemented(self, 6, nb_dim)
 
         return (d_img * alpha, d_top * alpha, kerns * beta,
-                DisconnectedType()(), d_alpha, d_beta, d_nb_dim)
+                DisconnectedType()(), d_alpha, d_beta)
 
     def connection_pattern(self, node):
         # not connected to desc
-        return [[1], [1], [1], [0], [1], [1], [1]]
+        return [[1], [1], [1], [0], [1], [1]]
 
     def get_op_params(self):
         if self.inplace:
@@ -854,7 +849,7 @@ class GpuDnnConvGradW(DnnBase, COp):
 
         return inplace_def + [alg_def, alg_choose_def]
 
-    def make_node(self, img, topgrad, output, desc, alpha=None, beta=None, nb_dim=None):
+    def make_node(self, img, topgrad, output, desc, alpha=None, beta=None):
         img = as_cuda_ndarray_variable(img)
         topgrad = as_cuda_ndarray_variable(topgrad)
         output = as_cuda_ndarray_variable(output)
@@ -871,10 +866,8 @@ class GpuDnnConvGradW(DnnBase, COp):
 
         alpha = ensure_float(alpha, _one, 'alpha')
         beta = ensure_float(beta, _zero, 'beta')
-        nb_dim = ensure_int(nb_dim, _ifour, 'nb_dim')
 
-
-        return Apply(self, [img, topgrad, output, desc, alpha, beta, nb_dim],
+        return Apply(self, [img, topgrad, output, desc, alpha, beta],
                      [output.type()])
 
     def infer_shape(self, node, shape):
@@ -890,14 +883,14 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
 
     """
     __props__ = ('workmem', 'inplace',)
-    __input_name__ = ('image', 'grad', 'output', 'descriptor', 'alpha', 'beta', 'nb_dim')
+    __input_name__ = ('image', 'grad', 'output', 'descriptor', 'alpha', 'beta')
 
     def __init__(self, inplace=False, workmem=None):
         super(GpuDnnConv3dGradW, self).__init__(inplace=inplace, workmem='none')
         assert self.workmem in ['none', 'time','guess']
 
     def grad(self, inp, grads):
-        img, top, output, desc, alpha, beta, nb_dim = inp
+        img, top, output, desc, alpha, beta = inp
         kerns, = grads
 
         kerns = gpu_contiguous(kerns)
@@ -906,12 +899,11 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
         d_top = GpuDnnConv3d()(img, kerns, gpu_alloc_empty(*top.shape), desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
         d_beta = grad_not_implemented(self, 5, beta)
-        d_nb_dim = grad_not_implemented(self, 6, nb_dim)
 
         return (d_img * alpha, d_top * alpha, kerns * beta,
-                DisconnectedType()(), d_alpha, d_beta, d_nb_dim)
+                DisconnectedType()(), d_alpha, d_beta)
 
-    def make_node(self, img, topgrad, output, desc, alpha=None, beta=None, nb_dim=None):
+    def make_node(self, img, topgrad, output, desc, alpha=None, beta=None):
         img = as_cuda_ndarray_variable(img)
         topgrad = as_cuda_ndarray_variable(topgrad)
         output = as_cuda_ndarray_variable(output)
@@ -929,9 +921,8 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
 
         alpha = ensure_float(alpha, _one, 'alpha')
         beta = ensure_float(beta, _zero, 'beta')
-        nb_dim = ensure_int(nb_dim, _ifive, 'nb_dim')
 
-        return Apply(self, [img, topgrad, output, desc, alpha, beta, nb_dim],
+        return Apply(self, [img, topgrad, output, desc, alpha, beta],
                      [output.type()])
 
 
@@ -946,8 +937,7 @@ class GpuDnnConvGradI(DnnBase, COp):
 
     """
     __props__ = ('workmem', 'inplace',)
-    __input_name__ = ('kernel', 'grad', 'output',
-                      'descriptor', 'alpha', 'beta', 'nb_dim')
+    __input_name__ = ('kernel', 'grad', 'output', 'descriptor', 'alpha', 'beta')
 
     def __init__(self, inplace=False, workmem=None):
         COp.__init__(self, ["dnn_base.c", "dnn_conv_base.c", "dnn_gi.c"],
@@ -966,7 +956,7 @@ class GpuDnnConvGradI(DnnBase, COp):
             self.workmem = 'none'
 
     def grad(self, inp, grads):
-        kerns, top, output, desc, alpha, beta, nb_dim = inp
+        kerns, top, output, desc, alpha, beta = inp
         img, = grads
 
         img = gpu_contiguous(img)
@@ -975,14 +965,13 @@ class GpuDnnConvGradI(DnnBase, COp):
         d_top = GpuDnnConv()(img, kerns, gpu_alloc_empty(*top.shape), desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
         d_beta = grad_not_implemented(self, 5, beta)
-        d_nb_dim = grad_not_implemented(self, 6, nb_dim)
 
         return (d_kerns * alpha, d_top * alpha, img * beta,
-                DisconnectedType()(), d_alpha, d_beta, d_nb_dim)
+                DisconnectedType()(), d_alpha, d_beta)
 
     def connection_pattern(self, node):
         # not connected to desc
-        return [[1], [1], [1], [0], [1], [1], [1]]
+        return [[1], [1], [1], [0], [1], [1]]
 
     def get_op_params(self):
         if self.inplace:
@@ -1011,7 +1000,7 @@ class GpuDnnConvGradI(DnnBase, COp):
 
         return inplace_def + [alg_def, alg_choose_def]
 
-    def make_node(self, kern, topgrad, output, desc, alpha=None, beta=None, nb_dim=None):
+    def make_node(self, kern, topgrad, output, desc, alpha=None, beta=None):
         kern = as_cuda_ndarray_variable(kern)
         topgrad = as_cuda_ndarray_variable(topgrad)
         output = as_cuda_ndarray_variable(output)
@@ -1028,9 +1017,8 @@ class GpuDnnConvGradI(DnnBase, COp):
 
         alpha = ensure_float(alpha, _one, 'alpha')
         beta = ensure_float(beta, _zero, 'beta')
-        nb_dim = ensure_int(nb_dim, _ifour, 'nb_dim')
 
-        return Apply(self, [kern, topgrad, output, desc, alpha, beta, nb_dim],
+        return Apply(self, [kern, topgrad, output, desc, alpha, beta],
                      [output.type()])
 
     def infer_shape(self, node, shape):
@@ -1048,8 +1036,7 @@ class GpuDnnConv3dGradI(GpuDnnConvGradI):
 
     """
     __props__ = ('inplace',)
-    __input_name__ = ('kernel', 'grad', 'output',
-                      'descriptor', 'alpha', 'beta', 'nb_dim')
+    __input_name__ = ('kernel', 'grad', 'output', 'descriptor', 'alpha', 'beta')
 
     def __init__(self, inplace=False, workmem=None):
         ### deterministic (default value) is not yet supported for conv3d
@@ -1060,7 +1047,7 @@ class GpuDnnConv3dGradI(GpuDnnConvGradI):
 
 
     def grad(self, inp, grads):
-        kerns, top, output, desc, alpha, beta, nb_dim = inp
+        kerns, top, output, desc, alpha, beta = inp
         img, = grads
 
         img = gpu_contiguous(img)
@@ -1069,12 +1056,11 @@ class GpuDnnConv3dGradI(GpuDnnConvGradI):
         d_top = GpuDnnConv3d()(img, kerns, gpu_alloc_empty(*top.shape), desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
         d_beta = grad_not_implemented(self, 5, beta)
-        d_nb_dim = grad_not_implemented(self, 6, nb_dim)
 
         return (d_kerns * alpha, d_top * alpha, img * beta,
-                DisconnectedType()(), d_alpha, d_beta, d_nb_dim)
+                DisconnectedType()(), d_alpha, d_beta)
 
-    def make_node(self, kern, topgrad, output, desc, alpha=None, beta=None, nb_dim=None):
+    def make_node(self, kern, topgrad, output, desc, alpha=None, beta=None):
         kern = as_cuda_ndarray_variable(kern)
         topgrad = as_cuda_ndarray_variable(topgrad)
         output = as_cuda_ndarray_variable(output)
@@ -1091,9 +1077,8 @@ class GpuDnnConv3dGradI(GpuDnnConvGradI):
 
         alpha = ensure_float(alpha, _one, 'alpha')
         beta = ensure_float(beta, _zero, 'beta')
-        nb_dim = ensure_int(nb_dim, _ifive, 'nb_dim')
 
-        return Apply(self, [kern, topgrad, output, desc, alpha, beta, nb_dim],
+        return Apply(self, [kern, topgrad, output, desc, alpha, beta],
                      [output.type()])
 
 
