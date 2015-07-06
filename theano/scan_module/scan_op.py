@@ -1283,7 +1283,7 @@ class Scan(PureOp):
                 outs[j][0] = output_storage[jout].storage[0]
 
             pos = [(idx + 1) % store for idx, store in
-                               itertools.izip(pos, store_steps)]
+                               izip(pos, store_steps)]
             i = i + 1
 
         # 6. Check if you need to re-order output buffers
