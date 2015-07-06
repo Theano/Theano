@@ -306,7 +306,9 @@ def test_pooling():
 
 
 def test_pooling3d():
-    if not cuda.dnn.dnn_available():
+    # CuDNN 3d pooling requires CuDNN v3. Don't test if the CuDNN version is
+    # too old.
+    if not cuda.dnn.dnn_available() or cuda.dnn.version() < (3000, 3000):
         raise SkipTest(cuda.dnn.dnn_available.msg)
 
     x = T.TensorType(broadcastable=(False, False, False, False, False),
