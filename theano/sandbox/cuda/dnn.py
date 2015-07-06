@@ -1454,7 +1454,7 @@ if (!CudaNdarray_is_c_contiguous(%(input)s)) {
   %(fail)s
 }
 
-if (c_set_tensorNd(%(input)s, %(input)s->nd, %(input_desc)s) != 0)
+if (c_set_tensorNd(%(input)s, %(input_desc)s) != 0)
   %(fail)s
 
 cudnnPoolingMode_t mode;
@@ -1486,7 +1486,7 @@ if (CudaNdarray_prep_output(&%(out)s, ndims+2, %(out)s_dims) != 0)
   %(fail)s
 }
 
-if (c_set_tensorNd(%(out)s, %(out)s->nd, %(output_desc)s) != 0)
+if (c_set_tensorNd(%(out)s, %(output_desc)s) != 0)
   %(fail)s
 
 {
@@ -1642,11 +1642,11 @@ if (!CudaNdarray_is_c_contiguous(%(output)s)) {
   %(fail)s
 }
 
-if (c_set_tensorNd(%(input)s, %(input)s->nd, %(input_desc)s) != 0)
+if (c_set_tensorNd(%(input)s, %(input_desc)s) != 0)
   %(fail)s
-if (c_set_tensorNd(%(input_grad)s, %(input_grad)s->nd, %(input_grad_desc)s) != 0)
+if (c_set_tensorNd(%(input_grad)s, %(input_grad_desc)s) != 0)
   %(fail)s
-if (c_set_tensorNd(%(output)s, %(output)s->nd, %(output_desc)s) != 0)
+if (c_set_tensorNd(%(output)s, %(output_desc)s) != 0)
   %(fail)s
 
 if (CudaNdarray_prep_output(&%(output_grad)s,
@@ -1656,7 +1656,7 @@ if (CudaNdarray_prep_output(&%(output_grad)s,
   %(fail)s
 }
 
-if (c_set_tensorNd(%(output_grad)s, %(output_grad)s->nd, %(output_grad_desc)s) != 0)
+if (c_set_tensorNd(%(output_grad)s, %(output_grad_desc)s) != 0)
   %(fail)s
 
 {

@@ -12,9 +12,9 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
     return 1;
   }
 
-  if (c_set_tensorNd(input, nb_dim, APPLY_SPECIFIC(input)) == -1)
+  if (c_set_tensorNd(input, APPLY_SPECIFIC(input)) == -1)
     return 1;
-  if (c_set_filterNd(kerns, nb_dim, APPLY_SPECIFIC(kerns)) == -1)
+  if (c_set_filterNd(kerns, APPLY_SPECIFIC(kerns)) == -1)
     return 1;
 
 #ifdef CONV_INPLACE
@@ -28,7 +28,7 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
     return 1;
 #endif
 
-   if (c_set_tensorNd(*output, nb_dim, APPLY_SPECIFIC(output)) == -1)
+   if (c_set_tensorNd(*output, APPLY_SPECIFIC(output)) == -1)
      return 1;
 
   {
