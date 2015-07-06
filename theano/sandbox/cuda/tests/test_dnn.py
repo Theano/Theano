@@ -339,8 +339,14 @@ def test_pooling3d():
                 out2 = pool3d2d(x, ds=(ws, ws, ws),
                                 strides=(stride, stride, stride),
                                 pad=pad, pool_func=func)
+
+                # For max pooling pool3d2d explicitly pads the input with
+                # -inf. Because of this, the compilation mode for the function
+                # that uses pool3d2d should not check for infinite values or
+                # it will falsely believe there is a error in the graph.
                 mode_without_gpu2 = mode_without_gpu.including()
                 mode_without_gpu2.check_isfinite = False
+
                 f1 = theano.function([x], out1, mode=mode_with_gpu)
                 assert any([isinstance(node.op, cuda.dnn.GpuDnnPool)
                             for node in f1.maker.fgraph.apply_nodes])
