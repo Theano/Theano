@@ -3,7 +3,7 @@
 int
 APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
                         CudaNdarray *im, cudnnConvolutionDescriptor_t desc,
-                        float alpha, float beta, int nb_dim, CudaNdarray **input) {
+                        float alpha, float beta, CudaNdarray **input) {
   cudnnStatus_t err = CUDNN_STATUS_SUCCESS;
 
   if (CudaNdarray_HOST_DIMS(im)[1] != CudaNdarray_HOST_DIMS(kerns)[1]) {
@@ -16,6 +16,8 @@ APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
     return 1;
   if (c_set_filterNd(kerns, APPLY_SPECIFIC(kerns)) == -1)
     return 1;
+
+  int nb_dim = CudaNdarray_NDIM(output);
 
 #ifdef CONV_INPLACE
   Py_XDECREF(*input);

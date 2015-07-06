@@ -3,7 +3,7 @@
 int
 APPLY_SPECIFIC(conv_gw)(CudaNdarray *input, CudaNdarray *output,
                         CudaNdarray *km, cudnnConvolutionDescriptor_t desc,
-                        float alpha, float beta, int nb_dim, CudaNdarray **kerns) {
+                        float alpha, float beta, CudaNdarray **kerns) {
   cudnnStatus_t err = CUDNN_STATUS_SUCCESS;
 
   if (CudaNdarray_HOST_DIMS(input)[1] != CudaNdarray_HOST_DIMS(km)[1]) {
@@ -16,6 +16,8 @@ APPLY_SPECIFIC(conv_gw)(CudaNdarray *input, CudaNdarray *output,
     return 1;
   if (c_set_tensorNd(output, APPLY_SPECIFIC(output)) == -1)
     return 1;
+
+  int nb_dim = CudaNdarray_NDIM(output);
 
 #ifdef CONV_INPLACE
   Py_XDECREF(*kerns);
