@@ -1260,7 +1260,7 @@ class GpuDnnPoolDesc(GpuOp):
         padX is the size of the left and right borders,
         padY is the size of the top and bottom borders.
     """
-    __props__ = ('ws', 'stride', 'mode', 'pad', 'nd')
+    __props__ = ('ws', 'stride', 'mode', 'pad')
 
     def c_headers(self):
         return ['cudnn.h', 'cudnn_helper.h']
@@ -1277,23 +1277,25 @@ class GpuDnnPoolDesc(GpuOp):
     def do_constant_folding(self, node):
         return False
 
-    def __init__(self, ws=(1, 1), stride=(1, 1), mode='max', pad=(0, 0), nd=2):
+    def __init__(self, ws=(1, 1), stride=(1, 1), mode='max', pad=(0, 0)):
         if mode == 'average':
             mode = 'average_inc_pad'
         assert mode in ('max', 'average_inc_pad', 'average_exc_pad')
         self.mode = mode
-        assert len(ws) == nd
+
+        assert len(ws) == len(stride) and len(stride) == len(pad)
+        assert len(ws) in (2, 3)
         self.ws = ws
-        assert len(stride) == nd
         self.stride = stride
-        assert len(stride) == nd
         self.pad = pad
+
         if (pad[0] != 0 or pad[1] != 0) and version() == -1:
             raise RuntimeError("CuDNN pooling with padding requires CuDNN v2")
-        assert nd in (2, 3)
-        if nd == 3 and version() < (3000, 3000):
+        if self.get_ndim() == 3 and version() < (3000, 3000):
             raise RuntimeError("CuDNN 3d pooling requires CuDNN v3")
-        self.nd = nd
+
+    def get_ndim(self):
+        return len(self.ws)
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -1345,7 +1347,7 @@ class GpuDnnPoolDesc(GpuOp):
   }
 }
 """ % dict(name=name, desc=desc, mode_flag=mode_flag, fail=sub['fail'],
-           nd=self.nd, win=', '.join(str(w) for w in self.ws),
+           nd=self.get_ndim(), win=', '.join(str(w) for w in self.ws),
            pad=', '.join(str(p) for p in self.pad),
            str=', '.join(str(s) for s in self.stride))
 
@@ -1369,7 +1371,7 @@ class GpuDnnPool(DnnBase):
             raise TypeError('desc must be cudnnPoolingDescriptor_t')
 
         dop = desc.owner.op
-        e_ndim = dop.nd + 2  # 4 or 5
+        e_ndim = dop.get_ndim() + 2  # 4 or 5
 
         if img.type.ndim != e_ndim:
             raise TypeError('img must be %dD tensor' % e_ndim)
@@ -1378,7 +1380,7 @@ class GpuDnnPool(DnnBase):
 
     def infer_shape(self, node, shape):
         desc = node.inputs[1].owner.op
-        nd = desc.nd
+        nd = desc.get_ndim()
         w = desc.ws
         s = desc.stride
         p = desc.pad
@@ -1526,7 +1528,7 @@ class GpuDnnPoolGrad(DnnBase):
                 or desc.type.ctype != 'cudnnPoolingDescriptor_t':
             raise TypeError('desc must be cudnnPoolingDescriptor_t')
 
-        nd = desc.owner.op.nd + 2  # 4 or 5
+        nd = desc.owner.op.get_ndim() + 2  # 4 or 5
 
         inp = as_cuda_ndarray_variable(inp)
         if inp.type.ndim != nd:
@@ -1672,7 +1674,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
         return [shape[0]]
 
 
-def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0), nd=2):
+def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
     """
     GPU pooling using cuDNN from NVIDIA.
 
@@ -1697,7 +1699,7 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0), nd=2):
     :note: This Op implements the ignore_border=True of max_pool_2d.
     """
     img = gpu_contiguous(img)
-    desc = GpuDnnPoolDesc(ws=ws, stride=stride, mode=mode, pad=pad, nd=nd)()
+    desc = GpuDnnPoolDesc(ws=ws, stride=stride, mode=mode, pad=pad)()
     return GpuDnnPool()(img, desc)
 
 

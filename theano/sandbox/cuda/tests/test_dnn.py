@@ -333,7 +333,7 @@ def test_pooling3d():
                     continue
                 out1 = cuda.dnn.dnn_pool(x, (ws, ws, ws),
                                          stride=(stride, stride, stride),
-                                         pad=pad, mode=mode, nd=3)
+                                         pad=pad, mode=mode)
                 out2 = pool3d2d(x, ds=(ws, ws, ws),
                                 strides=(stride, stride, stride),
                                 pad=pad, pool_func=func)
@@ -373,7 +373,7 @@ def test_pooling3d():
                     x, ws=(ws, ws, ws),
                     stride=(stride, stride, stride),
                     pad=pad,
-                    mode=mode, nd=3)
+                    mode=mode)
                 return dnn_op
             theano.tests.unittest_tools.verify_grad(
                 fn, [data],
