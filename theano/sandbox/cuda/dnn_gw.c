@@ -147,7 +147,7 @@ APPLY_SPECIFIC(conv_gw)(CudaNdarray *input, CudaNdarray *output,
       if (stride_v != 1 || stride_h != 1 || input_h > 1024 ||
           input_w > 1024 || (filter_h == 1 && filter_w == 1))
       {
-        chosen_algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
+        chosen_algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
       }
     }
 

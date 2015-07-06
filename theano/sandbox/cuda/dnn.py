@@ -356,7 +356,7 @@ AddConfigVar('dnn.conv.workmem',
 AddConfigVar('dnn.conv.workmem_bwd',
              "Default value for the workmem attribute of cudnn gradient "
              "convolutions.",
-             EnumStr('deterministic', 'none', 'fft', 'guess'),
+             EnumStr('none', 'deterministic', 'fft', 'guess'),
              in_c_key=False)
 
 
