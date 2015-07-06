@@ -606,7 +606,7 @@ class Function(object):
         outs = list(map(SymbolicOutput, fg_cpy.outputs[:len(maker.outputs)]))
         for out_ori, out_cpy in zip(maker.outputs, outs):
             out_cpy.borrow = out_ori.borrow
-            
+
         update_i = len(outs)
         for i, in_var in zip(ins, fg_cpy.inputs):
             i.variable = in_var
@@ -667,13 +667,13 @@ class Function(object):
 
         input_storage = [i.value for i in ins]
         # reinitialize new maker and create new function
-        f_cpy = maker.__class__(inputs=ins, outputs=outs,
-                                fgraph=fg_cpy,
+        f_cpy = maker.__class__(inputs=ins, outputs=outs, fgraph=fg_cpy,
                                 mode=maker.mode, profile=maker.profile,
                                 on_unused_input=maker.on_unused_input,
                                 function_builder=maker.function_builder,
-                                accept_inplace=maker.accept_inplace).create(
-                                input_storage, storage_map=new_storage_map)
+                                accept_inplace=maker.accept_inplace
+                                ).create(input_storage, 
+                                         storage_map=new_storage_map)
 
         for in_ori, in_cpy, ori, cpy in zip(maker.inputs, f_cpy.maker.inputs,
                                             self.input_storage,
