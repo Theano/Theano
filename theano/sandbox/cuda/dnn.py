@@ -555,11 +555,9 @@ class GpuDnnConv(DnnBase, COp):
         # are both unavailable.
         if version() < (3000, 3000):
             if self.workmem == 'fft':
-                raise RuntimeError("CuDNN's FFT convolution is only available "
-                                   "starting at CuDNN v3")
+                raise RuntimeError("CuDNN FFT convolution requires CuDNN v3")
             elif self.workmem == 'time':
-                raise RuntimeError("CuDNN's convolution timing option is only "
-                                   "available starting at CuDNN v3")
+                raise RuntimeError("CuDNN convolution timing requires CuDNN v3")
 
         assert self.workmem in ['none', 'small', 'large', 'fft', 'time',
                                 'guess']
@@ -1298,7 +1296,7 @@ class GpuDnnPoolDesc(GpuOp):
             raise RuntimeError("CuDNN pooling with padding requires CuDNN v2")
         assert nd in (2, 3)
         if nd == 3 and version() < (3000, 3000):
-            raise RuntimeError("3 pooling only supported on CuDNN v3")
+            raise RuntimeError("CuDNN 3d pooling requires CuDNN v3")
         self.nd = nd
 
     def __setstate__(self, d):
@@ -1729,8 +1727,7 @@ class GpuDnnSoftmaxBase(DnnBase):
         self.tensor_format = tensor_format
 
         if algo == 'log' and version() < (3000, 3000):
-            raise RuntimeError("CuDNN's log-softmax implementation is only "
-                               "supported starting at CuDNN v3")
+            raise RuntimeError("CuDNN log-softmax requires CuDNN v3")
 
         assert(algo in ('fast', 'accurate', 'log'))
         self.algo = algo
