@@ -4,8 +4,12 @@ from theano.compat import izip
 from theano.compile.function_module import orig_function
 from theano.compile import SharedVariable, rebuild_collect_shared
 from theano.gof import ops_with_inner_function
+<<<<<<< HEAD
 from theano.gof.graph import io_connection_pattern
 
+=======
+from theano.gof import graph, FunctionGraph
+>>>>>>> draft of infer_shape
 
 class OpFromGraph(gof.Op):
     """This creates an `Op` from inputs and outputs lists of variables.
@@ -140,6 +144,17 @@ class OpFromGraph(gof.Op):
         Return connection pattern of subfgraph defined by inputs and outputs
         """
         return io_connection_pattern(self.new_inputs, self.new_outputs)
+
+    def infer_shape(self, node, shapes):
+        # Construct a new fgraph
+        equiv = graph.clone_get_equiv(self.new_inputs, self.new_outputs)
+        replacement = dict((equiv[var], var) for var in self.new_inputs)
+        out_cpy = theano.clone([equiv[var] for var in self.new_outputs], replace=replacement)
+        fg = FunctionGraph(self.new_inputs, out_cpy)
+
+        in_shapes = dict([(v, shp) for v, shp in zip(fg.inputs, shapes)])
+        all_shapes = theano.tensor.utils.shape_of_variables(fg, in_shapes)
+        return [all_shapes[var] for var in fg.outputs]
 
     def grad(self, inputs, output_grads):
         # OpFromGraph doesn't implement a connection_pattern, so for

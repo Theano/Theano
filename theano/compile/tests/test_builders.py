@@ -151,6 +151,13 @@ class T_OpFromGraph(unittest.TestCase):
                          [True, False, True]]
         assert results == expect_result
 
+    def test_infer_shape(self):
+        x = T.matrix('x')
+        y = x+x
+        op_graph = OpFromGraph([x], [y], mode='FAST_RUN')
+        shapes = op_graph.infer_shape(None, [(5, 5)])
+        assert shapes[0] == (5, 5)
+
 
 if __name__ == '__main__':
     unittest.main()
