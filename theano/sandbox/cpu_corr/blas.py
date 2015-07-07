@@ -99,7 +99,7 @@ class BaseCpuCorrMM(gof.Op):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 3)
+        return ()
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -255,7 +255,6 @@ class BaseCpuCorrMM(gof.Op):
 
     // Infer output shape
     npy_intp out_dim[4];
-    //int out_dim[4];
     switch(direction) {
     case 0:  // forward pass
         // output is top: (batchsize, num_filters, height, width)
@@ -289,16 +288,16 @@ class BaseCpuCorrMM(gof.Op):
     // Prepare output array
     if ( !(%(out)s
            && PyArray_NDIM(%(out)s)==4
-           && PyArray_ISCONTIGUOUS(%(out)s)
+           && PyArray_IS_C_CONTIGUOUS(%(out)s)
            && PyArray_DIMS(%(out)s)[0]==out_dim[0]
            && PyArray_DIMS(%(out)s)[1]==out_dim[1]
            && PyArray_DIMS(%(out)s)[2]==out_dim[2]
            && PyArray_DIMS(%(out)s)[3]==out_dim[3]))
     {
         Py_XDECREF(%(out)s);
-        %(out)s = (PyArrayObject*)PyArray_EMPTY(4,
+        %(out)s = (PyArrayObject*)PyArray_Empty(4,
                                           out_dim,
-                                          PyArray_TYPE(%(top)s),
+                                          PyArray_DTYPE(%(weights)s),
                                           0);
         if (NULL == %(out)s)
         {

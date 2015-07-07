@@ -102,7 +102,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         return NULL;
     }
     // TODO Is this check needed?
-    if (!PyArray_ISCONTIGUOUS(bottom))
+    if (!PyArray_IS_C_CONTIGUOUS(bottom))
     {
         PyErr_Format(PyExc_ValueError,
                 "CpuCorrMM requires bottom to be C-contiguous, "
@@ -120,7 +120,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         return NULL;
     }
     // TODO Is this check needed?
-    if (PyArray_ISCONTIGUOUS(weight))
+    if (PyArray_IS_C_CONTIGUOUS(weight))
     {
         PyErr_Format(PyExc_ValueError,
                 "CpuCorrMM requires weight to be C-contiguous, "
@@ -138,7 +138,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         return NULL;
     }
     // TODO Is this check needed?
-    if (!PyArray_ISCONTIGUOUS(top))
+    if (!PyArray_IS_C_CONTIGUOUS(top))
     {
         PyErr_Format(PyExc_ValueError,
                 "CpuCorrMM requires top to be C-contiguous, "
@@ -190,9 +190,9 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     //int col_dim[2];
     col_dim[0] = (npy_intp)(nChannels * kW * kH);
     col_dim[1] = (npy_intp)(topHeight * topWidth);
-    PyArrayObject* col = (PyArrayObject*)PyArray_EMPTY(2,
+    PyArrayObject* col = (PyArrayObject*)PyArray_Empty(2,
 		                           col_dim,
-					   PyArray_TYPE(top),
+                                           PyArray_DTYPE(top),
 					   0);
     if (NULL == col)
     {
@@ -211,9 +211,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     const int N_ = col_dim[1];
     const int M_ = nFilters;
     const float one_f = 1.0f;
-    const double one_d = 1.0;
     const float zero_f = 0.0f;
-    const double zero_d = 0.0;
     char NTrans = 'N';
     char Trans = 'T';
 
