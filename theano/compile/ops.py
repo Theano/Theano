@@ -499,8 +499,13 @@ class FromFunctionOp(gof.Op):
         return 'FromFunctionOp{%s}' % self.__fn.__name__
 
     def make_node(self, *inputs):
-        assert len(inputs) == len(self.itypes)
-        assert all(inp.type == it for inp, it in zip(inputs, self.itypes))
+        if len(inputs) != len(self.itypes):
+            raise ValueError("We expected %d inputs but got %d." %
+                             (len(self.itypes), len(inputs)))
+        if not all(inp.type == it for inp, it in zip(inputs, self.itypes)):
+            raise TypeError(
+                "We expected inputs of types '%s' but got types '%s' " %
+                (str([inp.type for inp in inputs]), str(self.itypes)))
         return theano.Apply(self, inputs, [o() for o in self.otypes])
 
     def perform(self, node, inputs, outputs):
