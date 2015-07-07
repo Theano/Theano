@@ -925,8 +925,8 @@ def test_conv3d_gradweight():
                                              dCdH=dCdH.dimshuffle(0, 2, 3, 4, 1),
                                              WShape=filters_shape_s,
                                              d=subsample)
-        desc = dnn.GpuDnnConv3dDesc(border_mode='valid', subsample=subsample,
-                                    conv_mode='cross')(inputs.shape, kern.shape)
+        desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=subsample,
+                                  conv_mode='cross')(inputs.shape, kern.shape)
         gradW = dnn.GpuDnnConv3dGradW()(inputs, dCdH, kern, desc)
         f_ref = theano.function([], conv.dimshuffle(0, 4, 1, 2, 3))
         f = theano.function([], gradW, mode=mode_with_gpu)
@@ -977,8 +977,8 @@ def test_conv3d_gradinput():
         bottom_val = numpy.random.random(bottom_shape).astype('float32')
         bottom = shared(bottom_val)
 
-        desc = dnn.GpuDnnConv3dDesc(border_mode='valid', subsample=subsample,
-                                    conv_mode='cross')(bottom.shape, filters.shape)
+        desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=subsample,
+                                  conv_mode='cross')(bottom.shape, filters.shape)
         gradI = dnn.GpuDnnConv3dGradI()(filters, inputs, bottom, desc)
         f = theano.function([], gradI, mode=mode_with_gpu)
         res = f()

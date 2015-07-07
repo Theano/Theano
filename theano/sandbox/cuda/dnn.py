@@ -233,10 +233,10 @@ class GpuDnnConvDesc(GpuOp):
 
     def __init__(self, border_mode, subsample=(1, 1), conv_mode='conv'):
         if isinstance(border_mode, int):
-            border_mode = (border_mode, border_mode)
+            border_mode = (border_mode,) * len(subsample)
         if isinstance(border_mode, tuple):
-            pad_h, pad_w = map(int, border_mode)
-            border_mode = (pad_h, pad_w)
+            assert len(border_mode) == len(subsample)
+            border_mode = tuple(map(int, border_mode))
         if not ((isinstance(border_mode, tuple) and min(border_mode) >= 0) or
                 border_mode in ('valid', 'full')):
             raise ValueError(
@@ -244,7 +244,7 @@ class GpuDnnConvDesc(GpuOp):
                 '"valid", "full", an integer or a pair of'
                 ' integers'.format(border_mode))
         self.border_mode = border_mode
-        assert len(subsample) == 2
+        assert len(subsample) in [2, 3]
         self.subsample = subsample
         assert conv_mode in ('conv', 'cross')
         self.conv_mode = conv_mode
@@ -262,12 +262,14 @@ class GpuDnnConvDesc(GpuOp):
         img_shape, kern_shape = inputs
         desc, = outputs
 
+        nb_dim = len(self.subsample)
+
         if isinstance(self.border_mode, tuple):
-            pad_h_spec, pad_w_spec = map(int, self.border_mode)
-            assert pad_h_spec >= 0 and pad_w_spec >= 0
+            pad_desc = map(int, self.border_mode)
+            assert min(pad_desc) >= 0
             bmode = 2
         else:
-            pad_h_spec = pad_w_spec = 0
+            pad_desc = [0] * nb_dim
 
             if self.border_mode == "valid":
                 bmode = 1
@@ -280,11 +282,13 @@ class GpuDnnConvDesc(GpuOp):
         else:
             conv_flag = 'CUDNN_CROSS_CORRELATION'
 
+        pad_str = ", ".join([str(s) for s in pad_desc])
+        subsample_str = ", ".join([str(s) for s in self.subsample])
+        upscale_str = ", ".join(["1"] * nb_dim)
+
         return """
 {
   cudnnStatus_t err;
-  int pad_h%(name)s;
-  int pad_w%(name)s;
 
   if ((err = cudnnCreateConvolutionDescriptor(&%(desc)s)) != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_MemoryError, "could not allocate convolution "
@@ -292,42 +296,29 @@ class GpuDnnConvDesc(GpuOp):
     %(fail)s
   }
 
-  if (%(bmode)d == 2) {
-    pad_h%(name)s = %(pad_h_spec)d;
-    pad_w%(name)s = %(pad_w_spec)d;
-  } else if (%(bmode)d == 1) {
-    pad_h%(name)s = 0;
-    pad_w%(name)s = 0;
-  } else if (%(bmode)d == 0) {
-    pad_h%(name)s = *(npy_int64 *)PyArray_GETPTR1(%(kern_shape)s, 2) - 1;
-    pad_w%(name)s = *(npy_int64 *)PyArray_GETPTR1(%(kern_shape)s, 3) - 1;
-  } else {
-    PyErr_SetString(PyExc_ValueError, "bad border mode");
-    %(fail)s
+#if defined(CUDNN_VERSION) && CUDNN_VERSION >= 30
+
+  int pad[%(nb_dim)d] = {%(pad_str)s};
+  int subsample[%(nb_dim)d] = {%(subsample_str)s};
+  int upscale[%(nb_dim)d] = {%(upscale_str)s};
+
+  // Adjust padding values if using full convolution
+  if (%(bmode)d == 0) {
+    pad[0] = *(npy_int64 *)PyArray_GETPTR1(%(kern_shape)s, 2) - 1;
+    pad[1] = *(npy_int64 *)PyArray_GETPTR1(%(kern_shape)s, 3) - 1;
+    if (%(nb_dim)d >= 3) {
+        pad[2] = *(npy_int64 *)PyArray_GETPTR1(%(kern_shape)s, 4) - 1;
+    }
   }
-#if defined(CUDNN_VERSION) && CUDNN_VERSION >= 20
-  err = cudnnSetConvolution2dDescriptor(
+
+  err = cudnnSetConvolutionNdDescriptor(
   %(desc)s,
-  pad_h%(name)s,
-  pad_w%(name)s,
-  %(subsx)d, %(subsy)d, 1, 1,
+  %(nb_dim)d,
+  pad, subsample, upscale,
   %(conv_flag)s
   );
 #else
-  err = cudnnSetConvolutionDescriptorEx(
-  %(desc)s,
-  *(npy_int64 *)PyArray_GETPTR1(%(img_shape)s, 0),
-  *(npy_int64 *)PyArray_GETPTR1(%(img_shape)s, 1),
-  *(npy_int64 *)PyArray_GETPTR1(%(img_shape)s, 2),
-  *(npy_int64 *)PyArray_GETPTR1(%(img_shape)s, 3),
-  *(npy_int64 *)PyArray_GETPTR1(%(kern_shape)s, 0),
-  *(npy_int64 *)PyArray_GETPTR1(%(kern_shape)s, 2),
-  *(npy_int64 *)PyArray_GETPTR1(%(kern_shape)s, 3),
-  pad_h%(name)s,
-  pad_w%(name)s,
-  %(subsx)d, %(subsy)d, 1, 1,
-  %(conv_flag)s
-  );
+  PyErr_Format(PyExc_RuntimeError, "could not set op descriptor: CUDNN_VERSION must be >= 30");
 #endif
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError, "could not set op descriptor: %%s",
@@ -337,8 +328,8 @@ class GpuDnnConvDesc(GpuOp):
 }
 """ % dict(name=name, img_shape=img_shape, kern_shape=kern_shape, desc=desc,
            bmode=bmode, conv_flag=conv_flag, fail=sub['fail'],
-           subsx=self.subsample[0], subsy=self.subsample[1],
-           pad_h_spec=pad_h_spec, pad_w_spec=pad_w_spec)
+           pad_str=pad_str, subsample_str=subsample_str,
+           upscale_str=upscale_str, nb_dim=nb_dim)
 
     def c_code_cache_version(self):
         return (2, version())
@@ -354,136 +345,6 @@ AddConfigVar('dnn.conv.workmem_bwd',
              "convolutions.",
              EnumStr('none', 'deterministic', 'fft', 'guess'),
              in_c_key=False)
-
-
-
-class GpuDnnConv3dDesc(GpuOp):
-    """This Op builds a 3d convolution descriptor for use in the other
-    3d convolution operations.
-
-    see the doc of :func:`dnn_conv` for a description of the parameters
-
-    """
-    __props__ = ('border_mode', 'subsample', 'conv_mode')
-
-    def c_headers(self):
-        return ['cudnn.h', 'cudnn_helper.h']
-
-    def c_header_dirs(self):
-        return [os.path.dirname(__file__)]
-
-    def c_libraries(self):
-        return ['cudnn']
-
-    def c_compiler(self):
-        return NVCC_compiler
-
-    def __init__(self, border_mode, subsample=(1, 1), conv_mode='conv'):
-        if isinstance(border_mode, int):
-            border_mode = (border_mode, border_mode, border_mode)
-        if isinstance(border_mode, tuple):
-            pad_d, pad_h, pad_w = map(int, border_mode)
-            border_mode = (pad_d, pad_h, pad_w)
-        if not ((isinstance(border_mode, tuple) and min(border_mode) >= 0) or
-                border_mode in ('valid', 'full')):
-            raise ValueError(
-                'invalid border_mode {}, which must be either '
-                '"valid", "full", an integer or a pair of'
-                ' integers'.format(border_mode))
-        self.border_mode = border_mode
-        assert len(subsample) == 3
-        self.subsample = subsample
-        assert conv_mode in ('conv', 'cross')
-        self.conv_mode = conv_mode
-
-    def make_node(self, img_shape, kern_shape):
-        if img_shape.type.ndim != 1 or img_shape.type.dtype != 'int64':
-            raise TypeError('img must be 1D shape tensor')
-        if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
-            raise TypeError('kern must be 1D shape tensor')
-
-        return Apply(self, [img_shape, kern_shape],
-                     [CDataType("cudnnConvolutionDescriptor_t")()])
-
-    def c_code(self, node, name, inputs, outputs, sub):
-        img_shape, kern_shape = inputs
-        desc, = outputs
-
-        if isinstance(self.border_mode, tuple):
-            pad_d_spec, pad_h_spec, pad_w_spec = map(int, self.border_mode)
-            assert pad_d_spec, pad_h_spec >= 0 and pad_w_spec >= 0
-            bmode = 2
-        else:
-            pad_d_spec = pad_h_spec = pad_w_spec = 0
-
-            if self.border_mode == "valid":
-                bmode = 1
-            else:
-                assert self.border_mode == "full"
-                bmode = 0
-
-        if self.conv_mode == 'conv':
-            conv_flag = 'CUDNN_CONVOLUTION'
-        else:
-            conv_flag = 'CUDNN_CROSS_CORRELATION'
-
-        return """
-{
-  cudnnStatus_t err;
-  int pad[3];
-
-  if ((err = cudnnCreateConvolutionDescriptor(&%(desc)s)) != CUDNN_STATUS_SUCCESS) {
-    PyErr_Format(PyExc_MemoryError, "could not allocate convolution "
-                 "descriptor: %%s", cudnnGetErrorString(err));
-    %(fail)s
-  }
-
-  if (%(bmode)d == 2) {
-    pad[0] = %(pad_d_spec)d;
-    pad[1] = %(pad_h_spec)d;
-    pad[2] = %(pad_w_spec)d;
-  } else if (%(bmode)d == 1) {
-    pad[0] = 0;
-    pad[1] = 0;
-    pad[2] = 0;
-  } else if (%(bmode)d == 0) {
-    pad[0] = *(npy_int64 *)PyArray_GETPTR1(%(kern_shape)s, 2) - 1;
-    pad[1] = *(npy_int64 *)PyArray_GETPTR1(%(kern_shape)s, 3) - 1;
-    pad[2] = *(npy_int64 *)PyArray_GETPTR1(%(kern_shape)s, 4) - 1;
-  } else {
-    PyErr_SetString(PyExc_ValueError, "bad border mode");
-    %(fail)s
-  }
-#if defined(CUDNN_VERSION) && CUDNN_VERSION >= 30
-  int subsample[3];
-  subsample[0] = %(subsd)d;
-  subsample[1] = %(subsx)d;
-  subsample[2] = %(subsy)d;
-
-  int upscale[3] = {1, 1, 1};
-
-  err = cudnnSetConvolutionNdDescriptor(
-  %(desc)s,
-  3,
-  pad, subsample, upscale,
-  %(conv_flag)s
-  );
-#else
-    PyErr_Format(PyExc_RuntimeError, "could not set op descriptor: CUDNN_VERSION must be >= 30");
-#endif
-  if (err != CUDNN_STATUS_SUCCESS) {
-    PyErr_Format(PyExc_RuntimeError, "could not set op descriptor: %%s",
-                 cudnnGetErrorString(err));
-    %(fail)s
-  }
-}
-""" % dict(name=name, img_shape=img_shape, kern_shape=kern_shape, desc=desc,
-           bmode=bmode, conv_flag=conv_flag, fail=sub['fail'],
-           subsd=self.subsample[0], subsx=self.subsample[1], subsy=self.subsample[2],
-           pad_d_spec=pad_d_spec, pad_h_spec=pad_h_spec, pad_w_spec=pad_w_spec)
-
-    def c_code_cache_version(self):
-        return (2, version())
 
 
 # scalar constants
@@ -1209,8 +1070,8 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
         shape4 = shape_i(img, 4, fgraph) - shape_i(kerns, 4, fgraph) + 1
         out = gpu_alloc_empty(shape_i(kerns, 1, fgraph),
                         shape_i(img, 1, fgraph), shape2, shape3, shape3)
-        desc = GpuDnnConv3dDesc(border_mode='valid', subsample=(1, 1, 1),
-                                conv_mode='cross')(img.shape, out.shape)
+        desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1, 1),
+                              conv_mode='cross')(img.shape, out.shape)
         conv = GpuDnnConv3dGradW()(img, kerns, out, desc)
         return as_cuda_ndarray_variable(conv.dimshuffle(1, 0, 2, 3, 4))
 
@@ -1227,8 +1088,8 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
         shape4 = shape_i(img, 4, fgraph) + shape_i(kerns, 4, fgraph) - 1
         out = gpu_alloc_empty(shape_i(img, 0, fgraph),
                         shape_i(kerns, 1, fgraph), shape2, shape3, shape4)
-        desc = GpuDnnConv3dDesc(border_mode='valid', subsample=(1, 1, 1),
-                                conv_mode=conv_mode)(out.shape, kerns.shape)
+        desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1, 1),
+                              conv_mode=conv_mode)(out.shape, kerns.shape)
         return GpuDnnConv3dGradI()(kerns, img, out, desc)
 
     # Standard case: We use GpuDnnConv with suitable padding.
@@ -1236,15 +1097,14 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
     # if the img contains negative strides
     img = gpu_contiguous(img)
     kerns = gpu_contiguous(kerns)
-    desc = GpuDnnConv3dDesc(border_mode=border_mode, subsample=subsample,
-                            conv_mode=conv_mode)(img.shape, kerns.shape)
+    desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
+                          conv_mode=conv_mode)(img.shape, kerns.shape)
     desc_op = desc.owner.op
     out_shp = GpuDnnConv3d.get_out_shape(img.shape, kerns.shape,
                                        desc_op.border_mode,
                                        desc_op.subsample)
     out = gpu_alloc_empty(*out_shp)
     return GpuDnnConv3d(workmem=workmem)(img, kerns, out, desc)
-
 
 
 class GpuDnnPoolDesc(GpuOp):
