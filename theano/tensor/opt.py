@@ -3597,12 +3597,17 @@ def local_fill_sink(node):
     # The newly created node c doesn't has 'clients',
     # so this iteration is took place with node.outputs[0]
     replacements = {node.outputs[0]: c}
-    for client, _ in node.outputs[0].clients:
+    for client, cl_idx in node.outputs[0].clients:
         if (hasattr(client, 'op') and
                 isinstance(client.op, T.Elemwise) and
                 not client.op == T.fill):
-            # import ipdb; ipdb.set_trace()
-            r = local_fill_sink.transform(client)
+            client_inputs = client.inputs[:]
+            client_inputs[cl_idx] = c
+            new_client = client.op(*client_inputs)
+
+            # Add clients to new_client
+            new_client.owner.outputs[0].clients = client.outputs[0].clients
+            r = local_fill_sink.transform(new_client.owner)
             if r is False:
                 continue
             replacements.pop(node.outputs[0], None)
