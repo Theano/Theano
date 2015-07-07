@@ -16,7 +16,7 @@ Guide
 
 The NanGuardMode aims to prevent the model from outputing NaNs or Infs. It has
 a number of self-checks, which can help to find out which apply node is
-generating those incorrect outputs. It provides automatic detection on 3 types
+generating those incorrect outputs. It provides automatic detection of 3 types
 of abnormal values: NaNs, Infs, and abnormally big values.
 
 NanGuardMode can be used as follows:
@@ -32,7 +32,7 @@ NanGuardMode can be used as follows:
     )
 
 While using the theano function ``fun``, it will monitor the values of each
-input and output variable of each node. As long as the abnormal values are
+input and output variable of each node. When abnormal values are
 detected, it raises an error to indicate which node yields the NaNs. For
 example, if we pass the following values to ``fun``:
 
