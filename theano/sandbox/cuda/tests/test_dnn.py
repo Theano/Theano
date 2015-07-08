@@ -574,6 +574,45 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 dnn.GpuDnnConv
             )
 
+    def test_conv3d(self):
+        if not dnn.dnn_available():
+            raise SkipTest(dnn.dnn_available.msg)
+        ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
+        img = ftensor5('img')
+        kerns = ftensor5('kerns')
+        out = ftensor5('out')
+        img_val = numpy.asarray(
+            numpy.random.rand(7, 2, 6, 4, 5),
+            dtype='float32'
+        )
+        kern_vals = numpy.asarray(
+            numpy.random.rand(8, 2, 4, 3, 1),
+            dtype='float32'
+        )
+
+        for params in product(
+            ['valid', 'full'],
+            [(1, 1, 1), (2, 2, 2)],
+            ['conv', 'cross']
+        ):
+            out_vals = numpy.zeros(
+                dnn.GpuDnnConv3d.get_out_shape(img_val.shape, kern_vals.shape,
+                                               border_mode=params[0],
+                                               subsample=params[1]),
+                dtype='float32')
+            desc = dnn.GpuDnnConvDesc(
+                border_mode=params[0],
+                subsample=params[1],
+                conv_mode=params[2]
+            )(img.shape, kerns.shape)
+            conv = dnn.GpuDnnConv3d()(img, kerns, out, desc)
+            self._compile_and_check(
+                [img, kerns, out],
+                [conv],
+                [img_val, kern_vals, out_vals],
+                dnn.GpuDnnConv3d
+            )
+
     def test_conv_gradw(self):
         if not dnn.dnn_available():
             raise SkipTest(dnn.dnn_available.msg)
