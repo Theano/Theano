@@ -599,7 +599,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         kerns = ftensor5('kerns')
         out = ftensor5('out')
         img_val = numpy.asarray(
-            numpy.random.rand(7, 2, 6, 4, 5),
+            numpy.random.rand(7, 2, 6, 4, 11),
             dtype='float32'
         )
         kern_vals = numpy.asarray(
