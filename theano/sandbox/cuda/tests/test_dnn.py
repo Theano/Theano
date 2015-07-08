@@ -575,8 +575,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
             )
 
     def test_conv3d(self):
-        if not dnn.dnn_available():
-            raise SkipTest(dnn.dnn_available.msg)
+        if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
+            raise SkipTest('"CuDNN 3D convolution requires CuDNN v2')
         ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
         img = ftensor5('img')
         kerns = ftensor5('kerns')
@@ -663,8 +663,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
             )
 
     def test_conv3d_gradw(self):
-        if not dnn.dnn_available():
-            raise SkipTest(dnn.dnn_available.msg)
+        if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
+            raise SkipTest('"CuDNN 3D convolution requires CuDNN v2')
         ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
         img = ftensor5('img')
         kerns = ftensor5('kerns')
@@ -708,8 +708,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
             )
 
     def test_conv_gradi(self):
-        if not dnn.dnn_available():
-            raise SkipTest(dnn.dnn_available.msg)
+        if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
+            raise SkipTest('"CuDNN 3D convolution requires CuDNN v2')
         img = T.ftensor4('img')
         kerns = T.ftensor4('kerns')
         out = T.ftensor4('out')
@@ -1023,8 +1023,8 @@ def get_conv3d_test_cases():
 
 def test_conv3d_fwd():
 
-    if not cuda.dnn.dnn_available() and dnn.version()[0] >= 3000:
-        raise SkipTest('"CuDNN 3D convolution requires CuDNN v3')
+    if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
+        raise SkipTest('"CuDNN 3D convolution requires CuDNN v2')
 
     def run_conv3d_fwd(inputs_shape, filters_shape, subsample,
                        border_mode, conv_mode):
@@ -1087,8 +1087,8 @@ def test_conv3d_fwd():
 
 def test_conv3d_bwd():
 
-    if not cuda.dnn.dnn_available() and dnn.version()[0] >= 3000:
-        raise SkipTest('"CuDNN 3D convolution requires CuDNN v3')
+    if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
+        raise SkipTest('"CuDNN 3D convolution requires CuDNN v2')
 
     def run_conv3d_bwd(inputs_shape, filters_shape, subsample,
                        border_mode, conv_mode):
