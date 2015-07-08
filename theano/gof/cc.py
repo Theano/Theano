@@ -559,8 +559,10 @@ class CLinker(link.Linker):
             #            what to do at the beginning of each run,
             #            what to do at the end of each run]]
             if variable in self.inputs:
-                # we need to extract the new inputs at each run
-                # they do not need to be relayed to Python, so we don't sync
+                # We need to extract the new inputs at each run
+                # they do not need to be relayed to Python, so we don't sync.
+                # If the variable is both an input and an output, there is
+                # no need to synchronize either, it is already up-to-date.
                 policy = [[get_nothing, get_nothing, get_nothing],
                           [get_c_declare, get_c_extract, get_c_cleanup]]
             elif variable in self.orphans:
@@ -972,6 +974,10 @@ class CLinker(link.Linker):
         if output_storage is None:
             map = {}
             output_storage = []
+            # Initialize the map with the inputs, as some outputs may
+            # be inputs as well.
+            for i, variable in enumerate(self.inputs):
+                map[variable] = input_storage[i]
             for variable in self.outputs:
                 if variable not in map:
                     map[variable] = [None]
