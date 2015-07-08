@@ -53,18 +53,4 @@ set to be ``True`` by default.
 Reference
 =========
 
-.. class:: NanGuardMode(Mode)
-
-    A Theano compilation Mode that makes the compiled function automatically
-    detect NaNs and Infs and raise an error if they occur.
-
-    Parameters
-    ----------
-    nan_is_error : bool
-        If True, raise an error anytime a NaN is encountered
-    inf_is_error: bool
-        If True, raise an error anytime an Inf is encountered.  Note that some
-        modules might use np.inf as a default value (e.g. mlp.max_pool in
-        pylearn2) and these will cause an error if inf_is_error is True.
-    big_is_error: bool
-        If True, raise an error when a value greater than 1e10 is encountered.
+.. autoclass:: theano.compile.nanguardmode.NanGuardMode
