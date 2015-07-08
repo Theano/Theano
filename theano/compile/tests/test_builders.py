@@ -107,6 +107,19 @@ class T_OpFromGraph(unittest.TestCase):
         fn = function([x, y, z], f)
         assert numpy.allclose(15.0 + s.get_value(),
                               fn(xv, yv, zv))
+    
+    def test_connection_pattern(self):
+        import numpy
+        x, y, z = T.matrices('xyz')
+        out1 = x * y
+        out2 = y * z
+
+        op = OpFromGraph([x ,y, z], [out1, out2], moe='FAST_RUN')
+        results = op.connection_pattern(None)
+        expect_result = [[True, False],
+                         [True, True],
+                         [False, True]]
+        assert results == expect_result
 
 
 if __name__ == '__main__':
