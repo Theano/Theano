@@ -282,10 +282,13 @@ def get_nothing(r, name, sub):
 
 def get_c_declare(r, name, sub):
     """Wrapper around c_declare that declares py_name"""
-
     if any([c != "output" and getattr(c.op, 'check_input',
            config.check_input) for (c, _) in r.clients]) or (
             r.owner and getattr(r.owner.op, 'check_input', True)):
+    #if any([getattr(c.op, 'check_input', config.check_input)
+    #        for (c, _) in r.clients
+    #        if not isinstance(c, string_types)]) or (r.owner
+
         c_declare = r.type.c_declare(name, sub, True)
     else:
         c_declare = r.type.c_declare(name, sub, False)
@@ -306,13 +309,15 @@ def get_c_init(r, name, sub):
 
 def get_c_extract(r, name, sub):
     """Wrapper around c_extract that initializes py_name from storage."""
-    if any([getattr(c.op, 'check_input', config.check_input) for (c, _) in
-            r.clients]):
+    if any([getattr(c.op, 'check_input', config.check_input)
+            for (c, _) in r.clients
+            if not isinstance(c, string_types)]):
         # check_broadcast is just an hack to easily remove just the
         # broadcast check on the old GPU back-end. This check isn't
         # done in the new GPU back-end or on the CPU.
-        if any([getattr(c.op, 'check_broadcast', True) for (c, _) in
-                r.clients]):
+        if any([getattr(c.op, 'check_broadcast', True)
+                for (c, _) in r.clients
+                if not isinstance(c, string_types)]):
             c_extract = r.type.c_extract(name, sub, True)
         else:
             try:
