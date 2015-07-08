@@ -362,3 +362,30 @@ def test_c_fail_error():
         print('Yay, TEST PASSED')
         return  # test passed
     assert 0  # test failed
+
+
+# Test bug reported on the mailing list by Alberto Orlandi
+# https://groups.google.com/d/topic/theano-users/6dLaEqc2R6g/discussion
+def test_shared_input_output():
+    # Not sure yet why this case is special.
+    # It may be that a shared variable is both an implicit input
+    # and an output.
+    inc = theano.tensor.iscalar('inc')
+    state = theano.shared(0)
+    linker = theano.gof.CLinker()
+    mode = theano.Mode(linker=linker)
+    f = theano.function([inc], state, updates=[(state, state + inc)],
+                        mode=mode)
+    g = theano.function([inc], state, updates=[(state, state + inc)])
+    theano.printing.debugprint(f)
+    theano.printing.debugprint(g)
+    assert f(0) == g(0) == 0
+
+    import numpy
+    vstate = theano.shared(numpy.zeros(3, dtype='int32'))
+    fv = theano.function([inc], vstate, updates=[(vstate, vstate + inc)],
+                         mode=mode)
+    gv = theano.function([inc], vstate, updates=[(vstate, vstate + inc)])
+    theano.printing.debugprint(fv)
+    theano.printing.debugprint(gv)
+    assert numpy.all(fv(0) == gv(0) == 0), (fv(0), gv(0))
