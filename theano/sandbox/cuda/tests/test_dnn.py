@@ -1013,7 +1013,7 @@ def get_conv3d_test_cases():
                         [(6, 2, 2, 2, 2), (4, 2, 1, 1, 3), (1, 1, 1)],
                         [(6, 2, 2, 2, 2), (4, 2, 5, 5, 5), (1, 1, 1)],
                    ]
-    border_modes = ['valid', 'full', (1, 2, 3), (3, 2, 1)]
+    border_modes = ['valid', 'full', (1, 2, 3), (3, 2, 1), 1, 2]
     conv_modes = ['conv', 'cross']
 
     itt = chain(product(test_shapes, border_modes, conv_modes),
@@ -1057,7 +1057,10 @@ def test_conv3d_fwd():
             if border_mode == 'full':
                 pad_per_dim = [filters_shape[i] - 1 for i in range(2,5)]
             else:
-                pad_per_dim = border_mode
+                if isinstance(border_mode, int):
+                    pad_per_dim = [border_mode] * 3
+                else:
+                    pad_per_dim = border_mode
 
             pad_before_after = ([(0, 0), (0, 0)] +
                                 [(p, p) for p in pad_per_dim])
@@ -1121,7 +1124,10 @@ def test_conv3d_bwd():
             if border_mode == 'full':
                 pad_per_dim = [filters_shape[i] - 1 for i in range(2,5)]
             else:
-                pad_per_dim = border_mode
+                if isinstance(border_mode, int):
+                    pad_per_dim = [border_mode] * 3
+                else:
+                    pad_per_dim = border_mode
 
             pad_before_after = ([(0, 0), (0, 0)] +
                                 [(p, p) for p in pad_per_dim])
