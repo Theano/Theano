@@ -584,8 +584,8 @@ class GpuDnnConv3d(GpuDnnConv):
 
         top = gpu_contiguous(top)
 
-        d_img = GpuDnnConvGrad3dI()(kerns, top, gpu_alloc_empty(*img.shape), desc)
-        d_kerns = GpuDnnConvGrad3dW()(img, top, gpu_alloc_empty(*kerns.shape), desc)
+        d_img = GpuDnnConv3dGradI()(kerns, top, gpu_alloc_empty(*img.shape), desc)
+        d_kerns = GpuDnnConv3dGradW()(img, top, gpu_alloc_empty(*kerns.shape), desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
         d_beta = grad_not_implemented(self, 5, beta)
 
@@ -750,7 +750,7 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
 
         kerns = gpu_contiguous(kerns)
 
-        d_img = GpuDnnConvGrad3dI()(kerns, top, gpu_alloc_empty(*img.shape), desc)
+        d_img = GpuDnnConv3dGradI()(kerns, top, gpu_alloc_empty(*img.shape), desc)
         d_top = GpuDnnConv3d()(img, kerns, gpu_alloc_empty(*top.shape), desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
         d_beta = grad_not_implemented(self, 5, beta)
@@ -907,7 +907,7 @@ class GpuDnnConv3dGradI(GpuDnnConvGradI):
 
         img = gpu_contiguous(img)
 
-        d_kerns = GpuDnnConvGrad3dW()(img, top, gpu_alloc_empty(*kerns.shape), desc)
+        d_kerns = GpuDnnConv3dGradW()(img, top, gpu_alloc_empty(*kerns.shape), desc)
         d_top = GpuDnnConv3d()(img, kerns, gpu_alloc_empty(*top.shape), desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
         d_beta = grad_not_implemented(self, 5, beta)
