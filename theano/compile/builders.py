@@ -4,12 +4,11 @@ from theano.compat import izip
 from theano.compile.function_module import orig_function
 from theano.compile import SharedVariable, rebuild_collect_shared
 from theano.gof import ops_with_inner_function
-<<<<<<< HEAD
 from theano.gof.graph import io_connection_pattern
 
-=======
 from theano.gof import graph, FunctionGraph
->>>>>>> draft of infer_shape
+from theano.gof import FunctionGraph
+
 
 class OpFromGraph(gof.Op):
     """This creates an `Op` from inputs and outputs lists of variables.
@@ -166,9 +165,9 @@ class OpFromGraph(gof.Op):
             assert all([var in shape_map.keys() for var in node.inputs])
 
             # calculate output shape
-            in_shapes = [ shape_map[var] for var in node.inputs]
+            in_shapes = [shape_map[var] for var in node.inputs]
             out_shapes = node.op.infer_shape(node, in_shapes)
-            
+
             # store the shape of that variable
             for out_var, shape in zip(node.outputs, out_shapes):
                 shape_map.setdefault(out_var, shape)
