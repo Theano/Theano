@@ -1596,76 +1596,47 @@ def local_useless_elemwise(node):
         elif node.op.scalar_op == theano.scalar.add and len(node.inputs) == 1:
             # No need to copy over any stack trace
             return [node.inputs[0]]
-            
-        elif (
-                node.op.scalar_op == theano.scalar.identity and
-                len(node.inputs) == 1
-        ):
+        elif node.op.scalar_op == theano.scalar.identity and \
+             len(node.inputs) == 1:
             return [node.inputs[0]]
 
-        elif (
-                isinstance(node.op.scalar_op, scalar.AND) and
-                len(node.inputs) == 2
-        ):
+        elif isinstance(node.op.scalar_op, scalar.AND) and \
+             len(node.inputs) == 2:
 
-            if (
-                    isinstance(node.inputs[0], T.TensorConstant) and
-                    T.extract_constant(node.inputs[0]) == 1
-            ):
-                return [node.inputs[1]]
+            if isinstance(node.inputs[0], T.TensorConstant):
+                const_val = T.extract_constant(node.inputs[0])
+                if const_val == 1:
+                    return [node.inputs[1]]
+                elif const_val == 0:
+                    return zeros_like(node, 1)
+            
+            if isinstance(node.inputs[1], T.TensorConstant):
+                const_val = T.extract_constant(node.inputs[1])
+                if const_val == 1:
+                    return [node.inputs[0]]
+                elif const_val == 0:
+                    return zeros_like(node, 0)
 
-            if (
-                    isinstance(node.inputs[1], T.TensorConstant) and
-                    T.extract_constant(node.inputs[1]) == 1
-            ):
-                return [node.inputs[0]]
+        elif isinstance(node.op.scalar_op, scalar.OR) and \
+             len(node.inputs) == 2:
 
-            if (
-                    isinstance(node.inputs[0], T.TensorConstant) and
-                    T.extract_constant(node.inputs[0]) == 0
-            ):
-                return zeros_like(node, 1)
+            if isinstance(node.inputs[0], T.TensorConstant):
+                const_val = T.extract_constant(node.inputs[0])
+                if const_val == 0:
+                    return [node.inputs[1]]
+                elif const_val == 1:
+                    return ones_like(node, 1)
 
-            if (
-                    isinstance(node.inputs[1], T.TensorConstant) and
-                    T.extract_constant(node.inputs[1]) == 0
-            ):
-                return zeros_like(node, 0)
+            if isinstance(node.inputs[1], T.TensorConstant):
+                const_val = T.extract_constant(node.inputs[1])
+                if const_val == 0:
+                    return [node.inputs[0]]
+                if const_val == 1:
+                    return ones_like(node, 0)
 
-        elif (
-                isinstance(node.op.scalar_op, scalar.OR) and
-                len(node.inputs) == 2
-        ):
-
-            if (
-                    isinstance(node.inputs[0], T.TensorConstant) and
-                    T.extract_constant(node.inputs[0]) == 0
-            ):
-                return [node.inputs[1]]
-
-            if (
-                    isinstance(node.inputs[1], T.TensorConstant) and
-                    T.extract_constant(node.inputs[1]) == 0
-            ):
-                return [node.inputs[0]]
-
-            if (
-                    isinstance(node.inputs[0], T.TensorConstant) and
-                    T.extract_constant(node.inputs[0]) == 1
-            ):
-                return ones_like(node, 1)
-
-            if (
-                    isinstance(node.inputs[1], T.TensorConstant) and
-                    T.extract_constant(node.inputs[1]) == 1
-            ):
-                return ones_like(node, 0)
-
-        elif (
-                isinstance(node.op.scalar_op, scalar.XOR) and
-                len(node.inputs) == 2
-        ):
-            if node.inputs[0] == node.inputs[1]:
+        elif isinstance(node.op.scalar_op, scalar.XOR) and \
+             len(node.inputs) == 2:
+            if node.inputs[0] is node.inputs[1]:
                 return zeros_like(node, 0)
 
 
