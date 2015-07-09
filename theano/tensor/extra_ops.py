@@ -5,6 +5,7 @@ from six.moves import xrange
 
 import theano
 from theano.tensor import basic
+from theano.tensor import nlinalg  # noqa
 from theano import gof, scalar
 from theano.gradient import DisconnectedType
 tensor = basic
