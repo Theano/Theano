@@ -708,8 +708,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
             )
 
     def test_conv_gradi(self):
-        if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
-            raise SkipTest('"CuDNN 3D convolution requires CuDNN v2')
+        if not dnn.dnn_available():
+            raise SkipTest(dnn.dnn_available.msg)
         img = T.ftensor4('img')
         kerns = T.ftensor4('kerns')
         out = T.ftensor4('out')
@@ -753,8 +753,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
             )
 
     def test_conv3d_gradi(self):
-        if not dnn.dnn_available():
-            raise SkipTest(dnn.dnn_available.msg)
+        if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
+            raise SkipTest('"CuDNN 3D convolution requires CuDNN v2')
         ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
         img = ftensor5('img')
         kerns = ftensor5('kerns')
