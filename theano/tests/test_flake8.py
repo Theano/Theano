@@ -184,7 +184,6 @@ whitelist_flake8 = [
     "scan_module/scan_opt.py",
     "scan_module/tests/test_scan.py",
     "scan_module/tests/test_scan_opt.py",
-    "misc/check_duplicate_key.py",
     "misc/tests/test_may_share_memory.py",
     "misc/tests/test_pycuda_theano_simple.py",
     "misc/tests/test_gnumpy_utils.py",
