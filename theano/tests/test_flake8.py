@@ -184,7 +184,6 @@ whitelist_flake8 = [
     "scan_module/scan_opt.py",
     "scan_module/tests/test_scan.py",
     "scan_module/tests/test_scan_opt.py",
-    "misc/pycuda_utils.py",
     "misc/pycuda_example.py",
     "misc/ordered_set.py",
     "misc/strutil.py",
