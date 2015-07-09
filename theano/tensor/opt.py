@@ -1390,7 +1390,7 @@ def local_fill_sink(node):
             r = local_fill_sink.transform(new_client.owner)
             if r is False:
                 continue
-            replacements.pop(node.outputs[0], None)
+            # replacements.pop(node.outputs[0], None)
             replacements.update(r)
     return replacements
 
