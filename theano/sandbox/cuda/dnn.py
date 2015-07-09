@@ -992,10 +992,11 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         return as_cuda_ndarray_variable(conv.dimshuffle(1, 0, 2, 3))
 
     elif (border_mode == 'full' and subsample == (1, 1) and
-          direction_hint != 'forward!'):
-        # Special case: We can be faster by using GpuDnnConvGradI to compute
-        # the full convolution as the backward pass of a valid convolution.
-        # We just need to set up a suitable 'fake' valid convolution.
+          direction_hint != 'forward!' and version() == -1):
+        # Special case: In CuDNN v1, we can be faster by using GpuDnnConvGradI
+        # to compute the full convolution as the backward pass of a valid
+        # convolution. We just need to set up a suitable 'fake' valid
+        # convolution.
         img = gpu_contiguous(img)  # cudnn v1 and v2 rc3 need contiguous data
         kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3))
         conv_mode = 'cross' if conv_mode == 'conv' else 'conv'
