@@ -3171,6 +3171,13 @@ def sqrt(x):
     # see decorator for function body
 
 
+@structured_monoid(tensor.conj)
+def conj(x):
+    """Elemwise complex conjugate of `x`.
+    """
+    # see decorator for function body
+
+
 class TrueDot(gof.op.Op):
 
     # TODO
