@@ -2,11 +2,11 @@
 Helper function to safely convert an array to a new data type.
 """
 
-__docformat__ = "restructuredtext en"
-
 import numpy
 
 import theano
+
+__docformat__ = "restructuredtext en"
 
 
 def _asarray(a, dtype, order=None):
@@ -45,11 +45,13 @@ def _asarray(a, dtype, order=None):
             return rval.view(dtype=dtype)
         else:
             # Unexpected mismatch: better know what is going on!
-            raise TypeError('numpy.array did not return the data type we '
-                    'asked for (%s %s #%s), instead it returned type '
-                    '%s %s #%s: function '
-                    'theano._asarray may need to be modified to handle this '
-                    'data type.' %
-                    (dtype, dtype.str, dtype.num, rval.dtype, rval.str, rval.dtype.num))
+            raise TypeError(
+                'numpy.array did not return the data type we '
+                'asked for (%s %s #%s), instead it returned type '
+                '%s %s #%s: function '
+                'theano._asarray may need to be modified to handle this '
+                'data type.' %
+                (dtype, dtype.str, dtype.num, rval.dtype, rval.str,
+                 rval.dtype.num))
     else:
         return rval
