@@ -150,7 +150,7 @@ class OpFromGraph(gof.Op):
         c_map = {}
         num_of_input = len(fgraph.inputs)
         # Initialize input connection pattern, each input affects itself
-        for index in range(num_of_input):
+        for index in xrange(num_of_input):
             vec = [False] * num_of_input
             vec[index] = True
             # Make use of numpy.array to simplify codes
@@ -163,6 +163,8 @@ class OpFromGraph(gof.Op):
             for var in node.inputs:
                 if not isinstance(var, theano.Constant):
                     in_vecs.append(c_map[var])
+                else:
+                    in_vecs.append(numpy.array([False] * num_of_input))
 
             if not hasattr(node.op, 'connection_pattern'):
                 # By default, nodes inputs affect all outputs

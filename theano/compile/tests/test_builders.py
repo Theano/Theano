@@ -145,9 +145,10 @@ class T_OpFromGraph(unittest.TestCase):
         out3 = 3 + rv_u
         op3 = OpFromGraph([x, y], [out1, out2, out3], mode='FAST_RUN')
 
-        results = op2.connection_pattern(None)
+        results = op3.connection_pattern(None)
         expect_result = [[True, False, False],
-                         [False, True, False]]
+                         [False, True, False],
+                         [True, False, True]]
         assert results == expect_result
 
 
