@@ -276,7 +276,7 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
             # Using "conda install mkl" will install both, as well as
             # optimized versions of numpy and scipy.
             try:
-                import mkl #noqa
+                import mkl  # noqa
             except ImportError as e:
                 _logger.info('Conda mkl is not available: %s', e)
             else:
@@ -1592,7 +1592,7 @@ class GemmOptimizer(Optimizer):
                     time_canonicalize += time1
                     time_factor_can += time2
                     time_factor_list += time3
-                except InconsistencyError as e:
+                except InconsistencyError:
                     nb_inconsistency_make += 1
                     continue
                 if new_outputs:
