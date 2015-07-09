@@ -109,12 +109,11 @@ class T_OpFromGraph(unittest.TestCase):
                               fn(xv, yv, zv))
     
     def test_connection_pattern(self):
-        import numpy
         x, y, z = T.matrices('xyz')
         out1 = x * y
         out2 = y * z
 
-        op = OpFromGraph([x ,y, z], [out1, out2], moe='FAST_RUN')
+        op = OpFromGraph([x ,y, z], [out1, out2], mode='FAST_RUN')
         results = op.connection_pattern(None)
         expect_result = [[True, False],
                          [True, True],
