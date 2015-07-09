@@ -1079,23 +1079,6 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
         conv = GpuDnnConv3dGradW()(img, kerns, out, desc)
         return as_cuda_ndarray_variable(conv.dimshuffle(1, 0, 2, 3, 4))
 
-    elif (border_mode == 'full' and subsample == (1, 1, 1) and
-          direction_hint != 'forward!'):
-        # Special case: We can be faster by using GpuDnnConvGradI to compute
-        # the full convolution as the backward pass of a valid convolution.
-        # We just need to set up a suitable 'fake' valid convolution.
-        img = gpu_contiguous(img)  # cudnn v1 and v2 rc3 need contiguous data
-        kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3, 4))
-        conv_mode = 'cross' if conv_mode == 'conv' else 'conv'
-        shape2 = shape_i(img, 2, fgraph) + shape_i(kerns, 2, fgraph) - 1
-        shape3 = shape_i(img, 3, fgraph) + shape_i(kerns, 3, fgraph) - 1
-        shape4 = shape_i(img, 4, fgraph) + shape_i(kerns, 4, fgraph) - 1
-        out = gpu_alloc_empty(shape_i(img, 0, fgraph),
-                        shape_i(kerns, 1, fgraph), shape2, shape3, shape4)
-        desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1, 1),
-                              conv_mode=conv_mode)(out.shape, kerns.shape)
-        return GpuDnnConv3dGradI()(kerns, img, out, desc)
-
     # Standard case: We use GpuDnnConv with suitable padding.
     # contig_version will return a gpu_contiguous copy
     # if the img contains negative strides
