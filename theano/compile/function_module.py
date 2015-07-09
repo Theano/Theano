@@ -789,7 +789,7 @@ def insert_deepcopy(fgraph, wrapped_inputs, wrapped_outputs):
     Insert deepcopy in the fgraph to break aliasing of outputs
     """
     # This loop was inserted to remove aliasing between outputs when
-    # they all evaluete to the same value. Originally it was OK for
+    # they all evaluate to the same value. Originally it was OK for
     # outputs to be aliased, but some of the outputs can be shared
     # variables, and is not good for shared variables to be
     # aliased. It might be possible to optimize this by making sure
