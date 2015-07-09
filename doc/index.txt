@@ -21,14 +21,15 @@ Montreal).
 News
 ====
 
+* Theano 0.7 was released 26th March 2015. Everybody is encouraged to update.
+
 * We support `cuDNN <http://deeplearning.net/software/theano/library/sandbox/cuda/dnn.html>`_ if it is installed by the user.
+
 * Open Machine Learning Workshop 2014 `presentation <omlw2014/omlw_presentation.pdf>`_.
 
 * Colin Raffel `tutorial on Theano <http://nbviewer.ipython.org/github/craffel/theano-tutorial/blob/master/Theano%20Tutorial.ipynb>`_.
 
 * Ian Goodfellow did a `12h class with exercises on Theano <https://github.com/goodfeli/theano_exercises>`_.
-
-* Theano 0.7 was released 26th March 2015. Everybody is encouraged to update.
 
 * New technical report on Theano: `Theano: new features and speed improvements <http://arxiv.org/abs/1211.5590>`_.
 
@@ -174,7 +175,7 @@ Community
 Help!
 =====
 
-How to get help
+How to seek help
 ---------------
 
 The appropriate venue for seeking help depends on the kind of question you have.
@@ -186,21 +187,25 @@ The appropriate venue for seeking help depends on the kind of question you have.
 * Why do you? -- `theano-users`_ mailing list (not appropriate for StackOverflow)
 * When will you? -- `theano-dev`_ mailing list (not appropriate for StackOverflow)
 
+Please do take some time to search for similar questions that were asked and answered in the past. If you find something
+similar that doesn't fully answer your question, it can be helpful to say something like "I found X but it doesn't
+address facet Y" and link to the previous discussion.
+
 When asking questions on StackOverflow, please use the *theano* tag, so your question can be found, and follow
 StackOverflow's guidance on `asking questions <http://stackoverflow.com/help/asking>`__. Consider also using the
 *python* and *numpy* tags, especially if you are unsure which library your problem relates to.
 
-It is often helpful to include the following details with your question:
+It's often helpful to include the following details with your question:
 
 * If you have an error, the *full* error message, even if it's long
-* The versions of Python and Theano you're using
+* Which versions of Python and Theano you're using
 * Whether you're using a CPU or GPU device
 * Details of your Theano configuration settings (you can print this in Python via `print theano.config <http://deeplearning.net/software/theano/library/config.html>`__)
 
 Spending the time to create a minimal specific example of a problem is likely to get you to an answer quicker than
 posting something quickly that has too much irrelevant detail or is too vague. A minimal example may take you a bit more
-time to create but the first response is more likely to be the answer you need than a frustrated request for
-clarification.
+time to create but the first response is more likely to be the answer you need than, rather than a frustrated request
+for clarification.
 
 
 How to provide help
@@ -213,7 +218,7 @@ We were all newbies to Theano once and, as the community expands, there is a con
 for help. Perhaps you asked a question when you were first starting out? Now you can pay it forward by helping others.
 It's also a good way to reinforce your own Theano knowledge.
 
-Often it is easiest to answer a question directly but sometimes it may be better to refer people to a good answer that
+Often it's easiest to answer a question directly but sometimes it may be better to refer people to a good answer that
 was provided in the past. Pointing people to relevant sections in the documentation, or to a Theano tutorial, can also
 be helpful.
 
