@@ -184,7 +184,6 @@ whitelist_flake8 = [
     "scan_module/scan_opt.py",
     "scan_module/tests/test_scan.py",
     "scan_module/tests/test_scan_opt.py",
-    "misc/elemwise_openmp_speedup.py",
     "misc/gh_api.py",
     "misc/check_blas.py",
     "misc/latence_gpu_transfert.py",
