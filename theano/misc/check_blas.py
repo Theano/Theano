@@ -7,13 +7,6 @@
 # a,b scalar
 from __future__ import print_function
 
-s = """
-result for shapes=(2000,2000) and iters=100
-GTX 470 7.22s
-GTX 285, 6.84s
-GTX 480 5.83s
-"""
-
 import os
 import sys
 import time
@@ -23,6 +16,13 @@ import subprocess
 import numpy
 import theano
 import theano.tensor as T
+
+s = """
+result for shapes=(2000,2000) and iters=100
+GTX 470 7.22s
+GTX 285, 6.84s
+GTX 480 5.83s
+"""
 
 
 def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
@@ -59,7 +59,7 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
         print('Numpy location:', numpy.__file__)
         print('Numpy version:', numpy.__version__)
         if (theano.config.device.startswith("gpu") or
-            theano.config.init_gpu_device.startswith("gpu")):
+                theano.config.init_gpu_device.startswith("gpu")):
             print('nvcc version:')
             subprocess.call((theano.sandbox.cuda.nvcc_compiler.nvcc_path,
                              "--version"))
@@ -116,8 +116,8 @@ def test():
 
 
 parser = OptionParser(
-        usage='%prog <options>\nCompute time needed to perform BLAS gemm '
-              'computations between matrices of size (M, N) and (N, K).')
+    usage='%prog <options>\nCompute time needed to perform BLAS gemm '
+    'computations between matrices of size (M, N) and (N, K).')
 
 parser.add_option('-q', '--quiet', action='store_true', dest='quiet',
                   default=False,
