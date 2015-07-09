@@ -13,7 +13,7 @@ try:
     cudamat_available = True
 
     import theano.sandbox.cuda as cuda
-    if cuda.cuda_available == False:
+    if cuda.cuda_available is False:
         raise ImportError('Optional theano package cuda disabled')
 
     def cudandarray_to_cudamat(x, copyif=False):
@@ -43,7 +43,7 @@ try:
             # Check if it is c contiguous
             size = 1
             c_contiguous = True
-            for i in range(x.ndim-1, -1, -1):
+            for i in range(x.ndim - 1, -1, -1):
                 if x.shape[i] == 1:
                     continue
                 if x._strides[i] != size:
@@ -73,11 +73,10 @@ try:
             cm_mat.data_device = ctypes.cast(x.gpudata, ctypes.POINTER(ctypes.c_float))
 
             px = cudamat.CUDAMatrix(cm_mat)
-
             px._base = x  # x won't be __del__'ed as long as px is around.
 
-            px.mat_on_host = False  # let cudamat know that we don't have a numpy
-                                   # array attached.
+            # let cudamat know that we don't have a numpy array attached.
+            px.mat_on_host = False
             return px
 
     def cudamat_to_cudandarray(x):
@@ -86,12 +85,12 @@ try:
         if not isinstance(x, cudamat.CUDAMatrix):
             raise ValueError("We can transfer only cudamat.CUDAMatrix to CudaNdarray")
         # elif x.dtype != "float32":
-        #     raise ValueError("CudaNdarray support only float32")
+        # raise ValueError("CudaNdarray support only float32")
         # We don't need this, because cudamat is always float32.
         else:
             strides = [1]
             for i in x.shape[::-1][:-1]:
-                strides.append(strides[-1]*i)
+                strides.append(strides[-1] * i)
             strides = tuple(strides[::-1])
 
             import ctypes
