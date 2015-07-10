@@ -6,6 +6,7 @@ from theano.compat import izip
 from theano.compile.function_module import orig_function
 from theano.compile import SharedVariable, rebuild_collect_shared
 from theano.gof import ops_with_inner_function, FunctionGraph
+from theano.gof.graph import io_connection_pattern
 
 
 class OpFromGraph(gof.Op):
@@ -138,58 +139,9 @@ class OpFromGraph(gof.Op):
 
     def connection_pattern(self, node):
         """
-        Connection_pattern is hard to calculate. In the function, we calculate
-        the transpose of connection_pattern, where M[output_index,input_index]
-        indicates whether input with index i affects output with index i.
-        At last we return the transpose of final result
+        Return connection pattern of subfgraph defined by inputs and outputs
         """
-        # or ori_inputs because user do not customize sharejvariable
-        fgraph = FunctionGraph(self.new_inputs, self.new_outputs)
-
-        # c for connection, stores the connection pattern of each variable
-        c_map = {}
-        num_of_input = len(fgraph.inputs)
-        # Initialize input connection pattern, each input affects itself
-        for index in xrange(num_of_input):
-            vec = [False] * num_of_input
-            vec[index] = True
-            # Make use of numpy.array to simplify codes
-            c_map.setdefault(fgraph.inputs[index], numpy.array(vec))
-
-        # Toposort the fgraph and get connection pattern for each variable
-        for node in fgraph.toposort():
-            # connection pattern of node's inputs.
-            in_vecs = []
-            for var in node.inputs:
-                if not isinstance(var, theano.Constant):
-                    in_vecs.append(c_map[var])
-                else:
-                    in_vecs.append(numpy.array([False] * num_of_input))
-
-            if not hasattr(node.op, 'connection_pattern'):
-                # By default, nodes inputs affect all outputs
-                result = in_vecs[0]
-                for vec in in_vecs[1:]:
-                    result |= vec
-                results = result * len(node.outputs)
-            else:
-                # If node's output connect to node's input, and that input
-                # connect to fgraph.input, that output connect to fgraph.input
-                # Therefore we use OR operation here.
-                results = []
-                out_vecs = numpy.array(node.op.connection_pattern(node))
-                for out_vec in out_vecs.T:
-                    result = [False] * num_of_input
-                    for in_vec, val in zip(in_vecs, out_vec):
-                        result |= (in_vec & val)
-                    results.append(result)
-
-            for var, result in zip(node.outputs, results):
-                c_map.setdefault(var, result)
-
-        # Transpose final result and convert pattern into python list
-        pattern = numpy.array([c_map[var] for var in fgraph.outputs]).T
-        return [list(vec) for vec in pattern]
+        return io_connection_pattern(self.new_inputs, self.new_outputs)
 
     def grad(self, inputs, output_grads):
         # OpFromGraph doesn't implement a connection_pattern, so for
