@@ -240,7 +240,6 @@ whitelist_flake8 = [
     "sparse/sandbox/sp2.py",
     "sparse/sandbox/truedot.py",
     "sparse/sandbox/sp.py",
-    "gof/destroyhandler.py",
     "gof/unify.py",
     "gof/graph.py",
     "gof/__init__.py",
