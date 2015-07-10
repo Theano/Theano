@@ -114,7 +114,6 @@ whitelist_flake8 = [
     "tensor/nnet/tests/test_conv3d.py",
     "tensor/nnet/tests/speed_test_conv.py",
     "tensor/nnet/tests/test_sigm.py",
-    "scalar/basic_scipy.py",
     "scalar/basic_sympy.py",
     "scalar/__init__.py",
     "scalar/basic.py",
