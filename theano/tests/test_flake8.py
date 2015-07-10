@@ -244,7 +244,6 @@ whitelist_flake8 = [
     "gof/graph.py",
     "gof/__init__.py",
     "gof/op.py",
-    "gof/cmodule.py",
     "gof/tests/test_cmodule.py",
     "gof/tests/test_destroyhandler.py",
     "gof/tests/test_opt.py",
