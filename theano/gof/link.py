@@ -7,14 +7,14 @@ import traceback
 import numpy
 
 import theano
-from theano.compat import PY3, izip
+from theano.compat import izip
 from six import reraise
 from six.moves import StringIO
 from theano.gof import utils
 from theano.gof import graph
 from theano.gof.type import Type
 
-from .utils import MethodNotDefined, undef
+from .utils import undef
 
 __excepthook = sys.excepthook
 
@@ -281,9 +281,9 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
             else:
                 detailed_err_msg += "\n"
         detailed_err_msg += " TotalSize: %s Byte(s) %.3f GB\n" % (
-            total_size, total_size/1024./1024/1024)
+            total_size, total_size / 1024. / 1024 / 1024)
         detailed_err_msg += " TotalSize inputs: %s Byte(s) %.3f BG\n" % (
-            total_size_inputs, total_size_inputs/1024./1024/1024)
+            total_size_inputs, total_size_inputs / 1024. / 1024 / 1024)
 
     else:
         hints.append(
@@ -326,7 +326,7 @@ class Linker(object):
         raise utils.MethodNotDefined("make_thunk", type(self),
                                      self.__class__.__name__)
 
-    ## DELETEME ##
+    # DELETEME #
     def make_function(self, unpack_single=True, **kwargs):
         """
         Returns a function that takes values corresponding to the inputs of the
@@ -350,8 +350,8 @@ class Linker(object):
 
         def execute(*args):
             def e_arity(takes, got):
-                return 'Function call takes exactly %i %s (%i given)' \
-                        % (takes, ['argument', 'arguments'][takes > 1], got)
+                return 'Function call takes exactly %i %s (%i given)' % (
+                    takes, ['argument', 'arguments'][takes > 1], got)
             if (len(args) != len(inputs)):
                 raise TypeError(e_arity(len(inputs), len(args)))
             for arg, variable in izip(args, inputs):
@@ -394,7 +394,7 @@ class Container(object):
         """
         if not isinstance(storage, list) or not len(storage) >= 1:
             raise TypeError("storage must be a list of length at least one")
-        #self.r = r
+        # self.r = r
         if isinstance(r, Type):
             self.type = r
         else:
@@ -454,12 +454,11 @@ class Container(object):
             deepcopy(self.strict, memo=memo),
             deepcopy(self.allow_downcast, memo=memo),
             deepcopy(self.name, memo=memo),
-            )
+        )
         # Work around NumPy deepcopy of ndarray with 0 dimention that
         # don't return an ndarray.
         if (r.storage[0] is not None and
-            not self.type.is_valid_value(r.storage[0])):
-
+                not self.type.is_valid_value(r.storage[0])):
             assert not data_was_in_memo
             assert self.type.is_valid_value(self.storage[0])
             # This should also work for read only container.
@@ -672,7 +671,7 @@ class PerformLinker(LocalLinker):
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
             return type(self)(allow_gc=self.allow_gc).accept(fgraph, no_recycling)
-            #raise Exception("Cannot accept from a Linker that is already tied to another FunctionGraph.")
+            # raise Exception("Cannot accept from a Linker that is already tied to another FunctionGraph.")
         self.fgraph = fgraph
         self.no_recycling = no_recycling
         return self
@@ -721,9 +720,12 @@ class PerformLinker(LocalLinker):
 
         for node in order:
             if self.allow_gc:
-                post_thunk_old_storage.append([storage_map[input]
-                    for input in node.inputs
-                    if (input in computed) and (input not in fgraph.outputs) and node == last_user[input]])
+                post_thunk_old_storage.append(
+                    [storage_map[input]
+                     for input in node.inputs
+                     if (input in computed) and (
+                        input not in fgraph.outputs) and (
+                        node == last_user[input])])
 
         if no_recycling is True:
             # True seems like some special code for *everything*?? -JB
@@ -855,7 +857,7 @@ class WrapLinker(Linker):
         make_all += [l.make_all(**kwargs) for l in self.linkers[1:]]
 
         fns, input_lists, output_lists, thunk_lists, order_lists \
-                = zip(*make_all)
+            = zip(*make_all)
 
         order_list0 = order_lists[0]
         for order_list in order_lists[1:]:
