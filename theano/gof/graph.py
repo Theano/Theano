@@ -876,9 +876,9 @@ def io_connection_pattern(inputs, outputs):
     nb_inputs = len(inputs)
     nb_outputs = len(outputs)
 
-    for i in xrange(nb_inputs):
+    for i in range(nb_inputs):
         input = inputs[i]
-        inp_connection_pattern = [i == j for j in xrange(nb_inputs)]
+        inp_connection_pattern = [i == j for j in range(nb_inputs)]
         connect_pattern_by_var[input] = inp_connection_pattern
 
     # Iterate through the nodes used to produce the outputs from the
@@ -898,11 +898,11 @@ def io_connection_pattern(inputs, outputs):
         # For every output of the inner node, figure out which inputs it
         # is connected to by combining the connection pattern of the inner
         # node and the connection patterns of the inner node's inputs.
-        for out_idx in xrange(len(n.outputs)):
+        for out_idx in range(len(n.outputs)):
             out = n.outputs[out_idx]
             out_connection_pattern = [False] * nb_inputs
 
-            for inp_idx in xrange(len(n.inputs)):
+            for inp_idx in range(len(n.inputs)):
                 inp = n.inputs[inp_idx]
 
                 if inp in connect_pattern_by_var:
@@ -914,17 +914,17 @@ def io_connection_pattern(inputs, outputs):
                     if op_connection_pattern[inp_idx][out_idx]:
                         out_connection_pattern = [out_connection_pattern[i] or
                                                 inp_connection_pattern[i]
-                                                for i in xrange(nb_inputs)]
+                                                for i in range(nb_inputs)]
 
             # Store the connection pattern of the node output
             connect_pattern_by_var[out] = out_connection_pattern
 
     # Obtain the global connection pattern by combining the
     # connnection patterns of the individual outputs
-    global_connection_pattern = [[] for o in xrange(len(inputs))]
+    global_connection_pattern = [[] for o in range(len(inputs))]
     for out in outputs:
         out_connection_pattern = connect_pattern_by_var[out]
-        for i in xrange(len(inputs)):
+        for i in range(len(inputs)):
             global_connection_pattern[i].append(out_connection_pattern[i])
 
     return global_connection_pattern
