@@ -1377,6 +1377,7 @@ def local_fill_sink(node):
     # The newly created node c doesn't has 'clients',
     # so this iteration is took place with node.outputs[0]
     replacements = {node.outputs[0]: c}
+    all_clients_replaced = True
     for client, cl_idx in node.outputs[0].clients:
         if (hasattr(client, 'op') and
                 isinstance(client.op, T.Elemwise) and
@@ -1388,10 +1389,14 @@ def local_fill_sink(node):
             # Add clients to new_client
             new_client.owner.outputs[0].clients = client.outputs[0].clients
             r = local_fill_sink.transform(new_client.owner)
-            if r is False:
+            if not r:
+                all_clients_replaced = False
                 continue
-            # replacements.pop(node.outputs[0], None)
             replacements.update(r)
+        else:
+            all_clients_replaced = False
+    if all_clients_replaced:
+        replacements.pop(node.outputs[0], None)
     return replacements
 
 register_canonicalize(local_fill_sink)
