@@ -116,7 +116,6 @@ whitelist_flake8 = [
     "tensor/nnet/tests/test_sigm.py",
     "scalar/basic_sympy.py",
     "scalar/__init__.py",
-    "scalar/basic.py",
     "scalar/tests/test_basic.py",
     "sandbox/test_theano_object.py",
     "sandbox/test_scan.py",
