@@ -1,11 +1,9 @@
-import numpy
-
 import theano
 from theano import gof
 from theano.compat import izip
 from theano.compile.function_module import orig_function
 from theano.compile import SharedVariable, rebuild_collect_shared
-from theano.gof import ops_with_inner_function, FunctionGraph
+from theano.gof import ops_with_inner_function
 from theano.gof.graph import io_connection_pattern
 
 
