@@ -230,7 +230,6 @@ whitelist_flake8 = [
     "misc/hooks/check_whitespace.py",
     "sparse/type.py",
     "sparse/__init__.py",
-    "sparse/opt.py",
     "sparse/tests/test_utils.py",
     "sparse/tests/test_opt.py",
     "sparse/tests/test_basic.py",
