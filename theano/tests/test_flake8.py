@@ -243,7 +243,6 @@ whitelist_flake8 = [
     "gof/unify.py",
     "gof/graph.py",
     "gof/__init__.py",
-    "gof/fg.py",
     "gof/op.py",
     "gof/cmodule.py",
     "gof/tests/test_cmodule.py",
