@@ -62,22 +62,23 @@ theano.configparser.AddConfigVar('on_shape_error',
 
 # Utilities
 
+
 def copy_stack_trace(from_var, to_var):
     """
-    Copies the stack trace from one or more tensor variables to 
-    one or more tensor variables. 
+    Copies the stack trace from one or more tensor variables to
+    one or more tensor variables.
 
-    :param from_var: tensor variable or list of tensor variables to 
+    :param from_var: tensor variable or list of tensor variables to
                      copy stack traces from.
-    :param to_var: tensor variable or list of tensor variables to 
+    :param to_var: tensor variable or list of tensor variables to
                      copy stack traces to.
 
-    .. note:: The stacktrace is assumed to be of the form of a list of lists 
-    of tuples. Each tuple contains the filename, line number, function name 
-    and so on. Each list of tuples contains the truples belonging to a 
+    .. note:: The stacktrace is assumed to be of the form of a list of lists
+    of tuples. Each tuple contains the filename, line number, function name
+    and so on. Each list of tuples contains the truples belonging to a
     particular variable.
     """
-    
+
     # Store stack traces from from_var
     tr = []
     if type(from_var) is list:
@@ -547,6 +548,7 @@ def local_dimshuffle_lift(node):
             copy_stack_trace(node.outputs[0], ret)
             return [ret]
 
+
 @register_canonicalize
 @gof.local_optimizer([T.DimShuffle])
 def local_lift_transpose_through_dot(node):
@@ -572,10 +574,9 @@ def local_lift_transpose_through_dot(node):
         # Output is dot product of transposed inputs in reverse order
         ret = [T.dot(y.T, x.T)]
 
-        # Copy over stack trace to output from x and y to output
-        copy_stack_trace([x, y], ret)
+        # Copy over stack trace to output from result of dot-product
+        copy_stack_trace(node.inputs[0], ret)
         return ret
-
 
 
 @gof.local_optimizer([DimShuffle])
@@ -1422,9 +1423,8 @@ def local_shape_to_shape_i(node):
         ret = shape_feature.make_vector_shape(node.inputs[0])
 
         # We need to copy over stack trace from input to output
-        copy_stack_trace(node.inputs[0], ret)
+        copy_stack_trace(node.outputs[0], ret)
         return [ret]
-
 
 
 # TODO: Not sure what type of node we are expecting here
@@ -1441,7 +1441,7 @@ def local_track_shape_i(node):
         # fgraph as we don't change it in the shapefeature internal
         # structure.
         assert isinstance(node.op, Shape_i)
-        replacement = shape_feature.scheduled[node]       
+        replacement = shape_feature.scheduled[node]
         return [shape_feature.shape_of[replacement][node.op.i]]
 
 
@@ -1500,9 +1500,8 @@ def local_subtensor_make_vector(node):
             values = list(map(int, list(idx.value)))
             ret = [make_vector(*[x.owner.inputs[v] for v in values])]
 
-            # Copy over stack traces from each index to every element of new list?
-            # If yes, then same should be done for const_slice just below...
-            copy_stack_trace([x.owner.inputs[v] for v in values], ret)
+            # Copy over stack trace from previous output to new output
+            copy_stack_trace(node.outputs[0], ret)
             return ret
         else:
             raise TypeError('case not expected')
@@ -1540,21 +1539,21 @@ def local_useless_elemwise(node):
             if node.inputs[0] == node.inputs[1]:
                 # it is the same var in the graph. That will always be true
                 ret = [T.fill(node.inputs[0],
-                               T.constant(1.0,
-                                          dtype=node.outputs[0].type.dtype))]
+                              T.constant(1.0,
+                                         dtype=node.outputs[0].type.dtype))]
 
                 # Copy stack trace from input to constant output
-                copy_stack_trace(node.inputs[0], ret)
+                copy_stack_trace(node.outputs[0], ret)
                 return ret
         elif node.op.scalar_op == theano.scalar.neq and len(node.inputs) == 2:
             if node.inputs[0] == node.inputs[1]:
                 # it is the same var in the graph. That will always be false
                 ret = [T.fill(node.inputs[0],
-                               T.constant(0.0,
-                                          dtype=node.outputs[0].type.dtype))]
+                              T.constant(0.0,
+                                         dtype=node.outputs[0].type.dtype))]
 
                 # Copy stack trace from input to constant output
-                copy_stack_trace(node.inputs[0], ret)
+                copy_stack_trace(node.outputs[0], ret)
                 return ret
 
         elif node.op.scalar_op == theano.scalar.mul and len(node.inputs) == 1:
@@ -1580,6 +1579,7 @@ def local_alloc_unary(node):
             x = a.owner.inputs[0]
             shp = a.owner.inputs[1:]
             v = node.op(x)
+            copy_stack_trace(node.outputs[0], v)
             ret = T.alloc(T.cast(v, node.outputs[0].dtype), *shp)
 
             # Is it really necessary to copy over stack trace here?
@@ -1643,7 +1643,7 @@ def local_func_inv(node):
 
     for inv_pair in inv_pairs:
         if is_inverse_pair(node_op, prev_op, inv_pair):
-            # We don't need to copy stack trace, because the optimization 
+            # We don't need to copy stack trace, because the optimization
             # is trivial and maintains the earlier stack trace
             return x.owner.inputs
 
@@ -1770,8 +1770,11 @@ def local_remove_useless_assert(node):
             # We don't need to copy over any stack traces here
             return [node.inputs[0]]
         if len(cond) != len(node.inputs) - 1:
-            # We don't need to copy over any stack traces here
-            return [assert_(node.inputs[0], *cond)]
+            ret = assert_(node.inputs[0], *cond)
+
+            # We copy over stack trace from the output of the original assert
+            copy_stack_trace(node.outputs[0], ret)
+            return [ret]
 
 
 @gof.local_optimizer([Assert])
@@ -1920,17 +1923,19 @@ def local_elemwise_alloc_op(ElemwiseOP, AllocOP, DimShuffleOP):
 
                 # We need to keep the dimshuffle. It could swap axes or
                 # add dimensions anywhere.
-                # Do we need to copy stack trace from alloc_input to new element here?
-                new_i.append(i.owner.op(alloc_input))
+                r_i = i.owner.op(alloc_input)
+
+                # Copy stack trace from i to new_i
+                copy_stack_trace(i, r_i)
+                new_i.append(r_i)
             else:
                 new_i.append(i)
         new_i[assert_op_idx] = assert_op
 
         ret = node.op(*new_i, return_list=True)
-        # Copy over stack trace from inputs to outputs.
-        # Maybe we want to do this elementwise to keep the trace cleaner,
-        # but that's not really clear.
-        copy_stack_trace(new_i, ret)
+
+        # Copy over stack trace from previous outputs to new outputs.
+        copy_stack_trace(node.outputs, ret)
         return ret
 
     return local_elemwise_alloc
