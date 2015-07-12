@@ -157,7 +157,7 @@ class GraphFormatter(object):
         apply_shape = 'ellipse'
         var_shape = 'box'
         for node_idx, node in enumerate(topo):
-            astr = self.apply_name(node, fct, topo, mode, profile)
+            astr, aprof = self.apply_name(node, fct, topo, mode, profile)
 
             use_color = None
             for opName, color in self.colorCodes.items():
@@ -165,12 +165,12 @@ class GraphFormatter(object):
                     use_color = color
 
             if use_color is None:
-                nw_node = pd.Node(astr, shape=apply_shape)
+                nw_node = pd.Node(astr, shape=apply_shape, profile=aprof)
             elif self.high_contrast:
                 nw_node = pd.Node(astr, style='filled', fillcolor=use_color,
-                                shape=apply_shape, type='colored')
+                                shape=apply_shape, type='colored', profile=aprof)
             else:
-                nw_node = pd.Node(astr, color=use_color, shape=apply_shape)
+                nw_node = pd.Node(astr, color=use_color, shape=apply_shape, profile=aprof)
             g.add_node(nw_node)
             if self.cond_highlight:
                 if node in middle:
@@ -179,6 +179,10 @@ class GraphFormatter(object):
                     c1.add_node(nw_node)
                 elif node in right:
                     c2.add_node(nw_node)
+
+            def make_node(*args, **kwargs):
+                t = {k:v for k,v in kwargs.items() if v is not None}
+                return pd.Node(*args, **t)
 
             for id, var in enumerate(node.inputs):
                 varstr = self.var_name(var)
@@ -196,19 +200,19 @@ class GraphFormatter(object):
                             param['color'] = 'red'
                 if var.owner is None:
                     if self.high_contrast:
-                        g.add_node(pd.Node(varstr,
+                        g.add_node(make_node(varstr,
                                         style='filled',
                                         fillcolor=self.node_colors['input'],
-                                        shape=var_shape))
+                                        shape=var_shape, profile=aprof))
                     else:
-                        g.add_node(pd.Node(varstr, color=self.node_colors['input'],
-                                        shape=var_shape))
+                        g.add_node(make_node(varstr, color=self.node_colors['input'],
+                                        shape=var_shape, profile=aprof))
                     g.add_edge(pd.Edge(varstr, astr, label=label, **param))
                 elif var.name or not self.compact:
                     g.add_edge(pd.Edge(varstr, astr, label=label, **param))
                 else:
                     # no name, so we don't make a var ellipse
-                    name = self.apply_name(var.owner, fct, topo, mode, profile)
+                    name, prof = self.apply_name(var.owner, fct, topo, mode, profile)
                     g.add_edge(pd.Edge(name, astr,
                                        label=label, **param))
 
@@ -223,21 +227,21 @@ class GraphFormatter(object):
                 if out:
                     g.add_edge(pd.Edge(astr, varstr, label=label))
                     if self.high_contrast:
-                        g.add_node(pd.Node(varstr, style='filled',
+                        g.add_node(make_node(varstr, style='filled',
                                         fillcolor=self.node_colors['output'],
-                                        shape=var_shape))
+                                        shape=var_shape, profile=aprof))
                     else:
-                        g.add_node(pd.Node(varstr, color=self.node_colors['output'],
-                                           shape=var_shape))
+                        g.add_node(make_node(varstr, color=self.node_colors['output'],
+                                           shape=var_shape, profile=aprof))
                 elif len(var.clients) == 0:
                     g.add_edge(pd.Edge(astr, varstr, label=label))
                     if self.high_contrast:
-                        g.add_node(pd.Node(varstr, style='filled',
+                        g.add_node(make_node(varstr, style='filled',
                                         fillcolor=self.node_colors['unused'],
-                                        shape=var_shape))
+                                        shape=var_shape, profile=aprof))
                     else:
-                        g.add_node(pd.Node(varstr, color=self.node_colors['unused'],
-                                        shape=var_shape))
+                        g.add_node(make_node(varstr, color=self.node_colors['unused'],
+                                        shape=var_shape, profile=aprof))
                 elif var.name or not self.compact:
                     g.add_edge(pd.Edge(astr, varstr, label=label))
 
@@ -296,12 +300,11 @@ class GraphFormatter(object):
 
         return varstr
 
-
     def apply_name(self, node, fct, topo, mode=None, profile=None):
         if node in self.apply_name_cache:
             return self.apply_name_cache[node]
 
-        prof_str = ''
+        prof = None
         if mode:
             time = mode.profile_stats[fct].apply_time.get(node, 0)
             # second, % total time in profiler, %fct time in profiler
@@ -313,7 +316,7 @@ class GraphFormatter(object):
                 pf = 0
             else:
                 pf = time * 100 / mode.profile_stats[fct].fct_call_time
-            prof_str = '   (%.3fs,%.3f%%,%.3f%%)' % (time, pt, pf)
+            prof = [time, pt, pf]
         elif profile:
             time = profile.apply_time.get(node, 0)
             # second, %fct time in profiler
@@ -321,9 +324,9 @@ class GraphFormatter(object):
                 pf = 0
             else:
                 pf = time * 100 / profile.fct_call_time
-            prof_str = '   (%.3fs,%.3f%%)' % (time, pf)
+            prof = [time, None, pf]
+
         applystr = str(node.op).replace(':', '_')
-        applystr += prof_str
         if (applystr in self.all_strings) or self.with_ids:
             idx = ' id=' + str(topo.index(node))
             if len(applystr) + len(idx) > self.max_label_size:
@@ -340,7 +343,11 @@ class GraphFormatter(object):
                 applystr = (applystr[:self.max_label_size - 3 - len(suffix)] +
                             '...' +
                             suffix)
+        if prof is not None:
+            prof = str(prof)
+        else:
+            prof = ''
 
         self.all_strings.add(applystr)
-        self.apply_name_cache[node] = applystr
-        return applystr
+        self.apply_name_cache[node] = (applystr, prof)
+        return (applystr, prof)

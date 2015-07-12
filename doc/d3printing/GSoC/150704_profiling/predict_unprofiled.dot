@@ -1,0 +1,160 @@
+digraph G {
+	graph [bb="0,0,923,584"];
+	node [label="\N"];
+	"Shape_i{1}"	 [fillcolor=cyan,
+		height=0.5,
+		pos="763,478",
+		shape=ellipse,
+		style=filled,
+		type=colored,
+		width=1.4763];
+	MakeVector	 [height=0.5,
+		pos="602,390",
+		shape=ellipse,
+		width=1.5402];
+	"Shape_i{1}" -> MakeVector	 [label="1 TensorType(int64, scalar)",
+		lp="775,434",
+		pos="e,629.45,405.66 735.69,462.41 708.97,448.14 668.11,426.32 638.6,410.55"];
+	"TensorType(float64, matrix)"	 [fillcolor=limegreen,
+		height=0.5,
+		pos="640,566",
+		shape=box,
+		style=filled,
+		width=2.4444];
+	"TensorType(float64, matrix)" -> "Shape_i{1}"	 [label="TensorType(float64, matrix)",
+		lp="843,522",
+		pos="e,764.26,496.07 728.22,549.11 737.93,544.3 746.87,538.07 754,530 759.76,523.49 762.45,514.62 763.57,506.1"];
+	Dot22	 [height=0.5,
+		pos="242,478",
+		shape=ellipse,
+		width=0.92774];
+	"TensorType(float64, matrix)" -> Dot22	 [label="1 TensorType(float64, matrix)",
+		lp="665,522",
+		pos="e,273.58,484.55 610.32,547.87 600.62,542.23 589.83,535.89 580,530 568.36,523.03 566.88,518.27 554,514 467.6,485.38 440.34,507.08 \
+350,496 328.02,493.3 303.64,489.53 283.62,486.23"];
+	"Shape_i{0}"	 [fillcolor=cyan,
+		height=0.5,
+		pos="412,478",
+		shape=ellipse,
+		style=filled,
+		type=colored,
+		width=1.4763];
+	"Shape_i{0}" -> MakeVector	 [label="0 TensorType(int64, scalar)",
+		lp="587,434",
+		pos="e,565.36,403.6 437.91,462.25 457.2,451.55 484.35,437.07 509,426 523.98,419.28 540.67,412.72 555.73,407.13"];
+	"name=X TensorType(float64, matrix)"	 [fillcolor=limegreen,
+		height=0.5,
+		pos="342,566",
+		shape=box,
+		style=filled,
+		width=3.1667];
+	"name=X TensorType(float64, matrix)" -> "Shape_i{0}"	 [label="TensorType(float64, matrix)",
+		lp="470,522",
+		pos="e,402.12,495.7 361.08,547.9 366.78,542.42 372.87,536.17 378,530 384.67,521.98 391.21,512.63 396.75,504.15"];
+	"name=X TensorType(float64, matrix)" -> Dot22	 [label="0 TensorType(float64, matrix)",
+		lp="289,522",
+		pos="e,221.22,492.32 240.1,547.93 223.33,543.11 209.58,537.17 204,530 196.09,519.83 203.28,508.34 213.46,498.84"];
+	"Elemwise{ScalarSigmoid}[(0, 0)]"	 [fillcolor="#FFAABB",
+		height=0.5,
+		pos="242,390",
+		shape=ellipse,
+		style=filled,
+		type=colored,
+		width=3.7297];
+	Dot22 -> "Elemwise{ScalarSigmoid}[(0, 0)]"	 [color=red,
+		label="TensorType(float64, matrix)",
+		lp="322,434",
+		pos="e,242,408.08 242,459.6 242,447.75 242,431.82 242,418.29"];
+	"Elemwise{Cast{float64}}"	 [fillcolor="#FFAABB",
+		height=0.5,
+		pos="602,302",
+		shape=ellipse,
+		style=filled,
+		type=colored,
+		width=2.9207];
+	MakeVector -> "Elemwise{Cast{float64}}"	 [label="TensorType(int64, vector)",
+		lp="676,346",
+		pos="e,602,320.08 602,371.6 602,359.75 602,343.82 602,330.29"];
+	"TensorType(float64, matrix) id=6"	 [fillcolor=dodgerblue,
+		height=0.5,
+		pos="254,302",
+		shape=box,
+		style=filled,
+		width=2.8403];
+	"Elemwise{ScalarSigmoid}[(0, 0)]" -> "TensorType(float64, matrix) id=6"	 [label="TensorType(float64, matrix)",
+		lp="330,346",
+		pos="e,251.62,320.08 244.43,371.6 246.08,359.75 248.3,343.82 250.19,330.29"];
+	"Sum{acc_dtype=float64}"	 [height=0.5,
+		pos="103,248",
+		shape=ellipse,
+		width=2.8658];
+	"Elemwise{ScalarSigmoid}[(0, 0)]" -> "Sum{acc_dtype=float64}"	 [label="TensorType(float64, matrix)",
+		lp="163,346",
+		pos="e,92.15,266.28 144.12,377.63 116.5,372.3 91.588,364.68 83,354 65.118,331.75 75.943,298.34 87.435,275.2"];
+	"Subtensor{int64}"	 [fillcolor="#FFAAFF",
+		height=0.5,
+		pos="670,194",
+		shape=ellipse,
+		style=filled,
+		type=colored,
+		width=2.0659];
+	"Elemwise{Cast{float64}}" -> "Subtensor{int64}"	 [color=dodgerblue,
+		label="0 TensorType(float64, vector)",
+		lp="748.5,248",
+		pos="e,667.73,212.08 629.37,284.55 636.24,279.34 643.05,273.07 648,266 657.08,253.02 662.51,236.17 665.7,222.14"];
+	"Subtensor{int64} id=8"	 [fillcolor="#FFAAFF",
+		height=0.5,
+		pos="462,194",
+		shape=ellipse,
+		style=filled,
+		type=colored,
+		width=2.5916];
+	"Elemwise{Cast{float64}}" -> "Subtensor{int64} id=8"	 [color=dodgerblue,
+		label="0 TensorType(float64, vector)",
+		lp="559.5,248",
+		pos="e,460.37,212.13 516.4,291.46 500.83,286.11 486.04,278.06 475,266 464.31,254.32 461,236.88 460.4,222.21"];
+	"Elemwise{Composite{((i0 / i1) / i2)}}[(0, 0)]"	 [fillcolor="#FFAABB",
+		height=0.5,
+		pos="462,106",
+		shape=ellipse,
+		style=filled,
+		type=colored,
+		width=4.8998];
+	"Sum{acc_dtype=float64}" -> "Elemwise{Composite{((i0 / i1) / i2)}}[(0, 0)]"	 [color=red,
+		label="0 TensorType(float64, scalar)",
+		lp="275.5,194",
+		pos="e,366.69,121.17 119.53,230.18 136.35,214 163.86,190 192,176 243.47,150.38 305.34,133.68 356.86,123.14"];
+	"Subtensor{int64}" -> "Elemwise{Composite{((i0 / i1) / i2)}}[(0, 0)]"	 [label="2 TensorType(float64, scalar)",
+		lp="731.5,150",
+		pos="e,578.08,119.56 661.08,175.7 654.34,164.37 644.02,150.18 631,142 617.89,133.76 603.18,127.42 588.06,122.55"];
+	"val=1 int64"	 [fillcolor=limegreen,
+		height=0.5,
+		pos="862,302",
+		shape=box,
+		style=filled,
+		width=1.1181];
+	"val=1 int64" -> "Subtensor{int64}"	 [label="1 int64",
+		lp="877,248",
+		pos="e,736.58,202.24 860.64,283.73 858.41,267.46 852.53,243.61 837,230 823.25,217.96 783.96,209.39 746.94,203.75"];
+	"Subtensor{int64} id=8" -> "Elemwise{Composite{((i0 / i1) / i2)}}[(0, 0)]"	 [label="1 TensorType(float64, scalar)",
+		lp="545.5,150",
+		pos="e,462,124.08 462,175.6 462,163.75 462,147.82 462,134.29"];
+	"val=0 int64"	 [fillcolor=limegreen,
+		height=0.5,
+		pos="415,302",
+		shape=box,
+		style=filled,
+		width=1.1181];
+	"val=0 int64" -> "Subtensor{int64} id=8"	 [label="1 int64",
+		lp="436,248",
+		pos="e,432.27,211.35 411.23,283.95 408.81,268.91 407.5,246.84 416,230 418.2,225.64 421.23,221.67 424.69,218.1"];
+	"TensorType(float64, scalar) id=13"	 [fillcolor=dodgerblue,
+		height=0.5,
+		pos="462,18",
+		shape=box,
+		style=filled,
+		width=2.8889];
+	"Elemwise{Composite{((i0 / i1) / i2)}}[(0, 0)]" -> "TensorType(float64, scalar) id=13"	 [label="TensorType(float64, scalar)",
+		lp="540,62",
+		pos="e,462,36.084 462,87.597 462,75.746 462,59.817 462,46.292"];
+}
