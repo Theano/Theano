@@ -5444,6 +5444,11 @@ class TestIntDivByOne(unittest.TestCase):
 
 
 def test_local_merge_alloc():
+    # Add this opt to the default mode,
+    # otherwise, FAST_COMPILE fails.
+    default_mode = theano.compile.mode.get_default_mode()
+    opt_mode = default_mode.including("local_merge_alloc")
+    
     x = T.iscalar('x')
     y = T.iscalar('y')
     z = T.iscalar('z')
@@ -5452,7 +5457,7 @@ def test_local_merge_alloc():
     # case 1
     # Alloc(Alloc(m, x, 1, 1, 1), x, y, z, w) -> Alloc(m, x, y, z, w)
     output = T.alloc(T.alloc(m, 1, y, 1, 1), x, y, z, w)
-    f = theano.function([m, x, y, z, w], output)
+    f = theano.function([m, x, y, z, w], output, mode=opt_mode)
     topo = f.maker.fgraph.toposort()
     assert len(topo) == 1
     assert isinstance(topo[0].op, T.Alloc)
@@ -5462,7 +5467,7 @@ def test_local_merge_alloc():
     # case 2
     # Alloc(Alloc(m, y, 1, 1), x, y, z, w) -> Alloc(m, x, y, z, w)
     output = T.alloc(T.alloc(m, y, 1, 1), x, y, z, w)
-    f = theano.function([m, x, y, z, w], output)
+    f = theano.function([m, x, y, z, w], output, mode=opt_mode)
     topo = f.maker.fgraph.toposort()
     assert len(topo) == 1
     assert isinstance(topo[0].op, T.Alloc)
