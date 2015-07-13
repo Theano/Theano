@@ -4,14 +4,6 @@ The `Op` class is the base interface for all operations
 compatible with `gof`'s :doc:`graph` routines.
 """
 
-__authors__   = "theano-dev"
-__copyright__ = "(c) 2010, Universite de Montreal"
-__license__   = "3-clause BSD License"
-__contact__   = "theano-dev <theano-dev@googlegroups.com>"
-
-
-__docformat__ = "restructuredtext en"
-
 import inspect
 import logging
 import numpy
@@ -31,6 +23,13 @@ from theano.gof import graph
 from theano.gof import utils
 from theano.gof.cmodule import GCC_compiler
 from theano.gof.fg import FunctionGraph
+
+__authors__ = "theano-dev"
+__copyright__ = "(c) 2010, Universite de Montreal"
+__license__ = "3-clause BSD License"
+__contact__ = "theano-dev <theano-dev@googlegroups.com>"
+
+__docformat__ = "restructuredtext en"
 
 
 class CLinkerObject(object):
@@ -224,8 +223,7 @@ class CLinkerOp(CLinkerObject):
          - `MethodNotDefined`: the subclass does not override this method
 
         """
-        raise utils.MethodNotDefined('%s.c_code' \
-                % self.__class__.__name__)
+        raise utils.MethodNotDefined('%s.c_code' % self.__class__.__name__)
 
     def c_code_cache_version_apply(self, node):
         """Return a tuple of integers indicating the version of this Op.
@@ -278,8 +276,8 @@ class CLinkerOp(CLinkerObject):
         :Exceptions:
          - `MethodNotDefined`: the subclass does not override this method
         """
-        raise utils.MethodNotDefined('%s.c_code_cleanup' \
-                % self.__class__.__name__)
+        raise utils.MethodNotDefined('%s.c_code_cleanup' %
+                                     self.__class__.__name__)
 
     def c_support_code_apply(self, node, name):
         """Optional: Return utility code for use by an `Op` that will be
@@ -302,7 +300,7 @@ class CLinkerOp(CLinkerObject):
 
         """
         raise utils.MethodNotDefined("c_support_code_apply",
-                type(self), self.__class__.__name__)
+                                     type(self), self.__class__.__name__)
 
     def c_init_code_apply(self, node, name):
         """
@@ -362,7 +360,7 @@ class CLinkerOp(CLinkerObject):
 
         """
         raise utils.MethodNotDefined("c_support_code_struct",
-                type(self), self.__class__.__name__)
+                                     type(self), self.__class__.__name__)
 
     def c_cleanup_code_struct(self, node, name):
         """
@@ -552,7 +550,7 @@ class PureOp(object):
 
                 # compute output value once with test inputs to validate graph
                 thunk = node.op.make_thunk(node, storage_map, compute_map,
-                        no_recycling=[])
+                                           no_recycling=[])
                 thunk.inputs = [storage_map[v] for v in node.inputs]
                 thunk.outputs = [storage_map[v] for v in node.outputs]
 
@@ -615,11 +613,11 @@ class PureOp(object):
 
         """
         raise NotImplementedError(
-                "%s of class %s does not "
-                "implement R_op. If this is a theano op, write to the "
-                "theano-dev mailing list for assistance. If it is your "
-                "own op, implement the R_op method." %
-                (self, self.__class__.__name__))
+            "%s of class %s does not "
+            "implement R_op. If this is a theano op, write to the "
+            "theano-dev mailing list for assistance. If it is your "
+            "own op, implement the R_op method." %
+            (self, self.__class__.__name__))
 
     def perform(self, node, inputs, output_storage):
         """
@@ -716,7 +714,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
                 return getattr(t, 'dtype', '') == 'float16'
 
             if (any(is_f16(i.type) for i in node.inputs) or
-                any(is_f16(o.type) for o in node.outputs)):
+                    any(is_f16(o.type) for o in node.outputs)):
                 print ("Disabling C code for %s due to unsupported "
                        "float16" % (self,))
                 raise NotImplementedError("float16")
@@ -763,6 +761,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
                 return r
         else:
             ctx_val = node.context_type.filter(ctx)
+
             def rval(p=p, i=node_input_storage, o=node_output_storage, n=node,
                      ctx=ctx_val):
                 r = p(n, [x[0] for x in i], o, ctx)
@@ -994,10 +993,10 @@ int main( int argc, const char* argv[] )
 }
         """
         default_openmp = GCC_compiler.try_compile_tmp(
-                src_code=code,
-                tmp_prefix='test_omp_',
-                flags=['-fopenmp'],
-                try_run=False)
+            src_code=code,
+            tmp_prefix='test_omp_',
+            flags=['-fopenmp'],
+            try_run=False)
         return default_openmp
 
     def update_self_openmp(self):
@@ -1065,10 +1064,10 @@ class COp(Op):
     backward_re = re.compile(r'^THEANO_(APPLY|SUPPORT)_CODE_SECTION$', re.MULTILINE)
     # This is the set of allowed markers
     SECTIONS = set([
-            'init_code', 'init_code_apply', 'init_code_struct',
-            'support_code', 'support_code_apply', 'support_code_struct',
-            'cleanup_code_struct',
-            'code', 'code_cleanup'])
+        'init_code', 'init_code_apply', 'init_code_struct',
+        'support_code', 'support_code_apply', 'support_code_struct',
+        'cleanup_code_struct',
+        'code', 'code_cleanup'])
 
     @classmethod
     def get_path(cls, f):
@@ -1141,9 +1140,9 @@ class COp(Op):
                 n = 1
                 while n < len(split):
                     if split[n] == 'APPLY':
-                        self.code_sections['support_code_apply'] = split[n+1]
+                        self.code_sections['support_code_apply'] = split[n + 1]
                     elif split[n] == 'SUPPORT':
-                        self.code_sections['support_code'] = split[n+1]
+                        self.code_sections['support_code'] = split[n + 1]
                     n += 2
                 continue
 
@@ -1164,7 +1163,7 @@ class COp(Op):
                                          (self.func_files[i], split[n]))
                     if split[n] not in self.code_sections:
                         self.code_sections[split[n]] = ""
-                    self.code_sections[split[n]] += split[n+1]
+                    self.code_sections[split[n]] += split[n + 1]
                     n += 2
 
             else:
@@ -1267,8 +1266,8 @@ class COp(Op):
     def get_sub_macros(self, sub):
         define_macros = []
         undef_macros = []
-        define_macros.append("#define FAIL %s" %
-                            (self._lquote_macro(sub['fail']),))
+        define_macros.append("#define FAIL %s" % (
+                             self._lquote_macro(sub['fail']),))
         undef_macros.append("#undef FAIL")
         if 'context' in sub:
             define_macros.append("#define CONTEXT %s" % (sub['context'],))
@@ -1305,25 +1304,24 @@ class COp(Op):
     def c_code(self, node, name, inp, out, sub):
         if self.func_name is not None:
             assert 'code' not in self.code_sections
-            func_name = self.func_name
-            func_args = self.format_c_function_args(inp, out)
-            fail = sub['fail']
 
             define_macros, undef_macros = self.get_c_macros(node, name,
                                                             check_input=False)
 
             # Generate the C code
             return """
-%(define_macros)s
-{
-  if (%(func_name)s(%(func_args)s) != 0) {
-    %(fail)s
-  }
-}
-%(undef_macros)s
-""" % dict(func_name=self.func_name, fail=sub['fail'],
-           func_args=self.format_c_function_args(inp, out),
-           define_macros=define_macros, undef_macros=undef_macros)
+                %(define_macros)s
+                {
+                  if (%(func_name)s(%(func_args)s) != 0) {
+                    %(fail)s
+                  }
+                }
+                %(undef_macros)s
+                """ % dict(func_name=self.func_name,
+                           fail=sub['fail'],
+                           func_args=self.format_c_function_args(inp, out),
+                           define_macros=define_macros,
+                           undef_macros=undef_macros)
         else:
             if 'code' in self.code_sections:
                 op_code = self.code_sections['code']
