@@ -1480,14 +1480,28 @@ if (CudaNdarray_prep_output(&%(output_grad)s,
   %(fail)s
 }
 
-// Init output memory with 0s because cudnnPoolingBackward does not support
-// uninitialized memory.
-if (cudaSuccess != cudaMemset(CudaNdarray_DEV_DATA(%(output_grad)s), 0,
-                              CudaNdarray_SIZE(%(output_grad)s) *
-                              sizeof(float))){
-  PyErr_SetString(PyExc_RuntimeError,
-                  "GpuDnnPoolGrad: Error initializing output memory.");
-  %(fail)s
+// Get the pooling_mode to be used. Variable 'tmp' is used because we don't
+// care about the other outputs of the function
+cudnnPoolingMode_t pooling_mode;
+int tmp;
+err%(name)s = cudnnGetPoolingNdDescriptor(%(desc)s, 0, &pooling_mode, &tmp,
+                                          &tmp, &tmp, &tmp);
+if (err%(name)s != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_RuntimeError,
+               "GpuDnnPoolGrad: could not obtain pooling mode");
+ %(fail)s
+}
+
+// If doing max-pooling, init output memory with 0s because
+// cudnnPoolingBackward does not support uninitialized memory for max-pooling.
+if (pooling_mode == CUDNN_POOLING_MAX){
+    if (cudaSuccess != cudaMemset(CudaNdarray_DEV_DATA(%(output_grad)s), 0,
+                                CudaNdarray_SIZE(%(output_grad)s) *
+                                sizeof(float))){
+    PyErr_SetString(PyExc_RuntimeError,
+                    "GpuDnnPoolGrad: Error initializing output memory.");
+    %(fail)s
+    }
 }
 
 if (c_set_tensorNd(%(output_grad)s, %(output_grad_desc)s) != 0)
