@@ -370,11 +370,11 @@ class SparseVariable(_sparse_py_operators, gof.Variable):
 class SparseConstantSignature(tuple):
     def __eq__(self, other):
         (a, b), (x, y) = self, other
-        return a == x and\
-            (b.dtype == y.dtype) and\
-            (type(b) == type(y)) and\
-            (b.shape == y.shape) and\
-            (abs(b - y).sum() < 1e-6 * b.nnz)
+        return (a == x and
+                (b.dtype == y.dtype) and
+                (type(b) == type(y)) and
+                (b.shape == y.shape) and
+                (abs(b - y).sum() < 1e-6 * b.nnz))
 
     def __hash__(self):
         (a, b) = self
@@ -489,7 +489,7 @@ class CSMProperties(gof.Op):
         csm = as_sparse_variable(csm)
         assert csm.format in ["csr", "csc"]
         data = tensor.TensorType(dtype=csm.type.dtype,
-                                 broadcastable=(False,)).make_variable()
+                                 broadcastable=(False,))()
         return gof.Apply(self, [csm],
                          [data, tensor.ivector(),
                           tensor.ivector(), tensor.ivector()])
@@ -648,7 +648,7 @@ class CSM(gof.Op):
         return gof.Apply(self,
                          [data, indices, indptr, shape],
                          [SparseType(dtype=data.type.dtype,
-                                     format=self.format).make_variable()])
+                                     format=self.format)()])
 
     def perform(self, node, inputs, outputs):
         # for efficiency, if remap does nothing, then do not apply it
@@ -836,7 +836,7 @@ class Cast(gof.op.Op):
         assert x.format in ["csr", "csc"]
         return gof.Apply(
             self, [x],
-            [SparseType(dtype=self.out_type, format=x.format).make_variable()])
+            [SparseType(dtype=self.out_type, format=x.format)()])
 
     def perform(self, node, inputs, outputs):
         (x,) = inputs
@@ -904,8 +904,8 @@ class DenseFromSparse(gof.op.Op):
         self.sparse_grad = structured
 
     def __eq__(self, other):
-        return (type(self) == type(other)) and \
-            (self.sparse_grad == other.sparse_grad)
+        return ((type(self) == type(other)) and
+                (self.sparse_grad == other.sparse_grad))
 
     def __hash__(self):
         return hash(type(self)) ^ hash(self.sparse_grad)
@@ -920,8 +920,7 @@ class DenseFromSparse(gof.op.Op):
         return gof.Apply(self,
                          [x],
                          [tensor.TensorType(dtype=x.type.dtype,
-                                            broadcastable=(False, False)
-                                            ).make_variable()])
+                                            broadcastable=(False, False))()])
 
     def perform(self, node, inputs, outputs):
         (x,) = inputs
@@ -1004,8 +1003,7 @@ class SparseFromDense(gof.op.Op):
         return gof.Apply(self,
                          [x],
                          [SparseType(dtype=x.type.dtype,
-                                     format=self.format
-                                     ).make_variable()])
+                                     format=self.format)()])
 
     def perform(self, node, inputs, outputs):
         (x,) = inputs
@@ -1440,8 +1438,7 @@ class Transpose(gof.op.Op):
         return gof.Apply(self,
                          [x],
                          [SparseType(dtype=x.type.dtype,
-                                     format=self.format_map[x.type.format]
-                                     ).make_variable()])
+                                     format=self.format_map[x.type.format])()])
 
     def perform(self, node, inputs, outputs):
         (x,) = inputs
@@ -1961,8 +1958,7 @@ class AddSS(gof.op.Op):
         return gof.Apply(self,
                          [x, y],
                          [SparseType(dtype=out_dtype,
-                                     format=x.type.format
-                                     ).make_variable()])
+                                     format=x.type.format)()])
 
     def perform(self, node, inputs, outputs):
         (x, y) = inputs
@@ -2003,8 +1999,7 @@ class AddSSData(gof.op.Op):
         return gof.Apply(self,
                          [x, y],
                          [SparseType(dtype=x.type.dtype,
-                                     format=x.type.format
-                                     ).make_variable()])
+                                     format=x.type.format)()])
 
     def perform(self, node, inputs, outputs):
         (x, y) = inputs
@@ -2070,7 +2065,7 @@ class AddSD(gof.op.Op):
                          [x, y],
                          [tensor.TensorType(dtype=out_dtype,
                                             broadcastable=y.type.broadcastable
-                                            ).make_variable()])
+                                            )()])
 
     def perform(self, node, inputs, outputs):
         (x, y) = inputs
@@ -2113,8 +2108,7 @@ class StructuredAddSV(gof.op.Op):
         return gof.Apply(self,
                          [x, y],
                          [SparseType(dtype=x.type.dtype,
-                                     format=x.type.format
-                                     ).make_variable()])
+                                     format=x.type.format)()])
 
     def perform(self, node, inputs, outputs):
         (x, y) = inputs
@@ -2370,8 +2364,7 @@ class MulSV(gof.op.Op):
         return gof.Apply(self,
                          [x, y],
                          [SparseType(dtype=x.type.dtype,
-                                     format=x.type.format
-                                     ).make_variable()])
+                                     format=x.type.format)()])
 
     def perform(self, node, inputs, outputs):
         (x, y) = inputs
@@ -2486,8 +2479,7 @@ class __ComparisonOpSS(gof.op.Op):
         return gof.Apply(self,
                          [x, y],
                          [SparseType(dtype='uint8',
-                                     format=x.type.format
-                                     ).make_variable()])
+                                     format=x.type.format)()])
 
     def perform(self, node, inputs, outputs):
         (x, y) = inputs
@@ -2531,8 +2523,7 @@ class __ComparisonOpSD(gof.op.Op):
         return gof.Apply(self,
                          [x, y],
                          [SparseType(dtype='uint8',
-                                     format=x.type.format
-                                     ).make_variable()])
+                                     format=x.type.format)()])
 
     def perform(self, node, inputs, outputs):
         (x, y) = inputs
@@ -2773,8 +2764,7 @@ class HStack(gof.op.Op):
         return gof.Apply(self,
                          var,
                          [SparseType(dtype=self.dtype,
-                                     format=self.format
-                                     ).make_variable()])
+                                     format=self.format)()])
 
     def perform(self, node, block, outputs):
         (out,) = outputs
@@ -3220,8 +3210,7 @@ class TrueDot(gof.op.Op):
             raise NotImplementedError()
 
         inputs = [x, y]  # Need to convert? e.g. assparse
-        outputs = [SparseType(dtype=x.type.dtype,
-                              format=myformat).make_variable()]
+        outputs = [SparseType(dtype=x.type.dtype, format=myformat)()]
         return gof.Apply(self, inputs, outputs)
 
     def perform(self, node, inp, out_):
