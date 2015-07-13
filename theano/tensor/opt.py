@@ -5887,3 +5887,35 @@ register_canonicalize(gof.OpRemove(theano.gradient.disconnected_grad_),
 def local_grad_clip(node):
     if isinstance(node.op, theano.gradient.GradClip):
         return node.inputs
+
+
+@register_canonicalize
+@register_stabilize
+@register_specialize
+@gof.local_optimizer([T.Alloc])
+def local_merge_alloc(node):
+    # This opt takes care of several cases:
+    # Alloc(Alloc(m, x, 1, 1, 1), x, y, z, w) -> Alloc(m, x, y, z, w)
+    # Alloc(Alloc(m, y, 1, 1), x, y, z, w) -> Alloc(m, x, y, z, w)
+    if not isinstance(node.op, T.Alloc):
+        return False
+    if not node.inputs[0].owner or not isinstance(
+            node.inputs[0].owner.op, T.Alloc):
+        return False
+    inputs_outer = node.inputs
+    inputs_inner = node.inputs[0].owner.inputs
+    dims_outer = inputs_outer[1:]
+    dims_inner = inputs_inner[1:]
+    dims_outer_rev = dims_outer[::-1]
+    dims_inner_rev = dims_inner[::-1]
+    # check if the pattern of broadcasting is matched, in the reversed ordering.
+    # The reverse ordering is needed when an Alloc add an implicit new
+    # broadcasted dimensions to its inputs[0]. Eg:
+    # Alloc(Alloc(m, y, 1, 1), x, y, z, w) -> Alloc(m, x, y, z, w)
+    for dim_inner, dim_outer in zip(dims_inner_rev, dims_outer_rev):
+        if dim_inner != dim_outer:
+            if isinstance(dim_inner, Constant) and dim_inner.data == 1:
+                pass
+            else:
+                return False
+    return [T.alloc(inputs_inner[0], *dims_outer)]
