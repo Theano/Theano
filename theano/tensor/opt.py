@@ -5909,6 +5909,8 @@ def local_merge_alloc(node):
     dims_outer_rev = dims_outer[::-1]
     dims_inner_rev = dims_inner[::-1]
     # check if the pattern of broadcasting is matched, in the reversed ordering
+    # The for loop below will run at most len(dims_inner_rev) times, sufficient
+    # to cover all the cases. 
     for dim_inner, dim_outer in zip(dims_inner_rev, dims_outer_rev):
         if dim_inner != dim_outer:
             if isinstance(dim_inner, Constant) and dim_inner.data == 1:
