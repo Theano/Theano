@@ -1485,6 +1485,16 @@ if (CudaNdarray_prep_output(&%(output_grad)s,
   %(fail)s
 }
 
+// Init output memory with 0s because cudnnPoolingBackward does not support
+// uninitialized memory.
+if (cudaSuccess != cudaMemset(CudaNdarray_DEV_DATA(%(output_grad)s), 0,
+                              CudaNdarray_SIZE(%(output_grad)s) *
+                              sizeof(float))){
+  PyErr_SetString(PyExc_RuntimeError,
+                  "GpuDnnPoolGrad: Error initializing output memory.");
+  %(fail)s
+}
+
 if (c_set_tensorNd(%(output_grad)s, %(output_grad_desc)s) != 0)
   %(fail)s
 
@@ -1517,7 +1527,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
            output_grad_desc="output_grad"+name)
 
     def c_code_cache_version(self):
-        return (6, version())
+        return (7, version())
 
     def infer_shape(self, node, shape):
         return [shape[0]]

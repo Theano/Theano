@@ -378,12 +378,18 @@ def test_pooling3d():
                     a = f1(data).__array__()
 
                     b = f2(data).__array__()
-                    assert numpy.allclose(a, b,
-                                          atol=numpy.finfo(numpy.float32).eps)
+
+                    utt.assert_allclose(a, b,
+                                        atol=numpy.finfo(numpy.float32).eps)
 
         # Test the grad
         for shp in [(1, 1, 2, 2, 2),
-                    (1, 1, 3, 3, 3)]:
+                    (1, 1, 3, 3, 3),
+                    (1, 1, 3, 3, 4),
+                    (1, 1, 3, 4, 3),
+                    (1, 1, 4, 3, 3),
+                    (1, 1, 4, 4, 4),
+                    (1, 1, 5, 5, 5)]:
             data = numpy.random.normal(0, 1, shp).astype("float32") * 10
 
             ws = 2
