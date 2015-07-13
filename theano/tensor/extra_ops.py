@@ -44,7 +44,6 @@ class CpuContiguous(theano.Op):
                 }
                 else{
                     Py_XDECREF(%(y)s);
-                    Py_XINCREF(%(x)s);
                     %(y)s = PyArray_GETCONTIGUOUS(%(x)s);
                 }
             }
