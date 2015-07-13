@@ -100,8 +100,8 @@ class SparseType(gof.Type):
             a, b = b, a
         if _is_sparse(a) and isinstance(b, numpy.ndarray):
             if (numpy.may_share_memory(a.data, b) or
-                numpy.may_share_memory(a.indices, b) or
-                numpy.may_share_memory(a.indptr, b)):
+                    numpy.may_share_memory(a.indices, b) or
+                    numpy.may_share_memory(a.indptr, b)):
                 # currently we can't share memory with a.shape as it is a tuple
                 return True
         return False
@@ -143,8 +143,8 @@ class SparseType(gof.Type):
         # we definitely do not want to be doing this un-necessarily during
         # a FAST_RUN computation..
         return scipy.sparse.issparse(a) \
-                and scipy.sparse.issparse(b) \
-                and abs(a - b).sum() == 0.0
+            and scipy.sparse.issparse(b) \
+            and abs(a - b).sum() == 0.0
 
     def is_valid_value(self, a):
         return scipy.sparse.issparse(a) and (a.format == self.format)
@@ -162,10 +162,10 @@ class SparseType(gof.Type):
 
 # Register SparseType's C code for ViewOp.
 theano.compile.register_view_op_c_code(
-        SparseType,
-        """
-        Py_XDECREF(%(oname)s);
-        %(oname)s = %(iname)s;
-        Py_XINCREF(%(oname)s);
-        """,
-        1)
+    SparseType,
+    """
+    Py_XDECREF(%(oname)s);
+    %(oname)s = %(iname)s;
+    Py_XINCREF(%(oname)s);
+    """,
+    1)
