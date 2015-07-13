@@ -5908,9 +5908,10 @@ def local_merge_alloc(node):
     dims_inner = inputs_inner[1:]
     dims_outer_rev = dims_outer[::-1]
     dims_inner_rev = dims_inner[::-1]
-    # check if the pattern of broadcasting is matched, in the reversed ordering
-    # The for loop below will run at most len(dims_inner_rev) times, sufficient
-    # to cover all the cases. 
+    # check if the pattern of broadcasting is matched, in the reversed ordering.
+    # The reverse ordering is needed when an Alloc add an implicit new
+    # broadcasted dimensions to its inputs[0]. Eg:
+    # Alloc(Alloc(m, y, 1, 1), x, y, z, w) -> Alloc(m, x, y, z, w)
     for dim_inner, dim_outer in zip(dims_inner_rev, dims_outer_rev):
         if dim_inner != dim_outer:
             if isinstance(dim_inner, Constant) and dim_inner.data == 1:
