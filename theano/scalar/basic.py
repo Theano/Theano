@@ -420,12 +420,12 @@ class Scalar(Type):
                 { this->real=y.real; this->imag=y.imag; return *this; }
                 ''' % dict(mytype=mytype, othertype=othertype)
 
-            operator_eq = ''.join(operator_eq_real(ctype, rtype)
-                                  for ctype in cplx_types
-                                  for rtype in real_types) \
-                + ''.join(operator_eq_cplx(ctype1, ctype2)
-                          for ctype1 in cplx_types
-                          for ctype2 in cplx_types)
+            operator_eq = (''.join(operator_eq_real(ctype, rtype)
+                                   for ctype in cplx_types
+                                   for rtype in real_types) +
+                           ''.join(operator_eq_cplx(ctype1, ctype2)
+                                   for ctype1 in cplx_types
+                                   for ctype2 in cplx_types))
 
             # We are not using C++ generic templating here, because this would
             # generate two different functions for adding a complex64 and a
@@ -472,12 +472,12 @@ class Scalar(Type):
                                    for ctype in cplx_types
                                    for rtype in real_types)
 
-            return template % dict(nbits=64, half_nbits=32) \
-                + template % dict(nbits=128, half_nbits=64) \
-                + operator_eq \
-                + operator_plus \
-                + operator_minus \
-                + operator_mul
+            return (template % dict(nbits=64, half_nbits=32) +
+                    template % dict(nbits=128, half_nbits=64) +
+                    operator_eq +
+                    operator_plus +
+                    operator_minus +
+                    operator_mul)
 
         else:
             return ""
@@ -890,9 +890,9 @@ class ScalarOp(Op):
                                      self.__class__.__name__)
 
     def __eq__(self, other):
-        test = type(self) == type(other) \
-            and getattr(self, 'output_types_preference', None) \
-            == getattr(other, 'output_types_preference', None)
+        test = (type(self) == type(other) and
+                getattr(self, 'output_types_preference', None) ==
+                getattr(other, 'output_types_preference', None))
         return test
 
     def __hash__(self):
@@ -1189,8 +1189,8 @@ class InRange(LogicalComparison):
 
     def get_grad(self, elem):
         if elem.type in complex_types:
-            msg = "No gradient implemented for complex numbers in\
-                                 class scalar.basic.InRange"
+            msg = ("No gradient implemented for complex numbers in "
+                   "class scalar.basic.InRange")
             raise NotImplementedError(msg)
         elif elem.type in discrete_types:
             return elem.zeros_like().astype(theano.config.floatX)
