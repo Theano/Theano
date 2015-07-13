@@ -862,6 +862,74 @@ default_node_formatter = lambda op, argstrings: "%s(%s)" % (op.op,
                                                             ", ".join(argstrings))
 
 
+def io_connection_pattern(inputs, outputs):
+    """
+    Returns the connection pattern of a subgraph defined by given
+    inputs and outputs
+    """
+
+    inner_nodes = io_toposort(inputs, outputs)
+
+    # Initialize 'connect_pattern_by_var' by establishing each input as
+    # connected only to itself
+    connect_pattern_by_var = {}
+    nb_inputs = len(inputs)
+    nb_outputs = len(outputs)
+
+    for i in range(nb_inputs):
+        input = inputs[i]
+        inp_connection_pattern = [i == j for j in range(nb_inputs)]
+        connect_pattern_by_var[input] = inp_connection_pattern
+
+    # Iterate through the nodes used to produce the outputs from the
+    # inputs and, for every node, infer their connection pattern to
+    # every input from the connection patterns of their parents.
+    for n in inner_nodes:
+
+        # Get the connection pattern of the inner node's op. If the op
+        # does not define a connection_pattern method, assume that
+        # every node output is connected to every node input
+        try:
+            op_connection_pattern = n.op.connection_pattern(n)
+        except AttributeError:
+            op_connection_pattern = ([[True] * len(n.outputs)] *
+                                     len(n.inputs))
+
+        # For every output of the inner node, figure out which inputs it
+        # is connected to by combining the connection pattern of the inner
+        # node and the connection patterns of the inner node's inputs.
+        for out_idx in range(len(n.outputs)):
+            out = n.outputs[out_idx]
+            out_connection_pattern = [False] * nb_inputs
+
+            for inp_idx in range(len(n.inputs)):
+                inp = n.inputs[inp_idx]
+
+                if inp in connect_pattern_by_var:
+                    inp_connection_pattern = connect_pattern_by_var[inp]
+
+                    # If the node output is connected to the node input, it
+                    # means it is connected to every inner input that the
+                    # node inputs is connected to
+                    if op_connection_pattern[inp_idx][out_idx]:
+                        out_connection_pattern = [out_connection_pattern[i] or
+                                                inp_connection_pattern[i]
+                                                for i in range(nb_inputs)]
+
+            # Store the connection pattern of the node output
+            connect_pattern_by_var[out] = out_connection_pattern
+
+    # Obtain the global connection pattern by combining the
+    # connnection patterns of the individual outputs
+    global_connection_pattern = [[] for o in range(len(inputs))]
+    for out in outputs:
+        out_connection_pattern = connect_pattern_by_var[out]
+        for i in range(len(inputs)):
+            global_connection_pattern[i].append(out_connection_pattern[i])
+
+    return global_connection_pattern
+
+
 def is_same_graph(var1, var2, givens=None, debug=False):
     """
     Return True iff Variables `var1` and `var2` perform the same computation.

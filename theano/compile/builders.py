@@ -4,6 +4,7 @@ from theano.compat import izip
 from theano.compile.function_module import orig_function
 from theano.compile import SharedVariable, rebuild_collect_shared
 from theano.gof import ops_with_inner_function
+from theano.gof.graph import io_connection_pattern
 
 
 class OpFromGraph(gof.Op):
@@ -133,6 +134,12 @@ class OpFromGraph(gof.Op):
             # TODO: when function's output-borrowing semantics are correct,
             # we wont need this copy anymore
             output[0] = variable.copy()
+
+    def connection_pattern(self, node):
+        """
+        Return connection pattern of subfgraph defined by inputs and outputs
+        """
+        return io_connection_pattern(self.new_inputs, self.new_outputs)
 
     def grad(self, inputs, output_grads):
         # OpFromGraph doesn't implement a connection_pattern, so for
