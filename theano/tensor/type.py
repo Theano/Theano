@@ -260,7 +260,7 @@ class TensorType(Type):
             and other.broadcastable == self.broadcastable
 
     def convert_variable(self, var):
-        if (type(self) == type(var.type) and
+        if (type(self) == type(var.type) and  # noqa
             self.dtype == var.type.dtype and
             self.ndim == var.type.ndim and
             all(sb == ob or ob for sb, ob in zip(self.broadcastable,
