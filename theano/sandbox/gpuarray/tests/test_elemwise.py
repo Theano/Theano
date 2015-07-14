@@ -55,7 +55,7 @@ def test_elemwise_pow():
 
     dtypes = ["uint8", "uint16", "uint32", "uint64",
               "int8", "int16", "int32", "int64",
-              "float32", "float64"]
+              "float16", "float32", "float64"]
 
     for dtype_base in dtypes:
         for dtype_exp in dtypes:
