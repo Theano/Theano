@@ -36,7 +36,7 @@ def max_pool_2d_same_size(input, patch_size):
         (2,2) will retain only one non-zero value per patch of 4 values.
     """
     output = DownsampleFactorMax(patch_size, True)(input)
-    outs = DownsampleFactorMaxGrad(patch_size, True)(input, output, output)
+    outs = MaxPoolGrad(patch_size, True)(input, output, output)
     return outs
 
 
@@ -309,13 +309,19 @@ class DownsampleFactorMax(Op):
     def grad(self, inp, grads):
         x, = inp
         gz, = grads
-        maxout = self(x)
-        return [DownsampleFactorMaxGrad(self.ds,
-                                        ignore_border=self.ignore_border,
-                                        st=self.st, padding=self.padding,
-                                        mode=self.mode)(
-                                            x, maxout, gz)]
-
+        if self.mode == 'max':
+            maxout = self(x)
+            return [MaxPoolGrad(self.ds,
+                                            ignore_border=self.ignore_border,
+                                            st=self.st, padding=self.padding,
+                                            mode=self.mode)(
+                                                x, maxout, gz)]
+        else:
+            return [AveragePoolGrad(self.ds,
+                                            ignore_border=self.ignore_border,
+                                            st=self.st, padding=self.padding,
+                                            mode=self.mode)(
+                                                x, gz)]
     def c_headers(self):
         return ['<algorithm>']
 
@@ -502,8 +508,85 @@ class DownsampleFactorMax(Op):
     def c_code_cache_version(self):
         return (0, 6, 8, 3)
 
-class DownsampleFactorMaxGrad(Op):
+class PoolGrad(Op):
     __props__ = ('ds', 'ignore_border', 'st', 'padding', 'mode')
+
+    @staticmethod
+    def out_shape(imgshape, ds, ignore_border=False, st=None, padding=(0, 0)):
+        """Return the shape of the output from this op, for input of given
+        shape and flags.
+
+        :param imgshape: the shape of a tensor of images. The last two elements
+            are interpreted as the number of rows, and the number of cols.
+        :type imgshape: tuple, list, or similar of integer or
+            scalar Theano variable.
+
+        :param ds: downsample factor over rows and columns
+                   this parameter indicates the size of the pooling region
+        :type ds: list or tuple of two ints
+
+        :param st: the stride size. This is the distance between the pooling
+                   regions. If it's set to None, in which case it equlas ds.
+        :type st: list or tuple of two ints
+
+        :param ignore_border: if ds doesn't divide imgshape, do we include an
+            extra row/col of partial downsampling (False) or ignore it (True).
+        :type ignore_border: bool
+
+        :param padding: (pad_h, pad_w), pad zeros to extend beyond four borders
+            of the images, pad_h is the size of the top and bottom margins,
+            and pad_w is the size of the left and right margins.
+        :type padding: tuple of two ints
+
+        :rtype: list
+        :returns: the shape of the output from this op, for input of given
+            shape.  This will have the same length as imgshape, but with last
+            two elements reduced as per the downsampling & ignore_border flags.
+        """
+        if len(imgshape) < 2:
+            raise TypeError('imgshape must have at least two elements '
+                            '(rows, cols)')
+
+        if st is None:
+            st = ds
+        r, c = imgshape[-2:]
+        r += padding[0] * 2
+        c += padding[1] * 2
+
+        if ignore_border:
+            out_r = (r - ds[0]) // st[0] + 1
+            out_c = (c - ds[1]) // st[1] + 1
+            if isinstance(r, theano.Variable):
+                nr = tensor.maximum(out_r, 0)
+            else:
+                nr = numpy.maximum(out_r, 0)
+            if isinstance(c, theano.Variable):
+                nc = tensor.maximum(out_c, 0)
+            else:
+                nc = numpy.maximum(out_c, 0)
+        else:
+            if isinstance(r, theano.Variable):
+                nr = tensor.switch(tensor.ge(st[0], ds[0]),
+                                   (r - 1) // st[0] + 1,
+                                   tensor.maximum(0, (r - 1 - ds[0])
+                                                  // st[0] + 1) + 1)
+            elif st[0] >= ds[0]:
+                nr = (r - 1) // st[0] + 1
+            else:
+                nr = max(0, (r - 1 - ds[0]) // st[0] + 1) + 1
+
+            if isinstance(c, theano.Variable):
+                nc = tensor.switch(tensor.ge(st[1], ds[1]),
+                                   (c - 1) // st[1] + 1,
+                                   tensor.maximum(0, (c - 1 - ds[1])
+                                                  // st[1] + 1) + 1)
+            elif st[1] >= ds[1]:
+                nc = (c - 1) // st[1] + 1
+            else:
+                nc = max(0, (c - 1 - ds[1]) // st[1] + 1) + 1
+
+        rval = list(imgshape[:-2]) + [nr, nc]
+        return rval
 
     def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='max'):
         self.ds = tuple(ds)
@@ -517,6 +600,16 @@ class DownsampleFactorMaxGrad(Op):
                 "DownsampleFactorMax mode parameter only support 'max', 'sum',"
                 " 'average_inc_pad' and 'average_exc_pad'. Got %s" % mode)
         self.mode = mode
+
+    def infer_shape(self, node, in_shapes):
+        return [in_shapes[0]]
+
+
+class MaxPoolGrad(PoolGrad):
+
+    def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='max'):
+        PoolGrad.__init__(self, ds, ignore_border, st, padding, mode)
+        self.mode = 'max'
 
     def make_node(self, x, maxout, gz):
         # make_node should only be called by the grad function of
@@ -557,62 +650,30 @@ class DownsampleFactorMaxGrad(Op):
         else:
             y = x
         gx = numpy.zeros_like(y)
-        if self.mode == 'max':
-            for n in xrange(x.shape[0]):
-                for k in xrange(x.shape[1]):
-                    for r in xrange(pr):
-                        row_st = builtins.max(r * st0, self.padding[0])
-                        row_end = builtins.min(row_st + ds0, img_rows)
-                        for c in xrange(pc):
-                            col_st = builtins.max(c * st1, self.padding[1])
-                            col_end = builtins.min(col_st + ds1, img_cols)
-                            for row_ind in xrange(row_st, row_end):
-                                for col_ind in xrange(col_st, col_end):
-                                    if (maxout[n, k, r, c] == y[n, k, row_ind, col_ind]):
-                                        gx[n, k, row_ind, col_ind] += gz[n, k, r, c]
-        else:
-            for n in xrange(x.shape[0]):
-                for k in xrange(x.shape[1]):
-                    for r in xrange(pr):
-                        if sum_mode or inc_pad:
-                            row_st = r * st0
-                        else:
-                            row_st = builtins.max(r * st0, self.padding[0])
-                        row_end = builtins.min(row_st + ds0, img_rows)
-                        for c in xrange(pc):
-                            if sum_mode or inc_pad:
-                                col_st = c * st1
-                            else:
-                                col_st = builtins.max(c * st1,
-                                                         self.padding[1])
-                            col_end = builtins.min(col_st + ds1, img_cols)
-                            if sum_mode:
-                              val = gz[n, k, r, c]
-                            else:
-                              val = gz[n, k, r, c] / ((row_end - row_st) *
-                                                      (col_end - col_st))
-                            gx[n, k, row_st:row_end, col_st:col_end] += val
+        for n in xrange(x.shape[0]):
+            for k in xrange(x.shape[1]):
+                for r in xrange(pr):
+                    row_st = builtins.max(r * st0, self.padding[0])
+                    row_end = builtins.min(row_st + ds0, img_rows)
+                    for c in xrange(pc):
+                        col_st = builtins.max(c * st1, self.padding[1])
+                        col_end = builtins.min(col_st + ds1, img_cols)
+                        for row_ind in xrange(row_st, row_end):
+                            for col_ind in xrange(col_st, col_end):
+                                if (maxout[n, k, r, c] == y[n, k, row_ind, col_ind]):
+                                    gx[n, k, row_ind, col_ind] += gz[n, k, r, c]
         # unpad the image
         gx = gx[:, :, pad_h:(img_rows-pad_h), pad_w:(img_cols-pad_w)]
         gx_stg[0] = gx
 
-    def infer_shape(self, node, in_shapes):
-        return [in_shapes[0]]
-
     def grad(self, inp, grads):
         x, maxout, gz = inp
         ggx, = grads
-        if self.mode == 'max':
-            return [theano.tensor.zeros_like(x),
-                    theano.tensor.zeros_like(maxout),
-                    DownsampleFactorMaxGradGrad(
-                        self.ds, ignore_border=self.ignore_border,
-                        st=self.st, padding=self.padding)(x, maxout, ggx)]
-        else:
-            return [theano.tensor.zeros_like(x),
-                    theano.tensor.zeros_like(maxout),
-                    theano.gradient.grad_not_implemented(
-                        self, 2, gz, 'Hessian not implemented with padding')]
+        return [theano.tensor.zeros_like(x),
+                theano.tensor.zeros_like(maxout),
+                DownsampleFactorMaxGradGrad(
+                    self.ds, ignore_border=self.ignore_border,
+                    st=self.st, padding=self.padding)(x, maxout, ggx)]
 
     def c_code(self, node, name, inp, out, sub):
         if self.mode != 'max':
@@ -729,8 +790,87 @@ class DownsampleFactorMaxGrad(Op):
         }
         """ % locals()
 
-    def c_code_cache_version(self):
-        return (0, 7)
+    #def c_code_cache_version(self):
+    #    return (0, 7)
+
+class AveragePoolGrad(PoolGrad):
+
+    def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='avg_exc_pad'):
+        PoolGrad.__init__(self, ds, ignore_border, st, padding, mode)
+
+    def make_node(self, x, gz):
+        # make_node should only be called by the grad function of
+        # DownsampleFactorMax, so these asserts should not fail.
+        assert isinstance(x, Variable) and x.ndim == 4
+        assert isinstance(gz, Variable) and gz.ndim == 4
+        x = tensor.as_tensor_variable(x)
+        gz = tensor.as_tensor_variable(gz)
+
+        return Apply(self, [x, gz], [x.type()])
+
+    def perform(self, node, inp, out):
+        if self.mode not in ('max', 'sum') and self.padding != (0, 0):
+            raise NotImplementedError()
+        x, gz = inp
+        gx_stg, = out
+        z_shape = self.out_shape(x.shape, self.ds, self.ignore_border, self.st,
+                                 self.padding)
+        if (gx_stg[0] is None) or (gx_stg[0].shape != z_shape):
+            gx_stg[0] = numpy.empty(z_shape, dtype=x.dtype)
+        zz = gx_stg[0]
+        # number of pooling output rows
+        pr = zz.shape[-2]
+        # number of pooling output cols
+        pc = zz.shape[-1]
+        ds0, ds1 = self.ds
+        st0, st1 = self.st
+        pad_h = self.padding[0]
+        pad_w = self.padding[1]
+        img_rows = x.shape[-2] + 2 * pad_h
+        img_cols = x.shape[-1] + 2 * pad_w
+        inc_pad = self.mode == 'average_inc_pad'
+        sum_mode = self.mode == 'sum'
+
+        # pad the image
+        if self.padding != (0, 0):
+            y = numpy.zeros(
+                (x.shape[0], x.shape[1], img_rows, img_cols),
+                dtype=x.dtype)
+            y[:, :, pad_h:(img_rows-pad_h), pad_w:(img_cols-pad_w)] = x
+        else:
+            y = x
+        gx = numpy.zeros_like(y)
+        for n in xrange(x.shape[0]):
+            for k in xrange(x.shape[1]):
+                for r in xrange(pr):
+                    if sum_mode or inc_pad:
+                        row_st = r * st0
+                    else:
+                        row_st = builtins.max(r * st0, self.padding[0])
+                    row_end = builtins.min(row_st + ds0, img_rows)
+                    for c in xrange(pc):
+                        if sum_mode or inc_pad:
+                            col_st = c * st1
+                        else:
+                            col_st = builtins.max(c * st1,
+                                                     self.padding[1])
+                        col_end = builtins.min(col_st + ds1, img_cols)
+                        if sum_mode:
+                          val = gz[n, k, r, c]
+                        else:
+                          val = gz[n, k, r, c] / ((row_end - row_st) *
+                                                  (col_end - col_st))
+                        gx[n, k, row_st:row_end, col_st:col_end] += val
+        # unpad the image
+        gx = gx[:, :, pad_h:(img_rows-pad_h), pad_w:(img_cols-pad_w)]
+        gx_stg[0] = gx
+
+    def grad(self, inp, grads):
+        x, gz = inp
+        ggx, = grads
+        return [theano.tensor.zeros_like(x),
+                theano.gradient.grad_not_implemented(
+                    self, 2, gz, 'Hessian not implemented with padding')]
 
 class DownsampleFactorMaxGradGrad(Op):
     __props__ = ('ds', 'ignore_border', 'st', 'padding', 'mode')

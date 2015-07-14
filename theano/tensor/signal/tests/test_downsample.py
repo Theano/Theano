@@ -8,7 +8,7 @@ import theano
 import theano.tensor as tensor
 from theano.tests import unittest_tools as utt
 from theano.tensor.signal.downsample import (DownsampleFactorMax, max_pool_2d,
-                                             DownsampleFactorMaxGrad,
+                                             MaxPoolGrad, AveragePoolGrad,
                                              DownsampleFactorMaxGradGrad,
                                              max_pool_2d_same_size)
 from theano import function
@@ -417,7 +417,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                 def mp(input, grad):
                     out = DownsampleFactorMax(
                         maxpoolshp, ignore_border=ignore_border)(input)
-                    grad_op = DownsampleFactorMaxGrad(
+                    grad_op = MaxPoolGrad(
                         maxpoolshp, ignore_border=ignore_border)
                     return grad_op(input, out, grad)
 
@@ -443,7 +443,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                         out = DownsampleFactorMax(
                             maxpoolshp, ignore_border=ignore_border,
                             st=stride)(input)
-                        grad_op = DownsampleFactorMaxGrad(
+                        grad_op = MaxPoolGrad(
                             maxpoolshp, ignore_border=ignore_border,
                             st=stride)
                         return grad_op(input, out, grad)
@@ -475,7 +475,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                     out = DownsampleFactorMax(
                         maxpoolshp, ignore_border=ignore_border,
                         st=stride)(input)
-                    grad_op = DownsampleFactorMaxGrad(
+                    grad_op = MaxPoolGrad(
                         maxpoolshp, ignore_border=ignore_border,
                         st=stride)
                     return grad_op(input, out, grad)
@@ -509,7 +509,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                     st=stridesize,
                     padding=paddingsize,
                     )(input)
-                grad_op = DownsampleFactorMaxGrad(maxpoolsize, ignore_border=True,
+                grad_op = MaxPoolGrad(maxpoolsize, ignore_border=True,
                                                   st=stridesize, padding=paddingsize)
                 return grad_op(input, out, grad)
             utt.verify_grad(mp, [imval, grad_val], rng=rng)
@@ -685,12 +685,12 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                     maxout_val = rng.rand(*out_shapes[k][i][j])
                     gz_val = rng.rand(*out_shapes[k][i][j])
                     self._compile_and_check([image, maxout, gz],
-                                            [DownsampleFactorMaxGrad(maxpoolshp,
+                                            [MaxPoolGrad(maxpoolshp,
                                             ignore_border=ignore_border,
                                             padding=padding)
                                             (image, maxout, gz)],
                                             [image_val, maxout_val, gz_val],
-                                            DownsampleFactorMaxGrad,
+                                            MaxPoolGrad,
                                             warn=False)
 
 
