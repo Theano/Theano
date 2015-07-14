@@ -352,7 +352,10 @@ class Unlocker(object):
         self.tmp_dir = tmp_dir
 
     def __del__(self):
-        self.unlock()
+        # If we have the lock, we should delete it.
+        if get_lock.n_lock > 0:
+            while get_lock.n_lock > 0:
+                release_lock()
 
     def unlock(self):
         """Remove current lock.
