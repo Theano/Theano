@@ -83,6 +83,8 @@ class TestConv2D(utt.InferShapeTester):
                 "ConvOp should have generated an error")
 
         ############# REFERENCE IMPLEMENTATION ############
+        # Testing correlation, not convolution. Reverse filters.
+        filter_data = filter_data[:,:,::-1,::-1]
         s = 1.
         orig_image_data = image_data
         if border_mode is not 'full':
@@ -117,24 +119,6 @@ class TestConv2D(utt.InferShapeTester):
                                 icol:icol + N_filter_shape[3]] * filter2d[::-1,::-1]
                             ).sum()
 
-        print ''
-        print theano_output
-        print ref_output
-        print 'image'
-        print image_data.strides
-        print 'filter'
-        print filter_data.strides
-        print 'top'
-        print theano_output.strides
-        print ref_output.strides
-        print ''
-        print 'image'
-        print image_data.shape
-        print 'filter'
-        print filter_data.shape
-        print 'top'
-        print theano_output.shape
-        print ref_output.shape
         self.assertTrue(_allclose(theano_output, ref_output))
 
         ############# TEST GRADIENT ############

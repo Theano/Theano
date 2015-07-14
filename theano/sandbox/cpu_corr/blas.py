@@ -144,8 +144,6 @@ class BaseCpuCorrMM(gof.Op):
             If self.border_mode == 'half', a variable giving the width of the
             filters for direction="backprop weights".  Ignored otherwise.
         """
-        print 'direction'
-        print direction
         dH, dW = self.subsample
         if self.border_mode == "half":
             padH = padW = -1
@@ -346,9 +344,7 @@ class CpuCorrMM(BaseCpuCorrMM):
         Set to `(0, 0)` to disable padding.
 
     :note: Currently, the Op requires the inputs, filters and outputs to be
-        C-contiguous. Use :func:`gpu_contiguous
-        <theano.sandbox.cuda.basic_ops.gpu_contiguous>` on these arguments
-        if needed.
+        C-contiguous.
 
     :note: You can either enable the Theano flag `optimizer_including=conv_gemm`
         to automatically replace all convolution operations with `CpuCorrMM`
@@ -385,7 +381,6 @@ class CpuCorrMM(BaseCpuCorrMM):
     def grad(self, inp, grads):
         bottom, weights = inp
         top, = grads
-        top = gpu_contiguous(top)
         d_bottom = CpuCorrMM_gradInputs(self.border_mode, self.subsample)(
             weights, top, bottom.shape[-2:])
         d_weights = CpuCorrMM_gradWeights(self.border_mode, self.subsample)(
@@ -437,7 +432,6 @@ class CpuCorrMM_gradWeights(BaseCpuCorrMM):
     def grad(self, inp, grads):
         bottom, top = inp[:2]
         weights, = grads
-        weights = gpu_contiguous(weights)
         d_bottom = CpuCorrMM_gradInputs(self.border_mode, self.subsample)(
                 weights, top, bottom.shape[-2:])
         d_top = CpuCorrMM(self.border_mode, self.subsample)(
@@ -492,7 +486,6 @@ class CpuCorrMM_gradInputs(BaseCpuCorrMM):
     def grad(self, inp, grads):
         weights, top = inp[:2]
         bottom, = grads
-        bottom = gpu_contiguous(bottom)
         d_weights = CpuCorrMM_gradWeights(self.border_mode, self.subsample)(
                 bottom, top, weights.shape[-2:])
         d_top = CpuCorrMM(self.border_mode, self.subsample)(
