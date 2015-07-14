@@ -25,7 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#undef _GLIBCXX_ATOMIC_BUILTINS
+//#undef _GLIBCXX_ATOMIC_BUILTINS
 
 
 // (borrowed from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/util/im2col.cpp)
@@ -50,7 +50,7 @@ void im2col(const npy_float* data_im, const int channels,
           data_col[(c * height_col + h) * width_col + w] =
             data_im[(c_im * height + h_pad) * width + w_pad];
         else
-          data_col[(c * height_col + h) * width_col + w] = 0;
+          data_col[(c * height_col + h) * width_col + w] = 0.;
       }
     }
   }
@@ -86,7 +86,6 @@ void col2im(const npy_float* data_col, const int channels,
 // Reference code: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu
 //   and https://github.com/torch/cunn/blob/master/SpatialConvolutionMM.cu
 // CPU version author: Jesse Livezey
-// TODO const?
 PyArrayObject* corrMM(PyArrayObject* bottom,
                            PyArrayObject* weight,
                            PyArrayObject* top,
@@ -101,7 +100,6 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         PyErr_SetString(PyExc_ValueError, "CpuCorrMM requires bottom of 4D");
         return NULL;
     }
-    // TODO Is this check needed?
     if (!PyArray_IS_C_CONTIGUOUS(bottom))
     {
         PyErr_Format(PyExc_ValueError,
@@ -119,8 +117,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         PyErr_SetString(PyExc_ValueError, "CpuCorrMM requires weight of 4D");
         return NULL;
     }
-    // TODO Is this check needed?
-    if (PyArray_IS_C_CONTIGUOUS(weight))
+    if (!PyArray_IS_C_CONTIGUOUS(weight))
     {
         PyErr_Format(PyExc_ValueError,
                 "CpuCorrMM requires weight to be C-contiguous, "
@@ -137,7 +134,6 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         PyErr_SetString(PyExc_ValueError, "CpuCorrMM requires top of 4D");
         return NULL;
     }
-    // TODO Is this check needed?
     if (!PyArray_IS_C_CONTIGUOUS(top))
     {
         PyErr_Format(PyExc_ValueError,
@@ -190,7 +186,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     //int col_dim[2];
     col_dim[0] = (npy_intp)(nChannels * kW * kH);
     col_dim[1] = (npy_intp)(topHeight * topWidth);
-    PyArrayObject* col = (PyArrayObject*)PyArray_Empty(2,
+    PyArrayObject* col = (PyArrayObject*)PyArray_Zeros(2,
 		                           col_dim,
                                            PyArray_DTYPE(top),
 					   0);
@@ -205,7 +201,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     // Define some useful variables
     const int bottom_stride = PyArray_STRIDES(bottom)[0];
     const int top_stride = PyArray_STRIDES(top)[0];
-    int type_num = PyArray_DESCR(bottom)->type_num;
+    // int type_num = PyArray_DESCR(bottom)->type_num;
     // TODO More careful type checking for all arrays
     const int K_ = col_dim[0];
     const int N_ = col_dim[1];
@@ -224,23 +220,14 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
             // First, im2col
             im2col((npy_float*)PyArray_DATA(bottom) + n * bottom_stride, nChannels, bottomHeight,
                     bottomWidth, kH, kW, padH, padW, dH, dW, (npy_float*)PyArray_DATA(col));
-	    // TODO What to check here?
-	    /*
-            cudaError_t err = cudaGetLastError();
-            if (err != cudaSuccess) {
-                PyErr_Format(PyExc_RuntimeError,
-                             "CpuCorrMM encountered an error in im2col: %s.\n"
-                             cudaGetErrorString(err));
-                Py_DECREF(col);
-                return NULL;
-            }
-	    */
             // Second, gemm
-	    // TODO Is this correct?
+	    // TODO Switch to string substitutions for d/s
+            /*
             switch (type_num)
             {
               case NPY_FLOAT:
               {
+              */
                 sgemm_(&NTrans, &NTrans,
                        &N_, &M_, &K_,
                        &one_f,
@@ -248,8 +235,10 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                        (npy_float*)PyArray_DATA(weight), &K_,
                        &zero_f,
                        (npy_float*)PyArray_DATA(top) + n * top_stride, &N_);
+                /*
               };
 	      break;
+              */
 	      /* TODO
               case NPY_DOUBLE:
               {
@@ -261,24 +250,14 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                        &zero_d,
                        top + n * top_stride, &N_);
               };
-	      */
 	      break;
             };
-	    // TODO What to check here?
-	    /*
-            if (status != CUBLAS_STATUS_SUCCESS) {
-                PyErr_Format(PyExc_RuntimeError,
-                        "CpuCorrMM encountered a CUBLAS error: %s\n"
-                        "This could be a known bug in CUDA, please see the "
-                        "CpuCorrMM() documentation.\n",
-                        cublasGetErrorString(status));
-                Py_DECREF(col);
-                return NULL;
-            }
-	    */
+	      */
         }
         /*
         // Original caffe code for comparison
+        // Note that this code was translated from the Theano GPU code,
+        // not the Caffe CPU code.
         // https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu
         // Note that this is for grouped convolution; we can ignore groups here,
         // but the group-related offsets help explain what M_, N_ and K_ are
@@ -315,26 +294,10 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
             // First, im2col
             im2col((npy_float*)PyArray_DATA(bottom) + n * bottom_stride, nChannels, bottomHeight,
                     bottomWidth, kH, kW, padH, padW, dH, dW, (npy_float*)PyArray_DATA(col));
-	    /* TODO
-            cudaError_t err = cudaGetLastError();
-            if (err != cudaSuccess) {
-                PyErr_Format(PyExc_RuntimeError,
-                             "CpuCorrMM encountered a CUDA error in im2col: %s\n"
-                             "This could be a known bug in CUDA, please see the "
-                             "CpuCorrMM() documentation.\n",
-                             cudaGetErrorString(err));
-                Py_DECREF(col);
-                return NULL;
-            }
-	    */
             // Second, gemm
             // Note that we accumulate into weight. We do so by setting beta = 0
             // for the first iteration and beta = 1 for subsequent ones. (This
             // is faster than setting weight to all zeros before the loop.)
-            switch (type_num)
-            {
-              case NPY_FLOAT:
-              {
                 sgemm_(&Trans, &NTrans,
                        &K_, &M_, &N_,
                        &one_f,
@@ -342,8 +305,6 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                        (npy_float*)PyArray_DATA(top) + n * top_stride, &N_,
                        (n == 0) ? &zero_f : &one_f,
                        (npy_float*)PyArray_DATA(weight), &K_);
-              };
-	      break;
 	      /*
               case NPY_DOUBLE:
               {
@@ -356,22 +317,11 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                        weight, &K_);
               };
 	      */
-	      break;
-            };
-	    /* TODO
-            if (status != CUBLAS_STATUS_SUCCESS) {
-                PyErr_Format(PyExc_RuntimeError,
-                        "CpuCorrMM encountered a CUBLAS error: %s\n"
-                        "This could be a known bug in CUDA, please see the "
-                        "CpuCorrMM() documentation.\n",
-                        cublasGetErrorString(status));
-                Py_DECREF(col);
-                return NULL;
-            }
-	    */
         }
         /*
         // Original caffe code for comparison
+        // Note that this code was translated from the Theano GPU code,
+        // not the Caffe CPU code.
         // https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu
         // Note that this is for grouped convolution; we can ignore groups
         for (int n = 0; n < num_; ++n) {
@@ -403,10 +353,6 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         // Iterate over batch
         for (int n = 0; n < batchSize; n++) {
             // gemm into columns
-            switch (type_num)
-            {
-              case NPY_FLOAT:
-              {
                 sgemm_(&NTrans, &Trans,
                        &N_, &K_, &M_,
                        &one_f,
@@ -414,8 +360,6 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                        (npy_float*)PyArray_DATA(weight), &K_,
                        &zero_f,
                        (npy_float*)PyArray_DATA(col), &N_);
-              };
-	      break;
 	      /*
               case NPY_DOUBLE:
               {
@@ -428,37 +372,14 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                        col, &N_);
               };
 	      */
-	      break;
-            };
-	    /* TODO
-            if (status != CUBLAS_STATUS_SUCCESS) {
-                PyErr_Format(PyExc_RuntimeError,
-                        "CpuCorrMM encountered a CUBLAS error: %s\n"
-                        "This could be a known bug in CUDA, please see the "
-                        "CpuCorrMM() documentation.\n",
-                        cublasGetErrorString(status));
-                Py_DECREF(col);
-                return NULL;
-            }
-	    */
             // col2im back to the data
             col2im((npy_float*)PyArray_DATA(col), nChannels, bottomHeight, bottomWidth,
                     kH, kW, padH, padW, dH, dW, (npy_float*)PyArray_DATA(bottom) + n * bottom_stride);
-	    /* TODO
-            cudaError_t err = cudaGetLastError();
-            if (err != cudaSuccess) {
-                PyErr_Format(PyExc_RuntimeError,
-                             "CpuCorrMM encountered a CUDA error in col2im: %s\n"
-                             "This could be a known bug in CUDA, please see the "
-                             "CpuCorrMM() documentation.\n",
-                             cudaGetErrorString(err));
-                Py_DECREF(col);
-                return NULL;
-            }
-	    */
         }
         /*
         // Original caffe code for comparison
+        // Note that this code was translated from the Theano GPU code,
+        // not the Caffe CPU code.
         // https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu
         for (int n = 0; n < num_; ++n) {
           // gradient w.r.t. bottom data, if necessary

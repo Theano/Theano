@@ -104,7 +104,7 @@ class BaseCpuCorrMM(gof.Op):
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
         # these files
-        files = ['corr_gemm.cpp']
+        files = ['corr_gemm.c']
         codes = [open(os.path.join(os.path.split(__file__)[0], f)).read()
                 for f in files]
         return reduce(str.__add__, codes)
@@ -144,6 +144,8 @@ class BaseCpuCorrMM(gof.Op):
             If self.border_mode == 'half', a variable giving the width of the
             filters for direction="backprop weights".  Ignored otherwise.
         """
+        print 'direction'
+        print direction
         dH, dW = self.subsample
         if self.border_mode == "half":
             padH = padW = -1
@@ -286,6 +288,7 @@ class BaseCpuCorrMM(gof.Op):
     }
 
     // Prepare output array
+    PyArray_Descr * dtype;
     if ( !(%(out)s
            && PyArray_NDIM(%(out)s)==4
            && PyArray_IS_C_CONTIGUOUS(%(out)s)
@@ -295,9 +298,15 @@ class BaseCpuCorrMM(gof.Op):
            && PyArray_DIMS(%(out)s)[3]==out_dim[3]))
     {
         Py_XDECREF(%(out)s);
+        if (direction != 1) {
+          dtype = PyArray_DTYPE(weights);
+        }
+        else {
+          dtype = PyArray_DTYPE(bottom);
+        }
         %(out)s = (PyArrayObject*)PyArray_Empty(4,
                                           out_dim,
-                                          PyArray_DTYPE(%(weights)s),
+                                          dtype,
                                           0);
         if (NULL == %(out)s)
         {
