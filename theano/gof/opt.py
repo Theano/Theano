@@ -1007,19 +1007,6 @@ class LocalOptGroup(LocalOptimizer):
             opt.add_requirements(fgraph)
 
 
-class _LocalOpKeyOptGroup(LocalOptGroup):
-    """WRITEME"""
-
-    def __init__(self, optimizers):
-        if any(not hasattr(opt, 'op_key'), optimizers):
-            raise TypeError(
-                "All LocalOptimizers passed here must have an op_key method.")
-        CompositeLocalOptimizer.__init__(self, optimizers)
-
-    def op_key(self):
-        return [opt.op_key() for opt in self.opts]
-
-
 class OpSub(LocalOptimizer):
     """WRITEME
     Replaces the application of a certain op by the application of
