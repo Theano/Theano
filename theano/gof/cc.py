@@ -36,34 +36,8 @@ AddConfigVar('gcc.cxxflags',
              "Extra compiler flags for gcc",
              StrParam(""))
 
-if PY3:
-    import hashlib
-
-    def hash_from_code(msg):
-        # hashlib.md5() requires an object that supports buffer interface,
-        # but Python 3 (unicode) strings don't.
-        if isinstance(msg, str):
-            msg = msg.encode()
-        # Python 3 does not like module names that start with
-        # a digit.
-        return 'm' + hashlib.md5(msg).hexdigest()
-
-else:
-    import hashlib
-
-    def hash_from_code(msg):
-        try:
-            return hashlib.md5(msg).hexdigest()
-        except TypeError:
-            assert isinstance(msg, numpy.ndarray)
-            return hashlib.md5(numpy.getbuffer(msg)).hexdigest()
 
 _logger = logging.getLogger("theano.gof.cc")
-
-
-def hash_from_file(file_path):
-    """Return the MD5 hash of a file."""
-    return hash_from_code(open(file_path, 'rb').read())
 
 
 run_cthunk = None  # Will be imported only when needed.

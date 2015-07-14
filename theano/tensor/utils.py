@@ -2,7 +2,7 @@ import numpy
 
 import theano
 from theano.compat import izip
-from theano.gof.cc import hash_from_code
+from theano.gof.utils import hash_from_code
 
 
 def hash_from_ndarray(data):

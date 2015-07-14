@@ -10,7 +10,7 @@ import numpy
 
 from theano.compat import decode, decode_iter
 from theano.gof import local_bitwidth
-from theano.gof.cc import hash_from_file
+from theano.gof.utils import hash_from_file
 from theano.gof.cmodule import (std_libs, std_lib_dirs,
                                 std_include_dirs, dlimport,
                                 Compiler,
