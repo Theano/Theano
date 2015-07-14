@@ -2881,6 +2881,10 @@ SqrtTester = elemwise_checker(
     numpy.sqrt,
     gap=(0, 10))
 
+ConjTester = elemwise_checker(
+    sparse.conj,
+    numpy.conj)
+
 
 class MulSVTester(unittest.TestCase):
     def setUp(self):
