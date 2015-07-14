@@ -10,7 +10,6 @@ def test_numpy_method():
     x = tt.dmatrix('x')
     data = np.random.rand(5, 5)
     for fct in [np.exp]:
-        print fct
         y = fct(x)
         f = theano.function([x], y)
         utt.assert_allclose(f(data), fct(data))
