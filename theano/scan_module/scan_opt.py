@@ -26,13 +26,16 @@ scan_eqopt2 -> They are all global optimizer. (in2out convert local to global).
                registered. (So don't change the order we register them!)
                If we convert to local optimizer, we must convert all of them
                to local optimizer. But:
-               1) can ScanMerge be made local? Can we keep only this one global?
+               1) can ScanMerge be made local? Can we keep only this one
+               global?
                2) ScanSaveMem assert that we remove all nodes outputs,
                   we need to keep this.
                3) It is ScanSaveMem suppose the the others ran before.
-                  I added an assert at one place, but didn't looked for other place.
+                  I added an assert at one place, but didn't looked for
+                  other place.
                4) Moving this to local opt could speed up significant this opt,
-                  as we pass frequently on all nodes in the graph for no good reason.
+                  as we pass frequently on all nodes in the graph for no
+                  good reason.
                5) We register remove_constant_*  many places, as some
                   opt create them and let this one clean up the mess.
                   Doing it that way, make things simpler for those already
@@ -70,14 +73,16 @@ from theano.compat import OrderedDict
 from six import integer_types, iteritems
 from six.moves import xrange
 from theano.gof.opt import Optimizer
+from theano.gof.opt import pre_constant_merge, pre_greedy_local_optimizer
 from theano.gof import toolbox, DestroyHandler, InconsistencyError
 from theano.compile import optdb
 from theano.compile.function_module import deep_copy_op
 
 from theano.scan_module import scan_op
 from theano.scan_module import scan_utils
-from theano.scan_module.scan_utils import equal_computations, find_up, scan_args
-from theano.gof.opt import pre_constant_merge, pre_greedy_local_optimizer
+from theano.scan_module.scan_utils import equal_computations, find_up, \
+        scan_args
+
 
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module.scan_opt')
@@ -207,8 +212,8 @@ def remove_constants_and_unused_inputs_scan(node):
 # It should be possible to change it to a local opt.
 class PushOutNonSeqScan(gof.Optimizer):
     """
-        A global optimizer for pushing out the variables from scan that are not
-    used inside the scan.
+    A global optimizer for pushing out the variables inside the scan that
+    are not used by the scan.
     """
     def __init__(self):
         gof.Optimizer.__init__(self)
@@ -224,10 +229,10 @@ class PushOutNonSeqScan(gof.Optimizer):
 
     def process_node(self, fgraph, node):
         """
-            Important note: This function uses set and dictionary data structure.
-        By default they are not ordered for efficiency reasons. Take care and make
-        sure of changing them to Ordered versions if you need to iterate over those
-        variables.
+        Important note: This function uses set and dictionary data structure.
+        By default they are not ordered for efficiency reasons. Take care
+        and make sure of changing them to Ordered versions if you need to
+        iterate over those variables.
         """
         # this flag tells if there was any change during the last iterations
         clean_inputs, clean_outputs = scan_utils.reconstruct_graph(
@@ -239,7 +244,8 @@ class PushOutNonSeqScan(gof.Optimizer):
 
         local_fgraph_topo = local_fgraph.toposort()
         local_fgraph_outs_set = set(local_fgraph.outputs)
-        local_fgraph_outs_map = dict([(v, k) for k,v in enumerate(local_fgraph.outputs)])
+        local_fgraph_outs_map = dict([(v, k) for k, v in \
+                enumerate(local_fgraph.outputs)])
 
         to_remove_set = set()
         to_remove_add = to_remove_set.add
@@ -401,7 +407,7 @@ class PushOutNonSeqScan(gof.Optimizer):
 # It should be possible to change it to a local opt.
 class PushOutSeqScan(gof.Optimizer):
     """
-        A global optimizer for pushing out the input variables that are not being
+    A global optimizer for pushing out the input variables that are not being
     used inside the scan and provided in the sequences.
     """
     def __init__(self):
@@ -418,19 +424,21 @@ class PushOutSeqScan(gof.Optimizer):
 
     def process_node(self, fgraph, node):
         """
-            Important note: This function uses set and dictionary data structure.
-        By default they are not ordered for efficiency reasons. Take care and make
-        sure of changing them to Ordered versions if you need to iterate over those
-        variables.
+        IMPORTANT NOTE: This function uses set and dictionary data structure.
+        By default they are not ordered for efficiency reasons. Take care
+        and make sure of changing them to Ordered versions if you need to
+        iterate over those variables.
         """
         # this flag tells if there was any change during the last iterations
         clean_inputs, clean_outputs = scan_utils.reconstruct_graph(
             node.op.inputs, node.op.outputs)
 
-        local_fgraph = gof.FunctionGraph(clean_inputs, clean_outputs, clone=False)
+        local_fgraph = gof.FunctionGraph(clean_inputs, clean_outputs,
+                                         clone=False)
         local_fgraph_topo = local_fgraph.toposort()
         local_fgraph_outs_set = set(local_fgraph.outputs)
-        local_fgraph_outs_map = dict([(v,k) for k,v in enumerate(local_fgraph.outputs)])
+        local_fgraph_outs_map = dict([(v,k) for k,v in \
+                                     enumerate(local_fgraph.outputs)])
 
         to_remove_set = set()
         to_remove_add = to_remove_set.add
@@ -640,10 +648,9 @@ class PushOutSeqScan(gof.Optimizer):
 
 class PushOutScanOutput(gof.Optimizer):
     """
-    This optimization can push operations performed at the end of the inner
-    graph of scan to outside of scan
+    This is an optimization that can push operations performed
+    at the end of the inner graph of scan to outside of scan.
     """
-
     def __init__(self):
         gof.Optimizer.__init__(self)
 
@@ -756,7 +763,8 @@ class PushOutScanOutput(gof.Optimizer):
 
                     # Modify the outer graph to add the outer Dot
                     fgraph.replace_all([
-                           (new_scan_args.outer_out_nit_sot[dot_out_nitsot_idx],
+                           (new_scan_args.outer_out_nit_sot[
+                            dot_out_nitsot_idx],
                             outer_dot_output)],
                            reason="scanOp_pushout_output")
 
@@ -780,7 +788,8 @@ class PushOutScanOutput(gof.Optimizer):
                     # otherwise doing a Dot in the outer graph will only
                     # duplicate computation.
 
-                    sitsot_in_idx = nd.inputs.index(args.inner_in_sit_sot[sitsot_idx])
+                    sitsot_in_idx = nd.inputs.index(args.inner_in_sit_sot[
+                                                    sitsot_idx])
 
                     dot_in_idx = 1 - sitsot_in_idx  # 0 if sitsot_in_idx==1,
                                                    # 1 if sitsot_in_idx==0
@@ -791,8 +800,10 @@ class PushOutScanOutput(gof.Optimizer):
                         len(dot_input.clients) == 1 and
                         dot_input.owner.inputs[0].ndim == 2 and
                         dot_input.owner.inputs[1].ndim == 2 and
-                        self.get_outer_ndim(dot_input.owner.inputs[0], args) == 3 and
-                        self.get_outer_ndim(dot_input.owner.inputs[1], args) == 3):
+                        self.get_outer_ndim(dot_input.owner.inputs[0], args) \
+                                == 3 and
+                        self.get_outer_ndim(dot_input.owner.inputs[1], args) \
+                                == 3):
 
                         # The optimization can be be applied in this case.
 
@@ -801,9 +812,10 @@ class PushOutScanOutput(gof.Optimizer):
                         inner_dot_inputs = nd.inputs[dot_in_idx].owner.inputs
                         (outer_dot_inputs,
                          new_scan_node,
-                         new_scan_args) = self.push_out_inner_vars(fgraph,
-                                                                   inner_dot_inputs,
-                                                                   node, args)
+                         new_scan_args) = \
+                                 self.push_out_inner_vars(fgraph,
+                                                          inner_dot_inputs,
+                                                          node, args)
 
                         # Collapse some of the dimensions of the tensors
                         # so that they become matrices. This is because a
@@ -814,20 +826,23 @@ class PushOutScanOutput(gof.Optimizer):
                                        outdim=2)
 
                         shape_input1 = theano.tensor.shape(outer_dot_inputs[1])
-                        outer_dot_inputs[1] = outer_dot_inputs[1].reshape((shape_input1[0] *
-                                                                           shape_input1[1],
-                                                                           shape_input1[2]))
+                        outer_dot_inputs[1] =\
+                                outer_dot_inputs[1].reshape((shape_input1[0] *
+                                                             shape_input1[1],
+                                                             shape_input1[2]))
 
                         # Perform the dot on the newly obtained matrices and
                         # add the initial value
                         outer_dot_output = theano.tensor.dot(*outer_dot_inputs)
-                        init_value = new_scan_args.outer_in_sit_sot[sitsot_idx][0]
+                        init_value = \
+                                new_scan_args.outer_in_sit_sot[sitsot_idx][0]
                         replacement = outer_dot_output + init_value
 
                         # Alter the outer graph to use the output of the
                         # external Dot instead of the output of scan
                         # Modify the outer graph to add the outer Dot
-                        outer_sitsot = new_scan_args.outer_out_sit_sot[sitsot_idx]
+                        outer_sitsot = \
+                                new_scan_args.outer_out_sit_sot[sitsot_idx]
                         subtensor_node = outer_sitsot.clients[0][0]
                         outer_sitsot_last_step = subtensor_node.outputs[0]
 
@@ -1295,7 +1310,8 @@ class ScanSaveMem(gof.Optimizer):
                         # for mitsots and sitsots (because mitmots are not
                         # currently supported by the mechanism) and only if
                         # the pre-allocation mechanism is activated.
-                        prealloc_outs = theano.config.scan.allow_output_prealloc
+                        prealloc_outs = \
+                                theano.config.scan.allow_output_prealloc
 
                         first_mitsot_idx = node.op.n_mit_mot
                         last_sitsot_idx = (node.op.n_mit_mot +
@@ -1317,11 +1333,13 @@ class ScanSaveMem(gof.Optimizer):
                         # TODO: Simplify the number of steps needed.
                         # FB: This need good testing, left to later.
                         #     call get_scalar_constant_value()? it can
-                        # return python/numpy scalar or numpy.ndarray currently.
+                        # return python/numpy scalar or numpy.ndarray
+                        # currently.
                         # pval = pre_greedy_local_optimizer(list_opt_slice,
                         #                                  pval)
                         #pval = pre_constant_merge([pval])[0]
-                        # if (isinstance(pval, theano.tensor.TensorConstant) and
+                        # if (isinstance(pval, theano.tensor.TensorConstant)
+                        # and
                         #    pval.dtype.startswith('int')):
                         #    try:
                         #        pval = int(pval.data)
@@ -1365,7 +1383,6 @@ class ScanSaveMem(gof.Optimizer):
                         #   a) the input is a set_subtensor, in that case we
                         #      can replace the initial tensor by a slice,
                         #   b) it is not, and we simply take a slice of it.
-
                         # TODO: commit change below with Razvan
                         if (nw_inputs[offset + idx].owner and
                             isinstance(nw_inputs[offset + idx].owner.op,
@@ -1549,7 +1566,8 @@ class ScanSaveMem(gof.Optimizer):
             # 3.9. Get replace pairs for all other nodes
             if flag_store or global_nsteps is not None:
                 for idx, o in enumerate(node.outputs):
-                    if not (idx in replaced_outs) and not idx in not_required:
+                    if not (idx in replaced_outs) and \
+                            not idx in not_required:
                         nw_pos = compress_map[idx]
                         old_new += [(o, new_outs[nw_pos])]
                 # Check if the new outputs depend on the old scan node
@@ -2090,12 +2108,16 @@ class PushOutDot1(gof.Optimizer):
                         new_info = op.info.copy()
                         st = len(op.mitmot_taps()) + len(op.mitsot_taps())
 
-                        new_info['tap_array'] = (new_info['tap_array'][:st + idx] +
-                                            new_info['tap_array'][st + idx + 1:])
+                        new_info['tap_array'] = (\
+                                            new_info['tap_array'][:st + idx] +
+                                            new_info['tap_array'][st +
+                                                                  idx + 1:])
                         new_info['n_sit_sot'] -= 1
                         new_info['n_nit_sot'] += 1
-                        inner_sitsot = inner_sitsot[:idx] + inner_sitsot[idx + 1:]
-                        outer_sitsot = outer_sitsot[:idx] + outer_sitsot[idx + 1:]
+                        inner_sitsot = inner_sitsot[:idx] + \
+                                inner_sitsot[idx + 1:]
+                        outer_sitsot = outer_sitsot[:idx] + \
+                                outer_sitsot[idx + 1:]
                         inner_sitsot_outs = inner_sitsot_outs[:idx] +\
                                 inner_sitsot_outs[idx + 1:]
                         # add n_steps as the length
@@ -2131,8 +2153,9 @@ class PushOutDot1(gof.Optimizer):
                         if type(new_outs) not in (list, tuple):
                             new_outs = [new_outs]
 
-                        # We need now to pair correctly the new outputs with the
-                        # old ones
+                        # We need now to pair correctly the new outputs
+                        # with the old ones
+
                         outer_mitmot_outs = new_op.outer_mitmot_outs(new_outs)
                         outer_mitsot_outs = new_op.outer_mitsot_outs(new_outs)
                         outer_sitsot_outs = new_op.outer_sitsot_outs(new_outs)
@@ -2171,7 +2194,8 @@ class PushOutDot1(gof.Optimizer):
                         old_new = list(zip(node.outputs[:pos], new_outs[:pos]))
                         old = node.outputs[pos].clients[0][0].outputs[0]
                         old_new.append((old, new_out))
-                        old_new += list(zip(node.outputs[pos+1:], new_outs[pos:]))
+                        old_new += list(zip(node.outputs[pos+1:],
+                                            new_outs[pos:]))
                         fgraph.replace_all_validate_remove(
                             old_new, remove=[node], reason='scan_pushout_dot1')
 
