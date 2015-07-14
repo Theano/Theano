@@ -639,16 +639,6 @@ def svd(a, full_matrices=1, compute_uv=1):
     return SVD(full_matrices, compute_uv)(a)
 
 
-def test_matrix_inverse_solve():
-    if not imported_scipy:
-        raise SkipTest("Scipy needed for the Solve op.")
-    A = theano.tensor.dmatrix('A')
-    b = theano.tensor.dmatrix('b')
-    node = matrix_inverse(A).dot(b).owner
-    [out] = inv_as_solve.transform(node)
-    assert isinstance(out.owner.op, Solve)
-
-
 class lstsq(Op):
     def __eq__(self, other):
         return type(self) == type(other)
