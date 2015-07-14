@@ -2883,7 +2883,8 @@ SqrtTester = elemwise_checker(
 
 ConjTester = elemwise_checker(
     sparse.conj,
-    numpy.conj)
+    numpy.conj,
+    grad_test=False)
 
 
 class MulSVTester(unittest.TestCase):
