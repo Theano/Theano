@@ -296,51 +296,51 @@ class Psi(UnaryScalarOp):
 
     def c_support_code(self):
         return (
-"""
-// For GPU support
-#ifdef __CUDACC__
-#define DEVICE __device__
-#else
-#define DEVICE
-#endif
+            """
+            // For GPU support
+            #ifdef __CUDACC__
+            #define DEVICE __device__
+            #else
+            #define DEVICE
+            #endif
 
-#ifndef _PSIFUNCDEFINED
-#define _PSIFUNCDEFINED
-DEVICE double _psi(double x){
+            #ifndef _PSIFUNCDEFINED
+            #define _PSIFUNCDEFINED
+            DEVICE double _psi(double x){
 
-    /*taken from
-    Bernardo, J. M. (1976). Algorithm AS 103:
-    Psi (Digamma) Function. Applied Statistics. 25 (3), 315-317.
-    http://www.uv.es/~bernardo/1976AppStatist.pdf */
+            /*taken from
+            Bernardo, J. M. (1976). Algorithm AS 103:
+            Psi (Digamma) Function. Applied Statistics. 25 (3), 315-317.
+            http://www.uv.es/~bernardo/1976AppStatist.pdf */
 
-    double y, R, psi_ = 0;
-    double S  = 1.0e-5;
-    double C = 8.5;
-    double S3 = 8.333333333e-2;
-    double S4 = 8.333333333e-3;
-    double S5 = 3.968253968e-3;
-    double D1 = -0.5772156649;
+            double y, R, psi_ = 0;
+            double S  = 1.0e-5;
+            double C = 8.5;
+            double S3 = 8.333333333e-2;
+            double S4 = 8.333333333e-3;
+            double S5 = 3.968253968e-3;
+            double D1 = -0.5772156649;
 
-    y = x;
+            y = x;
 
-    if (y <= 0.0)
-        return psi_;
+            if (y <= 0.0)
+               return psi_;
 
-    if (y <= S )
-        return D1 - 1.0/y;
+            if (y <= S )
+                return D1 - 1.0/y;
 
-    while (y < C){
-        psi_ = psi_ - 1.0 / y;
-        y = y + 1;}
+            while (y < C){
+                psi_ = psi_ - 1.0 / y;
+                y = y + 1;}
 
-    R = 1.0 / y;
-    psi_ = psi_ + log(y) - .5 * R ;
-    R= R*R;
-    psi_ = psi_ - R * (S3 - R * (S4 - R * S5));
+            R = 1.0 / y;
+            psi_ = psi_ + log(y) - .5 * R ;
+            R= R*R;
+            psi_ = psi_ - R * (S3 - R * (S4 - R * S5));
 
-    return psi_;}
-    #endif
-        """ )
+            return psi_;}
+            #endif
+            """)
 
     def c_code(self, node, name, inp, out, sub):
         x, = inp
