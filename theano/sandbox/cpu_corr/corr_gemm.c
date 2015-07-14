@@ -25,7 +25,6 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-//#undef _GLIBCXX_ATOMIC_BUILTINS
 
 
 // (borrowed from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/util/im2col.cpp)
@@ -186,9 +185,9 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     //int col_dim[2];
     col_dim[0] = (npy_intp)(nChannels * kW * kH);
     col_dim[1] = (npy_intp)(topHeight * topWidth);
-    PyArrayObject* col = (PyArrayObject*)PyArray_Zeros(2,
+    PyArrayObject* col = (PyArrayObject*)PyArray_EMPTY(2,
 		                           col_dim,
-                                           PyArray_DTYPE(top),
+                                           PyArray_TYPE(top),
 					   0);
     if (NULL == col)
     {
@@ -199,8 +198,9 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     }
 
     // Define some useful variables
-    const int bottom_stride = PyArray_STRIDES(bottom)[0];
-    const int top_stride = PyArray_STRIDES(top)[0];
+    // TODO More careful divide
+    const int bottom_stride = PyArray_STRIDES(bottom)[0]/4;
+    const int top_stride = PyArray_STRIDES(top)[0]/4;
     // int type_num = PyArray_DESCR(bottom)->type_num;
     // TODO More careful type checking for all arrays
     const int K_ = col_dim[0];

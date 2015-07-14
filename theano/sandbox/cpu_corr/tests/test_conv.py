@@ -83,6 +83,8 @@ class TestConv2D(utt.InferShapeTester):
                 "ConvOp should have generated an error")
 
         ############# REFERENCE IMPLEMENTATION ############
+        # Testing correlation, not convolution. Reverse filters.
+        filter_data_corr = numpy.copy(filter_data[:,:,::-1,::-1], order='C')
         s = 1.
         orig_image_data = image_data
         if border_mode is not 'full':
@@ -106,7 +108,7 @@ class TestConv2D(utt.InferShapeTester):
         for bb in range(N_image_shape[0]):
             for nn in range(N_filter_shape[0]):
                 for im0 in range(N_image_shape[1]):
-                    filter2d = filter_data[nn, im0, :, :]
+                    filter2d = filter_data_corr[nn, im0, :, :]
                     image2d = image_data[bb, im0, :, :]
                     for row in range(ref_output.shape[2]):
                         irow = row * subsample[0]  # image row
@@ -117,24 +119,6 @@ class TestConv2D(utt.InferShapeTester):
                                 icol:icol + N_filter_shape[3]] * filter2d[::-1,::-1]
                             ).sum()
 
-        print ''
-        print theano_output
-        print ref_output
-        print 'image'
-        print image_data.strides
-        print 'filter'
-        print filter_data.strides
-        print 'top'
-        print theano_output.strides
-        print ref_output.strides
-        print ''
-        print 'image'
-        print image_data.shape
-        print 'filter'
-        print filter_data.shape
-        print 'top'
-        print theano_output.shape
-        print ref_output.shape
         self.assertTrue(_allclose(theano_output, ref_output))
 
         ############# TEST GRADIENT ############
@@ -147,7 +131,7 @@ class TestConv2D(utt.InferShapeTester):
         images and filters.
 
         """
-        self.validate((2, 2, 3, 3), (2, 2, 2, 2), 'valid', verify_grad=False)
+        self.validate((2, 2, 3, 3), (2, 2, 2, 2), 'valid')#, verify_grad=False)
 
     def test_basic(self):
         """Tests that basic convolutions work for odd and even
