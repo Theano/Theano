@@ -4101,6 +4101,8 @@ class T_local_switch_sink(unittest.TestCase):
                             self.resm[idx][i])).sum() == self.resm[idx][i].size
                 else:
                     res = f(condition[1], x[1], -1)
+                    # theano.printing.debugprint(f.maker.fgraph.outputs[0])
+                    # import ipdb;ipdb.set_trace()
                     assert (res == numpy.asarray(self.
                         resm[idx])).sum() == self.resm[idx].size
                 idx += 1
