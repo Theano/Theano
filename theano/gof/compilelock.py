@@ -128,7 +128,7 @@ def release_lock():
     # Only really release lock once all lock requests have ended.
     if get_lock.lock_is_enabled and get_lock.n_lock == 0:
         get_lock.start_time = None
-        get_lock.unlocker.unlock()
+        get_lock.unlocker.unlock(force=False)
 
 
 def set_lock_status(use_lock):
@@ -244,7 +244,7 @@ def lock(tmp_dir, timeout=notset, min_wait=None, max_wait=None, verbosity=1):
                         msg = "process '%s'" % read_owner.split('_')[0]
                         _logger.warning("Overriding existing lock by dead %s "
                                         "(I am process '%s')", msg, my_pid)
-                    get_lock.unlocker.unlock()
+                    get_lock.unlocker.unlock(force=True)
                     continue
                 if last_owner == read_owner:
                     if (timeout is not None and
@@ -257,7 +257,7 @@ def lock(tmp_dir, timeout=notset, min_wait=None, max_wait=None, verbosity=1):
                                 msg = "process '%s'" % read_owner.split('_')[0]
                             _logger.warning("Overriding existing lock by %s "
                                             "(I am process '%s')", msg, my_pid)
-                        get_lock.unlocker.unlock()
+                        get_lock.unlocker.unlock(force=True)
                         continue
                 else:
                     last_owner = read_owner
@@ -351,13 +351,7 @@ class Unlocker(object):
     def __init__(self, tmp_dir):
         self.tmp_dir = tmp_dir
 
-    def __del__(self):
-        # If we have the lock, we should delete it.
-        if get_lock.n_lock > 0:
-            while get_lock.n_lock > 0:
-                release_lock()
-
-    def unlock(self):
+    def unlock(self, force=False):
         """Remove current lock.
 
         This function does not crash if it is unable to properly
@@ -374,8 +368,21 @@ class Unlocker(object):
         # not exist), we still want to try and remove the directory.
         if os is None:
             return
+
+        # Check if someone else didn't took our lock.
+        lock_file = os.path.join(self.tmp_dir, 'lock')
+        if not force:
+            try:
+                with open(lock_file) as f:
+                    owner = f.readlines()[0].strip()
+                    pid, _, hname = owner.split('_')
+                    if pid != str(os.getpid()) or hname != hostname:
+                        return
+            except Exception:
+                pass
+
         try:
-            os.remove(os.path.join(self.tmp_dir, 'lock'))
+            os.remove(lock_file)
         except Exception:
             pass
         try:
