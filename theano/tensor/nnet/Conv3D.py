@@ -45,11 +45,7 @@ class Conv3D(theano.Op):
     """ 3D `convolution` of multiple filters on a minibatch
         :note: does not flip the kernel, moves kernel with a user specified stride
     """
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def __str__(self):
         return "Conv3D"
