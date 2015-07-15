@@ -47,9 +47,6 @@ class Conv3D(theano.Op):
     """
     __props__ = ()
 
-    def __str__(self):
-        return "Conv3D"
-
     def c_code_cache_version(self):
         return (3, blas_header_version())
 
