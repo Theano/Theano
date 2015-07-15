@@ -1672,6 +1672,7 @@ def local_pool_dnn_grad_stride(node):
                             gpu_contiguous(inp_grad),
                             desc)
 
+
 @register_opt('cudnn')
 @op_lifter([AveragePoolGrad])
 def local_avg_pool_dnn_grad_stride(node):
@@ -1687,9 +1688,10 @@ def local_avg_pool_dnn_grad_stride(node):
 
     desc = GpuDnnPoolDesc(ws=ds, stride=st, mode=mode, pad=pad)()
     return GpuDnnPoolGrad()(gpu_contiguous(inp),
-                            gpu_contiguous(numpy.empty((1,1,1,1), dtype=numpy.float32)),
+                            gpu_contiguous(numpy.empty((1, 1, 1, 1), dtype=numpy.float32)),
                             gpu_contiguous(inp_grad),
                             desc)
+
 
 @register_opt('cudnn')
 @local_optimizer([GpuSoftmax])
