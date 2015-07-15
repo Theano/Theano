@@ -21,7 +21,8 @@ from theano.tensor.nnet.conv import ConvOp
 from theano.tests.breakpoint import PdbBreakpoint
 
 from .type import GpuArrayType, GpuArrayConstant
-from .basic_ops import (host_from_gpu, gpu_from_host,
+from .basic_ops import (as_gpuarray_variable,
+                        host_from_gpu, gpu_from_host,
                         HostFromGpu, GpuFromHost,
                         GpuSplit, GpuContiguous,
                         gpu_alloc, GpuAlloc, GpuReshape,
@@ -272,36 +273,25 @@ def local_gpu_elemwise(node):
     # inputs and or outputs because only the (float, float)->float and
     # (double, double)->double cases are implemented at the moment.
     if isinstance(op.scalar_op, Pow):
-        old_out_dtype = node.outputs[0].dtype
-        old_inp_dtypes = [inp.dtype for inp in node.inputs]
 
-        # Upcast the input dtypes with 'float32' to obtain a floating-point
-        # dtype in which to do the computation.
-        # TODO : Currently, a bug in GpuElemwise prevents support for float16.
-        # It should be fixed and then the upcast below can use 'float16'
-        # instead of 'float32'
-        new_out_dtype = upcast("float32", *old_inp_dtypes)
+        # Only transfer the computation on the gpu if the output dtype is
+        # floating point. Else, give up on the transfer to the gpu.
+        out_dtype = node.outputs[0].dtype
+        if out_dtype not in ['float16', 'float32', 'float64']:
+            return
 
-        # Transfer the inputs on the GPU and cast them to the right dtype
+        # Transfer the inputs on the GPU and cast them to the right dtype.
         new_inputs = []
         for inp in node.inputs:
-            if inp.dtype != new_out_dtype:
-                gpu_cast_op = GpuElemwise(Cast(Scalar(new_out_dtype)))
-                new_inputs.append(gpu_cast_op(gpu_from_host(inp)))
+            if inp.dtype != out_dtype:
+                gpu_cast_op = GpuElemwise(Cast(Scalar(out_dtype)))
+                new_inputs.append(gpu_cast_op(as_gpuarray_variable(inp)))
             else:
-                new_inputs.append(gpu_from_host(inp))
+                new_inputs.append(as_gpuarray_variable(inp))
 
-        # Perform the exponent on the gpu
-        casted_gpu_output = res(*new_inputs)
-
-        # If needed, cast the output back to the right dtype and transfer it
-        # to the cpu.
-        if casted_gpu_output.dtype != old_out_dtype:
-            gpu_cast_op = GpuElemwise(Cast(Scalar(old_out_dtype)))
-            gpu_output = gpu_cast_op(casted_gpu_output)
-        else:
-            gpu_output = casted_gpu_output
-
+        # Perform the exponent on the gpu and transfer the output back to the
+        # cpu.
+        gpu_output = res(*new_inputs)
         cpu_output = host_from_gpu(gpu_output)
         return [cpu_output]
     else:

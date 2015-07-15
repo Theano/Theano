@@ -1,6 +1,8 @@
+import numpy
+
 import theano
 from theano import scalar, gof
-from theano.tests.unittest_tools import SkipTest
+from theano.tests.unittest_tools import SkipTest, assert_allclose
 
 from theano.tensor.tests.test_elemwise import (test_Broadcast, test_DimShuffle,
                                                test_CAReduce, T_reduce_dtype)
@@ -59,11 +61,20 @@ def test_elemwise_pow():
 
     for dtype_base in dtypes:
         for dtype_exp in dtypes:
+
             # Compile a gpu function with the specified dtypes
             base = theano.tensor.vector(dtype=dtype_base)
             exp = theano.tensor.vector(dtype=dtype_exp)
             output = base ** exp
             f = theano.function([base, exp], output)
+
+            # Call the function to make sure the output is valid
+            base_val = numpy.random.randint(0, 5, size=10).astype(dtype_base)
+            exp_val = numpy.random.randint(0, 3, size=10).astype(dtype_exp)
+
+            out = f(base_val, exp_val)
+            expected_out = base_val ** exp_val
+            assert_allclose(out, expected_out)
 
 
 class test_GpuDimShuffle(test_DimShuffle):
