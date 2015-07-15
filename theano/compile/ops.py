@@ -38,15 +38,10 @@ class ViewOp(gof.Op):
     # In the C code, the name of the input variable is %(iname)s,
     # the output variable is %(oname)s.
     c_code_and_version = {}
+    __props__ = ()
 
     def make_node(self, x):
         return gof.Apply(self, [x], [x.type()])
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
 
     def perform(self, node, inp, out):
         x, = inp
@@ -138,18 +133,13 @@ class DeepCopyOp(gof.Op):
     c_code_and_version = {}
 
     check_input = False
+    __props__ = ()
 
     def __init__(self):
         pass
 
     def __str__(self):
         return self.__class__.__name__
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __eq__(self, other):
-        return type(self) == type(other)
 
     def make_node(self, x):
         return gof.Apply(self, [x], [x.type()])
@@ -228,12 +218,7 @@ class Shape(gof.Op):
     c_code_and_version = {}
 
     check_input = False
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __eq__(self, other):
-        return type(self) == type(other)
+    __props__ = ()
 
     def __str__(self):
         return self.__class__.__name__
@@ -480,6 +465,8 @@ class FromFunctionOp(gof.Op):
     raise an error if you attempt to get the gradient of a graph
     containing this op.
     """
+    __props__ = ("fn", "itypes", "otypes", "infer_shape")
+
     def __init__(self, fn, itypes, otypes, infer_shape):
         self.__fn = fn
         self.itypes = itypes
@@ -487,13 +474,6 @@ class FromFunctionOp(gof.Op):
         self.__infer_shape = infer_shape
         if self.__infer_shape is not None:
             self.infer_shape = self._infer_shape
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.__fn == other.__fn)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.__fn)
 
     def __str__(self):
         return 'FromFunctionOp{%s}' % self.__fn.__name__
@@ -623,20 +603,13 @@ class Rebroadcast(gof.Op):
     c_code_and_version = {}
 
     check_input = False
+    __props__ = ("axis")
 
     def __init__(self, *axis):
         self.axis = dict(axis)
         for axis, broad in iteritems(self.axis):
             assert isinstance(axis, (numpy.integer, int)), (
                 "Rebroadcast needs integer axes. Got ", axis)
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.axis == other.axis
-
-    def __hash__(self):
-        # no ambiguity because each item key is unique
-        items = sorted(iteritems(self.axis))
-        return hash((type(self), tuple(items)))
 
     def __str__(self):
         if len(self.axis) == 0:
@@ -768,12 +741,7 @@ class SpecifyShape(gof.Op):
     # In the C code, the name of the input variable is %(iname)s,
     # the output variable is %(oname)s.
     c_code_and_version = {}
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __eq__(self, other):
-        return type(self) == type(other)
+    __props__ = ()
 
     def __str__(self):
         return self.__class__.__name__
