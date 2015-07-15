@@ -3046,19 +3046,15 @@ class TrueDot(gof.op.Op):
 
     # TODO
     # Simplify code by splitting into DotSS and DotSD.
+    
+    __props__ = ()
+    # The grad_preserves_dense attribute doesn't change the
+    # execution behavior.  To let the optimizer merge nodes with
+    # different values of this attribute we shouldn't compare it
+    # here.
 
     def __init__(self, grad_preserves_dense=True):
         self.grad_preserves_dense = grad_preserves_dense
-
-    def __eq__(self, other):
-        # The grad_preserves_dense attribute doesn't change the
-        # execution behavior.  To let the optimizer merge nodes with
-        # different values of this attribute we shouldn't compare it
-        # here.
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
 
     def __ne__(self, other):
         return not (self == other)
