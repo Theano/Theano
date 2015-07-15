@@ -229,10 +229,10 @@ class PushOutNonSeqScan(gof.Optimizer):
 
     def process_node(self, fgraph, node):
         """
-        Important note: This function uses set and dictionary data structure.
+        IMPORTANT NOTE: This function uses set and dictionary data structures.
         By default they are not ordered for efficiency reasons. Take care
-        and make sure of changing them to Ordered versions if you need to
-        iterate over those variables.
+        and make sure of changing them with their Ordered counterparts if you
+        need to iterate over these variables.
         """
         # this flag tells if there was any change during the last iterations
         clean_inputs, clean_outputs = scan_utils.reconstruct_graph(
