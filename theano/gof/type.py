@@ -630,7 +630,7 @@ if (py_%(name)s == NULL) { %(freefunc)s(%(name)s); }
         return ""
 
     def c_code_cache_version(self):
-        return (2,)
+        return (2, self.ctype, self.freefunc)
 
     def __str__(self):
         return "%s{%s}" % (self.__class__.__name__, self.ctype)

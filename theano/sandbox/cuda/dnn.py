@@ -256,7 +256,8 @@ class GpuDnnConvDesc(GpuOp):
             raise TypeError('kern must be 1D shape tensor')
 
         return Apply(self, [img_shape, kern_shape],
-                     [CDataType("cudnnConvolutionDescriptor_t")()])
+                     [CDataType("cudnnConvolutionDescriptor_t",
+                                freefunc="cudnnDestroyConvolutionDescriptor")()])
 
     def c_code(self, node, name, inputs, outputs, sub):
         img_shape, kern_shape = inputs
@@ -773,7 +774,8 @@ class GpuDnnPoolDesc(GpuOp):
             raise RuntimeError("CuDNN pooling with padding requires CuDNN v2")
 
         return Apply(self, [],
-                     [CDataType("cudnnPoolingDescriptor_t")()])
+                     [CDataType("cudnnPoolingDescriptor_t",
+                                freefunc="cudnnDestroyPoolingDescriptor")()])
 
     def c_code(self, node, name, inputs, outputs, sub):
         desc, = outputs
