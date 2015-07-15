@@ -143,6 +143,12 @@ parser.add_option('--order', action='store', dest='order',
                   help="The numpy memory layout parameter used when creating"
                   " the numpy.ndarray objects. It accepts 'C' for C memory"
                   " order and 'F' for Fortran order (for all matrices).")
+parser.add_option('--small_only', action='store_true', dest='small_only',
+                  default=False,
+                  help="If true, additionally perform gemm on large matrices.")
+parser.add_option('-B', '--B', action='store', dest='B',
+                  default=5000, type="int",
+                  help="The M, N, and K for big gemm")
 
 
 if __name__ == "__main__":
@@ -240,26 +246,88 @@ if __name__ == "__main__":
         GT 220                                                             3.80s
         GT 210                                                      6.35s
         8500 GT                                                                   10.68s
+
+        Results for larger matrices.
+        There were 10 executions of gemm in float32
+        with matrices of shape 5000x5000 (M=N=K=5000).
+        All memory layout was in C order.
+
+        cuda version      6.5    6.0    5.5    5.0    4.2    4.1    4.0    3.2    3.0   # note
+        gpu
+        K6000/NOECC
+        K40               0.88s
+        K20m/ECC
+        K20/NOECC
+        M2090   
+        C2075             
+        M2075             
+        M2070             
+        M2070-Q           
+        M2050(Amazon)     
+        C1060             
+        K600              
+
+        GTX Titan Black   
+        GTX Titan(D15U-50)
+        GTX 780           
+        GTX 980           
+        GTX 970           
+        GTX 680           
+        GRID K520         
+        GTX 580           
+        GTX 480           
+        GTX 750 Ti        
+        GTX 470           
+        GTX 660           
+        GTX 560           
+        GTX 650 Ti        
+        GTX 765M          
+        GTX 460           
+        GTX 285          
+        750M              
+        GT 610            
+        GTX 550 Ti        
+        GT 520            
+        520M            
+        GT 220            
+        GT 210            
+        8500 GT           
         """)
 
     t, impl = execute(not options.print_only, not options.quiet,
                       M=options.M, N=options.N, K=options.K,
                       iters=options.iter, order=options.order)
 
-    if options.print_only:
-        pass
-    elif options.quiet:
-        print(t)
-    else:
+
+    def print_timing(M, N, K, t, impl):
         print()
         print("We executed", options.iter, end=' ')
         print("calls to gemm with a and b matrices of shapes", end=' ')
-        print("(%d, %d) and (%d, %d)." % (options.M, options.N,
-                                          options.N, options.K))
+        print("(%d, %d) and (%d, %d)." % (M, N, N, K))
 
         print()
         print('Total execution time: %.2fs on %s.' % (t, impl))
+
+    if not options.small_only:
+        t_b, impl_b = execute(not options.print_only, False,
+                              M=options.B, N=options.B, K=options.B,
+                              iters=options.iter, order=options.order)
+        if options.print_only:
+            pass
+        elif options.quiet:
+            print(t_b)
+        else:
+            print_timing(options.B, options.B, options.B, t_b, impl_b)
+
+    if options.print_only:
+        pass
+
+    elif options.quiet:
+        print(t)
+    else:
+        print_timing(options.M, options.N, options.K, t, impl)
         print()
         print ('Try to run this script a few times. Experience shows that'
                ' the first time is not as fast as followings calls. The'
                ' difference is not big, but consistent.')
+
