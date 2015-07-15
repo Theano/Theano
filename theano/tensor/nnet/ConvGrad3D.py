@@ -12,11 +12,7 @@ from theano.gradient import DisconnectedType
 
 class ConvGrad3D(theano.Op):
     """ Gradient of Conv3D with respect to W """
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def c_code_cache_version(self):
         return (1,)
