@@ -14,7 +14,7 @@ import numpy
 
 class Images2Neibs(Op):
 
-    __props__ = ()
+    __props__ = ("mode")
 
     def __init__(self, mode='valid'):
         """
