@@ -73,7 +73,7 @@ class DiagonalSubtensor(Op):
     see what's necessary at that point.
 
     """
-    __props__ = ()
+    __props__ = ("inplace")
 
     def __str__(self):
         if self.inplace:
@@ -113,7 +113,7 @@ class IncDiagonalSubtensor(Op):
     """
     The gradient of DiagonalSubtensor
     """
-    __props__ = ()
+    __props__ = ("inplace")
 
     def __str__(self):
         if self.inplace:
