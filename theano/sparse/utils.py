@@ -1,4 +1,4 @@
-from theano.gof.cc import hash_from_code
+from theano.gof.utils import hash_from_code
 
 
 def hash_from_sparse(data):

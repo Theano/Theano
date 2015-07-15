@@ -177,7 +177,7 @@ def get_config_md5():
     """
     all_opts = sorted([c for c in _config_var_list if c.in_c_key],
                       key=lambda cv: cv.fullname)
-    return theano.gof.cc.hash_from_code('\n'.join(
+    return theano.gof.utils.hash_from_code('\n'.join(
         ['%s = %s' % (cv.fullname, cv.__get__()) for cv in all_opts]))
 
 
