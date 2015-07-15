@@ -177,7 +177,7 @@ def default_blas_ldflags():
             # ignored"
 
             # This happen with Python 2.7.3 |EPD 7.3-1 and numpy 1.8.1
-            import numpy.distutils.system_info # noqa
+            import numpy.distutils.system_info  # noqa
 
             # We need to catch warnings as in some cases NumPy print
             # stuff that we don't want the user to see like this:
