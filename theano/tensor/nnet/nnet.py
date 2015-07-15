@@ -44,18 +44,12 @@ class SoftmaxWithBias(gof.Op):
     This L{Op}'s output is softmax(x+b).
     softmax(x[i]) is the i'th distribution over len(x[i]) options.
     """
-
     nin = 2
     nout = 1
+    __props__ = ()
 
     def __init__(self, **kwargs):
         gof.Op.__init__(self, **kwargs)
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return tensor.hashtype(self)
 
     def __str__(self):
         return self.__class__.__name__
@@ -284,7 +278,6 @@ class SoftmaxGrad(gof.Op):
     """Gradient wrt x of the Softmax Op"""
     nin = 2
     nout = 1
-
     __props__ = ()
 
     def make_node(self, dy, sm):
@@ -828,15 +821,10 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
     """
     nin = 3
     nout = 3
-
+    __props__ = ()
+    
     def __init__(self, **kwargs):
         gof.Op.__init__(self, **kwargs)
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return tensor.hashtype(self)
 
     def __str__(self):
         return self.__class__.__name__
@@ -1058,15 +1046,11 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
 class CrossentropySoftmax1HotWithBiasDx(gof.Op):
     nin = 3
     nout = 1
+    __props__ = ()
+    
     """Gradient wrt x of the CrossentropySoftmaxArgmax1HotWithBias Op"""
     def __init__(self, **kwargs):
         gof.Op.__init__(self, **kwargs)
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return tensor.hashtype(self)
 
     def __str__(self):
         return self.__class__.__name__
@@ -1269,12 +1253,8 @@ def crossentropy_softmax_max_and_argmax_1hot(x, y_idx, **kwargs):
 
 
 class CrossentropyCategorical1HotGrad(gof.Op):
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return tensor.hashtype(self)
+    
+    __props__ = ()
 
     def __str__(self):
         return self.__class__.__name__
@@ -1313,12 +1293,7 @@ class CrossentropyCategorical1Hot(gof.Op):
            away in favour of one with a C implementation.
 
     """
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return tensor.hashtype(self)
+    __props__ = ()
 
     def __str__(self):
         return self.__class__.__name__
@@ -1950,16 +1925,13 @@ from theano import scalar
 
 
 class Prepend_scalar_constant_to_each_row(gof.Op):
+    
+    __props__ = ()
+    
     def __init__(self, val=0):
         if isinstance(val, float):
             val = scalar.constant(val)
         self.val = val
-
-    def __eq__(self, other):
-        return (type(self) == type(other)) and (self.val == other.val)
-
-    def __hash__(self):
-        return tensor.hashtype(self) ^ hash(self.val.data)
 
     def __str__(self):
         return '%s{%s}' % (self.__class__.__name__, self.val)
@@ -2007,11 +1979,8 @@ class Prepend_scalar_constant_to_each_row(gof.Op):
 
 
 class Prepend_scalar_to_each_row(gof.Op):
-    def __eq__(self, other):
-        return (type(self) == type(other))
 
-    def __hash__(self):
-        return tensor.hashtype(self)
+    __props__ = ()
 
     def __str__(self):
         return self.__class__.__name__
