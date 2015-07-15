@@ -6,9 +6,9 @@ import unittest
 import theano
 from theano.tests import unittest_tools as utt
 from theano.tensor.extra_ops import (CumsumOp, cumsum, CumprodOp, cumprod,
-                                     BinCountOp, bincount, DiffOp, diff,
-                                     squeeze, compress, RepeatOp, repeat,
-                                     Bartlett, bartlett,
+                                     CpuContiguous, cpu_contiguous, BinCountOp,
+                                     bincount, DiffOp, diff, squeeze, compress,
+                                     RepeatOp, repeat, Bartlett, bartlett,
                                      FillDiagonal, fill_diagonal,
                                      FillDiagonalOffset, fill_diagonal_offset,
                                      to_one_hot, Unique)
@@ -18,6 +18,18 @@ from theano import config, tensor, function
 
 numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
 numpy_16 = bool(numpy_ver >= [1, 6])
+
+
+def test_cpu_contiguous():
+    a = T.fmatrix('a')
+    i = T.iscalar('i')
+    a_val = numpy.asarray(numpy.random.rand(4, 5), dtype='float32')
+    f = theano.function([a, i], cpu_contiguous(a.reshape((5,4))[::i]))
+    topo = f.maker.fgraph.toposort()
+    assert any([isinstance(node.op, CpuContiguous) for node in topo])
+    assert f(a_val, 1).flags['C_CONTIGUOUS']
+    assert f(a_val, 2).flags['C_CONTIGUOUS']
+    assert f(a_val, 3).flags['C_CONTIGUOUS']
 
 
 class TestCumsumOp(utt.InferShapeTester):
