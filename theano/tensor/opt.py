@@ -222,88 +222,140 @@ def inplace_elemwise_optimizer_op(OP):
         # the solution is also applicable there.
 
         # We execute `validate` after this number of change.
-        check_each_change = config.tensor.insert_inplace_optimizer_validate_nb
-        if check_each_change == -1:
-            if len(fgraph.apply_nodes) > 500:
-                check_each_change = 10
-            else:
-                check_each_change = 1
+
+        # TODO: delete config.tensor.insert_inplace_optimizer_validate_nb
+        # check_each_change = config.tensor.insert_inplace_optimizer_validate_nb
 
         nb_change_no_validate = 0
         chk = fgraph.checkpoint()
 
-        for node in list(graph.io_toposort(fgraph.inputs, fgraph.outputs)):
-            op = node.op
-            # gpuarray GpuElemwise inherit from Elemwise
-            if not type(op) == OP:
-                continue
-            baseline = op.inplace_pattern
-            protected_inputs = [
-                f.protected for f in node.fgraph._features if
-                isinstance(f, theano.compile.function_module.Supervisor)]
-            protected_inputs = sum(protected_inputs, [])  # flatten the list
-            protected_inputs.extend(fgraph.outputs)
-            candidate_outputs = [i for i in xrange(len(node.outputs))
-                                 if i not in baseline]
-            # node inputs that are Constant, already destroyed,
-            # fgraph protected inputs and fgraph outputs can't be used as inplace
-            # target.
-            # Remove here as faster.
-            candidate_inputs = [i for i in xrange(len(node.inputs))
-                                if i not in baseline.values() and
-                                not isinstance(node.inputs[i], Constant) and
-                                not fgraph.destroyers(node.inputs[i]) and
-                                node.inputs[i] not in protected_inputs]
+        # gpuarray GpuElemwise inherit from Elemwise
+        elemwise_nodelist = [node for node in
+                             list(graph.io_toposort(fgraph.inputs,
+                                                    fgraph.outputs))
+                             if type(node.op) == OP]
+        protected_inputs = [
+            f.protected for f in fgraph._features if
+            isinstance(f, theano.compile.function_module.Supervisor)]
+        protected_inputs = sum(protected_inputs, [])  # flatten the list
+        protected_inputs.extend(fgraph.outputs)
 
-            verbose = False
+        # See: https://github.com/Theano/Theano/issues/2962
+        if len(elemwise_nodelist) > 0:
+            check_each_change = int(numpy.ceil(numpy.log(
+                len(elemwise_nodelist))))
+            check_each_change = max(check_each_change, 1)
+        else:
+            return
+        if len(elemwise_nodelist) > 500:
+            check_each_change = max(check_each_change, 10)
+        failed_set = set()
+        prev_len_elemlist = len(elemwise_nodelist) + 1
+        changed_node_since_validate = set()
 
-            raised_warning = not verbose
+        # n_pass_count is used to make sure that the following while loop
+        # iterates for only one pass, or it will be much slower if it
+        # iterates for multi passes. This variable can be removed when
+        # a faster validate() is implemented.
+        #
+        # reference: https://github.com/Theano/Theano/pull/3033
+        n_pass_count = 0
+        while (n_pass_count < 1 and
+               check_each_change > 0 and
+               prev_len_elemlist > len(elemwise_nodelist)):
+            n_pass_count += 1
+            prev_len_elemlist = len(elemwise_nodelist)
+            for node in elemwise_nodelist:
+                op = node.op
+                baseline = op.inplace_pattern
+                candidate_outputs = [i for i in xrange(len(node.outputs))
+                                     if i not in baseline]
+                # node inputs that are Constant, already destroyed,
+                # fgraph protected inputs and fgraph outputs can't be used as
+                # inplace target.
+                # Remove here as faster.
+                candidate_inputs = [i for i in xrange(len(node.inputs))
+                                    if i not in baseline.values() and not
+                                    isinstance(node.inputs[i], Constant) and
+                                    node.inputs[i] not in protected_inputs and
+                                    not fgraph.destroyers(node.inputs[i])]
 
-            for candidate_output in candidate_outputs:
-                for candidate_input in candidate_inputs:
-                    # remove inputs that don't have the same dtype as the output
-                    if node.inputs[candidate_input].type != node.outputs[
-                            candidate_output].type:
-                        continue
+                verbose = False
 
-                    inplace_pattern = dict(baseline)
-                    inplace_pattern[candidate_output] = candidate_input
-                    try:
-                        if hasattr(op.scalar_op, "make_new_inplace"):
-                            new_scal = op.scalar_op.make_new_inplace(
-                                scalar.transfer_type(
-                                    *[inplace_pattern.get(i, None)
-                                      for i in xrange(len(node.outputs))]))
-                        else:
-                            new_scal = op.scalar_op.__class__(
-                                scalar.transfer_type(
-                                    *[inplace_pattern.get(i, None)
-                                      for i in xrange(len(node.outputs))]))
-                        new_outputs = OP(new_scal, inplace_pattern)(
-                            *node.inputs, **dict(return_list=True))
-                        new_node = new_outputs[0].owner
+                raised_warning = not verbose
 
-                        for r, new_r in zip(node.outputs, new_outputs):
-                            fgraph.replace(r, new_r,
-                                           reason="inplace_elemwise_optimizer")
-                        nb_change_no_validate += 1
-                        if nb_change_no_validate >= check_each_change:
-                            fgraph.validate()
-                            chk = fgraph.checkpoint()
-                            nb_change_no_validate = 0
-                    except (ValueError, TypeError, InconsistencyError) as e:
-                        if check_each_change != 1 and not raised_warning:
-                            print(("Some inplace optimization was not "
-                                   "performed due to unexpected error:"),
-                                  file=sys.stderr)
-                            print(e, file=sys.stderr)
-                            raised_warning = True
-                        fgraph.revert(chk)
-                        continue
-                    candidate_inputs.remove(candidate_input)
-                    node = new_node
-                    baseline = inplace_pattern
-                    break
+                for candidate_output in candidate_outputs:
+                    for candidate_input in candidate_inputs:
+                        # remove inputs that don't have the same dtype as the
+                        # output
+                        if node.inputs[candidate_input].type != node.outputs[
+                                candidate_output].type:
+                            continue
+
+                        inplace_pattern = dict(baseline)
+                        inplace_pattern[candidate_output] = candidate_input
+                        try:
+                            if hasattr(op.scalar_op, "make_new_inplace"):
+                                new_scal = op.scalar_op.make_new_inplace(
+                                    scalar.transfer_type(
+                                        *[inplace_pattern.get(i, None)
+                                          for i in xrange(len(node.outputs))]))
+                            else:
+                                new_scal = op.scalar_op.__class__(
+                                    scalar.transfer_type(
+                                        *[inplace_pattern.get(i, None)
+                                          for i in xrange(len(node.outputs))]))
+                            new_outputs = OP(new_scal, inplace_pattern)(
+                                *node.inputs, **dict(return_list=True))
+                            new_node = new_outputs[0].owner
+
+                            # Add changed node into changed_node_since_validate
+                            changed_node_since_validate.add(node)
+
+                            for r, new_r in zip(node.outputs, new_outputs):
+                                fgraph.replace(
+                                    r, new_r,
+                                    reason="inplace_elemwise_optimizer")
+                            nb_change_no_validate += 1
+
+                            if nb_change_no_validate >= check_each_change:
+                                fgraph.validate()
+                                chk = fgraph.checkpoint()
+                                changed_node_since_validate = set()
+                                nb_change_no_validate = 0
+                        except (ValueError,
+                                TypeError,
+                                InconsistencyError) as e:
+                            if check_each_change != 1 and not raised_warning:
+                                print(
+                                    ("Some inplace optimization was not "
+                                     "performed due to unexpected error:"),
+                                    file=sys.stderr)
+                                print(e, file=sys.stderr)
+                                raised_warning = True
+                            fgraph.revert(chk)
+
+                            # Add changed node to failed_set
+                            if len(changed_node_since_validate) > 1:
+                                failed_set.update(changed_node_since_validate)
+                                changed_node_since_validate = set()
+                            # Add failed node to failed_set
+                            # node is in changed_node_since_validate already,
+                            # so there is no need to add it here.
+
+                            # failed_set.add(node)
+                            continue
+                        candidate_inputs.remove(candidate_input)
+                        node = new_node
+                        baseline = inplace_pattern
+                        break
+            if len(failed_set) == 0:
+                break
+            elemwise_nodelist = list(failed_set)
+            failed_set = set()
+            check_each_change = int(numpy.ceil(numpy.log(
+                len(elemwise_nodelist))))
+            check_each_change = max(check_each_change, 1)
 
         if nb_change_no_validate > 0:
             try:
