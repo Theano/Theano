@@ -313,8 +313,7 @@ class DownsampleFactorMax(Op):
             maxout = self(x)
             return [MaxPoolGrad(self.ds,
                                             ignore_border=self.ignore_border,
-                                            st=self.st, padding=self.padding,
-                                            mode=self.mode)(
+                                            st=self.st, padding=self.padding)(
                                                 x, maxout, gz)]
         else:
             return [AveragePoolGrad(self.ds,
@@ -607,9 +606,8 @@ class PoolGrad(Op):
 
 class MaxPoolGrad(PoolGrad):
 
-    def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='max'):
-        PoolGrad.__init__(self, ds, ignore_border, st, padding, mode)
-        self.mode = 'max'
+    def __init__(self, ds, ignore_border, st=None, padding=(0, 0)):
+        PoolGrad.__init__(self, ds, ignore_border, st, padding, mode='max')
 
     def make_node(self, x, maxout, gz):
         # make_node should only be called by the grad function of
@@ -784,12 +782,13 @@ class MaxPoolGrad(PoolGrad):
         }
         """ % locals()
 
-    #def c_code_cache_version(self):
-    #    return (0, 7)
+    def c_code_cache_version(self):
+        return (0, 7)
 
 class AveragePoolGrad(PoolGrad):
 
     def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='average_inc_pad'):
+        assert mode in ['sum', 'average_inc_pad', 'average_exc_pad']
         PoolGrad.__init__(self, ds, ignore_border, st, padding, mode)
 
     def make_node(self, x, gz):
@@ -980,8 +979,6 @@ class DownsampleFactorMaxGradGrad(Op):
         return Apply(self, [x, maxout, gz], [x.type()])
 
     def perform(self, node, inp, out):
-        if self.mode != 'max':
-            raise theano.gof.utils.MethodNotDefined()
         x, maxout, ggx = inp
         z, = out
         if len(x.shape) != 4:
