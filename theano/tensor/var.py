@@ -354,6 +354,10 @@ class _tensor_py_operators:
     def diagonal(self, offset=0, axis1=0, axis2=1):
         return theano.tensor.basic.diagonal(self, offset, axis1, axis2)
 
+    # Elemwise
+    def exp(self):
+        return theano.tensor.exp(self)
+
     # CASTING
     def astype(self, dtype):
         return theano.tensor.cast(self, dtype)
