@@ -5919,7 +5919,11 @@ def local_merge_alloc(node):
             if isinstance(dim_inner, Constant) and dim_inner.data == 1:
                 pass
             else:
-                dims_outer[-1 - i] = assert_op(dim_outer,
-                                               T.eq(dim_outer, dim_inner))
+                dims_outer[-1 - i] = Assert(
+                    "You have a shape error in your graph. To see a better"
+                    " error message and a stack trace of where in your code"
+                    " the error is created, use the Theano flags"
+                    " optimizer=None or optimizer=fast_compile.")(
+                    dim_outer, T.eq(dim_outer, dim_inner))
         i += 1
     return [T.alloc(inputs_inner[0], *dims_outer)]
