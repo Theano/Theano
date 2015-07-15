@@ -806,7 +806,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 border_mode=params[0],
                 subsample=params[1],
                 conv_mode=params[2]
-            )(kerns.shape, out.shape)
+            )(img.shape, kerns.shape)
             conv_grad_i = dnn.GpuDnnConv3dGradI()(
                 kerns,
                 out,
