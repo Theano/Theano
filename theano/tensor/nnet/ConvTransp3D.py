@@ -10,11 +10,7 @@ from theano.gradient import DisconnectedType
 
 class ConvTransp3D(theano.Op):
     """ "Transpose" of Conv3D (Conv3D implements multiplication by an implicitly defined matrix W. This implements multiplication by its transpose) """
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def c_code_cache_version(self):
         return (3,)
