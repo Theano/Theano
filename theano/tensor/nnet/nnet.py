@@ -70,7 +70,7 @@ class SoftmaxWithBias(gof.Op):
                 or x.type.dtype not in tensor.float_dtypes:
             raise ValueError('b must be 1-d tensor of floats')
 
-        sm = x.type.make_variable()
+        sm = x.type()
         return Apply(self, [x, b], [sm])
 
     def perform(self, node, input_storage, output_storage):
@@ -298,7 +298,7 @@ class SoftmaxGrad(gof.Op):
             dy = tensor.shape_padleft(dy, n_ones=1)
         if sm.ndim == 1:
             sm = tensor.shape_padleft(sm, n_ones=1)
-        return Apply(self, [dy, sm], [sm.type.make_variable()])
+        return Apply(self, [dy, sm], [sm.type()])
 
     def perform(self, node, input_storage, output_storage):
         dy, sm = input_storage
@@ -857,10 +857,10 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
 
 #       TODO: Is this correct? It used to be y, not y_idx
         nll = tensor.TensorType(x.type.dtype,
-                y_idx.type.broadcastable).make_variable()
+                y_idx.type.broadcastable)()
 #        nll = TensorType(x.dtype, y.broadcastable)
-        sm = x.type.make_variable()
-        am = y_idx.type.make_variable()
+        sm = x.type()
+        am = y_idx.type()
         return Apply(self, [x, b, y_idx], [nll, sm, am])
 
     def perform(self, node, input_storage, output_storage):
@@ -1084,7 +1084,7 @@ class CrossentropySoftmax1HotWithBiasDx(gof.Op):
         if (y_idx.type.ndim != 1 or
             y_idx.type.dtype not in tensor.discrete_dtypes):
             raise ValueError('y_idx must be 1-d tensor of [u]ints', y_idx.type)
-        return Apply(self, [dy, sm, y_idx], [sm.type.make_variable()])
+        return Apply(self, [dy, sm, y_idx], [sm.type()])
 
     def perform(self, node, input_storage, output_storage):
         dy, sm, y_idx = input_storage

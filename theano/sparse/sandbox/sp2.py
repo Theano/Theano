@@ -131,7 +131,7 @@ class Binomial(gof.op.Op):
         shape = tensor.as_tensor_variable(shape)
         return gof.Apply(self, [n, p, shape],
                          [SparseType(dtype=self.dtype,
-                                     format=self.format).make_variable()])
+                                     format=self.format)()])
 
     def perform(self, node, inputs, outputs):
         (n, p, shape) = inputs
