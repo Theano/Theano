@@ -624,8 +624,6 @@ class MaxPoolGrad(PoolGrad):
         return Apply(self, [x, maxout, gz], [x.type()])
 
     def perform(self, node, inp, out):
-        if self.mode not in ('max', 'sum') and self.padding != (0, 0):
-            raise NotImplementedError()
         x, maxout, gz = inp
         gx_stg, = out
         # number of pooling output rows
@@ -638,8 +636,6 @@ class MaxPoolGrad(PoolGrad):
         pad_w = self.padding[1]
         img_rows = x.shape[-2] + 2 * pad_h
         img_cols = x.shape[-1] + 2 * pad_w
-        inc_pad = self.mode == 'average_inc_pad'
-        sum_mode = self.mode == 'sum'
 
         # pad the image
         if self.padding != (0, 0):
@@ -676,8 +672,6 @@ class MaxPoolGrad(PoolGrad):
                     st=self.st, padding=self.padding)(x, maxout, ggx)]
 
     def c_code(self, node, name, inp, out, sub):
-        if self.mode != 'max':
-            raise theano.gof.utils.MethodNotDefined()
         x, z, gz = inp
         gx, = out
         fail = sub['fail']
@@ -795,7 +789,7 @@ class MaxPoolGrad(PoolGrad):
 
 class AveragePoolGrad(PoolGrad):
 
-    def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='avg_exc_pad'):
+    def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='average_inc_pad'):
         PoolGrad.__init__(self, ds, ignore_border, st, padding, mode)
 
     def make_node(self, x, gz):
@@ -809,7 +803,7 @@ class AveragePoolGrad(PoolGrad):
         return Apply(self, [x, gz], [x.type()])
 
     def perform(self, node, inp, out):
-        if self.mode not in ('max', 'sum') and self.padding != (0, 0):
+        if self.mode == 'average_exc_pad' and self.padding != (0, 0):
             raise NotImplementedError()
         x, gz = inp
         gx_stg, = out
@@ -869,8 +863,9 @@ class AveragePoolGrad(PoolGrad):
         x, gz = inp
         ggx, = grads
         return [theano.tensor.zeros_like(x),
-                theano.gradient.grad_not_implemented(
-                    self, 2, gz, 'Hessian not implemented with padding')]
+                DownsampleFactorMax(
+                    self.ds, ignore_border=self.ignore_border,
+                    st=self.st, padding=self.padding, mode=self.mode)(ggx)]
 
 class DownsampleFactorMaxGradGrad(Op):
     __props__ = ('ds', 'ignore_border', 'st', 'padding', 'mode')
@@ -974,7 +969,7 @@ class DownsampleFactorMaxGradGrad(Op):
 
     def make_node(self, x, maxout, gz):
         # make_node should only be called by the grad function of
-        # DownsampleFactorMaxGrad, so these asserts should not fail.
+        # MaxPoolGrad, so these asserts should not fail.
         assert isinstance(x, Variable) and x.ndim == 4
         assert isinstance(maxout, Variable) and maxout.ndim == 4
         assert isinstance(gz, Variable) and gz.ndim == 4
@@ -1004,7 +999,7 @@ class DownsampleFactorMaxGradGrad(Op):
         ds0, ds1 = self.ds
         st0, st1 = self.st
         pd0, pd1 = self.padding
-        img_rows = x.shape[-2] + 2 * pd0 
+        img_rows = x.shape[-2] + 2 * pd0
         img_cols = x.shape[-1] + 2 * pd1
 
         # pad the image and its gradients
@@ -1017,7 +1012,7 @@ class DownsampleFactorMaxGradGrad(Op):
                 (x.shape[0], x.shape[1], img_rows, img_cols),
                 dtype=x.dtype)
             ggx_padded[:, :, pd0:(img_rows-pd0), pd1:(img_cols-pd1)] = ggx
-            
+
         else:
             y_padded = x
             ggx_padded = ggx
@@ -1033,7 +1028,7 @@ class DownsampleFactorMaxGradGrad(Op):
                             for col_ind in xrange(col_st, col_end):
                                 if (maxout[n, k, r, c] == y_padded[n, k, row_ind, col_ind]):
                                     ggz[n, k, r, c] = ggx_padded[n, k, row_ind, col_ind]
-                                    
+
     def infer_shape(self, node, in_shapes):
         return [in_shapes[0]]
 
@@ -1041,7 +1036,7 @@ class DownsampleFactorMaxGradGrad(Op):
         if self.mode != 'max':
             raise theano.gof.utils.MethodNotDefined()
         x, maxout, ggx = inp
-        z, = out # the grad of grad 
+        z, = out # the grad of grad
         fail = sub['fail']
         ignore_border = int(self.ignore_border)
         ds0, ds1 = self.ds
@@ -1110,7 +1105,7 @@ class DownsampleFactorMaxGradGrad(Op):
                           (dtype_%(ggx)s*)(PyArray_GETPTR4(%(ggx)s, b, k, m, n)));
                         if (a == maximum){
                           z[0] += ggx[0];
-                        }  
+                        }
                       }
                     }
                   }
@@ -1118,7 +1113,7 @@ class DownsampleFactorMaxGradGrad(Op):
               }
          }
         """%locals()
-    
+
     def c_code_cache_version(self):
         return (0,1)
-    
+

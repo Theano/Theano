@@ -423,6 +423,29 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
                 utt.verify_grad(mp, [imval, grad_val], rng=rng)
 
+    def test_AveragePoolGrad_grad(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        avgpoolshps = ((1, 1), (3, 2), (2, 3))
+        imval = rng.rand(2, 3, 3, 4) * 10.0
+        # more variance means numeric gradient will be more accurate
+
+        for avgpoolshp in avgpoolshps:
+            for ignore_border in [True, False]:
+                for mode in ['sum', 'average_inc_pad', 'average_exc_pad']:
+                    # print 'maxpoolshp =', maxpoolshp
+                    # print 'ignore_border =', ignore_border
+                    # The shape of the gradient will be the shape of the output
+                    grad_shape = DownsampleFactorMax.out_shape(
+                        imval.shape, avgpoolshp, ignore_border=ignore_border)
+                    grad_val = rng.rand(*grad_shape) * 10.0
+
+                    def mp(input, grad):
+                        grad_op = AveragePoolGrad(
+                            avgpoolshp, ignore_border=ignore_border, mode=mode)
+                        return grad_op(input, grad)
+
+                    utt.verify_grad(mp, [imval, grad_val], rng=rng)
+
     def test_DownsampleFactorMaxGrad_grad_st(self):
         """checks the gradient of the gradient for
         the case that stride is used"""
@@ -449,6 +472,31 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                         return grad_op(input, out, grad)
 
                     utt.verify_grad(mp, [imval, grad_val], rng=rng)
+
+    def test_AveragePoolGrad_grad_st(self):
+        """checks the gradient of the gradient for
+        the case that stride is used"""
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        avgpoolshps = ((1, 1), (3, 3), (5, 3))
+        stridesizes = ((1, 1), (3, 3), (5, 7))
+        imval = rng.rand(1, 2, 16, 16)
+
+        for avgpoolshp in avgpoolshps:
+            for ignore_border in [True, False]:
+                for mode in ['sum', 'average_inc_pad', 'average_exc_pad']:
+                    for stride in stridesizes:
+                        grad_shape = DownsampleFactorMax.out_shape(
+                            imval.shape, avgpoolshp,
+                            ignore_border=ignore_border, st=stride)
+                        grad_val = rng.rand(*grad_shape)
+
+                        def mp(input, grad):
+                            grad_op = AveragePoolGrad(
+                                avgpoolshp, ignore_border=ignore_border,
+                                st=stride, mode=mode)
+                            return grad_op(input, grad)
+
+                        utt.verify_grad(mp, [imval, grad_val], rng=rng)
 
     def test_DownsampleFactorMaxGrad_grad_st_extra(self):
         """checks the gradient of the gradient for the case that
@@ -484,14 +532,47 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                 if numpy.prod(grad_shape) == 0:
                     continue
                 utt.verify_grad(mp, [imval, grad_val], rng=rng)
-                
+
+    def test_AveragePoolGrad_grad_st_extra(self):
+        """checks the gradient of the gradient for the case that
+        stride is used for extra examples"""
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        avgpoolshps = ((5, 3), (5, 3), (5, 3), (5, 5), (3, 2), (7, 7), (9, 9))
+        stridesizes = ((3, 2), (7, 5), (10, 6), (1, 1),
+                       (2, 3), (10, 10), (1, 1))
+        imvsizs = ((16, 16), (16, 16), (16, 16), (8, 5),
+                   (8, 5), (8, 5), (8, 5))
+
+        for indx in numpy.arange(len(avgpoolshps)):
+            imvsize = imvsizs[indx]
+            imval = rng.rand(1, 2, imvsize[0], imvsize[1])
+            stride = stridesizes[indx]
+            avgpoolshp = avgpoolshps[indx]
+            for ignore_border in [True, False]:
+                for mode in ['sum', 'average_inc_pad', 'average_exc_pad']:
+                    grad_shape = DownsampleFactorMax.out_shape(
+                        imval.shape, avgpoolshp,
+                        ignore_border=ignore_border, st=stride)
+                    grad_val = rng.rand(*grad_shape)
+
+                    def mp(input, grad):
+                        grad_op = AveragePoolGrad(
+                            avgpoolshp, ignore_border=ignore_border,
+                            st=stride, mode=mode)
+                        return grad_op(input, grad)
+
+                    # skip the grad verification when the output is empty
+                    if numpy.prod(grad_shape) == 0:
+                        continue
+                    utt.verify_grad(mp, [imval, grad_val], rng=rng)
+
     def test_DownsampleFactorMaxPaddingStride_grad_grad(self):
-        rng = numpy.random.RandomState(utt.fetch_seed())        
+        rng = numpy.random.RandomState(utt.fetch_seed())
         imgsizes = ((10, 10), (10, 5), (5, 5))
         maxpoolsizes = ((5, 3), (3, 5), (3, 3))
         stridesizes = ((3, 2), (2, 3), (3, 3))
         paddingsizes = ((2, 2), (2, 1), (2, 2))
-        
+
         for i in range(len(imgsizes)):
             imgsize = imgsizes[i]
             imval = rng.rand(1, 1, imgsize[0], imgsize[1]) * 10.0
@@ -513,7 +594,34 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                                                   st=stridesize, padding=paddingsize)
                 return grad_op(input, out, grad)
             utt.verify_grad(mp, [imval, grad_val], rng=rng)
-            
+
+    def test_AveragePoolPaddingStride_grad_grad(self):
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        imgsizes = ((10, 10), (10, 5), (5, 5))
+        avgpoolsizes = ((5, 3), (3, 5), (3, 3))
+        stridesizes = ((3, 2), (2, 3), (3, 3))
+        paddingsizes = ((2, 2), (2, 1), (2, 2))
+
+        for i in range(len(imgsizes)):
+            imgsize = imgsizes[i]
+            imval = rng.rand(1, 1, imgsize[0], imgsize[1]) * 10.0
+            avgpoolsize = avgpoolsizes[i]
+            stridesize = stridesizes[i]
+            paddingsize = paddingsizes[i]
+
+            #'average_exc_pad' with non-zero padding is not implemented
+            for mode in ['sum', 'average_inc_pad']:
+                grad_shape = DownsampleFactorMax.out_shape(
+                        imval.shape, avgpoolsize, st=stridesize,
+                    ignore_border=True, padding=paddingsize)
+                grad_val = rng.rand(*grad_shape) * 10.0
+                def mp(input, grad):
+                    grad_op = AveragePoolGrad(avgpoolsize, ignore_border=True,
+                                      st=stridesize, padding=paddingsize,
+                                      mode=mode)
+                    return grad_op(input, grad)
+                utt.verify_grad(mp, [imval, grad_val], rng=rng)
+
     def test_DownsampleFactorMax_hessian(self):
         # Example provided by Frans Cronje, see
         # https://groups.google.com/d/msg/theano-users/qpqUy_3glhw/JMwIvlN5wX4J
@@ -681,7 +789,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                                             padding=padding)(image)],
                                             [image_val], DownsampleFactorMax)
 
-                    # checking shapes generated by DownsampleFactorMaxGrad
+                    # checking shapes generated by MaxPoolGrad
                     maxout_val = rng.rand(*out_shapes[k][i][j])
                     gz_val = rng.rand(*out_shapes[k][i][j])
                     self._compile_and_check([image, maxout, gz],
