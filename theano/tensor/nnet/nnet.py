@@ -48,12 +48,6 @@ class SoftmaxWithBias(gof.Op):
     nout = 1
     __props__ = ()
 
-    def __init__(self, **kwargs):
-        gof.Op.__init__(self, **kwargs)
-
-    def __str__(self):
-        return self.__class__.__name__
-
     def make_node(self, x, b):
         x = tensor.as_tensor_variable(x)
         b = tensor.as_tensor_variable(b)
@@ -826,9 +820,6 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
     def __init__(self, **kwargs):
         gof.Op.__init__(self, **kwargs)
 
-    def __str__(self):
-        return self.__class__.__name__
-
     def make_node(self, x, b, y_idx):
         x = tensor.as_tensor_variable(x)
         b = tensor.as_tensor_variable(b)
@@ -1049,11 +1040,6 @@ class CrossentropySoftmax1HotWithBiasDx(gof.Op):
     __props__ = ()
     
     """Gradient wrt x of the CrossentropySoftmaxArgmax1HotWithBias Op"""
-    def __init__(self, **kwargs):
-        gof.Op.__init__(self, **kwargs)
-
-    def __str__(self):
-        return self.__class__.__name__
 
     def make_node(self, dy, sm, y_idx, **kwargs):
         dy = tensor.as_tensor_variable(dy)
@@ -1256,9 +1242,6 @@ class CrossentropyCategorical1HotGrad(gof.Op):
     
     __props__ = ()
 
-    def __str__(self):
-        return self.__class__.__name__
-
     def make_node(self, g_y, coding_dist, true_one_of_n):
         return Apply(self, [g_y, coding_dist, true_one_of_n],
                      [coding_dist.type()])
@@ -1294,9 +1277,6 @@ class CrossentropyCategorical1Hot(gof.Op):
 
     """
     __props__ = ()
-
-    def __str__(self):
-        return self.__class__.__name__
 
     def make_node(self, coding_dist, true_one_of_n):
         """
@@ -1981,9 +1961,6 @@ class Prepend_scalar_constant_to_each_row(gof.Op):
 class Prepend_scalar_to_each_row(gof.Op):
 
     __props__ = ()
-
-    def __str__(self):
-        return self.__class__.__name__
 
     def make_node(self, val, mat):
         # check type of input
