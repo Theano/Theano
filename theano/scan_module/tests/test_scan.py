@@ -4261,7 +4261,13 @@ class T_Scan(unittest.TestCase):
 
         # There should be 3 outputs greater than 10: prior_result[0] at step 3,
         # and prior_result[1] at steps 2 and 3.
-        assert detect_large_outputs.large_count == 3
+        if theano.config.mode in ["DEBUG_MODE", "DebugMode"]:
+            # DebugMode will run all the intermediate nodes, so we
+            # should expect a multiple of 3, not exactly 3.
+            assert detect_large_outputs.large_count % 3 == 0
+
+        else:
+            assert detect_large_outputs.large_count == 3
 
 
 class ScanGpuTests:
