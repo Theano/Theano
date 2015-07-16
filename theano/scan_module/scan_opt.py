@@ -612,8 +612,11 @@ class PushOutScanOutput(gof.Optimizer):
         fgraph.attach_feature(gof.toolbox.ReplaceValidate())
 
     def apply(self, fgraph):
+        # Don't perform the optimization on as_while scans since it's
+        # impossible to know for how many steps it will run.
         nodelist = [x for x in fgraph.toposort()
-                    if isinstance(x.op, scan_op.Scan)]
+                    if (isinstance(x.op, scan_op.Scan) and
+                        not x.op.as_while]
         for node in nodelist:
             # Process the node as long as something gets optimized
             while node != None:
