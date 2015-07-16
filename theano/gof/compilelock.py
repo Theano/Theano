@@ -366,8 +366,6 @@ class Unlocker(object):
         # the same try/except block. The reason is that while the attempt to
         # remove the file may fail (e.g. because for some reason this file does
         # not exist), we still want to try and remove the directory.
-        if os is None:
-            return
 
         # Check if someone else didn't took our lock.
         lock_file = os.path.join(self.tmp_dir, 'lock')
