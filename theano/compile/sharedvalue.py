@@ -125,9 +125,9 @@ class SharedVariable(Variable):
         this SharedVariable.
         """
         if borrow:
-            self.container.value = 0 * self.container.value
+            self.container.value[...] = 0
         else:
-            self.container.value = 0 * copy.deepcopy(self.container.value)
+            self.container.value = 0 * self.container.value
 
     def clone(self):
         cp = self.__class__(
