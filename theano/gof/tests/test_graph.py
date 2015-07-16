@@ -45,6 +45,8 @@ def MyVariable(thingy):
 
 class MyOp(Op):
 
+    __props__ = ()
+    
     def make_node(self, *inputs):
         inputs = list(map(as_variable, inputs))
         for input in inputs:
@@ -53,9 +55,6 @@ class MyOp(Op):
                 raise Exception("Error 1")
         outputs = [MyVariable(sum([input.type.thingy for input in inputs]))]
         return Apply(self, inputs, outputs)
-
-    def __str__(self):
-        return self.__class__.__name__
 
 MyOp = MyOp()
 
