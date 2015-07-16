@@ -5897,6 +5897,7 @@ def local_merge_alloc(node):
     # This opt takes care of several cases:
     # Alloc(Alloc(m, x, 1, 1, 1), x, y, z, w) -> Alloc(m, x, y, z, w)
     # Alloc(Alloc(m, y, 1, 1), x, y, z, w) -> Alloc(m, x, y, z, w)
+    # Alloc(Alloc(m, y1, 1, 1), x, y2, z, w) -> Alloc(m, x, assert(y1, y1==y2), z, w)
     if not isinstance(node.op, T.Alloc):
         return False
     if not node.inputs[0].owner or not isinstance(
@@ -5912,10 +5913,17 @@ def local_merge_alloc(node):
     # The reverse ordering is needed when an Alloc add an implicit new
     # broadcasted dimensions to its inputs[0]. Eg:
     # Alloc(Alloc(m, y, 1, 1), x, y, z, w) -> Alloc(m, x, y, z, w)
+    i = 0
     for dim_inner, dim_outer in zip(dims_inner_rev, dims_outer_rev):
         if dim_inner != dim_outer:
             if isinstance(dim_inner, Constant) and dim_inner.data == 1:
                 pass
             else:
-                return False
+                dims_outer[-1 - i] = Assert(
+                    "You have a shape error in your graph. To see a better"
+                    " error message and a stack trace of where in your code"
+                    " the error is created, use the Theano flags"
+                    " optimizer=None or optimizer=fast_compile.")(
+                    dim_outer, T.eq(dim_outer, dim_inner))
+        i += 1
     return [T.alloc(inputs_inner[0], *dims_outer)]
