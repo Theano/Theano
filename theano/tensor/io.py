@@ -103,7 +103,7 @@ class MPIRecv(Op):
 
     @note: Non-differentiable.
     """
-
+    
     def __init__(self, source, tag, shape, dtype):
         self.source = source
         self.tag = tag
@@ -150,15 +150,10 @@ class MPIRecvWait(Op):
 
     @note: Non-differentiable.
     """
+    __props__ = ("tag",)
 
     def __init__(self, tag):
         self.tag = tag
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.tag == other.tag
-
-    def __hash__(self):
-        return hash((type(self), self.tag))
 
     def make_node(self, request, data):
         return gof.Apply(self, [request, data],
@@ -173,9 +168,6 @@ class MPIRecvWait(Op):
         request.wait()
 
         out[0][0] = data
-
-    def __str__(self):
-        return "MPIRecvWait"
 
     def infer_shape(self, node, shapes):
         return [shapes[1]]
@@ -233,14 +225,10 @@ class MPISendWait(Op):
     @note: Non-differentiable.
     """
 
+    __props__ = ("tag",)
+
     def __init__(self, tag):
         self.tag = tag
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.tag == other.tag
-
-    def __hash__(self):
-        return hash((type(self), self.tag))
 
     def make_node(self, request, data):
         return gof.Apply(self, [request, data],
@@ -250,10 +238,6 @@ class MPISendWait(Op):
         request = inp[0]
         request.wait()
         out[0][0] = True
-
-    def __str__(self):
-        return "MPISendWait"
-
 
 def isend(var, dest, tag):
     """
