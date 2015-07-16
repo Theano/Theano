@@ -582,7 +582,7 @@ class UsmmCscDense(gof.Op):
     :note: Optimized version os Usmm when `x` is in csc format and
            `y` is dense.
     """
-    __props__ = ("inplace")
+    __props__ = ("inplace",)
 
     def __init__(self, inplace):
         self.inplace = inplace
