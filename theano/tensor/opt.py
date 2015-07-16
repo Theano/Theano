@@ -588,14 +588,11 @@ class MakeVector(T.Op):
     into the graph. Should work with 0 inputs. The constant_folding
     optimization will remove it.
     """
+
+    __props__ = ("dtype",)
+
     def __init__(self, dtype='int64'):
         self.dtype = dtype
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.dtype == other.dtype
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.dtype)
 
     def make_node(self, *inputs):
         inputs = list(map(T.as_tensor_variable, inputs))
@@ -624,9 +621,6 @@ class MakeVector(T.Op):
         bcastable = False
         otype = T.TensorType(broadcastable=(bcastable,), dtype=dtype)
         return T.Apply(self, inputs, [otype()])
-
-    def __str__(self):
-        return self.__class__.__name__
 
     def perform(self, node, inputs, out_):
         out, = out_
