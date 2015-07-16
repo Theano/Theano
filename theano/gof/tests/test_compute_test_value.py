@@ -20,12 +20,7 @@ from theano.tensor.basic import _allclose
 # Used in TestComputeTestValue.test_no_perform
 class IncOneC(Op):
     """An Op with only a C (c_code) implementation"""
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, input):
         input = scalar.as_scalar(input)
@@ -343,12 +338,7 @@ class TestComputeTestValue(unittest.TestCase):
     def test_no_c_code(self):
         class IncOnePython(Op):
             """An Op with only a Python (perform) implementation"""
-
-            def __eq__(self, other):
-                return type(self) == type(other)
-
-            def __hash__(self):
-                return hash(type(self))
+            __props__ = ()
 
             def make_node(self, input):
                 input = scalar.as_scalar(input)
