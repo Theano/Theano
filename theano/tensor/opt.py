@@ -3874,8 +3874,8 @@ def local_sum_prod_mul_by_scalar(node):
 
        or
 
-       prod(scalar * smth) -> scalar * prod(smth)
-       prod(-smth) -> -prod(smth)
+       prod(scalar * smth) -> scalar ** size(smth) * prod(smth)
+       prod(-smth) -> -1 ** size(smth) * prod(smth)
     """
     # TODO: if the the thing inside the Sum is a division,
     # we should get at the numerator....
