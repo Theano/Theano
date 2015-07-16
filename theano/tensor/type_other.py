@@ -21,6 +21,9 @@ def as_int_none_variable(x):
 
 
 class MakeSlice(Op):
+
+    __props__ = ()
+
     def make_node(self, slc, stop=None, step=None):
         # We need to accept and handle in make_node inputs the node
         # inputs to allow redoing a new op elsewhere in the graph by
@@ -38,15 +41,6 @@ class MakeSlice(Op):
     def perform(self, node, inp, out_):
         out, = out_
         out[0] = slice(*inp)
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
 
     def grad(self, inputs, grads):
         return [DisconnectedType()() for i in inputs]
