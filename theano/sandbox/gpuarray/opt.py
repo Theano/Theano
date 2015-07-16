@@ -14,7 +14,7 @@ from theano.gof import (local_optimizer, EquilibriumDB,
                         SequenceDB, Optimizer, toolbox)
 from theano.gof.optdb import LocalGroupDB
 
-from theano.scalar.basic import Scalar, Pow, Cast, upcast
+from theano.scalar.basic import Scalar, Pow, Cast
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
 from theano.tensor.nnet.conv import ConvOp
