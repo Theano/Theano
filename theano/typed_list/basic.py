@@ -111,7 +111,7 @@ Get specified slice of a typed list.
 
 class Append(Op):
     # See doc in instance of this Op after the class definition.
-    __props__ = ("inplace")
+    __props__ = ("inplace",)
 
     def __init__(self, inplace=False):
         self.inplace = inplace
@@ -181,7 +181,7 @@ Append an element at the end of another list.
 
 class Extend(Op):
     # See doc in instance of this Op after the class definition.
-    __props__ = ("inplace")
+    __props__ = ("inplace",)
 
     def __init__(self, inplace=False):
         self.inplace = inplace
@@ -257,7 +257,7 @@ Append all elements of a list at the end of another list.
 
 class Insert(Op):
     # See doc in instance of this Op after the class definition.
-    __props__ = ("inplace")
+    __props__ = ("inplace",)
 
     def __init__(self, inplace=False):
         self.inplace = inplace
@@ -333,7 +333,7 @@ Insert an element at an index in a typed list.
 
 class Remove(Op):
     # See doc in instance of this Op after the class definition.
-    __props__ = ("inplace")
+    __props__ = ("inplace",)
 
     def __init__(self, inplace=False):
         self.inplace = inplace
@@ -384,7 +384,7 @@ remove = Remove()
 
 class Reverse(Op):
     # See doc in instance of this Op after the class definition.
-    __props__ = ("inplace")
+    __props__ = ("inplace",)
 
     def __init__(self, inplace=False):
         self.inplace = inplace
