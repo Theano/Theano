@@ -9,6 +9,7 @@ import warnings
 
 import theano
 from theano import gof
+from theano.compat import OrderedDict
 from six import iteritems
 from six.moves import xrange
 
@@ -138,9 +139,6 @@ class DeepCopyOp(gof.Op):
     def __init__(self):
         pass
 
-    def __str__(self):
-        return self.__class__.__name__
-
     def make_node(self, x):
         return gof.Apply(self, [x], [x.type()])
 
@@ -219,9 +217,6 @@ class Shape(gof.Op):
 
     check_input = False
     __props__ = ()
-
-    def __str__(self):
-        return self.__class__.__name__
 
     def make_node(self, x):
         # Must work for all type that have a shape attribute.
@@ -609,10 +604,12 @@ class Rebroadcast(gof.Op):
     c_code_and_version = {}
 
     check_input = False
-    __props__ = ("axis")
+    __props__ = ("axis",)
 
     def __init__(self, *axis):
-        self.axis = dict(axis)
+        # Sort them to make sure we merge all possible case.
+        items = sorted(iteritems(self.axis))
+        self.axis = OrderedDict(items)
         for axis, broad in iteritems(self.axis):
             assert isinstance(axis, (numpy.integer, int)), (
                 "Rebroadcast needs integer axes. Got ", axis)
@@ -748,9 +745,6 @@ class SpecifyShape(gof.Op):
     # the output variable is %(oname)s.
     c_code_and_version = {}
     __props__ = ()
-
-    def __str__(self):
-        return self.__class__.__name__
 
     def make_node(self, x, shape):
         if not isinstance(x, gof.Variable):
