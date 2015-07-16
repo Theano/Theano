@@ -752,7 +752,7 @@ class CSMGrad(gof.op.Op):
     # 2. The elements in the sparse dimension are not guaranteed to be sorted.
     # Therefore, the input data vector may have a different order than the
     # gradient data vector.
-    __props__ = ("kmap")
+    __props__ = ("kmap",)
 
     def __init__(self, kmap=None):
         self.kmap = kmap
@@ -811,7 +811,7 @@ csm_grad = CSMGrad
 
 class Cast(gof.op.Op):
     # See doc in instance of this Op or function after this class definition.
-    __props__ = ("out_type")
+    __props__ = ("out_type",)
     
     def __init__(self, out_type):
         self.out_type = out_type
@@ -1785,7 +1785,7 @@ is given by the dense vector argument.
 
 class EnsureSortedIndices(gof.op.Op):
     # See doc in instance of this Op or function after this class definition.
-    __props__ = ("inplace")
+    __props__ = ("inplace",)
 
     def __init__(self, inplace):
         self.inplace = inplace
