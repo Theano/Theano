@@ -4493,11 +4493,102 @@ class test_local_remove_switch_const_cond(unittest.TestCase):
 
 class T_local_sum_prod(unittest.TestCase):
     """
-    Test sum/prod opts in opt.py 
+    Test sum/prod opts in opt.py
     """
     def setUp(self):
         self.mode = theano.compile.get_default_mode().including('canonicalize',
                                                                 'specialize')
+
+    def test_local_sum_prod_mul_by_scalar(self):
+        # Test the optimization local_sum_prod_mul_by_scalar for both Sum and
+        # Prod ops in six cases each :
+        # 1-the inputs to the mul contain a scalar and no non-scalar
+        # 2-the inputs to the mul contain a scalar and one non-scalar
+        # 3-the inputs to the mul contain a scalar and two non-scalars
+        # 4-the inputs to the mul contain two scalars and no non-scalar
+        # 5-the inputs to the mul contain two scalars and one non-scalar
+        # 6-the inputs to the mul contain two scalars and two non-scalars
+
+        vect = T.dvector()
+        mat = T.dmatrix()
+        scalar1 = T.dscalar()
+        scalar2 = T.dscalar()
+
+        v_val = numpy.random.rand(2)
+        m_val = numpy.random.rand(2, 2)
+        s1_val = numpy.random.rand()
+        s2_val = numpy.random.rand()
+
+        # Test sum
+        def test_sum_opt(inputs, inputs_val, expected_output):
+            mul_out = T.mul(*inputs)
+            f = theano.function(inputs, T.sum(mul_out), mode=self.mode)
+            out = f(*inputs_val)
+            utt.assert_allclose(out, expected_output)
+
+        # Case 1
+        test_sum_opt([scalar1], [s1_val], s1_val)
+
+        # Case 2
+        test_sum_opt([vect, scalar1], [v_val, s1_val],
+                     s1_val * v_val.sum())
+
+        # Case 3# Case 1
+        test_sum_opt([scalar1], [s1_val], s1_val)
+
+        # Case 2
+        test_sum_opt([vect, scalar1], [v_val, s1_val],
+                     s1_val * v_val.sum())
+
+        # Case 3
+        test_sum_opt([vect, mat, scalar1], [v_val, m_val, s1_val],
+                     s1_val * (v_val * m_val).sum())
+
+        # Case 4
+        test_sum_opt([scalar1, scalar2], [s1_val, s2_val],
+                     s1_val * s2_val)
+
+        # Case 5
+        test_sum_opt([vect, scalar1, scalar2],
+                     [v_val, s1_val, s2_val],
+                     s1_val * s2_val * v_val.sum())
+
+        # Case 6
+        test_sum_opt([vect, mat, scalar1, scalar2],
+                     [v_val, m_val, s1_val, s2_val],
+                     s1_val * s2_val * (v_val * m_val).sum())
+
+        # Test prod
+        def test_prod_opt(inputs, inputs_val, expected_output):
+            mul_out = T.mul(*inputs)
+            f = theano.function(inputs, T.prod(mul_out), mode=self.mode)
+            out = f(*inputs_val)
+            utt.assert_allclose(out, expected_output)
+
+        # Case 1
+        test_prod_opt([scalar1], [s1_val], s1_val)
+
+        # Case 2
+        test_prod_opt([vect, scalar1], [v_val, s1_val],
+                      (s1_val * v_val).prod())
+
+        # Case 3
+        test_prod_opt([vect, mat, scalar1], [v_val, m_val, s1_val],
+                      (s1_val * v_val * m_val).prod())
+
+        # Case 4
+        test_prod_opt([scalar1, scalar2], [s1_val, s2_val],
+                      s1_val * s2_val)
+
+        # Case 5
+        test_prod_opt([vect, scalar1, scalar2],
+                      [v_val, s1_val, s2_val],
+                      (s1_val * s2_val * v_val).prod())
+
+        # Case 6
+        test_prod_opt([vect, mat, scalar1, scalar2],
+                      [v_val, m_val, s1_val, s2_val],
+                      (s1_val * s2_val * v_val * m_val).prod())
 
     def test_local_sum_prod_all_to_none(self):
         a = T.tensor3()
@@ -5420,7 +5511,7 @@ class TestIntDivByOne(unittest.TestCase):
                 if isinstance(node.op, T.elemwise.Elemwise) and
                 isinstance(node.op.scalar_op, theano.scalar.IntDiv)]
         assert len(divs) == 0
-    
+
     def test2(self):
         """Simple test case for removing dividing by 1"""
         y = T.tensor4('y')
