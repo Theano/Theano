@@ -81,6 +81,8 @@ def double(name):
 
 class MyOp(Op):
 
+    __props__ = ("nin", "name")
+    
     def __init__(self, nin, name):
         self.nin = nin
         self.name = name
@@ -96,14 +98,6 @@ class MyOp(Op):
 
     def __str__(self):
         return self.name
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.name == other.name and
-                self.nin == other.nin)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.name) ^ hash(self.nin)
 
     def perform(self, node, inputs, out_):
         out, = out_
