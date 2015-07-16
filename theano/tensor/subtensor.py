@@ -292,6 +292,7 @@ class Subtensor(Op):
     check_input = False
     view_map = {0: [0]}
     _f16_ok = True
+    __props__ = ("idx_list",)
 
     @staticmethod
     def collapse(idxs, cond):
@@ -566,9 +567,6 @@ class Subtensor(Op):
             rval.append([False])
 
         return rval
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.idx_list == other.idx_list
 
     def __hash__(self):
         # TODO: optimize by cache this hash value
@@ -1174,6 +1172,8 @@ class IncSubtensor(Op):
     """
 
     check_input = False
+    __props__ = ("idx_list", "inplace", "set_instead_of_inc",
+                 "destroyhandler_tolerate_aliased")
 
     def __init__(self, idx_list, inplace=False, set_instead_of_inc=False,
                  destroyhandler_tolerate_aliased=None):
@@ -1186,12 +1186,6 @@ class IncSubtensor(Op):
         self.destroyhandler_tolerate_aliased = list(
             destroyhandler_tolerate_aliased)
         self.set_instead_of_inc = set_instead_of_inc
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.idx_list == other.idx_list and
-                self.inplace == other.inplace and
-                self.set_instead_of_inc == other.set_instead_of_inc)
 
     def __hash__(self):
         msg = []
@@ -2033,15 +2027,7 @@ class AdvancedSubtensor(Op):
     # Should be used by __getitem__ and __getslice__, as follow:
     # AdvancedSubtensor()(self, *args),
     # if args contains and advanced indexing pattern
-
-    def __eq__(self, other):
-        return self.__class__ == other.__class__
-
-    def __hash__(self):
-        return hash(self.__class__)
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, x, *index):
         x = theano.tensor.as_tensor_variable(x)
@@ -2116,6 +2102,7 @@ class AdvancedIncSubtensor(Op):
         op.
 
     """
+    __props__ = ("inplace", "set_instead_of_inc")
 
     def __init__(self, inplace=False, set_instead_of_inc=False):
         self.inplace = inplace
