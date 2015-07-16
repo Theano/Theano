@@ -1451,7 +1451,7 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
         sm = as_cuda_ndarray_variable(sm)
         assert dy.ndim == 4
         assert sm.ndim == 4
-        return Apply(self, [dy, sm], [sm.type.make_variable()])
+        return Apply(self, [dy, sm], [sm.type()])
 
     def method(self):
         return """
