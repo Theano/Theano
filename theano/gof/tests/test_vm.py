@@ -331,6 +331,9 @@ if run_memory_usage_tests:
 
 
 class RunOnce(theano.Op):
+
+    __props__ = ()
+    
     def __init__(self):
         self.nb_run = 0
 
