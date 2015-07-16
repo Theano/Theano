@@ -465,7 +465,6 @@ class FromFunctionOp(gof.Op):
     raise an error if you attempt to get the gradient of a graph
     containing this op.
     """
-    __props__ = ("fn", "itypes", "otypes", "infer_shape")
 
     def __init__(self, fn, itypes, otypes, infer_shape):
         self.__fn = fn
@@ -474,6 +473,13 @@ class FromFunctionOp(gof.Op):
         self.__infer_shape = infer_shape
         if self.__infer_shape is not None:
             self.infer_shape = self._infer_shape
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+                self.__fn == other.__fn)
+
+    def __hash__(self):
+        return hash(type(self)) ^ hash(self.__fn)
 
     def __str__(self):
         return 'FromFunctionOp{%s}' % self.__fn.__name__
