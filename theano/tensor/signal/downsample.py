@@ -965,16 +965,17 @@ class DownsampleFactorMaxGradGrad(Op):
             raise NotImplementedError(
                 'padding_h and padding_w must be smaller than strides')
         self.mode = mode
+        assert self.mode == 'max'
 
     def make_node(self, x, maxout, gz):
         # make_node should only be called by the grad function of
         # MaxPoolGrad, so these asserts should not fail.
-        assert isinstance(x, Variable) and x.ndim == 4
-        assert isinstance(maxout, Variable) and maxout.ndim == 4
-        assert isinstance(gz, Variable) and gz.ndim == 4
         x = tensor.as_tensor_variable(x)
         maxout = tensor.as_tensor_variable(maxout)
         gz = tensor.as_tensor_variable(gz)
+        assert x.ndim == 4
+        assert maxout.ndim == 4
+        assert gz.ndim == 4
 
         return Apply(self, [x, maxout, gz], [x.type()])
 
