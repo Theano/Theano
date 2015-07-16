@@ -3923,24 +3923,28 @@ def local_elemwise_sub_zeros(node):
 
 @register_canonicalize
 @register_specialize
-@gof.local_optimizer([T.Sum])
-def local_sum_div_dimshuffle(node):
+@gof.local_optimizer([T.Sum, T.elemwise.Prod])
+def local_sum_prod_div_dimshuffle(node):
     '''sum(a / dimshuffle{...}(b), axis=l) -> sum(a, axis={...}) / b,
-    if dimension l of the DimShuffle is 'x'.'''
-    # TODO: extend it to product, and quotient of products
+       if dimension l of the DimShuffle is 'x'
+
+       or
+
+       prod(a / dimshuffle{...}(b), axis=l) -> prod(a, axis={...}) / b,
+      if dimension l of the DimShuffle is 'x'
+    '''
 
     # It does not make much sense now to extend it to the case where the
     # dimshuffle is in the numerator, since elemwise inversion of the
-    # denominator would still be needed before the summation.
+    # denominator would still be needed before the summation or production.
 
-    if isinstance(node.op, T.Sum):
+    if isinstance(node.op, T.Sum) or isinstance(node.op, T.elemwise.Prod):
         axis = node.op.axis
         if axis is None:
             axis = list(range(node.inputs[0].ndim))
-        # print 'axis =', axis
-        thing_summed = node.inputs[0]
-        if thing_summed.owner and thing_summed.owner.op == T.true_div:
-            numerator, denominator = thing_summed.owner.inputs
+        node_input = node.inputs[0]
+        if node_input.owner and node_input.owner.op == T.true_div:
+            numerator, denominator = node_input.owner.inputs
 
             # Old, bugged logic, reproduced here only to warn users
             if config.warn.sum_div_dimshuffle_bug:
