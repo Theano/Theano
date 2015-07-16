@@ -136,11 +136,8 @@ class AllocDiag(Op):
     """
     Allocates a square matrix with the given vector as its diagonal.
     """
-    def __eq__(self, other):
-        return type(self) == type(other)
 
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, _x):
         x = as_tensor_variable(_x)
@@ -170,16 +167,12 @@ class ExtractDiag(Op):
 
     :note: work on the GPU.
     """
+    __props__ = ("view",)
+    
     def __init__(self, view=False):
         self.view = view
         if self.view:
             self.view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.view == other.view
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.view)
 
     def make_node(self, _x):
         if not isinstance(_x, theano.Variable):
@@ -262,6 +255,9 @@ class Det(Op):
     """Matrix determinant
     Input should be a square matrix
     """
+
+    __props__ = ()
+
     def make_node(self, x):
         x = as_tensor_variable(x)
         assert x.ndim == 2
@@ -640,14 +636,8 @@ def svd(a, full_matrices=1, compute_uv=1):
 
 
 class lstsq(Op):
-    def __eq__(self, other):
-        return type(self) == type(other)
 
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, x, y, rcond):
         x = theano.tensor.as_tensor_variable(x)
