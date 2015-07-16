@@ -1,21 +1,17 @@
 from __future__ import print_function
-import logging
-import theano
 
-logger = logging.getLogger(__name__)
+import logging
+
 import numpy
 from six.moves import xrange
 
+import theano
+from theano.tensor import as_tensor_variable
 from theano.gof import Op, Apply
-
-from theano.tensor import as_tensor_variable, dot, DimShuffle, Dot
-from theano.tensor.blas import Dot22
-from theano.tensor.opt import (register_stabilize,
-        register_specialize, register_canonicalize)
-from theano.gof import local_optimizer
-from theano.gof.opt import Optimizer
 from theano.gradient import DisconnectedType
 from theano.tensor import basic as tensor
+
+logger = logging.getLogger(__name__)
 
 
 class MatrixPinv(Op):
@@ -427,8 +423,10 @@ class EighGrad(Op):
         N = x.shape[0]
         outer = numpy.outer
 
-        G = lambda n: sum(v[:, m] * V.T[n].dot(v[:, m]) / (w[n] - w[m])
-                          for m in xrange(N) if m != n)
+        def G(n):
+            return sum(v[:, m] * V.T[n].dot(v[:, m]) / (w[n] - w[m])
+                       for m in xrange(N) if m != n)
+
         g = sum(outer(v[:, n], v[:, n] * W[n] + G(n))
                 for n in xrange(N))
 
@@ -641,16 +639,6 @@ def svd(a, full_matrices=1, compute_uv=1):
     return SVD(full_matrices, compute_uv)(a)
 
 
-def test_matrix_inverse_solve():
-    if not imported_scipy:
-        raise SkipTest("Scipy needed for the Solve op.")
-    A = theano.tensor.dmatrix('A')
-    b = theano.tensor.dmatrix('b')
-    node = matrix_inverse(A).dot(b).owner
-    [out] = inv_as_solve.transform(node)
-    assert isinstance(out.owner.op, Solve)
-
-
 class lstsq(Op):
     def __eq__(self, other):
         return type(self) == type(other)
@@ -670,9 +658,6 @@ class lstsq(Op):
                              theano.tensor.lscalar(), theano.tensor.dvector()])
 
     def perform(self, node, inputs, outputs):
-        x = inputs[0]
-        y = inputs[1]
-        rcond = inputs[2]
         zz = numpy.linalg.lstsq(inputs[0], inputs[1], inputs[2])
         outputs[0][0] = zz[0]
         outputs[1][0] = zz[1]
@@ -703,7 +688,7 @@ def norm(x, ord):
             return x[x.nonzero()].shape[0]
         else:
             try:
-                z = tensor.sum(abs(x**ord))**(1./ord)
+                z = tensor.sum(abs(x**ord))**(1. / ord)
             except TypeError:
                 raise ValueError("Invalid norm order for vectors.")
             return z
