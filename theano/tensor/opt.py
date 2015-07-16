@@ -3938,7 +3938,7 @@ def local_sum_prod_div_dimshuffle(node):
     # dimshuffle is in the numerator, since elemwise inversion of the
     # denominator would still be needed before the summation or production.
 
-    if isinstance(node.op, T.Sum) or isinstance(node.op, T.elemwise.Prod):
+    if isinstance(node.op, (T.SumT.elemwise.Prod)):
         axis = node.op.axis
         if axis is None:
             axis = list(range(node.inputs[0].ndim))
@@ -3947,7 +3947,8 @@ def local_sum_prod_div_dimshuffle(node):
             numerator, denominator = node_input.owner.inputs
 
             # Old, bugged logic, reproduced here only to warn users
-            if config.warn.sum_div_dimshuffle_bug:
+            if (config.warn.sum_div_dimshuffle_bug and
+                    isinstance(node.op, T.Sum)):
                 if numerator.owner and isinstance(numerator.owner.op,
                                                   T.DimShuffle):
                     new_order = numerator.owner.op.new_order
@@ -3995,7 +3996,8 @@ def local_sum_prod_div_dimshuffle(node):
                     if all(i == e for i, e in enumerate(new_new_order)):
                         new_denom = thing_dimshuffled
                     else:
-                        if config.warn.sum_div_dimshuffle_bug:
+                        if (config.warn.sum_div_dimshuffle_bug and
+                                isinstance(node.op, T.Sum)):
                             _logger.warn('WARNING: Your current code is fine,'
                                          ' but Theano versions between '
                                          'rev. 3bd9b789f5e8 (2010-06-16) and'
