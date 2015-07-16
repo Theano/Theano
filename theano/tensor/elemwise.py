@@ -98,7 +98,6 @@ class DimShuffle(Op):
     Adding, subtracting dimensions can be done with reshape.
     """
     _f16_ok = True
-
     check_input = False
 
     def __init__(self, input_broadcastable, new_order, inplace=False):
