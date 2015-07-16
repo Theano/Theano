@@ -127,13 +127,13 @@ parser.add_option('--print_only', action='store_true', dest='print_only',
                   default=False,
                   help="If true, do not perform gemm computations")
 parser.add_option('-M', '--M', action='store', dest='M',
-                  default=2000, type="int",
+                  default=0, type="int",
                   help="The M size to gemm")
 parser.add_option('-N', '--N', action='store', dest='N',
-                  default=2000, type="int",
+                  default=0, type="int",
                   help="The N size to gemm")
 parser.add_option('-K', '--K', action='store', dest='K',
-                  default=2000, type="int",
+                  default=0, type="int",
                   help="The K size to gemm")
 parser.add_option('--iter', action='store', dest='iter',
                   default=10, type="int",
@@ -143,9 +143,6 @@ parser.add_option('--order', action='store', dest='order',
                   help="The numpy memory layout parameter used when creating"
                   " the numpy.ndarray objects. It accepts 'C' for C memory"
                   " order and 'F' for Fortran order (for all matrices).")
-parser.add_option('--small_only', action='store_true', dest='small_only',
-                  default=False,
-                  help="If true, additionally perform gemm on large matrices.")
 parser.add_option('-B', '--B', action='store', dest='B',
                   default=5000, type="int",
                   help="The M, N, and K for big gemm")
@@ -252,10 +249,10 @@ if __name__ == "__main__":
         with matrices of shape 5000x5000 (M=N=K=5000).
         All memory layout was in C order.
 
-        cuda version      6.5    6.0    5.5    5.0    4.2    4.1    4.0    3.2    3.0   # note
+        cuda version      7.5    7.0    6.5
         gpu
         K6000/NOECC
-        K40               0.88s
+        K40                             0.88s
         K20m/ECC
         K20/NOECC
         M2090   
@@ -277,21 +274,6 @@ if __name__ == "__main__":
         GTX 580           
         GTX 480           
         GTX 750 Ti        
-        GTX 470           
-        GTX 660           
-        GTX 560           
-        GTX 650 Ti        
-        GTX 765M          
-        GTX 460           
-        GTX 285          
-        750M              
-        GT 610            
-        GTX 550 Ti        
-        GT 520            
-        520M            
-        GT 220            
-        GT 210            
-        8500 GT           
         """)
 
     t, impl = execute(not options.print_only, not options.quiet,
