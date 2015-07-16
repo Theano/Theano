@@ -878,7 +878,7 @@ class T_loading_and_saving(unittest.TestCase):
                     loaded_objects.append(pickle.load(f))
                 f.close()
             finally:
-                # Get back to the orinal dir, and temporary one.
+                # Get back to the original dir, and delete the temporary one.
                 os.chdir(origdir)
                 if tmpdir is not None:
                     shutil.rmtree(tmpdir)
