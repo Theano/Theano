@@ -106,15 +106,17 @@ def test_local_assert_no_cpu_op():
     mode_local_assert = mode_local_assert.excluding("local_gpu_elemwise_1")
 
     old = config.assert_no_cpu_op
-
+    old2 = config.on_opt_error
     # If the flag is raise
     try:
         config.assert_no_cpu_op = 'raise'
+        config.on_opt_error = 'ignore'
 
         assert_raises(AssertionError, theano.function,
                         [], out, mode=mode_local_assert)
     finally:
         config.assert_no_cpu_op = old
+        config.on_opt_error = old2
 
     # If the flag is ignore
     try:
