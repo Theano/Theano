@@ -4946,17 +4946,14 @@ class T_local_sum_prod_dimshuffle(unittest.TestCase):
         c_val = rng.randn(2, 2, 2).astype(config.floatX)
         d_val = numpy.asarray(rng.randn(), config.floatX)
 
-        try:
-            for i, s in enumerate(prods):
-                print(i)
-                f = theano.function([a, b, c, d], s, mode=self.mode,
-                        on_unused_input='ignore')
-                g = f.maker.fgraph.toposort()
-                assert isinstance(g[-1].op.scalar_op,
-                                  theano.scalar.basic.TrueDiv)
-                f(a_val, b_val, c_val, d_val)
-        finally:
-            raise Exception("\'test_local_prod_div_dimshuffle\' failed!")
+        for i, s in enumerate(prods):
+            print(i)
+            f = theano.function([a, b, c, d], s, mode=self.mode,
+                    on_unused_input='ignore')
+            g = f.maker.fgraph.toposort()
+            assert isinstance(g[-1].op.scalar_op,
+                              theano.scalar.basic.TrueDiv)
+            f(a_val, b_val, c_val, d_val)
 
     # TODO:
     # test_local_sum_divprod_dimshuffle ((a * b) / (c * d))
