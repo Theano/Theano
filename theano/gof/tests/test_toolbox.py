@@ -33,6 +33,8 @@ def MyVariable(name):
 
 class MyOp(Op):
 
+    __props__ = ("nin", "name")
+    
     def __init__(self, nin, name):
         self.nin = nin
         self.name = name
