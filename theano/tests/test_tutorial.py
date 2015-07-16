@@ -139,15 +139,12 @@ class T_extending(unittest.TestCase):
 
         from theano import gof
         class BinaryDoubleOp(gof.Op):
+        
+            __props__ = ("name", "fn")
+            
             def __init__(self, name, fn):
                 self.name = name
                 self.fn = fn
-
-            def __eq__(self, other):
-                return type(self) == type(other) and (self.name == other.name) and (self.fn == other.fn)
-
-            def __hash__(self):
-                return hash(type(self)) ^ hash(self.name) ^ hash(self.fn)
 
             def make_node(self, x, y):
                 if isinstance(x, (int, float)):
@@ -207,15 +204,12 @@ class T_extending(unittest.TestCase):
         double = Double()
 
         class BinaryDoubleOp(gof.Op):
+        
+            __props__ = ("name", "fn")
+            
             def __init__(self, name, fn):
                 self.name = name
                 self.fn = fn
-
-            def __eq__(self, other):
-                return type(self) == type(other) and (self.name == other.name) and (self.fn == other.fn)
-
-            def __hash__(self):
-                return hash(type(self)) ^ hash(self.name) ^ hash(self.fn)
 
             def make_node(self, x, y):
                 if isinstance(x, (int, float)):
@@ -366,6 +360,8 @@ class T_extending(unittest.TestCase):
         from theano import gof
         class BinaryDoubleOp(gof.Op):
 
+            __props__ = ("name", "fn", "ccode")
+            
             def __init__(self, name, fn, ccode):
                 self.name = name
                 self.fn = fn
@@ -1012,14 +1008,8 @@ class T_using_gpu(unittest.TestCase):
             raise SkipTest('Optional package cuda disabled')
 
         class PyCUDADoubleOp(theano.Op):
-            def __eq__(self, other):
-                return type(self) == type(other)
-
-            def __hash__(self):
-                return hash(type(self))
-
-            def __str__(self):
-                return self.__class__.__name__
+            
+            __props__ = ()
 
             def make_node(self, inp):
                 inp = cuda.basic_ops.gpu_contiguous(
@@ -1061,12 +1051,7 @@ class Fibby(theano.Op):
     """
     An arbitrarily generalized Fibbonacci sequence
     """
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, x):
         x_ = theano.tensor.as_tensor_variable(x)
