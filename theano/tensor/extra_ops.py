@@ -18,28 +18,29 @@ class CpuContiguous(theano.Op):
     """
     __props__ = ()
     view_map = {0: [0]}
-    
+
     def make_node(self, x):
         x_ = theano.tensor.as_tensor_variable(x)
         return theano.Apply(self, [x_], [x_.type()])
-    
+
     def perform(self, node, inputs, output_storage):
         x, = inputs
-        y = output_storage[0]        
+        y = output_storage[0]
         # if the ouput is contiguous do nothing, else copy
         # the input
         if not x.flags['C_CONTIGUOUS']:
             x = x.copy()
         assert x.flags['C_CONTIGUOUS']
-        y[0] = x 
+        y[0] = x
 
-    def c_code(self, node, name, inames, onames, sub): 
+    def c_code(self, node, name, inames, onames, sub):
         x, = inames
         y, = onames
         code = """
             if (!PyArray_CHKFLAGS(%(x)s, NPY_ARRAY_C_CONTIGUOUS)){
-                // check to see if output is contiguous first 
-                if (%(y)s != NULL && PyArray_CHKFLAGS(%(y)s, NPY_ARRAY_C_CONTIGUOUS)){
+                // check to see if output is contiguous first
+                if (%(y)s != NULL &&
+                    PyArray_CHKFLAGS(%(y)s, NPY_ARRAY_C_CONTIGUOUS)){
                     PyArray_CopyInto(%(y)s, %(x)s);
                 }
                 else{
@@ -54,11 +55,12 @@ class CpuContiguous(theano.Op):
             }
             """ % locals()
         return code
-         
+
     def c_code_cache_version(self):
         return (0,)
 
 cpu_contiguous = CpuContiguous()
+
 
 class CumsumOp(theano.Op):
     # See function cumsum for docstring
