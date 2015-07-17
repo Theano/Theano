@@ -1,5 +1,4 @@
 import numpy
-import unittest
 
 from theano import config, shared
 
