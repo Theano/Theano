@@ -1,9 +1,9 @@
 
 .. _nanguardmode:
 
-=================
+===================
 :mod:`nanguardmode`
-=================
+===================
 
 .. module:: nanguardmode
    :platform: Unix, Windows

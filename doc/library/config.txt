@@ -389,14 +389,18 @@ import theano and print the config variable, as in:
 
 .. attribute:: on_opt_error
 
-    String value: 'warn', 'raise' or 'pdb'
+    String value: 'warn', 'raise', 'pdb' or 'ignore'
 
     Default: 'warn'
 
     When a crash occurs while trying to apply some optimization, either warn
     the user and skip this optimization ('warn'), raise the exception
-    ('raise'), or fall into the pdb debugger ('pdb').
+    ('raise'), fall into the pdb debugger ('pdb') or ignore it ('ignore').
+    We suggest to never use 'ignore' except in tests.
 
+   If you encounter a warning, report it on `theano-dev`_.
+
+.. _theano-dev: http://groups.google.com/group/theano-dev
 
 .. attribute:: assert_no_cpu_op
 

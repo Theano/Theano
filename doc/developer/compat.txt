@@ -20,12 +20,14 @@ but here are some guidelines for the major things to be aware of.
   syntax:
 
     .. code-block:: python
+
         except Exception as e:
            ...
 
 * No tuple-unpacking in the argument list:
 
     .. code-block:: python
+
         def f(a, (b, c)):  # wrong
             ...
 
@@ -35,6 +37,7 @@ but here are some guidelines for the major things to be aware of.
 * Always use ``print(...)`` as a function, and add
 
     .. code-block:: python
+
         from __future__ import print_function
 
   At the top of files that use ``print``, above all other imports.

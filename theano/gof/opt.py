@@ -1364,9 +1364,10 @@ class NavigatorOptimizer(Optimizer):
     def warn(exc, nav, repl_pairs, local_opt):
         """failure_callback for NavigatorOptimizer: print traceback
         """
-        _logger.error("Optimization failure due to: %s" % str(local_opt))
-        _logger.error("TRACEBACK:")
-        _logger.error(traceback.format_exc())
+        if config.on_opt_error != 'ignore':
+            _logger.error("Optimization failure due to: %s" % str(local_opt))
+            _logger.error("TRACEBACK:")
+            _logger.error(traceback.format_exc())
         if config.on_opt_error == 'pdb':
             pdb.post_mortem(sys.exc_info()[2])
         elif isinstance(exc, AssertionError) or config.on_opt_error == 'raise':

@@ -76,11 +76,11 @@ installation and configuration, see :ref:`installing Theano <install>`.
 
   .. raw:: html
 
-     <a href="https://crate.io/packages/Theano/"><img src="https://pypip.in/v/Theano/badge.png" alt="Latest PyPI version" /></a>&nbsp;
+     <a href="https://crate.io/packages/Theano/"><img src="https://img.shields.io/pypi/v/Theano.svg" alt="Latest PyPI version" /></a>&nbsp;
 
   .. raw:: html
 
-     <a href="https://crate.io/packages/Theano/"><img src="https://pypip.in/d/Theano/badge.png" alt="Number of PyPI downloads" /></a>&nbsp;
+     <a href="https://crate.io/packages/Theano/"><img src="https://img.shields.io/pypi/dm/Theano.svg" alt="Number of PyPI downloads" /></a>&nbsp;
 
 .. _available on PyPI: http://pypi.python.org/pypi/Theano
 .. _Related Projects: https://github.com/Theano/Theano/wiki/Related-projects
