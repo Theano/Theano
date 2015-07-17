@@ -256,7 +256,7 @@ class T_Scan(unittest.TestCase):
             finally:
                 f_in.close()
         finally:
-            # Get back to the orinal dir, and delete temporary one.
+            # Get back to the original dir, and delete the temporary one.
             os.chdir(origdir)
             if tmpdir is not None:
                 shutil.rmtree(tmpdir)
