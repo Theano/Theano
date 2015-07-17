@@ -11,8 +11,10 @@ from theano.tensor.shared_randomstreams import RandomStreams
 
 from theano.compile.builders import OpFromGraph
 
+from theano.tests import unittest_tools
 
-class T_OpFromGraph(unittest.TestCase):
+
+class T_OpFromGraph(unittest_tools.InferShapeTester):
 
     def test_straightforward(self):
         x, y, z = T.matrices('xyz')
@@ -155,9 +157,10 @@ class T_OpFromGraph(unittest.TestCase):
         x = T.matrix('x')
         y = x+x
         op_graph = OpFromGraph([x], [y], mode='FAST_RUN')
-        shapes = op_graph.infer_shape(None, [(5, 5)])
-        assert shapes[0] == (5, 5)
-
+        self._compile_and_check([x],
+                                [op_graph(x)],
+                                [numpy.ones([3,4])],
+                                OpFromGraph)
 
 if __name__ == '__main__':
     unittest.main()
