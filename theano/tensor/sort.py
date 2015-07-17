@@ -68,23 +68,10 @@ class SortOp(theano.Op):
             rev_idx = theano.tensor.eq(idx[None, :],
                                        arange(a.shape[0])[:, None]).nonzero()[1]
             inp_grad = output_grads[0][rev_idx]
-        elif a.ndim == 2:
-            if (axis is None or
-                    (isinstance(axis, theano.Constant) and axis.data is None)):
-                idx = argsort(*inputs, kind=self.kind, order=self.order)
-                rev_idx = theano.tensor.eq(
-                    idx[None, :],
-                    arange(a.shape[0] * a.shape[1])[:, None]).nonzero()[1]
-                inp_grad = output_grads[0][rev_idx].reshape(a.shape)
-            elif (axis == 0 or
-                  (isinstance(axis, theano.Constant) and axis.data == 0)):
-                idx = argsort(*inputs, kind=self.kind, order=self.order)
-                # not working: numpy.where(idx[None, :]==numpy.arange(2)[:, None, None])
-                pass
-        elif a.ndim == 3:
+        elif isinstance(axis, theano.Constant):
             if isinstance(axis, theano.Constant) and axis.data is not None:
                 indices = self.__get_argsort_indices(a, axis)
-                inp_grad = output_grads[0][indices[0], indices[1], indices[2]]
+                inp_grad = output_grads[0][tuple(indices)]
             elif (axis is None or
                     (isinstance(axis, theano.Constant) and axis.data is None)):
                 rev_idx = self.__get_argsort_indices(a, axis)
