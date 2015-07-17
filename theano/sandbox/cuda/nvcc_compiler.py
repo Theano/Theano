@@ -131,6 +131,8 @@ def add_standard_rpath(rpath):
 
 
 class NVCC_compiler(Compiler):
+    supports_amdlibm = False
+
     @staticmethod
     def try_compile_tmp(src_code, tmp_prefix='', flags=(),
                         try_run=False, output=False):

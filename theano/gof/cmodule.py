@@ -1770,6 +1770,8 @@ class GCC_compiler(Compiler):
     # The equivalent flags of --march=native used by g++.
     march_flags = None
 
+    supports_amdlibm = True
+
     @staticmethod
     def version_str():
         return theano.config.cxx + " " + gcc_version_str
