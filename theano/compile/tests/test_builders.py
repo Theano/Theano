@@ -160,6 +160,3 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
                                 [op_graph(x)],
                                 [numpy.ones([3,4], dtype=config.floatX)],
                                 OpFromGraph)
-
-if __name__ == '__main__':
-    unittest.main()
