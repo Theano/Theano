@@ -62,13 +62,7 @@ class SortOp(theano.Op):
             self, 0, axis,
             "Currently, we only implement the gradient on sort for vector"
             " matrix (and axis is None or 0) and tensor3")
-        if a.ndim == 1:
-            idx = argsort(*inputs, kind=self.kind, order=self.order)
-            # rev_idx = numpy.where(idx[None, :]==numpy.arange(5)[:,None])[1]
-            rev_idx = theano.tensor.eq(idx[None, :],
-                                       arange(a.shape[0])[:, None]).nonzero()[1]
-            inp_grad = output_grads[0][rev_idx]
-        elif isinstance(axis, theano.Constant):
+        if isinstance(axis, theano.Constant):
             if isinstance(axis, theano.Constant) and axis.data is not None:
                 indices = self.__get_argsort_indices(a, axis)
                 inp_grad = output_grads[0][tuple(indices)]
