@@ -323,15 +323,7 @@ gpu_from_host = GpuFromHost()
 
 class GpuFromCuda(Op):
     view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return 'GpuFromCuda'
+    __props__ = ()
 
     def make_node(self, x):
         from theano.sandbox.cuda import CudaNdarrayType
@@ -455,15 +447,7 @@ gpu_from_cuda = GpuFromCuda()
 
 class CudaFromGpu(Op):
     view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return 'CudaFromGpu'
+    __props__ = ()
 
     def make_node(self, x):
         from theano.sandbox.cuda import CudaNdarrayType
