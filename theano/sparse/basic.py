@@ -823,7 +823,7 @@ csm_grad = CSMGrad
 class Cast(gof.op.Op):
     # See doc in instance of this Op or function after this class definition.
     __props__ = ("out_type",)
-    
+
     def __init__(self, out_type):
         self.out_type = out_type
 
@@ -897,7 +897,7 @@ def cast(variable, dtype):
 class DenseFromSparse(gof.op.Op):
     # See doc in instance of this Op or function after this class definition.
     __props__ = ()  # We don't put sparse_grad in the props.
-    
+
     def __init__(self, structured=True):
         self.sparse_grad = structured
 
@@ -1584,7 +1584,7 @@ def row_scale(x, s):
 
 class SpSum(gof.op.Op):
     # See doc in instance of this Op or function after this class definition.
-    
+
     __props__ = ("axis",)
     # WARNING: judgement call...
     # We are not using the structured in the comparison or hashing
@@ -2352,7 +2352,7 @@ class __ComparisonOpSD(gof.op.Op):
     :return: Comparison(x,y)
     """
     __props__ = ()
-    
+
     # Function to override
     def comparison(self, x, y):
         raise NotImplementedError()
@@ -2376,6 +2376,7 @@ class __ComparisonOpSD(gof.op.Op):
 
     def infer_shape(self, node, ins_shapes):
         return [ins_shapes[0]]
+
 
 def __ComparisonSwitch(SS, SD, DS):
     """
@@ -2573,7 +2574,7 @@ ge = __ComparisonSwitch(greater_equal_s_s, greater_equal_s_d,
 class HStack(gof.op.Op):
     # See doc in instance of this Op or function after this class definition.
     __props__ = ("format", "dtype")
-    
+
     def __init__(self, format=None, dtype=None):
         if format is None:
             self.format = 'csc'
@@ -2733,7 +2734,7 @@ def vstack(blocks, format=None, dtype=None):
 class Remove0(gof.Op):
     # See doc in instance of this Op or a function after the class definition.
     __props__ = ("inplace",)
-    
+
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
@@ -3005,7 +3006,7 @@ class TrueDot(gof.op.Op):
 
     # TODO
     # Simplify code by splitting into DotSS and DotSD.
-    
+
     __props__ = ()
     # The grad_preserves_dense attribute doesn't change the
     # execution behavior.  To let the optimizer merge nodes with
@@ -3088,6 +3089,7 @@ class TrueDot(gof.op.Op):
 
     def infer_shape(self, node, shapes):
         return [(shapes[0][0], shapes[1][1])]
+
 
 def true_dot(x, y, grad_preserves_dense=True):
     """
