@@ -158,7 +158,7 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         op_graph = OpFromGraph([x], [y], mode='FAST_RUN')
         self._compile_and_check([x],
                                 [op_graph(x)],
-                                [numpy.ones([3,4])],
+                                [numpy.ones([3,4], dtype=config.floatX)],
                                 OpFromGraph)
 
 if __name__ == '__main__':
