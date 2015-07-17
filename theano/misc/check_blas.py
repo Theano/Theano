@@ -276,12 +276,28 @@ if __name__ == "__main__":
         GTX 750 Ti        
         """)
 
+    if options.M == 0:
+        M = options.B
+    else:
+        M = options.M
+    if options.N == 0:
+        N = options.B
+    else:
+        N = options.N
+    if options.K == 0:
+        K = options.B
+    else:
+        K = options.K
+
     t, impl = execute(not options.print_only, not options.quiet,
-                      M=options.M, N=options.N, K=options.K,
-                      iters=options.iter, order=options.order)
+                      M=M, N=N, K=K, iters=options.iter,
+                      order=options.order)
 
-
-    def print_timing(M, N, K, t, impl):
+    if options.print_only:
+        pass
+    elif options.quiet:
+        print(t)
+    else:
         print()
         print("We executed", options.iter, end=' ')
         print("calls to gemm with a and b matrices of shapes", end=' ')
@@ -289,25 +305,6 @@ if __name__ == "__main__":
 
         print()
         print('Total execution time: %.2fs on %s.' % (t, impl))
-
-    if not options.small_only:
-        t_b, impl_b = execute(not options.print_only, False,
-                              M=options.B, N=options.B, K=options.B,
-                              iters=options.iter, order=options.order)
-        if options.print_only:
-            pass
-        elif options.quiet:
-            print(t_b)
-        else:
-            print_timing(options.B, options.B, options.B, t_b, impl_b)
-
-    if options.print_only:
-        pass
-
-    elif options.quiet:
-        print(t)
-    else:
-        print_timing(options.M, options.N, options.K, t, impl)
         print()
         print ('Try to run this script a few times. Experience shows that'
                ' the first time is not as fast as followings calls. The'
