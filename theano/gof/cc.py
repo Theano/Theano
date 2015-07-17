@@ -1304,12 +1304,14 @@ class CLinker(link.Linker):
                 preargs.remove('-DREPLACE_WITH_AMDLIBM')
             if 'amdlibm' in libs:
                 libs.remove('amdlibm')
+        # We want to compute the code without the lock
+        src_code = mod.code()
         get_lock()
         try:
             _logger.debug("LOCATION %s", str(location))
             module = c_compiler.compile_str(
                 module_name=mod.code_hash,
-                src_code=mod.code(),
+                src_code=src_code,
                 location=location,
                 include_dirs=self.header_dirs(),
                 lib_dirs=self.lib_dirs(),
