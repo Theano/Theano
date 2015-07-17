@@ -579,7 +579,7 @@ class MergeFeature(object):
         if node.inputs:
             assert len(node.inputs[0].clients) > 0
             assert (node, 0) in node.inputs[0].clients
-            
+
             merge_candidates = [c for (c, i) in node.inputs[0].clients
                                 if c in self.nodes_seen]
 
