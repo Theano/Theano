@@ -3938,7 +3938,7 @@ def local_sum_prod_div_dimshuffle(node):
     # dimshuffle is in the numerator, since elemwise inversion of the
     # denominator would still be needed before the summation or production.
 
-    if isinstance(node.op, (T.SumT.elemwise.Prod)):
+    if isinstance(node.op, (T.Sum, T.elemwise.Prod)):
         axis = node.op.axis
         if axis is None:
             axis = list(range(node.inputs[0].ndim))
