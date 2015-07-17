@@ -3907,7 +3907,7 @@ def local_sum_prod_mul_by_scalar(node):
             # raised to the power of the number of elements in the input
             # to the Prod
             if (isinstance(node.op, T.elemwise.Prod) and
-                new_op_input_nb_elements != 1):
+                    new_op_input_nb_elements != 1):
 
                 scalars = [s ** new_op_input_nb_elements for s in scalars]
 
