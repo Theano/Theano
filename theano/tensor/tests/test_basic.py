@@ -1089,7 +1089,7 @@ _good_broadcast_unary_normal_float_no_empty_no_complex = copymod(
 _good_broadcast_unary_normal_float_no_complex = copymod(
         _good_broadcast_unary_normal_float,
         without=['complex'])
-        
+
 _good_broadcast_unary_normal_float_no_complex_small_neg_range = dict(
         normal=[rand_ranged(-2, 5, (2, 3))],
         corner_case=[corner_case],
@@ -1123,7 +1123,7 @@ _grad_broadcast_unary_normal = dict(
         corner_case=[corner_case_grad],
         # empty = [numpy.asarray([])] # XXX: should this be included?
         )
-        
+
 _grad_broadcast_unary_normal_small_neg_range = dict(
         normal=[numpy.asarray(rand_ranged(-2, 5, (2, 3)), dtype=floatX)],
         corner_case=[corner_case_grad])
@@ -5525,7 +5525,7 @@ class TestNdGrid(unittest.TestCase):
         nmgrid = (numpy.mgrid[0:1:.1, 1:10:1., 10:100:10.],
                   numpy.mgrid[0:2:1, 1:10:1, 10:100:10])
         tmgrid = (mgrid[0:1:.1, 1:10:1., 10:100:10.],
-                  mgrid[0:2:1, 1:10:1, 10:100:10])         
+                  mgrid[0:2:1, 1:10:1, 10:100:10])
         for n, t in zip(nmgrid, tmgrid):
             for ng, tg in zip(n, t):
                 utt.assert_allclose(ng, tg.eval())
@@ -5533,7 +5533,7 @@ class TestNdGrid(unittest.TestCase):
     def test_ogrid_numpy_equiv(self):
         nogrid = (numpy.ogrid[0:1:.1, 1:10:1., 10:100:10.],
                   numpy.ogrid[0:2:1, 1:10:1, 10:100:10])
-        togrid = (ogrid[0:1:.1, 1:10:1., 10:100:10.], 
+        togrid = (ogrid[0:1:.1, 1:10:1., 10:100:10.],
                   ogrid[0:2:1, 1:10:1, 10:100:10])
         for n, t in zip(nogrid, togrid):
             for ng, tg in zip(n, t):
@@ -5564,8 +5564,8 @@ class TestNdGrid(unittest.TestCase):
         for n, t in zip((nfogrid,niogrid), (ff(0, 10, 10.),fi(0, 10, 10))):
             for ng, tg in zip(n, t):
                 utt.assert_allclose(ng, tg)
-                
-                
+
+
 class TestInversePermutation(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
@@ -7724,7 +7724,7 @@ def test_allocempty():
     f = theano.function([], AllocEmpty("float32")(2, 3))
     assert len(f.maker.fgraph.apply_nodes) == 1
     out = f()
-    
+
     assert out.shape == (2, 3)
     assert out.dtype == 'float32'
 
