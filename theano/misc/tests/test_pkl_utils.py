@@ -1,10 +1,11 @@
+import os
+import shutil
+import unittest
+from tempfile import mkdtemp
+
 import numpy
 from numpy.testing import assert_allclose
 from nose.plugins.skip import SkipTest
-import os
-from tempfile import mkdtemp
-import shutil
-import unittest
 
 import theano
 import theano.sandbox.cuda as cuda_ndarray
@@ -19,7 +20,6 @@ class T_dump_load(unittest.TestCase):
     def setUp(self):
         # Work in a temporary directory to avoid cluttering the repository
         self.origdir = os.getcwd()
-        self.tmpdir = None
         self.tmpdir = mkdtemp()
         os.chdir(self.tmpdir)
 
