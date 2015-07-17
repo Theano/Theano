@@ -86,12 +86,7 @@ You can use a GPU function compiled with PyCUDA in a Theano op:
     import theano.sandbox.cuda as cuda
 
     class PyCUDADoubleOp(theano.Op):
-        def __eq__(self, other):
-            return type(self) == type(other)
-        def __hash__(self):
-            return hash(type(self))
-        def __str__(self):
-            return self.__class__.__name__
+        __props__ = ()
         def make_node(self, inp):
             inp = cuda.basic_ops.gpu_contiguous(
                cuda.basic_ops.as_cuda_ndarray_variable(inp))
