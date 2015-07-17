@@ -42,7 +42,7 @@ def MyConstant(data):
 
 
 class MyOp(Op):
-             
+
     def __init__(self, nin, name, vmap=None, dmap=None, nout=1,
                  destroyhandler_tolerate_same=None,
                  destroyhandler_tolerate_aliased=None):
