@@ -956,6 +956,7 @@ class OpenMPOp(Op):
     """
     True/False after we tested this.
     """
+    __props__ = ()
 
     def __init__(self, openmp=None):
         if openmp is None:
@@ -1069,6 +1070,7 @@ class COp(Op):
             'support_code', 'support_code_apply', 'support_code_struct',
             'cleanup_code_struct',
             'code', 'code_cleanup'])
+    __props__ = ()
 
     @classmethod
     def get_path(cls, f):
