@@ -1104,6 +1104,11 @@ def test_conv3d_fwd():
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         filters_val = numpy.random.random(filters_shape).astype('float32')
 
+        # Scale down the input values to prevent very large absolute errors
+        # due to float rounding
+        inputs_val /= 10
+        filters_val /= 10
+
         inputs = shared(inputs_val)
         filters = shared(filters_val)
         bias = shared(numpy.zeros(filters_shape[0]).astype('float32'))
