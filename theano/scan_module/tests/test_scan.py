@@ -3058,9 +3058,9 @@ class T_Scan(unittest.TestCase):
         f_ref = theano.function([W1, W2, step_indices], o, mode='FAST_COMPILE')
 
         # Compare the results of the two implementations
-        input_values = [numpy.random.random((5, 5)),
-                        numpy.random.random((5, 5)),
-                        numpy.arange(5)]
+        input_values = [numpy.random.random((5, 5)).astype("float32"),
+                        numpy.random.random((5, 5)).astype("float32"),
+                        numpy.arange(5).astype("float32")]
 
         out = f(*input_values)
         out_ref = f_ref(*input_values)
