@@ -4533,13 +4533,6 @@ class T_local_sum_prod(unittest.TestCase):
         test_sum_opt([vect, scalar1], [v_val, s1_val],
                      s1_val * v_val.sum())
 
-        # Case 3# Case 1
-        test_sum_opt([scalar1], [s1_val], s1_val)
-
-        # Case 2
-        test_sum_opt([vect, scalar1], [v_val, s1_val],
-                     s1_val * v_val.sum())
-
         # Case 3
         test_sum_opt([vect, mat, scalar1], [v_val, m_val, s1_val],
                      s1_val * (v_val * m_val).sum())
