@@ -4887,7 +4887,6 @@ class T_local_sum_prod_dimshuffle(unittest.TestCase):
         config.warn.sum_div_dimshuffle_bug = False
         try:
             for i, s in enumerate(sums):
-                print(i)
                 f = theano.function([a, b, c, d], s, mode=self.mode,
                         on_unused_input='ignore')
                 g = f.maker.fgraph.toposort()
@@ -4947,7 +4946,6 @@ class T_local_sum_prod_dimshuffle(unittest.TestCase):
         d_val = numpy.asarray(rng.randn(), config.floatX)
 
         for i, s in enumerate(prods):
-            print(i)
             f = theano.function([a, b, c, d], s, mode=self.mode,
                     on_unused_input='ignore')
             g = f.maker.fgraph.toposort()
