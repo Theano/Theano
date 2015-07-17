@@ -6,9 +6,6 @@ from theano.compile import SharedVariable, rebuild_collect_shared
 from theano.gof import ops_with_inner_function
 from theano.gof.graph import io_connection_pattern
 
-from theano.gof import graph, FunctionGraph
-from theano.gof import FunctionGraph
-
 
 class OpFromGraph(gof.Op):
     """This creates an `Op` from inputs and outputs lists of variables.
