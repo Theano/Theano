@@ -16,6 +16,10 @@ from theano import gof, Op
 
 
 class NeighbourhoodsFromImages(Op):
+
+    __props__ = ("n_dims_before", "dims_neighbourhoods", "strides",
+                 "ignore_border", "inverse")
+
     def __init__(self, n_dims_before, dims_neighbourhoods,
                  strides=None, ignore_border=False, inverse=False):
         """
@@ -83,20 +87,6 @@ class NeighbourhoodsFromImages(Op):
         self.inverse = inverse
 
         self.code_string, self.code = self.make_py_code()
-
-    def __eq__(self, other):
-        return type(self) == type(other) and \
-            self.n_dims_before == other.n_dims_before and \
-            self.dims_neighbourhoods == other.dims_neighbourhoods and \
-            self.strides == other.strides and \
-            self.ignore_border == other.ignore_border
-
-    def __hash__(self):
-        return hash(type(self)) ^ \
-            hash(self.n_dims_before) ^ \
-            hash(self.dims_neighbourhoods) ^ \
-            hash(self.strides) ^ \
-            hash(self.ignore_border)
 
     def __str__(self):
         return '%s{%s,%s,%s,%s}' % (self.__class__.__name__,
