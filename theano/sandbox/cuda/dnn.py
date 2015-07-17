@@ -1046,8 +1046,6 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
         By default, GpuDnnConv will be used to carry out the convolution.
         If border_mode is 'valid', subsample is (1,1,1) and direction_hint is
         'bprop weights', it will use GpuDnnConvGradW.
-        If border_mode is 'full', subsample is (1,1,1) and direction_hint is
-        *not* 'forward!', it will use GpuDnnConvGradI.
         This parameter is used internally by graph optimizers and may be
         removed at any time without a deprecation period. You have been warned.
     :param workmem: Specify the amount of working memory allowed.
