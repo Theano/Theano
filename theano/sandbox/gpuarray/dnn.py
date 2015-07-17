@@ -185,6 +185,9 @@ class DnnBase(COp):
 
 
 class DnnVersion(Op):
+
+    __props__ = ()
+
     def c_headers(self):
         return ['cudnn.h']
 
