@@ -282,10 +282,16 @@ def get_nothing(r, name, sub):
 
 def get_c_declare(r, name, sub):
     """Wrapper around c_declare that declares py_name"""
-
-    if any([c != "output" and getattr(c.op, 'check_input',
-           config.check_input) for (c, _) in r.clients]) or (
-            r.owner and getattr(r.owner.op, 'check_input', True)):
+    # The declaration will be used by the Apply node that
+    # is computing it (`r.owner`), and by each of the clients.
+    # If some of these have `check_input=True` in their `.op`,
+    # it means they need `r`'s dtype to be declared, so
+    # we have to pass `check_input=True` to `c_declare`.
+    if ((any([getattr(c.op, 'check_input', config.check_input)
+              for (c, _) in r.clients
+              if not isinstance(c, string_types)]) or
+         (r.owner and
+          getattr(r.owner.op, 'check_input', config.check_input)))):
         c_declare = r.type.c_declare(name, sub, True)
     else:
         c_declare = r.type.c_declare(name, sub, False)
@@ -306,13 +312,21 @@ def get_c_init(r, name, sub):
 
 def get_c_extract(r, name, sub):
     """Wrapper around c_extract that initializes py_name from storage."""
-    if any([getattr(c.op, 'check_input', config.check_input) for (c, _) in
-            r.clients]):
+    # `c_extract` is called when getting the value of an apply node's
+    # input from the compute map, before being used by its clients.
+    # If one of the clients has `check_input=True`, we need to perform
+    # checks on the variable.
+    # However that code is not used by C code of the apply node creating
+    # this variable, so there is no need to check `r.owner.op.check_input`.
+    if any([getattr(c.op, 'check_input', config.check_input)
+            for (c, _) in r.clients
+            if not isinstance(c, string_types)]):
         # check_broadcast is just an hack to easily remove just the
         # broadcast check on the old GPU back-end. This check isn't
         # done in the new GPU back-end or on the CPU.
-        if any([getattr(c.op, 'check_broadcast', True) for (c, _) in
-                r.clients]):
+        if any([getattr(c.op, 'check_broadcast', True)
+                for (c, _) in r.clients
+                if not isinstance(c, string_types)]):
             c_extract = r.type.c_extract(name, sub, True)
         else:
             try:
@@ -333,10 +347,18 @@ def get_c_extract(r, name, sub):
 
 def get_c_extract_out(r, name, sub):
     """Wrapper around c_extract_out that initializes py_name from storage."""
+    # `c_extract_out` is used to extract an output variable from
+    # the compute map, to be used as pre-allocated memory for `r`
+    # before its value gets computed.
+    # If the node producing `r` has `check_inputs=True`, it may
+    # also perform type checks on the initial value of the output,
+    # so we need to pass `check_input=True` to `c_extract_out`.
+    # However, that code is not used by potential clients of `r`,
+    # so we do not need to check them.
+    check_input = getattr(r.owner.op, 'check_input', config.check_input)
     # check_broadcast is just an hack to easily remove just the
     # broadcast check on the old GPU back-end. This check isn't
     # done in the new GPU back-end or on the CPU.
-    check_input = getattr(r.owner.op, 'check_input', config.check_input)
     if getattr(r.owner.op, 'check_broadcast', True):
         c_extract = r.type.c_extract_out(name, sub, check_input)
     else:
@@ -554,8 +576,10 @@ class CLinker(link.Linker):
             #            what to do at the beginning of each run,
             #            what to do at the end of each run]]
             if variable in self.inputs:
-                # we need to extract the new inputs at each run
-                # they do not need to be relayed to Python, so we don't sync
+                # We need to extract the new inputs at each run
+                # they do not need to be relayed to Python, so we don't sync.
+                # If the variable is both an input and an output, there is
+                # no need to synchronize either, it is already up-to-date.
                 policy = [[get_nothing, get_nothing, get_nothing],
                           [get_c_declare, get_c_extract, get_c_cleanup]]
             elif variable in self.orphans:
@@ -967,6 +991,10 @@ class CLinker(link.Linker):
         if output_storage is None:
             map = {}
             output_storage = []
+            # Initialize the map with the inputs, as some outputs may
+            # be inputs as well.
+            for i, variable in enumerate(self.inputs):
+                map[variable] = input_storage[i]
             for variable in self.outputs:
                 if variable not in map:
                     map[variable] = [None]
