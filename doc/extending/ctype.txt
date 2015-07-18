@@ -78,17 +78,31 @@ the most important ones:
         When we are done using the data, clean up whatever we allocated and
         decrease the appropriate reference counts.
 
-    .. method:: c_headers()
-                c_libraries()
-                c_header_dirs()
-                c_lib_dirs()
+    .. method:: c_headers([c_compiler])
+                c_libraries([c_compiler])
+                c_header_dirs([c_compiler])
+                c_lib_dirs([c_compiler])
 
         Allows you to specify headers, libraries and associated directories.
 
-    .. method:: c_compile_args()
-                c_no_compile_args()
+        These methods have two versions, one with a `c_compiler`
+        argument and one without. The version with c_compiler is tried
+        first and if it doesn't work, the one without is.
+
+        The `c_compiler` argument is the C compiler that will be used
+        to compile the C code for the node that uses this type.
+
+    .. method:: c_compile_args([c_compiler])
+                c_no_compile_args([c_compiler])
 
         Allows to specify special compiler arguments to add/exclude.
+
+        These methods have two versions, one with a `c_compiler`
+        argument and one without. The version with c_compiler is tried
+        first and if it doesn't work, the one without is.
+
+        The `c_compiler` argument is the C compiler that will be used
+        to compile the C code for the node that uses this type.
 
     .. method:: c_init_code()
 
