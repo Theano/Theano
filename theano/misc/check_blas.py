@@ -127,13 +127,13 @@ parser.add_option('--print_only', action='store_true', dest='print_only',
                   default=False,
                   help="If true, do not perform gemm computations")
 parser.add_option('-M', '--M', action='store', dest='M',
-                  default=2000, type="int",
+                  default=0, type="int",
                   help="The M size to gemm")
 parser.add_option('-N', '--N', action='store', dest='N',
-                  default=2000, type="int",
+                  default=0, type="int",
                   help="The N size to gemm")
 parser.add_option('-K', '--K', action='store', dest='K',
-                  default=2000, type="int",
+                  default=0, type="int",
                   help="The K size to gemm")
 parser.add_option('--iter', action='store', dest='iter',
                   default=10, type="int",
@@ -143,6 +143,9 @@ parser.add_option('--order', action='store', dest='order',
                   help="The numpy memory layout parameter used when creating"
                   " the numpy.ndarray objects. It accepts 'C' for C memory"
                   " order and 'F' for Fortran order (for all matrices).")
+parser.add_option('-B', '--B', action='store', dest='B',
+                  default=5000, type="int",
+                  help="The M, N, and K for big gemm")
 
 
 if __name__ == "__main__":
@@ -240,11 +243,55 @@ if __name__ == "__main__":
         GT 220                                                             3.80s
         GT 210                                                      6.35s
         8500 GT                                                                   10.68s
+
+        Results for larger matrices.
+        There were 10 executions of gemm in float32
+        with matrices of shape 5000x5000 (M=N=K=5000).
+        All memory layout was in C order.
+
+        cuda version      7.5    7.0    6.5
+        gpu
+        K6000/NOECC
+        K40                             0.88s
+        K20m/ECC
+        K20/NOECC
+        M2090   
+        C2075             
+        M2075             
+        M2070             
+        M2070-Q           
+        M2050(Amazon)     
+        C1060             
+        K600              
+
+        GTX Titan Black   
+        GTX Titan(D15U-50)
+        GTX 780           
+        GTX 980           
+        GTX 970           
+        GTX 680           
+        GRID K520         
+        GTX 580           
+        GTX 480           
+        GTX 750 Ti        
         """)
 
+    if options.M == 0:
+        M = options.B
+    else:
+        M = options.M
+    if options.N == 0:
+        N = options.B
+    else:
+        N = options.N
+    if options.K == 0:
+        K = options.B
+    else:
+        K = options.K
+
     t, impl = execute(not options.print_only, not options.quiet,
-                      M=options.M, N=options.N, K=options.K,
-                      iters=options.iter, order=options.order)
+                      M=M, N=N, K=K, iters=options.iter,
+                      order=options.order)
 
     if options.print_only:
         pass
@@ -254,8 +301,7 @@ if __name__ == "__main__":
         print()
         print("We executed", options.iter, end=' ')
         print("calls to gemm with a and b matrices of shapes", end=' ')
-        print("(%d, %d) and (%d, %d)." % (options.M, options.N,
-                                          options.N, options.K))
+        print("(%d, %d) and (%d, %d)." % (M, N, N, K))
 
         print()
         print('Total execution time: %.2fs on %s.' % (t, impl))
@@ -263,3 +309,4 @@ if __name__ == "__main__":
         print ('Try to run this script a few times. Experience shows that'
                ' the first time is not as fast as followings calls. The'
                ' difference is not big, but consistent.')
+
