@@ -437,7 +437,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
     def test_ok_list(self):
         for data, idx in [(rand(4), [1, 0]),
-                          (rand(4, 5), [2, 3]),
+                          (rand(4, 5), [2, 3, -1]),
                           (rand(4, 2, 3), [0, 3]),
                           (rand(4, 2, 3), [3, 3, 1, 1, 2, 2, 0, 0]),
                           (rand(4, 2, 3), [3, 3, 1, 1, 2, 2, 0, 0,
@@ -478,6 +478,16 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                 op.perform(None, [data, idx], test_out)
                 out2 = test_out[0][0]
                 assert out1 is out2
+
+            # test the grad
+            gn = theano.grad(t.sum(), n)
+            g = self.function([], gn, op=self.adv_incsub1)
+            theano.printing.debugprint(g)
+            utt.verify_grad(lambda m: m[[1, 3]],
+                            [numpy.random.rand(5, 5).astype(self.dtype)])
+            g_0 = g()
+            utt.verify_grad(lambda m: m[idx],
+                            [data])
 
     def test_err_invalid_list(self):
         n = self.shared(numpy.asarray(5, dtype=self.dtype))
