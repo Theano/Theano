@@ -36,6 +36,7 @@ class testgrad_sources_inputs(unittest.TestCase):
     def test_retNone1(self):
         """Test that it is not ok to return None from op.grad()"""
         class retNone(gof.op.Op):
+            __props__ = ()
             def make_node(self):
                 inputs = [theano.tensor.vector()]
                 outputs = [theano.tensor.vector()]
@@ -52,6 +53,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         """Test that it is not ok to return the wrong number of gradient terms
         """
         class retOne(gof.op.Op):
+            __props__ = ()
             def make_node(self, *inputs):
                 outputs = [theano.tensor.vector()]
                 return gof.Apply(self, inputs, outputs)
@@ -72,6 +74,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         gval = theano.tensor.matrix()
 
         class O(gof.op.Op):
+            __props__ = ()
             def make_node(self):
                 inputs = [theano.tensor.matrix()]
                 outputs = [theano.tensor.matrix()]
@@ -88,6 +91,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         gval = theano.tensor.matrix()
 
         class O(gof.op.Op):
+            __props__ = ()
             def make_node(self):
                 inputs = [theano.tensor.matrix()]
                 outputs = [theano.tensor.scalar(), theano.tensor.scalar()]
@@ -107,6 +111,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         gval1 = theano.tensor.scalar()
 
         class O(gof.op.Op):
+            __props__ = ()
             def make_node(self):
                 inputs = [theano.tensor.scalar(), theano.tensor.scalar()]
                 outputs = [theano.tensor.matrix()]
@@ -127,6 +132,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         gval1 = theano.tensor.matrix()
 
         class O(gof.op.Op):
+            __props__ = ()
             def make_node(self):
                 inputs = [theano.tensor.matrix(), theano.tensor.matrix()]
                 outputs = [theano.tensor.matrix(), theano.tensor.matrix()]
@@ -161,6 +167,7 @@ class test_grad(unittest.TestCase):
         # tests that unimplemented grads are caught in the grad method
 
         class DummyOp(gof.Op):
+            __props__ = ()
             def make_node(self, x):
                 return gof.Apply(self, [x], [x.type()])
 
@@ -350,6 +357,7 @@ class test_grad(unittest.TestCase):
         # Op1 has two outputs, f and g
         # x is connected to f but not to g
         class Op1(theano.gof.Op):
+            __props__ = ()
             def make_node(self, x):
                 return theano.Apply(self, inputs=[x],
                         outputs=[x.type(), theano.tensor.scalar()])
@@ -363,6 +371,7 @@ class test_grad(unittest.TestCase):
         # Op2 has two inputs, f and g
         # Its gradient with respect to g is not defined
         class Op2(theano.gof.Op):
+            __props__ = ()
             def make_node(self, f, g):
                 return theano.Apply(self, inputs=[f, g],
                         outputs=[theano.tensor.scalar()])
