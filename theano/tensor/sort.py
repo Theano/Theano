@@ -102,18 +102,8 @@ class SortOp(theano.Op):
         indices = []
         axis_data = theano.tensor.switch(theano.tensor.ge(axis.data, 0), axis.data, a.ndim + axis.data)
         for i in range(a.ndim):
-<<<<<<< HEAD
-            if i == axis_data:
-                indices.append(rev_idx)
-            else:
-                index_shape = [1] * a.ndim
-                index_shape[i] = a.shape[i]
-                # it's a way to emulate numpy.ogrid[0: a.shape[0], 0: a.shape[1], 0: a.shape[2]]
-                indices.append(theano.tensor.arange(a.shape[i]).reshape(index_shape))
-=======
             index_val = theano.tensor.switch(theano.tensor.eq(i, axis_data), rev_idx, self.__get_expanded_dim(a, axis, i))
             indices.append(index_val)
->>>>>>> b4e4ae5... improving the code
         return indices
     """
     def R_op(self, inputs, eval_points):
