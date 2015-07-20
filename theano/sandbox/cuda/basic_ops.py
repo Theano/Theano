@@ -3050,28 +3050,28 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
         {
                 if(init_err_var()!= 0) return -1;
 
-     		const int *shapeX = CudaNdarray_HOST_DIMS(py_self);
-     		const int *shapeY = CudaNdarray_HOST_DIMS(py_other);
-     		const int *strX   = CudaNdarray_HOST_STRIDES(py_self);
-     		const int *strY   = CudaNdarray_HOST_STRIDES(py_other);
-     		unsigned int size = (unsigned int)PyArray_SIZE(indices_arr);
+                const int *shapeX = CudaNdarray_HOST_DIMS(py_self);
+                const int *shapeY = CudaNdarray_HOST_DIMS(py_other);
+                const int *strX   = CudaNdarray_HOST_STRIDES(py_self);
+                const int *strY   = CudaNdarray_HOST_STRIDES(py_other);
+                unsigned int size = (unsigned int)PyArray_SIZE(indices_arr);
                 if(size == 0){
                     return 0;
                 }
-     		unsigned int numcolsX = shapeX[1];
-     		unsigned int num_threads_per_block = std::min(numcolsX, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
-     		unsigned int num_blocks = std::min(size ,(unsigned int)NUM_VECTOR_OP_BLOCKS);
+                unsigned int numcolsX = shapeX[1];
+                unsigned int num_threads_per_block = std::min(numcolsX, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
+                unsigned int num_blocks = std::min(size ,(unsigned int)NUM_VECTOR_OP_BLOCKS);
 
-     		dim3 n_blocks(num_blocks);
-     		dim3 n_threads(num_threads_per_block);
-     		long *d_indices_arr = NULL;
-     		PyArrayObject *cpu_indices_arr = PyArray_GETCONTIGUOUS(indices_arr);
-     		d_indices_arr = (long*)device_malloc(PyArray_NBYTES(cpu_indices_arr));
+                dim3 n_blocks(num_blocks);
+                dim3 n_threads(num_threads_per_block);
+                long *d_indices_arr = NULL;
+                PyArrayObject *cpu_indices_arr = PyArray_GETCONTIGUOUS(indices_arr);
+                d_indices_arr = (long*)device_malloc(PyArray_NBYTES(cpu_indices_arr));
 
                 if(!d_indices_arr)
                     return -1;
 
-     		cudaError_t err = cudaMemcpy(d_indices_arr,
+                cudaError_t err = cudaMemcpy(d_indices_arr,
                                              PyArray_DATA(cpu_indices_arr),
                                              PyArray_NBYTES(cpu_indices_arr),
                                              cudaMemcpyHostToDevice);
@@ -3083,7 +3083,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
                     return -1;
                 }
 
-     		k_vector_add_fast<<<n_blocks, n_threads>>>(shapeX[0],
+                k_vector_add_fast<<<n_blocks, n_threads>>>(shapeX[0],
                                                            shapeX[1],
                                                            strX[0],
                                                            strX[1],
