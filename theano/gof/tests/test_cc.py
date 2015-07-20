@@ -1,9 +1,6 @@
 from __future__ import print_function
 
-import unittest
-
 from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 
 import theano
 from theano.gof.link import PerformLinker
@@ -82,7 +79,7 @@ def double(name):
 class MyOp(Op):
 
     __props__ = ("nin", "name")
-    
+
     def __init__(self, nin, name):
         self.nin = nin
         self.name = name
@@ -318,7 +315,7 @@ def test_duallinker_mismatch():
         # this runs OpWiseCLinker and PerformLinker in parallel and feeds
         # variables of matching operations to _my_checker to verify that they
         # are the same.
-        res = fn(1.0, 2.0, 3.0)
+        fn(1.0, 2.0, 3.0)
         raise Exception("An exception should have been raised here!")
     except MyExc as e:
         pass
@@ -351,7 +348,7 @@ def test_c_fail_error():
     lnk = OpWiseCLinker().accept(Env([y, z], [e]))
     fn = lnk.make_function()
     try:
-        res = fn(1.5, 3.0)
+        fn(1.5, 3.0)
     except RuntimeError:
         print('Yay, TEST PASSED')
         return  # test passed
