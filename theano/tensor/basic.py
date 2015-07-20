@@ -5023,6 +5023,9 @@ class Dot(Op):
             return [xshp[:-1] + yshp[-1:]]
         raise NotImplementedError()
 
+    def __str__(self):
+        return "dot"
+
 _dot = Dot()
 pprint.assign(_dot, printing.OperatorPrinter(printing.special['middle_dot'],
                                              -1, 'left'))
