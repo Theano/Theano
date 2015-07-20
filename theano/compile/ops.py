@@ -608,7 +608,7 @@ class Rebroadcast(gof.Op):
 
     def __init__(self, *axis):
         # Sort them to make sure we merge all possible case.
-        items = sorted(iteritems(axis))
+        items = sorted(axis)
         self.axis = OrderedDict(items)
         for axis, broad in iteritems(self.axis):
             assert isinstance(axis, (numpy.integer, int)), (
