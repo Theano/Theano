@@ -57,7 +57,7 @@ class MyType(Type):
 class MyOp(Op):
 
     __props__ = ()
-    
+
     def make_node(self, *inputs):
         inputs = list(map(as_variable, inputs))
         for input in inputs:
