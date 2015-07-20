@@ -361,7 +361,7 @@ class Gemv(Op):
     output is a vector that can be inplace on y
     """
     __props__ = ("inplace",)
-    
+
     def __init__(self, inplace):
         self.inplace = inplace
         if inplace:
@@ -450,7 +450,7 @@ class Ger(Op):
     and override the make_thunk() method to use Scipy and C respectively.
     """
     __props__ = ("destructive",)
-    
+
     def __init__(self, destructive):
         self.destructive = destructive
         if destructive:
