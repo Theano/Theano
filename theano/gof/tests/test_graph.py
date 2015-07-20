@@ -316,12 +316,12 @@ class TestEval(unittest.TestCase):
         self.w = 2 * self.z
 
     def test_eval(self):
-        self.assertEqual(self.w.eval({self.x : 1., self.y : 2.}), 6.)
-        self.assertEqual(self.w.eval({self.z : 3}), 6.)
+        self.assertEqual(self.w.eval({self.x: 1., self.y: 2.}), 6.)
+        self.assertEqual(self.w.eval({self.z: 3}), 6.)
         self.assertTrue(hasattr(self.w, "_fn_cache"),
-                "variable must have cache after eval")
+                        "variable must have cache after eval")
         self.assertFalse(hasattr(pickle.loads(pickle.dumps(self.w)), '_fn_cache'),
-                "temporary functions must not be serialized")
+                         "temporary functions must not be serialized")
 
 
 ################
@@ -409,6 +409,3 @@ class TestAutoName:
         r2 = r1.clone()
         assert r1.auto_name == "auto_" + str(autoname_id)
         assert r2.auto_name == "auto_" + str(autoname_id + 1)
-
-
-
