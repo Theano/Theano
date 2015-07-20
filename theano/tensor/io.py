@@ -103,7 +103,7 @@ class MPIRecv(Op):
 
     @note: Non-differentiable.
     """
-    
+
     def __init__(self, source, tag, shape, dtype):
         self.source = source
         self.tag = tag
@@ -238,6 +238,7 @@ class MPISendWait(Op):
         request = inp[0]
         request.wait()
         out[0][0] = True
+
 
 def isend(var, dest, tag):
     """
