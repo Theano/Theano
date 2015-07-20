@@ -168,7 +168,7 @@ class ExtractDiag(Op):
     :note: work on the GPU.
     """
     __props__ = ("view",)
-    
+
     def __init__(self, view=False):
         self.view = view
         if self.view:
