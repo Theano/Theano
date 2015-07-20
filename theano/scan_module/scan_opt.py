@@ -89,7 +89,7 @@ _logger = logging.getLogger('theano.scan_module.scan_opt')
 list_opt_slice = [tensor.opt.local_abs_merge,
                   tensor.opt.local_mul_switch_sink,
                   tensor.opt.local_upcast_elemwise_constant_inputs,
-                  tensor.opt.local_remove_switch_const_cond,
+                  tensor.opt.local_useless_switch,
                   tensor.opt.constant_folding]
 
 
