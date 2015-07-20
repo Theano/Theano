@@ -27,22 +27,8 @@
 //if you want this to work.
 #define PRECHECK_ERROR 0
 
-//If true, we release the GIL around blocking GPU calls, to allow other Python
-//threads to run in the meantime. For a single-threaded program, the overhead
-//is neglectible (about 20ms for 1 million GIL release/reclaim cycles). Can
-//still be overridden on compilation with -DRELEASE_GIL=0 in nvcc.flags.
-#ifndef RELEASE_GIL
-#define RELEASE_GIL 1
-#endif
-#if RELEASE_GIL
-#define CNDA_BEGIN_ALLOW_THREADS Py_BEGIN_ALLOW_THREADS
-#define CNDA_END_ALLOW_THREADS Py_END_ALLOW_THREADS
-#else
-#define CNDA_BEGIN_ALLOW_THREADS
-#define CNDA_END_ALLOW_THREADS
-#endif
-
 cublasHandle_t handle = NULL;
+int* err_var = NULL;
 
 /////////////////////////
 // Alloc and Free
@@ -976,13 +962,6 @@ __global__ void k_take_3(const int d0, const int d1, const int d2,
     }
 }
 
-// Pointor to 1 int on the device
-// Used in CudaNdarray_TakeFrom to tell that there is an out of bound error
-// When it is allocated, it should always be 0
-// So if there is an error, we must reset it to 0 BEFORE we raise the error
-// This prevent us from setting it to 0 before each use
-static int* err_var = NULL;
-
 // We try to be similar to the PyArray_TakeFrom function
 //http://docs.scipy.org/doc/numpy/reference/c-api.array.html
 //TODO: support other clip mode then raise(clip, wrap)
@@ -1163,30 +1142,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     k3 = k_take_3<CPY>;
 
     // Create the memory place that will store the error information.
-    if (err_var == NULL) {
-        err_var = (int*)device_malloc(sizeof(int));
-        if (!err_var) { // PyErr set by device_malloc
-            Py_DECREF(indices);
-            Py_DECREF(out);
-            free(dims);
-            return NULL;
-        }
-        cudaError_t err = cudaMemset((void*)err_var, 0, sizeof(int));
-        if (cudaSuccess != err) {
-            // Clear the error flag, cudaMemset doesn't do it.
-            // Currently this returns the same thing as err, but if in future
-            // it returns something else I still don't see why we should ignore
-            // it.  All we want to do here is reset the flag.
-            cudaGetLastError();
-            PyErr_Format(PyExc_RuntimeError,
-                         "Error setting device error code to 0. %s",
-                         cudaGetErrorString(err));
-            Py_DECREF(indices);
-            Py_DECREF(out);
-            free(dims);
-            return NULL;
-        }
-    }
+    if(init_err_var() != 0) return NULL;
 
     dim3 n_blocks(std::min(CudaNdarray_HOST_DIMS(out)[0],65535),1,1);
     if(CudaNdarray_HOST_DIMS(out)[0] == 0){
@@ -1298,46 +1254,13 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         Py_DECREF(out);
         return NULL;
     }
-    //-10 could be any value different then 0.
-    int cpu_err_var=-10;
 
-    CNDA_BEGIN_ALLOW_THREADS
-    // As we execute cudaMemcpy on the default stream, it waits for all
-    // kernels (on all streams) to be finished before starting to copy
-    err = cudaMemcpy(&cpu_err_var, err_var, sizeof(int),
-                     cudaMemcpyDeviceToHost);
-    CNDA_END_ALLOW_THREADS
-    if (cudaSuccess != err) {
-        PyErr_Format(
-            PyExc_RuntimeError,
-            "Cuda error: %s: %s when trying to get the error value.\n",
-            "CudaNdarray_TakeFrom",
-            cudaGetErrorString(err));
-        Py_DECREF(indices);
-        Py_DECREF(out);
-        return NULL;
-    }
-
-    if (cpu_err_var != 0) {
-        PyErr_Format(
-            PyExc_IndexError,
-            "CudaNdarray_TakeFrom: One of the index value is out of bound. Error code: %i.\n",
-            cpu_err_var);
-        // Must reset it to 0 to don't reset it before each use.
-        err = cudaMemset((void*)err_var, 0, sizeof(int));
-        if (cudaSuccess != err) {
-            PyErr_Format(PyExc_MemoryError, "Error setting device error code to 0 after having an index error. %s", cudaGetErrorString(err));
-            Py_DECREF(indices);
-            Py_DECREF(out);
-            return NULL;
-        }
-        Py_DECREF(indices);
-        Py_DECREF(out);
-        return NULL;
-
-    }
-
+    int index_err = check_err_var();
     Py_DECREF(indices);
+    if (index_err != 0) {
+        Py_DECREF(out);
+        return NULL;
+    }
 
     if (verbose) printf("TAKE SUCCEDED\n");
     return (PyObject *)out;

@@ -437,7 +437,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
     def test_ok_list(self):
         for data, idx in [(rand(4), [1, 0]),
-                          (rand(4, 5), [2, 3]),
+                          (rand(4, 5), [2, 3, -1]),
                           (rand(4, 2, 3), [0, 3]),
                           (rand(4, 2, 3), [3, 3, 1, 1, 2, 2, 0, 0]),
                           (rand(4, 2, 3), [3, 3, 1, 1, 2, 2, 0, 0,
@@ -479,6 +479,15 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                 out2 = test_out[0][0]
                 assert out1 is out2
 
+            # test the grad
+            gn = theano.grad(t.sum(), n)
+            g = self.function([], gn, op=self.adv_incsub1)
+            utt.verify_grad(lambda m: m[[1, 3]],
+                            [numpy.random.rand(5, 5).astype(self.dtype)])
+            g_0 = g()
+            utt.verify_grad(lambda m: m[idx],
+                            [data])
+
     def test_err_invalid_list(self):
         n = self.shared(numpy.asarray(5, dtype=self.dtype))
         self.assertRaises(TypeError, n.__getitem__, [0, 0])
@@ -495,13 +504,15 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor1))
 
         f = self.function([l], t, op=self.adv_sub1)
-        topo = f.maker.fgraph.toposort()
-        topo_ = [node for node in topo if not isinstance(node.op,
-             self.ignore_topo)]
-        assert len(topo_) == 1
-        self.assertTrue(isinstance(topo_[0].op, self.adv_sub1))
+
+        # the grad
+        g = self.function([l],
+                          inc_subtensor(t, numpy.asarray([[1.]], self.dtype)),
+                          op=self.adv_incsub1)
+
         for shp in [[0, 4], [0, -3], [-10]]:
             self.assertRaises(IndexError, f, shp)
+            self.assertRaises(IndexError, g, shp)
 
     def test_adv_sub1_broadcast(self):
         ones = numpy.ones((1, 3), dtype=self.dtype)
