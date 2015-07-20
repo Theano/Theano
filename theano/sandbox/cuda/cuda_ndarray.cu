@@ -28,6 +28,7 @@
 #define PRECHECK_ERROR 0
 
 cublasHandle_t handle = NULL;
+int* err_var = NULL;
 
 /////////////////////////
 // Alloc and Free

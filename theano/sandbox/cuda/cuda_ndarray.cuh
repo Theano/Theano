@@ -122,9 +122,9 @@ DllExport void *get_work_mem(size_t sz);
 // When it is allocated, it should always be 0
 // So if there is an error, we must reset it to 0 BEFORE we raise the error
 // This prevent us from setting it to 0 before each use
-extern DllExport int* err_var = NULL;
+extern DllExport int* err_var;
 
-DllExport inline int init_err_var(){
+static inline int init_err_var(){
     if (err_var == NULL) {
         err_var = (int*)device_malloc(sizeof(int));
         if (!err_var) { // PyErr set by device_malloc
@@ -145,7 +145,7 @@ DllExport inline int init_err_var(){
     return 0;
 }
 
-DllExport inline int check_err_var(){
+static inline int check_err_var(){
     //-10 could be any value different then 0.
     int cpu_err_var=-10;
     cudaError_t err;
