@@ -360,9 +360,9 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
             else:
                 grid = (1, 1)
                 block = (inputs[0][0].shape[0], inputs[0][0].shape[1], 1)
-            out = pycuda_fct(inputs[0][0], inputs[1][0], z[0],
-                             numpy.intc(inputs[1][0].size), block=block,
-                             grid=grid)
+            pycuda_fct(inputs[0][0], inputs[1][0], z[0],
+                       numpy.intc(inputs[1][0].size), block=block,
+                       grid=grid)
         thunk.inputs = inputs
         thunk.outputs = outputs
         thunk.lazy = False
@@ -390,12 +390,12 @@ def local_pycuda_gpu_elemwise(node):
 pycuda_optimizer.register("local_pycuda_gpu_elemwise",
                           local_pycuda_gpu_elemwise)
 
-
+"""
 @local_optimizer([GpuElemwise])
 def local_pycuda_gpu_elemwise_kernel(node):
-    """
+    ""
        GpuElemwise -> PycudaElemwiseKernelOp
-    """
+    ""
     if isinstance(node.op, GpuElemwise):
         if not any([any(i.type.broadcastable) for i in node.inputs]):
             new_op = PycudaElemwiseKernelOp(node.op.scalar_op,
@@ -405,3 +405,4 @@ def local_pycuda_gpu_elemwise_kernel(node):
 
 pycuda_optimizer.register("local_pycuda_gpu_elemwise_kernel",
                           local_pycuda_gpu_elemwise_kernel, 1.5)
+"""
