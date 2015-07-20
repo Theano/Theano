@@ -2974,7 +2974,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
         return Apply(self, [x_, y_, ilist_], [x_.type()])
 
     def c_code_cache_version(self):
-        return (5,)
+        return (6,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         active_device_no = theano.sandbox.cuda.active_device_number()
@@ -3048,23 +3048,8 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
         int CudaNdarray_vector_add_fast(CudaNdarray* py_self,
             CudaNdarray* py_other, PyArrayObject *indices_arr)
         {
-                if (err_var == NULL) {
-                    err_var = (int*)device_malloc(sizeof(int));
-                    if (!err_var) { // PyErr set by device_malloc
-                        return -1;
-                    }
-                    cudaError_t err = cudaMemset((void*)err_var, 0,
-                                                 sizeof(int));
-                    if (cudaSuccess != err) {
-                        // Clear the error flag, cudaMemset doesn't do it.
-                        cudaGetLastError();
-                        PyErr_Format(
-                            PyExc_RuntimeError,
-                            "Error setting device error code to 0. %%s",
-                            cudaGetErrorString(err));
-                        return -1;
-                    }
-                }
+                if(init_err_var()!= 0) return -1;
+
      		const int *shapeX = CudaNdarray_HOST_DIMS(py_self);
      		const int *shapeY = CudaNdarray_HOST_DIMS(py_other);
      		const int *strX   = CudaNdarray_HOST_STRIDES(py_self);
@@ -3112,46 +3097,13 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
                                                            PyArray_SIZE(indices_arr),
                                                            err_var
                                                           );
-
-                //-10 could be any value different then 0.
-                int cpu_err_var=-10;
-
-                CNDA_BEGIN_ALLOW_THREADS
-                // As we execute cudaMemcpy on the default stream, it waits
-                // for all kernels (on all streams) to be finished before
-                // starting to copy
-                err = cudaMemcpy(&cpu_err_var, err_var, sizeof(int),
-                                 cudaMemcpyDeviceToHost);
-                CNDA_END_ALLOW_THREADS
-                if (cudaSuccess != err) {
-                    PyErr_Format(
-                        PyExc_RuntimeError,
-                        "Cuda error: %%s: %%s when trying to get the error"
-                        " value.\\n",
-                        "GpuAdvancedIncSubtensor1_dev20",
-                        cudaGetErrorString(err));
-                    return NULL;
-                }
-
-                if (cpu_err_var != 0) {
-                    PyErr_Format(
-                        PyExc_IndexError,
-                        "GpuAdvancedIncSubtensor1_dev20: One of the index"
-                        " value is out of bound. Error code: %%i.\\n",
-                        cpu_err_var);
-                    // Must reset it to 0 to don't reset it before each use.
-                    err = cudaMemset((void*)err_var, 0, sizeof(int));
-                    if (cudaSuccess != err) {
-                        PyErr_Format(PyExc_MemoryError,
-                            "Error setting device error code to 0 after having"
-                            " an index error. %%s", cudaGetErrorString(err));
-                        return -1;
-                    }
-                    return -1;
-                }
+                int index_err = check_err_var();
 
                 device_free(d_indices_arr);
                 Py_XDECREF(cpu_indices_arr);
+
+                if(index_err != 0) return -1;
+
                 err = cudaGetLastError();
                 if(err != cudaSuccess){
                     PyErr_Format(

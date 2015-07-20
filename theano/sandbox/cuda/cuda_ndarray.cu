@@ -1141,30 +1141,7 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
     k3 = k_take_3<CPY>;
 
     // Create the memory place that will store the error information.
-    if (err_var == NULL) {
-        err_var = (int*)device_malloc(sizeof(int));
-        if (!err_var) { // PyErr set by device_malloc
-            Py_DECREF(indices);
-            Py_DECREF(out);
-            free(dims);
-            return NULL;
-        }
-        cudaError_t err = cudaMemset((void*)err_var, 0, sizeof(int));
-        if (cudaSuccess != err) {
-            // Clear the error flag, cudaMemset doesn't do it.
-            // Currently this returns the same thing as err, but if in future
-            // it returns something else I still don't see why we should ignore
-            // it.  All we want to do here is reset the flag.
-            cudaGetLastError();
-            PyErr_Format(PyExc_RuntimeError,
-                         "Error setting device error code to 0. %s",
-                         cudaGetErrorString(err));
-            Py_DECREF(indices);
-            Py_DECREF(out);
-            free(dims);
-            return NULL;
-        }
-    }
+    if(init_err_var() != 0) return NULL;
 
     dim3 n_blocks(std::min(CudaNdarray_HOST_DIMS(out)[0],65535),1,1);
     if(CudaNdarray_HOST_DIMS(out)[0] == 0){
@@ -1276,46 +1253,13 @@ CudaNdarray_TakeFrom(CudaNdarray * self, PyObject *args){
         Py_DECREF(out);
         return NULL;
     }
-    //-10 could be any value different then 0.
-    int cpu_err_var=-10;
 
-    CNDA_BEGIN_ALLOW_THREADS
-    // As we execute cudaMemcpy on the default stream, it waits for all
-    // kernels (on all streams) to be finished before starting to copy
-    err = cudaMemcpy(&cpu_err_var, err_var, sizeof(int),
-                     cudaMemcpyDeviceToHost);
-    CNDA_END_ALLOW_THREADS
-    if (cudaSuccess != err) {
-        PyErr_Format(
-            PyExc_RuntimeError,
-            "Cuda error: %s: %s when trying to get the error value.\n",
-            "CudaNdarray_TakeFrom",
-            cudaGetErrorString(err));
-        Py_DECREF(indices);
-        Py_DECREF(out);
-        return NULL;
-    }
-
-    if (cpu_err_var != 0) {
-        PyErr_Format(
-            PyExc_IndexError,
-            "CudaNdarray_TakeFrom: One of the index value is out of bound. Error code: %i.\n",
-            cpu_err_var);
-        // Must reset it to 0 to don't reset it before each use.
-        err = cudaMemset((void*)err_var, 0, sizeof(int));
-        if (cudaSuccess != err) {
-            PyErr_Format(PyExc_MemoryError, "Error setting device error code to 0 after having an index error. %s", cudaGetErrorString(err));
-            Py_DECREF(indices);
-            Py_DECREF(out);
-            return NULL;
-        }
-        Py_DECREF(indices);
-        Py_DECREF(out);
-        return NULL;
-
-    }
-
+    int index_err = check_err_var();
     Py_DECREF(indices);
+    if (index_err != 0) {
+        Py_DECREF(out);
+        return NULL;
+    }
 
     if (verbose) printf("TAKE SUCCEDED\n");
     return (PyObject *)out;
