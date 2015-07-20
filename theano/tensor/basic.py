@@ -21,7 +21,6 @@ from theano.tensor.type_other import NoneConst
 from theano import scalar as scal
 from functools import partial
 from six import integer_types
-from theano.gof.utils import hashtype
 from theano import compile, printing
 from theano.printing import pprint, min_informative_str
 # For history
@@ -1003,7 +1002,7 @@ _scal_elemwise = _scal_elemwise_with_nfunc(None, None, None)
 class TensorFromScalar(Op):
 
     __props__ = ()
-    
+
     def make_node(self, s):
         assert isinstance(s.type, scal.Scalar)
         return Apply(self,
@@ -2316,7 +2315,7 @@ def nonzero_values(a):
 class Tri(gof.Op):
 
     __props__ = ("dtype",)
-    
+
     def __init__(self, dtype=None):
         if dtype is None:
             dtype = config.floatX
@@ -2421,7 +2420,7 @@ def triu(m, k=0):
 class Eye(gof.Op):
 
     __props__ = ("dtype", )
-    
+
     def __init__(self, dtype=None):
         if dtype is None:
             dtype = config.floatX
@@ -3943,7 +3942,7 @@ class Reshape(Op):
     _f16_ok = True
 
     check_input = False
-    __props__ = ("ndim",) 
+    __props__ = ("ndim",)
     # name does not participate because it doesn't affect computations
 
     def __init__(self, ndim, name=None):
@@ -4583,7 +4582,7 @@ class _nd_grid(object):
     array([[0, 1, 2, 3]], dtype=int8)
     """
     __props__ = ("sparse",)
-    
+
     def __init__(self, sparse=False):
         self.sparse = sparse
 
@@ -4645,7 +4644,7 @@ class PermuteRowElements(Op):
     permutation instead.
     """
     __props__ = ()
-    
+
     def make_node(self, x, y, inverse):
         x = as_tensor_variable(x)
         y = as_tensor_variable(y)
@@ -5317,7 +5316,7 @@ class Diagonal(Op):
     :return: A vector representing the diagonal elements.
     """
     __props__ = ("offset", "axis1", "axis2")
-    
+
     def __init__(self, offset=0, axis1=0, axis2=1):
         if numpy_diagonal_return_view:
             self.view_map = {0: [0]}
