@@ -73,6 +73,8 @@ class DiagonalSubtensor(Op):
     see what's necessary at that point.
 
     """
+    __props__ = ("inplace",)
+
     def __str__(self):
         if self.inplace:
             return "%s{inplace}" % self.__class__.__name__
@@ -82,12 +84,6 @@ class DiagonalSubtensor(Op):
         self.inplace = inplace
         if inplace:
             self.view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.inplace == other.inplace
-
-    def __hash__(self):
-        return hash((type(self), self.inplace))
 
     def make_node(self, x, i0, i1):
         _i0 = tensor.as_tensor_variable(i0)
@@ -117,6 +113,8 @@ class IncDiagonalSubtensor(Op):
     """
     The gradient of DiagonalSubtensor
     """
+    __props__ = ("inplace",)
+
     def __str__(self):
         if self.inplace:
             return "%s{inplace}" % self.__class__.__name__
@@ -126,12 +124,6 @@ class IncDiagonalSubtensor(Op):
         self.inplace = inplace
         if inplace:
             self.destroy_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.inplace == other.inplace
-
-    def __hash__(self):
-        return hash((type(self), self.inplace))
 
     def make_node(self, x, i0, i1, amt):
         _i0 = tensor.as_tensor_variable(i0)

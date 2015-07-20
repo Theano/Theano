@@ -13,6 +13,9 @@ import numpy
 
 
 class Images2Neibs(Op):
+
+    __props__ = ("mode",)
+
     def __init__(self, mode='valid'):
         """
         :type mode: str
@@ -32,12 +35,6 @@ class Images2Neibs(Op):
                                       " and wrap_centered have been"
                                       " implemented for the op Images2Neibs")
         self.mode = mode
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.mode == other.mode
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.mode)
 
     def __str__(self):
         return self.__class__.__name__ + "{%s}" % self.mode
