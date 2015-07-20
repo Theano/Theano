@@ -64,8 +64,8 @@ class SortOp(theano.Op):
             " matrix (and axis is None or 0) and tensor3")
         if ((isinstance(axis, theano.Constant) or (isinstance(axis,
                                                    theano.tensor.
-                                                   TensorVariable)
-                                                   and axis.ndim == 0)) and
+                                                   TensorVariable) and
+                                                   axis.ndim == 0)) and
                 axis.data is not None):
             indices = self.__get_argsort_indices(a, axis)
             inp_grad = output_grads[0][tuple(indices)]
