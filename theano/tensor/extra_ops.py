@@ -40,6 +40,7 @@ class CpuContiguous(theano.Op):
             if (!PyArray_CHKFLAGS(%(x)s, NPY_ARRAY_C_CONTIGUOUS)){
                 // check to see if output is contiguous first
                 if (%(y)s != NULL &&
+                    PyArray_CompareLists(PyArray_DIMS(%(y)s), PyArray_DIMS(%(x)s), PyArray_NDIM(%(x)s)) &&
                     PyArray_CHKFLAGS(%(y)s, NPY_ARRAY_C_CONTIGUOUS)){
                     PyArray_CopyInto(%(y)s, %(x)s);
                 }
@@ -57,7 +58,7 @@ class CpuContiguous(theano.Op):
         return code
 
     def c_code_cache_version(self):
-        return (0,)
+        return (1,)
 
 cpu_contiguous = CpuContiguous()
 
