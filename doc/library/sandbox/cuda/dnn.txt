@@ -63,6 +63,11 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
     There is a problem we do not understand yet when cudnn paths are
     used with symbolic links. So avoid using that.
 
+.. note::
+
+    cudnn.so* must be readable and executable by everybody.
+    cudnn.h must be readable by everybody.
+
 
 Functions
 =========
