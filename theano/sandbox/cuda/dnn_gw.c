@@ -41,22 +41,42 @@ APPLY_SPECIFIC(conv_gw)(CudaNdarray *input, CudaNdarray *output,
 
     if (CHOOSE_ALGO)
     {
-      // Check if the input and the output have the same shape as they have
-      // last time the apply node was executed
-      bool same_shapes = true;
-      for (int i = 0; (i < nb_dim) && same_shapes; i++)
+
+      // A new convolution implementation should be selected, based on
+      // heuristics, if in one of the two following cases :
+      // - The implementation should only be chosen during the first execution
+      //   of an apply node and this is the first execution of the apply node.
+      // - The implementation should be chosen as often as necessary and the
+      //   shapes of the inputs differ from the last time an implementation
+      //   was chosen.
+      bool reuse_previous_algo;
+      if (CHOOSE_ALGO_ONCE)
       {
-          same_shapes &= (CudaNdarray_HOST_DIMS(input)[i] ==
-                          APPLY_SPECIFIC(previous_input_shape)[i]);
-          same_shapes &= (CudaNdarray_HOST_DIMS(output)[i] ==
-                          APPLY_SPECIFIC(previous_output_shape)[i]);
+        // Only choose a new implementation of none has been chosen before.
+        reuse_previous_algo = APPLY_SPECIFIC(previous_algo_set);
+      }
+      else
+      {
+        // Reuse the previous implementation if the the kernels and the outputs
+        // have the same shapes as they had when the previous implementation
+        // was selected
+        bool same_shapes = true;
+        for (int i = 0; (i < nb_dim) && same_shapes; i++)
+        {
+            same_shapes &= (CudaNdarray_HOST_DIMS(input)[i] ==
+                            APPLY_SPECIFIC(previous_input_shape)[i]);
+            same_shapes &= (CudaNdarray_HOST_DIMS(output)[i] ==
+                            APPLY_SPECIFIC(previous_output_shape)[i]);
+        }
+        reuse_previous_algo = same_shapes;
       }
 
-      if (!same_shapes)
+      // If the previously choosen implementation can't be reused, select a
+      // new one based on the shapes of the current inputs
+      if (!reuse_previous_algo)
       {
-        // The shape of the inputs and/or the output is different from the
-        // last execution. Use the current shapes to infer the implementation
-        // to use from now on.
+        // Choose the convolution implementation using heuristics based on the
+        // shapes of the inputs and the amount of memory available.
 
         // Get the amount of available memory
         size_t free = 0, total = 0;
@@ -100,9 +120,7 @@ APPLY_SPECIFIC(conv_gw)(CudaNdarray *input, CudaNdarray *output,
       }
       else
       {
-        // The shapes of the input and the output are the same as for the
-        // last execution. The convolution algorithm used last time can also
-        // be used here
+        // Reuse the previously chosen convlution implementation
         chosen_algo = APPLY_SPECIFIC(previous_bwd_f_algo);
       }
     }

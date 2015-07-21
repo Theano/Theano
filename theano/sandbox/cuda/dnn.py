@@ -348,7 +348,7 @@ AddConfigVar('dnn.conv.workmem',
 AddConfigVar('dnn.conv.workmem_bwd',
              "Default value for the workmem attribute of cudnn gradient "
              "convolutions.",
-             EnumStr('none', 'deterministic', 'fft', 'guess'),
+             EnumStr('none', 'deterministic', 'fft', 'guess', 'guess_once'),
              in_c_key=False)
 
 
@@ -665,7 +665,8 @@ class GpuDnnConvGradW(DnnBase, COp):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [2]}
-        assert self.workmem in ['none', 'deterministic', 'fft', 'guess']
+        assert self.workmem in ['none', 'deterministic', 'fft', 'guess',
+                                'guess_once']
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -698,6 +699,7 @@ class GpuDnnConvGradW(DnnBase, COp):
         else:
             inplace_def = []
 
+        alg_choose_once_def = ('CHOOSE_ALGO_ONCE', '0')
         if version() == -1 or version() < (3000, 3000):
             alg_def = ('CONV_ALGO', '0')
             alg_choose_def = ('CHOOSE_ALGO', '0')
@@ -711,13 +713,15 @@ class GpuDnnConvGradW(DnnBase, COp):
             elif self.workmem == 'fft':
                 alg_def = ('CONV_ALGO', 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT')
                 alg_choose_def = ('CHOOSE_ALGO', '0')
-            elif self.workmem == 'guess':
+            elif self.workmem in ['guess', 'guess_once']:
                 # The convolution implementation should be choosen according
                 # to a heuristic
                 alg_def = ('CONV_ALGO', 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0')
                 alg_choose_def = ('CHOOSE_ALGO', '1')
+                if self.workmem == 'guess_once':
+                    alg_choose_once_def = ('CHOOSE_ALGO_ONCE', '1')
 
-        return inplace_def + [alg_def, alg_choose_def]
+        return inplace_def + [alg_def, alg_choose_def, alg_choose_once_def]
 
     def make_node(self, img, topgrad, output, desc, alpha=None, beta=None):
         img = as_cuda_ndarray_variable(img)
@@ -757,7 +761,7 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
 
     def __init__(self, inplace=False, workmem=None):
         super(GpuDnnConv3dGradW, self).__init__(inplace=inplace, workmem='none')
-        assert self.workmem in ['none', 'time','guess']
+        assert self.workmem in ['none', 'time','guess', 'guess_once']
 
     def grad(self, inp, grads):
         img, top, output, desc, alpha, beta = inp
@@ -818,7 +822,8 @@ class GpuDnnConvGradI(DnnBase, COp):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [2]}
-        assert self.workmem in ['none', 'deterministic', 'fft', 'guess']
+        assert self.workmem in ['none', 'deterministic', 'fft', 'guess',
+                                'guess_once']
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -849,6 +854,7 @@ class GpuDnnConvGradI(DnnBase, COp):
         else:
             inplace_def = []
 
+        alg_choose_once_def = ('CHOOSE_ALGO_ONCE', '0')
         if version() == -1 or version() < (3000, 3000):
             alg_def = ('CONV_ALGO', '0')
             alg_choose_def = ('CHOOSE_ALGO', '0')
@@ -862,13 +868,15 @@ class GpuDnnConvGradI(DnnBase, COp):
             elif self.workmem == 'fft':
                 alg_def = ('CONV_ALGO', 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT')
                 alg_choose_def = ('CHOOSE_ALGO', '0')
-            elif self.workmem == 'guess':
+            elif self.workmem in ['guess', 'guess_once']:
                 # The convolution implementation should be choosen according
                 # to a heuristic
                 alg_def = ('CONV_ALGO', 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_0')
                 alg_choose_def = ('CHOOSE_ALGO', '1')
+                if self.workmem == 'guess_once':
+                    alg_choose_once_def = ('CHOOSE_ALGO_ONCE', '1')
 
-        return inplace_def + [alg_def, alg_choose_def]
+        return inplace_def + [alg_def, alg_choose_def, alg_choose_once_def]
 
     def make_node(self, kern, topgrad, output, desc, alpha=None, beta=None):
         kern = as_cuda_ndarray_variable(kern)
@@ -913,7 +921,7 @@ class GpuDnnConv3dGradI(GpuDnnConvGradI):
         if workmem == None:
             workmem = 'none'
         super(GpuDnnConv3dGradI, self).__init__(inplace, workmem)
-        assert self.workmem in ['none', 'time','guess']
+        assert self.workmem in ['none', 'time', 'guess', 'guess_once']
 
 
     def grad(self, inp, grads):
