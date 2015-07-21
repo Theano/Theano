@@ -419,7 +419,7 @@ class GpuDnnConv(DnnBase, COp):
         if version() < (3000, 3000):
             if self.workmem == 'fft':
                 raise RuntimeError("CuDNN FFT convolution requires CuDNN v3")
-            elif self.workmem == 'time':
+            elif self.workmem in ['time', 'time_once']:
                 raise RuntimeError("CuDNN convolution timing requires CuDNN v3")
 
         assert self.workmem in ['none', 'small', 'large', 'fft', 'time',
