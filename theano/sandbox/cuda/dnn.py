@@ -341,7 +341,8 @@ class GpuDnnConvDesc(GpuOp):
 
 AddConfigVar('dnn.conv.workmem',
              "Default value for the workmem attribute of cudnn convolutions.",
-             EnumStr('small', 'none', 'large', 'fft', 'guess', 'time'),
+             EnumStr('small', 'none', 'large', 'fft', 'guess',
+                     'guess_once', 'time', 'time_once'),
              in_c_key=False)
 
 AddConfigVar('dnn.conv.workmem_bwd',
@@ -399,8 +400,9 @@ class GpuDnnConv(DnnBase, COp):
 
     def __init__(self, workmem=None, inplace=False):
         """
-        :param workmem: either 'none', 'small', 'large', 'fft', 'time' or
-        'guess'. Default is the value of :attr:`config.dnn.conv.workmem`.
+        :param workmem: either 'none', 'small', 'large', 'fft', 'time',
+        'time_once', 'guess' or 'guess_once'. Default is the value of
+        :attr:`config.dnn.conv.workmem`.
         """
         COp.__init__(self, ["dnn_base.c", "dnn_conv_base.c", "dnn_fwd.c"],
                      "APPLY_SPECIFIC(conv_fwd)")
@@ -421,7 +423,7 @@ class GpuDnnConv(DnnBase, COp):
                 raise RuntimeError("CuDNN convolution timing requires CuDNN v3")
 
         assert self.workmem in ['none', 'small', 'large', 'fft', 'time',
-                                'guess']
+                                'time_once', 'guess', 'guess_once']
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -437,6 +439,7 @@ class GpuDnnConv(DnnBase, COp):
             inpl_def = []
 
         choose_alg = '0'
+        choose_alg_once = '0'
         choose_alg_time = '0'
         if version() == -1:
             alg = "0"
@@ -449,23 +452,29 @@ class GpuDnnConv(DnnBase, COp):
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_GEMM'
             elif self.workmem == 'fft':
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_FFT'
-            elif self.workmem == 'guess':
+            elif self.workmem in ['guess', 'guess_once']:
                 # The convolution implementation should be choosen according
                 # to a heuristic
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM'
                 choose_alg = '1'
-            elif self.workmem == 'time':
+                if self.workmem == 'guess_once':
+                    choose_alg_once = '1'
+            elif self.workmem in ['time', 'time_once']:
                 # The convolution implementation should be choosen by timing
                 # every available implementation
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM'
                 choose_alg = '1'
                 choose_alg_time = '1'
+                if self.workmem == 'time_once':
+                    choose_alg_once = '1'
 
         alg_def = ('CONV_ALGO', alg)
         alg_choose_def = ('CHOOSE_ALGO', choose_alg)
+        alg_choose_once_def = ('CHOOSE_ALGO_ONCE', choose_alg_once)
         alg_choose_time_def = ('CHOOSE_ALGO_TIME', choose_alg_time)
 
-        return [alg_def, alg_choose_def, alg_choose_time_def] + inpl_def
+        return [alg_def, alg_choose_def, alg_choose_once_def,
+                alg_choose_time_def] + inpl_def
 
     def make_node(self, img, kern, output, desc, alpha=None, beta=None):
         img = as_cuda_ndarray_variable(img)
@@ -556,11 +565,13 @@ class GpuDnnConv3d(GpuDnnConv):
 
     def __init__(self, workmem=None, inplace=False):
         """
-        :param workmem: either 'none', 'time' or 'guess'.
+        :param workmem: either 'none', 'time', 'time_once', 'guess' or
+                        'guess_once'.
         Default is the value of :attr:`config.dnn.conv.workmem`.
         """
         super(GpuDnnConv3d, self).__init__(workmem='guess', inplace=inplace)
-        assert self.workmem in ['none', 'time','guess']
+        assert self.workmem in ['none', 'time', 'time_once', 'guess',
+                                'guess_once']
 
     def make_node(self, img, kern, output, desc, alpha=None, beta=None):
 

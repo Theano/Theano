@@ -13,6 +13,7 @@ at V3.
 int APPLY_SPECIFIC(previous_input_shape)[5];
 int APPLY_SPECIFIC(previous_kerns_shape)[5];
 int APPLY_SPECIFIC(previous_output_shape)[5];
+bool APPLY_SPECIFIC(previous_algo_set);
 cudnnConvolutionFwdAlgo_t APPLY_SPECIFIC(previous_algo);
 
 #if defined(CUDNN_VERSION) && CUDNN_VERSION >= 3000
@@ -48,6 +49,8 @@ for (int i = 0; i < 5; i++)
   APPLY_SPECIFIC(previous_kerns_shape)[i] = 0;
   APPLY_SPECIFIC(previous_output_shape)[i] = 0;
 }
+
+APPLY_SPECIFIC(previous_algo_set) = false;
 
 // Select default implementations for the case where the convolution
 // implementations should be selected based on the size of the data.
