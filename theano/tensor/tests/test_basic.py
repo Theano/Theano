@@ -4149,9 +4149,15 @@ class test_comparison(unittest.TestCase):
                 (shared(l.astype(dtype)), r, False),
                 (shared(l.astype(dtype)), constant(r), False),
             ]:
+                mode = get_default_mode()
+                mode.check_isfinite = False
                 try:
-                    fn1 = inplace_func([], isclose(x, y, equal_nan=False))
-                    fn2 = inplace_func([], isclose(x, y, equal_nan=True))
+                    o1 = isclose(x, y, equal_nan=False)
+                    fn1 = inplace_func([], o1, mode=mode)
+
+                    o2 = isclose(x, y, equal_nan=True)
+                    fn2 = inplace_func([], o2, mode=mode)
+
                     v1 = fn1()
                     v2 = fn2()
                     self.assertTrue(

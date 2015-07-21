@@ -2104,7 +2104,7 @@ class Sgn(UnaryScalarOp):
         (z,) = outputs
         type = node.inputs[0].type
         if type in float_types:
-            return "%(z)s = (%(x)s >= 0) ? (%(x)s == 0) ? 0.0 : 1.0 : -1.0;" % locals()
+            return '%(z)s = (%(x)s > 0) ? 1. : ((%(x)s < 0) ? -1. : (isnan(%(x)s) ? NAN : 0.));' % locals()
         if type in int_types:
             return "%(z)s = (%(x)s >= 0) ? (%(x)s == 0) ? 0 : 1 : -1;" % locals()
         raise TypeError()  # complex has no sgn
@@ -2112,7 +2112,7 @@ class Sgn(UnaryScalarOp):
     def c_code_cache_version(self):
         s = super(Sgn, self).c_code_cache_version()
         if s:
-            return (3,) + s
+            return (4,) + s
         else:  # if parent is unversioned, we are too
             return s
 sgn = Sgn(same_out_nocomplex, name='sgn')
