@@ -4898,12 +4898,8 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
             topo_ = [node for node in topo if not isinstance(node.op,
                                                              self.ignore_topo)]
             assert len(topo_) == 1, topo_
+            assert type(topo_[0].op) is self.op
         return f
-
-    def eval_output_and_check(self, t):
-        f = self.function([], t)
-        tval = f()
-        return tval
 
     def test_reshape(self):
         a = dvector()
@@ -5019,6 +5015,11 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
         self.assertRaises(ValueError, f, a_val, [7, -1])
         self.assertRaises(ValueError, f, a_val, [7, 5])
         self.assertRaises(ValueError, f, a_val, [-1, -1])
+
+    def test_0(self):
+        x = fvector('x')
+        f = self.function([x], x.reshape((0, 100)))
+        assert f(numpy.ndarray((0,), dtype='float32')).shape == (0, 100)
 
 
 def test_make_column_matrix_broadcastable():
