@@ -11,6 +11,9 @@ from theano.gof import Op, Apply, generic
 
 
 class GradTodo(Op):
+
+    __props__ = ()
+
     def make_node(self, x):
         return Apply(self, [x], [x.type()])
 
@@ -40,21 +43,11 @@ class FFT(Op):
 
     half = False
     """Only return the first half (positive-valued) of the frequency components"""
+    __props__ = ("half", "inverse")
 
     def __init__(self, half=False, inverse=False):
         self.half = half
         self.inverse = inverse
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.half == other.half and
-                self.inverse == other.inverse)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.half) ^ 9828743 ^ (self.inverse)
-
-    def __ne__(self, other):
-        return not(self == other)
 
     def make_node(self, frames, n, axis):
         """ compute an n-point fft of frames along given axis """
