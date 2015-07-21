@@ -857,8 +857,8 @@ PyObject * CudaNdarray_Reshape(CudaNdarray * self, PyObject * shape)
                 free(rval_dims);
                 return NULL;
             }
-            if(rval_dims[i]<=0){
-                PyErr_Format(PyExc_ValueError, "Reshape has invalid dimension %i (must be >0)",rval_dims[i]);
+            if(rval_dims[i]<0){
+                PyErr_Format(PyExc_ValueError, "Reshape has invalid dimension %i (must be >=0)",rval_dims[i]);
                 free(rval_dims);
                 return NULL;
             }
