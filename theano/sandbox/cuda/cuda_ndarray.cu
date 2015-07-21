@@ -9,8 +9,8 @@
 
 #include "cuda_ndarray.cuh"
 
-#include "cumem.h"
-#include "cumem.cpp"
+#include "cnmem.h"
+#include "cnmem.cpp"
 
 //If true, when there is a gpu malloc or free error, we print the size of allocated memory on the device.
 #define COMPUTE_GPU_MEM_USED 0
@@ -71,20 +71,20 @@ void * device_malloc(size_t size)
 }
 
 ///@TODO: thejaswi: link this option to a theano config variable?
-static bool g_use_cumem = false;
+static bool g_use_cnmem = false;
 static const int g_max_devices = 8;
-int initCumem(int card_number_provided, int card_nb) {
-    static bool cumemInitialized = false;
-    if(cumemInitialized) {
+int initCnmem(int card_number_provided, int card_nb) {
+    static bool cnmemInitialized = false;
+    if(cnmemInitialized) {
         return 0;
     }
     // On stderr to be at the same place as "Using gpu device..."
-    fprintf(stderr, "Initializing cumem...\n");
+    fprintf(stderr, "Initializing cnmem...\n");
     int numDevices = 0;
-    cumemDevice_t devices[g_max_devices];
+    cnmemDevice_t devices[g_max_devices];
     if(cudaGetDeviceCount(&numDevices) != cudaSuccess) {
         PyErr_Format(PyExc_RuntimeError,
-                     "initCumem: 'cudaGetDeviceCount' failed! Reason=%s\n",
+                     "initCnmem: 'cudaGetDeviceCount' failed! Reason=%s\n",
                      cudaGetErrorString(cudaGetLastError()));
         return -1;
     }
@@ -97,7 +97,6 @@ int initCumem(int card_number_provided, int card_nb) {
         ///@TODO: thejaswi: add support for multiple streams
         devices[i].numStreams = 0;
         devices[i].streams = NULL;
-        devices[i].granularity = 0;
 
     }else{
         for(int i=0;i<numDevices;++i) {
@@ -107,19 +106,18 @@ int initCumem(int card_number_provided, int card_nb) {
             ///@TODO: thejaswi: add support for multiple streams
             devices[i].numStreams = 0;
             devices[i].streams = NULL;
-            devices[i].granularity = 0;
         }
     }
 
-    ///@TODO: thejaswi: passing custom cumem flags?
-    cumemStatus_t status = cumemInit(numDevices, devices, CUMEM_FLAGS_DEFAULT);
-    if(status != CUMEM_STATUS_SUCCESS) {
+    ///@TODO: thejaswi: passing custom cnmem flags?
+    cnmemStatus_t status = cnmemInit(numDevices, devices, CNMEM_FLAGS_DEFAULT);
+    if(status != CNMEM_STATUS_SUCCESS) {
         PyErr_Format(PyExc_RuntimeError,
-                     "initCumem: cumemInit call failed! Reason=%s. numdev=%d\n",
-                     cumemGetErrorString(status), numDevices);
+                     "initCnmem: cnmemInit call failed! Reason=%s. numdev=%d\n",
+                     cnmemGetErrorString(status), numDevices);
         return -1;
     }
-    cumemInitialized = true;
+    cnmemInitialized = true;
     return 0;
 }
 
@@ -138,12 +136,15 @@ void * device_malloc(size_t size, int verbose)
     #endif
     void * rval=NULL;
     ///@TODO: thejaswi: support for multiple-streams?
-    if(g_use_cumem) {
-        cumemStatus_t status = cumemMalloc(&rval, size, NULL);
-        if(status != CUMEM_STATUS_SUCCESS) {
+    if(g_use_cnmem) {
+        cnmemStatus_t status = CNMEM_STATUS_SUCCESS;
+        if( size != 0 ) {
+            status = cnmemMalloc(&rval, size, NULL);
+        }
+        if(status != CNMEM_STATUS_SUCCESS) {
             PyErr_Format(PyExc_MemoryError,
                          "Error allocating %zd bytes of device memory (%s).",
-                         size, cumemGetErrorString(status));
+                         size, cnmemGetErrorString(status));
             return NULL;
         }
     }
@@ -271,11 +272,11 @@ int device_free(void *ptr)
     }
 
     ///@TODO: thejaswi: multi-stream support
-    if(g_use_cumem) {
-        cumemStatus_t status = cumemFree(ptr, NULL);
-        if(status != CUMEM_STATUS_SUCCESS) {
-            fprintf(stderr, "device_free: cumemFree call failed! Reason=%s\n",
-                    cumemGetErrorString(status));
+    if(g_use_cnmem) {
+        cnmemStatus_t status = cnmemFree(ptr, NULL);
+        if(status != CNMEM_STATUS_SUCCESS) {
+            fprintf(stderr, "device_free: cnmemFree call failed! Reason=%s\n",
+                    cnmemGetErrorString(status));
         }
     }
     else {
@@ -3134,22 +3135,22 @@ CudaNdarray_ptr_int_size(PyObject* _unused, PyObject* args)
 static int cublas_init();
 static void cublas_shutdown();
 // Initialize the gpu.
-// Takes two optional parameters, the device number and if we should use cumem.
+// Takes two optional parameters, the device number and if we should use cnmem.
 // If the device number is provided, it sets that device to be the active device.
 // If not provided (usually just to test whether the gpu is available at all),
 // it does not set an active device.
 // Raises EnvironmentError or ValueError (as appropriate) if the initialization failed.
-// cumem is threaded like a bool. If converted to 0, don't use cumem. Otherwise, use it.
+// cnmem is threaded like a bool. If converted to 0, don't use cnmem. Otherwise, use it.
 PyObject *
 CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
 {
     int card_nb = 0;
     int card_number_provided = 1;
-    int cumem = 0; // 0 False, 1 True
+    int cnmem = 0; // 0 False, 1 True
     // if we're given something wildly invalid, this will throw a TypeError
-    PyArg_ParseTuple(args, "|ii", &card_nb, &cumem);
-    if(cumem)
-        g_use_cumem = true;
+    PyArg_ParseTuple(args, "|ii", &card_nb, &cnmem);
+    if(cnmem)
+        g_use_cnmem = true;
 
     if(PyTuple_Size(args) == 0) {
         card_number_provided = 0;
@@ -3204,8 +3205,8 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
         if (cublas_init() == -1)
             return NULL;
     }
-    if(card_number_provided && g_use_cumem) {
-        if(initCumem(card_number_provided, card_nb) == -1){
+    if(card_number_provided && g_use_cnmem) {
+        if(initCnmem(card_number_provided, card_nb) == -1){
             return NULL;
         }
     }
@@ -3240,13 +3241,13 @@ CudaNdarray_gpu_shutdown(PyObject* _unused, PyObject* _unused_args) {
     // Don't handle errors here
     cublas_shutdown();
     g_gpu_context_active = 0; // context has now been closed down
-    if(g_use_cumem) {
-        fprintf(stderr, "Shutting down cumem...\n");
-        cumemStatus_t status = cumemFinalize();
-        if(status != CUMEM_STATUS_SUCCESS) {
-            fprintf(stderr, "CudaNdarray_gpu_shutdown: cumemFinalize failed! Reason=%s\n",
-                    cumemGetErrorString(status));
-            if(status == CUMEM_STATUS_CUDA_ERROR) {
+    if(g_use_cnmem) {
+        fprintf(stderr, "Shutting down cnmem...\n");
+        cnmemStatus_t status = cnmemFinalize();
+        if(status != CNMEM_STATUS_SUCCESS && status != CNMEM_STATUS_MEMORY_LEAK) {
+            fprintf(stderr, "CudaNdarray_gpu_shutdown: cnmemFinalize failed! Reason=%s\n",
+                    cnmemGetErrorString(status));
+            if(status == CNMEM_STATUS_CUDA_ERROR) {
                 fprintf(stderr, "  Cuda-Reason=%s\n",
                         cudaGetErrorString(cudaGetLastError()));
             }

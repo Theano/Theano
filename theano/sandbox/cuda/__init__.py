@@ -54,8 +54,8 @@ AddConfigVar('cublas.lib',
         """Name of the cuda blas library for the linker.""",
         StrParam('cublas'))
 
-AddConfigVar('lib.cumem',
-             """Do we enable cumem or not.""",
+AddConfigVar('lib.cnmem',
+             """Do we enable cnmem or not.""",
              # We should not mix both allocator, so we can't override
              BoolParam(False, allow_override=False),
              in_c_key=False)
@@ -385,7 +385,7 @@ def use(device,
         try:
             if (device != 'gpu') and not pycuda_init_dev:
                 assert isinstance(device, int)
-                gpu_init(device, config.lib.cumem)
+                gpu_init(device, config.lib.cnmem)
                 use.device_number = device
                 assert active_device_number() == device
             else:
@@ -398,7 +398,7 @@ def use(device,
                 cuda_ndarray.cuda_ndarray.select_a_gpu()
                 use.device_number = active_device_number()
                 # This is needed to initialize the cublas handle.
-                gpu_init(use.device_number, config.lib.cumem)
+                gpu_init(use.device_number, config.lib.cnmem)
 
             if test_driver:
                 import theano.sandbox.cuda.tests.test_driver
@@ -411,8 +411,9 @@ def use(device,
                                  " this property")
 
             if config.print_active_device:
-                print("Using gpu device %d: %s" % (
-                        active_device_number(), active_device_name()), file=sys.stderr)
+                cnmem_enabled = "enabled" if config.lib.cnmem else "disabled"
+                print("Using gpu device %d: %s (cnmem is %s)" % (
+                        active_device_number(), active_device_name(), cnmem_enabled), file=sys.stderr)
             if device_properties(use.device_number)['regsPerBlock'] < 16384:
                 # We will try to use too much register per bloc at many places
                 # when there is only 8k register per multi-processor.
