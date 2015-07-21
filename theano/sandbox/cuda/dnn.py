@@ -443,8 +443,9 @@ class GpuDnnConv(DnnBase, COp):
             elif self.algo in ['time', 'time_once']:
                 raise RuntimeError("CuDNN convolution timing requires CuDNN v3")
 
-        assert self.algo in ['none', 'small', 'large', 'fft', 'time',
-                             'time_once', 'guess', 'guess_once']
+        assert self.algo in ['none', 'small', 'large', 'fft', 'guess_once',
+                             'guess_on_shape_change', 'time_once',
+                             'time_on_shape_change']
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -476,14 +477,14 @@ class GpuDnnConv(DnnBase, COp):
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_GEMM'
             elif self.algo == 'fft':
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_FFT'
-            elif self.algo in ['guess', 'guess_once']:
+            elif self.algo in ['guess_once', 'guess_on_shape_change']:
                 # The convolution implementation should be choosen according
                 # to a heuristic
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM'
                 choose_alg = '1'
                 if self.algo == 'guess_once':
                     choose_alg_once = '1'
-            elif self.algo in ['time', 'time_once']:
+            elif self.algo in ['time_once', 'time_on_shape_change']:
                 # The convolution implementation should be choosen by timing
                 # every available implementation
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM'
@@ -583,19 +584,26 @@ class GpuDnnConv3d(GpuDnnConv):
     :param kernel:
     :param descr: the convolution descriptor
     """
-    __props__ = ('workmem', 'inplace')
+    __props__ = ('algo', 'inplace')
     __input_name__ = ('image', 'kernel', 'output',
                       'descriptor', 'alpha', 'beta')
 
-    def __init__(self, workmem=None, inplace=False):
+    def __init__(self, workmem=None, inplace=False, algo=None):
         """
-        :param workmem: either 'none', 'time', 'time_once', 'guess' or
-                        'guess_once'.
-        Default is the value of :attr:`config.dnn.conv.workmem`.
+        :param workmem: *deprecated*, use param algo instead
+        :param algo: either 'none', 'guess_once', 'guess_on_shape_change',
+        'time_once' or 'time_on_shape_change'.
+        Default is the value of :attr:`config.dnn.conv.algo_fwd.
         """
-        super(GpuDnnConv3d, self).__init__(workmem='guess', inplace=inplace)
-        assert self.workmem in ['none', 'time', 'time_once', 'guess',
-                                'guess_once']
+        if workmem is not None:
+            warnings.warn(("GpuDnnConv3d: parameter 'workmem' is deprecated. "
+                           "Use 'algo' instead."), stacklevel=3)
+            assert algo == None
+            algo = workmem
+
+        super(GpuDnnConv3d, self).__init__(inplace=inplace, algo='guess_once')
+        assert self.algo in ['none', 'guess_once', 'guess_on_shape_change',
+                             'time_once', 'time_on_shape_change']
 
     def make_node(self, img, kern, output, desc, alpha=None, beta=None):
 
