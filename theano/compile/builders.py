@@ -145,6 +145,10 @@ class OpFromGraph(gof.Op):
         shape = theano.scan_module.scan_utils.infer_shape(self.new_outputs, 
                                                           self.new_inputs,
                                                           shapes)
+
+        import pdb
+        pdb.set_trace()
+
         return shape
 
     def grad(self, inputs, output_grads):
