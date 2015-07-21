@@ -713,6 +713,8 @@ class GpuAllocEmpty(HideC, Alloc):
         sh, bcast = self.validate_shape(shape)
         output = GpuArrayType(dtype=self.dtype, broadcastable=bcast)()
         output.tag.values_eq_approx = tensor.type.values_eq_approx_always_true
+        # The outut can contain nan/inf.
+        output.type.filter_checks_isfinite = False
         return Apply(self, sh, [output])
 
     def perform(self, node, inputs, out_):
