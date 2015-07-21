@@ -2044,7 +2044,7 @@ if True:
                 isinstance(dest.owner.op, GpuAllocEmpty) and
                 len(dest.clients) > 1):
             inputs[2] = gpu_alloc_empty(*dest.owner.inputs)
-        return [GpuDnnConv(workmem=node.op.workmem, inplace=True)(*inputs)]
+        return [GpuDnnConv(algo=node.op.algo, inplace=True)(*inputs)]
 
     @local_optimizer([GpuDnnConvGradW], inplace=True)
     def local_dnn_convgw_inplace(node):
@@ -2082,7 +2082,7 @@ if True:
     def local_dnn_conv_alpha_merge(node, *inputs):
         if not dnn_available() or version() == -1:
             return None
-        return [GpuDnnConv(workmem=node.op.workmem)(*inputs)]
+        return [GpuDnnConv(algo=node.op.algo)(*inputs)]
 
     @register_opt('cudnn')
     @alpha_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5, nd=4)
@@ -2102,7 +2102,7 @@ if True:
     @output_merge(GpuDnnConv, alpha_in=4, beta_in=5, out_in=2, nd=4)
     def local_dnn_conv_output_merge(node, *inputs):
         inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
-        return [GpuDnnConv(workmem=node.op.workmem)(*inputs)]
+        return [GpuDnnConv(algo=node.op.algo)(*inputs)]
 
     @register_opt('cudnn')
     @output_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5, out_in=2, nd=4)
