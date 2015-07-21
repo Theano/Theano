@@ -4,7 +4,7 @@ from theano.compat import izip
 from theano.compile.function_module import orig_function
 from theano.compile import SharedVariable, rebuild_collect_shared
 from theano.gof import ops_with_inner_function
-from theano.gof.graph import io_connection_pattern, clone_get_equiv
+from theano.gof.graph import io_connection_pattern
 
 
 class OpFromGraph(gof.Op):
@@ -143,8 +143,8 @@ class OpFromGraph(gof.Op):
 
     def infer_shape(self, node, shapes):
         out_shp = theano.scan_module.scan_utils.infer_shape(self.new_outputs,
-                                                          self.new_inputs,
-                                                          shapes)
+                                                            self.new_inputs,
+                                                            shapes)
         replacement = dict([(ori, rpl) for ori, rpl
                             in izip(self.new_inputs, node.inputs)])
 
