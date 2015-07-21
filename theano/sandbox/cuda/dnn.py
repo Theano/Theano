@@ -340,15 +340,26 @@ class GpuDnnConvDesc(GpuOp):
 
 
 AddConfigVar('dnn.conv.workmem',
-             "Default value for the workmem attribute of cudnn convolutions.",
-             EnumStr('small', 'none', 'large', 'fft', 'guess',
-                     'guess_once', 'time', 'time_once'),
+             "This flag is deprecated; use dnn.conv.algo_fwd.",
+             EnumStr(''),
              in_c_key=False)
 
 AddConfigVar('dnn.conv.workmem_bwd',
-             "Default value for the workmem attribute of cudnn gradient "
-             "convolutions.",
-             EnumStr('none', 'deterministic', 'fft', 'guess', 'guess_once'),
+             "This flag is deprecated; use dnn.conv.algo_bwd.",
+             EnumStr(''),
+             in_c_key=False)
+
+AddConfigVar('dnn.conv.algo_fwd',
+             "Default implementation to use for CuDNN forward convolution.",
+             EnumStr('small', 'none', 'large', 'fft', 'guess_once',
+                     'guess_on_shape_change', 'time_once',
+                     'time_on_shape_change'),
+             in_c_key=False)
+
+AddConfigVar('dnn.conv.algo_bwd',
+             "Default implementation to use for CuDNN backward convolution.",
+             EnumStr('none', 'deterministic', 'fft', 'guess_once',
+                     'guess_on_shape_change'),
              in_c_key=False)
 
 
