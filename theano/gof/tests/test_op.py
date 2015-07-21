@@ -56,6 +56,8 @@ class MyType(Type):
 
 class MyOp(Op):
 
+    __props__ = ()
+
     def make_node(self, *inputs):
         inputs = list(map(as_variable, inputs))
         for input in inputs:
@@ -70,12 +72,7 @@ MyOp = MyOp()
 class NoInputOp(Op):
 
     """An Op to test the corner-case of an Op with no input."""
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self):
         return Apply(self, [], [MyType('test')()])
@@ -162,12 +159,7 @@ class TestMakeThunk(unittest.TestCase):
     def test_no_c_code(self):
         class IncOnePython(Op):
             """An Op with only a Python (perform) implementation"""
-
-            def __eq__(self, other):
-                return type(self) == type(other)
-
-            def __hash__(self):
-                return hash(type(self))
+            __props__ = ()
 
             def make_node(self, input):
                 input = scalar.as_scalar(input)
@@ -204,12 +196,7 @@ class TestMakeThunk(unittest.TestCase):
     def test_no_perform(self):
         class IncOneC(Op):
             """An Op with only a C (c_code) implementation"""
-
-            def __eq__(self, other):
-                return type(self) == type(other)
-
-            def __hash__(self):
-                return hash(type(self))
+            __props__ = ()
 
             def make_node(self, input):
                 input = scalar.as_scalar(input)
