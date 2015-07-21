@@ -142,14 +142,13 @@ class OpFromGraph(gof.Op):
         return io_connection_pattern(self.new_inputs, self.new_outputs)
 
     def infer_shape(self, node, shapes):
-        shape = theano.scan_module.scan_utils.infer_shape(self.new_outputs, 
+        out_shp = theano.scan_module.scan_utils.infer_shape(self.new_outputs,
                                                           self.new_inputs,
                                                           shapes)
+        replacement = dict([(ori, rpl) for ori, rpl
+                            in izip(self.new_inputs, node.inputs)])
 
-        import pdb
-        pdb.set_trace()
-
-        return shape
+        return [theano.clone(shape, replace=replacement) for shape in out_shp]
 
     def grad(self, inputs, output_grads):
         # OpFromGraph doesn't implement a connection_pattern, so for
@@ -183,5 +182,3 @@ class OpFromGraph(gof.Op):
 # Since OpFromGraph contains a Theano compiled function, we should let
 # DebugMode know about it
 ops_with_inner_function[OpFromGraph] = 'fn'
-
-
