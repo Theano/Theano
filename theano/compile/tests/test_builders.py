@@ -12,6 +12,7 @@ from theano.compile.builders import OpFromGraph
 
 from theano.tests import unittest_tools
 
+import unittest
 
 class T_OpFromGraph(unittest_tools.InferShapeTester):
 
@@ -155,8 +156,15 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
     def test_infer_shape(self):
         x = T.matrix('x')
         y = x+x
-        op_graph = OpFromGraph([x], [y])
-        self._compile_and_check([x],
-                                [op_graph(x)],
+        z = x*x
+        op_graph = OpFromGraph([x], [y,z])
+
+        q = T.matrix('q')
+        self._compile_and_check([q],
+                                [op_graph(q)[0],op_graph(q)[1]],
                                 [numpy.ones([3,4], dtype=config.floatX)],
                                 OpFromGraph)
+
+
+if __name__ == '__main__':
+    unittest.main()
