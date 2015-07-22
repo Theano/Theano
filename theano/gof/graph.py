@@ -873,7 +873,6 @@ def io_connection_pattern(inputs, outputs):
     # connected only to itself
     connect_pattern_by_var = {}
     nb_inputs = len(inputs)
-    nb_outputs = len(outputs)
 
     for i in range(nb_inputs):
         input = inputs[i]
@@ -912,8 +911,8 @@ def io_connection_pattern(inputs, outputs):
                     # node inputs is connected to
                     if op_connection_pattern[inp_idx][out_idx]:
                         out_connection_pattern = [out_connection_pattern[i] or
-                                                inp_connection_pattern[i]
-                                                for i in range(nb_inputs)]
+                                                  inp_connection_pattern[i]
+                                                  for i in range(nb_inputs)]
 
             # Store the connection pattern of the node output
             connect_pattern_by_var[out] = out_connection_pattern
