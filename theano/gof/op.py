@@ -678,7 +678,16 @@ class Op(utils.object2, PureOp, CLinkerOp):
 
     def __hash__(self):
         if hasattr(self, '__props__'):
-            return hash((type(self), self._props()))
+            dicts = []
+            props = []
+            for elem in self._props():
+                if isinstance(elem, dict):
+                    dicts.append(elem)
+                else:
+                    props.append(elem)
+            h = hash((type(self), tuple(props),
+                      tuple(utils.hash_from_dict(elem) for elem in dicts)))
+            return h
         else:
             return super(Op, self).__hash__()
 
