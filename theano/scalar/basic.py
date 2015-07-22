@@ -1096,8 +1096,6 @@ class EQ(LogicalComparison):
     def c_code(self, node, name, inputs, outputs, sub):
         (x, y) = inputs
         (z,) = outputs
-        if node.inputs[0].type in complex_types:
-            raise NotImplementedError()
         return "%(z)s = (%(x)s == %(y)s);" % locals()
 eq = EQ()
 

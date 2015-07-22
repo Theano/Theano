@@ -121,7 +121,20 @@ class GpuArrayType(Type):
             return False
         if a.typecode != b.typecode:
             return False
-        return numpy.asarray(compare(a, '==', b)).all()
+        a_eq_b = numpy.asarray(compare(a, '==', b))
+        if a_eq_b.all():
+            return True
+
+        # maybe the trouble is that there are NaNs
+        a = numpy.asarray(a)
+        b = numpy.asarray(b)
+
+        a_missing = numpy.isnan(a)
+        if a_missing.any():
+            b_missing = numpy.isnan(b)
+            return numpy.all(a_eq_b + (a_missing == b_missing))
+        else:
+            return False
 
     @staticmethod
     def values_eq_approx(a, b,
@@ -157,7 +170,15 @@ class GpuArrayType(Type):
                             op_tmpl="res[i] = (fabs(%%(a)s - %%(b)s) <"
                             "(%(atol_)s + %(rtol_)s * fabs(%%(b)s)))" %
                             locals())
-            return numpy.asarray(res).all()
+            ret = numpy.asarray(res).all()
+            if ret:
+                return True
+            # maybe the trouble is that there are NaNs
+            an = numpy.asarray(a)
+            bn = numpy.asarray(b)
+            return tensor.TensorType.values_eq_approx(
+                an, bn, allow_remove_inf=allow_remove_inf,
+                allow_remove_nan=allow_remove_nan, rtol=rtol, atol=atol)
 
     @staticmethod
     def may_share_memory(a, b):
