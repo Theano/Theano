@@ -55,7 +55,7 @@ script:
   # Move to the path of the installed version
   - cd $(python -c 'import theano; import os; print(os.path.split(theano.__file__)[0])')
   - echo "$PART"
-  - theano-nose -v $PART
+  - theano-nose -v --processes=2 --process-timeout=1000000 $PART
 #  - theano-cache list
 
 #after_script:
