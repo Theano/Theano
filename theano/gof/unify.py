@@ -11,7 +11,7 @@ from __future__ import print_function
 from copy import copy
 
 from functools import partial
-from theano.gof.utils import *
+from theano.gof.utils import ANY_TYPE, comm_guard, FALL_THROUGH, iteritems
 
 
 ################################
