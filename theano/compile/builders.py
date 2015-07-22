@@ -6,6 +6,8 @@ from theano.compile import SharedVariable, rebuild_collect_shared
 from theano.gof import ops_with_inner_function
 from theano.gof.graph import io_connection_pattern
 
+from functools import reduce
+
 
 class OpFromGraph(gof.Op):
     """This creates an `Op` from inputs and outputs lists of variables.
@@ -145,8 +147,6 @@ class OpFromGraph(gof.Op):
         out_shp = theano.scan_module.scan_utils.infer_shape(self.new_outputs,
                                                             self.new_inputs,
                                                             shapes)
-        replacement = dict([(ori, rpl) for ori, rpl
-                            in izip(self.new_inputs, node.inputs)])
 
         # Clone the output shape so that shape are computed from outer inputs.
         # Note:
