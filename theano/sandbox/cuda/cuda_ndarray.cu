@@ -97,7 +97,7 @@ int initCnmem(int card_number_provided, int card_nb) {
         ///@TODO: thejaswi: add support for multiple streams
         devices[i].numStreams = 0;
         devices[i].streams = NULL;
-
+        devices[i].streamSizes = NULL;
     }else{
         for(int i=0;i<numDevices;++i) {
             devices[i].device = i;
