@@ -255,25 +255,25 @@ if __name__ == "__main__":
         K40                             0.88s
         K20m/ECC
         K20/NOECC
-        M2090   
-        C2075             
-        M2075             
-        M2070             
-        M2070-Q           
-        M2050(Amazon)     
-        C1060             
-        K600              
+        M2090
+        C2075
+        M2075
+        M2070
+        M2070-Q
+        M2050(Amazon)
+        C1060
+        K600
 
-        GTX Titan Black   
+        GTX Titan Black
         GTX Titan(D15U-50)
-        GTX 780           
-        GTX 980           
-        GTX 970           
-        GTX 680           
-        GRID K520         
-        GTX 580           
-        GTX 480           
-        GTX 750 Ti        
+        GTX 780
+        GTX 980
+        GTX 970
+        GTX 680
+        GRID K520
+        GTX 580
+        GTX 480
+        GTX 750 Ti
         """)
 
     if options.M == 0:
@@ -309,4 +309,3 @@ if __name__ == "__main__":
         print ('Try to run this script a few times. Experience shows that'
                ' the first time is not as fast as followings calls. The'
                ' difference is not big, but consistent.')
-
