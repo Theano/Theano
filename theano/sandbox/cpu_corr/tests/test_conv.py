@@ -125,26 +125,22 @@ class TestConv2D(utt.InferShapeTester):
         if verify_grad:
             utt.verify_grad(sym_CpuCorrMM, [orig_image_data, filter_data])
 
-    def test_basic1(self):
-        """Tests that basic convolutions work for odd and even
-        dimensions of image and filter shapes, as well as rectangular
-        images and filters.
-
-        """
-        self.validate((2, 2, 3, 3), (2, 2, 2, 2), 'valid')#, verify_grad=False)
-
     def test_basic(self):
-        """Tests that basic convolutions work for odd and even
+        """
+        Tests that basic convolutions work for odd and even
         dimensions of image and filter shapes, as well as rectangular
         images and filters.
-
         """
+        """
+        TODO
+        self.validate((2, 2, 3, 3), (2, 2, 2, 2), 'valid', verify_grad=False)
         self.validate((3, 2, 8, 8), (4, 2, 5, 5), 'valid', verify_grad=False)
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'valid')
         self.validate((3, 2, 7, 5), (5, 2, 3, 2), 'valid', verify_grad=False)
         self.validate((3, 2, 8, 8), (4, 2, 5, 5), 'full', verify_grad=False)
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'full')
-        # test filter same size as input
+        """
+        self.validate((1, 2, 3, 2), (1, 2, 1, 1), 'valid')
 
     def test_img_kernel_same_shape(self):
         self.validate((3, 2, 3, 3), (4, 2, 3, 3), 'full')
@@ -154,6 +150,7 @@ class TestConv2D(utt.InferShapeTester):
     def test_subsample(self):
         """
         Tests convolution where subsampling != (1,1)
+        TODO
         """
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'valid', subsample=(2, 2))
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'full', subsample=(2, 2))
@@ -192,6 +189,7 @@ class TestConv2D(utt.InferShapeTester):
         """
         Tests that when the shape gived at build time is not the same as
         run time we raise an error
+        TODO
         """
         for mode in ['valid', 'full']:
             self.assertRaises(ValueError, self.validate,
@@ -243,6 +241,7 @@ class TestConv2D(utt.InferShapeTester):
     def test_wrong_info(self):
         """
         Test convolutions when we don't give a constant as shape information
+        TODO
         """
         i = theano.scalar.basic.int32()
         self.assertRaises(NotScalarConstantError, self.validate,
@@ -306,9 +305,7 @@ class TestConv2D(utt.InferShapeTester):
                     input = theano.shared(numpy.random.random(image_shape))
                     filters = theano.shared(numpy.random.random(filter_shape))
 
-                    output = conv.CpuCorrMM()(input, filters,
-                                         image_shape, filter_shape,
-                                         border_mode)
+                    output = conv.CpuCorrMM(border_mode)(input, filters)
                     mode = theano.Mode(linker=theano.gof.vm.VM_Linker(
                         allow_gc=False,
                         use_cloop=True))
