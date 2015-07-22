@@ -605,7 +605,7 @@ class GpuDnnConv3d(GpuDnnConv):
             assert algo == None
             algo = workmem
 
-        super(GpuDnnConv3d, self).__init__(inplace=inplace, algo='guess_once')
+        super(GpuDnnConv3d, self).__init__(inplace=inplace, algo='none')
         assert self.algo in ['none', 'guess_once', 'guess_on_shape_change',
                              'time_once', 'time_on_shape_change']
 
@@ -827,7 +827,7 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
             algo = workmem
 
         super(GpuDnnConv3dGradW, self).__init__(inplace=inplace,
-                                                algo='guess_once')
+                                                algo='none')
         assert self.algo in ['none', 'guess_once', 'guess_on_shape_change']
 
     def grad(self, inp, grads):
@@ -1015,7 +1015,7 @@ class GpuDnnConv3dGradI(GpuDnnConvGradI):
             algo = workmem
 
         super(GpuDnnConv3dGradI, self).__init__(inplace=inplace,
-                                                algo="guess_once")
+                                                algo="none")
         assert self.algo in ['none', 'guess_once', 'guess_on_shape_change']
 
 
