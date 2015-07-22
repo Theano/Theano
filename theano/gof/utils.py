@@ -7,7 +7,7 @@ import numpy
 from six import iteritems
 
 from theano import config
-from theano.compat import PY3
+from theano.compat import OrderedDict, PY3
 
 
 def simple_extract_stack(f=None, limit=None):
@@ -465,3 +465,34 @@ else:
 def hash_from_file(file_path):
     """Return the MD5 hash of a file."""
     return hash_from_code(open(file_path, 'rb').read())
+
+
+def hash_from_dict(d):
+    """Work around the fact that dict are not hashable in python
+
+    This request that all object have a sorted order that depend only
+    on the value of the object. This is true for integer/float/string
+
+    We do not verify that the objects in the dict have this property.
+
+    Also, we transform values that are list into tuple as list are not
+    hashable.
+
+    :note: special case for OrderedDict, it use the order of the dict,
+        so the key don't need to be sortable.
+
+    """
+    if isinstance(d, OrderedDict):
+        items = list(d.iteritems())
+    else:
+        items = list(d.items())
+        items.sort()
+    first_part = [k for k, v in items]
+    second_part = []
+    for k, v in items:
+        if isinstance(v, (tuple, list)):
+            second_part += [tuple(v)]
+        else:
+            second_part += [v]
+    tuple_items = tuple(first_part + second_part + [d.__class__])
+    return hash(tuple_items)
