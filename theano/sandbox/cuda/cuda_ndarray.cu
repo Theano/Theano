@@ -3242,7 +3242,7 @@ CudaNdarray_gpu_shutdown(PyObject* _unused, PyObject* _unused_args) {
     if(g_use_cnmem) {
         fprintf(stderr, "Shutting down cnmem...\n");
         cnmemStatus_t status = cnmemFinalize();
-        if(status != CNMEM_STATUS_SUCCESS && status != CNMEM_STATUS_MEMORY_LEAK) {
+        if(status != CNMEM_STATUS_SUCCESS) {
             fprintf(stderr, "CudaNdarray_gpu_shutdown: cnmemFinalize failed! Reason=%s\n",
                     cnmemGetErrorString(status));
             if(status == CNMEM_STATUS_CUDA_ERROR) {
