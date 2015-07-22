@@ -476,7 +476,7 @@ work on the CPU and GPU. CURAND only work on the GPU.
 
         .. code-block:: python
 
-            from theano.sandbox.rng_mrg import MRG_RandomStreams
+            from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
 .. _logistic_regression:
 

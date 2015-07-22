@@ -74,7 +74,6 @@ def alpha_merge(cls, alpha_in, beta_in, nd):
                     return None
                 inputs = list(targ.inputs)
                 try:
-                    raise NotScalarConstantError()
                     c = get_scalar_constant_value(lr)
                     if c == 0:
                         inputs[alpha_in] = lr
