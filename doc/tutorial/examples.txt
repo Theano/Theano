@@ -465,10 +465,18 @@ There are :ref:`other distributions implemented <libdoc_tensor_raw_random>`.
 Other Implementations
 ---------------------
 
-There is 2 other implementations based on :class:`CURAND
-<theano.sandbox.cuda.rng_curand>` and :ref:`MRG31k3p
-<libdoc_rng_mrg>`. The RandomStream only work on the CPU, MRG31k3p
+There is 2 other implementations based on :ref:`MRG31k3p
+<libdoc_rng_mrg>` and :class:`CURAND <theano.sandbox.cuda.rng_curand>`.
+ The RandomStream only work on the CPU, MRG31k3p
 work on the CPU and GPU. CURAND only work on the GPU.
+
+.. note::
+
+    To use you the MRG version easily, you can just change the import to:
+
+        .. code-block:: python
+
+            from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
 .. _logistic_regression:
 

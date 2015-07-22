@@ -5709,6 +5709,9 @@ class AllocEmpty(gof.Op):
     def make_node(self, *shape):
         shape, output = self.validate_shape(shape)
         output.tag.values_eq_approx = values_eq_approx_always_true
+        # The outut can contain nan/inf.  output.type is a new
+        # instance, so we can do this only for that variable.
+        output.type.filter_checks_isfinite = False
         return Apply(self, shape, [output])
 
     def perform(self, node, inputs, out_):

@@ -73,8 +73,20 @@ def alpha_merge(cls, alpha_in, beta_in, nd):
                 if lr is None or targ is None:
                     return None
                 inputs = list(targ.inputs)
-                inputs[alpha_in] = lr * targ.inputs[alpha_in]
-                inputs[beta_in] = lr * targ.inputs[beta_in]
+                try:
+                    c = get_scalar_constant_value(lr)
+                    if c == 0:
+                        inputs[alpha_in] = lr
+                        inputs[beta_in] = lr
+                    elif c == 1:
+                        inputs[alpha_in] = targ.inputs[alpha_in]
+                        inputs[beta_in] = targ.inputs[beta_in]
+                    else:
+                        inputs[alpha_in] = lr * targ.inputs[alpha_in]
+                        inputs[beta_in] = lr * targ.inputs[beta_in]
+                except NotScalarConstantError:
+                    inputs[alpha_in] = lr * targ.inputs[alpha_in]
+                    inputs[beta_in] = lr * targ.inputs[beta_in]
                 return maker(targ, *inputs)
         return opt
     return wrapper
