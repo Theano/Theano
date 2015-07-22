@@ -815,7 +815,7 @@ def io_toposort(inputs, outputs, orderings=None):
         # Also include the cache in the function itself for speed up.
         def compute_deps_cache(obj):
             if obj in deps_cache:
-                return deps_cache[io]
+                return deps_cache[obj]
             rval = []
             if obj not in iset:
                 if isinstance(obj, Variable):

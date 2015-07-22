@@ -1271,7 +1271,7 @@ class COp(Op):
         undef_macros.append("#undef FAIL")
         if 'context' in sub:
             define_macros.append("#define CONTEXT %s" % (sub['context'],))
-            undef_macos.append("#undef CONTEXT")
+            undef_macros.append("#undef CONTEXT")
 
         return os.linesep.join(define_macros), os.linesep.join(undef_macros)
 
@@ -1343,7 +1343,7 @@ class COp(Op):
 
             def_macros, undef_macros = self.get_c_macros(node, name)
             def_sub, undef_sub = self.get_sub_macros(sub)
-            def_io, undef_io = self.get_io_macros(inp, out)
+            def_io, undef_io = self.get_io_macros(inputs, outputs)
 
             return os.linesep.join([def_macros, def_sub, def_io,
                                     op_code,
