@@ -55,7 +55,8 @@ script:
   # Move to the path of the installed version
   - cd $(python -c 'import theano; import os; print(os.path.split(theano.__file__)[0])')
   - echo "$PART"
-  - theano-nose -v $PART
+  - theano-nose -v --with-cprofile $PART
+  - python -c "import pstats; p = pstats.Stats('stats.dat'); print p.strip_dirs().sort_stats('cumulative').print_stats()"
 #  - theano-cache list
 
 #after_script:
