@@ -1088,8 +1088,16 @@ def get_conv3d_test_cases():
     border_modes = ['valid', 'full', (1, 2, 3), (3, 2, 1), 1, 2]
     conv_modes = ['conv', 'cross']
 
-    itt = chain(product(test_shapes, border_modes, conv_modes),
-                product(test_shapes_full, ['full'], conv_modes))
+    if cuda.dnn.dnn_available() and dnn.version() >= (3000, 3000):
+        itt = chain(product(test_shapes, border_modes, conv_modes),
+                    product(test_shapes_full, ['full'], conv_modes))
+    else:
+        # CuDNN, before V3, did not support kernels larger than the inputs,
+        # even if the original inputs were padded so they would be larger than
+        # the kernels. If using a version older than V3 don't run the tests
+        # with kernels larger than the unpadded inputs.
+        itt = product(test_shapes, border_modes, conv_modes)
+
     return itt
 
 
