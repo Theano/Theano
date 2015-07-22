@@ -162,7 +162,7 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         q = T.matrix('q')
         p = T.matrix('p')
         self._compile_and_check([q,p],
-                                [op_graph(q,p)[0],op_graph(q,p)[1]],
+                                op_graph(q,p),
                                 [numpy.ones([3,4], dtype=config.floatX),
                                  numpy.ones([3,4], dtype=config.floatX)],
                                 OpFromGraph)

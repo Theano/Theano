@@ -143,12 +143,21 @@ class OpFromGraph(gof.Op):
 
     def infer_shape(self, node, shapes):
         out_shp = theano.scan_module.scan_utils.infer_shape(self.new_outputs,
-                                                          self.new_inputs,
-                                                          shapes)
+                                                            self.new_inputs,
+                                                            shapes)
         replacement = dict([(ori, rpl) for ori, rpl
                             in izip(self.new_inputs, node.inputs)])
 
-        return [theano.clone(shape, replace=replacement) for shape in out_shp]
+        repl = dict(zip(self.new_inputs, node.inputs))
+        cloned = theano.clone(reduce(tuple.__add__, out_shp), replace=repl)
+        ret = []
+        used = 0
+        for i in range(len(out_shp)):
+            nb = len(out_shp[i])
+            ret.append(cloned[used: used + nb])
+            used += nb
+
+        return ret
 
     def grad(self, inputs, output_grads):
         # OpFromGraph doesn't implement a connection_pattern, so for
