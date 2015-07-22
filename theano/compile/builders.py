@@ -4,7 +4,7 @@ from theano.compat import izip
 from theano.compile.function_module import orig_function
 from theano.compile import SharedVariable, rebuild_collect_shared
 from theano.gof import ops_with_inner_function
-from theano.gof.graph import io_connection_pattern, clone_get_equiv
+from theano.gof.graph import io_connection_pattern
 
 
 class OpFromGraph(gof.Op):
@@ -148,6 +148,13 @@ class OpFromGraph(gof.Op):
         replacement = dict([(ori, rpl) for ori, rpl
                             in izip(self.new_inputs, node.inputs)])
 
+        # Clone the output shape so that shape are computed from outer inputs.
+        # Note:
+        # Here we can do it more simply like:
+        #      ret = [theano.clone(shp, replace=repl) for shp in out_shp]
+        # But  doing it multiple time could duplicate common subgraph between
+        # each shape call. Theano optimizer will clean this up later, but this
+        # will ask extra work to the optimizer.
         repl = dict(zip(self.new_inputs, node.inputs))
         cloned = theano.clone(reduce(tuple.__add__, out_shp), replace=repl)
         ret = []
