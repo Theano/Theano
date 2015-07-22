@@ -8,8 +8,6 @@ from theano.tensor import basic as T
 from theano.misc import strutil
 from theano.gradient import grad_undefined
 from theano.gradient import DisconnectedType
-from theano.tensor.nnet.Conv3D import conv3D
-from theano.tensor.nnet.ConvGrad3D import convGrad3D
 
 
 class ConvTransp3D(theano.Op):
@@ -51,9 +49,9 @@ class ConvTransp3D(theano.Op):
     def grad(self, inputs, output_gradients):
         W, b, d, H, RShape = inputs
         dCdR, = output_gradients
-        dCdH = conv3D(dCdR, W, T.zeros_like(H[0, 0, 0, 0, :]), d)
+        dCdH = theano.tensor.nnet.conv3D(dCdR, W, T.zeros_like(H[0, 0, 0, 0, :]), d)
         WShape = W.shape
-        dCdW = convGrad3D(dCdR, d, WShape, H)
+        dCdW = theano.tensor.nnet.convGrad3D(dCdR, d, WShape, H)
         dCdb = T.sum(dCdR, axis=(0, 1, 2, 3))
         # not differentiable, since d affects the output elements
         dCdd = grad_undefined(self, 2, d)

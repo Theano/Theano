@@ -4,8 +4,6 @@ import numpy as N
 
 import theano
 from theano.tensor import basic as T
-from theano.tensor.nnet.Conv3D import conv3D
-from theano.tensor.nnet.ConvTransp3D import convTransp3D
 from theano.misc import strutil
 from theano.gradient import grad_undefined
 from theano.gradient import DisconnectedType
@@ -46,12 +44,12 @@ class ConvGrad3D(theano.Op):
         dLdA, = output_gradients
 
         z = T.zeros_like(C[0, 0, 0, 0, :])
-        dLdC = convTransp3D(dLdA, z, d, B, C.shape[1:4])
+        dLdC = theano.tensor.nnet.convTransp3D(dLdA, z, d, B, C.shape[1:4])
         # d actually does affect the outputs, so it's not disconnected
         dLdd = grad_undefined(self, 1, d)
         # The shape of the weights doesn't affect the output elements
         dLdWShape = DisconnectedType()()
-        dLdB = conv3D(C, dLdA, T.zeros_like(B[0, 0, 0, 0, :]), d)
+        dLdB = theano.tensor.nnet.conv3D(C, dLdA, T.zeros_like(B[0, 0, 0, 0, :]), d)
 
         return [dLdC, dLdd, dLdWShape, dLdB]
 

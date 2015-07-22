@@ -83,10 +83,11 @@ class Conv3D(theano.Op):
 
         # Make sure the broadcasting pattern of the gradient is the the same
         # as the initial variable
-        dCdV = ConvTransp3D.convTransp3D(W, T.zeros_like(V[0, 0, 0, 0, :]), d, dCdH, V.shape[1:4])
+        dCdV = theano.tensor.nnet.convTransp3D(
+            W, T.zeros_like(V[0, 0, 0, 0, :]), d, dCdH, V.shape[1:4])
         dCdV = T.patternbroadcast(dCdV, V.broadcastable)
         WShape = W.shape
-        dCdW = ConvGrad3D.convGrad3D(V, d, WShape, dCdH)
+        dCdW = theano.tensor.nnet.convGrad3D(V, d, WShape, dCdH)
         dCdW = T.patternbroadcast(dCdW, W.broadcastable)
         dCdb = T.sum(dCdH, axis=(0, 1, 2, 3))
         dCdb = T.patternbroadcast(dCdb, b.broadcastable)
@@ -620,6 +621,3 @@ def computeH(V, W, b, d):
                                         #    print 'setting H[0] += '+str(w*v)+'   W['+str((j,z,k,l,m))+']='+str(w)+'   V['+str((i,d[0]*x+k,d[1]*y+l,d[2]*t+m,z))+']='+str(v)
                                         H[i, x, y, t, j] += w * v
     return H
-    
-from . import ConvGrad3D
-from . import ConvTransp3D
