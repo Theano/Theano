@@ -538,7 +538,6 @@ AddConfigVar(
     BoolParam(True, allow_override=True),
     in_c_key=False)
 
-
 """Note to developers:
     Generally your exceptions should use an apply node's __str__
     method when exception_verbosity == 'low'. When exception_verbosity
