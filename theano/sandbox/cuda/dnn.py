@@ -440,7 +440,11 @@ class GpuDnnConv(DnnBase, COp):
         if version() < (3000, 3000):
             if self.algo == 'fft':
                 raise RuntimeError("CuDNN FFT convolution requires CuDNN v3")
-            elif self.algo in ['time', 'time_once']:
+            elif self.algo in ['guess_once', 'guess_on_shape_change']:
+                raise RuntimeError("CuDNN selection of convolution "
+                                   "implementation based on heuristics "
+                                   "requires CuDNN v3")
+            elif self.algo in ['time_once', 'time_on_shape_change']:
                 raise RuntimeError("CuDNN convolution timing requires CuDNN v3")
 
         assert self.algo in ['none', 'small', 'large', 'fft', 'guess_once',
