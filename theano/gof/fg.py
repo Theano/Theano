@@ -336,7 +336,7 @@ class FunctionGraph(utils.object2):
                             if len(tr) > 0:
                                 detailed_err_msg += "\nBacktrace when the variable is created:\n"
 
-                                # Print separate message for each element in 
+                                # Print separate message for each element in
                                 # the list of batcktraces
                                 sio = StringIO()
                                 for subtr in tr:
