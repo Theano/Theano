@@ -1,4 +1,5 @@
 import logging
+import time
 
 from nose.plugins.skip import SkipTest
 import numpy
@@ -14,6 +15,7 @@ from theano.tensor.signal.downsample import DownsampleFactorMaxGrad
 import theano.sandbox.cuda.dnn as dnn
 from theano.sandbox.cuda.basic_ops import GpuAllocEmpty, gpu_alloc_empty
 from theano.sandbox.cuda import float32_shared_constructor as shared
+from theano.sandbox.cuda.blas import GpuCorr3dMM
 
 # Skip test if cuda_ndarray is not available.
 import theano.sandbox.cuda as cuda
@@ -1176,8 +1178,45 @@ def test_conv3d_bwd():
         yield (run_conv3d_bwd, i_shape, f_shape, subsample, border_mode,
                conv_mode)
 
-
+def benchmark_conv3d():
+    def compile(kernel_size):
+        ftensor5 = T.TensorType('float32', (False,)*5) # (b,c,t,0,1)
+        img = ftensor5('img')
+        
+        kern = theano.shared(numpy.random.normal(
+            size=kernel_size).astype('float32'), name='w')
+        out1 = dnn.dnn_conv3d(img, kern, border_mode='valid', subsample=(1, 1, 1),
+                   conv_mode='cross')
+        out2 = GpuCorr3dMM(border_mode='valid', subsample=(1, 1, 1),
+                          pad=(0, 0, 0))(img, kern)
+        grad1 = T.grad(out1.sum(), kern)
+        grad2 = T.grad(out2.sum(), kern)
+        fn1 = theano.function([img], [out1, grad1])
+        fn2 = theano.function([img], [out2, grad2])
+        return fn1, fn2
+    
+    def benchmark(fn, img):
+        t0 = time.time()
+        for i in range(1):
+            out = fn(img)
+        print 'timing %.4f sec'%(time.time() - t0)
+        return out
+    kernel_size = [10, 20, 3, 3, 5]
+    img_size = [128, 20, 64, 64, 15]
+    img = numpy.random.normal(size=img_size).astype('float32')
+    print 'compiling conv3d fns'
+    fn_dnn, fn_corr3dMM = compile(kernel_size)
+    print 'cudnn conv3d'
+    out1 = benchmark(fn_dnn, img)
+    print 'corr3dMM'
+    out2 = benchmark(fn_corr3dMM, img)
+    assert numpy.allclose(numpy.asarray(out1[0]), numpy.asarray(out2[0]))
+    assert numpy.allclose(numpy.asarray(out1[0]), numpy.asarray(out2[0]))
+    
 def test_version():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
     assert isinstance(cuda.dnn.version(), (int, tuple))
+
+if __name__ == '__main__':
+    benchmark_conv3d()
