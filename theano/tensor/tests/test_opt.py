@@ -4576,6 +4576,11 @@ class test_local_remove_switch_const_cond(unittest.TestCase):
             assert f0(vx) == 0
             assert f1(vx) == 5
 
+            z2 = theano.tensor.switch(0, 0, x.shape[1])
+            f2 = theano.function([x], z2, mode=self.mode)
+            assert isinstance(f2.maker.fgraph.toposort()[0].op, Shape_i)
+            assert f2(vx) == 5
+
     def test_broadcast1(self):
         # test switch(cst, matrix, row)
         x = theano.tensor.matrix('x', dtype='int32')
