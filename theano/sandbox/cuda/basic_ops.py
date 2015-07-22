@@ -2438,7 +2438,7 @@ class GpuReshape(tensor.Reshape, GpuOp):
         out[0] = x.reshape(tuple(shp))
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         x, shape = inputs
@@ -2454,6 +2454,7 @@ class GpuReshape(tensor.Reshape, GpuOp):
         assert (PyArray_NDIM(%(shape)s) == 1);
         if (PyArray_DIM(%(shape)s, 0) != %(new_ndim)s)
         {
+            Py_XDECREF(new_shape);
             PyErr_Format(PyExc_ValueError,
                          "GpuReshape: given shape is of incorrect "
                          "length (%%d should be %%d).",
@@ -2470,6 +2471,7 @@ class GpuReshape(tensor.Reshape, GpuOp):
             {
                 if (compute_axis != -1)
                 {
+                    Py_XDECREF(new_shape);
                     PyErr_Format(PyExc_ValueError,
                                  "GpuReshape: only one -1 is accepted "
                                  "in the new shape, but got two at "
@@ -2505,10 +2507,10 @@ class GpuReshape(tensor.Reshape, GpuOp):
             {
                 int ws = snprintf(shape_from + offset, 128 - offset,
                         " %%d,", shape_from_py[i]);
-                offset += ws; 
+                offset += ws;
                 if ( ws < 0 || offset >= 128 )
                     break;
-            }   
+            }
 
             shape_from[0]='(';
             if(offset < 128)
@@ -2519,6 +2521,7 @@ class GpuReshape(tensor.Reshape, GpuOp):
 
             PyObject *shape_to_py = PyObject_Str(new_shape);
             const char *shape_to = PyString_AsString(shape_to_py);
+            Py_XDECREF(new_shape);
             PyErr_Format(PyExc_ValueError,
                          "GpuReshape: cannot reshape input of shape "
                          "%%s to shape %%s.", shape_from, shape_to);
@@ -2527,6 +2530,7 @@ class GpuReshape(tensor.Reshape, GpuOp):
 
         Py_XDECREF(%(output)s);
         %(output)s = (CudaNdarray*) CudaNdarray_Reshape(%(x)s, new_shape);
+        Py_XDECREF(new_shape);
         if (%(output)s == NULL)
         {
             %(fail)s;
