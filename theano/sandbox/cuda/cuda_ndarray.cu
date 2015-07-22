@@ -138,9 +138,7 @@ void * device_malloc(size_t size, int verbose)
     ///@TODO: thejaswi: support for multiple-streams?
     if(g_use_cnmem) {
         cnmemStatus_t status = CNMEM_STATUS_SUCCESS;
-        if( size != 0 ) {
-            status = cnmemMalloc(&rval, size, NULL);
-        }
+        status = cnmemMalloc(&rval, size, NULL);
         if(status != CNMEM_STATUS_SUCCESS) {
             PyErr_Format(PyExc_MemoryError,
                          "Error allocating %zd bytes of device memory (%s).",

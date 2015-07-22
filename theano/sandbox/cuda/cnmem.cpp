@@ -50,7 +50,6 @@ extern "C" const char* cnmemGetErrorString(cnmemStatus_t status) {
         case CNMEM_STATUS_SUCCESS: return "CNMEM_STATUS_SUCCESS";
         case CNMEM_STATUS_CUDA_ERROR: return "CNMEM_STATUS_CUDA_ERROR";
         case CNMEM_STATUS_INVALID_ARGUMENT: return "CNMEM_STATUS_INVALID_ARGUMENT";
-        case CNMEM_STATUS_MEMORY_LEAK: return "CNMEM_STATUS_MEMORY_LEAK";
         case CNMEM_STATUS_NOT_INITIALIZED: return "CNMEM_STATUS_NOT_INITIALIZED";
         case CNMEM_STATUS_OUT_OF_MEMORY: return "CNMEM_STATUS_OUT_OF_MEMORY";
         default: return "CNMEM_STATUS_UNKNOWN_ERROR";
@@ -325,12 +324,6 @@ class Manager {
     Mutex mMutex;
 
 public:
-    /// The root manager for a given device.
-    static inline Manager& getRootManager(int device) { return getRootManagers()[device]; }
-    /// The list of all the root managers.
-    static std::vector<Manager>& getRootManagers();
-
-public:
     /// Create an unitialized manager.
     Manager();
     /// Dtor.
@@ -341,7 +334,7 @@ public:
     /// Release a block of memory.
     cnmemStatus_t release(void *ptr);
     /// Release memory. It returns true if we have no memory leak.
-    cnmemStatus_t releaseAllUnsafe(bool &memoryLeak);
+    cnmemStatus_t releaseAllUnsafe();
     /// Reserve memory for a manager.
     cnmemStatus_t reserve(std::size_t size);
     /// Steal memory from another manager.
@@ -445,8 +438,7 @@ Manager::~Manager() {
     if( mDevice == -1 || cudaSetDevice(mDevice) != cudaSuccess ) { // Invalid device, skip it.
         return;
     }
-    bool memoryLeak;
-    releaseAllUnsafe(memoryLeak);
+    releaseAllUnsafe();
     mMutex.finalize();
 }
 
@@ -640,13 +632,6 @@ cnmemStatus_t Manager::getNumChildren(std::size_t &numChildren) const {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-std::vector<Manager>& Manager::getRootManagers() {
-    static std::vector<Manager> managers;
-    return managers;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
 cnmemStatus_t Manager::giveBlockUnsafe(void *&blockData, std::size_t &blockSize, std::size_t size) {
     // Make sure the block is not in use any more. It could be too coarse grain and we may change 
     // it in the future.
@@ -748,20 +733,14 @@ cnmemStatus_t Manager::release(void *ptr) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-cnmemStatus_t Manager::releaseAllUnsafe(bool &memoryLeaks) {
+cnmemStatus_t Manager::releaseAllUnsafe() {
     // Destroy the children if any.
-    bool ok = true;
     for( std::size_t i = 0; i < mChildren.size(); ++i ) {
         Manager *child = mChildren[i];
-        bool tmp;
-        CNMEM_CHECK(child->releaseAllUnsafe(tmp));
-        ok = ok && !tmp;
+        CNMEM_CHECK(child->releaseAllUnsafe());
         delete child;
     }
     mChildren.clear();
-
-    // We have some issues when integrating into some libraries. This has to fixed in the libs.
-    memoryLeaks = !ok || mUsedBlocks;
 
     // Destroy used blocks. It's a kind of panic mode to avoid leaks. NOTE: Do that only with roots!!!
     if( !mParent ) {
@@ -961,6 +940,101 @@ cnmemStatus_t Manager::stealBlockUnsafe(void *&data, std::size_t &dataSize, ::si
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+class Context {
+    /// Use a magic number to specify that the context is valid.
+    enum { CTX_VALID = 0x1f5632a3 };
+
+    /// The reference counting mechanism.
+    int mRefCount;
+    /// The mutex to increase/decrease the reference counter. TODO: Use atomics.
+    Mutex mMutex;
+    /// The memory managers.
+    std::vector<Manager> mManagers;
+    /// The global context.
+    static Context *sCtx;
+    /// Use a magic number to specify that the context was created.
+    static int sCtxCheck;
+
+public:
+    /// Ctor.
+    Context() : mRefCount(1) { mMutex.initialize(); }
+    /// Dtor.
+    ~Context();
+    /// Get the managers.
+    inline std::vector<Manager>& getManagers() { return mManagers; }
+    /// Get a single manager associated with a device.
+    inline Manager& getManager(int i) { return mManagers[i]; }
+
+    /// Create the global context.
+    static cnmemStatus_t create();
+    /// Check that the context was created.
+    static inline bool check() { return sCtxCheck == CTX_VALID && sCtx; }
+    /// Get the global context.
+    static Context* get();
+    /// Retain.
+    static cnmemStatus_t retain();
+    /// Release.
+    static cnmemStatus_t release();
+};
+
+Context *Context::sCtx;
+int Context::sCtxCheck;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+Context::~Context() { 
+    int oldDevice;
+    cudaGetDevice(&oldDevice);
+    for( std::size_t i = 0 ; i < mManagers.size() ; ++i ) {
+        if( mManagers[i].getDevice() != -1 ) { // Skip invalid managers.
+            cudaSetDevice(mManagers[i].getDevice());
+            mManagers[i].releaseAllUnsafe();
+        }
+    }
+    mManagers.clear();
+    mMutex.finalize();
+    cudaSetDevice(oldDevice);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+cnmemStatus_t Context::create() {
+    sCtx = new Context;
+    sCtxCheck = CTX_VALID;
+    return CNMEM_STATUS_SUCCESS;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+Context* Context::get() {
+    CNMEM_ASSERT(Context::check());
+    return Context::sCtx;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+cnmemStatus_t Context::retain() { 
+    CNMEM_CHECK(sCtx->mMutex.lock());
+    sCtx->mRefCount++; 
+    CNMEM_CHECK(sCtx->mMutex.unlock());
+    return CNMEM_STATUS_SUCCESS;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+cnmemStatus_t Context::release() {
+    CNMEM_CHECK(sCtx->mMutex.lock());
+    int refCount = --sCtx->mRefCount;
+    CNMEM_CHECK(sCtx->mMutex.unlock());
+
+    if( refCount == 0 ) { // Kill the context.
+        delete sCtx;
+        Context::sCtx = NULL;
+        Context::sCtxCheck = 0;
+    }
+    return CNMEM_STATUS_SUCCESS;
+}
+
 } // namespace cnmem
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -982,10 +1056,14 @@ cnmemStatus_t cnmemInit(int numDevices, const cnmemDevice_t *devices, unsigned f
             maxDevice = devices[i].device;
         }
     }
+
+    // Create the global context.
+    cnmem::Context::create();
+    cnmem::Context *ctx = cnmem::Context::get();
         
     // Allocate enough managers.
     CNMEM_CHECK_TRUE(maxDevice >= 0, CNMEM_STATUS_INVALID_ARGUMENT);
-    std::vector<cnmem::Manager> &managers = cnmem::Manager::getRootManagers();
+    std::vector<cnmem::Manager> &managers = ctx->getManagers();
     managers.resize(maxDevice+1);
 
     // Create a root manager for each device and create the children.
@@ -1001,7 +1079,7 @@ cnmemStatus_t cnmemInit(int numDevices, const cnmemDevice_t *devices, unsigned f
         }
         CNMEM_CHECK_TRUE(size > 0, CNMEM_STATUS_INVALID_ARGUMENT);
         
-        cnmem::Manager &manager = cnmem::Manager::getRootManager(devices[i].device);
+        cnmem::Manager &manager = ctx->getManager(devices[i].device);
         manager.setDevice(devices[i].device);
         manager.setFlags(flags);
         
@@ -1026,14 +1104,35 @@ cnmemStatus_t cnmemInit(int numDevices, const cnmemDevice_t *devices, unsigned f
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+cnmemStatus_t cnmemFinalize() {
+    CNMEM_CHECK_TRUE(cnmem::Context::check(), CNMEM_STATUS_NOT_INITIALIZED);
+    return cnmem::Context::release();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+cnmemStatus_t cnmemRetain() {
+    CNMEM_CHECK_TRUE(cnmem::Context::check(), CNMEM_STATUS_NOT_INITIALIZED);
+    return cnmem::Context::retain();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+cnmemStatus_t cnmemRelease() {
+    CNMEM_CHECK_TRUE(cnmem::Context::check(), CNMEM_STATUS_NOT_INITIALIZED);
+    return cnmem::Context::release();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 cnmemStatus_t cnmemRegisterStream(cudaStream_t stream) {
-    CNMEM_CHECK_TRUE(!cnmem::Manager::getRootManagers().empty(), CNMEM_STATUS_NOT_INITIALIZED);
+    CNMEM_CHECK_TRUE(cnmem::Context::check(), CNMEM_STATUS_NOT_INITIALIZED);
     CNMEM_CHECK_TRUE(stream, CNMEM_STATUS_INVALID_ARGUMENT);
     
     int device;
     CNMEM_CHECK_CUDA(cudaGetDevice(&device));
 
-    cnmem::Manager &root = cnmem::Manager::getRootManager(device);
+    cnmem::Manager &root = cnmem::Context::get()->getManager(device);
     cnmem::Manager *child = new cnmem::Manager;
     child->setParent(&root);
     child->setDevice(device);
@@ -1043,39 +1142,24 @@ cnmemStatus_t cnmemRegisterStream(cudaStream_t stream) {
 
     return CNMEM_STATUS_SUCCESS;
 }
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-cnmemStatus_t cnmemFinalize() {
-    CNMEM_CHECK_TRUE(!cnmem::Manager::getRootManagers().empty(), CNMEM_STATUS_NOT_INITIALIZED);
-        
-    int oldDevice;
-    CNMEM_CHECK_CUDA(cudaGetDevice(&oldDevice));
-    std::vector<cnmem::Manager> &managers = cnmem::Manager::getRootManagers();
-    bool memoryLeaks = false;
-    for( std::size_t i = 0; i < managers.size(); ++i ) {
-        CNMEM_CHECK_CUDA(cudaSetDevice(managers[i].getDevice()));
-        bool tmpLeaks;
-        CNMEM_CHECK(managers[i].releaseAllUnsafe(tmpLeaks));
-        memoryLeaks = memoryLeaks || tmpLeaks;
-    }
-    managers.clear();
-    CNMEM_CHECK_CUDA(cudaSetDevice(oldDevice));
-    return memoryLeaks ? CNMEM_STATUS_MEMORY_LEAK : CNMEM_STATUS_SUCCESS;
-}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 cnmemStatus_t cnmemMalloc(void **ptr, std::size_t size, cudaStream_t stream) {
-    CNMEM_CHECK_TRUE(!cnmem::Manager::getRootManagers().empty(), CNMEM_STATUS_NOT_INITIALIZED);
-    if( !ptr && !size )
+    CNMEM_CHECK_TRUE(cnmem::Context::check(), CNMEM_STATUS_NOT_INITIALIZED);
+    if( !ptr && !size ) {
         return CNMEM_STATUS_SUCCESS;
+    }
+    else if( !size ) {
+        ptr[0] = NULL;
+        return CNMEM_STATUS_SUCCESS;
+    }
     CNMEM_CHECK_TRUE(ptr,  CNMEM_STATUS_INVALID_ARGUMENT);
-    CNMEM_CHECK_TRUE(size, CNMEM_STATUS_INVALID_ARGUMENT);
     
     int device;
     CNMEM_CHECK_CUDA(cudaGetDevice(&device));
 
-    cnmem::Manager &root = cnmem::Manager::getRootManager(device);
+    cnmem::Manager &root = cnmem::Context::get()->getManager(device);
     cnmem::Manager *manager = &root;
     if( stream ) {
         CNMEM_CHECK(root.getChildFromStream(manager, stream));
@@ -1137,7 +1221,7 @@ cnmemStatus_t cnmemMalloc(void **ptr, std::size_t size, cudaStream_t stream) {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 cnmemStatus_t cnmemFree(void *ptr, cudaStream_t stream) {
-    CNMEM_CHECK_TRUE(!cnmem::Manager::getRootManagers().empty(), CNMEM_STATUS_NOT_INITIALIZED);
+    CNMEM_CHECK_TRUE(cnmem::Context::check(), CNMEM_STATUS_NOT_INITIALIZED);
     if( ptr == NULL ) {
         return CNMEM_STATUS_SUCCESS;
     }
@@ -1145,7 +1229,7 @@ cnmemStatus_t cnmemFree(void *ptr, cudaStream_t stream) {
     int device;
     CNMEM_CHECK_CUDA(cudaGetDevice(&device));
 
-    cnmem::Manager &root = cnmem::Manager::getRootManager(device);
+    cnmem::Manager &root = cnmem::Context::get()->getManager(device);
     cnmem::Manager *manager = &root;
     if( stream ) {
         CNMEM_CHECK(root.getChildFromStream(manager, stream));
@@ -1157,12 +1241,12 @@ cnmemStatus_t cnmemFree(void *ptr, cudaStream_t stream) {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 cnmemStatus_t cnmemMemGetInfo(size_t *freeMem, size_t *totalMem, cudaStream_t stream) {
-    CNMEM_CHECK_TRUE(!cnmem::Manager::getRootManagers().empty(), CNMEM_STATUS_NOT_INITIALIZED);
+    CNMEM_CHECK_TRUE(cnmem::Context::check(), CNMEM_STATUS_NOT_INITIALIZED);
     CNMEM_CHECK_TRUE(totalMem && freeMem, CNMEM_STATUS_INVALID_ARGUMENT);
 
     int device;
     CNMEM_CHECK_CUDA(cudaGetDevice(&device));
-    cnmem::Manager &root = cnmem::Manager::getRootManager(device);
+    cnmem::Manager &root = cnmem::Context::get()->getManager(device);
     cnmem::Manager *manager = &root;
     if( stream ) {
         CNMEM_CHECK(root.getChildFromStream(manager, stream));
@@ -1182,11 +1266,11 @@ cnmemStatus_t cnmemMemGetInfo(size_t *freeMem, size_t *totalMem, cudaStream_t st
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 cnmemStatus_t cnmemPrintMemoryState(FILE *file, cudaStream_t stream) {
-    CNMEM_CHECK_TRUE(!cnmem::Manager::getRootManagers().empty(), CNMEM_STATUS_NOT_INITIALIZED);
+    CNMEM_CHECK_TRUE(cnmem::Context::check(), CNMEM_STATUS_NOT_INITIALIZED);
 
     int device;
     CNMEM_CHECK_CUDA(cudaGetDevice(&device));
-    cnmem::Manager &root = cnmem::Manager::getRootManager(device);
+    cnmem::Manager &root = cnmem::Context::get()->getManager(device);
     cnmem::Manager *manager = &root;
     if( stream ) {
         CNMEM_CHECK(root.getChildFromStream(manager, stream));

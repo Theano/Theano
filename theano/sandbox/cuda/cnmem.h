@@ -57,7 +57,6 @@ typedef enum
   CNMEM_STATUS_SUCCESS = 0,
   CNMEM_STATUS_CUDA_ERROR,
   CNMEM_STATUS_INVALID_ARGUMENT,
-  CNMEM_STATUS_MEMORY_LEAK,
   CNMEM_STATUS_NOT_INITIALIZED,
   CNMEM_STATUS_OUT_OF_MEMORY,
   CNMEM_STATUS_UNKNOWN_ERROR
@@ -109,6 +108,49 @@ typedef struct cnmemDevice_t_
 cnmemStatus_t CNMEM_API cnmemInit(int numDevices, const cnmemDevice_t *devices, unsigned flags);
 
 /**
+ * \brief Release all the allocated memory. 
+ * 
+ * This function must be called by a single thread and after all threads that called 
+ * cnmemMalloc/cnmemFree have joined. This function is not thread-safe.
+ *
+ * \return 
+ * CNMEM_STATUS_SUCCESS,          if everything goes fine,
+ * CNMEM_STATUS_NOT_INITIALIZED,  if the ::cnmemInit function has not been called,
+ * CNMEM_STATUS_CUDA_ERROR,       if an error happens in one of the CUDA functions.
+ */
+cnmemStatus_t CNMEM_API cnmemFinalize();
+
+/**
+ * \brief Increase the internal reference counter of the context object.
+ * 
+ * This function increases the internal reference counter of the library. The purpose of that
+ * reference counting mechanism is to give more control to the user over the lifetime of the 
+ * library. It is useful with scoped memory allocation which may be destroyed in a final 
+ * memory collection after the end of main(). That function is thread-safe.
+ *
+ * \return 
+ * CNMEM_STATUS_SUCCESS,          if everything goes fine,
+ * CNMEM_STATUS_NOT_INITIALIZED,  if the ::cnmemInit function has not been called,
+ */
+cnmemStatus_t CNMEM_API cnmemRetain();
+
+/**
+ * \brief Decrease the internal reference counter of the context object.
+ * 
+ * This function decreases the internal reference counter of the library. The purpose of that
+ * reference counting mechanism is to give more control to the user over the lifetime of the 
+ * library. It is useful with scoped memory allocation which may be destroyed in a final 
+ * memory collection after the end of main(). That function is thread-safe.
+ *
+ * You can use \c cnmemRelease to explicitly finalize the library.
+ *
+ * \return 
+ * CNMEM_STATUS_SUCCESS,          if everything goes fine,
+ * CNMEM_STATUS_NOT_INITIALIZED,  if the ::cnmemInit function has not been called,
+ */
+cnmemStatus_t CNMEM_API cnmemRelease();
+
+/**
  * \brief Add a new stream to the pool of managed streams on a device.
  *
  * This function registers a new stream into a device memory manager. It is thread-safe.
@@ -118,20 +160,6 @@ cnmemStatus_t CNMEM_API cnmemInit(int numDevices, const cnmemDevice_t *devices, 
  * CNMEM_STATUS_INVALID_ARGUMENT, if one of the argument is invalid,
  */
 cnmemStatus_t CNMEM_API cnmemRegisterStream(cudaStream_t stream);
-
-/**
- * \brief Release all the allocated memory. 
- * 
- * This function must be called by a single thread and after all threads that called 
- * cnmemMalloc/cnmemFree have joined. This function is not thread-safe.
- *
- * \return 
- * CNMEM_STATUS_SUCCESS,          if everything goes fine,
- * CNMEM_STATUS_NOT_INITIALIZED,  if the ::cnmemInit function has not been called,
- * CNMEM_STATUS_MEMORY_LEAK,      if there are unreleased blocks in the memory queues,
- * CNMEM_STATUS_CUDA_ERROR,       if an error happens in one of the CUDA functions.
- */
-cnmemStatus_t CNMEM_API cnmemFinalize();
 
 /**
  * \brief Allocate memory. 
