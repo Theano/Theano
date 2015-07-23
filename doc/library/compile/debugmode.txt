@@ -25,7 +25,7 @@ a cluster.
 
 DebugMode can be used as follows:
 
-.. code-block:: python
+.. testcode::
 
     x = tensor.dscalar('x')
 
