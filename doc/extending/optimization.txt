@@ -123,7 +123,7 @@ simplification described above:
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_2
 
-.. code-block:: python
+.. testcode::
 
    from theano.gof import toolbox
 
@@ -255,7 +255,7 @@ The local version of the above code would be the following:
 .. theano/tests/test_tutorial.py:T_extending.test_extending_2
 
 
-.. code-block:: python
+.. testcode::
 
    class LocalSimplify(gof.LocalOptimizer):
        def transform(self, node):
@@ -332,7 +332,7 @@ Theano defines some shortcuts to make LocalOptimizers:
   See :class:`PatternSub`.
 
 
-.. code-block:: python
+.. testcode::
 
    from theano.gof.opt import OpSub, OpRemove, PatternSub
 
@@ -435,7 +435,7 @@ Query
 
 A Query is built by the following call:
 
-.. code-block:: python
+.. testcode::
 
    theano.gof.Query(include, require = None, exclude = None, subquery = None)
 
@@ -476,7 +476,7 @@ Examples
 Here are a few examples of how to use a Query on optdb to produce an
 Optimizer:
 
-.. code-block:: python
+.. testcode::
    
    from theano.compile import optdb
 
@@ -500,7 +500,7 @@ Registering an Optimizer
 Let's say we have a global optimizer called ``simplify``. We can add
 it to ``optdb`` as follows:
 
-.. code-block:: python
+.. testcode::
 
    # optdb.register(name, optimizer, order, *tags)
    optdb.register('simplify', simplify, 0.5, 'fast_run')
