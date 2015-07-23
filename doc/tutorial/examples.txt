@@ -311,7 +311,7 @@ Here's a brief example.  The setup code is:
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_examples.test_examples_9
 
-.. code-block:: python
+.. testcode::
 
     from theano.tensor.shared_randomstreams import RandomStreams
     from theano import function
@@ -410,7 +410,7 @@ corresponding to the random number generation process (i.e. RandomFunction{unifo
 An example of how "random states" can be transferred from one theano function
 to another is shown below.
 
-.. code-block:: python
+.. testcode::
 
     import theano
     import numpy
@@ -446,7 +446,7 @@ to another is shown below.
 
 This gives the following output:
 
-.. code-block:: bash
+.. testoutput::
 
     # By default, the two functions are out of sync.
     f1() returns  [ 0.72803009]
@@ -487,7 +487,7 @@ A Real Example: Logistic Regression
 The preceding elements are featured in this more realistic example.
 It will be used repeatedly.
 
-.. code-block:: python
+.. testcode::
 
   import numpy
   import theano
