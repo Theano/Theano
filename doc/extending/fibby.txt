@@ -29,7 +29,7 @@ you should check the strides and alignment.
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_fibby.test_fibby_1
 
-.. code-block:: python
+.. testcode::
 
   class Fibby(theano.Op):
     """
@@ -143,7 +143,7 @@ the correct size for the output. This is essentially simulating the line
 ``y = x.copy()``.
 
 
-.. code-block:: python
+.. testcode::
 
     Py_XDECREF(%(y)s);
     %(y)s = (PyArrayObject*)PyArray_FromArray(
@@ -206,7 +206,7 @@ TODO: talk about OPTIMIZATION STAGES
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_fibby.test_fibby_1
 
-.. code-block:: python
+.. testcode::
 
   from theano.tensor.opt import get_scalar_constant_value, NotScalarConstantError
 
@@ -237,7 +237,7 @@ Test the optimization
 
 Here is some code to test that the optimization is applied only when needed.
 
-.. code-block:: python
+.. testcode::
 
         # Test it does not apply when not needed
         x = T.dvector()
