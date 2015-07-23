@@ -160,6 +160,7 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
       chosen_algo = CONV_ALGO;
     }
 
+#if defined(CUDNN_VERSION) && CUDNN_VERSION >= 3000
     // The FFT implementation (only in V3 and onward) does not support strides,
     // 1x1 filters or inputs with a spatial dimension larger than 1024.
     // If the chosen implementation is FFT, validate that it can be used
@@ -167,7 +168,6 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
     // can't.
     // Following code is 2d-specific, but it is fine as ftt is defined only for
     // 2d-filters
-#if defined(CUDNN_VERSION) && CUDNN_VERSION >= 3000
     if (chosen_algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT && nb_dim == 4)
     {
 
