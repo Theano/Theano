@@ -178,7 +178,7 @@ must define ``filter`` and shall override ``values_eq_approx``.
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_1
-.. code-block:: python
+.. testcode::
 
     # Note that we shadow Python's function ``filter`` with this
     # definition.
@@ -215,7 +215,7 @@ when ``allow_downcast`` is False, i.e. no precision loss is allowed.
 
 **values_eq_approx**
 
-.. code-block:: python
+.. testcode::
 
    def values_eq_approx(x, y, tolerance=1e-4):
        return abs(x - y) / (abs(x) + abs(y)) < tolerance
@@ -248,7 +248,7 @@ the Type is to instantiate a plain Type and set the needed fields:
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_1
-.. code-block:: python
+.. testcode::
 
    from theano import gof
 
@@ -285,6 +285,38 @@ There is a small issue with defining ``double`` this way. All
 instances of ``Double`` are technically the same Type. However, different
 ``Double`` Type instances do not compare the same:
 
+.. testsetup::
+
+   from theano import gof
+
+   class Double(gof.Type):
+
+       def filter(self, x, strict=False, allow_downcast=None):
+           if strict:
+               if isinstance(x, float):
+                   return x
+               else:
+                   raise TypeError('Expected a float!')
+           elif allow_downcast:
+               return float(x)
+           else:   # Covers both the False and None cases.
+               x_float = float(x)
+               if x_float == x:
+                   return x_float
+               else:
+                    raise TypeError('The double type cannot accurately represent '
+                                    'value %s (of type %s): you must explicitly '
+                                    'allow downcasting if you want to do this.'
+                                    % (x, type(x)))
+
+       def values_eq_approx(self, x, y, tolerance=1e-4):
+           return abs(x - y) / (abs(x) + abs(y)) < tolerance
+
+       def __str__(self):
+           return "double"
+
+   double = Double()
+
 >>> double1 = Double()
 >>> double2 = Double()
 >>> double1 == double2
@@ -302,7 +334,7 @@ There are several ways to make sure that equality testing works properly:
     .. If you modify this code, also change :
     .. theano/tests/test_tutorial.py:T_extending.test_extending_1
 
-    .. code-block:: python
+    .. testcode::
 
         def __eq__(self, other):
             return type(self) is Double and type(other) is Double
@@ -357,7 +389,7 @@ Final version
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_1
-.. code-block:: python
+.. testcode::
 
    from theano import gof
 
