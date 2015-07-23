@@ -28,9 +28,8 @@ try:
     from scipy.signal.sigtools import _convolve2d
     imported_scipy_signal = True
 except ImportError:
-    pass
+    imported_scipy_signal = False
 
-imported_scipy_signal = False
 __docformat__ = "restructuredtext en"
 _logger = logging.getLogger("theano.tensor.nnet.conv")
 
