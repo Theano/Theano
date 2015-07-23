@@ -18,7 +18,7 @@ should help you understand how these pieces fit together:
 
 **Code**
 
-.. code-block:: python
+.. testcode::
 
     x = dmatrix('x')
     y = dmatrix('y')
@@ -72,7 +72,7 @@ This is what you would normally type:
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_graphstructures.test_graphstructures_1
 
-.. code-block:: python
+.. testcode::
 
     # create 3 Variables with owner = None
     x = T.matrix('x')
@@ -91,7 +91,7 @@ This is what you would type to build the graph explicitly:
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_graphstructures.test_graphstructures_1
 
-.. code-block:: python
+.. testcode::
 
     from theano.tensor import add, mul, Apply, Variable, TensorType
 
@@ -153,13 +153,13 @@ All nodes in the graph must be instances of ``Apply`` or ``Result``, but
 constraints. For example, the :func:`tensor.add`
 Op instance is written so that:
 
-.. code-block:: python
+.. testcode::
 
     e = dscalar('x') + 1
 
 builds the following graph:
 
-.. code-block:: python
+.. testcode::
 
     node = Apply(op = add,
                  inputs = [Variable(type = dscalar, name = 'x'),
@@ -399,7 +399,7 @@ In both types of pairs, the second element of the tuple is an index,
 such that: ``var.clients[*][0].inputs[index]`` or
 ``fgraph.outputs[index]`` is that variable.
 
-.. code-block:: python
+.. testcode::
 
     import theano
     v = theano.tensor.vector()
