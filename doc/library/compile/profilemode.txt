@@ -27,6 +27,7 @@ Creating a ProfileMode Instance
 
 First create a ProfileMode instance. 
 
+>>> import theano
 >>> from theano import ProfileMode
 >>> profmode = theano.ProfileMode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker())
 
@@ -81,7 +82,7 @@ regression.  (Code for this example is in the file
 Compiling the module with ProfileMode and calling ``profmode.print_summary()``
 generates the following output:
 
-.. code-block:: python
+.. testcode::
     
     """
     ProfileMode.print_summary()
