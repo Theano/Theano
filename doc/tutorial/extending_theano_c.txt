@@ -337,7 +337,7 @@ commonly used.
     of C code that you should include in your C code (after ensuring that a
     Python exception is set) if it needs to raise an exception. Ex:
 
-    .. testcode::
+    .. code-block:: c
 
         c_code = """
             PyErr_Format(PyExc_ValueError, "X does not have the right value");
@@ -354,7 +354,7 @@ commonly used.
     ``%`` characters in the format characters need to be escaped since the C
     code itself is defined in a string which undergoes string formatting.
 
-    .. testcode::
+    .. code-block:: c
 
         c_code = """
             PyErr_Format(PyExc_ValueError,
@@ -737,7 +737,7 @@ The new op is defined inside a Python file with the following code :
 And the following is the C implementation of the op, defined in an external
 C file named vectorTimesVector.c :
 
-.. testcode::
+.. code-block:: c
 
     #section support_code
 
@@ -864,7 +864,7 @@ both their sum and the difference between them would have four
 parameters (two for the op's inputs and two for its outputs) and it's
 signature would look something like this :
 
-.. testcode::
+.. code-block:: c
 
     int sumAndDiffOfScalars(PyArrayObject* in0, PyArrayObject* in1,
                             PyArrayObject** out0, PyArrayObject** out1)
