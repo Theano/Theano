@@ -819,7 +819,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
     nin = 3
     nout = 3
     __props__ = ()
-    
+
     def __init__(self, **kwargs):
         gof.Op.__init__(self, **kwargs)
 
@@ -1040,7 +1040,7 @@ class CrossentropySoftmax1HotWithBiasDx(gof.Op):
     nin = 3
     nout = 1
     __props__ = ()
-    
+
     """Gradient wrt x of the CrossentropySoftmaxArgmax1HotWithBias Op"""
 
     def make_node(self, dy, sm, y_idx, **kwargs):
@@ -1239,7 +1239,7 @@ def crossentropy_softmax_max_and_argmax_1hot(x, y_idx, **kwargs):
 
 
 class CrossentropyCategorical1HotGrad(gof.Op):
-    
+
     __props__ = ()
 
     def make_node(self, g_y, coding_dist, true_one_of_n):
@@ -1907,9 +1907,9 @@ def categorical_crossentropy(coding_dist, true_dist):
 
 
 class Prepend_scalar_constant_to_each_row(gof.Op):
-    
+
     __props__ = ()
-    
+
     def __init__(self, val=0):
         if isinstance(val, float):
             val = scalar.constant(val)
