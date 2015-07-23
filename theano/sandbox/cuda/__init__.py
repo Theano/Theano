@@ -14,7 +14,7 @@ from theano.gof import EquilibriumDB, SequenceDB
 from theano.gof.cmodule import get_lib_extension
 from theano.gof.compilelock import get_lock, release_lock
 from theano.configparser import (
-    config, AddConfigVar, BoolParam, IntParam, StrParam)
+    config, AddConfigVar, BoolParam, FloatParam, StrParam)
 from . import nvcc_compiler
 
 # ignore_newtrees is to speed the optimization as this is the pattern
@@ -56,16 +56,18 @@ AddConfigVar('cublas.lib',
         StrParam('cublas'))
 
 AddConfigVar('lib.cnmem',
-             """Do we enable CNMeM or not (a faster memory allocator).
+             """Do we enable CNMeM or not (a faster CUDA memory allocator).
 
-             The number (in MB) represent the start size of the memory pool.
+             The parameter represent the start size (in MB or % of
+             total GPU memory) of the memory pool.
 
              0: not enabled.
-             -1: use half GPU memory.
-             >0: use that number of MB of memory.""",
+             0 < N <= 1: % of the total GPU memory (clipped to .985 for driver memory)
+             > 0: use that number of MB of memory.
+
+             """,
              # We should not mix both allocator, so we can't override
-             # BoolParam(False, allow_override=False),
-             IntParam(0, lambda i: i >= 0 or i == -1, allow_override=False),
+             FloatParam(0, lambda i: i >= 0, allow_override=False),
              in_c_key=False)
 
 # is_nvcc_available called here to initialize global vars in

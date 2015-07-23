@@ -3141,9 +3141,9 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
 {
     int card_nb = 0;
     int card_number_provided = 1;
-    int cnmem = 0; // start qt memory in MB.
+    float cnmem = 0; // Theano flag lib.cnmem
     // if we're given something wildly invalid, this will throw a TypeError
-    PyArg_ParseTuple(args, "|ii", &card_nb, &cnmem);
+    PyArg_ParseTuple(args, "|if", &card_nb, &cnmem);
     if(cnmem)
         g_use_cnmem = true;
 
@@ -3202,13 +3202,27 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
     }
     if(card_number_provided && g_use_cnmem) {
         size_t mem = 0;
-        if (cnmem > 0)
+        if (cnmem > 1)
             mem = cnmem * 1024 * 1024;
-        else if (cnmem != -1){
-            return PyErr_Format(
-                PyExc_EnvironmentError,
-                "CNMeM init: The config flag must be 0 (disabled),"
-                " -1: use half the GPU memory, > 0: that memory in MB.");
+        else{
+            // Clip to 98.5% to let memory for the driver.
+            if (cnmem > .985){
+                cnmem = .985;
+            }
+            size_t free = 0, total = 0;
+            cudaError_t err = cudaMemGetInfo(&free, &total);
+            if (err != cudaSuccess){
+                // Clear the error flag, cudaMemGetInfo doesn't do it.
+                // Currently this returns the same thing as err, but if in future
+                // it returns something else I still don't see why we should ignore
+                // it.  All we want to do here is reset the flag.
+                cudaGetLastError();
+                PyErr_Format(PyExc_RuntimeError,
+                             "Error while getting memory info about the gpu: %s",
+                             cudaGetErrorString(err));
+                return NULL;
+            }
+            mem = total * cnmem;
         }
         if(initCnmem(card_number_provided, card_nb, mem) == -1){
             return NULL;
