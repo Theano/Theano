@@ -102,7 +102,7 @@ along every instance of your model.
 
 For instance, you can define functions along the lines of:
 
-.. code-block:: python
+.. testcode::
 
     def __getstate__(self):
         state = dict(self.__dict__)
@@ -127,7 +127,7 @@ The main advantage of this approach is that you don't even need Theano installed
 in order to look at the values of shared variables that you pickled. You can
 just load the parameters manually with `numpy`.
 
-.. code-block:: python
+.. testcode::
 
     numpy.load('model.zip')
 
@@ -153,7 +153,7 @@ don't.
 For instance, if the only parameters you want to save are a weight
 matrix *W* and a bias *b*, you can define:
 
-.. code-block:: python
+.. testcode::
 
     def __getstate__(self):
         return (self.W, self.b)
@@ -167,7 +167,7 @@ If at some point in time *W* is renamed to *weights* and *b* to
 *bias*, the older pickled files will still be usable, if you update these
 functions to reflect the change in name:
 
-.. code-block:: python
+.. testcode::
 
     def __getstate__(self):
         return (self.weights, self.bias)
