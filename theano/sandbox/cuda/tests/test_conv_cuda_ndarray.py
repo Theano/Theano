@@ -452,7 +452,8 @@ def test_default_conv():
                 for a in f.maker.fgraph.apply_nodes])
 
 
-def _test_full(cls, mode=None, version=[-1], extra_shapes=[]):
+def _test_full(cls, mode=None, version=[-1], extra_shapes=[],
+               test_bigger_kernels=True):
     seed_rng()
     shapes = get_basic_shapes()
     shapes += get_shapes2()
@@ -481,14 +482,18 @@ def _test_full(cls, mode=None, version=[-1], extra_shapes=[]):
             , ((16, 5, 64, 64), (8, 5, 8, 8), (1, 1), (1, 1), (1, 1))  # a big one
             , ((16, 1, 28, 28), (20, 1, 5, 5), (1, 1), (1, 1), (1, 1))  # MNIST LeNET layer 1
             , ((20, 16, 32, 32), (1, 16, 28, 28), (1, 1), (1, 1), (1, 1))  # layer 1 backprop to weights
+            ]
 
-        # other test
-            , ((3, 1, 1, 1), (2, 1, 5, 3), (1, 1), (1, 1), (1, 1))  # kernel bigger then image
+    if test_bigger_kernels:
+        # Shapes where the kernel is larger than the image in some dimension
+        shapes += [
+              ((3, 1, 1, 1), (2, 1, 5, 3), (1, 1), (1, 1), (1, 1))
             , ((3, 2, 1, 1), (4, 2, 1, 1), (1, 1), (1, 1), (1, 1))
             , ((3, 2, 4, 4), (4, 2, 2, 6), (1, 1), (1, 1), (1, 1))
-            , ((3, 2, 4, 4), (4, 2, 8, 6), (1, 1), (1, 1), (1, 1))  # kernel bigger then image
+            , ((3, 2, 4, 4), (4, 2, 8, 6), (1, 1), (1, 1), (1, 1))
             , ((4, 2, 10, 10), (3, 2, 2, 12), (1, 1), (1, 1), (1, 1))
             ]
+
     shapes += [
 #        ((60,1,28,28),(20,1,5,5), (1, 1), (1, 1), (1, 1))#test_lenet_28 1 layers
 #            , ((60,20,12,12),(30,20,5,5), (1, 1), (1, 1), (1, 1))#test_lenet_28 2 layers
@@ -531,7 +536,16 @@ def test_gemm_full():
 def test_dnn_full():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
-    for t in _test_full(DnnBase, mode=theano_mode.including("cudnn")):
+
+    # If using CuDNN version before v3, only run the tests where the
+    # kernels are not larger than the input in any spatial dimension.
+    if cuda.dnn.version() < (3000, 3000):
+        test_bigger_kernels = False
+    else:
+        test_bigger_kernels = True
+
+    for t in _test_full(DnnBase, mode=theano_mode.including("cudnn"),
+                        test_bigger_kernels=test_bigger_kernels):
         yield t
 
 
