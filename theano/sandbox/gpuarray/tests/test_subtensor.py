@@ -7,6 +7,7 @@ from theano.tensor.tests import test_subtensor
 
 from ..basic_ops import HostFromGpu, GpuFromHost
 from ..subtensor import (GpuIncSubtensor, GpuSubtensor,
+                         GpuAdvancedSubtensor1,
                          GpuAdvancedIncSubtensor1)
 from ..type import gpuarray_shared_constructor
 
@@ -24,6 +25,7 @@ class G_subtensor(test_subtensor.T_subtensor):
             shared=gpuarray_shared_constructor,
             sub=GpuSubtensor,
             inc_sub=GpuIncSubtensor,
+            adv_sub1=GpuAdvancedSubtensor1,
             adv_incsub1=GpuAdvancedIncSubtensor1,
             mode=mode_with_gpu,
             # avoid errors with limited devices

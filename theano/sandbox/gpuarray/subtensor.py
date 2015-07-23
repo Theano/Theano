@@ -405,6 +405,77 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
         return parent_version + elemwise_version + (2,)
 
 
+class GpuAdvancedSubtensor1(HideC, tensor.AdvancedSubtensor1):
+    def make_node(self, x, ilist):
+        x_ = as_gpuarray_variable(x)
+
+        ilist__ = tensor.as_tensor_variable(ilist)
+        if ilist__.type.dtype[:3] not in ('int', 'uin'):
+            raise TypeError('index must be integers')
+        if ilist__.type.dtype != 'int64':
+            ilist__ = tensor.cast(ilist__, 'int64')
+
+        ilist_ = as_gpuarray_variable(ilist__)
+
+        if ilist_.type.dtype != 'int64':
+            raise TypeError('index must be int64')
+        if ilist_.type.ndim != 1:
+            raise TypeError('index must be a vector')
+        if x_.type.ndim == 0:
+            raise TypeError('cannot index into a scalar')
+
+        bcast = ilist_.broadcastable + x_.broadcastable[1:]
+        return gof.Apply(self, [x_, ilist_],
+                         [GpuArrayType(dtype=x.dtype,
+                                       broadcastable=bcast)()])
+
+    def perform(self, node, inp, out_):
+        raise NotImplementedError()
+
+    def c_support_code(self):
+        return """
+int take1_match_dims(GpuArray *a, GpuArray *v) {
+  if (a->nd != v->nd) return 0;
+  for (unsigned int i = 1; i < v->nd; i++) {
+    if (a->dimensions[i] != v->dimensions[i]) return 0;
+  }
+  return 1;
+}
+"""
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        return """
+int err;
+if (%(out)s == NULL || !GpuArray_IS_C_CONTIGUOUS(&%(out)s->ga) ||
+    %(out)s->ga.dimensions[0] != %(idx)s->ga.dimensions[0] ||
+    !take1_match_dims(&%(out)s->ga, &%(v)s->ga)) {
+  size_t tmp;
+  Py_XDECREF(%(out)s);
+
+  /* This is a dirty hack to avoid an extra alloc */
+  tmp = %(v)s->ga.dimensions[0];
+  %(v)s->ga.dimensions[0] = %(idx)s->ga.dimensions[0];
+  %(out)s = pygpu_empty(%(v)s->ga.nd, %(v)s->ga.dimensions, %(v)s->ga.typecode,
+                        GA_C_ORDER, %(v)s->context, Py_None);
+  %(v)s->ga.dimensions[0] = tmp; // Don't remove this line
+}
+
+err = GpuArray_take1(&%(out)s->ga, &%(v)s->ga, &%(idx)s->ga, 1);
+if (err != GA_NO_ERROR) {
+  if (err == GA_VALUE_ERROR) {
+    PyErr_SetString(PyExc_IndexError, "Index out of bounds.");
+  } else {
+    PyErr_SetString(PyExc_RuntimeError, Gpu_error(%(v)s->context->ops,
+                                                  %(v)s->context->ctx, err));
+  }
+  %(fail)s
+}
+""" % dict(out=outputs[0], v=inputs[0], idx=inputs[1], fail=sub['fail'])
+
+    def c_code_cache_version(self):
+        return (0,)
+
+
 class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
     """
     Implement AdvancedIncSubtensor1 on the gpu.
