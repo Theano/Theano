@@ -90,7 +90,7 @@ and (like in SciPy) they do not support broadcasting operations by default
 formats for sparse type: ``csr`` and ``csc``. So in ``make_mode()``,
 you can create output variables like this:
 
-.. code-block:: python
+.. testcode::
 
     out_format = inputs[0].format  # or 'csr' or 'csc' if the output format is fixed
     SparseType(dtype=inputs[0].dtype, format=out_format).make_variable()
