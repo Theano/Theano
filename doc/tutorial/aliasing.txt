@@ -267,7 +267,7 @@ graph.
 
 For GPU graphs, this borrowing can have a major speed impact.  See the following code:
 
-.. code-block:: python
+.. testcode::
 
    from theano import function, config, shared, sandbox, tensor, Out
    import numpy
