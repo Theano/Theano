@@ -34,7 +34,7 @@ detail about these building blocks refer to :ref:`variable`, :ref:`op`,
 
 **Code**
 
-.. code-block:: python
+.. testcode::
 
     x = T.dmatrix('x')
     y = T.dmatrix('y')
