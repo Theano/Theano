@@ -3948,16 +3948,13 @@ def local_sum_prod_div_dimshuffle(node):
 
             # Old, bugged logic, reproduced here only to warn users
             if (config.warn.sum_div_dimshuffle_bug and
-                    isinstance(node.op, T.Sum)):
-                if numerator.owner and isinstance(numerator.owner.op,
-                                                  T.DimShuffle):
-                    new_order = numerator.owner.op.new_order
-                    compatible_dims = True
-                    for ax in axis:
-                        if len(new_order) <= ax or new_order[ax] != 'x':
-                            compatible_dims = False
-                            break
-                    if compatible_dims:
+                    isinstance(node.op, T.Sum) and
+                    numerator.owner and
+                    isinstance(numerator.owner.op, T.DimShuffle)):
+                # Check compatibility
+                new_order = numerator.owner.op.new_order
+                for ax in axis:
+                    if ax < len(new_order) and new_order[ax] == 'x':
                         _logger.warn('WARNING: Your current code is fine, but'
                                      ' Theano versions between '
                                      'rev. 3bd9b789f5e8 (2010-06-16) and'
@@ -3966,36 +3963,47 @@ def local_sum_prod_div_dimshuffle(node):
                                      'To disable this warning, set the Theano'
                                      ' flag warn.sum_div_dimshuffle_bug to'
                                      ' False.')
+                        break
 
             if denominator.owner and isinstance(denominator.owner.op,
                                                 T.DimShuffle):
-                thing_dimshuffled = denominator.owner.inputs[0]
-                new_order = denominator.owner.op.new_order
-                # print 'new_order =', new_order
-                # check compatibility
-                compatible_dims = True
+                dimshuffle_input = denominator.owner.inputs[0]
+                dimshuffle_order = denominator.owner.op.new_order
+
+                compatible_dims = []
+                incompatible_dims = []
                 for ax in axis:
-                    # print 'ax =', ax
-                    # print 'len(new_order) =', len(new_order)
-                    # print 'new_order[ax] =', new_order[ax]
-                    if len(new_order) <= ax or new_order[ax] != 'x':
-                        compatible_dims = False
-                        break
-
-                if compatible_dims:
-                    # print 'getting denom out'
-                    # Keep needed dimensions for new dimshuffle
-                    new_new_order = list(ax for i, ax in enumerate(new_order)
-                                         if i not in axis or ax != 'x')
-                    # print 'new_new_order =', new_new_order
-                    # Remove useless rebroadcast axes
-                    while len(new_new_order) > 0 and new_new_order[0] == 'x':
-                        del new_new_order[0]
-                    # print 'new_new_order =', new_new_order
-
-                    if all(i == e for i, e in enumerate(new_new_order)):
-                        new_denom = thing_dimshuffled
+                    if (ax < len(dimshuffle_order) and
+                            dimshuffle_order[ax] == 'x'):
+                        compatible_dims.append(ax)
                     else:
+                        incompatible_dims.append(ax)
+                reordered_incompatible_dims = []
+                for ic_ax in incompatible_dims:
+                    reordered_incompatible_dims.append(
+                        ic_ax - sum(
+                            [1 for c_ax in compatible_dims if c_ax < ic_ax]))
+
+                if len(compatible_dims) > 0:
+                    optimized_dimshuffle_order = list(
+                        ax for i, ax in enumerate(dimshuffle_order)
+                        if (i not in axis) or (ax != 'x'))
+
+                    # Removing leading 'x' (since it will be done automatically)
+                    while (len(optimized_dimshuffle_order) > 0 and
+                           optimized_dimshuffle_order[0] == 'x'):
+                        del optimized_dimshuffle_order[0]
+
+                    # if optimized_dimshuffle_order is sorted with
+                    # not 'x', then dimshuffle is useless.
+                    if all(i == e for i, e in
+                           enumerate(optimized_dimshuffle_order)):
+                        optimized_dimshuffle = dimshuffle_input
+                    else:
+                        optimized_dimshuffle = T.DimShuffle(
+                            dimshuffle_input.type.broadcastable,
+                            optimized_dimshuffle_order)(dimshuffle_input)
+
                         if (config.warn.sum_div_dimshuffle_bug and
                                 isinstance(node.op, T.Sum)):
                             _logger.warn('WARNING: Your current code is fine,'
@@ -4008,12 +4016,27 @@ def local_sum_prod_div_dimshuffle(node):
                                          'warn.sum_div_dimshuffle_bug'
                                          ' to False.')
 
-                        new_denom = T.DimShuffle(
-                            thing_dimshuffled.type.broadcastable,
-                            new_new_order)(thing_dimshuffled)
-                    return [T.true_div(node.op(numerator), new_denom)]
-                # else:
-                #    print 'incompatible dims:', axis, new_order
+                    if isinstance(node.op, T.Sum):
+                        op_on_compatible_dims = T.sum(
+                            numerator, axis=compatible_dims)
+                        div_op = T.true_div(
+                            op_on_compatible_dims,
+                            optimized_dimshuffle)
+                        op_on_incompatible_dims = T.sum(
+                            div_op,
+                            axis=reordered_incompatible_dims)
+                    elif isinstance(node.op, T.elemwise.Prod):
+                        op_on_compatible_dims = T.prod(
+                            numerator, axis=compatible_dims)
+                        div_op = T.true_div(
+                            op_on_compatible_dims,
+                            (optimized_dimshuffle **
+                                T.prod([numerator.shape[ax]
+                                        for ax in compatible_dims])))
+                        op_on_incompatible_dims = T.prod(
+                            div_op,
+                            axis=reordered_incompatible_dims)
+                    return [op_on_incompatible_dims]
 
 
 @register_canonicalize
