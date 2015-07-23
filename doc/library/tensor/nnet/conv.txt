@@ -83,7 +83,7 @@ TODO: Give examples on how to use these things! They are pretty complicated.
       its ``version`` parameter to ``'no_fft'``. To enable it for just
       one Theano function:
 
-      .. code-block:: python
+      .. testcode::
 
           mode = theano.compile.get_default_mode()
           mode = mode.including('conv_fft')
@@ -144,7 +144,7 @@ TODO: Give examples on how to use these things! They are pretty complicated.
       CUDA >= 5.0, scikits.cuda >= 0.5.0 and PyCUDA to run.
       To enable for just one Theano function:
 
-      .. code-block:: python
+      .. testcode::
 
           mode = theano.compile.get_default_mode()
           mode = mode.including('conv3d_fft', 'convgrad3d_fft', 'convtransp3d_fft')
