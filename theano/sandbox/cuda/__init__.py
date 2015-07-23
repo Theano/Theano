@@ -121,6 +121,8 @@ def try_import():
         'cuda_ndarray.cu',
         'cuda_ndarray.cuh',
         'conv_full_kernel.cu',
+        'cnmem.h',
+        'cnmem.cpp',
         'conv_kernel.cu')
     stat_times = [os.stat(os.path.join(cuda_path, cuda_file))[stat.ST_MTIME]
                   for cuda_file in cuda_files]
