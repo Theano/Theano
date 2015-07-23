@@ -81,7 +81,7 @@ regression.  (Code for this example is in the file
 Compiling the module with ProfileMode and calling ``profmode.print_summary()``
 generates the following output:
 
-.. code-block:: python
+.. testcode::
     
     """
     ProfileMode.print_summary()
