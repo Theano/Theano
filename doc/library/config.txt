@@ -380,8 +380,9 @@ import theano and print the config variable, as in:
 
     That library is included in Theano, you do not need to install it.
 
-    The value represent the start size (in MB or % of
-    total GPU memory) of the memory pool:
+    The value represents the start size (in MB or % of total GPU
+    memory) of the memory pool. If more memory are needed, it will
+    try to get more, but this can cause more memory fragmentation:
 
         * 0: not enabled.
         * 0 < N <= 1: % of the total GPU memory (clipped to .985 for driver memory)
@@ -392,9 +393,9 @@ import theano and print the config variable, as in:
 
     .. note::
 
-        This could cause memory fragmentation. So if you have an
+        This could cause memory fragmentation. So if you have a
         memory error while using cnmem, try to allocate more memory at
-        the start or without it. If you try this, report your result
+        the start or disable it. If you try this, report your result
         on :ref`theano-dev`.
 
 .. attribute:: linker

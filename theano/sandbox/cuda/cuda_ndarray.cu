@@ -3143,7 +3143,8 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
     int card_number_provided = 1;
     float cnmem = 0; // Theano flag lib.cnmem
     // if we're given something wildly invalid, this will throw a TypeError
-    PyArg_ParseTuple(args, "|if", &card_nb, &cnmem);
+    if(!PyArg_ParseTuple(args, "|if", &card_nb, &cnmem))
+        return NULL;
     if(cnmem)
         g_use_cnmem = true;
 
