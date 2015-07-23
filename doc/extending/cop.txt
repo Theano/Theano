@@ -256,7 +256,7 @@ We will be defining C code for the multiplication Op on doubles.
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_2
 
-.. code-block:: python
+.. testcode::
 
    def c_code(node, name, input_names, output_names, sub):
        x_name, y_name = input_names[0], input_names[1]
@@ -302,7 +302,7 @@ version that it produces in the code I gave above.
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_2
 
-.. code-block:: python
+.. testcode::
 
    from theano import gof
 
