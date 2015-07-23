@@ -41,7 +41,11 @@
 #define CNMEM_API __declspec(dllimport)
 #endif
 #else
+#ifdef CNMEM_DLLEXPORT
+#define CNMEM_API __attribute__((visibility ("default")))
+#else
 #define CNMEM_API
+#endif
 #endif
 
 #define CNMEM_VERSION 100 // It corresponds to 1.0.0
@@ -249,7 +253,7 @@ cnmemStatus_t CNMEM_API cnmemPrintMemoryState(FILE *file, cudaStream_t stream);
 /**
  * \brief Converts a cnmemStatus_t value to a string.
  */
-const char* cnmemGetErrorString(cnmemStatus_t status);
+const char* CNMEM_API cnmemGetErrorString(cnmemStatus_t status);
 
 /* ********************************************************************************************* */
 

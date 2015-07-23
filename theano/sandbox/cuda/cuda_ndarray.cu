@@ -9,6 +9,10 @@
 
 #include "cuda_ndarray.cuh"
 
+#ifndef CNMEM_DLLEXPORT
+#define CNMEM_DLLEXPORT
+#endif
+
 #include "cnmem.h"
 #include "cnmem.cpp"
 
