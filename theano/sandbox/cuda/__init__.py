@@ -190,6 +190,10 @@ if compile_cuda_ndarray and cuda_available:
                             os.makedirs(tmpdir)
 
                     compiler = nvcc_compiler.NVCC_compiler()
+                    if sys.platform == 'darwin' and config.lib.cnmem:
+                        raise Exception(
+                            "Currently CNMeM isn't supported on Mac due to"
+                            " problems with symbols on Mac.")
                     compiler.compile_str(
                             'cuda_ndarray',
                             code,
@@ -197,7 +201,7 @@ if compile_cuda_ndarray and cuda_available:
                             include_dirs=[cuda_path],
                             libs=[config.cublas.lib],
                             preargs=['-O3'] + compiler.compile_args(),
-                            hide_symbols=False,
+                            hide_symbols=config.lib.cnmem,
                     )
                     from cuda_ndarray.cuda_ndarray import *
             except Exception as e:
