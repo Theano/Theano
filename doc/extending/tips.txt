@@ -19,7 +19,7 @@ implemented using other already existing Ops. For example, instead of
 writing a "sum_square_difference" Op, you should probably just write a
 simple function:
 
-.. code-block:: python
+.. testcode::
 
    from theano import tensor as T
 
