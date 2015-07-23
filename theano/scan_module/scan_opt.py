@@ -248,7 +248,6 @@ class PushOutNonSeqScan(gof.Optimizer):
                 enumerate(local_fgraph.outputs)])
 
         to_remove_set = set()
-        to_remove_add = to_remove_set.add
         to_replace_set = set()
         to_replace_add = to_replace_set.add
         to_replace_map = OrderedDict()
@@ -291,7 +290,7 @@ class PushOutNonSeqScan(gof.Optimizer):
 
                 # We have a candidate node to removable
                 # Step 1. Reconstruct it on outside
-                to_remove_add(nd)
+                to_remove_set.add(nd)
                 outside_ins = []
                 for x in nd.inputs:
                     if x in inner_non_seqs_set:
@@ -441,7 +440,6 @@ class PushOutSeqScan(gof.Optimizer):
                                      enumerate(local_fgraph.outputs)])
 
         to_remove_set = set()
-        to_remove_add = to_remove_set.add
         to_replace_set = set()
         to_replace_add = to_replace_set.add
         to_replace_map = OrderedDict()
@@ -478,7 +476,7 @@ class PushOutSeqScan(gof.Optimizer):
                (x in inner_seqs_set) for x in nd.inputs]) and
                isinstance(nd.op, theano.tensor.Elemwise)):
 
-                to_remove_add(nd)
+                to_remove_set.add(nd)
                 outside_ins = []
                 depends_on_seqs = False
 
@@ -527,7 +525,7 @@ class PushOutSeqScan(gof.Optimizer):
                   (nd.inputs[0] in inner_seqs_set or
                   nd.inputs[0].owner in to_remove_set)):
 
-                to_remove_add(nd)
+                to_remove_set.add(nd)
                 x = nd.inputs[0]
                 if x in inner_seqs_set:
                     outside_ins = outer_seqs[inner_seqs_map[x]]
