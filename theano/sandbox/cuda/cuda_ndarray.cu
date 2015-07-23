@@ -73,13 +73,12 @@ void * device_malloc(size_t size)
 ///@TODO: thejaswi: link this option to a theano config variable?
 static bool g_use_cnmem = false;
 static const int g_max_devices = 8;
-int initCnmem(int card_number_provided, int card_nb) {
+int initCnmem(int card_number_provided, int card_nb, size_t mem) {
     static bool cnmemInitialized = false;
     if(cnmemInitialized) {
         return 0;
     }
     // On stderr to be at the same place as "Using gpu device..."
-    fprintf(stderr, "Initializing cnmem...\n");
     int numDevices = 0;
     cnmemDevice_t devices[g_max_devices];
     if(cudaGetDeviceCount(&numDevices) != cudaSuccess) {
@@ -92,8 +91,7 @@ int initCnmem(int card_number_provided, int card_nb) {
         numDevices = 1;
         int i = 0;
         devices[i].device = card_nb;
-        ///@TODO: thejaswi: support for choosing mem size to be allocated before-hand?
-        devices[i].size = 0;
+        devices[i].size = mem;
         ///@TODO: thejaswi: add support for multiple streams
         devices[i].numStreams = 0;
         devices[i].streams = NULL;
@@ -101,8 +99,7 @@ int initCnmem(int card_number_provided, int card_nb) {
     }else{
         for(int i=0;i<numDevices;++i) {
             devices[i].device = i;
-            ///@TODO: thejaswi: support for choosing mem size to be allocated before-hand?
-            devices[i].size = 0;
+            devices[i].size = mem;
             ///@TODO: thejaswi: add support for multiple streams
             devices[i].numStreams = 0;
             devices[i].streams = NULL;
@@ -3144,7 +3141,7 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
 {
     int card_nb = 0;
     int card_number_provided = 1;
-    int cnmem = 0; // 0 False, 1 True
+    int cnmem = 0; // start qt memory in MB.
     // if we're given something wildly invalid, this will throw a TypeError
     PyArg_ParseTuple(args, "|ii", &card_nb, &cnmem);
     if(cnmem)
@@ -3204,7 +3201,16 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
             return NULL;
     }
     if(card_number_provided && g_use_cnmem) {
-        if(initCnmem(card_number_provided, card_nb) == -1){
+        size_t mem = 0;
+        if (cnmem > 0)
+            mem = cnmem * 1024 * 1024;
+        else if (cnmem != -1){
+            return PyErr_Format(
+                PyExc_EnvironmentError,
+                "CNMeM init: The config flag must be 0 (disabled),"
+                " -1: use half the GPU memory, > 0: that memory in MB.");
+        }
+        if(initCnmem(card_number_provided, card_nb, mem) == -1){
             return NULL;
         }
     }
@@ -3240,7 +3246,6 @@ CudaNdarray_gpu_shutdown(PyObject* _unused, PyObject* _unused_args) {
     cublas_shutdown();
     g_gpu_context_active = 0; // context has now been closed down
     if(g_use_cnmem) {
-        fprintf(stderr, "Shutting down cnmem...\n");
         cnmemStatus_t status = cnmemFinalize();
         if(status != CNMEM_STATUS_SUCCESS) {
             fprintf(stderr, "CudaNdarray_gpu_shutdown: cnmemFinalize failed! Reason=%s\n",

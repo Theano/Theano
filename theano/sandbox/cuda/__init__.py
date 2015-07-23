@@ -13,7 +13,8 @@ from theano.compile import optdb
 from theano.gof import EquilibriumDB, SequenceDB
 from theano.gof.cmodule import get_lib_extension
 from theano.gof.compilelock import get_lock, release_lock
-from theano.configparser import config, AddConfigVar, StrParam, BoolParam
+from theano.configparser import (
+    config, AddConfigVar, BoolParam, IntParam, StrParam)
 from . import nvcc_compiler
 
 # ignore_newtrees is to speed the optimization as this is the pattern
@@ -55,9 +56,16 @@ AddConfigVar('cublas.lib',
         StrParam('cublas'))
 
 AddConfigVar('lib.cnmem',
-             """Do we enable cnmem or not.""",
+             """Do we enable CNMeM or not (a faster memory allocator).
+
+             The number (in MB) represent the start size of the memory pool.
+
+             0: not enabled.
+             -1: use half GPU memory.
+             >0: use that number of MB of memory.""",
              # We should not mix both allocator, so we can't override
-             BoolParam(False, allow_override=False),
+             # BoolParam(False, allow_override=False),
+             IntParam(0, lambda i: i >= 0 or i == -1, allow_override=False),
              in_c_key=False)
 
 # is_nvcc_available called here to initialize global vars in
@@ -412,7 +420,7 @@ def use(device,
 
             if config.print_active_device:
                 cnmem_enabled = "enabled" if config.lib.cnmem else "disabled"
-                print("Using gpu device %d: %s (cnmem is %s)" % (
+                print("Using gpu device %d: %s (CNMeM is %s)" % (
                         active_device_number(), active_device_name(), cnmem_enabled), file=sys.stderr)
             if device_properties(use.device_number)['regsPerBlock'] < 16384:
                 # We will try to use too much register per bloc at many places
