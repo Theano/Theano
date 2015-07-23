@@ -370,6 +370,34 @@ import theano and print the config variable, as in:
     `amdlibm <http://developer.amd.com/cpu/libraries/libm/>`__
     library, which is faster than the standard libm.
 
+.. attribute:: lib.cnmem
+
+    Float value: >= 0
+
+    Do we enable `CNMeM <https://github.com/NVIDIA/cnmem>`_ or not (a
+    faster CUDA memory allocator). In Theano dev version until 0.7.1
+    is released.
+
+    That library is included in Theano, you do not need to install it.
+
+    The value represents the start size (in MB or % of total GPU
+    memory) of the memory pool. If more memory are needed, it will
+    try to get more, but this can cause more memory fragmentation:
+
+        * 0: not enabled.
+        * 0 < N <= 1: % of the total GPU memory (clipped to .985 for driver memory)
+        * > 0: use that number of MB of memory.
+
+
+    Default 0 (but should change later)
+
+    .. note::
+
+        This could cause memory fragmentation. So if you have a
+        memory error while using cnmem, try to allocate more memory at
+        the start or disable it. If you try this, report your result
+        on :ref`theano-dev`.
+
 .. attribute:: linker
 
     String value: 'c|py', 'py', 'c', 'c|py_nogc'

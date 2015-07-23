@@ -72,12 +72,17 @@ and use directly the optimized graph from the pickled file.
 Faster Theano function
 ----------------------
 
-You can set the Theano flag ``allow_gc`` to ``False`` to get a speed-up by using
+You can set the Theano flag :attr:`allow_gc <config.allow_gc>` to ``False`` to get a speed-up by using
 more memory. By default, Theano frees intermediate results when we don't need
 them anymore. Doing so prevents us from reusing this memory. So disabling the
 garbage collection will keep all intermediate results' memory space to allow to
 reuse them during the next call to the same Theano function, if they are of the
 correct shape. The shape could change if the shapes of the inputs change.
+
+.. note::
+
+   With :attr:`CNMeM <config.lib.cnmem>`, this isn't very useful with GPU
+   anymore.
 
 .. _unsafe_optimization:
 
