@@ -51,8 +51,7 @@ def test_remove():
 def test_hash_from_dict():
     dicts = [{}, {0: 0}, {0: 1}, {1: 0}, {1: 1},
              {0: (0,)}, {0: [1]},
-             {0: (0, 1)}, {0: [1, 0]},
-         ]
+             {0: (0, 1)}, {0: [1, 0]}]
     for elem in dicts[:]:
         dicts.append(OrderedDict(elem))
     hashs = []

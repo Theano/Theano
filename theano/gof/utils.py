@@ -483,7 +483,7 @@ def hash_from_dict(d):
 
     """
     if isinstance(d, OrderedDict):
-        items = list(d.iteritems())
+        items = list(iteritems(d))
     else:
         items = list(d.items())
         items.sort()
