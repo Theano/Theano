@@ -44,7 +44,7 @@ the correct symbolic gradient.
     The optimizer simplifies the symbolic gradient expression.  You can see
     this by digging inside the internal properties of the compiled function.
 
-    .. code-block:: python
+    .. testcode::
 
         pp(f.maker.fgraph.outputs[0])
         '(2.0 * x)'
