@@ -26,7 +26,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
 
 **Scan Example: Computing tanh(x(t).dot(W) + b) elementwise**
 
-.. code-block:: python
+.. testcode::
 
   import theano
   import theano.tensor as T
@@ -54,7 +54,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
 
 **Scan Example: Computing the sequence x(t) = tanh(x(t - 1).dot(W) + y(t).dot(U) + p(T - t).dot(V))**
 
-.. code-block:: python
+.. testcode::
 
   import theano
   import theano.tensor as T
@@ -95,7 +95,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
 
 **Scan Example: Computing norms of lines of X**
 
-.. code-block:: python
+.. testcode::
 
   import theano
   import theano.tensor as T
@@ -115,7 +115,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
 
 **Scan Example: Computing norms of columns of X**
 
-.. code-block:: python
+.. testcode::
 
   import theano
   import theano.tensor as T
@@ -135,7 +135,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
 
 **Scan Example: Computing trace of X**
 
-.. code-block:: python
+.. testcode::
 
   import theano
   import theano.tensor as T
@@ -160,7 +160,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
 
 **Scan Example: Computing the sequence x(t) = x(t - 2).dot(U) + x(t - 1).dot(V) +  tanh(x(t - 1).dot(W)  + b)**
 
-.. code-block:: python
+.. testcode::
 
   import theano
   import theano.tensor as T
@@ -201,7 +201,7 @@ The full documentation can be found in the library: :ref:`Scan <lib_scan>`.
 
 **Scan Example: Computing the Jacobian of y = tanh(v.dot(A)) wrt x**
 
-.. code-block:: python
+.. testcode::
 
   import theano
   import theano.tensor as T
@@ -227,7 +227,7 @@ Note that we need to iterate over the indices of ``y`` and not over the elements
 
 **Scan Example: Accumulate number of loop during a scan**
 
-.. code-block:: python
+.. testcode::
 
   import theano
   import theano.tensor as T
@@ -246,7 +246,7 @@ Note that we need to iterate over the indices of ``y`` and not over the elements
 
 **Scan Example: Computing tanh(v.dot(W) + b) * d where d is binomial**
 
-.. code-block:: python
+.. testcode::
 
   import theano
   import theano.tensor as T
@@ -274,7 +274,7 @@ Note that if you want to use a random variable ``d`` that will not be updated th
 
 **Scan Example: Computing pow(A, k)**
 
-.. code-block:: python
+.. testcode::
 
   import theano
   import theano.tensor as T
@@ -304,7 +304,7 @@ Note that if you want to use a random variable ``d`` that will not be updated th
 
 **Scan Example: Calculating a Polynomial**
 
-.. code-block:: python
+.. testcode::
 
   import numpy
   import theano
@@ -329,7 +329,10 @@ Note that if you want to use a random variable ``d`` that will not be updated th
 
   test_coeff = numpy.asarray([1, 0, 2], dtype=numpy.float32)
   print calculate_polynomial(test_coeff, 3)
-  # 19.0
+
+.. testoutput::
+
+    19.0
 
 
 
