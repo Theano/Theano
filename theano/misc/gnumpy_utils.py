@@ -15,6 +15,9 @@ try:
     if cuda.cuda_available is False:
         raise ImportError('Optional theano package cuda disabled')
 
+    if PY3:
+        long = int
+
     def cudandarray_to_garray(x, copyif=False):
         """ take a CudaNdarray and return a gnumpy.garray object.
 

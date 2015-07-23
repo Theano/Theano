@@ -52,8 +52,8 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
         print('    OMP_NUM_THREADS=', os.getenv('OMP_NUM_THREADS'))
         print('    GOTO_NUM_THREADS=', os.getenv('GOTO_NUM_THREADS'))
         print()
-        print ('Numpy config: (used when the Theano flag'
-               ' "blas.ldflags" is empty)')
+        print('Numpy config: (used when the Theano flag'
+              ' "blas.ldflags" is empty)')
         numpy.show_config()
         print('Numpy dot module:', numpy.dot.__module__)
         print('Numpy location:', numpy.__file__)
@@ -306,6 +306,6 @@ if __name__ == "__main__":
         print()
         print('Total execution time: %.2fs on %s.' % (t, impl))
         print()
-        print ('Try to run this script a few times. Experience shows that'
-               ' the first time is not as fast as followings calls. The'
-               ' difference is not big, but consistent.')
+        print('Try to run this script a few times. Experience shows that'
+              ' the first time is not as fast as followings calls. The'
+              ' difference is not big, but consistent.')
