@@ -56,7 +56,7 @@ This section provides an overview of the methods you typically have to implement
 possibilities you may encounter or need.  For that refer to
 :ref:`op_contract`.
 
-.. code-block:: python
+.. testcode::
 
     import theano
 
@@ -250,7 +250,7 @@ Other methods can be optionally defined by the op.
 Op Example
 ==========
 
-.. code-block:: python
+.. testcode::
 
     import theano
 
@@ -288,7 +288,7 @@ Op Example
 
 You can try it as follows:
 
-.. code-block:: python
+.. testcode::
 
     x = theano.tensor.matrix()
     f = theano.function([x], DoubleOp()(x))
@@ -310,7 +310,7 @@ We create an Op that takes a variable ``x`` and returns ``a*x+b``.
 We want to say that two such ops are equal when their values of ``a``
 and ``b`` are equal.
 
-.. code-block:: python
+.. testcode::
 
     import theano
 
@@ -349,7 +349,7 @@ It also generates a default :func:`__str__` method that prints the attribute nam
 
 We can test this by running the following segment:
 
-.. code-block:: python
+.. testcode::
 
     mult4plus5op = AXPBOp(4, 5)
     another_mult4plus5op = AXPBOp(4, 5)
@@ -383,7 +383,7 @@ returns the right answer. If you detect an error, you must raise an
 *exception*. You can use the ``assert`` keyword to automatically raise an
 ``AssertionError``.
 
-.. code-block:: python
+.. testcode::
 
     from theano.tests import unittest_tools as utt
     from theano import config
@@ -439,7 +439,7 @@ square matrices will not detect the problem. This is why the
 your op works only with such matrices, you can disable the warning with the
 ``warn=False`` parameter.
 
-.. code-block:: python
+.. testcode::
 
     from theano.tests import unittest_tools as utt
     from theano import config
@@ -468,7 +468,7 @@ If there is an error, the function raises an exception. If you want to
 see it fail, you can implement an incorrect gradient (for instance, by removing
 the multiplication by 2).
 
-.. code-block:: python
+.. testcode::
 
         def test_grad(self):
             theano.tests.unittest_tools.verify_grad(self.op,
@@ -486,7 +486,7 @@ implementation of the Rop method of a particular op.
 
 For instance, to verify the Rop method of the DoubleOp, you can use this:
 
-.. code-block:: python
+.. testcode::
 
    import numpy
    import theano.tests
@@ -562,7 +562,7 @@ of the file containing a specific test of interest and run the
 file. In this example, the test *test_DoubleRop* in the class
 *test_double_op* would be performed.
 
-.. code-block:: python
+.. testcode::
 
     if __name__ == '__main__':
        t = test_DoubleRop("test_double_rop")
@@ -572,7 +572,7 @@ file. In this example, the test *test_DoubleRop* in the class
 We recommend that when we execute a file, we run all tests in that
 file. This can be done by adding this at the end of your test files:
 
-.. code-block:: python
+.. testcode::
 
     if __name__ == '__main__':
         unittest.main()
@@ -638,7 +638,7 @@ signature:
 as_op Example
 -------------
 
-.. code-block:: python
+.. testcode::
 
     import theano
     import numpy
@@ -655,7 +655,7 @@ as_op Example
 
 You can try it as follows:
 
-.. code-block:: python
+.. testcode::
 
     x = theano.tensor.fmatrix()
     y = theano.tensor.fmatrix()
@@ -701,7 +701,7 @@ the documentation.
 
 Here is an example how to add docstring to a class.
 
-.. code-block:: python
+.. testcode::
 
     import theano
 
