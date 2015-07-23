@@ -204,6 +204,29 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
     }
 #endif
 
+#if defined(CUDNN_VERSION) && CUDNN_VERSION < 3000
+    // In versions before V3, CuDNN did not support kernels larger than the
+    // inputs in any spatial dimension, even if padding was used such that the
+    // padded inputs were larger than the kernels. If the kernels are larger
+    // then the inputs, raise an error message.
+
+    bool shape_mismatch = false;
+    for (int i=2; i < nb_dim; i++){
+        shape_mismatch = shape_mismatch || (CudaNdarray_HOST_DIMS(kerns)[i] >
+                                            CudaNdarray_HOST_DIMS(input)[i]);
+    }
+
+    if (shape_mismatch){
+      PyErr_Format(PyExc_RuntimeError,
+                   "GpuDnnConv: the current version of CuDNN does not support "
+                   "kernels larger than the inputs in any spatial dimension, "
+                   "even if the inputs are padded such that the padded inputs "
+                   "are larger than the kernels. Update your installation of "
+                   "CuDNN to V3 or more recent to solve the issue.");
+      return 1;
+    }
+#endif
+
     err = cudnnGetConvolutionForwardWorkspaceSize(_handle,
                                                   APPLY_SPECIFIC(input),
                                                   APPLY_SPECIFIC(kerns),
