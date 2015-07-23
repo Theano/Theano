@@ -179,7 +179,7 @@ method to access values by indexing a Function directly by typing
 
 To show some examples of these access methods...
 
-.. code-block:: python
+.. testcode::
 
     a, b, c = T.scalars('xys') # set the internal names of graph nodes
     # Note that the name of c is 's', not 'c'!
@@ -221,7 +221,7 @@ Every element of the inputs list will be upgraded to an In instance if necessary
 
 Example:
 
-.. code-block:: python
+.. testcode::
 
     import theano
     from theano import tensor as T
@@ -282,7 +282,7 @@ If a single ``Variable`` or ``Out`` instance is given as argument, then the comp
 
 If a list of ``Variable`` or ``Out`` instances is given as argument, then the compiled function will return a list of their values.
 
-.. code-block:: python
+.. testcode::
 
     x, y, s = T.matrices('xys')
 
