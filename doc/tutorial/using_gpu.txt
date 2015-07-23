@@ -36,7 +36,7 @@ file and run it.
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_using_gpu.test_using_gpu_1
 
-.. code-block:: python
+.. testcode::
 
     from theano import function, config, shared, sandbox
     import theano.tensor as T
@@ -71,7 +71,24 @@ If I run this program (in check1.py) with ``device=cpu``, my computer takes a li
 whereas on the GPU it takes just over 0.64 seconds. The GPU will not always produce the exact
 same floating-point numbers as the CPU. As a benchmark, a loop that calls ``numpy.exp(x.get_value())`` takes about 46 seconds.
 
-.. code-block:: text
+.. testoutput::
+   :hide:
+   :options: +ELLIPSIS
+
+    $ THEANO_FLAGS=mode=FAST_RUN,device=cpu,floatX=float32 python check1.py
+    [Elemwise{exp,no_inplace}(<TensorType(float32, vector)>)]
+    Looping 1000 times took ... seconds
+    Result is ...
+    Used the cpu
+
+    $ THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python check1.py
+    Using gpu device 0: GeForce GTX 580
+    [GpuElemwise{exp,no_inplace}(<CudaNdarrayType(float32, vector)>), HostFromGpu(GpuElemwise{exp,no_inplace}.0)]
+    Looping 1000 times took ... seconds
+    Result is ...
+    Used the gpu
+
+.. code-block:: none
 
     $ THEANO_FLAGS=mode=FAST_RUN,device=cpu,floatX=float32 python check1.py
     [Elemwise{exp,no_inplace}(<TensorType(float32, vector)>)]
@@ -105,7 +122,7 @@ after the ``T.exp(x)`` is replaced by a GPU version of ``exp()``.
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_using_gpu.test_using_gpu_2
 
-.. code-block:: python
+.. testcode::
 
     from theano import function, config, shared, sandbox
     import theano.sandbox.cuda.basic_ops
@@ -134,7 +151,19 @@ after the ``T.exp(x)`` is replaced by a GPU version of ``exp()``.
 
 The output from this program is
 
-.. code-block:: text
+.. testoutput::
+   :hide:
+   :options: +ELLIPSIS
+
+    $ THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python check2.py
+    Using gpu device 0: GeForce GTX 580
+    [GpuElemwise{exp,no_inplace}(<CudaNdarrayType(float32, vector)>)]
+    Looping 1000 times took ... seconds
+    Result is <CudaNdarray object at 0x6a7a5f0>
+    Numpy result is ...
+    Used the gpu
+
+.. code-block:: none
 
     $ THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python check2.py
     Using gpu device 0: GeForce GTX 580
@@ -253,7 +282,7 @@ Exercise
 
 Consider again the logistic regression:
 
-.. code-block:: python
+.. testcode::
 
     import numpy
     import theano
@@ -373,7 +402,7 @@ Testing Theano with GPU
 To see if your GPU is being used, cut and paste the following program
 into a file and run it.
 
-.. code-block:: python
+.. testcode::
 
   from theano import function, config, shared, tensor, sandbox
   import numpy
@@ -403,7 +432,24 @@ The program just compute ``exp()`` of a bunch of random numbers.  Note
 that we use the :func:`theano.shared` function to make sure that the
 input *x* is stored on the GPU.
 
-.. code-block:: text
+.. testoutput::
+   :hide:
+   :options: +ELLIPSIS
+
+  $ THEANO_FLAGS=device=cpu python check1.py
+  [Elemwise{exp,no_inplace}(<TensorType(float64, vector)>)]
+  Looping 1000 times took ... seconds
+  Result is ...
+  Used the cpu
+
+  $ THEANO_FLAGS=device=cuda0 python check1.py
+  Using device cuda0: GeForce GTX 275
+  [GpuElemwise{exp,no_inplace}(<GpuArray<float64>>), HostFromGpu(gpuarray)(GpuElemwise{exp,no_inplace}.0)]
+  Looping 1000 times took ... seconds
+  Result is ...
+  Used the gpu
+
+.. code-block:: none
 
   $ THEANO_FLAGS=device=cpu python check1.py
   [Elemwise{exp,no_inplace}(<TensorType(float64, vector)>)]
@@ -432,7 +478,7 @@ the value of the ``device`` flag without touching the code.
 If you don't mind a loss of flexibility, you can ask theano to return
 the GPU object directly.  The following code is modifed to do just that.
 
-.. code-block:: python
+.. testcode::
   :emphasize-lines: 10,17
 
   from theano import function, config, shared, tensor, sandbox
@@ -466,7 +512,18 @@ used here to tell theano that we want the result on the GPU.
 
 The output is
 
-.. code-block:: text
+.. testoutput::
+   :hide:
+   :options: +ELLIPSIS
+   
+  $ THEANO_FLAGS=device=cuda0 python check2.py
+  Using device cuda0: GeForce GTX 275
+  [GpuElemwise{exp,no_inplace}(<GpuArray<float64>>)]
+  Looping 1000 times took ... seconds
+  Result is ...
+  Used the gpu
+
+.. code-block:: none
 
   $ THEANO_FLAGS=device=cuda0 python check2.py
   Using device cuda0: GeForce GTX 275
@@ -636,7 +693,7 @@ you feel competent enough, you may try yourself on the corresponding exercises.
 **Example: PyCUDA**
 
 
-.. code-block:: python
+.. testcode::
 
   # (from PyCUDA's documentation)
   import pycuda.autoinit
@@ -680,7 +737,7 @@ Modify and execute to work for a matrix of shape (20, 10).
 **Example: Theano + PyCUDA**
 
 
-.. code-block:: python
+.. testcode::
 
     import numpy, theano
     import theano.misc.pycuda_init
