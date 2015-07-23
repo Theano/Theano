@@ -44,7 +44,7 @@ matrix:
       env: PART="." THEANO_FLAGS="mode=FAST_COMPILE,floatX=float32"
 
 script:
-  - export THEANO_FLAGS=$THEANO_FLAGS,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,gcc.cxxflags=-pipe
+  - export THEANO_FLAGS=$THEANO_FLAGS,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,gcc.cxxflags=-pipe,compile.wait=1
   - python --version
   - uname -a
   - free -m
