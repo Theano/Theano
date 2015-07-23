@@ -20,7 +20,10 @@ from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            gpu_alloc_empty, GpuAllocEmpty,
                                            GpuElemwise)
 from theano.sandbox.cuda.blas import (GpuConv, GpuDownsampleFactorMax,
-                                      GpuDownsampleFactorMaxGrad)
+                                      GpuDownsampleFactorMaxGrad,
+                                      GpuCorr3dMM,
+                                      GpuCorr3dMM_gradInputs,
+                                      GpuCorr3dMM_gradWeights)
 from theano.sandbox.cuda.nnet import GpuSoftmax
 from theano.sandbox.cuda.opt_util import alpha_merge, output_merge
 from theano.sandbox.cuda import gpu_seqopt, register_opt
@@ -2126,3 +2129,39 @@ if True:
                 gpu_contiguous(ins[1])
             )
             return [out.dimshuffle(0, 1)]
+
+    @register_opt('cudnn_conv3d')
+    @local_optimizer([GpuCorr3dMM])
+    def local_GpuCorr3dMM_to_GpuDnnConv3d(node):
+        if not dnn_available():
+            return
+        if isinstance(node.op, GpuCorr3dMM):
+            border_mode = node.op.border_mode
+            subsample = node.op.subsample
+            pad = node.op.pad
+            img, kern = node.inputs
+            new_op = dnn_conv3d(img, kern, border_mode, subsample, conv_mode='cross')
+        return [new_op]
+
+    @register_opt('cudnn_conv3d')
+    @local_optimizer([GpuCorr3dMM_gradWeights])
+    def local_GpuCorr3dMMGradW_to_GpuDnnConv3dGradW(node):
+        if not dnn_available():
+            return
+        if isinstance(node.op, GpuCorr3dMM_gradWeights):
+            # TODO, no idea how, not familiar enough with all the
+            # data structures around
+            # GpuCorr3dMM_gradWeights and GpuDnnConv3dGradW 
+            return
+
+    @register_opt('cudnn_conv3d')
+    @local_optimizer([GpuCorr3dMM_gradInputs])
+    def local_GpuCorr3dMMGradI_to_GpuDnnConv3dGradI(node):
+        if not dnn_available():
+            return
+        if isinstance(node.op, GpuCorr3dMM_gradInputs):
+            # TODO, no idea how, not familiar enough with
+            # data structures around
+            # GpuCorr3dMM_gradInputs and GpuDnnConv3dGradI 
+            return
+

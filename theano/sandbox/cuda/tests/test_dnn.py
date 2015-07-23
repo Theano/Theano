@@ -1,5 +1,6 @@
 import logging
 import time
+import unittest
 
 from nose.plugins.skip import SkipTest
 import numpy
@@ -1178,45 +1179,91 @@ def test_conv3d_bwd():
         yield (run_conv3d_bwd, i_shape, f_shape, subsample, border_mode,
                conv_mode)
 
-def benchmark_conv3d():
-    def compile(kernel_size):
-        ftensor5 = T.TensorType('float32', (False,)*5) # (b,c,t,0,1)
-        img = ftensor5('img')
+class TestGpuCorr3dMM_to_GpuDnnConv3d(unittest.TestCase):
+    def setUp(self):
+        self.default_mode = theano.compile.mode.get_default_mode()
+        self.mode_with_cudnn = self.default_mode.including("cudnn_conv3d")
+        self.mode_without_cudnn = self.default_mode.excluding("cudnn_conv3d")
         
+    def benchmark_conv3d():
+        # this is just for benchmarking the speed of cudnn conv3d
+        # still need to incorporate the case where cudnn is slower
+        def compile(kernel_size):
+            ftensor5 = T.TensorType('float32', (False,)*5) # (b,c,t,0,1)
+            img = ftensor5('img')
+
+            kern = theano.shared(numpy.random.normal(
+                size=kernel_size).astype('float32'), name='w')
+            out1 = dnn.dnn_conv3d(img, kern, border_mode='valid', subsample=(1, 1, 1),
+                       conv_mode='cross')
+            out2 = GpuCorr3dMM(border_mode='valid', subsample=(1, 1, 1),
+                              pad=(0, 0, 0))(img, kern)
+            grad1 = T.grad(out1.sum(), kern)
+            grad2 = T.grad(out2.sum(), kern)
+            fn1 = theano.function([img], [out1, grad1])
+            fn2 = theano.function([img], [out2, grad2])
+            return fn1, fn2
+
+        def benchmark(fn, img):
+            t0 = time.time()
+            for i in range(1):
+                out = fn(img)
+            print 'timing %.4f sec'%(time.time() - t0)
+            return out
+        kernel_size = [10, 20, 3, 3, 5]
+        img_size = [128, 20, 64, 64, 15]
+        img = numpy.random.normal(size=img_size).astype('float32')
+        print 'compiling conv3d fns'
+        fn_dnn, fn_corr3dMM = compile(kernel_size)
+        print 'cudnn conv3d'
+        out1 = benchmark(fn_dnn, img)
+        print 'corr3dMM'
+        out2 = benchmark(fn_corr3dMM, img)
+        assert numpy.allclose(numpy.asarray(out1[0]), numpy.asarray(out2[0]))
+        assert numpy.allclose(numpy.asarray(out1[0]), numpy.asarray(out2[0]))
+        
+    def test_local_GpuCorr3dMM_to_GpuDnnConv3d(self):
+        # test an local opt that replace GpuCorr3dMM with GpuDnnConv3d
+        kernel_size = [10, 20, 3, 3, 5]
+        img_size = [128, 20, 64, 64, 15]
+        img = theano.shared(numpy.random.normal(
+                size=img_size).astype('float32'), name='img')
         kern = theano.shared(numpy.random.normal(
-            size=kernel_size).astype('float32'), name='w')
-        out1 = dnn.dnn_conv3d(img, kern, border_mode='valid', subsample=(1, 1, 1),
-                   conv_mode='cross')
-        out2 = GpuCorr3dMM(border_mode='valid', subsample=(1, 1, 1),
-                          pad=(0, 0, 0))(img, kern)
-        grad1 = T.grad(out1.sum(), kern)
-        grad2 = T.grad(out2.sum(), kern)
-        fn1 = theano.function([img], [out1, grad1])
-        fn2 = theano.function([img], [out2, grad2])
-        return fn1, fn2
-    
-    def benchmark(fn, img):
-        t0 = time.time()
-        for i in range(1):
-            out = fn(img)
-        print 'timing %.4f sec'%(time.time() - t0)
-        return out
-    kernel_size = [10, 20, 3, 3, 5]
-    img_size = [128, 20, 64, 64, 15]
-    img = numpy.random.normal(size=img_size).astype('float32')
-    print 'compiling conv3d fns'
-    fn_dnn, fn_corr3dMM = compile(kernel_size)
-    print 'cudnn conv3d'
-    out1 = benchmark(fn_dnn, img)
-    print 'corr3dMM'
-    out2 = benchmark(fn_corr3dMM, img)
-    assert numpy.allclose(numpy.asarray(out1[0]), numpy.asarray(out2[0]))
-    assert numpy.allclose(numpy.asarray(out1[0]), numpy.asarray(out2[0]))
-    
+                size=kernel_size).astype('float32'), name='w')
+        out = GpuCorr3dMM(border_mode='valid', subsample=(1, 1, 1),
+                           pad=(0, 0, 0))(img, kern)
+        # compile with opt 
+        f_with_cudnn = theano.function([], out, mode=self.mode_with_cudnn)
+        topo = f_with_cudnn.maker.fgraph.toposort()
+        assert isinstance(topo[-1].op, dnn.GpuDnnConv3d)
+        # compile without opt
+        f_without_cudnn = theano.function([], out, mode=self.mode_without_cudnn)
+        topo = f_without_cudnn.maker.fgraph.toposort()
+        assert isinstance(topo[-1].op, GpuCorr3dMM)
+        # make sure the same result
+        assert numpy.allclose(f_with_cudnn(), f_without_cudnn())
+
+    def test_local_GpuCorr3dMMGradW_to_GpuDnnConv3dGradW(self):
+        # test an local opt that replace GpuCorr3dMM with GpuDnnConv3d
+        kernel_size = [10, 20, 3, 3, 5]
+        img_size = [128, 20, 64, 64, 15]
+        img = theano.shared(numpy.random.normal(
+                size=img_size).astype('float32'), name='img')
+        kern = theano.shared(numpy.random.normal(
+                size=kernel_size).astype('float32'), name='w')
+        out = GpuCorr3dMM(border_mode='valid', subsample=(1, 1, 1),
+                           pad=(0, 0, 0))(img, kern)
+        gradW = T.grad(T.sum(out), [kern])
+        # compile with opt 
+        f_with_cudnn = theano.function([], gradW, mode=self.mode_with_cudnn)
+        f_without_cudnn = theano.function([], gradW, mode=self.mode_without_cudnn)
+        assert numpy.allclose(f_with_cudnn()[0], f_without_cudnn()[0])
+        
 def test_version():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
     assert isinstance(cuda.dnn.version(), (int, tuple))
 
 if __name__ == '__main__':
-    benchmark_conv3d()
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestGpuCorr3dMM_to_GpuDnnConv3d)
+    unittest.TextTestRunner(verbosity=3).run(suite)
