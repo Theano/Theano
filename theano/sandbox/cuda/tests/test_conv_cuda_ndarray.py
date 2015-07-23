@@ -521,9 +521,16 @@ def _test_full(cls, mode=None, version=[-1], extra_shapes=[],
 
 
 def test_full():
-    for t in _test_full(None,
-                        mode=theano_mode,
-                        version=[-1]):
+
+    # If using CuDNN version before v3, only run the tests where the
+    # kernels are not larger than the input in any spatial dimension.
+    if cuda.dnn.dnn_available() and cuda.dnn.version() < (3000, 3000):
+        test_bigger_kernels = False
+    else:
+        test_bigger_kernels = True
+
+    for t in _test_full(None, mode=theano_mode, version=[-1],
+                        test_bigger_kernels=test_bigger_kernels):
         yield t
 
 
