@@ -1,0 +1,189 @@
+digraph G {
+	graph [bb="0,0,1055,672"];
+	node [label="\N"];
+	"Shape_i{1}"	 [fillcolor=cyan,
+		height=0.5,
+		pos="427,458",
+		shape=ellipse,
+		style=filled,
+		type=colored,
+		width=1.4763];
+	MakeVector	 [height=0.5,
+		pos="250,370",
+		shape=ellipse,
+		width=1.5402];
+	"Shape_i{1}" -> MakeVector	 [label="1 TensorType(int64, scalar)",
+		lp="433,414",
+		pos="e,279.57,385.37 397.77,442.8 368.01,428.34 321.7,405.84 288.87,389.89"];
+	"TensorType(float64, matrix)"	 [fillcolor=limegreen,
+		height=0.5,
+		pos="464,566",
+		shape=box,
+		style=filled,
+		width=2.4444];
+	"TensorType(float64, matrix)" -> "Shape_i{1}"	 [label="TensorType(float64, matrix)",
+		lp="504,512",
+		pos="e,422.08,476.18 437.6,547.65 432.1,542.66 427.05,536.72 424,530 417.83,516.39 418.16,499.77 420.24,486.03"];
+	"Dot22 id=6"	 [height=0.5,
+		pos="716,370",
+		shape=ellipse,
+		width=1.4534];
+	"TensorType(float64, matrix)" -> "Dot22 id=6"	 [label="1 TensorType(float64, matrix)",
+		lp="692,458",
+		pos="e,682.81,383.97 552,551.07 563.93,546.03 575.1,539.2 584,530 612.7,500.32 582.73,473.4 607,440 623.72,416.99 650.68,399.83 673.6,\
+388.37"];
+	"Shape_i{0}"	 [fillcolor=cyan,
+		height=0.5,
+		pos="229,512",
+		shape=ellipse,
+		style=filled,
+		type=colored,
+		width=1.4763];
+	"Shape_i{0}" -> MakeVector	 [label="0 TensorType(int64, scalar)",
+		lp="287,458",
+		pos="e,236.58,387.68 217.14,494.33 213.83,488.77 210.69,482.36 209,476 204.89,460.54 204.76,455.43 209,440 213.31,424.32 222.2,408.6 \
+230.61,396.13"];
+	"name=X TensorType(float64, matrix)"	 [fillcolor=limegreen,
+		height=0.5,
+		pos="334,654",
+		shape=box,
+		style=filled,
+		width=3.1667];
+	"name=X TensorType(float64, matrix)" -> "Shape_i{0}"	 [label="TensorType(float64, matrix)",
+		lp="344,610",
+		pos="e,230.68,530.25 286.71,635.8 278.29,631.06 270.23,625.19 264,618 244.98,596.07 236.22,563.46 232.23,540.41"];
+	Dot22	 [height=0.5,
+		pos="645,566",
+		shape=ellipse,
+		width=0.92774];
+	"name=X TensorType(float64, matrix)" -> Dot22	 [label="0 TensorType(float64, matrix)",
+		lp="556,610",
+		pos="e,614.28,573.23 377.6,635.91 410.55,623.16 453.06,607.1 471,602 510.24,590.85 521.01,592.05 561,584 575.06,581.17 590.45,578.06 \
+604.17,575.28"];
+	"Elemwise{ScalarSigmoid}[(0, 0)]"	 [fillcolor="#FFAABB",
+		height=0.5,
+		pos="921,458",
+		shape=ellipse,
+		style=filled,
+		type=colored,
+		width=3.7297];
+	Dot22 -> "Elemwise{ScalarSigmoid}[(0, 0)]"	 [color=red,
+		label="TensorType(float64, matrix)",
+		lp="903,512",
+		pos="e,879,475.13 671.46,554.84 716.96,537.36 810.78,501.33 869.53,478.77"];
+	"TensorType(float64, matrix) id=4"	 [fillcolor=limegreen,
+		height=0.5,
+		pos="645,654",
+		shape=box,
+		style=filled,
+		width=2.8403];
+	"TensorType(float64, matrix) id=4" -> Dot22	 [label="1 TensorType(float64, matrix)",
+		lp="730,610",
+		pos="e,645,584.08 645,635.6 645,623.75 645,607.82 645,594.29"];
+	"Elemwise{Cast{float64}}"	 [fillcolor="#FFAABB",
+		height=0.5,
+		pos="250,282",
+		shape=ellipse,
+		style=filled,
+		type=colored,
+		width=2.9207];
+	MakeVector -> "Elemwise{Cast{float64}}"	 [label="TensorType(int64, vector)",
+		lp="324,326",
+		pos="e,250,300.08 250,351.6 250,339.75 250,323.82 250,310.29"];
+	"Elemwise{ScalarSigmoid}[(0, 0)]" -> "Dot22 id=6"	 [label="0 TensorType(float64, matrix)",
+		lp="921,414",
+		pos="e,747.84,384.36 881.96,440.62 846.23,425.63 793.55,403.53 757.17,388.27"];
+	"Subtensor{int64}"	 [fillcolor="#FFAAFF",
+		height=0.5,
+		pos="317,194",
+		shape=ellipse,
+		style=filled,
+		type=colored,
+		width=2.0659];
+	"Elemwise{Cast{float64}}" -> "Subtensor{int64}"	 [color=dodgerblue,
+		label="0 TensorType(float64, vector)",
+		lp="374.5,238",
+		pos="e,303.79,211.96 263.24,264.01 273.06,251.41 286.6,234.03 297.63,219.86"];
+	"Subtensor{int64} id=8"	 [fillcolor="#FFAAFF",
+		height=0.5,
+		pos="103,194",
+		shape=ellipse,
+		style=filled,
+		type=colored,
+		width=2.5916];
+	"Elemwise{Cast{float64}}" -> "Subtensor{int64} id=8"	 [color=dodgerblue,
+		label="0 TensorType(float64, vector)",
+		lp="189.5,238",
+		pos="e,98.802,212.45 169.53,270.28 141.06,264.73 113.86,256.82 105,246 99.708,239.54 98.04,230.93 98.046,222.62"];
+	"Elemwise{ScalarSigmoid}[(0, 0)] id=9"	 [fillcolor="#FFAABB",
+		height=0.5,
+		pos="716,282",
+		shape=ellipse,
+		style=filled,
+		type=colored,
+		width=4.2783];
+	"Dot22 id=6" -> "Elemwise{ScalarSigmoid}[(0, 0)] id=9"	 [color=red,
+		label="TensorType(float64, matrix)",
+		lp="796,326",
+		pos="e,716,300.08 716,351.6 716,339.75 716,323.82 716,310.29"];
+	"Elemwise{Composite{((i0 / i1) / i2)}}[(0, 0)]"	 [fillcolor="#FFAABB",
+		height=0.5,
+		pos="317,106",
+		shape=ellipse,
+		style=filled,
+		type=colored,
+		width=4.8998];
+	"Subtensor{int64}" -> "Elemwise{Composite{((i0 / i1) / i2)}}[(0, 0)]"	 [label="2 TensorType(float64, scalar)",
+		lp="400.5,150",
+		pos="e,317,124.08 317,175.6 317,163.75 317,147.82 317,134.29"];
+	"val=1 int64"	 [fillcolor=limegreen,
+		height=0.5,
+		pos="487,282",
+		shape=box,
+		style=filled,
+		width=1.1181];
+	"val=1 int64" -> "Subtensor{int64}"	 [label="1 int64",
+		lp="496,238",
+		pos="e,378.35,204.25 483.08,263.92 479.63,252.68 473.47,238.52 463,230 451.1,220.31 419.25,212.13 388.33,206.12"];
+	"Subtensor{int64} id=8" -> "Elemwise{Composite{((i0 / i1) / i2)}}[(0, 0)]"	 [label="1 TensorType(float64, scalar)",
+		lp="229.5,150",
+		pos="e,201.3,119.69 113.23,175.69 120.84,164.35 132.26,150.16 146,142 159.92,133.73 175.47,127.39 191.37,122.53"];
+	"val=0 int64"	 [fillcolor=limegreen,
+		height=0.5,
+		pos="40,282",
+		shape=box,
+		style=filled,
+		width=1.1181];
+	"val=0 int64" -> "Subtensor{int64} id=8"	 [label="1 int64",
+		lp="61,238",
+		pos="e,61.928,210.23 36.259,263.76 34.929,253.28 35.008,240.04 41,230 44.243,224.57 48.669,219.91 53.673,215.93"];
+	"TensorType(float64, matrix) id=14"	 [fillcolor=dodgerblue,
+		height=0.5,
+		pos="539,194",
+		shape=box,
+		style=filled,
+		width=2.9444];
+	"Elemwise{ScalarSigmoid}[(0, 0)] id=9" -> "TensorType(float64, matrix) id=14"	 [label="TensorType(float64, matrix)",
+		lp="653,238",
+		pos="e,546.35,212.14 619.81,267.9 603.25,262.81 586.92,255.76 573,246 563.98,239.68 556.7,230.13 551.22,221"];
+	"Sum{acc_dtype=float64}"	 [height=0.5,
+		pos="766,194",
+		shape=ellipse,
+		width=2.8658];
+	"Elemwise{ScalarSigmoid}[(0, 0)] id=9" -> "Sum{acc_dtype=float64}"	 [label="TensorType(float64, matrix)",
+		lp="826,238",
+		pos="e,756.14,211.96 725.88,264.01 733.07,251.64 742.93,234.68 751.08,220.66"];
+	"Sum{acc_dtype=float64}" -> "Elemwise{Composite{((i0 / i1) / i2)}}[(0, 0)]"	 [color=red,
+		label="0 TensorType(float64, scalar)",
+		lp="665.5,150",
+		pos="e,396.23,122.17 699.26,180.22 621.48,165.32 492.61,140.64 406.28,124.1"];
+	"TensorType(float64, scalar) id=16"	 [fillcolor=dodgerblue,
+		height=0.5,
+		pos="317,18",
+		shape=box,
+		style=filled,
+		width=2.8889];
+	"Elemwise{Composite{((i0 / i1) / i2)}}[(0, 0)]" -> "TensorType(float64, scalar) id=16"	 [label="TensorType(float64, scalar)",
+		lp="395,62",
+		pos="e,317,36.084 317,87.597 317,75.746 317,59.817 317,46.292"];
+}

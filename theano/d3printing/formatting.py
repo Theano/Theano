@@ -17,6 +17,7 @@ from theano.compile import Function
 _logger = logging.getLogger("theano.printing")
 
 
+
 class GraphFormatter(object):
 
     def __init__(self):
@@ -304,27 +305,13 @@ class GraphFormatter(object):
         if node in self.apply_name_cache:
             return self.apply_name_cache[node]
 
-        prof = None
+        prof = ''
         if mode:
-            time = mode.profile_stats[fct].apply_time.get(node, 0)
-            # second, % total time in profiler, %fct time in profiler
-            if mode.local_time == 0:
-                pt = 0
-            else:
-                pt = time * 100 / mode.local_time
-            if mode.profile_stats[fct].fct_callcount == 0:
-                pf = 0
-            else:
-                pf = time * 100 / mode.profile_stats[fct].fct_call_time
-            prof = [time, pt, pf]
-        elif profile:
+            profile = mode.profile_stats[fct]
+        if profile:
             time = profile.apply_time.get(node, 0)
-            # second, %fct time in profiler
-            if profile.fct_callcount == 0:
-                pf = 0
-            else:
-                pf = time * 100 / profile.fct_call_time
-            prof = [time, None, pf]
+            call_time = profile.fct_call_time
+            prof = str([time, call_time])
 
         applystr = str(node.op).replace(':', '_')
         if (applystr in self.all_strings) or self.with_ids:
@@ -343,10 +330,6 @@ class GraphFormatter(object):
                 applystr = (applystr[:self.max_label_size - 3 - len(suffix)] +
                             '...' +
                             suffix)
-        if prof is not None:
-            prof = str(prof)
-        else:
-            prof = ''
 
         self.all_strings.add(applystr)
         self.apply_name_cache[node] = (applystr, prof)
