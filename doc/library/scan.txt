@@ -21,7 +21,7 @@ Assume that, given *k* you want to get ``A**k`` using a loop.
 More precisely, if *A* is a tensor you want to compute
 ``A**k`` elemwise. The python/numpy code might look like:
 
-.. code-block:: python
+.. testcode::
 
   result = 1
   for i in xrange(k):
@@ -35,7 +35,7 @@ happens automatically.
 
 The equivalent Theano code would be:
 
-.. code-block:: python
+.. testcode::
 
   k = T.iscalar("k")
   A = T.vector("A")
@@ -88,7 +88,7 @@ The tensor(s) to be looped over should be provided to scan using the
 Here's an example that builds a symbolic calculation of a polynomial
 from a list of its coefficients:
 
-.. code-block:: python
+.. testcode::
 
     coefficients = theano.tensor.vector("coefficients")
     x = T.scalar("x")
@@ -142,7 +142,7 @@ pitfall to be careful of: the initial output state that is supplied, that is
 generated at each iteration and moreover, it **must not involve an implicit
 downcast** of the latter.
 
-.. code-block:: python
+.. testcode::
 
 
     import numpy as np
@@ -183,7 +183,7 @@ and a "model" output array (whose shape and dtype will be mimicked),
 and produces a sequence of arrays with the shape and dtype of the model,
 with all values set to zero except at the provided array indices.
 
-.. code-block:: python
+.. testcode::
 
     location = T.imatrix("location")
     values = T.vector("values")
@@ -219,7 +219,7 @@ Another useful feature of scan, is that it can handle shared variables.
 For example, if we want to implement a Gibbs chain of length 10 we would do
 the following:
 
-.. code-block:: python
+.. testcode::
 
     W = theano.shared(W_values) # we assume that ``W_values`` contains the
                                 # initial values of your weight matrix
@@ -251,7 +251,7 @@ update dictionary to your function, you will always get the same 10
 sets of random numbers. You can even use the ``updates`` dictionary
 afterwards. Look at this example :
 
-.. code-block:: python
+.. testcode::
 
     a = theano.shared(1)
     values, updates = theano.scan(lambda: {a: a+1}, n_steps=10)
@@ -260,7 +260,7 @@ In this case the lambda expression does not require any input parameters
 and returns an update dictionary which tells how ``a`` should be updated
 after each step of scan. If we write :
 
-.. code-block:: python
+.. testcode::
 
     b = a + 1
     c = updates[a] + 1
@@ -289,7 +289,7 @@ execution. To pass the shared variables to Scan you need to put them in a list
 and give it to the ``non_sequences`` argument. Here is the Gibbs sampling code
 updated:
 
-.. code-block:: python
+.. testcode::
 
     W = theano.shared(W_values) # we assume that ``W_values`` contains the
                                 # initial values of your weight matrix
@@ -332,7 +332,7 @@ to be ensured by the user. Otherwise, it will result in an error.
 
 Using the previous Gibbs sampling example:
 
-.. code-block:: python
+.. testcode::
 
     # The new scan, using strict=True
     values, updates = theano.scan(fn=OneStep,
@@ -369,7 +369,7 @@ In this case we have a sequence over which we need to iterate ``u``,
 and two outputs ``x`` and ``y``. To implement this with scan we first
 construct a function that computes one iteration step :
 
-.. code-block:: python
+.. testcode::
 
   def oneStep(u_tm4, u_t, x_tm3, x_tm1, y_tm1, W, W_in_1, W_in_2,  W_feedback, W_out):
 
@@ -392,7 +392,7 @@ an order, but also variables, since this is how scan figures out what should
 be represented by what. Given that we have all
 the Theano variables needed we construct our RNN as follows :
 
-.. code-block:: python
+.. testcode::
 
    u  = T.matrix() # it is a sequence of vectors
    x0 = T.matrix() # initial state of x has to be a matrix, since
@@ -432,7 +432,7 @@ provided condition evaluates to True.
 For an example, we will compute all powers of two smaller then some provided
 value ``max_value``.
 
-.. code-block:: python
+.. testcode::
 
     def power_of_2(previous_power, max_value):
         return previous_power*2, theano.scan_module.until(previous_power*2 > max_value)
