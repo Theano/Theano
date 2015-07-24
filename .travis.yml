@@ -32,6 +32,7 @@ install:
 
 # command to run tests
 matrix:
+  fast_finish: true
   include:
     - python: "3.3"
       env: PART="." THEANO_FLAGS="mode=FAST_COMPILE"
