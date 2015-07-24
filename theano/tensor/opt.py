@@ -2293,6 +2293,9 @@ def local_upcast_elemwise_constant_inputs(node):
                     # As this is just to allow merging more case, if
                     # the upcast don't work, we can just skip it.
                     return
+
+                # Copy over output stacktrace from before upcasting
+                copy_stack_trace(node.outputs[0], rval)
                 return rval
 
 ##################
@@ -2345,7 +2348,10 @@ def local_useless_inc_subtensor(node):
                for e in node.op.idx_list):
             # They are the same shape, so we can remore this IncSubtensor
             return [node.inputs[1]]
-        return [Subtensor(node.op.idx_list)(*node.inputs[1:])]
+        ret = Subtensor(node.op.idx_list)(*node.inputs[1:])
+        # Copy over previous output stacktrace
+        copy_stack_trace(node.outputs, ret)
+        return [ret]
 
 
 @register_canonicalize
@@ -2378,7 +2384,11 @@ def local_set_to_inc_subtensor(node):
         if (subn.inputs[1] != node.inputs[2] or
                 subn.inputs[0] != node.inputs[0]):
             return
-        return [advanced_inc_subtensor1(node.inputs[0], other, node.inputs[2])]
+        ret = advanced_inc_subtensor1(node.inputs[0], other, node.inputs[2])
+        # Copy over previous output stacktrace
+        # Julian: I'm not sure about this at all...
+        copy_stack_trace(node.outputs, ret)        
+        return [ret]
 
 
 @register_canonicalize
@@ -2404,7 +2414,8 @@ def local_useless_slice(node):
             sl_ins = Subtensor.collapse(slices[:last_slice],
                                         lambda x: isinstance(x, T.Variable))
             out = subtens(node.inputs[0], *sl_ins)
-
+            # Copy over previous output stacktrace
+            copy_stack_trace(node.outputs, out)
             return [out]
 
 
@@ -2522,6 +2533,8 @@ def local_useless_subtensor(node):
     else:
         return False
 
+    # We don't need to copy over any stacktrace here,
+    # because previous stacktrace should suffice.
     return [node.inputs[0]]
 
 
@@ -2546,7 +2559,13 @@ def local_subtensor_lift(node):
         if isinstance(u.owner.op, T.Elemwise) and len(u.owner.inputs) == 1:
             idx = node.inputs[1:]
             x_idx = node.op(u.owner.inputs[0], *idx)
-            return [u.owner.op(x_idx)]
+            # Copy over previous output stacktrace
+            # Julian: Would it make more sense to copy stacktace before opt is applied, i.e. from u.owner.inputs[0]?
+            copy_stack_trace(node.outputs, x_idx)
+            ret = u.owner.op(x_idx)
+            # Copy over previous output stacktrace
+            copy_stack_trace(node.outputs, ret)
+            return []
 
         if isinstance(u.owner.op, T.Elemwise):
             new_inputs = []

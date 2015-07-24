@@ -108,6 +108,9 @@ class test_dimshuffle_lift(unittest.TestCase):
         self.assertTrue(str(g) == "[DimShuffle{1,0}(DimShuffle{1,0}(x))]")
         dimshuffle_lift.optimize(g)
         self.assertTrue(str(g) == "[x]")
+        # Check stacktrace was copied over correctly after opt was applied
+        self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
+
 
     def test_merge2(self):
         x, y, z = inputs()
@@ -118,6 +121,8 @@ class test_dimshuffle_lift(unittest.TestCase):
                 str(g))
         dimshuffle_lift.optimize(g)
         self.assertTrue(str(g) == "[DimShuffle{0,1,x,x}(x)]", str(g))
+        # Check stacktrace was copied over correctly after opt was applied
+        self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
 
     def test_elim3(self):
         x, y, z = inputs()
@@ -129,6 +134,8 @@ class test_dimshuffle_lift(unittest.TestCase):
                 str(g))
         dimshuffle_lift.optimize(g)
         self.assertTrue(str(g) == "[x]", str(g))
+        # Check stacktrace was copied over correctly after opt was applied
+        self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
 
     def test_lift(self):
         x, y, z = inputs([False] * 1, [False] * 2, [False] * 3)
@@ -155,6 +162,9 @@ class test_dimshuffle_lift(unittest.TestCase):
         dimshuffle_lift.optimize(g)
         self.assertTrue(str(g) in (opt_str_g_inplace, opt_str_g_noinplace),
                         str(g))
+        # Check stacktrace was copied over correctly after opt was applied
+        self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
+
 
     def test_recursive_lift(self):
         v = T.vector(dtype="float64")
@@ -169,6 +179,7 @@ class test_dimshuffle_lift(unittest.TestCase):
                       "(<TensorType(float64, matrix)>, "
                       "DimShuffle{x,x}(TensorConstant{84}))))]")
         self.assertTrue(str(g) == init_str_g)
+        
         new_out = local_dimshuffle_lift.transform(g.outputs[0].owner)[0]
         new_g = FunctionGraph(g.inputs, [new_out])
         opt_str_g = ("[Elemwise{mul,no_inplace}(Elemwise{add,no_inplace}"
@@ -178,6 +189,8 @@ class test_dimshuffle_lift(unittest.TestCase):
                      "(<TensorType(float64, matrix)>), "
                      "DimShuffle{x,x}(TensorConstant{84})))]")
         self.assertTrue(str(new_g) == opt_str_g)
+        # Check stacktrace was copied over correctly after opt was applied
+        self.assertTrue(hasattr(new_g.outputs[0].tag, 'trace'))
 
 
 def test_add_canonizer_problem0():
@@ -1835,6 +1848,20 @@ class test_local_subtensor_make_vector(unittest.TestCase):
         r = f(0, 1, 2)
         assert r[0] == 0 and r[1] == 2
 
+    def test_stacktrace(self):
+        x, y, z = tensor.lscalars('xyz')
+        v = make_vector(x, y, z)
+        #mode = theano.compile.mode.get_default_mode().including("local_subtensor_make_vector")
+        mode = theano.compile.mode.get_mode('FAST_COMPILE').including("local_subtensor_make_vector")
+        f = function([x, y, z], v[0], mode=mode)
+        # TODO Pascal is there some way I can disable ALL optimizations except the 'local_subtensor_make_vector' opt?
+        # Right now there is some other optimization removing the stack trace
+        print ('Before optimization')
+        print (v[0].tag)
+        print ('After optimization')
+        print (f.outputs[0].tag)
+        # Check stacktrace was copied over correctly after opt was applied
+        #self.assertTrue(hasattr(f.outputs[0].tag, 'trace'))
 
 class test_local_subtensor_lift(unittest.TestCase):
     def test0(self):
@@ -2881,6 +2908,11 @@ class Test_local_elemwise_alloc(unittest.TestCase):
                  if elem.op is not None]) == count
         )
 
+    def _verify_stack_trace(self, f):
+        for output in f.outputs:
+            # Check stacktrace was copied over correctly after opt was applied
+            self.assertTrue(hasattr(output.tag, 'trace'))
+
     def test_remove_alloc_wo_dimshuffle(self):
         # No optimization on alloc
         func = function(
@@ -2890,6 +2922,7 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         )
         self._verify_alloc_count(func, 1)
         self._verify_assert_count(func, 0)
+        self._verify_stack_trace(func)
 
         # Optimization on alloc with assert
         func = function(
@@ -3791,7 +3824,6 @@ class test_assert(utt.InferShapeTester):
         out = theano.tensor.opt.assert_op(admat, adscal, bdscal)
         self._compile_and_check([admat, adscal, bdscal], [out],
                                 [admat_val, adscal_val, bdscal_val], Assert)
-
 
 def test_local_mul_specialize():
     mode = theano.config.mode
@@ -5751,6 +5783,8 @@ class Test_lift_transpose_through_dot(unittest.TestCase):
         g = self.simple_optimize(FunctionGraph([a, b], [tensor.dot(a, b).T]))
         sg = '[dot(DimShuffle{1,0}(b), DimShuffle{1,0}(a))]'
         assert str(g) == sg, (str(g), sg)
+        # Check stacktrace was copied over correctly after opt was applied
+        self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
 
     def test_row_matrix(self):
         a = vector('a')
@@ -5761,6 +5795,8 @@ class Test_lift_transpose_through_dot(unittest.TestCase):
             level='stabilize')
         sg = '[dot(DimShuffle{1,0}(b), DimShuffle{0,x}(a))]'
         assert str(g) == sg, (str(g), sg)
+        # Check stacktrace was copied over correctly after opt was applied
+        self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
 
     def test_matrix_col(self):
         a = vector('a')
@@ -5771,6 +5807,8 @@ class Test_lift_transpose_through_dot(unittest.TestCase):
             level='stabilize')
         sg = '[dot(DimShuffle{x,0}(a), DimShuffle{1,0}(b))]'
         assert str(g) == sg, (str(g), sg)
+        # Check stacktrace was copied over correctly after opt was applied
+        self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
 
 
 def test_local_upcast_elemwise_constant_inputs():
