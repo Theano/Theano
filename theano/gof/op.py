@@ -715,8 +715,8 @@ class Op(utils.object2, PureOp, CLinkerOp):
 
             if (any(is_f16(i.type) for i in node.inputs) or
                     any(is_f16(o.type) for o in node.outputs)):
-                print ("Disabling C code for %s due to unsupported "
-                       "float16" % (self,))
+                print("Disabling C code for %s due to unsupported "
+                      "float16" % (self,))
                 raise NotImplementedError("float16")
         e = FunctionGraph(node.inputs, node.outputs)
         e_no_recycling = [new_o
