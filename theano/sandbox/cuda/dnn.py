@@ -360,7 +360,8 @@ AddConfigVar('dnn.conv.algo_fwd',
 AddConfigVar('dnn.conv.algo_bwd',
              "Default implementation to use for CuDNN backward convolution.",
              EnumStr('none', 'deterministic', 'fft', 'guess_once',
-                     'guess_on_shape_change'),
+                     'guess_on_shape_change', 'time_once',
+                     'time_on_shape_change'),
              in_c_key=False)
 
 
