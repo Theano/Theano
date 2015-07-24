@@ -34,8 +34,11 @@ class TestConv2d(unittest.TestCase):
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         filters_val = numpy.random.random(filters_shape).astype('float32')
 
-        inputs = shared(inputs_val)
-        filters = shared(filters_val)
+        ### FIXME (CPU vs GPU)
+        inputs = theano.tensor.shared(inputs_val)
+        filters = theano.tensor.shared(filters_val)
+
+
         c_ref = conv_ref.conv2d(inputs, filters,
                                 border_mode="valid",
                                 subsample=subsample)
@@ -63,23 +66,40 @@ class TestConv2d(unittest.TestCase):
     def run_gradweight(self,
                        inputs_shape,
                        filters_shape,
+                       output_shape,
                        subsample=(1, 1),
                        verify_grad=True,
-                       mode=mode_without_gpu):
+                       mode=mode_without_gpu,
+                       device='gpu',
+                       provide_shape = False):
 
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
-        filters_val = numpy.random.random(filters_shape).astype('float32')
+        output_val = numpy.random.random(output_shape).astype('float32')
 
-        inputs = shared(inputs_val.transpose((1, 0, 2, 3)))
-        filters = shared(filters_val.transpose((1, 0, 2, 3))[:,:,:,:])
+        if device == 'gpu':
+            inputs = shared(inputs_val)
+            filters = shared(filters_val)
+        else:
+            inputs = theano.tensor.shared(inputs_val)
+            output = theano.tensor.shared(output_val)
+
+        if provide_shape:
+            imshp = inputs_shape
+            kshp = filters_shape
+        else:
+            imshp = None,
+            kshp = None
 
         c = conv.AbstractConv2d_gradWeights(border_mode="valid",
-                                            subsample=subsample)
-        c = c(inputs, filters, inputs_shape)
+                                            subsample=subsample,
+                                            imshp = imshp, kshp = kshp)
+        c = c(inputs, output, filters_shape)
         f = theano.function([], c, mode)
-        res_ref = py_conv(inputs_val, filters_val, 'valid', subsample)
+        res_ref = py_conv(inputs_val.transpose((1, 0, 2, 3)),
+                          output_val.transpose((1, 0, 2, 3)),
+                          'valid', subsample).transpose((1, 0, 2, 3))
         print res_ref.shape, numpy.array(f()).shape
-        res = numpy.array(f()).transpose((1, 0, 2, 3))
+        res = numpy.array(f())
         utt.assert_allclose(res_ref, res)
         if verify_grad:
             utt.verify_grad(conv.AbstractConv2d(border_mode="valid",
@@ -129,17 +149,14 @@ class TestConv2d(unittest.TestCase):
     #                        verify_grad=False, mode=mode)
 
 
-    def test_cpu(self):
-        self.run_conv(inputs_shape=(16, 1, 2, 2),
-                      filters_shape=(10, 1, 2, 2),
-                      verify_grad=True,
-                      mode=mode_without_gpu)
-        # self.run_gradweight(inputs_shape=(16, 1, 2, 2),
-        #                     filters_shape=(10, 1, 2, 2),
-        #                     verify_grad=False, mode=mode_without_gpu)
-        #self.run_gradinput(inputs_shape=(1, 1, 2, 2),
-        #                   filters_shape=(10, 1, 2, 2),
-        #                   verify_grad=False, mode=mode_without_gpu)
+    #def test_cpu(self):
+        #self.run_conv(inputs_shape=(16, 1, 2, 2),
+        #              filters_shape=(10, 1, 2, 2),
+        #              verify_grad=False,
+        #              mode=mode_without_gpu)
+        # self.run_gradinput(inputs_shape=(1, 1, 2, 2),
+        #                    filters_shape=(10, 1, 2, 2),
+        #                    verify_grad=False, mode=mode_without_gpu)
 
         # mode = mode_without_gpu
         # self.run_conv(inputs_shape=(16, 1, 2, 2),
@@ -165,5 +182,17 @@ class TestConv2d(unittest.TestCase):
         # #               filters_shape=(10, 1, 2, 2),
         # #               subsample=(2, 2),
         # #               verify_grad=True,mode=mode)
+
+    def test_cpu_grad_weight(self):
+        self.run_gradweight(inputs_shape=(16, 1, 2, 2),
+                            filters_shape=(10, 1, 2, 2),
+                            output_shape=(16, 10, 1, 1),
+                            verify_grad=False, mode=mode_without_gpu, device='cpu')
+        self.run_gradweight(inputs_shape=(16, 1, 2, 2),
+                            filters_shape=(10, 1, 2, 2),
+                            output_shape=(16, 10, 1, 1),
+                            verify_grad=False,
+                            mode=mode_without_gpu, device='cpu',
+                            provide_shape=True)
 
 

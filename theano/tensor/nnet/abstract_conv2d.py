@@ -32,6 +32,9 @@ from theano.sandbox.cuda.opt import values_eq_approx_high_tol
 
 ## Cpu implementation
 from theano.tensor.nnet import conv2d as cpu_conv2d, ConvOp
+from theano.tensor.nnet.ConvGrad3D import convGrad3D
+from theano.tensor.nnet.ConvTransp3D import convTransp3D
+
 _logger = logging.getLogger("theano.tensor.nnet.conv2d")
 
 
@@ -434,7 +437,7 @@ def local_conv2d_cudnn(node):
                         direction_hint='bprop inputs',
                         conv_mode = conv_mode)
         return [rval]
-register_specialize_device(local_conv2d_cudnn)
+#register_specialize_device(local_conv2d_cudnn)
 
 
 @local_optimizer([AbstractConv2d])
@@ -445,7 +448,6 @@ def local_conv2d_corrmm(node):
             not isinstance(kern.type, CudaNdarrayType)):
         return None
 
-    print "here"
 
     if node.op.border_mode in ['full', 'valid']:
         border_mode = node.op.border_mode
@@ -495,7 +497,7 @@ def local_conv2d_corrmm(node):
             rval = GpuCorrMM_gradInputs('valid', subsample)(
                     gpu_contiguous(kern), gpu_contiguous(img))
         return [rval]
-register_specialize_device(local_conv2d_corrmm)
+#register_specialize_device(local_conv2d_corrmm)
 
 @local_optimizer([AbstractConv2d_gradWeights])
 def local_conv2d_gradweight_corrmm(node):
@@ -511,7 +513,7 @@ def local_conv2d_gradweight_corrmm(node):
                                  subsample=node.op.subsample)(
         gpu_contiguous(img), gpu_contiguous(topgrad), shape)
     return [rval]
-register_specialize_device(local_conv2d_gradweight_corrmm)
+#register_specialize_device(local_conv2d_gradweight_corrmm)
 
 @local_optimizer([AbstractConv2d_gradInputs])
 def local_conv2d_gradinputs_corrmm(node):
@@ -528,7 +530,7 @@ def local_conv2d_gradinputs_corrmm(node):
     subsample=node.op.subsample)(
         gpu_contiguous(kern), gpu_contiguous(topgrad), shape)
     return [rval]
-register_specialize_device(local_conv2d_gradinputs_corrmm)
+#register_specialize_device(local_conv2d_gradinputs_corrmm)
 
 
 
@@ -537,6 +539,7 @@ register_specialize_device(local_conv2d_gradinputs_corrmm)
 @local_optimizer([AbstractConv2d])
 def local_conv2d_cpu(node):
 
+    import pdb; pdb.set_trace()
     if not isinstance(node.op, AbstractConv2d):
         return None
 
@@ -556,33 +559,36 @@ register_specialize_device(local_conv2d_cpu)
 @local_optimizer([AbstractConv2d_gradWeights])
 def local_conv2d_gradweight_cpu(node):
 
+    import pdb; pdb.set_trace()
     ## len is 4 all the time
     img, topgrad, shape = node.inputs
     if isinstance(img.type, CudaNdarrayType) or \
             isinstance(topgrad.type, CudaNdarrayType):
         return None
 
-    if node.op.border_mode == 'valid' and node.op.subsample != (1, 1):
+    if (node.op.border_mode == 'valid' and node.op.subsample != (1, 1)) or \
+            node.op.imshp is None or node.op.kshp is None:
         # Use the gradient as defined in conv3D, because the implementation
         # by Conv is slow (about 3x slower than conv3D, and probably 10x
-        # slower than it could be), nad incorrect when dx or dy > 2.
+        # slower than it could be), nad incorrect when subsample > 2.
         # build a "node", that should be equivalent to the one given by
         # self.make_node, but using convGrad3D instead.
+
         shuffled_img = img.dimshuffle(0, 2, 3, 'x', 1)
         shuffled_topgrad = topgrad.dimshuffle(0, 2, 3, 'x', 1)
-        rval = ConvGrad3D(V=shuffled_img,
-                          d=(op.subsample[0], op.subsample[1], 1),
-                          WShape=(self.kshp[0], self.kshp[1], 1),
-                          dCdH_=shuffled_topgrad)
+        print shape
+        rval = convGrad3D(V=shuffled_img,
+                          d=(node.op.subsample[0], node.op.subsample[1], 1),
+                          WShape=(shape[0], shape[2], shape[3], 1, shape[1]),
+                          dCdH=shuffled_topgrad)
 
+        rval = theano.tensor.addbroadcast(rval, 3)
         return [rval.dimshuffle(0, 4, 1, 2)]
-
-    if node.op.imshp is None or node.op.kshp is None:
-        return None
 
     ####### Determine gradient on kernels ########
     assert len(node.op.imshp) == 4 and len(node.op.kshp) == 4
     print "here0", node.op.imshp[2:], node.op.kshp[2:]
+    import pdb; pdb.set_trace()
 
     outshp = ConvOp.getOutputShape(node.op.imshp[2:],
                                    node.op.kshp[2:],  node.op.subsample,
@@ -592,9 +598,15 @@ def local_conv2d_gradweight_cpu(node):
                                        node.op.border_mode)
     print outshp, fulloutshp
 
+
+    #newimg = img.dimshuffle((1, 0, 2, 3))
+    #newtopgrad = topgrad.dimshuffle((1, 0, 2, 3))
+    newimg = img
+    newtopgrad = topgrad
+
     if node.op.border_mode == 'valid':
         print "here1", node.op.imshp, node.op.kshp, fulloutshp
-        (img, filters) = (img, topgrad)
+        (img, filters) = (newimg, newtopgrad)
         kshp_logical = fulloutshp
         kshp_logical_top_aligned = False
         imshp_logical = None
@@ -602,15 +614,15 @@ def local_conv2d_gradweight_cpu(node):
         imshp = (bsize, node.op.imshp[1], node.op.imshp[2])
         kshp = node.op.kshp[2:]
     elif node.op.border_mode == 'full':
-        (img, filters) = (topgrad, img)
+        (img, filters) = (newtopgrad, newimg)
         kshp_logical = None
         kshp_logical_top_aligned = True
         imshp_logical = (node.op.imshp[0],
                          fulloutshp[0],
-                         fulloutshp[1]) ## FIXME
+                         fulloutshp[1])
         (bsize, nkern) = (node.op.kshp[0], node.op.imshp[1])
-        imshp = (node.op.imshp[0], outshp[0], outshp[1]) ## FIXME
-        kshp = node.op.imshp[1:] ## FIXME
+        imshp = (node.op.imshp[0], outshp[0], outshp[1])
+        kshp = node.op.imshp[1:]
     else:
         raise NotImplementedError(
             'Only [full,valid] modes are currently supported.')
@@ -629,26 +641,46 @@ def local_conv2d_gradweight_cpu(node):
     #dw = ConvOp(output_mode='valid')
     res = dw(img, filters)
     print "here3", node.op.imshp, node.op.kshp, fulloutshp
+    res = res.dimshuffle((1, 0, 2, 3))
     return [res]
 register_specialize_device(local_conv2d_gradweight_cpu)
 
 
 @local_optimizer([AbstractConv2d_gradInputs])
 def local_conv2d_gradinputs_cpu(node):
+
+    import pdb; pdb.set_trace()
     kern, topgrad, shape = node.inputs
+
     if  isinstance(kern.type, CudaNdarrayType) or \
             isinstance(topgrad.type, CudaNdarrayType):
         return None
+
+    print "here4a", node.op.imshp, node.op.kshp
+
+
+
+    if node.op.border_mode == 'valid' and node.op.subsample != (1, 1):
+        # Use the gradient as defined in conv3D, because the implementation
+        # by Conv is slow (about 3x slower than conv3D, and probably 10x
+        # slower than it could be), nad incorrect when subsample > 2.
+        # build a "node", that should be equivalent to the one given by
+        # self.make_node, but using convGrad3D instead.
+        shuffled_kern = kern.dimshuffle(0, 2, 3, 'x', 1)
+        shuffled_topgrad = topgrad.dimshuffle(0, 2, 3, 'x', 1)
+        b = T.zeros((kern.shape[1]))
+        rval = ConvTransp3D(W=shuffled_kern, b=b,
+                            d=(op.subsample[0], op.subsample[1], 1),
+                            H=shuffled_topgrad,
+                            RShape=(shape[0], shape[1], 1))
+        return [rval.dimshuffle(0, 4, 1, 2)]
 
     ####### Determine gradient on inputs ########
     mode = 'valid'
     if not node.op.border_mode == 'full':
         mode = 'full'
+
     filters = kern.dimshuffle((1, 0, 2, 3))
-    if node.op.filter_flip:
-        filters = filters[:, :, ::-1, ::-1]
-
-
     outshp = ConvOp.getOutputShape(node.op.imshp[2:],
                                    node.op.kshp[2:],  node.op.subsample,
                                    node.op.border_mode)
@@ -658,6 +690,10 @@ def local_conv2d_gradinputs_cpu(node):
     nkern = node.op.kshp[1]
     imshp = (nkern, outshp[0], outshp[1])
     imshp_logical = (nkern, fulloutshp[0], fulloutshp[1])
+
+    if node.op.filter_flip:
+        filters = filters[:, :, ::-1, ::-1]
+
 
     print "here4",  imshp, node.op.kshp, nkern
     din = ConvOp(imshp,
@@ -671,16 +707,6 @@ def local_conv2d_gradinputs_cpu(node):
                  kshp_logical=None,
                  version=-1,
                  direction_hint='bprop inputs')
-    #din = ConvOp()
-
-    print "here5"
     din = din(topgrad, filters)
-    print "here6"
-    #assert all(o is None or o == i
-    #           for o, i in zip(din.owner.op.outshp, node.op.imshp[1:]))
-
-    # din and dw should have the same broadcasting pattern as the
-    # parameters they are the gradient of (resp. inputs and kerns).
-    din = din
     return [din]
 register_specialize_device(local_conv2d_gradinputs_cpu)
