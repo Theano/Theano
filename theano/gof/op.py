@@ -460,7 +460,7 @@ class PureOp(object):
                 if len(tr) > 0:
                     detailed_err_msg += (
                         " \nBacktrace when that variable is created:\n")
-                    # Print separate message for each element in the list 
+                    # Print separate message for each element in the list
                     # of batcktraces
                     sio = StringIO()
                     for subtr in tr:
