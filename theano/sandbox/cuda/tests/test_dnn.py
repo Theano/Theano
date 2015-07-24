@@ -700,8 +700,12 @@ def test_dnn_conv_merge_broad():
     fr = conv + lr
 
     f = theano.function([img, kern], [fr])
-    assert not isinstance(f.maker.fgraph.outputs[0].owner.inputs[0].owner.op,
-                          dnn.GpuDnnConv)
+    convs = [n for n in f.maker.fgraph.toposort()
+             if isinstance(n.op, dnn.GpuDnnConv)]
+    assert len(convs) == 1
+    conv = convs[0]
+    # Assert output was not merged
+    assert isinstance(conv.inputs[2].owner.op, GpuAllocEmpty)
 
 
 def test_dnn_conv_grad():
