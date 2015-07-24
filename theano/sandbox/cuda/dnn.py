@@ -457,7 +457,7 @@ class GpuDnnConv(DnnBase, COp):
             if hasattr(self, 'workmem'):
                 self.algo = self.workmem
             else:
-                self.algo = 'none'
+                self.algo = config.dnn.conv.algo_fwd
         if not hasattr(self, 'inplace'):
             self.inplace = False
 
@@ -724,7 +724,7 @@ class GpuDnnConvGradW(DnnBase, COp):
             if hasattr(self, 'workmem'):
                 self.algo = self.workmem
             else:
-                self.algo = 'none'
+                self.algo = config.dnn.conv.algo_bwd
         if not hasattr(self, 'inplace'):
             self.inplace = False
 
@@ -911,7 +911,7 @@ class GpuDnnConvGradI(DnnBase, COp):
             if hasattr(self, 'workmem'):
                 self.algo = self.workmem
             else:
-                self.algo = 'none'
+                self.algo = config.dnn.conv.algo_bwd
         if not hasattr(self, 'inplace'):
             self.inplace = False
 
