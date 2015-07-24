@@ -897,8 +897,8 @@ class GpuDnnConvGradI(DnnBase, COp):
     def __init__(self, inplace=False, workmem=None, algo=None):
         """
         :param workmem: *deprecated*, use param algo instead
-        :param algo: either 'none', 'deterministic', 'fft', 'guess_once' or
-        'guess_on_shape_change'.
+        :param algo: either 'none', 'deterministic', 'fft', 'guess_once',
+        'guess_on_shape_change', 'time_once' or 'time_on_shape_change'.
         Default is the value of :attr:`config.dnn.conv.algo_bwd`.
         """
         COp.__init__(self, ["dnn_base.c", "dnn_conv_base.c", "dnn_gi.c"],
@@ -918,7 +918,8 @@ class GpuDnnConvGradI(DnnBase, COp):
         if self.inplace:
             self.destroy_map = {0: [2]}
         assert self.algo in ['none', 'deterministic', 'fft', 'guess_once',
-                                'guess_on_shape_change']
+                             'guess_on_shape_change', 'time_once',
+                             'time_on_shape_change']
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -954,29 +955,42 @@ class GpuDnnConvGradI(DnnBase, COp):
         else:
             inplace_def = []
 
-        alg_choose_once_def = ('CHOOSE_ALGO_ONCE', '0')
+        choose_alg = '0'
+        choose_alg_once = '0'
+        choose_alg_time = '0'
+
         if version() == -1 or version() < (3000, 3000):
-            alg_def = ('CONV_ALGO', '0')
-            alg_choose_def = ('CHOOSE_ALGO', '0')
+            alg = "0"
         else:
             if self.algo == 'none':
-                alg_def = ('CONV_ALGO', 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_0')
-                alg_choose_def = ('CHOOSE_ALGO', '0')
+                alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_0'
             elif self.algo == 'deterministic':
-                alg_def = ('CONV_ALGO', 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_1')
-                alg_choose_def = ('CHOOSE_ALGO', '0')
+                alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_1'
             elif self.algo == 'fft':
-                alg_def = ('CONV_ALGO', 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT')
-                alg_choose_def = ('CHOOSE_ALGO', '0')
+                alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT'
             elif self.algo in ['guess_once', 'guess_on_shape_change']:
-                # The convolution implementation should be choosen according
+                # The convolution implementation should be chosen according
                 # to a heuristic
-                alg_def = ('CONV_ALGO', 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_0')
-                alg_choose_def = ('CHOOSE_ALGO', '1')
+                alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_0'
+                choose_alg = '1'
                 if self.algo == 'guess_once':
-                    alg_choose_once_def = ('CHOOSE_ALGO_ONCE', '1')
+                    choose_alg_once = '1'
+            elif self.algo in ['time_once', 'guess_on_shape_change']:
+                # The convolution implementation should be chosen according
+                # to timing
+                alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_0'
+                choose_alg = '1'
+                choose_alg_time = '1'
+                if self.algo == 'time_once':
+                    choose_alg_once = '1'
 
-        return inplace_def + [alg_def, alg_choose_def, alg_choose_once_def]
+        alg_def = ('CONV_ALGO', alg)
+        alg_choose_def = ('CHOOSE_ALGO', choose_alg)
+        alg_choose_once_def = ('CHOOSE_ALGO_ONCE', choose_alg_once)
+        alg_choose_time_def = ('CHOOSE_ALGO_TIME', choose_alg_time)
+
+        return inplace_def + [alg_def, alg_choose_def, alg_choose_once_def,
+                              alg_choose_time_def]
 
     def make_node(self, kern, topgrad, output, desc, alpha=None, beta=None):
         kern = as_cuda_ndarray_variable(kern)
@@ -1031,7 +1045,8 @@ class GpuDnnConv3dGradI(GpuDnnConvGradI):
 
         super(GpuDnnConv3dGradI, self).__init__(inplace=inplace,
                                                 algo="none")
-        assert self.algo in ['none', 'guess_once', 'guess_on_shape_change']
+        assert self.algo in ['none', 'guess_once', 'guess_on_shape_change',
+                             'time_once', 'time_on_shape_change']
 
 
     def grad(self, inp, grads):

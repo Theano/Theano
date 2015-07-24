@@ -42,8 +42,8 @@ APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
     if (CHOOSE_ALGO)
     {
 
-      // A new convolution implementation should be selected, based on
-      // heuristics, if in one of the two following cases :
+      // A new convolution implementation should be selected, based either on
+      // timing or heuristics, if in one of the two following cases :
       // - The implementation should only be chosen during the first execution
       //   of an apply node and this is the first execution of the apply node.
       // - The implementation should be chosen as often as necessary and the
@@ -75,35 +75,64 @@ APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
       // new one based on the shapes of the current inputs
       if (!reuse_previous_algo)
       {
-        // Choose the convolution implementation using heuristics based on the
-        // shapes of the inputs and the amount of memory available.
+        // Obtain a convolution algorithm appropriate for the kernel and output
+        // shapes. Either by choosing one according to heuristics or by making
+        // CuDNN time every implementation and choose the best one.
+        if (CHOOSE_ALGO_TIME)
+        {
+          // Time the different implementations to choose the best one
+          int requestedCount = 1;
+          int count;
+          cudnnConvolutionBwdDataAlgoPerf_t choosen_algo_perf;
+          err = cudnnFindConvolutionBackwardDataAlgorithm(_handle,
+                                                          APPLY_SPECIFIC(kerns),
+                                                          APPLY_SPECIFIC(output),
+                                                          desc,
+                                                          APPLY_SPECIFIC(input),
+                                                          requestedCount,
+                                                          &count,
+                                                          &choosen_algo_perf);
+          if (err != CUDNN_STATUS_SUCCESS) {
+            PyErr_Format(PyExc_RuntimeError,
+                         "GpuDnnConvGradI: error selecting convolution algo: "
+                         "%s", cudnnGetErrorString(err));
+            return 1;
+          }
 
-        // Get the amount of available memory
-        size_t free = 0, total = 0;
-        cudaError_t err2 = cudaMemGetInfo(&free, &total);
-        if (err2 != cudaSuccess){
-          cudaGetLastError();
-          fprintf(stderr,
-                  "Error when trying to find the memory information"
-                  " on the GPU: %s\n", cudaGetErrorString(err2));
-          return 1;
+          chosen_algo = choosen_algo_perf.algo;
         }
+        else
+        {
+          // Choose the convolution implementation using heuristics based on the
+          // shapes of the inputs and the amount of memory available.
 
-        // Use heuristics to choose the implementation
-        err = cudnnGetConvolutionBackwardDataAlgorithm(_handle,
-                                                       APPLY_SPECIFIC(kerns),
-                                                       APPLY_SPECIFIC(output),
-                                                       desc,
-                                                       APPLY_SPECIFIC(input),
-                                                       CUDNN_CONVOLUTION_BWD_DATA_PREFER_FASTEST,
-                                                       free,
-                                                       &chosen_algo);
+          // Get the amount of available memory
+          size_t free = 0, total = 0;
+          cudaError_t err2 = cudaMemGetInfo(&free, &total);
+          if (err2 != cudaSuccess){
+            cudaGetLastError();
+            fprintf(stderr,
+                    "Error when trying to find the memory information"
+                    " on the GPU: %s\n", cudaGetErrorString(err2));
+            return 1;
+          }
 
-        if (err != CUDNN_STATUS_SUCCESS) {
-          PyErr_Format(PyExc_RuntimeError,
-                       "GpuDnnConvGradI: error selecting convolution algo: %s",
-                       cudnnGetErrorString(err));
-          return 1;
+          // Use heuristics to choose the implementation
+          err = cudnnGetConvolutionBackwardDataAlgorithm(_handle,
+                                                         APPLY_SPECIFIC(kerns),
+                                                         APPLY_SPECIFIC(output),
+                                                         desc,
+                                                         APPLY_SPECIFIC(input),
+                                                         CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
+                                                         free,
+                                                         &chosen_algo);
+
+          if (err != CUDNN_STATUS_SUCCESS) {
+            PyErr_Format(PyExc_RuntimeError,
+                         "GpuDnnConvGradI: error selecting convolution algo: %s",
+                         cudnnGetErrorString(err));
+            return 1;
+          }
         }
 
         // Store the shapes of the kernels and output as well as the chosen
@@ -129,8 +158,8 @@ APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
         chosen_algo = CONV_ALGO;
     }
 
-    // The FFT implementation does not support strides, 1x1 filters or
-    // inputs with a spatial dimension larger than 1024.
+    // The FFT implementation (only in v3 and onward) does not support strides,
+    // 1x1 filters or inputs with a spatial dimension larger than 1024.
     // If the chosen implementation is FFT, validate that it can be used
     // on the current data and default on a safe implementation if it
     // can't.
