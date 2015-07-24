@@ -331,15 +331,17 @@ class FunctionGraph(utils.object2):
                             # if there is no path then r isn't really a graph input so we shouldn't be running error
                             # handler code in the first place
                             assert path is not None
-                            tr = getattr(r.tag, 'trace', None)
+                            tr = getattr(r.tag, 'trace', [])
                             detailed_err_msg = ""
-                            if tr:
-                                sio = StringIO()
-                                traceback.print_list(tr, sio)
-                                tr = sio.getvalue()
+                            if len(tr) > 0:
                                 detailed_err_msg += "\nBacktrace when the variable is created:\n"
-                                detailed_err_msg += str(tr)
 
+                                # Print separate message for each element in
+                                # the list of batcktraces
+                                sio = StringIO()
+                                for subtr in tr:
+                                    traceback.print_list(subtr, sio)
+                                    detailed_err_msg += str(sio.getvalue())
                             raise MissingInputError(
                                 'A variable that is an input to the graph was '
                                 'neither provided as an input to the function '

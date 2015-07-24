@@ -63,6 +63,54 @@ theano.configparser.AddConfigVar('on_shape_error',
 # Utilities
 
 
+def copy_stack_trace(from_var, to_var):
+    """
+    Copies the stack trace from one or more tensor variables to
+    one or more tensor variables.
+
+    :param from_var: tensor variable or list of tensor variables to
+                     copy stack traces from.
+    :param to_var: tensor variable or list of tensor variables to
+                     copy stack traces to.
+
+    .. note:: The stacktrace is assumed to be of the form of a list of lists
+    of tuples. Each tuple contains the filename, line number, function name
+    and so on. Each list of tuples contains the truples belonging to a
+    particular variable.
+    """
+
+    # Store stack traces from from_var
+    tr = []
+    if type(from_var) is list:
+        # If from_var is a list, store concatenated stack traces
+        if len(from_var) > 0:
+            for v in from_var:
+                if hasattr(v.tag, 'trace') and len(v.tag.trace) > 0:
+                    tr = tr + v.tag.trace
+    else:
+        # If from_var is not a list, it must be a single tensor
+        # variable, so just store that particular stack trace
+        if hasattr(from_var.tag, 'trace'):
+            tr = from_var.tag.trace
+
+    # Copy over stack traces to to_var
+    if type(to_var) is list:
+        # Copy over stack traces from from_var to each variable in
+        # to_var, including the stack_trace of the to_var before
+        for v in to_var:
+            if hasattr(v.tag, 'trace'):
+                v.tag.trace = v.tag.trace + tr
+            else:
+                v.tag.trace = tr
+    else:
+        # Copy over stack traces from from_var to each variable to
+        # to_var, including the stack_trace of the to_var before
+        if hasattr(to_var.tag, 'trace'):
+            to_var.tag.trace = to_var.tag.trace + tr
+        else:
+            to_var.tag.trace = tr
+
+
 def out2in(*local_opts, **kwargs):
     """WRITEME """
     name = (kwargs and kwargs.pop('name', None))
@@ -480,6 +528,7 @@ def local_dimshuffle_lift(node):
                                    op.new_order,
                                    op.inplace)(inp)
             new_inputs.append(apply_local_dimshuffle_lift(new_inp))
+        copy_stack_trace(node.outputs[0], new_inputs)
         ret = inode.op(*new_inputs, **dict(return_list=True))
         return ret
     if inode and isinstance(inode.op, DimShuffle):
@@ -487,6 +536,7 @@ def local_dimshuffle_lift(node):
                      op.new_order]
         inplace = op.inplace and inode.op.inplace
         iinput = inode.inputs[0]
+
         # remove useless dimshuffle
         if (new_order == list(range(len(new_order))) and
                 len(new_order) == iinput.type.ndim):
@@ -494,7 +544,9 @@ def local_dimshuffle_lift(node):
         else:
             ret = op.__class__(iinput.type.broadcastable, new_order,
                                inplace)(iinput)
-            return [apply_local_dimshuffle_lift(ret)]
+            ret = apply_local_dimshuffle_lift(ret)
+            copy_stack_trace(node.outputs[0], ret)
+            return [ret]
 
 
 @register_canonicalize
@@ -519,7 +571,12 @@ def local_lift_transpose_through_dot(node):
     x, y = node.inputs[0].owner.inputs
 
     if x.ndim == y.ndim == 2:
-        return [T.dot(y.T, x.T)]
+        # Output is dot product of transposed inputs in reverse order
+        ret = [T.dot(y.T, x.T)]
+
+        # Copy over stack trace to output from result of dot-product
+        copy_stack_trace(node.inputs[0], ret)
+        return ret
 
 
 @gof.local_optimizer([DimShuffle])
@@ -528,7 +585,9 @@ def dimshuffle_as_view(node):
     if not isinstance(op, DimShuffle) or op.inplace:
         return False
     new_op = op.__class__(op.input_broadcastable, op.new_order, inplace=True)
-    return [new_op(*node.inputs)]
+    v = new_op(*node.inputs)
+    copy_stack_trace(node.outputs[0], v)
+    return [v]
 
 # Step 60 is the inplace optimization stage.
 compile.optdb.register('dimshuffle_as_view',
@@ -562,6 +621,8 @@ def local_tensor_scalar_tensor(node):
         s = node.inputs[0]
         if s.owner and isinstance(s.owner.op, T.ScalarFromTensor):
             t = s.owner.inputs[0]
+
+            # We don't need to copy over any stack traces here
             return [t]
 
 
@@ -574,6 +635,8 @@ def local_scalar_tensor_scalar(node):
         t = node.inputs[0]
         if t.owner and isinstance(t.owner.op, T.TensorFromScalar):
             s = t.owner.inputs[0]
+
+            # We don't need to copy over any stack traces here
             return [s]
 
 #####################################
@@ -1290,7 +1353,9 @@ def local_fill_to_alloc(node):
             rval = [T.cast(v, node.outputs[0].type.dtype)]
         elif r.type.broadcastable == node.outputs[0].type.broadcastable:
             # we are broadcasting v somehow, but not r
-            rval = [broadcast_like(v, r, node.fgraph, dtype=v.dtype)]
+            o = broadcast_like(v, r, node.fgraph, dtype=v.dtype)
+            copy_stack_trace(node.outputs[0], o)
+            rval = [o]
         else:
             # we are broadcasting both v and r,
             # the output shape must be computed
@@ -1323,6 +1388,7 @@ def local_useless_fill(node):
         r, v = node.inputs
         if v.type == node.outputs[0].type:
             # this is a useless fill, erase it.
+            # also, we don't need to copy over any stack traces here
             return [v]
 compile.optdb['canonicalize'].register('local_useless_fill',
                                        in2out(local_useless_fill),
@@ -1341,6 +1407,7 @@ def local_useless_alloc(node):
     """
     if node.op == T.alloc:
         if node.inputs[0].type == node.outputs[0].type:
+            # We don't need to copy over any stack traces here
             return [node.inputs[0]]
 
 
@@ -1353,7 +1420,11 @@ def local_shape_to_shape_i(node):
         if not hasattr(node.fgraph, 'shape_feature'):
             return
         shape_feature = node.fgraph.shape_feature
-        return [shape_feature.make_vector_shape(node.inputs[0])]
+        ret = shape_feature.make_vector_shape(node.inputs[0])
+
+        # We need to copy over stack trace from input to output
+        copy_stack_trace(node.outputs[0], ret)
+        return [ret]
 
 
 # TODO: Not sure what type of node we are expecting here
@@ -1411,6 +1482,7 @@ def local_subtensor_make_vector(node):
         return
 
     if isinstance(idx, (int, numpy.integer)):
+        # We don't need to copy over any stack traces here
         return [x.owner.inputs[idx]]
     elif isinstance(idx, Variable):
         if idx.ndim == 0:
@@ -1420,12 +1492,17 @@ def local_subtensor_make_vector(node):
                 if isinstance(v, numpy.integer):
                     # Python 2.4 wants to index only with Python integers
                     v = int(v)
+                # We don't need to copy over any stack traces here
                 return [x.owner.inputs[v]]
             except NotScalarConstantError:
                 pass
         elif idx.ndim == 1 and isinstance(idx, T.Constant):
             values = list(map(int, list(idx.value)))
-            return [make_vector(*[x.owner.inputs[v] for v in values])]
+            ret = [make_vector(*[x.owner.inputs[v] for v in values])]
+
+            # Copy over stack trace from previous output to new output
+            copy_stack_trace(node.outputs[0], ret)
+            return ret
         else:
             raise TypeError('case not expected')
     elif isinstance(idx, slice):
@@ -1461,22 +1538,33 @@ def local_useless_elemwise(node):
         if node.op.scalar_op == theano.scalar.eq and len(node.inputs) == 2:
             if node.inputs[0] == node.inputs[1]:
                 # it is the same var in the graph. That will always be true
-                return [T.fill(node.inputs[0],
-                               T.constant(1.0,
-                                          dtype=node.outputs[0].type.dtype))]
+                ret = [T.fill(node.inputs[0],
+                              T.constant(1.0,
+                                         dtype=node.outputs[0].type.dtype))]
+
+                # Copy stack trace from input to constant output
+                copy_stack_trace(node.outputs[0], ret)
+                return ret
         elif node.op.scalar_op == theano.scalar.neq and len(node.inputs) == 2:
             if node.inputs[0] == node.inputs[1]:
                 # it is the same var in the graph. That will always be false
-                return [T.fill(node.inputs[0],
-                               T.constant(0.0,
-                                          dtype=node.outputs[0].type.dtype))]
+                ret = [T.fill(node.inputs[0],
+                              T.constant(0.0,
+                                         dtype=node.outputs[0].type.dtype))]
+
+                # Copy stack trace from input to constant output
+                copy_stack_trace(node.outputs[0], ret)
+                return ret
+
         elif node.op.scalar_op == theano.scalar.mul and len(node.inputs) == 1:
+            # No need to copy over any stack trace
             return [node.inputs[0]]
         elif node.op.scalar_op == theano.scalar.add and len(node.inputs) == 1:
+            # No need to copy over any stack trace
             return [node.inputs[0]]
-
         elif (node.op.scalar_op == theano.scalar.identity and
               len(node.inputs) == 1):
+            # No need to copy over any stack trace
             return [node.inputs[0]]
 
 
@@ -1491,7 +1579,14 @@ def local_alloc_unary(node):
             x = a.owner.inputs[0]
             shp = a.owner.inputs[1:]
             v = node.op(x)
-            return [T.alloc(T.cast(v, node.outputs[0].dtype), *shp)]
+            copy_stack_trace(node.outputs[0], v)
+            ret = T.alloc(T.cast(v, node.outputs[0].dtype), *shp)
+
+            # Is it really necessary to copy over stack trace here?
+            # after all, T.alloc and T.cast should preserve the stack trace from x,
+            # but perhaps the trace is lost in "v = node.op(x)"?
+            copy_stack_trace(node.outputs[0], ret)
+            return [ret]
 
 
 @register_canonicalize
@@ -1514,6 +1609,7 @@ def local_cast_cast(node):
             not isinstance(x.owner.op.scalar_op, scalar.Cast)):
         return
     if node.op.scalar_op.o_type == x.owner.op.scalar_op.o_type:
+        # We don't need to copy over any stack traces here
         return [x]
 
 
@@ -1547,6 +1643,8 @@ def local_func_inv(node):
 
     for inv_pair in inv_pairs:
         if is_inverse_pair(node_op, prev_op, inv_pair):
+            # We don't need to copy stack trace, because the optimization
+            # is trivial and maintains the earlier stack trace
             return x.owner.inputs
 
     return
@@ -1669,9 +1767,14 @@ def local_remove_useless_assert(node):
                 cond.append(c)
 
         if len(cond) == 0:
+            # We don't need to copy over any stack traces here
             return [node.inputs[0]]
         if len(cond) != len(node.inputs) - 1:
-            return [assert_(node.inputs[0], *cond)]
+            ret = assert_(node.inputs[0], *cond)
+
+            # We copy over stack trace from the output of the original assert
+            copy_stack_trace(node.outputs[0], ret)
+            return [ret]
 
 
 @gof.local_optimizer([Assert])
@@ -1685,6 +1788,7 @@ def local_remove_all_assert(node):
     if not isinstance(node.op, Assert):
         return
 
+    # We don't need to copy over any stack traces here
     return [node.inputs[0]]
 # Disabled by default
 compile.optdb['canonicalize'].register('local_remove_all_assert',
@@ -1819,12 +1923,20 @@ def local_elemwise_alloc_op(ElemwiseOP, AllocOP, DimShuffleOP):
 
                 # We need to keep the dimshuffle. It could swap axes or
                 # add dimensions anywhere.
-                new_i.append(i.owner.op(alloc_input))
+                r_i = i.owner.op(alloc_input)
+
+                # Copy stack trace from i to new_i
+                copy_stack_trace(i, r_i)
+                new_i.append(r_i)
             else:
                 new_i.append(i)
         new_i[assert_op_idx] = assert_op
 
-        return node.op(*new_i, return_list=True)
+        ret = node.op(*new_i, return_list=True)
+
+        # Copy over stack trace from previous outputs to new outputs.
+        copy_stack_trace(node.outputs, ret)
+        return ret
 
     return local_elemwise_alloc
 
@@ -1857,7 +1969,7 @@ theano.configparser.AddConfigVar(
     theano.configparser.BoolParam(True),
     in_c_key=False)
 
-############################
+#######################
 # Constant Canonicalization
 ############################
 
@@ -4974,7 +5086,11 @@ def constant_folding(node):
             constant = output.type.Constant
         except AttributeError:
             constant = Constant
-        rval.append(constant(output.type, storage_map[output][0]))
+
+        v = constant(output.type, storage_map[output][0])
+        copy_stack_trace(output, v)
+
+        rval.append(v)
     return rval
 
 
@@ -5854,7 +5970,10 @@ def local_add_mul_fusion(node):
                 isinstance(inp.owner.op.scalar_op, s_op)):
             l = list(node.inputs)
             l.remove(inp)
-            return [node.op(*(l + inp.owner.inputs))]
+            output_node = node.op(*(l + inp.owner.inputs))
+
+            copy_stack_trace(node.outputs[0], output_node)
+            return [output_node]
 
 if config.tensor.local_elemwise_fusion:
     _logger.debug("enabling optimization fusion elemwise in fast_run")

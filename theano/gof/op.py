@@ -458,14 +458,17 @@ class PureOp(object):
                 detailed_err_msg = (
                     "For compute_test_value, one input test value does not"
                     " have the requested type.\n")
-                tr = getattr(v.tag, 'trace', None)
-                if tr:
-                    sio = StringIO()
-                    traceback.print_list(tr, sio)
-                    tr = sio.getvalue()
+                tr = getattr(v.tag, 'trace', [])
+                if len(tr) > 0:
                     detailed_err_msg += (
                         " \nBacktrace when that variable is created:\n")
-                    detailed_err_msg += str(tr)
+                    # Print separate message for each element in the list 
+                    # of batcktraces
+                    sio = StringIO()
+                    for subtr in tr:
+                        traceback.print_list(subtr, sio)
+                        detailed_err_msg += str(sio.getvalue())
+
                 detailed_err_msg += (
                     "\nThe error when converting the test value to that"
                     " variable type:")
