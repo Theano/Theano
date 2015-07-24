@@ -471,9 +471,7 @@ def hash_from_dict(d):
     """Work around the fact that dict are not hashable in python
 
     This request that all object have a sorted order that depend only
-    on the value of the object. This is true for integer/float/string
-
-    We do not verify that the objects in the dict have this property.
+    on the key of the object. We support only integer/float/string keys.
 
     Also, we transform values that are list into tuple as list are not
     hashable.
@@ -490,6 +488,7 @@ def hash_from_dict(d):
     first_part = [k for k, v in items]
     second_part = []
     for k, v in items:
+        assert isinstance(k, (str, int, float))
         if isinstance(v, (tuple, list)):
             second_part += [tuple(v)]
         else:

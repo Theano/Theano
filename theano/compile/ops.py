@@ -613,6 +613,9 @@ class Rebroadcast(gof.Op):
         for axis, broad in iteritems(self.axis):
             assert isinstance(axis, (numpy.integer, int)), (
                 "Rebroadcast needs integer axes. Got ", axis)
+            assert isinstance(broad, bool), (
+                "Rebroadcast needs bool for new broadcast pattern. Got ",
+                broad)
 
     def __str__(self):
         if len(self.axis) == 0:
