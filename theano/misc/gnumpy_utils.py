@@ -2,6 +2,8 @@
 This code can only work if gnumpy and theano are initialized on the
 same gpu as theano.
 """
+
+import six
 from six.moves import reduce
 
 try:
@@ -15,7 +17,7 @@ try:
     if cuda.cuda_available is False:
         raise ImportError('Optional theano package cuda disabled')
 
-    if PY3:
+    if six.PY3:
         long = int
 
     def cudandarray_to_garray(x, copyif=False):

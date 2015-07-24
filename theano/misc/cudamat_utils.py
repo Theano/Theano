@@ -7,6 +7,8 @@ WARNING: In the test of this file there is a transpose that is used...
          So there can be problem with shape and stride order...
 """
 
+import six
+
 try:
     import cudamat
 
@@ -16,7 +18,7 @@ try:
     if cuda.cuda_available is False:
         raise ImportError('Optional theano package cuda disabled')
 
-    if PY3:
+    if six.PY3:
         long = int
 
     def cudandarray_to_cudamat(x, copyif=False):
