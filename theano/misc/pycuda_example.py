@@ -279,7 +279,7 @@ class PycudaElemwiseSourceModuleOp(GpuOp):
 class PycudaElemwiseSourceModuleMakeThunkOp(Op):
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
-    __props__ = ("scalar_op", "inplace_pattern", "name")
+    __props__ = ("scalar_op", "inplace_pattern")
 
     def __init__(self, scalar_op, inplace_pattern=None, name=None):
         if inplace_pattern is None:
