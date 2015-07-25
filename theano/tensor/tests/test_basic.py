@@ -7729,6 +7729,13 @@ def test_allocempty():
     assert out.shape == (2, 3)
     assert out.dtype == 'float32'
 
+
+def test_symbolic_slice():
+    x = theano.tensor.tensor4('x')
+    a, b = x.shape[:2]
+    output = a.eval({x: numpy.zeros((5, 4, 3, 2), dtype=theano.config.floatX)})
+    assert output == numpy.array(5)
+
 """
 
 if __name__ == '__main__':
