@@ -101,7 +101,7 @@ following example. Here, we use ``exception_verbosity=high`` and
 ``optimizer=None`` would and it could therefore be used instead of test values.
 
 
-.. testcode::
+.. testcode:: testvalues
 
     import numpy
     import theano
@@ -137,7 +137,7 @@ following example. Here, we use ``exception_verbosity=high`` and
 
 Running the above code generates the following error message:
 
-.. testoutput::
+.. testoutput:: testvalues
 
     Traceback (most recent call last):
       File "test1.py", line 31, in <module>
@@ -166,7 +166,7 @@ Running the above code generates the following error message:
 If the above is not informative enough, by instrumenting the code ever
 so slightly, we can get Theano to reveal the exact source of the error.
 
-.. testcode::
+.. testcode:: testvalues
 
     # enable on-the-fly graph computations
     theano.config.compute_test_value = 'warn'
@@ -185,7 +185,7 @@ of error can thus be identified with much more precision and much earlier in
 the compilation pipeline. For example, running the above code yields the
 following error message, which properly identifies *line 24* as the culprit.
 
-.. testoutput::
+.. testoutput:: testvalues
 
     Traceback (most recent call last):
       File "test2.py", line 24, in <module>
@@ -229,6 +229,9 @@ The ``compute_test_value`` mechanism works as follows:
 Theano provides a 'Print' op to do this.
 
 .. testcode::
+
+    import numpy
+    import theano
 
     x = theano.tensor.dvector('x')
 
@@ -358,7 +361,7 @@ position, or only if a particular value showed up in one of the inputs or output
 A typical example is to detect when NaN values are added into computations, which
 can be achieved as follows:
 
-.. testcode::
+.. testcode:: compiled
 
     import numpy
 
@@ -386,7 +389,7 @@ can be achieved as follows:
                             post_func=detect_nan))
     f(0)  # log(0) * 0 = -inf * 0 = NaN
 
-.. testoutput::
+.. testoutput:: compiled
 
     *** NaN detected ***
     Elemwise{Composite{[mul(log(i0), i0)]}} [@A] ''
@@ -404,7 +407,7 @@ will not be able to see the input that was overwriten in the ``post_func``
 function. To disable those optimizations (with a Theano version after
 0.6rc3), define the MonitorMode like this:
 
-.. testcode::
+.. testcode:: compiled
 
    mode = theano.compile.MonitorMode(post_func=detect_nan).excluding(
        'local_elemwise_fusion', 'inplace)
@@ -424,7 +427,7 @@ the execution of the node can garbage collect its inputs that aren't
 needed anymore by the Theano function. This can be done with the Theano
 flag:
 
-.. testcode::
+.. testcode:: compiled
 
    allow_gc=False
 
