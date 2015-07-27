@@ -511,7 +511,7 @@ First, we'll instantiate a ``mul`` Op:
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_1
 
-.. testcode::
+.. testcode:: mul
 
    from theano import gof
    mul = gof.Op()
@@ -528,7 +528,7 @@ Apply node with an output Variable of type ``double``.
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_1
 
-.. testcode::
+.. testcode:: mul
 
    def make_node(x, y):
        if x.type != double or y.type != double:
@@ -563,7 +563,7 @@ contain a single storage cell for the multiplication's variable.
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_1
-.. testcode::
+.. testcode:: mul
 
    def perform(node, inputs, output_storage):
        x, y = inputs[0], inputs[1]
@@ -627,7 +627,7 @@ by modifying ``make_node`` to accept Python ``int`` or ``float`` as
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_1
-.. testcode::
+.. testcode:: mul
 
    def make_node(x, y):
        if isinstance(x, (int, float)):
