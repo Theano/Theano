@@ -59,7 +59,7 @@ A ``borrow`` argument can be provided to the shared-variable constructor.
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_aliasing.test_aliasing_1
 
-.. testcode::
+.. testcode:: borrow
 
    import numpy, theano
    np_array = numpy.ones(2, dtype='float32')
@@ -72,7 +72,7 @@ By default (*s_default*) and when explicitly setting ``borrow=False``, the
 shared variable we construct gets a [deep] copy of *np_array*.  So changes we
 subsequently make to *np_array* have no effect on our shared variable.
 
-.. testcode::
+.. testcode:: borrow
 
    np_array += 1 # now it is an array of 2.0 s
 
@@ -80,7 +80,7 @@ subsequently make to *np_array* have no effect on our shared variable.
    print(s_false.get_value())
    print(s_true.get_value())
 
-.. testoutput::
+.. testoutput:: borrow
 
    array([1.0, 1.0])
    array([1.0, 1.0])
@@ -126,7 +126,7 @@ retrieved.
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_aliasing.test_aliasing_2
 
-.. testcode::
+.. testcode:: borrow
 
    s = theano.shared(np_array)
 
@@ -152,7 +152,7 @@ then you should use the ``return_internal_type=True`` argument to
 constant time), but might return various datatypes depending on contextual
 factors (e.g. the compute device, the dtype of the NumPy array).
 
-.. testcode::
+.. testcode:: borrow
 
     v_internal = s.get_value(borrow=True, return_internal_type=True)
 
@@ -184,7 +184,7 @@ that Theano *may* reuse the buffer you provide as the internal storage for the v
 A standard pattern for manually updating the value of a ``shared`` variable is as
 follows:
 
-.. testcode::
+.. testcode:: borrow
 
     s.set_value(
         some_inplace_fn(s.get_value(borrow=True)),
