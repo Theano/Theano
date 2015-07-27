@@ -886,7 +886,7 @@ def pydotprint(fct, outfile=None,
                 else:
                     g.add_node(pd.Node(varstr, color='green', shape=var_shape))
                 g.add_edge(pd.Edge(varstr, astr, label=label, **param))
-            elif var.name or not compact:
+            elif var.name or not compact or var in outputs:
                 g.add_edge(pd.Edge(varstr, astr, label=label, **param))
             else:
                 # no name, so we don't make a var ellipse
