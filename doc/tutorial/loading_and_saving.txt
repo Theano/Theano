@@ -129,6 +129,7 @@ just load the parameters manually with `numpy`.
 
 .. testcode::
 
+    import numpy
     numpy.load('model.zip')
 
 This approach could be beneficial if you are sharing your model with people who
