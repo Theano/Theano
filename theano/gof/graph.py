@@ -264,7 +264,7 @@ class Variable(Node):
 
     - `TensorVariable` subclass of Variable that represents a numpy.ndarray object
 
-    - `SharedTensorVariable` Shared version of TensorVariable
+    - `TensorSharedVariable` Shared version of TensorVariable
 
     - `SparseVariable` subclass of Variable that represents a scipy.sparse.{csc,csr}_matrix object
 
