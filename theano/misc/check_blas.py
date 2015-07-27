@@ -17,13 +17,6 @@ import numpy
 import theano
 import theano.tensor as T
 
-s = """
-result for shapes=(2000,2000) and iters=100
-GTX 470 7.22s
-GTX 285, 6.84s
-GTX 480 5.83s
-"""
-
 
 def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
             iters=10, order='C'):
