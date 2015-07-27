@@ -440,7 +440,7 @@ need to validate that the output storage has been allocated and has the same
 shape as our vector input. If it is not the case, we allocate a new output
 storage with the right shape and number of dimensions.
 
-.. testcode::
+.. testcode:: examples
 
     import numpy
     import theano
@@ -565,7 +565,7 @@ the inputs (because of the upcast in the method ``make_node()``), the typenum
 of the output has to be obtained in the Python code and then included in the
 C code.
 
-.. testcode::
+.. testcode:: examples
 
     class VectorTimesVector(gof.Op):
         __props__ = ()
