@@ -105,11 +105,11 @@ class TestConv2d(unittest.TestCase):
         c = conv.AbstractConv2d_gradWeights(border_mode=border_mode,
                                             subsample=subsample,
                                             imshp = imshp, kshp = kshp)
-        c = c(inputs, output, filters_shape)
+        c = c(inputs, output, filters_shape[-2:])
         f = theano.function([], c, mode)
         res_ref = py_conv(inputs_val.transpose((1, 0, 2, 3)),
                           output_val.transpose((1, 0, 2, 3))[:, :, ::-1, ::-1],
-                          'valid', subsample).transpose((1, 0, 2, 3))
+                          'valid', subsample).transpose((1, 0, 2, 3))[:, :, ::-1, ::-1]
         res = numpy.array(f())
         print res_ref.shape, res.shape
 
@@ -151,7 +151,7 @@ class TestConv2d(unittest.TestCase):
         c = conv.AbstractConv2d_gradInputs(border_mode="valid",
                                            subsample=subsample,
                                            imshp = imshp, kshp = kshp)
-        c = c(filters, output, inputs_shape)
+        c = c(filters, output, inputs_shape[-2:])
         f = theano.function([], c, mode)
         res_ref = py_conv(output_val,
                           filters_val.transpose(1, 0, 2, 3)[:, :, ::-1, ::-1],
@@ -161,11 +161,15 @@ class TestConv2d(unittest.TestCase):
         print "2, ", res_ref.shape, res.shape
 
         utt.assert_allclose(res_ref, res)
+
+        def abstract_conv2d_gradinputs(filters_val, output_val):
+            conv_op = conv.AbstractConv2d_gradInputs(border_mode=border_mode,
+                                                     subsample=subsample)
+            return conv_op(filters_val, output_val, inputs_shape[-2:])
+
         if verify_grad:
-            utt.verify_grad(conv.AbstractConv2d_gradInputs(border_mode=border_mode,
-                                                           subsample=subsample),
-                            [filters_val, output_val,
-                             numpy.array(inputs_shape).astype('float32')])
+            utt.verify_grad(abstract_conv2d_gradinputs,
+                            [filters_val, output_val])
 
 
 
@@ -193,7 +197,7 @@ class TestConv2d(unittest.TestCase):
 
         border_mode= 'valid'
         for i, f, o, s in zip(inputs_shapes[0:1], filters_shapes[0:1], output_shapes[0:1], subsamples[0:1]):
-            for provide_shape in [True]:
+            for provide_shape in [False, True]:
                 self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
                              verify_grad=True, mode=mode_without_gpu, device='cpu',
                              provide_shape=provide_shape, border_mode=border_mode)
@@ -224,7 +228,7 @@ class TestConv2d(unittest.TestCase):
             for provide_shape in [False, True]:
                 self.run_gradweight(inputs_shape=i, filters_shape=f,
                                     output_shape=o, subsample=s,
-                                    verify_grad=False, mode=mode_without_gpu, device='cpu',
+                                    verify_grad=True, mode=mode_without_gpu, device='cpu',
                                     provide_shape=provide_shape, border_mode=border_mode)
         return
         ### No reference implementation of full available yet
@@ -251,7 +255,7 @@ class TestConv2d(unittest.TestCase):
             for provide_shape in [True, False]:
                 self.run_gradinput(inputs_shape=i, filters_shape=f,
                                    output_shape=o, subsample=s,
-                                   verify_grad=False, mode=mode_without_gpu, device='cpu',
+                                   verify_grad=True, mode=mode_without_gpu, device='cpu',
                                    provide_shape=provide_shape, border_mode=border_mode)
         return
         ### No reference implementation of full available yet
@@ -261,7 +265,6 @@ class TestConv2d(unittest.TestCase):
                             filters_shape=(10, 1, 2, 2),
                             output_shape=(16, 10, 3, 3),
                             subsample=(1, 1),
-                            verify_grad=False, mode=mode_without_gpu, device='cpu',
+                            verify_grad=True, mode=mode_without_gpu, device='cpu',
                             provide_shape=provide_shape, border_mode=border_mode)
-
 

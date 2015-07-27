@@ -566,6 +566,9 @@ def local_conv2d_gradweight_cpu(node):
     if node.op.border_mode not in ['full', 'valid']:
         return None
 
+    if not node.op.filter_flip:
+        # Not tested yet
+        return
 
     if node.op.border_mode == 'valid' and \
             (node.op.subsample != (1, 1) or node.op.imshp is None or node.op.kshp is None):
@@ -574,20 +577,20 @@ def local_conv2d_gradweight_cpu(node):
         # slower than it could be), nad incorrect when subsample > 2.
         # build a "node", that should be equivalent to the one given by
         # self.make_node, but using convGrad3D instead.
-
-        if not node.op.filter_flip:
-            topgrad = topgrad[:, :, ::-1, ::-1]  # flip them
-
-
         shuffled_img = img.dimshuffle(0, 2, 3, 'x', 1)
         shuffled_topgrad = topgrad.dimshuffle(0, 2, 3, 'x', 1)
         rval = convGrad3D(V=shuffled_img,
                           d=(node.op.subsample[0], node.op.subsample[1], 1),
-                          WShape=(shape[0], shape[2], shape[3], 1, shape[1]),
+                          WShape=(shuffled_topgrad.shape[4],
+                                  shape[0], shape[1], 1,
+                                  shuffled_img.shape[4]),
                           dCdH=shuffled_topgrad)
 
         rval = theano.tensor.addbroadcast(rval, 3)
-        return [rval.dimshuffle(0, 4, 1, 2)]
+        rval = rval.dimshuffle(0, 4, 1, 2)
+        rval = rval[:, :, ::-1, ::-1]
+        rval = patternbroadcast(rval, node.outputs[0].broadcastable)
+        return [rval]
 
     if node.op.imshp is None or node.op.kshp is None:
         return None
@@ -601,7 +604,6 @@ def local_conv2d_gradweight_cpu(node):
     fulloutshp = ConvOp.getOutputShape(node.op.imshp[2:],
                                        node.op.kshp[2:], (1, 1),
                                        node.op.border_mode)
-
 
     newimg = img.dimshuffle((1, 0, 2, 3))
     newtopgrad = topgrad.dimshuffle((1, 0, 2, 3))
@@ -630,6 +632,7 @@ def local_conv2d_gradweight_cpu(node):
 
     if node.op.filter_flip:
         filters = filters[:, :, ::-1, ::-1]  # flip them
+
     dw = ConvOp(imshp, kshp, nkern, bsize, 1, 1, output_mode='valid',
                 unroll_batch=None, unroll_kern=None, unroll_patch=None,
                 imshp_logical=imshp_logical,
@@ -638,15 +641,15 @@ def local_conv2d_gradweight_cpu(node):
                 direction_hint='bprop weights')
     res = dw(img, filters)
     res = res.dimshuffle((1, 0, 2, 3))
+    res = res[:, :, ::-1, ::-1]
+    res = patternbroadcast(res, node.outputs[0].broadcastable)
     return [res]
 register_specialize_device(local_conv2d_gradweight_cpu)
 
 
 @local_optimizer([AbstractConv2d_gradInputs])
 def local_conv2d_gradinputs_cpu(node):
-
     kern, topgrad, shape = node.inputs
-
 
     if  isinstance(kern.type, CudaNdarrayType) or \
             isinstance(topgrad.type, CudaNdarrayType):
@@ -655,20 +658,25 @@ def local_conv2d_gradinputs_cpu(node):
     if node.op.border_mode not in ['full', 'valid']:
         return None
 
+    if not node.op.filter_flip:
+        # Not tested yet
+        return None
+
     ### Conv 3d implementation, needed when subsample > 2
     if node.op.border_mode == 'valid' and \
             (node.op.subsample != (1, 1) or node.op.imshp is None or node.op.kshp is None):
-        if node.op.filter_flip:
-            kern = kern[:, :, ::-1, ::-1]
+        kern = kern[:, :, ::-1, ::-1]
         shuffled_kern = kern.dimshuffle(0, 2, 3, 'x', 1)
         shuffled_topgrad = topgrad.dimshuffle(0, 2, 3, 'x', 1)
         b = theano.tensor.zeros_like(shuffled_kern[0, 0, 0, 0, :])
         rval = convTransp3D(W=shuffled_kern, b=b,
                             d=(node.op.subsample[0], node.op.subsample[1], 1),
                             H=shuffled_topgrad,
-                            RShape=(shape[2], shape[3], 1))
+                            RShape=(shape[0], shape[1], 1))
         rval = theano.tensor.addbroadcast(rval, 3)
-        return [rval.dimshuffle(0, 4, 1, 2)]
+        rval = rval.dimshuffle(0, 4, 1, 2)
+        rval = patternbroadcast(rval, node.outputs[0].broadcastable)
+        return [rval]
 
     ### Conv2d Implementation
     if node.op.imshp is None or node.op.kshp is None:
@@ -677,8 +685,7 @@ def local_conv2d_gradinputs_cpu(node):
     if not node.op.border_mode == 'full':
         mode = 'full'
     filters = kern.dimshuffle((1, 0, 2, 3))
-    if node.op.filter_flip:
-        filters = filters[:, :, ::-1, ::-1]
+    filters = filters[:, :, ::-1, ::-1]
 
     outshp = ConvOp.getOutputShape(node.op.imshp[2:],
                                    node.op.kshp[2:],  node.op.subsample,
@@ -701,5 +708,6 @@ def local_conv2d_gradinputs_cpu(node):
                  version=-1,
                  direction_hint='bprop inputs')
     din = din(topgrad, filters)
+    din = patternbroadcast(din, node.outputs[0].broadcastable)
     return [din]
 register_specialize_device(local_conv2d_gradinputs_cpu)
