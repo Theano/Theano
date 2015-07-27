@@ -1239,7 +1239,7 @@ class ShapeFeature(object):
                     continue
 
                 if shpnode.outputs[0] in theano.gof.graph.ancestors([repl]):
-                    raise AssertionError(
+                    raise InconsistencyError(
                         "This substitution would insert a cycle in the graph:"
                         "node: %s, i: %i, r: %s, new_r: %s"
                         % (node, i, r, new_r))
