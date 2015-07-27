@@ -186,7 +186,7 @@ static inline std::size_t ceilInt(std::size_t m, std::size_t n) {
 
 class Mutex {
 #ifdef WIN32
-    CRITICAL_SECTION mCriticalSection;
+    mutable CRITICAL_SECTION mCriticalSection;
 #else
     pthread_mutex_t  mMutex;
 #endif
