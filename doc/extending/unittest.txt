@@ -183,7 +183,7 @@ need to be added.
 
 Example:
 
-.. testcode::
+.. testcode:: writeUnitest
 
     import unittest
     class TestTensorDot(unittest.TestCase):
@@ -201,7 +201,7 @@ functionality which is shared amongst all test methods in the test
 case (i.e initializing data, parameters, seeding random number
 generators -- more on this later)
 
-.. testcode::
+.. testcode:: writeUnitest
 
     class TestTensorDot(unittest.TestCase):
         def setUp(self):
@@ -222,7 +222,7 @@ implementation.
 
 Example:
 
-.. testcode::
+.. testcode:: writeUnitest
 
     class TestTensorDot(unittest.TestCase):
         def setUp(self):
@@ -238,7 +238,7 @@ Example:
 
 Avoid hard-coding variables, as in the following case:
 
-.. testcode::
+.. testcode:: writeUnitest
 
     self.assertTrue(numpy.all(f(self.avals,self.bvals)==numpy.array([[25,25,30,28],[21,18,14,25]])))
 
@@ -273,7 +273,7 @@ as they can go unnoticed for a long time and a hard to detect
 
 Example:
 
-.. testcode::
+.. testcode:: writeUnitest
 
     class TestTensorDot(unittest.TestCase):
         ...
