@@ -384,6 +384,14 @@ class G_reshape(test_basic.T_reshape):
         assert self.op == GpuReshape
 
 
+class G_comparison(test_basic.test_comparison):
+    def setUp(self):
+        utt.seed_rng()
+        self.mode = mode_with_gpu
+        self.shared = gpuarray_shared_constructor
+        self.dtypes = ['float64', 'float32']
+
+
 class G_Join_and_Split(test_basic.T_Join_and_Split):
     def setUp(self):
         super(G_Join_and_Split, self).setUp()
