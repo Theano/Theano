@@ -55,15 +55,15 @@ def test_dnn_conv_desc_merge():
     f = theano.function([], [theano.Out(desc1, borrow=True),
                              theano.Out(desc1v2, borrow=True)],
                         mode=mode_with_gpu)
-    assert len(f.maker.fgraph.apply_nodes)
-    theano.printing.debugprint(f)
+    assert len([n for n in f.maker.fgraph.apply_nodes
+                if isinstance(n.op, dnn.GpuDnnConvDesc)]) == 1
 
     # CDATA type don't equal even if they represent the same object
     # So we can't use debugmode with it.
     if theano.config.mode not in ["DebugMode", "DEBUG_MODE"]:
         d1, d2 = f()
 
-        # This will be the case if they are merged, which would be bad.
+        # They won't be equal if they aren't merged.
         assert d1 == d2
 
 
