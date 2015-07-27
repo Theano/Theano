@@ -344,7 +344,7 @@ def test_scan_debugprint2():
        | |Subtensor{int64} [@J] ''
        |   |Shape [@K] ''
        |   | |Subtensor{int64::} [@L] ''
-       |   |   |ARange [@M] ''
+       |   |   |ARange{dtype='int16'} [@M] ''
        |   |   | |TensorConstant{0} [@N]
        |   |   | |TensorConstant{10000} [@O]
        |   |   | |TensorConstant{1} [@P]
@@ -427,7 +427,7 @@ def test_scan_debugprint3():
        | |Subtensor{int64} [@J] ''
        |   |Shape [@K] ''
        |   | |Subtensor{int64::} [@L] ''
-       |   |   |ARange [@M] ''
+       |   |   |ARange{dtype='int8'} [@M] ''
        |   |   | |TensorConstant{0} [@N]
        |   |   | |TensorConstant{10} [@O]
        |   |   | |TensorConstant{1} [@P]
