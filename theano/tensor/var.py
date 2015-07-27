@@ -355,8 +355,80 @@ class _tensor_py_operators:
         return theano.tensor.basic.diagonal(self, offset, axis1, axis2)
 
     # Elemwise
+    def arccos(self):
+        return theano.tensor.arccos(self)
+
+    def arccosh(self):
+        return theano.tensor.arccosh(self)
+
+    def arcsin(self):
+        return theano.tensor.arcsin(self)
+
+    def arcsinh(self):
+        return theano.tensor.arcsinh(self)
+
+    def arctan(self):
+        return theano.tensor.arctan(self)
+
+    def arctanh(self):
+        return theano.tensor.arctanh(self)
+
+    def ceil(self):
+        return theano.tensor.ceil(self)
+
+    def cos(self):
+        return theano.tensor.cos(self)
+
+    def cosh(self):
+        return theano.tensor.cosh(self)
+
+    def deg2rad(self):
+        return theano.tensor.deg2rad(self)
+
     def exp(self):
         return theano.tensor.exp(self)
+
+    def exp2(self):
+        return theano.tensor.exp2(self)
+
+    def expm1(self):
+        return theano.tensor.expm1(self)
+
+    def floor(self):
+        return theano.tensor.floor(self)
+
+    def log(self):
+        return theano.tensor.log(self)
+
+    def log10(self):
+        return theano.tensor.log10(self)
+
+    def log1p(self):
+        return theano.tensor.log1p(self)
+
+    def log2(self):
+        return theano.tensor.log2(self)
+
+    def rad2deg(self):
+        return theano.tensor.rad2deg(self)
+
+    def sin(self):
+        return theano.tensor.sin(self)
+
+    def sinh(self):
+        return theano.tensor.sinh(self)
+
+    def sqrt(self):
+        return theano.tensor.sqrt(self)
+
+    def tan(self):
+        return theano.tensor.tan(self)
+
+    def tanh(self):
+        return theano.tensor.tanh(self)
+
+    def trunc(self):
+        return theano.tensor.trunc(self)
 
     # CASTING
     def astype(self, dtype):
