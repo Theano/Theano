@@ -659,6 +659,55 @@ def test_dnn_conv_alpha_output_merge():
         utt.assert_allclose(v1, v2)
 
 
+def test_dnn_conv_merge_mouts():
+    # make sure it doesn't attempt to output/alpha merge a convolution
+    # that has multiple clients.
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+    img = T.ftensor4()
+    kern = T.ftensor4()
+    out = T.ftensor4()
+
+    conv = dnn.dnn_conv(img, kern)
+
+    lr = numpy.asarray(0.05, dtype='float32')
+
+    if cuda.dnn.version() == -1:
+        # Can't merge alpha with cudnn v1
+        fr = conv + out
+    else:
+        fr = lr * (conv + out)
+    rr = conv * lr
+
+    f = theano.function([img, kern, out], [fr, rr], mode=mode_with_gpu)
+    convs = [n for n in f.maker.fgraph.toposort()
+             if isinstance(n.op, dnn.GpuDnnConv)]
+    assert len(convs) == 1
+
+
+def test_dnn_conv_merge_broad():
+    # Make sure that we don't apply output_merge on broadcasted values.
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+    img = T.ftensor4()
+    kern = T.ftensor4()
+
+    conv = dnn.dnn_conv(img, kern)
+
+    lr = numpy.asarray(0.05, dtype='float32')
+
+    # this does broadcasting
+    fr = conv + lr
+
+    f = theano.function([img, kern], [fr])
+    convs = [n for n in f.maker.fgraph.toposort()
+             if isinstance(n.op, dnn.GpuDnnConv)]
+    assert len(convs) == 1
+    conv = convs[0]
+    # Assert output was not merged
+    assert isinstance(conv.inputs[2].owner.op, GpuAllocEmpty)
+
+
 def test_dnn_conv_grad():
     if not cuda.dnn.dnn_available() or dnn.version() == -1:
         raise SkipTest('alpha != 1.0 not supported in cudnn v1')

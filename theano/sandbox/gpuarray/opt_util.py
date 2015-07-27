@@ -42,6 +42,7 @@ def find_node(v, cls, ignore_clients=False):
             return v.owner
         elif (isinstance(v.owner.op, GpuFromHost) and
               v.owner.inputs[0].owner is not None and
+              (ignore_clients or len(v.owner.inputs[0].clients) == 1) and
               isinstance(v.owner.inputs[0].owner.op, HostFromGpu)):
             return find_node(v.owner.inputs[0].owner.inputs[0], cls)
         else:
