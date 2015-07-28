@@ -66,7 +66,7 @@ Python in one slide
 * Popular in web-dev and scientific communities
 
 
-.. code-block:: python
+.. testcode:: example
 
     #######################
     # PYTHON SYNTAX EXAMPLE
@@ -78,11 +78,28 @@ Python in one slide
                               # N.B. string literal, None
 
     print d['a']              # square brackets index
-    # -> 5
+
+.. testoutput:: example
+
+    5
+
+.. testcode:: example
+
     print d[(1, 2, 3)]        # new tuple == b, retrieves None
-    # -> None
+
+.. testoutput:: example
+
+    None
+
+.. testcode:: example
+
     print d[6]
-    # raises KeyError Exception
+
+.. testoutput:: example
+
+    KeyError Exception
+
+.. testcode:: example
 
     x, y, z = 10, 100, 100    # multiple assignment from tuple
     x, y, z = b               # unpacking a sequence
@@ -93,9 +110,20 @@ Python in one slide
         return a + b + c      # note scoping, indentation
 
     foo(5)                    # calling a function
-    # -> 1 + 5 + 3 == 9       # N.B. scoping
+
+.. testoutput:: example
+
+    9       # N.B. scoping
+
+.. testcode:: example
+
     foo(b=6, c=2)             # calling with named args
-    # -> 1 + 6 + 2 == 9
+
+.. testoutput:: example
+
+    9
+
+.. testcode:: example
 
     print b[1:3]              # slicing syntax
 
@@ -107,14 +135,22 @@ Python in one slide
 
     f = Foo()                 # Creating a class instance
     print f.hello()           # Calling methods of objects
-    # -> 5 
+
+.. testoutput:: example
+ 
+    5 
+
+.. testcode:: example
 
     class Bar(Foo):           # Defining a subclass
         def __init__(self, a):
             self.a = a
 
     print Bar(99).hello()     # Creating an instance of Bar
-    # -> 99
+
+.. testoutput:: example
+
+    99
 
 NumPy in one slide
 ------------------
@@ -145,7 +181,7 @@ NumPy in one slide
 
  * I/O and signal processing for images and audio
 
-.. code-block:: python
+.. testcode::
 
     ##############################
     # Properties of NumPy arrays
@@ -167,7 +203,7 @@ functions. NumPy has great `documentation <http://docs.scipy.org/doc/numpy/refer
 
 Training an MNIST-ready classification neural network in pure NumPy might look like this:
 
-.. code-block:: python
+.. testcode::
 
     #########################
     # NumPy for Training a
@@ -222,7 +258,7 @@ What's missing?
 Now let's have a look at the same algorithm in Theano, which runs 15 times faster if
 you have GPU (I'm skipping some dtype-details which we'll come back to).
 
-.. code-block:: python
+.. testcode::
 
     #########################
     # Theano for Training a
