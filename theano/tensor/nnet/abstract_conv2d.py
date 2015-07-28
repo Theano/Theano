@@ -275,11 +275,11 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
                                self.border_mode,
                                self.subsample,
                                self.filter_flip)(bottom, weights)
-        d_height_width = (theano.gradient.DisconnectedType()(),) * 2
+        d_height_width = (theano.gradient.DisconnectedType()(),)
         return (d_bottom, d_top) + d_height_width
 
     def connection_pattern(self, node):
-        return [[1], [1], [0], [0]]  # no connection to height, width
+        return [[1], [1], [0]]  # no connection to height, width
 
 
 class AbstractConv2d_gradInputs(BaseAbstractConv2d):
@@ -331,13 +331,13 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
                                                self.bsize,
                                                self.border_mode,
                                                self.subsample)(bottom, top, weights.shape[-2:])
-        d_top = AbstractConv2d(self.imshp, self.filter_shape, self.bsize,
+        d_top = AbstractConv2d(self.imshp, self.kshp, self.bsize,
                                self.border_mode, self.subsample)(bottom, weights)
-        d_height_width = (theano.gradient.DisconnectedType()(),) * 2
+        d_height_width = (theano.gradient.DisconnectedType()(),)
         return (d_weights, d_top) + d_height_width
 
     def connection_pattern(self, node):
-        return [[1], [1], [0], [0]]  # no connection to height, width
+        return [[1], [1], [0]]  # no connection to height, width
 
 
 ### Optimizations should be move in their appropriate files

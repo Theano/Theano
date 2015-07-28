@@ -114,10 +114,14 @@ class TestConv2d(unittest.TestCase):
         print res_ref.shape, res.shape
 
         utt.assert_allclose(res_ref, res)
+
+        def abstract_conv2d_gradweight(inputs_val, output_val):
+            conv_op = conv.AbstractConv2d_gradInputs(border_mode=border_mode,
+                                                     subsample=subsample)
+            return conv_op(inputs_val, output_val, filters_shape[-2:])
         if verify_grad:
-            utt.verify_grad(conv.AbstractConv2d(border_mode="valid",
-                                                subsample=subsample),
-                            [inputs_val, filters_val])
+            utt.verify_grad(abstract_conv2d_gradweight,
+                           [inputs_val, output_val])
 
 
     def run_gradinput(self,
@@ -173,18 +177,18 @@ class TestConv2d(unittest.TestCase):
 
 
 
-    #def test_corrmm(self):
-    #    mode = mode_with_gpu
-    #    mode = mode.excluding('cudnn')
-    #    self.run_fwd(inputs_shape=(16, 1, 2, 2),
-    #                 filters_shape=(10, 1, 2, 2),
-    #                 verify_grad=False, mode=mode)
-    #     self.run_gradweight(inputs_shape=(16, 1, 2, 2),
-    #                         filters_shape=(10, 1, 2, 2),
-    #                         verify_grad=False, mode=mode)
-    #     self.run_gradinput(inputs_shape=(1, 1, 2, 2),
-    #                        filters_shape=(10, 1, 2, 2),
-    #                        verify_grad=False, mode=mode)
+    def test_corrmm(self):
+       mode = mode_with_gpu
+       mode = mode.excluding('cudnn')
+       self.run_fwd(inputs_shape=(16, 1, 2, 2),
+                    filters_shape=(10, 1, 2, 2),
+                    verify_grad=False, mode=mode)
+        self.run_gradweight(inputs_shape=(16, 1, 2, 2),
+                            filters_shape=(10, 1, 2, 2),
+                            verify_grad=False, mode=mode)
+        self.run_gradinput(inputs_shape=(1, 1, 2, 2),
+                           filters_shape=(10, 1, 2, 2),
+                           verify_grad=False, mode=mode)
 
 
 
