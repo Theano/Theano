@@ -28,7 +28,7 @@ from theano import gof
 from theano import config
 from six.moves import StringIO, reduce
 from theano.gof import Op, Apply
-from theano.compile import Function, debugmode
+from theano.compile import Function, debugmode, SharedVariable
 from theano.compile.profilemode import ProfileMode
 
 _logger = logging.getLogger("theano.printing")
@@ -888,17 +888,17 @@ def pydotprint(fct, outfile=None,
             if len(node.inputs) > 1:
                 label = str(id)
             param = {}
+            if label:
+                param['label'] = label
             if hasattr(node.op, 'view_map') and id in reduce(
                     list.__add__, node.op.view_map.values(), []):
                     param['color'] = 'blue'
             elif hasattr(node.op, 'destroy_map') and id in reduce(
                     list.__add__, node.op.destroy_map.values(), []):
                         param['color'] = 'red'
-            if label:
-                param['label'] = label
             if var.owner is None:
                 color = 'green'
-                if isinstance(var, theano.compile.SharedVariable):
+                if isinstance(var, SharedVariable):
                     # Input are green, output blue
                     # Mixing blue and green give cyan! (input and output var)
                     color = "cyan"
@@ -925,20 +925,23 @@ def pydotprint(fct, outfile=None,
         for id, var in enumerate(node.outputs):
             varstr = var_name(var)
             out = var in outputs
-            label = str(var.type)
+            label = ""
             if len(node.outputs) > 1:
-                label = str(id) + ' ' + label
+                label = str(id)
             if len(label) > max_label_size:
                 label = label[:max_label_size - 3] + '...'
+            param = {}
+            if label:
+                param['label'] = label
             if out:
-                g.add_edge(pd.Edge(astr, varstr, label=label))
+                g.add_edge(pd.Edge(astr, varstr, **param))
                 if high_contrast:
                     g.add_node(pd.Node(varstr, style='filled',
                                        fillcolor='blue', shape=var_shape))
                 else:
                     g.add_node(pd.Node(varstr, color='blue', shape=var_shape))
             elif len(var.clients) == 0:
-                g.add_edge(pd.Edge(astr, varstr, label=label))
+                g.add_edge(pd.Edge(astr, varstr, **param))
                 # grey mean that output var isn't used
                 if high_contrast:
                     g.add_node(pd.Node(varstr, style='filled',
@@ -946,7 +949,14 @@ def pydotprint(fct, outfile=None,
                 else:
                     g.add_node(pd.Node(varstr, color='grey', shape=var_shape))
             elif var.name or not compact or var in input_update:
-                g.add_edge(pd.Edge(astr, varstr, label=label))
+                if not(not compact or var in input_update):
+                    if label:
+                        label += " "
+                    label += str(var.type)
+                    if len(label) > max_label_size:
+                        label = label[:max_label_size - 3] + '...'
+                    param['label'] = label
+                g.add_edge(pd.Edge(astr, varstr, **param))
 #            else:
             # don't add egde here as it is already added from the inputs.
 
