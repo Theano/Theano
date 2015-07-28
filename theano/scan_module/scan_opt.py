@@ -212,9 +212,8 @@ def remove_constants_and_unused_inputs_scan(node):
 # It should be possible to change it to a local opt.
 class PushOutNonSeqScan(gof.Optimizer):
     """
-    A global optimizer for pushing out the variables inside the scan that
-    are not used by the scan.
-
+    A global optimizer for pushing out the variables inside the scan that depend
+    only on non-sequences.
     """
 
     def __init__(self):
@@ -411,9 +410,8 @@ class PushOutNonSeqScan(gof.Optimizer):
 # It should be possible to change it to a local opt.
 class PushOutSeqScan(gof.Optimizer):
     """
-    A global optimizer for pushing out the input variables that are not being
-    used inside the scan and provided in the sequences.
-
+    A global optimizer for pushing out the variables inside the
+    scan that depend only on constants and sequences.
     """
 
     def __init__(self):
@@ -659,7 +657,6 @@ class PushOutScanOutput(gof.Optimizer):
     """
     This is an optimization that can push operations performed
     at the end of the inner graph of scan to outside of scan.
-
     """
 
     def __init__(self):
@@ -709,7 +706,7 @@ class PushOutScanOutput(gof.Optimizer):
                 The Dot product is pushed out of the scan and its inputs are
                 now the original matrix and a new matrix obtained by
                 concatenating the vectors into a matrix.
- 
+
                 """
                 # Ensure that the output of the Dot is used in the outer
                 # graph to avoid apply the optimization needlessly
@@ -723,7 +720,7 @@ class PushOutScanOutput(gof.Optimizer):
                 non-sequence input to scan and that the other input is a
                 vector and either an sequence input to scan or the result
                 of computation in the inner function of scan.
- 
+
                 """
                 valid_inputs = False
                 idx_matrix_input = -1
