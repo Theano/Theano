@@ -957,6 +957,10 @@ def pydotprint(fct, outfile=None,
                         label = label[:max_label_size - 3] + '...'
                     param['label'] = label
                 g.add_edge(pd.Edge(astr, varstr, **param))
+                if high_contrast:
+                    g.add_node(pd.Node(varstr, shape=var_shape))
+                else:
+                    g.add_node(pd.Node(varstr, shape=var_shape))
 #            else:
             # don't add egde here as it is already added from the inputs.
 
