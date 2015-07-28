@@ -2450,12 +2450,6 @@ class Eye(gof.Op):
     def grad(self, inp, grads):
         return [grad_undefined(self, i, inp[i]) for i in xrange(3)]
 
-    def __eq__(self, other):
-        return type(self) == type(other) and self.dtype == other.dtype
-
-    def __hash__(self):
-        return hash(self.dtype) ^ hash(type(self))
-
 
 def eye(n, m=None, k=0, dtype=None):
     """Return a 2-D array with ones on the diagonal and zeros elsewhere.
