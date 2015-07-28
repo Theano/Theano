@@ -1276,6 +1276,57 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
     return GpuDnnConv3d(algo=algo)(img, kerns, out, desc)
 
 
+def dnn_gradweight(img, topgrad,
+                   kerns_shp,
+                   border_mode='valid', subsample=(1, 1),
+                   conv_mode='conv', workmem=None):
+    """
+    GPU convolution gradient with respect to weight using cuDNN from NVIDIA.
+
+    The memory layout to use is 'bc01', that is 'batch', 'channel',
+    'first dim', 'second dim' in that order.
+
+    FIXME parameters doc
+
+    :warning: The cuDNN library only works with GPU that have a compute
+      capability of 3.0 or higer.  This means that older GPU will not
+      work with this Op.
+    """
+
+    img = gpu_contiguous(img)
+    topgrad = gpu_contiguous(topgrad)
+    desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
+                          conv_mode=conv_mode)(img.shape, kerns_shp)
+
+    out = gpu_alloc_empty(*kern_shp)
+    return GpuDnnConvGradW(workmem=workmem)(img, topgrad, out, desc)
+
+def dnn_gradinput(kerns, topgrad,
+                  img_shape,
+                  border_mode='valid', subsample=(1, 1),
+                  conv_mode='conv', workmem=None):
+    """
+    GPU convolution gradient with respect to input using cuDNN from NVIDIA.
+
+    The memory layout to use is 'bc01', that is 'batch', 'channel',
+    'first dim', 'second dim' in that order.
+
+    FIXME parameters doc
+
+    :warning: The cuDNN library only works with GPU that have a compute
+      capability of 3.0 or higer.  This means that older GPU will not
+      work with this Op.
+    """
+
+    kerns = gpu_contiguous(kerns)
+    topgrad = gpu_contiguous(topgrad)
+    desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
+                          conv_mode=conv_mode)(img_shp, kerns.shape)
+
+    out = gpu_alloc_empty(*img_shp)
+    return GpuDnnConvGradI(workmem=workmem)(kerns, topgrad, out, desc)
+
+
 class GpuDnnPoolDesc(GpuOp):
     """
     This Op builds a pooling descriptor for use in the other pooling operations.

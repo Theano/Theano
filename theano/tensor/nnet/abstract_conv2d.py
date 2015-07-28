@@ -393,7 +393,7 @@ def local_conv2d_gpu_conv(node):
             out.values_eq_approx = values_eq_approx_high_tol
             return [as_tensor_variable(out)]
 # We register the optimizer that moves convolutions to the GPU.
-#register_gpu()(local_conv2d_gpu_conv)
+register_gpu()(local_conv2d_gpu_conv)
 
 
 
@@ -424,20 +424,20 @@ def local_conv2d_cudnn(node):
                         conv_mode = conv_mode)
         return [rval]
     if (isinstance(node.op, AbstractConv2d_gradWeights)):
-        rval = dnn_conv(inp1.dimshuffle(1, 0, 2, 3), inp2,
-                        border_mode=node.op.border_mode,
-                        subsample=node.op.subsample,
-                        direction_hint='bprop weights',
-                        conv_mode = conv_mode)
+        shape = node.inputs[2]
+        rval = dnn_gradweight(inp1, inp2, shape,
+                              border_mode=node.op.border_mode,
+                              subsample=node.op.subsample,
+                              conv_mode = conv_mode)
         return [rval]
     if (isinstance(node.op, AbstractConv2d_gradInputs)):
-        rval = dnn_conv(inp1, inp2,
-                        border_mode=node.op.border_mode,
-                        subsample=node.op.subsample,
-                        direction_hint='bprop inputs',
-                        conv_mode = conv_mode)
+        shape = node.inputs[2]
+        rval = dnn_gradinput(inp1, inp2, shape
+                             border_mode=node.op.border_mode,
+                             subsample=node.op.subsample,
+                             conv_mode = conv_mode)
         return [rval]
-#register_specialize_device(local_conv2d_cudnn)
+register_specialize_device(local_conv2d_cudnn)
 
 
 @local_optimizer([AbstractConv2d])
