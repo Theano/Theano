@@ -39,7 +39,7 @@ Authors: Andreas Klockner
 Example
 -------
 
-.. code-block:: python
+.. testcode::
 
   import pycuda.autoinit
   import pycuda.driver as drv
