@@ -308,6 +308,8 @@ version that it produces in the code I gave above.
 
    class BinaryDoubleOp(gof.Op):
 
+       __props__ = ("name", "fn", "ccode")
+
        def __init__(self, name, fn, ccode):
            self.name = name
            self.fn = fn

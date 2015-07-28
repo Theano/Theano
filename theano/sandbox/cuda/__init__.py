@@ -13,7 +13,8 @@ from theano.compile import optdb
 from theano.gof import EquilibriumDB, SequenceDB
 from theano.gof.cmodule import get_lib_extension
 from theano.gof.compilelock import get_lock, release_lock
-from theano.configparser import config, AddConfigVar, StrParam, BoolParam
+from theano.configparser import (
+    config, AddConfigVar, BoolParam, FloatParam, StrParam)
 from . import nvcc_compiler
 
 # ignore_newtrees is to speed the optimization as this is the pattern
@@ -53,6 +54,21 @@ AddConfigVar('pycuda.init',
 AddConfigVar('cublas.lib',
         """Name of the cuda blas library for the linker.""",
         StrParam('cublas'))
+
+AddConfigVar('lib.cnmem',
+             """Do we enable CNMeM or not (a faster CUDA memory allocator).
+
+             The parameter represent the start size (in MB or % of
+             total GPU memory) of the memory pool.
+
+             0: not enabled.
+             0 < N <= 1: % of the total GPU memory (clipped to .985 for driver memory)
+             > 0: use that number of MB of memory.
+
+             """,
+             # We should not mix both allocator, so we can't override
+             FloatParam(0, lambda i: i >= 0, allow_override=False),
+             in_c_key=False)
 
 # is_nvcc_available called here to initialize global vars in
 # nvcc_compiler module
@@ -107,6 +123,8 @@ def try_import():
         'cuda_ndarray.cu',
         'cuda_ndarray.cuh',
         'conv_full_kernel.cu',
+        'cnmem.h',
+        'cnmem.cpp',
         'conv_kernel.cu')
     stat_times = [os.stat(os.path.join(cuda_path, cuda_file))[stat.ST_MTIME]
                   for cuda_file in cuda_files]
@@ -178,7 +196,8 @@ if compile_cuda_ndarray and cuda_available:
                             location=cuda_ndarray_loc,
                             include_dirs=[cuda_path],
                             libs=[config.cublas.lib],
-                            preargs=['-O3'] + compiler.compile_args())
+                            preargs=['-O3'] + compiler.compile_args(),
+                    )
                     from cuda_ndarray.cuda_ndarray import *
             except Exception as e:
                 _logger.error("Failed to compile cuda_ndarray.cu: %s", str(e))
@@ -377,7 +396,7 @@ def use(device,
         try:
             if (device != 'gpu') and not pycuda_init_dev:
                 assert isinstance(device, int)
-                gpu_init(device)
+                gpu_init(device, config.lib.cnmem)
                 use.device_number = device
                 assert active_device_number() == device
             else:
@@ -387,10 +406,10 @@ def use(device,
                 # query the active GPU. If we check the active GPU before
                 # the device is initialized we will always receive 0
                 # event if another device is selected later.
-                cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((2, 3))
+                cuda_ndarray.cuda_ndarray.select_a_gpu()
                 use.device_number = active_device_number()
                 # This is needed to initialize the cublas handle.
-                gpu_init(use.device_number)
+                gpu_init(use.device_number, config.lib.cnmem)
 
             if test_driver:
                 import theano.sandbox.cuda.tests.test_driver
@@ -403,8 +422,9 @@ def use(device,
                                  " this property")
 
             if config.print_active_device:
-                print("Using gpu device %d: %s" % (
-                        active_device_number(), active_device_name()), file=sys.stderr)
+                cnmem_enabled = "enabled" if config.lib.cnmem else "disabled"
+                print("Using gpu device %d: %s (CNMeM is %s)" % (
+                        active_device_number(), active_device_name(), cnmem_enabled), file=sys.stderr)
             if device_properties(use.device_number)['regsPerBlock'] < 16384:
                 # We will try to use too much register per bloc at many places
                 # when there is only 8k register per multi-processor.

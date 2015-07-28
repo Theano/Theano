@@ -6,6 +6,8 @@ from theano.compile import SharedVariable, rebuild_collect_shared
 from theano.gof import ops_with_inner_function
 from theano.gof.graph import io_connection_pattern
 
+from functools import reduce
+
 
 class OpFromGraph(gof.Op):
     """This creates an `Op` from inputs and outputs lists of variables.
@@ -140,6 +142,29 @@ class OpFromGraph(gof.Op):
         Return connection pattern of subfgraph defined by inputs and outputs
         """
         return io_connection_pattern(self.new_inputs, self.new_outputs)
+
+    def infer_shape(self, node, shapes):
+        out_shp = theano.scan_module.scan_utils.infer_shape(self.new_outputs,
+                                                            self.new_inputs,
+                                                            shapes)
+
+        # Clone the output shape so that shape are computed from outer inputs.
+        # Note:
+        # Here we can do it more simply like:
+        #      ret = [theano.clone(shp, replace=repl) for shp in out_shp]
+        # But  doing it multiple time could duplicate common subgraph between
+        # each shape call. Theano optimizer will clean this up later, but this
+        # will ask extra work to the optimizer.
+        repl = dict(zip(self.new_inputs, node.inputs))
+        cloned = theano.clone(reduce(tuple.__add__, out_shp), replace=repl)
+        ret = []
+        used = 0
+        for i in range(len(out_shp)):
+            nb = len(out_shp[i])
+            ret.append(cloned[used: used + nb])
+            used += nb
+
+        return ret
 
     def grad(self, inputs, output_grads):
         # OpFromGraph doesn't implement a connection_pattern, so for

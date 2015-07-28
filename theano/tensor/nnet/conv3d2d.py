@@ -73,6 +73,8 @@ class DiagonalSubtensor(Op):
     see what's necessary at that point.
 
     """
+    __props__ = ("inplace",)
+
     def __str__(self):
         if self.inplace:
             return "%s{inplace}" % self.__class__.__name__
@@ -82,12 +84,6 @@ class DiagonalSubtensor(Op):
         self.inplace = inplace
         if inplace:
             self.view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.inplace == other.inplace
-
-    def __hash__(self):
-        return hash((type(self), self.inplace))
 
     def make_node(self, x, i0, i1):
         _i0 = tensor.as_tensor_variable(i0)
@@ -117,6 +113,8 @@ class IncDiagonalSubtensor(Op):
     """
     The gradient of DiagonalSubtensor
     """
+    __props__ = ("inplace",)
+
     def __str__(self):
         if self.inplace:
             return "%s{inplace}" % self.__class__.__name__
@@ -126,12 +124,6 @@ class IncDiagonalSubtensor(Op):
         self.inplace = inplace
         if inplace:
             self.destroy_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.inplace == other.inplace
-
-    def __hash__(self):
-        return hash((type(self), self.inplace))
 
     def make_node(self, x, i0, i1, amt):
         _i0 = tensor.as_tensor_variable(i0)
@@ -202,13 +194,13 @@ def conv3d(signals, filters,
         _signals_shape_5d[2],
         _signals_shape_5d[3],
         _signals_shape_5d[4],
-        )
+    )
     _filters_shape_4d = (
         _filters_shape_5d[0] * _filters_shape_5d[1],
         _filters_shape_5d[2],
         _filters_shape_5d[3],
         _filters_shape_5d[4],
-        )
+    )
 
     if border_mode[1] != border_mode[2]:
         raise NotImplementedError('height and width bordermodes must match')
@@ -236,7 +228,7 @@ def conv3d(signals, filters,
             _filters_shape_5d[1],  # Tf
             _signals_shape_5d[3] - _filters_shape_5d[3] + 1,
             _signals_shape_5d[4] - _filters_shape_5d[4] + 1,
-            ))
+        ))
     elif border_mode[1] == 'full':
         out_tmp = out_4d.reshape((
             _signals_shape_5d[0],  # Ns
@@ -245,7 +237,7 @@ def conv3d(signals, filters,
             _filters_shape_5d[1],  # Tf
             _signals_shape_5d[3] + _filters_shape_5d[3] - 1,
             _signals_shape_5d[4] + _filters_shape_5d[4] - 1,
-            ))
+        ))
     elif border_mode[1] == 'same':
         raise NotImplementedError()
     else:
@@ -254,15 +246,15 @@ def conv3d(signals, filters,
     # now sum out along the Tf to get the output
     # but we have to sum on a diagonal through the Tf and Ts submatrix.
     if border_mode[0] == 'valid':
-        if _filters_shape_5d[1]!=1:
-          out_5d = diagonal_subtensor(out_tmp, 1, 3).sum(axis=3)
-        else: # for Tf==1, no sum along Tf, the Ts-axis of the output is unchanged!
-          out_5d = out_tmp.reshape((
-            _signals_shape_5d[0],
-            _signals_shape_5d[1],
-            _filters_shape_5d[0],
-            _signals_shape_5d[3] - _filters_shape_5d[3] + 1,
-            _signals_shape_5d[4] - _filters_shape_5d[4] + 1,
+        if _filters_shape_5d[1] != 1:
+            out_5d = diagonal_subtensor(out_tmp, 1, 3).sum(axis=3)
+        else:  # for Tf==1, no sum along Tf, the Ts-axis of the output is unchanged!
+            out_5d = out_tmp.reshape((
+                _signals_shape_5d[0],
+                _signals_shape_5d[1],
+                _filters_shape_5d[0],
+                _signals_shape_5d[3] - _filters_shape_5d[3] + 1,
+                _signals_shape_5d[4] - _filters_shape_5d[4] + 1,
             ))
     elif border_mode[0] in ('full', 'same'):
         raise NotImplementedError('sequence border mode', border_mode[0])
@@ -324,7 +316,7 @@ if cuda.cuda_available:
 def local_inplace_DiagonalSubtensor(node):
     """ also work for IncDiagonalSubtensor """
     if (isinstance(node.op, (DiagonalSubtensor, IncDiagonalSubtensor)) and
-        not node.op.inplace):
+            not node.op.inplace):
         new_op = node.op.__class__(inplace=True)
         new_node = new_op(*node.inputs)
         return [new_node]

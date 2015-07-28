@@ -1009,6 +1009,8 @@ def inc_subtensor(x, y, inplace=False, set_instead_of_inc=False,
 
     :param x: the symbolic result of a Subtensor operation.
     :param y: the amount by which to increment ths subtensor in question
+    :param inplace: Don't use. Theano will do it when possible.
+    :param set_instead_of_inc: If True, do a set_subtensor instead.
     :param tolerate_inplace_aliasing: allow x and y to be views of a single
         underlying array even while working inplace.  For correct results,
         x and y must not be overlapping views; if they overlap, the result

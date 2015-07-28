@@ -822,14 +822,10 @@ csm_grad = CSMGrad
 
 class Cast(gof.op.Op):
     # See doc in instance of this Op or function after this class definition.
+    __props__ = ("out_type",)
+
     def __init__(self, out_type):
         self.out_type = out_type
-
-    def __eq__(self, other):
-        return (type(self) == type(other)) and self.out_type == other.out_type
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.out_type)
 
     def make_node(self, x):
         x = as_sparse_variable(x)
@@ -900,15 +896,10 @@ def cast(variable, dtype):
 
 class DenseFromSparse(gof.op.Op):
     # See doc in instance of this Op or function after this class definition.
+    __props__ = ()  # We don't put sparse_grad in the props.
+
     def __init__(self, structured=True):
         self.sparse_grad = structured
-
-    def __eq__(self, other):
-        return ((type(self) == type(other)) and
-                (self.sparse_grad == other.sparse_grad))
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.sparse_grad)
 
     def __str__(self):
         return "%s{structured_grad=%s}" % (
@@ -973,14 +964,11 @@ dense_from_sparse = DenseFromSparse()
 
 
 class SparseFromDense(gof.op.Op):
+
+    __props__ = ()
+
     def __init__(self, format):
         self.format = format
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.format == other.format
-
-    def __hash__(self):
-        return 982374 ^ hash(self.format) ^ hash(DenseFromSparse)
 
     def __str__(self):
         return "%s{%s}" % (
@@ -1036,11 +1024,7 @@ csc_from_dense = SparseFromDense('csc')
 # Indexing
 class GetItemList(gof.op.Op):
 
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def infer_shape(self, node, shapes):
         return [(shapes[1][0], shapes[0][1])]
@@ -1068,9 +1052,6 @@ class GetItemList(gof.op.Op):
         return [GetItemListGrad(self)(x, indices, gout),
                 grad_undefined(self, 1, indices, "No gradient for this input")]
 
-    def __str__(self):
-        return self.__class__.__name__
-
 get_item_list = GetItemList()
 """Select row of sparse matrix,
 returning them as a new sparse matrix.
@@ -1084,11 +1065,7 @@ returning them as a new sparse matrix.
 
 class GetItemListGrad(gof.op.Op):
 
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def infer_shape(self, node, shapes):
         return [(shapes[0])]
@@ -1126,19 +1103,12 @@ class GetItemListGrad(gof.op.Op):
 
         out[0] = y
 
-    def __str__(self):
-        return self.__class__.__name__
-
 get_item_list_grad = GetItemListGrad()
 
 
 class GetItem2Lists(gof.op.Op):
 
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, x, ind1, ind2):
         x = as_sparse_variable(x)
@@ -1167,9 +1137,6 @@ class GetItem2Lists(gof.op.Op):
                 grad_undefined(self, 1, ind1, "No gradient for this input"),
                 grad_undefined(self, 1, ind2, "No gradient for this input")]
 
-    def __str__(self):
-        return self.__class__.__name__
-
 get_item_2lists = GetItem2Lists()
 """Select elements of sparse matrix, returning them in a vector.
 
@@ -1184,11 +1151,7 @@ get_item_2lists = GetItem2Lists()
 
 class GetItem2ListsGrad(gof.op.Op):
 
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def infer_shape(self, node, shapes):
         return [(shapes[0])]
@@ -1224,19 +1187,13 @@ class GetItem2ListsGrad(gof.op.Op):
 
         out[0] = y
 
-    def __str__(self):
-        return self.__class__.__name__
-
 get_item_2lists_grad = GetItem2ListsGrad()
 
 
 class GetItem2d(gof.op.Op):
     # See doc in instance of this Op or function after this class definition.
-    def __eq__(self, other):
-        return (type(self) == type(other))
 
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
 # Fred:Too complicated for now. If you need it, look at
 # the Subtensor.infer_shape.
@@ -1322,9 +1279,6 @@ class GetItem2d(gof.op.Op):
         assert _is_sparse(x)
         out[0] = x[start1:stop1:step1, start2:stop2:step2]
 
-    def __str__(self):
-        return self.__class__.__name__
-
 get_item_2d = GetItem2d()
 """Implement a subtensor of sparse variable, returning a
 sparse matrix.
@@ -1356,11 +1310,7 @@ when sparse vectors are supported.
 
 class GetItemScalar(gof.op.Op):
     # See doc in instance of this Op or function after this class definition.
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def infer_shape(self, node, shapes):
         return [()]
@@ -1396,9 +1346,6 @@ class GetItemScalar(gof.op.Op):
         assert _is_sparse(x)
         out[0] = theano._asarray(x[ind1, ind2], x.dtype)
 
-    def __str__(self):
-        return self.__class__.__name__
-
 get_item_scalar = GetItemScalar()
 """Implement a subtensor of a sparse variable that takes
 two scalars as index and returns a scalar.
@@ -1422,12 +1369,7 @@ class Transpose(gof.op.Op):
 
     format_map = {'csr': 'csc',
                   'csc': 'csr'}
-
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def __str__(self):
         return "Sparse" + self.__class__.__name__
@@ -1471,11 +1413,8 @@ transpose = Transpose()
 
 class Neg(gof.op.Op):
     # See doc in instance of this Op or function after this class definition.
-    def __eq__(self, other):
-        return (type(self) == type(other))
 
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def __str__(self):
         return "Sparse" + self.__class__.__name__
@@ -1524,11 +1463,7 @@ class ColScaleCSC(gof.op.Op):
 
     # :note: The grad implemented is structured.
 
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, x, s):
         if x.format != 'csc':
@@ -1557,9 +1492,6 @@ class ColScaleCSC(gof.op.Op):
     def infer_shape(self, node, ins_shapes):
         return [ins_shapes[0]]
 
-    def __str__(self):
-        return self.__class__.__name__
-
 
 class RowScaleCSC(gof.op.Op):
     # Scale each row of a sparse matrix by the corresponding element of
@@ -1576,12 +1508,7 @@ class RowScaleCSC(gof.op.Op):
     # :note: The grad implemented is structured.
 
     view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, x, s):
         x = as_sparse_variable(x)
@@ -1613,9 +1540,6 @@ class RowScaleCSC(gof.op.Op):
 
     def infer_shape(self, node, ins_shapes):
         return [ins_shapes[0]]
-
-    def __str__(self):
-        return self.__class__.__name__
 
 
 def col_scale(x, s):
@@ -1660,28 +1584,20 @@ def row_scale(x, s):
 
 class SpSum(gof.op.Op):
     # See doc in instance of this Op or function after this class definition.
+
+    __props__ = ("axis",)
+    # WARNING: judgement call...
+    # We are not using the structured in the comparison or hashing
+    # because it doesn't change the perform method therefore, we
+    # *do* want Sums with different structured values to be merged
+    # by the merge optimization and this requires them to compare equal.
+
     def __init__(self, axis=None, sparse_grad=True):
         super(SpSum, self).__init__()
         self.axis = axis
         self.structured = sparse_grad
         if self.axis not in (None, 0, 1):
             raise ValueError('Illegal value for self.axis.')
-
-    def __eq__(self, other):
-        # WARNING: judgement call...
-        # We are not using the structured in the comparison or hashing
-        # because it doesn't change the perform method therefore, we
-        # *do* want Sums with different structured values to be merged
-        # by the merge optimization and this requires them to compare equal.
-        return type(self) == type(other) and self.axis == other.axis
-
-    def __hash__(self):
-        # WARNING: judgement call...
-        # We are not using the structured in the comparison or hashing
-        # because it doesn't change the perform method therefore, we
-        # *do* want Sums with different structured values to be merged
-        # by the merge optimization and this requires them to compare equal.
-        return 76324 ^ hash(type(self)) ^ hash(self.axis)
 
     def make_node(self, x):
         x = as_sparse_variable(x)
@@ -1773,11 +1689,7 @@ def sp_sum(x, axis=None, sparse_grad=False):
 
 class Diag(gof.op.Op):
     # See doc in instance of this Op or function after this class definition.
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, x):
         x = as_sparse_variable(x)
@@ -1801,8 +1713,6 @@ class Diag(gof.op.Op):
     def infer_shape(self, nodes, shapes):
         return [(tensor.minimum(*shapes[0]), )]
 
-    def __str__(self):
-        return self.__class__.__name__
 diag = Diag()
 """Extract the diagonal of a square sparse matrix as a dense vector.
 
@@ -1819,11 +1729,8 @@ diag = Diag()
 
 class SquareDiagonal(gof.op.Op):
     # See doc in instance of this Op or function after this class definition.
-    def __eq__(self, other):
-        return type(self) == type(other)
 
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, diag):
         diag = tensor.as_tensor_variable(diag)
@@ -1852,8 +1759,6 @@ class SquareDiagonal(gof.op.Op):
     def infer_shape(self, nodes, shapes):
         return [(shapes[0][0], shapes[0][0])]
 
-    def __str__(self):
-        return self.__class__.__name__
 square_diagonal = SquareDiagonal()
 """Return a square sparse (csc) matrix whose diagonal
 is given by the dense vector argument.
@@ -1868,16 +1773,12 @@ is given by the dense vector argument.
 
 class EnsureSortedIndices(gof.op.Op):
     # See doc in instance of this Op or function after this class definition.
+    __props__ = ("inplace",)
+
     def __init__(self, inplace):
         self.inplace = inplace
         if self.inplace:
             self.view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
 
     def make_node(self, x):
         x = as_sparse_variable(x)
@@ -1941,14 +1842,7 @@ def clean(x):
 class AddSS(gof.op.Op):
     # add(sparse, sparse).
     # see the doc of add() for more detail.
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, x, y):
         x, y = map(as_sparse_variable, [x, y])
@@ -1982,11 +1876,7 @@ add_s_s = AddSS()
 
 class AddSSData(gof.op.Op):
     # See doc in instance of this Op or function after this class definition.
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, x, y):
         x, y = map(as_sparse_variable, [x, y])
@@ -2020,8 +1910,6 @@ class AddSSData(gof.op.Op):
     def infer_shape(self, node, ins_shapes):
         return [ins_shapes[0]]
 
-    def __str__(self):
-        return self.__class__.__name__
 add_s_s_data = AddSSData()
 """Add two sparse matrices assuming they have the same sparsity
 pattern.
@@ -2041,17 +1929,7 @@ pattern.
 class AddSD(gof.op.Op):
     # add(sparse, sparse).
     # see the doc of add() for more detail.
-    def __init__(self, *args, **kwargs):
-        gof.Op.__init__(self, *args, **kwargs)
-
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
@@ -2090,11 +1968,8 @@ add_s_d = AddSD()
 
 
 class StructuredAddSV(gof.op.Op):
-    def __eq__(self, other):
-        return (type(self) == type(other))
 
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, x, y):
         x = as_sparse_variable(x)
@@ -2127,8 +2002,6 @@ class StructuredAddSV(gof.op.Op):
     def infer_shape(self, node, ins_shapes):
         return [ins_shapes[0]]
 
-    def __str__(self):
-        return self.__class__.__name__
 structured_add_s_v = StructuredAddSV()
 """Structured addition of a sparse matrix and a dense vector.
 The elements of the vector are only added to the corresponding
@@ -2206,14 +2079,7 @@ def sub(x, y):
 class MulSS(gof.op.Op):
     # mul(sparse, sparse)
     # See the doc of mul() for more detail
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), as_sparse_variable(y)
@@ -2249,14 +2115,7 @@ mul_s_s = MulSS()
 class MulSD(gof.op.Op):
     # mul(sparse, dense)
     # See the doc of mul() for more detail
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
@@ -2344,11 +2203,8 @@ mul_s_d = MulSD()
 
 
 class MulSV(gof.op.Op):
-    def __eq__(self, other):
-        return (type(self) == type(other))
 
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, x, y):
         x = as_sparse_variable(x)
@@ -2392,8 +2248,6 @@ class MulSV(gof.op.Op):
     def infer_shape(self, node, ins_shapes):
         return [ins_shapes[0]]
 
-    def __str__(self):
-        return self.__class__.__name__
 mul_s_v = MulSV()
 """Multiplication of sparse matrix by a broadcasted dense vector element wise.
 
@@ -2459,16 +2313,11 @@ class __ComparisonOpSS(gof.op.Op):
 
     :return: Comparison(x,y)
     """
+    __props__ = ()
 
     # Function to override
     def comparison(self, x, y):
         raise NotImplementedError()
-
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
 
     def make_node(self, x, y):
         x = as_sparse_variable(x)
@@ -2491,9 +2340,6 @@ class __ComparisonOpSS(gof.op.Op):
     def infer_shape(self, node, ins_shapes):
         return [ins_shapes[0]]
 
-    def __str__(self):
-        return self.__class__.__name__
-
 
 class __ComparisonOpSD(gof.op.Op):
     """
@@ -2505,16 +2351,11 @@ class __ComparisonOpSD(gof.op.Op):
 
     :return: Comparison(x,y)
     """
+    __props__ = ()
 
     # Function to override
     def comparison(self, x, y):
         raise NotImplementedError()
-
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
 
     def make_node(self, x, y):
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
@@ -2535,9 +2376,6 @@ class __ComparisonOpSD(gof.op.Op):
 
     def infer_shape(self, node, ins_shapes):
         return [ins_shapes[0]]
-
-    def __str__(self):
-        return self.__class__.__name__
 
 
 def __ComparisonSwitch(SS, SD, DS):
@@ -2735,6 +2573,8 @@ ge = __ComparisonSwitch(greater_equal_s_s, greater_equal_s_d,
 
 class HStack(gof.op.Op):
     # See doc in instance of this Op or function after this class definition.
+    __props__ = ("format", "dtype")
+
     def __init__(self, format=None, dtype=None):
         if format is None:
             self.format = 'csc'
@@ -2744,14 +2584,6 @@ class HStack(gof.op.Op):
         if dtype is None:
             raise ValueError('The output dtype must be specified.')
         self.dtype = dtype
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.format == other.format and
-                self.dtype == other.dtype)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.format) ^ hash(self.dtype)
 
     def make_node(self, *mat):
         if not mat:
@@ -2901,17 +2733,12 @@ def vstack(blocks, format=None, dtype=None):
 
 class Remove0(gof.Op):
     # See doc in instance of this Op or a function after the class definition.
-    def __init__(self, inplace=False, *args, **kwargs):
-        gof.Op.__init__(self, *args, **kwargs)
+    __props__ = ("inplace",)
+
+    def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.inplace == other.inplace
-
-    def __hash__(self):
-        return 64153 ^ hash(type(self)) ^ hash(self.inplace)
 
     def __str__(self):
         l = []
@@ -3180,21 +3007,14 @@ class TrueDot(gof.op.Op):
     # TODO
     # Simplify code by splitting into DotSS and DotSD.
 
+    __props__ = ()
+    # The grad_preserves_dense attribute doesn't change the
+    # execution behavior.  To let the optimizer merge nodes with
+    # different values of this attribute we shouldn't compare it
+    # here.
+
     def __init__(self, grad_preserves_dense=True):
         self.grad_preserves_dense = grad_preserves_dense
-
-    def __eq__(self, other):
-        # The grad_preserves_dense attribute doesn't change the
-        # execution behavior.  To let the optimizer merge nodes with
-        # different values of this attribute we shouldn't compare it
-        # here.
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __ne__(self, other):
-        return not (self == other)
 
     def make_node(self, x, y):
         # NOTE
@@ -3270,9 +3090,6 @@ class TrueDot(gof.op.Op):
     def infer_shape(self, node, shapes):
         return [(shapes[0][0], shapes[1][1])]
 
-    def __str__(self):
-        return self.__class__.__name__
-
 
 def true_dot(x, y, grad_preserves_dense=True):
     """
@@ -3317,14 +3134,7 @@ def true_dot(x, y, grad_preserves_dense=True):
 # Dot
 class StructuredDot(gof.Op):
     # See doc in instance of this Op or function after this class definition.
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, a, b):
 
@@ -3457,15 +3267,7 @@ class StructuredDotGradCSC(gof.Op):
     # :note: The grad implemented is structured.
     # :note: a_* are the corresponding properties of a sparse
     #        matrix in csc format.
-
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, a_indices, a_indptr, b, g_ab):
         return gof.Apply(self, [a_indices, a_indptr, b, g_ab],
@@ -3595,15 +3397,7 @@ class StructuredDotGradCSR(gof.Op):
     # :note: The grad implemented is structured.
     # :note: a_* are the corresponding properties of a sparse
     #        matrix in csr format.
-
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, a_indices, a_indptr, b, g_ab):
         return gof.Apply(self, [a_indices, a_indptr, b, g_ab],
@@ -3742,11 +3536,7 @@ def structured_dot_grad(sparse_A, dense_B, ga):
 
 class SamplingDot(gof.op.Op):
     # See doc in instance of this Op or function after this class definition.
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, x, y, p):
         x = tensor.as_tensor_variable(x)
@@ -3790,8 +3580,6 @@ class SamplingDot(gof.op.Op):
     def infer_shape(self, node, ins_shapes):
         return [ins_shapes[2]]
 
-    def __str__(self):
-        return self.__class__.__name__
 sampling_dot = SamplingDot()
 """Operand for calculating the dot product dot(`x`, `y`.T) = `z` when you
 only want to calculate a subset of `z`.
@@ -3823,11 +3611,7 @@ than `dot` because SamplingDot requires `x` to be a `m`x`k` matrix while
 
 class Dot(gof.op.Op):
     # See doc in instance of this Op or function after this class definition.
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def __str__(self):
         return "Sparse" + self.__class__.__name__
@@ -3958,12 +3742,7 @@ class Usmm(gof.op.Op):
     # See doc in instance of this Op or function after this class definition.
     # We don't implement the infer_shape as it is
     # inserted by optimization only.
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def __str__(self):
         return 'Usmm{no_inplace}'
@@ -4033,14 +3812,7 @@ usmm = Usmm()
 
 class ConstructSparseFromList(gof.Op):
     # See doc in instance of this Op or function after this class definition.
-    def __hash__(self):
-        return hash((type(self)))
-
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, x, values, ilist):
         """

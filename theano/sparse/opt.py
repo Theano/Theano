@@ -65,6 +65,8 @@ class AddSD_ccode(gof.op.Op):
 
     :note: The grad implemented is structured on `x`.
     """
+    __props__ = ("format", "inplace")
+
     def __init__(self, format, inplace=False, *args, **kwargs):
         gof.Op.__init__(self, *args, **kwargs)
         # Should we do inplace addition or not ?
@@ -72,14 +74,6 @@ class AddSD_ccode(gof.op.Op):
         self.format = format
         if self.inplace:
             self.destroy_map = {0: [3]}
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.inplace == other.inplace and
-                self.format == other.format)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.inplace) ^ hash(self.format)
 
     def __str__(self):
         inp = ''
@@ -224,15 +218,7 @@ class StructuredDotCSC(gof.Op):
     :note: The grad implemented is structured.
     :note: This op is used as an optimization for StructuredDot.
     """
-
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, a_val, a_ind, a_ptr, a_nrows, b):
         dtype_out = scalar.upcast(a_val.type.dtype, b.type.dtype)
@@ -418,15 +404,7 @@ class StructuredDotCSR(gof.Op):
     :note: The grad implemented is structured.
     :note: This op is used as an optimization for StructuredDot.
     """
-
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, a_val, a_ind, a_ptr, b):
         self.dtype_out = scalar.upcast(a_val.type.dtype, b.type.dtype)
@@ -604,6 +582,7 @@ class UsmmCscDense(gof.Op):
     :note: Optimized version os Usmm when `x` is in csc format and
            `y` is dense.
     """
+    __props__ = ("inplace",)
 
     def __init__(self, inplace):
         self.inplace = inplace
@@ -615,12 +594,6 @@ class UsmmCscDense(gof.Op):
             return 'UsmmCscDense{inplace}'
         else:
             return 'UsmmCscDense{no_inplace}'
-
-    def __eq__(self, other):
-        return (type(self) == type(other)) and self.inplace == other.inplace
-
-    def __hash__(self):
-        return hash(type(self)) ^ self.inplace
 
     def make_node(self, alpha, x_val, x_ind, x_ptr, x_nrows, y, z):
         alpha = tensor.as_tensor_variable(alpha)
@@ -890,14 +863,8 @@ register_specialize(local_usmm_csx, 'cxx_only')
 
 
 class CSMGradC(gof.Op):
-    def __eq__(self, other):
-        return (type(self) == type(other))
 
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, a_val, a_ind, a_ptr, a_dim,
                   b_val, b_ind, b_ptr, b_dim):
@@ -1045,12 +1012,7 @@ class MulSDCSC(gof.Op):
            cannot be a complex type.
     :note: This op is used as an optimization of mul_s_d.
     """
-
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, a_data, a_indices, a_indptr, b):
         assert b.type.ndim == 2
@@ -1162,12 +1124,7 @@ class MulSDCSR(gof.Op):
            cannot be a complex type.
     :note: This op is used as an optimization of mul_s_d.
     """
-
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, a_data, a_indices, a_indptr, b):
         assert b.type.ndim == 2
@@ -1321,12 +1278,7 @@ class MulSVCSR(gof.Op):
            cannot be a complex type.
     :note: This op is used as an optimization of MulSV.
     """
-
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, a_data, a_indices, a_indptr, b):
         assert b.type.ndim == 1
@@ -1464,12 +1416,7 @@ class StructuredAddSVCSR(gof.Op):
            format.
     :note: This op is used as an optimization for StructuredAddSV.
     """
-
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, a_data, a_indices, a_indptr, b):
         b = tensor.as_tensor_variable(b)
@@ -1638,15 +1585,7 @@ class SamplingDotCSR(gof.Op):
            allow mixed dtype.
     :note: This op is used as an optimization for SamplingDot.
     """
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return 'SamplingDot{Csr}'
+    __props__ = ()
 
     def make_node(self, x, y, p_data, p_ind, p_ptr, p_ncols):
         x = tensor.as_tensor_variable(x)

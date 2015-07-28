@@ -5,6 +5,7 @@ from six.moves import xrange
 
 import theano
 from theano.tensor import basic
+from theano.tensor import nlinalg  # noqa
 from theano import gof, scalar
 from theano.gradient import DisconnectedType
 tensor = basic
@@ -17,28 +18,30 @@ class CpuContiguous(theano.Op):
     """
     __props__ = ()
     view_map = {0: [0]}
-    
+
     def make_node(self, x):
         x_ = theano.tensor.as_tensor_variable(x)
         return theano.Apply(self, [x_], [x_.type()])
-    
+
     def perform(self, node, inputs, output_storage):
         x, = inputs
-        y = output_storage[0]        
+        y = output_storage[0]
         # if the ouput is contiguous do nothing, else copy
         # the input
         if not x.flags['C_CONTIGUOUS']:
             x = x.copy()
         assert x.flags['C_CONTIGUOUS']
-        y[0] = x 
+        y[0] = x
 
-    def c_code(self, node, name, inames, onames, sub): 
+    def c_code(self, node, name, inames, onames, sub):
         x, = inames
         y, = onames
         code = """
             if (!PyArray_CHKFLAGS(%(x)s, NPY_ARRAY_C_CONTIGUOUS)){
-                // check to see if output is contiguous first 
-                if (%(y)s != NULL && PyArray_CHKFLAGS(%(y)s, NPY_ARRAY_C_CONTIGUOUS)){
+                // check to see if output is contiguous first
+                if (%(y)s != NULL &&
+                    PyArray_CompareLists(PyArray_DIMS(%(y)s), PyArray_DIMS(%(x)s), PyArray_NDIM(%(x)s)) &&
+                    PyArray_CHKFLAGS(%(y)s, NPY_ARRAY_C_CONTIGUOUS)){
                     PyArray_CopyInto(%(y)s, %(x)s);
                 }
                 else{
@@ -53,23 +56,19 @@ class CpuContiguous(theano.Op):
             }
             """ % locals()
         return code
-         
+
     def c_code_cache_version(self):
-        return (0,)
+        return (1,)
 
 cpu_contiguous = CpuContiguous()
 
+
 class CumsumOp(theano.Op):
     # See function cumsum for docstring
+    __props__ = ("axis",)
+
     def __init__(self, axis=None):
         self.axis = axis
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.axis == other.axis)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.axis)
 
     def make_node(self, x):
         x = basic.as_tensor_variable(x)
@@ -183,15 +182,10 @@ def cumsum(x, axis=None):
 
 class CumprodOp(theano.Op):
     # See function cumprod for docstring
+    __props__ = ("axis",)
+
     def __init__(self, axis=None):
         self.axis = axis
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.axis == other.axis)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.axis)
 
     def make_node(self, x):
         x = basic.as_tensor_variable(x)
@@ -307,6 +301,8 @@ def cumprod(x, axis=None):
 
 class DiffOp(theano.Op):
     # See function diff for docstring
+    __props__ = ("n", "axis")
+
     def __init__(self, n=1, axis=-1):
         self.n = n
         self.axis = axis
@@ -314,14 +310,6 @@ class DiffOp(theano.Op):
         # TODO, make an optimization that remove this op in this case.
         if n == 0:
             self.view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.n == other.n and
-                self.axis == other.axis)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.n) ^ hash(self.axis)
 
     def make_node(self, x):
         x = basic.as_tensor_variable(x)
@@ -388,6 +376,7 @@ class BinCountOp(theano.Op):
     compatible_type = ('int8', 'int16', 'int32', 'int64',
                        'uint8', 'uint16', 'uint32', 'uint64')
     """Tuple of all compatible dtype for the parameter of this op."""
+    __props__ = ("minlength",)
 
     def __init__(self, minlength=None):
         self.minlength = minlength
@@ -397,13 +386,6 @@ class BinCountOp(theano.Op):
                 raise NotImplementedError(
                     "BinCountOp with minlength attribute"
                     " requires NumPy 1.6 or higher.")
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.minlength == other.minlength)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.minlength)
 
     def make_node(self, x, weights):
         warnings.warn((
@@ -582,16 +564,10 @@ def compress(condition, x, axis=None):
 
 class RepeatOp(theano.Op):
     # See the repeat function for docstring
+    __props__ = ("axis",)
 
     def __init__(self, axis=None):
         self.axis = axis
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.axis == other.axis)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.axis)
 
     def make_node(self, x, repeats):
         x = basic.as_tensor_variable(x)
@@ -761,11 +737,7 @@ def repeat(x, repeats, axis=None):
 
 class Bartlett(gof.Op):
     # See function bartlett for docstring
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def __str__(self):
         return self.__class__.__name__
@@ -823,11 +795,7 @@ def bartlett(M):
 
 class FillDiagonal(gof.Op):
     # See function fill_diagonal for docstring
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def __str__(self):
         return self.__class__.__name__
@@ -911,11 +879,7 @@ def fill_diagonal(a, val):
 
 class FillDiagonalOffset(gof.Op):
     # See function fill_diagonal_offset for docstring
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def __str__(self):
         return self.__class__.__name__

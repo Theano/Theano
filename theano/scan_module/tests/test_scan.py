@@ -256,7 +256,7 @@ class T_Scan(unittest.TestCase):
             finally:
                 f_in.close()
         finally:
-            # Get back to the orinal dir, and delete temporary one.
+            # Get back to the original dir, and delete the temporary one.
             os.chdir(origdir)
             if tmpdir is not None:
                 shutil.rmtree(tmpdir)
@@ -3029,6 +3029,43 @@ class T_Scan(unittest.TestCase):
         sol[:, :] = v_out
         utt.assert_allclose(sol, f(v_h, v_W1, v_W2))
 
+    def test_pushout_while(self):
+        # Ensure that the optimizations for Scan that push computation out of
+        # the Scan don't alter the result for 'as_while' scans.
+
+        W1 = tensor.matrix('W1')
+        W2 = tensor.matrix('W2')
+        step_indices = tensor.vector('step_indices')
+
+        def lambda_fn(step_idx, W1, W2):
+            until_condition = theano.scan_module.until(step_idx > 2)
+            return tensor.dot(W1, W2), until_condition
+
+        # Compile a function with the optimization
+        o, _ = theano.scan(lambda_fn,
+                           sequences=[step_indices, W1],
+                           non_sequences=[W2],
+                           n_steps=5)
+
+        f = theano.function([W1, W2, step_indices], o, mode=mode_with_opt)
+
+        # Compule an theano function without the optimization
+        o, _ = theano.scan(lambda_fn,
+                           sequences=[step_indices, W1],
+                           non_sequences=[W2],
+                           n_steps=5, mode='FAST_COMPILE')
+
+        f_ref = theano.function([W1, W2, step_indices], o, mode='FAST_COMPILE')
+
+        # Compare the results of the two implementations
+        input_values = [numpy.random.random((5, 5)).astype("float32"),
+                        numpy.random.random((5, 5)).astype("float32"),
+                        numpy.arange(5).astype("float32")]
+
+        out = f(*input_values)
+        out_ref = f_ref(*input_values)
+        utt.assert_allclose(out, out_ref)
+
     def test_pushout(self):
         W1 = tensor.matrix('W1')
         W2 = tensor.matrix('W2')
@@ -4261,7 +4298,13 @@ class T_Scan(unittest.TestCase):
 
         # There should be 3 outputs greater than 10: prior_result[0] at step 3,
         # and prior_result[1] at steps 2 and 3.
-        assert detect_large_outputs.large_count == 3
+        if theano.config.mode in ["DEBUG_MODE", "DebugMode"]:
+            # DebugMode will run all the intermediate nodes, so we
+            # should expect a multiple of 3, not exactly 3.
+            assert detect_large_outputs.large_count % 3 == 0
+
+        else:
+            assert detect_large_outputs.large_count == 3
 
 
 class ScanGpuTests:

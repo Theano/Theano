@@ -5,6 +5,7 @@ import warnings
 
 import numpy
 from six.moves import xrange
+import numbers
 
 import theano
 from theano.compat import izip
@@ -3922,15 +3923,22 @@ def get_vector_length(v):
         return len(v.owner.inputs)
     if v.owner and isinstance(v.owner.op, Shape):
         return v.owner.inputs[0].type.ndim
-    # If we take this slice: var[:0], we know it will have 0 elements.
+    # If we take a slice, we know how many elements it will result in
     if ((v.owner and
          isinstance(v.owner.op, theano.tensor.subtensor.Subtensor) and
-         isinstance(v.owner.op.idx_list[0], slice) and
-         v.owner.op.idx_list[0].start in [None, 0])):
-        stop = theano.tensor.subtensor.get_idx_list(
-            v.owner.inputs, v.owner.op.idx_list)[0].stop
-        if extract_constant(stop) == 0:
-            return 0
+         isinstance(v.owner.op.idx_list[0], slice))):
+        start = extract_constant(theano.tensor.subtensor.get_idx_list(
+            v.owner.inputs, v.owner.op.idx_list)[0].start)
+        stop = extract_constant(theano.tensor.subtensor.get_idx_list(
+            v.owner.inputs, v.owner.op.idx_list)[0].stop)
+        if start is None:
+            start = 0
+        if stop is None:
+            stop = 0
+        if ((isinstance(stop, numbers.Integral) and
+             isinstance(start, numbers.Integral))):
+            return stop - start
+
     raise ValueError("length not known")
 
 
@@ -4190,8 +4198,18 @@ class Flatten(Op):
         if self.outdim < 1 or (x.ndim and self.outdim > x.ndim):
             raise ValueError('invalid output ndimensions (%i) for tensor of '
                              'rank %i' % (self.outdim, t_x.ndim))
+
+        # Infer the broadcastable pattern of the output. For every dimension
+        # unaffected by the flatten, the broadcast flag should be unchanged.
+        # For the dimension resulting from the collapse of other dimensions,
+        # it should be broadcastable iff all the collapsed dimensions were
+        # broadcastable.
+        bcast_kept_dims = x.broadcastable[:self.outdim - 1]
+        bcast_new_dim = python_all(x.broadcastable[self.outdim - 1:])
+        broadcastable = bcast_kept_dims + (bcast_new_dim,)
+
         return gof.Apply(self, [t_x], [tensor(x.type.dtype,
-                                              (False,) * self.outdim)])
+                                              broadcastable)])
 
     def perform(self, node, inp, out_):
         x, = inp
@@ -5699,6 +5717,9 @@ class AllocEmpty(gof.Op):
     def make_node(self, *shape):
         shape, output = self.validate_shape(shape)
         output.tag.values_eq_approx = values_eq_approx_always_true
+        # The outut can contain nan/inf.  output.type is a new
+        # instance, so we can do this only for that variable.
+        output.type.filter_checks_isfinite = False
         return Apply(self, shape, [output])
 
     def perform(self, node, inputs, out_):

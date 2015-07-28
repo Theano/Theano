@@ -1016,8 +1016,9 @@ def local_gpu_advanced_incsubtensor1(node):
             return [gpu_op(as_cuda_ndarray_variable(x), as_cuda_ndarray_variable(y), *coords)]
 
     # Should not execute for GpuAdvancedIncSubtensor1
-    if node.op.__class__ is tensor.AdvancedIncSubtensor1 and \
-       node.inputs[0].dtype == "float32":
+    if (node.op.__class__ is tensor.AdvancedIncSubtensor1 and
+            node.inputs[0].dtype == "float32" and
+            node.inputs[1].dtype == "float32"):
         x, y = node.inputs[0:2]
         coords = node.inputs[2:]
         go_gpu = False

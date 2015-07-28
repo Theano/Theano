@@ -156,14 +156,16 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
             "HINT: Use another linker then the c linker to"
             " have the inputs shapes and strides printed.")
 
-    # Print node backtrace
-    tr = getattr(node.outputs[0].tag, 'trace', None)
-    if tr:
-        sio = StringIO()
-        traceback.print_list(tr, sio)
-        tr = sio.getvalue()
+    # Print node backtraces
+    tr = getattr(node.outputs[0].tag, 'trace', [])
+    if len(tr) > 0:
         detailed_err_msg += "\nBacktrace when the node is created:\n"
-        detailed_err_msg += str(tr)
+
+        # Print separate message for each element in the list of batcktraces
+        sio = StringIO()
+        for subtr in tr:
+            traceback.print_list(subtr, sio)
+            detailed_err_msg += str(sio.getvalue())
     else:
         hints.append(
             "HINT: Re-running with most Theano optimization disabled could"

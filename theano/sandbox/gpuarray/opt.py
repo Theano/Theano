@@ -14,13 +14,15 @@ from theano.gof import (local_optimizer, EquilibriumDB,
                         SequenceDB, Optimizer, toolbox)
 from theano.gof.optdb import LocalGroupDB
 
+from theano.scalar.basic import Scalar, Pow, Cast
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
 from theano.tensor.nnet.conv import ConvOp
 from theano.tests.breakpoint import PdbBreakpoint
 
 from .type import GpuArrayType, GpuArrayConstant
-from .basic_ops import (host_from_gpu, gpu_from_host,
+from .basic_ops import (as_gpuarray_variable,
+                        host_from_gpu, gpu_from_host,
                         HostFromGpu, GpuFromHost,
                         GpuSplit, GpuContiguous,
                         gpu_alloc, GpuAlloc, GpuReshape,
@@ -262,10 +264,38 @@ def local_gpu_elemwise(node):
     name = op.name
     if name:
         name = 'Gpu' + name
+
     res = GpuElemwise(scal_op, name=name,
                       inplace_pattern=copy.copy(op.inplace_pattern),
                       nfunc_spec=op.nfunc_spec)
-    return res
+
+    # If the elemwise operation is a pow, casts might be required on the
+    # inputs and or outputs because only the (float, float)->float and
+    # (double, double)->double cases are implemented at the moment.
+    if isinstance(op.scalar_op, Pow):
+
+        # Only transfer the computation on the gpu if the output dtype is
+        # floating point. Else, give up on the transfer to the gpu.
+        out_dtype = node.outputs[0].dtype
+        if out_dtype not in ['float16', 'float32', 'float64']:
+            return
+
+        # Transfer the inputs on the GPU and cast them to the right dtype.
+        new_inputs = []
+        for inp in node.inputs:
+            if inp.dtype != out_dtype:
+                gpu_cast_op = GpuElemwise(Cast(Scalar(out_dtype)))
+                new_inputs.append(gpu_cast_op(as_gpuarray_variable(inp)))
+            else:
+                new_inputs.append(as_gpuarray_variable(inp))
+
+        # Perform the exponent on the gpu and transfer the output back to the
+        # cpu.
+        gpu_output = res(*new_inputs)
+        cpu_output = host_from_gpu(gpu_output)
+        return [cpu_output]
+    else:
+        return res
 
 
 def max_inputs_to_GpuElemwise(node):
@@ -639,8 +669,12 @@ def local_gpu_conv(node):
                       logical_kern_align_top=op.kshp_logical_top_aligned,
                       kshp=op.kshp,
                       version=op.version,
+                      direction_hint=op.direction_hint,
                       verbose=op.verbose,
                       imshp=op.imshp,
+                      nkern=op.nkern,
+                      bsize=op.bsize,
+                      fft_opt=op.fft_opt
                       )
         if op.imshp_logical is not None:
             logical_img_hw = op.imshp_logical[1:3]

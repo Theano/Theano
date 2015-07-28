@@ -1089,7 +1089,7 @@ _good_broadcast_unary_normal_float_no_empty_no_complex = copymod(
 _good_broadcast_unary_normal_float_no_complex = copymod(
         _good_broadcast_unary_normal_float,
         without=['complex'])
-        
+
 _good_broadcast_unary_normal_float_no_complex_small_neg_range = dict(
         normal=[rand_ranged(-2, 5, (2, 3))],
         corner_case=[corner_case],
@@ -1123,7 +1123,7 @@ _grad_broadcast_unary_normal = dict(
         corner_case=[corner_case_grad],
         # empty = [numpy.asarray([])] # XXX: should this be included?
         )
-        
+
 _grad_broadcast_unary_normal_small_neg_range = dict(
         normal=[numpy.asarray(rand_ranged(-2, 5, (2, 3)), dtype=floatX)],
         corner_case=[corner_case_grad])
@@ -4024,116 +4024,136 @@ class test_comparison(unittest.TestCase):
      work(futur behavior) or raise an error(current NumPy release).
 
     """
+    def setUp(self):
+        utt.seed_rng()
+        self.mode = None
+        self.shared = shared
+        self.dtypes = ['float64', 'float32', 'complex64', 'complex128']
+
+    def inplace_func(self, inputs, outputs, check_isfinite=None):
+        mode = self.mode
+        if check_isfinite is False:
+            if mode is None:
+                mode = get_default_mode()
+            mode.check_isfinite = False
+        f = inplace_func(inputs, outputs, mode=mode)
+        return f
+
     def test_gt(self):
-        for dtype in ['float64', 'float32', 'complex64', 'complex128']:
+        for dtype in self.dtypes:
             l = numpy.asarray([0., -1., 1.], dtype=dtype)
             r = numpy.asarray([0., 1., -1.], dtype=dtype)
             for x, y, err in [
-                (shared(l.astype(dtype)), shared(r.astype(dtype)), False),
-                (l, shared(r.astype(dtype)), True),
-                (tensor.constant(l), shared(r.astype(dtype)), False),
-                (shared(l.astype(dtype)), r, False),
-                (shared(l.astype(dtype)), tensor.constant(r), False),
+                (self.shared(l.astype(dtype)),
+                 self.shared(r.astype(dtype)), False),
+                (l, self.shared(r.astype(dtype)), True),
+                (tensor.constant(l), self.shared(r.astype(dtype)), False),
+                (self.shared(l.astype(dtype)), r, False),
+                (self.shared(l.astype(dtype)), tensor.constant(r), False),
             ]:
                 try:
-                    fn = inplace_func([], x > y)
+                    fn = self.inplace_func([], x > y)
                     v = fn()
                     self.assertTrue(numpy.all(v == (l > r)), (v, (l > r)))
                 except TypeError:
                     assert err
 
     def test_lt(self):
-        for dtype in ['float64', 'float32', 'complex64', 'complex128']:
+        for dtype in self.dtypes:
             l = numpy.asarray([0., -1., 1.], dtype=dtype)
             r = numpy.asarray([0., 1., -1.], dtype=dtype)
             for x, y, err in [
-                (shared(l.astype(dtype)), shared(r.astype(dtype)), False),
-                (l, shared(r.astype(dtype)), True),
-                (tensor.constant(l), shared(r.astype(dtype)), False),
-                (shared(l.astype(dtype)), r, False),
-                (shared(l.astype(dtype)), tensor.constant(r), False),
+                (self.shared(l.astype(dtype)), self.shared(r.astype(dtype)), False),
+                (l, self.shared(r.astype(dtype)), True),
+                (tensor.constant(l), self.shared(r.astype(dtype)), False),
+                (self.shared(l.astype(dtype)), r, False),
+                (self.shared(l.astype(dtype)), tensor.constant(r), False),
             ]:
                 try:
-                    fn = inplace_func([], x < y)
+                    fn = self.inplace_func([], x < y)
                     v = fn()
                     self.assertTrue(numpy.all(v == (l < r)), (v, (l < r)))
                 except TypeError:
                     assert err
 
     def test_le(self):
-        for dtype in ['float64', 'float32', 'complex64', 'complex128']:
+        for dtype in self.dtypes:
             l = numpy.asarray([0., -1., 1.], dtype=dtype)
             r = numpy.asarray([0., 1., -1.], dtype=dtype)
             for x, y, err in [
-                (shared(l.astype(dtype)), shared(r.astype(dtype)), False),
-                (l, shared(r.astype(dtype)), True),
-                (tensor.constant(l), shared(r.astype(dtype)), False),
-                (shared(l.astype(dtype)), r, False),
-                (shared(l.astype(dtype)), tensor.constant(r), False),
+                (self.shared(l.astype(dtype)),
+                 self.shared(r.astype(dtype)), False),
+                (l, self.shared(r.astype(dtype)), True),
+                (tensor.constant(l), self.shared(r.astype(dtype)), False),
+                (self.shared(l.astype(dtype)), r, False),
+                (self.shared(l.astype(dtype)), tensor.constant(r), False),
             ]:
                 try:
-                    fn = inplace_func([], x <= y)
+                    fn = self.inplace_func([], x <= y)
                     v = fn()
                     self.assertTrue(numpy.all(v == (l <= r)), (v, (l <= r)))
                 except TypeError:
                     assert err
 
     def test_ge(self):
-        for dtype in ['float64', 'float32', 'complex64', 'complex128']:
+        for dtype in self.dtypes:
             l = numpy.asarray([0., -1., 1.], dtype=dtype)
             r = numpy.asarray([0., 1., -1.], dtype=dtype)
             for x, y, err in [
-                (shared(l.astype(dtype)), shared(r.astype(dtype)), False),
-                (l, shared(r.astype(dtype)), True),
-                (tensor.constant(l), shared(r.astype(dtype)), False),
-                (shared(l.astype(dtype)), r, False),
-                (shared(l.astype(dtype)), tensor.constant(r), False),
+                (self.shared(l.astype(dtype)),
+                 self.shared(r.astype(dtype)), False),
+                (l, self.shared(r.astype(dtype)), True),
+                (tensor.constant(l), self.shared(r.astype(dtype)), False),
+                (self.shared(l.astype(dtype)), r, False),
+                (self.shared(l.astype(dtype)), tensor.constant(r), False),
             ]:
                 try:
-                    fn = inplace_func([], x >= y)
+                    fn = self.inplace_func([], x >= y)
                     v = fn()
                     self.assertTrue(numpy.all(v == (l >= r)), (v, (l >= r)))
                 except TypeError:
                     assert err
 
     def test_eq(self):
-        for dtype in ['float64', 'float32', 'complex64', 'complex128']:
+        for dtype in self.dtypes:
             l = numpy.asarray([0., -1., 1.], dtype=dtype)
             r = numpy.asarray([0., 1., -1.], dtype=dtype)
             for x, y, err in [
-                (shared(l.astype(dtype)), shared(r.astype(dtype)), False),
-                (l, shared(r.astype(dtype)), True),
-                (tensor.constant(l), shared(r.astype(dtype)), False),
-                (shared(l.astype(dtype)), r, False),
-                (shared(l.astype(dtype)), tensor.constant(r), False),
+                (self.shared(l.astype(dtype)),
+                 self.shared(r.astype(dtype)), False),
+                (l, self.shared(r.astype(dtype)), True),
+                (tensor.constant(l), self.shared(r.astype(dtype)), False),
+                (self.shared(l.astype(dtype)), r, False),
+                (self.shared(l.astype(dtype)), tensor.constant(r), False),
             ]:
                 try:
-                    fn = inplace_func([], eq(x, y))
+                    fn = self.inplace_func([], eq(x, y))
                     v = fn()
                     self.assertTrue(numpy.all(v == (l == r)), (v, (l == r)))
                 except TypeError:
                     assert err
 
     def test_neq(self):
-        for dtype in ['float64', 'float32', 'complex64', 'complex128']:
+        for dtype in self.dtypes:
             l = numpy.asarray([0., -1., 1.], dtype=dtype)
             r = numpy.asarray([0., 1., -1.], dtype=dtype)
             for x, y, err in [
-                (shared(l.astype(dtype)), shared(r.astype(dtype)), False),
-                (l, shared(r.astype(dtype)), True),
-                (tensor.constant(l), shared(r.astype(dtype)), False),
-                (shared(l.astype(dtype)), r, False),
-                (shared(l.astype(dtype)), tensor.constant(r), False),
+                (self.shared(l.astype(dtype)),
+                 self.shared(r.astype(dtype)), False),
+                (l, self.shared(r.astype(dtype)), True),
+                (tensor.constant(l), self.shared(r.astype(dtype)), False),
+                (self.shared(l.astype(dtype)), r, False),
+                (self.shared(l.astype(dtype)), tensor.constant(r), False),
             ]:
                 try:
-                    fn = inplace_func([], neq(x, y))
+                    fn = self.inplace_func([], neq(x, y))
                     v = fn()
                     self.assertTrue(numpy.all(v == (l != r)), (v, (l != r)))
                 except TypeError:
                     assert err
 
     def test_isclose(self):
-        for dtype in ['float64', 'float32', 'complex64', 'complex128']:
+        for dtype in self.dtypes:
             l = numpy.asarray(
                 [0., 1., -1., 0.,
                  numpy.nan, numpy.inf, -numpy.inf, numpy.inf],
@@ -4143,15 +4163,20 @@ class test_comparison(unittest.TestCase):
                  numpy.nan, numpy.inf, numpy.inf, 0.],
                 dtype=dtype)
             for x, y, err in [
-                (shared(l.astype(dtype)), shared(r.astype(dtype)), False),
-                (l, shared(r.astype(dtype)), True),
-                (constant(l), shared(r.astype(dtype)), False),
-                (shared(l.astype(dtype)), r, False),
-                (shared(l.astype(dtype)), constant(r), False),
+                (self.shared(l.astype(dtype)),
+                 self.shared(r.astype(dtype)), False),
+                (l, self.shared(r.astype(dtype)), True),
+                (constant(l), self.shared(r.astype(dtype)), False),
+                (self.shared(l.astype(dtype)), r, False),
+                (self.shared(l.astype(dtype)), constant(r), False),
             ]:
                 try:
-                    fn1 = inplace_func([], isclose(x, y, equal_nan=False))
-                    fn2 = inplace_func([], isclose(x, y, equal_nan=True))
+                    o1 = isclose(x, y, equal_nan=False)
+                    fn1 = self.inplace_func([], o1, check_isfinite=False)
+
+                    o2 = isclose(x, y, equal_nan=True)
+                    fn2 = self.inplace_func([], o2, check_isfinite=False)
+
                     v1 = fn1()
                     v2 = fn2()
                     self.assertTrue(
@@ -4172,12 +4197,13 @@ class test_comparison(unittest.TestCase):
                     )
                 except TypeError:
                     if not dtype.startswith('complex'):
+                        raise
                         assert err
 
     def test_allclose(self):
         # equal_nan argument not in current version of numpy allclose,
         # force it to False.
-        for dtype in ['float64', 'float32', 'complex64', 'complex128']:
+        for dtype in self.dtypes:
             l = numpy.asarray(
                 [0., 1., -1., 0.,
                  numpy.nan, numpy.inf, -numpy.inf, numpy.inf],
@@ -4187,14 +4213,16 @@ class test_comparison(unittest.TestCase):
                  numpy.nan, numpy.inf, numpy.inf, 0.],
                 dtype=dtype)
             for x, y, err in [
-                (shared(l.astype(dtype)), shared(r.astype(dtype)), False),
-                (l, shared(r.astype(dtype)), True),
-                (constant(l), shared(r.astype(dtype)), False),
-                (shared(l.astype(dtype)), r, False),
-                (shared(l.astype(dtype)), constant(r), False),
+                (self.shared(l.astype(dtype)),
+                 self.shared(r.astype(dtype)), False),
+                (l, self.shared(r.astype(dtype)), True),
+                (constant(l), self.shared(r.astype(dtype)), False),
+                (self.shared(l.astype(dtype)), r, False),
+                (self.shared(l.astype(dtype)), constant(r), False),
             ]:
                 try:
-                    fn = inplace_func([], allclose(x, y, equal_nan=False))
+                    fn = self.inplace_func([], allclose(x, y, equal_nan=False),
+                                           check_isfinite=False)
                     v = fn()
                     self.assertTrue(numpy.all(v == numpy.allclose(l, r)))
                 except TypeError:
@@ -4898,12 +4926,8 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
             topo_ = [node for node in topo if not isinstance(node.op,
                                                              self.ignore_topo)]
             assert len(topo_) == 1, topo_
+            assert type(topo_[0].op) is self.op
         return f
-
-    def eval_output_and_check(self, t):
-        f = self.function([], t)
-        tval = f()
-        return tval
 
     def test_reshape(self):
         a = dvector()
@@ -5020,6 +5044,11 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
         self.assertRaises(ValueError, f, a_val, [7, 5])
         self.assertRaises(ValueError, f, a_val, [-1, -1])
 
+    def test_0(self):
+        x = fvector('x')
+        f = self.function([x], x.reshape((0, 100)))
+        assert f(numpy.ndarray((0,), dtype='float32')).shape == (0, 100)
+
 
 def test_make_column_matrix_broadcastable():
     # The goal of the operation made by `b` is to ensure the second dimension
@@ -5098,6 +5127,31 @@ def test_flatten_outdim2_of_3():
     assert numpy.all(f(a_val) == c_val)
 
     utt.verify_grad(Flatten(2), [a_val])
+
+
+def test_flatten_broadcastable():
+    # Ensure that the broadcastable pattern of the output is coherent with
+    # that of the input
+
+    inp = TensorType('float64', (False, False, False, False))()
+    out = flatten(inp, outdim=2)
+    assert out.broadcastable == (False, False)
+
+    inp = TensorType('float64', (False, False, False, True))()
+    out = flatten(inp, outdim=2)
+    assert out.broadcastable == (False, False)
+
+    inp = TensorType('float64', (False, True, False, True))()
+    out = flatten(inp, outdim=2)
+    assert out.broadcastable == (False, False)
+
+    inp = TensorType('float64', (False, True, True, True))()
+    out = flatten(inp, outdim=2)
+    assert out.broadcastable == (False, True)
+
+    inp = TensorType('float64', (True, False, True, True))()
+    out = flatten(inp, outdim=3)
+    assert out.broadcastable == (True, False, True)
 
 
 def test_flatten_outdim_invalid():
@@ -5500,7 +5554,7 @@ class TestNdGrid(unittest.TestCase):
         nmgrid = (numpy.mgrid[0:1:.1, 1:10:1., 10:100:10.],
                   numpy.mgrid[0:2:1, 1:10:1, 10:100:10])
         tmgrid = (mgrid[0:1:.1, 1:10:1., 10:100:10.],
-                  mgrid[0:2:1, 1:10:1, 10:100:10])         
+                  mgrid[0:2:1, 1:10:1, 10:100:10])
         for n, t in zip(nmgrid, tmgrid):
             for ng, tg in zip(n, t):
                 utt.assert_allclose(ng, tg.eval())
@@ -5508,7 +5562,7 @@ class TestNdGrid(unittest.TestCase):
     def test_ogrid_numpy_equiv(self):
         nogrid = (numpy.ogrid[0:1:.1, 1:10:1., 10:100:10.],
                   numpy.ogrid[0:2:1, 1:10:1, 10:100:10])
-        togrid = (ogrid[0:1:.1, 1:10:1., 10:100:10.], 
+        togrid = (ogrid[0:1:.1, 1:10:1., 10:100:10.],
                   ogrid[0:2:1, 1:10:1, 10:100:10])
         for n, t in zip(nogrid, togrid):
             for ng, tg in zip(n, t):
@@ -5539,8 +5593,8 @@ class TestNdGrid(unittest.TestCase):
         for n, t in zip((nfogrid,niogrid), (ff(0, 10, 10.),fi(0, 10, 10))):
             for ng, tg in zip(n, t):
                 utt.assert_allclose(ng, tg)
-                
-                
+
+
 class TestInversePermutation(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
@@ -7699,9 +7753,16 @@ def test_allocempty():
     f = theano.function([], AllocEmpty("float32")(2, 3))
     assert len(f.maker.fgraph.apply_nodes) == 1
     out = f()
-    
+
     assert out.shape == (2, 3)
     assert out.dtype == 'float32'
+
+
+def test_symbolic_slice():
+    x = theano.tensor.tensor4('x')
+    a, b = x.shape[:2]
+    output = a.eval({x: numpy.zeros((5, 4, 3, 2), dtype=theano.config.floatX)})
+    assert output == numpy.array(5)
 
 """
 

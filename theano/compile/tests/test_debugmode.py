@@ -20,16 +20,12 @@ def test0():
 
 
 class BROKEN_ON_PURPOSE_Add(gof.Op):
+
+    __props__ = ("py_offset",)
+    
     def __init__(self, py_offset):
         gof.Op.__init__(self)
         self.py_offset = py_offset
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                (self.py_offset == other.py_offset))
-
-    def __hash__(self):
-        return 29834 ^ hash(type(self)) ^ hash(self.py_offset)
 
     def make_node(self, a, b):
         a = theano.tensor.as_tensor_variable(a)
@@ -105,16 +101,11 @@ class WeirdBrokenOp(gof.Op):
     In both cases, it does not set the destroy_map or view_map correctly so
     it should raise an error in DebugMode.
     """
+    __props__ = ("behaviour", )
+    
     def __init__(self, behaviour):
         gof.Op.__init__(self)
         self.behaviour = behaviour
-
-    def __eq__(self, other):
-        return (type(self) == type(other)
-                and (self.behaviour == other.behaviour))
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.behaviour)
 
     def make_node(self, a):
         a_ = theano.tensor.as_tensor_variable(a)
@@ -605,11 +596,8 @@ class Test_check_isfinite(unittest.TestCase):
 
 
 class BrokenCImplementationAdd(gof.Op):
-    def __eq__(self, other):
-        return type(self) == type(other)
 
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, a, b):
         a = theano.tensor.as_tensor_variable(a)
@@ -703,12 +691,7 @@ class VecAsRowAndCol(gof.Op):
     This Op exists to check everything is correct when an Op has
     two outputs with different broadcasting patterns.
     """
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, v):
         if not isinstance(v, gof.Variable):

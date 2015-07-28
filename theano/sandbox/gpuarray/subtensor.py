@@ -489,7 +489,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
         return gof.Apply(self, [x_, y_, ilist_], [x_.type()])
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
     def c_headers(self):
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
@@ -587,6 +587,8 @@ __device__ npy_float16 atomicAdd(npy_float16 *addr, npy_float16 val) {
                   for(int j = (threadIdx.x); j < numColsX;j += blockDim.x)
                   {
                       int x_row = indices_arr[i * stridesIndices];
+                      if(x_row < 0)
+                          x_row += numRowsX;
                       int y_row = i;
                       atomicAdd(&X[(x_row * stridesX0) + (j * stridesX1)], Y[(y_row * stridesY0) + (j * stridesY1)]);
                   }
