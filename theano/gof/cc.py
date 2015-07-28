@@ -1455,7 +1455,6 @@ class CLinker(link.Linker):
         c_compiler = self.c_compiler()
         libs = self.libraries()
         preargs = self.compile_args()
-        compiler_name = c_compiler.__name__
         # We want to compute the code without the lock
         src_code = mod.code()
         get_lock()
