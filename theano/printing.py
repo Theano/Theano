@@ -884,11 +884,9 @@ def pydotprint(fct, outfile=None,
 
         for id, var in enumerate(node.inputs):
             varstr = var_name(var)
-            label = str(var.type)
+            label = ""
             if len(node.inputs) > 1:
-                label = str(id) + ' ' + label
-            if len(label) > max_label_size:
-                label = label[:max_label_size - 3] + '...'
+                label = str(id)
             param = {}
             if hasattr(node.op, 'view_map') and id in reduce(
                     list.__add__, node.op.view_map.values(), []):
@@ -896,6 +894,8 @@ def pydotprint(fct, outfile=None,
             elif hasattr(node.op, 'destroy_map') and id in reduce(
                     list.__add__, node.op.destroy_map.values(), []):
                         param['color'] = 'red'
+            if label:
+                param['label'] = label
             if var.owner is None:
                 color = 'green'
                 if isinstance(var, theano.compile.SharedVariable):
@@ -909,13 +909,18 @@ def pydotprint(fct, outfile=None,
                                        shape=var_shape))
                 else:
                     g.add_node(pd.Node(varstr, color=color, shape=var_shape))
-                g.add_edge(pd.Edge(varstr, astr, label=label, **param))
+                g.add_edge(pd.Edge(varstr, astr, **param))
             elif var.name or not compact or var in outputs:
-                g.add_edge(pd.Edge(varstr, astr, label=label, **param))
+                g.add_edge(pd.Edge(varstr, astr, **param))
             else:
                 # no name, so we don't make a var ellipse
-                g.add_edge(pd.Edge(apply_name(var.owner), astr,
-                           label=label, **param))
+                if label:
+                    label += " "
+                label += str(var.type)
+                if len(label) > max_label_size:
+                    label = label[:max_label_size - 3] + '...'
+                param['label'] = label
+                g.add_edge(pd.Edge(apply_name(var.owner), astr, **param))
 
         for id, var in enumerate(node.outputs):
             varstr = var_name(var)
