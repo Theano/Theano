@@ -1661,18 +1661,8 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
         try:
             num_grad = numeric_grad(cost_fn, [p.copy() for p in pt],
                                     eps, out_type)
-            print('-----------numeric-----------------')
-            for th in num_grad.gf:
-                print(th.shape)
-                print(th)
-            print('')
 
             analytic_grad = grad_fn(*[p.copy() for p in pt])
-            print('-----------analytic-----------------')
-            for th in analytic_grad:
-                print(th.shape)
-                print(th)
-            print('')
 
             # Since `tensor_pt` is a list, `analytic_grad` should be one too.
             assert isinstance(analytic_grad, list)

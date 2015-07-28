@@ -74,6 +74,8 @@ void col2im(const npy_float* data_col, const int channels,
         if (h_pad >= 0 && h_pad < height && w_pad >= 0 && w_pad < width)
           data_im[(c_im * height + h_pad) * width + w_pad] +=
             data_col[(c * height_col + h) * width_col + w];
+          // data_im[(c_im * height + h_pad) * width + w_pad] = 0.;
+
       }
     }
   }
@@ -85,6 +87,7 @@ void col2im(const npy_float* data_col, const int channels,
 // Reference code: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu
 //   and https://github.com/torch/cunn/blob/master/SpatialConvolutionMM.cu
 // CPU version author: Jesse Livezey
+// CPU version adapted from GPU version
 PyArrayObject* corrMM(PyArrayObject* bottom,
                            PyArrayObject* weight,
                            PyArrayObject* top,
@@ -182,10 +185,9 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
 
     // Create temporary columns
     npy_intp col_dim[2];
-    //int col_dim[2];
     col_dim[0] = (npy_intp)(nChannels * kW * kH);
     col_dim[1] = (npy_intp)(topHeight * topWidth);
-    PyArrayObject* col = (PyArrayObject*)PyArray_EMPTY(2,
+    PyArrayObject* col = (PyArrayObject*)PyArray_ZEROS(2,
 		                           col_dim,
                                            PyArray_TYPE(top),
 					   0);
@@ -201,7 +203,6 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     // TODO More careful divide
     const int bottom_stride = PyArray_STRIDES(bottom)[0]/4;
     const int top_stride = PyArray_STRIDES(top)[0]/4;
-    // int type_num = PyArray_DESCR(bottom)->type_num;
     // TODO More careful type checking for all arrays
     const int K_ = col_dim[0];
     const int N_ = col_dim[1];
@@ -349,6 +350,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     }
     else if (direction == 2) {  // backprop wrt. inputs
         output = bottom;
+        PyArray_FILLWBYTE(bottom, 0);
         // full convolution: gemm, then col2im
         // Iterate over batch
         for (int n = 0; n < batchSize; n++) {
