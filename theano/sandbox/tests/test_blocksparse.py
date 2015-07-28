@@ -147,7 +147,7 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         for b in range(x.shape[0]):
             for i in range(xIdx.shape[1]):
                 for j in range(yIdx.shape[1]):
-                    o[xIdx[b, i], yIdx[b, j]] += numpy.outer(x[b,  i, :],
+                    o[xIdx[b, i], yIdx[b, j]] += numpy.outer(x[b, i, :],
                                                              y[b, j, :])
         return o
 
