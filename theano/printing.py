@@ -785,10 +785,6 @@ def pydotprint(fct, outfile=None,
                           suffix)
         var_str[var] = varstr
 
-        # The var that represent the new value, must be linked to the
-        # input var.
-        if var in input_update.values():
-            var_str[reverse_input_update[var]] = varstr
         all_strings.add(varstr)
 
         return varstr
@@ -933,7 +929,7 @@ def pydotprint(fct, outfile=None,
             param = {}
             if label:
                 param['label'] = label
-            if out:
+            if out or var in input_update:
                 g.add_edge(pd.Edge(astr, varstr, **param))
                 if high_contrast:
                     g.add_node(pd.Node(varstr, style='filled',
@@ -948,8 +944,8 @@ def pydotprint(fct, outfile=None,
                                        fillcolor='grey', shape=var_shape))
                 else:
                     g.add_node(pd.Node(varstr, color='grey', shape=var_shape))
-            elif var.name or not compact or var in input_update:
-                if not(not compact or var in input_update):
+            elif var.name or not compact:
+                if not(not compact):
                     if label:
                         label += " "
                     label += str(var.type)
@@ -957,12 +953,15 @@ def pydotprint(fct, outfile=None,
                         label = label[:max_label_size - 3] + '...'
                     param['label'] = label
                 g.add_edge(pd.Edge(astr, varstr, **param))
-                if high_contrast:
-                    g.add_node(pd.Node(varstr, shape=var_shape))
-                else:
-                    g.add_node(pd.Node(varstr, shape=var_shape))
+                g.add_node(pd.Node(varstr, shape=var_shape))
 #            else:
             # don't add egde here as it is already added from the inputs.
+
+    # The var that represent updates, must be linked to the input var.
+    for sha, up in input_update.items():
+        shastr = var_name(sha)
+        upstr = var_name(up)
+        g.add_edge(pd.Edge(shastr, upstr, label="UPDATE", color="red"))
 
     if cond_highlight:
         g.add_subgraph(c1)
