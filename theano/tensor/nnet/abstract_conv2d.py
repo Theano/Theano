@@ -120,7 +120,7 @@ class BaseAbstractConv2d(Op):
     FIXME
     """
     check_broadcast = False
-    __props__ = ('border_mode', 'subsample')
+    __props__ = ('border_mode', 'subsample', 'filter_flip', 'imshp', 'kshp', 'bsize')
 
     def __init__(self,
                  imshp=None, kshp=None, bsize=None,
@@ -138,7 +138,6 @@ class BaseAbstractConv2d(Op):
                 '"valid", "full", "half", an integer or a pair of'
                 ' integers'.format(border_mode))
 
-        ### FIXME Check that values are correct
         self.imshp = imshp
         self.kshp = kshp
         self.bsize = bsize
@@ -148,12 +147,6 @@ class BaseAbstractConv2d(Op):
         if len(subsample) != 2:
             raise ValueError("subsample must have two elements")
         self.subsample = subsample
-
-    def __str__(self):
-        return '%s{%s, %s}' % (
-            self.__class__.__name__,
-            self.border_mode,
-            str(self.subsample))
 
     def flops(self, inp, outp):
         """ Useful with the hack in profilemode to print the MFlops"""
@@ -315,8 +308,6 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
         broadcastable = [topgrad.type.broadcastable[0],
                          kern.type.broadcastable[1],
                          False, False]
-        output = kern.type.__class__(dtype=kern.type.dtype,
-                                     broadcastable=broadcastable)()
         output = kern.type.clone(broadcastable=broadcastable)()
         return Apply(self, [kern, topgrad, shape], [output])
 
@@ -345,9 +336,7 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
 ### move to Gpu optimization
 ### Do not replace the AbstractOpt only the inputs
 ### Abstract Ops is replaced layer by device_specialized opt
-@local_optimizer([gpu_from_host, AbstractConv2d,
-                  AbstractConv2d_gradWeights,
-                  AbstractConv2d_gradInputs])
+@local_optimizer([gpu_from_host, BaseAbstractConv2d])
 def local_conv2d_gpu_conv(node):
     """
     gpu_from_host(AbstractConv) -> AbstractConv(gpu_from_host)
@@ -398,9 +387,7 @@ register_gpu()(local_conv2d_gpu_conv)
 
 
 ### Call dnn conv class directly
-@local_optimizer([AbstractConv2d,
-                  AbstractConv2d_gradWeights,
-                  AbstractConv2d_gradInputs])
+@local_optimizer([BaseAbstractConv2d])
 def local_conv2d_cudnn(node):
 
     inp1 = node.inputs[0]
