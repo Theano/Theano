@@ -229,7 +229,7 @@ cpu_sparse_block_outer = CpuSparseBlockOuter(False)
 cpu_sparse_block_outer_inplace = CpuSparseBlockOuter(True)
 
 
-def sparse_block_dot(W, h, inputIdx, b, outputIdx, inplace=False):
+def sparse_block_dot(W, h, inputIdx, b, outputIdx):
     """
     Compute the dot product (plus bias) of the specified pieces of vectors
     and matrices. See SparseBlockGemv to get more information.
@@ -263,5 +263,5 @@ def sparse_block_dot(W, h, inputIdx, b, outputIdx, inplace=False):
         h = h.dimshuffle('x', 0, 1)
         inputIdx = inputIdx.dimshuffle('x', 0)
         outputIdx = outputIdx.dimshuffle('x', 0)
-    return SparseBlockGemv(inplace)(b.take(outputIdx, axis=0), W, h,
-                                    inputIdx, outputIdx)
+    return SparseBlockGemv()(b.take(outputIdx, axis=0), W, h,
+                             inputIdx, outputIdx)
