@@ -58,6 +58,7 @@ from theano.tensor import (
 from theano.tensor.elemwise import DimShuffle
 from theano.tests import unittest_tools as utt
 from theano.compile.mode import optdb
+from theano.compile import Mode
 
 mode_opt = theano.config.mode
 if mode_opt == 'FAST_COMPILE':
@@ -4902,7 +4903,7 @@ class T_local_sum_prod_dimshuffle(unittest.TestCase):
         b = T.vector('b')
         c = T.tensor3('c')
         d = T.scalar('d')
-        prod = tensor.prod
+        prod = T.prod
         prods = [
             prod(a / d),
             prod(a / d.dimshuffle('x', 'x')),
@@ -4935,9 +4936,10 @@ class T_local_sum_prod_dimshuffle(unittest.TestCase):
             prod(c / b.dimshuffle(0, 'x', 'x'), axis=1),
             prod(c / b.dimshuffle(0, 'x', 'x'), axis=2),
             prod(c / b.dimshuffle(0, 'x', 'x'), axis=(1, 2)),
+            prod(c / b.dimshuffle(0, 'x', 'x'), axis=(0, 1)),
+            prod(c / b.dimshuffle(0, 'x', 'x'), axis=(1, 0)),
             prod(prod(c, axis=0) / b, axis=0),
-            prod(prod(c, axis=1) / b, axis=0),
-            ]
+            prod(prod(c, axis=1) / b, axis=0)]
 
         rng = numpy.random.RandomState(utt.fetch_seed())
         a_val = rng.randn(2, 2).astype(config.floatX)
@@ -4946,12 +4948,16 @@ class T_local_sum_prod_dimshuffle(unittest.TestCase):
         d_val = numpy.asarray(rng.randn(), config.floatX)
 
         for i, s in enumerate(prods):
-            f = theano.function([a, b, c, d], s, mode=self.mode,
-                    on_unused_input='ignore')
-            g = f.maker.fgraph.toposort()
-            assert isinstance(g[-1].op.scalar_op,
-                              theano.scalar.basic.TrueDiv)
-            f(a_val, b_val, c_val, d_val)
+            f = theano.function([a, b, c, d], s,
+                                on_unused_input='ignore')
+            g = theano.function([a, b, c, d], s,
+                                on_unused_input='ignore',
+                                mode=Mode(optimizer=None))
+            # g = f.maker.fgraph.toposort()
+            # assert isinstance(g[-1].op.scalar_op,
+            #                   theano.scalar.basic.TrueDiv)
+            assert ((f(a_val, b_val, c_val, d_val) -
+                     g(a_val, b_val, c_val, d_val)) < 1e-10).all()
 
     # TODO:
     # test_local_sum_divprod_dimshuffle ((a * b) / (c * d))
