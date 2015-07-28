@@ -1,5 +1,6 @@
 import numpy as np
 import logging
+import re
 
 try:
     import pydot as pd
@@ -13,6 +14,7 @@ except ImportError:
 from theano import gof
 from theano.compile.profilemode import ProfileMode
 from theano.compile import Function
+from theano.compile import builders
 
 _logger = logging.getLogger("theano.printing")
 
@@ -26,17 +28,8 @@ class GraphFormatter(object):
         :param compact: if True, will remove intermediate var that don't have name.
         :param with_ids: Print the toposort index of the node in the node name.
             and an index number in the variable ellipse.
-        :param high_contrast: if true, the color that describes the respective
-            node is filled with its corresponding color, instead of coloring
-            the border
         :param colorCodes: dictionary with names of ops as keys and colors as
             values
-        :param cond_highlight: Highlights a lazy if by sorrounding each of the 3
-            possible categories of ops with a border. The categories
-            are: ops that are on the left branch, ops that are on the
-            right branch, ops that are on both branches
-            As an alternative you can provide the node that represents
-            the lazy if
         :param scan_graphs: if true it will plot the inner graph of each scan op
             in files with the same name as the name given for the main
             file to which the name of the scan op is concatenated and
@@ -48,8 +41,6 @@ class GraphFormatter(object):
         """
         self.compact = True
         self.with_ids = False
-        self.high_contrast = True
-        self.cond_highlight = None
         self.scan_graphs = True
         self.var_with_name_simple = False
         self.colorCodes = {'GpuFromHost': 'red',
@@ -66,6 +57,10 @@ class GraphFormatter(object):
                             }
         self.max_label_size = 70
 
+    def get_node_id(self):
+        self.nnodes += 1
+        id_ = '_%d' % (self.nnodes)
+        return id_
 
     def to_pydot(self, fct):
         """Create pydot graph from function.
@@ -106,43 +101,10 @@ class GraphFormatter(object):
 
         g = pd.Dot()
 
-        cond_highlight = self.cond_highlight
-        if cond_highlight is not None:
-            c1 = pd.Cluster('Left')
-            c2 = pd.Cluster('Right')
-            c3 = pd.Cluster('Middle')
-            cond = None
-            for node in topo:
-                if (node.op.__class__.__name__ == 'IfElse' and
-                        node.op.name == cond_highlight):
-                    cond = node
-            if cond is None:
-                _logger.warn("pydotprint: cond_highlight is set but there is no"
-                            " IfElse node in the graph")
-                cond_highlight = None
-
-        if cond_highlight is not None:
-            def recursive_pass(x, ls):
-                if not x.owner:
-                    return ls
-                else:
-                    ls += [x.owner]
-                    for inp in x.inputs:
-                        ls += recursive_pass(inp, ls)
-                    return ls
-
-            left = set(recursive_pass(cond.inputs[1], []))
-            right = set(recursive_pass(cond.inputs[2], []))
-            middle = left.intersection(right)
-            left = left.difference(middle)
-            right = right.difference(middle)
-            middle = list(middle)
-            left = list(left)
-            right = list(right)
-
         self.var_str = {}
         self.all_strings = set()
         self.apply_name_cache = {}
+        self.nnodes = 0
 
 
         # Update the inputs that have an update function
@@ -158,7 +120,14 @@ class GraphFormatter(object):
         apply_shape = 'ellipse'
         var_shape = 'box'
         for node_idx, node in enumerate(topo):
-            astr, aprof = self.apply_name(node, fct, topo, mode, profile)
+            aid, astr, aprof = self.apply_name(node, fct, topo, mode, profile)
+            is_opfrom = isinstance(node.op, builders.OpFromGraph)
+
+            if is_opfrom:
+                parent = pd.Cluster(aid, label=astr)
+                g.add_subgraph(parent)
+            else:
+                parent = g
 
             use_color = None
             for opName, color in self.colorCodes.items():
@@ -166,32 +135,17 @@ class GraphFormatter(object):
                     use_color = color
 
             if use_color is None:
-                nw_node = pd.Node(astr, shape=apply_shape, profile=aprof)
-            elif self.high_contrast:
-                nw_node = pd.Node(astr, style='filled', fillcolor=use_color,
-                                shape=apply_shape, type='colored', profile=aprof)
+                nw_node = pd.Node(aid, label=astr, shape=apply_shape, profile=aprof)
             else:
-                nw_node = pd.Node(astr, color=use_color, shape=apply_shape, profile=aprof)
+                nw_node = pd.Node(aid, label=astr, style='filled', fillcolor=use_color,
+                                shape=apply_shape, type='colored', profile=aprof)
             g.add_node(nw_node)
-            if self.cond_highlight:
-                if node in middle:
-                    c3.add_node(nw_node)
-                elif node in left:
-                    c1.add_node(nw_node)
-                elif node in right:
-                    c2.add_node(nw_node)
 
-            def make_node(*args, **kwargs):
+            def make_node(label, **kwargs):
                 t = {k:v for k,v in kwargs.items() if v is not None}
-                return pd.Node(*args, **t)
+                return pd.Node(self.get_node_id(), label=label, **t)
 
             for id, var in enumerate(node.inputs):
-                varstr = self.var_name(var)
-                label = str(var.type)
-                if len(node.inputs) > 1:
-                    label = str(id) + ' ' + label
-                if len(label) >self.max_label_size:
-                    label = label[:self.max_label_size - 3] + '...'
                 param = {}
                 if hasattr(node.op, 'view_map') and id in reduce(
                         list.__add__, node.op.view_map.values(), []):
@@ -199,58 +153,41 @@ class GraphFormatter(object):
                 elif hasattr(node.op, 'destroy_map') and id in reduce(
                         list.__add__, node.op.destroy_map.values(), []):
                             param['color'] = 'red'
+
+                edge_label = str(var.type)
                 if var.owner is None:
-                    if self.high_contrast:
-                        g.add_node(make_node(varstr,
-                                        style='filled',
-                                        fillcolor=self.node_colors['input'],
-                                        shape=var_shape, profile=aprof))
-                    else:
-                        g.add_node(make_node(varstr, color=self.node_colors['input'],
-                                        shape=var_shape, profile=aprof))
-                    g.add_edge(pd.Edge(varstr, astr, label=label, **param))
-                elif var.name or not self.compact:
-                    g.add_edge(pd.Edge(varstr, astr, label=label, **param))
-                else:
-                    # no name, so we don't make a var ellipse
-                    name, prof = self.apply_name(var.owner, fct, topo, mode, profile)
-                    g.add_edge(pd.Edge(name, astr,
-                                       label=label, **param))
+                    id_ = self.var_name(var)
+                    n = make_node(id_,
+                                    style='filled',
+                                    fillcolor=self.node_colors['input'],
+                                    shape=var_shape, profile=aprof)
+                    parent.add_node(n)
+                    if not is_opfrom:
+                        g.add_edge(pd.Edge(n.get_name(), aid, label=edge_label, **param))
+                elif not is_opfrom:
+                    id_, name, prof = self.apply_name(var.owner, fct, topo, mode, profile)
+                    g.add_edge(pd.Edge(id_, aid,
+                                       label=edge_label, **param))
 
             for id, var in enumerate(node.outputs):
                 varstr = self.var_name(var)
-                out = var in outputs
-                label = str(var.type)
-                if len(node.outputs) > 1:
-                    label = str(id) + ' ' + label
-                if len(label) >self.max_label_size:
-                    label = label[:self.max_label_size - 3] + '...'
-                if out:
-                    g.add_edge(pd.Edge(astr, varstr, label=label))
-                    if self.high_contrast:
-                        g.add_node(make_node(varstr, style='filled',
-                                        fillcolor=self.node_colors['output'],
-                                        shape=var_shape, profile=aprof))
-                    else:
-                        g.add_node(make_node(varstr, color=self.node_colors['output'],
-                                           shape=var_shape, profile=aprof))
+                edge_label = str(var.type)
+
+                if var in outputs:
+                    n = make_node(varstr, style='filled',
+                                  fillcolor=self.node_colors['output'],
+                                  shape=var_shape, profile=aprof)
+                    g.add_node(n)
+                    g.add_edge(pd.Edge(aid, n.get_name(), label=edge_label))
                 elif len(var.clients) == 0:
-                    g.add_edge(pd.Edge(astr, varstr, label=label))
-                    if self.high_contrast:
-                        g.add_node(make_node(varstr, style='filled',
-                                        fillcolor=self.node_colors['unused'],
-                                        shape=var_shape, profile=aprof))
-                    else:
-                        g.add_node(make_node(varstr, color=self.node_colors['unused'],
-                                        shape=var_shape, profile=aprof))
+                    n = make_node(varstr, style='filled',
+                                    fillcolor=self.node_colors['unused'],
+                                    shape=var_shape, profile=aprof)
+                    g.add_node(n)
+                    g.add_edge(pd.Edge(aid, n.get_name(), label=edge_label))
                 elif var.name or not self.compact:
-                    g.add_edge(pd.Edge(astr, varstr, label=label))
-
-
-        if self.cond_highlight:
-            g.add_subgraph(c1)
-            g.add_subgraph(c2)
-            g.add_subgraph(c3)
+                    id_, name, prof = self.apply_name(var.owner, fct, topo, mode, profile)
+                    g.add_edge(pd.Edge(aid, id_, label=edge_label))
 
         return g
 
@@ -314,6 +251,8 @@ class GraphFormatter(object):
             prof = str([time, call_time])
 
         applystr = str(node.op).replace(':', '_')
+        applystr = re.sub('^<', '', applystr)
+        applystr = re.sub('>$', '', applystr)
         if (applystr in self.all_strings) or self.with_ids:
             idx = ' id=' + str(topo.index(node))
             if len(applystr) + len(idx) > self.max_label_size:
@@ -332,5 +271,6 @@ class GraphFormatter(object):
                             suffix)
 
         self.all_strings.add(applystr)
-        self.apply_name_cache[node] = (applystr, prof)
-        return (applystr, prof)
+        rv = (self.get_node_id(), applystr, prof)
+        self.apply_name_cache[node] = rv
+        return rv
