@@ -813,10 +813,10 @@ class Subtensor(Op):
 
                 assert (slicelength <= length);
 
-                xview_offset += %(c_prefix)s_STRIDES(%(x)s)[outer_ii] * start *
-                       %(strides_mul)s;
+                xview_offset += (npy_intp)%(c_prefix)s_STRIDES(%(x)s)[outer_ii]
+                    * start * %(strides_mul)s;
                 xview_dims[inner_ii] = slicelength;
-                xview_strides[inner_ii] = %(c_prefix)s_STRIDES(%(x)s)[outer_ii] * step;
+                xview_strides[inner_ii] = (npy_intp)%(c_prefix)s_STRIDES(%(x)s)[outer_ii] * step;
 
                 inner_ii += 1;
                 spec_pos += 3;
@@ -829,7 +829,7 @@ class Subtensor(Op):
                 {
                     if (idx < %(c_prefix)s_DIMS(%(x)s)[outer_ii])
                     {
-                        xview_offset += %(c_prefix)s_STRIDES(%(x)s)[outer_ii] * idx *
+                        xview_offset += (npy_intp)%(c_prefix)s_STRIDES(%(x)s)[outer_ii] * idx *
                                %(strides_mul)s;
                     }
                     else
@@ -863,7 +863,7 @@ class Subtensor(Op):
 
     @staticmethod
     def helper_c_code_cache_version():
-        return (8,)
+        return (9,)
 
     def c_code(self, node, name, inputs, outputs, sub):  # DEBUG
         if not isinstance(node.inputs[0].type, theano.tensor.TensorType):
