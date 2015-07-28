@@ -103,6 +103,7 @@ class MPIRecv(Op):
 
     @note: Non-differentiable.
     """
+    __props__ = ("source", "tag", "shape", "dtype")
 
     def __init__(self, source, tag, shape, dtype):
         self.source = source
@@ -111,12 +112,6 @@ class MPIRecv(Op):
         self.dtype = numpy.dtype(dtype)  # turn "float64" into numpy.float64
         self.broadcastable = (False,) * len(shape)
         self._info = (source, tag, shape, dtype)
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self._info == other._info)
-
-    def __hash__(self):
-        return hash((type(self),) + self._info)
 
     def make_node(self):
         return gof.Apply(self, [], [theano.Variable(Generic()),
@@ -185,17 +180,12 @@ class MPISend(Op):
 
     @note: Non-differentiable.
     """
+    __props__ = ("dest", "tag")
 
     def __init__(self, dest, tag):
         self.dest = dest
         self.tag = tag
         self._info = (dest, tag)
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self._info == other._info)
-
-    def __hash__(self):
-        return hash((type(self),) + self._info)
 
     def make_node(self, data):
         return gof.Apply(self, [data],
