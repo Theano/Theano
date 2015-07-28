@@ -878,18 +878,18 @@ def pydotprint(fct, outfile=None,
             elif node in right:
                 c2.add_node(nw_node)
 
-        for id, var in enumerate(node.inputs):
+        for idx, var in enumerate(node.inputs):
             varstr = var_name(var)
             label = ""
             if len(node.inputs) > 1:
-                label = str(id)
+                label = str(idx)
             param = {}
             if label:
                 param['label'] = label
-            if hasattr(node.op, 'view_map') and id in reduce(
+            if hasattr(node.op, 'view_map') and idx in reduce(
                     list.__add__, node.op.view_map.values(), []):
                     param['color'] = 'blue'
-            elif hasattr(node.op, 'destroy_map') and id in reduce(
+            elif hasattr(node.op, 'destroy_map') and idx in reduce(
                     list.__add__, node.op.destroy_map.values(), []):
                         param['color'] = 'red'
             if var.owner is None:
@@ -918,12 +918,12 @@ def pydotprint(fct, outfile=None,
                 param['label'] = label
                 g.add_edge(pd.Edge(apply_name(var.owner), astr, **param))
 
-        for id, var in enumerate(node.outputs):
+        for idx, var in enumerate(node.outputs):
             varstr = var_name(var)
             out = var in outputs
             label = ""
             if len(node.outputs) > 1:
-                label = str(id)
+                label = str(idx)
             if len(label) > max_label_size:
                 label = label[:max_label_size - 3] + '...'
             param = {}
