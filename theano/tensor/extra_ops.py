@@ -562,8 +562,6 @@ class RepeatOp(theano.Op):
     # See the repeat function for docstring
     __props__ = ("axis",)
 
-    __props__ = ()
-
     def __init__(self, axis=None):
         self.axis = axis
 
