@@ -7,13 +7,6 @@
 # a,b scalar
 from __future__ import print_function
 
-s = """
-result for shapes=(2000,2000) and iters=100
-GTX 470 7.22s
-GTX 285, 6.84s
-GTX 480 5.83s
-"""
-
 import os
 import sys
 import time
@@ -52,14 +45,14 @@ def execute(execute=True, verbose=True, M=2000, N=2000, K=2000,
         print('    OMP_NUM_THREADS=', os.getenv('OMP_NUM_THREADS'))
         print('    GOTO_NUM_THREADS=', os.getenv('GOTO_NUM_THREADS'))
         print()
-        print ('Numpy config: (used when the Theano flag'
-               ' "blas.ldflags" is empty)')
+        print('Numpy config: (used when the Theano flag'
+              ' "blas.ldflags" is empty)')
         numpy.show_config()
         print('Numpy dot module:', numpy.dot.__module__)
         print('Numpy location:', numpy.__file__)
         print('Numpy version:', numpy.__version__)
         if (theano.config.device.startswith("gpu") or
-            theano.config.init_gpu_device.startswith("gpu")):
+                theano.config.init_gpu_device.startswith("gpu")):
             print('nvcc version:')
             subprocess.call((theano.sandbox.cuda.nvcc_compiler.nvcc_path,
                              "--version"))
@@ -116,8 +109,8 @@ def test():
 
 
 parser = OptionParser(
-        usage='%prog <options>\nCompute time needed to perform BLAS gemm '
-              'computations between matrices of size (M, N) and (N, K).')
+    usage='%prog <options>\nCompute time needed to perform BLAS gemm '
+    'computations between matrices of size (M, N) and (N, K).')
 
 parser.add_option('-q', '--quiet', action='store_true', dest='quiet',
                   default=False,
@@ -255,25 +248,25 @@ if __name__ == "__main__":
         K40                             0.88s
         K20m/ECC
         K20/NOECC
-        M2090   
-        C2075             
-        M2075             
-        M2070             
-        M2070-Q           
-        M2050(Amazon)     
-        C1060             
-        K600              
+        M2090
+        C2075
+        M2075
+        M2070
+        M2070-Q
+        M2050(Amazon)
+        C1060
+        K600
 
-        GTX Titan Black   
+        GTX Titan Black
         GTX Titan(D15U-50)
-        GTX 780           
-        GTX 980           
-        GTX 970           
-        GTX 680           
-        GRID K520         
-        GTX 580           
-        GTX 480           
-        GTX 750 Ti        
+        GTX 780
+        GTX 980
+        GTX 970
+        GTX 680
+        GRID K520
+        GTX 580
+        GTX 480
+        GTX 750 Ti
         """)
 
     if options.M == 0:
@@ -306,7 +299,6 @@ if __name__ == "__main__":
         print()
         print('Total execution time: %.2fs on %s.' % (t, impl))
         print()
-        print ('Try to run this script a few times. Experience shows that'
-               ' the first time is not as fast as followings calls. The'
-               ' difference is not big, but consistent.')
-
+        print('Try to run this script a few times. Experience shows that'
+              ' the first time is not as fast as followings calls. The'
+              ' difference is not big, but consistent.')

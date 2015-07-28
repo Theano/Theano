@@ -51,5 +51,5 @@ if __name__ == '__main__':
         costlySpeedstring = "slowdown"
 
     print("Fast op time without openmp %fs with openmp %fs %s %2.2f" % (cheapTime, cheapTimeOpenmp, cheapSpeedstring, cheapSpeed))
-    
+
     print("Slow op time without openmp %fs with openmp %fs %s %2.2f" % (costlyTime, costlyTimeOpenmp, costlySpeedstring, costlySpeed))

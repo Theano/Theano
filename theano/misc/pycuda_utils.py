@@ -1,8 +1,7 @@
-import numpy
 import pycuda.gpuarray
 
 from theano.sandbox import cuda
-if cuda.cuda_available == False:
+if cuda.cuda_available is False:
     raise ImportError('Optional theano package cuda disabled')
 
 
@@ -29,7 +28,7 @@ def to_gpuarray(x, copyif=False):
         # Check if it is c contiguous
         size = 1
         c_contiguous = True
-        for i in range(x.ndim-1, -1, -1):
+        for i in range(x.ndim - 1, -1, -1):
             if x.shape[i] == 1:
                 continue
             if x._strides[i] != size:
@@ -59,7 +58,7 @@ def to_cudandarray(x):
     else:
         strides = [1]
         for i in x.shape[::-1][:-1]:
-            strides.append(strides[-1]*i)
+            strides.append(strides[-1] * i)
         strides = tuple(strides[::-1])
         ptr = int(x.gpudata)  # in pycuda trunk, y.ptr also works, which is a little cleaner
         z = cuda.from_gpu_pointer(ptr, x.shape, strides, x)
