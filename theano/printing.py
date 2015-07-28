@@ -961,7 +961,7 @@ def pydotprint(fct, outfile=None,
     for sha, up in input_update.items():
         shastr = var_name(sha)
         upstr = var_name(up)
-        g.add_edge(pd.Edge(shastr, upstr, label="UPDATE", color="red"))
+        g.add_edge(pd.Edge(shastr, upstr, label="UPDATE", color="blue"))
 
     if cond_highlight:
         g.add_subgraph(c1)
