@@ -381,6 +381,8 @@ public:
         mStream = stream; 
 #ifdef CUDA_API_PER_THREAD_DEFAULT_STREAM
         mIsStreamBlocking = false;
+#elif CUDART_VERSION < 5050
+        mIsStreamBlocking = true;
 #else
         unsigned flags = 0;
         CNMEM_CHECK_CUDA(cudaStreamGetFlags(mStream, &flags));
