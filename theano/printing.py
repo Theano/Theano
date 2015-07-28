@@ -777,11 +777,13 @@ def pydotprint(fct, outfile=None,
         all_strings.add(varstr)
 
         return varstr, var_id[var]
+
     apply_name_cache = {}
+    apply_name_id = {}
 
     def apply_name(node):
         if node in apply_name_cache:
-            return apply_name_cache[node]
+            return apply_name_cache[node], apply_name_id[node]
         prof_str = ''
         if mode:
             time = mode.profile_stats[fct].apply_time.get(node, 0)
@@ -824,7 +826,9 @@ def pydotprint(fct, outfile=None,
 
         all_strings.add(applystr)
         apply_name_cache[node] = applystr
-        return applystr
+        apply_name_id[node] = id(node)
+
+        return applystr, apply_name_id[node]
 
     # Update the inputs that have an update function
     input_update = {}
@@ -844,7 +848,7 @@ def pydotprint(fct, outfile=None,
     apply_shape = 'ellipse'
     var_shape = 'box'
     for node_idx, node in enumerate(topo):
-        astr = apply_name(node)
+        astr, aid = apply_name(node)
 
         use_color = None
         for opName, color in iteritems(colorCodes):
@@ -852,12 +856,14 @@ def pydotprint(fct, outfile=None,
                 use_color = color
 
         if use_color is None:
-            nw_node = pd.Node(astr, shape=apply_shape)
+            nw_node = pd.Node(aid, label=astr, shape=apply_shape)
         elif high_contrast:
-            nw_node = pd.Node(astr, style='filled', fillcolor=use_color,
+            nw_node = pd.Node(aid, label=astr, style='filled',
+                              fillcolor=use_color,
                               shape=apply_shape)
         else:
-            nw_node = pd.Node(astr, color=use_color, shape=apply_shape)
+            nw_node = pd.Node(aid, label=astr,
+                              color=use_color, shape=apply_shape)
         g.add_node(nw_node)
         if cond_highlight:
             if node in middle:
@@ -898,9 +904,9 @@ def pydotprint(fct, outfile=None,
                                        color=color,
                                        label=varstr,
                                        shape=var_shape))
-                g.add_edge(pd.Edge(varid, astr, **param))
+                g.add_edge(pd.Edge(varid, aid, **param))
             elif var.name or not compact or var in outputs:
-                g.add_edge(pd.Edge(varid, astr, **param))
+                g.add_edge(pd.Edge(varid, aid, **param))
             else:
                 # no name, so we don't make a var ellipse
                 if label:
@@ -909,7 +915,7 @@ def pydotprint(fct, outfile=None,
                 if len(label) > max_label_size:
                     label = label[:max_label_size - 3] + '...'
                 param['label'] = label
-                g.add_edge(pd.Edge(apply_name(var.owner), astr, **param))
+                g.add_edge(pd.Edge(apply_name(var.owner)[1], aid, **param))
 
         for idx, var in enumerate(node.outputs):
             varstr, varid = var_name(var)
@@ -923,7 +929,7 @@ def pydotprint(fct, outfile=None,
             if label:
                 param['label'] = label
             if out or var in input_update:
-                g.add_edge(pd.Edge(astr, varid, **param))
+                g.add_edge(pd.Edge(aid, varid, **param))
                 if high_contrast:
                     g.add_node(pd.Node(varid, style='filled',
                                        label=varstr,
@@ -933,7 +939,7 @@ def pydotprint(fct, outfile=None,
                                        label=varstr,
                                        shape=var_shape))
             elif len(var.clients) == 0:
-                g.add_edge(pd.Edge(astr, varid, **param))
+                g.add_edge(pd.Edge(aid, varid, **param))
                 # grey mean that output var isn't used
                 if high_contrast:
                     g.add_node(pd.Node(varid, style='filled',
@@ -950,7 +956,7 @@ def pydotprint(fct, outfile=None,
                     if len(label) > max_label_size:
                         label = label[:max_label_size - 3] + '...'
                     param['label'] = label
-                g.add_edge(pd.Edge(astr, varid, **param))
+                g.add_edge(pd.Edge(aid, varid, **param))
                 g.add_node(pd.Node(varid, shape=var_shape, label=varstr))
 #            else:
             # don't add egde here as it is already added from the inputs.
