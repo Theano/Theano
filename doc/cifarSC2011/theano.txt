@@ -70,15 +70,20 @@ Symbolic programming = *Paradigm shift*: people need to use it to understand it.
 Exercise 1
 -----------
 
-.. code-block:: python
+.. testcode::
 
   import theano
   a = theano.tensor.vector() # declare variable
   out = a + a**10               # build symbolic expression
   f = theano.function([a], out)   # compile function
   print f([0,1,2])
-  # prints `array([0,2,1026])`
-  
+
+.. testoutput::
+
+  array([0,2,1026])
+
+.. testcode::
+
   theano.printing.pydotprint_variables(b, outfile="f_unoptimized.png", var_with_name_simple=True)
   theano.printing.pydotprint(f, outfile="f_optimized.png", var_with_name_simple=True)
 
@@ -94,7 +99,7 @@ Real example
 * Speed optimizations
 * Stability optimizations
 
-.. code-block:: python
+.. testcode::
 
   import numpy
   import theano
@@ -153,7 +158,7 @@ Where are those optimization applied?
 * Loop fusion
 
 
-.. code-block:: python
+.. testcode::
 
   p_1 = 1 / (1 + T.exp(-T.dot(x, w)-b))
   # 1 / (1 + T.exp(var)) -> sigmoid(var)
@@ -183,7 +188,7 @@ Theano can be configured with flags. They can be defined in two ways
 Exercise 2
 -----------
 
-.. code-block:: python
+.. testcode::
     
     import numpy
     import theano
