@@ -1172,8 +1172,7 @@ class IncSubtensor(Op):
     """
 
     check_input = False
-    __props__ = ("idx_list", "inplace", "set_instead_of_inc",
-                 "destroyhandler_tolerate_aliased")
+    __props__ = ("idx_list", "inplace", "set_instead_of_inc")
 
     def __init__(self, idx_list, inplace=False, set_instead_of_inc=False,
                  destroyhandler_tolerate_aliased=None):
@@ -2115,14 +2114,6 @@ class AdvancedIncSubtensor(Op):
                                       ' implemented')
 
         self.allow_legacy_perform = False
-
-    def __hash__(self):
-        return hash((type(self), self.inplace, self.set_instead_of_inc))
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.inplace == other.inplace and
-                self.set_instead_of_inc == other.set_instead_of_inc)
 
     def __str__(self):
         return "%s{%s, %s}" % (self.__class__.__name__,
