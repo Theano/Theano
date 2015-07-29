@@ -11,6 +11,7 @@ import numpy
 import theano
 from theano.tensor import (as_tensor_variable, blas, get_scalar_constant_value,
                            patternbroadcast, NotScalarConstantError)
+from theano.tensor import TensorType
 from theano.gof import Apply, Op
 from theano.gof import local_optimizer
 
@@ -345,34 +346,46 @@ def local_conv2d_gpu_conv(node):
 
             conv = host_input.owner.op
             inps = list(host_input.owner.inputs)
-            inps[0] = gpu_from_host(inps[0])
-            inps[1] = gpu_from_host(inps[1])
+            inps[0] = as_cuda_ndarray_variable(inps[0])
+            inps[1] = as_cuda_ndarray_variable(inps[1])
             out = conv(*inps)
-            out = theano.tensor.patternbroadcast(gpu_from_host(out),
+            # out is on the GPU because both inputs are.
+            out = theano.tensor.patternbroadcast(out,
                                                  node.outputs[0].broadcastable)
             out.values_eq_approx = values_eq_approx_high_tol
             return [out]
 
     if isinstance(node.op, BaseAbstractConv2d):
-        #conv(host_from_gpu) -> host_from_gpu(gpu_conv)
+        # conv(host_from_gpu) -> host_from_gpu(gpu_conv)
         inp1 = node.inputs[0]
         inp2 = node.inputs[1]
-        inp1_on_gpu = (inp1.owner and isinstance(inp1.owner.op, HostFromGpu))
-        inp2_on_gpu = (inp2.owner and isinstance(inp2.owner.op, HostFromGpu))
+        if ((isinstance(inp1.type, CudaNdarrayType) and
+             isinstance(inp2.type, CudaNdarrayType))):
+            # Both inputs are already directly on the GPU, nothing to do
+            return
+
+        inp1_on_gpu = (isinstance(inp1.type, CudaNdarrayType) or
+                       (inp1.owner and isinstance(inp1.owner.op, HostFromGpu)))
+        inp2_on_gpu = (isinstance(inp2.type, CudaNdarrayType) or
+                       (inp2.owner and isinstance(inp2.owner.op, HostFromGpu)))
 
         if inp1_on_gpu or inp2_on_gpu:
             conv = node.op
             inps = list(node.inputs)
-            inps[0] = gpu_from_host(inps[0])
-            inps[1] = gpu_from_host(inps[1])
+            inps[0] = as_cuda_ndarray_variable(inps[0])
+            inps[1] = as_cuda_ndarray_variable(inps[1])
             out = conv(*inps)
+            # out is on the GPU because both inputs are.
             out = theano.tensor.patternbroadcast(
                 out,
                 node.outputs[0].broadcastable)
             out.values_eq_approx = values_eq_approx_high_tol
-            return [as_tensor_variable(out)]
+            # If the original output was on CPU, we have to transfer it
+            if isinstance(node.outputs[0], TensorType):
+                return [as_tensor_variable(out)]
+            else:
+                return [out]
 register_gpu()(local_conv2d_gpu_conv)
-
 
 
 ### Cudnn Opt
