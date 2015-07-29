@@ -30,8 +30,8 @@ class TestConv2d(unittest.TestCase):
     def setUp(self):
         super(TestConv2d, self).setUp()
 
-        self.inputs_shapes = [(16, 1, 12, 12), (16, 1, 18, 18), (16, 1, 24, 24),
-                              (16, 1, 20, 20), (16, 1, 32, 20), (10, 5, 32, 32)]
+        self.inputs_shapes = [(16, 1, 12, 12), (16, 1, 18, 18), (2, 1, 24, 24),
+                              (6, 1, 20, 20), (2, 1, 32, 20), (1, 5, 32, 32)]
         self.filters_shapes = [(10, 1, 2, 2), (10, 1, 3, 3), (10, 1, 2, 2),
                                (1, 1, 2, 5), (5, 1, 2, 2), (15, 5, 2, 2)]
         self.subsamples = [(1, 1), (2, 2), (2, 4)]
@@ -45,13 +45,11 @@ class TestConv2d(unittest.TestCase):
             border_mode = (filters_shape[2] - 1, filters_shape[3] - 1)
         batch_size = inputs_shape[0]
         num_filters = filters_shape[0]
-        return (batch_size, num_filters,) + \
-                tuple(None if i is None or k is None
-                      else ((i + 2*pad - k) // d + 1)
-                      for i, k, d, pad in zip(inputs_shape[2:],
-                                              filters_shape[2:],
-                                              subsample,
-                                              border_mode))
+        return (batch_size, num_filters,) \
+            + tuple(None if i is None or k is None
+                    else ((i + 2*pad - k) // d + 1)
+                    for i, k, d, pad in zip(inputs_shape[2:], filters_shape[2:],
+                                            subsample, border_mode))
 
     def run_fwd(self, inputs_shape, filters_shape, ref=dnn_conv,
                 subsample=(1, 1), verify_grad=True, mode=mode_without_gpu,
