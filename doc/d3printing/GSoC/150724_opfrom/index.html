@@ -174,7 +174,7 @@ div#notebook {
 
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[8]:</div>
+<div class="prompt input_prompt">In&nbsp;[1]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
@@ -188,7 +188,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[9]:</div>
+<div class="prompt input_prompt">In&nbsp;[2]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="o">%</span><span class="k">load_ext</span> autoreload
@@ -199,25 +199,10 @@ div#notebook {
 </div>
 </div>
 
-<div class="output_wrapper">
-<div class="output">
-
-
-<div class="output_area"><div class="prompt"></div>
-<div class="output_subarea output_stream output_stdout output_text">
-<pre>The autoreload extension is already loaded. To reload it, use:
-  %reload_ext autoreload
-</pre>
-</div>
-</div>
-
-</div>
-</div>
-
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[10]:</div>
+<div class="prompt input_prompt">In&nbsp;[3]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="kn">import</span> <span class="nn">theano</span> <span class="kn">as</span> <span class="nn">th</span>
@@ -230,10 +215,24 @@ div#notebook {
 </div>
 </div>
 
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt"></div>
+<div class="output_subarea output_stream output_stdout output_text">
+<pre>Couldn&apos;t import dot_parser, loading of dot files will not be possible.
+</pre>
+</div>
+</div>
+
+</div>
+</div>
+
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[28]:</div>
+<div class="prompt input_prompt">In&nbsp;[4]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="k">def</span> <span class="nf">viz_ofg</span><span class="p">(</span><span class="n">ofg</span><span class="p">):</span>
@@ -259,7 +258,7 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[31]:</div>
+<div class="prompt input_prompt">In&nbsp;[27]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">tht</span><span class="o">.</span><span class="n">scalars</span><span class="p">(</span><span class="s">&#39;xyz&#39;</span><span class="p">)</span>
@@ -302,13 +301,13 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="OFG-node">OFG node<a class="anchor-link" href="#OFG-node">&#182;</a></h2>
+<h2 id="OFG-node-1">OFG node 1<a class="anchor-link" href="#OFG-node-1">&#182;</a></h2>
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[33]:</div>
+<div class="prompt input_prompt">In&nbsp;[6]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="n">SVG</span><span class="p">(</span><span class="n">viz_ofg</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">fgraph</span><span class="o">.</span><span class="n">toposort</span><span class="p">()[</span><span class="mi">0</span><span class="p">]))</span>
@@ -322,7 +321,7 @@ div#notebook {
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[33]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[6]:</div>
 
 <div class="output_svg output_subarea output_execute_result">
 <svg height="220pt" viewBox="0.00 0.00 722.00 220.00" width="722pt" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
@@ -393,13 +392,204 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
+<h2 id="OFG-node-2">OFG node 2<a class="anchor-link" href="#OFG-node-2">&#182;</a></h2>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[15]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython2"><pre><span class="n">SVG</span><span class="p">(</span><span class="n">viz_ofg</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">fgraph</span><span class="o">.</span><span class="n">toposort</span><span class="p">()[</span><span class="mi">1</span><span class="p">]))</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt output_prompt">Out[15]:</div>
+
+<div class="output_svg output_subarea output_execute_result">
+<svg height="220pt" viewBox="0.00 0.00 722.00 220.00" width="722pt" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g class="graph" id="graph0" transform="scale(1 1) rotate(0) translate(4 216)">
+<title>G</title>
+<polygon fill="white" points="-4,4 -4,-216 718,-216 718,4 -4,4" stroke="none"/>
+<!-- _1 -->
+<g class="node" id="node1"><title>_1</title>
+<ellipse cx="349" cy="-106" fill="#ffaabb" rx="155.005" ry="18" stroke="black"/>
+<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="349" y="-102.3">Elemwise{Composite{(i0 + (i1 * i2))}}</text>
+</g>
+<!-- _5 -->
+<g class="node" id="node5"><title>_5</title>
+<polygon fill="dodgerblue" points="435,-36 263,-36 263,-0 435,-0 435,-36" stroke="black"/>
+<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="349" y="-14.3">TensorType(float64, scalar)</text>
+</g>
+<!-- _1&#45;&gt;_5 -->
+<g class="edge" id="edge4"><title>_1-&gt;_5</title>
+<path d="M349,-87.5966C349,-75.7459 349,-59.8169 349,-46.2917" fill="none" stroke="black"/>
+<polygon fill="black" points="352.5,-46.084 349,-36.084 345.5,-46.084 352.5,-46.084" stroke="black"/>
+<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="427" y="-58.3">TensorType(float64, scalar)</text>
+</g>
+<!-- _2 -->
+<g class="node" id="node2"><title>_2</title>
+<polygon fill="limegreen" points="220.25,-212 -0.25,-212 -0.25,-176 220.25,-176 220.25,-212" stroke="black"/>
+<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="110" y="-190.3">name=x TensorType(float64, scalar)</text>
+</g>
+<!-- _2&#45;&gt;_1 -->
+<g class="edge" id="edge1"><title>_2-&gt;_1</title>
+<path d="M128.186,-175.807C141.119,-164.521 159.428,-150.354 178,-142 197.086,-133.415 218.319,-126.915 239.152,-121.999" fill="none" stroke="black"/>
+<polygon fill="black" points="240.022,-125.391 249.01,-119.781 238.486,-118.562 240.022,-125.391" stroke="black"/>
+<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="261.5" y="-146.3">0 TensorType(float64, scalar)</text>
+</g>
+<!-- _3 -->
+<g class="node" id="node3"><title>_3</title>
+<polygon fill="limegreen" points="459.25,-212 238.75,-212 238.75,-176 459.25,-176 459.25,-212" stroke="black"/>
+<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="349" y="-190.3">name=y TensorType(float64, scalar)</text>
+</g>
+<!-- _3&#45;&gt;_1 -->
+<g class="edge" id="edge2"><title>_3-&gt;_1</title>
+<path d="M349,-175.597C349,-163.746 349,-147.817 349,-134.292" fill="none" stroke="black"/>
+<polygon fill="black" points="352.5,-134.084 349,-124.084 345.5,-134.084 352.5,-134.084" stroke="black"/>
+<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="432.5" y="-146.3">1 TensorType(float64, scalar)</text>
+</g>
+<!-- _4 -->
+<g class="node" id="node4"><title>_4</title>
+<polygon fill="limegreen" points="698,-212 478,-212 478,-176 698,-176 698,-212" stroke="black"/>
+<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="588" y="-190.3">name=z TensorType(float64, scalar)</text>
+</g>
+<!-- _4&#45;&gt;_1 -->
+<g class="edge" id="edge3"><title>_4-&gt;_1</title>
+<path d="M569.814,-175.807C556.881,-164.521 538.572,-150.354 520,-142 500.914,-133.415 479.681,-126.915 458.848,-121.999" fill="none" stroke="black"/>
+<polygon fill="black" points="459.514,-118.562 448.99,-119.781 457.978,-125.391 459.514,-118.562" stroke="black"/>
+<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="630.5" y="-146.3">2 TensorType(float64, scalar)</text>
+</g>
+</g>
+</svg>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[30]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython2"><pre><span class="n">ofg2</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">fgraph</span><span class="o">.</span><span class="n">toposort</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[31]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython2"><pre><span class="n">ofg2</span><span class="o">.</span><span class="n">inputs</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt output_prompt">Out[31]:</div>
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>[x, y, z]</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[34]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython2"><pre><span class="n">ofg2</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">fn</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">fgraph</span><span class="o">.</span><span class="n">toposort</span><span class="p">()</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt output_prompt">Out[34]:</div>
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>[Elemwise{Composite{(i0 + (i1 * i2))}}(x, y, z)]</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[35]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython2"><pre><span class="n">ofg2</span><span class="o">.</span><span class="n">op</span><span class="o">.</span><span class="n">fn</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">fgraph</span><span class="o">.</span><span class="n">toposort</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">inputs</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt output_prompt">Out[35]:</div>
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>[x, y, z]</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
 <h1 id="Example-2">Example 2<a class="anchor-link" href="#Example-2">&#182;</a></h1>
 </div>
 </div>
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[42]:</div>
+<div class="prompt input_prompt">In&nbsp;[24]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">tht</span><span class="o">.</span><span class="n">scalars</span><span class="p">(</span><span class="s">&#39;xyz&#39;</span><span class="p">)</span>
@@ -450,7 +640,50 @@ div#notebook {
 </div>
 <div class="cell border-box-sizing code_cell rendered">
 <div class="input">
-<div class="prompt input_prompt">In&nbsp;[45]:</div>
+<div class="prompt input_prompt">In&nbsp;[18]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython2"><pre><span class="n">topo</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">fgraph</span><span class="o">.</span><span class="n">toposort</span><span class="p">()</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[19]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython2"><pre><span class="n">topo</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt output_prompt">Out[19]:</div>
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>[&lt;theano.compile.builders.OpFromGraph object at 0x112538910&gt;(x, y, z),
+ Elemwise{Add}[(0, 0)](&lt;theano.compile.builders.OpFromGraph object at 0x112538910&gt;.0, z)]</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[20]:</div>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython2"><pre><span class="n">ofg1</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">fgraph</span><span class="o">.</span><span class="n">toposort</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
@@ -465,16 +698,16 @@ div#notebook {
 <div class="output">
 
 
-<div class="output_area"><div class="prompt output_prompt">Out[45]:</div>
+<div class="output_area"><div class="prompt output_prompt">Out[20]:</div>
 
 <div class="output_svg output_subarea output_execute_result">
-<svg height="259pt" viewBox="0.00 0.00 1219.00 259.00" width="1219pt" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<svg height="259pt" viewBox="0.00 0.00 1220.00 259.00" width="1220pt" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
 <g class="graph" id="graph0" transform="scale(1 1) rotate(0) translate(4 255)">
 <title>G</title>
-<polygon fill="white" points="-4,4 -4,-255 1215,-255 1215,4 -4,4" stroke="none"/>
+<polygon fill="white" points="-4,4 -4,-255 1216,-255 1216,4 -4,4" stroke="none"/>
 <g class="cluster" id="clust1"><title>cluster__1</title>
 <polygon fill="none" points="8,-168 8,-243 485,-243 485,-168 8,-168" stroke="black"/>
-<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="246.5" y="-227.8">theano.compile.builders.OpFromGraph object at 0x1148a8110</text>
+<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="246.5" y="-227.8">theano.compile.builders.OpFromGraph object at 0x112538390</text>
 </g>
 <!-- _2 -->
 <g class="node" id="node1"><title>_2</title>
@@ -488,44 +721,115 @@ div#notebook {
 </g>
 <!-- _1 -->
 <g class="node" id="node3"><title>_1</title>
-<ellipse cx="734" cy="-194" fill="none" rx="239.268" ry="18" stroke="black"/>
-<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="734" y="-190.3">theano.compile.builders.OpFromGraph object at 0x1148a8110</text>
+<ellipse cx="734" cy="-194" fill="none" rx="239.243" ry="18" stroke="black"/>
+<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="734" y="-190.3">theano.compile.builders.OpFromGraph object at 0x112538390</text>
 </g>
 <!-- _4 -->
 <g class="node" id="node4"><title>_4</title>
-<ellipse cx="917" cy="-106" fill="#ffaabb" rx="96.2631" ry="18" stroke="black"/>
-<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="917" y="-102.3">Elemwise{Add}[(0, 0)]</text>
+<ellipse cx="918" cy="-106" fill="#ffaabb" rx="96.2631" ry="18" stroke="black"/>
+<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="918" y="-102.3">Elemwise{Add}[(0, 0)]</text>
 </g>
 <!-- _1&#45;&gt;_4 -->
 <g class="edge" id="edge1"><title>_1-&gt;_4</title>
-<path d="M770.155,-176.009C799.89,-162.035 842.117,-142.191 873.662,-127.367" fill="none" stroke="red"/>
-<polygon fill="red" points="875.521,-130.36 883.083,-122.939 872.544,-124.025 875.521,-130.36" stroke="red"/>
-<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="925.5" y="-146.3">0 TensorType(float64, scalar)</text>
+<path d="M770.352,-176.009C800.379,-161.975 843.074,-142.02 874.835,-127.175" fill="none" stroke="red"/>
+<polygon fill="red" points="876.321,-130.344 883.898,-122.939 873.357,-124.003 876.321,-130.344" stroke="red"/>
+<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="926.5" y="-146.3">0 TensorType(float64, scalar)</text>
 </g>
 <!-- _6 -->
 <g class="node" id="node6"><title>_6</title>
-<polygon fill="dodgerblue" points="1017.25,-36 816.75,-36 816.75,-0 1017.25,-0 1017.25,-36" stroke="black"/>
-<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="917" y="-14.3">TensorType(float64, scalar) id=4</text>
+<polygon fill="dodgerblue" points="1018.25,-36 817.75,-36 817.75,-0 1018.25,-0 1018.25,-36" stroke="black"/>
+<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="918" y="-14.3">TensorType(float64, scalar) id=4</text>
 </g>
 <!-- _4&#45;&gt;_6 -->
 <g class="edge" id="edge3"><title>_4-&gt;_6</title>
-<path d="M917,-87.5966C917,-75.7459 917,-59.8169 917,-46.2917" fill="none" stroke="black"/>
-<polygon fill="black" points="920.5,-46.084 917,-36.084 913.5,-46.084 920.5,-46.084" stroke="black"/>
-<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="995" y="-58.3">TensorType(float64, scalar)</text>
+<path d="M918,-87.5966C918,-75.7459 918,-59.8169 918,-46.2917" fill="none" stroke="black"/>
+<polygon fill="black" points="921.5,-46.084 918,-36.084 914.5,-46.084 921.5,-46.084" stroke="black"/>
+<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="996" y="-58.3">TensorType(float64, scalar)</text>
 </g>
 <!-- _5 -->
 <g class="node" id="node5"><title>_5</title>
-<polygon fill="limegreen" points="1211,-212 991,-212 991,-176 1211,-176 1211,-212" stroke="black"/>
-<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="1101" y="-190.3">name=z TensorType(float64, scalar)</text>
+<polygon fill="limegreen" points="1212,-212 992,-212 992,-176 1212,-176 1212,-212" stroke="black"/>
+<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="1102" y="-190.3">name=z TensorType(float64, scalar)</text>
 </g>
 <!-- _5&#45;&gt;_4 -->
 <g class="edge" id="edge2"><title>_5-&gt;_4</title>
-<path d="M1074.31,-175.883C1057.2,-165.325 1034.27,-151.949 1013,-142 1000.2,-136.013 986.068,-130.363 972.675,-125.42" fill="none" stroke="black"/>
-<polygon fill="black" points="973.677,-122.061 963.083,-121.951 971.296,-128.644 973.677,-122.061" stroke="black"/>
-<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="1125.5" y="-146.3">1 TensorType(float64, scalar)</text>
+<path d="M1075.31,-175.883C1058.2,-165.325 1035.27,-151.949 1014,-142 1001.2,-136.013 987.068,-130.363 973.675,-125.42" fill="none" stroke="black"/>
+<polygon fill="black" points="974.677,-122.061 964.083,-121.951 972.296,-128.644 974.677,-122.061" stroke="black"/>
+<text font-family="Times,serif" font-size="14.00" text-anchor="middle" x="1126.5" y="-146.3">1 TensorType(float64, scalar)</text>
 </g>
 </g>
 </svg>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[25]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython2"><pre><span class="n">ofg2</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">maker</span><span class="o">.</span><span class="n">fgraph</span><span class="o">.</span><span class="n">toposort</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[26]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython2"><pre><span class="n">ofg2</span><span class="o">.</span><span class="n">inputs</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt output_prompt">Out[26]:</div>
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>[&lt;theano.compile.builders.OpFromGraph object at 0x1124a4f90&gt;.0, z]</pre>
+</div>
+
+</div>
+
+</div>
+</div>
+
+</div>
+<div class="cell border-box-sizing code_cell rendered">
+<div class="input">
+<div class="prompt input_prompt">In&nbsp;[21]:</div>
+<div class="inner_cell">
+    <div class="input_area">
+<div class=" highlight hl-ipython2"><pre><span class="n">ofg1</span><span class="o">.</span><span class="n">inputs</span>
+</pre></div>
+
+</div>
+</div>
+</div>
+
+<div class="output_wrapper">
+<div class="output">
+
+
+<div class="output_area"><div class="prompt output_prompt">Out[21]:</div>
+
+
+<div class="output_text output_subarea output_execute_result">
+<pre>[x, y, z]</pre>
 </div>
 
 </div>
