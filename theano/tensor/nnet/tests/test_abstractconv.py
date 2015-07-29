@@ -44,7 +44,7 @@ class TestConv2d(unittest.TestCase):
         if border_mode == "full":
             border_mode = (filters_shape[2] - 1, filters_shape[3] - 1)
         batch_size = inputs_shape[0]
-        num_filters = filters_shape[1]
+        num_filters = filters_shape[0]
         return (batch_size, num_filters,) + \
                 tuple(None if i is None or k is None
                       else ((i + 2*pad - k) // d + 1)
@@ -88,8 +88,8 @@ class TestConv2d(unittest.TestCase):
                         filters_shape=kshp)
         f_ref = theano.function([], c_ref, mode=mode)
         f = theano.function([], c, mode)
-        res_ref = f_ref()
-        res = f()
+        res_ref = numpy.array(f_ref())
+        res = numpy.array(f())
         utt.assert_allclose(res_ref, res)
         if verify_grad:
             utt.verify_grad(conv.AbstractConv2d(border_mode="valid", imshp=imshp, kshp=kshp,
@@ -131,8 +131,8 @@ class TestConv2d(unittest.TestCase):
                     conv_mode=conv_mode)
         f = theano.function([], c, mode)
         f_ref = theano.function([], c_ref, mode)
-        res = f()
-        res_ref = f_ref()
+        res_ref = numpy.array(f_ref())
+        res = numpy.array(f())
         utt.assert_allclose(res_ref, res)
 
         def abstract_conv2d_gradweight(inputs_val, output_val):
@@ -174,8 +174,8 @@ class TestConv2d(unittest.TestCase):
                     conv_mode=conv_mode)
         f = theano.function([], c, mode)
         f_ref = theano.function([], c_ref, mode)
-        res = f()
-        res_ref = f_ref()
+        res_ref = numpy.array(f_ref())
+        res = numpy.array(f())
         utt.assert_allclose(res_ref, res)
 
         def abstract_conv2d_gradinputs(filters_val, output_val):
@@ -208,7 +208,7 @@ class TestConv2d(unittest.TestCase):
                                             provide_shape=provide_shape, border_mode=b)
                         self.run_gradinput(inputs_shape=i, filters_shape=f,
                                            output_shape=o, subsample=s,
-                                           verify_grad=False, mode=mode, device='gpu',
+                                           verify_grad=True, mode=mode, device='gpu',
                                            provide_shape=provide_shape, border_mode=border_mode)
 
     def test_cormm_conv(self):
