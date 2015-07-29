@@ -503,7 +503,16 @@ def local_gpua_advanced_incsubtensor(node):
     if pygpu.get_default_context().kind != "cuda":
         return None
 
-    x, y = node.inputs[0:2]
+    x, y, ilist = node.inputs
+
+    # Gpu Ops needs both inputs to have the same dtype
+    if (x.type.dtype != y.type.dtype):
+        dtype = scalar.upcast(x.type.dtype, y.type.dtype)
+        if x.type.dtype != dtype:
+            x = tensor.cast(x, dtype)
+        if y.type.dtype != dtype:
+            y = tensor.cast(y, dtype)
+
     set_instead_of_inc = node.op.set_instead_of_inc
     active_device_no = theano.sandbox.cuda.active_device_number()
     device_properties = theano.sandbox.cuda.device_properties
@@ -511,11 +520,11 @@ def local_gpua_advanced_incsubtensor(node):
     compute_capability = device_properties(active_device_no)['major']
 
     if (compute_capability < 2 or x.ndim != 2 or y.ndim != 2):
-        return GpuAdvancedIncSubtensor1(
-            set_instead_of_inc=set_instead_of_inc)
+        return [GpuAdvancedIncSubtensor1(
+                set_instead_of_inc=set_instead_of_inc)(x, y, ilist)]
     else:
-        return GpuAdvancedIncSubtensor1_dev20(
-            set_instead_of_inc=set_instead_of_inc)
+        return [GpuAdvancedIncSubtensor1_dev20(
+                set_instead_of_inc=set_instead_of_inc)(x, y, ilist)]
 
 
 @register_opt('fast_compile')
