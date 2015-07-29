@@ -107,12 +107,10 @@ def test_pydotprint_long_name():
     f([1, 2, 3, 4])
 
     theano.printing.pydotprint(f, max_label_size=5,
-                               print_output_file=False,
-                               assert_nb_all_strings=6)
+                               print_output_file=False)
     theano.printing.pydotprint([x * 2, x + x],
                                max_label_size=5,
-                               print_output_file=False,
-                               assert_nb_all_strings=8)
+                               print_output_file=False)
 
 
 def test_pydotprint_profile():
