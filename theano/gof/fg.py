@@ -450,7 +450,7 @@ class FunctionGraph(utils.object2):
                             assert path is not None
                             tr = getattr(r.tag, 'trace', [])
                             detailed_err_msg = ""
-                            if len(tr) > 0:
+                            if type(tr) is list and len(tr) > 0:
                                 detailed_err_msg += "\nBacktrace when the variable is created:\n"
 
                                 # Print separate message for each element in

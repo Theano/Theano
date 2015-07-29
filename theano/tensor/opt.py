@@ -87,15 +87,13 @@ def copy_stack_trace(from_var, to_var):
     tr = []
     if type(from_var) is list:
         # If from_var is a list, store concatenated stack traces
-        if len(from_var) > 0:
-            for v in from_var:
-                if hasattr(v.tag, 'trace'):
-                    tr = tr + v.tag.trace
+        for v in from_var:
+            tr += getattr(v.tag, 'trace', [])
+
     else:
         # If from_var is not a list, it must be a single tensor
         # variable, so just store that particular stack trace
-        if hasattr(from_var.tag, 'trace'):
-            tr = from_var.tag.trace
+        tr = getattr(from_var.tag, 'trace', [])
 
     # Copy over stack traces to to_var
     if type(to_var) is list:
@@ -1872,7 +1870,10 @@ def local_subtensor_make_vector(node):
         try:
             const_slice = node.op.get_constant_idx(node.inputs,
                                                    allow_partial=False)[0]
-            return [make_vector(*x.owner.inputs[const_slice])]
+            ret = make_vector(*x.owner.inputs[const_slice])
+            # Copy over stack trace from previous outputs to new output
+            copy_stack_trace(node.outputs, ret)
+            return [ret]
         except NotScalarConstantError:
             pass
     else:
@@ -2001,7 +2002,7 @@ def local_alloc_unary(node):
             # Is it really necessary to copy over stack trace here?
             # after all, T.alloc and T.cast should preserve the stack trace from x,
             # but perhaps the trace is lost in "v = node.op(x)"?
-            copy_stack_trace(node.outputs[0], ret)
+            copy_stack_trace([node.outputs[0], a], ret)
             return [ret]
 
 
@@ -2560,12 +2561,12 @@ def local_subtensor_lift(node):
             idx = node.inputs[1:]
             x_idx = node.op(u.owner.inputs[0], *idx)
             # Copy over previous output stacktrace
-            # Julian: Would it make more sense to copy stacktace before opt is applied, i.e. from u.owner.inputs[0]?
             copy_stack_trace(node.outputs, x_idx)
             ret = u.owner.op(x_idx)
-            # Copy over previous output stacktrace
-            copy_stack_trace(node.outputs, ret)
-            return []
+            # Copy over previous output stacktrace 
+            # and stacktrace from previous unary operation
+            copy_stack_trace([node.outputs, node.inputs[0]], ret)
+            return [ret]
 
         if isinstance(u.owner.op, T.Elemwise):
             new_inputs = []
