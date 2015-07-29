@@ -82,9 +82,10 @@ subsequently make to *np_array* have no effect on our shared variable.
 
 .. testoutput:: borrow
 
-   array([1.0, 1.0])
-   array([1.0, 1.0])
-   array([2.0, 2.0])
+   [ 1.  1.]
+   [ 1.  1.]
+   [ 2.  2.]
+
 
 If we are running this with the CPU as the device,
 then changes we make to *np_array* *right away* will show up in
