@@ -140,6 +140,17 @@ variables to achieve this. Then you can call it like this: ``f.fn()`` or
 ``f.fn(n_calls=N)`` to speed it up. In the last case, only the last
 function output (out of N calls) is returned.
 
+You can also use the ``c`` linker that will put all node in the same c
+compilation unit. This remove some overhead between node in the graph,
+but request that all node have c code:
+
+.. code-block:: python
+
+    x = theano.tensor.scalar('x')
+    f = function([x], (x + 1.) * 2, mode=theano.Mode(linker='c'))
+    f(10.)
+
+
 Out of memory... but not really
 -------------------------------
 
