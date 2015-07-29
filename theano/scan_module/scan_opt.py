@@ -478,7 +478,6 @@ class PushOutSeqScan(gof.Optimizer):
                      (x in inner_seqs_set) for x in nd.inputs]) and
                 isinstance(nd.op, theano.tensor.Elemwise)):
 
-                to_remove_set.add(nd)
                 outside_ins = []
                 depends_on_seqs = False
 
@@ -510,6 +509,8 @@ class PushOutSeqScan(gof.Optimizer):
                     # to pull sequence-dependant computation out of
                     # scan.
                     continue
+
+                to_remove_set.add(nd)
 
                 # Do not call make_node for test_value
                 nw_outer_node = nd.op(*outside_ins,
