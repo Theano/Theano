@@ -246,6 +246,9 @@ Theano provides a 'Print' op to do this.
     #this runs the graph with the message, and value printed
     assert numpy.all( f_with_print([1, 2, 3]) == [5, 10, 15])
 
+.. testoutput::
+
+    this is a very important value __str__ = [ 1.  2.  3.]
 
 Since Theano runs your program in a topological order, you won't have precise
 control over the order in which multiple ``Print()`` ops are evaluted.  For a more
@@ -392,8 +395,8 @@ can be achieved as follows:
 .. testoutput:: compiled
 
     *** NaN detected ***
-    Elemwise{Composite{[mul(log(i0), i0)]}} [@A] ''
-    |x [@B]
+    Elemwise{Composite{(log(i0) * i0)}} [@A] ''   
+     |x [@B]
     Inputs : [array(0.0)]
     Outputs: [array(nan)]
 
@@ -410,9 +413,9 @@ function. To disable those optimizations (with a Theano version after
 .. testcode:: compiled
 
    mode = theano.compile.MonitorMode(post_func=detect_nan).excluding(
-       'local_elemwise_fusion', 'inplace)
-    f = theano.function([x], [theano.tensor.log(x) * x],
-                        mode=mode)
+       'local_elemwise_fusion', 'inplace')
+   f = theano.function([x], [theano.tensor.log(x) * x],
+                       mode=mode)
 
 .. note::
 
