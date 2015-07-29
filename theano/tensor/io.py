@@ -18,6 +18,8 @@ class LoadFromDisk(Op):
 
     @note: Non-differentiable.
     """
+    __props__ = ("dtype", "broadcastable", "mmap_mode")
+
     def __init__(self, dtype, broadcastable, mmap_mode=None):
         self.dtype = numpy.dtype(dtype)  # turn "float64" into numpy.float64
         self.broadcastable = broadcastable
@@ -25,13 +27,6 @@ class LoadFromDisk(Op):
             raise ValueError("The only supported values for mmap_mode "
                              "are None and 'c', got %s" % mmap_mode)
         self.mmap_mode = mmap_mode
-        self._info = (dtype, broadcastable, mmap_mode)
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self._info == other._info)
-
-    def __hash__(self):
-        return hash((type(self),) + self._info)
 
     def make_node(self, path):
         if isinstance(path, str):
@@ -50,7 +45,8 @@ class LoadFromDisk(Op):
         out[0][0] = result
 
     def __str__(self):
-        return "Load{dtype: %s, broadcastable: %s, mmep: %s}" % self._info
+        return ("Load{dtype: %s, broadcastable: %s, mmep: %s}" %
+                (self.dtype, self.broadcastable, self.mmap_mode))
 
 
 def load(path, dtype, broadcastable, mmap_mode=None):
@@ -111,7 +107,6 @@ class MPIRecv(Op):
         self.shape = shape
         self.dtype = numpy.dtype(dtype)  # turn "float64" into numpy.float64
         self.broadcastable = (False,) * len(shape)
-        self._info = (source, tag, shape, dtype)
 
     def make_node(self):
         return gof.Apply(self, [], [theano.Variable(Generic()),
@@ -127,7 +122,8 @@ class MPIRecv(Op):
         out[1][0] = data
 
     def __str__(self):
-        return "MPIRecv{source: %d, tag: %d, shape: %s, dtype: %s}" % self._info
+        return ("MPIRecv{source: %d, tag: %d, shape: %s, dtype: %s}" %
+                (self.source, self.tag, self.shape, self.dtype))
 
     def infer_shape(self, node, shapes):
         return [None, self.shape]
@@ -185,7 +181,6 @@ class MPISend(Op):
     def __init__(self, dest, tag):
         self.dest = dest
         self.tag = tag
-        self._info = (dest, tag)
 
     def make_node(self, data):
         return gof.Apply(self, [data],
@@ -202,7 +197,7 @@ class MPISend(Op):
         out[1][0] = data
 
     def __str__(self):
-        return "MPISend{dest: %d, tag: %d}" % self._info
+        return "MPISend{dest: %d, tag: %d}" % (self.dest, self.tag)
 
 
 class MPISendWait(Op):
