@@ -92,7 +92,8 @@ class TestConv2d(unittest.TestCase):
         if verify_grad:
             utt.verify_grad(conv.AbstractConv2d(border_mode="valid", imshp=imshp, kshp=kshp,
                                                 bsize=inputs_shape[0], subsample=subsample),
-                            [inputs_val, filters_val])
+                            [inputs_val, filters_val],
+                            mode=mode)
 
     def run_gradweight(self, inputs_shape, filters_shape, output_shape,
                        ref=dnn_gradweight, subsample=(1, 1), filters_flip=True,
@@ -134,10 +135,11 @@ class TestConv2d(unittest.TestCase):
         utt.assert_allclose(res_ref, res)
 
         def abstract_conv2d_gradweight(inputs_val, output_val):
-            conv_op = conv.AbstractConv2d_gradInputs(border_mode=border_mode, subsample=subsample)
+            conv_op = conv.AbstractConv2d_gradWeights(border_mode=border_mode, subsample=subsample)
             return conv_op(inputs_val, output_val, filters_shape[-2:])
         if verify_grad:
-            utt.verify_grad(abstract_conv2d_gradweight, [inputs_val, output_val])
+            utt.verify_grad(abstract_conv2d_gradweight, [inputs_val, output_val],
+                            mode=mode)
 
 
     def run_gradinput(self, inputs_shape, filters_shape, output_shape, ref=dnn_gradweight,
@@ -180,7 +182,8 @@ class TestConv2d(unittest.TestCase):
             conv_op = conv.AbstractConv2d_gradInputs(border_mode=border_mode, subsample=subsample)
             return conv_op(filters_val, output_val, inputs_shape[-2:])
         if verify_grad:
-            utt.verify_grad(abstract_conv2d_gradinputs, [filters_val, output_val])
+            utt.verify_grad(abstract_conv2d_gradinputs, [filters_val, output_val],
+                            mode=mode)
 
 
     def test_dnn_conv(self):

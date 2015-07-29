@@ -381,7 +381,7 @@ def local_conv2d_gpu_conv(node):
                 node.outputs[0].broadcastable)
             out.values_eq_approx = values_eq_approx_high_tol
             # If the original output was on CPU, we have to transfer it
-            if isinstance(node.outputs[0], TensorType):
+            if isinstance(node.outputs[0].type, TensorType):
                 return [as_tensor_variable(out)]
             else:
                 return [out]
