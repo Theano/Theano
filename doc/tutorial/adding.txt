@@ -72,7 +72,7 @@ are, however, assigned the theano Type ``dscalar`` in their ``type``
 field, as you can see here:
 
 >>> type(x)
-<class 'theano.tensor.basic.TensorVariable'>
+<class 'theano.tensor.var.TensorVariable'>
 >>> x.type
 TensorType(float64, scalar)
 >>> T.dscalar
@@ -211,8 +211,9 @@ Exercise
 
 .. testoutput::
 
-   array([0, 2, 1026])
-  
+   [    0.     2.  1026.]
+
+
 Modify and execute this code to compute this expression: a ** 2 + b ** 2 + 2 * a * b.
 
 
