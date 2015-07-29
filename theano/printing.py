@@ -584,7 +584,6 @@ def pydotprint(fct, outfile=None,
                max_label_size=70, scan_graphs=False,
                var_with_name_simple=False,
                print_output_file=True,
-               assert_nb_all_strings=-1,
                return_image=False,
                ):
     """Print to a file the graph of a compiled theano function's ops. Supports
@@ -616,10 +615,6 @@ def pydotprint(fct, outfile=None,
     :param var_with_name_simple: If true and a variable have a name,
                 we will print only the variable name.
                 Otherwise, we concatenate the type to the var name.
-    :param assert_nb_all_strings: Used for tests. If non-negative, assert that
-                the number of unique string nodes in the dot graph is equal to
-                this number. This is used in tests to verify that dot won't
-                merge Theano nodes.
     :param return_image: If True, it will create the image and return it.
         Useful to display the image in ipython notebook.
 
@@ -975,9 +970,6 @@ def pydotprint(fct, outfile=None,
     if not outfile.endswith('.' + format):
         outfile += '.' + format
 
-    if assert_nb_all_strings != -1:
-        assert len(all_strings) == assert_nb_all_strings, len(all_strings)
-
     if scan_graphs:
         scan_ops = [(idx, x) for idx, x in enumerate(topo)
                     if isinstance(x.op, theano.scan_module.scan_op.Scan)]
@@ -1073,7 +1065,7 @@ def pydotprint_variables(vars,
         if len(varstr) > max_label_size:
             varstr = varstr[:max_label_size - 3] + '...'
         var_str[var] = varstr
-        return varstr, varlabel
+        return varstr
 
     def apply_name(node):
         name = str(node.op).replace(':', '_')
