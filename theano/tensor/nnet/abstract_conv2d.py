@@ -330,11 +330,7 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
         return [[1], [1], [0]]  # no connection to height, width
 
 
-### Optimizations should be move in their appropriate files
-
-### move to Gpu optimization
-### Do not replace the AbstractOpt only the inputs
-### Abstract Ops is replaced layer by device_specialized opt
+### Move to Gpu optimization
 @local_optimizer([gpu_from_host,
                   AbstractConv2d, AbstractConv2d_gradWeights, AbstractConv2d_gradInputs])
 def local_conv2d_gpu_conv(node):
@@ -344,12 +340,8 @@ def local_conv2d_gpu_conv(node):
     AbstractConv(host_from_gpu) -> host_from_gpu(AbstractConv)
     """
     if isinstance(node.op, GpuFromHost):
-        #gpu_from_host(conv) -> gpu_conv(gpu_from_host)
         host_input = node.inputs[0]
-        if host_input.owner and \
-                (isinstance(host_input.owner.op, AbstractConv2d) or
-                 isinstance(host_input.owner.op, AbstractConv2d_gradWeights) or
-                 isinstance(host_input.owner.op, AbstractConv2d_gradInputs)):
+        if host_input.owner and  isinstance(host_input.owner.op, BaseAbstractConv2d):
 
             conv = host_input.owner.op
             inps = list(host_input.owner.inputs)
@@ -361,9 +353,7 @@ def local_conv2d_gpu_conv(node):
             out.values_eq_approx = values_eq_approx_high_tol
             return [out]
 
-    if (isinstance(node.op, AbstractConv2d) or
-        isinstance(node.op, AbstractConv2d_gradWeights) or
-        isinstance(node.op, AbstractConv2d_gradInputs)):
+    if isinstance(node.op, BaseAbstractConv2d):
         #conv(host_from_gpu) -> host_from_gpu(gpu_conv)
         inp1 = node.inputs[0]
         inp2 = node.inputs[1]
@@ -385,7 +375,7 @@ register_gpu()(local_conv2d_gpu_conv)
 
 
 
-### Call dnn conv class directly
+### Cudnn Opt
 @local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights, AbstractConv2d_gradInputs])
 def local_conv2d_cudnn(node):
 
@@ -425,7 +415,7 @@ def local_conv2d_cudnn(node):
         return [rval]
 register_specialize_device(local_conv2d_cudnn, 'cudnn')
 
-
+### Corrmm opt
 @local_optimizer([AbstractConv2d])
 def local_conv2d_corrmm(node):
 
@@ -521,7 +511,6 @@ register_specialize_device(local_conv2d_gradinputs_corrmm, 'conv_gemm')
 
 
 ### Cpu Optmization
-### Desactived focus on GPU optimization first
 @local_optimizer([AbstractConv2d])
 def local_conv2d_cpu(node):
 
@@ -531,6 +520,11 @@ def local_conv2d_cpu(node):
     img, kern = node.inputs
     if isinstance(img.type, CudaNdarrayType) or \
             isinstance(kern.type, CudaNdarrayType):
+        return None
+    if node.op.border_mode not in ['full', 'valid']:
+        return None
+    if not node.op.filters_flip:
+        # Not tested yet
         return None
 
     rval = cpu_conv2d(img, kern,
@@ -551,7 +545,6 @@ def local_conv2d_gradweight_cpu(node):
         return None
     if node.op.border_mode not in ['full', 'valid']:
         return None
-
     if not node.op.filters_flip:
         # Not tested yet
         return
@@ -640,10 +633,8 @@ def local_conv2d_gradinputs_cpu(node):
     if  isinstance(kern.type, CudaNdarrayType) or \
             isinstance(topgrad.type, CudaNdarrayType):
         return None
-
     if node.op.border_mode not in ['full', 'valid']:
         return None
-
     if not node.op.filters_flip:
         # Not tested yet
         return None
