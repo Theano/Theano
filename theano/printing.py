@@ -821,7 +821,7 @@ def pydotprint(fct, outfile=None,
 
         all_strings.add(applystr)
         apply_name_cache[node] = applystr
-        apply_name_id[node] = id(node)
+        apply_name_id[node] = str(id(node))
 
         return applystr, apply_name_id[node]
 
