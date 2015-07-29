@@ -296,8 +296,28 @@ You can try it as follows:
     inp = numpy.random.rand(5, 4)
     out = f(inp)
     assert numpy.allclose(inp * 2, out)
-    print inp
-    print out
+    print(inp)
+    print(out)
+
+.. testoutput:: example
+   :hide:
+   :options: +ELLIPSIS
+   
+   ...
+   ...
+   
+.. code-block:: none
+
+    [[ 0.02443785  0.67833979  0.91954769  0.95444365]
+     [ 0.60853382  0.7770539   0.78163219  0.92838837]
+     [ 0.04427765  0.37895602  0.23155797  0.4934699 ]
+     [ 0.20551517  0.7419955   0.34500905  0.49347629]
+     [ 0.24082769  0.49321452  0.24566545  0.15351132]]
+    [[ 0.04887571  1.35667957  1.83909538  1.90888731]
+     [ 1.21706764  1.55410779  1.56326439  1.85677674]
+     [ 0.08855531  0.75791203  0.46311594  0.9869398 ]
+     [ 0.41103034  1.48399101  0.69001811  0.98695258]
+     [ 0.48165539  0.98642904  0.4913309   0.30702264]]
 
 
 Example for properties of a Op
@@ -645,6 +665,7 @@ as_op Example
 
     import theano
     import numpy
+    from theano import function
     from theano.compile.ops import as_op
 
     def infer_shape_numpy_dot(node, input_shapes):
@@ -709,22 +730,22 @@ Here is an example how to add docstring to a class.
     import theano
 
     class DoubleOp(theano.Op):
-    """ Double each element of a tensor.
+        """ Double each element of a tensor.
 
-    :param x: input tensor.
+        :param x: input tensor.
 
-    :return: a tensor of the same shape and dtype as the input with all
+        :return: a tensor of the same shape and dtype as the input with all
         values doubled.
 
-    :note:
-        this is a test note
+        :note:
+            this is a test note
 
-    :seealso:
-        You can use the elemwise op to replace this example.
-        Just execute `x * 2` with x being a Theano variable.
+        :seealso:
+            You can use the elemwise op to replace this example.
+            Just execute `x * 2` with x being a Theano variable.
 
-    .. versionadded:: 0.6
-    """
+        .. versionadded:: 0.6
+        """
 
 This is how it will show up for files that we auto-list in the library
 documentation:
