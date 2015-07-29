@@ -472,11 +472,11 @@ class PushOutSeqScan(gof.Optimizer):
 
         for nd in local_fgraph_topo:
             if (nd not in to_remove_set and
-               all([(x in inner_non_seqs_set) or
-               (x.owner in to_remove_set) or
-               isinstance(x, tensor.Constant) or
-               (x in inner_seqs_set) for x in nd.inputs]) and
-               isinstance(nd.op, theano.tensor.Elemwise)):
+                all([(x in inner_non_seqs_set) or
+                     (x.owner in to_remove_set) or
+                     isinstance(x, tensor.Constant) or
+                     (x in inner_seqs_set) for x in nd.inputs]) and
+                isinstance(nd.op, theano.tensor.Elemwise)):
 
                 to_remove_set.add(nd)
                 outside_ins = []
