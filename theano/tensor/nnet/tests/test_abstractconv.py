@@ -3,6 +3,7 @@ import numpy
 import copy
 
 import theano
+import theano.tensor as T
 from theano.tests import unittest_tools as utt
 
 from nose.plugins.skip import SkipTest
@@ -13,7 +14,7 @@ from theano.sandbox.cuda import float32_shared_constructor as gpu_shared
 from theano.compile import shared as cpu_shared
 
 from theano.sandbox.cuda.tests.test_conv_cuda_ndarray import py_conv
-#from theano.sandbox.cuda.dnn import dnn_available
+from theano.sandbox.cuda.dnn import dnn_available, dnn_conv, dnn_gradweight, dnn_gradinput
 
 
 if theano.config.mode == 'FAST_COMPILE':
@@ -26,249 +27,239 @@ else:
 
 class TestConv2d(unittest.TestCase):
 
-    def run_fwd(self,
-                inputs_shape,
-                filters_shape,
-                subsample=(1, 1),
-                verify_grad=True,
-                mode=mode_without_gpu,
-                border_mode='valid',
-                device='gpu',
-                provide_shape=False):
+    def setUp(self):
+        super(TestConv2d, self).setUp()
+
+        self.inputs_shapes = [(16, 1, 12, 12), (16, 1, 18, 18), (16, 1, 24, 24),
+                              (16, 1, 20, 20), (16, 1, 32, 20), (10, 5, 32, 32)]
+        self.filters_shapes = [(10, 1, 2, 2), (10, 1, 3, 3), (10, 1, 2, 2),
+                               (1, 1, 2, 5), (5, 1, 2, 2), (15, 5, 2, 2)]
+        self.subsamples = [(1, 1), (2, 2), (2, 4)]
+        self.border_modes = ["valid", "full", (0, 0), (1, 1), (5, 5), (5, 2)]
+
+
+    def get_output_shape(self, inputs_shape, filters_shape, subsample, border_mode):
+        if border_mode == "valid":
+            border_mode = (0, 0)
+        if border_mode == "full":
+            border_mode = (filters_shape[2] - 1, filters_shape[3] - 1)
+        batch_size = inputs_shape[0]
+        num_filters = filters_shape[1]
+        return (batch_size, num_filters,) + \
+                tuple(None if i is None or k is None
+                      else ((i + 2*pad - k) // d + 1)
+                      for i, k, d, pad in zip(inputs_shape[2:],
+                                              filters_shape[2:],
+                                              subsample,
+                                              border_mode))
+
+    def run_fwd(self, inputs_shape, filters_shape, ref=dnn_conv,
+                subsample=(1, 1), verify_grad=True, mode=mode_without_gpu,
+                border_mode='valid', filters_flip=True, device='cpu', provide_shape=False):
 
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         filters_val = numpy.random.random(filters_shape).astype('float32')
-
         if device == 'gpu':
             inputs = gpu_shared(inputs_val)
             filters = gpu_shared(filters_val)
         else:
-            inputs = cpu_shared(inputs_val)
-            filters = cpu_shared(filters_val)
+            inputs = theano.tensor.as_tensor_variable(cpu_shared(inputs_val))
+            filters = theano.tensor.as_tensor_variable(cpu_shared(filters_val))
         if provide_shape:
             imshp = inputs_shape
             kshp = filters_shape
         else:
             imshp = None
             kshp = None
+        if filters_flip:
+            conv_mode = 'conv'
+        else:
+            conv_mode = 'cross'
 
-        c_ref = conv_ref.conv2d(inputs, filters,
-                                border_mode=border_mode,
-                                subsample=subsample)
+        c_ref = ref(inputs, filters,
+                    border_mode=border_mode,
+                    subsample=subsample,
+                    conv_mode = conv_mode)
         c = conv.conv2d(inputs, filters,
-                        border_mode=border_mode, subsample=subsample)
-
+                        border_mode=border_mode,
+                        subsample=subsample,
+                        filters_flip=filters_flip,
+                        inputs_shape=imshp,
+                        filters_shape=kshp)
         f_ref = theano.function([], c_ref, mode=mode)
         f = theano.function([], c, mode)
-
         res_ref = f_ref()
         res = f()
-        print res_ref.shape, res.shape
         utt.assert_allclose(res_ref, res)
         if verify_grad:
-            utt.verify_grad(conv.AbstractConv2d(border_mode="valid",
-                                                imshp=imshp,
-                                                kshp=kshp,
-                                                bsize=inputs_shape[0],
-                                                subsample=subsample),
+            utt.verify_grad(conv.AbstractConv2d(border_mode="valid", imshp=imshp, kshp=kshp,
+                                                bsize=inputs_shape[0], subsample=subsample),
                             [inputs_val, filters_val])
 
-
-    def run_gradweight(self,
-                       inputs_shape,
-                       filters_shape,
-                       output_shape,
-                       subsample=(1, 1),
-                       verify_grad=True,
-                       mode=mode_without_gpu,
-                       border_mode='valid',
-                       device='gpu',
-                       provide_shape = False):
+    def run_gradweight(self, inputs_shape, filters_shape, output_shape,
+                       ref=dnn_gradweight, subsample=(1, 1), filters_flip=True,
+                       verify_grad=True, mode=mode_without_gpu, border_mode='valid',
+                       device='cpu', provide_shape = False):
 
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         output_val = numpy.random.random(output_shape).astype('float32')
-
         if device == 'gpu':
             inputs = gpu_shared(inputs_val)
             output = gpu_shared(output_val)
         else:
-            inputs = cpu_shared(inputs_val)
-            output = cpu_shared(output_val)
-
+            inputs = theano.tensor.as_tensor_variable(cpu_shared(inputs_val))
+            output = theano.tensor.as_tensor_variable(cpu_shared(output_val))
         if provide_shape:
             imshp = inputs_shape
             kshp = filters_shape
         else:
             imshp = None
             kshp = None
-
+        if filters_flip:
+            conv_mode = 'conv'
+        else:
+            conv_mode = 'cross'
         c = conv.AbstractConv2d_gradWeights(border_mode=border_mode,
+                                            filters_flip=filters_flip,
                                             subsample=subsample,
                                             imshp = imshp, kshp = kshp)
         c = c(inputs, output, filters_shape[-2:])
+        c_ref = ref(inputs, output,
+                    filters_shape,
+                    border_mode=border_mode,
+                    subsample=subsample,
+                    conv_mode=conv_mode)
         f = theano.function([], c, mode)
-        res_ref = py_conv(inputs_val.transpose((1, 0, 2, 3)),
-                          output_val.transpose((1, 0, 2, 3))[:, :, ::-1, ::-1],
-                          'valid', subsample).transpose((1, 0, 2, 3))[:, :, ::-1, ::-1]
-        res = numpy.array(f())
-        print res_ref.shape, res.shape
-
+        f_ref = theano.function([], c_ref, mode)
+        res = f()
+        res_ref = f_ref()
         utt.assert_allclose(res_ref, res)
 
         def abstract_conv2d_gradweight(inputs_val, output_val):
-            conv_op = conv.AbstractConv2d_gradInputs(border_mode=border_mode,
-                                                     subsample=subsample)
+            conv_op = conv.AbstractConv2d_gradInputs(border_mode=border_mode, subsample=subsample)
             return conv_op(inputs_val, output_val, filters_shape[-2:])
         if verify_grad:
-            utt.verify_grad(abstract_conv2d_gradweight,
-                           [inputs_val, output_val])
+            utt.verify_grad(abstract_conv2d_gradweight, [inputs_val, output_val])
 
 
-    def run_gradinput(self,
-                      inputs_shape,
-                      filters_shape,
-                      output_shape,
-                      subsample=(1, 1),
-                      verify_grad=True,
-                      mode=mode_without_gpu,
-                      border_mode='valid',
-                      device='gpu',
-                      provide_shape = False):
+    def run_gradinput(self, inputs_shape, filters_shape, output_shape, ref=dnn_gradweight,
+                      subsample=(1, 1), filters_flip=True, verify_grad=True, mode=mode_without_gpu,
+                      border_mode='valid', device='cpu', provide_shape = False):
 
         output_val = numpy.random.random(output_shape).astype('float32')
         filters_val = numpy.random.random(filters_shape).astype('float32')
-
-
         if device == 'gpu':
             output = gpu_shared(output_val)
             filters = gpu_shared(filters_val)
         else:
-            output = cpu_shared(output_val)
-            filters = cpu_shared(filters_val)
+            output = theano.tensor.as_tensor_variable(cpu_shared(output_val))
+            filters = theano.tensor.as_tensor_variable(cpu_shared(filters_val))
         if provide_shape:
             imshp = inputs_shape
             kshp = filters_shape
         else:
             imshp = None
             kshp = None
-
-        c = conv.AbstractConv2d_gradInputs(border_mode="valid",
+        if filters_flip:
+            conv_mode = 'conv'
+        else:
+            conv_mode = 'cross'
+        c = conv.AbstractConv2d_gradInputs(border_mode=border_mode,
                                            subsample=subsample,
-                                           imshp = imshp, kshp = kshp)
+                                           filters_flip=filters_flip,
+                                           imshp=imshp, kshp=kshp)
         c = c(filters, output, inputs_shape[-2:])
+        c_ref = ref(filters, output, inputs_shape,
+                    border_mode=border_mode, subsample=subsample,
+                    conv_mode=conv_mode)
         f = theano.function([], c, mode)
-        res_ref = py_conv(output_val,
-                          filters_val.transpose(1, 0, 2, 3)[:, :, ::-1, ::-1],
-                          'full', subsample)
-        print filters_val.shape, output_val.shape, inputs_shape
-        res = numpy.array(f())
-        print "2, ", res_ref.shape, res.shape
-
+        f_ref = theano.function([], c_ref, mode)
+        res = f()
+        res_ref = f_ref()
         utt.assert_allclose(res_ref, res)
 
         def abstract_conv2d_gradinputs(filters_val, output_val):
-            conv_op = conv.AbstractConv2d_gradInputs(border_mode=border_mode,
-                                                     subsample=subsample)
+            conv_op = conv.AbstractConv2d_gradInputs(border_mode=border_mode, subsample=subsample)
             return conv_op(filters_val, output_val, inputs_shape[-2:])
-
         if verify_grad:
-            utt.verify_grad(abstract_conv2d_gradinputs,
-                            [filters_val, output_val])
+            utt.verify_grad(abstract_conv2d_gradinputs, [filters_val, output_val])
 
 
+    def test_dnn_conv(self):
+        if not dnn_available():
+            return
+        mode=mode_with_gpu
 
-    def test_corrmm(self):
-       mode = mode_with_gpu
-       mode = mode.excluding('cudnn')
-       self.run_fwd(inputs_shape=(16, 1, 2, 2),
-                    filters_shape=(10, 1, 2, 2),
-                    verify_grad=False, mode=mode)
-        self.run_gradweight(inputs_shape=(16, 1, 2, 2),
-                            filters_shape=(10, 1, 2, 2),
-                            verify_grad=False, mode=mode)
-        self.run_gradinput(inputs_shape=(1, 1, 2, 2),
-                           filters_shape=(10, 1, 2, 2),
-                           verify_grad=False, mode=mode)
+        inputs_shapes =  self.inputs_shapes
+        filters_shapes = self.filters_shapes
+        subsamples = self.subsamples
+        border_modes = self.border_modes
+        for i, f in zip(inputs_shapes[0:1], filters_shapes[0:1]):
+            for s in subsamples:
+                for b in border_modes:
+                    o = self.get_output_shape(i, f, s, b)
+                    for provide_shape in [False, True]:
+                        self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
+                                     verify_grad=True, mode=mode, device='gpu',
+                                     provide_shape=provide_shape, border_mode=b)
+                        self.run_gradweight(inputs_shape=i, filters_shape=f,
+                                            output_shape=o, subsample=s,
+                                            verify_grad=True, mode=mode, device='gpu',
+                                            provide_shape=provide_shape, border_mode=b)
+                        self.run_gradinput(inputs_shape=i, filters_shape=f,
+                                           output_shape=o, subsample=s,
+                                           verify_grad=False, mode=mode, device='gpu',
+                                           provide_shape=provide_shape, border_mode=border_mode)
+
+    def test_cormm_conv(self):
+        mode = mode_with_gpu.excluding('cudnn')
+
+        inputs_shapes =  self.inputs_shapes
+        filters_shapes = self.filters_shapes
+        subsamples = self.subsamples
+        border_modes = self.border_modes
+        for i, f in zip(inputs_shapes, filters_shapes):
+            for s in subsamples:
+                for b in border_modes:
+                    o = self.get_output_shape(i, f, s, b)
+                    for provide_shape in [False, True]:
+                        self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
+                                     verify_grad=True, mode=mode, device='gpu',
+                                     provide_shape=provide_shape, border_mode=b)
+                        self.run_gradweight(inputs_shape=i, filters_shape=f,
+                                            output_shape=o, subsample=s,
+                                            verify_grad=True, mode=mode, device='gpu',
+                                            provide_shape=provide_shape, border_mode=b)
+                        self.run_gradinput(inputs_shape=i, filters_shape=f,
+                                           output_shape=o, subsample=s,
+                                           verify_grad=True, mode=mode, device='gpu',
+                                           provide_shape=provide_shape, border_mode=border_mode)
+
+
 
 
 
     def test_cpu_conv(self):
+        mode = mode_without_gpu
 
-        inputs_shapes =  [(16, 1, 2, 2), (16, 1, 8, 8), (16, 1, 4, 4)]
-        filters_shapes = [(10, 1, 2, 2), (10, 1, 2, 2), (10, 1, 2, 2),]
-        output_shapes =  [(16, 10, 1, 1), (16, 10, 7, 7), (16, 10, 3, 3)]
-        subsamples =     [(1, 1), (1, 1), (1, 1)]
+        inputs_shapes =  self.inputs_shapes
+        filters_shapes = self.filters_shapes
+        subsamples = self.subsamples
+        border_modes = self.border_modes[:2] # only valid and full are supported
 
-        border_mode= 'valid'
-        for i, f, o, s in zip(inputs_shapes[0:1], filters_shapes[0:1], output_shapes[0:1], subsamples[0:1]):
-            for provide_shape in [False, True]:
-                self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
-                             verify_grad=True, mode=mode_without_gpu, device='cpu',
-                             provide_shape=provide_shape, border_mode=border_mode)
-        return
-        ### No reference implementation of full available yet
-        border_mode= 'full'
-        provide_shape = True
-        self.run_gradweight(inputs_shape=(16, 1, 2, 2),
-                            filters_shape=(10, 1, 2, 2),
-                            output_shape=(16, 10, 3, 3),
-                            subsample=(1, 1),
-                            verify_grad=True, mode=mode_without_gpu, device='cpu',
-                            provide_shape=provide_shape, border_mode=border_mode)
-
-
-
-
-    def test_cpu_grad_weight(self):
-
-        ### FIXME subsample
-        inputs_shapes =  [(16, 1, 2, 2), (16, 1, 8, 8), (16, 1, 4, 4)]
-        filters_shapes = [(10, 1, 2, 2), (10, 1, 2, 2), (10, 1, 2, 2),]
-        output_shapes =  [(16, 10, 1, 1), (16, 10, 7, 7), (16, 10, 3, 3)]
-        subsamples =     [(1, 1), (1, 1), (1, 1)]
-
-        border_mode = 'valid'
-        for i, f, o, s in zip(inputs_shapes[:], filters_shapes[:], output_shapes[:], subsamples[:]):
-            for provide_shape in [False, True]:
-                self.run_gradweight(inputs_shape=i, filters_shape=f,
-                                    output_shape=o, subsample=s,
-                                    verify_grad=True, mode=mode_without_gpu, device='cpu',
-                                    provide_shape=provide_shape, border_mode=border_mode)
-        return
-        ### No reference implementation of full available yet
-        border_mode= 'full'
-        provide_shape = True
-        self.run_gradweight(inputs_shape=(16, 1, 2, 2),
-                            filters_shape=(10, 1, 2, 2),
-                            output_shape=(16, 10, 3, 3),
-                            subsample=(1, 1),
-                            verify_grad=True, mode=mode_without_gpu, device='cpu',
-                            provide_shape=provide_shape, border_mode=border_mode)
-
-
-    def test_cpu_grad_input(self):
-
-        ### FIXME subsample
-        inputs_shapes =  [(16, 1, 2, 2), (16, 1, 8, 8), (16, 1, 4, 4)]
-        filters_shapes = [(10, 1, 2, 2), (10, 1, 2, 2), (10, 1, 2, 2),]
-        output_shapes =  [(16, 10, 1, 1), (16, 10, 7, 7), (16, 10, 3, 3)]
-        subsamples =     [(1, 1), (1, 1), (1, 1)]
-
-        border_mode= 'valid'
-        for i, f, o, s in zip(inputs_shapes[:], filters_shapes[:], output_shapes[:], subsamples[:]):
-            for provide_shape in [True, False]:
-                self.run_gradinput(inputs_shape=i, filters_shape=f,
-                                   output_shape=o, subsample=s,
-                                   verify_grad=True, mode=mode_without_gpu, device='cpu',
-                                   provide_shape=provide_shape, border_mode=border_mode)
-        return
-        ### No reference implementation of full available yet
-        border_mode= 'full'
-        provide_shape = True
-        self.run_gradweight(inputs_shape=(16, 1, 2, 2),
-                            filters_shape=(10, 1, 2, 2),
-                            output_shape=(16, 10, 3, 3),
-                            subsample=(1, 1),
-                            verify_grad=True, mode=mode_without_gpu, device='cpu',
-                            provide_shape=provide_shape, border_mode=border_mode)
-
+        for i, f in zip(inputs_shapes, filters_shapes):
+            for s in subsamples:
+                for b in border_modes:
+                    o = self.get_output_shape(i, f, s, b)
+                    for provide_shape in [False, True]:
+                        self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
+                                     verify_grad=True, mode=mode, device='cpu',
+                                     provide_shape=provide_shape, border_mode=b)
+                        self.run_gradweight(inputs_shape=i, filters_shape=f,
+                                            output_shape=o, subsample=s,
+                                            verify_grad=True, mode=mode, device='cpu',
+                                            provide_shape=provide_shape, border_mode=b)
+                        self.run_gradinput(inputs_shape=i, filters_shape=f,
+                                           output_shape=o, subsample=s,
+                                           verify_grad=True, mode=mode, device='cpu',
+                                           provide_shape=provide_shape, border_mode=border_mode)

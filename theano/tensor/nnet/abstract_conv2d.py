@@ -25,7 +25,7 @@ from theano.sandbox.cuda.basic_ops import (
     GpuFromHost, HostFromGpu
     )
 from theano.sandbox.cuda.type import CudaNdarrayType
-from theano.sandbox.cuda.dnn import dnn_available, dnn_conv
+from theano.sandbox.cuda.dnn import dnn_available, dnn_conv, dnn_gradweight, dnn_gradinput
 from theano.sandbox.cuda.blas import GpuCorrMM, GpuCorrMM_gradWeights, GpuCorrMM_gradInputs
 from theano.sandbox.cuda.opt import values_eq_approx_high_tol
 
@@ -45,7 +45,7 @@ def conv2d(inputs,
            batch_size=None,
            border_mode='valid',
            subsample=(1, 1),
-           filter_flip=True):
+           filters_flip=True):
     """
     This function will build the symbolic graph for convolving a mini-batch of a
     stack of 2D inputs with a set of 2D filters. The implementation is modelled
@@ -92,8 +92,8 @@ def conv2d(inputs,
     :param subsample: factor by which to subsample the output.
         Also called strides elsewhere.
 
-    :type filter_flip: bool
-    :param filter_flip: If ``True``, will flip the filter rows and columns
+    :type filters_flip: bool
+    :param filters_flip: If ``True``, will flip the filter rows and columns
         before sliding them over the input. This operation is normally referred
         to as a convolution, and this is the default. If ``False``, the filters
         are not flipped and the operation is referred to as a cross-correlation.
@@ -109,7 +109,7 @@ def conv2d(inputs,
                              bsize=batch_size,
                              border_mode=border_mode,
                              subsample=subsample,
-                             filter_flip = filter_flip)
+                             filters_flip = filters_flip)
     return conv_op(inputs, filters)
 
 
@@ -120,12 +120,12 @@ class BaseAbstractConv2d(Op):
     FIXME
     """
     check_broadcast = False
-    __props__ = ('border_mode', 'subsample', 'filter_flip', 'imshp', 'kshp', 'bsize')
+    __props__ = ('border_mode', 'subsample', 'filters_flip', 'imshp', 'kshp', 'bsize')
 
     def __init__(self,
                  imshp=None, kshp=None, bsize=None,
                  border_mode="valid", subsample=(1, 1),
-                 filter_flip = True):
+                 filters_flip = True):
         if isinstance(border_mode, int):
             border_mode = (border_mode, border_mode)
         if isinstance(border_mode, tuple):
@@ -142,7 +142,7 @@ class BaseAbstractConv2d(Op):
         self.kshp = kshp
         self.bsize = bsize
         self.border_mode = border_mode
-        self.filter_flip = filter_flip
+        self.filters_flip = filters_flip
 
         if len(subsample) != 2:
             raise ValueError("subsample must have two elements")
@@ -175,9 +175,9 @@ class AbstractConv2d(BaseAbstractConv2d):
                  bsize=None,
                  border_mode="valid",
                  subsample=(1, 1),
-                 filter_flip = True):
+                 filters_flip = True):
         super(AbstractConv2d, self).__init__(imshp, kshp, bsize,
-                                             border_mode, subsample, filter_flip)
+                                             border_mode, subsample, filters_flip)
 
     def make_node(self, img, kern):
         if img.type.ndim != 4:
@@ -203,13 +203,13 @@ class AbstractConv2d(BaseAbstractConv2d):
                                              self.bsize,
                                              self.border_mode,
                                              self.subsample,
-                                             self.filter_flip)(
+                                             self.filters_flip)(
             weights, top, bottom.shape[-2:])
         d_weights = AbstractConv2d_gradWeights(self.imshp, self.kshp,
                                                self.bsize,
                                                self.border_mode,
                                                self.subsample,
-                                               self.filter_flip)(
+                                               self.filters_flip)(
             bottom, top, weights.shape[-2:])
         return d_bottom, d_weights
 
@@ -222,16 +222,15 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
            use it as needed.
 
     """
-
     def __init__(self,
                  imshp=None,
                  kshp=None,
                  bsize=None,
                  border_mode="valid",
                  subsample=(1, 1),
-                 filter_flip=True):
+                 filters_flip=True):
         super(AbstractConv2d_gradWeights, self).__init__(imshp, kshp, bsize,
-                                                         border_mode, subsample, filter_flip)
+                                                         border_mode, subsample, filters_flip)
 
     ## Update shape/height_width
     def make_node(self, img, topgrad, shape):
@@ -261,13 +260,13 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
                                              self.bsize,
                                              self.border_mode,
                                              self.subsample,
-                                             self.filter_flip)(weights, top, bottom.shape[-2:])
+                                             self.filters_flip)(weights, top, bottom.shape[-2:])
         d_top = AbstractConv2d(self.imshp,
                                self.kshp,
                                self.bsize,
                                self.border_mode,
                                self.subsample,
-                               self.filter_flip)(bottom, weights)
+                               self.filters_flip)(bottom, weights)
         d_height_width = (theano.gradient.DisconnectedType()(),)
         return (d_bottom, d_top) + d_height_width
 
@@ -290,9 +289,9 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
                  bsize=None,
                  border_mode="valid",
                  subsample=(1, 1),
-                 filter_flip=True):
+                 filters_flip=True):
         super(AbstractConv2d_gradInputs, self).__init__(imshp, kshp, bsize,
-                                                        border_mode, subsample, filter_flip)
+                                                        border_mode, subsample, filters_flip)
 
     ## Update shape/height_width
     def make_node(self, kern, topgrad, shape):
@@ -336,7 +335,8 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
 ### move to Gpu optimization
 ### Do not replace the AbstractOpt only the inputs
 ### Abstract Ops is replaced layer by device_specialized opt
-@local_optimizer([gpu_from_host, BaseAbstractConv2d])
+@local_optimizer([gpu_from_host,
+                  AbstractConv2d, AbstractConv2d_gradWeights, AbstractConv2d_gradInputs])
 def local_conv2d_gpu_conv(node):
     """
     gpu_from_host(AbstractConv) -> AbstractConv(gpu_from_host)
@@ -381,13 +381,12 @@ def local_conv2d_gpu_conv(node):
                 node.outputs[0].broadcastable)
             out.values_eq_approx = values_eq_approx_high_tol
             return [as_tensor_variable(out)]
-# We register the optimizer that moves convolutions to the GPU.
 register_gpu()(local_conv2d_gpu_conv)
 
 
 
 ### Call dnn conv class directly
-@local_optimizer([BaseAbstractConv2d])
+@local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights, AbstractConv2d_gradInputs])
 def local_conv2d_cudnn(node):
 
     inp1 = node.inputs[0]
@@ -399,7 +398,7 @@ def local_conv2d_cudnn(node):
     if not dnn_available():
         return None
 
-    if node.op.filter_flip:
+    if node.op.filters_flip:
         conv_mode = 'conv'
     else:
         conv_mode = 'cross'
@@ -411,20 +410,20 @@ def local_conv2d_cudnn(node):
                         conv_mode = conv_mode)
         return [rval]
     if (isinstance(node.op, AbstractConv2d_gradWeights)):
-        shape = node.inputs[2]
+        shape = (inp2.shape[1], inp1.shape[1], node.inputs[2][0], node.inputs[2][1])
         rval = dnn_gradweight(inp1, inp2, shape,
                               border_mode=node.op.border_mode,
                               subsample=node.op.subsample,
                               conv_mode = conv_mode)
         return [rval]
     if (isinstance(node.op, AbstractConv2d_gradInputs)):
-        shape = node.inputs[2]
-        rval = dnn_gradinput(inp1, inp2, shape
+        shape = (inp2.shape[0], inp1.shape[1], node.inputs[2][0], node.inputs[2][1])
+        rval = dnn_gradinput(inp1, inp2, shape,
                              border_mode=node.op.border_mode,
                              subsample=node.op.subsample,
                              conv_mode = conv_mode)
         return [rval]
-register_specialize_device(local_conv2d_cudnn)
+register_specialize_device(local_conv2d_cudnn, 'cudnn')
 
 
 @local_optimizer([AbstractConv2d])
@@ -441,7 +440,7 @@ def local_conv2d_corrmm(node):
         subsample = node.op.subsample
         if (border_mode == 'valid') or (subsample != (1,1)):
             # need to flip the kernel for valid convolution
-            if node.op.filter_flip:
+            if node.op.filters_flip:
                 kern = kern[:, :, ::-1, ::-1]
             # By default use GpuCorrMM
             rval = GpuCorrMM(border_mode, subsample)(gpu_contiguous(img),
@@ -484,7 +483,7 @@ def local_conv2d_corrmm(node):
             rval = GpuCorrMM_gradInputs('valid', subsample)(
                     gpu_contiguous(kern), gpu_contiguous(img))
         return [rval]
-#register_specialize_device(local_conv2d_corrmm)
+register_specialize_device(local_conv2d_corrmm, 'conv_gemm')
 
 @local_optimizer([AbstractConv2d_gradWeights])
 def local_conv2d_gradweight_corrmm(node):
@@ -494,13 +493,13 @@ def local_conv2d_gradweight_corrmm(node):
     if not isinstance(img.type, CudaNdarrayType) or \
             not isinstance(topgrad.type, CudaNdarrayType):
         return None
-    if node.op.filter_flip:
+    if node.op.filters_flip:
         img = img[:, :, ::-1, ::-1]
     rval = GpuCorrMM_gradWeights(border_mode=node.op.border_mode,
                                  subsample=node.op.subsample)(
         gpu_contiguous(img), gpu_contiguous(topgrad), shape)
     return [rval]
-#register_specialize_device(local_conv2d_gradweight_corrmm)
+register_specialize_device(local_conv2d_gradweight_corrmm, 'conv_gemm')
 
 @local_optimizer([AbstractConv2d_gradInputs])
 def local_conv2d_gradinputs_corrmm(node):
@@ -510,14 +509,14 @@ def local_conv2d_gradinputs_corrmm(node):
             not isinstance(topgrad.type, CudaNdarrayType):
         return None
 
-    if node.op.filter_flip:
+    if node.op.filters_flip:
         kern = kern[:, :, ::-1, ::-1]
 
     rval =  GpuCorrMM_gradInputs(border_mode=node.op.border_mode,
     subsample=node.op.subsample)(
         gpu_contiguous(kern), gpu_contiguous(topgrad), shape)
     return [rval]
-#register_specialize_device(local_conv2d_gradinputs_corrmm)
+register_specialize_device(local_conv2d_gradinputs_corrmm, 'conv_gemm')
 
 
 
@@ -553,7 +552,7 @@ def local_conv2d_gradweight_cpu(node):
     if node.op.border_mode not in ['full', 'valid']:
         return None
 
-    if not node.op.filter_flip:
+    if not node.op.filters_flip:
         # Not tested yet
         return
 
@@ -617,7 +616,7 @@ def local_conv2d_gradweight_cpu(node):
         raise NotImplementedError(
             'Only [full,valid] modes are currently supported.')
 
-    if node.op.filter_flip:
+    if node.op.filters_flip:
         filters = filters[:, :, ::-1, ::-1]  # flip them
 
     dw = ConvOp(imshp, kshp, nkern, bsize, 1, 1, output_mode='valid',
@@ -645,7 +644,7 @@ def local_conv2d_gradinputs_cpu(node):
     if node.op.border_mode not in ['full', 'valid']:
         return None
 
-    if not node.op.filter_flip:
+    if not node.op.filters_flip:
         # Not tested yet
         return None
 

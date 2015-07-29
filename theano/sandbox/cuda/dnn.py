@@ -1279,7 +1279,7 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
 def dnn_gradweight(img, topgrad,
                    kerns_shp,
                    border_mode='valid', subsample=(1, 1),
-                   conv_mode='conv', workmem=None):
+                   conv_mode='conv'):
     """
     GPU convolution gradient with respect to weight using cuDNN from NVIDIA.
 
@@ -1295,16 +1295,16 @@ def dnn_gradweight(img, topgrad,
 
     img = gpu_contiguous(img)
     topgrad = gpu_contiguous(topgrad)
+    kerns_shp = theano.tensor.as_tensor_variable(kerns_shp) 
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
                           conv_mode=conv_mode)(img.shape, kerns_shp)
-
-    out = gpu_alloc_empty(*kern_shp)
-    return GpuDnnConvGradW(workmem=workmem)(img, topgrad, out, desc)
+    out = gpu_alloc_empty(*kerns_shp)
+    return GpuDnnConvGradW()(img, topgrad, out, desc)
 
 def dnn_gradinput(kerns, topgrad,
-                  img_shape,
+                  img_shp,
                   border_mode='valid', subsample=(1, 1),
-                  conv_mode='conv', workmem=None):
+                  conv_mode='conv'):
     """
     GPU convolution gradient with respect to input using cuDNN from NVIDIA.
 
@@ -1320,11 +1320,12 @@ def dnn_gradinput(kerns, topgrad,
 
     kerns = gpu_contiguous(kerns)
     topgrad = gpu_contiguous(topgrad)
+    img_shp = theano.tensor.as_tensor_variable(img_shp)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
                           conv_mode=conv_mode)(img_shp, kerns.shape)
 
     out = gpu_alloc_empty(*img_shp)
-    return GpuDnnConvGradI(workmem=workmem)(kerns, topgrad, out, desc)
+    return GpuDnnConvGradI()(kerns, topgrad, out, desc)
 
 
 class GpuDnnPoolDesc(GpuOp):
