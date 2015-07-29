@@ -3,7 +3,7 @@ digraph G {
 	node [label="\N"];
 	subgraph cluster__1 {
 		graph [bb="8,168,723,243",
-			label="theano.compile.builders.OpFromGraph object at 0x1076d9190",
+			label="theano.compile.builders.OpFromGraph object at 0x114552bd0",
 			lheight=0.21,
 			lp="365.5,231.5",
 			lwidth=4.90
@@ -32,7 +32,7 @@ digraph G {
 	}
 	subgraph cluster__5 {
 		graph [bb="1759,168,2474,243",
-			label="theano.compile.builders.OpFromGraph object at 0x1076d9190 id=1",
+			label="theano.compile.builders.OpFromGraph object at 0x114552bd0 id=1",
 			lheight=0.21,
 			lp="2116.5,231.5",
 			lwidth=5.31
@@ -60,7 +60,7 @@ digraph G {
 			width=3.0556];
 	}
 	_1	 [height=0.5,
-		label="theano.compile.builders.OpFromGraph object at 0x1076d9190",
+		label="theano.compile.builders.OpFromGraph object at 0x114552bd0",
 		pos="973,194",
 		shape=ellipse,
 		width=6.6504];
@@ -72,17 +72,17 @@ digraph G {
 		style=filled,
 		type=colored,
 		width=2.6784];
-	_1 -> _9	 [label="TensorType(float64, scalar)",
-		lp="1204,150",
+	_1 -> _9	 [label="1 TensorType(float64, scalar)",
+		lp="1209.5,150",
 		pos="e,1185.8,122.05 1023.1,176.32 1067,161.66 1130.8,140.38 1176.2,125.28"];
 	_5	 [height=0.5,
-		label="theano.compile.builders.OpFromGraph object at 0x1076d9190 id=1",
+		label="theano.compile.builders.OpFromGraph object at 0x114552bd0 id=1",
 		pos="1490,194",
 		shape=ellipse,
 		width=7.1761];
 	_5 -> _9	 [color=red,
-		label="TensorType(float64, scalar)",
-		lp="1461,150",
+		label="0 TensorType(float64, scalar)",
+		lp="1466.5,150",
 		pos="e,1276.3,122.05 1439.8,176.32 1395.6,161.66 1331.5,140.38 1286,125.28"];
 	_10	 [fillcolor=dodgerblue,
 		height=0.5,

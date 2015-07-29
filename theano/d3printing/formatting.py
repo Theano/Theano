@@ -155,12 +155,13 @@ class GraphFormatter(object):
                             param['color'] = 'red'
 
                 edge_label = str(var.type)
+                if len(node.inputs) > 1:
+                    edge_label = str(id) + ' ' + edge_label
                 if var.owner is None:
                     id_ = self.var_name(var)
-                    n = make_node(id_,
-                                    style='filled',
-                                    fillcolor=self.node_colors['input'],
-                                    shape=var_shape, profile=aprof)
+                    n = make_node(id_, style='filled',
+                                  fillcolor=self.node_colors['input'],
+                                  shape=var_shape, profile=aprof)
                     parent.add_node(n)
                     if not is_opfrom:
                         g.add_edge(pd.Edge(n.get_name(), aid, label=edge_label, **param))

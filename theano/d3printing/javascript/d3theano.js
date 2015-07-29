@@ -301,10 +301,7 @@ function setupGraph() {
 	});
 		
 	nodes.on('mouseover', function(node) {
-		if (!isProfiled || isEditNode || typeof(node.value.profile) == 'undefined') {
-			return;
-		}
-		
+		// Highlight incoming edges
 		edges.each(function (d, i) {
 			var edge = d3.select(this);
 			if (d.source == node || d.target == node) {
@@ -313,13 +310,17 @@ function setupGraph() {
 					.style('opacity', 1.0);
 			}
 		});
-	   	nodeDiv.transition()        
-	        .duration(200)      
-	        .style('opacity', .9);
-	    nodeDiv
-	    	.html(nodeDetails(node))  
-	        .style('left', (d3.event.pageX) + 30 + 'px')     
-	        .style('top', (d3.event.pageY - 28) + 'px');    
+		
+		// Show node details if node is not edited as has profiling information
+		if (!isEditNode && node.value.profile.length) {
+		   	nodeDiv.transition()        
+		        .duration(200)      
+		        .style('opacity', .9);
+		    nodeDiv
+		    	.html(nodeDetails(node))  
+		        .style('left', (d3.event.pageX) + 30 + 'px')     
+		        .style('top', (d3.event.pageY - 28) + 'px');
+		}
 	});
 		
 	nodes.on('mouseout', function(node) {

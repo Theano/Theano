@@ -1,12 +1,12 @@
 digraph G {
-	graph [bb="0,0,1448,251"];
+	graph [bb="0,0,1450,251"];
 	node [label="\N"];
 	subgraph cluster__1 {
 		graph [bb="8,168,723,243",
-			label="theano.compile.builders.OpFromGraph object at 0x107b5ca10",
+			label="theano.compile.builders.OpFromGraph object at 0x114648450",
 			lheight=0.21,
 			lp="365.5,231.5",
-			lwidth=4.88
+			lwidth=4.90
 		];
 		_2		 [fillcolor=limegreen,
 			height=0.5,
@@ -31,40 +31,40 @@ digraph G {
 			width=3.0556];
 	}
 	_1	 [height=0.5,
-		label="theano.compile.builders.OpFromGraph object at 0x107b5ca10",
-		pos="971,194",
+		label="theano.compile.builders.OpFromGraph object at 0x114648450",
+		pos="972,194",
 		shape=ellipse,
-		width=6.6185];
+		width=6.6504];
 	_5	 [fillcolor="#FFAABB",
 		height=0.5,
 		label="Elemwise{Add}[(0, 0)]",
-		pos="1154,106",
+		pos="1156,106",
 		shape=ellipse,
 		style=filled,
 		type=colored,
 		width=2.6784];
 	_1 -> _5	 [color=red,
-		label="TensorType(float64, scalar)",
-		lp="1157,150",
-		pos="e,1120.1,122.94 1007.2,176.01 1036.9,162.04 1079.1,142.19 1110.7,127.37"];
+		label="0 TensorType(float64, scalar)",
+		lp="1164.5,150",
+		pos="e,1121.9,122.94 1008.4,176.01 1038.4,161.97 1081.1,142.02 1112.8,127.18"];
 	_7	 [fillcolor=dodgerblue,
 		height=0.5,
 		label="TensorType(float64, scalar) id=4",
-		pos="1154,18",
+		pos="1156,18",
 		shape=box,
 		style=filled,
 		width=2.7847];
 	_5 -> _7	 [label="TensorType(float64, scalar)",
-		lp="1232,62",
-		pos="e,1154,36.084 1154,87.597 1154,75.746 1154,59.817 1154,46.292"];
+		lp="1234,62",
+		pos="e,1156,36.084 1156,87.597 1156,75.746 1156,59.817 1156,46.292"];
 	_6	 [fillcolor=limegreen,
 		height=0.5,
 		label="name=z TensorType(float64, scalar)",
-		pos="1338,194",
+		pos="1340,194",
 		shape=box,
 		style=filled,
 		width=3.0556];
-	_6 -> _5	 [label="TensorType(float64, scalar)",
-		lp="1347,150",
-		pos="e,1193.7,122.51 1306.2,175.76 1287,165.54 1261.8,152.55 1239,142 1227.5,136.66 1214.9,131.25 1203,126.34"];
+	_6 -> _5	 [label="1 TensorType(float64, scalar)",
+		lp="1364.5,150",
+		pos="e,1202.1,121.95 1313.3,175.88 1296.2,165.33 1273.3,151.95 1252,142 1239.2,136.01 1225.1,130.36 1211.7,125.42"];
 }

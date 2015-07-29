@@ -1,12 +1,12 @@
 digraph G {
-	graph [bb="0,0,2482,251"];
+	graph [bb="0,0,2478,251"];
 	node [label="\N"];
 	subgraph cluster__1 {
 		graph [bb="8,168,723,243",
-			label="theano.compile.builders.OpFromGraph object at 0x1076d9190",
+			label="theano.compile.builders.OpFromGraph object at 0x1141d3a50",
 			lheight=0.21,
 			lp="365.5,231.5",
-			lwidth=4.90
+			lwidth=4.89
 		];
 		_2		 [fillcolor=limegreen,
 			height=0.5,
@@ -31,67 +31,67 @@ digraph G {
 			width=3.0625];
 	}
 	subgraph cluster__5 {
-		graph [bb="1759,168,2474,243",
-			label="theano.compile.builders.OpFromGraph object at 0x1076d9190 id=1",
+		graph [bb="1755,168,2470,243",
+			label="theano.compile.builders.OpFromGraph object at 0x1141d3a50 id=1",
 			lheight=0.21,
-			lp="2116.5,231.5",
-			lwidth=5.31
+			lp="2112.5,231.5",
+			lwidth=5.29
 		];
 		_6		 [fillcolor=limegreen,
 			height=0.5,
 			label="name=x TensorType(float64, scalar)",
-			pos="2355,194",
+			pos="2351,194",
 			shape=box,
 			style=filled,
 			width=3.0625];
 		_7		 [fillcolor=limegreen,
 			height=0.5,
 			label="name=y TensorType(float64, scalar)",
-			pos="2116,194",
+			pos="2112,194",
 			shape=box,
 			style=filled,
 			width=3.0625];
 		_8		 [fillcolor=limegreen,
 			height=0.5,
 			label="name=z TensorType(float64, scalar)",
-			pos="1877,194",
+			pos="1873,194",
 			shape=box,
 			style=filled,
 			width=3.0556];
 	}
 	_1	 [height=0.5,
-		label="theano.compile.builders.OpFromGraph object at 0x1076d9190",
-		pos="973,194",
+		label="theano.compile.builders.OpFromGraph object at 0x1141d3a50",
+		pos="972,194",
 		shape=ellipse,
-		width=6.6504];
+		width=6.6414];
 	_9	 [fillcolor="#FFAABB",
 		height=0.5,
 		label="Elemwise{Add}[(0, 0)]",
-		pos="1231,106",
+		pos="1229,106",
 		shape=ellipse,
 		style=filled,
 		type=colored,
 		width=2.6784];
-	_1 -> _9	 [label="TensorType(float64, scalar)",
-		lp="1204,150",
-		pos="e,1185.8,122.05 1023.1,176.32 1067,161.66 1130.8,140.38 1176.2,125.28"];
+	_1 -> _9	 [label="1 TensorType(float64, scalar)",
+		lp="1207.5,150",
+		pos="e,1184,122.05 1021.9,176.32 1065.6,161.66 1129.2,140.38 1174.4,125.28"];
 	_5	 [height=0.5,
-		label="theano.compile.builders.OpFromGraph object at 0x1076d9190 id=1",
-		pos="1490,194",
+		label="theano.compile.builders.OpFromGraph object at 0x1141d3a50 id=1",
+		pos="1487,194",
 		shape=ellipse,
-		width=7.1761];
+		width=7.167];
 	_5 -> _9	 [color=red,
-		label="TensorType(float64, scalar)",
-		lp="1461,150",
-		pos="e,1276.3,122.05 1439.8,176.32 1395.6,161.66 1331.5,140.38 1286,125.28"];
+		label="0 TensorType(float64, scalar)",
+		lp="1464.5,150",
+		pos="e,1274.2,122.05 1436.9,176.32 1393,161.66 1329.2,140.38 1283.8,125.28"];
 	_10	 [fillcolor=dodgerblue,
 		height=0.5,
 		label="TensorType(float64, scalar) id=5",
-		pos="1231,18",
+		pos="1229,18",
 		shape=box,
 		style=filled,
 		width=2.7847];
 	_9 -> _10	 [label="TensorType(float64, scalar)",
-		lp="1309,62",
-		pos="e,1231,36.084 1231,87.597 1231,75.746 1231,59.817 1231,46.292"];
+		lp="1307,62",
+		pos="e,1229,36.084 1229,87.597 1229,75.746 1229,59.817 1229,46.292"];
 }
