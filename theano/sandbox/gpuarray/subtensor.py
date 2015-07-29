@@ -674,6 +674,22 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, GpuAdvancedIncSubtensor1):
         kname = "k_vector_add_fast"
         k_var = "k_vector_add_fast_" + nodename
         code = """
+/*
+ * This is an atomicAdd that works for doubles since that is not provided
+ * natively by cuda.
+ */
+__device__ double atomicAdd(ga_double* address, ga_double val) {
+    unsigned long long int* address_as_ull =
+                                          (unsigned long long int*)address;
+    unsigned long long int old = *address_as_ull, assumed;
+    do {
+        assumed = old;
+        old = atomicCAS(address_as_ull, assumed,
+                        __double_as_longlong(val +
+                        __longlong_as_double(assumed)));
+    } while (assumed != old);
+    return __longlong_as_double(old);
+}
 
 /*
  * This is a version of atomicAdd that works for half-floats.  It may
