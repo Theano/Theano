@@ -34,15 +34,7 @@ class Fourier(gof.Op):
     input points, A[(n-1)/2] contains the largest positive frequency, while
     A[(n+1)/2] contains the largest negative frequency.
     """
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(self.__class__)
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, a, n, axis):
         a = tensor.as_tensor_variable(a)

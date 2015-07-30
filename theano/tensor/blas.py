@@ -360,22 +360,18 @@ class Gemv(Op):
     alpha, beta are scalars
     output is a vector that can be inplace on y
     """
+    __props__ = ("inplace",)
+
     def __init__(self, inplace):
         self.inplace = inplace
         if inplace:
             self.destroy_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.inplace == other.inplace
 
     def __str__(self):
         if self.inplace:
             return '%s{inplace}' % self.__class__.__name__
         else:
             return '%s{no_inplace}' % self.__class__.__name__
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.inplace)
 
     def make_node(self, y, alpha, A, x, beta):
         y = T.as_tensor_variable(y)
@@ -453,17 +449,12 @@ class Ger(Op):
     :TODO: Create better classes ScipyGer and CGer that inherit from this class
     and override the make_thunk() method to use Scipy and C respectively.
     """
+    __props__ = ("destructive",)
+
     def __init__(self, destructive):
         self.destructive = destructive
         if destructive:
             self.destroy_map = {0: [0]}
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.destructive == other.destructive)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.destructive)
 
     def __str__(self):
         if self.destructive:
@@ -611,14 +602,7 @@ class GemmRelated(Op):
 
     This class provides a kind of templated gemm Op.
     """
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def c_support_code(self):
         # return cblas_header_text()
