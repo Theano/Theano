@@ -505,8 +505,8 @@ class CpuCorrMM_gradInputs(BaseCpuCorrMM):
                                                           weights.shape[-2:])
         d_top = CpuCorrMM(self.border_mode,
                           self.subsample)(bottom, weights)
-        d_height_width = (theano.gradient.DisconnectedType()(),) *\
-                         2 if len(inp) == 4 else ()
+        d_height_width = ((theano.gradient.DisconnectedType()(),) *
+                          2 if len(inp) == 4 else ())
         return (d_weights, d_top) + d_height_width
 
     def connection_pattern(self, node):

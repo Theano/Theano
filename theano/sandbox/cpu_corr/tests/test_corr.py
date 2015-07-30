@@ -1,5 +1,3 @@
-import time
-
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
 import numpy
@@ -79,8 +77,8 @@ class TestCorr2D(utt.InferShapeTester):
         orig_image_data = image_data
         if border_mode is not 'full':
             s = -1.
-        out_shape2d = numpy.array(N_image_shape[-2:]) +\
-                                  s * numpy.array(N_filter_shape[-2:]) - s
+        out_shape2d = (numpy.array(N_image_shape[-2:]) +
+                       s * numpy.array(N_filter_shape[-2:]) - s)
         out_shape2d = numpy.ceil(out_shape2d / numpy.array(subsample))
         out_shape = (N_image_shape[0], N_filter_shape[0]) + tuple(out_shape2d)
         ref_output = numpy.zeros(out_shape)
@@ -127,6 +125,8 @@ class TestCorr2D(utt.InferShapeTester):
         self.validate((3, 2, 7, 5), (5, 2, 3, 2), 'valid', verify_grad=False)
         self.validate((3, 2, 8, 8), (4, 2, 5, 5), 'full', verify_grad=False)
         self.validate((3, 2, 7, 5), (5, 2, 2, 3), 'full')
+        self.validate((1, 10, 213, 129), (46, 10, 212, 1), 'valid',
+                      verify_grad=False)
 
     def test_img_kernel_same_shape(self):
         self.validate((3, 2, 3, 3), (4, 2, 3, 3), 'full')
@@ -189,51 +189,14 @@ class TestCorr2D(utt.InferShapeTester):
         self.assertRaises(Exception, self.validate, (3, 2, 8, 8), (4, 2, 5, 5),
                           'valid', input=T.dtensor3())
 
-    def test_gcc_crash(self):
-        """
-        gcc 4.3.0 20080428 (Red Hat 4.3.0-8)
-
-        crashed in this following case. I changed the c code to don't hit
-        gcc bug. So it should not crash anymore
-        """
-        self.validate((1, 10, 213, 129), (46, 10, 212, 1), 'valid',
-                      verify_grad=False)
-
-    def speed(self):
-        n_calls = 20000
-        print "n_calls", n_calls
-        for border_mode in ['valid', 'full']:
-            print
-            print border_mode
-            image_shapes = [(1, 5, 6, 6),
-                            (10, 5, 6, 6)]
-            print "image_shape", image_shapes
-            for image_shape in image_shapes:
-                filter_shapes = [(1, 5, 4, 4), (2, 5, 4, 4), (5, 5, 4, 4)]
-                print "filter_shapes", filter_shapes
-                for filter_shape in filter_shapes:
-
-                    input = theano.shared(numpy.random.random(image_shape))
-                    filters = theano.shared(numpy.random.random(filter_shape))
-
-                    output = conv.CpuCorrMM(border_mode)(input, filters)
-                    mode = theano.Mode(linker=theano.gof.vm.VM_Linker(
-                        allow_gc=False,
-                        use_cloop=True))
-                    theano_conv = theano.function([], output, mode=mode)
-                    t1 = time.time()
-                    theano_conv.fn(n_calls=n_calls)
-                    t2 = time.time()
-                    print t2 - t1,
-                print
-
     def test_infer_shape(self):
-    # Note: infer_shape is incomplete and thus input and filter shapes
-    # must be provided explicitly
+        # Note: infer_shape is incomplete and thus input and filter shapes
+        # must be provided explicitly
 
         def rand(*shape):
             r = numpy.asarray(numpy.random.rand(*shape), dtype='float64')
             return r * 2 - 1
+        corr = conv.CpuCorrMM
 
         adtens = T.dtensor4()
         bdtens = T.dtensor4()
@@ -242,51 +205,63 @@ class TestCorr2D(utt.InferShapeTester):
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.CpuCorrMM(border_mode='valid')(adtens, bdtens)],
-                [adtens_val, bdtens_val], conv.CpuCorrMM)
+                                [corr(border_mode='valid')(adtens, bdtens)],
+                                [adtens_val, bdtens_val], corr)
 
         self._compile_and_check([adtens, bdtens],
-                [conv.CpuCorrMM(border_mode='full')(adtens, bdtens)], [adtens_val, bdtens_val], conv.CpuCorrMM)
+                                [corr(border_mode='full')(adtens, bdtens)],
+                                [adtens_val, bdtens_val], corr)
 
         aivec_val = [6, 2, 8, 3]
         bivec_val = [4, 2, 5, 3]
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.CpuCorrMM(border_mode='valid')(adtens, bdtens)], [adtens_val, bdtens_val], conv.CpuCorrMM)
+                                [corr(border_mode='valid')(adtens, bdtens)],
+                                [adtens_val, bdtens_val], corr)
 
         self._compile_and_check([adtens, bdtens],
-                [conv.CpuCorrMM(border_mode='full')(adtens, bdtens)], [adtens_val, bdtens_val], conv.CpuCorrMM)
+                                [corr(border_mode='full')(adtens, bdtens)],
+                                [adtens_val, bdtens_val], corr)
 
         aivec_val = [3, 6, 7, 5]
         bivec_val = [5, 6, 3, 2]
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.CpuCorrMM(border_mode='valid')(adtens, bdtens, aivec_val, bivec_val)], [adtens_val, bdtens_val], conv.CpuCorrMM)
+                                [corr(border_mode='valid')(adtens,
+                                                           bdtens,
+                                                           aivec_val,
+                                                           bivec_val)],
+                                [adtens_val, bdtens_val], corr)
 
         self._compile_and_check([adtens, bdtens],
-                [conv.CpuCorrMM(border_mode='full')(adtens, bdtens)], [adtens_val, bdtens_val], conv.CpuCorrMM)
+                                [corr(border_mode='full')(adtens, bdtens)],
+                                [adtens_val, bdtens_val], corr)
 
         aivec_val = [3, 6, 7, 5]
         bivec_val = [5, 6, 2, 3]
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.CpuCorrMM(border_mode='valid')(adtens, bdtens)], [adtens_val, bdtens_val], conv.CpuCorrMM)
+                                [corr(border_mode='valid')(adtens, bdtens)],
+                                [adtens_val, bdtens_val], corr)
 
         self._compile_and_check([adtens, bdtens],
-                [conv.CpuCorrMM(border_mode='full')(adtens, bdtens)], [adtens_val, bdtens_val], conv.CpuCorrMM)
+                                [corr(border_mode='full')(adtens, bdtens)],
+                                [adtens_val, bdtens_val], corr)
 
         aivec_val = [5, 2, 4, 3]
         bivec_val = [6, 2, 4, 3]
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.CpuCorrMM(border_mode='valid')(adtens, bdtens)], [adtens_val, bdtens_val], conv.CpuCorrMM)
+                                [corr(border_mode='valid')(adtens, bdtens)],
+                                [adtens_val, bdtens_val], corr)
 
         self._compile_and_check([adtens, bdtens],
-                [conv.CpuCorrMM(border_mode='full')(adtens, bdtens)], [adtens_val, bdtens_val], conv.CpuCorrMM)
+                                [corr(border_mode='full')(adtens, bdtens)],
+                                [adtens_val, bdtens_val], corr)
 
 
 if __name__ == '__main__':

@@ -200,7 +200,6 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     }
 
     // Define some useful variables
-    // TODO More careful divide
     const int bottom_stride = PyArray_STRIDES(bottom)[0]/%(n_bytes)f;
     const int top_stride = PyArray_STRIDES(top)[0]/%(n_bytes)f;
     // TODO More careful type checking for all arrays
