@@ -27,11 +27,11 @@ import theano
 from six.moves import xrange
 from theano.compat import izip
 from theano.gof import Op, Apply, local_optimizer, EquilibriumDB
+from theano.gof.utils import hash_from_dict
 from theano.sandbox.cuda import GpuElemwise, CudaNdarrayType, GpuOp
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            gpu_contiguous)
 from theano.sandbox.cuda.opt import gpu_seqopt
-from theano.tensor.utils import hash_from_dict
 
 import pycuda
 from pycuda.compiler import SourceModule

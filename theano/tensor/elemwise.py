@@ -13,9 +13,9 @@ from theano.gof import Apply, Op, OpenMPOp
 from theano import scalar
 from theano.scalar import get_scalar_type
 from theano.printing import pprint
-from theano.tensor.utils import hash_from_dict
 from theano.gradient import DisconnectedType
 from theano.gof.null_type import NullType
+from theano.gof.utils import hash_from_dict
 from theano.tensor import elemwise_cgen as cgen
 
 config = theano.config
