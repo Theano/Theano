@@ -617,6 +617,12 @@ class Rebroadcast(gof.Op):
                 "Rebroadcast needs bool for new broadcast pattern. Got ",
                 broad)
 
+    def __hash__(self):
+        # Need special __hash__ as dict aren't hashable.
+        # no ambiguity because each item key is unique
+        items = sorted(iteritems(self.axis))
+        return hash((type(self), tuple(items)))
+
     def __str__(self):
         if len(self.axis) == 0:
             broadcast_pattern = []
