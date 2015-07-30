@@ -66,7 +66,7 @@ same order):
 
 >>> f = file('objects.save', 'wb')
 >>> for obj in [obj1, obj2, obj3]:
->>>     cPickle.dump(obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
+...     cPickle.dump(obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
 >>> f.close()
 
 Then:
@@ -74,7 +74,7 @@ Then:
 >>> f = file('objects.save', 'rb')
 >>> loaded_objects = []
 >>> for i in range(3):
->>>     loaded_objects.append(cPickle.load(f))
+...     loaded_objects.append(cPickle.load(f))
 >>> f.close()
 
 For more details about pickle's usage, see
