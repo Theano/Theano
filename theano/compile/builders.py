@@ -140,6 +140,38 @@ class OpFromGraph(gof.Op):
             # we wont need this copy anymore
             output[0] = variable.copy()
 
+    def c_code(self, node, name, inputs, outputs, **args):
+        order = graph.io_toposort(self.new_inputs, self.new_outputs)
+
+        if not( self._op_use_c_code and
+                all[getattr(node.op, '_op_use_c_code', False) and
+                    hasattr(node.op,'c_code') for node in order]):
+            self._op_use_c_code = False
+            return
+        else:
+            if name == None:
+                name = node.__str__()
+            c_code = ""
+            for inner_node in order:
+                in_names = []
+                for i, var in enumerate(inner_node.inputs):
+                    if var in self.new_inputs:
+                        in_name.append(inputs[i])
+                    else:
+                        in_name.append(name + var.__str__())
+
+                out_names = []
+                for i, var in enumerate(inner_node.outputs):
+                    if is outer_output:
+                        out_name.append(outputs[i])
+                    else:
+                        out_name.append(name + var.__str__())
+
+                c_code += inner_node.c_code(inner_node, inner_node.__str__(),
+                                            in_names, out_names, sub)
+
+        return c_code
+
     def connection_pattern(self, node):
         """
         Return connection pattern of subfgraph defined by inputs and outputs.
