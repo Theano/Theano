@@ -712,6 +712,64 @@ def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
     return memo
 
 
+def map_variables(fn, graphs, additional_inputs=[]):
+    """
+    Construct new graphs based on 'graphs' with some variables replaced
+    according to 'fn'.
+
+    :param fn: function that takes a variable and returns its replacement
+    :param graphs: an iterable of graphs in which to replace variables
+    :param additional_inputs: an iterable of graph inputs not used in any
+         of 'graphs' but possibly used in the graphs returned by 'fn'
+    :return: the new graphs, in the same order as 'graphs'
+
+    Example:
+
+    .. code-block:: python
+
+        import theano.tensor
+
+        tag = "replaceme"
+
+        a = theano.tensor.scalar("a")
+        b = theano.tensor.scalar("b")
+        c = theano.tensor.scalar("c")
+
+        ab = a + b
+        setattr(ab.tag, tag, True)
+
+        u = ab + c
+        v, = map_variables(
+            lambda x: a * b if getattr(x.tag, tag, False) else x,
+            [u])
+
+        # v is now equal to a * b + c
+    """
+    from fg import FunctionGraph
+    from opt import TopoOptimizer, local_optimizer
+
+    graphs = list(graphs)
+    inputs_ = list(set(inputs(graphs) + list(additional_inputs)))
+
+    # work on a copy of the graph, but ensure it is still in terms of
+    # the user's inputs
+    inputs_, graphs = clone(inputs_, graphs, copy_inputs=False)
+    fg = FunctionGraph(inputs_, graphs, clone=False)
+
+    @local_optimizer(None)
+    def local_transform(node):
+        # FIXME: replacing inputs won't work because they are not
+        # outputs of any Apply node
+        return list(map(fn, node.outputs))
+
+    topo_transform = TopoOptimizer(local_transform, 'out_to_in')
+    topo_transform.optimize(fg)
+
+    new_graphs = fg.outputs
+    fg.disown()
+    return new_graphs
+
+
 def general_toposort(r_out, deps, debug_print=False,
                      compute_deps_cache=None, deps_cache=None):
     """WRITEME
