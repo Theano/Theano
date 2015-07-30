@@ -36,6 +36,7 @@ detail about these building blocks refer to :ref:`variable`, :ref:`op`,
 
 .. testcode::
 
+    import theano.tensor as T
     x = T.dmatrix('x')
     y = T.dmatrix('y')
     z = x + y
