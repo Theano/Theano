@@ -8,7 +8,7 @@ import theano
 import theano.tensor as T
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import conv
-from theano.tensor.basic import _allclose, NotScalarConstantError
+from theano.tensor.basic import _allclose
 
 
 class TestCorr2D(utt.InferShapeTester):
@@ -32,25 +32,25 @@ class TestCorr2D(utt.InferShapeTester):
         :param image_shape: The constant shape info passed to corrMM.
         :param filter_shape: The constant shape info passed to corrMM.
         """
-        N_image_shape = [T.get_scalar_constant_value(T.
-            as_tensor_variable(x)) for x in image_shape]
-        N_filter_shape = [T.get_scalar_constant_value(T.
-            as_tensor_variable(x)) for x in filter_shape]
+        N_image_shape = [T.get_scalar_constant_value(T.as_tensor_variable(x))
+                         for x in image_shape]
+        N_filter_shape = [T.get_scalar_constant_value(T.as_tensor_variable(x))
+                          for x in filter_shape]
 
         if input is None:
             input = self.input
         if filters is None:
             filters = self.filters
 
-        ############# THEANO IMPLEMENTATION ############
+        # THEANO IMPLEMENTATION
 
         # we create a symbolic function so that verify_grad can work
         def sym_CpuCorrMM(input, filters):
             # define theano graph and function
             input.name = 'input'
             filters.name = 'filters'
-            rval =  conv.CpuCorrMM(border_mode, subsample)(input, filters)
-            rval.name = 'conv_output'
+            rval = conv.CpuCorrMM(border_mode, subsample)(input, filters)
+            rval.name = 'corr_output'
             return rval
 
         output = sym_CpuCorrMM(input, filters)
@@ -68,18 +68,19 @@ class TestCorr2D(utt.InferShapeTester):
             return
         else:
             if should_raise:
-                raise Exception(
-                "CorrOp should have generated an error")
+                raise Exception("CorrOp should have generated an error")
 
-        ############# REFERENCE IMPLEMENTATION ############
+        # REFERENCE IMPLEMENTATION
         # Testing correlation, not convolution. Reverse filters.
-        filter_data_corr = numpy.copy(filter_data[:,:,::-1,::-1], order='C')
+        filter_data_corr = numpy.array(filter_data[:, :, ::-1, ::-1],
+                                       copy=True,
+                                       order='C')
         s = 1.
         orig_image_data = image_data
         if border_mode is not 'full':
             s = -1.
         out_shape2d = numpy.array(N_image_shape[-2:]) +\
-                      s * numpy.array(N_filter_shape[-2:]) - s
+                                  s * numpy.array(N_filter_shape[-2:]) - s
         out_shape2d = numpy.ceil(out_shape2d / numpy.array(subsample))
         out_shape = (N_image_shape[0], N_filter_shape[0]) + tuple(out_shape2d)
         ref_output = numpy.zeros(out_shape)
@@ -88,10 +89,10 @@ class TestCorr2D(utt.InferShapeTester):
         ref_output.fill(0)
         if border_mode == 'full':
             image_data2 = numpy.zeros((N_image_shape[0], N_image_shape[1],
-                                      N_image_shape[2] + 2 * N_filter_shape[2] - 2,
-                                      N_image_shape[3] + 2 * N_filter_shape[3] - 2))
+                                       N_image_shape[2] + 2 * N_filter_shape[2] - 2,
+                                       N_image_shape[3] + 2 * N_filter_shape[3] - 2))
             image_data2[:, :, N_filter_shape[2] - 1:N_filter_shape[2] - 1 + N_image_shape[2],
-                              N_filter_shape[3] - 1:N_filter_shape[3] - 1 + N_image_shape[3]] = image_data
+                        N_filter_shape[3] - 1:N_filter_shape[3] - 1 + N_image_shape[3]] = image_data
             image_data = image_data2
             N_image_shape = image_data.shape
         for bb in range(N_image_shape[0]):
@@ -105,12 +106,12 @@ class TestCorr2D(utt.InferShapeTester):
                             icol = col * subsample[1]  # image col
                             ref_output[bb, nn, row, col] += (image2d[
                                 irow:irow + N_filter_shape[2],
-                                icol:icol + N_filter_shape[3]] * filter2d[::-1,::-1]
+                                icol:icol + N_filter_shape[3]] * filter2d[::-1, ::-1]
                             ).sum()
 
         self.assertTrue(_allclose(theano_output, ref_output))
 
-        ############# TEST GRADIENT ############
+        # TEST GRADIENT
         if verify_grad:
             utt.verify_grad(sym_CpuCorrMM, [orig_image_data, filter_data])
 
@@ -148,12 +149,12 @@ class TestCorr2D(utt.InferShapeTester):
         Tests correlation where the {image,filter}_shape is a Constant tensor.
         """
         as_t = T.as_tensor_variable
-        self.validate((as_t(3), as_t(2), as_t(7), as_t(5)), (5, 2,
-             2, 3), 'valid')
+        self.validate((as_t(3), as_t(2), as_t(7), as_t(5)),
+                      (5, 2, 2, 3), 'valid')
         self.validate(as_t([3, 2, 7, 5]), (5, 2, 2, 3), 'valid')
         self.validate(as_t((3, 2, 7, 5)), (5, 2, 2, 3), 'valid')
         self.validate((3, 2, 7, 5), (as_t(5), as_t(2), as_t(2),
-             as_t(3)), 'valid')
+                      as_t(3)), 'valid')
         self.validate((3, 2, 7, 5), as_t([5, 2, 2, 3]), 'valid')
         self.validate((3, 2, 7, 5), as_t((5, 2, 2, 3)), 'valid')
         self.validate(as_t([3, 2, 7, 5]), as_t([5, 2, 2, 3]), 'full')
@@ -205,10 +206,7 @@ class TestCorr2D(utt.InferShapeTester):
             print
             print border_mode
             image_shapes = [(1, 5, 6, 6),
-                            (10, 5, 6, 6),
-                            #(10, 10, 16, 16),
-                            #(10, 10, 32, 32)
-            ]
+                            (10, 5, 6, 6)]
             print "image_shape", image_shapes
             for image_shape in image_shapes:
                 filter_shapes = [(1, 5, 4, 4), (2, 5, 4, 4), (5, 5, 4, 4)]
@@ -293,6 +291,6 @@ class TestCorr2D(utt.InferShapeTester):
 
 if __name__ == '__main__':
 
-    t = TestConv2D('setUp')
+    t = TestCorr2D('setUp')
     t.setUp()
     t.test_infer_shape()

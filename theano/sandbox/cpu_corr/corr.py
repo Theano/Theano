@@ -1,16 +1,12 @@
-import copy
 import os
 import logging
 _logger = logging.getLogger(__name__)
 
 import theano
 from theano import Apply
-#from theano import tensor
-from theano.compat.six import StringIO
 from theano import gof
 from theano.tensor import as_tensor_variable
-from theano.tensor.blas_headers import (blas_header_text,
-                                        blas_header_version)
+from theano.tensor.blas_headers import blas_header_text
 from theano.tensor.blas import ldflags
 
 
@@ -90,7 +86,7 @@ class BaseCpuCorrMM(gof.Op):
 
     def c_lib_dirs(self):
         return ldflags(libs=False, libs_dir=True)
-    
+
     def c_header_dirs(self):
         return ldflags(libs=False, include_dir=True)
 
@@ -106,7 +102,7 @@ class BaseCpuCorrMM(gof.Op):
         # these files
         files = ['corr_gemm.c']
         codes = [open(os.path.join(os.path.split(__file__)[0], f)).read()
-                for f in files]
+                 for f in files]
         return reduce(str.__add__, codes)
 
     def c_code_helper(self, bottom, weights, top, direction, sub, height=None, width=None):
@@ -165,7 +161,7 @@ class BaseCpuCorrMM(gof.Op):
             out = bottom
         else:
             raise ValueError("direction must be one of 'forward', "
-                    "'backprop weights', 'backprop inputs'")
+                             "'backprop weights', 'backprop inputs'")
         # When subsampling, we cannot unambiguously infer the height and width
         # of bottom and weights from top, so we require them to be given.
         # Similarly, when pad="half", we cannot infer the weight size.
@@ -193,7 +189,7 @@ class BaseCpuCorrMM(gof.Op):
     int dW = %(dW)s;
     int padH = %(padH)s;
     int padW = %(padW)s;
-    
+
     PyArrayObject * bottom = %(bottom)s;
     PyArrayObject * weights = %(weights)s;
     PyArrayObject * top = %(top)s;
@@ -398,8 +394,8 @@ class CpuCorrMM_gradWeights(BaseCpuCorrMM):
     """
 
     def __init__(self, border_mode="valid",
-            subsample=(1, 1),
-            pad=(0, 0)):
+                 subsample=(1, 1),
+                 pad=(0, 0)):
         super(CpuCorrMM_gradWeights, self).__init__(border_mode, subsample, pad)
 
     def make_node(self, img, topgrad, shape=None):
@@ -432,10 +428,11 @@ class CpuCorrMM_gradWeights(BaseCpuCorrMM):
     def grad(self, inp, grads):
         bottom, top = inp[:2]
         weights, = grads
-        d_bottom = CpuCorrMM_gradInputs(self.border_mode, self.subsample)(
-                weights, top, bottom.shape[-2:])
-        d_top = CpuCorrMM(self.border_mode, self.subsample)(
-                bottom, weights)
+        d_bottom = CpuCorrMM_gradInputs(self.border_mode,
+                                        self.subsample)(weights, top,
+                                                        bottom.shape[-2:])
+        d_top = CpuCorrMM(self.border_mode,
+                          self.subsample)(bottom, weights)
         d_height_width = (theano.gradient.DisconnectedType()(),) * 2 if len(inp) == 4 else ()
         return (d_bottom, d_top) + d_height_width
 
@@ -456,8 +453,8 @@ class CpuCorrMM_gradInputs(BaseCpuCorrMM):
     """
 
     def __init__(self, border_mode="valid",
-            subsample=(1, 1),
-            pad=(0, 0)):
+                 subsample=(1, 1),
+                 pad=(0, 0)):
         super(CpuCorrMM_gradInputs, self).__init__(border_mode, subsample, pad)
 
     def make_node(self, kern, topgrad, shape=None):
@@ -481,16 +478,22 @@ class CpuCorrMM_gradInputs(BaseCpuCorrMM):
         height, width = inp[2:] or (None, None)
         bottom, = out_
         direction = "backprop inputs"
-        return super(CpuCorrMM_gradInputs, self).c_code_helper(bottom, weights, top, direction, sub, height, width)
+        return super(CpuCorrMM_gradInputs,
+                     self).c_code_helper(bottom, weights, top, direction, sub,
+                                         height,
+                                         width)
 
     def grad(self, inp, grads):
         weights, top = inp[:2]
         bottom, = grads
-        d_weights = CpuCorrMM_gradWeights(self.border_mode, self.subsample)(
-                bottom, top, weights.shape[-2:])
-        d_top = CpuCorrMM(self.border_mode, self.subsample)(
-                bottom, weights)
-        d_height_width = (theano.gradient.DisconnectedType()(),) * 2 if len(inp) == 4 else ()
+        d_weights = CpuCorrMM_gradWeights(self.border_mode,
+                                          self.subsample)(bottom,
+                                                          top,
+                                                          weights.shape[-2:])
+        d_top = CpuCorrMM(self.border_mode,
+                          self.subsample)(bottom, weights)
+        d_height_width = (theano.gradient.DisconnectedType()(),) *\
+                         2 if len(inp) == 4 else ()
         return (d_weights, d_top) + d_height_width
 
     def connection_pattern(self, node):
@@ -498,4 +501,3 @@ class CpuCorrMM_gradInputs(BaseCpuCorrMM):
             return [[1], [1]]
         else:
             return [[1], [1], [0], [0]]  # no connection to height, width
-
