@@ -2696,6 +2696,7 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(expected_output, scan_output)
         utt.assert_allclose(expected_output, jacobian_outputs)
 
+    @theano.configparser.change_flags(on_opt_error='raise')
     def test_pushout_seqs2(self):
         # This test for a bug with PushOutSeqScan that was reported on the
         # theano-user mailing list where the optimization raised an exception
@@ -2710,12 +2711,7 @@ class T_Scan(unittest.TestCase):
 
         # Compile a theano function where any optimization error will lead to
         # an exception being raised
-        on_opt_error = theano.config.on_opt_error
-        theano.config.on_opt_error = 'raise'
-        try:
-            theano.function([x], outputs, updates=updates)
-        finally:
-            theano.config.on_opt_error = on_opt_error
+        theano.function([x], outputs, updates=updates)
 
     def test_sequence_dict(self):
         # Test that we can specify sequences as a dictionary with
