@@ -52,7 +52,7 @@ class BaseCpuCorrMM(gof.Op):
     def pad(self):
         if self.border_mode != 'valid':
             return self.border_mode
-        return (0, 1)
+        return (0, 0)
 
     def __str__(self):
         return '%s{%s, %s}' % (
@@ -100,10 +100,23 @@ class BaseCpuCorrMM(gof.Op):
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
         # these files
+        sub = {}
+        dtype = str(node.__dict__['inputs'][0].dtype)
+        assert dtype in ('float32', 'float64')
+        if dtype == 'float32':
+            sub['gemm'] = 'sgemm_'
+            sub['float_type'] = 'npy_float'
+            sub['n_bytes'] = 4
+            sub['c_float_type'] = 'float'
+        else:
+            sub['gemm'] = 'dgemm_'
+            sub['float_type'] = 'npy_double'
+            sub['n_bytes'] = 8
+            sub['c_float_type'] = 'double'
         files = ['corr_gemm.c']
         codes = [open(os.path.join(os.path.split(__file__)[0], f)).read()
                  for f in files]
-        return reduce(str.__add__, codes)
+        return reduce(str.__add__, codes) % sub
 
     def c_code_helper(self, bottom, weights, top, direction, sub, height=None, width=None):
         """
