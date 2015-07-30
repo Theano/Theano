@@ -4575,7 +4575,6 @@ class _nd_grid(object):
     >>> b[1].eval()
     array([[0, 1, 2, 3]], dtype=int8)
     """
-    __props__ = ("sparse",)
 
     def __init__(self, sparse=False):
         self.sparse = sparse
