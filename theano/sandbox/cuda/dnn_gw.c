@@ -123,7 +123,7 @@ APPLY_SPECIFIC(conv_gw)(CudaNdarray *input, CudaNdarray *output,
                                                            APPLY_SPECIFIC(output),
                                                            desc,
                                                            APPLY_SPECIFIC(kerns),
-                                                           CUDNN_CONVOLUTION_BWD_SPECIFY_WORKSPACE_LIMIT,
+                                                           CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
                                                            free,
                                                            &chosen_algo);
 
