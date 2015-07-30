@@ -1666,18 +1666,6 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
  %(fail)s
 }
 
-// If doing max-pooling, init output memory with 0s because
-// cudnnPoolingBackward does not support uninitialized memory for max-pooling.
-if (pooling_mode == CUDNN_POOLING_MAX){
-    if (cudaSuccess != cudaMemset(CudaNdarray_DEV_DATA(%(output_grad)s), 0,
-                                CudaNdarray_SIZE(%(output_grad)s) *
-                                sizeof(float))){
-    PyErr_SetString(PyExc_RuntimeError,
-                    "GpuDnnPoolGrad: Error initializing output memory.");
-    %(fail)s
-    }
-}
-
 if (c_set_tensorNd(%(output_grad)s, %(output_grad_desc)s) != 0)
   %(fail)s
 
