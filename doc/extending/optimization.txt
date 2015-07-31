@@ -113,7 +113,6 @@ We will implement it in three ways: using a global optimization, a
 local optimization with a Navigator and then using the PatternSub
 facility.
 
-
 Global optimization
 -------------------
 
@@ -125,6 +124,8 @@ simplification described above:
 
 .. testcode::
 
+   import theano
+   from theano import gof
    from theano.gof import toolbox
 
    class Simplify(gof.Optimizer):
@@ -132,7 +133,7 @@ simplification described above:
            fgraph.attach_feature(toolbox.ReplaceValidate())
        def apply(self, fgraph):
            for node in fgraph.toposort():
-               if node.op == div:
+               if node.op == true_div:
                    x, y = node.inputs
                    z = node.outputs[0]
                    if x.owner and x.owner.op == mul:
@@ -186,32 +187,33 @@ for the simplification (``x``, ``y``, ``z``, ``a``, ``b``, etc.).
 
 Test time:
 
->>> x = double('x')
->>> y = double('y')
->>> z = double('z')
->>> a = add(z, mul(div(mul(y, x), y), div(z, x)))
+>>> from theano.scalar import float64, add, mul, true_div
+>>> x = float64('x')
+>>> y = float64('y')
+>>> z = float64('z')
+>>> a = add(z, mul(true_div(mul(y, x), y), true_div(z, x)))
 >>> e = gof.FunctionGraph([x, y, z], [a])
 >>> e
-[add(z, mul(div(mul(y, x), y), div(z, x)))]
+[add(z, mul(true_div(mul(y, x), y), true_div(z, x)))]
 >>> simplify.optimize(e)
 >>> e
-[add(z, mul(x, div(z, x)))]
+[add(z, mul(x, true_div(z, x)))]
 
 Cool! It seems to work. You can check what happens if you put many
 instances of :math:`\frac{xy}{y}` in the graph. Note that it sometimes
 won't work for reasons that have nothing to do with the quality of the
 optimization you wrote. For example, consider the following:
 
->>> x = double('x')
->>> y = double('y')
->>> z = double('z')
->>> a = div(mul(add(y, z), x), add(y, z))
+>>> x = float64('x')
+>>> y = float64('y')
+>>> z = float64('z')
+>>> a = true_div(mul(add(y, z), x), add(y, z))
 >>> e = gof.FunctionGraph([x, y, z], [a])
 >>> e
-[div(mul(add(y, z), x), add(y, z))]
+[true_div(mul(add(y, z), x), add(y, z))]
 >>> simplify.optimize(e)
 >>> e
-[div(mul(add(y, z), x), add(y, z))]
+[true_div(mul(add(y, z), x), add(y, z))]
 
 Nothing happened here. The reason is: ``add(y, z) != add(y,
 z)``. That is the case for efficiency reasons. To fix this problem we
@@ -221,8 +223,9 @@ computation, using the ``merge_optimizer`` defined in
 
 >>> from theano.gof.opt import merge_optimizer
 >>> merge_optimizer.optimize(e)
+(0, 0.0001430511474609375, None, None, {}, 1, 0)
 >>> e
-[div(mul(*1 -> add(y, z), x), *1)]
+[true_div(mul(*1 -> add(y, z), x), *1)]
 >>> simplify.optimize(e)
 >>> e
 [x]
@@ -259,7 +262,7 @@ The local version of the above code would be the following:
 
    class LocalSimplify(gof.LocalOptimizer):
        def transform(self, node):
-           if node.op == div:
+           if node.op == true_div:
                x, y = node.inputs
                if x.owner and x.owner.op == mul:
                    a, b = x.owner.inputs
@@ -295,18 +298,18 @@ subset of them) and applies one or several local optimizers on them.
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_2
 
->>> x = double('x')
->>> y = double('y')
->>> z = double('z')
->>> a = add(z, mul(div(mul(y, x), y), div(z, x)))
+>>> x = float64('x')
+>>> y = float64('y')
+>>> z = float64('z')
+>>> a = add(z, mul(true_div(mul(y, x), y), true_div(z, x)))
 >>> e = gof.FunctionGraph([x, y, z], [a])
 >>> e
-[add(z, mul(div(mul(y, x), y), div(z, x)))]
+[add(z, mul(true_div(mul(y, x), y), true_div(z, x)))]
 >>> simplify = gof.TopoOptimizer(local_simplify)
 >>> simplify.optimize(e)
+(<theano.gof.opt.TopoOptimizer object at 0x7f3219787f90>, 1, 5, 3, 0.00017309188842773438, 0.00020599365234375, 6.4849853515625e-05)
 >>> e
-[add(z, mul(x, div(z, x)))]
-
+[add(z, mul(x, true_div(z, x)))]
 
 OpSub, OpRemove, PatternSub
 +++++++++++++++++++++++++++
@@ -346,9 +349,9 @@ Theano defines some shortcuts to make LocalOptimizers:
    # The "simplify" operation we've been defining in the past few
    # sections. Note that we need two patterns to account for the
    # permutations of the arguments to mul.
-   local_simplify_1 = PatternSub((div, (mul, 'x', 'y'), 'y'),
+   local_simplify_1 = PatternSub((true_div, (mul, 'x', 'y'), 'y'),
                                  'x')
-   local_simplify_2 = PatternSub((div, (mul, 'x', 'y'), 'x'),
+   local_simplify_2 = PatternSub((true_div, (mul, 'x', 'y'), 'x'),
                                  'y')
 
 .. note::
