@@ -5036,17 +5036,26 @@ class T_local_sum_prod_dimshuffle(unittest.TestCase):
         c_val = rng.randn(2, 2, 2).astype(config.floatX)
         d_val = numpy.asarray(rng.randn(), config.floatX)
 
+        mode_with_opt = copy.copy(theano.compile.mode.get_default_mode())
+        mode_without_opt = copy.copy(theano.compile.mode.get_default_mode())
+        mode_with_opt._optimizer = mode_with_opt._optimizer.including(
+            'local_sum_prod_div_dimshuffle')
+        mode_without_opt._optimizer = mode_without_opt._optimizer.excluding(
+            'local_sum_prod_div_dimshuffle')
+
         for i, s in enumerate(prods):
             f = theano.function([a, b, c, d], s,
-                                on_unused_input='ignore')
+                                on_unused_input='ignore',
+                                mode=mode_without_opt)
             g = theano.function([a, b, c, d], s,
                                 on_unused_input='ignore',
-                                mode=Mode(optimizer=None))
+                                mode=mode_with_opt)
             # g = f.maker.fgraph.toposort()
             # assert isinstance(g[-1].op.scalar_op,
             #                   theano.scalar.basic.TrueDiv)
-            assert ((f(a_val, b_val, c_val, d_val) -
-                     g(a_val, b_val, c_val, d_val)) < 1e-10).all()
+
+            utt.assert_allclose(f(a_val, b_val, c_val, d_val),
+                                g(a_val, b_val, c_val, d_val))
 
     # TODO:
     # test_local_sum_divprod_dimshuffle ((a * b) / (c * d))
