@@ -1,4 +1,7 @@
 build:
+  dependencies:
+    before:
+      - sudo apt-get install -y python-dev
   tests:
     override:
       - flake8 --filename=* bin
