@@ -140,9 +140,9 @@ variables to achieve this. Then you can call it like this: ``f.fn()`` or
 ``f.fn(n_calls=N)`` to speed it up. In the last case, only the last
 function output (out of N calls) is returned.
 
-You can also use the ``c`` linker that will put all node in the same c
-compilation unit. This remove some overhead between node in the graph,
-but request that all node have c code:
+You can also use the ``C`` linker that will put all nodes in the same C
+compilation unit. This removes some overhead between node in the graph,
+but requires that all nodes in the graph have a C implementation:
 
 .. code-block:: python
 
