@@ -43,7 +43,9 @@
    Example:
 
    .. testcode::
-
+       
+       import theano.tensor as T
+       
        x,y,b = T.dvectors('x','y','b')
        W = T.dmatrix('W')
        y = T.nnet.sigmoid(T.dot(W,x) + b)
