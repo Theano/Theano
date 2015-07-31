@@ -63,54 +63,6 @@ theano.configparser.AddConfigVar('on_shape_error',
 # Utilities
 
 
-def copy_stack_trace(from_var, to_var):
-    """
-    Copies the stack trace from one or more tensor variables to
-    one or more tensor variables.
-
-    :param from_var: tensor variable or list of tensor variables to
-                     copy stack traces from.
-    :param to_var: tensor variable or list of tensor variables to
-                     copy stack traces to.
-
-    .. note:: The stacktrace is assumed to be of the form of a list of lists
-    of tuples. Each tuple contains the filename, line number, function name
-    and so on. Each list of tuples contains the truples belonging to a
-    particular variable.
-    """
-
-    # Store stack traces from from_var
-    tr = []
-    if type(from_var) is list:
-        # If from_var is a list, store concatenated stack traces
-        if len(from_var) > 0:
-            for v in from_var:
-                if hasattr(v.tag, 'trace') and len(v.tag.trace) > 0:
-                    tr = tr + v.tag.trace
-    else:
-        # If from_var is not a list, it must be a single tensor
-        # variable, so just store that particular stack trace
-        if hasattr(from_var.tag, 'trace'):
-            tr = from_var.tag.trace
-
-    # Copy over stack traces to to_var
-    if type(to_var) is list:
-        # Copy over stack traces from from_var to each variable in
-        # to_var, including the stack_trace of the to_var before
-        for v in to_var:
-            if hasattr(v.tag, 'trace'):
-                v.tag.trace = v.tag.trace + tr
-            else:
-                v.tag.trace = tr
-    else:
-        # Copy over stack traces from from_var to each variable to
-        # to_var, including the stack_trace of the to_var before
-        if hasattr(to_var.tag, 'trace'):
-            to_var.tag.trace = to_var.tag.trace + tr
-        else:
-            to_var.tag.trace = tr
-
-
 def out2in(*local_opts, **kwargs):
     """WRITEME """
     name = (kwargs and kwargs.pop('name', None))
@@ -528,7 +480,6 @@ def local_dimshuffle_lift(node):
                                    op.new_order,
                                    op.inplace)(inp)
             new_inputs.append(apply_local_dimshuffle_lift(new_inp))
-        copy_stack_trace(node.outputs[0], new_inputs)
         ret = inode.op(*new_inputs, **dict(return_list=True))
         return ret
     if inode and isinstance(inode.op, DimShuffle):
@@ -536,7 +487,6 @@ def local_dimshuffle_lift(node):
                      op.new_order]
         inplace = op.inplace and inode.op.inplace
         iinput = inode.inputs[0]
-
         # remove useless dimshuffle
         if (new_order == list(range(len(new_order))) and
                 len(new_order) == iinput.type.ndim):
@@ -544,9 +494,7 @@ def local_dimshuffle_lift(node):
         else:
             ret = op.__class__(iinput.type.broadcastable, new_order,
                                inplace)(iinput)
-            ret = apply_local_dimshuffle_lift(ret)
-            copy_stack_trace(node.outputs[0], ret)
-            return [ret]
+            return [apply_local_dimshuffle_lift(ret)]
 
 
 @register_canonicalize
@@ -571,12 +519,7 @@ def local_lift_transpose_through_dot(node):
     x, y = node.inputs[0].owner.inputs
 
     if x.ndim == y.ndim == 2:
-        # Output is dot product of transposed inputs in reverse order
-        ret = [T.dot(y.T, x.T)]
-
-        # Copy over stack trace to output from result of dot-product
-        copy_stack_trace(node.inputs[0], ret)
-        return ret
+        return [T.dot(y.T, x.T)]
 
 
 @gof.local_optimizer([DimShuffle])
@@ -585,9 +528,7 @@ def dimshuffle_as_view(node):
     if not isinstance(op, DimShuffle) or op.inplace:
         return False
     new_op = op.__class__(op.input_broadcastable, op.new_order, inplace=True)
-    v = new_op(*node.inputs)
-    copy_stack_trace(node.outputs[0], v)
-    return [v]
+    return [new_op(*node.inputs)]
 
 # Step 60 is the inplace optimization stage.
 compile.optdb.register('dimshuffle_as_view',
@@ -621,8 +562,6 @@ def local_tensor_scalar_tensor(node):
         s = node.inputs[0]
         if s.owner and isinstance(s.owner.op, T.ScalarFromTensor):
             t = s.owner.inputs[0]
-
-            # We don't need to copy over any stack traces here
             return [t]
 
 
@@ -635,8 +574,6 @@ def local_scalar_tensor_scalar(node):
         t = node.inputs[0]
         if t.owner and isinstance(t.owner.op, T.TensorFromScalar):
             s = t.owner.inputs[0]
-
-            # We don't need to copy over any stack traces here
             return [s]
 
 #####################################
@@ -1233,7 +1170,7 @@ class ShapeFeature(object):
                     continue
 
                 if shpnode.outputs[0] in theano.gof.graph.ancestors([repl]):
-                    raise InconsistencyError(
+                    raise AssertionError(
                         "This substitution would insert a cycle in the graph:"
                         "node: %s, i: %i, r: %s, new_r: %s"
                         % (node, i, r, new_r))
@@ -1347,9 +1284,7 @@ def local_fill_to_alloc(node):
             rval = [T.cast(v, node.outputs[0].type.dtype)]
         elif r.type.broadcastable == node.outputs[0].type.broadcastable:
             # we are broadcasting v somehow, but not r
-            o = broadcast_like(v, r, node.fgraph, dtype=v.dtype)
-            copy_stack_trace(node.outputs[0], o)
-            rval = [o]
+            rval = [broadcast_like(v, r, node.fgraph, dtype=v.dtype)]
         else:
             # we are broadcasting both v and r,
             # the output shape must be computed
@@ -1382,7 +1317,6 @@ def local_useless_fill(node):
         r, v = node.inputs
         if v.type == node.outputs[0].type:
             # this is a useless fill, erase it.
-            # also, we don't need to copy over any stack traces here
             return [v]
 compile.optdb['canonicalize'].register('local_useless_fill',
                                        in2out(local_useless_fill),
@@ -1401,7 +1335,6 @@ def local_useless_alloc(node):
     """
     if node.op == T.alloc:
         if node.inputs[0].type == node.outputs[0].type:
-            # We don't need to copy over any stack traces here
             return [node.inputs[0]]
 
 
@@ -1414,11 +1347,7 @@ def local_shape_to_shape_i(node):
         if not hasattr(node.fgraph, 'shape_feature'):
             return
         shape_feature = node.fgraph.shape_feature
-        ret = shape_feature.make_vector_shape(node.inputs[0])
-
-        # We need to copy over stack trace from input to output
-        copy_stack_trace(node.outputs[0], ret)
-        return [ret]
+        return [shape_feature.make_vector_shape(node.inputs[0])]
 
 
 # TODO: Not sure what type of node we are expecting here
@@ -1476,7 +1405,6 @@ def local_subtensor_make_vector(node):
         return
 
     if isinstance(idx, (int, numpy.integer)):
-        # We don't need to copy over any stack traces here
         return [x.owner.inputs[idx]]
     elif isinstance(idx, Variable):
         if idx.ndim == 0:
@@ -1486,17 +1414,12 @@ def local_subtensor_make_vector(node):
                 if isinstance(v, numpy.integer):
                     # Python 2.4 wants to index only with Python integers
                     v = int(v)
-                # We don't need to copy over any stack traces here
                 return [x.owner.inputs[v]]
             except NotScalarConstantError:
                 pass
         elif idx.ndim == 1 and isinstance(idx, T.Constant):
             values = list(map(int, list(idx.value)))
-            ret = [make_vector(*[x.owner.inputs[v] for v in values])]
-
-            # Copy over stack trace from previous output to new output
-            copy_stack_trace(node.outputs[0], ret)
-            return ret
+            return [make_vector(*[x.owner.inputs[v] for v in values])]
         else:
             raise TypeError('case not expected')
     elif isinstance(idx, slice):
@@ -1532,33 +1455,22 @@ def local_useless_elemwise(node):
         if node.op.scalar_op == theano.scalar.eq and len(node.inputs) == 2:
             if node.inputs[0] == node.inputs[1]:
                 # it is the same var in the graph. That will always be true
-                ret = [T.fill(node.inputs[0],
-                              T.constant(1.0,
-                                         dtype=node.outputs[0].type.dtype))]
-
-                # Copy stack trace from input to constant output
-                copy_stack_trace(node.outputs[0], ret)
-                return ret
+                return [T.fill(node.inputs[0],
+                               T.constant(1.0,
+                                          dtype=node.outputs[0].type.dtype))]
         elif node.op.scalar_op == theano.scalar.neq and len(node.inputs) == 2:
             if node.inputs[0] == node.inputs[1]:
                 # it is the same var in the graph. That will always be false
-                ret = [T.fill(node.inputs[0],
-                              T.constant(0.0,
-                                         dtype=node.outputs[0].type.dtype))]
-
-                # Copy stack trace from input to constant output
-                copy_stack_trace(node.outputs[0], ret)
-                return ret
-
+                return [T.fill(node.inputs[0],
+                               T.constant(0.0,
+                                          dtype=node.outputs[0].type.dtype))]
         elif node.op.scalar_op == theano.scalar.mul and len(node.inputs) == 1:
-            # No need to copy over any stack trace
             return [node.inputs[0]]
         elif node.op.scalar_op == theano.scalar.add and len(node.inputs) == 1:
-            # No need to copy over any stack trace
             return [node.inputs[0]]
+
         elif (node.op.scalar_op == theano.scalar.identity and
               len(node.inputs) == 1):
-            # No need to copy over any stack trace
             return [node.inputs[0]]
 
 
@@ -1573,14 +1485,7 @@ def local_alloc_unary(node):
             x = a.owner.inputs[0]
             shp = a.owner.inputs[1:]
             v = node.op(x)
-            copy_stack_trace(node.outputs[0], v)
-            ret = T.alloc(T.cast(v, node.outputs[0].dtype), *shp)
-
-            # Is it really necessary to copy over stack trace here?
-            # after all, T.alloc and T.cast should preserve the stack trace from x,
-            # but perhaps the trace is lost in "v = node.op(x)"?
-            copy_stack_trace(node.outputs[0], ret)
-            return [ret]
+            return [T.alloc(T.cast(v, node.outputs[0].dtype), *shp)]
 
 
 @register_canonicalize
@@ -1603,7 +1508,6 @@ def local_cast_cast(node):
             not isinstance(x.owner.op.scalar_op, scalar.Cast)):
         return
     if node.op.scalar_op.o_type == x.owner.op.scalar_op.o_type:
-        # We don't need to copy over any stack traces here
         return [x]
 
 
@@ -1637,8 +1541,6 @@ def local_func_inv(node):
 
     for inv_pair in inv_pairs:
         if is_inverse_pair(node_op, prev_op, inv_pair):
-            # We don't need to copy stack trace, because the optimization
-            # is trivial and maintains the earlier stack trace
             return x.owner.inputs
 
     return
@@ -1761,14 +1663,9 @@ def local_remove_useless_assert(node):
                 cond.append(c)
 
         if len(cond) == 0:
-            # We don't need to copy over any stack traces here
             return [node.inputs[0]]
         if len(cond) != len(node.inputs) - 1:
-            ret = assert_(node.inputs[0], *cond)
-
-            # We copy over stack trace from the output of the original assert
-            copy_stack_trace(node.outputs[0], ret)
-            return [ret]
+            return [assert_(node.inputs[0], *cond)]
 
 
 @gof.local_optimizer([Assert])
@@ -1782,7 +1679,6 @@ def local_remove_all_assert(node):
     if not isinstance(node.op, Assert):
         return
 
-    # We don't need to copy over any stack traces here
     return [node.inputs[0]]
 # Disabled by default
 compile.optdb['canonicalize'].register('local_remove_all_assert',
@@ -1917,20 +1813,12 @@ def local_elemwise_alloc_op(ElemwiseOP, AllocOP, DimShuffleOP):
 
                 # We need to keep the dimshuffle. It could swap axes or
                 # add dimensions anywhere.
-                r_i = i.owner.op(alloc_input)
-
-                # Copy stack trace from i to new_i
-                copy_stack_trace(i, r_i)
-                new_i.append(r_i)
+                new_i.append(i.owner.op(alloc_input))
             else:
                 new_i.append(i)
         new_i[assert_op_idx] = assert_op
 
-        ret = node.op(*new_i, return_list=True)
-
-        # Copy over stack trace from previous outputs to new outputs.
-        copy_stack_trace(node.outputs, ret)
-        return ret
+        return node.op(*new_i, return_list=True)
 
     return local_elemwise_alloc
 
@@ -1963,7 +1851,7 @@ theano.configparser.AddConfigVar(
     theano.configparser.BoolParam(True),
     in_c_key=False)
 
-#######################
+############################
 # Constant Canonicalization
 ############################
 
@@ -3980,8 +3868,8 @@ def local_sum_prod_mul_by_scalar(node):
 
        or
 
-       prod(scalar * smth) -> scalar ** size(smth) * prod(smth)
-       prod(-smth) -> -1 ** size(smth) * prod(smth)
+       prod(scalar * smth) -> scalar * prod(smth)
+       prod(-smth) -> -prod(smth)
     """
     # TODO: if the the thing inside the Sum is a division,
     # we should get at the numerator....
@@ -3992,39 +3880,24 @@ def local_sum_prod_mul_by_scalar(node):
             scalars = [t.dimshuffle() for t in terms if
                        numpy.all(t.type.broadcastable)]
             non_scalars = [t for t in terms if not numpy.all(t.broadcastable)]
-
-            if len(scalars) == 0:
-                # Nothing to optimize here
-                return
-
-            # Perform the op only on the non-scalar inputs, if applicable
-            if len(non_scalars) == 0:
-                new_op_input_nb_elements = 1
-                new_op_output = 1
-            elif len(non_scalars) == 1:
-                new_op_input_nb_elements = T.prod(non_scalars[0].shape)
-                new_op_output = node.op(non_scalars[0])
-            else:
-                new_op_input = T.mul(*non_scalars)
-                new_op_input_nb_elements = T.prod(new_op_input.shape)
-                new_op_output = node.op(new_op_input)
-
-            # If node.op is a T.elemwise.Prod, then the scalars need to be
-            # raised to the power of the number of elements in the input
-            # to the Prod
-            if (isinstance(node.op, T.elemwise.Prod) and
-                    new_op_input_nb_elements != 1):
-
-                scalars = [s ** new_op_input_nb_elements for s in scalars]
-
-            # Scale the output of the op by the scalars and return as
-            # replacement for the original output
-            mul_inputs = scalars
-            if new_op_input_nb_elements != 1:
-                mul_inputs.append(new_op_output)
-
-            return [T.mul(*mul_inputs)]
-
+            if scalars:
+                if len(scalars) > 1:
+                    if len(non_scalars) > 1:
+                        return [T.mul(T.mul(*scalars),
+                                      node.op(T.mul(*non_scalars)))]
+                    elif len(non_scalars) == 1:
+                        return [T.mul(T.mul(*scalars),
+                                      node.op(non_scalars[0]))]
+                    else:
+                        return [T.mul(*scalars)]
+                else:
+                    if len(non_scalars) > 1:
+                        return [T.mul(scalars[0],
+                                      node.op(T.mul(*non_scalars)))]
+                    elif len(non_scalars) == 1:
+                        return [T.mul(scalars[0], node.op(non_scalars[0]))]
+                    else:
+                        return [scalars[0]]
         if isinstance(node.op, T.Sum) and node_inps.owner and node_inps.owner.op == T.neg:
             return [T.neg(node.op(node_inps.owner.inputs[0]))]
 
@@ -4044,36 +3917,38 @@ def local_elemwise_sub_zeros(node):
 
 @register_canonicalize
 @register_specialize
-@gof.local_optimizer([T.Sum])
-def local_sum_div_dimshuffle(node):
+@gof.local_optimizer([T.Sum, T.elemwise.Prod])
+def local_sum_prod_div_dimshuffle(node):
     '''sum(a / dimshuffle{...}(b), axis=l) -> sum(a, axis={...}) / b,
-    if dimension l of the DimShuffle is 'x'.'''
-    # TODO: extend it to product, and quotient of products
+       if dimension l of the DimShuffle is 'x'
+
+       or
+
+       prod(a / dimshuffle{...}(b), axis=l) -> prod(a, axis={...}) / b,
+      if dimension l of the DimShuffle is 'x'
+    '''
 
     # It does not make much sense now to extend it to the case where the
     # dimshuffle is in the numerator, since elemwise inversion of the
-    # denominator would still be needed before the summation.
+    # denominator would still be needed before the summation or production.
 
-    if isinstance(node.op, T.Sum):
+    if isinstance(node.op, (T.Sum, T.elemwise.Prod)):
         axis = node.op.axis
         if axis is None:
             axis = list(range(node.inputs[0].ndim))
-        # print 'axis =', axis
-        thing_summed = node.inputs[0]
-        if thing_summed.owner and thing_summed.owner.op == T.true_div:
-            numerator, denominator = thing_summed.owner.inputs
+        node_input = node.inputs[0]
+        if node_input.owner and node_input.owner.op == T.true_div:
+            numerator, denominator = node_input.owner.inputs
 
             # Old, bugged logic, reproduced here only to warn users
-            if config.warn.sum_div_dimshuffle_bug:
-                if numerator.owner and isinstance(numerator.owner.op,
-                                                  T.DimShuffle):
-                    new_order = numerator.owner.op.new_order
-                    compatible_dims = True
-                    for ax in axis:
-                        if len(new_order) <= ax or new_order[ax] != 'x':
-                            compatible_dims = False
-                            break
-                    if compatible_dims:
+            if (config.warn.sum_div_dimshuffle_bug and
+                    isinstance(node.op, T.Sum) and
+                    numerator.owner and
+                    isinstance(numerator.owner.op, T.DimShuffle)):
+                # Check compatibility
+                new_order = numerator.owner.op.new_order
+                for ax in axis:
+                    if ax < len(new_order) and new_order[ax] == 'x':
                         _logger.warn('WARNING: Your current code is fine, but'
                                      ' Theano versions between '
                                      'rev. 3bd9b789f5e8 (2010-06-16) and'
@@ -4082,37 +3957,49 @@ def local_sum_div_dimshuffle(node):
                                      'To disable this warning, set the Theano'
                                      ' flag warn.sum_div_dimshuffle_bug to'
                                      ' False.')
+                        break
 
             if denominator.owner and isinstance(denominator.owner.op,
                                                 T.DimShuffle):
-                thing_dimshuffled = denominator.owner.inputs[0]
-                new_order = denominator.owner.op.new_order
-                # print 'new_order =', new_order
-                # check compatibility
-                compatible_dims = True
+                dimshuffle_input = denominator.owner.inputs[0]
+                dimshuffle_order = denominator.owner.op.new_order
+
+                compatible_dims = []
+                incompatible_dims = []
                 for ax in axis:
-                    # print 'ax =', ax
-                    # print 'len(new_order) =', len(new_order)
-                    # print 'new_order[ax] =', new_order[ax]
-                    if len(new_order) <= ax or new_order[ax] != 'x':
-                        compatible_dims = False
-                        break
-
-                if compatible_dims:
-                    # print 'getting denom out'
-                    # Keep needed dimensions for new dimshuffle
-                    new_new_order = list(ax for i, ax in enumerate(new_order)
-                                         if i not in axis or ax != 'x')
-                    # print 'new_new_order =', new_new_order
-                    # Remove useless rebroadcast axes
-                    while len(new_new_order) > 0 and new_new_order[0] == 'x':
-                        del new_new_order[0]
-                    # print 'new_new_order =', new_new_order
-
-                    if all(i == e for i, e in enumerate(new_new_order)):
-                        new_denom = thing_dimshuffled
+                    if (ax < len(dimshuffle_order) and
+                            dimshuffle_order[ax] == 'x'):
+                        compatible_dims.append(ax)
                     else:
-                        if config.warn.sum_div_dimshuffle_bug:
+                        incompatible_dims.append(ax)
+                reordered_incompatible_dims = []
+                for ic_ax in incompatible_dims:
+                    reordered_incompatible_dims.append(
+                        ic_ax - sum(
+                            [1 for c_ax in compatible_dims if c_ax < ic_ax]))
+
+                if len(compatible_dims) > 0:
+                    optimized_dimshuffle_order = list(
+                        ax for i, ax in enumerate(dimshuffle_order)
+                        if (i not in axis) or (ax != 'x'))
+
+                    # Removing leading 'x' (since it will be done automatically)
+                    while (len(optimized_dimshuffle_order) > 0 and
+                           optimized_dimshuffle_order[0] == 'x'):
+                        del optimized_dimshuffle_order[0]
+
+                    # if optimized_dimshuffle_order is sorted with
+                    # not 'x', then dimshuffle is useless.
+                    if all(i == e for i, e in
+                           enumerate(optimized_dimshuffle_order)):
+                        optimized_dimshuffle = dimshuffle_input
+                    else:
+                        optimized_dimshuffle = T.DimShuffle(
+                            dimshuffle_input.type.broadcastable,
+                            optimized_dimshuffle_order)(dimshuffle_input)
+
+                        if (config.warn.sum_div_dimshuffle_bug and
+                                isinstance(node.op, T.Sum)):
                             _logger.warn('WARNING: Your current code is fine,'
                                          ' but Theano versions between '
                                          'rev. 3bd9b789f5e8 (2010-06-16) and'
@@ -4123,12 +4010,27 @@ def local_sum_div_dimshuffle(node):
                                          'warn.sum_div_dimshuffle_bug'
                                          ' to False.')
 
-                        new_denom = T.DimShuffle(
-                            thing_dimshuffled.type.broadcastable,
-                            new_new_order)(thing_dimshuffled)
-                    return [T.true_div(node.op(numerator), new_denom)]
-                # else:
-                #    print 'incompatible dims:', axis, new_order
+                    if isinstance(node.op, T.Sum):
+                        op_on_compatible_dims = T.sum(
+                            numerator, axis=compatible_dims)
+                        div_op = T.true_div(
+                            op_on_compatible_dims,
+                            optimized_dimshuffle)
+                        op_on_incompatible_dims = T.sum(
+                            div_op,
+                            axis=reordered_incompatible_dims)
+                    elif isinstance(node.op, T.elemwise.Prod):
+                        op_on_compatible_dims = T.prod(
+                            numerator, axis=compatible_dims)
+                        div_op = T.true_div(
+                            op_on_compatible_dims,
+                            (optimized_dimshuffle **
+                                T.prod([numerator.shape[ax]
+                                        for ax in compatible_dims])))
+                        op_on_incompatible_dims = T.prod(
+                            div_op,
+                            axis=reordered_incompatible_dims)
+                    return [op_on_incompatible_dims]
 
 
 @register_canonicalize
@@ -5080,11 +4982,7 @@ def constant_folding(node):
             constant = output.type.Constant
         except AttributeError:
             constant = Constant
-
-        v = constant(output.type, storage_map[output][0])
-        copy_stack_trace(output, v)
-
-        rval.append(v)
+        rval.append(constant(output.type, storage_map[output][0]))
     return rval
 
 
@@ -5964,10 +5862,7 @@ def local_add_mul_fusion(node):
                 isinstance(inp.owner.op.scalar_op, s_op)):
             l = list(node.inputs)
             l.remove(inp)
-            output_node = node.op(*(l + inp.owner.inputs))
-
-            copy_stack_trace(node.outputs[0], output_node)
-            return [output_node]
+            return [node.op(*(l + inp.owner.inputs))]
 
 if config.tensor.local_elemwise_fusion:
     _logger.debug("enabling optimization fusion elemwise in fast_run")
@@ -6025,7 +5920,6 @@ def local_merge_alloc(node):
     # This opt takes care of several cases:
     # Alloc(Alloc(m, x, 1, 1, 1), x, y, z, w) -> Alloc(m, x, y, z, w)
     # Alloc(Alloc(m, y, 1, 1), x, y, z, w) -> Alloc(m, x, y, z, w)
-    # Alloc(Alloc(m, y1, 1, 1), x, y2, z, w) -> Alloc(m, x, assert(y1, y1==y2), z, w)
     if not isinstance(node.op, T.Alloc):
         return False
     if not node.inputs[0].owner or not isinstance(
@@ -6041,17 +5935,10 @@ def local_merge_alloc(node):
     # The reverse ordering is needed when an Alloc add an implicit new
     # broadcasted dimensions to its inputs[0]. Eg:
     # Alloc(Alloc(m, y, 1, 1), x, y, z, w) -> Alloc(m, x, y, z, w)
-    i = 0
     for dim_inner, dim_outer in zip(dims_inner_rev, dims_outer_rev):
         if dim_inner != dim_outer:
             if isinstance(dim_inner, Constant) and dim_inner.data == 1:
                 pass
             else:
-                dims_outer[-1 - i] = Assert(
-                    "You have a shape error in your graph. To see a better"
-                    " error message and a stack trace of where in your code"
-                    " the error is created, use the Theano flags"
-                    " optimizer=None or optimizer=fast_compile.")(
-                    dim_outer, T.eq(dim_outer, dim_inner))
-        i += 1
+                return False
     return [T.alloc(inputs_inner[0], *dims_outer)]

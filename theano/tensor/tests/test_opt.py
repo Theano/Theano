@@ -59,6 +59,7 @@ from theano.tensor import (
 from theano.tensor.elemwise import DimShuffle
 from theano.tests import unittest_tools as utt
 from theano.compile.mode import optdb
+from theano.compile import Mode
 
 mode_opt = theano.config.mode
 if mode_opt == 'FAST_COMPILE':
@@ -4919,7 +4920,7 @@ class T_local_reduce(unittest.TestCase):
             theano.config.warn.reduce_join = old
 
 
-class T_local_sum_dimshuffle(unittest.TestCase):
+class T_local_sum_prod_dimshuffle(unittest.TestCase):
     def setUp(self):
         self.mode = theano.compile.get_default_mode().including('canonicalize')
 
@@ -4976,7 +4977,6 @@ class T_local_sum_dimshuffle(unittest.TestCase):
         config.warn.sum_div_dimshuffle_bug = False
         try:
             for i, s in enumerate(sums):
-                print(i)
                 f = theano.function([a, b, c, d], s, mode=self.mode,
                         on_unused_input='ignore')
                 g = f.maker.fgraph.toposort()
@@ -4987,8 +4987,77 @@ class T_local_sum_dimshuffle(unittest.TestCase):
             config.warn.sum_sum_bug, config.warn.sum_div_dimshuffle_bug =\
                                                                         backup
 
+    def test_local_prod_div_dimshuffle(self):
+        a = T.matrix('a')
+        b = T.vector('b')
+        c = T.tensor3('c')
+        d = T.scalar('d')
+        prod = T.prod
+        prods = [
+            prod(a / d),
+            prod(a / d.dimshuffle('x', 'x')),
+            prod(a / d.dimshuffle('x', 'x'), axis=0),
+            prod(a / d.dimshuffle('x', 'x'), axis=1),
+            prod(b / d),
+            prod(b / d.dimshuffle('x')),
+            prod(c / d),
+            prod(c / d.dimshuffle('x', 'x', 'x')),
+            prod(c / d.dimshuffle('x', 'x', 'x'), axis=0),
+            prod(c / d.dimshuffle('x', 'x', 'x'), axis=1),
+            prod(c / d.dimshuffle('x', 'x', 'x'), axis=2),
+
+            prod(a / b, axis=0),
+            prod(a / b.dimshuffle(0, 'x'), axis=1),
+            prod(a.dimshuffle(0, 1) / b.dimshuffle(0, 'x'), axis=1),
+            prod(a.dimshuffle(1, 0) / b.dimshuffle(0, 'x'), axis=1),
+            prod(c / a, axis=0),
+            prod(c / a.dimshuffle(1, 0), axis=0),
+            prod(c / a.dimshuffle(0, 'x', 1), axis=1),
+            prod(c / a.dimshuffle(1, 'x', 0), axis=1),
+            prod(c / a.dimshuffle(0, 1, 'x'), axis=2),
+            prod(c / a.dimshuffle(1, 0, 'x'), axis=2),
+            prod(c / b, axis=0),
+            prod(c / b, axis=1),
+            prod(c / b, axis=(0, 1)),
+            prod(c / b.dimshuffle(0, 'x'), axis=0),
+            prod(c / b.dimshuffle(0, 'x'), axis=2),
+            prod(c / b.dimshuffle(0, 'x'), axis=(0, 2)),
+            prod(c / b.dimshuffle(0, 'x', 'x'), axis=1),
+            prod(c / b.dimshuffle(0, 'x', 'x'), axis=2),
+            prod(c / b.dimshuffle(0, 'x', 'x'), axis=(1, 2)),
+            prod(c / b.dimshuffle(0, 'x', 'x'), axis=(0, 1)),
+            prod(c / b.dimshuffle(0, 'x', 'x'), axis=(1, 0)),
+            prod(prod(c, axis=0) / b, axis=0),
+            prod(prod(c, axis=1) / b, axis=0)]
+
+        rng = numpy.random.RandomState(utt.fetch_seed())
+        a_val = rng.randn(2, 2).astype(config.floatX)
+        b_val = rng.randn(2).astype(config.floatX)
+        c_val = rng.randn(2, 2, 2).astype(config.floatX)
+        d_val = numpy.asarray(rng.randn(), config.floatX)
+
+        mode_with_opt = copy.copy(theano.compile.mode.get_default_mode())
+        mode_without_opt = copy.copy(theano.compile.mode.get_default_mode())
+        mode_with_opt._optimizer = mode_with_opt._optimizer.including(
+            'local_sum_prod_div_dimshuffle')
+        mode_without_opt._optimizer = mode_without_opt._optimizer.excluding(
+            'local_sum_prod_div_dimshuffle')
+
+        for i, s in enumerate(prods):
+            f = theano.function([a, b, c, d], s,
+                                on_unused_input='ignore',
+                                mode=mode_without_opt)
+            g = theano.function([a, b, c, d], s,
+                                on_unused_input='ignore',
+                                mode=mode_with_opt)
+            # g = f.maker.fgraph.toposort()
+            # assert isinstance(g[-1].op.scalar_op,
+            #                   theano.scalar.basic.TrueDiv)
+
+            utt.assert_allclose(f(a_val, b_val, c_val, d_val),
+                                g(a_val, b_val, c_val, d_val))
+
     # TODO:
-    # test_local_sum_prod_dimshuffle (a * b * c)
     # test_local_sum_divprod_dimshuffle ((a * b) / (c * d))
 
 
