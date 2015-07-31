@@ -40,6 +40,8 @@ functions with names that start with the string ``test``.  For
 example:
 
 .. testcode::
+  
+    import unittest
 
     class MyTestCase(unittest.TestCase):
         def test0(self):
@@ -124,7 +126,7 @@ You can also choose to run a subset of the full test suite.
 
 To run all the tests in one or more ``TestCase`` subclasses:
 
-.. testcode::
+.. code-block:: python
 
     suite = unittest.TestLoader()
     suite = suite.loadTestsFromTestCase(MyTestCase0)
@@ -183,9 +185,10 @@ need to be added.
 
 Example:
 
-.. testcode:: writeUnitest
+.. code-block:: python
 
     import unittest
+    
     class TestTensorDot(unittest.TestCase):
         def test_validity(self):
             # do stuff
@@ -203,6 +206,8 @@ generators -- more on this later)
 
 .. testcode:: writeUnitest
 
+    import unittest
+    
     class TestTensorDot(unittest.TestCase):
         def setUp(self):
             # data which will be used in various test methods
@@ -222,7 +227,7 @@ implementation.
 
 Example:
 
-.. testcode:: writeUnitest
+.. code-block:: python
 
     class TestTensorDot(unittest.TestCase):
         def setUp(self):
@@ -273,8 +278,10 @@ as they can go unnoticed for a long time and a hard to detect
 
 Example:
 
-.. testcode:: writeUnitest
+.. code-block:: python
 
+    import unittest
+    
     class TestTensorDot(unittest.TestCase):
         ...
         def test_3D_dot_fail(self):
@@ -298,9 +305,11 @@ given to specify which linker and optimizer to use.
 
 Example:
 
-.. testcode::
+.. code-block:: python
 
-    f = T.function([a,b],[c],mode='FAST_RUN')
+    from theano import function
+    
+    f = function([a,b],[c],mode='FAST_RUN')
 
 Whenever possible, unit tests should omit this parameter. Leaving
 out the mode will ensure that unit tests use the default mode.
@@ -369,6 +378,8 @@ Similarly, to provide a seed to numpy.random.RandomState, simply use:
 
 .. testcode::
 
+    import numpy
+    
     rng = numpy.random.RandomState(unittest_tools.fetch_seed())
     # OR providing an explicit seed
     rng = numpy.random.RandomState(unittest_tools.fetch_seed(1231)) #again not recommended
@@ -413,7 +424,9 @@ at point ``x`` is approximated as:
 
 Here is the prototype for the verify_grad function.
 
->>> def verify_grad(fun, pt, n_tests=2, rng=None, eps=1.0e-7, abs_tol=0.0001, rel_tol=0.0001):
+.. code-block:: python
+
+    def verify_grad(fun, pt, n_tests=2, rng=None, eps=1.0e-7, abs_tol=0.0001, rel_tol=0.0001):
 
 ``verify_grad`` raises an Exception if the difference between the analytic gradient and
 numerical gradient (computed through the Finite Difference Method) of a random
@@ -513,6 +526,11 @@ product op:
 
 .. testcode::
 
+    from numpy import dot
+    from numpy.random import rand
+
+    from theano.tensor.tests.test_basic import makeTester
+    
     DotTester = makeTester(name = 'DotTester',
                            op = dot,
                            expected = lambda x, y: numpy.dot(x, y),
