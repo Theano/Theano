@@ -156,6 +156,10 @@ out:
 Defining the methods
 ====================
 
+.. testsetup:: 
+
+    import theano
+
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_2
 
