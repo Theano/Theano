@@ -4,7 +4,7 @@ from theano.compat import izip
 from theano.compile.function_module import orig_function
 from theano.compile import SharedVariable, rebuild_collect_shared
 from theano.gof import ops_with_inner_function
-from theano.gof.graph import io_connection_pattern
+from theano.gof.graph import io_connection_pattern, io_toposort
 
 from functools import reduce
 
@@ -140,34 +140,42 @@ class OpFromGraph(gof.Op):
             # we wont need this copy anymore
             output[0] = variable.copy()
 
-    def c_code(self, node, name, inputs, outputs, **args):
-        order = graph.io_toposort(self.new_inputs, self.new_outputs)
+    def c_code(self, node, name, inputs, outputs, sub):
+        order = io_toposort(self.new_inputs, self.new_outputs)
 
-        if not( self._op_use_c_code and
-                all[getattr(node.op, '_op_use_c_code', False) and
-                    hasattr(node.op,'c_code') for node in order]):
+        # assert all inner nodes have c_code()
+        if not (self._op_use_c_code and
+                all([getattr(node.op, '_op_use_c_code', False) and
+                     hasattr(node.op, 'c_code') for node in order])):
             self._op_use_c_code = False
             return
         else:
-            if name == None:
-                name = node.__str__()
             c_code = ""
+            local = locals()
             for inner_node in order:
+                name = 'node' + str(id(inner_node))
+
                 in_names = []
                 for i, var in enumerate(inner_node.inputs):
                     if var in self.new_inputs:
-                        in_name.append(inputs[i])
+                        in_names.append(inputs[i])
                     else:
-                        in_name.append(name + var.__str__())
+                        new_name = 'InVar' + str(id(var))
+                        in_names.append(new_name)
+                        local.setdefault(new_name, var.clone())
+                        c_code += var.type.c_declare(new_name, sub)
 
                 out_names = []
                 for i, var in enumerate(inner_node.outputs):
-                    if is outer_output:
-                        out_name.append(outputs[i])
+                    if var in self.new_outputs:
+                        out_names.append(outputs[i])
                     else:
-                        out_name.append(name + var.__str__())
+                        new_name = 'OutVar' + str(id(var))
+                        out_names.append(new_name)
+                        local.setdefault(new_name, var.clone())
+                        c_code += var.type.c_declare(new_name, sub)
 
-                c_code += inner_node.c_code(inner_node, inner_node.__str__(),
+                c_code += inner_node.op.c_code(inner_node, name,
                                             in_names, out_names, sub)
 
         return c_code
