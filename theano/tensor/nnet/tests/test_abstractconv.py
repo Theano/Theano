@@ -138,18 +138,9 @@ class TestConv2d(unittest.TestCase):
             conv_op = conv.AbstractConv2d_gradWeights(border_mode=border_mode, subsample=subsample)
             return conv_op(inputs_val, output_val, filters_shape[-2:])
 
-        def cudnn_gradweight(inputs_val, output_val):
-            c_ref = ref(inputs, output,
-                        filters_shape,
-                        border_mode=border_mode,
-                        subsample=subsample,
-                        conv_mode=conv_mode)
-            return c_ref
-
         if verify_grad:
-            #utt.verify_grad(abstract_conv2d_gradweight, [inputs_val, output_val],
-            #                mode=mode)
-            utt.verify_grad(cudnn_gradweight, [inputs_val, output_val], mode=mode)
+            utt.verify_grad(abstract_conv2d_gradweight, [inputs_val, output_val],
+                            mode=mode)
 
 
     def run_gradinput(self, inputs_shape, filters_shape, output_shape, ref=dnn_gradinput,
@@ -240,11 +231,11 @@ class TestConv2d(unittest.TestCase):
                                      provide_shape=provide_shape, border_mode=b)
                         self.run_gradweight(inputs_shape=i, filters_shape=f,
                                             output_shape=o, subsample=s,
-                                            verify_grad=False, mode=mode, device='gpu',
+                                            verify_grad=True, mode=mode, device='gpu',
                                             provide_shape=provide_shape, border_mode=b)
                         self.run_gradinput(inputs_shape=i, filters_shape=f,
                                            output_shape=o, subsample=s,
-                                           verify_grad=False, mode=mode, device='gpu',
+                                           verify_grad=True, mode=mode, device='gpu',
                                            provide_shape=provide_shape, border_mode=b)
 
 
