@@ -2,7 +2,7 @@ build:
   tests:
     override:
       - flake8 --filename=* bin
-       - nosetests theano/tests/test_flake8.py
+      - nosetests theano/tests/test_flake8.py
 checks:
     python:
         code_rating: true
