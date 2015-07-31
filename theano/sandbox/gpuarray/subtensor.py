@@ -1,5 +1,8 @@
 from __future__ import print_function
+
 import copy
+import os
+
 import numpy
 import os
 
@@ -18,7 +21,6 @@ except ImportError:
 from .type import GpuArrayType
 from .basic_ops import (as_gpuarray_variable, HideC, GpuKernelBase, Kernel)
 from .elemwise import GpuElemwise
-from .comp import NVCC_compiler
 
 
 class GpuSubtensor(HideC, Subtensor):
@@ -605,20 +607,22 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, GpuAdvancedIncSubtensor1):
         return gof.Apply(self, [x_, y_, ilist_], [x_.type()])
 
     def c_code_cache_version(self):
-        return (5,)
+        return (6,)
 
     def c_headers(self):
         if pygpu.get_default_context().kind == 'opencl':
             raise MethodNotDefined('cuda only')
-        return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
-                '<gpuarray/ext_cuda.h>', '<gpuarray/types.h>']
+        return ['cuda.h', '<numpy_compat.h>', '<gpuarray/ext_cuda.h>',
+                '<gpuarray/types.h>']
 
     def c_header_dirs(self):
         if pygpu.get_default_context().kind == 'opencl':
             raise MethodNotDefined('cuda only')
         cuda_root = config.cuda.root
+        res = [os.path.dirname(__file__)]
         if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
+            res.append(os.path.join(cuda_root, 'include'))
+        return res
 
     def c_init_code(self):
         if pygpu.get_default_context().kind == 'opencl':
@@ -642,19 +646,20 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, GpuAdvancedIncSubtensor1):
         fail = sub['fail']
         inplace = int(self.inplace)
         return """
-        Py_XDECREF(%(out)s);
-        if (!%(inplace)s) {
-            %(out)s = (PyGpuArrayObject*)pygpu_copy(%(x)s, GA_C_ORDER);
-        } else {
-            %(out)s = %(x)s;
-            Py_XINCREF(%(out)s);
-        }
-
-        GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s);
-
-        if (!%(out)s) {
-            %(fail)s
-        }
+int err;
+if (%(inplace)s) {
+  Py_XDECREF(%(out)s);
+  %(out)s = %(x)s;
+  Py_INCREF(%(out)s);
+} else {
+  %(out)s = theano_try_copy(%(out)s, %(x)s);
+}
+if (!%(out)s) {
+  %(fail)s
+}
+if (GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s)) {
+  %(fail)s
+}
         """ % locals()
 
     def gpu_kernels(self, node, nodename):
@@ -730,7 +735,8 @@ __device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
                                       const ga_size numIndices,
                                       const ga_ssize stridesIndices,
                                       %(type_ind)s *indices_arr,
-                                      const ga_size offset_indices_arr)
+                                      const ga_size offset_indices_arr,
+                                      ga_int *err)
         {
              X = (%(type_x)s *)(((char *)X)+offset_X);
              Y = (%(type_y)s *)(((char *)Y)+offset_Y);
@@ -739,11 +745,15 @@ __device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
              {
                   for(int j = (threadIdx.x); j < numColsX;j += blockDim.x)
                   {
-                      int x_row = indices_arr[i * stridesIndices];
-                      if(x_row < 0)
+                      ssize_t x_row = indices_arr[i * stridesIndices];
+                      if (x_row < 0)
                           x_row += numRowsX;
-                      int y_row = i;
-                      atomicAdd(&X[(x_row * stridesX0) + (j * stridesX1)], Y[(y_row * stridesY0) + (j * stridesY1)]);
+                      ssize_t y_row = i;
+                      if (x_row < numRowsX && x_row >= 0) {
+                        atomicAdd(&X[(x_row * stridesX0) + (j * stridesX1)], Y[(y_row * stridesY0) + (j * stridesY1)]);
+                      } else {
+                        *err = 1;
+                      }
                   }
              }
              return;
@@ -752,7 +762,7 @@ __device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
         params = [
             'uintp', 'uintp', 'intp', 'intp', gpuarray.GpuArray, 'uintp',
             'uintp', 'uintp', 'intp', 'intp', gpuarray.GpuArray, 'uintp',
-            'uintp', 'intp', gpuarray.GpuArray, 'uintp'
+            'uintp', 'intp', gpuarray.GpuArray, 'uintp', gpuarray.GpuArray
             ]
         return [Kernel(code=code, name=kname, params=params,
                        flags=flags, objvar=k_var)]
@@ -767,52 +777,64 @@ __device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
         itemsize_ind = numpy.dtype(dtype_ind).itemsize
         itemsize_out = numpy.dtype(dtype_out).itemsize
         k_var = "k_vector_add_fast_" + nodename
-        err_check = """
-            if (err != GA_NO_ERROR) {
-                PyErr_Format(PyExc_RuntimeError,
-                             "gpuarray error: %(k_var)s: %%s.",
-                             GpuKernel_error(&%(k_var)s, err));
-            }
-        """ % locals()
-        sync = ""
-        if config.gpuarray.sync:
-            sync = """
-            err = GpuArray_sync(&%(z)s->ga);
-            %(err_check)s
-            """ % locals()
+
         return super(GpuAdvancedIncSubtensor1_dev20, self).c_support_code_apply(node, nodename) + """
-        void GpuArray_vector_add_fast(PyGpuArrayObject* py_self,
-                                      PyGpuArrayObject* py_other,
-                                      PyGpuArrayObject *indices_arr)
+        int GpuArray_vector_add_fast(PyGpuArrayObject* py_self,
+                                     PyGpuArrayObject* py_other,
+                                     PyGpuArrayObject *indices_arr)
         {
             size_t threads_per_block[3] = {std::min(PyGpuArray_DIMS(py_self)[1], (size_t)256), 1, 1};
             size_t n_blocks[3] = {std::min(PyGpuArray_SIZE(indices_arr), (size_t)4096), 1, 1};
-            if (threads_per_block[0] > 0 && n_blocks[0] > 0) {
-                ssize_t stride_X0 = PyGpuArray_STRIDES(py_self)[0] / %(itemsize_x)s;
-                ssize_t stride_X1 = PyGpuArray_STRIDES(py_self)[1] / %(itemsize_x)s;
-                ssize_t stride_Y0 = PyGpuArray_DIMS(py_other)[0] == 1 ? 0 : PyGpuArray_STRIDES(py_other)[0] / %(itemsize_y)s;
-                ssize_t stride_Y1 = PyGpuArray_DIMS(py_other)[1] == 1 ? 0 : PyGpuArray_STRIDES(py_other)[1] / %(itemsize_y)s;
-                ssize_t stride_ind = PyGpuArray_STRIDES(indices_arr)[0] / %(itemsize_ind)s;
-                void *kernel_params[] = {(void *)&PyGpuArray_DIMS(py_self)[0],
-                                         (void *)&PyGpuArray_DIMS(py_self)[1],
-                                         (void *)&stride_X0,
-                                         (void *)&stride_X1,
-                                         (void *)py_self->ga.data,
-                                         (void *)&py_self->ga.offset,
-                                         (void *)&PyGpuArray_DIMS(py_other)[0],
-                                         (void *)&PyGpuArray_DIMS(py_other)[1],
-                                         (void *)&stride_Y0,
-                                         (void *)&stride_Y1,
-                                         (void *)py_other->ga.data,
-                                         (void *)&py_other->ga.offset,
-                                         (void *)&PyGpuArray_DIMS(indices_arr)[0],
-                                         (void *)&stride_ind,
-                                         (void *)indices_arr->ga.data,
-                                         (void *)&indices_arr->ga.offset};
-                int err = GpuKernel_call(&%(k_var)s, 3, threads_per_block, n_blocks, 0, kernel_params);
-                %(err_check)s
-                %(sync)s
-            }
-        }
+            gpudata *errbuf;
+            int err, kerr = 0;
 
+            if (threads_per_block[0] > 0 && n_blocks[0] > 0) {
+              err = py_self->ga.ops->property(NULL, py_self->ga.data, NULL,
+                                              GA_CTX_PROP_ERRBUF, &errbuf);
+              if (err != GA_NO_ERROR) {
+                PyErr_SetString(PyExc_RuntimeError, "Can't fetch error buffer");
+                return 1;
+              }
+
+              ssize_t stride_X0 = PyGpuArray_STRIDES(py_self)[0] / %(itemsize_x)s;
+              ssize_t stride_X1 = PyGpuArray_STRIDES(py_self)[1] / %(itemsize_x)s;
+              ssize_t stride_Y0 = PyGpuArray_DIMS(py_other)[0] == 1 ? 0 : PyGpuArray_STRIDES(py_other)[0] / %(itemsize_y)s;
+              ssize_t stride_Y1 = PyGpuArray_DIMS(py_other)[1] == 1 ? 0 : PyGpuArray_STRIDES(py_other)[1] / %(itemsize_y)s;
+              ssize_t stride_ind = PyGpuArray_STRIDES(indices_arr)[0] / %(itemsize_ind)s;
+              void *kernel_params[] = {(void *)&PyGpuArray_DIMS(py_self)[0],
+                                       (void *)&PyGpuArray_DIMS(py_self)[1],
+                                       (void *)&stride_X0,
+                                       (void *)&stride_X1,
+                                       (void *)py_self->ga.data,
+                                       (void *)&py_self->ga.offset,
+                                       (void *)&PyGpuArray_DIMS(py_other)[0],
+                                       (void *)&PyGpuArray_DIMS(py_other)[1],
+                                       (void *)&stride_Y0,
+                                       (void *)&stride_Y1,
+                                       (void *)py_other->ga.data,
+                                       (void *)&py_other->ga.offset,
+                                       (void *)&PyGpuArray_DIMS(indices_arr)[0],
+                                       (void *)&stride_ind,
+                                       (void *)indices_arr->ga.data,
+                                       (void *)&indices_arr->ga.offset,
+                                       (void *)errbuf};
+              err = GpuKernel_call(&%(k_var)s, 3, threads_per_block, n_blocks, 0, kernel_params);
+              if (err != GA_NO_ERROR) {
+                PyErr_Format(PyExc_RuntimeError,
+                             "gpuarray error: %(k_var)s: %%s.",
+                             GpuKernel_error(&%(k_var)s, err));
+                return 1;
+              }
+              err = py_self->ga.ops->buffer_read(&kerr, errbuf, 0, sizeof(int));
+              if (err != GA_NO_ERROR) {
+                PyErr_SetString(PyExc_RuntimeError, "Can't read error buffer");
+                return 1;
+              }
+              if (kerr != 0) {
+                PyErr_SetString(PyExc_IndexError, "Index out of bounds");
+                return 1;
+              }
+            }
+          return 0;
+        }
         """ % locals()
