@@ -54,6 +54,8 @@ def contains_nan(arr):
     alternative, calling `np.any(np.isnan(ndarray))`, which requires the
     construction of a boolean array with the same shape as the input array.
     """
+    if isinstance(arr, theano.gof.type.CDataType._cdata_type):
+        return False
     return np.isnan(np.min(arr))
 
 
@@ -78,6 +80,8 @@ def contains_inf(arr):
     calling `np.any(np.isinf(ndarray))`, which requires the construction of a
     boolean array with the same shape as the input array.
     """
+    if isinstance(arr, theano.gof.type.CDataType._cdata_type):
+        return False
     return np.isinf(np.nanmax(arr)) or np.isinf(np.nanmin(arr))
 
 
@@ -158,6 +162,8 @@ class NanGuardMode(Mode):
                 err = False
                 if cuda.cuda_available and isinstance(var, cuda.CudaNdarray):
                     err = (self.gpuabsmax(var.reshape(var.size)) > 1e10)
+                elif isinstance(var, theano.gof.type.CDataType._cdata_type):
+                    err = False
                 else:
                     err = (np.abs(var).max() > 1e10)
                 if err:
