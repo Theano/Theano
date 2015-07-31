@@ -244,7 +244,7 @@ if __name__ == "__main__":
 
         cuda version      7.5    7.0    6.5
         gpu
-        K6000/NOECC
+        K6000/NOECC              0.69s
         K40                             0.88s
         K20m/ECC
         K20/NOECC
@@ -257,16 +257,20 @@ if __name__ == "__main__":
         C1060
         K600
 
-        GTX Titan Black
+        GTX Titan X              0.47s
+        GTX Titan Black          0.64s
         GTX Titan(D15U-50)
         GTX 780
         GTX 980
         GTX 970
-        GTX 680
+        GTX 680                  1.57s
         GRID K520
-        GTX 580
-        GTX 480
-        GTX 750 Ti
+        GTX 750 Ti               2.01s
+        GTX 580                         2.47s
+        GTX 480                         2.88s
+        GTX 660                  2.32s
+        GTX 750                  2.37s
+        GT 610                   33.5s
         """)
 
     if options.M == 0:

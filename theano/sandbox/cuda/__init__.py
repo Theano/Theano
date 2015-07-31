@@ -398,7 +398,8 @@ def use(device,
                 assert isinstance(device, int)
                 gpu_init(device, config.lib.cnmem)
                 use.device_number = device
-                assert active_device_number() == device
+                active_device = active_device_number()
+                assert active_device == device, (active_device, device)
             else:
                 # This mean the driver should select the GPU.  As we
                 # need to get the device number now, we force the

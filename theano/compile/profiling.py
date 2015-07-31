@@ -30,7 +30,7 @@ from theano.gof import graph
 from theano.configparser import AddConfigVar, BoolParam, IntParam, StrParam
 
 
-import_time = time.time()
+theano_imported_time = time.time()
 config = theano.config
 
 _atexit_print_list = []
@@ -657,6 +657,8 @@ class ProfileStats(object):
     def summary_globals(self, file):
         print('Time in all call to theano.grad() %es' %
               theano.gradient.grad_time, file=file)
+        total_time = time.time() - theano_imported_time
+        print('Time since theano import %.3fs' % (total_time))
 
     def summary_memory(self, file, N=None):
         fct_memory = {}  # fgraph->dict(node->[outputs size])
@@ -1305,7 +1307,7 @@ if False:  # old code still to be ported from ProfileMode
                sum(t for f, t, a, ci, nb_call, nb_op in
                    sotimes[n_ops_to_print:])))
 
-        total_time = time.time() - import_time
+        total_time = time.time() - theano_imported_time
         total_fct_time = sum(fct_call_time.values())
         total_fct_call = sum(fct_call.values())
         other_time = total_time - total_fct_time - compile_time
