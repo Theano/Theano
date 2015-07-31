@@ -103,6 +103,9 @@ operation on ``x``.
 
    .. testcode::
 
+      from theano.tensor import dscalars, log
+      from theano.tensor.inplace import add_inplace
+      
       x, y = dscalars('x', 'y')
       r1 = log(x)
 
