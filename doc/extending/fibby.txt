@@ -30,6 +30,8 @@ you should check the strides and alignment.
 .. theano/tests/test_tutorial.py:T_fibby.test_fibby_1
 
 .. testcode::
+  
+  import theano
 
   class Fibby(theano.Op):
     """
@@ -238,6 +240,11 @@ Test the optimization
 Here is some code to test that the optimization is applied only when needed.
 
 .. testcode::
+
+	import numpy
+	import theano.tensor as T
+	from theano import function
+	from theano import tensor
 
         # Test it does not apply when not needed
         x = T.dvector()
