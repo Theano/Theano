@@ -1,15 +1,8 @@
 build:
-  dependencies:
-    override:
-      - pip install -r req-scrutinizer.txt
   tests:
     override:
       - flake8 --filename=* bin
-#      - flake8 --ignore=E501 theano
        - nosetests theano/tests/test_flake8.py
-#      - pep257 bin --numpy --ignore=D100,D101,D102,D103 --match='.*'
-#      - pep257 blocks --numpy --ignore=D100,D101,D102,D103
-#      - pep257 doctests tests --numpy --ignore=D100,D101,D102,D103 --match='.*\.py'
 checks:
     python:
         code_rating: true
