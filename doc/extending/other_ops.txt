@@ -45,7 +45,7 @@ SciPy Ops
 We can wrap SciPy functions in Theano. But SciPy is an optional dependency.
 Here is some code that allows the Op to be optional:
 
-.. testcode::
+.. code-block:: python
 
     try:
         import scipy.linalg
