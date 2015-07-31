@@ -262,7 +262,7 @@ and define ``filter`` and ``values_eq_approx`` in the subclass:
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_1
-.. testcode::
+.. code-block:: python
 
    from theano import gof
 
@@ -284,6 +284,38 @@ subclass of ``Type``.
 There is a small issue with defining ``double`` this way. All
 instances of ``Double`` are technically the same Type. However, different
 ``Double`` Type instances do not compare the same:
+
+.. testsetup::
+
+   from theano import gof
+
+   class Double(gof.Type):
+
+       def filter(self, x, strict=False, allow_downcast=None):
+           if strict:
+               if isinstance(x, float):
+                   return x
+               else:
+                   raise TypeError('Expected a float!')
+           elif allow_downcast:
+               return float(x)
+           else:   # Covers both the False and None cases.
+               x_float = float(x)
+               if x_float == x:
+                   return x_float
+               else:
+                    raise TypeError('The double type cannot accurately represent '
+                                    'value %s (of type %s): you must explicitly '
+                                    'allow downcasting if you want to do this.'
+                                    % (x, type(x)))
+
+       def values_eq_approx(self, x, y, tolerance=1e-4):
+           return abs(x - y) / (abs(x) + abs(y)) < tolerance
+
+       def __str__(self):
+           return "double"
+
+   double = Double()
 
 >>> double1 = Double()
 >>> double2 = Double()
