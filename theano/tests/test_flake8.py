@@ -3,9 +3,14 @@ Test flake8 errors.
 """
 
 from nose.plugins.skip import SkipTest
-import os
+import os, sys
 from fnmatch import fnmatch
-import theano
+try:
+    import theano
+    theano_path = theano.__path__[0]
+except ImportError:
+    theano_path = None
+    # for scrutinizer we add this case where theano isn't installed.
 try:
     import flake8.engine
     import flake8.main
@@ -207,7 +212,7 @@ whitelist_flake8 = [
 ]
 
 
-def list_files(dir_path=theano.__path__[0], pattern='*.py'):
+def list_files(dir_path, pattern='*.py'):
     """
     List all files under theano's path.
     """
@@ -227,8 +232,8 @@ def test_format_flake8():
     if not flake8_available:
         raise SkipTest("flake8 is not installed")
     total_errors = 0
-    for path in list_files():
-        rel_path = os.path.relpath(path, theano.__path__[0])
+    for path in list_files(theano_path):
+        rel_path = os.path.relpath(path, theano_path)
         if rel_path in whitelist_flake8:
             continue
         else:
@@ -238,7 +243,7 @@ def test_format_flake8():
         raise AssertionError("FLAKE8 Format not respected")
 
 
-def print_files_information_flake8():
+def print_files_information_flake8(start_path=theano_path):
     """
     Print the list of files which can be removed from the whitelist and the
     list of files which do not respect FLAKE8 formatting that aren't in the
@@ -246,8 +251,8 @@ def print_files_information_flake8():
     """
     infracting_files = []
     non_infracting_files = []
-    for path in list_files():
-        rel_path = os.path.relpath(path, theano.__path__[0])
+    for path in list_files(start_path):
+        rel_path = os.path.relpath(path, start_path)
         number_of_infractions = flake8.main.check_file(path,
                                                        ignore=ignore)
         if number_of_infractions > 0:
@@ -264,7 +269,7 @@ def print_files_information_flake8():
         print(file)
 
 
-def check_all_files(dir_path=theano.__path__[0], pattern='*.py'):
+def check_all_files(dir_path=theano_path, pattern='*.py'):
     """
     List all .py files under dir_path (theano path), check if they follow
     flake8 format, save all the error-formatted files into
@@ -280,10 +285,16 @@ def check_all_files(dir_path=theano.__path__[0], pattern='*.py'):
                                                    ignore=ignore)
                 if error_num > 0:
                     path = os.path.relpath(os.path.join(dir, f),
-                                           theano.__path__[0])
+                                           theano_path)
                     f_txt.write('"' + path + '",\n')
     f_txt.close()
 
 
 if __name__ == "__main__":
-    print_files_information_flake8()
+    path = theano_path
+    if len(sys.argv) == 2:
+        # It must be the Theano/theano directory.
+        # It allow to not have Theano installed.
+        path = sys.argv[1]
+        path = os.path.realpath(path)
+    print_files_information_flake8(path)
