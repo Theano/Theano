@@ -203,18 +203,6 @@ whitelist_flake8 = [
     "sparse/sandbox/sp.py",
     "gof/unify.py",
     "gof/__init__.py",
-    "gof/tests/test_cmodule.py",
-    "gof/tests/test_destroyhandler.py",
-    "gof/tests/test_opt.py",
-    "gof/tests/test_lazy.py",
-    "gof/tests/test_toolbox.py",
-    "gof/tests/test_link.py",
-    "gof/tests/test_fg.py",
-    "gof/tests/test_sched.py",
-    "gof/tests/test_graph_opt_caching.py",
-    "gof/tests/test_graph.py",
-    "gof/tests/test_cc.py",
-    "gof/tests/test_compute_test_value.py",
     "gof/sandbox/equilibrium.py",
 ]
 
