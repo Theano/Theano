@@ -12,18 +12,19 @@ disable that plugin.
 `run_tests_in_batch.py` will in turn call back this script in another process.
 """
 from __future__ import print_function
+import logging
+import nose
+import os
+import sys
+import textwrap
+
+from nose.plugins import Plugin
 
 __authors__ = "Olivier Delalleau, Pascal Lamblin, Eric Larsen"
 __contact__ = "delallea@iro"
 
-import logging
 _logger = logging.getLogger('theano.bin.theano-nose')
 
-import os
-import nose
-import textwrap
-import sys
-from nose.plugins import Plugin
 
 def main():
     # Handle the --theano arguments
@@ -44,11 +45,12 @@ def main():
         try:
             from theano import config
             if config.device != "cpu":
-                raise ValueError("Theano tests must be run with device=cpu."
-                                 " This will also run GPU tests when possible.\n"
-                                 " If you want GPU-related tests to run on a"
-                                 " specific GPU device, and not the default one,"
-                                 " you should use the init_gpu_device theano flag.")
+                raise ValueError(
+                    "Theano tests must be run with device=cpu."
+                    " This will also run GPU tests when possible.\n"
+                    " If you want GPU-related tests to run on a"
+                    " specific GPU device, and not the default one,"
+                    " you should use the init_gpu_device theano flag.")
         except ImportError:
             pass
 
@@ -81,7 +83,7 @@ def main():
         display_batch_output = True
 
     # Handle --time_prof arguments
-    time_prof_args = [arg for arg in sys.argv if arg=='--time-profile']
+    time_prof_args = [arg for arg in sys.argv if arg == '--time-profile']
     for arg in time_prof_args:
         sys.argv.remove(arg)
 
@@ -135,8 +137,7 @@ def main():
 
 
 def help():
-    help_msg = """
-        This script behaves mostly the same as the `nosetests` command.
+    help_msg = """This script behaves mostly the same as the `nosetests` command.
 
         The main difference is that it loads automatically the
         KnownFailure plugin, in order to hide KnownFailureTests error
@@ -160,8 +161,8 @@ def help():
                 n tests. Otherwise, notification will occur after every group
                 of 100 tests.
 
-                The files 'timeprof_sort' and 'timeprof_nosort' both contain one
-                record for each test and comprise the following fields:
+                The files 'timeprof_sort' and 'timeprof_nosort' both contain
+                one record for each test and comprise the following fields:
                 - test running-time
                 - nosetests sequential test number
                 - test name
@@ -170,13 +171,15 @@ def help():
                 - test outcome ('OK', 'SKIPPED TEST', 'FAILED TEST' or
                   'FAILED PARSING')
 
-                In 'timeprof_sort', test records are sorted according to
-                running-time whereas in 'timeprof_nosort' records are reported
-                according to sequential number. The former classification is the
-                main information source for time-profiling. Since tests belonging
-                to same or close classes and files have close sequential, the
-                latter may be used to identify duration patterns among the tests
-                numbers. A full log is also saved as 'timeprof_rawlog'.
+                In 'timeprof_sort', test records are sorted according
+                to running-time whereas in 'timeprof_nosort' records
+                are reported according to sequential number. The
+                former classification is the main information source
+                for time-profiling. Since tests belonging to same or
+                close classes and files have close sequential, the
+                latter may be used to identify duration patterns among
+                the tests numbers. A full log is also saved as
+                'timeprof_rawlog'.
 
             --without-knownfailure: Do not load the KnownFailure plugin.
 
@@ -195,7 +198,8 @@ def help():
                 in conjunction with the '--batch=[n]' argument.
 
         The other options will be passed to nosetests, see ``nosetests -h``.
-        """
+
+    """
 
     print(textwrap.dedent(help_msg))
 
@@ -218,7 +222,7 @@ class DisabDocString(Plugin):
         df94596f29c04fea8001713dd9b04bf3720aebf4
     """
 
-    enabled = False # plugin disabled by default
+    enabled = False  # plugin disabled by default
     score = 2000  # high score ensures priority over other plugins
 
     def __init__(self):
