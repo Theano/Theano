@@ -1,11 +1,11 @@
 build:
   dependencies:
-    before:
-      - sudo apt-get install -y python-dev
+    override:
+      - pip install -r req-scrutinizer.txt
   tests:
     override:
       - flake8 --filename=* bin
-      - nosetests theano/tests/test_flake8.py
+      - python theano/tests/test_flake8.py Theano/theano
 checks:
     python:
         code_rating: true
