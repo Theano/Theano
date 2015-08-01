@@ -85,7 +85,7 @@ def copy_stack_trace(from_var, to_var):
         # If from_var is a list, store concatenated stack traces
         if len(from_var) > 0:
             for v in from_var:
-                if hasattr(v.tag, 'trace') and len(v.tag.trace) > 0:
+                if hasattr(v.tag, 'trace'):
                     tr = tr + v.tag.trace
     else:
         # If from_var is not a list, it must be a single tensor
@@ -98,17 +98,11 @@ def copy_stack_trace(from_var, to_var):
         # Copy over stack traces from from_var to each variable in
         # to_var, including the stack_trace of the to_var before
         for v in to_var:
-            if hasattr(v.tag, 'trace'):
-                v.tag.trace = v.tag.trace + tr
-            else:
-                v.tag.trace = tr
+            v.tag.trace = getattr(v.tag, 'trace', []) + tr
     else:
         # Copy over stack traces from from_var to each variable to
         # to_var, including the stack_trace of the to_var before
-        if hasattr(to_var.tag, 'trace'):
-            to_var.tag.trace = to_var.tag.trace + tr
-        else:
-            to_var.tag.trace = tr
+        to_var.tag.trace = getattr(to_var.tag, 'trace', []) + tr
 
 
 def out2in(*local_opts, **kwargs):
