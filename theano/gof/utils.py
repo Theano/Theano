@@ -94,7 +94,10 @@ def add_tag_trace(thing, user_line=1):
     # The order is from the oldest to the newest
     if len(tr) > user_line:
         tr = tr[-user_line:]
-    thing.tag.trace = [tr]
+    if tr:
+        thing.tag.trace = [tr]
+    else:
+        thing.tag.trace = tr
     return thing
 
 
