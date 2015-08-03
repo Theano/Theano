@@ -55,7 +55,7 @@
 
     Each registered constructor ``ctor`` will be called like this:
 
-    .. testcode::
+    .. code-block:: python
 
         ctor(value, name=name, strict=strict, **kwargs)
 
