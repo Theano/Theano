@@ -80,6 +80,9 @@ A non-None `value` argument makes an In() instance an optional parameter
 of the compiled function.  For example, in the following code we are
 defining an arity-2 function ``inc``.
 
+>>> import theano.tensor as T
+>>> from theano import function
+>>> from theano.compile.io import In
 >>> u, x, s = T.scalars('u', 'x', 's')
 >>> inc = function([u, In(x, value=3), In(s, update=(s+x*u), value=10.0)], [])
 
