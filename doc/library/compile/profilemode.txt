@@ -27,6 +27,7 @@ Creating a ProfileMode Instance
 
 First create a ProfileMode instance. 
 
+>>> import theano
 >>> from theano import ProfileMode
 >>> profmode = theano.ProfileMode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker())
 
