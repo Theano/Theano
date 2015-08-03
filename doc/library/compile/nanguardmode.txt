@@ -23,6 +23,11 @@ NanGuardMode can be used as follows:
 
 .. testcode::
 
+    import numpy
+    import theano
+    import theano.tensor as T
+    from theano.compile.nanguardmode import NanGuardMode
+    
     x = T.matrix()
     w = theano.shared(numpy.random.randn(5, 7).astype(theano.config.floatX))
     y = T.dot(x, w)
