@@ -634,7 +634,9 @@ class MergeFeature(object):
                         new_inputs.append(cand_i)
                     else:
                         new_inputs.append(
-                            theano.tensor.and_(node_cond, cand_cond))
+                            theano.tensor.opt.assert_op(
+                                node_i.owner.inputs[0],
+                                theano.tensor.and_(node_cond, cand_cond)))
 
                 # node_i is assert, cand_i is not assert
                 else:
