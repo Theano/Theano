@@ -3,15 +3,18 @@
 
 import atexit
 import os
-import random
 import socket  # only used for gethostname()
 import time
 import logging
 
 from contextlib import contextmanager
 
+import numpy as np
+
 from theano import config
 from theano.configparser import AddConfigVar, IntParam
+
+random = np.random.RandomState([2015, 8, 2])
 
 _logger = logging.getLogger("theano.gof.compilelock")
 # If the user provided a logging level, we don't want to override it.
@@ -203,7 +206,6 @@ def lock(tmp_dir, timeout=notset, min_wait=None, max_wait=None, verbosity=1):
 
     # Variable initialization.
     lock_file = os.path.join(tmp_dir, 'lock')
-    random.seed()
     my_pid = os.getpid()
     no_display = (verbosity == 0)
 
