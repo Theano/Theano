@@ -42,6 +42,13 @@
     #define SIZE_MAX ((size_t)-1)
 #endif
 
+// Cuda GPUs only accept a single representation for NaN whereas CPU may have
+// more than one. So it's better to use the CUDA one to be sure
+#ifdef NAN
+#undef NAN
+#endif
+#include <math_constants.h>
+#define NAN CUDART_NAN_F
 
 #include <cublas_v2.h>
 
