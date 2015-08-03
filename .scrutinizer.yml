@@ -5,7 +5,7 @@ build:
   tests:
     override:
       - flake8 --filename=* bin
-      - python theano/tests/test_flake8.py Theano/theano
+      - python theano/tests/test_flake8.py theano
 checks:
     python:
         code_rating: true
