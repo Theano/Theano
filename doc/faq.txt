@@ -10,7 +10,7 @@ TypeError: object of type 'TensorVariable' has no len()
 If you receive the following error, it is because the Python function *__len__* cannot 
 be implemented on Theano variables:
 
-.. testcode::
+.. code-block:: python
 
    TypeError: object of type 'TensorVariable' has no len()
 
@@ -116,6 +116,9 @@ For example, replace the following
 
 .. testcode:: faster
 
+    import theano
+    from theano import function
+
     x = theano.tensor.scalar('x')
     f = function([x], x + 1.)
     f(10.)
@@ -123,6 +126,10 @@ For example, replace the following
 with
 
 .. testcode:: faster
+
+    import numpy
+    import theano
+    from theano import function
 
     x = theano.tensor.scalar('x')
     f = function([x], x + 1.)
