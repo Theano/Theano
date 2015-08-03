@@ -13,54 +13,49 @@ function flipAxes(nodes) {
 
 
 function processDotGraph(dotGraph) {
-	// Merge and remove subgraph nodes
+	dotGraph.rnodes = {};
 	for (var nodeId in dotGraph._nodes) {
-		if (!exists(dotGraph._nodes[nodeId])) {
-			continue;
-		}
-		if (nodeId.startsWith('cluster_')) {
-			var id = nodeId.replace('cluster_', '');
-			assert(exists(dotGraph._nodes[id]));
-			var parent = dotGraph.node(id);
-			var childIds = dotGraph.children(nodeId);
-			for (var i in childIds) {
-				var childId = childIds[i];
-				dotGraph.setParent(childId, id);
-				dotGraph.setEdge(childId, id, {'label': 'opfrom'});
-				var child = dotGraph.node(childId);
-			}
-			dotGraph.removeNode(nodeId);
+		var node = dotGraph._nodes[nodeId];
+		node.id = nodeId;
+		node.isCluster = nodeId.startsWith('cluster');
+		if (!node.isCluster) {
+			dotGraph.rnodes[nodeId] = node;
 		}
 	}
 	
 	var i = 0;
-	for (var nodeId in dotGraph._nodes) {
+	for (var nodeId in dotGraph.rnodes) {
 		var node = dotGraph._nodes[nodeId];
-		node.id = nodeId;
 		node.pos = node.pos.split(',').map(function(d) {return parseInt(d);});
 		var size = textSize(node.label, {'class': 'nodeText'});
 		node.width = size.width + 2 * pad;
 		node.height = size.height + 2 * pad;
 		node.cx = node.width / 2;
 		node.cy = node.height / 2;
-		node.hasChilds = dotGraph.children(nodeId).length > 0;
+		node.hasChilds = exists(node.subg);
 		node.showChilds = false;
 		node.profile = parseProfile(node.profile);
 		if (node.profile.length) {
 			isProfiled = true;
 		}
+		if (exists(node.subg_map_inputs)) {
+			node.subg_map_inputs = eval(node.subg_map_inputs)
+		}
+		if (exists(node.subg_map_outputs)) {
+			node.subg_map_outputs = eval(node.subg_map_outputs)
+		}
 	}
 	
-	flipAxes(dotGraph._nodes);
+	flipAxes(dotGraph.rnodes);
 	
 	// Offset and scale positions
 	var posMin = [Infinity, Infinity];
-	for (var i in dotGraph._nodes) {
+	for (var i in dotGraph.rnodes) {
 		var node = dotGraph._nodes[i];
 		posMin[0] = Math.min(posMin[0], node.pos[0]);
 		posMin[1] = Math.min(posMin[1], node.pos[1]);
 	}
-	for (var i in dotGraph._nodes) {
+	for (var i in dotGraph.rnodes) {
 		var node = dotGraph._nodes[i];
 		var pos = node.pos;
 		pos[0] -= posMin[0];
@@ -91,144 +86,212 @@ function processDotGraph(dotGraph) {
 	}
 }
 
-function makeNode(dotGraph, dotNode) {
-	var node = {};
-	node.value = dotNode;
-	node.fixed = true;
-	return node;
-}
 
-function traverseChilds(dotGraph, parent) {
-	var childs = dotGraph.children(parent);
-	var nodes = [];
+function traverseChilds(dotGraph, nodes, groups, parent) {
+	var preId = '';
+	var ref = undefined;
+	var group = {'id': groups.length, 'nodes': [], 'parent': parent};
+	if (exists(parent)) {
+		ref = parent.value.subg;
+		group.parent = parent;
+		group.nodes.push(parent);
+		parent.group = group;
+	}
+	groups.push(group);
+	var childs = dotGraph.children(ref);
 	for (var i in childs) {
 		var child = dotGraph.node(childs[i]);
-		nodes.push(makeNode(dotGraph, child));
+		if (child.isCluster) {
+			continue;
+		}
+		var node = {
+			'id': child.id,
+			'value': child,
+			'index': nodes.length,
+			'fixed': true,
+			'group': group,
+			'isParent': child.showChilds,
+			'parent': parent
+			};
+		nodes.push(node);
 		if (child.showChilds) {
-			nodes = nodes.concat(traverseChilds(dotGraph, child.id));
+			traverseChilds(dotGraph, nodes, groups, node);
+		} else {
+			group.nodes.push(node);
 		}
 	}
-	return nodes;
+}
+
+function groupSize(nodes) {
+	var minPos = [Infinity, Infinity];
+	var maxPos = [-Infinity, -Infinity];
+	for (var i in nodes) {
+		var node = nodes[i];
+		if (node.isParent) {
+			continue;
+		}
+		minPos[0] = Math.min(minPos[0], node.value.pos[0]);
+		minPos[1] = Math.min(minPos[1], node.value.pos[1]);
+		maxPos[0] = Math.max(maxPos[0], node.value.pos[0] + node.value.width);
+		maxPos[1] = Math.max(maxPos[1], node.value.pos[1] + node.value.height);
+	}
+	return [maxPos[0] - minPos[0], maxPos[1] - minPos[1]];
 }
 
 function forceGraph(dotGraph, prevGraph) {
-	// Parse nodes
-	var graph = {};
-	graph.nodes = traverseChilds(dotGraph);
+	var graph = {'nodes': [], 'groups': []};
+	traverseChilds(dotGraph, graph.nodes, graph.groups);
 	
 	graph.nodesd = {};
 	for (var i in graph.nodes) {
 		var node = graph.nodes[i];
-		node.index = i;
-		graph.nodesd[node.value.id] = node;
+		graph.nodesd[node.id] = node;
 	}
 	
-	var groups = {};
-	for (var i in graph.nodes) {
-		var node = graph.nodes[i];
-		var parentId = dotGraph.parent(node.value.id);
-		if (exists(parentId)) {
-			if (!(parentId in groups)) {
-				groups[parentId] = [];
+	graph.nodesp = graph.nodes.filter(function(d) {return d.isParent;});
+	graph.nodesn = graph.nodes.filter(function(d) {return !d.isParent;});
+	
+	for (i in graph.groups) {
+		var group = graph.groups[i];
+		group.size = groupSize(group.nodes);
+		var parent = group.parent;
+		if (exists(parent)) {
+			var prevParent = prevGraph.nodesd[group.parent.id];
+			if (exists(prevParent)) {
+				group.pos = [prevParent.x, prevParent.y];
+			} else {
+				group.pos = parent.pos.slice(0);
 			}
-			groups[parentId].push(node.value.id);
+			group.pos[0] += parent.value.cx;
+			group.pos[1] += parent.value.cy;
+		} else {
+			group.pos = [group.size[0] / 2, group.size[1] / 2];
+		}
+		var min = [Infinity, Infinity];
+		for (var j in group.nodes) {
+			var node = group.nodes[j];
+			if (!node.isParent) {
+				min[0] = Math.min(min[0], node.value.pos[0]);
+				min[1] = Math.min(min[0], node.value.pos[1]);
+			}
+		}
+		for (var j in group.nodes) {
+			var node = group.nodes[j];
+			if (node.isParent) {
+				node.x = group.pos[0];
+				node.y = group.pos[1];
+			} else {
+				node.x = group.pos[0] - group.size[0] / 2 + node.value.pos[0] - min[0];
+				node.y = group.pos[1] - group.size[1] / 2 + node.value.pos[1] - min[1];
+			}
 		}
 	}
 	
-	// Compute group centroids
-	var groupsMeta = {};
-	for (var i in groups) {
-		var group = groups[i];
-		var cx = 0, cy = 0;
-		for (var j in group) {
-			var node = graph.nodesd[group[j]];
-			cx += node.value.pos[0];
-			cy += node.value.pos[1];
-		}
-		var n = groups[i].length;
-		cx /= n;
-		cy /= n;
-		groupsMeta[i] = {'cx': cx, 'cy': cy, 'n': n};
-	}
+	graph.size = graph.groups[0].size;
 	
 	// Reuse previous positions
-	for (var i in graph.nodes) {
-		var node = graph.nodes[i];
-		var prevNode;
-		if (exists(prevGraph)) {
-			prevNode = prevGraph.nodesd[node.value.id];
-		}
-		if (exists(prevNode)) {
-			node.x = prevNode.x;
-			node.y = prevNode.y;
-			node.fixed = prevNode.fixed;
-		} else {
-			var parentId = dotGraph.parent(node.value.id);
-			if (exists(parentId)) {
-				var parentPos;
-				var parent = prevGraph.nodesd[parentId];
-				if (exists(parent)) {
-					parentPos = [parent.x, parent.y];
-				} else {
-					parent = graph.nodesd[parentId];
-					parentPos = parent.value.pos;
-				}
-				var g = groupsMeta[parentId];
-				node.x = parentPos[0] + node.value.pos[0] - g.cx;
-				node.y = parentPos[1] - 100 + node.value.pos[1] - g.cy;
-				node.fixed = true;
+	if (exists(prevGraph)) {
+		for (var i in graph.nodes) {
+			var node = graph.nodes[i];
+			var prevNode;
+			prevNode = prevGraph.nodesd[node.id];
+			if (exists(prevNode)) {
+				node.x = prevNode.x;
+				node.y = prevNode.y;
+				node.fixed = prevNode.fixed;
 			} else {
-				node.x = node.value.pos[0];
-				node.y = node.value.pos[1];
+				for (var j in prevGraph.groups) {
+					var group = prevGraph.groups[j];
+					if (exists(group.parent) && group.parent.id == node.id) {
+						node.x = group.pos[0] + group.size[0] / 2;
+						node.y = group.pos[1] + group.size[1] / 2;
+					}
+				}
 			}
 		}
 	}
-	
-	// Offset graph on initialization
-	if (!exists(prevGraph)) {
-		var posMin = [Infinity, Infinity];
-		for (var i in graph.nodes) {
-			var node = graph.nodes[i];
-			posMin[0] = Math.min(posMin[0], node.x);
-			posMin[1] = Math.min(posMin[1], node.y);
-		}
-		for (var i in graph.nodes) {
-			var node = graph.nodes[i];
-			node.x -= posMin[0];
-			node.y -= posMin[1];
-		}
-	}
-	
-	// Compute dimension of graph
-	var minPos = [Infinity, Infinity];
-	var maxPos = [-Infinity, -Infinity];
-	for (var i in graph.nodes) {
-		var node = graph.nodes[i];
-		minPos[0] = Math.min(minPos[0], node.x);
-		minPos[1] = Math.min(minPos[1], node.y);
-		maxPos[0] = Math.max(maxPos[0], node.x + node.value.width);
-		maxPos[1] = Math.max(maxPos[1], node.y + node.value.height);
-	}
-	graph.dim = {'minPos': minPos, 'maxPos': maxPos,
-	'size': [maxPos[0] - minPos[0], maxPos[1] - minPos[0]]};
 	
 	// Edges
 	graph.edges = [];
-	for (var i in graph.nodes) {
-		for (var j in graph.nodes) {
-			var sourceId = graph.nodes[i].value.id;
-			var targetId = graph.nodes[j].value.id;
-			var dotEdge = dotGraph.edge(sourceId, targetId);
+	
+	for (var i in graph.nodesn) {
+		for (var j in graph.nodesn) {
+			var source = graph.nodesn[i];
+			var target = graph.nodesn[j];
+			
+			var dotEdge = dotGraph.edge(source.value.id, target.value.id);
 			if (exists(dotEdge)) {
 				var edge = {};
-				edge.source = parseInt(graph.nodes[i].index);
-				edge.target = parseInt(graph.nodes[j].index);
+				edge.source = parseInt(source.index);
+				edge.target = parseInt(target.index);
 				edge.value = dotEdge;
 				graph.edges.push(edge);
 			}
+			
+			function redirectEdges(map, dotEdge) {
+				for (var k in map) {
+					var kmap = map[k];
+					if (kmap[0] == source.id && kmap[1] == target.id) {
+						var edge = {};
+						edge.source = parseInt(source.index);
+						edge.target = parseInt(target.index);
+						edge.value = dotEdge;
+						graph.edges.push(edge);	
+					}
+				}
+			}
+
+			var map = undefined;
+			if (exists(target.parent)) {
+				var parent = target.parent;
+				var dotEdge = dotGraph.edge(source.id, parent.id);
+				if (exists(dotEdge)) {
+					map = parent.value.subg_map_inputs;
+					redirectEdges(map, dotEdge);
+				}
+			}
+			
+			if (exists(source.parent)) {
+				var parent = source.parent;
+				var dotEdge = dotGraph.edge(parent.id, target.id);
+				if (exists(dotEdge)) {
+					map = parent.value.subg_map_outputs;
+					redirectEdges(map, dotEdge);
+				}
+			}
 		}
 	}
+
 	return graph;
+}
+
+function convexHulls(graph, offset) {
+	var hulls = [];
+	offset = offset || 20;
+	for (var i in graph.groups) {
+		var group = graph.groups[i];
+		if (!exists(group.parent)) {
+			continue;
+		}
+		var points = [];
+		for (var j in group.nodes) {
+			var node = group.nodes[j];
+			if (node.isParent) {
+				points.push([node.x, node.y]);
+			} else {
+				points.push([node.x - node.value.cx - offset, node.y - node.value.cy - offset]);
+				points.push([node.x - node.value.cx - offset, node.y + node.value.cy + offset]);
+				points.push([node.x + node.value.cx + offset, node.y - node.value.cy - offset]);
+				points.push([node.x + node.value.cx + offset, node.y + node.value.cy + offset]);	
+			}
+		}
+		hulls.push({group: i, path: d3.geom.hull(points)});
+	}
+	return hulls;
+}
+
+function drawCluster(d) {
+  return curve(d.path); // 0.8
 }
 
 function setupGraph() {
@@ -250,6 +313,23 @@ function setupGraph() {
 	
 	var isEdgeOver = false;
 	var isEdgeLabelOver = false;
+	
+	graph.hulls = convexHulls(graph);
+	hulls = pane.selectAll('#hulls').remove();
+	hulls = pane.append('g').attr('id', 'hulls')
+		.selectAll('path')
+		.data(graph.hulls).enter()
+		.append('path')
+		.attr('class', 'hull')
+		.attr('d', drawCluster);
+		
+		
+	hulls.on('dblclick', function(d) {
+		var parent = graph.groups[d.group].parent;
+		parent.value.showChilds = !parent.value.showChilds;
+		graph = forceGraph(dotGraph, graph);
+		setupGraph();
+	});
 	
 	// Add edges
 	edges = pane.selectAll('#edges').remove();
@@ -287,7 +367,7 @@ function setupGraph() {
 	// Add nodes
 	pane.selectAll('#nodes').remove();
 	nodes = pane.append('g').attr('id', 'nodes')
-		.selectAll('g').data(graph.nodes).enter().append('g');
+		.selectAll('g').data(graph.nodesn).enter().append('g');
 	
 	updateNodes();
 	updateGraph();
@@ -341,9 +421,9 @@ function setupGraph() {
 	layout = d3.layout.force()
 		.nodes(graph.nodes)
 		.links(graph.edges)
-		.size(graph.dim.size)
+		.size(graph.size)
 		.charge(-300)
-		.linkDistance(300)
+		.linkDistance(400)
 		.linkStrength(0.4)
 		.gravity(0)
 		.on('tick', updateGraph);
@@ -373,6 +453,10 @@ function pathPos(x1, y1, x2, y2, c) {
 }
 
 function updateGraph() {
+	graph.hulls = convexHulls(graph);
+	hulls.data(graph.hulls)
+		.attr('d', drawCluster);
+	
 	// Update nodes
 	nodes.attr('transform', function(d) { return 'translate(' + (d.x - d.value.cx) + ' ' + (d.y - d.value.cy) + ')'; });
 	// Update edges

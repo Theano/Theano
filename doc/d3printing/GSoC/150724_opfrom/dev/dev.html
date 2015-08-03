@@ -22,7 +22,7 @@
 	</div>
 
 	<script type="text/javascript">
-		var path='opfrom.dot'; // '%% DOT_FILE %%'
+		var path = 'opfrom.dot'; // '%% DOT_FILE %%';
 		var dotGraph;
 		var graph = {};
 		var nodes = [];
@@ -85,13 +85,6 @@
 		    .attr("d", "M0,0 L4,2 L0,4 Z")
 		    .attr('fill', function(d) { return d.color;});
 		
-		d3.text(path, function(data) {
-			dotGraph = graphlibDot.read(data);
-			processDotGraph(dotGraph);		
-			graph = forceGraph(dotGraph);	
-			setupGraph();
-		});
-		
 		// Zoom behaviour
 		function zoom(d) {
 			var trans = d3.event.translate;
@@ -107,6 +100,18 @@
 		bZoom.event(svg);
 		
 		svg.on("dblclick.zoom", null);
+		
+		var curve = d3.svg.line()
+		    .interpolate("cardinal-closed")
+		    .tension(.85);
+		
+		// Read and initialize graph
+		d3.text(path, function(data) {
+			dotGraph = graphlibDot.read(data);
+			processDotGraph(dotGraph);		
+			graph = forceGraph(dotGraph);
+			setupGraph();
+		});
 	</script>
 </body>
 </html>

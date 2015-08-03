@@ -83,3 +83,8 @@ svg {
 	border-radius: 8px;
 	pointer-events: none;
 }
+
+path.hull {
+	fill: lightsteelblue;
+	fill-opacity: 0.3;
+}

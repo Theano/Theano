@@ -56,18 +56,33 @@ class GraphFormatter(object):
                             'unused': 'lightgrey'
                             }
         self.max_label_size = 70
+        self.node_prefix = 'n'
 
-    def get_node_id(self):
-        self.nnodes += 1
-        id_ = '_%d' % (self.nnodes)
-        return id_
+    def add_node(self, node):
+        assert not node in self.nodes
+        _id = '%s%d' % (self.node_prefix, len(self.nodes) + 1)
+        self.nodes[node] = _id
+        return _id
 
-    def to_pydot(self, fct):
+    def node_id(self, node):
+        if node in self.nodes:
+            return self.nodes[node]
+        else:
+            return self.add_node(node)
+
+    def to_pydot(self, fct, graph=None):
         """Create pydot graph from function.
 
         :param fct: a compiled Theano function, a Variable, an Apply or
                     a list of Variable.
         """
+        if graph is None:
+            graph = pd.Dot()
+
+        self.nodes = {}
+        self.var_str = {}
+        self.all_strings = set()
+        self.apply_name_cache = {}
 
         if isinstance(fct, Function):
             mode = fct.maker.mode
@@ -99,13 +114,6 @@ class GraphFormatter(object):
             raise RuntimeError("Failed to import pydot. You must install pydot"
                                " for `pydotprint` to work.")
 
-        g = pd.Dot()
-
-        self.var_str = {}
-        self.all_strings = set()
-        self.apply_name_cache = {}
-        self.nnodes = 0
-
 
         # Update the inputs that have an update function
         self.input_update = {}
@@ -119,15 +127,9 @@ class GraphFormatter(object):
 
         apply_shape = 'ellipse'
         var_shape = 'box'
-        for node_idx, node in enumerate(topo):
-            aid, astr, aprof = self.apply_name(node, fct, topo, mode, profile)
-            is_opfrom = isinstance(node.op, builders.OpFromGraph)
-
-            if is_opfrom:
-                parent = pd.Cluster(aid, label=astr)
-                g.add_subgraph(parent)
-            else:
-                parent = g
+        for node in topo:
+            node_id = self.node_id(node)
+            astr, aprof = self.apply_name(node, fct, topo, mode, profile)
 
             use_color = None
             for opName, color in self.colorCodes.items():
@@ -135,62 +137,91 @@ class GraphFormatter(object):
                     use_color = color
 
             if use_color is None:
-                nw_node = pd.Node(aid, label=astr, shape=apply_shape, profile=aprof)
+                pd_node = pd.Node(node_id, label=astr, shape=apply_shape, profile=aprof)
             else:
-                nw_node = pd.Node(aid, label=astr, style='filled', fillcolor=use_color,
+                pd_node = pd.Node(node_id, label=astr, style='filled', fillcolor=use_color,
                                 shape=apply_shape, type='colored', profile=aprof)
-            g.add_node(nw_node)
+            graph.add_node(pd_node)
 
-            def make_node(label, **kwargs):
+            def make_node(_id, label, **kwargs):
                 t = {k:v for k,v in kwargs.items() if v is not None}
-                return pd.Node(self.get_node_id(), label=label, **t)
+                return pd.Node(_id, label=label, **t)
 
             for id, var in enumerate(node.inputs):
-                param = {}
-                if hasattr(node.op, 'view_map') and id in reduce(
-                        list.__add__, node.op.view_map.values(), []):
-                        param['color'] = self.node_colors['output']
+                edge_params = {}
+                if hasattr(node.op, 'view_map') and id in reduce(list.__add__, node.op.view_map.values(), []):
+                    edge_params['color'] = self.node_colors['output']
                 elif hasattr(node.op, 'destroy_map') and id in reduce(
                         list.__add__, node.op.destroy_map.values(), []):
-                            param['color'] = 'red'
+                            edge_params['color'] = 'red'
 
                 edge_label = str(var.type)
                 if len(node.inputs) > 1:
                     edge_label = str(id) + ' ' + edge_label
+
+                var_id = self.node_id(var.owner if var.owner else var)
+
                 if var.owner is None:
-                    id_ = self.var_name(var)
-                    n = make_node(id_, style='filled',
+                    var_name = self.var_name(var)
+                    n = make_node(var_id, var_name, style='filled',
                                   fillcolor=self.node_colors['input'],
                                   shape=var_shape, profile=aprof)
-                    parent.add_node(n)
-                    if not is_opfrom:
-                        g.add_edge(pd.Edge(n.get_name(), aid, label=edge_label, **param))
-                elif not is_opfrom:
-                    id_, name, prof = self.apply_name(var.owner, fct, topo, mode, profile)
-                    g.add_edge(pd.Edge(id_, aid,
-                                       label=edge_label, **param))
+                    graph.add_node(n)
+
+                graph.add_edge(pd.Edge(var_id, node_id, label=edge_label, **edge_params))
 
             for id, var in enumerate(node.outputs):
-                varstr = self.var_name(var)
+                var_id = self.node_id(var)
+                var_name = self.var_name(var)
                 edge_label = str(var.type)
 
                 if var in outputs:
-                    n = make_node(varstr, style='filled',
+                    n = make_node(var_id, var_name, style='filled',
                                   fillcolor=self.node_colors['output'],
                                   shape=var_shape, profile=aprof)
-                    g.add_node(n)
-                    g.add_edge(pd.Edge(aid, n.get_name(), label=edge_label))
+                    graph.add_node(n)
+                    graph.add_edge(pd.Edge(node_id, var_id, label=edge_label))
                 elif len(var.clients) == 0:
-                    n = make_node(varstr, style='filled',
+                    n = make_node(var_id, var_name, style='filled',
                                     fillcolor=self.node_colors['unused'],
                                     shape=var_shape, profile=aprof)
-                    g.add_node(n)
-                    g.add_edge(pd.Edge(aid, n.get_name(), label=edge_label))
+                    graph.add_node(n)
+                    graph.add_edge(pd.Edge(node_id, var_id, label=edge_label))
                 elif var.name or not self.compact:
-                    id_, name, prof = self.apply_name(var.owner, fct, topo, mode, profile)
-                    g.add_edge(pd.Edge(aid, id_, label=edge_label))
+                    graph.add_edge(pd.Edge(node_id, var_id, label=edge_label))
 
-        return g
+            if isinstance(node.op, builders.OpFromGraph):
+                subgraph = pd.Cluster(node_id)
+                gf = GraphFormatter()
+                gf.node_prefix = node_id
+                gf.to_pydot(node.op.fn, subgraph)
+                graph.add_subgraph(subgraph)
+                pd_node.get_attributes()['subg'] = subgraph.get_name()
+
+                def format_map(m):
+                    return str([list(x) for x in m])
+
+                # Inputs mapping
+                ext_inputs = [self.node_id(x) for x in node.inputs]
+                int_inputs = [gf.node_id(x) for x in node.op.fn.maker.fgraph.inputs]
+                assert len(ext_inputs) == len(int_inputs)
+                h = format_map(zip(ext_inputs, int_inputs))
+                pd_node.get_attributes()['subg_map_inputs'] = h
+
+                # Outputs mapping
+                ext_outputs = []
+                for n in topo:
+                    for i in n.inputs:
+                        h = i.owner if i.owner else i
+                        if h is node:
+                            ext_outputs.append(self.node_id(n))
+                int_outputs = node.op.fn.maker.fgraph.outputs
+                int_outputs = [gf.node_id(x) for x in int_outputs]
+                assert len(ext_outputs) == len(int_outputs)
+                h = format_map(zip(int_outputs, ext_outputs))
+                pd_node.get_attributes()['subg_map_outputs'] = h
+
+        return graph
 
 
 
@@ -272,6 +303,6 @@ class GraphFormatter(object):
                             suffix)
 
         self.all_strings.add(applystr)
-        rv = (self.get_node_id(), applystr, prof)
+        rv = (applystr, prof)
         self.apply_name_cache[node] = rv
         return rv

@@ -36,3 +36,7 @@ Theano.suo
 *.DS_Store
 *.bak
 .ipynb_checkpoints
+
+doc/d3printing/GSoC/150724_opfrom/bundle/
+doc/d3printing/GSoC/150724_opfrom/bundle2/
+
