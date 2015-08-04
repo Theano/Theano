@@ -67,6 +67,9 @@ class MyOp(Op):
         else:
             return id(self)
 
+    def __gt__(self):
+        return True
+
 
 op1 = MyOp('Op1')
 op2 = MyOp('Op2')
@@ -363,40 +366,84 @@ class TestMergeOptimizer:
         strg = str(g)
         assert strg == '[Op1(y, y)]' or strg == '[Op1(z, z)]'
 
-    def test_assert_merge(self):
+    def test_one_assert_merge(self):
+        # Merge two nodes, one has assert, the other not.
         x1 = T.matrix('x1')
         x2 = T.matrix('x2')
-        y1 = T.opt.assert_op(x1, (x1 < 0).all()) +\
-            T.opt.assert_op(x2, (x1 < 0).all())
-        y2 = T.opt.assert_op(x1, (x2 > 0).all()) + x2
-        g = Env([x1, x2], [y1, y2])
+        e = T.dot(x1, x2) + T.dot(T.opt.assert_op(x1, (x1 > x2).all()), x2)
+        g = Env([x1, x2], [e])
         MergeOptimizer().optimize(g)
         strg = theano.printing.debugprint(g, file='str')
-        strref = '''
-Elemwise{add,no_inplace} [@A] ''   9
- |Assert{msg='Theano Assert failed!'} [@B] ''   8
- | |x1 [@C]
- | |Elemwise{and_,no_inplace} [@D] ''   7
- |   |Elemwise{and_,no_inplace} [@E] ''   6
- |   | |All [@F] ''   3
- |   | | |Elemwise{lt,no_inplace} [@G] ''   1
- |   | |   |x1 [@C]
- |   | |   |DimShuffle{x,x} [@H] ''   0
- |   | |     |TensorConstant{0} [@I]
- |   | |All [@J] ''   4
- |   |   |Elemwise{gt,no_inplace} [@K] ''   2
- |   |     |x2 [@L]
- |   |     |DimShuffle{x,x} [@H] ''   0
- |   |All [@J] ''   4
- |Assert{msg='Theano Assert failed!'} [@M] ''   5
-   |x2 [@L]
-   |All [@F] ''   3
-Elemwise{add,no_inplace} [@A] ''   9
+        strref = '''Elemwise{add,no_inplace} [@A] ''   4
+ |dot [@B] ''   3
+ | |Assert{msg='Theano Assert failed!'} [@C] ''   2
+ | | |x1 [@D]
+ | | |All [@E] ''   1
+ | |   |Elemwise{gt,no_inplace} [@F] ''   0
+ | |     |x1 [@D]
+ | |     |x2 [@G]
+ | |x2 [@G]
+ |dot [@B] ''   3
 '''
-        print(strg)
-        print(strref)
-        assert strg.strip() == strref.strip()
+        assert strg == strref
 
+    def test_both_assert_merge_1(self):
+        # Merge two nodes, both have assert on the same node
+        # with different conditions.
+        x1 = T.matrix('x1')
+        x2 = T.matrix('x2')
+        x3 = T.matrix('x3')
+        e = T.dot(T.opt.assert_op(x1, (x1 > x3).all()), x2) +\
+            T.dot(T.opt.assert_op(x1, (x1 > x2).all()), x2)
+        g = Env([x1, x2, x3], [e])
+        MergeOptimizer().optimize(g)
+        strg = theano.printing.debugprint(g, file='str')
+        strref = '''Elemwise{add,no_inplace} [@A] ''   6
+ |dot [@B] ''   5
+ | |Assert{msg='Theano Assert failed!'} [@C] ''   4
+ | | |x1 [@D]
+ | | |All [@E] ''   3
+ | | | |Elemwise{gt,no_inplace} [@F] ''   1
+ | | |   |x1 [@D]
+ | | |   |x3 [@G]
+ | | |All [@H] ''   2
+ | |   |Elemwise{gt,no_inplace} [@I] ''   0
+ | |     |x1 [@D]
+ | |     |x2 [@J]
+ | |x2 [@J]
+ |dot [@B] ''   5
+'''
+        # print(strg)
+        assert strg == strref
+
+    def test_both_assert_merge_2(self):
+        # Merge two nodes, both have assert on different node
+        x1 = T.matrix('x1')
+        x2 = T.matrix('x2')
+        x3 = T.matrix('x3')
+        e = T.dot(T.opt.assert_op(x1, (x1 > x3).all()), x2) +\
+            T.dot(x1, T.opt.assert_op(x2, (x2 > x3).all()))
+        g = Env([x1, x2, x3], [e])
+        MergeOptimizer().optimize(g)
+        strg = theano.printing.debugprint(g, file='str')
+        strref = '''Elemwise{add,no_inplace} [@A] ''   7
+ |dot [@B] ''   6
+ | |Assert{msg='Theano Assert failed!'} [@C] ''   5
+ | | |x1 [@D]
+ | | |All [@E] ''   3
+ | |   |Elemwise{gt,no_inplace} [@F] ''   1
+ | |     |x1 [@D]
+ | |     |x3 [@G]
+ | |Assert{msg='Theano Assert failed!'} [@H] ''   4
+ |   |x2 [@I]
+ |   |All [@J] ''   2
+ |     |Elemwise{gt,no_inplace} [@K] ''   0
+ |       |x2 [@I]
+ |       |x3 [@G]
+ |dot [@B] ''   6
+'''
+        # print(strg)
+        assert strg == strref
 
 
 class TestEquilibrium(object):

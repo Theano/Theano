@@ -515,6 +515,7 @@ class MergeFeature(object):
         if node in self.nodes_seen:
             return
 
+        # import ipdb;ipdb.set_trace()
         node_has_assert = False
 
         # These asserts ensure that the fgraph has set the clients field
@@ -533,6 +534,14 @@ class MergeFeature(object):
                     node_has_assert = True
                     assert_clients = [c for (c, _) in i.owner.inputs[0].clients
                                       if c in self.nodes_seen]
+
+                    for idx in range(len(assert_clients)):
+                        client = assert_clients[idx]
+                        if isinstance(i.owner.op, theano.tensor.opt.Assert):
+                            for c in client.outputs[0].clients:
+                                if c[0] in self.nodes_seen:
+                                    assert_clients.append(c[0])
+
                     merge_candidates.extend(assert_clients)
         else:
             merge_candidates = []
@@ -555,11 +564,6 @@ class MergeFeature(object):
                     cand_inputs_assert_removed.append(i.owner.inputs[0])
                 else:
                     cand_inputs_assert_removed.append(i)
-
-            # if the current node has assert input, it should not be
-            # replaced with a candidate node which has no assert input
-            if node_has_assert and not cand_has_assert:
-                continue
 
             # Get input list of the node with assert removed
             if node_has_assert:
@@ -588,6 +592,13 @@ class MergeFeature(object):
                     # Schedule transfer of clients from node to candidate
                     pairs = list(zip(node.outputs,
                                      candidate.outputs,
+                                     ['merge'] * len(node.outputs)))
+
+                # if the current node has assert input, it should not be
+                # replaced with a candidate node which has no assert input
+                elif node_has_assert and not cand_has_assert:
+                    pairs = list(zip(candidate.outputs,
+                                     node.outputs,
                                      ['merge'] * len(node.outputs)))
                 else:
                     new_inputs = self.get_merged_assert_input(node, candidate)
@@ -626,17 +637,15 @@ class MergeFeature(object):
                         isinstance(cand_i.owner.op,
                                    theano.tensor.opt.Assert)):
                     # Here two assert nodes are merged.
-                    # Step 1. Check if two conditions the same one
-                    # Step 2. Combine the two with T.and_(a, b)
-                    node_cond = node_i.owner.inputs[1]
-                    cand_cond = cand_i.owner.inputs[1]
-                    if node_cond.owner is cand_cond.owner:
-                        new_inputs.append(cand_i)
-                    else:
-                        new_inputs.append(
-                            theano.tensor.opt.assert_op(
-                                node_i.owner.inputs[0],
-                                theano.tensor.and_(node_cond, cand_cond)))
+                    # Step 1. Merge conditions of both assert nodes.
+                    # Step 2. Make the new assert node
+                    node_cond = node_i.owner.inputs[1:]
+                    cand_cond = cand_i.owner.inputs[1:]
+                    new_cond = list(set(node_cond + cand_cond))
+                    new_inputs.append(
+                        theano.tensor.opt.assert_op(
+                            node_i.owner.inputs[0],
+                            *new_cond))
 
                 # node_i is assert, cand_i is not assert
                 else:
