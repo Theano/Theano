@@ -820,7 +820,7 @@ class FunctionGraph(utils.object2):
         """Clone the graph and get a memo( a dict )that map old node to new node
         ----------------------------
         Parameters:
-            check_integrity - { bool } Whether to check integrity. 
+            check_integrity - { bool } Whether to check integrity.
                                 Default is True.
             attach_feature - { bool } Whether to attach feature of origin graph to
                                 cloned graph. Default is True.
@@ -830,7 +830,7 @@ class FunctionGraph(utils.object2):
             equiv - { dict } A dict that map old node to new node.
         """
         equiv = graph.clone_get_equiv(self.inputs, self.outputs)
-        
+
         if check_integrity:
             self.check_integrity()
         e = FunctionGraph([equiv[i] for i in self.inputs],

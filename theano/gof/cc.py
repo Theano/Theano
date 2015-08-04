@@ -1558,7 +1558,7 @@ class CLinker(link.Linker):
                        if (i + len(in_storage)) not in dupidx]
         in_storage = [x for i, x in enumerate(in_storage) if i not in dupidx]
         if storage_map is None:
-            orphd = [[orphan.data] for orphan in self.orphans]            
+            orphd = [[orphan.data] for orphan in self.orphans]
         else:
             orphd = [storage_map[orphan] for orphan in self.orphans]
 
@@ -1719,7 +1719,7 @@ class OpWiseCLinker(link.LocalLinker):
         return self
 
     def make_all(self, profiler=None, input_storage=None, output_storage=None,
-                    storage_map=None):
+                 storage_map=None):
 
         # The lock will be acquired when we compile the first
         # C code. We will keep the lock untill all the function
