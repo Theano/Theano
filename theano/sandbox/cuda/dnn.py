@@ -3,7 +3,7 @@ import numpy
 import warnings
 
 import theano
-from theano import Apply, gof, tensor, config, Variable
+from theano import Apply, tensor, config, Variable
 from theano.scalar import as_scalar, constant, Log
 from theano.gradient import DisconnectedType, grad_not_implemented
 from theano.gof import Optimizer, local_optimizer, COp
@@ -128,6 +128,7 @@ if (%(err)s != CUDNN_STATUS_SUCCESS) {
 }
 
         """ % dict(var=var, err=err, desc=desc, fail=fail)
+
 
 class DnnBase(GpuOp, COp):
     """
@@ -385,6 +386,7 @@ def ensure_float(val, default, name):
         raise TypeError("%s: type is not float32" % (name,))
     return val
 
+
 def ensure_int(val, default, name):
     if val is None:
         return default.clone()
@@ -424,7 +426,7 @@ class GpuDnnConv(DnnBase, COp):
         if workmem is not None:
             warnings.warn(("GpuDnnConv: parameter 'workmem' is deprecated. "
                            "Use 'algo' instead."), stacklevel=3)
-            assert algo == None
+            assert algo is None
             self.algo = workmem
         else:
             if algo is None:
@@ -446,7 +448,8 @@ class GpuDnnConv(DnnBase, COp):
                                    "implementation based on heuristics "
                                    "requires CuDNN v3")
             elif self.algo in ['time_once', 'time_on_shape_change']:
-                raise RuntimeError("CuDNN convolution timing requires CuDNN v3")
+                raise RuntimeError("CuDNN convolution timing requires CuDNN "
+                                   "v3")
 
         assert self.algo in ['none', 'small', 'large', 'fft', 'guess_once',
                              'guess_on_shape_change', 'time_once',
@@ -533,8 +536,10 @@ class GpuDnnConv(DnnBase, COp):
 
         top = gpu_contiguous(top)
 
-        d_img = GpuDnnConvGradI()(kerns, top, gpu_alloc_empty(*img.shape), desc)
-        d_kerns = GpuDnnConvGradW()(img, top, gpu_alloc_empty(*kerns.shape), desc)
+        d_img = GpuDnnConvGradI()(kerns, top, gpu_alloc_empty(*img.shape),
+                                  desc)
+        d_kerns = GpuDnnConvGradW()(img, top, gpu_alloc_empty(*kerns.shape),
+                                    desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
         d_beta = grad_not_implemented(self, 5, beta)
 
@@ -580,7 +585,6 @@ class GpuDnnConv(DnnBase, COp):
         return [shape[2]]
 
 
-
 class GpuDnnConv3d(GpuDnnConv):
     """
     The forward convolution.
@@ -603,7 +607,7 @@ class GpuDnnConv3d(GpuDnnConv):
         if workmem is not None:
             warnings.warn(("GpuDnnConv3d: parameter 'workmem' is deprecated. "
                            "Use 'algo' instead."), stacklevel=3)
-            assert algo == None
+            assert algo is None
             algo = workmem
 
         super(GpuDnnConv3d, self).__init__(inplace=inplace, algo='none')
@@ -636,8 +640,10 @@ class GpuDnnConv3d(GpuDnnConv):
 
         top = gpu_contiguous(top)
 
-        d_img = GpuDnnConv3dGradI()(kerns, top, gpu_alloc_empty(*img.shape), desc)
-        d_kerns = GpuDnnConv3dGradW()(img, top, gpu_alloc_empty(*kerns.shape), desc)
+        d_img = GpuDnnConv3dGradI()(kerns, top, gpu_alloc_empty(*img.shape),
+                                    desc)
+        d_kerns = GpuDnnConv3dGradW()(img, top, gpu_alloc_empty(*kerns.shape),
+                                      desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
         d_beta = grad_not_implemented(self, 5, beta)
 
@@ -706,7 +712,7 @@ class GpuDnnConvGradW(DnnBase, COp):
         if workmem is not None:
             warnings.warn(("GpuDnnConvGradW: parameter 'workmem' is "
                            "deprecated. Use 'algo' instead."), stacklevel=3)
-            assert algo == None
+            assert algo is None
             self.algo = workmem
         else:
             if algo is None:
@@ -736,7 +742,8 @@ class GpuDnnConvGradW(DnnBase, COp):
 
         kerns = gpu_contiguous(kerns)
 
-        d_img = GpuDnnConvGradI()(kerns, top, gpu_alloc_empty(*img.shape), desc)
+        d_img = GpuDnnConvGradI()(kerns, top, gpu_alloc_empty(*img.shape),
+                                  desc)
         d_top = GpuDnnConv()(img, kerns, gpu_alloc_empty(*top.shape), desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
         d_beta = grad_not_implemented(self, 5, beta)
@@ -838,7 +845,7 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
         if workmem is not None:
             warnings.warn(("GpuDnnConv3dGradW: parameter 'workmem' is "
                            "deprecated. Use 'algo' instead."), stacklevel=3)
-            assert algo == None
+            assert algo is None
             algo = workmem
 
         super(GpuDnnConv3dGradW, self).__init__(inplace=inplace,
@@ -852,7 +859,8 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
 
         kerns = gpu_contiguous(kerns)
 
-        d_img = GpuDnnConv3dGradI()(kerns, top, gpu_alloc_empty(*img.shape), desc)
+        d_img = GpuDnnConv3dGradI()(kerns, top, gpu_alloc_empty(*img.shape),
+                                    desc)
         d_top = GpuDnnConv3d()(img, kerns, gpu_alloc_empty(*top.shape), desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
         d_beta = grad_not_implemented(self, 5, beta)
@@ -870,7 +878,6 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
             raise TypeError('topgrad must be 5D tensor')
         if output.type.ndim != 5:
             raise TypeError('output must be 5D tensor')
-
 
         if not isinstance(desc.type, CDataType) \
                 or desc.type.ctype != 'cudnnConvolutionDescriptor_t':
@@ -893,7 +900,8 @@ class GpuDnnConvGradI(DnnBase, COp):
 
     """
     __props__ = ('algo', 'inplace',)
-    __input_name__ = ('kernel', 'grad', 'output', 'descriptor', 'alpha', 'beta')
+    __input_name__ = ('kernel', 'grad', 'output', 'descriptor', 'alpha',
+                      'beta')
 
     def __init__(self, inplace=False, workmem=None, algo=None):
         """
@@ -908,7 +916,7 @@ class GpuDnnConvGradI(DnnBase, COp):
         if workmem is not None:
             warnings.warn(("GpuDnnConvGradI: parameter 'workmem' is "
                            "deprecated. Use 'algo' instead."), stacklevel=3)
-            assert algo == None
+            assert algo is None
             self.algo = workmem
         else:
             if algo is None:
@@ -938,7 +946,8 @@ class GpuDnnConvGradI(DnnBase, COp):
 
         img = gpu_contiguous(img)
 
-        d_kerns = GpuDnnConvGradW()(img, top, gpu_alloc_empty(*kerns.shape), desc)
+        d_kerns = GpuDnnConvGradW()(img, top, gpu_alloc_empty(*kerns.shape),
+                                    desc)
         d_top = GpuDnnConv()(img, kerns, gpu_alloc_empty(*top.shape), desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
         d_beta = grad_not_implemented(self, 5, beta)
@@ -1018,7 +1027,6 @@ class GpuDnnConvGradI(DnnBase, COp):
         return [shape[2]]
 
 
-
 class GpuDnnConv3dGradI(GpuDnnConvGradI):
     """
     The convolution gradient with respect to the inputs.
@@ -1029,7 +1037,8 @@ class GpuDnnConv3dGradI(GpuDnnConvGradI):
 
     """
     __props__ = ('algo', 'inplace',)
-    __input_name__ = ('kernel', 'grad', 'output', 'descriptor', 'alpha', 'beta')
+    __input_name__ = ('kernel', 'grad', 'output', 'descriptor', 'alpha',
+                      'beta')
 
     def __init__(self, inplace=False, workmem=None, algo=None):
         """
@@ -1041,7 +1050,7 @@ class GpuDnnConv3dGradI(GpuDnnConvGradI):
         if workmem is not None:
             warnings.warn(("GpuDnnConv3dGradI: parameter 'workmem' is "
                            "deprecated. Use 'algo' instead."), stacklevel=3)
-            assert algo == None
+            assert algo is None
             algo = workmem
 
         super(GpuDnnConv3dGradI, self).__init__(inplace=inplace,
@@ -1049,14 +1058,14 @@ class GpuDnnConv3dGradI(GpuDnnConvGradI):
         assert self.algo in ['none', 'guess_once', 'guess_on_shape_change',
                              'time_once', 'time_on_shape_change']
 
-
     def grad(self, inp, grads):
         kerns, top, output, desc, alpha, beta = inp
         img, = grads
 
         img = gpu_contiguous(img)
 
-        d_kerns = GpuDnnConv3dGradW()(img, top, gpu_alloc_empty(*kerns.shape), desc)
+        d_kerns = GpuDnnConv3dGradW()(img, top, gpu_alloc_empty(*kerns.shape),
+                                      desc)
         d_top = GpuDnnConv3d()(img, kerns, gpu_alloc_empty(*top.shape), desc)
         d_alpha = grad_not_implemented(self, 4, alpha)
         d_beta = grad_not_implemented(self, 5, beta)
@@ -1084,7 +1093,6 @@ class GpuDnnConv3dGradI(GpuDnnConvGradI):
 
         return Apply(self, [kern, topgrad, output, desc, alpha, beta],
                      [output.type()])
-
 
 
 def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
@@ -1126,7 +1134,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     if workmem is not None:
         warnings.warn(("dnn_conv: parameter 'workmem' is deprecated. Use "
                        "'algo' instead."), stacklevel=3)
-        assert algo == None
+        assert algo is None
         algo = workmem
 
     # Ensure the value of direction_hint is supported
@@ -1134,7 +1142,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
 
     fgraph = getattr(img, 'fgraph', None) or getattr(kerns, 'fgraph', None)
     if (border_mode == 'valid' and subsample == (1, 1) and
-        direction_hint == 'bprop weights'):
+            direction_hint == 'bprop weights'):
         # Special case: We are asked to use GpuDnnConvGradW. We need to set
         # up a suitable 'fake' convolution to compute the gradient for.
         img = gpu_contiguous(img.dimshuffle(1, 0, 2, 3))
@@ -1146,14 +1154,14 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         shape2 = shape_i(img, 2, fgraph) - shape_i(kerns, 2, fgraph) + 1
         shape3 = shape_i(img, 3, fgraph) - shape_i(kerns, 3, fgraph) + 1
         out = gpu_alloc_empty(shape_i(kerns, 1, fgraph),
-                        shape_i(img, 1, fgraph), shape2, shape3)
+                              shape_i(img, 1, fgraph), shape2, shape3)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                               conv_mode='cross')(img.shape, out.shape)
         conv = GpuDnnConvGradW()(img, kerns, out, desc)
         return as_cuda_ndarray_variable(conv.dimshuffle(1, 0, 2, 3))
 
     elif (border_mode == 'full' and subsample == (1, 1) and
-          direction_hint != 'forward!' and version() == -1):
+            direction_hint != 'forward!' and version() == -1):
         # Special case: In CuDNN v1, we can be faster by using GpuDnnConvGradI
         # to compute the full convolution as the backward pass of a valid
         # convolution. We just need to set up a suitable 'fake' valid
@@ -1164,7 +1172,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         shape2 = shape_i(img, 2, fgraph) + shape_i(kerns, 2, fgraph) - 1
         shape3 = shape_i(img, 3, fgraph) + shape_i(kerns, 3, fgraph) - 1
         out = gpu_alloc_empty(shape_i(img, 0, fgraph),
-                        shape_i(kerns, 1, fgraph), shape2, shape3)
+                              shape_i(kerns, 1, fgraph), shape2, shape3)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                               conv_mode=conv_mode)(out.shape, kerns.shape)
         return GpuDnnConvGradI()(kerns, img, out, desc)
@@ -1198,8 +1206,8 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
     :param border_mode: one of 'valid', 'full'; additionally, the padding size
         could be directly specified by an integer or a pair of integers
     :param subsample: perform subsampling of the output (default: (1, 1, 1))
-    :param conv_mode: perform convolution (kernels flipped) or cross-correlation.
-        One of 'conv', 'cross'. (default: 'conv')
+    :param conv_mode: perform convolution (kernels flipped) or
+        cross-correlation. One of 'conv', 'cross'. (default: 'conv')
     :param direction_hint: Used by graph optimizers to change algorithm choice.
         By default, GpuDnnConv will be used to carry out the convolution.
         If border_mode is 'valid', subsample is (1,1,1) and direction_hint is
@@ -1222,7 +1230,7 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
     if workmem is not None:
         warnings.warn(("dnn_conv3d: parameter 'workmem' is deprecated. Use "
                        "'algo' instead."), stacklevel=3)
-        assert algo == None
+        assert algo is None
         algo = workmem
 
     # Ensure the value of direction_hint is supported
@@ -1230,7 +1238,7 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
 
     fgraph = getattr(img, 'fgraph', None) or getattr(kerns, 'fgraph', None)
     if (border_mode == 'valid' and subsample == (1, 1, 1) and
-        direction_hint == 'bprop weights'):
+            direction_hint == 'bprop weights'):
         # Special case: We are asked to use GpuDnnConvGradW. We need to set
         # up a suitable 'fake' convolution to compute the gradient for.
         img = gpu_contiguous(img.dimshuffle(1, 0, 2, 3, 4))
@@ -1243,7 +1251,7 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
         shape3 = shape_i(img, 3, fgraph) - shape_i(kerns, 3, fgraph) + 1
         shape4 = shape_i(img, 4, fgraph) - shape_i(kerns, 4, fgraph) + 1
         out = gpu_alloc_empty(shape_i(kerns, 1, fgraph),
-                        shape_i(img, 1, fgraph), shape2, shape3, shape3)
+                              shape_i(img, 1, fgraph), shape2, shape3, shape4)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1, 1),
                               conv_mode='cross')(img.shape, out.shape)
         conv = GpuDnnConv3dGradW()(img, kerns, out, desc)
@@ -1258,8 +1266,8 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
                           conv_mode=conv_mode)(img.shape, kerns.shape)
     desc_op = desc.owner.op
     out_shp = GpuDnnConv3d.get_out_shape(img.shape, kerns.shape,
-                                       desc_op.border_mode,
-                                       desc_op.subsample)
+                                         desc_op.border_mode,
+                                         desc_op.subsample)
     out = gpu_alloc_empty(*out_shp)
     return GpuDnnConv3d(algo=algo)(img, kerns, out, desc)
 
@@ -1536,7 +1544,8 @@ class GpuDnnPoolGrad(DnnBase):
 
     :param inp: the input of the pooling.
     :param out: the output of the pooling in the forward.
-    :param inp_grad: same size as out, but is the corresponding gradient information.
+    :param inp_grad: same size as out, but is the corresponding gradient
+    information.
     :param desc: The pooling descriptor.
     """
     __props__ = ()
@@ -2226,14 +2235,14 @@ if True:
     @register_opt('cudnn')
     @local_optimizer([GpuElemwise])
     def local_log_softmax_dnn(node):
-        # The log-softmax implementation is only available starting at CuDNN V3.
+        # The log-softmax implementation is only available starting at CuDNN V3
         if not dnn_available() or version() < (3000, 3000):
             return
         if (isinstance(node.op, GpuElemwise) and
-            isinstance(node.op.scalar_op, Log) and
-            node.inputs[0].owner and
-            isinstance(node.inputs[0].owner.op, GpuDnnSoftmax) and
-            len(node.inputs[0].owner.out.clients) == 1):
+                isinstance(node.op.scalar_op, Log) and
+                node.inputs[0].owner and
+                isinstance(node.inputs[0].owner.op, GpuDnnSoftmax) and
+                len(node.inputs[0].owner.out.clients) == 1):
 
             log_input = node.inputs[0]
             softmax_node = log_input.owner
@@ -2260,8 +2269,8 @@ if True:
     def local_softmax_dnn_grad(node):
         if (isinstance(node.op, SoftmaxGrad) and
             ((node.inputs[0].owner and
-              isinstance(node.inputs[0].owner.op, HostFromGpu))
-             or (node.inputs[1].owner and
+              isinstance(node.inputs[0].owner.op, HostFromGpu)) or
+             (node.inputs[1].owner and
                  isinstance(node.inputs[1].owner.op, HostFromGpu)))):
             if not dnn_available():
                 return
