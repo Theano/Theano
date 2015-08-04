@@ -339,6 +339,8 @@ class Expm(Op):
     """Compute the matrix exponential of a square array
     """
 
+    __props__ = ()
+
     def make_node(self, A):
         assert imported_scipy, (
             "Scipy not available. Scipy is needed for the Expm op")
@@ -365,6 +367,8 @@ class Expm(Op):
 class ExpmGrad(Op):
     """Gradient of the matrix exponential of a square array.
     """
+
+    __props__ = ()
 
     def make_node(self, A, gw):
         assert imported_scipy, (

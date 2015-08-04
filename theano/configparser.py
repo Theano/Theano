@@ -116,6 +116,10 @@ def change_flags(**kwargs):
                          if v.fullname == k]
                     assert len(l) == 1
                     l[0].__set__(None, old_val[k])
+
+        # Make sure that the name of the decorated function remains the same.
+        inner.__name__ = f.__name__
+
         return inner
     return change_flags_exec
 

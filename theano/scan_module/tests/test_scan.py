@@ -2696,6 +2696,23 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(expected_output, scan_output)
         utt.assert_allclose(expected_output, jacobian_outputs)
 
+    @theano.configparser.change_flags(on_opt_error='raise')
+    def test_pushout_seqs2(self):
+        # This test for a bug with PushOutSeqScan that was reported on the
+        # theano-user mailing list where the optimization raised an exception
+        # when applied on this graph.
+        x = tensor.matrix()
+        outputs, updates = theano.scan(
+            lambda x: [x*x, tensor.constant(0).copy().copy()],
+            n_steps=2,
+            sequences=[],
+            non_sequences=[],
+            outputs_info=[x, None])
+
+        # Compile a theano function where any optimization error will lead to
+        # an exception being raised
+        theano.function([x], outputs, updates=updates)
+
     def test_sequence_dict(self):
         # Test that we can specify sequences as a dictionary with
         # only the 'input' key

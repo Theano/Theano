@@ -7,16 +7,12 @@ class SortOp(theano.Op):
     """
     This class is a wrapper for numpy sort function
     """
+
+    __props__ = ("kind", "order")
+
     def __init__(self, kind, order=None):
         self.kind = kind
         self.order = order
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and self.order == other.order and
-                self.kind == other.kind)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.order) ^ hash(self.kind)
 
     def __str__(self):
         return self.__class__.__name__ + "{%s, %s}" % (self.kind,
@@ -132,17 +128,12 @@ class ArgSortOp(theano.Op):
     """
     This class is a wrapper for numpy argsort function
     """
+
+    __props__ = ("kind", "order")
+
     def __init__(self, kind, order=None):
         self.kind = kind
         self.order = order
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.order == other.order and
-                self.kind == other.kind)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.order) ^ hash(self.kind)
 
     def __str__(self):
         return (self.__class__.__name__ +

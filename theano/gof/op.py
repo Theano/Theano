@@ -465,7 +465,7 @@ class PureOp(object):
                     sio = StringIO()
                     for subtr in tr:
                         traceback.print_list(subtr, sio)
-                        detailed_err_msg += str(sio.getvalue())
+                    detailed_err_msg += str(sio.getvalue())
 
                 detailed_err_msg += (
                     "\nThe error when converting the test value to that"

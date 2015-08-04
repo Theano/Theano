@@ -332,6 +332,9 @@ def makeTester(name, op, expected, checks=None, good=None, bad_build=None,
             return val_dict
 
         def tearDown(self):
+            # This is to avoid a problem with deleting memmap files on windows.
+            import gc
+            gc.collect()
             for f, fname in self.tmp_files:
                 os.close(f)
                 os.remove(fname)

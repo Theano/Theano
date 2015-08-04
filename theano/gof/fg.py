@@ -341,7 +341,7 @@ class FunctionGraph(utils.object2):
                                 sio = StringIO()
                                 for subtr in tr:
                                     traceback.print_list(subtr, sio)
-                                    detailed_err_msg += str(sio.getvalue())
+                                detailed_err_msg += str(sio.getvalue())
                             raise MissingInputError(
                                 'A variable that is an input to the graph was '
                                 'neither provided as an input to the function '

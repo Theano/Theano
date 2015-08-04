@@ -22,7 +22,6 @@ from theano.tensor.type_other import NoneConst
 from theano import scalar as scal
 from functools import partial
 from six import integer_types
-from theano.gof.utils import hashtype
 from theano import compile, printing
 from theano.printing import pprint, min_informative_str
 # For history
@@ -1002,6 +1001,9 @@ _scal_elemwise = _scal_elemwise_with_nfunc(None, None, None)
 #########################
 
 class TensorFromScalar(Op):
+
+    __props__ = ()
+
     def make_node(self, s):
         assert isinstance(s.type, scal.Scalar)
         return Apply(self,
@@ -1033,18 +1035,12 @@ class TensorFromScalar(Op):
 
         raise NotImplementedError("grad not implemented for complex dtypes")
 
-    def __str__(self):
-        return self.__class__.__name__
-
 tensor_from_scalar = TensorFromScalar()
 
 
 class ScalarFromTensor(Op):
-    def __eq__(self, other):
-        return type(self) == type(other)
 
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, t):
         assert isinstance(t.type, TensorType)
@@ -1071,9 +1067,6 @@ class ScalarFromTensor(Op):
         if None in eval_points:
             return [None]
         return self.make_node(*eval_points).outputs
-
-    def __str__(self):
-        return self.__class__.__name__
 
     def c_code(self, node, name, inputs, outputs, sub):
         x, = inputs
@@ -1197,12 +1190,7 @@ class MaxAndArgmax(Op):
     nin = 2  # tensor, axis
     nout = 2  # max val, max idx
     E_axis = 'invalid axis'
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, x, axis=None):
         x = _as_tensor_variable(x)
@@ -1423,10 +1411,6 @@ class MaxAndArgmax(Op):
         # Set the grad to the correct position.
         g_x = eq(xmax_pad, x) * g_max_pad
         return g_x, axis_grad
-
-    def __str__(self):
-        return self.__class__.__name__
-
 
 _max_and_argmax = MaxAndArgmax()
 
@@ -2330,6 +2314,9 @@ def nonzero_values(a):
 
 
 class Tri(gof.Op):
+
+    __props__ = ("dtype",)
+
     def __init__(self, dtype=None):
         if dtype is None:
             dtype = config.floatX
@@ -2355,12 +2342,6 @@ class Tri(gof.Op):
 
     def grad(self, inp, grads):
         return [grad_undefined(self, i, inp[i]) for i in xrange(3)]
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.dtype == other.dtype
-
-    def __hash__(self):
-        return hash(self.dtype) ^ hash(type(self))
 
 
 def tri(N, M=None, k=0, dtype=None):
@@ -2438,6 +2419,9 @@ def triu(m, k=0):
 
 
 class Eye(gof.Op):
+
+    __props__ = ("dtype", )
+
     def __init__(self, dtype=None):
         if dtype is None:
             dtype = config.floatX
@@ -2466,12 +2450,6 @@ class Eye(gof.Op):
 
     def grad(self, inp, grads):
         return [grad_undefined(self, i, inp[i]) for i in xrange(3)]
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.dtype == other.dtype
-
-    def __hash__(self):
-        return hash(self.dtype) ^ hash(type(self))
 
 
 def eye(n, m=None, k=0, dtype=None):
@@ -2990,6 +2968,7 @@ class Default(gof.Op):
     have exactly the same type.
     """
     view_map = {0: [0]}
+    __props__ = ()
 
     def make_node(self, x, default):
         x, default = as_tensor_variable(x), as_tensor_variable(default)
@@ -3283,19 +3262,13 @@ class Split(Op):
     """A Split instance will have this many outputs, and require that
     the splits argument to `perform` have exactly this many elements.
     """
+    __props__ = ("len_splits",)
 
     def __init__(self, len_splits):
         self.len_splits = int(len_splits)
 
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.len_splits == other.len_splits)
-
     def __str__(self):
         return self.__class__.__name__ + "{%s}" % self.len_splits
-
-    def __hash__(self):
-        return hash(Split) ^ self.len_splits
 
     def make_node(self, x, axis, splits):
         """WRITEME"""
@@ -3510,15 +3483,7 @@ class Join(Op):
         join(0, x, u)       # WRONG: joined tensors must have the same rank
     """
     check_input = False
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return '%s' % (self.__class__.__name__)
+    __props__ = ()
 
     def make_node(self, *axis_and_tensors):
         """
@@ -3979,18 +3944,12 @@ class Reshape(Op):
     _f16_ok = True
 
     check_input = False
+    __props__ = ("ndim",)
+    # name does not participate because it doesn't affect computations
 
     def __init__(self, ndim, name=None):
         self.ndim = ndim
         self.name = name
-
-    def __eq__(self, other):
-        # .name does not participate because it doesn't affect computations
-        return (type(other) is type(self)) and (other.ndim == self.ndim)
-
-    def __hash__(self):
-        # .name does not participate because it doesn't affect computations
-        return hash(type(self)) ^ hash(self.ndim)
 
     def __str__(self):
         return '%s{%s}' % (self.__class__.__name__, self.ndim)
@@ -4180,15 +4139,10 @@ class Flatten(Op):
     view_map = {0: [0]}
 
     check_input = False
+    __props__ = ("outdim",)
 
     def __init__(self, outdim=1):
         self.outdim = int(outdim)
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.outdim == other.outdim
-
-    def __hash__(self):
-        return hashtype(self) ^ hash(self.outdim)
 
     def __str__(self):
         return '%s{%s}' % (self.__class__.__name__, self.outdim)
@@ -4364,14 +4318,10 @@ class Tile(Op):
     :see: `numpy.tile
     <http://docs.scipy.org/doc/numpy/reference/generated/numpy.tile.html>`_
     """
+    __props__ = ("ndim",)
+
     def __init__(self, ndim):
         self.ndim = ndim
-
-    def __eq__(self, other):
-        return (type(other) is Tile) and (other.ndim == self.ndim)
-
-    def __hash__(self):
-        return hash(Tile) ^ hash(self.ndim)
 
     def __str__(self):
         return self.__class__.__name__ + "{ndim=%d}" % self.ndim
@@ -4473,18 +4423,10 @@ class ARange(Op):
 
     Parameters and behaviour are the same as numpy.arange().
     """
+    __props__ = ("dtype",)
 
     def __init__(self, dtype):
         self.dtype = dtype
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.dtype == other.dtype
-
-    def __hash__(self):
-        return hash(self.dtype)
-
-    def __str__(self):
-        return self.__class__.__name__
 
     def make_node(self, start, stop, step):
         start, stop, step = map(as_tensor_variable, (start, stop, step))
@@ -4641,6 +4583,7 @@ class _nd_grid(object):
     >>> b[1].eval()
     array([[0, 1, 2, 3]], dtype=int8)
     """
+
     def __init__(self, sparse=False):
         self.sparse = sparse
 
@@ -4701,6 +4644,7 @@ class PermuteRowElements(Op):
     If the "inverse" argument is True, the Op will perform the inverse
     permutation instead.
     """
+    __props__ = ()
 
     def make_node(self, x, y, inverse):
         x = as_tensor_variable(x)
@@ -4908,12 +4852,7 @@ class Dot(Op):
     tensor.blas)
 
     """
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     # the rationale for Dot22 is related to getting GEMM Ops into the
     # graph.  See Dot22 in tensor.blas for details.
@@ -5377,6 +5316,7 @@ class Diagonal(Op):
 
     :return: A vector representing the diagonal elements.
     """
+    __props__ = ("offset", "axis1", "axis2")
 
     def __init__(self, offset=0, axis1=0, axis2=1):
         if numpy_diagonal_return_view:
@@ -5384,16 +5324,6 @@ class Diagonal(Op):
         self.offset = offset
         self.axis1 = axis1
         self.axis2 = axis2
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.offset == other.offset and
-                self.axis1 == other.axis1 and
-                self.axis2 == other.axis2)
-
-    def __hash__(self):
-        return (hash(type(self)) ^ hash(self.offset) ^
-                hash(self.axis1) ^ hash(self.axis2))
 
     def make_node(self, x):
         x = as_tensor_variable(x)
@@ -5428,9 +5358,6 @@ class Diagonal(Op):
         out_shape.append(diag_size)
         return [tuple(out_shape)]
 
-    def __str__(self):
-        return self.__class__.__name__
-
 
 def diagonal(a, offset=0, axis1=0, axis2=1):
     if (offset, axis1, axis2) == (0, 0, 1):
@@ -5440,11 +5367,7 @@ def diagonal(a, offset=0, axis1=0, axis2=1):
 
 class Diag(Op):
 
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, diag):
         diag = as_tensor_variable(diag)
@@ -5463,9 +5386,6 @@ class Diag(Op):
 
     def infer_shape(self, nodes, shapes):
         return [(shapes[0][0],) * 2]
-
-    def __str__(self):
-        return self.__class__.__name__
 
 
 def diag(v, k=0):

@@ -65,6 +65,7 @@ cpu_contiguous = CpuContiguous()
 
 class CumsumOp(theano.Op):
     # See function cumsum for docstring
+
     __props__ = ("axis",)
 
     def __init__(self, axis=None):
@@ -182,6 +183,7 @@ def cumsum(x, axis=None):
 
 class CumprodOp(theano.Op):
     # See function cumprod for docstring
+
     __props__ = ("axis",)
 
     def __init__(self, axis=None):
@@ -344,9 +346,6 @@ class DiffOp(theano.Op):
         out_shape[self.axis] = out_shape[self.axis] - self.n
         return [out_shape]
 
-    def __str__(self):
-        return self.__class__.__name__
-
 
 def diff(x, n=1, axis=-1):
     """Calculate the n-th order discrete difference along given axis.
@@ -461,9 +460,6 @@ class BinCountOp(theano.Op):
         if self.minlength is not None:
             m = basic.maximum(m, self.minlength)
         return [[m]]
-
-    def __str__(self):
-        return self.__class__.__name__
 
 
 def bincount(x, weights=None, minlength=None, assert_nonneg=False):
@@ -670,9 +666,6 @@ class RepeatOp(theano.Op):
                 out_shape[self.axis] = theano.tensor.sum(repeats, dtype=dtype)
         return [out_shape]
 
-    def __str__(self):
-        return self.__class__.__name__
-
 
 def repeat(x, repeats, axis=None):
     """Repeat elements of an array.
@@ -739,9 +732,6 @@ class Bartlett(gof.Op):
     # See function bartlett for docstring
     __props__ = ()
 
-    def __str__(self):
-        return self.__class__.__name__
-
     def make_node(self, M):
         M = tensor.as_tensor_variable(M)
         if M.ndim != 0:
@@ -796,9 +786,6 @@ def bartlett(M):
 class FillDiagonal(gof.Op):
     # See function fill_diagonal for docstring
     __props__ = ()
-
-    def __str__(self):
-        return self.__class__.__name__
 
     def infer_shape(self, node, in_shapes):
         return [in_shapes[0]]
@@ -880,9 +867,6 @@ def fill_diagonal(a, val):
 class FillDiagonalOffset(gof.Op):
     # See function fill_diagonal_offset for docstring
     __props__ = ()
-
-    def __str__(self):
-        return self.__class__.__name__
 
     def infer_shape(self, node, in_shapes):
         return [in_shapes[0]]

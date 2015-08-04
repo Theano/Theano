@@ -102,6 +102,7 @@ class RandomFunction(gof.Op):
     """Op that draws random numbers from a numpy.random.RandomState object
 
     """
+    __props__ = ("fn", "outtype", "inplace", "ndim_added")
 
     def __init__(self, fn, outtype, inplace=False, ndim_added=0):
         """
@@ -128,17 +129,6 @@ class RandomFunction(gof.Op):
             permutation).
         """
         self.__setstate__([fn, outtype, inplace, ndim_added])
-
-    def __eq__(self, other):
-        return type(self) == type(other) \
-            and self.fn == other.fn\
-            and self.outtype == other.outtype\
-            and self.inplace == other.inplace\
-            and self.ndim_added == other.ndim_added
-
-    def __hash__(self):
-        return (hash(type(self)) ^ hash(self.fn) ^ hash(self.outtype) ^
-                hash(self.inplace) ^ hash(self.ndim_added))
 
     def __getstate__(self):
         return self.state

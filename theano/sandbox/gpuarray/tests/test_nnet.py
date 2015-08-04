@@ -260,9 +260,10 @@ def softmax_unittest_template(dtypeInput):
         x = T.dmatrix('x')
 
     z = T.nnet.softmax(x)
+    mode = mode_with_gpu.excluding('cudnn')
     f = theano.function([x], z, mode=mode_without_gpu)
-    f_gpu = theano.function([x], z, mode=mode_with_gpu)
-    assert f.maker.fgraph.toposort()[-1].op == T.nnet.softmax
+    f_gpu = theano.function([x], z, mode=mode)
+    assert f.maker.fgraph.toposort()[-1].op == T.nnet.softmax_op
     assert isinstance(f_gpu.maker.fgraph.toposort()[-2].op,
                       GpuSoftmax)
 

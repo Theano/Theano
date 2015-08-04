@@ -165,7 +165,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
         sio = StringIO()
         for subtr in tr:
             traceback.print_list(subtr, sio)
-            detailed_err_msg += str(sio.getvalue())
+        detailed_err_msg += str(sio.getvalue())
     else:
         hints.append(
             "HINT: Re-running with most Theano optimization disabled could"

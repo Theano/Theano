@@ -30,31 +30,6 @@ def hash_from_ndarray(data):
                           hash_from_code(str(data.dtype)))
 
 
-def hash_from_dict(d):
-    """Work around the fact that dict are not hashable in python
-
-    This request that all object have a sorted order that depend only
-    on the value of the object. This is true for integer/float/string
-
-    We do not verify that the objects in the dict have this property.
-
-    Also, we transform values that are list into tuple as list are not
-    hashable.
-
-    """
-    items = list(d.items())
-    items.sort()
-    first_part = [k for k, v in items]
-    second_part = []
-    for k, v in items:
-        if isinstance(v, (tuple, list)):
-            second_part += [tuple(v)]
-        else:
-            second_part += [v]
-    tuple_items = tuple(first_part + second_part)
-    return hash(tuple_items)
-
-
 def shape_of_variables(fgraph, input_shapes):
     """
     Compute the numeric shape of all intermediate variables given input shapes
