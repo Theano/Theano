@@ -724,11 +724,11 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                     if not (idx < len(gp_broadcastable)):
                         msg = ("get_scalar_constant_value detected " +
                                "deterministic IndexError: x.shape[%d] " +
-                               "when x.ndim=%d.") % (ndim, idx)
+                               "when x.ndim=%d.") % (idx, ndim)
                         if config.exception_verbosity == 'high':
-                            msg += 'x=%s' % min_informative_str(v)
+                            msg += ' x=%s' % min_informative_str(v)
                         else:
-                            msg += 'x=%s' % str(v)
+                            msg += ' x=%s' % str(v)
                         raise ValueError(msg)
 
                     if gp_broadcastable[idx]:
