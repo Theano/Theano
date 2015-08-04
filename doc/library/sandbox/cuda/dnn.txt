@@ -36,12 +36,61 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
 
 .. note::
 
-   CuDNN v2 is now released, if you used any v2 release candidate, we
-   strongly suggest that you update it to the final version. From now
-   on, we only support the final release.
+   CuDNN v3 has now been released. CuDNN v2 remains supported but CuDNN v3 is
+   faster and offers many more options. We recommend that everybody update to
+   v3.
 
-   CuDNN v2 is much faster than v1. We recommend that everybody
-   updates to v2.
+.. note::
+
+   Starting in CuDNN v3, multiple convolution implementations are offered and
+   it is possible to use heuristics to automatically choose a convolution
+   implementation well suited to the parameters of the convolution.
+
+   The Theano flag ``dnn.conv.algo_fwd`` allows to specify the CuDNN
+   convolution implementation that Theano should use for forward convolutions.
+   Possible values include :
+
+   * ``small`` (default) : use a convolution implementation with small memory
+     usage
+   * ``none`` : use a slower implementation with minimal memory usage
+   * ``large`` : use a faster implementation with large memory usage
+   * ``fft`` : use the Fast Fourrier Transform implementation of convolution
+     (very high memory usage)
+   * ``guess_once`` : the first time a convolution is executed, the
+     implementation to use is chosen according to CuDNN's heuristics and reused
+     for every subsequent execution of the convolution.
+   * ``guess_on_shape_change`` : like ``guess_once`` but a new convolution
+     implementation selected every time the shapes of the inputs and kernels
+     don't match the shapes from the last execution.
+   * ``time_once`` : the first time a convolution is executed, every convolution
+     implementation offered by CuDNN is executed and timed. The fastest is
+     reused for every subsequent execution of the convolution.
+   * ``time_on_shape_change`` : like ``time_once`` but a new convolution
+     implementation selected every time the shapes of the inputs and kernels
+     don't match the shapes from the last execution.
+
+   The Theano flag ``dnn.conv.algo_bwd`` allows to specify the CuDNN
+   convolution implementation that Theano should use for gradient convolutions.
+   Possible values include :
+
+   * ``none`` (default) : use the default non-deterministic convolution
+     implementation
+   * ``deterministic`` : use a slower but deterministic implementation
+   * ``fft`` : use the Fast Fourrier Transform implementation of convolution
+     (very high memory usage)
+   * ``guess_once`` : the first time a convolution is executed, the
+     implementation to use is chosen according to CuDNN's heuristics and reused
+     for every subsequent execution of the convolution.
+   * ``guess_on_shape_change`` : like ``guess_once`` but a new convolution
+     implementation selected every time the shapes of the inputs and kernels
+     don't match the shapes from the last execution.
+   * ``time_once`` : the first time a convolution is executed, every convolution
+     implementation offered by CuDNN is executed and timed. The fastest is
+     reused for every subsequent execution of the convolution.
+   * ``time_on_shape_change`` : like ``time_once`` but a new convolution
+     implementation selected every time the shapes of the inputs and kernels
+     don't match the shapes from the last execution.
+
 
 .. note::
 
@@ -51,12 +100,15 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
 
 .. note::
 
-    The documentation of CUDNN R1 and R2 tells that, for the following
-    2 operations, the reproducibility is not guaranteed:
+    The documentation of CUDNN tells that, for the 2 following operations, the
+    reproducibility is not guaranteed with the default implementation:
     `cudnnConvolutionBackwardFilter` and `cudnnConvolutionBackwardData`.
     Those correspond to the gradient wrt the weights and the gradient wrt the
-    input of the convolution. They are also used sometimes in the forward 
+    input of the convolution. They are also used sometimes in the forward
     pass, when they give a speed up.
+
+    The Theano flag ``dnn.conv.algo_bwd`` can be use to force the use of a
+    slower but deterministic convolution implementation.
 
 .. note::
 
@@ -79,7 +131,8 @@ Convolution Ops
 ===============
 
 .. automodule:: theano.sandbox.cuda.dnn
-    :members: GpuDnnConvDesc, GpuDnnConv, GpuDnnConvGradW, GpuDnnConvGradI
+    :members: GpuDnnConvDesc, GpuDnnConv, GpuDnnConv3d, GpuDnnConvGradW,
+              GpuDnnConv3dGradW, GpuDnnConvGradI, GpuDnnConv3dGradI
 
 Pooling Ops
 ===========
