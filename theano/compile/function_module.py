@@ -625,10 +625,10 @@ class Function(object):
             # Check if given ShareVariables exist
             for sv in swap_svs_ori:
                 if sv not in exist_svs:
-                    raise ValueError("SharedVairable: %s not found" %
+                    raise ValueError("SharedVariable: %s not found" %
                                      (sv.name))
 
-            # Swap SharedVairable in fgraph and ins
+            # Swap SharedVariable in fgraph and ins
             for index, (i, in_v) in enumerate(zip(ins, fg_cpy.inputs)):
                 # Variables in maker.inputs are defined by user, therefore we
                 # use them to make comparision and do the mapping.
