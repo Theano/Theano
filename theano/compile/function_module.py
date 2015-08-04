@@ -601,7 +601,7 @@ class Function(object):
             out_vars = maker.fgraph.outputs
 
         # Init new fgraph using copied variables and get memo
-        # memo: a dict that map old variables to new variabls
+        # memo: a dict that map old variables to new variables
         memo = graph.clone_get_equiv(maker.fgraph.inputs, out_vars)
         fg_cpy = gof.fg.FunctionGraph([memo[i] for i in maker.fgraph.inputs],
                                       [memo[o] for o in out_vars],
