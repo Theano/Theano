@@ -726,7 +726,7 @@ class BaseGpuCorrMM(GpuOp):
                 'do not use pad for BaseGpuCorrMM; please set padding in '
                 'border_mode parameter, see the docstring for more details')
             if border_mode != "valid":
-                raise ValueError("border_mode must be 'valid'")
+                raise ValueError("border_mode must be 'valid' if pad is given")
             border_mode = pad
         if isinstance(border_mode, int):
             border_mode = (border_mode, border_mode)
@@ -995,20 +995,21 @@ class BaseGpuCorrMM(GpuOp):
 class GpuCorrMM(BaseGpuCorrMM):
     """GPU correlation implementation using Matrix Multiplication.
 
-    :param border_mode: currently supports "valid" only; "full" can be
-        simulated by setting `pad="full"` (at the cost of performance), or
-        by using `GpuCorrMM_gradInputs`
+    :param border_mode: the width of a border of implicit zeros to pad the
+        input with. Must be a tuple with 2 elements giving the numbers of rows
+        and columns to pad on each side, or a single integer to pad the same
+        on all sides, or a string shortcut setting the padding at runtime:
+        ``'valid'`` for ``(0, 0)`` (valid convolution, no padding), ``'full'``
+        for ``(kernel_rows - 1, kernel_columns - 1)`` (full convolution),
+        ``'half'`` for ``(kernel_rows // 2, kernel_columns // 2)`` (same
+        convolution for odd-sized kernels). Note that the two widths are each
+        applied twice, once per side (left and right, top and bottom).
     :param subsample: the subsample operation applied to each output image.
         Should be a tuple with 2 elements.
         `(sv, sh)` is equivalent to `GpuCorrMM(...)(...)[:,:,::sv, ::sh]`,
         but faster.
         Set to `(1, 1)` to disable subsampling.
-    :param pad: the width of a border of implicit zeros to pad the input
-        image with. Should be a tuple with 2 elements giving the numbers of
-        rows and columns to pad on each side, or "half" to set the padding
-        to `(kernel_rows // 2, kernel_columns // 2)`, or "full" to set the
-        padding to `(kernel_rows - 1, kernel_columns - 1)` at runtime.
-        Set to `(0, 0)` to disable padding.
+    :param pad: deprecated alias for `border_mode`.
 
     :note: Currently, the Op requires the inputs, filters and outputs to be
         C-contiguous. Use :func:`gpu_contiguous
