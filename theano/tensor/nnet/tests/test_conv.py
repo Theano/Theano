@@ -543,8 +543,15 @@ class TestConv2D(utt.InferShapeTester):
                 [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
                 border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
 
+    def test_get_output_shape(self):
+        output_shape = conv.ConvOp.getOutputShape(
+            inshp=(3, 3), kshp=(1, 1), stride=(2, 2),
+            mode='valid')
+        self.assertEqual(output_shape, (1, 1))
+
 
 if __name__ == '__main__':
+    TestConv2D("test_get_output_shape").debug()
 
     t = TestConv2D('setUp')
     t.setUp()
