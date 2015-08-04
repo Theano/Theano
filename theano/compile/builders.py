@@ -141,44 +141,68 @@ class OpFromGraph(gof.Op):
             output[0] = variable.copy()
 
     def c_code(self, node, name, inputs, outputs, sub):
-        order = io_toposort(self.new_inputs, self.new_outputs)
+        # init a function graph
+        fgraph = gof.FunctionGraph(self.new_inputs, self.new_outputs)
+        
+        # link to output input and output 
+        ori_var = self.new_inputs + self.new_outputs
 
-        # assert all inner nodes have c_code()
-        if not (self._op_use_c_code and
-                all([getattr(node.op, '_op_use_c_code', False) and
-                     hasattr(node.op, 'c_code') for node in order])):
-            self._op_use_c_code = False
-            return
-        else:
-            c_code = ""
-            local = locals()
-            for inner_node in order:
-                name = 'node' + str(id(inner_node))
+        rpl_var = node.inputs + node.outputs
+        for ori, rpl in zip(ori_var, rpl_var):
+            fgraph.replace(ori, rpl)
 
-                in_names = []
-                for i, var in enumerate(inner_node.inputs):
-                    if var in self.new_inputs:
-                        in_names.append(inputs[i])
-                    else:
-                        new_name = 'InVar' + str(id(var))
-                        in_names.append(new_name)
-                        local.setdefault(new_name, var.clone())
-                        c_code += var.type.c_declare(new_name, sub)
+        import pdb;pdb.set_trace()
 
-                out_names = []
-                for i, var in enumerate(inner_node.outputs):
-                    if var in self.new_outputs:
-                        out_names.append(outputs[i])
-                    else:
-                        new_name = 'OutVar' + str(id(var))
-                        out_names.append(new_name)
-                        local.setdefault(new_name, var.clone())
-                        c_code += var.type.c_declare(new_name, sub)
+        # clear storage?
+        # let user decide which variable's storage to clear
+        # this should be set when initializing
+        no_recycling = []
 
-                c_code += inner_node.op.c_code(inner_node, name,
-                                            in_names, out_names, sub)
+        # get a  linker
+        linker = gof.CLinker()
+        linker.accept(fgraph, no_recycling)
 
-        return c_code
+        # get c_code
+        return linker.code_gen()
+
+        # order = io_toposort(self.new_inputs, self.new_outputs)
+
+        # # assert all inner nodes have c_code()
+        # if not (self._op_use_c_code and
+        #         all([getattr(node.op, '_op_use_c_code', False) and
+        #              hasattr(node.op, 'c_code') for node in order])):
+        #     self._op_use_c_code = False
+        #     return
+        # else:
+        #     c_code = ""
+        #     local = locals()
+        #     for inner_node in order:
+        #         name = 'node' + str(id(inner_node))
+
+        #         in_names = []
+        #         for i, var in enumerate(inner_node.inputs):
+        #             if var in self.new_inputs:
+        #                 in_names.append(inputs[i])
+        #             else:
+        #                 new_name = 'InVar' + str(id(var))
+        #                 in_names.append(new_name)
+        #                 local.setdefault(new_name, var.clone())
+        #                 c_code += var.type.c_declare(new_name, sub)
+
+        #         out_names = []
+        #         for i, var in enumerate(inner_node.outputs):
+        #             if var in self.new_outputs:
+        #                 out_names.append(outputs[i])
+        #             else:
+        #                 new_name = 'OutVar' + str(id(var))
+        #                 out_names.append(new_name)
+        #                 local.setdefault(new_name, var.clone())
+        #                 c_code += var.type.c_declare(new_name, sub)
+
+        #         c_code += inner_node.op.c_code(inner_node, name,
+        #                                     in_names, out_names, sub)
+
+        # return c_code
 
     def connection_pattern(self, node):
         """
