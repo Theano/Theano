@@ -477,7 +477,7 @@ def test_log_softmax():
                     (66000, 2, 3, 4),
                     (2, 66000, 3, 4),
                     (2, 3, 66000, 4),
-                    (2, 3, 4, 66000),]
+                    (2, 3, 4, 66000)]
 
     for inp_shape in input_shapes:
         input_val = numpy.random.normal(0, 1, inp_shape).astype("float32")
@@ -1060,7 +1060,7 @@ def test_dnn_conv_grad():
 def get_conv3d_test_cases():
     # Every element of test_shapes follows the format
     # [input_shape, filter_shape, subsample]
-    test_shapes = [# Test with standard size inputs and kernels
+    test_shapes = [  # Test with standard size inputs and kernels
                    [(128, 3, 5, 5, 5), (64, 3, 1, 2, 4), (1, 1, 1)],
                    [(8, 4, 20, 12, 15), (5, 4, 6, 12, 4), (2, 2, 2)],
                    [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 3, 3)],
@@ -1083,8 +1083,7 @@ def get_conv3d_test_cases():
     test_shapes_full = [[(6, 2, 2, 2, 2), (4, 2, 3, 1, 1), (1, 1, 1)],
                         [(6, 2, 2, 2, 2), (4, 2, 1, 3, 1), (1, 1, 1)],
                         [(6, 2, 2, 2, 2), (4, 2, 1, 1, 3), (1, 1, 1)],
-                        [(6, 2, 2, 2, 2), (4, 2, 5, 5, 5), (1, 1, 1)],
-                   ]
+                        [(6, 2, 2, 2, 2), (4, 2, 5, 5, 5), (1, 1, 1)]]
     border_modes = ['valid', 'full', (1, 2, 3), (3, 2, 1), 1, 2]
     conv_modes = ['conv', 'cross']
 
@@ -1130,7 +1129,7 @@ def test_conv3d_fwd():
         # If conv_mode is 'conv' the reference implementation should use
         # filters filpped according to the width, height and time axis
         if conv_mode == 'conv':
-            flipped_filters = filters[:,:,::-1,::-1,::-1]
+            flipped_filters = filters[:, :, ::-1, ::-1, ::-1]
         else:
             flipped_filters = filters
 
@@ -1140,7 +1139,7 @@ def test_conv3d_fwd():
             padded_inputs = inputs
         else:
             if border_mode == 'full':
-                pad_per_dim = [filters_shape[i] - 1 for i in range(2,5)]
+                pad_per_dim = [filters_shape[i] - 1 for i in range(2, 5)]
             else:
                 if isinstance(border_mode, int):
                     pad_per_dim = [border_mode] * 3
@@ -1154,9 +1153,10 @@ def test_conv3d_fwd():
             padded_inputs = shared(padded_inputs_val)
 
         # Compile a theano function for the reference implementation
-        conv_ref = theano.tensor.nnet.conv3D(V=padded_inputs.dimshuffle(0, 2, 3, 4, 1),
-                                             W=flipped_filters.dimshuffle(0, 2, 3, 4, 1),
-                                             b=bias, d=subsample)
+        conv_ref = theano.tensor.nnet.conv3D(
+                                V=padded_inputs.dimshuffle(0, 2, 3, 4, 1),
+                                W=flipped_filters.dimshuffle(0, 2, 3, 4, 1),
+                                b=bias, d=subsample)
         f_ref = theano.function([], conv_ref.dimshuffle(0, 4, 1, 2, 3))
 
         # Compare the results of the two implementations
@@ -1197,7 +1197,7 @@ def test_conv3d_bwd():
         # If conv_mode is 'conv' the reference implementation should use
         # filters filpped according to the width, height and time axis
         if conv_mode == 'conv':
-            flipped_filters = filters[:,:,::-1,::-1,::-1]
+            flipped_filters = filters[:, :, ::-1, ::-1, ::-1]
         else:
             flipped_filters = filters
 
@@ -1207,7 +1207,7 @@ def test_conv3d_bwd():
             padded_inputs = inputs
         else:
             if border_mode == 'full':
-                pad_per_dim = [filters_shape[i] - 1 for i in range(2,5)]
+                pad_per_dim = [filters_shape[i] - 1 for i in range(2, 5)]
             else:
                 if isinstance(border_mode, int):
                     pad_per_dim = [border_mode] * 3
@@ -1221,21 +1221,24 @@ def test_conv3d_bwd():
             padded_inputs = shared(padded_inputs_val)
 
         # Compile a theano function for the reference implementation
-        conv_ref = theano.tensor.nnet.conv3D(V=padded_inputs.dimshuffle(0, 2, 3, 4, 1),
-                                             W=flipped_filters.dimshuffle(0, 2, 3, 4, 1),
-                                             b=bias, d=subsample)
+        conv_ref = theano.tensor.nnet.conv3D(
+                                V=padded_inputs.dimshuffle(0, 2, 3, 4, 1),
+                                W=flipped_filters.dimshuffle(0, 2, 3, 4, 1),
+                                b=bias, d=subsample)
         (grad_padded_i_ref,
-         grad_w_ref) = theano.tensor.grad(conv_ref.sum(), [padded_inputs, filters])
+         grad_w_ref) = theano.tensor.grad(conv_ref.sum(),
+                                          [padded_inputs, filters])
 
         # Recover grad_i_ref from grad_padded_i_ref
         if border_mode == 'valid':
             grad_i_ref = grad_padded_i_ref
         else:
             shp = grad_padded_i_ref.shape
-            grad_i_ref = grad_padded_i_ref[:, :,
-                                           pad_per_dim[0]:shp[2] - pad_per_dim[0],
-                                           pad_per_dim[1]:shp[3] - pad_per_dim[1],
-                                           pad_per_dim[2]:shp[4] - pad_per_dim[2]]
+            grad_i_ref = grad_padded_i_ref[
+                                    :, :,
+                                    pad_per_dim[0]:shp[2] - pad_per_dim[0],
+                                    pad_per_dim[1]:shp[3] - pad_per_dim[1],
+                                    pad_per_dim[2]:shp[4] - pad_per_dim[2]]
 
         f_ref = theano.function([], [grad_i_ref, grad_w_ref])
 
