@@ -589,8 +589,8 @@ class Function(object):
         # Copy Ins and their storage.
         # so that they have different storage as their value
         ins = [copy.copy(input) for input in maker.inputs]
-        for in_ori, in_cpy in zip(ins, maker.inputs):
-            in_ori.value = copy.deepcopy(in_cpy.value)
+        for in_cpy, in_ori in zip(ins, maker.inputs):
+            in_cpy.value = copy.deepcopy(in_ori.value)
 
         # Delete update output in fgraph and updates In instances if needed
         if delete_updates:
