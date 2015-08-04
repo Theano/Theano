@@ -266,7 +266,7 @@ class ConvOp(OpenMPOp):
         # with s=1 for mode=='full' and s=-1 for mode=='valid'.
         # To support symbolic shapes, we express this with integer arithmetics.
         return tuple(None if i is None or k is None
-                     else ((i - k + 1) // d) if mode == 'valid'
+                     else ((i - k) // d + 1) if mode == 'valid'
                      else ((i + k + d - 2) // d)
                      for i, k, d in zip(inshp, kshp, stride))
 
