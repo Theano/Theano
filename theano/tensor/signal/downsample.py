@@ -312,15 +312,15 @@ class DownsampleFactorMax(Op):
         if self.mode == 'max':
             maxout = self(x)
             return [MaxPoolGrad(self.ds,
-                                            ignore_border=self.ignore_border,
-                                            st=self.st, padding=self.padding)(
-                                                x, maxout, gz)]
+                                ignore_border=self.ignore_border,
+                                st=self.st, padding=self.padding)(
+                                    x, maxout, gz)]
         else:
             return [AveragePoolGrad(self.ds,
-                                            ignore_border=self.ignore_border,
-                                            st=self.st, padding=self.padding,
-                                            mode=self.mode)(
-                                                x, gz)]
+                                    ignore_border=self.ignore_border,
+                                    st=self.st, padding=self.padding,
+                                    mode=self.mode)(
+                                        x, gz)]
     def c_headers(self):
         return ['<algorithm>']
 
