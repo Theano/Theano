@@ -140,6 +140,14 @@ class OpFromGraph(gof.Op):
             # we wont need this copy anymore
             output[0] = variable.copy()
 
+    def c_support_code_struct(self, node, name):
+
+    def c_init_code_struct(self, node, name, sub): 
+
+    def c_cleanup_code_struct(self, node, name):
+
+    def c_code_cleanup(self)
+
     def c_code(self, node, name, inputs, outputs, sub):
         # init a function graph
         fgraph = gof.FunctionGraph(self.new_inputs, self.new_outputs)
