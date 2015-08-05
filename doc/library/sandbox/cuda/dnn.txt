@@ -91,6 +91,10 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
      implementation selected every time the shapes of the inputs and kernels
      don't match the shapes from the last execution.
 
+   ``guess_*`` and ``time_*`` flag values take into account the amount of
+   available memory when selecting an implementation. This means that slower
+   implementations might be selected if not enough memory is available for the
+   faster implementations.
 
 .. note::
 
