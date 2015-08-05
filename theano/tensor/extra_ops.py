@@ -14,8 +14,9 @@ tensor = basic
 class CpuContiguous(theano.Op):
     """
     Check to see if the input is c-contiguous,
-    if it is, do nothing, else return a contiguous array
+    if it is, do nothing, else return a contiguous array.
     """
+
     __props__ = ()
     view_map = {0: [0]}
 
@@ -171,12 +172,16 @@ def cumsum(x, axis=None):
 
     Wraping of numpy.cumsum.
 
-    :param x: Input tensor variable.
-
-    :param axis: The axis along which the cumulative sum is computed.
+    Parameters
+    ----------
+    x
+        Input tensor variable.
+    axis
+        The axis along which the cumulative sum is computed.
         The default (None) is to compute the cumsum over the flattened array.
 
     .. versionadded:: 0.7
+
     """
     return CumsumOp(axis=axis)(x)
 
@@ -291,18 +296,24 @@ def cumprod(x, axis=None):
 
     Wraping of numpy.cumprod.
 
-    :param x: Input tensor variable.
+    Parameters
+    ----------
+    x
+        Input tensor variable.
 
-    :param axis: The axis along which the cumulative product is computed.
+    axis
+        The axis along which the cumulative product is computed.
         The default (None) is to compute the cumprod over the flattened array.
 
     .. versionadded:: 0.7
+
     """
     return CumprodOp(axis=axis)(x)
 
 
 class DiffOp(theano.Op):
     # See function diff for docstring
+
     __props__ = ("n", "axis")
 
     def __init__(self, n=1, axis=-1):
@@ -354,23 +365,29 @@ def diff(x, n=1, axis=-1):
     along the given axis, higher order differences are calculated by
     using diff recursively. Wraping of numpy.diff.
 
-    :param x: Input tensor variable.
+    Parameters
+    ----------
+    x
+        Input tensor variable.
 
-    :param n: The number of times values are differenced, default is 1.
+    n
+        The number of times values are differenced, default is 1.
 
-    :param axis: The axis along which the difference is taken,
-        default is the last axis.
+    axis
+        The axis along which the difference is taken, default is the last axis.
 
     .. versionadded:: 0.6
+
     """
     return DiffOp(n=n, axis=axis)(x)
 
 
 class BinCountOp(theano.Op):
     """
-    DEPRECATED: use bincount() instead.
+    .. note:: Deprecated
+              Use bincount() instead.
+              See function bincount for docstring.
 
-    See function bincount for docstring
     """
     compatible_type = ('int8', 'int16', 'int32', 'int64',
                        'uint8', 'uint16', 'uint32', 'uint64')
@@ -473,17 +490,19 @@ def bincount(x, weights=None, minlength=None, assert_nonneg=False):
     specified the input array is weighted by it, i.e. if a value n
     is found at position i, out[n] += weight[i] instead of out[n] += 1.
 
-    :param x: 1 dimension, nonnegative ints
-
-    :param weights: array of the same shape as x with corresponding weights.
+    Parameters
+    ----------
+    x : 1 dimension, nonnegative ints
+    weights : array of the same shape as x with corresponding weights.
         Optional.
-    :param minlength: A minimum number of bins for the output array.
+    minlength : A minimum number of bins for the output array.
         Optional.
-    :param assert_nonneg: A flag that inserts an assert_op to check if
+    assert_nonneg : A flag that inserts an assert_op to check if
         every input x is nonnegative.
         Optional.
 
     .. versionadded:: 0.6
+
     """
     compatible_type = ('int8', 'int16', 'int32', 'int64',
                        'uint8', 'uint16', 'uint32')
@@ -527,11 +546,17 @@ def squeeze(x):
     broadcastable dimensions removed. This is
     always `x` itself or a view into `x`.
 
-    :param x: Input data, tensor variable.
+    Parameters
+    ----------
+    x
+        Input data, tensor variable.
 
-    :return: `x` without its broadcastable dimensions.
+    Returns
+    -------
+        `x` without its broadcastable dimensions.
 
     .. versionadded:: 0.6
+
     """
     view = x.dimshuffle([i for i in range(x.ndim)
                          if not x.broadcastable[i]])
@@ -542,17 +567,24 @@ def compress(condition, x, axis=None):
     """Return selected slices of an array along given axis.
 
     It returns the input tensor, but with selected slices along a given axis
-    retained. If no axis is provided, the tensor is flattened
+    retained. If no axis is provided, the tensor is flattened.
     Corresponds to numpy.compress
 
-    :param x: Input data, tensor variable
+    Parameters
+    ----------
+    x
+        Input data, tensor variable.
 
-    :param condition: 1 dimensional array of non-zero and zero values
-        corresponding to indices of slices along a selected axis
+    condition
+         1 dimensional array of non-zero and zero values
+         corresponding to indices of slices along a selected axis.
 
-    :return: `x` with selected slices
+    Returns
+    -------
+        `x` with selected slices
 
     .. versionadded:: 0.7
+
     """
     indices = theano.tensor.basic.flatnonzero(condition)
     return x.take(indices, axis=axis)
@@ -560,6 +592,7 @@ def compress(condition, x, axis=None):
 
 class RepeatOp(theano.Op):
     # See the repeat function for docstring
+
     __props__ = ("axis",)
 
     def __init__(self, axis=None):
@@ -678,14 +711,19 @@ def repeat(x, repeats, axis=None):
     The number of repetitions for each element is `repeat`.
     `repeats` is broadcasted to fit the length of the given `axis`.
 
-    :param x: Input data, tensor variable.
-    :param repeats: int, scalar or tensor variable.
+    Parameters
+    ----------
+    x
+        Input data, tensor variable.
+    repeats : int, scalar or tensor variable
+    axis : int, optional
 
-    :param axis: int, optional.
-
-    :see: :func:`tensor.tile <tensor.tile>`
+    See Also
+    --------
+    `tensor.tile <tensor.tile>`
 
     .. versionadded:: 0.6
+
     """
     repeats = tensor.as_tensor_variable(repeats)
 
@@ -769,13 +807,18 @@ def bartlett(M):
     processing for tapering a signal, without generating too much ripple in
     the frequency domain.
 
-    :param M: (integer scalar) Number of points in the output
-        window. If zero or less, an empty vector is returned.
+    Parameters
+    ----------
+    M : integer scalar
+        Number of points in the output window. If zero or less,
+        an empty vector is returned.
 
-    :return: (vector of doubles) The triangular window, with the
-        maximum value normalized to one (the value one appears only if
-        the number of samples is odd), with the first and last samples
-        equal to zero.
+    Returns
+    -------
+    vector of doubles
+        The triangular window, with the maximum value normalized to one
+        (the value one appears only if the number of samples is odd), with
+        the first and last samples equal to zero.
 
     .. versionadded:: 0.6
 
@@ -823,8 +866,10 @@ class FillDiagonal(gof.Op):
 
     def grad(self, inp, cost_grad):
         """
-        Note: The gradient is currently implemented for matrices
-        only.
+        Notes
+        -----
+        The gradient is currently implemented for matrices only.
+
         """
         a, val = inp
         grad = cost_grad[0]
@@ -846,12 +891,18 @@ def fill_diagonal(a, val):
     """ Returns a copy of an array with all
     elements of the main diagonal set to a specified scalar value.
 
-    :param a: Rectangular array of at least two dimensions.
-    :param val: Scalar value to fill the diagonal whose type must be
+    Parameters
+    ----------
+    a :
+        Rectangular array of at least two dimensions.
+    val :
+        Scalar value to fill the diagonal whose type must be
         compatible with that of array 'a' (i.e. 'val' cannot be viewed
         as an upcast of 'a').
 
-    :return: An array identical to 'a' except that its main diagonal
+    Returns
+    -------
+        An array identical to 'a' except that its main diagonal
         is filled with scalar 'val'. (For an array 'a' with a.ndim >=
         2, the main diagonal is the list of locations a[i, i, ..., i]
         (i.e. with indices all identical).)
@@ -860,6 +911,7 @@ def fill_diagonal(a, val):
     if the later have all dimensions are equals.
 
     .. versionadded:: 0.6
+
     """
     return fill_diagonal_(a, val)
 
@@ -902,13 +954,16 @@ class FillDiagonalOffset(gof.Op):
         height, width = a.shape
 
         """
-        Note: The fill_diagonal only support rectangular matrix. The output
+        Notes
+        -----
+        The fill_diagonal only support rectangular matrix. The output
         of tall matrix is "wrapped", which is an option in numpy 1.9.0
         but was regarded as a bug in numpy 1.6.2. Here I implement the
         fill_diagonal_offset with unwrapped output, so fill_diagonal_offset
         supports tall matrix.(This make a little difference between the output
         of fill_diagonal and fill_diagonal_offset only in the case of tall
         matrix)
+
         """
         if offset >= 0:
             start = offset
@@ -925,8 +980,9 @@ class FillDiagonalOffset(gof.Op):
 
     def grad(self, inp, cost_grad):
         """
-        Note: The gradient is currently implemented for matrices
-        only.
+        Notes
+        -----
+        The gradient is currently implemented for matrices only.
         """
         a, val, offset = inp
         grad = cost_grad[0]
@@ -972,14 +1028,23 @@ def fill_diagonal_offset(a, val, offset):
     Returns a copy of an array with all
     elements of the main diagonal set to a specified scalar value.
 
-      :param a: Rectangular array of two dimensions.
-      :param val: Scalar value to fill the diagonal whose type must be
-          compatible with that of array 'a' (i.e. 'val' cannot be viewed
-          as an upcast of 'a').
-      :param offset: Scalar value Offset of the diagonal from the main
-          diagonal. Can be positive or negative integer.
-      :return: An array identical to 'a' except that its offset diagonal
-          is filled with scalar 'val'. The output is unwrapped.
+    Parameters
+    ----------
+    a
+        Rectangular array of two dimensions.
+    val
+        Scalar value to fill the diagonal whose type must be
+        compatible with that of array 'a' (i.e. 'val' cannot be viewed
+        as an upcast of 'a').
+    offset
+        Scalar value Offset of the diagonal from the main
+        diagonal. Can be positive or negative integer.
+
+    Returns
+    -------
+        An array identical to 'a' except that its offset diagonal
+        is filled with scalar 'val'. The output is unwrapped.
+
     """
     return fill_diagonal_offset_(a, val, offset)
 
@@ -988,13 +1053,19 @@ def to_one_hot(y, nb_class, dtype=None):
     """Return a matrix where each row correspond to the one hot
     encoding of each element in y.
 
-        :param y: A vector of integer value between 0 and nb_class - 1.
-        :param nb_class: The number of class in y.
-        :param dtype: The dtype of the returned matrix. Default floatX.
+    Parameters
+    ----------
+    y
+        A vector of integer value between 0 and nb_class - 1.
+    nb_class : int
+        The number of class in y.
+    dtype : data-type
+        The dtype of the returned matrix. Default floatX.
 
-        :return: A matrix of shape (y.shape[0], nb_class), where each
-          row ``i`` is the one hot encoding of the corresponding ``y[i]``
-          value.
+    Returns
+    -------
+        A matrix of shape (y.shape[0], nb_class), where each row ``i`` is
+        the one hot encoding of the corresponding ``y[i]`` value.
 
    """
     ret = theano.tensor.zeros((y.shape[0], nb_class),
@@ -1006,11 +1077,10 @@ def to_one_hot(y, nb_class, dtype=None):
 
 class Unique(theano.Op):
     """
-    Wraps numpy.unique.
-    This op is not implemented on the GPU.
+    Wraps numpy.unique. This op is not implemented on the GPU.
 
     Examples
-    ========
+    --------
     >>> import numpy as np
 
     >>> x = theano.tensor.vector()
@@ -1022,7 +1092,9 @@ class Unique(theano.Op):
     >>> g = theano.function([y], Unique(True, True, False)(y))
     >>> g([[1, 1, 1.0], (2, 3, 3.0)])
     [array([ 1.,  2.,  3.]), array([0, 3, 4]), array([0, 0, 0, 1, 2, 2])]
+
     """
+
     __props__ = ("return_index", "return_inverse", "return_counts")
 
     def __init__(self, return_index=False, return_inverse=False,
