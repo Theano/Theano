@@ -81,6 +81,13 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
                                          " from one version, but we link with"
                                          " a different version %s" % str(v))
                     raise RuntimeError(dnn_available.msg)
+                if version() == -1:
+                    dnn_available.avail = False
+                    dnn_available.msg = (
+                        "CuDNN v1 detected. This version is no longer "
+                        "supported by Theano. Update your CuDNN installation "
+                        "to a more recent version")
+                    raise RuntimeError(dnn_available.msg)
                 if version() == (20, 20):
                     dnn_available.avail = False
                     dnn_available.msg = (
