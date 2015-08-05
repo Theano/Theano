@@ -551,10 +551,11 @@ def map_storage(fgraph, order, input_storage, output_storage, storage_map=None):
     # add input storage into storage_map
     for r, storage in zip(fgraph.inputs, input_storage):
         if r in storage_map:
-            assert storage_map[r] is storage, 
-            ("Given input_storage conflicts with storage in given"
-             "storage_map. Given input_storage: ", storage,
-             "Storage in storage_map: ", storage_map[r])
+            assert storage_map[r] is storage, ("Given input_storage conflicts "
+                                               "with storage in given storage_"
+                                               "map. Given input_storage: ",
+                                               storage, "Storage in storage_ma"
+                                               "p: ", storage_map[r])
         else:
             storage_map[r] = storage
 #     for orphan in fgraph.orphans:
@@ -567,10 +568,12 @@ def map_storage(fgraph, order, input_storage, output_storage, storage_map=None):
         assert len(fgraph.outputs) == len(output_storage)
         for r, storage in zip(fgraph.outputs, output_storage):
             if r in storage_map:
-                assert storage_map[r] is storage,
-                ("Given output_storage conflicts with storage in given"
-                 "storage_map. Given output_storage: ", storage,
-                 "Storage in storage_map: ", storage_map[r])
+                assert storage_map[r] is storage, ("Given output_storage confl"
+                                                   "icts with storage in given"
+                                                   " storage_map. Given output"
+                                                   "_storage: ", storage, "Sto"
+                                                   "rage in storage_map: ",
+                                                   storage_map[r])
             else:
                 storage_map[r] = storage
 
