@@ -697,7 +697,7 @@ def pydotprint(fct, outfile=None,
         topo = fct.toposort()
     if not pydot_imported:
         raise RuntimeError("Failed to import pydot. You must install pydot"
-                           " for `pydotprint` to work.")
+                           " and graphviz for `pydotprint` to work.")
         return
 
     g = pd.Dot()
