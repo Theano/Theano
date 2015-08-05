@@ -14,6 +14,7 @@ import numpy
 import theano
 from theano import gof, Op, tensor, Variable, Apply
 
+from theano.tensor.opt import register_canonicalize
 
 def max_pool2D(*args, **kwargs):
     import sys
@@ -606,8 +607,8 @@ class PoolGrad(Op):
 
 class MaxPoolGrad(PoolGrad):
 
-    def __init__(self, ds, ignore_border, st=None, padding=(0, 0)):
-        PoolGrad.__init__(self, ds, ignore_border, st, padding, mode='max')
+    def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='max'):
+        PoolGrad.__init__(self, ds, ignore_border, st, padding, mode)
 
     def make_node(self, x, maxout, gz):
         # make_node should only be called by the grad function of
@@ -622,6 +623,7 @@ class MaxPoolGrad(PoolGrad):
         return Apply(self, [x, maxout, gz], [x.type()])
 
     def perform(self, node, inp, out):
+        assert self.mode == 'max'
         x, maxout, gz = inp
         gx_stg, = out
         # number of pooling output rows
@@ -670,6 +672,7 @@ class MaxPoolGrad(PoolGrad):
                     st=self.st, padding=self.padding)(x, maxout, ggx)]
 
     def c_code(self, node, name, inp, out, sub):
+        assert self.mode == 'max'
         x, z, gz = inp
         gx, = out
         fail = sub['fail']
@@ -784,6 +787,8 @@ class MaxPoolGrad(PoolGrad):
 
     def c_code_cache_version(self):
         return (0, 7)
+
+DownsampleFactorMaxGrad = MaxPoolGrad
 
 class AveragePoolGrad(PoolGrad):
 
@@ -1115,3 +1120,15 @@ class DownsampleFactorMaxGradGrad(Op):
     def c_code_cache_version(self):
         return (0,1)
 
+@register_canonicalize
+@gof.local_optimizer([MaxPoolGrad])
+def local_average_pool_grad(node):
+    if (not isinstance(node.op, MaxPoolGrad) or node.op.mode not in
+            ['sum','average_exc_pad', 'average_inc_pad']):
+        return False
+    return [AveragePoolGrad(ds=node.op.ds,
+                            ignore_border=node.op.ignore_border,
+                            st=node.op.st,
+                            padding=node.op.padding,
+                            mode=node.op.mode)(node.inputs[0],
+                                               node.inputs[2])]

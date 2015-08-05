@@ -9,6 +9,7 @@ import theano.tensor as tensor
 from theano.tests import unittest_tools as utt
 from theano.tensor.signal.downsample import (DownsampleFactorMax, max_pool_2d,
                                              MaxPoolGrad, AveragePoolGrad,
+                                             DownsampleFactorMaxGrad,
                                              DownsampleFactorMaxGradGrad,
                                              max_pool_2d_same_size)
 from theano import function
@@ -801,6 +802,27 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                                             MaxPoolGrad,
                                             warn=False)
 
+    def test_opt_max_to_average(self):
+        im = theano.tensor.ftensor4()
+        maxout = theano.tensor.ftensor4()
+        grad = theano.tensor.ftensor4()
+
+        for mode in ['max', 'sum', 'average_inc_pad', 'average_exc_pad']:
+            f = theano.function([im, maxout, grad],
+                    DownsampleFactorMaxGrad(ds=(3,3),
+                                            ignore_border=False,
+                                            mode=mode)(im, maxout, grad))
+
+            if mode == 'max':
+                assert any(isinstance(n.op, MaxPoolGrad)
+                    for n in f.maker.fgraph.toposort())
+                assert not any(isinstance(n.op, AveragePoolGrad)
+                    for n in f.maker.fgraph.toposort())
+            else:
+                assert not any(isinstance(n.op, MaxPoolGrad)
+                    for n in f.maker.fgraph.toposort())
+                assert any(isinstance(n.op, AveragePoolGrad)
+                    for n in f.maker.fgraph.toposort())
 
 if __name__ == '__main__':
     unittest.main()
