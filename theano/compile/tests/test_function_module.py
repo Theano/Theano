@@ -313,6 +313,32 @@ class T_function(unittest.TestCase):
                     elif key.name == 'z_rpl' and second_time:
                         assert cpy.fn.storage_map[key][0] == 8
 
+    def test_swap_SharedVaraile_with_given(self):
+        """
+        A special testcase for logistic_sgd.py in Deep Learning Tutorial
+        """
+        train_x = theano.shared(value = numpy.random.rand(10,10))
+        test_x = theano.shared(value = numpy.random.rand(10,10))
+
+        train_y = theano.shared(value= numpy.random.randint(5, size=10).astype('int32'))
+        test_y = theano.shared(value= numpy.random.randint(5, size=10).astype('int32'))
+
+        i = T.iscalar('index')
+        x = T.vector('x')
+        y = T.iscalar('y')
+        # this formular has no sense but for a test
+        out = x.sum()- y
+        train = theano.function([i], out,
+                                givens={x:train_x[i], y:train_y[i]},
+                                updates={train_x:train_x+0.1})
+
+        test_def = theano.function([i], out, givens={x:test_x[i], y:test_y[i]})
+        test_cpy = train.copy(swap={train_x:test_x, train_y:test_y},
+                              delete_updates=True)
+
+        for in1, in2 in zip( test_def.maker.inputs, test_def.maker.inputs):
+            assert in1.value is in2.value
+
     def test_copy_delete_updates(self):
         x = T.fscalar('x')
         # SharedVariable for tests, one of them has update
