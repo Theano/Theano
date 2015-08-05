@@ -781,7 +781,7 @@ class GpuDnnConvGradW(DnnBase, COp):
                 choose_alg = '1'
                 if self.algo == 'guess_once':
                     choose_alg_once = '1'
-            elif self.algo in ['time_once', 'guess_on_shape_change']:
+            elif self.algo in ['time_once', 'time_on_shape_change']:
                 # The convolution implementation should be chosen according
                 # to timing
                 alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0'
@@ -985,7 +985,7 @@ class GpuDnnConvGradI(DnnBase, COp):
                 choose_alg = '1'
                 if self.algo == 'guess_once':
                     choose_alg_once = '1'
-            elif self.algo in ['time_once', 'guess_on_shape_change']:
+            elif self.algo in ['time_once', 'time_on_shape_change']:
                 # The convolution implementation should be chosen according
                 # to timing
                 alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_0'
