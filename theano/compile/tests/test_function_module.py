@@ -272,9 +272,7 @@ class T_function(unittest.TestCase):
             for (input, _1, _2), here, there in zip(ori.indices,
                                                     ori.input_storage,
                                                     cpy.input_storage):
-                if not input.mutable:
-                    self.assertTrue(here.data is there.data)
-                else:
+                if input.mutable:
                     self.assertFalse(here.data is there.data)
 
     def test_swap_SharedVariable(self):
