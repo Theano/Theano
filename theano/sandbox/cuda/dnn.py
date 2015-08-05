@@ -1138,7 +1138,8 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         algo = workmem
 
     # Ensure the value of direction_hint is supported
-    assert direction_hint in [None, 'bprop weights', 'forward']
+    assert direction_hint in [None, 'bprop weights', 'bprop inputs',
+                              'forward', 'forward!']
 
     fgraph = getattr(img, 'fgraph', None) or getattr(kerns, 'fgraph', None)
     if (border_mode == 'valid' and subsample == (1, 1) and
