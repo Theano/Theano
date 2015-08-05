@@ -53,7 +53,7 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
    * ``small`` (default) : use a convolution implementation with small memory
      usage
    * ``none`` : use a slower implementation with minimal memory usage
-   * ``large`` : use a faster implementation with large memory usage
+   * ``large`` : use a sometimes faster implementation with large memory usage
    * ``fft`` : use the Fast Fourrier Transform implementation of convolution
      (very high memory usage)
    * ``guess_once`` : the first time a convolution is executed, the
