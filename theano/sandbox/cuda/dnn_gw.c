@@ -138,6 +138,7 @@ APPLY_SPECIFIC(conv_gw)(CudaNdarray *input, CudaNdarray *output,
         // Store the shapes of the inputs and kernels as well as the chosen
         // algorithm for future use.
         APPLY_SPECIFIC(previous_bwd_f_algo) = chosen_algo;
+        APPLY_SPECIFIC(previous_algo_set) = true;
         for (int i = 0; i < nb_dim; i++)
         {
             APPLY_SPECIFIC(previous_input_shape)[i] =
