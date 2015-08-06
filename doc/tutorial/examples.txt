@@ -500,8 +500,8 @@ It will be used repeatedly.
   training_steps = 10000
   
   # Declare Theano symbolic variables
-  x = T.matrix("x")
-  y = T.vector("y")
+  x = T.dmatrix("x")
+  y = T.dvector("y")
   w = theano.shared(rng.randn(feats), name="w")
   b = theano.shared(0., name="b")
   print "Initial model:"
