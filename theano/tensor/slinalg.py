@@ -31,9 +31,10 @@ MATRIX_STRUCTURES = (
 
 class Cholesky(Op):
     """
-    Return a triangular matrix square root of positive semi-definite `x`
+    Return a triangular matrix square root of positive semi-definite `x`.
 
-    L = cholesky(X, lower=True) implies dot(L, L.T) == X
+    L = cholesky(X, lower=True) implies dot(L, L.T) == X.
+
     """
     # TODO: inplace
     # TODO: for specific dtypes
@@ -90,13 +91,16 @@ class CholeskyGrad(Op):
         return Apply(self, [x, l, dz], [x.type()])
 
     def perform(self, node, inputs, outputs):
-        """Implements the "reverse-mode" gradient [1]_ for the
+        """
+        Implements the "reverse-mode" gradient [1]_ for the
         Cholesky factorization of a positive-definite matrix.
 
+        References
+        ----------
         .. [1] S. P. Smith. "Differentiation of the Cholesky Algorithm".
-               Journal of Computational and Graphical Statistics,
-               Vol. 4, No. 2 (Jun.,1995), pp. 134-147
-               http://www.jstor.org/stable/1390762
+           Journal of Computational and Graphical Statistics,
+           Vol. 4, No. 2 (Jun.,1995), pp. 134-147
+           http://www.jstor.org/stable/1390762
 
         """
         x = inputs[0]
@@ -133,7 +137,10 @@ class CholeskyGrad(Op):
 
 
 class Solve(Op):
-    """Solve a system of linear equations"""
+    """
+    Solve a system of linear equations.
+
+    """
 
     __props__ = ('A_structure', 'lower', 'overwrite_A', 'overwrite_b')
 
@@ -195,7 +202,9 @@ solve = Solve()  # general solve
 
 
 class Eigvalsh(Op):
-    """Generalized eigenvalues of a Hermetian positive definite eigensystem
+    """
+    Generalized eigenvalues of a Hermitian positive definite eigensystem.
+
     """
 
     __props__ = ('lower',)
@@ -243,8 +252,10 @@ class Eigvalsh(Op):
 
 
 class EigvalshGrad(Op):
-    """Gradient of generalized eigenvalues of a Hermetian positive definite
-    eigensystem
+    """
+    Gradient of generalized eigenvalues of a Hermitian positive definite
+    eigensystem.
+
     """
 
     # Note: This Op (EigvalshGrad), should be removed and replaced with a graph
@@ -303,17 +314,24 @@ def eigvalsh(a, b, lower=True):
 
 
 def kron(a, b):
-    """ Kronecker product
+    """ Kronecker product.
 
     Same as scipy.linalg.kron(a, b).
 
-    :note: numpy.kron(a, b) != scipy.linalg.kron(a, b)!
-        They don't have the same shape and order when
-        a.ndim != b.ndim != 2.
+    Parameters
+    ----------
+    a: array_like
+    b: array_like
 
-    :param a: array_like
-    :param b: array_like
-    :return: array_like with a.ndim + b.ndim - 2 dimensions.
+    Returns
+    -------
+    array_like with a.ndim + b.ndim - 2 dimensions
+
+    Notes
+    -----
+    numpy.kron(a, b) != scipy.linalg.kron(a, b)!
+    They don't have the same shape and order when
+    a.ndim != b.ndim != 2.
 
     """
     a = tensor.as_tensor_variable(a)
@@ -336,7 +354,9 @@ def kron(a, b):
 
 
 class Expm(Op):
-    """Compute the matrix exponential of a square array
+    """
+    Compute the matrix exponential of a square array.
+
     """
 
     __props__ = ()
@@ -365,7 +385,9 @@ class Expm(Op):
 
 
 class ExpmGrad(Op):
-    """Gradient of the matrix exponential of a square array.
+    """
+    Gradient of the matrix exponential of a square array.
+
     """
 
     __props__ = ()
