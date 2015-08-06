@@ -261,7 +261,8 @@ def local_gpu_elemwise_0(node):
                     # TODO: change this when fusion makes Elemwise with multiple
                     # outputs
                     gpu_elemwise = new_op(*(gpu_from_host(i)
-                                            for i in node.inputs))
+                                            for i in node.inputs),
+                                          return_list=True)
                 # case 2 - it is still ok if some inputs were upcast to float32
                 elif all([i.type.dtype in upcastable
                           for i in node.inputs]):
@@ -274,18 +275,19 @@ def local_gpu_elemwise_0(node):
 
                         new_inputs = [gpu_from_host(tensor.cast(i, 'float32'))
                                       for i in node.inputs]
-                        gpu_elemwise = new_op(*new_inputs)
+                        gpu_elemwise = new_op(*new_inputs, return_list=True)
                     else:
                         return False
                 else:
                     return False
 
-                gpu_elemwise = split_huge_add_or_mul(gpu_elemwise.owner)
+                gpu_elemwise = split_huge_add_or_mul(gpu_elemwise[0].owner)
                 if not gpu_elemwise:
                     return False
-                if max_inputs_to_GpuElemwise(node) < len(gpu_elemwise.inputs):
+                if (max_inputs_to_GpuElemwise(node) <
+                        len(gpu_elemwise.inputs)):
                     return False
-                return [host_from_gpu(gpu_elemwise.outputs[0])]
+                return [host_from_gpu(out) for out in gpu_elemwise.outputs]
 
 
 @register_opt()

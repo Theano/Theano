@@ -279,6 +279,10 @@ def inplace_elemwise_optimizer_op(OP):
             # gpuarray GpuElemwise inherit from Elemwise
             if not type(op) == OP:
                 continue
+            # TODO support this case
+            if len(node.outputs) > 1:
+                return
+
             baseline = op.inplace_pattern
             protected_inputs = [
                 f.protected for f in node.fgraph._features if

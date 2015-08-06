@@ -255,3 +255,46 @@ def test_local_gpu_subtensor():
     assert any([type(node.op) is tensor.Subtensor for node in topo])
     assert not any([isinstance(node.op, GpuSubtensor) for node in topo])
     assert any([isinstance(node.op, GpuElemwise) for node in topo])
+
+
+def test_local_gpu_elemwise():
+    """
+    Test local_gpu_elemwise_0 when there is a dtype upcastable to float32
+    """
+    a = tensor.bmatrix()
+    b = tensor.fmatrix()
+    c = tensor.fmatrix()
+
+    a_v = (numpy.random.rand(4, 5) * 10).astype("int8")
+    b_v = (numpy.random.rand(4, 5) * 10).astype("float32")
+    c_v = (numpy.random.rand(4, 5) * 10).astype("float32")
+
+    # Due to optimization order, this composite is created when all
+    # the op are on the gpu.
+    f = theano.function([a, b, c], [a + b + c], mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert sum(isinstance(node.op, GpuElemwise) for node in topo) == 1
+    assert sum(type(node.op) == tensor.Elemwise for node in topo) == 0
+    f(a_v, b_v, c_v)
+
+    # Now test with the composite already on the cpu before we move it
+    # to the gpu
+    a_s = theano.scalar.int8()
+    b_s = theano.scalar.float32()
+    c_s = theano.scalar.float32()
+    out_s = theano.scalar.Composite([a_s, b_s, c_s], [a_s + b_s + c_s])
+    out_op = tensor.Elemwise(out_s)
+    f = theano.function([a, b, c], [out_op(a, b, c)], mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert sum(isinstance(node.op, GpuElemwise) for node in topo) == 1
+    assert sum(type(node.op) == tensor.Elemwise for node in topo) == 0
+    f(a_v, b_v, c_v)
+
+    # Test multiple output
+    out_s = theano.scalar.Composite([a_s, b_s, c_s], [a_s + b_s, a_s * b_s])
+    outs_op = tensor.Elemwise(out_s)
+    f = theano.function([a, b, c], outs_op(a, b, c), mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert sum(isinstance(node.op, GpuElemwise) for node in topo) == 1
+    assert sum(type(node.op) == tensor.Elemwise for node in topo) == 0
+    f(a_v, b_v, c_v)
