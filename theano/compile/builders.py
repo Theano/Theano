@@ -140,77 +140,48 @@ class OpFromGraph(gof.Op):
             # we wont need this copy anymore
             output[0] = variable.copy()
 
-    def c_support_code_struct(self, node, name):
+    def __get_codes(self, node):
+        if not hasattr(self, "fn"):
+            self.fn = orig_function(self.new_inputs,
+                                    self.new_outputs,
+                                    **self.kwargs)
 
-    def c_init_code_struct(self, node, name, sub): 
+        if not getattr(self, 'current_node', None) is node:
+            # clone fgraph and link inner graph to outer inputs
+            fgraph = self.fn.maker.fgraph.clone()
+
+            inner_var = fgraph.inptus + fgraph.outputs
+            outer_var = node.inputs + node.outputs
+            rpl = dict([(inner, outer) for inner, outer in
+                        zip(inner_var, outer_var)])
+
+            fgraph = theano.clone(fgraph.outputs, replace=rpl)
+
+            # get necessary c code using CLinker
+            self.linker = CLinker()
+            self.linker.accept(fgraph)
+            self.linker.code_gen()
+
+            return [self.linker.init_blocks.declare,
+                    self.linker.init_blocks.behavior,
+                    self.linker.init_blocks.cleanup,
+                    self.linker.blocks.behavior,
+                    self.linker.blocks.cleanup]
+
+    def c_support_code_struct(self, node, name):
+        return self.__get_codes(node)[0]
+         
+    def c_init_code_struct(self, node, name, sub):
+        return self.__get_codes(node)[1]
 
     def c_cleanup_code_struct(self, node, name):
-
-    def c_code_cleanup(self)
+        return self.__get_codes(node)[2]
 
     def c_code(self, node, name, inputs, outputs, sub):
-        # init a function graph
-        fgraph = gof.FunctionGraph(self.new_inputs, self.new_outputs)
-        
-        # link to output input and output 
-        ori_var = self.new_inputs + self.new_outputs
+        return self.__get_codes(node)[3]
 
-        rpl_var = node.inputs + node.outputs
-        for ori, rpl in zip(ori_var, rpl_var):
-            fgraph.replace(ori, rpl)
-
-        import pdb;pdb.set_trace()
-
-        # clear storage?
-        # let user decide which variable's storage to clear
-        # this should be set when initializing
-        no_recycling = []
-
-        # get a  linker
-        linker = gof.CLinker()
-        linker.accept(fgraph, no_recycling)
-
-        # get c_code
-        return linker.code_gen()
-
-        # order = io_toposort(self.new_inputs, self.new_outputs)
-
-        # # assert all inner nodes have c_code()
-        # if not (self._op_use_c_code and
-        #         all([getattr(node.op, '_op_use_c_code', False) and
-        #              hasattr(node.op, 'c_code') for node in order])):
-        #     self._op_use_c_code = False
-        #     return
-        # else:
-        #     c_code = ""
-        #     local = locals()
-        #     for inner_node in order:
-        #         name = 'node' + str(id(inner_node))
-
-        #         in_names = []
-        #         for i, var in enumerate(inner_node.inputs):
-        #             if var in self.new_inputs:
-        #                 in_names.append(inputs[i])
-        #             else:
-        #                 new_name = 'InVar' + str(id(var))
-        #                 in_names.append(new_name)
-        #                 local.setdefault(new_name, var.clone())
-        #                 c_code += var.type.c_declare(new_name, sub)
-
-        #         out_names = []
-        #         for i, var in enumerate(inner_node.outputs):
-        #             if var in self.new_outputs:
-        #                 out_names.append(outputs[i])
-        #             else:
-        #                 new_name = 'OutVar' + str(id(var))
-        #                 out_names.append(new_name)
-        #                 local.setdefault(new_name, var.clone())
-        #                 c_code += var.type.c_declare(new_name, sub)
-
-        #         c_code += inner_node.op.c_code(inner_node, name,
-        #                                     in_names, out_names, sub)
-
-        # return c_code
+    def c_code_cleanup(self, node, name, inputs, outputs, sub):
+        return self.__get_codes(node)[4]
 
     def connection_pattern(self, node):
         """
