@@ -720,7 +720,7 @@ def repeat(x, repeats, axis=None):
 
     See Also
     --------
-    `tensor.tile <tensor.tile>`
+    tensor.tile
 
     .. versionadded:: 0.6
 
