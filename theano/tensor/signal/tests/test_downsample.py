@@ -803,9 +803,9 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                                             warn=False)
 
     def test_opt_max_to_average(self):
-        im = theano.tensor.ftensor4()
-        maxout = theano.tensor.ftensor4()
-        grad = theano.tensor.ftensor4()
+        im = theano.tensor.tensor4()
+        maxout = theano.tensor.tensor4()
+        grad = theano.tensor.tensor4()
 
         for mode in ['max', 'sum', 'average_inc_pad', 'average_exc_pad']:
             f = theano.function([im, maxout, grad],

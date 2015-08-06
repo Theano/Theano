@@ -1123,6 +1123,8 @@ class DownsampleFactorMaxGradGrad(Op):
 @register_canonicalize
 @gof.local_optimizer([MaxPoolGrad])
 def local_average_pool_grad(node):
+    # To assure backward compatibility with
+    # DownsampleFactorMaxGrad
     if (not isinstance(node.op, MaxPoolGrad) or node.op.mode not in
             ['sum','average_exc_pad', 'average_inc_pad']):
         return False
