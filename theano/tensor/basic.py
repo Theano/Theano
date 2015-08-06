@@ -3251,7 +3251,7 @@ def extract_constant(x, elemwise=True):
     """
     This function is basically a call to tensor.get_scalar_constant_value.
 
-    The main difference is the behaviour in case of failure. While
+    The main difference is the behaviour in case of failure. While
     get_scalar_constant_value raises an TypeError, this function returns x,
     as a tensor if possible. If x is a ScalarVariable from a
     scalar_from_tensor, we remove the conversion. If x is just a
