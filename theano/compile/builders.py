@@ -150,38 +150,35 @@ class OpFromGraph(gof.Op):
             # clone fgraph and link inner graph to outer inputs
             fgraph = self.fn.maker.fgraph.clone()
 
-            inner_var = fgraph.inptus + fgraph.outputs
+            inner_var = fgraph.inputs + fgraph.outputs
             outer_var = node.inputs + node.outputs
-            rpl = dict([(inner, outer) for inner, outer in
-                        zip(inner_var, outer_var)])
 
-            fgraph = theano.clone(fgraph.outputs, replace=rpl)
+
+            # rpl = dict([(inner, outer) for inner, outer in
+            #             zip(inner_var, outer_var)])
+            # fgraph = theano.clone(fgraph.outputs, replace=rpl)
 
             # get necessary c code using CLinker
-            self.linker = CLinker()
+            self.linker = gof.CLinker()
             self.linker.accept(fgraph)
             self.linker.code_gen()
 
-            return [self.linker.init_blocks.declare,
-                    self.linker.init_blocks.behavior,
-                    self.linker.init_blocks.cleanup,
-                    self.linker.blocks.behavior,
-                    self.linker.blocks.cleanup]
+            return self.linker.init_blocks, self.linker.blocks
 
     def c_support_code_struct(self, node, name):
-        return self.__get_codes(node)[0]
+        return ''.join([block.declare for block in self.__get_codes(node)[0]])
          
     def c_init_code_struct(self, node, name, sub):
-        return self.__get_codes(node)[1]
+        return ''.join([block.behavior for block in self.__get_codes(node)[0]])
 
     def c_cleanup_code_struct(self, node, name):
-        return self.__get_codes(node)[2]
+        return ''.join([block.cleanup for block in self.__get_codes(node)[0]])
 
     def c_code(self, node, name, inputs, outputs, sub):
-        return self.__get_codes(node)[3]
+        return ''.join([block.behavior for block in self.__get_codes(node)[1]])
 
     def c_code_cleanup(self, node, name, inputs, outputs, sub):
-        return self.__get_codes(node)[4]
+        return ''.join([block.cleanup for block in self.__get_codes(node)[1]])
 
     def connection_pattern(self, node):
         """
