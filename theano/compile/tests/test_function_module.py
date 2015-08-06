@@ -317,11 +317,11 @@ class T_function(unittest.TestCase):
         """
         A special testcase for logistic_sgd.py in Deep Learning Tutorial
         """
-        train_x = theano.shared(value=numpy.random.rand(10,10))
-        test_x = theano.shared(value=numpy.random.rand(10,10))
+        train_x = theano.shared(value=numpy.random.rand(10,10).astype(config.floatX))
+        test_x = theano.shared(value=numpy.random.rand(10,10).astype(config.floatX))
 
-        train_y = theano.shared(value=numpy.random.rand(10,1))
-        test_y = theano.shared(value=numpy.random.rand(10,1))
+        train_y = theano.shared(value=numpy.random.rand(10,1).astype(config.floatX))
+        test_y = theano.shared(value=numpy.random.rand(10,1).astype(config.floatX))
 
         i = T.iscalar('index')
         x = T.vector('x')
