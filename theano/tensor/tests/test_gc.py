@@ -1,4 +1,3 @@
-import sys
 import numpy
 import six.moves.cPickle as pickle
 from six.moves import xrange
@@ -120,4 +119,4 @@ def test_merge_opt_runtime():
     dt = time.time() - t
 
     # it should never take longer than 5 seconds to compile this graph
-    assert dt < 5.0
+    assert dt < 5.0, dt
