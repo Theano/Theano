@@ -120,7 +120,7 @@ def check_module( module, library, source_files ):
     try :
         mod = __import__( "%s.%s" % ( module, module, ),
                             globals( ), locals( ), [ '' ] )
-    except Exception, e :
+    except Exception as e :
         return False
     return True
 
