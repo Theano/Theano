@@ -84,8 +84,8 @@ class DimShuffle(Op):
     If input.broadcastable[i] == False then i must be found in new_order.
     Broadcastable dimensions, on the other hand, can be discarded.
 
-    Examples
-    --------
+    Extended Summary
+    ----------------
     DimShuffle((False, False, False), ['x', 2, 'x', 0, 1])
 
     This op will only work on 3d tensors with no broadcastable
@@ -459,7 +459,7 @@ class Elemwise(OpenMPOp):
     be the same as the corresponding input type (see the doc of
     scalar.ScalarOp to get help about controlling the output type)
 
-    Parameteres
+    Parameters
     -----------
     scalar_op
         An instance of a subclass of scalar.ScalarOp which works uniquely
