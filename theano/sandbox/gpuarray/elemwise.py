@@ -165,22 +165,6 @@ class GpuElemwise(HideC, Elemwise):
 #include <stdint.h>
 #endif
 """
-        # Translate ga_ pseudo-types into their specific realizations
-        support_code += """
-#define ga_bool uint8_t
-#define ga_byte int8_t
-#define ga_ubyte uint8_t
-#define ga_short int16_t
-#define ga_ushort uint16_t
-#define ga_int int32_t
-#define ga_uint uint32_t
-#define ga_long int64_t
-#define ga_ulong uint64_t
-#define ga_float float
-#define ga_double double
-#define ga_half uint16_t
-
-"""
         try:
             # We accept only some c_support_code().
             # This filter is done in the make_node()
