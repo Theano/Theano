@@ -468,7 +468,7 @@ class CudaNdarrayType(Type):
         Override `CLinkerOp.c_headers`.
 
         """
-        return ['cuda_ndarray.cuh']
+        return ['cuda_ndarray.cuh', '<cub/cub.cuh>']
 
     def c_header_dirs(self):
         """

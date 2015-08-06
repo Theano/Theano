@@ -214,6 +214,11 @@ class NVCC_compiler(Compiler):
         if os.path.abspath(os.path.split(__file__)[0]) not in include_dirs:
             include_dirs.append(os.path.abspath(os.path.split(__file__)[0]))
 
+        cub_dir = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), 'cub'))
+        if cub_dir not in include_dirs:
+            include_dirs.append(cub_dir)
+
         libs = std_libs() + libs
         if 'cudart' not in libs:
             libs.append('cudart')
