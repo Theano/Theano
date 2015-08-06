@@ -104,45 +104,27 @@ def set_cuda_disabled():
     global cuda_available, cuda_warning_is_displayed
     cuda_available = False
 
-# cuda_ndarray compile and import
-cuda_path = os.path.abspath(os.path.split(__file__)[0])
+# Add the compilation dir to the list of paths for module import
+if config.compiledir not in sys.path :
+    sys.path.insert( 0, config.compiledir )
 
-cuda_ndarray_loc = os.path.join(config.compiledir, 'cuda_ndarray')
-cuda_ndarray_so = os.path.join(cuda_ndarray_loc,
-                               'cuda_ndarray.' + get_lib_extension())
-libcuda_ndarray_so = os.path.join(cuda_ndarray_loc,
-                               'libcuda_ndarray.' + get_lib_extension())
-
-
-def try_import():
-    """
-    load the cuda_ndarray module if present and up to date
-    return True if loaded correctly, otherwise return False
-    """
-    cuda_files = (
-        'cuda_ndarray.cu',
-        'cuda_ndarray.cuh',
-        'conv_full_kernel.cu',
-        'cnmem.h',
-        'cnmem.cpp',
-        'conv_kernel.cu')
-    stat_times = [os.stat(os.path.join(cuda_path, cuda_file))[stat.ST_MTIME]
-                  for cuda_file in cuda_files]
-    date = max(stat_times)
-    if os.path.exists(cuda_ndarray_so):
-        if date >= os.stat(cuda_ndarray_so)[stat.ST_MTIME]:
-            return False
-    try:
-        # If we load a previously-compiled version, config.compiledir should
-        # be in sys.path.
-        sys.path[0:0] = [config.compiledir]
-        import cuda_ndarray.cuda_ndarray
-        del sys.path[0]
-    except ImportError:
+def check_module( module, library, source_files ):
+    """ Load the module 'module' if present and up to date
+    return True if loaded correctly, otherwise return False"""
+    if not os.path.exists( library ) :
+        return False
+    date = max( [ os.stat( cuda_file )[ stat.ST_MTIME ]
+                        for cuda_file in source_files ] )
+    if date >= os.stat( library )[ stat.ST_MTIME ] :
+        return False
+    try :
+        mod = __import__( "%s.%s" % ( module, module, ),
+                            globals( ), locals( ), [ '' ] )
+    except Exception, e :
         return False
     return True
 
-
+# Check availability of CUDA compiler
 if not nvcc_compiler.is_nvcc_available() or not theano.config.cxx:
     # It can happen that the file cuda_ndarray.so is already compiled
     # but nvcc is not available. In that case we need to disable the CUDA
@@ -150,23 +132,92 @@ if not nvcc_compiler.is_nvcc_available() or not theano.config.cxx:
     # use already compiled GPU op and not the others.
     # Also, if cxx is not available, we need to disable all GPU code.
     set_cuda_disabled()
-    compile_cuda_ndarray = False
 elif not config.device.startswith('gpu') and config.force_device:
     # We where asked to NEVER use the GPU
     set_cuda_disabled()
-    compile_cuda_ndarray = False
-else:
-    # Add the theano cache directory's cuda_ndarray subdirectory to the
-    # list of places that are hard-coded into compiled modules' runtime
-    # library search list.  This works in conjunction with
-    # nvcc_compiler.NVCC_compiler.compile_str which adds this folder during
-    # compilation with -L and also adds -lcuda_ndarray when compiling
-    # modules.
-    nvcc_compiler.add_standard_rpath(cuda_ndarray_loc)
-    compile_cuda_ndarray = not try_import()
 
+# If $TMPDIR is defined, nvopencc wants it to exist
+if cuda_available and 'TMPDIR' in os.environ :
+    tmpdir = os.environ[ 'TMPDIR' ]
+    if not os.path.exists( tmpdir ) :
+        os.makedirs( tmpdir )
 
-if compile_cuda_ndarray and cuda_available:
+# The path to source fiels for cuda_ndarray and cuda_devquery
+cuda_path = os.path.abspath( os.path.split( __file__ )[ 0 ] )
+
+# Early on detection and architecture selection via cuda_devquery
+cuda_devquery_loc = os.path.join( config.compiledir, 'cuda_devquery' )
+cuda_devquery_so = os.path.join( cuda_devquery_loc,
+                                'cuda_devquery.' + get_lib_extension( ) )
+cuda_devquery_cu = os.path.join( cuda_path, "cuda_devquery.cu" )
+
+def try_devquery( ) :
+    return check_module( 'cuda_devquery', cuda_devquery_so, [ cuda_devquery_cu ] )
+
+# Figure out if cuda_devquery needs compilation
+if cuda_available and not try_devquery( ) :
+    get_lock( )
+    try :
+        if not try_devquery( ) :
+            code = open( cuda_devquery_cu ).read( )
+            if not os.path.exists( cuda_devquery_loc ):
+                os.makedirs( cuda_devquery_loc )
+            try:
+                nvcc_compiler.NVCC_compiler( ).compile_str(
+                        'cuda_devquery', code,
+                        location = cuda_devquery_loc,
+                        include_dirs = [ cuda_path ],
+                        libs = [ ], preargs = [ ] )
+            except Exception as e :
+                _logger.error( "Failed to compile cuda_devquery.cu: %s", str( e ) )
+                set_cuda_disabled( )
+    finally :
+        release_lock( )
+
+if cuda_available :
+    try:
+        from cuda_devquery.cuda_devquery import cuda_device_count
+        assert( cuda_device_count( ) > 0 )
+    except Exception as e :
+        _logger.error( "Failed to detect the number of CUDA devices : %s", str( e ) )
+        set_cuda_disabled( )
+
+# Now as the CUDA driver is functional, select the specified GPU and compile
+#  an ndarray library specifically for its architecture.
+def __get_arch( device ) :
+    arch_flag = ""
+    if device == 'gpu' :
+        device = 0
+    elif device.startswith('gpu') :
+        device = int( device[ 3: ] )
+    elif device == 'cpu' :
+        return -1, arch_flag
+    else:
+        raise ValueError( "Invalid device identifier", device )
+
+    from cuda_devquery.cuda_devquery import cuda_device_capability
+    major, minor = cuda_device_capability( device )
+    arch_flag = '-arch=sm_' + str( major ) + str( minor )
+    return device, arch_flag
+
+# cuda_ndarray compile and import
+cuda_ndarray_loc = os.path.join(config.compiledir, 'cuda_ndarray')
+cuda_ndarray_so = os.path.join(cuda_ndarray_loc,
+                               'cuda_ndarray.' + get_lib_extension())
+libcuda_ndarray_so = os.path.join(cuda_ndarray_loc,
+                               'libcuda_ndarray.' + get_lib_extension())
+
+def try_import() :
+    return check_module( "cuda_ndarray", cuda_ndarray_so,
+        [ os.path.join( cuda_path, cu ) for cu in [
+            'cuda_ndarray.cu',
+            'cuda_ndarray.cuh',
+            'conv_full_kernel.cu',
+            'cnmem.h',
+            'cnmem.cpp',
+            'conv_kernel.cu' ] ] )
+
+if not try_import() and cuda_available:
     get_lock()
     try:
         # Retry to load again in case someone else compiled it
@@ -183,11 +234,8 @@ if compile_cuda_ndarray and cuda_available:
                     if not os.path.exists(cuda_ndarray_loc):
                         os.makedirs(cuda_ndarray_loc)
 
-                    # If $TMPDIR is defined, nvopencc wants it to exist
-                    if 'TMPDIR' in os.environ:
-                        tmpdir = os.environ['TMPDIR']
-                        if not os.path.exists(tmpdir):
-                            os.makedirs(tmpdir)
+                    # Get the architecture of the selected device
+                    dev_id, dev_arch = __get_arch( config.device )
 
                     compiler = nvcc_compiler.NVCC_compiler()
                     compiler.compile_str(
@@ -196,7 +244,7 @@ if compile_cuda_ndarray and cuda_available:
                             location=cuda_ndarray_loc,
                             include_dirs=[cuda_path],
                             libs=[config.cublas.lib],
-                            preargs=['-O3'] + compiler.compile_args(),
+                            preargs=['-O3', dev_arch] + compiler.compile_args(),
                     )
                     from cuda_ndarray.cuda_ndarray import *
             except Exception as e:
@@ -204,8 +252,6 @@ if compile_cuda_ndarray and cuda_available:
                 set_cuda_disabled()
     finally:
         release_lock()
-
-del compile_cuda_ndarray
 
 if cuda_available:
     global cuda_initialization_error_message
