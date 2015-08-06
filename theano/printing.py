@@ -14,14 +14,25 @@ import hashlib
 import numpy as np
 from six import string_types, integer_types, iteritems
 
+# pydot-ng is a fork of pydot that is better maintained, and works
+# with more recent version of its dependencies (in particular pyparsing)
 try:
-    import pydot as pd
+    import pydot_ng as pd
     if pd.find_graphviz():
         pydot_imported = True
     else:
         pydot_imported = False
-except ImportError:
+except Exception:
+    # Sometimes, a Windows-specific exception is raised
     pydot_imported = False
+# Fall back on pydot if necessary
+if not pydot_imported:
+    try:
+        import pydot as pd
+        if pd.find_graphviz():
+            pydot_imported = True
+    except Exception:
+        pass
 
 import theano
 from theano import gof
