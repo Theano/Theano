@@ -2031,11 +2031,6 @@ local_elemwise_alloc = register_specialize(
         local_elemwise_alloc_op(T.Elemwise, T.Alloc, T.DimShuffle)),
     'local_alloc_elemwise')
 
-local_elemwise_alloc = register_canonicalize(
-    gof.local_optimizer([T.Elemwise])(
-        local_elemwise_alloc_op(T.Elemwise, T.Alloc, T.DimShuffle)),
-    'local_alloc_elemwise')
-
 theano.configparser.AddConfigVar('experimental.local_alloc_elemwise',
                                  "DEPRECATED: If True, enable the experimental"
                                  " optimization local_alloc_elemwise."
