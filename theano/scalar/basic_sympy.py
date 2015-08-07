@@ -28,8 +28,11 @@ def theano_dtype(expr):
 
 
 class SymPyCCode(ScalarOp):
-    """ An Operator that wraps SymPy's C code generation
+    """
+    An Operator that wraps SymPy's C code generation.
 
+    Examples
+    --------
     >>> from sympy.abc import x, y  # SymPy Variables
     >>> from theano.scalar.basic_sympy import SymPyCCode
     >>> op = SymPyCCode([x, y], x + y)
@@ -42,6 +45,7 @@ class SymPyCCode(ScalarOp):
     >>> f = theano.function([xt, yt], zt)
     >>> f(1.0, 2.0)
     3.0
+
     """
 
     def __init__(self, inputs, expr, name=None):
