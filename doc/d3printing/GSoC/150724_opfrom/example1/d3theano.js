@@ -108,7 +108,7 @@ function traverseChilds(dotGraph, nodes, groups, parent) {
 			'id': child.id,
 			'value': child,
 			'index': nodes.length,
-			'fixed': true,
+			'fixed': fixedDefault,
 			'group': group,
 			'isParent': child.showChilds,
 			'parent': parent
@@ -118,6 +118,10 @@ function traverseChilds(dotGraph, nodes, groups, parent) {
 			traverseChilds(dotGraph, nodes, groups, node);
 		} else {
 			group.nodes.push(node);
+		}
+		group.childs = [];
+		for (var i = group.id + 1; i < groups.length; ++i) {
+			group.childs.push(groups[i].id);
 		}
 	}
 }
@@ -148,6 +152,12 @@ function forceGraph(dotGraph, prevGraph) {
 		graph.nodesd[node.id] = node;
 	}
 	
+	graph.groupsd = {};
+	for (var i in graph.groups) {
+		var group = graph.groups[i];
+		graph.groupsd[group.id] = group;
+	}
+	
 	graph.nodesp = graph.nodes.filter(function(d) {return d.isParent;});
 	graph.nodesn = graph.nodes.filter(function(d) {return !d.isParent;});
 	
@@ -160,7 +170,7 @@ function forceGraph(dotGraph, prevGraph) {
 			if (exists(prevParent)) {
 				group.pos = [prevParent.x, prevParent.y];
 			} else {
-				group.pos = parent.pos.slice(0);
+				group.pos = parent.value.pos.slice(0);
 			}
 			group.pos[0] += parent.value.cx;
 			group.pos[1] += parent.value.cy;
@@ -177,10 +187,7 @@ function forceGraph(dotGraph, prevGraph) {
 		}
 		for (var j in group.nodes) {
 			var node = group.nodes[j];
-			if (node.isParent) {
-				node.x = group.pos[0];
-				node.y = group.pos[1];
-			} else {
+			if (!node.isParent) {
 				node.x = group.pos[0] - group.size[0] / 2 + node.value.pos[0] - min[0];
 				node.y = group.pos[1] - group.size[1] / 2 + node.value.pos[1] - min[1];
 			}
@@ -276,13 +283,23 @@ function convexHulls(graph, offset) {
 		var points = [];
 		for (var j in group.nodes) {
 			var node = group.nodes[j];
-			if (node.isParent) {
-				points.push([node.x, node.y]);
-			} else {
+			if (!node.isParent) {
 				points.push([node.x - node.value.cx - offset, node.y - node.value.cy - offset]);
 				points.push([node.x - node.value.cx - offset, node.y + node.value.cy + offset]);
 				points.push([node.x + node.value.cx + offset, node.y - node.value.cy - offset]);
 				points.push([node.x + node.value.cx + offset, node.y + node.value.cy + offset]);	
+			}
+		}
+		for (var k in group.childs) {
+			var nodes = graph.groupsd[group.childs[k]].nodes;
+			for (var j in nodes) {
+				var node = nodes[j];
+				if (!node.isParent) {
+					points.push([node.x - node.value.cx - offset, node.y - node.value.cy - offset]);
+					points.push([node.x - node.value.cx - offset, node.y + node.value.cy + offset]);
+					points.push([node.x + node.value.cx + offset, node.y - node.value.cy - offset]);
+					points.push([node.x + node.value.cx + offset, node.y + node.value.cy + offset]);	
+				}
 			}
 		}
 		hulls.push({group: i, path: d3.geom.hull(points)});
@@ -314,6 +331,42 @@ function setupGraph() {
 	var isEdgeOver = false;
 	var isEdgeLabelOver = false;
 	
+
+	var dragHulls = d3.behavior.drag()
+		.origin(function(d) { return d; })
+	    .on("dragstart", function(d) {
+	    	d3.event.sourceEvent.stopPropagation();
+			d3.event.sourceEvent.preventDefault();
+			layout.stop();
+	    })
+	    .on("drag", function dragged(d) {
+	    		var group = graph.groups[d.group];
+				for (var i in group.nodes) {
+					var node = group.nodes[i];
+					node.x += d3.event.dx;
+					node.y += d3.event.dy;
+					node.px += d3.event.dx;
+					node.py += d3.event.dy;
+				}
+				group.pos[0] += d3.event.dx;
+				group.pos[1] += d3.event.dy;
+				for (var k in group.childs) {
+					var cgroup = graph.groupsd[group.childs[k]];
+					var nodes = cgroup.nodes;
+					for (var j in nodes) {
+						var node = nodes[j];
+						node.x += d3.event.dx;
+						node.y += d3.event.dy;
+						node.px += d3.event.dx;
+						node.py += d3.event.dy;
+						cgroup.pos[0] += d3.event.dx;
+						cgroup.pos[1] += d3.event.dy;
+					}
+				}
+				updateGraph();
+			})
+		.on('dragend', function(d) {layout.resume();});
+	
 	graph.hulls = convexHulls(graph);
 	hulls = pane.selectAll('#hulls').remove();
 	hulls = pane.append('g').attr('id', 'hulls')
@@ -321,12 +374,18 @@ function setupGraph() {
 		.data(graph.hulls).enter()
 		.append('path')
 		.attr('class', 'hull')
-		.attr('d', drawCluster);
-		
+		.attr('d', drawCluster)
+		.call(dragHulls);
 		
 	hulls.on('dblclick', function(d) {
-		var parent = graph.groups[d.group].parent;
-		parent.value.showChilds = !parent.value.showChilds;
+		var group = graph.groups[d.group];
+		group.parent.value.showChilds = !group.parent.value.showChilds;
+		if (!group.parent.value.showChilds) {
+			for (i in group.childs) {
+				var child = graph.groupsd[group.childs[i]];
+				child.parent.value.showChilds = false;
+			}
+		}
 		graph = forceGraph(dotGraph, graph);
 		setupGraph();
 	});
@@ -376,6 +435,12 @@ function setupGraph() {
 		if (d.value.hasChilds) {
 			d.value.showChilds = !d.value.showChilds;
 			graph = forceGraph(dotGraph, graph);
+			if (!fixedDefault && d.value.showChilds) {
+				var n = dotGraph.neighbors(d.id);
+				for (i in n) {
+					graph.nodesd[n[i]].fixed = false;
+				}
+			}
 			setupGraph();
 		}
 	});
@@ -422,11 +487,15 @@ function setupGraph() {
 		.nodes(graph.nodes)
 		.links(graph.edges)
 		.size(graph.size)
-		.charge(-300)
-		.linkDistance(400)
-		.linkStrength(0.4)
-		.gravity(0)
-		.on('tick', updateGraph);
+		.linkDistance(function(d) {
+			return 300;
+		})
+		.charge(-600)
+		.linkStrength(1)
+		.gravity(0.05)
+		.friction(0.5)
+		.on('tick', updateGraph)
+		.start();
 		
 	// Drag behavour
 	var drag = layout.drag()
@@ -436,9 +505,6 @@ function setupGraph() {
 			d.fixed = true;
 		});
 	nodes.call(drag);
-		
-	// Start force layout
-	layout.start();
 }
 
 function length(x1, y1, x2, y2) {
@@ -452,7 +518,53 @@ function pathPos(x1, y1, x2, y2, c) {
 	return p;
 }
 
+function collide(node) {
+	var eps = 10;
+	var nx1 = node.x - node.value.cx - eps;
+	var nx2 = node.x + node.value.cx + eps;
+	var ny1 = node.y - node.value.cy - eps;
+	var ny2 = node.y + node.value.cy + eps;
+	return function(quad, x1, y1, x2, y2) {
+		var point = quad.point;
+		if (point && (point != node) && !point.fixed && ! node.fixed) {
+			var px1 = point.x - point.value.cx;
+			var px2 = point.x + point.value.cx;
+			var py1 = point.y - point.value.cy;
+			var py2 = point.y + point.value.cy;
+			if (!(px1 > nx2 || px2 < nx1 || py1 >= ny2 || py2 <= ny1)) {
+				var eta = 0.1;
+				if (px1 < nx1) {
+					// move quad to left
+					var d = eta * (px2 - nx1);
+					point.x -= d;
+					node.x += d;
+				} else {
+					var d = eta * (nx2 - px1);
+					point.x += d;
+					node.x -= d;
+				}
+				if (py1 < ny1) {
+					// move quad to top
+					var d = eta * (py2 - ny1);
+					point.y -= d;
+					node.y += d;
+				} else {
+					var d = eta * (ny2 - py1);
+					point.y += d;
+					node.y -= d;
+				}
+			}
+		}
+		return x1 > nx2 || x2 < nx1 || y1 >= ny2 || y2 <= ny1;
+	};
+}
+
 function updateGraph() {
+ 	var q = d3.geom.quadtree(graph.nodes);
+	for (var i in graph.nodes) {
+		q.visit(collide(graph.nodes[i]));
+	}
+		
 	graph.hulls = convexHulls(graph);
 	hulls.data(graph.hulls)
 		.attr('d', drawCluster);

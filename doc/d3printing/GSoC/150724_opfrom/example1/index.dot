@@ -1,12 +1,12 @@
 digraph G {
-	graph [bb="0,0,2606,316"];
+	graph [bb="0,0,2605,316"];
 	node [label="\N"];
 	subgraph cluster_n1 {
-		graph [bb="1160,80,1875,308"];
+		graph [bb="1159,80,1874,308"];
 		n11		 [fillcolor="#FFAABB",
 			height=0.5,
 			label="Elemwise{Composite{(i0 + (i1 * i2))}}",
-			pos="1510,194",
+			pos="1509,194",
 			shape=ellipse,
 			style=filled,
 			type=colored,
@@ -14,50 +14,50 @@ digraph G {
 		n15		 [fillcolor=dodgerblue,
 			height=0.5,
 			label="TensorType(float32, scalar)",
-			pos="1510,106",
+			pos="1509,106",
 			shape=box,
 			style=filled,
 			width=2.3889];
 		n11 -> n15		 [label="TensorType(float32, scalar)",
-			lp="1588,150",
-			pos="e,1510,124.08 1510,175.6 1510,163.75 1510,147.82 1510,134.29"];
+			lp="1587,150",
+			pos="e,1509,124.08 1509,175.6 1509,163.75 1509,147.82 1509,134.29"];
 		n12		 [fillcolor=limegreen,
 			height=0.5,
 			label="name=x TensorType(float32, scalar)",
-			pos="1756,282",
+			pos="1755,282",
 			shape=box,
 			style=filled,
 			width=3.0625];
 		n12 -> n11		 [label="0 TensorType(float32, scalar)",
-			lp="1791.5,238",
-			pos="e,1604.7,208.31 1734.7,263.92 1719.7,252.69 1698.6,238.53 1678,230 1658.1,221.75 1636,215.37 1614.5,210.46"];
+			lp="1790.5,238",
+			pos="e,1603.7,208.31 1733.7,263.92 1718.7,252.69 1697.6,238.53 1677,230 1657.1,221.75 1635,215.37 1613.5,210.46"];
 		n13		 [fillcolor=limegreen,
 			height=0.5,
 			label="name=y TensorType(float32, scalar)",
-			pos="1517,282",
+			pos="1516,282",
 			shape=box,
 			style=filled,
 			width=3.0625];
 		n13 -> n11		 [label="1 TensorType(float32, scalar)",
-			lp="1594.5,238",
-			pos="e,1509.7,212.04 1513.6,263.98 1512.5,258.29 1511.6,251.89 1511,246 1510.3,238.24 1509.9,229.79 1509.8,222.04"];
+			lp="1593.5,238",
+			pos="e,1508.7,212.04 1512.6,263.98 1511.5,258.29 1510.6,251.89 1510,246 1509.3,238.24 1508.9,229.79 1508.8,222.04"];
 		n14		 [fillcolor=limegreen,
 			height=0.5,
 			label="name=z TensorType(float32, scalar)",
-			pos="1278,282",
+			pos="1277,282",
 			shape=box,
 			style=filled,
 			width=3.0556];
 		n14 -> n11		 [label="2 TensorType(float32, scalar)",
-			lp="1423.5,238",
-			pos="e,1408,207.64 1294.3,263.77 1306,252.46 1322.6,238.29 1340,230 1358.1,221.35 1378.3,214.83 1398.3,209.92"];
+			lp="1422.5,238",
+			pos="e,1407,207.64 1293.3,263.77 1305,252.46 1321.6,238.29 1339,230 1357.1,221.35 1377.3,214.83 1397.3,209.92"];
 	}
 	subgraph cluster_n6 {
-		graph [bb="1883,80,2598,308"];
+		graph [bb="1882,80,2597,308"];
 		n61		 [fillcolor="#FFAABB",
 			height=0.5,
 			label="Elemwise{Composite{(i0 + (i1 * i2))}}",
-			pos="2233,194",
+			pos="2232,194",
 			shape=ellipse,
 			style=filled,
 			type=colored,
@@ -65,124 +65,124 @@ digraph G {
 		n65		 [fillcolor=dodgerblue,
 			height=0.5,
 			label="TensorType(float32, scalar)",
-			pos="2233,106",
+			pos="2232,106",
 			shape=box,
 			style=filled,
 			width=2.3889];
 		n61 -> n65		 [label="TensorType(float32, scalar)",
-			lp="2311,150",
-			pos="e,2233,124.08 2233,175.6 2233,163.75 2233,147.82 2233,134.29"];
+			lp="2310,150",
+			pos="e,2232,124.08 2232,175.6 2232,163.75 2232,147.82 2232,134.29"];
 		n62		 [fillcolor=limegreen,
 			height=0.5,
 			label="name=x TensorType(float32, scalar)",
-			pos="2479,282",
+			pos="2478,282",
 			shape=box,
 			style=filled,
 			width=3.0625];
 		n62 -> n61		 [label="0 TensorType(float32, scalar)",
-			lp="2513.5,238",
-			pos="e,2327.7,208.31 2457.7,263.92 2442.7,252.69 2421.6,238.53 2401,230 2381.1,221.75 2359,215.37 2337.5,210.46"];
+			lp="2512.5,238",
+			pos="e,2326.7,208.31 2456.7,263.92 2441.7,252.69 2420.6,238.53 2400,230 2380.1,221.75 2358,215.37 2336.5,210.46"];
 		n63		 [fillcolor=limegreen,
 			height=0.5,
 			label="name=y TensorType(float32, scalar)",
-			pos="2240,282",
+			pos="2239,282",
 			shape=box,
 			style=filled,
 			width=3.0625];
 		n63 -> n61		 [label="1 TensorType(float32, scalar)",
-			lp="2317.5,238",
-			pos="e,2232.7,212.04 2236.6,263.98 2235.5,258.29 2234.6,251.89 2234,246 2233.3,238.24 2232.9,229.79 2232.8,222.04"];
+			lp="2316.5,238",
+			pos="e,2231.7,212.04 2235.6,263.98 2234.5,258.29 2233.6,251.89 2233,246 2232.3,238.24 2231.9,229.79 2231.8,222.04"];
 		n64		 [fillcolor=limegreen,
 			height=0.5,
 			label="name=z TensorType(float32, scalar)",
-			pos="2001,282",
+			pos="2000,282",
 			shape=box,
 			style=filled,
 			width=3.0556];
 		n64 -> n61		 [label="2 TensorType(float32, scalar)",
-			lp="2146.5,238",
-			pos="e,2131,207.64 2017.3,263.77 2029,252.46 2045.6,238.29 2063,230 2081.1,221.35 2101.3,214.83 2121.3,209.92"];
+			lp="2145.5,238",
+			pos="e,2130,207.64 2016.3,263.77 2028,252.46 2044.6,238.29 2062,230 2080.1,221.35 2100.3,214.83 2120.3,209.92"];
 	}
 	n1	 [height=0.5,
-		label="theano.compile.builders.OpFromGraph object at 0x1100c70d0",
-		pos="239,194",
+		label="theano.compile.builders.OpFromGraph object at 0x110c3e110",
+		pos="238,194",
 		shape=ellipse,
 		subg=cluster_n1,
 		subg_map_inputs="[['n2', 'n12'], ['n3', 'n13'], ['n3', 'n14']]",
 		subg_map_outputs="[['n15', 'n5']]",
-		width=6.6414];
+		width=6.6185];
 	n5	 [fillcolor="#FFAABB",
 		height=0.5,
 		label="Elemwise{Add}[(0, 0)]",
-		pos="554,106",
+		pos="553,106",
 		shape=ellipse,
 		style=filled,
 		type=colored,
 		width=2.6784];
 	n1 -> n5	 [label="1 TensorType(float32, scalar)",
-		lp="508.5,150",
-		pos="e,501.93,121.21 299.36,176.52 354.72,161.41 436.35,139.12 492.17,123.88"];
+		lp="507.5,150",
+		pos="e,500.93,121.21 298.36,176.52 353.72,161.41 435.35,139.12 491.17,123.88"];
 	n2	 [fillcolor=limegreen,
 		height=0.5,
 		label="name=z TensorType(float32, scalar)",
-		pos="675,282",
+		pos="674,282",
 		shape=box,
 		style=filled,
 		width=3.0556];
 	n2 -> n1	 [label="0 TensorType(float32, scalar)",
-		lp="685.5,238",
-		pos="e,431.16,204.72 634.61,263.87 623.72,258.66 612.15,252.56 602,246 592.73,240.01 593.17,234.31 583,230 556.22,218.66 500.43,210.89 \
-441.43,205.61"];
+		lp="684.5,238",
+		pos="e,430.16,204.72 633.61,263.87 622.72,258.66 611.15,252.56 601,246 591.73,240.01 592.17,234.31 582,230 555.22,218.66 499.43,210.89 \
+440.43,205.61"];
 	n6	 [height=0.5,
-		label="theano.compile.builders.OpFromGraph object at 0x1100c70d0 id=1",
-		pos="781,194",
+		label="theano.compile.builders.OpFromGraph object at 0x110c3e110 id=1",
+		pos="780,194",
 		shape=ellipse,
 		subg=cluster_n6,
 		subg_map_inputs="[['n7', 'n62'], ['n3', 'n63'], ['n2', 'n64']]",
 		subg_map_outputs="[['n65', 'n5']]",
-		width=7.167];
+		width=7.1441];
 	n2 -> n6	 [label="2 TensorType(float32, scalar)",
-		lp="864.5,238",
-		pos="e,782.5,212.41 750.62,263.79 759.11,259.2 766.89,253.37 773,246 778.39,239.5 780.89,230.87 781.91,222.57"];
+		lp="863.5,238",
+		pos="e,781.5,212.41 749.62,263.79 758.11,259.2 765.89,253.37 772,246 777.39,239.5 779.89,230.87 780.91,222.57"];
 	n3	 [fillcolor=limegreen,
 		height=0.5,
 		label="name=y TensorType(float32, scalar)",
-		pos="225,282",
+		pos="224,282",
 		shape=box,
 		style=filled,
 		width=3.0625];
 	n3 -> n1	 [label="1 TensorType(float32, scalar)",
-		lp="309.5,238",
-		pos="e,231.34,212.12 223.91,263.85 223.64,253.89 223.89,241.14 226,230 226.51,227.29 227.22,224.51 228.03,221.76"];
+		lp="308.5,238",
+		pos="e,230.34,212.12 222.91,263.85 222.64,253.89 222.89,241.14 225,230 225.51,227.29 226.22,224.51 227.03,221.76"];
 	n3 -> n1	 [label="2 TensorType(float32, scalar)",
-		lp="137.5,238",
-		pos="e,102.68,208.9 114.52,277.73 68.058,272.21 29.738,259.28 54,230 60.527,222.12 74.92,216.01 92.944,211.26"];
+		lp="136.5,238",
+		pos="e,102.14,208.8 113.52,277.73 67.058,272.21 28.738,259.28 53,230 59.571,222.07 74.117,215.92 92.313,211.16"];
 	n3 -> n6	 [label="1 TensorType(float32, scalar)",
-		lp="495.5,238",
-		pos="e,569.49,204.32 335.59,266.1 355.29,261.19 375.18,254.66 393,246 402.93,241.17 401.82,234.27 412,230 440.03,218.24 497.65,210.39 \
-559.18,205.17"];
+		lp="494.5,238",
+		pos="e,568.49,204.32 334.59,266.1 354.29,261.19 374.18,254.66 392,246 401.93,241.17 400.82,234.27 411,230 439.03,218.24 496.65,210.39 \
+558.18,205.17"];
 	n6 -> n5	 [color=red,
 		label="0 TensorType(float32, scalar)",
-		lp="771.5,150",
-		pos="e,594.76,122.44 736.69,176.21 698.67,161.81 643.89,141.06 604.24,126.03"];
+		lp="770.5,150",
+		pos="e,593.76,122.44 735.69,176.21 697.67,161.81 642.89,141.06 603.24,126.03"];
 	n7	 [fillcolor=limegreen,
 		height=0.5,
 		label="name=x TensorType(float32, scalar)",
-		pos="985,282",
+		pos="984,282",
 		shape=box,
 		style=filled,
 		width=3.0625];
 	n7 -> n6	 [label="0 TensorType(float32, scalar)",
-		lp="1051.5,238",
-		pos="e,909.79,209.62 978.09,263.71 972.67,252.39 964.02,238.21 952,230 942.03,223.19 931.02,217.65 919.54,213.16"];
+		lp="1050.5,238",
+		pos="e,908.79,209.62 977.09,263.71 971.67,252.39 963.02,238.21 951,230 941.03,223.19 930.02,217.65 918.54,213.16"];
 	n9	 [fillcolor=dodgerblue,
 		height=0.5,
 		label="TensorType(float32, scalar) id=5",
-		pos="554,18",
+		pos="553,18",
 		shape=box,
 		style=filled,
 		width=2.7847];
 	n5 -> n9	 [label="TensorType(float32, scalar)",
-		lp="632,62",
-		pos="e,554,36.084 554,87.597 554,75.746 554,59.817 554,46.292"];
+		lp="631,62",
+		pos="e,553,36.084 553,87.597 553,75.746 553,59.817 553,46.292"];
 }
