@@ -3293,6 +3293,7 @@ def local_remove_switch_const_cond(node):
     return False
 
 
+@register_specialize
 @register_canonicalize
 @gof.local_optimizer([T.mul])
 def local_mul_switch_sink(node):
@@ -3322,6 +3323,7 @@ def local_mul_switch_sink(node):
         return False
     for idx, i in enumerate(node.inputs):
         if i.owner and i.owner.op == T.switch:
+            # import ipdb;ipdb.set_trace()
             switch = i.owner
             try:
                 if (get_scalar_constant_value(
