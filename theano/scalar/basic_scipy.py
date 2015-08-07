@@ -87,14 +87,18 @@ erfc = Erfc(upgrade_to_float_no_complex, name='erfc')
 
 class Erfcx(UnaryScalarOp):
     """
-    Implements the scaled complementary error function exp(x**2)*erfc(x) in a numerically stable way for large x. This
-    is useful for calculating things like log(erfc(x)) = log(erfcx(x)) - x ** 2 without causing underflow. Should only
-    be used if x is known to be large and positive, as using erfcx(x) for large negative x may instead introduce
-    overflow problems.
+    Implements the scaled complementary error function exp(x**2)*erfc(x) in a
+    numerically stable way for large x. This is useful for calculating things
+    like log(erfc(x)) = log(erfcx(x)) - x ** 2 without causing underflow.
+    Should only be used if x is known to be large and positive, as using
+    erfcx(x) for large negative x may instead introduce overflow problems.
 
-    Note: This op can still be executed on GPU, despite not having c_code.  When
+    Notes
+    -----
+    This op can still be executed on GPU, despite not having c_code. When
     running on GPU, sandbox.cuda.opt.local_gpu_elemwise_[0,1] replaces this op
     with sandbox.cuda.elemwise.ErfcxGPU.
+
     """
     def impl(self, x):
         if imported_scipy_special:
@@ -124,7 +128,9 @@ class Erfinv(UnaryScalarOp):
     """
     Implements the inverse error function.
 
-    Note: This op can still be executed on GPU, despite not having c_code.  When
+    Notes
+    -----
+    This op can still be executed on GPU, despite not having c_code. When
     running on GPU, sandbox.cuda.opt.local_gpu_elemwise_[0,1] replaces this op
     with sandbox.cuda.elemwise.ErfinvGPU.
 
@@ -237,6 +243,7 @@ gamma = Gamma(upgrade_to_float, name='gamma')
 class GammaLn(UnaryScalarOp):
     """
     Log gamma function.
+
     """
     @staticmethod
     def st_impl(x):
@@ -280,6 +287,7 @@ gammaln = GammaLn(upgrade_to_float, name='gammaln')
 class Psi(UnaryScalarOp):
     """
     Derivative of log gamma function.
+
     """
     @staticmethod
     def st_impl(x):
@@ -360,13 +368,13 @@ psi = Psi(upgrade_to_float, name='psi')
 
 class Chi2SF(BinaryScalarOp):
     """
-    Compute (1 - chi2_cdf(x))
-        ie. chi2 pvalue (chi2 'survival function')
+    Compute (1 - chi2_cdf(x)) ie. chi2 pvalue (chi2 'survival function').
 
     C code is provided in the Theano_lgpl repository.
     This make it faster.
 
     https://github.com/Theano/Theano_lgpl.git
+
     """
 
     @staticmethod
