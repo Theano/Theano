@@ -278,7 +278,7 @@ class GpuDnnConvDesc(GpuOp):
         nb_dim = len(self.subsample)
 
         if isinstance(self.border_mode, tuple):
-            pad_desc = map(int, self.border_mode)
+            pad_desc = tuple(map(int, self.border_mode))
             assert min(pad_desc) >= 0
             bmode = 2
         else:
