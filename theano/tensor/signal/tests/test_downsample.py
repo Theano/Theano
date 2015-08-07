@@ -807,11 +807,15 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         maxout = theano.tensor.tensor4()
         grad = theano.tensor.tensor4()
 
+        compilation_mode=theano.compile.get_default_mode().including(
+            'local_average_pool_grad')
+
         for mode in ['max', 'sum', 'average_inc_pad', 'average_exc_pad']:
             f = theano.function([im, maxout, grad],
                     DownsampleFactorMaxGrad(ds=(3,3),
                                             ignore_border=False,
-                                            mode=mode)(im, maxout, grad))
+                                            mode=mode)(im, maxout, grad),
+                    mode=compilation_mode)
 
             if mode == 'max':
                 assert any(isinstance(n.op, MaxPoolGrad)
