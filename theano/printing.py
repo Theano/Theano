@@ -14,6 +14,14 @@ import hashlib
 import numpy as np
 from six import string_types, integer_types, iteritems
 
+import theano
+from theano import gof
+from theano import config
+from six.moves import StringIO, reduce
+from theano.gof import Op, Apply
+from theano.compile import Function, debugmode, SharedVariable
+from theano.compile.profilemode import ProfileMode
+
 # pydot-ng is a fork of pydot that is better maintained, and works
 # with more recent version of its dependencies (in particular pyparsing)
 try:
@@ -33,14 +41,6 @@ if not pydot_imported:
             pydot_imported = True
     except Exception:
         pass
-
-import theano
-from theano import gof
-from theano import config
-from six.moves import StringIO, reduce
-from theano.gof import Op, Apply
-from theano.compile import Function, debugmode, SharedVariable
-from theano.compile.profilemode import ProfileMode
 
 _logger = logging.getLogger("theano.printing")
 VALID_ASSOC = set(['left', 'right', 'either'])
