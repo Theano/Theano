@@ -1249,37 +1249,7 @@ class GpuCAReduce(GpuOp):
           if(CudaNdarray_SIZE(%(x)s)==0){
             %(zero_shp)s;
           }else{
-          if (0) { //use the original reduction
-            int verbose = 0;
-            dim3 n_threads(
-                    std::min(CudaNdarray_SIZE(%(x)s),
-                             (size_t) NUM_VECTOR_OP_THREADS_PER_BLOCK));
-            dim3 n_blocks(1);
-            if (verbose) printf("running kernel_reduce_ccontig_%(name)s"
-                                " n_threads.x=%%d, size=%%d, ndim=%%d\\n",
-                                n_threads.x,CudaNdarray_SIZE(%(x)s),%(x)s->nd);
-            int n_shared = sizeof(float) * n_threads.x;
-            kernel_reduce_ccontig_%(name)s<<<n_blocks, n_threads, n_shared>>>(
-                    CudaNdarray_SIZE(%(x)s),
-                    CudaNdarray_DEV_DATA(%(x)s),
-                    CudaNdarray_DEV_DATA(%(z)s));
-            CNDA_THREAD_SYNC;
-            cudaError_t sts = cudaGetLastError();
-            if (cudaSuccess != sts)
-            {
-                PyErr_Format(PyExc_RuntimeError,
-                             "Cuda error: %%s: %%s."
-                             " (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
-                    "kernel_reduce_ccontig_%(name)s",
-                    cudaGetErrorString(sts),
-                    n_blocks.x,
-                    n_blocks.y,
-                    n_threads.x,
-                    n_threads.y,
-                    n_threads.z);
-                %(fail)s;
-            }
-          } else { //use CUB
+            //use CUB
             CubReduction_%(name)s cub_red_op;
             CubTransformation_%(name)s cub_trans_op;
 
@@ -1296,11 +1266,13 @@ class GpuCAReduce(GpuOp):
 
             d_temp_storage = device_malloc(temp_storage_bytes);
             if(!d_temp_storage) {
-                PyErr_Format(PyExc_RuntimeError, "Error allocating temp memory for CUB for %(name)s");
+                PyErr_Format(PyExc_RuntimeError,
+                    "Error allocating temp memory for CUB for %(name)s");
                 %(fail)s;
             }
 
-            cudaError_t sts = cub::DeviceReduce::Reduce(d_temp_storage, temp_storage_bytes,
+            cudaError_t sts = cub::DeviceReduce::Reduce(d_temp_storage,
+                                      temp_storage_bytes,
                                       cub_itr,
                                       CudaNdarray_DEV_DATA(%(z)s),
                                       CudaNdarray_SIZE(%(x)s), cub_red_op);
@@ -1313,7 +1285,6 @@ class GpuCAReduce(GpuOp):
             }
             device_free(d_temp_storage);
           }
-         }
         }
         """ % locals(), file=sio)
 
@@ -1934,27 +1905,6 @@ class GpuCAReduce(GpuOp):
                 node, nodename, "accum", "elem", {})
             reduce_init = self._assign_init("A[0]")
             print("""
-            static __global__ void kernel_reduce_ccontig_%(nodename)s(
-                    const unsigned int d0,
-                    const float *A,
-                    float * Z)
-            {
-                const int threadCount = blockDim.x;
-                const int threadNum = threadIdx.x;
-                extern __shared__ float buf[];
-                float myresult = %(reduce_init)s;
-
-                if (warpSize != 32)
-                {
-                    return;  //TODO: set error code
-                }
-
-                for (int i0 = threadIdx.x; i0 < d0; i0 += blockDim.x)
-                {
-                    %(reduce_fct)s
-                }
-                %(reducebuf)s
-            }
 
             //For CUB-enabled reduction
             struct CubReduction_%(nodename)s
