@@ -5130,8 +5130,8 @@ def _tensordot_as_dot(a, b, axes, dot, batched):
         outbcast = a.broadcastable[a_outaxes] + b.broadcastable[b_outaxes]
         outndim = len(outbcast)
 
-        a_shape = [1]*2
-        b_shape = [1]*2
+        a_shape = [1] * 2
+        b_shape = [1] * 2
 
         # compute total size of summed axes
         for i in xrange(0, axes):
@@ -5195,6 +5195,7 @@ def _tensordot_as_dot(a, b, axes, dot, batched):
         # now that a and b are in the right order, recur with integer axes
         return _tensordot_as_dot(a_shuffled, b_shuffled, len(axes[0]),
                                  dot=dot, batched=batched)
+
 
 def tensordot(a, b, axes=2):
     """
@@ -5286,6 +5287,7 @@ def tensordot(a, b, axes=2):
     See the documentation of numpy.tensordot for more examples.
     """
     return _tensordot_as_dot(a, b, axes, dot=dot, batched=False)
+
 
 def outer(x, y):
     """Return vector-vector outer product.
