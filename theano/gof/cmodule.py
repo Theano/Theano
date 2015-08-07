@@ -1893,7 +1893,7 @@ class GCC_compiler(Compiler):
         # or 64 bit and compile accordingly. This step is ignored for ARM
         # architectures in order to make Theano compatible with the Raspberry
         # Pi, and Raspberry Pi 2.
-        if not any(['arm' in flag for flag in cxxflags]) and platform.machine() != 'armv7l':
+        if not any(['arm' in flag for flag in cxxflags]) and platform.machine() not in ['armv7l','armv6l']:
             n_bits = local_bitwidth()
             cxxflags.append('-m%d' % n_bits)
             _logger.debug("Compiling for %s bit architecture", n_bits)
