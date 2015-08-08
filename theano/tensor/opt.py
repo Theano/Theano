@@ -5808,9 +5808,9 @@ your code will run correctly, but may be slower.""")
         s_new_out = node.op.scalar_op(*s_g, return_list=True)
         try:
             s_new_out[0].owner.op.c_code(s_new_out[0].owner,
-                                      "test_presence_of_c_code",
-                                      ["x" for x in s_g],
-                                      ["z" for x in s_new_out], {})
+                                         "test_presence_of_c_code",
+                                         ["x" for x in s_g],
+                                         ["z" for x in s_new_out], {})
         except MethodNotDefined:
             _logger.info(("%s does not implement the c_code function."
                           " As well as being potentially slow, this disables "
