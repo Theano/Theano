@@ -67,9 +67,6 @@ class MyOp(Op):
         else:
             return id(self)
 
-    def __gt__(self):
-        return True
-
 
 op1 = MyOp('Op1')
 op2 = MyOp('Op2')
@@ -443,6 +440,35 @@ class TestMergeOptimizer:
  |dot [@B] ''   6
 '''
         # print(strg)
+        assert strg == strref
+
+    def test_both_assert_merge_2_reverse(self):
+        # Test case "test_both_assert_merge_2" but in reverse order
+        x1 = T.matrix('x1')
+        x2 = T.matrix('x2')
+        x3 = T.matrix('x3')
+        e = T.dot(x1, T.opt.assert_op(x2, (x2 > x3).all())) +\
+            T.dot(T.opt.assert_op(x1, (x1 > x3).all()), x2)
+        g = Env([x1, x2, x3], [e])
+        MergeOptimizer().optimize(g)
+        strg = theano.printing.debugprint(g, file='str')
+        strref = '''Elemwise{add,no_inplace} [@A] ''   7
+ |dot [@B] ''   6
+ | |Assert{msg='Theano Assert failed!'} [@C] ''   5
+ | | |x1 [@D]
+ | | |All [@E] ''   3
+ | |   |Elemwise{gt,no_inplace} [@F] ''   1
+ | |     |x1 [@D]
+ | |     |x3 [@G]
+ | |Assert{msg='Theano Assert failed!'} [@H] ''   4
+ |   |x2 [@I]
+ |   |All [@J] ''   2
+ |     |Elemwise{gt,no_inplace} [@K] ''   0
+ |       |x2 [@I]
+ |       |x3 [@G]
+ |dot [@B] ''   6
+'''
+        print(strg)
         assert strg == strref
 
 

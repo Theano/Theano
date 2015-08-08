@@ -515,7 +515,6 @@ class MergeFeature(object):
         if node in self.nodes_seen:
             return
 
-        # import ipdb;ipdb.set_trace()
         node_has_assert = False
 
         # These asserts ensure that the fgraph has set the clients field
