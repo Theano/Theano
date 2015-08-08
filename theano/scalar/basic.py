@@ -3409,6 +3409,8 @@ class Composite(ScalarOp):
         # that will flatten Composite. We don't need to do this
         # recusively, as the way the fusion optimizer work, we have
         # only 1 new Composite each time at the output.
+        for i in inputs:
+            assert i not in outputs # This isn't supported, use identity
         if len(outputs) > 1 or not any([isinstance(var.owner.op, Composite)
                                         for var in outputs]):
             # No inner Composite
