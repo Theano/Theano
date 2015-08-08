@@ -382,7 +382,7 @@ class TestMergeOptimizer:
  | |x2 [@G]
  |dot [@B] ''   3
 '''
-        assert strg == strref
+        assert strg == strref, (strg, strref)
 
     def test_both_assert_merge_1(self):
         # Merge two nodes, both have assert on the same node
@@ -411,7 +411,7 @@ class TestMergeOptimizer:
  |dot [@B] ''   5
 '''
         # print(strg)
-        assert strg == strref
+        assert strg == strref, (strg, strref)
 
     def test_both_assert_merge_2(self):
         # Merge two nodes, both have assert on different node
@@ -440,7 +440,7 @@ class TestMergeOptimizer:
  |dot [@B] ''   6
 '''
         # print(strg)
-        assert strg == strref
+        assert strg == strref, (strg, strref)
 
     def test_both_assert_merge_2_reverse(self):
         # Test case "test_both_assert_merge_2" but in reverse order
@@ -469,7 +469,7 @@ class TestMergeOptimizer:
  |dot [@B] ''   6
 '''
         print(strg)
-        assert strg == strref
+        assert strg == strref, (strg, strref)
 
 
 class TestEquilibrium(object):
