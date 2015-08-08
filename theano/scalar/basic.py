@@ -3482,8 +3482,11 @@ class Composite(ScalarOp):
     def impl(self, *inputs):
         output_storage = [[None] for i in xrange(self.nout)]
         self.perform(None, inputs, output_storage)
-        return utils.to_return_values([storage[0] for storage in
-                                       output_storage])
+        ret = utils.to_return_values([storage[0] for storage in
+                                      output_storage])
+        if self.nout > 1:
+            ret = tuple(ret)
+        return ret
 
     def grad(self, inputs, output_grads):
         raise NotImplementedError("grad is not implemented for Composite")
