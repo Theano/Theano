@@ -1482,7 +1482,11 @@ def local_subtensor_make_vector(node):
                     # Python 2.4 wants to index only with Python integers
                     v = int(v)
                 # We don't need to copy over any stack traces here
-                return [x.owner.inputs[v]]
+                try:
+                    ret = [x.owner.inputs[v]]
+                except IndexError:
+                    raise NotScalarConstantError("Bad user graph!")
+                return ret
             except NotScalarConstantError:
                 pass
         elif idx.ndim == 1 and isinstance(idx, T.Constant):
