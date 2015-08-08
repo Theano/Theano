@@ -395,7 +395,7 @@ class TestMergeOptimizer:
         g = Env([x1, x2, x3], [e])
         MergeOptimizer().optimize(g)
         strg = theano.printing.debugprint(g, file='str')
-        strref = '''Elemwise{add,no_inplace} [@A] ''   6
+        strref1 = '''Elemwise{add,no_inplace} [@A] ''   6
  |dot [@B] ''   5
  | |Assert{msg='Theano Assert failed!'} [@C] ''   4
  | | |x1 [@D]
@@ -410,8 +410,23 @@ class TestMergeOptimizer:
  | |x2 [@J]
  |dot [@B] ''   5
 '''
+        strref2 = '''Elemwise{add,no_inplace} [@A] ''   6
+ |dot [@B] ''   5
+ | |Assert{msg='Theano Assert failed!'} [@C] ''   4
+ | | |x1 [@D]
+ | | |All [@E] ''   3
+ | | | |Elemwise{gt,no_inplace} [@F] ''   1
+ | | |   |x1 [@D]
+ | | |   |x2 [@G]
+ | | |All [@H] ''   2
+ | |   |Elemwise{gt,no_inplace} [@I] ''   0
+ | |     |x1 [@D]
+ | |     |x3 [@J]
+ | |x2 [@G]
+ |dot [@B] ''   5
+'''
         # print(strg)
-        assert strg == strref, (strg, strref)
+        assert strg == strref1 or strg == strref2, (strg, strref1, strref2)
 
     def test_both_assert_merge_2(self):
         # Merge two nodes, both have assert on different node
