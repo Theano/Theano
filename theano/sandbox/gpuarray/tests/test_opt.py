@@ -272,7 +272,6 @@ def test_local_gpu_elemwise():
     # Due to optimization order, this composite is created when all
     # the op are on the gpu.
     f = theano.function([a, b, c], a + b + c, mode=mode_with_gpu)
-    theano.printing.debugprint(f)
     topo = f.maker.fgraph.toposort()
     assert sum(isinstance(node.op, GpuElemwise) for node in topo) == 1
     assert sum(type(node.op) == tensor.Elemwise for node in topo) == 0
@@ -286,7 +285,6 @@ def test_local_gpu_elemwise():
     out_s = theano.scalar.Composite([a_s, b_s, c_s], [a_s + b_s + c_s])
     out_op = tensor.Elemwise(out_s)
     f = theano.function([a, b, c], out_op(a, b, c), mode=mode_with_gpu)
-    theano.printing.debugprint(f)
     topo = f.maker.fgraph.toposort()
     assert sum(isinstance(node.op, GpuElemwise) for node in topo) == 1
     assert sum(type(node.op) == tensor.Elemwise for node in topo) == 0
@@ -313,7 +311,6 @@ def test_local_gpu_elemwise():
     out_s = theano.scalar.Composite([a_s, b_s, c_s], [a_s + b_s, a_s * b_s])
     outs_op = tensor.Elemwise(out_s)
     f = theano.function([a, b, c], outs_op(a, b, c), mode=mode_with_gpu)
-    theano.printing.debugprint(f)
     topo = f.maker.fgraph.toposort()
     assert sum(isinstance(node.op, GpuElemwise) for node in topo) == 1
     assert sum(type(node.op) == tensor.Elemwise for node in topo) == 0
