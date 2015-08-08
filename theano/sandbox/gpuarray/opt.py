@@ -264,7 +264,8 @@ def local_gpu_elemwise(node):
     name = op.name
     if name:
         name = 'Gpu' + name
-
+    if len(node.outputs) > 1:
+        return
     res = GpuElemwise(scal_op, name=name,
                       inplace_pattern=copy.copy(op.inplace_pattern),
                       nfunc_spec=op.nfunc_spec)
