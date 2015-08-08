@@ -1070,6 +1070,8 @@ def local_gpu_incsubtensor(node):
             incsubt = host_output.owner.op
             x, y = host_output.owner.inputs[0:2]
             coords = host_output.owner.inputs[2:]
+            if x.dtype != "float32" or y.dtype != "float32":
+                return
             return [GpuIncSubtensor(
                 incsubt.idx_list,
                 inplace=incsubt.inplace,
@@ -1080,7 +1082,7 @@ def local_gpu_incsubtensor(node):
     # Incrementing a float32 x results in a float32
     # output even if y is float64, so we can downcast
     # y to put it on GPU
-    if type(node.op) == tensor.IncSubtensor and \
+    elif type(node.op) == tensor.IncSubtensor and \
        node.inputs[0].dtype == "float32":
         x, y = node.inputs[0:2]
         assert isinstance(x.type, tensor.TensorType)
