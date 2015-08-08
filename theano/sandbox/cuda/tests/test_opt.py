@@ -616,15 +616,39 @@ def test_local_gpu_elemwise_0():
     utt.assert_allclose(f(a_v, b_v, c_v), a_v + b_v + c_v)
 
     # Test multiple output
+    a_s = theano.scalar.float32()
+    a = tensor.fmatrix()
+    from theano.scalar.basic import identity
+    out_s = theano.scalar.Composite([a_s, b_s, c_s],
+                                    [identity(a_s), identity(c_s), identity(b_s)])
+    outs_op = tensor.Elemwise(out_s)
+    f = theano.function([a, b, c], outs_op(a, b, c), mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert sum(isinstance(node.op, cuda.GpuElemwise) for node in topo) == 1
+    assert sum(isinstance(node.op, tensor.Elemwise) for node in topo) == 0
+    out = f(a_v, b_v, c_v)
+    utt.assert_allclose(out[0], a_v)
+    utt.assert_allclose(out[1], c_v)
+    utt.assert_allclose(out[2], b_v)
+
+    # Test multiple output
     out_s = theano.scalar.Composite([a_s, b_s, c_s], [a_s + b_s, a_s * c_s])
     outs_op = tensor.Elemwise(out_s)
     f = theano.function([a, b, c], outs_op(a, b, c), mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
     assert sum(isinstance(node.op, cuda.GpuElemwise) for node in topo) == 1
-    assert sum(isinstance(node.op, tensor.Elemwise) for node in topo) == 1
+    assert sum(isinstance(node.op, tensor.Elemwise) for node in topo) == 0
     out = f(a_v, b_v, c_v)
     utt.assert_allclose(out[0], a_v + b_v)
-    utt.assert_allclose(out[1], a_v + c_v)
+    utt.assert_allclose(out[1], a_v * c_v)
+
+    # Test non-contiguous input
+    c = cuda.shared_constructor(c_v)
+    f = theano.function([a, b], outs_op(a[::2], b[::2], c[::2]),
+                        mode=mode_with_gpu)
+    out = f(a_v, b_v)
+    utt.assert_allclose(out[0], a_v[::2] + b_v[::2])
+    utt.assert_allclose(out[1], a_v[::2] * c_v[::2])
 
 
 def test_elemwise_fusion():

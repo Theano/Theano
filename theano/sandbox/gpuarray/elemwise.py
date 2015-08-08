@@ -72,6 +72,8 @@ class GpuElemwise(HideC, Elemwise):
         res = Elemwise.make_node(self, *inputs)
         outputs = [GpuArrayType(broadcastable=o.type.broadcastable,
                                 dtype=o.type.dtype)() for o in res.outputs]
+        if len(outputs) > 1:
+            raise NotImplementedError()
         inputs = [as_gpuarray_variable(i) for i in inputs]
         node = Apply(self, inputs, outputs)
 
