@@ -596,11 +596,11 @@ def test_local_gpu_elemwise_0():
 
     # Due to optimization order, this composite is created when all
     # the op are on the gpu.
-    f = theano.function([a, b, c], [a + b + c], mode=mode_with_gpu)
+    f = theano.function([a, b, c], a + b + c, mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
     assert sum(isinstance(node.op, cuda.GpuElemwise) for node in topo) == 1
     assert sum(isinstance(node.op, tensor.Elemwise) for node in topo) == 1
-    f(a_v, b_v, c_v)
+    utt.assert_allclose(f(a_v, b_v, c_v), a_v + b_v + c_v)
 
     # Now test with the composite already on the cpu before we move it
     # to the gpu
@@ -609,20 +609,22 @@ def test_local_gpu_elemwise_0():
     c_s = theano.scalar.float32()
     out_s = theano.scalar.Composite([a_s, b_s, c_s], [a_s + b_s + c_s])
     out_op = tensor.Elemwise(out_s)
-    f = theano.function([a, b, c], [out_op(a, b, c)], mode=mode_with_gpu)
+    f = theano.function([a, b, c], out_op(a, b, c), mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
     assert sum(isinstance(node.op, cuda.GpuElemwise) for node in topo) == 1
     assert sum(isinstance(node.op, tensor.Elemwise) for node in topo) == 1
-    f(a_v, b_v, c_v)
+    utt.assert_allclose(f(a_v, b_v, c_v), a_v + b_v + c_v)
 
     # Test multiple output
-    out_s = theano.scalar.Composite([a_s, b_s, c_s], [a_s + b_s, a_s * b_s])
+    out_s = theano.scalar.Composite([a_s, b_s, c_s], [a_s + b_s, a_s * c_s])
     outs_op = tensor.Elemwise(out_s)
     f = theano.function([a, b, c], outs_op(a, b, c), mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
     assert sum(isinstance(node.op, cuda.GpuElemwise) for node in topo) == 1
     assert sum(isinstance(node.op, tensor.Elemwise) for node in topo) == 1
-    f(a_v, b_v, c_v)
+    out = f(a_v, b_v, c_v)
+    utt.assert_allclose(out[0], a_v + b_v)
+    utt.assert_allclose(out[1], a_v + c_v)
 
 
 def test_elemwise_fusion():
