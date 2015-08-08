@@ -106,23 +106,42 @@ class NanGuardMode(Mode):
         If True, raise an error when a value greater than 1e10 is encountered.
     """
     def __init__(self, nan_is_error, inf_is_error, big_is_error=True):
+        cuda_compile_failed = False
         if cuda.cuda_available:
             self.guard_input = cuda.fvector('nan_guard')
             if nan_is_error or inf_is_error:
-                self.gpumin = theano.function(
-                    [self.guard_input], T.min(self.guard_input),
-                    mode='FAST_RUN'
-                )
-            if inf_is_error:
-                self.gpumax = theano.function(
-                    [self.guard_input], T.max(self.guard_input),
-                    mode='FAST_RUN'
-                )
-            if big_is_error:
-                self.gpuabsmax = theano.function(
-                    [self.guard_input], T.max(T.abs_(self.guard_input)),
-                    mode='FAST_RUN'
-                )
+                try:
+                    self.gpumin = theano.function(
+                        [self.guard_input], T.min(self.guard_input),
+                        mode='FAST_RUN'
+                    )
+                except RuntimeError:
+                    # This can happen if cuda is available, but the
+                    # device is in exclusive mode and used by another
+                    # process.
+                    cuda_compile_failed = True
+            if inf_is_error and not cuda_compile_failed:
+                try:
+                    self.gpumax = theano.function(
+                        [self.guard_input], T.max(self.guard_input),
+                        mode='FAST_RUN'
+                    )
+                except RuntimeError:
+                    # This can happen if cuda is available, but the
+                    # device is in exclusive mode and used by another
+                    # process.
+                    cuda_compile_failed = True
+            if big_is_error and not cuda_compile_failed:
+                try:
+                    self.gpuabsmax = theano.function(
+                        [self.guard_input], T.max(T.abs_(self.guard_input)),
+                        mode='FAST_RUN'
+                    )
+                except RuntimeError:
+                    # This can happen if cuda is available, but the
+                    # device is in exclusive mode and used by another
+                    # process.
+                    cuda_compile_failed = True
 
         def do_check_on(var, nd, f, is_input):
             """
