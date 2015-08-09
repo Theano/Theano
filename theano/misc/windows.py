@@ -1,6 +1,12 @@
 import os
 import subprocess
 
+def __check_params( params, forbidden = [ 'stdout', 'stderr', 'stdin', ] ) :
+    if any( [ par in params for par in forbidden ] ) :
+        raise TypeError(
+            "Please, do not use the following parameters with either "
+            "call_subprocess_Popen() or output_subprocess_Popen(): " +
+            ", ".join( forbidden ) )
 
 def subprocess_Popen(command, **params):
     """
@@ -29,7 +35,7 @@ def subprocess_Popen(command, **params):
     # with the default None values.
     stdin = None
     if "stdin" not in params:
-        stdin = open(os.devnull)
+        stdin = open( os.devnull, 'r' )
         params['stdin'] = stdin.fileno()
 
     try:
@@ -39,41 +45,30 @@ def subprocess_Popen(command, **params):
             del stdin
     return proc
 
-
 def call_subprocess_Popen(command, **params):
     """
-    Calls subprocess_Popen and discards the output, returning only the
-    exit code.
+    Calls subprocess_Popen, discards the output and returns only the exit code.
+    :see: documentation for subprocess.Popen for the list of possible parameters.
     """
-    if 'stdout' in params or 'stderr' in params:
-        raise TypeError("don't use stderr or stdout with call_subprocess_Popen")
-    with open(os.devnull, 'wb') as null:
-        # stdin to devnull is a workaround for a crash in a weird Windows
-        # environment where sys.stdin was None
-        params.setdefault('stdin', null)
-        params['stdout'] = null
-        params['stderr'] = null
-        p = subprocess_Popen(command, **params)
-        returncode = p.wait()
-    return returncode
-
+    __check_params( params )
+    with open( os.devnull, 'w' ) as null :
+        params['stdout'] = null.fileno( )
+        params['stderr'] = null.fileno( )
+        proc = subprocess_Popen( command, **params )
+        _exit_code = proc.wait( )
+    return _exit_code
 
 def output_subprocess_Popen(command, **params):
     """
-    Calls subprocess_Popen, returning the output, error and exit code
-    in a tuple.
+    Calls subprocess_Popen, returning the output, error and exit code in a tuple.
+    :see: documentation for subprocess.Popen for the list of possible parameters.
     """
-    if 'stdout' in params or 'stderr' in params:
-        raise TypeError("don't use stderr or stdout with output_subprocess_Popen")
-    # stdin to devnull is a workaround for a crash in a weird Windows
-    # environement where sys.stdin was None
-    if not hasattr(params, 'stdin'):
-        null = open(os.devnull, 'wb')
-        params['stdin'] = null
+    __check_params( params )
     params['stdout'] = subprocess.PIPE
     params['stderr'] = subprocess.PIPE
-    p = subprocess_Popen(command, **params)
-    # we need to use communicate to make sure we don't deadlock around
-    # the stdour/stderr pipe.
-    out = p.communicate()
-    return out + (p.returncode,)
+    # Communication with subprocesses should be done with proc.communicate()
+    # to avoid deadlocks around the stdour/stderr pipe.
+    proc = subprocess_Popen( command, **params )
+    _stdout, _stderr = proc.communicate( )
+    _exit_code = proc.returncode
+    return _stdout, _stderr, _exit_code
