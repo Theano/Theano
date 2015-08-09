@@ -27,35 +27,37 @@ _logger = logging.getLogger("theano.sandbox.cuda.nvcc_compiler")
 # Detect path to CUDA runtime
 user_provided_cuda_root = True
 
-def nvcc_path_autodetect( ) :
+
+def nvcc_path_autodetect():
     """Autodetect the root directory of the CUDA runtime."""
 # If this function is called then the config defaulted to autodetect
     global user_provided_cuda_root
     user_provided_cuda_root = False
 # Check is the user supplied the path via an environment variable
-    env_cuda_root = os.getenv( "CUDA_ROOT", "" )
-    if env_cuda_root and os.path.exists( env_cuda_root ) :
+    env_cuda_root = os.getenv("CUDA_ROOT", "")
+    if env_cuda_root and os.path.exists(env_cuda_root):
         return env_cuda_root
 # Otherwise check the system path variable
-    env_path = os.getenv( "PATH", "" )
-    if not env_path :
+    env_path = os.getenv("PATH", "")
+    if not env_path:
         return None
 # Try each directory in PATH until nvcc is found
-    for path in env_path.split( os.path.pathsep ) :
-        if os.path.exists( os.path.join( path, "nvcc" ) ) :
-            return os.path.split( path )[ 0 ]
+    for path in env_path.split(os.path.pathsep):
+        if os.path.exists(os.path.join(path, "nvcc")):
+            return os.path.split(path)[0]
 
 AddConfigVar('cuda.root',
-        """directory with bin/, lib/, include/ for cuda utilities.
-        This directory is included via -L and -rpath when linking
-        dynamically compiled modules.  If AUTO and nvcc is in the
-        path, it will use one of nvcc parent directory.  Otherwise
-        /usr/local/cuda will be used.  Leave empty to prevent extra
-        linker directives.  Default: environment variable "CUDA_ROOT"
-        or else "AUTO".
-        """,
-        StrParam( nvcc_path_autodetect ),
-        in_c_key=False)
+             """directory with bin/, lib/, include/ for cuda utilities.
+             This directory is included via -L and -rpath when linking
+             dynamically compiled modules.  If AUTO and nvcc is in the
+             path, it will use one of nvcc parent directory.  Otherwise
+             /usr/local/cuda will be used.  Leave empty to prevent extra
+             linker directives.  Default: environment variable "CUDA_ROOT"
+             or else "AUTO".
+             """,
+             StrParam(nvcc_path_autodetect),
+             in_c_key=False)
+
 
 # Validate NVCC flags provided in the config
 def filter_nvcc_flags(s):
@@ -81,8 +83,8 @@ AddConfigVar('nvcc.flags',
 AddConfigVar('nvcc.compiler_bindir',
              "If defined, nvcc compiler driver will seek g++ and gcc"
              " in this directory.",
-             StrParam( "" ),
-             in_c_key = False )
+             StrParam(""),
+             in_c_key=False)
 
 
 AddConfigVar('nvcc.fastmath',
@@ -99,48 +101,55 @@ AddConfigVar('nvcc.fastmath',
 nvcc_path = 'nvcc'
 nvcc_version = None
 
-# A primitive function that executes a given command in a controlled
-#  environment and collects all output.
-def run_command( command, **params ) :
-    """A simple primitive for executing a given command and grabing its output.
-    :param command: a list of string representing the command to be executed;
-    :param **params: optional named parametrs passed to output_subprocess_Popen()."""
+
+def run_command(command, **params):
+    # Define a primitive function that executes a given command in
+    #  a controlled environment and collects all output.
+    """A simple primitive for executing a given command and
+    grabing its output.
+    :param command: a list of string representing the command
+    to be executed;
+    :param **params: optional named parametrs passed to
+    output_subprocess_Popen()."""
     _out, _err, _exit_code = '', '', -1
-    try :
-        _out, _err, _exit_code = output_subprocess_Popen( command, **params )
-    except Exception as e :
-        _err = str( e )
-    return _exit_code, decode( _out ), decode( _err )
+    try:
+        _out, _err, _exit_code = output_subprocess_Popen(command, **params)
+    except Exception as e:
+        _err = str(e)
+    return _exit_code, decode(_out), decode(_err)
+
 
 # Detect the version of the nvcc compiler
-def nvcc_get_version( path_to_nvcc ) :
+def nvcc_get_version(path_to_nvcc):
     """Get the version of the CUDA Runtime compiler, by running 'nvcc'
     with --version flag. Raises an OSError exception if the path sepcified
     is invalid or non-executable."""
-    _exit_code, _out, _err = run_command( [ path_to_nvcc, '--version' ] )
-    ver_line = _out.strip( ).split( '\n' )[ -1 ]
-    return ver_line.split( ',' )[ 1 ].strip( ).split( )
+    _exit_code, _out, _err = run_command([path_to_nvcc, '--version'])
+    ver_line = _out.strip().split('\n')[-1]
+    return ver_line.split(',')[1].strip().split()
 
-def nvcc_check_version( path = '',
-        allowed_versions = [ ],
-        allowed_builds = [ 'release' ] ) :
+
+def nvcc_check_version(path='',
+                       allowed_versions=[],
+                       allowed_builds=['release']):
     """Check if the version and build of the CUDA compiler are acceptable."""
-    path = os.path.join( path, 'nvcc' )
-    try :
-        build, version = nvcc_get_version( path )
-        assert not allowed_versions or version.lower( ) in allowed_versions
-        assert not allowed_builds or build.lower( ) in allowed_builds
-    except Exception :
+    path = os.path.join(path, 'nvcc')
+    try:
+        build, version = nvcc_get_version(path)
+        assert not allowed_versions or version.lower() in allowed_versions
+        assert not allowed_builds or build.lower() in allowed_builds
+    except Exception:
         return path, None
     return path, version
 
+
 # Detect CUDA runtime version
-def is_nvcc_available( ) :
+def is_nvcc_available():
     """Checks if the CUDA compiler is availabe on 'cuda_path'. Initializes
     global variables 'nvcc_version', 'nvcc_path' if it is."""
 # Check nvcc on the specified CUDA directory
-    path, version = nvcc_check_version( os.path.join( config.cuda.root, 'bin' ) )
-    if version is None :
+    path, version = nvcc_check_version(os.path.join(config.cuda.root, 'bin'))
+    if version is None:
         return False
 # Set the globabl parameters
     global nvcc_version, nvcc_path
@@ -149,7 +158,7 @@ def is_nvcc_available( ) :
     return True
 
 # Initialize global variables.
-cuda_available = is_nvcc_available( )
+cuda_available = is_nvcc_available()
 
 
 rpath_defaults = []
@@ -158,37 +167,42 @@ rpath_defaults = []
 def add_standard_rpath(rpath):
     rpath_defaults.append(rpath)
 
-## A primitive for creating a source code file.
-def __tmp_source( code, suffix = '', prefix = '' ) :
+
+# A primitive for creating a source code file.
+def __tmp_source(code, suffix='', prefix=''):
     """A primitive for writing the supplied source code into a temporary file.
-    :param code: a complete source code listing to be written to a temporary file;
-    :param suffix: a suffix appended to the name of the temporary file (empty by default);
-    :param prefix: a string the name of the temporary file should start with (empty by default)."""
+    :param code: a complete source code listing to be written to a temporary
+        file;
+    :param suffix: a suffix appended to the name of the temporary file (empty
+        by default);
+    :param prefix: a string the name of the temporary file should start with
+        (empty by default)."""
     path, error = None, ''
-    try :
+    try:
         handle = None
-## Python3 compatibility: try to cast Py3 strings as Py2 strings. Do nothing
-##  if failed.
-        try :
-            code = byte_literal( code )
-        except Exception :
+        # Python3 compatibility: try to cast Py3 strings as Py2 strings.
+        #  Do nothing if failed.
+        try:
+            code = byte_literal(code)
+        except Exception:
             pass
-        try :
-## Create a temporary file
-            handle, path = tempfile.mkstemp( suffix = suffix, prefix = prefix )
-            os.write( handle, code )
-        finally :
-            if handle is not None :
-                os.close( handle )
-    except Exception as e :
-## If for some reason the OS could n't write to the temporary file
-        if path and os.path.exists( path ) :
-            os.remove( path )
-        path, error = None, str( e )
+        try:
+            # Create a temporary file
+            handle, path = tempfile.mkstemp(suffix=suffix, prefix=prefix)
+            os.write(handle, code)
+        finally:
+            if handle is not None:
+                os.close(handle)
+    except Exception as e:
+        # If for some reason the OS could n't write to the temporary file
+        if path and os.path.exists(path):
+            os.remove(path)
+        path, error = None, str(e)
     return path, error
 
-def test_build_and_run( compiler, source, suffix = '', prefix = '', flags = [ ],
-          run = False, output = False ) :
+
+def test_build_and_run(compiler, source, suffix='', prefix='',
+                       flags=[], run=False, output=False):
     """Attempt to compile the source code using the provided compiler and run
     the result if required.
     :param compiler: path to the compiler used for building the source;
@@ -196,42 +210,46 @@ def test_build_and_run( compiler, source, suffix = '', prefix = '', flags = [ ],
     :param suffix: a the extension of the temporary file (empty by default);
     :param prefix: a prefix for the temporary file (no prefix by default);
     :param flags: a list of flags to be passed to the compiler;
-    :param run: determines if the compiled code should be run (False by default);
-    :param output: should the output of the compiled code be collected (defaults to False);"""
+    :param run: determines if the compiled code should be run
+        (False by default);
+    :param output: should the output of the compiled code be collected
+        (defaults to False);
+    """
     compilation_ok, run_ok, _out, _err = False, False, '', ''
-## Put the source code in a temporary file,
-    input_path, _err = __tmp_source( source, suffix = suffix, prefix = prefix )
-    if input_path :
-        output_path = input_path[ :- ( len( suffix ) + 1 ) ]
-## ... then compile it,
+    # Put the source code in a temporary file,
+    input_path, _err = __tmp_source(source, suffix=suffix, prefix=prefix)
+    if input_path:
+        output_path = input_path[:-(len(suffix) + 1)]
+        # ... then compile it,
         _exit_code, _out, _err = run_command(
-            [ compiler, input_path, '-o', output_path ] + flags )
+            [compiler, input_path, '-o', output_path] + flags)
         compilation_ok = _exit_code == 0
-        if compilation_ok and run :
-## ... and run, if necessary.
-            _exit_code, _out, _err = run_command( [ output_path, ] )
+        if compilation_ok and run:
+            # ... and run, if necessary.
+            _exit_code, _out, _err = run_command([output_path])
             run_ok = _exit_code == 0
-## Remove temporary files.
-        for path in [ input_path, output_path, output_path + ".exe" ] :
-            if os.path.exists( path ) :
-                os.remove( path )
-    if not run and not output :
+        # Remove temporary files.
+        for path in [input_path, output_path, output_path + ".exe"]:
+            if os.path.exists(path):
+                os.remove(path)
+    if not run and not output:
         return compilation_ok
-    elif not run and output :
-        return ( compilation_ok, _out, _err )
-    elif not output :
-        return ( compilation_ok, run_ok )
-    else :
-        return ( compilation_ok, run_ok, _out, _err )
+    elif not run and output:
+        return (compilation_ok, _out, _err)
+    elif not output:
+        return (compilation_ok, run_ok)
+    else:
+        return (compilation_ok, run_ok, _out, _err)
+
 
 # A class for the NVCC compiler
 class NVCC_compiler(Compiler):
     @staticmethod
     def try_compile_tmp(src_code, tmp_prefix='', flags=(),
                         try_run=False, output=False):
-        return test_build_and_run( nvcc_path, src_code, '.cu',
-                     tmp_prefix, list( flags ),
-                     try_run, output )
+        return test_build_and_run(nvcc_path, src_code, '.cu',
+                                  tmp_prefix, list(flags),
+                                  try_run, output)
 
     @staticmethod
     def try_flags(flag_list, preambule="", body="",
@@ -239,16 +257,16 @@ class NVCC_compiler(Compiler):
         """Try to compile a dummy file with the given flags.
         Returns True if compilation was successful, False if there
         were errors."""
-        return test_build_and_run( nvcc_path, """
+        return test_build_and_run(nvcc_path, """
                 %(preambule)s
-                int main( int argc, char* argv[] )
+                int main(int argc, char* argv[])
                 {
                     %(body)s
                     return 0;
                 }
-            """ % locals( ), prefix = 'try_flags_', suffix = '.cu', 
-            flags = list( flag_list ), run = try_run,
-            output = output )
+            """ % locals(), prefix='try_flags_', suffix='.cu',
+            flags=list(flag_list), run=try_run,
+            output=output)
 
     @staticmethod
     def version_str():
@@ -383,8 +401,8 @@ class NVCC_compiler(Compiler):
             # sometimes, the linker cannot find -lpython so we need to tell it
             # explicitly where it is located
             # this returns somepath/lib/python2.x
-            python_lib = distutils.sysconfig.get_python_lib(plat_specific=1, \
-                            standard_lib=1)
+            python_lib = distutils.sysconfig.get_python_lib(plat_specific=1,
+                                                            standard_lib=1)
             python_lib = os.path.dirname(python_lib)
             if python_lib not in lib_dirs:
                 lib_dirs.append(python_lib)
@@ -397,7 +415,7 @@ class NVCC_compiler(Compiler):
         cppfile.write(src_code)
         cppfile.close()
         lib_filename = os.path.join(location, '%s.%s' %
-                (module_name, get_lib_extension()))
+                                    (module_name, get_lib_extension()))
 
         _logger.debug('Generating shared lib %s', lib_filename)
         # TODO: Why do these args cause failure on gtx285 that has 1.3
@@ -428,7 +446,7 @@ class NVCC_compiler(Compiler):
             # add flags for Microsoft compiler to create .pdb files
             preargs2.extend(['/Zi', '/MD'])
             cmd.extend(['-Xlinker', '/DEBUG'])
-            # remove the complaints for the duplication of `double round(double)`
+            # remove the complaints for duplication of 'double round(double)'
             # in both math_functions.h and pymath.h,
             # by not including the one in pymath.h
             cmd.extend(['-D HAVE_ROUND'])
@@ -449,7 +467,7 @@ class NVCC_compiler(Compiler):
         # otherwise, we don't add it. See gh-1540 and
         # https://wiki.debian.org/RpathIssue for details.
         if (user_provided_cuda_root and
-            os.path.exists(os.path.join(config.cuda.root, 'lib'))):
+                os.path.exists(os.path.join(config.cuda.root, 'lib'))):
 
             rpaths.append(os.path.join(config.cuda.root, 'lib'))
             if sys.platform != 'darwin':
@@ -495,7 +513,8 @@ class NVCC_compiler(Compiler):
         _logger.debug('Running cmd %s', ' '.join(cmd))
         # If cwd is not None, the child's current directory will be changed to
         #  cwd before it is executed.
-        nvcc_exit_code, nvcc_stdout, nvcc_stderr = run_command( cmd, cwd = location )
+        nvcc_exit_code, nvcc_stdout, nvcc_stderr = run_command(cmd,
+                                                               cwd=location)
 
         for eline in nvcc_stderr.split('\n'):
             if not eline:
@@ -509,7 +528,7 @@ class NVCC_compiler(Compiler):
                 continue
             _logger.info("NVCC: %s", eline)
 
-        if nvcc_exit_code :
+        if nvcc_exit_code:
             for i, l in enumerate(src_code.split('\n')):
                 print(i + 1, l, file=sys.stderr)
             print('===============================', file=sys.stderr)
@@ -529,8 +548,8 @@ class NVCC_compiler(Compiler):
                 print(l, file=sys.stderr)
             print(nvcc_stdout)
             print(cmd)
-            raise Exception( 'nvcc return status', nvcc_exit_code,
-                             'for cmd', ' '.join( cmd ) )
+            raise Exception('nvcc return status', nvcc_exit_code,
+                            'for cmd', ' '.join(cmd))
 
         elif config.cmodule.compilation_warning and nvcc_stdout:
             print(nvcc_stdout)
