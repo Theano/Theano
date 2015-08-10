@@ -150,6 +150,7 @@ AddConfigVar(
     'mode',
     "Default compilation mode",
     EnumStr('Mode', 'ProfileMode', 'DebugMode', 'FAST_RUN',
+            'NanGuardMode',
             'FAST_COMPILE', 'PROFILE_MODE', 'DEBUG_MODE'),
     in_c_key=False)
 

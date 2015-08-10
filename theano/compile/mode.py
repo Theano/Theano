@@ -372,12 +372,17 @@ def get_mode(orig_string):
                 default_mode_class):
             return instanciated_default_mode
 
-    if string in ['Mode', 'ProfileMode', 'DebugMode']:
+    if string in ['Mode', 'ProfileMode', 'DebugMode', 'NanGuardMode']:
         if string == 'DebugMode':
             # need to import later to break circular dependency.
             from .debugmode import DebugMode
             # DebugMode use its own linker.
             ret = DebugMode(optimizer=config.optimizer)
+        elif string == 'NanGuardMode':
+            # need to import later to break circular dependency.
+            from .nanguardmode import NanGuardMode
+            # DebugMode use its own linker.
+            ret = NanGuardMode(True, True, True, optimizer=config.optimizer)
         else:
             # This might be required if the string is 'ProfileMode'
             from .profilemode import ProfileMode  # noqa

@@ -104,8 +104,17 @@ class NanGuardMode(Mode):
         mlp.max_pool) and these will cause an error if inf_is_error is True.
     big_is_error: bool
         If True, raise an error when a value greater than 1e10 is encountered.
+
+    Note
+    ----
+
+        We ignore the linker parameter
     """
-    def __init__(self, nan_is_error, inf_is_error, big_is_error=True):
+    # We currently loose the 3 first param freuquently, when calling
+    # mode.including() and variant.
+    def __init__(self, nan_is_error=True, inf_is_error=True, big_is_error=True,
+                 optimizer=None, linker=None):
+        self.provided_optimizer = optimizer
         cuda_compile_failed = False
         if cuda.cuda_available:
             self.guard_input = cuda.fvector('nan_guard')
@@ -235,4 +244,4 @@ class NanGuardMode(Mode):
         wrap_linker = theano.gof.WrapLinker([theano.gof.OpWiseCLinker()],
                                             nan_check)
         super(NanGuardMode, self).__init__(wrap_linker,
-                                           optimizer=theano.config.optimizer)
+                                           optimizer=self.provided_optimizer)
