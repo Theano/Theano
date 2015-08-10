@@ -13,9 +13,11 @@ from theano.tests import unittest_tools as utt
 
 class Solve(gof.Op):
     """
-    Find the solution to the linear equation Ax=b,
-    where A is a 2d matrix and b is a 1d or 2d matrix.
+    Find the solution to the linear equation Ax=b.
+
+    A is a 2d matrix and b is a 1d or 2d matrix.
     It use numpy.solve to find the solution.
+
     """
 
     # TODO: Add class options to use the performance-enhancing flags
