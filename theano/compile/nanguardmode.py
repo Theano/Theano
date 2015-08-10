@@ -174,7 +174,10 @@ class NanGuardMode(Mode):
             if nan_is_error:
                 err = False
                 if cuda.cuda_available and isinstance(var, cuda.CudaNdarray):
-                    err = np.isnan(self.gpumin(var.reshape(var.size)))
+                    if not isinstance(nd.op,
+                                      # It store ints in float container
+                                      theano.sandbox.rng_mrg.GPU_mrg_uniform):
+                        err = np.isnan(self.gpumin(var.reshape(var.size)))
                 else:
                     err = contains_nan(var)
                 if err:
