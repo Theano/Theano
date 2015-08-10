@@ -1605,34 +1605,38 @@ def local_useless_elemwise(node):
 
             if isinstance(node.inputs[0], T.TensorConstant):
                 const_val = T.extract_constant(node.inputs[0])
-                if const_val == 0:
-                    return zeros_like(node, 1)
-                else:
-                    return [node.inputs[1]]
+                if not isinstance(const_val, Variable):
+                    if const_val == 0:
+                        return zeros_like(node, 1)
+                    else:
+                        return [node.inputs[1]]
 
             if isinstance(node.inputs[1], T.TensorConstant):
                 const_val = T.extract_constant(node.inputs[1])
-                if const_val == 0:
-                    return zeros_like(node, 0)
-                else:
-                    return [node.inputs[0]]
+                if not isinstance(const_val, Variable):
+                    if const_val == 0:
+                        return zeros_like(node, 0)
+                    else:
+                        return [node.inputs[0]]
 
         elif (isinstance(node.op.scalar_op, scalar.OR) and
               len(node.inputs) == 2):
 
             if isinstance(node.inputs[0], T.TensorConstant):
                 const_val = T.extract_constant(node.inputs[0])
-                if const_val == 0:
-                    return [node.inputs[1]]
-                else:
-                    return ones_like(node, 1)
+                if not isinstance(const_val, Variable):
+                    if const_val == 0:
+                        return [node.inputs[1]]
+                    else:
+                        return ones_like(node, 1)
 
             if isinstance(node.inputs[1], T.TensorConstant):
                 const_val = T.extract_constant(node.inputs[1])
-                if const_val == 0:
-                    return [node.inputs[0]]
-                else:
-                    return ones_like(node, 0)
+                if not isinstance(const_val, Variable):
+                    if const_val == 0:
+                        return [node.inputs[0]]
+                    else:
+                        return ones_like(node, 0)
 
         elif (isinstance(node.op.scalar_op, scalar.XOR) and
               len(node.inputs) == 2):
