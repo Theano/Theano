@@ -171,10 +171,11 @@ class CuIFFTOp(ScikitsCudaOp):
 
 def to_complex_gpuarray(x, copyif=False):
     """
-    adapted version of theano.misc.pycuda_utils.to_gpuarray that takes
+    Adapted version of theano.misc.pycuda_utils.to_gpuarray that takes
     an array with an extra trailing dimension of length 2 for
     real/imaginary parts, and turns it into a complex64 PyCUDA
     GPUArray.
+
     """
     if not isinstance(x, CudaNdarray):
         raise ValueError("We can transfer only CudaNdarray "
@@ -213,7 +214,8 @@ def bptrs(a):
     """
     Pointer array when input represents a batch of matrices.
 
-    taken from scikits.cuda tests/test_cublas.py
+    Taken from scikits.cuda tests/test_cublas.py.
+
     """
     return pycuda.gpuarray.arange(a.ptr, a.ptr + a.shape[0] * a.strides[0],
                                   a.strides[0], dtype=cublas.ctypes.c_void_p)
@@ -222,8 +224,9 @@ def bptrs(a):
 def sc_complex_dot_batched(bx_gpu, by_gpu, bc_gpu, transa='N', transb='N',
                            handle=None):
     """
-    uses cublasCgemmBatched to compute a bunch of complex dot products
-    in parallel
+    Uses cublasCgemmBatched to compute a bunch of complex dot products
+    in parallel.
+
     """
     if handle is None:
         handle = scikits.cuda.misc._global_cublas_handle
@@ -292,7 +295,9 @@ class BatchedComplexDotOp(ScikitsCudaOp):
     """
     This version uses cublasCgemmBatched under the hood, instead of
     doing multiple cublasCgemm calls.
+
     """
+
     def make_node(self, inp1, inp2):
         inp1 = basic_ops.gpu_contiguous(
             basic_ops.as_cuda_ndarray_variable(inp1))
@@ -355,10 +360,15 @@ batched_complex_dot = BatchedComplexDotOp()
 def mult_and_reduce(input_fft_v, filters_fft_v, input_shape=None,
                     filter_shape=None):
     """
-    input_fft_v is (b, ic, i0, i1//2 + 1, 2)
-    filters_fft_v is (oc, ic, i0, i1//2 + 1, 2)
-    """
 
+    Parameters
+    ----------
+    input_fft_v 
+        It's (b, ic, i0, i1//2 + 1, 2).
+    filters_fft_v
+        It's (oc, ic, i0, i1//2 + 1, 2).
+
+    """
     if input_shape is None:
         input_shape = input_fft_v.shape  # symbolic
 
@@ -405,16 +415,19 @@ def conv2d_fft(input, filters, image_shape=None, filter_shape=None,
 
     On valid mode the filters must be smaller than the input.
 
-    input: (b, ic, i0, i1)
-    filters: (oc, ic, f0, f1)
+    Parameters
+    ----------
+    input
+        (b, ic, i0, i1).
+    filters
+        (oc, ic, f0, f1).
+    border_mode : {'valid', 'full'}
+    pad_last_dim
+        Unconditionally pad the last dimension of the input
+        to to turn it from odd to even.  Will strip the
+        padding before returning the result.
 
-    border_mode: 'valid' of 'full'
-
-    pad_last_dim: Unconditionally pad the last dimension of the input
-                  to to turn it from odd to even.  Will strip the
-                  padding before returning the result.
     """
-
     # use symbolic shapes to compute shape info at runtime if not specified
     if image_shape is None:
         image_shape = input.shape
@@ -546,16 +559,19 @@ def conv3d_fft(input, filters, image_shape=None, filter_shape=None,
 
     On valid mode the filters must be smaller than the input.
 
-    input: (b, ic, i0, i1, i2)
-    filters: (oc, ic, f0, f1, i2)
+    Parameters
+    ----------
+    input
+        (b, ic, i0, i1, i2).
+    filters
+        (oc, ic, f0, f1, i2).
+    border_mode : {'valid', 'full'}.
+    pad_last_dim
+        Unconditionally pad the last dimension of the input
+        to to turn it from odd to even.  Will strip the
+        padding before returning the result.
 
-    border_mode: 'valid' of 'full'
-
-    pad_last_dim: Unconditionally pad the last dimension of the input
-                  to to turn it from odd to even.  Will strip the
-                  padding before returning the result.
     """
-
     # use symbolic shapes to compute shape info at runtime if not specified
     if image_shape is None:
         image_shape = input.shape
@@ -670,5 +686,3 @@ def conv3d_fft(input, filters, image_shape=None, filter_shape=None,
     # output should now be the result of a batched valid convolution
     # of the input with the filters.
     return basic_ops.as_cuda_ndarray_variable(output)
-
-
