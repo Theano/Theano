@@ -61,6 +61,7 @@ class HostFromGpu(GpuOp):
     Implement the transfer from gpu to the cpu.
 
     """
+
     check_input = False
 
     def __eq__(self, other):
@@ -121,6 +122,7 @@ class GpuFromHost(GpuOp):
     Implement the transfer from cpu to the gpu.
 
     """
+
     check_input = False
 
     def __eq__(self, other):
@@ -189,6 +191,7 @@ class GpuElemwise(GpuOp):
     Implement a generic elemwise on the gpu.
 
     """
+
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 
@@ -321,6 +324,7 @@ class GpuDimShuffle(GpuOp):
     Implement DimShuffle on the gpu.
 
     """
+
     check_broadcast = False
 
     def __init__(self, input_broadcastable, new_order):
@@ -633,7 +637,8 @@ class GpuCAReduce(GpuOp):
 
     def supports_c_code(self, inputs):
         """
-        Returns True if the current op and reduce pattern has functioning C code.
+        Returns True if the current op and reduce pattern has functioning C
+        code.
 
         """
 
@@ -1189,6 +1194,7 @@ class GpuCAReduce(GpuOp):
     def c_code_reduce_ccontig(self, sio, node, name, x, z, fail):
         """
         WRITEME
+
         IG: I believe, based on how this is called in c_code, that it
         is for the case where we are reducing on all axes and x is
         C contiguous.
@@ -2435,6 +2441,7 @@ class GpuReshape(tensor.Reshape, GpuOp):
     Implement Reshape on the gpu.
 
     """
+
     # __hash__, __eq__, __str__ come from tensor.Subtensor
     def make_node(self, x, shp):
         host_reshaped = host_from_gpu(x).reshape(shp, ndim=self.ndim)
@@ -2582,6 +2589,7 @@ class GpuSubtensor(GpuOp, tensor.Subtensor):
     Implement subtensor on the gpu.
 
     """
+
     check_broadcast = False
 
     # __hash__, __eq__, __str__ come from tensor.Subtensor
@@ -2689,6 +2697,7 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
     Implement AdvancedSubtensor1 on the gpu.
 
     """
+
     # If True or False, we assert that we use the take version or not
     # If None, we choose the best one applicable
     perform_using_take = None
@@ -2805,6 +2814,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
     Implement AdvancedIncSubtensor1 on the gpu.
 
     """
+
     def make_node(self, x, y, ilist):
         x_ = as_cuda_ndarray_variable(x)
         y_ = as_cuda_ndarray_variable(y)
@@ -3319,6 +3329,7 @@ class GpuFlatten(gof.HideC, tensor.Flatten, GpuOp):
     Implement Flatten on the gpu.
 
     """
+
     def make_node(self, x):
         assert isinstance(x.type, CudaNdarrayType)
         rval = tensor.Flatten.make_node(self, x)
@@ -3332,6 +3343,7 @@ class GpuShape(tensor.Shape, GpuOp):
     Implement Shape on the gpu.
 
     """
+
     def make_node(self, x):
         return Apply(self, [x], [tensor.lvector()])
 gpu_shape = GpuShape()
@@ -3342,6 +3354,7 @@ class GpuJoin(tensor.Join, GpuOp):
     Implement Join on the gpu.
 
     """
+
     def make_node(self, *axis_and_tensors):
         axis, tensors = axis_and_tensors[0], axis_and_tensors[1:]
         if not tensors:
@@ -3595,7 +3608,7 @@ class GpuAllocEmpty(GpuOp):
     Implement Alloc on the gpu, but without initializing memory.
 
     """
- 
+
     __props__ = ()
 
     @staticmethod
@@ -3681,6 +3694,7 @@ class GpuAlloc(GpuAllocEmpty):
     cudaMemset that is faster.
 
     """
+
     __props__ = ('memset_0',)
 
     def __init__(self, memset_0=False):
@@ -3791,6 +3805,7 @@ class CopyOnNegativeStrides(GpuOp):
     If it does, returns a c contiguous copy.
 
     """
+
     view_map = {0: [0]}
     check_input = False
     __props__ = ()
@@ -3865,6 +3880,7 @@ class GpuContiguous(GpuOp):
     not already c contiguous.
 
     """
+
     view_map = {0: [0]}
     check_input = False
 
@@ -3944,7 +3960,7 @@ def scalar(name=None, dtype=None):
     Parameters
     ----------
     dtype 
-        numeric type (None means to use theano.config.floatX).
+        Numeric type (None means to use theano.config.floatX).
     name : str
         A name to attach to this variable.
 
@@ -3962,9 +3978,9 @@ def vector(name=None, dtype=None):
 
     Parameters
     ----------
-    dtype : 
+    dtype
         Numeric type (None means to use theano.config.floatX).
-    name : 
+    name
         A name to attach to this variable.
 
     """
@@ -4124,6 +4140,7 @@ def profile_printer(fct_name, compile_time, fct_call_time, fct_call,
 
 
 class GpuEye(GpuOp):
+
     def __init__(self, dtype=None):
         if dtype is None:
             dtype = config.floatX
