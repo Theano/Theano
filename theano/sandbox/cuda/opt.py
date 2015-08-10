@@ -1116,8 +1116,13 @@ def local_gpu_incsubtensor(node):
             incsubt = host_output.owner.op
             x, y = host_output.owner.inputs[0:2]
             coords = host_output.owner.inputs[2:]
-            if x.dtype != "float32" or y.dtype != "float32":
+            if x.dtype != "float32":
                 return
+            if y.dtype != "float32":
+                # The IncSubtensor upcast to float32 y, so we do it
+                # explicitly to move it to the GPU.
+                y = y.astype('float32')
+
             return [GpuIncSubtensor(
                 incsubt.idx_list,
                 inplace=incsubt.inplace,
