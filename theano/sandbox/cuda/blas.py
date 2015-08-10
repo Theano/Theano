@@ -217,6 +217,7 @@ batched_dot = BatchedDotOp()
 class GpuDot22(GpuOp):
     """
     Implement dot(2d, 2d) on the gpu.
+
     """
     def __str__(self):
         return 'GpuDot22'
@@ -299,7 +300,10 @@ class GpuDot22Scalar(GpuOp):
     """
     Implement dot(2d, 2d) * scalar on the gpu.
 
-    :note: Not used anymore. Keep to allow unpickle of old graph.
+    Notes
+    -----
+    Not used anymore. Keep to allow unpickle of old graph.
+
     """
     def __str__(self):
         return 'GpuDot22Scalar'
@@ -707,16 +711,22 @@ gpu_ger_inplace = GpuGer(inplace=True)
 
 
 class BaseGpuCorrMM(GpuOp):
-    """Base class for `GpuCorrMM`, `GpuCorrMM_gradWeights` and
+    """
+    Base class for `GpuCorrMM`, `GpuCorrMM_gradWeights` and
     `GpuCorrMM_gradInputs`. Cannot be used directly.
 
-    :param border_mode: one of 'valid', 'full', 'half'; additionally, the
-        padding size could be directly specified by an integer or a pair of
-        integers
-    :param subsample: perform subsampling of the output (default: (1, 1))
-    :param pad: *deprecated*, now you should always use border_mode
+    Parameters
+    ----------
+    border_mode : {'valid', 'full', 'half'}
+        Additionally, the padding size could be directly specified by an integer
+        or a pair of integers
+    subsample
+        Perform subsampling of the output (default: (1, 1)).
+    pad
+        *deprecated*, now you should always use border_mode.
 
     """
+
     check_broadcast = False
     __props__ = ('border_mode', 'subsample')
 
@@ -757,7 +767,10 @@ class BaseGpuCorrMM(GpuOp):
             str(self.subsample))
 
     def flops(self, inp, outp):
-        """ Useful with the hack in profilemode to print the MFlops"""
+        """
+        Useful with the hack in profilemode to print the MFlops.
+
+        """
         # if the output shape is correct, then this gives the correct
         # flops for any direction, sampling, padding, and border mode
         inputs, filters = inp
@@ -794,32 +807,40 @@ class BaseGpuCorrMM(GpuOp):
         Depending on the direction, one of bottom, weights, top will
         receive the output, while the other two serve as inputs.
 
-        :param bottom: Variable name of the input images in the forward pass,
+        Parameters
+        ----------
+        bottom 
+            Variable name of the input images in the forward pass,
             or the gradient of the input images in backprop wrt. inputs
-        :param weights: Variable name of the filters in the forward pass,
+        weights
+            Variable name of the filters in the forward pass,
             or the gradient of the filters in backprop wrt. weights
-        :param top: Variable name of the output images / feature maps in the
+        top
+            Variable name of the output images / feature maps in the
             forward pass, or the gradient of the outputs in the backprop passes
-        :param direction: "forward" to correlate bottom with weights and store
-            results in top,
+        direction : {'forward', 'backprop weights', 'backprop inputs'}
+            "forward" to correlate bottom with weights and store results in top,
             "backprop weights" to do a valid convolution of bottom with top
             (swapping the first two dimensions) and store results in weights,
             and "backprop inputs" to do a full convolution of top with weights
             (swapping the first two dimensions) and store results in bottom.
-        :param sub: Dictionary of substitutions useable to help generating the
-            C code.
-        :param height: If self.subsample[0] != 1, a variable giving the height
-            of the filters for direction="backprop weights" or the height of
-            the input images for direction="backprop inputs".
-
+        sub
+            Dictionary of substitutions useable to help generating the C code.
+        height
+            If self.subsample[0] != 1, a variable giving the height of the
+            filters for direction="backprop weights" or the height of the input
+            images for direction="backprop inputs".
             If self.border_mode == 'half', a variable giving the height of the
-            filters for direction="backprop weights".  Ignored otherwise.
-        :param width: If self.subsample[1] != 1, a variable giving the width
-            of the filters for direction="backprop weights" or the width of the
+            filters for direction="backprop weights".
+            Ignored otherwise.
+        width
+            If self.subsample[1] != 1, a variable giving the width of the
+            filters for direction="backprop weights" or the width of the
             input images for direction="backprop inputs".
-
             If self.border_mode == 'half', a variable giving the width of the
-            filters for direction="backprop weights".  Ignored otherwise.
+            filters for direction="backprop weights".
+            Ignored otherwise.
+
         """
         dH, dW = self.subsample
         if self.border_mode == "half":
@@ -993,9 +1014,13 @@ class BaseGpuCorrMM(GpuOp):
 
 
 class GpuCorrMM(BaseGpuCorrMM):
-    """GPU correlation implementation using Matrix Multiplication.
+    """
+    GPU correlation implementation using Matrix Multiplication.
 
-    :param border_mode: the width of a border of implicit zeros to pad the
+    Parameters
+    ----------
+    border_mode
+	The width of a border of implicit zeros to pad the
         input with. Must be a tuple with 2 elements giving the numbers of rows
         and columns to pad on each side, or a single integer to pad the same
         on all sides, or a string shortcut setting the padding at runtime:
@@ -1004,27 +1029,31 @@ class GpuCorrMM(BaseGpuCorrMM):
         ``'half'`` for ``(kernel_rows // 2, kernel_columns // 2)`` (same
         convolution for odd-sized kernels). Note that the two widths are each
         applied twice, once per side (left and right, top and bottom).
-    :param subsample: the subsample operation applied to each output image.
+    subsample
+        The subsample operation applied to each output image.
         Should be a tuple with 2 elements.
         `(sv, sh)` is equivalent to `GpuCorrMM(...)(...)[:,:,::sv, ::sh]`,
         but faster.
         Set to `(1, 1)` to disable subsampling.
-    :param pad: deprecated alias for `border_mode`.
+    pad
+	Deprecated alias for `border_mode`.
 
-    :note: Currently, the Op requires the inputs, filters and outputs to be
-        C-contiguous. Use :func:`gpu_contiguous
-        <theano.sandbox.cuda.basic_ops.gpu_contiguous>` on these arguments
-        if needed.
+    Notes
+    -----
+    Currently, the Op requires the inputs, filters and outputs to be
+    C-contiguous. Use :func:`gpu_contiguous
+    <theano.sandbox.cuda.basic_ops.gpu_contiguous>` on these arguments
+    if needed.
 
-    :note: You can either enable the Theano flag `optimizer_including=conv_gemm`
-        to automatically replace all convolution operations with `GpuCorrMM`
-        or one of its gradients, or you can use it as a replacement for
-        :func:`conv2d <theano.tensor.nnet.conv.conv2d>`, called as
-        `GpuCorrMM(subsample=...)(image, filters)`. The latter is currently
-        faster, but note that it computes a correlation -- if you need to
-        compute a convolution, flip the filters as `filters[:,:,::-1,::-1]`.
+    You can either enable the Theano flag `optimizer_including=conv_gemm`
+    to automatically replace all convolution operations with `GpuCorrMM`
+    or one of its gradients, or you can use it as a replacement for
+    :func:`conv2d <theano.tensor.nnet.conv.conv2d>`, called as
+    `GpuCorrMM(subsample=...)(image, filters)`. The latter is currently
+    faster, but note that it computes a correlation -- if you need to
+    compute a convolution, flip the filters as `filters[:,:,::-1,::-1]`.
 
-    :warning: For 700 series Nvidia GPUs of compute capability 3.5 and CUDA 5.0
+    ..warning:: For 700 series Nvidia GPUs of compute capability 3.5 and CUDA 5.0
         to 6.0, there is a bug in CUBLAS' matrix multiplication function that
         can make GpuCorrMM or its gradients crash for some input and filter
         shapes. So if you have a Tesla K20, Tesla K40, Quadro K6000, GeForce GT
@@ -1032,6 +1061,7 @@ class GpuCorrMM(BaseGpuCorrMM):
         and experience a crash, switching to CUDA 6.5 or CUDA 4.2 should fix it.
         If this is not possible, changing the input or filter shapes (e.g., the
         batchsize or number of filters) may also work around the CUBLAS bug.
+
     """
     def __init__(self, border_mode="valid",
                  subsample=(1, 1),
@@ -1068,11 +1098,13 @@ class GpuCorrMM(BaseGpuCorrMM):
 
 
 class GpuCorrMM_gradWeights(BaseGpuCorrMM):
-    """Gradient wrt. filters for `GpuCorrMM`.
+    """
+    Gradient wrt. filters for `GpuCorrMM`.
 
-    :note: You will not want to use this directly, but rely on
-           Theano's automatic differentiation or graph optimization to
-           use it as needed.
+    Notes
+    -----
+    You will not want to use this directly, but rely on Theano's automatic
+    differentiation or graph optimization to use it as needed.
 
     """
 
@@ -1126,11 +1158,13 @@ class GpuCorrMM_gradWeights(BaseGpuCorrMM):
 
 
 class GpuCorrMM_gradInputs(BaseGpuCorrMM):
-    """Gradient wrt. inputs for `GpuCorrMM`.
+    """
+    Gradient wrt. inputs for `GpuCorrMM`.
 
-    :note: You will not want to use this directly, but rely on
-           Theano's automatic differentiation or graph optimization to
-           use it as needed.
+    Notes
+    -----
+    You will not want to use this directly, but rely on Theano's automatic
+    differentiation or graph optimization to use it as needed.
 
     """
 
@@ -1180,8 +1214,12 @@ class GpuCorrMM_gradInputs(BaseGpuCorrMM):
 
 
 class BaseGpuCorr3dMM(GpuOp):
-    """Base class for `GpuCorr3dMM`, `GpuCorr3dMM_gradWeights` and
-    `GpuCorr3dMM_gradInputs`. Cannot be used directly."""
+    """
+    Base class for `GpuCorr3dMM`, `GpuCorr3dMM_gradWeights` and
+    `GpuCorr3dMM_gradInputs`. Cannot be used directly.
+
+    """
+
     __props__ = ('border_mode', 'subsample', 'pad')
 
     def __init__(self, border_mode="valid",
@@ -1245,38 +1283,47 @@ class BaseGpuCorr3dMM(GpuOp):
         Depending on the direction, one of bottom, weights, top will
         receive the output, while the other two serve as inputs.
 
-        :param bottom: Variable name of the input images in the forward pass,
-            or the gradient of the input images in backprop wrt. inputs
-        :param weights: Variable name of the filters in the forward pass,
-            or the gradient of the filters in backprop wrt. weights
-        :param top: Variable name of the output images / feature maps in the
-            forward pass, or the gradient of the outputs in the backprop passes
-        :param direction: "forward" to correlate bottom with weights and store
-            results in top,
+        Parameters
+        ----------
+        bottom
+            Variable name of the input images in the forward pass,
+            or the gradient of the input images in backprop wrt. inputs.
+        weights
+            Variable name of the filters in the forward pass,
+            or the gradient of the filters in backprop wrt. weights.
+        top
+            Variable name of the output images / feature maps in the
+            forward pass, or the gradient of the outputs in the backprop passes.
+        direction : {'forward', 'backprop weights', 'backprop inputs'}
+            "forward" to correlate bottom with weights and store results in top,
             "backprop weights" to do a valid convolution of bottom with top
             (swapping the first two dimensions) and store results in weights,
             and "backprop inputs" to do a full convolution of top with weights
             (swapping the first two dimensions) and store results in bottom.
-        :param sub: Dictionary of substitutions useable to help generating the
-            C code.
-        :param height: If self.subsample[0] != 1, a variable giving the height
+        sub
+            Dictionary of substitutions useable to help generating the C code.
+        height
+            If self.subsample[0] != 1, a variable giving the height
             of the filters for direction="backprop weights" or the height of the
             input images for direction="backprop inputs".
             If self.pad == 'half', a variable giving the height of the filters
             for direction="backprop weights".
             Ignored otherwise.
-        :param width: If self.subsample[1] != 1, a variable giving the width
+        width
+            If self.subsample[1] != 1, a variable giving the width
             of the filters for direction="backprop weights" or the width of the
             input images for direction="backprop inputs".
             If self.pad == 'half', a variable giving the width of the filters
             for direction="backprop weights".
             Ignored otherwise.
-        :param depth: If self.subsample[2] != 1, a variable giving the depth
+        depth 
+            If self.subsample[2] != 1, a variable giving the depth
             of the filters for direction="backprop weights" or the depth of the
             input images for direction="backprop inputs".
             If self.pad == 'half', a variable giving the depth of the filters
             for direction="backprop weights".
             Ignored otherwise.
+
         """
         if self.border_mode != "valid":
             raise ValueError("mode must be 'valid'")
@@ -1503,7 +1550,34 @@ class BaseGpuCorr3dMM(GpuOp):
 class GpuCorr3dMM(BaseGpuCorr3dMM):
     """GPU correlation implementation using Matrix Multiplication.
 
-    :warning: For 700 series Nvidia GPUs of compute capability 3.5 and CUDA 5.0
+    Parameters
+    ----------
+    border_mode
+        Currently supports "valid" only; "full" can be simulated by setting
+        `pad="full"` (at the cost of performance), or by using
+        `GpuCorrMM_gradInputs`.
+    subsample
+        The subsample operation applied to each output image. Should be a tuple
+        with 3 elements. `(sv, sh, sl)` is equivalent to
+        `GpuCorrMM(...)(...)[:,:,::sv, ::sh, ::sl]`, but faster.
+        Set to `(1, 1, 1)` to disable subsampling.
+    pad
+        The width of a border of implicit zeros to pad the input image with.
+        Should be a tuple with 3 elements giving the numbers of rows and columns
+        to pad on each side, or "half" to set the padding
+        to `(kernel_rows // 2, kernel_columns // 2, kernel_depth // 2)`,
+        or "full" to set the padding
+        to `(kernel_rows - 1, kernel_columns - 1, kernel_depth - 1)` at runtime.
+        Set to `(0, 0, 0)` to disable padding.
+
+    Notes
+    -----
+    Currently, the Op requires the inputs, filters and outputs to be
+            C-contiguous. Use :func:`gpu_contiguous
+            <theano.sandbox.cuda.basic_ops.gpu_contiguous>` on these arguments
+            if needed.
+
+    .. warning:: For 700 series Nvidia GPUs of compute capability 3.5 and CUDA 5.0
         to 6.0, there is a bug in CUBLAS' matrix multiplication function that
         can make GpuCorrMM or its gradients crash for some input and filter
         shapes. So if you have a Tesla K20, Tesla K40, Quadro K6000, GeForce GT
@@ -1511,31 +1585,9 @@ class GpuCorr3dMM(BaseGpuCorr3dMM):
         and experience a crash, switching to CUDA 6.5 or CUDA 4.2 should fix it.
         If this is not possible, changing the input or filter shapes (e.g., the
         batchsize or number of filters) may also work around the CUBLAS bug.
-    """
-    def __init__(self, border_mode="valid",
-                 subsample=(1, 1, 1),
-                 pad=(0, 0, 0)):
-        """
-        :param border_mode: currently supports "valid" only; "full" can be
-            simulated by setting `pad="full"` (at the cost of performance), or
-            by using `GpuCorrMM_gradInputs`
-        :param subsample: the subsample operation applied to each output image.
-            Should be a tuple with 3 elements.
-            `(sv, sh, sl)` is equivalent to `GpuCorrMM(...)(...)[:,:,::sv, ::sh, ::sl]`,
-            but faster.
-            Set to `(1, 1, 1)` to disable subsampling.
-        :param pad: the width of a border of implicit zeros to pad the input
-            image with. Should be a tuple with 3 elements giving the numbers of
-            rows and columns to pad on each side, or "half" to set the padding
-            to `(kernel_rows // 2, kernel_columns // 2, kernel_depth // 2)`, or "full" to set the
-            padding to `(kernel_rows - 1, kernel_columns - 1, kernel_depth - 1)` at runtime.
-            Set to `(0, 0, 0)` to disable padding.
 
-        :note: Currently, the Op requires the inputs, filters and outputs to be
-            C-contiguous. Use :func:`gpu_contiguous
-            <theano.sandbox.cuda.basic_ops.gpu_contiguous>` on these arguments
-            if needed.
-        """
+    """
+    def __init__(self, border_mode="valid", subsample=(1, 1, 1), pad=(0, 0, 0)):
         super(GpuCorr3dMM, self).__init__(border_mode, subsample, pad)
 
     def make_node(self, img, kern):
@@ -1570,8 +1622,11 @@ class GpuCorr3dMM(BaseGpuCorr3dMM):
 class GpuCorr3dMM_gradWeights(BaseGpuCorr3dMM):
     """Gradient wrt. filters for `GpuCorr3dMM`.
 
-    :note: You will not want to use this directly, but rely on Theano's
-        automatic differentiation or graph optimization to use it as needed.
+    Notes
+    -----
+    You will not want to use this directly, but rely on Theano's
+    automatic differentiation or graph optimization to use it as needed.
+
     """
 
     def __init__(self, border_mode="valid",
@@ -1627,8 +1682,11 @@ class GpuCorr3dMM_gradWeights(BaseGpuCorr3dMM):
 class GpuCorr3dMM_gradInputs(BaseGpuCorr3dMM):
     """Gradient wrt. inputs for `GpuCorr3dMM`.
 
-    :note: You will not want to use this directly, but rely on Theano's
-        automatic differentiation or graph optimization to use it as needed.
+    Notes
+    -----
+    You will not want to use this directly, but rely on Theano's
+    automatic differentiation or graph optimization to use it as needed.
+
     """
 
     def __init__(self, border_mode="valid",
@@ -1683,6 +1741,48 @@ class GpuCorr3dMM_gradInputs(BaseGpuCorr3dMM):
 class GpuConv(GpuOp):
     """
     Implement the batched and stacked 2d convolution on the gpu.
+
+    Parameters
+    ----------
+    version
+        Each version of c_code implements many kernel for the
+        convolution. By default we try to guess the best one.
+        You can force one version with this parameter. This
+        parameter is used by the tests.
+    direction_hint : {'forward', 'bprop weights', 'bprop inputs'}
+        Serves as a hint for graph optimizers replacing
+        GpuConv by other implementations. If the GpuConv is
+        inserted automatically, we take its value from ConvOp.
+    verbose
+        For value of 1,2 and 3. Print more information during
+        the execution of the convolution. Mostly used for
+        optimization or debugging.
+    kshp
+        The size of the kernel. If provided, can generate
+        faster code. If the GpuConv op is automatically inserted,
+        We take its value automatically from the Conv op.
+    imshp
+        The size of the image. Not used for code generation but
+        allows to select an experimental new version in another repo.
+    max_threads_dim0
+        The maximum number of threads for the block size dimensions 0
+        (blockDim.x) used by the GPU function.
+    nkern
+        The number of kernels. Not used for this op, but can be
+        used by graph optimizers to select a more optimal
+        convolution implementation. If the GpuConv op is inserted
+        automatically, we take its value from the Conv op.
+    bsize
+        The batch size. Not used for this op, but can be used by graph
+        optimizers to select a more optimal convolution implementation.
+        If the GpuConv op is inserted automatically, we take its value from
+        the Conv op.
+    fft_opt
+        Deactivate fft_opt optimization at the op level when set to False.
+        Note that by default fft optimization aren't enabled.
+        See :ref:`convolution documentation <libdoc_tensor_nnet_conv>`
+        to enable them.
+
     """
     check_broadcast = False
 
@@ -1708,42 +1808,6 @@ class GpuConv(GpuOp):
             nkern=None,
             bsize=None,
             fft_opt=True):
-        """
-        :param version: each version of c_code implements many kernel for the
-                        convolution. By default we try to guess the best one.
-                        You can force one version with this parameter. This
-                        parameter is used by the tests.
-        :param direction_hint: 'forward', 'bprop weights' or 'bprop inputs'.
-                        Serves as a hint for graph optimizers replacing
-                        GpuConv by other implementations. If the GpuConv is
-                        inserted automatically, we take its value from ConvOp.
-        :param verbose: for value of 1,2 and 3. Print more information during
-                        the execution of the convolution. Mostly used for
-                        optimization or debugging.
-        :param kshp:    The size of the kernel. If provided, can generate
-                        faster code. If the GpuConv op is automatically
-                        inserted,
-                        we take its value automatically from the Conv op.
-        :param imshp:   The size of the image. Not used for code generation but
-                        allows to select an experimental new version in another
-                        repo.
-        :param max_threads_dim0: The maximum number of threads for the
-                        block size dimensions 0 (blockDim.x) used by the
-                        GPU function.
-        :param nkern:   The number of kernels. Not used for this op, but can be
-                        used by graph optimizers to select a more optimal
-                        convolution implementation. If the GpuConv op is inserted
-                        automatically, we take its value from the Conv op.
-        :param bsize:   The batch size. Not used for this op, but can be
-                        used by graph optimizers to select a more optimal
-                        convolution implementation. If the GpuConv op is inserted
-                        automatically, we take its value from the Conv op.
-        :param fft_opt: deactivate fft_opt optimization at the op level when
-                        set to False. Note that by default fft optimization
-                        aren't enabled. See
-                        :ref:`convolution documentation <libdoc_tensor_nnet_conv>`
-                        to enable them.
-        """
         self.border_mode = border_mode
         if version != -1:
             raise Exception(
@@ -1956,6 +2020,7 @@ class GpuConv(GpuOp):
 class GpuDownsampleFactorMax(GpuOp):
     """
     Implement downsample with max on the gpu.
+
     """
     def __init__(self, ds, ignore_border=False):
         self.ds = tuple(ds)
@@ -2149,6 +2214,7 @@ class GpuDownsampleFactorMax(GpuOp):
 class GpuDownsampleFactorMaxGrad(GpuOp):
     """
     Implement the grad of downsample with max on the gpu.
+
     """
     def __init__(self, ds, ignore_border):
         self.ds = tuple(ds)
@@ -2371,6 +2437,7 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
 class GpuDownsampleFactorMaxGradGrad(GpuOp):
     """
     Implement the grad of downsample with max on the gpu.
+
     """
     __props__ = ('ds', 'ignore_border')
 
