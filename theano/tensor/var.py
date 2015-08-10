@@ -702,8 +702,8 @@ class TensorVariable(_tensor_py_operators, Variable):
                 while x:
                     file_path = x[-1][0]
                     rm = False
-                    for p in ["theano/tensor/",
-                              "theano/gof/"]:
+                    for p in ["theano/tensor/", "theano\\tensor\\",
+                              "theano/gof/", "theano\\tensor\\"]:
                         if p in file_path:
                             x = x[:-1]
                             nb_rm += 1
