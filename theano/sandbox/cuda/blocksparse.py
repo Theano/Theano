@@ -30,7 +30,9 @@ class SparseBlockGemvSS(GpuOp):
     This should not be directly called since the interface is subject
     to change without notice.  Use the sparse_block_dot_SS() function
     for a stable interface.
+
     """
+
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
@@ -367,9 +369,11 @@ class SparseBlockOuterSS(GpuOp):
     The i and j are taken from the xIdx and yIdx lists respectively.
 
     This op should not be called directly since its interface is
-    subject to change without notice.  It is involved in the gradient
+    subject to change without notice. It is involved in the gradient
     of SparseBlockGemvSS.
+
     """
+
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
@@ -680,28 +684,38 @@ def sparse_block_dot_SS(W, h, inputIdx, b, outputIdx):
 
     Parameters
     ----------
-    var: shape, comment
-    W: (iBlocks, oBlocks, iSize, oSize), weight matrix
-    h: (batch, iWin, iSize), input from lower layer (sparse)
-    inputIdx: (batch, iWin), indexes of the input blocks
-    b: (oBlocks, oSize), bias vector
-    outputIdx: (batch, oWin), indexes of the output blocks
+    var
+        Shape, comment.
+    W
+        (iBlocks, oBlocks, iSize, oSize), weight matrix.
+    h
+        (batch, iWin, iSize), input from lower layer (sparse).
+    inputIdx
+        (batch, iWin), indexes of the input blocks.
+    b
+        (oBlocks, oSize), bias vector.
+    outputIdx
+        (batch, oWin), indexes of the output blocks.
 
-    returns (batch, oWin, oSize), dot(W[i, j], h[i]) + b[j]
-         but b[j] is only added once
+    Returns
+    -------
+    (batch, oWin, oSize), dot(W[i, j], h[i]) + b[j]
+    but b[j] is only added once
 
-    Notation
-    --------
+    Notes
+    -----
     - `batch` is the number of examples in a minibatch (batch size).
     - `iBlocks` is the total number of blocks in the input (from lower layer).
     - `iSize` is the size of each of these input blocks.
     - `iWin` is the number of blocks that will be used as inputs. Which blocks
-      will be used is specified in `inputIdx`.
+    will be used is specified in `inputIdx`.
     - `oBlocks` is the number or possible output blocks.
     - `oSize` is the size of each of these output blocks.
     - `oWin` is the number of output blocks that will actually be computed.
-      Which blocks will be computed is specified in `outputIdx`.
+    Which blocks will be computed is specified in `outputIdx`.
+
     """
+
     assert inputIdx.ndim == h.ndim - 1
     assert outputIdx.ndim == inputIdx.ndim
     if h.ndim == 2:
