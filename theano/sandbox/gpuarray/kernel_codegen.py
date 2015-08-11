@@ -1,13 +1,19 @@
-""" Helper routines for generating gpu kernels for nvcc.
+"""
+Helper routines for generating gpu kernels for nvcc.
+
 """
 
 def nvcc_kernel(name, params, body):
-    """Return the c code of a kernel function.
+    """
+    Return the c code of a kernel function.
 
-    :param params: the parameters to the function as one or more strings
-
-    :param body: the [nested] list of statements for the body of the
-         function.  These will be separated by ';' characters.
+    Parameters
+    ----------
+    params
+        The parameters to the function as one or more strings.
+    body
+        The [nested] list of statements for the body of the function.
+        These will be separated by ';' characters.
 
     """
     paramstr = ', '.join(params)
@@ -28,7 +34,10 @@ def nvcc_kernel(name, params, body):
 
 
 def code_version(version):
-    """decorator to support version-based cache mechanism"""
+    """
+    Decorator to support version-based cache mechanism.
+
+    """
     if not isinstance(version, tuple):
         raise TypeError('version must be tuple', version)
 
@@ -42,22 +51,31 @@ UNVERSIONED = ()
 
 @code_version((1,))
 def inline_reduce(N, buf, pos, count, manner_fn):
-    """Return C++ code for a function that reduces a contiguous buffer.
+    """
+    Return C++ code for a function that reduces a contiguous buffer.
 
-    :param N: length of the buffer
-    :param buf: buffer pointer
-    :param pos: index of executing thread
-    :param count: number of executing threads
-
-    :param manner_fn: a function that accepts strings of arguments a
-        and b, and returns c code for their reduction. (Example:
-        return "%(a)s + %(b)s" for a sum reduction).
+    Parameters
+    ----------
+    N
+        Length of the buffer.
+    buf
+        buffer pointer.
+    pos
+        Index of executing thread.
+    count
+        Number of executing threads.
+    manner_fn
+        A function that accepts strings of arguments a and b, and returns c code
+        for their reduction.
+        Example: return "%(a)s + %(b)s" for a sum reduction.
 
     :postcondition:
-    This function leaves the answer in position 0 of the buffer.  The
+    This function leaves the answer in position 0 of the buffer. The
     rest of the buffer is trashed by this function.
 
-    :note: buf should be in gpu shared memory, we access it many times.
+    Notes
+    -----
+    buf should be in gpu shared memory, we access it many times.
 
     """
     loop_line = manner_fn("%s[%s]" % (buf, pos), "%s[i]" % (buf))
@@ -126,19 +144,28 @@ def inline_reduce_prod(N, buf, pos, count):
 def inline_softmax(N, buf, buf2, threadPos, threadCount, dtype="float32"):
     """
 
-    :param N: length of the buffer
-    :param threadPos: index of executing thread
-    :param threadCount: number of executing threads
-    :param dtype: dtype of the softmax's output
+    Parameters
+    ----------
+    N
+        Length of the buffer.
+    threadPos
+        Index of executing thread.
+    threadCount
+        Number of executing threads.
+    dtype
+        Dtype of the softmax's output.
 
     :Precondition: buf and buf2 contain two identical copies of the input
         to softmax
     :Postcondition: buf contains the softmax, buf2 contains un-normalized
         softmax
 
-    :note: buf and buf2 should be in gpu shared memory, we access it many times
+    Notes
+    -----
+    buf and buf2 should be in gpu shared memory, we access it many times.
 
-    :note2: We use __i as an int variable in a loop
+    We use __i as an int variable in a loop.
+
     """
     return [
             # get max of buf (trashing all but buf[0])
@@ -169,31 +196,48 @@ def inline_softmax(N, buf, buf2, threadPos, threadCount, dtype="float32"):
 def inline_reduce_fixed_shared(N, buf, x, stride_x, load_x, pos, count,
                                manner_fn, manner_init,
                                b='', stride_b='', load_b='', dtype='float32'):
-    """Return C++ code for a function that reduces a contiguous buffer.
+    """
+    Return C++ code for a function that reduces a contiguous buffer.
 
-    :param N: length of the buffer
-    :param buf: buffer pointer of size warpSize * sizeof(dtype)
-    :param x: input data
-    :param stride_x: input data stride
-    :param load_x: wrapper to read from x
-    :param pos: index of executing thread
-    :param count: number of executing threads
-    :param b: Optional, pointer to the bias
-    :param stride_b: Optional, the stride of b if b is provided
-    :param load_b: Optional, wrapper to read from b if b is provided
-    :param dtype: Optional, the dtype of the output
-
-    :param manner_fn: a function that accepts strings of arguments a
-        and b, and returns c code for their reduction. (Example:
-        return "%(a)s + %(b)s" for a sum reduction).
-    :param manner_init: a function that accepts strings of arguments a
-        and return c code for its initialization
+    Parameters
+    ----------
+    N
+        Length of the buffer.
+    buf
+        Buffer pointer of size warpSize * sizeof(dtype).
+    x
+        Input data.
+    stride_x
+        Input data stride.
+    load_x
+        Wrapper to read from x.
+    pos
+        Index of executing thread.
+    count
+        Number of executing threads.
+    b
+        Optional, pointer to the bias.
+    stride_b
+        Optional, the stride of b if b is provided.
+    load_b
+        Optional, wrapper to read from b if b is provided.
+    dtype
+        Optional, the dtype of the output.
+    manner_fn
+        A function that accepts strings of arguments a and b, and returns c code
+        for their reduction. 
+        Example: return "%(a)s + %(b)s" for a sum reduction.
+    manner_init
+        A function that accepts strings of arguments a and return c code for its
+        initialization.
 
     :postcondition:
-    This function leaves the answer in position 0 of the buffer.  The
-    rest of the buffer is trashed by this function.
+    This function leaves the answer in position 0 of the buffer. The rest of the
+    buffer is trashed by this function.
 
-    :note: buf should be in gpu shared memory, we access it many times.
+    Notes
+    -----
+    buf should be in gpu shared memory, we access it many times.
 
     """
     if b:
@@ -270,28 +314,47 @@ def inline_softmax_fixed_shared(N, buf, x, stride_x, load_x,
                                 dtype="float32"):
     """
 
-    :param N: length of the buffer, atleast waprSize(32).
-    :param buf: a shared memory buffer of size warpSize * sizeof(dtype)
-    :param x: a ptr to the gpu memory where the row is stored
-    :param stride_x: the stride between each element in x
-    :param load_x: wrapper to read from x
-    :param sm: a ptr to the gpu memory to store the result
-    :param sm_stride: the stride between eash sm element
-    :param write_sm: wrapper before writing to sm
-    :param threadPos: index of executing thread
-    :param threadCount: number of executing threads
-    :param b: Optional, pointer to the bias
-    :param stride_b: Optional, the stride of b if b is provided
-    :param load_b: Optional, wrapper to read from b if b is provided
-    :param dtype: Optional, the dtype of the softmax's output if not float32
+    Parameters
+    ----------
+    N 
+        Length of the buffer, atleast waprSize(32).
+    buf
+        A shared memory buffer of size warpSize * sizeof(dtype).
+    x
+        A ptr to the gpu memory where the row is stored.
+    stride_x
+        The stride between each element in x.
+    load_x
+        Wrapper to read from x.
+    sm
+        A ptr to the gpu memory to store the result.
+    sm_stride
+        The stride between each sm element.
+    write_sm
+        Wrapper before writing to sm.
+    threadPos
+        Index of executing thread.
+    threadCount
+        Number of executing threads.
+    b
+        Optional, pointer to the bias.
+    stride_b
+        Optional, the stride of b if b is provided.
+    load_b
+        Optional, wrapper to read from b if b is provided.
+    dtype
+        Optional, the dtype of the softmax's output if not float32.
 
     :Precondition: buf is empty
-    :Postcondition: buf[0] contains the softmax,
-        buf2 contains un-normalized softmax
+    :Postcondition: buf[0] contains the softmax, buf2 contains un-normalized
+        softmax
 
-    :note: buf should be in gpu shared memory, we access it many times.
+    Notes
+    -----
+    buf should be in gpu shared memory, we access it many times.
 
-    :note2: We use tx as an int variable in a loop
+    We use tx as an int variable in a loop.
+
     """
     ret = [
         # get max of buf (trashing all but buf[0])
