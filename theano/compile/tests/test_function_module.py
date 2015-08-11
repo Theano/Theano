@@ -313,7 +313,7 @@ class T_function(unittest.TestCase):
             elif second_time:
                 # doule update for sharedvariable
                 assert m.get_value() == 12
-                assert z.get_value() == 3
+                assert z.get_value() == 4
                 assert z_rpl.get_value() == 8
                 assert y_rpl.get_value() == 3
 

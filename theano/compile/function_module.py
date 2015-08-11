@@ -611,16 +611,6 @@ class Function(object):
         for out_ori, out_cpy in zip(maker.outputs, outs):
             out_cpy.borrow = out_ori.borrow
 
-        # Delete update if needed
-        update_i = len(outs)
-        for i, in_var in zip(ins, fg_cpy.inputs):
-            i.variable = in_var
-            if not delete_updates and i.update is not None:
-                i.update = fg_cpy.outputs[update_i]
-                update_i += 1
-            else:
-                i.update = None
-
         # swap SharedVariable
         if swap is not None:
             swap_svs_ori = swap.keys()
@@ -650,8 +640,17 @@ class Function(object):
                     swap_sv = swap_sv.clone()
                     
                     # Swap SharedVariable in fgraph
-                    # fg_cpy.inputs[index] = swap_sv
                     fg_cpy.replace(in_v, swap_sv, reason="Swap SV")
+
+        # Delete update if needed
+        update_i = len(outs)
+        for i, in_var in zip(ins, fg_cpy.inputs):
+            i.variable = in_var
+            if not delete_updates and i.update is not None:
+                i.update = fg_cpy.outputs[update_i]
+                update_i += 1
+            else:
+                i.update = None
 
         # Construct new storage_map that map new variable to old storage,
         # so that the ensuing function shares storage with the original one
