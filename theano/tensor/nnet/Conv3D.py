@@ -582,8 +582,7 @@ def conv3D(V, W, b, d):
     --------
     Someone made a script that shows how to swap the axes
     between both 3d convolution implementations in Theano. See
-    the last `attachment
-    <https://groups.google.com/d/msg/theano-users/1S9_bZgHxVw/0cQR9a4riFUJ>`_.
+    the last `attachment <https://groups.google.com/d/msg/theano-users/1S9_bZgHxVw/0cQR9a4riFUJ>`_
 
 """
     return _conv3D(V, W, b, d)

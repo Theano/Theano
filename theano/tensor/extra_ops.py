@@ -546,6 +546,8 @@ def squeeze(x):
     broadcastable dimensions removed. This is
     always `x` itself or a view into `x`.
 
+    .. versionadded:: 0.6
+
     Parameters
     ----------
     x
@@ -553,9 +555,8 @@ def squeeze(x):
 
     Returns
     -------
+    object
         `x` without its broadcastable dimensions.
-
-    .. versionadded:: 0.6
 
     """
     view = x.dimshuffle([i for i in range(x.ndim)
@@ -1064,6 +1065,7 @@ def to_one_hot(y, nb_class, dtype=None):
 
     Returns
     -------
+    object
         A matrix of shape (y.shape[0], nb_class), where each row ``i`` is
         the one hot encoding of the corresponding ``y[i]`` value.
 
