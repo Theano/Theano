@@ -419,7 +419,7 @@ class GpuDnnConv(DnnBase, COp):
         The convolution descriptor.
     workmem
         Either 'none', 'small' or 'large'. Default is the value of
-        :attr:`config.dnn.conv.workmem`.   
+        :attr:`config.dnn.conv.workmem`.
 
     """
 
@@ -1271,9 +1271,9 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
     .. warning:: The cuDNN library only works with GPU that have a compute
         capability of 3.0 or higer.  This means that older GPU will not
         work with this Op.
-  
+
     Notes
-    ----- 
+    -----
     This Op implements the ignore_border=True of max_pool_2d.
 
     """
