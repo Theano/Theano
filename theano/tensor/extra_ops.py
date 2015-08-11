@@ -539,8 +539,8 @@ def bincount(x, weights=None, minlength=None, assert_nonneg=False):
 
 
 def squeeze(x):
-    """Remove broadcastable dimensions from
-    the shape of an array.
+    """
+    Remove broadcastable dimensions from the shape of an array.
 
     It returns the input array, but with the
     broadcastable dimensions removed. This is
@@ -565,26 +565,27 @@ def squeeze(x):
 
 
 def compress(condition, x, axis=None):
-    """Return selected slices of an array along given axis.
+    """
+    Return selected slices of an array along given axis.
 
     It returns the input tensor, but with selected slices along a given axis
     retained. If no axis is provided, the tensor is flattened.
     Corresponds to numpy.compress
 
+    .. versionadded:: 0.7
+
     Parameters
     ----------
     x
         Input data, tensor variable.
-
     condition
          1 dimensional array of non-zero and zero values
          corresponding to indices of slices along a selected axis.
 
     Returns
     -------
-        `x` with selected slices
-
-    .. versionadded:: 0.7
+    object
+        `x` with selected slices.
 
     """
     indices = theano.tensor.basic.flatnonzero(condition)
@@ -802,11 +803,14 @@ bartlett_ = Bartlett()
 
 # I create a function only to have the doc show well.
 def bartlett(M):
-    """An instance of this class returns the Bartlett spectral window in the
+    """
+    An instance of this class returns the Bartlett spectral window in the
     time-domain. The Bartlett window is very similar to a triangular window,
     except that the end points are at zero. It is often used in signal
     processing for tapering a signal, without generating too much ripple in
     the frequency domain.
+
+    .. versionadded:: 0.6
 
     Parameters
     ----------
@@ -820,8 +824,6 @@ def bartlett(M):
         The triangular window, with the maximum value normalized to one
         (the value one appears only if the number of samples is odd), with
         the first and last samples equal to zero.
-
-    .. versionadded:: 0.6
 
     """
     return bartlett_(M)
@@ -889,20 +891,24 @@ fill_diagonal_ = FillDiagonal()
 
 # I create a function only to have the doc show well.
 def fill_diagonal(a, val):
-    """ Returns a copy of an array with all
+    """
+    Returns a copy of an array with all
     elements of the main diagonal set to a specified scalar value.
+
+    .. versionadded:: 0.6
 
     Parameters
     ----------
-    a :
+    a
         Rectangular array of at least two dimensions.
-    val :
+    val
         Scalar value to fill the diagonal whose type must be
         compatible with that of array 'a' (i.e. 'val' cannot be viewed
         as an upcast of 'a').
 
     Returns
     -------
+    array
         An array identical to 'a' except that its main diagonal
         is filled with scalar 'val'. (For an array 'a' with a.ndim >=
         2, the main diagonal is the list of locations a[i, i, ..., i]
@@ -911,7 +917,7 @@ def fill_diagonal(a, val):
     Support rectangular matrix and tensor with more than 2 dimensions
     if the later have all dimensions are equals.
 
-    .. versionadded:: 0.6
+
 
     """
     return fill_diagonal_(a, val)
@@ -1043,6 +1049,7 @@ def fill_diagonal_offset(a, val, offset):
 
     Returns
     -------
+    array
         An array identical to 'a' except that its offset diagonal
         is filled with scalar 'val'. The output is unwrapped.
 
@@ -1051,7 +1058,8 @@ def fill_diagonal_offset(a, val, offset):
 
 
 def to_one_hot(y, nb_class, dtype=None):
-    """Return a matrix where each row correspond to the one hot
+    """
+    Return a matrix where each row correspond to the one hot
     encoding of each element in y.
 
     Parameters
@@ -1069,7 +1077,7 @@ def to_one_hot(y, nb_class, dtype=None):
         A matrix of shape (y.shape[0], nb_class), where each row ``i`` is
         the one hot encoding of the corresponding ``y[i]`` value.
 
-   """
+    """
     ret = theano.tensor.zeros((y.shape[0], nb_class),
                               dtype=dtype)
     ret = theano.tensor.set_subtensor(ret[theano.tensor.arange(y.shape[0]), y],

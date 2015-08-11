@@ -2261,7 +2261,7 @@ class Nonzero(gof.Op):
 
     Returns
     -------
-    result : matrix
+    matrix
         Matrix containing the indices of the non-zero elements of a.
 
     See Also
@@ -2323,7 +2323,7 @@ def nonzero(a, return_matrix=False):
 
     Returns
     -------
-    result : tuple of vectors or matrix
+    tuple of vectors or matrix
 
     See Also
     --------
@@ -2356,7 +2356,7 @@ def flatnonzero(a):
 
     Returns
     -------
-    res : vector
+    vector
         Output vector, containing the indices of the elements of `a.flatten()`
         that are non-zero.
 
@@ -2396,7 +2396,7 @@ def nonzero_values(a):
 
     Returns
     -------
-    res : vector
+    vector
         Output vector, containing the non-zero elements of a.
 
     See Also
@@ -2460,7 +2460,7 @@ def tri(N, M=None, k=0, dtype=None):
 
     Returns
     -------
-    tri : Array of shape (N, M)
+    Array of shape (N, M)
         Array with its lower triangle filled with ones and zero elsewhere;
         in other words ``T[i,j] == 1`` for ``i <= j + k``, 0 otherwise.
 
@@ -2489,7 +2489,7 @@ def tril(m, k=0):
 
     Returns
     -------
-    tril : array, shape (M, N)
+    array, shape (M, N)
         Lower triangle of `m`, of same shape and data-type as `m`.
 
     See Also
@@ -2569,7 +2569,7 @@ def eye(n, m=None, k=0, dtype=None):
 
     Returns
     -------
-    I : ndarray of shape (N,M)
+    ndarray of shape (N,M)
         An array where all elements are equal to zero, except for the `k`-th
         diagonal, whose values are equal to one.
 
@@ -3904,7 +3904,7 @@ def roll(x, shift, axis=None):
 
     Returns
     -------
-    res : tensor
+    tensor
         Output tensor, with the same shape as `x`.
 
     """
@@ -5520,6 +5520,7 @@ class Diagonal(Op):
 
     Returns
     -------
+    vector
         A vector representing the diagonal elements.
 
     """
@@ -5655,6 +5656,7 @@ def ptp(a, axis=None):
 
     Returns
     -------
+    array
         A new array holding the result.
 
     """

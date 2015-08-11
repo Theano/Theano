@@ -657,7 +657,8 @@ class TensorType(Type):
 
         Returns
         -------
-        Python object that ``self.get_size()`` understands.
+        object
+            Python object that ``self.get_size()`` understands.
 
         """
         return obj.shape
@@ -673,6 +674,7 @@ class TensorType(Type):
 
         Returns
         -------
+        int
             The number of bytes taken by the object described by ``shape_info``.
 
         """

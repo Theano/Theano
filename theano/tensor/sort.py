@@ -103,6 +103,7 @@ class SortOp(theano.Op):
 
 def sort(a, axis=-1, kind='quicksort', order=None):
     """
+
     Parameters
     ----------
     a : Tensor
@@ -119,7 +120,8 @@ def sort(a, axis=-1, kind='quicksort', order=None):
 
     Returns
     -------
-    A sorted copy of an array.
+    array
+        A sorted copy of an array.
 
     """
     if axis is None:

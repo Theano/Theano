@@ -356,7 +356,8 @@ class ConvOp(OpenMPOp):
 
         Returns
         -------
-        (rows,cols) of output image.
+        object
+            (rows,cols) of output image.
 
         """
         # The formula would be ceil((i + s * k - s * 1) / float(d)),

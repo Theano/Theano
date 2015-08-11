@@ -156,6 +156,7 @@ def _fill_chain(new_out, orig_inputs):
 
 def encompasses_broadcastable(b1, b2):
     """
+
     Parameters
     ----------
     b1
@@ -165,8 +166,9 @@ def encompasses_broadcastable(b1, b2):
 
     Returns
     -------
-    True if the broadcastable patterns b1 and b2 are such that b2 is
-    broadcasted to b1's shape and not the opposite.
+    bool
+        True if the broadcastable patterns b1 and b2 are such that b2 is
+        broadcasted to b1's shape and not the opposite.
 
     """
     if len(b1) < len(b2):
@@ -1693,10 +1695,10 @@ class Assert(T.Op):
 
     Examples
     --------
-      T = theano.tensor
-      x = T.vector('x')
-      assert_op = T.opt.Assert()
-      func = theano.function([x], assert_op(x, x.size<2))
+    T = theano.tensor
+    x = T.vector('x')
+    assert_op = T.opt.Assert()
+    func = theano.function([x], assert_op(x, x.size<2))
 
     """
 
@@ -3819,8 +3821,10 @@ class Canonizer(gof.LocalOptimizer):
     @staticmethod
     def get_constant(v):
         """
+
         Returns
         -------
+        object
             A numeric constant if v is a Constant or, well, a
             numeric constant. If v is a plain Variable, returns None.
 
@@ -5189,6 +5193,7 @@ def constant_folding(node):
 
 def _is_1(expr):
     """
+
     Returns
     -------
     bool
@@ -5204,6 +5209,7 @@ def _is_1(expr):
 
 def _is_minus1(expr):
     """
+
     Returns
     -------
     bool
@@ -5218,13 +5224,19 @@ def _is_minus1(expr):
 
 
 def get_clients(node):
-    """Used by erf/erfc opt to track less frequent op."""
+    """
+    Used by erf/erfc opt to track less frequent op.
+
+    """
     return [c for c, i in node.outputs[0].clients
             if c != "output"]
 
 
 def get_clients2(node):
-    """Used by erf/erfc opt to track less frequent op."""
+    """
+    Used by erf/erfc opt to track less frequent op.
+
+    """
     l = []
     for c, i in node.outputs[0].clients:
         if c != "output":

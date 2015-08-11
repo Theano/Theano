@@ -843,6 +843,7 @@ def multinomial(random_state, size=None, n=1, pvals=[0.5, 0.5],
 
     Returns
     -------
+    tensor
         Tensor of len(size)+1 dimensions, and shape[-1]==L, with
         the specified ``dtype``, with the experiment counts. See
         examples to understand the shape of the return value, which is

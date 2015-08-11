@@ -13,27 +13,29 @@ from theano.gradient import grad_undefined
 
 
 class Images2Neibs(Op):
+    """
+
+    Parameters
+    ----------
+    mode : {'valid', 'ignore_borders', 'wrap_centered'}
+        'valid': Requires an input that is a multiple of the
+            pooling factor (in each direction).
+        'ignore_borders': Same as valid, but will ignore the borders
+            if the shape(s) of the input is not a multiple of the pooling
+            factor(s).
+        'wrap_centered' : ?? TODO comment
+
+    Returns
+    -------
+    object
+        Reshapes the input as a 2D tensor where each row is an
+        pooling example.
+
+    """
 
     __props__ = ("mode",)
 
     def __init__(self, mode='valid'):
-        """
-        Parameters
-        ----------
-        mode : {'valid', 'ignore_borders', 'wrap_centered'}
-           'valid': Requires an input that is a multiple of the
-                pooling factor (in each direction).
-            'ignore_borders': Same as valid, but will ignore the borders
-                if the shape(s) of the input is not a multiple of the pooling
-                factor(s).
-            'wrap_centered' : ?? TODO comment
-
-        Returns
-        -------
-            Reshapes the input as a 2D tensor where each row is an
-            pooling example.
-
-        """
         if mode not in ['valid', 'wrap_centered', 'ignore_borders']:
             raise NotImplementedError("Only the mode valid, ignore_borders"
                                       " and wrap_centered have been"
@@ -456,16 +458,17 @@ def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
             :math:`n * step\_size_i + neib\_shape_i` for some :math:`n`
     mode : {'valid', 'ignore_borders', 'wrap_centered}
         ``valid``
-           Requires an input that is a multiple of the
-           pooling factor (in each direction).
+        Requires an input that is a multiple of the
+        pooling factor (in each direction).
         ``ignore_borders``
-           Same as valid, but will ignore the borders if the shape(s) of
-           the input is not a multiple of the pooling factor(s).
+        Same as valid, but will ignore the borders if the shape(s) of
+        the input is not a multiple of the pooling factor(s).
         ``wrap_centered``
-           ?? TODO comment
+        ?? TODO comment
 
     Returns
     -------
+    object
         Reshapes the input as a 2D tensor where each row is an
         pooling example. Pseudo-code of the output:
 
@@ -531,6 +534,7 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
 
     Returns
     -------
+    object
         Reconstructs the input of
         :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`,
         a 4d tensor of shape `original_shape`.

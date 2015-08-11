@@ -383,6 +383,7 @@ logsigm_to_softplus = gof.PatternSub(
 
 def _is_1(expr):
     """
+
     Returns
     -------
     bool
@@ -417,8 +418,10 @@ opt.register_stabilize(log1pexp_to_softplus, name='log1pexp_to_softplus')
 
 def is_1pexp(t):
     """
+
     Returns
     -------
+    object
         If 't' is of the form (1+exp(x)), return (False, x).
         Else return None.
 
@@ -471,6 +474,7 @@ def is_exp(var):
 
     Returns
     -------
+    tuple
         A pair (b, x) with `b` a boolean set to True if `var` is of the
         form `-exp(x)` and False if `var` is of the form `exp(x)`. If `var`
         cannot be cast into either form, then return `None`.
@@ -496,6 +500,7 @@ def is_mul(var):
 
     Returns
     -------
+    object
         A list [x, y, z, ...] if `var` is of the form `x * y * z * ...`,
         or None if `var` cannot be cast into this form.
 
@@ -538,6 +543,7 @@ def is_neg(var):
 
     Returns
     -------
+    object
         `x` if `var` is of the form `-x`, or None otherwise.
 
     """
@@ -627,6 +633,7 @@ def parse_mul_tree(root):
 
     Returns
     -------
+    object
         A tree where each non-leaf node corresponds to a multiplication
         in the computation of `root`, represented by the list of its inputs.
         Each input is a pair [n, x] with `n` a boolean value indicating whether
@@ -688,6 +695,7 @@ def replace_leaf(arg, leaves, new_leaves, op, neg):
 
     Returns
     -------
+    bool
         True if a replacement occurred, or False otherwise.
 
     """
@@ -712,6 +720,7 @@ def simplify_mul(tree):
 
     Returns
     -------
+    object
         A multiplication tree computing the same output as `tree` but without
         useless multiplications by 1 nor -1 (identified by leaves of the form
         [False, None] or [True, None] respectively). Useless multiplications
@@ -757,6 +766,7 @@ def compute_mul(tree):
 
     Returns
     -------
+    object
         A Variable that computes the multiplication represented by the tree.
 
     """

@@ -5,8 +5,8 @@ import theano
 def make_declare(loop_orders, dtypes, sub):
     """
     Produce code to declare all necessary variables.
-    """
 
+    """
     decl = ""
     for i, (loop_order, dtype) in enumerate(zip(loop_orders, dtypes)):
         var = sub['lv%i' % i]  # input name corresponding to ith loop variable
@@ -342,6 +342,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub,
         Returns a list containing a C expression representing the
         stride for each dimension of the ith variable, in the
         specified loop_order.
+
         """
         var = sub["lv%i" % i]
         r = []

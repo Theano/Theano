@@ -309,8 +309,9 @@ class Subtensor(Op):
 
         Returns
         -------
-        idxs, with the slices flattened out into a list.
-        If cond is true for an entry, does not flatten it.
+        list
+            idxs, with the slices flattened out into a list.
+            If cond is true for an entry, does not flatten it.
 
         """
         ret = []
@@ -1484,7 +1485,8 @@ class IncSubtensor(Op):
 
         Returns
         -------
-        C code expression to make a copy of x.
+        object
+            C code expression to make a copy of x.
 
         Base class uses PyArrayObject *, subclasses may override for
         different types of arrays.
@@ -1547,8 +1549,8 @@ class IncSubtensor(Op):
 
         Returns
         -------
-        Returns a C code expression to copy source into view, and
-        return 0 on success.
+        object
+            C code expression to copy source into view, and 0 on success.
 
         """
         return """PyArray_CopyInto(%(view)s, %(source)s)""" % locals()
@@ -1911,12 +1913,13 @@ class AdvancedIncSubtensor1(Op):
         """
         Parameters
         ----------
-        x: string
+        x : string
             Gives the name of a C variable pointing to an array.
 
         Returns
         -------
-        C code expression to make a copy of x.
+        object
+            C code expression to make a copy of x.
 
         Base class uses PyArrayObject *, subclasses may override for
         different types of arrays.

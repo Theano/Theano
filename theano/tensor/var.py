@@ -255,9 +255,11 @@ class _tensor_py_operators:
 
     def transpose(self, *axes):
         """
+
         Returns
         -------
-        `tensor.transpose(self, axes)` or `tensor.transpose(self, axes[0])`.
+        object
+            `tensor.transpose(self, axes)` or `tensor.transpose(self, axes[0])`.
 
         If only one `axes` argument is provided and it is iterable, then it is
         assumed to be the entire axes tuple, and passed intact to

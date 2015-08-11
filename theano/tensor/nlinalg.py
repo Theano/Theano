@@ -255,14 +255,18 @@ def trace(X):
     """
     Returns the sum of diagonal elements of matrix X.
 
-    :note: work on GPU since 0.6rc4.
+    Notes
+    -----
+    Works on GPU since 0.6rc4.
+
     """
     return extract_diag(X).sum()
 
 
 class Det(Op):
-    """Matrix determinant
-    Input should be a square matrix
+    """
+    Matrix determinant. Input should be a square matrix.
+
     """
 
     __props__ = ()
@@ -598,6 +602,7 @@ def qr(a, mode="full"):
 
 class SVD(Op):
     """
+
     Parameters
     ----------
     full_matrices : bool, optional
@@ -609,7 +614,7 @@ class SVD(Op):
         Whether or not to compute u and v in addition to s.
         True by default.
 
-        """
+    """
 
     # See doc in the docstring of the function just after this class.
     _numop = staticmethod(numpy.linalg.svd)

@@ -805,7 +805,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
     """
     A special compound L{Op} for the output of neural-net classifiers.
 
-    Attributes
+    Parameters
     ----------
     x : a matrix of floats (32 or 64)
     b : a [row] vector of floats (32 or 64), length is number of cols in x
@@ -813,6 +813,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
 
     Returns
     -------
+    object
         row-wise NLL, softmax(x+b), row-wise argmax of (x+b).
 
     @precondition: every entry in y_idx is a valid (non-negative)
@@ -1240,6 +1241,7 @@ def crossentropy_softmax_max_and_argmax_1hot_with_bias(x, b, y_idx, **kwargs):
     """
     Returns
     -------
+    object
         The cross-entropy, the softmax output, the max probability,
         and the argmax index.
 
@@ -1931,7 +1933,7 @@ def categorical_crossentropy(coding_dist, true_dist):
     ----------
     coding_dist : a dense matrix
         Each slice along axis represents one distribution.
-    true_dist: a dense matrix or sparse matrix or integer vector
+    true_dist : a dense matrix or sparse matrix or integer vector
         In the case of a matrix argument, each slice along axis represents one
         distribution. In the case of an integer vector argument, each element
         represents the position of the '1' in a 1-of-N encoding.
@@ -2091,7 +2093,7 @@ def relu(x, alpha=0):
     ----------
     x : symbolic tensor
         Tensor to compute the activation function for.
-    alpha: scalar or tensor, optional
+    alpha : scalar or tensor, optional
         Slope for negative input, usually between 0 and 1. The default value
         of 0 will lead to the standard rectifier, 1 will lead to
         a linear activation function, and any value in between will give a
