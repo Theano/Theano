@@ -160,6 +160,7 @@ def c_set_tensor4d(var, desc, err, fail):
 class DnnBase(COp):
     """
     Creates a handle for cudnn and pulls in the cudnn libraries and headers.
+
     """
     # dnn does not know about broadcasting, so we do not need to assert
     # the input broadcasting pattern.
@@ -230,11 +231,11 @@ class DnnVersion(Op):
 
 
 def version():
-    """return the current cuDNN version we compile with.
+    """
+    Return the current cuDNN version we compile with.
 
-    This return a tuple with the header version and the library
-    version we link with. For older cudnn version without version
-    information, we return -1.
+    This return a tuple with the header version and the library version we link
+    with. For older cudnn version without version information, we return -1.
 
     """
     if not dnn_available():
@@ -252,12 +253,14 @@ version.v = None
 
 
 class GpuDnnConvDesc(Op):
-    """This Op builds a convolution descriptor for use in the other
-    convolution operations.
+    """
+    This Op builds a convolution descriptor for use in the other convolution
+    operations.
 
-    see the doc of :func:`dnn_conv` for a description of the parameters
+    See the doc of :func:`dnn_conv` for a description of the parameters
 
     """
+
     __props__ = ('border_mode', 'subsample', 'conv_mode')
 
     def c_headers(self):
@@ -408,17 +411,21 @@ class GpuDnnConv(DnnBase, COp):
     """
     The forward convolution.
 
-    :param image:
-    :param kernel:
-    :param descr: the convolution descriptor
+    Parameters
+    ----------
+    image
+    kernel
+    descr
+        The convolution descriptor.
+    workmem
+        Either 'none', 'small' or 'large'. Default is the value of
+        :attr:`config.dnn.conv.workmem`.   
+
     """
+
     __props__ = ('workmem', 'inplace')
 
     def __init__(self, workmem=None, inplace=False):
-        """
-        :param workmem: either 'none', 'small' or 'large'.  Default is
-        the value of :attr:`config.dnn.conv.workmem`.
-        """
         COp.__init__(self, ["dnn_base.c", "dnn_conv_base.c", "dnn_fwd.c"],
                      "APPLY_SPECIFIC(conv_fwd)")
         if workmem is None:
@@ -489,8 +496,9 @@ class GpuDnnConv(DnnBase, COp):
     def get_out_shape(ishape, kshape, border_mode, subsample):
         """
         This function computes the output shape for a convolution with
-        the specified parameters.  `ishape` and `kshape` can be symbolic
+        the specified parameters. `ishape` and `kshape` can be symbolic
         or scalar.
+
         """
         b = ishape[0]  # Number of inputs
         h = ishape[2]  # Height of input feature maps
@@ -524,11 +532,15 @@ class GpuDnnConvGradW(DnnBase, COp):
     """
     The convolution gradient with respect to the weights.
 
-    :param image:
-    :param kernel:
-    :param descr: the convolution descriptor
+    Parameters
+    ----------
+    image
+    kernel
+    descr
+        The convolution descriptor.
 
     """
+
     __props__ = ('inplace',)
 
     def __init__(self, inplace=False):
@@ -596,11 +608,15 @@ class GpuDnnConvGradI(DnnBase):
     """
     The convolution gradient with respect to the inputs.
 
-    :param image:
-    :param kernel:
-    :param descr: the convolution descriptor
+    Parameters
+    ----------
+    image
+    kernel
+    descr
+        The convolution descriptor.
 
     """
+
     __props__ = ('inplace',)
 
     def __init__(self, inplace=False):
@@ -667,14 +683,22 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     The memory layout to use is 'bc01', that is 'batch', 'channel',
     'first dim', 'second dim' in that order.
 
-    :param img: images to do the convolution over
-    :param kerns: convolution filters
-    :param border_mode: one of 'valid', 'full'; additionally, the padding size
-        could be directly specified by an integer or a pair of integers
-    :param subsample: perform subsampling of the output (default: (1, 1))
-    :param conv_mode: perform convolution (kernels flipped) or cross-correlation.
-        One of 'conv', 'cross'. (default: 'conv')
-    :param direction_hint: Used by graph optimizers to change algorithm choice.
+    Parameters
+    ----------
+    img
+        Images to do the convolution over.
+    kerns
+        Convolution filters.
+    border_mode
+        One of 'valid', 'full'; additionally, the padding size
+        could be directly specified by an integer or a pair of integers.
+    subsample
+        Perform subsampling of the output (default: (1, 1)).
+    conv_mode
+        Perform convolution (kernels flipped) or cross-correlation.
+        One of 'conv', 'cross' (default: 'conv').
+    direction_hint
+        Used by graph optimizers to change algorithm choice.
         By default, GpuDnnConv will be used to carry out the convolution.
         If border_mode is 'valid', subsample is (1,1) and direction_hint is
         'bprop weights', it will use GpuDnnConvGradW.
@@ -682,15 +706,15 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         *not* 'forward!', it will use GpuDnnConvGradI.
         This parameter is used internally by graph optimizers and may be
         removed at any time without a deprecation period. You have been warned.
-    :param workmem: Specify the amount of working memory allowed.
-      More memory is usually faster.  One of 'none', 'small' or
-      'large'.  (default is None which takes its value from
-      :attr:`config.dnn.conv.workmem`)
+    workmem
+        Specify the amount of working memory allowed. More memory is usually
+        faster.  One of 'none', 'small' or 'large' (default is None which takes
+        its value from :attr:`config.dnn.conv.workmem`).
 
+    .. warning:: The cuDNN library only works with GPU that have a compute
+        capability of 3.0 or higer.  This means that older GPU will not
+        work with this Op.
 
-    :warning: The cuDNN library only works with GPU that have a compute
-      capability of 3.0 or higer.  This means that older GPU will not
-      work with this Op.
     """
     fgraph = getattr(img, 'fgraph', None) or getattr(kerns, 'fgraph', None)
     if (border_mode == 'valid' and subsample == (1, 1) and
@@ -749,14 +773,21 @@ class GpuDnnPoolDesc(Op):
     This Op builds a pooling descriptor for use in the other
     pooling operations.
 
-    :param ws: windows size
-    :param stride: (dx, dy)
-    :param mode: 'max', 'average_inc_pad' or 'average_exc_pad'
-        The old deprecated name 'average' correspond to 'average_inc_pad'
-    :param pad: (padX, padY) padding information.
+    Parameters
+    ----------
+    ws
+        Windows size.
+    stride
+        (dx, dy).
+    mode : {'max', 'average_inc_pad', 'average_exc_pad'}
+        The old deprecated name 'average' correspond to 'average_inc_pad'.
+    pad
+        (padX, padY) padding information.
         padX is the size of the left and right borders,
         padY is the size of the top and bottom borders.
+
     """
+
     __props__ = ('ws', 'stride', 'mode', 'pad')
 
     def c_headers(self):
@@ -859,9 +890,15 @@ class GpuDnnPool(DnnBase):
     """
     Pooling.
 
-    :param img: the image 4d tensor.
-    :param desc: the pooling descriptor.
+    Parameters
+    ----------
+    img
+        The image 4d tensor.
+    desc
+        The pooling descriptor.
+
     """
+
     __props__ = ()
 
     def make_node(self, img, desc):
@@ -1029,11 +1066,19 @@ class GpuDnnPoolGrad(DnnBase):
     """
     The pooling gradient.
 
-    :param inp: the input of the pooling.
-    :param out: the output of the pooling in the forward.
-    :param inp_grad: same size as out, but is the corresponding gradient information.
-    :param desc: The pooling descriptor.
+    Parameters
+    ----------
+    inp
+        The input of the pooling.
+    out
+        The output of the pooling in the forward.
+    inp_grad
+        Same size as out, but is the corresponding gradient information.
+    desc
+        The pooling descriptor.
+
     """
+
     __props__ = ()
 
     def make_node(self, inp, out, inp_grad, desc):
@@ -1209,19 +1254,28 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
     The memory layout to use is 'bc01', that is 'batch', 'channel',
     'first dim', 'second dim' in that order.
 
-    :param img: images to do the pooling over
-    :param ws: subsampling window size
-    :param stride: subsampling stride (default: (1, 1))
-    :param mode: one of 'max', 'average_inc_pad' or 'average_exc_pad
-        (default: 'max')
-    :param pad: (padX, padY) padding information.
+    Parameters
+    ----------
+    img
+        Images to do the pooling over.
+    ws
+        Subsampling window size.
+    stride
+        Subsampling stride (default: (1, 1)).
+    mode : {'max', 'average_inc_pad', 'average_exc_pad'}
+    pad
+        (padX, padY) padding information.
         padX is the size of the left and right borders,
         padY is the size of the top and bottom borders.
 
-    :warning: The cuDNN library only works with GPU that have a compute
-      capability of 3.0 or higer.  This means that older GPU will not
-      work with this Op.
-    :note: This Op implements the ignore_border=True of max_pool_2d.
+    .. warning:: The cuDNN library only works with GPU that have a compute
+        capability of 3.0 or higer.  This means that older GPU will not
+        work with this Op.
+  
+    Notes
+    ----- 
+    This Op implements the ignore_border=True of max_pool_2d.
+
     """
     img = gpu_contiguous(img)
     desc = GpuDnnPoolDesc(ws=ws, stride=stride, mode=mode, pad=pad)()
@@ -1232,12 +1286,18 @@ class GpuDnnSoftmaxBase(DnnBase):
     """
     Op for the cuDNN Softmax.
 
-    :param tensor_format: Whether the data format is 'bc01' or 'b01c'.
-    :param algo: 'fast' or 'accurate' indicating whether computations should be
+    Parameters
+    ----------
+    tensor_format
+        Whether the data format is 'bc01' or 'b01c'.
+    algo
+        'fast' or 'accurate' indicating whether computations should be
         optimized for speed or accuracy respectively.
-    :param mode: 'instance' or 'channel' indicating whether the softmax should
-        be computed per image across 'c01' or per spatial location '01' per
+    mode
+        'instance' or 'channel' indicating whether the softmax should be
+        computed per image across 'c01' or per spatial location '01' per
         image across 'c'.
+
     """
 
     __props__ = ('tensor_format', 'mode', 'algo')
@@ -1381,13 +1441,18 @@ class GpuDnnSoftmax(GpuDnnSoftmaxBase):
     """
     Op for the cuDNN Softmax.
 
-    :param tensor_format: Whether the data format is 'bc01' or 'b01c'.
-    :param algo: 'fast' or 'accurate' indicating whether computations should be
+    tensor_format
+        Whether the data format is 'bc01' or 'b01c'.
+    algo
+        'fast' or 'accurate' indicating whether computations should be
         optimized for speed or accuracy respectively.
-    :param mode: 'instance' or 'channel' indicating whether the softmax should
-        be computed per image across 'c01' or per spatial location '01' per
+    mode
+        'instance' or 'channel' indicating whether the softmax should be
+        computed per image across 'c01' or per spatial location '01' per
         image across 'c'.
+
     """
+
     direction = 'forward'
     softmax_inputs = ['softmax_input']
 
@@ -1442,12 +1507,18 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
     """
     Op for the cuDNN SoftmaxGrad.
 
-    :param tensor_format: Whether the data format is 'bc01' or 'b01c'.
-    :param algo: 'fast' or 'accurate' indicating whether computations should be
+    Parameters
+    ----------
+    tensor_format
+        Whether the data format is 'bc01' or 'b01c'.
+    algo
+        'fast' or 'accurate' indicating whether computations should be
         optimized for speed or accuracy respectively.
-    :param mode: 'instance' or 'channel' indicating whether the softmax should
+    mode
+        'instance' or 'channel' indicating whether the softmax should
         be computed per image across 'c01' or per spatial location '01' per
         image across 'c'.
+
     """
     direction = 'backward'
     softmax_inputs = ['softmax_gout', 'softmax_input']
@@ -1713,7 +1784,10 @@ def local_softmax_dnn(node):
 
 class NoCuDNNRaise(Optimizer):
     def apply(self, fgraph):
-        """ Raise a RuntimeError if cudnn can't be used"""
+        """
+        Raise a RuntimeError if cudnn can't be used.
+
+        """
         if not dnn_available():
             # Make an assert error as we want Theano to fail, not
             # just skip this optimization.
