@@ -284,7 +284,7 @@ class T_function(unittest.TestCase):
         # SharedVariable to replace
         y_rpl = theano.shared(value=3,name ='y_rpl')
         z_rpl = theano.shared(value=4, name='z_rpl')
-        swap = {y:y_rpl, y:z_rpl}
+        swap = {y:y_rpl, z:z_rpl}
         map_SV = {'y_rpl':y_rpl, 'z_rpl':z_rpl}
 
         out = x+y+z+m
@@ -301,9 +301,21 @@ class T_function(unittest.TestCase):
 
             # assert same SharedVariable are update in different function
             if not second_time:
+                # m should be updated 3 times
                 assert m.get_value() == 6
+                # z should be updated once
+                assert z.get_value() == 3
+                # z_rpl should be updated twice
+                assert z_rpl.get_value() == 6 
+                # y and y_rpl should not be updated
+                assert y_rpl.get_value() == 3
+                assert y.get_value() == 1
             elif second_time:
+                # doule update for sharedvariable
                 assert m.get_value() == 12
+                assert z.get_value() == 3
+                assert z_rpl.get_value() == 8
+                assert y_rpl.get_value() == 3
 
             # test cpy function:
             # 2. SharedVariable is updatable -> values did update(z == 5)
@@ -313,10 +325,7 @@ class T_function(unittest.TestCase):
                 if key.name in names:
                     assert map_SV[key.name].container.storage[0] ==\
                            cpy.fn.storage_map[key][0]
-                    if key.name == 'z_rpl' and not second_time:
-                        assert cpy.fn.storage_map[key][0] == 6
-                    elif key.name == 'z_rpl' and second_time:
-                        assert cpy.fn.storage_map[key][0] == 8
+
             second_time = True
 
     def test_copy_delete_updates(self):

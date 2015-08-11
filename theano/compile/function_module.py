@@ -637,21 +637,21 @@ class Function(object):
                 # Variables in maker.inputs are defined by user, therefore we
                 # use them to make comparision and do the mapping.
                 # Otherwise we don't touch them.
-                swap_sv = maker.inputs[index].variable
+                var = maker.inputs[index].variable
 
-                if swap_sv in swap_svs_ori:
+                if var in swap_svs_ori:
+                    swap_sv = swap[var]
                     checkSV(i.variable, swap_sv)
+                    
+                    # swap variable and value of In instances
+                    i.variable = swap_sv
 
                     # In the fgraph we use the cloned SharedVariable
                     swap_sv = swap_sv.clone()
-
+                    
                     # Swap SharedVariable in fgraph
-                    fg_cpy.inputs[index] = swap_sv
+                    # fg_cpy.inputs[index] = swap_sv
                     fg_cpy.replace(in_v, swap_sv, reason="Swap SV")
-
-                    # swap variable and value of In instances
-                    i.variable = swap_sv
-                    i.value = swap_sv.container
 
         # Construct new storage_map that map new variable to old storage,
         # so that the ensuing function shares storage with the original one
