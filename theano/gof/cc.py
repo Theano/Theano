@@ -71,9 +71,9 @@ def get_persistent_module_cache():
 class CodeBlock:
     """
     WRITEME
-    
+
     Represents a computation unit composed of declare, behavior, and cleanup.
-    
+
     The constructor initializes a L{CodeBlock} with templatized declare,
     behavior and cleanup. The sub parameter will be used in the other
     arguments' templates. sub should contain a key called 'id' that maps to an
@@ -81,7 +81,7 @@ class CodeBlock:
     failure code and a label to jump to. It should also contain a key called
     'failure_var' that contains the name of the variable that contains the error
     code.
-    
+
     Parameters
     ----------
     declare
@@ -140,8 +140,8 @@ def failure_code_init(sub):
 
 def code_gen(blocks):
     """
-    WRITEME 
-    
+    WRITEME
+
     From a list of L{CodeBlock} instances, returns a string
     that executes them all in sequence. eg for C{(decl1, task1,
     cleanup1)} and C{(decl2, task2, cleanup2)} the returned string
@@ -452,14 +452,14 @@ def get_c_sync(r, name, sub):
 def apply_policy(policy, r, name, sub):
     """
     WRITEME
-    
+
     Parameters
     ----------
     policy
         List of functions that map a L{Variable} to a string,
         or a single such function.
     r: L{Variable}
-    
+
     Returns
     -------
     object
@@ -477,17 +477,17 @@ def apply_policy(policy, r, name, sub):
 def struct_variable_codeblocks(variable, policies, id, symbol_table, sub):
     """
     WRITEME
-    
+
     Parameters
     ----------
     variable : a Variable
-    policies : a pair of tuples 
+    policies : a pair of tuples
         (declare_policy, behavior_policy, cleanup_policy) -- at construction.
         (declare_policy, behavior_policy, cleanup_policy)) -- at execution.
         The first list will produce an element of the 'struct_builders' argument
         in struct_gen. The second list will produce an element of the 'blocks'
         argument in struct_gen.
-    id 
+    id
         The id assigned to this variable's task in the computation.
     symbol_table
         A dict that maps variables to variable names. It is not read by this
@@ -1073,7 +1073,7 @@ class CLinker(link.Linker):
                     output_storage=None, keep_lock=False):
         """
         WRITEME
-        
+
         Compiles this linker's fgraph.
 
         Parameters
@@ -1146,7 +1146,7 @@ class CLinker(link.Linker):
                    keep_lock=False):
         """
         WRITEME
-        
+
         Compiles this linker's fgraph and returns a function to perform the
         computations, as well as lists of storage cells for both the inputs
         and outputs.
@@ -1611,7 +1611,7 @@ class _CThunk(object):
 
     Parameters
     ----------
-    cthunk 
+    cthunk
         The CObject pointer used by run_cthunk.
     init_tasks
         WRITEME
