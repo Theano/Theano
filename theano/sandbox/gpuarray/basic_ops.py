@@ -47,7 +47,9 @@ def as_gpuarray(x):
 class Kernel(object):
     """
     This class groups together all the attributes of a gpu kernel.
+
     """
+
     def __init__(self, code, params, name, flags,
                  codevar=None, binvar=None, objvar=None):
         self.code = code
@@ -113,9 +115,9 @@ class Kernel(object):
 class GpuKernelBase(object):
     def gpu_kernels(self, node, name):
         """
-        This is the method to override.  This should return an
-        iterable of Kernel objects that describe the kernels this op
-        will need.
+        This is the method to override. This should return an iterable of Kernel
+        objects that describe the kernels this op will need.
+
         """
         raise MethodNotDefined('gpu_kernels')
 
@@ -552,13 +554,20 @@ cuda_from_gpu = CudaFromGpu()
 
 
 class GpuAlloc(HideC, Alloc):
+    """
+
+    Parameters
+    ----------
+    memset_0
+        It's only an optimized version. True, it means the
+        value is always 0, so the c code call memset as it is faster.
+
+    """
+ 
     __props__ = ('memset_0',)
     _f16_ok = True
 
     def __init__(self, memset_0=False):
-        """memset_0 is only an optimized version. True, it mean the
-        value is always 0, so the c code call memset as it is faster.
-        """
         self.memset_0 = memset_0
 
     def __str__(self):
@@ -777,7 +786,9 @@ class GpuContiguous(Op):
     """
     Always return a c contiguous output. Copy the input only if it is
     not already c contiguous.
+ 
     """
+
     __props__ = ()
     view_map = {0: [0]}
     _f16_ok = True
@@ -835,7 +846,9 @@ gpu_contiguous = GpuContiguous()
 class GpuReshape(HideC, tensor.Reshape):
     """
     Implement Reshape on the gpu.
+
     """
+
     _f16_ok = True
 
     # __hash__, __eq__, __str__ come from tensor.Reshape
@@ -951,6 +964,7 @@ class GpuReshape(HideC, tensor.Reshape):
 
 
 class GpuJoin(HideC, Join):
+
     _f16_ok = True
 
     def make_node(self, axis, *tensors):
