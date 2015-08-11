@@ -1288,7 +1288,6 @@ class PatternSub(LocalOptimizer):
                     return pattern.clone()
             p = self.out_pattern
             new = build(p, u)
-            # print "PatternSub matched:", new
             return [new]
         else:
             return False
