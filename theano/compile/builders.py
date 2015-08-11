@@ -124,13 +124,42 @@ class OpFromGraph(gof.Op):
                          [type() for type in self.output_types])
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
-        ret = super(OpFromGraph, self).make_thunk(node, storage_map,
-                                                  compute_map, no_recycling)
         if not hasattr(self, "fn"):
             self.fn = orig_function(self.new_inputs,
                                     self.new_outputs,
                                     **self.kwargs)
-        return ret
+
+        # Try to return a cthunk. Make pythunk if fail.
+        try:
+            # Use optimized inner fgraph.
+            fg = self.fn.maker.fgraph
+            fgraph = gof.FunctionGraph(fg.inputs, fg.outputs)
+
+            linker = gof.CLinker()
+            linker.accept(fgraph, no_recycling=no_recycling)
+
+            in_storage = [storage_map[var] for var in node.inputs]
+            out_storage = [storage_map[var] for var in node.outputs]
+            fill_storage, i_storage, o_storage = linker.make_thunk(in_storage,
+                                                                   out_storage)
+
+            def rval():
+                fill_storage()
+                for o in node.outputs:
+                    compute_map[o][0] = True
+
+            rval.cthunk = fill_storage.cthunk
+            rval.inputs = i_storage
+            rval.outputs = o_storage
+            rval.lazy = False
+
+            return rval
+        except NotImplementedError:
+            ret = super(OpFromGraph, self).make_thunk(node,
+                                                      storage_map,
+                                                      compute_map,
+                                                      no_recycling)
+            return ret
 
     def perform(self, node, inputs, outputs):
         variables = self.fn(*inputs)
@@ -139,46 +168,6 @@ class OpFromGraph(gof.Op):
             # TODO: when function's output-borrowing semantics are correct,
             # we wont need this copy anymore
             output[0] = variable.copy()
-
-    def __get_codes(self, node):
-        if not hasattr(self, "fn"):
-            self.fn = orig_function(self.new_inputs,
-                                    self.new_outputs,
-                                    **self.kwargs)
-
-        if not getattr(self, 'current_node', None) is node:
-            # clone fgraph and link inner graph to outer inputs
-            fgraph = self.fn.maker.fgraph.clone()
-
-            inner_var = fgraph.inputs + fgraph.outputs
-            outer_var = node.inputs + node.outputs
-
-
-            # rpl = dict([(inner, outer) for inner, outer in
-            #             zip(inner_var, outer_var)])
-            # fgraph = theano.clone(fgraph.outputs, replace=rpl)
-
-            # get necessary c code using CLinker
-            self.linker = gof.CLinker()
-            self.linker.accept(fgraph)
-            self.linker.code_gen()
-
-            return self.linker.init_blocks, self.linker.blocks
-
-    def c_support_code_struct(self, node, name):
-        return ''.join([block.declare for block in self.__get_codes(node)[0]])
-         
-    def c_init_code_struct(self, node, name, sub):
-        return ''.join([block.behavior for block in self.__get_codes(node)[0]])
-
-    def c_cleanup_code_struct(self, node, name):
-        return ''.join([block.cleanup for block in self.__get_codes(node)[0]])
-
-    def c_code(self, node, name, inputs, outputs, sub):
-        return ''.join([block.behavior for block in self.__get_codes(node)[1]])
-
-    def c_code_cleanup(self, node, name, inputs, outputs, sub):
-        return ''.join([block.cleanup for block in self.__get_codes(node)[1]])
 
     def connection_pattern(self, node):
         """
