@@ -635,11 +635,14 @@ class Function(object):
                     
                     # swap variable and value of In instances
                     i.variable = swap_sv
+                    i.value = swap_sv.container
 
                     # In the fgraph we use the cloned SharedVariable
                     swap_sv = swap_sv.clone()
                     
                     # Swap SharedVariable in fgraph
+                    # if inputs was replaced, change self.inputs
+                    fg_cpy.inputs[index] = swap_sv
                     fg_cpy.replace(in_v, swap_sv, reason="Swap SV")
 
         # Delete update if needed
@@ -667,6 +670,7 @@ class Function(object):
             for key in storage_map.keys():
                 if key not in i_o_vars:
                     new_storage_map[memo[key]] = storage_map[key]
+
         if not name and self.name:
             name = self.name + " copy"
 
