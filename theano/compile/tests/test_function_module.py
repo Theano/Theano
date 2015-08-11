@@ -268,6 +268,12 @@ class T_function(unittest.TestCase):
                 if key not in i_o_variables or isinstance(key, theano.tensor.Constant):
                     self.assertTrue(any([ storage is s for s in ori_storages]))
 
+            # Assert storages of SharedVariable without updates are shared
+            for (input, _1, _2), here, there in zip(ori.indices,
+                                                    ori.input_storage,
+                                                    cpy.input_storage):
+                self.assertTrue(here.data is there.data)
+
     def test_swap_SharedVariable(self):
         x = T.fscalar('x')
         # SharedVariable for tests, one of them has update
