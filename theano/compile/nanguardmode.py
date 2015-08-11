@@ -1,10 +1,28 @@
-import logging
 import collections
+import logging
+
 import numpy as np
+
 import theano
+from theano.configparser import config, AddConfigVar, BoolParam
 import theano.tensor as T
 import theano.sandbox.cuda as cuda
 from theano.compile import Mode
+
+AddConfigVar('NanGuardMode.nan_is_error',
+             "Default value for nan_is_error",
+             BoolParam(True),
+             in_c_key=False)
+
+AddConfigVar('NanGuardMode.inf_is_error',
+             "Default value for inf_is_error",
+             BoolParam(True),
+             in_c_key=False)
+
+AddConfigVar('NanGuardMode.big_is_error',
+             "Default value for big_is_error",
+             BoolParam(True),
+             in_c_key=False)
 
 
 logger = logging.getLogger("theano.compile.nanguardmode")
@@ -112,10 +130,19 @@ class NanGuardMode(Mode):
     """
     # We currently loose the 3 first param freuquently, when calling
     # mode.including() and variant.
-    def __init__(self, nan_is_error=True, inf_is_error=True, big_is_error=True,
+    def __init__(self, nan_is_error=None, inf_is_error=None, big_is_error=None,
                  optimizer=None, linker=None):
         self.provided_optimizer = optimizer
         cuda_compile_failed = False
+        if nan_is_error is None:
+            nan_is_error = config.NanGuardMode.nan_is_error
+        if inf_is_error is None:
+            inf_is_error = config.NanGuardMode.inf_is_error
+        if big_is_error is None:
+            big_is_error = config.NanGuardMode.big_is_error
+
+        assert nan_is_error or inf_is_error or big_is_error
+
         if cuda.cuda_available:
             self.guard_input = cuda.fvector('nan_guard')
             if nan_is_error or inf_is_error:
