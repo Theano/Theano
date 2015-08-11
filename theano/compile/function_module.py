@@ -632,14 +632,14 @@ class Function(object):
                 if var in swap_svs_ori:
                     swap_sv = swap[var]
                     checkSV(i.variable, swap_sv)
-                    
+
                     # swap variable and value of In instances
                     i.variable = swap_sv
                     i.value = swap_sv.container
 
                     # In the fgraph we use the cloned SharedVariable
                     swap_sv = swap_sv.clone()
-                    
+
                     # Swap SharedVariable in fgraph
                     # if inputs was replaced, change self.inputs
                     fg_cpy.inputs[index] = swap_sv
