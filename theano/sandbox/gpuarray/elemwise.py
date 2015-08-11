@@ -470,7 +470,8 @@ class GpuElemwise(HideC, Elemwise):
 
 class SupportCodeError(Exception):
     """
-    We do not support certain things (such as the C++ complex struct)
+    We do not support certain things (such as the C++ complex struct).
+
     """
 
 
@@ -571,14 +572,22 @@ class GpuDimShuffle(HideC, DimShuffle):
 
 
 class GpuCAReduceCuda(HideC, CAReduceDtype):
-    """GpuCAReduceCuda is a Reduction along some dimensions by a scalar op.
+    """
+    GpuCAReduceCuda is a Reduction along some dimensions by a scalar op.
 
-    The dimensions along which to reduce is specified by the
-    `reduce_mask` that you pass to the constructor.  The `reduce_mask`
-    is a tuple of booleans (actually integers 0 or 1) that specify for
-    each input dimension, whether to reduce it (1) or not (0).
-
-    For example, when scalar_op is a theano.scalar.basic.Add instance:
+    Parameters
+    ----------
+    reduce-mask
+        The dimensions along which to reduce. The `reduce_mask` is a tuple of
+        booleans (actually integers 0 or 1) that specify for each input
+        dimension, whether to reduce it (1) or not (0).
+    pre_scalar_op
+        If present, must be a scalar op with only 1 input. We will execute it
+        on the input value before reduction.
+    
+    Examples
+    --------
+    When scalar_op is a theano.scalar.basic.Add instance:
 
       - reduce_mask == (1,) sums a vector to a scalar
 
@@ -588,8 +597,10 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
 
       - reduce_mask == (1,1,1) computes the sum of all elements in a 3-tensor.
 
-    :note: any reduce_mask of all zeros is a sort of 'copy', and may
-           be removed during graph optimization
+    Notes
+    -----
+    Any reduce_mask of all zeros is a sort of 'copy', and may be removed during
+    graph optimization.
 
     This Op is a work in progress.
 
@@ -602,9 +613,8 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
     GPUs are not especially well-suited to reduction operations so it is
     quite possible that the GPU might be slower for some cases.
 
-    pre_scalar_op: if present, must be a scalar op with only 1
-    input. We will execute it on the input value before reduction.
     """
+
     _f16_ok = True
 
     def __init__(self, scalar_op, axis=None,
@@ -690,9 +700,10 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         raise MethodNotDefined("")
 
     def supports_c_code(self, inputs):
-        """ Returns True if the current op and reduce pattern
-            has functioning C code """
+        """
+        Returns True if the current op and reduce pattern has functioning C code.
 
+        """
         # If we don't even have the right method, we certainly
         # don't support the C code
         # (This is the test that used to be implemented by
@@ -871,9 +882,10 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         return sio.getvalue()
 
     def _makecall(self, node, name, x, z, fail, pattern=None):
-        """Return a string for making a kernel call.
+        """
+        Return a string for making a kernel call.
 
-            The return value looks something like:
+        The return value looks something like:
 
             .. code-block:: c
 
@@ -972,7 +984,8 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
 
     def _k_decl(self, node, nodename, pattern=None,
                 ndim=None, reduce_mask=None):
-        """Return a string to declare a kernel function
+        """
+        Return a string to declare a kernel function.
 
         The result will look something like this:
 
@@ -989,8 +1002,8 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
                     %(out_dtype)s * Z,
                     const int sZ0)
 
-            Since the nodename is unique, we don't need to put the name
-            of the scalar_op in here.
+        Since the nodename is unique, we don't need to put the name
+        of the scalar_op in here.
 
         """
         in_dtype = "npy_" + node.inputs[0].dtype
@@ -1057,6 +1070,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         Otherwise, check that the scalar op is maximum or minimum
         and return first_item. It should be the first element of the reduction.
         As the maximum and minimum of the same value don't change, this work.
+
         """
         if hasattr(self.scalar_op, 'identity'):
             return str(self.scalar_op.identity)
@@ -1084,15 +1098,27 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
 
     def _assign_reduce(self, node, name, left, right, sub, pre):
         """
-            node: the node argument to this op's c_code
-            name: the name argument to this op's c_code
-            left: a C code string identifying an lvalue
-            right: a C code string identifying an expression
-            sub: the sub argument to this op's c_code
-            pre: If True, we will add the pre_scalar_op.c_code
 
-            returns C code to reduce left and right, assigning the
-            result to left."""
+        Parameters
+        ----------
+        node
+            The node argument to this op's c_code.
+        name
+            The name argument to this op's c_code.
+        left
+            A C code string identifying an lvalue.
+        right
+            A C code string identifying an expression.
+        sub
+            The sub argument to this op's c_code.
+        pre
+            If True, we will add the pre_scalar_op.c_code.
+
+        Returns
+        -------
+            C code to reduce left and right, assigning the result to left.
+
+        """
 
         x, = node.inputs
         in_dtype = x.dtype
@@ -1125,8 +1151,11 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
         """
         WRITEME
 
-        node, name, sub: these should be passed through from the original
-        call to c_code
+        Parameters
+        ----------
+        node, name, sub 
+            These should be passed through from the original call to c_code.
+
         """
         in_dtype = "npy_" + node.inputs[0].dtype
         out_dtype = "npy_" + node.outputs[0].dtype
@@ -1274,9 +1303,11 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
     def c_code_reduce_ccontig(self, sio, node, name, x, z, fail):
         """
         WRITEME
+
         IG: I believe, based on how this is called in c_code, that it
         is for the case where we are reducing on all axes and x is
         C contiguous.
+
         """
         in_dtype = "npy_" + node.inputs[0].dtype
         out_dtype = "npy_" + node.outputs[0].dtype
@@ -1366,8 +1397,13 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
 
     def c_code_reduce_01X(self, sio, node, name, x, z, fail, N):
         """
-        :param N: the number of 1 in the pattern N=1 -> 01, N=2 -> 011 N=3 ->0111
-                  Work for N=1,2,3
+        
+        Parameters
+        ----------
+        N
+            The number of 1 in the pattern N=1 -> 01, N=2 -> 011 N=3 ->0111
+            Work for N=1,2,3.
+
         """
 
         assert N in [1, 2, 3]
@@ -2552,11 +2588,13 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
 
 
 class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
-    """CAReduce that reuse the python code from gpuarray.
+    """
+    CAReduce that reuse the python code from gpuarray.
 
     Too slow for now as it only have a python interface.
 
     """
+
     def __init__(self, scalar_op, axis=None, dtype=None, acc_dtype=None):
         if not hasattr(scalar_op, 'identity'):
             raise ValueError("No identity on scalar op")
