@@ -76,13 +76,13 @@ def add_tag_trace(thing, user_line=1):
     while tr:
         file_path = tr[-1][0]
         rm = False
-        for p in ["theano/tensor/",
-                  "theano/gof/",
-                  "theano/scalar/basic.py",
-                  "theano/sandbox/",
-                  "theano/scan_module/",
-                  "theano/sparse/",
-                  "theano/typed_list/",
+        for p in ["theano/tensor/", "theano\\tensor\\",
+                  "theano/gof/", "theano\\gof\\",
+                  "theano/scalar/basic.py", "theano\\scalar\\basic.py",
+                  "theano/sandbox/", "theano\\sandbox\\",
+                  "theano/scan_module/", "theano\\scan_module\\",
+                  "theano/sparse/", "theano\\sparse\\",
+                  "theano/typed_list/", "theano\\typed_list\\",
                   ]:
             if p in file_path:
                 tr = tr[:-1]
