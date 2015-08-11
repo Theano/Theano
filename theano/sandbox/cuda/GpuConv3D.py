@@ -28,7 +28,7 @@ class GpuConv3D(GpuOp):
 
     def make_node(self, V, W, b, d):
         """
-        
+
         Parameters
         ----------
         V
