@@ -89,7 +89,7 @@ def safe_to_cpu(x):
 def op_lifter(OP, cuda_only=False):
     """
     OP(..., host_from_gpu(), ...) -> host_from_gpu(GpuOP(...))
-    
+
     gpu_from_host(OP(inp0, ...)) -> GpuOP(inp0, ...)
 
     """
