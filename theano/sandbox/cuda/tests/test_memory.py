@@ -138,7 +138,7 @@ def test_memory_lazy():
     # When dtype is float64, only the shared is on the gpu and it is transferd
     # to the cpu for computation. So no extra alloc after compilation.
     # more_alloc1 if after the first compilation, more_alloc2 after the second.
-    for dtype, more_alloc1 in [("float32", 2),
+    for dtype, more_alloc1 in [("float32", 1),
                                ("float64", 0)]:
         print(dtype)
         test_params = np.asarray(np.random.randn(np.prod(shapes)), dtype)
