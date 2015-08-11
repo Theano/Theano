@@ -574,6 +574,10 @@ class FunctionGraph(utils.object2):
                         % (tval_shape, new_tval_shape),
                         r, new_r, str(reason))
 
+        # if inputs was replaced, change self.inputs
+        if r in self.inputs:
+            self.inputs[self.inputs.index(r)] = new_r
+
         for node, i in list(r.clients):  # copy the client list for iteration
             assert (node == 'output' and self.outputs[i] is r) or (node.inputs[i] is r)
             self.change_input(node, i, new_r, reason=reason)

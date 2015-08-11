@@ -326,6 +326,7 @@ class T_function(unittest.TestCase):
                     assert map_SV[key.name].container.storage[0] ==\
                            cpy.fn.storage_map[key][0]
 
+
             second_time = True
 
     def test_copy_delete_updates(self):
