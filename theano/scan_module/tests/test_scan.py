@@ -43,6 +43,11 @@ if theano.config.mode == 'FAST_COMPILE':
 else:
     mode_with_opt = theano.compile.mode.get_default_mode()
 mode_with_gpu = mode_with_opt.including('gpu', 'scan')
+if theano.config.mode in ('DEBUG_MODE', 'DebugMode'):
+    mode_nodebug = theano.compile.mode.get_mode('FAST_RUN')
+else:
+    mode_nodebug = mode_with_opt
+mode_with_gpu_nodebug = mode_nodebug.including('gpu', 'scan')
 
 
 type_eps = {'float64': 1e-7,
@@ -4602,7 +4607,7 @@ class ScanGpuTests:
 
         l1_out, _ = theano.scan(scan_l, sequences=[l1_base],
                                 outputs_info=[zero_output],
-                                mode=self.mode_with_gpu)
+                                mode=self.mode_with_gpu_nodebug)
 
         l2_out = tensor.dot(l1_out, W)
 
@@ -4613,7 +4618,7 @@ class ScanGpuTests:
 
         # Compile the theano function
         feval_backprop = theano.function([xin, yout], cost, updates=updates,
-                                         mode=self.mode_with_gpu)
+                                         mode=self.mode_with_gpu_nodebug)
 
         # Validate that the PushOutScanOutput optimization has been applied
         # by checking the number of outputs of the grad Scan node in the
@@ -4676,7 +4681,8 @@ class T_Scan_Cuda(unittest.TestCase, ScanGpuTests):
     def __init__(self, *args, **kwargs):
         from theano.sandbox import cuda
         self.gpu_backend = cuda
-        self.mode_with_gpu = mode_with_opt.including('gpu', 'scan')
+        self.mode_with_gpu = mode_with_gpu
+        self.mode_with_gpu_nodebug = mode_with_gpu_nodebug
         super(T_Scan_Cuda, self).__init__(*args, **kwargs)
 
     def setUp(self):
@@ -4737,6 +4743,7 @@ class T_Scan_Gpuarray(unittest.TestCase, ScanGpuTests):
         from theano.sandbox import gpuarray
         self.gpu_backend = gpuarray
         self.mode_with_gpu = mode_with_opt.including('gpuarray', 'scan')
+        self.mode_with_gpu_nodebug = mode_nodebug.including('gpuarray', 'scan')
         super(T_Scan_Gpuarray, self).__init__(*args, **kwargs)
 
     def setUp(self):
