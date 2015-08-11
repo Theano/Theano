@@ -275,7 +275,10 @@ class T_function(unittest.TestCase):
                 self.assertTrue(here.data is there.data)
 
     def test_swap_SharedVariable(self):
-        x = T.fscalar('x')
+        i = T.iscalar()
+        x_list = theano.shared(value=numpy.random.rand(10).astype(config.floatX))
+
+        x = T.scalar('x')
         # SharedVariable for tests, one of them has update
         y = theano.shared(value=1, name='y')
         z = theano.shared(value=2, name='z')
@@ -293,7 +296,9 @@ class T_function(unittest.TestCase):
         # for mode in ["FAST_RUN","FAST_COMPILE"]:
         second_time = False
         for mode in ["FAST_RUN","FAST_COMPILE"]:
-            ori = theano.function([x], [out], mode=mode,updates=[(z,z+1),(m,m+2)])
+            ori = theano.function([i], [out], mode=mode,
+                                  updates=[(z,z+1),(m,m+2)],
+                                  givens={x:x_list[i]})
             cpy = ori.copy(swap=swap)
 
             # run fuction several time
@@ -327,6 +332,33 @@ class T_function(unittest.TestCase):
                            cpy.fn.storage_map[key][0]
 
             second_time = True
+
+    def test_swap_SharedVaraile_with_given(self):
+        """
+        A special testcase for logistic_sgd.py in Deep Learning Tutorial
+        This test assert that SharedVariable in different function have same storage
+        """
+        train_x = theano.shared(value=numpy.random.rand(10,10).astype(config.floatX))
+        test_x = theano.shared(value=numpy.random.rand(10,10).astype(config.floatX))
+
+        train_y = theano.shared(value=numpy.random.rand(10,1).astype(config.floatX))
+        test_y = theano.shared(value=numpy.random.rand(10,1).astype(config.floatX))
+
+        i = T.iscalar('index')
+        x = T.vector('x')
+        y = T.vector('y')
+        # this formular has no sense but for a test
+        out = (T.sum(x) - y) ** 2
+        train = theano.function([i], out,
+                                givens={x:train_x[i], y:train_y[i]},
+                                updates={train_x:train_x+0.1})
+
+        test_def = theano.function([i], out, givens={x:test_x[i], y:test_y[i]})
+        test_cpy = train.copy(swap={train_x:test_x, train_y:test_y},
+                              delete_updates=True)
+
+        for in1, in2 in zip( test_def.maker.inputs, test_def.maker.inputs):
+            assert in1.value is in2.value
 
     def test_copy_delete_updates(self):
         x = T.fscalar('x')
