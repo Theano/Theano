@@ -54,8 +54,8 @@ Simple example
 >>> a = theano.tensor.vector("a")      # declare symbolic variable
 >>> b = a + a ** 10                    # build symbolic expression
 >>> f = theano.function([a], b)        # compile function
->>> print f([0, 1, 2])                 # prints `array([0, 2, 1026])`
-
+>>> print f([0, 1, 2])                 
+[    0.     2.  1026.]
 
 ======================================================  =====================================================
         Unoptimized graph                                    Optimized graph
@@ -68,17 +68,27 @@ Symbolic programming = *Paradigm shift*: people need to use it to understand it.
 Exercise 1
 -----------
 
-.. code-block:: python
+.. testcode::
 
   import theano
   a = theano.tensor.vector()      # declare variable
   out = a + a ** 10               # build symbolic expression
   f = theano.function([a], out)   # compile function
   print f([0, 1, 2])
-  # prints `array([0, 2, 1026])`
   
+.. testoutput::
+
+    [    0.     2.  1026.]
+
+.. testcode::
+
   theano.printing.pydotprint_variables(b, outfile="f_unoptimized.png", var_with_name_simple=True)
   theano.printing.pydotprint(f, outfile="f_optimized.png", var_with_name_simple=True)
+  
+.. testoutput::
+
+    The output file is available at f_unoptimized.png
+    The output file is available at f_optimized.png
 
 Modify and execute the example to do this expression: ``a ** 2 + b ** 2 + 2 * a * b``
 
@@ -110,8 +120,10 @@ Where are those optimization applied?
 * Loop fusion
 
 
-.. code-block:: python
+.. testcode::
 
+  import theano.tensor as tt
+  
   p_1 = 1 / (1 + tt.exp(-tt.dot(x, w) - b))
   # 1 / (1 + tt.exp(var)) -> sigmoid(var)
   xent = -y * tt.log(p_1) - (1 - y) * tt.log(1 - p_1)
@@ -141,7 +153,7 @@ Theano can be configured with flags. They can be defined in two ways
 Exercise 2
 -----------
 
-.. code-block:: python
+.. testcode::
     
     import numpy
     import theano
@@ -206,13 +218,13 @@ Exercise 2
 
     # Print the graph used in the slides
     theano.printing.pydotprint(predict,
-                               outfile="pics/logreg_pydotprint_predic.png",
+                               outfile="doc/crei2013/pics/logreg_pydotprint_predic.png",
                                var_with_name_simple=True)
     theano.printing.pydotprint_variables(prediction,
-                               outfile="pics/logreg_pydotprint_prediction.png",
+                               outfile="doc/crei2013/pics/logreg_pydotprint_prediction.png",
                                var_with_name_simple=True)
     theano.printing.pydotprint(train,
-                               outfile="pics/logreg_pydotprint_train.png",
+                               outfile="doc/crei2013/pics/logreg_pydotprint_train.png",
                                var_with_name_simple=True)
 
 Modify and execute the example to run on CPU with floatX=float32

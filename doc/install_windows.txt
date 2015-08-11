@@ -404,7 +404,7 @@ compile C code for CPU execution.
 
 Create a test file containing:
 
-.. code-block:: python
+.. testcode::
 
    import numpy as np
    import time
@@ -422,6 +422,18 @@ Create a test file containing:
    print "NP time: %f[s], theano time: %f[s] (times should be close when run on CPU!)" %(
                                               np_end-np_start, t_end-t_start)
    print "Result difference: %f" % (np.abs(AB-tAB).max(), )
+   
+.. testoutput::
+   :hide:
+   :options: +ELLIPSIS
+   
+   NP time: ...[s], theano time: ...[s] (times should be close when run on CPU!)
+   Result difference: ...
+
+.. code-block:: none
+   
+   NP time: 1.480863[s], theano time: 1.475381[s] (times should be close when run on CPU!)
+   Result difference: 0.000000
 
 Then run it. It should execute without problems and the Theano function
 should run at a speed similar to the regular NumPy
@@ -572,7 +584,7 @@ follows:
      This setting can also be changed in Python for testing purpose (in which
      case it will remain only for the duration of your Python session):
 
-    .. code-block:: python
+    .. testcode::
 
         theano.config.blas.ldflags = "-LX:\\YYY\\YYY -lopenblas"
 

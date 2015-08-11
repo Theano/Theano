@@ -156,12 +156,16 @@ out:
 Defining the methods
 ====================
 
+.. testsetup:: 
+
+    import theano
+
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_2
 
 **c_declare**
 
-.. code-block:: python
+.. testcode::
 
     def c_declare(name, sub):
         return """
@@ -194,7 +198,7 @@ it, it's best to publish it somewhere.
 
 **c_init**
 
-.. code-block:: python
+.. testcode::
 
     def c_init(name, sub):
         return """
@@ -223,7 +227,7 @@ called, without knowing for sure which of the two.
 
 **c_extract**
 
-.. code-block:: python
+.. testcode::
 
     def c_extract(name, sub):
         return """
@@ -262,7 +266,7 @@ API) and we put it in our double variable that we declared previously.
 
 **c_sync**
 
-.. code-block:: python
+.. testcode::
 
     def c_sync(name, sub):
         return """
@@ -324,7 +328,7 @@ than sorry.
 
 **c_cleanup**
 
-.. code-block:: python
+.. testcode::
 
     def c_cleanup(name, sub):
         return ""
@@ -373,7 +377,7 @@ and call it:
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_2
 
-.. code-block:: python
+.. testcode::
    
    from theano import function
    from theano.tensor import double
@@ -462,7 +466,7 @@ Final version
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_2
 
-.. code-block:: python
+.. testcode::
 
    from theano import gof
 
@@ -526,7 +530,7 @@ know how to generate C code.
 
 You can implement c_code for this op. You register it like this:
 
-.. code-block:: python
+.. testcode::
 
    theano.compile.ops.register_deep_copy_op_c_code(YOUR_TYPE_CLASS, THE_C_CODE, version=())
 
@@ -548,7 +552,7 @@ ViewOp to generate C code when working with this type, as
 otherwise it will use Python code instead. This is achieved by
 calling:
 
-.. code-block:: python
+.. testcode::
 
    theano.compile.ops.register_view_op_c_code(YOUR_TYPE_CLASS, THE_C_CODE, version=())
 
@@ -568,7 +572,7 @@ Theano Variable that has a shape attribute (Shape_i returns only one of
 the elements of the shape).
 
 
-.. code-block:: python
+.. testcode::
 
    theano.compile.ops.register_shape_c_code(YOUR_TYPE_CLASS, THE_C_CODE, version=())
    theano.compile.ops.register_shape_i_c_code(YOUR_TYPE_CLASS, THE_C_CODE, CHECK_INPUT, version=())

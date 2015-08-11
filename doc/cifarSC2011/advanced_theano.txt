@@ -95,7 +95,7 @@ Loops
 
 **Scan Example: Computing pow(A,k)**
 
-.. code-block:: python
+.. testcode::
 
   import theano
   import theano.tensor as T
@@ -116,7 +116,10 @@ Loops
                         updates=updates)
 
   print power(range(10),2)
-  #[  0.   1.   4.   9.  16.  25.  36.  49.  64.  81.]
+
+.. testoutput::
+
+    [  0.   1.   4.   9.  16.  25.  36.  49.  64.  81.]
 
 
 **Scan Example: Calculating a Polynomial**
@@ -185,7 +188,7 @@ Profiling
 
 Theano output:
 
-.. code-block:: python
+.. testcode::
 
     """
     Time since import 33.456s
@@ -343,20 +346,18 @@ The graph before optimization:
 The graph after optimization:
 
 >>> theano.printing.debugprint(predict) # doctest: +NORMALIZE_WHITESPACE
-    Elemwise{Composite{GT(scalar_sigmoid((-((-i0) - i1))), i2)}} [@A] ''   4
+Elemwise{Composite{GT(scalar_sigmoid((-((-i0) - i1))), i2)}} [@A] ''   4
      |CGemv{inplace} [@B] ''   3
-     | |Alloc [@C] ''   2
-     | | |TensorConstant{0.0} [@D]
-     | | |Shape_i{0} [@E] ''   1
-     | |   |x [@F]
-     | |TensorConstant{1.0} [@G]
-     | |x [@F]
-     | |w [@H]
-     | |TensorConstant{0.0} [@D]
+     | |AllocEmpty{dtype='float64'} [@C] ''   2
+     | | |Shape_i{0} [@D] ''   1
+     | |   |x [@E]
+     | |TensorConstant{1.0} [@F]
+     | |x [@E]
+     | |w [@G]
+     | |TensorConstant{0.0} [@H]
      |InplaceDimShuffle{x} [@I] ''   0
      | |b [@J]
      |TensorConstant{(1,) of 0.5} [@K]
-
 
 Picture Printing of Graphs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -364,7 +365,7 @@ Picture Printing of Graphs
 
 The graph before optimization:
 
->>> theano.printing.pydotprint(prediction, outfile="pics/logreg_pydotprint_prediction.png", var_with_name_simple=True)
+>>> theano.printing.pydotprint(prediction, outfile="./doc/cifarSC2011/pics/logreg_pydotprint_prediction.png", var_with_name_simple=True)
 The output file is available at pics/logreg_pydotprint_prediction.png
 
 .. image:: ./pics/logreg_pydotprint_prediction.png
@@ -372,7 +373,7 @@ The output file is available at pics/logreg_pydotprint_prediction.png
 
 The graph after optimization:
 
->>> theano.printing.pydotprint(predict, outfile="pics/logreg_pydotprint_predict.png", var_with_name_simple=True)
+>>> theano.printing.pydotprint(predict, outfile="./doc/cifarSC2011/pics/logreg_pydotprint_predict.png", var_with_name_simple=True)
 The output file is available at pics/logreg_pydotprint_predict.png
 
 .. image:: ./pics/logreg_pydotprint_predict.png
@@ -380,7 +381,7 @@ The output file is available at pics/logreg_pydotprint_predict.png
 
 The optimized training graph:
 
->>> theano.printing.pydotprint(train, outfile="pics/logreg_pydotprint_train.png", var_with_name_simple=True)
+>>> theano.printing.pydotprint(train, outfile="./doc/cifarSC2011/pics/logreg_pydotprint_train.png", var_with_name_simple=True)
 The output file is available at pics/logreg_pydotprint_train.png
 
 .. image:: ./pics/logreg_pydotprint_train.png

@@ -3,6 +3,39 @@
 Making arithmetic Ops on double
 ===============================
 
+.. testsetup:: *
+
+   from theano import gof
+
+   class Double(gof.Type):
+
+       def filter(self, x, strict=False, allow_downcast=None):
+           if strict:
+               if isinstance(x, float):
+                   return x
+               else:
+                   raise TypeError('Expected a float!')
+           elif allow_downcast:
+               return float(x)
+           else:   # Covers both the False and None cases.
+               x_float = float(x)
+               if x_float == x:
+                   return x_float
+               else:
+                    raise TypeError('The double type cannot accurately represent '
+                                    'value %s (of type %s): you must explicitly '
+                                    'allow downcasting if you want to do this.'
+                                    % (x, type(x)))
+
+       def values_eq_approx(self, x, y, tolerance=1e-4):
+           return abs(x - y) / (abs(x) + abs(y)) < tolerance
+
+       def __str__(self):
+           return "double"
+
+   double = Double()
+
+
 Now that we have a ``double`` type, we have yet to use it to perform
 computations. We'll start by defining multiplication.
 
@@ -511,7 +544,7 @@ First, we'll instantiate a ``mul`` Op:
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_1
 
-.. code-block:: python
+.. testcode:: mul
 
    from theano import gof
    mul = gof.Op()
@@ -528,7 +561,7 @@ Apply node with an output Variable of type ``double``.
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_1
 
-.. code-block:: python
+.. testcode:: mul
 
    def make_node(x, y):
        if x.type != double or y.type != double:
@@ -563,7 +596,7 @@ contain a single storage cell for the multiplication's variable.
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_1
-.. code-block:: python
+.. testcode:: mul
 
    def perform(node, inputs, output_storage):
        x, y = inputs[0], inputs[1]
@@ -598,6 +631,7 @@ Trying out our new Op
 
 In the following code, we use our new Op:
 
+>>> import theano
 >>> x, y = double('x'), double('y')
 >>> z = mul(x, y)
 >>> f = theano.function([x, y], z)
@@ -627,7 +661,7 @@ by modifying ``make_node`` to accept Python ``int`` or ``float`` as
 
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_1
-.. code-block:: python
+.. testcode:: mul
 
    def make_node(x, y):
        if isinstance(x, (int, float)):
@@ -676,7 +710,7 @@ arithmetic operators:
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_extending.test_extending_1
 
-.. code-block:: python
+.. testcode::
 
    from theano import gof
 
