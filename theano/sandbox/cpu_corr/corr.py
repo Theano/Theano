@@ -381,6 +381,39 @@ class CpuCorrMM(BaseCpuCorrMM):
         # TODO broadcastable checks
         return Apply(self, [img, kern], [img.type()])
 
+    def infer_shape(self, node, input_shape):
+        if self.border_mode == "half":
+            padH = padW = -1
+        elif self.border_mode == "full":
+            padH = padW = -2
+        elif isinstance(self.border_mode, tuple):
+            padH, padW = self.border_mode
+        else:
+            assert self.border_mode == "valid"
+            padH = padW = 0
+        dH, dW = self.subsample
+        imshp = input_shape[0]
+        kshp = input_shape[1]
+        bsize, ssize, imshp = imshp[0], imshp[1], list(imshp[2:])
+        nkern, ssize, kshp = kshp[0], kshp[1], list(kshp[2:])
+        kH, kW = kshp
+        if padH == -1:
+            padH = kH / 2
+        elif padH == -2:
+            padH = kH - 1
+        elif padH < 0:
+            raise ValueError("BaseCpuCorrMM: padH must be >= -2")
+        if padW == -1:
+            padW = kW / 2;
+        elif padW == -2:
+            padW = kW - 1
+        elif padW < 0:
+            raise ValueError("BaseCpuCorrMM: padW must be >= -2")
+        out_shp0 = (imshp[0]+2*padH-kshp[0])/dH +1
+        out_shp1 = (imshp[1]+2*padW-kshp[1])/dW +1
+        out_shp = (out_shp0, out_shp1)
+        return [(bsize, nkern)+out_shp]
+
     def c_code(self, node, nodename, inp, out_, sub):
         bottom, weights = inp
         top, = out_
@@ -430,6 +463,39 @@ class CpuCorrMM_gradWeights(BaseCpuCorrMM):
                          False, False]
         # TODO broadcastable checks
         return Apply(self, [img, topgrad] + height_width, [img.type()])
+
+    def infer_shape(self, node, input_shape):
+        if self.border_mode == "half":
+            padH = padW = -1
+        elif self.border_mode == "full":
+            padH = padW = -2
+        elif isinstance(self.border_mode, tuple):
+            padH, padW = self.border_mode
+        else:
+            assert self.border_mode == "valid"
+            padH = padW = 0
+        dH, dW = self.subsample
+        imshp = input_shape[0]
+        topshp = input_shape[1]
+        bsize, ssize, imshp = imshp[0], imshp[1], list(imshp[2:])
+        bsize, nkern, topshp = topshp[0], topshp[1], list(topshp[2:])
+        height_width = node.inputs[-1]
+        if ((dH != 1) or (padH == -1)):
+            # vertical subsampling or half padding, kernel height is specified
+            kH = height_width[0]
+        elif padH == -2:
+            # vertical full padding, we can infer the kernel height
+            kH = 2 - imshp[0] + (topshp[0] - 1) * dH
+        else:
+            # explicit padding, we can infer the kernel height
+            kH = imshp[0] + 2*padH - (topshp[0] - 1) * dH
+        if ((dW != 1) or (padW == -1)):
+            kW = height_width[1]
+        elif (padW == -2):
+            kW = 2 - imshp[1] + (topshp[1] - 1) * dW
+        else:
+            kW = imshp[1] + 2*padW - (topshp[1] - 1) * dW
+        return [(nkern, ssize, kH, kW)]
 
     def c_code(self, node, nodename, inp, out_, sub):
         bottom, top = inp[:2]
@@ -485,6 +551,33 @@ class CpuCorrMM_gradInputs(BaseCpuCorrMM):
                          False, False]
         # TODO broadcastable checks
         return Apply(self, [kern, topgrad] + height_width, [kern.type()])
+
+    def infer_shape(self, node, input_shape):
+        if self.border_mode == "half":
+            padH = padW = -1
+        elif self.border_mode == "full":
+            padH = padW = -2
+        elif isinstance(self.border_mode, tuple):
+            padH, padW = self.border_mode
+        else:
+            assert self.border_mode == "valid"
+            padH = padW = 0
+        dH, dW = self.subsample
+        kshp = input_shape[0]
+        topshp = input_shape[1]
+        nkern, ssize, kshp = kshp[0], kshp[1], list(kshp[2:])
+        bsize, nkern, topshp = topshp[0], topshp[1], list(topshp[2:])
+        height_width = node.inputs[-1]
+        if dH != 1:
+            out_shp0 = height_width[0]
+        else:
+            out_shp0 = (topshp[0] - 1) * dH + kshp[0] - 2*padH
+        if dW != 1:
+            out_shp1 = height_width[1]
+        else:
+            out_shp1 = (topshp[1] - 1) * dW + kshp[1] - 2*padW
+        out_shp = (out_shp0, out_shp1)
+        return [(bsize, ssize)+out_shp]
 
     def c_code(self, node, nodename, inp, out_, sub):
         weights, top = inp[:2]

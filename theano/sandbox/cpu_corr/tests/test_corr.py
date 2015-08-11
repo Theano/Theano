@@ -190,8 +190,6 @@ class TestCorr2D(utt.InferShapeTester):
                           'valid', input=T.dtensor3())
 
     def test_infer_shape(self):
-        # Note: infer_shape is incomplete and thus input and filter shapes
-        # must be provided explicitly
 
         def rand(*shape):
             r = numpy.asarray(numpy.random.rand(*shape), dtype='float64')
@@ -230,9 +228,7 @@ class TestCorr2D(utt.InferShapeTester):
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
                                 [corr(border_mode='valid')(adtens,
-                                                           bdtens,
-                                                           aivec_val,
-                                                           bivec_val)],
+                                                           bdtens)],
                                 [adtens_val, bdtens_val], corr)
 
         self._compile_and_check([adtens, bdtens],
