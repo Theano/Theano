@@ -748,7 +748,7 @@ def local_gpu_careduce(node):
             x, = node.inputs
             # Otherwise, is some corner case, we will try to move it
             # to the GPU later and this cause not wanted user warning.
-            if x.dtype != 'float32':
+            if x.dtype != 'float32' or node.outputs[0].dtype != "float32":
                 return
             replace = False
             if x.owner and isinstance(x.owner.op, HostFromGpu):
