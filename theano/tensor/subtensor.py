@@ -2033,10 +2033,14 @@ class AdvancedSubtensor(Op):
 
         index = tuple(map(as_index_variable, index))
         bcast = adv_index_broadcastable_pattern(x, index)
-        return gof.Apply(self,
-                         (x,) + index,
-                         [theano.tensor.tensor(dtype=x.type.dtype,
-                                               broadcastable=bcast)])
+
+        if bcast:
+            variable = theano.tensor.tensor(
+                dtype=x.type.dtype, broadcastable=bcast)
+        else:
+            variable = theano.scalar.Scalar(dtype=x.type.dtype)()
+
+        return gof.Apply(self, (x,) + index, [variable])
 
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
