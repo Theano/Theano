@@ -2438,7 +2438,7 @@ class GpuReshape(tensor.Reshape, GpuOp):
         out[0] = x.reshape(tuple(shp))
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         x, shape = inputs
@@ -2454,6 +2454,7 @@ class GpuReshape(tensor.Reshape, GpuOp):
         assert (PyArray_NDIM(%(shape)s) == 1);
         if (PyArray_DIM(%(shape)s, 0) != %(new_ndim)s)
         {
+            Py_XDECREF(new_shape);
             PyErr_Format(PyExc_ValueError,
                          "GpuReshape: given shape is of incorrect "
                          "length (%%d should be %%d).",
@@ -2470,6 +2471,7 @@ class GpuReshape(tensor.Reshape, GpuOp):
             {
                 if (compute_axis != -1)
                 {
+                    Py_XDECREF(new_shape);
                     PyErr_Format(PyExc_ValueError,
                                  "GpuReshape: only one -1 is accepted "
                                  "in the new shape, but got two at "
@@ -2505,10 +2507,10 @@ class GpuReshape(tensor.Reshape, GpuOp):
             {
                 int ws = snprintf(shape_from + offset, 128 - offset,
                         " %%d,", shape_from_py[i]);
-                offset += ws; 
+                offset += ws;
                 if ( ws < 0 || offset >= 128 )
                     break;
-            }   
+            }
 
             shape_from[0]='(';
             if(offset < 128)
@@ -2519,6 +2521,7 @@ class GpuReshape(tensor.Reshape, GpuOp):
 
             PyObject *shape_to_py = PyObject_Str(new_shape);
             const char *shape_to = PyString_AsString(shape_to_py);
+            Py_XDECREF(new_shape);
             PyErr_Format(PyExc_ValueError,
                          "GpuReshape: cannot reshape input of shape "
                          "%%s to shape %%s.", shape_from, shape_to);
@@ -2527,6 +2530,7 @@ class GpuReshape(tensor.Reshape, GpuOp):
 
         Py_XDECREF(%(output)s);
         %(output)s = (CudaNdarray*) CudaNdarray_Reshape(%(x)s, new_shape);
+        Py_XDECREF(new_shape);
         if (%(output)s == NULL)
         {
             %(fail)s;
@@ -2974,7 +2978,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
         return Apply(self, [x_, y_, ilist_], [x_.type()])
 
     def c_code_cache_version(self):
-        return (3,)
+        return (6,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         active_device_no = theano.sandbox.cuda.active_device_number()
@@ -3023,15 +3027,23 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
                                           int stridesY1,
                                           float *Y ,
                                           long *d_indices_arr,
-                                          int num)
+                                          int num,
+                                          int* err)
         {
              for (int i = (blockIdx.x); i < num; i += gridDim.x)
              {
                   for(int j = (threadIdx.x); j < numColsX;j += blockDim.x)
                   {
                       int x_row = d_indices_arr[i];
+                      if(x_row < 0)
+                          x_row += numRowsX;
                       int y_row = i;
-                      atomicAdd(&X[(x_row * stridesX0) + (j * stridesX1)], Y[(y_row * stridesY0) + (j * stridesY1)]);
+                      if(x_row < numRowsX && x_row >= 0){
+                        atomicAdd(&X[(x_row * stridesX0) + (j * stridesX1)],
+                                  Y[(y_row * stridesY0) + (j * stridesY1)]);
+                      } else {
+                        *err = 1;
+                      }
                   }
              }
              return;
@@ -3039,64 +3051,78 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
 
         int CudaNdarray_vector_add_fast(CudaNdarray* py_self,
             CudaNdarray* py_other, PyArrayObject *indices_arr)
-	{
-     		const int *shapeX = CudaNdarray_HOST_DIMS(py_self);
-     		const int *shapeY = CudaNdarray_HOST_DIMS(py_other);
-     		const int *strX   = CudaNdarray_HOST_STRIDES(py_self);
-     		const int *strY   = CudaNdarray_HOST_STRIDES(py_other);
-     		unsigned int size = (unsigned int)PyArray_SIZE(indices_arr);
-                if(size == 0){
-                    return 0;
-                }
-     		unsigned int numcolsX = shapeX[1];
-     		unsigned int num_threads_per_block = std::min(numcolsX, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
-     		unsigned int num_blocks = std::min(size ,(unsigned int)NUM_VECTOR_OP_BLOCKS);
+        {
+            if(init_err_var()!= 0) return -1;
 
-     		dim3 n_blocks(num_blocks);
-     		dim3 n_threads(num_threads_per_block);
-     		long *d_indices_arr = NULL;
-     		PyArrayObject *cpu_indices_arr = PyArray_GETCONTIGUOUS(indices_arr);
-     		d_indices_arr = (long*)device_malloc(PyArray_NBYTES(cpu_indices_arr));
-
-                if(!d_indices_arr)
-                    return -1;
-
-     		cudaError_t err = cudaMemcpy(d_indices_arr,
-                                             PyArray_DATA(cpu_indices_arr),
-                                             PyArray_NBYTES(cpu_indices_arr),
-                                             cudaMemcpyHostToDevice);
-                if(err != cudaSuccess){
-                    PyErr_Format(
-                        PyExc_RuntimeError,
-                        "GpuAdvancedIncSubtensor1_dev20: cudaMemcpy returned an error: %%s",
-                        cudaGetErrorString(err));
-                    return -1;
-                }
-
-     		k_vector_add_fast<<<n_blocks, n_threads>>>(shapeX[0],
-                                                           shapeX[1],
-                                                           strX[0],
-                                                           strX[1],
-                                                           CudaNdarray_DEV_DATA(py_self),
-                                                           shapeY[0],
-                                                           shapeY[1],
-                                                           strY[0],
-                                                           strY[1],
-                                                           CudaNdarray_DEV_DATA(py_other),
-                                                           d_indices_arr,
-                                                           PyArray_SIZE(indices_arr)
-                                                          );
-                device_free(d_indices_arr);
-                Py_XDECREF(cpu_indices_arr);
-                err = cudaGetLastError();
-                if(err != cudaSuccess){
-                    PyErr_Format(
-                        PyExc_RuntimeError,
-                        "GpuAdvancedIncSubtensor1_dev20: cuda error: %%s",
-                        cudaGetErrorString(err));
-                    return -1;
-                }
+            const int *shapeX = CudaNdarray_HOST_DIMS(py_self);
+            const int *shapeY = CudaNdarray_HOST_DIMS(py_other);
+            const int *strX   = CudaNdarray_HOST_STRIDES(py_self);
+            const int *strY   = CudaNdarray_HOST_STRIDES(py_other);
+            unsigned int size = (unsigned int)PyArray_SIZE(indices_arr);
+            if(size == 0){
                 return 0;
+            }
+            unsigned int numcolsX = shapeX[1];
+            unsigned int num_threads_per_block = std::min(
+                numcolsX, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
+            unsigned int num_blocks = std::min(
+                size, (unsigned int)NUM_VECTOR_OP_BLOCKS);
+
+            dim3 n_blocks(num_blocks);
+            dim3 n_threads(num_threads_per_block);
+            long *d_indices_arr = NULL;
+            PyArrayObject *cpu_indices_arr = PyArray_GETCONTIGUOUS(
+                indices_arr);
+            d_indices_arr = (long*)device_malloc(
+                PyArray_NBYTES(cpu_indices_arr));
+
+            if(!d_indices_arr)
+                return -1;
+
+            cudaError_t err = cudaMemcpy(d_indices_arr,
+                                         PyArray_DATA(cpu_indices_arr),
+                                         PyArray_NBYTES(cpu_indices_arr),
+                                         cudaMemcpyHostToDevice);
+            if(err != cudaSuccess){
+                PyErr_Format(
+                    PyExc_RuntimeError,
+                    "GpuAdvancedIncSubtensor1_dev20:"
+                    " cudaMemcpy returned an error: %%s",
+                    cudaGetErrorString(err));
+                return -1;
+            }
+
+            k_vector_add_fast<<<n_blocks, n_threads>>>(
+                shapeX[0],
+                shapeX[1],
+                strX[0],
+                strX[1],
+                CudaNdarray_DEV_DATA(py_self),
+                shapeY[0],
+                shapeY[1],
+                strY[0],
+                strY[1],
+                CudaNdarray_DEV_DATA(py_other),
+                d_indices_arr,
+                PyArray_SIZE(indices_arr),
+                err_var
+            );
+            int index_err = check_err_var();
+
+            device_free(d_indices_arr);
+            Py_XDECREF(cpu_indices_arr);
+
+            if(index_err != 0) return -1;
+
+            err = cudaGetLastError();
+            if(err != cudaSuccess){
+                PyErr_Format(
+                    PyExc_RuntimeError,
+                    "GpuAdvancedIncSubtensor1_dev20: cuda error: %%s",
+                    cudaGetErrorString(err));
+                return -1;
+            }
+            return 0;
         }
 
         """ % locals()
@@ -3513,6 +3539,9 @@ class GpuAllocEmpty(GpuOp):
     def make_node(self, *shape):
         shape, output = self.validate_shape(shape)
         output.tag.values_eq_approx = tensor.type.values_eq_approx_always_true
+        # The outut can contain nan/inf.  output.type is a new
+        # instance, so we can do this only for that variable.
+        output.type.filter_checks_isfinite = False
         return Apply(self, shape, [output])
 
     def perform(self, node, inputs, out_):

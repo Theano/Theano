@@ -5,23 +5,71 @@ from six.moves import xrange
 
 import theano
 from theano.tensor import basic
-from theano.tensor import nlinalg
+from theano.tensor import nlinalg  # noqa
 from theano import gof, scalar
 from theano.gradient import DisconnectedType
 tensor = basic
 
 
+class CpuContiguous(theano.Op):
+    """
+    Check to see if the input is c-contiguous,
+    if it is, do nothing, else return a contiguous array
+    """
+    __props__ = ()
+    view_map = {0: [0]}
+
+    def make_node(self, x):
+        x_ = theano.tensor.as_tensor_variable(x)
+        return theano.Apply(self, [x_], [x_.type()])
+
+    def perform(self, node, inputs, output_storage):
+        x, = inputs
+        y = output_storage[0]
+        # if the ouput is contiguous do nothing, else copy
+        # the input
+        if not x.flags['C_CONTIGUOUS']:
+            x = x.copy()
+        assert x.flags['C_CONTIGUOUS']
+        y[0] = x
+
+    def c_code(self, node, name, inames, onames, sub):
+        x, = inames
+        y, = onames
+        code = """
+            if (!PyArray_CHKFLAGS(%(x)s, NPY_ARRAY_C_CONTIGUOUS)){
+                // check to see if output is contiguous first
+                if (%(y)s != NULL &&
+                    PyArray_CompareLists(PyArray_DIMS(%(y)s), PyArray_DIMS(%(x)s), PyArray_NDIM(%(x)s)) &&
+                    PyArray_CHKFLAGS(%(y)s, NPY_ARRAY_C_CONTIGUOUS)){
+                    PyArray_CopyInto(%(y)s, %(x)s);
+                }
+                else{
+                    Py_XDECREF(%(y)s);
+                    %(y)s = PyArray_GETCONTIGUOUS(%(x)s);
+                }
+            }
+            else{
+                Py_XINCREF(%(x)s);
+                Py_XDECREF(%(y)s);
+                %(y)s = %(x)s;
+            }
+            """ % locals()
+        return code
+
+    def c_code_cache_version(self):
+        return (1,)
+
+cpu_contiguous = CpuContiguous()
+
+
 class CumsumOp(theano.Op):
     # See function cumsum for docstring
+
+    __props__ = ("axis",)
+
     def __init__(self, axis=None):
         self.axis = axis
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.axis == other.axis)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.axis)
 
     def make_node(self, x):
         x = basic.as_tensor_variable(x)
@@ -135,15 +183,11 @@ def cumsum(x, axis=None):
 
 class CumprodOp(theano.Op):
     # See function cumprod for docstring
+
+    __props__ = ("axis",)
+
     def __init__(self, axis=None):
         self.axis = axis
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.axis == other.axis)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.axis)
 
     def make_node(self, x):
         x = basic.as_tensor_variable(x)
@@ -259,6 +303,8 @@ def cumprod(x, axis=None):
 
 class DiffOp(theano.Op):
     # See function diff for docstring
+    __props__ = ("n", "axis")
+
     def __init__(self, n=1, axis=-1):
         self.n = n
         self.axis = axis
@@ -266,14 +312,6 @@ class DiffOp(theano.Op):
         # TODO, make an optimization that remove this op in this case.
         if n == 0:
             self.view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.n == other.n and
-                self.axis == other.axis)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.n) ^ hash(self.axis)
 
     def make_node(self, x):
         x = basic.as_tensor_variable(x)
@@ -308,9 +346,6 @@ class DiffOp(theano.Op):
         out_shape[self.axis] = out_shape[self.axis] - self.n
         return [out_shape]
 
-    def __str__(self):
-        return self.__class__.__name__
-
 
 def diff(x, n=1, axis=-1):
     """Calculate the n-th order discrete difference along given axis.
@@ -340,6 +375,7 @@ class BinCountOp(theano.Op):
     compatible_type = ('int8', 'int16', 'int32', 'int64',
                        'uint8', 'uint16', 'uint32', 'uint64')
     """Tuple of all compatible dtype for the parameter of this op."""
+    __props__ = ("minlength",)
 
     def __init__(self, minlength=None):
         self.minlength = minlength
@@ -350,17 +386,10 @@ class BinCountOp(theano.Op):
                     "BinCountOp with minlength attribute"
                     " requires NumPy 1.6 or higher.")
 
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.minlength == other.minlength)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.minlength)
-
     def make_node(self, x, weights):
         warnings.warn((
             "Tile op is deprecated, use tile function instead."),
-                      stacklevel=3)
+            stacklevel=3)
 
         x = basic.as_tensor_variable(x)
 
@@ -431,9 +460,6 @@ class BinCountOp(theano.Op):
         if self.minlength is not None:
             m = basic.maximum(m, self.minlength)
         return [[m]]
-
-    def __str__(self):
-        return self.__class__.__name__
 
 
 def bincount(x, weights=None, minlength=None, assert_nonneg=False):
@@ -534,16 +560,10 @@ def compress(condition, x, axis=None):
 
 class RepeatOp(theano.Op):
     # See the repeat function for docstring
+    __props__ = ("axis",)
 
     def __init__(self, axis=None):
         self.axis = axis
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.axis == other.axis)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.axis)
 
     def make_node(self, x, repeats):
         x = basic.as_tensor_variable(x)
@@ -646,9 +666,6 @@ class RepeatOp(theano.Op):
                 out_shape[self.axis] = theano.tensor.sum(repeats, dtype=dtype)
         return [out_shape]
 
-    def __str__(self):
-        return self.__class__.__name__
-
 
 def repeat(x, repeats, axis=None):
     """Repeat elements of an array.
@@ -678,49 +695,42 @@ def repeat(x, repeats, axis=None):
     if repeats.ndim == 1:
         return RepeatOp(axis=axis)(x, repeats)
     else:
-        if axis == None:
-           axis = 0 
-           x = x.flatten()
+        if axis is None:
+            axis = 0
+            x = x.flatten()
         else:
             if axis >= x.ndim:
                 raise ValueError('Axis should not exceed x.ndim-1.')
             if axis < 0:
-                axis = x.ndim+axis
+                axis = x.ndim + axis
 
         shape = [x.shape[i] for i in xrange(x.ndim)]
-        
+
         # shape_ is the shape of the intermediate tensor which has
         # an additional dimension comparing to x. We use alloc to
         # allocate space for this intermediate tensor to replicate x
         # along that additional dimension.
         shape_ = shape[:]
-        shape_.insert(axis+1, repeats)
+        shape_.insert(axis + 1, repeats)
 
         # shape is now the shape of output, where shape[axis] becomes
         # shape[axis]*repeats.
-        shape[axis] = shape[axis]*repeats
+        shape[axis] = shape[axis] * repeats
 
-        # dims_ is the dimension of that intermediate tensor. 
+        # dims_ is the dimension of that intermediate tensor.
         dims_ = list(numpy.arange(x.ndim))
-        dims_.insert(axis+1, 'x')
+        dims_.insert(axis + 1, 'x')
 
         # After the original tensor is duplicated along the additional
-        # dimension, we reshape it to the expected output shape, and 
+        # dimension, we reshape it to the expected output shape, and
         # return the output z.
-        z = tensor.alloc(x.dimshuffle(*dims_), *shape_).reshape(shape) 
+        z = tensor.alloc(x.dimshuffle(*dims_), *shape_).reshape(shape)
         return z
 
- 
+
 class Bartlett(gof.Op):
     # See function bartlett for docstring
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, M):
         M = tensor.as_tensor_variable(M)
@@ -775,14 +785,7 @@ def bartlett(M):
 
 class FillDiagonal(gof.Op):
     # See function fill_diagonal for docstring
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def infer_shape(self, node, in_shapes):
         return [in_shapes[0]]
@@ -863,14 +866,7 @@ def fill_diagonal(a, val):
 
 class FillDiagonalOffset(gof.Op):
     # See function fill_diagonal_offset for docstring
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def infer_shape(self, node, in_shapes):
         return [in_shapes[0]]
@@ -1007,62 +1003,76 @@ def to_one_hot(y, nb_class, dtype=None):
                                       1)
     return ret
 
+
 class Unique(theano.Op):
     """
     Wraps numpy.unique.
-    
-    This op is not implemented on the GPU. 
-    """     
+    This op is not implemented on the GPU.
+
+    Examples
+    ========
+    >>> import numpy as np
+
+    >>> x = theano.tensor.vector()
+    >>> f = theano.function([x], Unique(True, True, False)(x))
+    >>> f([1, 2., 3, 4, 3, 2, 1.])
+    [array([ 1.,  2.,  3.,  4.]), array([0, 1, 2, 3]), array([0, 1, 2, 3, 2, 1, 0])]
+
+    >>> y = theano.tensor.matrix()
+    >>> g = theano.function([y], Unique(True, True, False)(y))
+    >>> g([[1, 1, 1.0], (2, 3, 3.0)])
+    [array([ 1.,  2.,  3.]), array([0, 3, 4]), array([0, 0, 0, 1, 2, 2])]
+    """
     __props__ = ("return_index", "return_inverse", "return_counts")
 
-    def __init__(self, return_index=False, return_inverse=False, 
+    def __init__(self, return_index=False, return_inverse=False,
                  return_counts=False):
         self.return_index = return_index
         self.return_inverse = return_inverse
-        self.return_counts = return_counts   
+        self.return_counts = return_counts
         numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
-        if self.return_counts == True and bool(numpy_ver < [1, 9]) :
+        if self.return_counts and bool(numpy_ver < [1, 9]):
             raise RuntimeError(
                 "Numpy version = " + np.__version__ +
                 ". Option 'return_counts=True' works starting"
                 " from version 1.9.0.")
 
     def make_node(self, x):
-        x = basic.as_tensor_variable(x)        
+        x = basic.as_tensor_variable(x)
         outputs = [basic.TensorType(broadcastable=[False], dtype=x.dtype)()]
         typ = basic.TensorType(broadcastable=[False], dtype='int64')
-        if self.return_index :
+        if self.return_index:
             outputs.append(typ())
-        if self.return_inverse :
+        if self.return_inverse:
             outputs.append(typ())
-        if self.return_counts :
-            outputs.append(typ())            
+        if self.return_counts:
+            outputs.append(typ())
         return theano.Apply(self, [x], outputs)
 
     def perform(self, node, inputs, output_storage):
         x = inputs[0]
         z = output_storage
-        param = {}       
-        if self.return_index : 
+        param = {}
+        if self.return_index:
             param['return_index'] = True
-        if self.return_inverse :
+        if self.return_inverse:
             param['return_inverse'] = True
         if self.return_counts:
             param['return_counts'] = True
-        outs = np.unique(x,**param)
+        outs = np.unique(x, **param)
         if ((not self.return_inverse) and
                 (not self.return_index) and
                 (not self.return_counts)):
-            z[0][0]=outs
-        else :
-            for i in range(len(outs)): 
+            z[0][0] = outs
+        else:
+            for i in range(len(outs)):
                 z[i][0] = outs[i]
-                
+
     def infer_shape(self, node, i0_shapes):
         ret = node.fgraph.shape_feature.default_infer_shape(node, i0_shapes)
-        if self.return_inverse :
+        if self.return_inverse:
             shape = (basic.prod(i0_shapes[0]), )
-            if self.return_index :
+            if self.return_index:
                 ret[2] = shape
                 return ret
             ret[1] = shape

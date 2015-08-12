@@ -164,7 +164,7 @@ def do_setup():
           install_requires=['numpy>=1.6.2', 'scipy>=0.11', 'six>=1.9.0'],
           package_data={
               '': ['*.txt', '*.rst', '*.cu', '*.cuh', '*.c', '*.sh', '*.pkl',
-                   '*.h', 'ChangeLog'],
+                   '*.h', '*.cpp', 'ChangeLog'],
               'theano.misc': ['*.sh']
           },
           scripts=['bin/theano-cache', 'bin/theano-nose', 'bin/theano-test'],

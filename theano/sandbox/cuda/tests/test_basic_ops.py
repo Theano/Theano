@@ -374,6 +374,11 @@ def test_reshape():
     except ValueError:
         pass
 
+    # Test zero dimensions are allowed
+    x = T.vector('x')
+    f_reshp = theano.function([x], x.reshape((0,100)), mode=mode_with_gpu)
+    assert f_reshp(numpy.ndarray((0,), dtype='float32')).shape == (0,100)
+
 
 def test_alloc_empty():
     # Test that we allocated correctly

@@ -21,14 +21,18 @@ Montreal).
 News
 ====
 
+* We added support for :attr:`CNMeM <config.lib.cnmem>` to speed up
+  the GPU memory allocation.
+
+* Theano 0.7 was released 26th March 2015. Everybody is encouraged to update.
+
 * We support `cuDNN <http://deeplearning.net/software/theano/library/sandbox/cuda/dnn.html>`_ if it is installed by the user.
+
 * Open Machine Learning Workshop 2014 `presentation <omlw2014/omlw_presentation.pdf>`_.
 
 * Colin Raffel `tutorial on Theano <http://nbviewer.ipython.org/github/craffel/theano-tutorial/blob/master/Theano%20Tutorial.ipynb>`_.
 
 * Ian Goodfellow did a `12h class with exercises on Theano <https://github.com/goodfeli/theano_exercises>`_.
-
-* Theano 0.6 was released. Everybody is encouraged to update.
 
 * New technical report on Theano: `Theano: new features and speed improvements <http://arxiv.org/abs/1211.5590>`_.
 
@@ -75,11 +79,11 @@ installation and configuration, see :ref:`installing Theano <install>`.
 
   .. raw:: html
 
-     <a href="https://crate.io/packages/Theano/"><img src="https://pypip.in/v/Theano/badge.png" alt="Latest PyPI version" /></a>&nbsp;
+     <a href="https://crate.io/packages/Theano/"><img src="https://img.shields.io/pypi/v/Theano.svg" alt="Latest PyPI version" /></a>&nbsp;
 
   .. raw:: html
 
-     <a href="https://crate.io/packages/Theano/"><img src="https://pypip.in/d/Theano/badge.png" alt="Number of PyPI downloads" /></a>&nbsp;
+     <a href="https://crate.io/packages/Theano/"><img src="https://img.shields.io/pypi/dm/Theano.svg" alt="Number of PyPI downloads" /></a>&nbsp;
 
 .. _available on PyPI: http://pypi.python.org/pypi/Theano
 .. _Related Projects: https://github.com/Theano/Theano/wiki/Related-projects
@@ -160,13 +164,71 @@ Community
 
 * Register to `theano-buildbot`_ if you want to receive our daily buildbot email.
 
-* Ask/view questions/answers at `metaoptimize/qa/tags/theano`_ (it's like stack overflow for machine learning)
+* Ask/view questions/answers at `StackOverflow`_
 
 * We use `Github tickets <http://github.com/Theano/Theano/issues>`__ to keep track of issues
   (however, some old tickets can still be found on
   `Assembla <http://www.assembla.com/spaces/theano/tickets>`__).
 
 * Come visit us in Montreal! Most developers are students in the LISA_ group at the `University of Montreal`_.
+
+
+.. _support:
+
+Help!
+=====
+
+How to seek help
+---------------
+
+The appropriate venue for seeking help depends on the kind of question you have.
+
+* How do I? -- `theano-users`_ mailing list or `StackOverflow`_
+* I got this error, why? -- `theano-users`_ mailing list or `StackOverflow`_ (please include the *full* error message, even if it's long)
+* I got this error and I'm sure it's a bug -- `Github ticket <http://github.com/Theano/Theano/issues>`__
+* I have an idea/request -- post the suggestion to `theano-dev`_ or, even better, implement the idea and submit a `GitHub <https://github.com/Theano/Theano/pulls>`__ pull request!
+* Why do you? -- `theano-users`_ mailing list (not appropriate for StackOverflow)
+* When will you? -- `theano-dev`_ mailing list (not appropriate for StackOverflow)
+
+Please do take some time to search for similar questions that were asked and answered in the past. If you find something
+similar that doesn't fully answer your question, it can be helpful to say something like "I found X but it doesn't
+address facet Y" and link to the previous discussion.
+
+When asking questions on StackOverflow, please use the *theano* tag, so your question can be found, and follow
+StackOverflow's guidance on `asking questions <http://stackoverflow.com/help/asking>`__. Consider also using the
+*python* and *numpy* tags, especially if you are unsure which library your problem relates to.
+
+It's often helpful to include the following details with your question:
+
+* If you have an error, the *full* error message, even if it's long
+* Which versions of Python and Theano you're using
+* Whether you're using a CPU or GPU device
+* Details of your Theano configuration settings (you can print this in Python via `print theano.config <http://deeplearning.net/software/theano/library/config.html>`__)
+
+Spending the time to create a minimal specific example of a problem is likely to get you to an answer quicker than
+posting something quickly that has too much irrelevant detail or is too vague. A minimal example may take you a bit more
+time to create but the first response is more likely to be the answer you need than, rather than a frustrated request
+for clarification.
+
+
+How to provide help
+-------------------
+
+If you see a question on the `theano-users`_ mailing list, or on `StackOverflow`_, that you
+feel reasonably confident you know an answer to, please do support the community by helping others.
+
+We were all newbies to Theano once and, as the community expands, there is a constant stream of new Theano users looking
+for help. Perhaps you asked a question when you were first starting out? Now you can pay it forward by helping others.
+It's also a good way to reinforce your own Theano knowledge.
+
+Often it's easiest to answer a question directly but sometimes it may be better to refer people to a good answer that
+was provided in the past. Pointing people to relevant sections in the documentation, or to a Theano tutorial, can also
+be helpful.
+
+When answering questions please `be nice <http://stackoverflow.com/help/be-nice>`__ (as always!) and, on
+StackOverflow, follow their guidance for `answering questions <http://stackoverflow.com/help/answering>`__.
+
+
 
 .. toctree::
    :maxdepth: 1
@@ -195,7 +257,7 @@ Community
 .. _theano-buildbot: http://groups.google.com/group/theano-buildbot
 .. _tickets: http://pylearn.org/theano/trac/query?status=accepted&status=assigned&status=new&status=reopened&group=milestone&max=200&col=id&col=summary&col=status&col=owner&col=type&col=priority&col=component&col=time&report=9&order=priority
 
-.. _metaoptimize/qa/tags/theano: http://metaoptimize.com/qa/tags/theano/
+.. _StackOverflow: http://stackoverflow.com/questions/tagged/theano
 
 .. _LISA: http://www.iro.umontreal.ca/~lisa
 .. _University of Montreal: http://www.umontreal.ca

@@ -231,6 +231,9 @@ class GpuDnnConvDesc(GpuOp):
     def c_compiler(self):
         return NVCC_compiler
 
+    def do_constant_folding(self, node):
+        return False
+
     def __init__(self, border_mode, subsample=(1, 1), conv_mode='conv'):
         if isinstance(border_mode, int):
             border_mode = (border_mode, border_mode)
@@ -256,7 +259,8 @@ class GpuDnnConvDesc(GpuOp):
             raise TypeError('kern must be 1D shape tensor')
 
         return Apply(self, [img_shape, kern_shape],
-                     [CDataType("cudnnConvolutionDescriptor_t")()])
+                     [CDataType("cudnnConvolutionDescriptor_t",
+                                freefunc="cudnnDestroyConvolutionDescriptor")()])
 
     def c_code(self, node, name, inputs, outputs, sub):
         img_shape, kern_shape = inputs
@@ -773,7 +777,8 @@ class GpuDnnPoolDesc(GpuOp):
             raise RuntimeError("CuDNN pooling with padding requires CuDNN v2")
 
         return Apply(self, [],
-                     [CDataType("cudnnPoolingDescriptor_t")()])
+                     [CDataType("cudnnPoolingDescriptor_t",
+                                freefunc="cudnnDestroyPoolingDescriptor")()])
 
     def c_code(self, node, name, inputs, outputs, sub):
         desc, = outputs
@@ -1449,7 +1454,7 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
         sm = as_cuda_ndarray_variable(sm)
         assert dy.ndim == 4
         assert sm.ndim == 4
-        return Apply(self, [dy, sm], [sm.type.make_variable()])
+        return Apply(self, [dy, sm], [sm.type()])
 
     def method(self):
         return """

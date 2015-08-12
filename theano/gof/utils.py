@@ -3,9 +3,11 @@ import linecache
 import traceback
 import sys
 
+import numpy
 from six import iteritems
 
 from theano import config
+from theano.compat import OrderedDict, PY3
 
 
 def simple_extract_stack(f=None, limit=None):
@@ -92,7 +94,7 @@ def add_tag_trace(thing, user_line=1):
     # The order is from the oldest to the newest
     if len(tr) > user_line:
         tr = tr[-user_line:]
-    thing.tag.trace = tr
+    thing.tag.trace = [tr]
     return thing
 
 
@@ -435,3 +437,61 @@ def remove(predicate, coll):
     [1, 3]
     """
     return [x for x in coll if not predicate(x)]
+
+
+if PY3:
+    import hashlib
+
+    def hash_from_code(msg):
+        # hashlib.md5() requires an object that supports buffer interface,
+        # but Python 3 (unicode) strings don't.
+        if isinstance(msg, str):
+            msg = msg.encode()
+        # Python 3 does not like module names that start with
+        # a digit.
+        return 'm' + hashlib.md5(msg).hexdigest()
+
+else:
+    import hashlib
+
+    def hash_from_code(msg):
+        try:
+            return hashlib.md5(msg).hexdigest()
+        except TypeError:
+            assert isinstance(msg, numpy.ndarray)
+            return hashlib.md5(numpy.getbuffer(msg)).hexdigest()
+
+
+def hash_from_file(file_path):
+    """Return the MD5 hash of a file."""
+    return hash_from_code(open(file_path, 'rb').read())
+
+
+def hash_from_dict(d):
+    """Work around the fact that dict are not hashable in python
+
+    This request that all object have a sorted order that depend only
+    on the key of the object. We support only integer/float/string keys.
+
+    Also, we transform values that are list into tuple as list are not
+    hashable.
+
+    :note: special case for OrderedDict, it use the order of the dict,
+        so the key don't need to be sortable.
+
+    """
+    if isinstance(d, OrderedDict):
+        items = list(iteritems(d))
+    else:
+        items = list(d.items())
+        items.sort()
+    first_part = [k for k, v in items]
+    second_part = []
+    for k, v in items:
+        assert isinstance(k, (str, int, float))
+        if isinstance(v, (tuple, list)):
+            second_part += [tuple(v)]
+        else:
+            second_part += [v]
+    tuple_items = tuple(first_part + second_part + [d.__class__])
+    return hash(tuple_items)

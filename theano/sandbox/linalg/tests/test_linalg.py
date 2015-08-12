@@ -174,3 +174,13 @@ def test_tag_solve_triangular():
         for node in f.maker.fgraph.toposort():
             if isinstance(node.op, Solve):
                 assert node.op.A_structure == 'upper_triangular'
+
+
+def test_matrix_inverse_solve():
+    if not imported_scipy:
+        raise SkipTest("Scipy needed for the Solve op.")
+    A = theano.tensor.dmatrix('A')
+    b = theano.tensor.dmatrix('b')
+    node = matrix_inverse(A).dot(b).owner
+    [out] = inv_as_solve.transform(node)
+    assert isinstance(out.owner.op, Solve)               

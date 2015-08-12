@@ -1,6 +1,8 @@
 from __future__ import print_function
+
 import six.moves.cPickle as pickle
-import os, sys
+import os
+import sys
 
 import theano
 from six import iteritems, itervalues
@@ -90,6 +92,6 @@ useless = total - uniq
 print("mod.{cpp,cu} total:", total)
 print("mod.{cpp,cu} uniq:", uniq)
 print("mod.{cpp,cu} with more than 1 copy:", more_than_one)
-print("mod.{cpp,cu} useless:", useless, float(useless)/total*100, "%")
+print("mod.{cpp,cu} useless:", useless, float(useless) / total * 100, "%")
 
 print("nb directory", len(dirs))

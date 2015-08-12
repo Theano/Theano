@@ -276,7 +276,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
         if index != 'x':
             order_loops += """
             %(ovar)s_loops_it->first = abs(PyArray_STRIDES(%(ovar)s)[%(index)i]);
-            """  % locals()
+            """ % locals()
         else:
             # Stride is 0 when dimension is broadcastable
             order_loops += """
@@ -311,15 +311,13 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
                 total = "%(var)s_n%(candidate)s" % locals()
                 break
         else:
-            total = '1';
+            total = '1'
         totals.append(total)
 
     declare_totals = """
     int init_totals[%(nnested)s] = {%(totals)s};
-    """ % dict(
-            nnested=nnested,
-            totals=', '.join(totals)
-            )
+    """ % dict(nnested=nnested,
+               totals=', '.join(totals))
 
     # Sort totals to match the new order that was computed by sorting
     # the loop vector. One integer variable per loop is declared.
@@ -355,13 +353,11 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
     declare_strides = """
     int init_strides[%(nvars)i][%(nnested)i] = {
         %(strides)s
-    };""" % dict(
-            nvars=nvars,
-            nnested=nnested,
-            strides=', \n'.join(
-                ', '.join(get_loop_strides(lo, i))
-                for i, lo in enumerate(init_loop_orders)
-                if len(lo) > 0))
+    };""" % dict(nvars=nvars,
+                 nnested=nnested,
+                 strides=', \n'.join(', '.join(get_loop_strides(lo, i))
+                                     for i, lo in enumerate(init_loop_orders)
+                                     if len(lo) > 0))
 
     # Declare (sorted) stride and for each variable
     # we iterate from innermost loop to outermost loop
@@ -385,9 +381,9 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
         declare_iter += "%(var)s_iter = (%(dtype)s*)(PyArray_DATA(%(var)s));\n" % locals()
 
     pointer_update = ''
-    for j , dtype in enumerate(dtypes):
+    for j, dtype in enumerate(dtypes):
         var = sub["lv%i" % j]
-        pointer_update += "%(dtype)s &%(var)s_i = * ( %(var)s_iter"%locals()
+        pointer_update += "%(dtype)s &%(var)s_i = * ( %(var)s_iter" % locals()
         tot_jump = ''
         for i in reversed(range(nnested)):
             iterv = 'ITER_%i' % i
@@ -401,7 +397,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
         update = ''
         forloop = ''
         # The pointers are defined only in the most inner loop
-        if i == nnested-1:
+        if i == nnested - 1:
             update = pointer_update
         if i == 0:
             if openmp:
@@ -413,19 +409,17 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
         %(forloop)s
         { // begin loop %(i)i
             %(update)s
-            %(loop)s 
+            %(loop)s
         } // end loop %(i)i
         """ % locals()
 
-    return '\n'.join([
-            '{',
-            order_loops,
-            declare_totals,
-            declare_strides,
-            declare_iter,
-            loop,
-            '}\n',
-            ])
+    return '\n'.join(['{',
+                      order_loops,
+                      declare_totals,
+                      declare_strides,
+                      declare_iter,
+                      loop,
+                      '}\n'])
 
 # print make_declare(((0, 1, 2, 3), ('x', 1, 0, 3), ('x', 'x', 'x', 0)),
 #                    ('double', 'int', 'float'),
@@ -451,16 +445,16 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
 
 
 ##################
-### DimShuffle ###
+#   DimShuffle   #
 ##################
 
 #################
-### Broadcast ###
+#   Broadcast   #
 #################
 
 
 ################
-### CAReduce ###
+#   CAReduce   #
 ################
 
 
@@ -527,4 +521,3 @@ def make_loop_careduce(loop_orders, dtypes, loop_tasks, sub):
 
     s += loop_tasks[-1]
     return "{%s}" % s
-

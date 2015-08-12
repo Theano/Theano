@@ -256,7 +256,7 @@ class T_Scan(unittest.TestCase):
             finally:
                 f_in.close()
         finally:
-            # Get back to the orinal dir, and delete temporary one.
+            # Get back to the original dir, and delete the temporary one.
             os.chdir(origdir)
             if tmpdir is not None:
                 shutil.rmtree(tmpdir)
@@ -2431,6 +2431,43 @@ class T_Scan(unittest.TestCase):
         utt.assert_allclose(output1, expected_output1)
         utt.assert_allclose(output2, expected_output2)
 
+    def test_use_scan_direct_output2(self):
+        # This test looks for a crash that happened when directly using the
+        # recurrent output of a scan node associated with a state with a
+        # state with broadcastable dimensions
+
+        x = tensor.dcol()
+        seq = tensor.dcol()
+        outputs_info=[x, tensor.zeros_like(x)]
+        (out1, out2), updates = theano.scan(lambda a, b, c : (a + b, a + c),
+                                            sequences=seq,
+                                            outputs_info=outputs_info)
+
+        # Obtain a reference to the scan outputs before the subtensor and
+        # compile a function with them as outputs
+        assert isinstance(out1.owner.op, tensor.subtensor.Subtensor)
+        assert isinstance(out2.owner.op, tensor.subtensor.Subtensor)
+        out1_direct = out1.owner.inputs[0]
+        out2_direct = out2.owner.inputs[0]
+        fct = theano.function([x, seq],
+                              [out1_direct, out2_direct])
+
+        # Test that the function returns valid outputs
+        x_val = numpy.arange(0, 4)[:, None]
+        seq_val = numpy.arange(4, 8)[:, None]
+
+        out1, out2 = fct(x_val, seq_val)
+
+        expected_out1 = numpy.zeros((5, 4, 1))
+        expected_out2 = numpy.zeros((5, 4, 1))
+        for i in range(4):
+            expected_out2[i + 1] = expected_out2[i] + seq_val[i]
+        for i in range(5):
+            expected_out1[i] = expected_out2[i] + x_val
+
+        utt.assert_allclose(out1, expected_out1)
+        utt.assert_allclose(out2, expected_out2)
+
     def test_infer_shape(self):
         # Test for a crash in scan.infer_shape when using both
         # an until condition and random sampling in the inner function.
@@ -2658,6 +2695,23 @@ class T_Scan(unittest.TestCase):
 
         utt.assert_allclose(expected_output, scan_output)
         utt.assert_allclose(expected_output, jacobian_outputs)
+
+    @theano.configparser.change_flags(on_opt_error='raise')
+    def test_pushout_seqs2(self):
+        # This test for a bug with PushOutSeqScan that was reported on the
+        # theano-user mailing list where the optimization raised an exception
+        # when applied on this graph.
+        x = tensor.matrix()
+        outputs, updates = theano.scan(
+            lambda x: [x*x, tensor.constant(0).copy().copy()],
+            n_steps=2,
+            sequences=[],
+            non_sequences=[],
+            outputs_info=[x, None])
+
+        # Compile a theano function where any optimization error will lead to
+        # an exception being raised
+        theano.function([x], outputs, updates=updates)
 
     def test_sequence_dict(self):
         # Test that we can specify sequences as a dictionary with
@@ -2991,6 +3045,43 @@ class T_Scan(unittest.TestCase):
         # elements vector v_out 5 times
         sol[:, :] = v_out
         utt.assert_allclose(sol, f(v_h, v_W1, v_W2))
+
+    def test_pushout_while(self):
+        # Ensure that the optimizations for Scan that push computation out of
+        # the Scan don't alter the result for 'as_while' scans.
+
+        W1 = tensor.matrix('W1')
+        W2 = tensor.matrix('W2')
+        step_indices = tensor.vector('step_indices')
+
+        def lambda_fn(step_idx, W1, W2):
+            until_condition = theano.scan_module.until(step_idx > 2)
+            return tensor.dot(W1, W2), until_condition
+
+        # Compile a function with the optimization
+        o, _ = theano.scan(lambda_fn,
+                           sequences=[step_indices, W1],
+                           non_sequences=[W2],
+                           n_steps=5)
+
+        f = theano.function([W1, W2, step_indices], o, mode=mode_with_opt)
+
+        # Compule an theano function without the optimization
+        o, _ = theano.scan(lambda_fn,
+                           sequences=[step_indices, W1],
+                           non_sequences=[W2],
+                           n_steps=5, mode='FAST_COMPILE')
+
+        f_ref = theano.function([W1, W2, step_indices], o, mode='FAST_COMPILE')
+
+        # Compare the results of the two implementations
+        input_values = [numpy.random.random((5, 5)).astype("float32"),
+                        numpy.random.random((5, 5)).astype("float32"),
+                        numpy.arange(5).astype("float32")]
+
+        out = f(*input_values)
+        out_ref = f_ref(*input_values)
+        utt.assert_allclose(out, out_ref)
 
     def test_pushout(self):
         W1 = tensor.matrix('W1')
@@ -4220,11 +4311,17 @@ class T_Scan(unittest.TestCase):
         f = theano.function(inputs=[A, k],
                             outputs=final_result,
                             updates=updates)
-        f([2, 3, .1, 0, 1], 4)
+        f(numpy.asarray([2, 3, .1, 0, 1], dtype=theano.config.floatX), 4)
 
         # There should be 3 outputs greater than 10: prior_result[0] at step 3,
         # and prior_result[1] at steps 2 and 3.
-        assert detect_large_outputs.large_count == 3
+        if theano.config.mode in ["DEBUG_MODE", "DebugMode"]:
+            # DebugMode will run all the intermediate nodes, so we
+            # should expect a multiple of 3, not exactly 3.
+            assert detect_large_outputs.large_count % 3 == 0
+
+        else:
+            assert detect_large_outputs.large_count == 3
 
 
 class ScanGpuTests:

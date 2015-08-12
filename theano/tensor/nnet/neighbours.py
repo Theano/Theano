@@ -2,17 +2,20 @@
 TODO: implement Images2Neibs.infer_shape() methods
 
 """
-from six.moves import xrange
+
+import numpy
+
 import theano
 from theano import Op, Apply
 import theano.tensor as T
 from theano.gradient import grad_not_implemented
 from theano.gradient import grad_undefined
 
-import numpy
-
 
 class Images2Neibs(Op):
+
+    __props__ = ("mode",)
+
     def __init__(self, mode='valid'):
         """
         :type mode: str
@@ -32,12 +35,6 @@ class Images2Neibs(Op):
                                       " and wrap_centered have been"
                                       " implemented for the op Images2Neibs")
         self.mode = mode
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.mode == other.mode
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.mode)
 
     def __str__(self):
         return self.__class__.__name__ + "{%s}" % self.mode
@@ -209,7 +206,7 @@ class Images2Neibs(Op):
                                 z_col = j + d * i
 
                                 z[0][z_row, z_col] = ten4[n, s, ten4_2, ten4_3]
-                                
+
     def infer_shape(self, node, input_shape):
         in_shape = input_shape[0]
         c, d = node.inputs[1]
@@ -226,7 +223,7 @@ class Images2Neibs(Op):
         z_dim0 = grid_c * grid_d * in_shape[1] * in_shape[0]
         z_dim1 = c * d
         return [(z_dim0, z_dim1)]
-    
+
     def c_code(self, node, name, inp, out, sub):
         ten4, neib_shape, neib_step = inp
         z, = out
@@ -420,21 +417,21 @@ class Images2Neibs(Op):
 
 
 def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
-    """ 
+    """
     Function :func:`images2neibs <theano.sandbox.neighbours.images2neibs>`
-    allows to apply a sliding window operation to a tensor containing 
+    allows to apply a sliding window operation to a tensor containing
     images
-    or other two-dimensional objects. 
-    The sliding window operation loops 
-    over points in input data and stores a rectangular neighbourhood of 
-    each point.   
-    It is possible to assign a step of selecting patches (parameter 
-    `neib_step`). 
+    or other two-dimensional objects.
+    The sliding window operation loops
+    over points in input data and stores a rectangular neighbourhood of
+    each point.
+    It is possible to assign a step of selecting patches (parameter
+    `neib_step`).
 
-    :param ten4:     A 4-dimensional tensor which represents 
+    :param ten4:     A 4-dimensional tensor which represents
                      a list of lists of images.a list of lists of images.
                      It should have shape (list 1 dim, list 2 dim,
-                     row, col). The first two dimensions can be 
+                     row, col). The first two dimensions can be
                      useful to store different channels and batches.
     :type ten4:      A 4d tensor-like.
     :param neib_shape: A tuple containing two
@@ -445,20 +442,20 @@ def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
     :type neib_shape: A 1d tensor-like of 2 values.
     :param neib_step: (dr,dc) where dr is the number of rows to
                       skip between patch and dc is the number of
-                      columns. The parameter should be a tuple of two elements: 
-                      number 
-                      of rows and number of columns to skip each iteration. 
+                      columns. The parameter should be a tuple of two elements:
+                      number
+                      of rows and number of columns to skip each iteration.
                       Basically, when the step is 1, the neighbourhood of every
-                      first element is taken and every possible rectangular 
+                      first element is taken and every possible rectangular
                       subset is returned. By default it is equal to
                       `neib_shape` in other words, the
-                      patches are disjoint. When the step is greater than 
+                      patches are disjoint. When the step is greater than
                       `neib_shape`, some elements are omitted. When None, this
                       is the same as
                       neib_shape(patch are disjoint)
 
-                      .. note:: Currently the step size should be chosen in the way that the 
-                         corresponding dimension :math:`i` (width or height) is equal to 
+                      .. note:: Currently the step size should be chosen in the way that the
+                         corresponding dimension :math:`i` (width or height) is equal to
                          :math:`n * step\_size_i + neib\_shape_i` for some :math:`n`
     :type neib_step: A 1d tensor-like of 2 values.
     :param mode:
@@ -492,29 +489,29 @@ def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
                                   = flattened version of ten4[i,j,l:l+r,k:k+c]
                              idx += 1
 
-          .. note:: The operation isn't necessarily implemented internally with 
-             these for loops, they're just the easiest way to describe the 
+          .. note:: The operation isn't necessarily implemented internally with
+             these for loops, they're just the easiest way to describe the
              output pattern.
 
     Example:
-  
+
     .. code-block:: python
-  
+
         # Defining variables
         images = T.tensor4('images')
         neibs = images2neibs(images, neib_shape=(5, 5))
-  
-        # Constructing theano function 
+
+        # Constructing theano function
         window_function = theano.function([images], neibs)
-  
+
         # Input tensor (one image 10x10)
         im_val = np.arange(100.).reshape((1, 1, 10, 10))
-  
+
         # Function application
         neibs_val = window_function(im_val)
-  
-    .. note:: The underlying code will construct a 2D tensor of disjoint 
-       patches 5x5. The output has shape 4x25. 
+
+    .. note:: The underlying code will construct a 2D tensor of disjoint
+       patches 5x5. The output has shape 4x25.
     """
     return Images2Neibs(mode)(ten4, neib_shape, neib_step)
 
@@ -527,25 +524,24 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
     the output of :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`
     and reconstructs its input.
 
-    :param neibs: matrix like the one obtained by 
+    :param neibs: matrix like the one obtained by
                   :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`
-    :param neib_shape: `neib_shape` that was used in 
+    :param neib_shape: `neib_shape` that was used in
                   :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`
-    :param original_shape: original shape of the 4d tensor given to 
+    :param original_shape: original shape of the 4d tensor given to
                   :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`
 
-    :return: Reconstructs the input of 
+    :return: Reconstructs the input of
                   :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`,
                   a 4d tensor of shape `original_shape`.
 
     .. note:: Currently, the function doesn't support tensors created with
        `neib_step` different from default value. This means that it may be
-       impossible to compute the gradient of a variable gained by 
-       :func:`images2neibs <theano.sandbox.neigbours.neibs2images>` w.r.t. 
-       its inputs in this case, because it uses 
-       :func:`images2neibs <theano.sandbox.neigbours.neibs2images>` for 
+       impossible to compute the gradient of a variable gained by
+       :func:`images2neibs <theano.sandbox.neigbours.neibs2images>` w.r.t.
+       its inputs in this case, because it uses
+       :func:`images2neibs <theano.sandbox.neigbours.neibs2images>` for
        gradient computation.
-    
 
     Example, which uses a tensor gained in example for
     :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`:

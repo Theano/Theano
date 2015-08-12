@@ -40,6 +40,12 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
     that, you can set to replace shared variables values by zeros by
     calling set_value(...) on them before calling `function_dump`.
 
+    To load such a dump and do the compilation:
+
+    >>> import cPickle, theano
+    >>> d=cPickle.load(open("func_dump.bin", "rb"))
+    >>> f=theano.function(**d)
+
     """
     assert isinstance(filename, string_types)
     d = dict(inputs=inputs, outputs=outputs, mode=mode, updates=updates,

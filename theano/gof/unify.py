@@ -11,7 +11,7 @@ from __future__ import print_function
 from copy import copy
 
 from functools import partial
-from theano.gof.utils import *
+from theano.gof.utils import ANY_TYPE, comm_guard, FALL_THROUGH, iteritems
 
 
 ################################
@@ -35,10 +35,12 @@ class Variable:
     """
     def __init__(self, name="?"):
         self.name = name
+
     def __str__(self):
         return (self.__class__.__name__ + "(" +
                 ", ".join("%s=%s" % (key, value)
                           for key, value in iteritems(self.__dict__)) + ")")
+
     def __repr__(self):
         return str(self)
 
@@ -348,8 +350,9 @@ def unify_walk(a, b, U):
     Checks for the existence of the __unify_walk__ method for one of
     the objects.
     """
-    if not isinstance(a, Variable) and not isinstance(b, Variable) \
-           and hasattr(a, "__unify_walk__"):
+    if (not isinstance(a, Variable) and
+            not isinstance(b, Variable) and
+            hasattr(a, "__unify_walk__")):
         return a.__unify_walk__(b, U)
     else:
         return FALL_THROUGH
@@ -430,8 +433,9 @@ def unify_merge(vs, o, U):
 
 @comm_guard(ANY_TYPE, ANY_TYPE)
 def unify_merge(a, b, U):
-    if not isinstance(a, Variable) and not isinstance(b, Variable) \
-           and hasattr(a, "__unify_merge__"):
+    if (not isinstance(a, Variable) and
+            not isinstance(b, Variable) and
+            hasattr(a, "__unify_merge__")):
         return a.__unify_merge__(b, U)
     else:
         return FALL_THROUGH
@@ -502,4 +506,3 @@ if __name__ == "__main__":
 
     U = unify_walk((1, 2), (va, va), Unification())
     print(U[va])
-

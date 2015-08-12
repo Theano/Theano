@@ -323,15 +323,7 @@ gpu_from_host = GpuFromHost()
 
 class GpuFromCuda(Op):
     view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return 'GpuFromCuda'
+    __props__ = ()
 
     def make_node(self, x):
         from theano.sandbox.cuda import CudaNdarrayType
@@ -455,15 +447,7 @@ gpu_from_cuda = GpuFromCuda()
 
 class CudaFromGpu(Op):
     view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return 'CudaFromGpu'
+    __props__ = ()
 
     def make_node(self, x):
         from theano.sandbox.cuda import CudaNdarrayType
@@ -729,6 +713,8 @@ class GpuAllocEmpty(HideC, Alloc):
         sh, bcast = self.validate_shape(shape)
         output = GpuArrayType(dtype=self.dtype, broadcastable=bcast)()
         output.tag.values_eq_approx = tensor.type.values_eq_approx_always_true
+        # The outut can contain nan/inf.
+        output.type.filter_checks_isfinite = False
         return Apply(self, sh, [output])
 
     def perform(self, node, inputs, out_):
@@ -781,6 +767,10 @@ if (theano_prep_output(&%(zz)s, %(ndim)s, shape, %(type)s, GA_C_ORDER,
     def grad(self, *args):
         # Don't reuse the grad implementation from Alloc
         raise NotImplementedError("grad disabled")
+
+
+def empty_like(var):
+    return GpuAllocEmpty(var.type.dtype)(*var.shape)
 
 
 class GpuContiguous(Op):

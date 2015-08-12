@@ -27,21 +27,19 @@ import theano
 from six.moves import xrange
 from theano.compat import izip
 from theano.gof import Op, Apply, local_optimizer, EquilibriumDB
+from theano.gof.utils import hash_from_dict
 from theano.sandbox.cuda import GpuElemwise, CudaNdarrayType, GpuOp
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            gpu_contiguous)
 from theano.sandbox.cuda.opt import gpu_seqopt
-from theano.tensor.utils import hash_from_dict
+
+import pycuda
+from pycuda.compiler import SourceModule
+import pycuda.gpuarray
 
 from . import pycuda_init
 if not pycuda_init.pycuda_available:
     raise Exception("No pycuda available. You can't load pycuda_example.py")
-
-import pycuda
-from pycuda.elementwise import ElementwiseKernel
-from pycuda.compiler import SourceModule
-from pycuda.tools import VectorArg
-import pycuda.gpuarray
 
 
 def _replace_npy_types(c_arg):
@@ -235,12 +233,11 @@ class PycudaElemwiseSourceModuleOp(GpuOp):
         c_code = self.scalar_op.c_code(out_node, "some_name",
                                        tuple([n + "[i]" for n in in_name]),
                                        tuple(n + "[i]" for n in out_name), {})
-        c_code_param = ", ".join([
-            _replace_npy_types(var.type.dtype_specs()[1]) + " *" + name
-                               for var, name in chain(izip(inputs, in_name),
-                                                      izip(out_node.outputs,
-                                                           out_name))
-        ] + ["int size"])
+        c_code_param = ", ".join(
+            [_replace_npy_types(var.type.dtype_specs()[1]) + " *" + name
+             for var, name in chain(izip(inputs, in_name),
+                                    izip(out_node.outputs, out_name))] +
+            ["int size"])
         mod = SourceModule("""
   __global__ void %s(%s)
   {
@@ -259,8 +256,8 @@ class PycudaElemwiseSourceModuleOp(GpuOp):
         # TODO assert all input have the same shape
         z, = out
         if (z[0] is None or
-            z[0].shape != inputs[0].shape or
-            not z[0].is_c_contiguous()):
+                z[0].shape != inputs[0].shape or
+                not z[0].is_c_contiguous()):
             z[0] = theano.sandbox.cuda.CudaNdarray.zeros(inputs[0].shape)
         if inputs[0].shape != inputs[1].shape:
             raise TypeError("PycudaElemwiseSourceModuleOp:"
@@ -279,6 +276,7 @@ class PycudaElemwiseSourceModuleOp(GpuOp):
 class PycudaElemwiseSourceModuleMakeThunkOp(Op):
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
+    __props__ = ("scalar_op", "inplace_pattern")
 
     def __init__(self, scalar_op, inplace_pattern=None, name=None):
         if inplace_pattern is None:
@@ -329,8 +327,8 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
         c_code_param = ", ".join(
             [_replace_npy_types(var.type.dtype_specs()[1]) + " *" + name
              for var, name in chain(izip(node.inputs, in_name),
-                                    izip(node.outputs, out_name))]
-            + ["int size"])
+                                    izip(node.outputs, out_name))] +
+            ["int size"])
 
         mod = SourceModule("""
   __global__ void %s(%s)
@@ -349,8 +347,8 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
         def thunk():
             z = outputs[0]
             if (z[0] is None or
-                z[0].shape != inputs[0][0].shape or
-                not z[0].is_c_contiguous()):
+                    z[0].shape != inputs[0][0].shape or
+                    not z[0].is_c_contiguous()):
                 z[0] = theano.sandbox.cuda.CudaNdarray.zeros(
                     inputs[0][0].shape)
             if inputs[0][0].shape != inputs[1][0].shape:
@@ -363,9 +361,9 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
             else:
                 grid = (1, 1)
                 block = (inputs[0][0].shape[0], inputs[0][0].shape[1], 1)
-            out = pycuda_fct(inputs[0][0], inputs[1][0], z[0],
-                             numpy.intc(inputs[1][0].size), block=block,
-                             grid=grid)
+            pycuda_fct(inputs[0][0], inputs[1][0], z[0],
+                       numpy.intc(inputs[1][0].size), block=block,
+                       grid=grid)
         thunk.inputs = inputs
         thunk.outputs = outputs
         thunk.lazy = False
@@ -384,7 +382,7 @@ def local_pycuda_gpu_elemwise(node):
     """
     if isinstance(node.op, GpuElemwise):
         if (not any([any(i.type.broadcastable) for i in node.inputs]) and
-            all([i.ndim <= 2 for i in node.inputs])):
+                all([i.ndim <= 2 for i in node.inputs])):
             new_op = PycudaElemwiseSourceModuleOp(node.op.scalar_op,
                                                   node.op.inplace_pattern)(
                                                       *node.inputs)
@@ -393,12 +391,12 @@ def local_pycuda_gpu_elemwise(node):
 pycuda_optimizer.register("local_pycuda_gpu_elemwise",
                           local_pycuda_gpu_elemwise)
 
-
+"""
 @local_optimizer([GpuElemwise])
 def local_pycuda_gpu_elemwise_kernel(node):
-    """
+    ""
        GpuElemwise -> PycudaElemwiseKernelOp
-    """
+    ""
     if isinstance(node.op, GpuElemwise):
         if not any([any(i.type.broadcastable) for i in node.inputs]):
             new_op = PycudaElemwiseKernelOp(node.op.scalar_op,
@@ -408,3 +406,4 @@ def local_pycuda_gpu_elemwise_kernel(node):
 
 pycuda_optimizer.register("local_pycuda_gpu_elemwise_kernel",
                           local_pycuda_gpu_elemwise_kernel, 1.5)
+"""

@@ -2,9 +2,9 @@
 from theano.gof.type import Type
 from theano.gof.graph import Variable, Apply, Constant
 from theano.gof.op import Op
-from theano.gof.opt import *
+from theano.gof.opt import *  # noqa
 from theano.gof.fg import FunctionGraph as Env
-from theano.gof.toolbox import *
+from theano.gof.toolbox import *  # noqa
 
 
 def as_variable(x):
@@ -53,7 +53,7 @@ class MyOp(Op):
         return self.name
 
     def __eq__(self, other):
-        #rval = (self is other) or (isinstance(other, MyOp) and self.x is not None and self.x == other.x and self.name == other.name)
+        # rval = (self is other) or (isinstance(other, MyOp) and self.x is not None and self.x == other.x and self.name == other.name)
         rval = (self is other) or (isinstance(other, MyOp) and self.x is not None and self.x == other.x)
         return rval
 
@@ -84,8 +84,12 @@ def inputs():
     return x, y, z
 
 
-PatternOptimizer = lambda p1, p2, ign=False: OpKeyOptimizer(PatternSub(p1, p2), ignore_newtrees=ign)
-TopoPatternOptimizer = lambda p1, p2, ign=True: TopoOptimizer(PatternSub(p1, p2), ignore_newtrees=ign)
+def PatternOptimizer(p1, p2, ign=False):
+    return OpKeyOptimizer(PatternSub(p1, p2), ignore_newtrees=ign)
+
+
+def TopoPatternOptimizer(p1, p2, ign=True):
+    return TopoOptimizer(PatternSub(p1, p2), ignore_newtrees=ign)
 
 
 class TestPatternOptimizer:
@@ -205,6 +209,7 @@ class TestPatternOptimizer:
         x, y, z = inputs()
         e = op4(op1(op2(x, y)), op1(op1(x, y)))
         g = Env([x, y, z], [e])
+
         def constraint(r):
             # Only replacing if the input is an instance of Op2
             return r.owner.op == op2
@@ -225,6 +230,7 @@ class TestPatternOptimizer:
         x, y, z = inputs()
         e = op2(op1(x, x), op1(x, y))
         g = Env([x, y, z], [e])
+
         def constraint(r):
             # Only replacing if the input is an instance of Op2
             return r.owner.inputs[0] is not r.owner.inputs[1]
@@ -263,8 +269,8 @@ class TestPatternOptimizer:
 #         assert str(g) == "[Op3(x, y)]"
 
 
-OpSubOptimizer = lambda op1, op2: TopoOptimizer(OpSub(op1, op2))
-OpSubOptimizer = lambda op1, op2: OpKeyOptimizer(OpSub(op1, op2))
+def OpSubOptimizer(op1, op2):
+    return OpKeyOptimizer(OpSub(op1, op2))
 
 
 class TestOpSubOptimizer:

@@ -1,1 +1,1 @@
-from blas import CpuCorrMM
+from corr import CpuCorrMM

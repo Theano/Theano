@@ -137,13 +137,9 @@ class BatchedDotOp(GpuOp):
                 host_z[i] = host_z[i - 1] + z_stride;
             }
 
-            err1 = cudaMalloc((void **)&gpu_x, ptr_array_size);
+            gpu_x = (float **) device_malloc(ptr_array_size);
 
-            if (err1 != cudaSuccess)
-            {
-                CLEANUP();
-                PyErr_Format(PyExc_RuntimeError,
-                             "%%s", "cudaMalloc failure");
+            if (gpu_x == NULL){
                 %(fail)s;
             }
 
@@ -195,7 +191,7 @@ class BatchedDotOp(GpuOp):
             do                                          \
             {                                           \
                 if (host_x) free (host_x);              \
-                if (gpu_x) cudaFree(gpu_x);             \
+                if (gpu_x) device_free(gpu_x);          \
             } while (0)
         """
 
@@ -212,6 +208,9 @@ class BatchedDotOp(GpuOp):
             assert elem.dtype.find('float') != -1
 
         return rval
+
+    def c_code_cache_version(self):
+        return (1,)
 
 batched_dot = BatchedDotOp()
 
@@ -1804,6 +1803,12 @@ class GpuConv(GpuOp):
             self.max_threads_dim0 = None
         if not hasattr(self, "direction_hint"):
             self.direction_hint = None
+        if not hasattr(self, "nkern"):
+            self.nkern = None
+        if not hasattr(self, "bsize"):
+            self.bsize = None
+        if not hasattr(self, "fft_opt"):
+            self.fft_opt = True
 
     def __hash__(self):
         # don't use hash(self.version) as hash(-1)==-2 and

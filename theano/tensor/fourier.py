@@ -34,15 +34,7 @@ class Fourier(gof.Op):
     input points, A[(n-1)/2] contains the largest positive frequency, while
     A[(n+1)/2] contains the largest negative frequency.
     """
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(self.__class__)
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, a, n, axis):
         a = tensor.as_tensor_variable(a)
@@ -62,7 +54,7 @@ class Fourier(gof.Op):
                                     (axis.data < 0 or axis.data > a.ndim - 1)):
                 raise TypeError('%s: index of the transformed axis must be'
                                 ' a scalar not smaller than 0 and smaller than'
-                            ' dimension of array' % self.__class__.__name__)
+                                ' dimension of array' % self.__class__.__name__)
         if n is None:
             n = a.shape[axis]
             n = tensor.as_tensor_variable(n)
@@ -78,7 +70,7 @@ class Fourier(gof.Op):
                                 ' strictly positive scalar'
                                 % self.__class__.__name__)
         return gof.Apply(self, [a, n, axis], [tensor.TensorType('complex128',
-                        a.type.broadcastable)()])
+                         a.type.broadcastable)()])
 
     def infer_shape(self, node, in_shapes):
         shape_a = in_shapes[0]
@@ -87,8 +79,8 @@ class Fourier(gof.Op):
         if len(shape_a) == 1:
             return [(n,)]
         elif isinstance(axis, tensor.TensorConstant):
-            out_shape = list(shape_a[0: axis.data.item()]) + [n] +\
-            list(shape_a[axis.data + 1:])
+            out_shape = (list(shape_a[0: axis.data.item()]) + [n] +
+                         list(shape_a[axis.data + 1:]))
         else:
             l = len(shape_a)
             shape_a = tensor.stack(*shape_a)
@@ -136,7 +128,8 @@ class Fourier(gof.Op):
         flip_shape = list(numpy.arange(0, a.ndim)[::-1])
         res = res.dimshuffle(flip_shape)
         res = tensor.switch(tensor.lt(n, tensor.shape(a)[axis]),
-                    tensor.set_subtensor(res[n::, ], 0, False, False), res)
+                            tensor.set_subtensor(res[n::, ], 0, False, False),
+                            res)
         res = res.dimshuffle(flip_shape)
 
         # insures that gradient shape conforms to input shape:

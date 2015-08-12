@@ -78,11 +78,7 @@ class DotModulo(Op):
 
     We do this 2 times on 2 triple inputs and concatenating the output
     """
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, A, s, m, A2, s2, m2):
         return Apply(self, [A, s, m, A2, s2, m2], [s.type()])
@@ -286,6 +282,9 @@ def mrg_next_value(rstate, new_rstate):
 
 
 class mrg_uniform_base(Op):
+
+    __props__ = ("output_type", "inplace")
+
     def __init__(self, output_type, inplace=False):
         Op.__init__(self)
         self.output_type = output_type
@@ -293,14 +292,6 @@ class mrg_uniform_base(Op):
         if inplace:
             self.destroy_map = {0: [0]}
         self.warned_numpy_version = False
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.output_type == other.output_type and
-                self.inplace == other.inplace)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.output_type) ^ hash(self.inplace)
 
     def __str__(self):
         if self.inplace:

@@ -1,74 +1,44 @@
 """
 Defines Linkers that deal with C implementations.
 """
+
 from __future__ import print_function
 
 # Python imports
 from copy import copy
 import os
 import sys
-from theano.compat import izip
+import logging
 
 import numpy
 
-from theano.compat import PY3
-from six import string_types, reraise
-from six.moves import StringIO, xrange
-from theano.gof.utils import MethodNotDefined
-
 import theano
 from theano import config
-
-if PY3:
-    import hashlib
-
-    def hash_from_code(msg):
-        # hashlib.md5() requires an object that supports buffer interface,
-        # but Python 3 (unicode) strings don't.
-        if isinstance(msg, str):
-            msg = msg.encode()
-        # Python 3 does not like module names that start with
-        # a digit.
-        return 'm' + hashlib.md5(msg).hexdigest()
-
-else:
-    import hashlib
-
-    def hash_from_code(msg):
-        try:
-            return hashlib.md5(msg).hexdigest()
-        except TypeError:
-            assert isinstance(msg, numpy.ndarray)
-            return hashlib.md5(numpy.getbuffer(msg)).hexdigest()
-
-
-def hash_from_file(file_path):
-    """Return the MD5 hash of a file."""
-    return hash_from_code(open(file_path, 'rb').read())
-
+from theano.compat import PY3
+from theano.compat import izip
+from six import string_types, reraise
+from six.moves import StringIO, xrange
 
 # Note that we need to do this before importing cutils, since when there is
 # no theano cache dir initialized yet, importing cutils may require compilation
 # of cutils_ext.
 from theano.configparser import AddConfigVar, StrParam
-AddConfigVar('gcc.cxxflags',
-             "Extra compiler flags for gcc",
-             StrParam(""))
 
 # gof imports
 from theano.gof import graph
 from theano.gof import link
 from theano.gof import utils
-
-from theano.gof.compilelock import get_lock, release_lock
-
 from theano.gof import cmodule
+from theano.gof.compilelock import get_lock, release_lock
+from theano.gof.callcache import CallCache
+
+AddConfigVar('gcc.cxxflags',
+             "Extra compiler flags for gcc",
+             StrParam(""))
 
 
-import logging
 _logger = logging.getLogger("theano.gof.cc")
 
-from theano.gof.callcache import CallCache
 
 run_cthunk = None  # Will be imported only when needed.
 
@@ -312,11 +282,16 @@ def get_nothing(r, name, sub):
 
 def get_c_declare(r, name, sub):
     """Wrapper around c_declare that declares py_name"""
-
-    if any([c != "output" and getattr(c.op, 'check_input',
-        config.check_input) for (c, _) in r.clients]) or (r.owner
-        and getattr(r.owner.op, 'check_input', True)):
-
+    # The declaration will be used by the Apply node that
+    # is computing it (`r.owner`), and by each of the clients.
+    # If some of these have `check_input=True` in their `.op`,
+    # it means they need `r`'s dtype to be declared, so
+    # we have to pass `check_input=True` to `c_declare`.
+    if ((any([getattr(c.op, 'check_input', config.check_input)
+              for (c, _) in r.clients
+              if not isinstance(c, string_types)]) or
+         (r.owner and
+          getattr(r.owner.op, 'check_input', config.check_input)))):
         c_declare = r.type.c_declare(name, sub, True)
     else:
         c_declare = r.type.c_declare(name, sub, False)
@@ -337,13 +312,21 @@ def get_c_init(r, name, sub):
 
 def get_c_extract(r, name, sub):
     """Wrapper around c_extract that initializes py_name from storage."""
-    if any([getattr(c.op, 'check_input', config.check_input) for (c, _) in
-            r.clients]):
+    # `c_extract` is called when getting the value of an apply node's
+    # input from the compute map, before being used by its clients.
+    # If one of the clients has `check_input=True`, we need to perform
+    # checks on the variable.
+    # However that code is not used by C code of the apply node creating
+    # this variable, so there is no need to check `r.owner.op.check_input`.
+    if any([getattr(c.op, 'check_input', config.check_input)
+            for (c, _) in r.clients
+            if not isinstance(c, string_types)]):
         # check_broadcast is just an hack to easily remove just the
         # broadcast check on the old GPU back-end. This check isn't
         # done in the new GPU back-end or on the CPU.
-        if any([getattr(c.op, 'check_broadcast', True) for (c, _) in
-                r.clients]):
+        if any([getattr(c.op, 'check_broadcast', True)
+                for (c, _) in r.clients
+                if not isinstance(c, string_types)]):
             c_extract = r.type.c_extract(name, sub, True)
         else:
             try:
@@ -364,10 +347,18 @@ def get_c_extract(r, name, sub):
 
 def get_c_extract_out(r, name, sub):
     """Wrapper around c_extract_out that initializes py_name from storage."""
+    # `c_extract_out` is used to extract an output variable from
+    # the compute map, to be used as pre-allocated memory for `r`
+    # before its value gets computed.
+    # If the node producing `r` has `check_inputs=True`, it may
+    # also perform type checks on the initial value of the output,
+    # so we need to pass `check_input=True` to `c_extract_out`.
+    # However, that code is not used by potential clients of `r`,
+    # so we do not need to check them.
+    check_input = getattr(r.owner.op, 'check_input', config.check_input)
     # check_broadcast is just an hack to easily remove just the
     # broadcast check on the old GPU back-end. This check isn't
     # done in the new GPU back-end or on the CPU.
-    check_input = getattr(r.owner.op, 'check_input', config.check_input)
     if getattr(r.owner.op, 'check_broadcast', True):
         c_extract = r.type.c_extract_out(name, sub, check_input)
     else:
@@ -532,7 +523,7 @@ class CLinker(link.Linker):
                             if isinstance(r, graph.Constant) and
                             r not in self.inputs)
         self.temps = list(set(self.variables).difference(
-                self.inputs).difference(self.outputs).difference(self.orphans))
+            self.inputs).difference(self.outputs).difference(self.orphans))
         self.consts = []
 
     def code_gen(self):
@@ -585,8 +576,10 @@ class CLinker(link.Linker):
             #            what to do at the beginning of each run,
             #            what to do at the end of each run]]
             if variable in self.inputs:
-                # we need to extract the new inputs at each run
-                # they do not need to be relayed to Python, so we don't sync
+                # We need to extract the new inputs at each run
+                # they do not need to be relayed to Python, so we don't sync.
+                # If the variable is both an input and an output, there is
+                # no need to synchronize either, it is already up-to-date.
                 policy = [[get_nothing, get_nothing, get_nothing],
                           [get_c_declare, get_c_extract, get_c_cleanup]]
             elif variable in self.orphans:
@@ -821,7 +814,7 @@ class CLinker(link.Linker):
         ret = []
         # generic support code
         for x in [y.type for y in self.variables] + [
-            y.op for y in self.node_order]:
+                y.op for y in self.node_order]:
             try:
                 ret.append(x.c_support_code())
             except utils.MethodNotDefined:
@@ -840,11 +833,11 @@ class CLinker(link.Linker):
 # FillMissing must disable some of them. Putting -ffast-math would
 # make it disable all other parameter at the same time.
         ret += ["-fno-math-errno",
-                #"-funsafe-math-optimizations",
-                #"-fno-signaling-nans",
-                #"-fcx-limited-range",
-                #"-fno-rounding-math",
-                #"-ffinite-math-only",
+                # "-funsafe-math-optimizations",
+                # "-fno-signaling-nans",
+                # "-fcx-limited-range",
+                # "-fno-rounding-math",
+                # "-ffinite-math-only",
 
                 # the current code generate label event if they are not used.
                 # Could use gcc attribute for those label only
@@ -853,7 +846,7 @@ class CLinker(link.Linker):
                 "-Wno-write-strings",  # generated by our code generator...
                 ]
         for x in [y.type for y in self.variables] + [
-            y.op for y in self.node_order]:
+                y.op for y in self.node_order]:
             try:
                 ret += x.c_compile_args()
             except utils.MethodNotDefined:
@@ -866,7 +859,7 @@ class CLinker(link.Linker):
         # to reorder them
         ret += c_compiler.compile_args()
         for x in [y.type for y in self.variables] + [
-            y.op for y in self.node_order]:
+                y.op for y in self.node_order]:
             try:
                 for i in x.c_no_compile_args():
                     try:
@@ -886,7 +879,7 @@ class CLinker(link.Linker):
         """
         ret = []
         for x in [y.type for y in self.variables] + [
-            y.op for y in self.node_order]:
+                y.op for y in self.node_order]:
             try:
                 ret += x.c_headers()
             except utils.MethodNotDefined:
@@ -901,7 +894,7 @@ class CLinker(link.Linker):
         """
         ret = []
         for x in [y.type for y in self.variables] + [
-            y.op for y in self.node_order]:
+                y.op for y in self.node_order]:
             try:
                 ret += x.c_init_code()
             except utils.MethodNotDefined:
@@ -911,7 +904,7 @@ class CLinker(link.Linker):
     def c_compiler(self):
         c_compiler = None
         for x in [y.type for y in self.variables] + [
-            y.op for y in self.node_order]:
+                y.op for y in self.node_order]:
             if hasattr(x, 'c_compiler'):
                 x_compiler = x.c_compiler()
             else:
@@ -938,7 +931,7 @@ class CLinker(link.Linker):
         """
         ret = []
         for x in [y.type for y in self.variables] + [
-            y.op for y in self.node_order]:
+                y.op for y in self.node_order]:
             try:
                 ret += x.c_header_dirs()
             except utils.MethodNotDefined:
@@ -954,7 +947,7 @@ class CLinker(link.Linker):
         """
         ret = []
         for x in [y.type for y in self.variables] + [
-            y.op for y in self.node_order]:
+                y.op for y in self.node_order]:
             try:
                 ret += x.c_libraries()
             except utils.MethodNotDefined:
@@ -970,7 +963,7 @@ class CLinker(link.Linker):
         """
         ret = []
         for x in [y.type for y in self.variables] + [
-            y.op for y in self.node_order]:
+                y.op for y in self.node_order]:
             try:
                 ret += x.c_lib_dirs()
             except utils.MethodNotDefined:
@@ -998,6 +991,10 @@ class CLinker(link.Linker):
         if output_storage is None:
             map = {}
             output_storage = []
+            # Initialize the map with the inputs, as some outputs may
+            # be inputs as well.
+            for i, variable in enumerate(self.inputs):
+                map[variable] = input_storage[i]
             for variable in self.outputs:
                 if variable not in map:
                     map[variable] = [None]
@@ -1150,7 +1147,7 @@ class CLinker(link.Linker):
                                  libraries=self.libraries(),
                                  header_dirs=self.header_dirs(),
                                  c_compiler=self.c_compiler(),
-                             )
+                                 )
 
     def cmodule_key_(self, fgraph, no_recycling, compile_args=None,
                      libraries=None, header_dirs=None, insert_config_md5=True,
@@ -1335,13 +1332,14 @@ class CLinker(link.Linker):
                 preargs.remove('-DREPLACE_WITH_AMDLIBM')
             if 'amdlibm' in libs:
                 libs.remove('amdlibm')
+        # We want to compute the code without the lock
         src_code = mod.code()
         get_lock()
         try:
             _logger.debug("LOCATION %s", str(location))
             module = c_compiler.compile_str(
                 module_name=mod.code_hash,
-                src_code=mod.code(),
+                src_code=src_code,
                 location=location,
                 include_dirs=self.header_dirs(),
                 lib_dirs=self.lib_dirs(),
@@ -1371,9 +1369,9 @@ class CLinker(link.Linker):
             code = self.instantiate_code(1 + len(self.args))
             instantiate = cmodule.ExtFunction('instantiate', code,
                                               method=cmodule.METH_VARARGS)
-                #['error_storage'] + argnames,
-                #local_dict = d,
-                # global_dict = {})
+            # ['error_storage'] + argnames,
+            # local_dict = d,
+            # global_dict = {})
 
             # Static methods that can run and destroy the struct built by
             # instantiate.
@@ -1498,7 +1496,7 @@ class _CThunk(object):
         global run_cthunk
         if run_cthunk is None:
             # Lazy import to avoid compilation when importing theano.
-            from theano.gof.cutils import run_cthunk
+            from theano.gof.cutils import run_cthunk  # noqa
         self.cthunk = cthunk
         self.init_tasks = init_tasks
         self.tasks = tasks
@@ -1534,7 +1532,8 @@ class _CThunk(object):
                 exc_value.__thunk_trace__ = trace
             except Exception:
                 print(('ERROR retrieving error_storage.'
-                                      ' Was the error set in the c code?'), end=' ', file=sys.stderr)
+                       'Was the error set in the c code?'),
+                      end=' ', file=sys.stderr)
                 print(self.error_storage, file=sys.stderr)
                 raise
             reraise(exc_type, exc_value, exc_trace)
@@ -1641,11 +1640,11 @@ class OpWiseCLinker(link.LocalLinker):
 
             for node in order:
                 if self.allow_gc:
-                    post_thunk_old_storage.append([storage_map[input]
-                        for input in node.inputs
-                        if ((input in computed) and
-                            (input not in fgraph.outputs) and
-                            node == last_user[input])])
+                    post_thunk_old_storage.append(
+                        [storage_map[input] for input in node.inputs
+                         if ((input in computed) and
+                             (input not in fgraph.outputs) and
+                             node == last_user[input])])
 
             if no_recycling is True:
                 no_recycling = list(storage_map.values())
@@ -1741,12 +1740,12 @@ class DualLinker(link.Linker):
         no_recycling = self.no_recycling
 
         _f, i1, o1, thunks1, order1 = (
-                link.PerformLinker(schedule=self.schedule).accept(fgraph,
-                                no_recycling=no_recycling).make_all(**kwargs))
+            link.PerformLinker(schedule=self.schedule).accept(
+                fgraph, no_recycling=no_recycling).make_all(**kwargs))
         kwargs.pop('input_storage', None)
         _f, i2, o2, thunks2, order2 = (
-                OpWiseCLinker(schedule=self.schedule).accept(fgraph,
-                                no_recycling=no_recycling).make_all(**kwargs))
+            OpWiseCLinker(schedule=self.schedule).accept(
+                fgraph, no_recycling=no_recycling).make_all(**kwargs))
 
         def f():
             for input1, input2 in izip(i1, i2):

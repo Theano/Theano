@@ -1,20 +1,18 @@
 from __future__ import print_function
+
 import numpy as N
 from six.moves import xrange
+
+import theano
 from theano.tensor import basic as T
 from theano.misc import strutil
-import theano
 from theano.gradient import grad_undefined
 from theano.gradient import DisconnectedType
 
 
 class ConvTransp3D(theano.Op):
     """ "Transpose" of Conv3D (Conv3D implements multiplication by an implicitly defined matrix W. This implements multiplication by its transpose) """
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def c_code_cache_version(self):
         return (3,)
@@ -35,12 +33,15 @@ class ConvTransp3D(theano.Op):
         else:
             RShape_ = T.as_tensor_variable([-1, -1, -1])
 
-        return theano.Apply(self, inputs=[W_, b_, d_, H_, RShape_], outputs=[ T.TensorType(H_.dtype, (False, False, False, False, False))() ] )
+        return theano.Apply(self,
+                            inputs=[W_, b_, d_, H_, RShape_],
+                            outputs=[T.TensorType(H_.dtype,
+                                     (False, False, False, False, False))()])
 
     def infer_shape(self, node, input_shapes):
         W, b, d, H, RShape = node.inputs
         W_shape, b_shape, d_shape, H_shape, RShape_shape = input_shapes
-        return [(H_shape[0],  RShape[0], RShape[1], RShape[2], W_shape[4])]
+        return [(H_shape[0], RShape[0], RShape[1], RShape[2], W_shape[4])]
 
     def connection_pattern(self, node):
         return [[True], [True], [True], [True], [False]]
@@ -48,9 +49,9 @@ class ConvTransp3D(theano.Op):
     def grad(self, inputs, output_gradients):
         W, b, d, H, RShape = inputs
         dCdR, = output_gradients
-        dCdH = conv3D(dCdR, W, T.zeros_like(H[0, 0, 0, 0, :]), d)
+        dCdH = theano.tensor.nnet.conv3D(dCdR, W, T.zeros_like(H[0, 0, 0, 0, :]), d)
         WShape = W.shape
-        dCdW = convGrad3D(dCdR, d, WShape, H)
+        dCdW = theano.tensor.nnet.convGrad3D(dCdR, d, WShape, H)
         dCdb = T.sum(dCdR, axis=(0, 1, 2, 3))
         # not differentiable, since d affects the output elements
         dCdd = grad_undefined(self, 2, d)
@@ -77,11 +78,13 @@ class ConvTransp3D(theano.Op):
         else:
             b_name = 'anon_b'
 
-        dCdW.name = 'ConvTransp3D_dCdW.H='+H_name+',dCdR='+dCdR_name+',W='+W_name
-        dCdb.name = 'ConvTransp3D_dCdb.H='+H_name+',dCdR='+dCdR_name+',W='+W_name+',b='+b_name
+        dCdW.name = ('ConvTransp3D_dCdW.H=' + H_name + ',dCdR=' + dCdR_name +
+                     ',W=' + W_name)
+        dCdb.name = ('ConvTransp3D_dCdb.H=' + H_name + ',dCdR=' + dCdR_name +
+                     ',W=' + W_name + ',b=' + b_name)
         dCdH.name = 'ConvTransp3D_dCdH.H=' + H_name + ',dCdR=' + dCdR_name
 
-        return [dCdW,  dCdb, dCdd, dCdH, dCdRShape]
+        return [dCdW, dCdb, dCdd, dCdH, dCdRShape]
 
     def perform(self, node, inputs, output_storage):
         W, b, d, H, RShape = inputs
@@ -339,7 +342,7 @@ def computeR(W, b, d, H, Rshape=None):
     assert len(b.shape) == 1
     assert len(d) == 3
 
-    outputChannels,  filterHeight, filterWidth, filterDur, \
+    outputChannels, filterHeight, filterWidth, filterDur, \
         inputChannels = W.shape
     batchSize, outputHeight, outputWidth, outputDur, \
         outputChannelsAgain = H.shape
@@ -371,7 +374,7 @@ def computeR(W, b, d, H, Rshape=None):
     # print "video size: "+str((videoHeight, videoWidth, videoDur))
 
     R = N.zeros((batchSize, videoHeight,
-            videoWidth, videoDur, inputChannels), dtype=H.dtype)
+                videoWidth, videoDur, inputChannels), dtype=H.dtype)
 
     # R[i,j,r,c,t] = b_j + sum_{rc,rk | d \circ rc + rk = r} sum_{cc,ck | ...} sum_{tc,tk | ...} sum_k W[k, j, rk, ck, tk] * H[i,k,rc,cc,tc]
     for i in xrange(0, batchSize):
@@ -408,8 +411,8 @@ def computeR(W, b, d, H, Rshape=None):
                                     if tk < 0:
                                         break
 
-                                    R[
-                                        i, r, c, t, j] += N.dot(W[:, rk, ck, tk, j], H[i, rc, cc, tc, :] )
+                                    R[i, r, c, t, j] += N.dot(
+                                        W[:, rk, ck, tk, j], H[i, rc, cc, tc, :])
 
                                     tc += 1
                                 ""  # close loop over tc
@@ -425,7 +428,3 @@ def computeR(W, b, d, H, Rshape=None):
     ""  # close loop over i
 
     return R
-
-
-from theano.tensor.nnet.Conv3D import conv3D
-from theano.tensor.nnet.ConvGrad3D import convGrad3D

@@ -33,19 +33,24 @@ those weights are not initialized in a proper range, then it is not surprising
 that the model ends up with yielding NaNs. 
 
 
-Run in DebugMode
------------------
+Run in NanGuardMode, DebugMode, or MonitorMode
+-----------------------------------------------
 
 If adjusting hyperparameters doesn't work for you, you can still get help from
-Theano's DebugMode. Run your code in DebugMode with flag mode=DebugMode,
+Theano's NanGuardMode. change the mode of your theano function to NanGuardMode,
+and run them again. The NanGuardMode will monitor all input/output variables in
+each node, and raises an error if NaNs are detected. For how to use the
+``NanGuardMode``, please refer to :ref:`nanguardmode`.
+
+DebugMode can also help. Run your code in DebugMode with flag mode=DebugMode,
 DebugMode.check_py=False. This will give you clue about which op is causing this
 problem, and then you can inspect into that op in more detail. For a detailed
 of using DebugMode, please refere to :ref:`debugmode`.
 
-Theano's MonitorMode can also help. It can be used to step through the execution
-of a function. You can inspect the inputs and outputs of each node being
-executed when the function is called. For how to use that, please check
-:ref:`faq_monitormode`. 
+Theano's MonitorMode provides another helping hand. It can be used to step
+through the execution of a function. You can inspect the inputs and outputs of
+each node being executed when the function is called. For how to use that,
+please check :ref:`faq_monitormode`.
 
 
 Numerical Stability

@@ -56,12 +56,7 @@ TypedListType.Variable = TypedListVariable
 class GetItem(Op):
     # See doc in instance of this Op or function after this class definition.
     view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, x, index):
         assert isinstance(x.type, TypedListType)
@@ -116,6 +111,8 @@ Get specified slice of a typed list.
 
 class Append(Op):
     # See doc in instance of this Op after the class definition.
+    __props__ = ("inplace",)
+
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
@@ -127,12 +124,6 @@ class Append(Op):
             # TODO: make destroy_handler support multiple view
             # self.view_map = {0: [0, 1]}
             self.view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.inplace == other.inplace
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.inplace)
 
     def make_node(self, x, toAppend):
         assert isinstance(x.type, TypedListType)
@@ -190,6 +181,8 @@ Append an element at the end of another list.
 
 class Extend(Op):
     # See doc in instance of this Op after the class definition.
+    __props__ = ("inplace",)
+
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
@@ -201,12 +194,6 @@ class Extend(Op):
             # TODO: make destroy_handler support multiple view
             # self.view_map = {0: [0, 1]}
             self.view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.inplace == other.inplace
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.inplace)
 
     def make_node(self, x, toAppend):
         assert isinstance(x.type, TypedListType)
@@ -270,6 +257,8 @@ Append all elements of a list at the end of another list.
 
 class Insert(Op):
     # See doc in instance of this Op after the class definition.
+    __props__ = ("inplace",)
+
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
@@ -281,12 +270,6 @@ class Insert(Op):
             # TODO: make destroy_handler support multiple view
             # self.view_map = {0: [0, 2]}
             self.view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.inplace == other.inplace
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.inplace)
 
     def make_node(self, x, index, toInsert):
         assert isinstance(x.type, TypedListType)
@@ -350,18 +333,14 @@ Insert an element at an index in a typed list.
 
 class Remove(Op):
     # See doc in instance of this Op after the class definition.
+    __props__ = ("inplace",)
+
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
         else:
             self.view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.inplace == other.inplace
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.inplace)
 
     def make_node(self, x, toRemove):
         assert isinstance(x.type, TypedListType)
@@ -405,18 +384,14 @@ remove = Remove()
 
 class Reverse(Op):
     # See doc in instance of this Op after the class definition.
+    __props__ = ("inplace",)
+
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
         else:
             self.view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.inplace == other.inplace
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.inplace)
 
     def make_node(self, x):
         assert isinstance(x.type, TypedListType)
@@ -468,11 +443,7 @@ Reverse the order of a typed list.
 
 class Index(Op):
     # See doc in instance of this Op after the class definition.
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, x, elem):
         assert isinstance(x.type, TypedListType)
@@ -500,11 +471,7 @@ index_ = Index()
 
 class Count(Op):
     # See doc in instance of this Op after the class definition.
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, x, elem):
         assert isinstance(x.type, TypedListType)
@@ -545,12 +512,7 @@ Count the number of times an element is in the typed list.
 
 class Length(Op):
     # See doc in instance of this Op after the class definition.
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, x):
         assert isinstance(x.type, TypedListType)
@@ -587,11 +549,7 @@ Returns the size of a list.
 
 class MakeList(Op):
 
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, a):
         assert isinstance(a, (tuple, list))

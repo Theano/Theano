@@ -41,6 +41,7 @@ class ConvolutionIndices(Op):
        patch. Convolution is then simply the dot product of (img x M)
        and the kernels.
     """
+    __props__ = ()
 
     @staticmethod
     def sparse_eval(inshp, kshp, nkern, strides=(1, 1), mode='valid'):

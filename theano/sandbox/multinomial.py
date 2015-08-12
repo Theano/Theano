@@ -14,14 +14,10 @@ if cuda_available:
 
 class MultinomialFromUniform(Op):
     '''Converts samples from a uniform into sample from a multinomial.'''
+    __props__ = ("odtype",)
+
     def __init__(self, odtype):
         self.odtype = odtype
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.odtype == other.odtype
-
-    def __hash__(self):
-        return hash((type(self), self.odtype))
 
     def __str__(self):
         return '%s{%s}' % (self.__class__.__name__, self.odtype)

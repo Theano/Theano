@@ -25,22 +25,21 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#undef _GLIBCXX_ATOMIC_BUILTINS
 
 
 // (borrowed from Caffe: https://github.com/BVLC/caffe/blob/master/src/caffe/util/im2col.cpp)
 // Loops for fast unfold + copy
-void im2col(const npy_float* data_im, const int channels,
+void im2col(const %(float_type)s* data_im, const int channels,
     const int height, const int width, const int kernel_h, const int kernel_w,
     const int pad_h, const int pad_w,
     const int stride_h, const int stride_w,
-    npy_float* data_col) {
+    %(float_type)s* data_col) {
   int height_col = (height + 2 * pad_h - kernel_h) / stride_h + 1;
   int width_col = (width + 2 * pad_w - kernel_w) / stride_w + 1;
   int channels_col = channels * kernel_h * kernel_w;
   for (int c = 0; c < channels_col; ++c) {
-    int w_offset = c % kernel_w;
-    int h_offset = (c / kernel_w) % kernel_h;
+    int w_offset = c %% kernel_w;
+    int h_offset = (c / kernel_w) %% kernel_h;
     int c_im = c / kernel_h / kernel_w;
     for (int h = 0; h < height_col; ++h) {
       for (int w = 0; w < width_col; ++w) {
@@ -56,17 +55,17 @@ void im2col(const npy_float* data_im, const int channels,
   }
 }
 
-void col2im(const npy_float* data_col, const int channels,
+void col2im(const %(float_type)s* data_col, const int channels,
     const int height, const int width, const int patch_h, const int patch_w,
     const int pad_h, const int pad_w, const int stride_h,
-    const int stride_w, npy_float* data_im) {
+    const int stride_w, %(float_type)s* data_im) {
   int height_col = (height + 2 * pad_h - patch_h) / stride_h + 1;
   int width_col = (width + 2 * pad_w - patch_w) / stride_w + 1;
   int num_kernels = channels * height * width;
   int channels_col = channels * patch_h * patch_w;
   for (int c = 0; c < channels_col; ++c) {
-    int w_offset = c % patch_w;
-    int h_offset = (c / patch_w) % patch_h;
+    int w_offset = c %% patch_w;
+    int h_offset = (c / patch_w) %% patch_h;
     int c_im = c / patch_h / patch_w;
     for (int h = 0; h < height_col; ++h) {
       for (int w = 0; w < width_col; ++w) {
@@ -75,6 +74,8 @@ void col2im(const npy_float* data_col, const int channels,
         if (h_pad >= 0 && h_pad < height && w_pad >= 0 && w_pad < width)
           data_im[(c_im * height + h_pad) * width + w_pad] +=
             data_col[(c * height_col + h) * width_col + w];
+          // data_im[(c_im * height + h_pad) * width + w_pad] = 0.;
+
       }
     }
   }
@@ -86,6 +87,7 @@ void col2im(const npy_float* data_col, const int channels,
 // Reference code: https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu
 //   and https://github.com/torch/cunn/blob/master/SpatialConvolutionMM.cu
 // CPU version author: Jesse Livezey
+// CPU version adapted from GPU version
 PyArrayObject* corrMM(PyArrayObject* bottom,
                            PyArrayObject* weight,
                            PyArrayObject* top,
@@ -104,7 +106,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     {
         PyErr_Format(PyExc_ValueError,
                 "CpuCorrMM requires bottom to be C-contiguous, "
-                "but strides are: %d %d %d %d\n",
+                "but strides are: %%d %%d %%d %%d\n",
                 PyArray_STRIDES(bottom)[0],
                 PyArray_STRIDES(bottom)[1],
                 PyArray_STRIDES(bottom)[2],
@@ -121,7 +123,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     {
         PyErr_Format(PyExc_ValueError,
                 "CpuCorrMM requires weight to be C-contiguous, "
-                "but strides are: %d %d %d %d\n",
+                "but strides are: %%d %%d %%d %%d\n",
                 PyArray_STRIDES(weight)[0],
                 PyArray_STRIDES(weight)[1],
                 PyArray_STRIDES(weight)[2],
@@ -138,7 +140,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     {
         PyErr_Format(PyExc_ValueError,
                 "CpuCorrMM requires top to be C-contiguous, "
-                "but strides are: %d %d %d %d\n",
+                "but strides are: %%d %%d %%d %%d\n",
                 PyArray_STRIDES(top)[0],
                 PyArray_STRIDES(top)[1],
                 PyArray_STRIDES(top)[2],
@@ -170,9 +172,9 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
             topWidth != PyArray_DIMS(top)[3]) {
         PyErr_Format(PyExc_ValueError,
                 "CpuCorrMM shape inconsistency:\n"
-                "  bottom shape: %d %d %d %d\n"
-                "  weight shape: %d %d %d %d\n"
-                "  top shape: %d %d %d %d (expected %d %d %d %d)\n",
+                "  bottom shape: %%d %%d %%d %%d\n"
+                "  weight shape: %%d %%d %%d %%d\n"
+                "  top shape: %%d %%d %%d %%d (expected %%d %%d %%d %%d)\n",
                 batchSize, nChannels, bottomHeight, bottomWidth,
                 nFilters, nChannels, kH, kW,
                 PyArray_DIMS(top)[0], PyArray_DIMS(top)[1],
@@ -183,32 +185,29 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
 
     // Create temporary columns
     npy_intp col_dim[2];
-    //int col_dim[2];
     col_dim[0] = (npy_intp)(nChannels * kW * kH);
     col_dim[1] = (npy_intp)(topHeight * topWidth);
-    PyArrayObject* col = (PyArrayObject*)PyArray_Zeros(2,
+    PyArrayObject* col = (PyArrayObject*)PyArray_EMPTY(2,
 		                           col_dim,
-                                           PyArray_DTYPE(top),
+                                           PyArray_TYPE(top),
 					   0);
     if (NULL == col)
     {
         PyErr_Format(PyExc_RuntimeError,
-                "CpuCorrMM failed to allocate working memory of %d x %d\n",
+                "CpuCorrMM failed to allocate working memory of %%d x %%d\n",
                 col_dim[0], col_dim[1]);
         return NULL;
     }
 
     // Define some useful variables
-    // TODO More careful divide
-    const int bottom_stride = PyArray_STRIDES(bottom)[0]/4;
-    const int top_stride = PyArray_STRIDES(top)[0]/4;
-    // int type_num = PyArray_DESCR(bottom)->type_num;
+    const int bottom_stride = PyArray_STRIDES(bottom)[0]/%(n_bytes)f;
+    const int top_stride = PyArray_STRIDES(top)[0]/%(n_bytes)f;
     // TODO More careful type checking for all arrays
     const int K_ = col_dim[0];
     const int N_ = col_dim[1];
     const int M_ = nFilters;
-    const float one_f = 1.0f;
-    const float zero_f = 0.0f;
+    const %(c_float_type)s one = 1.0;
+    const %(c_float_type)s zero = 0.0;
     char NTrans = 'N';
     char Trans = 'T';
 
@@ -219,41 +218,16 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         // Iterate over batch
         for (int n = 0; n < batchSize; n++) {
             // First, im2col
-            im2col((npy_float*)PyArray_DATA(bottom) + n * bottom_stride, nChannels, bottomHeight,
-                    bottomWidth, kH, kW, padH, padW, dH, dW, (npy_float*)PyArray_DATA(col));
+            im2col((%(float_type)s*)PyArray_DATA(bottom) + n * bottom_stride, nChannels, bottomHeight,
+                    bottomWidth, kH, kW, padH, padW, dH, dW, (%(float_type)s*)PyArray_DATA(col));
             // Second, gemm
-	    // TODO Switch to string substitutions for d/s
-            /*
-            switch (type_num)
-            {
-              case NPY_FLOAT:
-              {
-              */
-                sgemm_(&NTrans, &NTrans,
-                       &N_, &M_, &K_,
-                       &one_f,
-                       (npy_float*)PyArray_DATA(col), &N_,
-                       (npy_float*)PyArray_DATA(weight), &K_,
-                       &zero_f,
-                       (npy_float*)PyArray_DATA(top) + n * top_stride, &N_);
-                /*
-              };
-	      break;
-              */
-	      /* TODO
-              case NPY_DOUBLE:
-              {
-                dgemm_(&NTrans, &NTrans,
-                       &N_, &M_, &K_,
-                       &one_d,
-                       col, &N_,
-                       weight, &K_,
-                       &zero_d,
-                       top + n * top_stride, &N_);
-              };
-	      break;
-            };
-	      */
+            %(gemm)s(&NTrans, &NTrans,
+                   &N_, &M_, &K_,
+                   &one,
+                   (%(float_type)s*)PyArray_DATA(col), &N_,
+                   (%(float_type)s*)PyArray_DATA(weight), &K_,
+                   &zero,
+                   (%(float_type)s*)PyArray_DATA(top) + n * top_stride, &N_);
         }
         /*
         // Original caffe code for comparison
@@ -293,31 +267,19 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         // Iterate over batch
         for (int n = 0; n < batchSize; n++) {
             // First, im2col
-            im2col((npy_float*)PyArray_DATA(bottom) + n * bottom_stride, nChannels, bottomHeight,
-                    bottomWidth, kH, kW, padH, padW, dH, dW, (npy_float*)PyArray_DATA(col));
+            im2col((%(float_type)s*)PyArray_DATA(bottom) + n * bottom_stride, nChannels, bottomHeight,
+                    bottomWidth, kH, kW, padH, padW, dH, dW, (%(float_type)s*)PyArray_DATA(col));
             // Second, gemm
             // Note that we accumulate into weight. We do so by setting beta = 0
             // for the first iteration and beta = 1 for subsequent ones. (This
             // is faster than setting weight to all zeros before the loop.)
-                sgemm_(&Trans, &NTrans,
-                       &K_, &M_, &N_,
-                       &one_f,
-                       (npy_float*)PyArray_DATA(col), &N_,
-                       (npy_float*)PyArray_DATA(top) + n * top_stride, &N_,
-                       (n == 0) ? &zero_f : &one_f,
-                       (npy_float*)PyArray_DATA(weight), &K_);
-	      /*
-              case NPY_DOUBLE:
-              {
-                dgemm_(&Trans, &NTrans,
-                       &K_, &M_, &N_,
-                       &one_d,
-                       col, &N_,
-                       top + n * top_stride, &N_,
-                       (n == 0) ? &zero_d : &one_d,
-                       weight, &K_);
-              };
-	      */
+            %(gemm)s(&Trans, &NTrans,
+                   &K_, &M_, &N_,
+                   &one,
+                   (%(float_type)s*)PyArray_DATA(col), &N_,
+                   (%(float_type)s*)PyArray_DATA(top) + n * top_stride, &N_,
+                   (n == 0) ? &zero : &one,
+                   (%(float_type)s*)PyArray_DATA(weight), &K_);
         }
         /*
         // Original caffe code for comparison
@@ -350,32 +312,21 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     }
     else if (direction == 2) {  // backprop wrt. inputs
         output = bottom;
+        PyArray_FILLWBYTE(bottom, 0);
         // full convolution: gemm, then col2im
         // Iterate over batch
         for (int n = 0; n < batchSize; n++) {
             // gemm into columns
-                sgemm_(&NTrans, &Trans,
-                       &N_, &K_, &M_,
-                       &one_f,
-                       (npy_float*)PyArray_DATA(top) + n * top_stride, &N_,
-                       (npy_float*)PyArray_DATA(weight), &K_,
-                       &zero_f,
-                       (npy_float*)PyArray_DATA(col), &N_);
-	      /*
-              case NPY_DOUBLE:
-              {
-                dgemm_(&NTrans, &Trans,
-                       &N_, &K_, &M_,
-                       &one_d,
-                       top + n * top_stride, &N_,
-                       weight, &K_,
-                       &zero_d,
-                       col, &N_);
-              };
-	      */
+            %(gemm)s(&NTrans, &Trans,
+                   &N_, &K_, &M_,
+                   &one,
+                   (%(float_type)s*)PyArray_DATA(top) + n * top_stride, &N_,
+                   (%(float_type)s*)PyArray_DATA(weight), &K_,
+                   &zero,
+                   (%(float_type)s*)PyArray_DATA(col), &N_);
             // col2im back to the data
-            col2im((npy_float*)PyArray_DATA(col), nChannels, bottomHeight, bottomWidth,
-                    kH, kW, padH, padW, dH, dW, (npy_float*)PyArray_DATA(bottom) + n * bottom_stride);
+            col2im((%(float_type)s*)PyArray_DATA(col), nChannels, bottomHeight, bottomWidth,
+                    kH, kW, padH, padW, dH, dW, (%(float_type)s*)PyArray_DATA(bottom) + n * bottom_stride);
         }
         /*
         // Original caffe code for comparison

@@ -34,11 +34,7 @@ class BreakRop(Op):
     """
     @note: Non-differentiable.
     """
-    def __hash__(self):
-        return hash(type(self))
-
-    def __eq__(self, other):
-        return type(self) == type(other)
+    __props__ = ()
 
     def make_node(self, x):
         return Apply(self, [x], [x.type()])

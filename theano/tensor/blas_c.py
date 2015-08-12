@@ -4,8 +4,7 @@ from theano import config
 
 from theano.tensor.opt import in2out
 from theano.tensor.blas import ldflags, blas_header_text, blas_header_version
-from theano.tensor.blas import (
-    blas_optdb, optdb, local_optimizer, EquilibriumOptimizer)
+from theano.tensor.blas import blas_optdb, optdb, local_optimizer
 from theano.tensor.blas import Ger, ger, ger_destructive
 from theano.tensor.blas import Gemv, gemv_inplace, gemv_no_inplace
 from theano.tensor import basic as T
@@ -268,7 +267,7 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
                         (double*)x_data, &Sx,
                         (double*)y_data, &Sy,
                         (double*)(PyArray_DATA(%(Z)s)), &Sz1);
-                    
+
 
                 }
                 else {
@@ -610,7 +609,7 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail,
                     // so Sx1 == 1 is required for safety.
                     if (Nx0 == 1 && Sx1 == 1)
                     {
-                        zz_data[0] = fbeta*zz_data[0] + alpha*sdot_(&Nx1, 
+                        zz_data[0] = fbeta*zz_data[0] + alpha*sdot_(&Nx1,
                             (float*)(PyArray_DATA(%(xx)s)), &Sx1,
                             (float*)yy_data, &Sy);
                     }
@@ -633,7 +632,7 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail,
                     // so Sx1 == 1 is required for safety.
                     if (Nx0 == 1 && Sx1 == 1)
                     {
-                        zz_data[0] = dbeta*zz_data[0] + alpha*ddot_(&Nx1, 
+                        zz_data[0] = dbeta*zz_data[0] + alpha*ddot_(&Nx1,
                               (double*)(PyArray_DATA(%(xx)s)), &Sx1,
                               (double*)yy_data, &Sy);
                     }
@@ -732,8 +731,7 @@ def check_force_gemv_init():
                 gemv_no_inplace(aa, 1., xx, yy, 0.),
                 theano.compile.Mode(optimizer='fast_compile').excluding('gpu',
                                                                         'gpuarray'),
-                profile=False
-                )
+                profile=False)
         finally:
             theano.config.compute_test_value = tv
             theano.config.compute_test_value_opt = tvo
@@ -742,11 +740,11 @@ def check_force_gemv_init():
         # then we want gemv_c_code to initiliaze the memory to 0 so that we
         # don't inadvertantly introduce NaNs to the users data.
         aa_data = numpy.array(
-            float('NaN')*numpy.ones((2,)),
+            float('NaN') * numpy.ones((2,)),
             dtype=theano.config.floatX
         )
         yy_data = numpy.array(
-            numpy.ones((2,))*2,
+            numpy.ones((2,)) * 2,
             dtype=theano.config.floatX
         )
         xx_data = numpy.array(

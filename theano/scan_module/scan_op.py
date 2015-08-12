@@ -68,7 +68,7 @@ from theano.compat import exc_message
 from theano.compile import function, Param, Out
 from theano import compile, config, gradient, gof, tensor
 from theano.gof import PureOp, Apply
-from theano.gof.graph import io_toposort
+from theano.gof.graph import io_connection_pattern
 from theano.compat import OrderedDict, izip
 from theano.tensor import TensorType
 from theano.tensor.opt import Shape_i
@@ -1283,7 +1283,7 @@ class Scan(PureOp):
                 outs[j][0] = output_storage[jout].storage[0]
 
             pos = [(idx + 1) % store for idx, store in
-                               itertools.izip(pos, store_steps)]
+                               izip(pos, store_steps)]
             i = i + 1
 
         # 6. Check if you need to re-order output buffers
@@ -1471,71 +1471,6 @@ class Scan(PureOp):
                     scan_outs.append((Shape_i(0)(o),) + x[1:])
         return scan_outs
 
-    def inner_connection_pattern(self):
-        """ Returns the connection pattern of scan's inner function
-        """
-
-        inner_nodes = io_toposort(self.inputs, self.outputs)
-
-        # Initialize 'connect_pattern_by_var' by establishing each input as
-        # connected only to itself
-        connect_pattern_by_var = {}
-        nb_inputs = len(self.inputs)
-        nb_outputs = len(self.outputs)
-
-        for i in xrange(nb_inputs):
-            input = self.inputs[i]
-            inp_connection_pattern = [i == j for j in xrange(nb_inputs)]
-            connect_pattern_by_var[input] = inp_connection_pattern
-
-        # Iterate through the nodes used to produce the outputs from the
-        # inputs and, for every node, infer their connection pattern to
-        # every input from the connection patterns of their parents.
-        for n in inner_nodes:
-
-            # Get the connection pattern of the inner node's op. If the op
-            # does not define a connection_pattern method, assume that
-            # every node output is connected to every node input
-            try:
-                op_connection_pattern = n.op.connection_pattern(n)
-            except AttributeError:
-                op_connection_pattern = ([[True] * len(n.outputs)] *
-                                         len(n.inputs))
-
-            # For every output of the inner node, figure out which inputs it
-            # is connected to by combining the connection pattern of the inner
-            # node and the connection patterns of the inner node's inputs.
-            for out_idx in xrange(len(n.outputs)):
-                out = n.outputs[out_idx]
-                out_connection_pattern = [False] * nb_inputs
-
-                for inp_idx in xrange(len(n.inputs)):
-                    inp = n.inputs[inp_idx]
-
-                    if inp in connect_pattern_by_var:
-                        inp_connection_pattern = connect_pattern_by_var[inp]
-
-                        # If the node output is connected to the node input, it
-                        # means it is connected to every inner input that the
-                        # node inputs is connected to
-                        if op_connection_pattern[inp_idx][out_idx]:
-                            out_connection_pattern = [out_connection_pattern[i] or
-                                                    inp_connection_pattern[i]
-                                                    for i in xrange(nb_inputs)]
-
-                # Store the connection pattern of the node output
-                connect_pattern_by_var[out] = out_connection_pattern
-
-        # Obtain the global connection pattern by combining the
-        # connnection patterns of the individual outputs
-        global_connection_pattern = [[] for o in xrange(len(self.inputs))]
-        for out in self.outputs:
-            out_connection_pattern = connect_pattern_by_var[out]
-            for i in xrange(len(self.inputs)):
-                global_connection_pattern[i].append(out_connection_pattern[i])
-
-        return global_connection_pattern
-
     def connection_pattern(self, node):
 
         # We cache the result of this function because, with a previous
@@ -1546,7 +1481,7 @@ class Scan(PureOp):
             return node.tag.connection_pattern
 
         # Obtain the connection pattern of the inner function.
-        inner_connect_pattern = self.inner_connection_pattern()
+        inner_connect_pattern = io_connection_pattern(self.inputs, self.outputs)
 
         # Initially assume no outer input is connected to any outer output
         connection_pattern = [[False for output in node.outputs]

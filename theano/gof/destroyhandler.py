@@ -13,6 +13,7 @@ from theano.compat import OrderedDict
 from theano.misc.ordered_set import OrderedSet
 
 from .fg import InconsistencyError
+from six.moves.queue import Queue
 
 
 class ProtocolError(Exception):
@@ -46,7 +47,6 @@ def _contains_cycle(fgraph, orderings):
     """
 
     # These are lists of Variable instances
-    inputs = fgraph.inputs
     outputs = fgraph.outputs
 
     # this is hard-coded reimplementation of functions from graph.py
@@ -64,8 +64,6 @@ def _contains_cycle(fgraph, orderings):
     # TODO: For more speed - use a defaultdict for the orderings
     # (defaultdict runs faster than dict in the case where the key
     # is not in the dictionary, at least in CPython)
-
-    iset = set(inputs)
 
     # IG: I tried converting parent_counts to use an id for the key,
     # so that the dict would do reference counting on its keys.
@@ -181,45 +179,51 @@ def _contains_cycle(fgraph, orderings):
     return visited != len(parent_counts)
 
 
-def getroot(r, view_i):
-    """
-    TODO: what is view_i ? based on add_impact's docstring, IG is guessing
-          it might be a dictionary mapping variables to views, but what is
-          a view? In these old docstrings I'm not sure if "view" always
-          means "view variable" or if it also sometimes means "viewing
-          pattern."
-    For views: Return non-view variable which is ultimatly viewed by r.
-    For non-views: return self.
-    """
-    try:
-        return getroot(view_i[r], view_i)
-    except KeyError:
-        return r
+def _build_droot_impact(destroy_handler):
+    droot = {}   # destroyed view + nonview variables -> foundation
+    impact = {}  # destroyed nonview variable -> it + all views of it
+    root_destroyer = {}  # root -> destroyer apply
 
+    for app in destroy_handler.destroyers:
+        for output_idx, input_idx_list in app.op.destroy_map.items():
+            if len(input_idx_list) != 1:
+                raise NotImplementedError()
+            input_idx = input_idx_list[0]
+            input = app.inputs[input_idx]
 
-def add_impact(r, view_o, impact):
-    """
-    In opposition to getroot, which finds the variable that is viewed *by* r, this function
-    returns all the variables that are views of r.
+            # Find non-view variable which is ultimatly viewed by input.
+            view_i = destroy_handler.view_i
+            _r = input
+            while _r is not None:
+                r = _r
+                _r = view_i.get(r)
+            input_root = r
 
-    :param impact: is a set of variables that are views of r
-    :param droot: a dictionary mapping views -> r
+            if input_root in droot:
+                raise InconsistencyError(
+                    "Multiple destroyers of %s" % input_root)
+            droot[input_root] = input_root
+            root_destroyer[input_root] = app
 
-    TODO: this docstring is hideously wrong, the function doesn't return anything.
-          has droot been renamed to view_o?
-          does it add things to the impact argument instead of returning them?
-          IG thinks so, based on reading the code. It looks like get_impact
-          does what this docstring said this function does.
-    """
-    for v in view_o.get(r, []):
-        impact.add(v)
-        add_impact(v, view_o, impact)
+            # The code here add all the variables that are views of r into
+            # an OrderedSet input_impact
+            input_impact = OrderedSet()
+            queue = Queue()
+            queue.put(input_root)
+            while not queue.empty():
+                v = queue.get()
+                for n in destroy_handler.view_o.get(v, []):
+                    input_impact.add(n)
+                    queue.put(n)
 
+            for v in input_impact:
+                assert v not in droot
+                droot[v] = input_root
 
-def get_impact(root, view_o):
-    impact = OrderedSet()
-    add_impact(root, view_o, impact)
-    return impact
+            impact[input_root] = input_impact
+            impact[input_root].add(input_root)
+
+    return droot, impact, root_destroyer
 
 
 def fast_inplace_check(inputs):
@@ -236,9 +240,9 @@ def fast_inplace_check(inputs):
     protected_inputs.extend(fgraph.outputs)
 
     inputs = [i for i in inputs if
-              not isinstance(i, graph.Constant)
-              and not fgraph.destroyers(i)
-              and i not in protected_inputs]
+              not isinstance(i, graph.Constant) and
+              not fgraph.destroyers(i) and
+              i not in protected_inputs]
     return inputs
 
 if 0:
@@ -293,7 +297,7 @@ if 0:
             TODO: WRITEME: what does this do besides the checks?
             """
 
-            ####### Do the checking ###########
+            # Do the checking #
             already_there = False
             if self.fgraph not in [None, fgraph]:
                 raise Exception("A DestroyHandler instance can only serve"
@@ -309,7 +313,7 @@ if 0:
                     "DestroyHandler feature is already present or in"
                     " conflict with another plugin.")
 
-            ####### end of checking ############
+            # end of checking #
 
             def get_destroyers_of(r):
                 droot, impact, root_destroyer = self.refresh_droot_impact()
@@ -341,38 +345,9 @@ if 0:
 
         def refresh_droot_impact(self):
             if self.stale_droot:
-                self.droot, self.impact, self.root_destroyer = self._build_droot_impact()
+                self.droot, self.impact, self.root_destroyer = _build_droot_impact(self)
                 self.stale_droot = False
             return self.droot, self.impact, self.root_destroyer
-
-        def _build_droot_impact(self):
-            droot = {}   # destroyed view + nonview variables -> foundation
-            impact = {}  # destroyed nonview variable -> it + all views of it
-            root_destroyer = {}  # root -> destroyer apply
-
-            for app in self.destroyers:
-                for output_idx, input_idx_list in iteritems(app.op.destroy_map):
-                    if len(input_idx_list) != 1:
-                        raise NotImplementedError()
-                    input_idx = input_idx_list[0]
-                    input = app.inputs[input_idx]
-                    input_root = getroot(input, self.view_i)
-                    if input_root in droot:
-                        raise InconsistencyError(
-                            "Multiple destroyers of %s" % input_root)
-                    droot[input_root] = input_root
-                    root_destroyer[input_root] = app
-                    #input_impact = set([input_root])
-                    #add_impact(input_root, self.view_o, input_impact)
-                    input_impact = get_impact(input_root, self.view_o)
-                    for v in input_impact:
-                        assert v not in droot
-                        droot[v] = input_root
-
-                    impact[input_root] = input_impact
-                    impact[input_root].add(input_root)
-
-            return droot, impact, root_destroyer
 
         def on_detach(self, fgraph):
             if fgraph is not self.fgraph:
@@ -390,7 +365,7 @@ if 0:
         def on_import(self, fgraph, app, reason):
             """Add Apply instance to set which must be computed"""
 
-            #if app in self.debug_all_apps: raise ProtocolError("double import")
+            # if app in self.debug_all_apps: raise ProtocolError("double import")
             # self.debug_all_apps.add(app)
             # print 'DH IMPORT', app, id(app), id(self), len(self.debug_all_apps)
 
@@ -421,7 +396,7 @@ if 0:
 
         def on_prune(self, fgraph, app, reason):
             """Remove Apply instance from set which must be computed"""
-            #if app not in self.debug_all_apps: raise ProtocolError("prune without import")
+            # if app not in self.debug_all_apps: raise ProtocolError("prune without import")
             # self.debug_all_apps.remove(app)
 
             # UPDATE self.clients
@@ -458,7 +433,7 @@ if 0:
                 # considered 'outputs' of the graph.
                 pass
             else:
-                #if app not in self.debug_all_apps: raise ProtocolError("change without import")
+                # if app not in self.debug_all_apps: raise ProtocolError("change without import")
 
                 # UPDATE self.clients
                 self.clients[old_r][app] -= 1
@@ -529,9 +504,10 @@ if 0:
                 droot, impact, __ignore = self.refresh_droot_impact()
 
                 # check for destruction of constants
-                illegal_destroy = [r for r in droot if
-                        getattr(r.tag, 'indestructible', False) or
-                        isinstance(r, graph.Constant)]
+                illegal_destroy = [
+                    r for r in droot if
+                    getattr(r.tag, 'indestructible', False) or
+                    isinstance(r, graph.Constant)]
                 if illegal_destroy:
                     # print 'destroying illegally'
                     raise InconsistencyError(
@@ -603,7 +579,7 @@ if 0:
                             if input in root_impact \
                                     and (i not in tolerated or input is not destroyed_variable):
                                 raise InconsistencyError("Input aliasing: %s (%i, %i)"
-                                        % (app, destroyed_idx, i))
+                                                         % (app, destroyed_idx, i))
 
                         # add the rule: app must be preceded by all other Apply instances that
                         # depend on destroyed_input
@@ -621,7 +597,7 @@ if 0:
             return rval
 
 
-class DestroyHandler(toolbox.Bookkeeper):
+class DestroyHandler(toolbox.Bookkeeper):  # noqa
     """
     The DestroyHandler class detects when a graph is impossible to evaluate
     because of aliasing and destructive operations.
@@ -702,7 +678,7 @@ class DestroyHandler(toolbox.Bookkeeper):
         TODO: WRITEME: what does this do besides the checks?
         """
 
-        ####### Do the checking ###########
+        # Do the checking #
         already_there = False
         if self.fgraph is fgraph:
             already_there = True
@@ -720,7 +696,7 @@ class DestroyHandler(toolbox.Bookkeeper):
                 "DestroyHandler feature is already present"
                 " or in conflict with another plugin.")
 
-        ####### Annotate the FunctionGraph ############
+        # Annotate the FunctionGraph #
         self.unpickle(fgraph)
         fgraph.destroy_handler = self
 
@@ -752,30 +728,8 @@ class DestroyHandler(toolbox.Bookkeeper):
         (see docstrings for these properties above)
         """
         if self.stale_droot:
-            droot = OrderedDict()   # destroyed view + nonview variables -> foundation
-            impact = OrderedDict()  # destroyed nonview variable -> it + all views of it
-            root_destroyer = OrderedDict()  # root -> destroyer apply
-
-            for app in self.destroyers:
-                for output_idx, input_idx_list in iteritems(app.op.destroy_map):
-                    if len(input_idx_list) != 1:
-                        raise NotImplementedError()
-                    input_idx = input_idx_list[0]
-                    input = app.inputs[input_idx]
-                    input_root = getroot(input, self.view_i)
-                    if input_root in droot:
-                        raise InconsistencyError(
-                            "Multiple destroyers of %s" % input_root)
-                    droot[input_root] = input_root
-                    root_destroyer[input_root] = app
-                    input_impact = get_impact(input_root, self.view_o)
-                    for v in input_impact:
-                        assert v not in droot
-                        droot[v] = input_root
-
-                    impact[input_root] = input_impact
-                    impact[input_root].add(input_root)
-            self.droot, self.impact, self.root_destroyer = droot, impact, root_destroyer
+            self.droot, self.impact, self.root_destroyer =\
+                _build_droot_impact(self)
             self.stale_droot = False
         return self.droot, self.impact, self.root_destroyer
 
@@ -945,12 +899,13 @@ class DestroyHandler(toolbox.Bookkeeper):
             droot, impact, __ignore = self.refresh_droot_impact()
 
             # check for destruction of constants
-            illegal_destroy = [r for r in droot if \
-                    getattr(r.tag, 'indestructible', False) or \
-                    isinstance(r, graph.Constant)]
+            illegal_destroy = [r for r in droot if
+                               getattr(r.tag, 'indestructible', False) or
+                               isinstance(r, graph.Constant)]
             if illegal_destroy:
-                raise InconsistencyError("Attempting to destroy indestructible variables: %s" %
-                        illegal_destroy)
+                raise InconsistencyError(
+                    "Attempting to destroy indestructible variables: %s" %
+                    illegal_destroy)
 
             # add destroyed variable clients as computational dependencies
             for app in self.destroyers:
@@ -995,24 +950,27 @@ class DestroyHandler(toolbox.Bookkeeper):
 
                     # CHECK FOR INPUT ALIASING
                     # OPT: pre-compute this on import
-                    tolerate_same = getattr(app.op, 'destroyhandler_tolerate_same', [])
+                    tolerate_same = getattr(app.op,
+                                            'destroyhandler_tolerate_same', [])
                     assert isinstance(tolerate_same, list)
                     tolerated = OrderedSet(idx1 for idx0, idx1 in tolerate_same
-                            if idx0 == destroyed_idx)
+                                           if idx0 == destroyed_idx)
                     tolerated.add(destroyed_idx)
-                    tolerate_aliased = getattr(app.op, 'destroyhandler_tolerate_aliased', [])
+                    tolerate_aliased = getattr(
+                        app.op, 'destroyhandler_tolerate_aliased', [])
                     assert isinstance(tolerate_aliased, list)
                     ignored = OrderedSet(idx1 for idx0, idx1 in tolerate_aliased
-                            if idx0 == destroyed_idx)
+                                         if idx0 == destroyed_idx)
                     # print 'tolerated', tolerated
                     # print 'ignored', ignored
                     for i, input in enumerate(app.inputs):
                         if i in ignored:
                             continue
                         if input in root_impact \
-                                and (i not in tolerated or input is not destroyed_variable):
+                                and (i not in tolerated or
+                                     input is not destroyed_variable):
                             raise InconsistencyError("Input aliasing: %s (%i, %i)"
-                                    % (app, destroyed_idx, i))
+                                                     % (app, destroyed_idx, i))
 
                     # add the rule: app must be preceded by all other Apply instances that
                     # depend on destroyed_input

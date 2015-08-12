@@ -107,12 +107,10 @@ def test_pydotprint_long_name():
     f([1, 2, 3, 4])
 
     theano.printing.pydotprint(f, max_label_size=5,
-                               print_output_file=False,
-                               assert_nb_all_strings=6)
+                               print_output_file=False)
     theano.printing.pydotprint([x * 2, x + x],
                                max_label_size=5,
-                               print_output_file=False,
-                               assert_nb_all_strings=8)
+                               print_output_file=False)
 
 
 def test_pydotprint_profile():
@@ -254,7 +252,7 @@ def test_debugprint():
 
 def test_scan_debugprint1():
     k = tensor.iscalar("k")
-    A = tensor.vector("A")
+    A = tensor.dvector("A")
 
     # Symbolic description of the result
     result, updates = theano.scan(fn=lambda prior_result, A: prior_result * A,
@@ -344,7 +342,7 @@ def test_scan_debugprint2():
        | |Subtensor{int64} [@J] ''
        |   |Shape [@K] ''
        |   | |Subtensor{int64::} [@L] ''
-       |   |   |ARange [@M] ''
+       |   |   |ARange{dtype='int16'} [@M] ''
        |   |   | |TensorConstant{0} [@N]
        |   |   | |TensorConstant{10000} [@O]
        |   |   | |TensorConstant{1} [@P]
@@ -375,11 +373,11 @@ def test_scan_debugprint2():
 
 
 def test_scan_debugprint3():
-    coefficients = theano.tensor.vector("coefficients")
+    coefficients = theano.tensor.dvector("coefficients")
     max_coefficients_supported = 10
 
     k = tensor.iscalar("k")
-    A = tensor.vector("A")
+    A = tensor.dvector("A")
 
     # compute A**k
     def compute_A_k(A, k):
@@ -427,7 +425,7 @@ def test_scan_debugprint3():
        | |Subtensor{int64} [@J] ''
        |   |Shape [@K] ''
        |   | |Subtensor{int64::} [@L] ''
-       |   |   |ARange [@M] ''
+       |   |   |ARange{dtype='int8'} [@M] ''
        |   |   | |TensorConstant{0} [@N]
        |   |   | |TensorConstant{10} [@O]
        |   |   | |TensorConstant{1} [@P]
@@ -569,7 +567,7 @@ def test_scan_debugprint4():
 def test_scan_debugprint5():
 
     k = tensor.iscalar("k")
-    A = tensor.vector("A")
+    A = tensor.dvector("A")
 
     # Symbolic description of the result
     result, updates = theano.scan(fn=lambda prior_result, A: prior_result * A,

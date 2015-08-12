@@ -9,6 +9,7 @@ import warnings
 
 import theano
 from theano import gof
+from theano.compat import OrderedDict
 from six import iteritems
 from six.moves import xrange
 
@@ -38,15 +39,10 @@ class ViewOp(gof.Op):
     # In the C code, the name of the input variable is %(iname)s,
     # the output variable is %(oname)s.
     c_code_and_version = {}
+    __props__ = ()
 
     def make_node(self, x):
         return gof.Apply(self, [x], [x.type()])
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
 
     def perform(self, node, inp, out):
         x, = inp
@@ -138,18 +134,10 @@ class DeepCopyOp(gof.Op):
     c_code_and_version = {}
 
     check_input = False
+    __props__ = ()
 
     def __init__(self):
         pass
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __eq__(self, other):
-        return type(self) == type(other)
 
     def make_node(self, x):
         return gof.Apply(self, [x], [x.type()])
@@ -228,15 +216,7 @@ class Shape(gof.Op):
     c_code_and_version = {}
 
     check_input = False
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, x):
         # Must work for all type that have a shape attribute.
@@ -480,6 +460,7 @@ class FromFunctionOp(gof.Op):
     raise an error if you attempt to get the gradient of a graph
     containing this op.
     """
+
     def __init__(self, fn, itypes, otypes, infer_shape):
         self.__fn = fn
         self.itypes = itypes
@@ -499,8 +480,13 @@ class FromFunctionOp(gof.Op):
         return 'FromFunctionOp{%s}' % self.__fn.__name__
 
     def make_node(self, *inputs):
-        assert len(inputs) == len(self.itypes)
-        assert all(inp.type == it for inp, it in zip(inputs, self.itypes))
+        if len(inputs) != len(self.itypes):
+            raise ValueError("We expected %d inputs but got %d." %
+                             (len(self.itypes), len(inputs)))
+        if not all(inp.type == it for inp, it in zip(inputs, self.itypes)):
+            raise TypeError(
+                "We expected inputs of types '%s' but got types '%s' " %
+                (str([inp.type for inp in inputs]), str(self.itypes)))
         return theano.Apply(self, inputs, [o() for o in self.otypes])
 
     def perform(self, node, inputs, outputs):
@@ -618,17 +604,21 @@ class Rebroadcast(gof.Op):
     c_code_and_version = {}
 
     check_input = False
+    __props__ = ("axis",)
 
     def __init__(self, *axis):
-        self.axis = dict(axis)
+        # Sort them to make sure we merge all possible case.
+        items = sorted(axis)
+        self.axis = OrderedDict(items)
         for axis, broad in iteritems(self.axis):
             assert isinstance(axis, (numpy.integer, int)), (
                 "Rebroadcast needs integer axes. Got ", axis)
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.axis == other.axis
+            assert isinstance(broad, bool), (
+                "Rebroadcast needs bool for new broadcast pattern. Got ",
+                broad)
 
     def __hash__(self):
+        # Need special __hash__ as dict aren't hashable.
         # no ambiguity because each item key is unique
         items = sorted(iteritems(self.axis))
         return hash((type(self), tuple(items)))
@@ -763,15 +753,7 @@ class SpecifyShape(gof.Op):
     # In the C code, the name of the input variable is %(iname)s,
     # the output variable is %(oname)s.
     c_code_and_version = {}
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, x, shape):
         if not isinstance(x, gof.Variable):

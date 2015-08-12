@@ -7,7 +7,6 @@ from __future__ import print_function
 import warnings
 
 import numpy
-from six.moves import xrange
 
 import theano
 from theano import config, gof, printing, scalar
@@ -92,7 +91,7 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
         x, = inp
         z, = out
         if (not theano.config.lib.amdlibm or
-            node.inputs[0].dtype != node.outputs[0].dtype):
+                node.inputs[0].dtype != node.outputs[0].dtype):
             raise theano.gof.utils.MethodNotDefined()
         dtype = node.inputs[0].dtype
         if dtype == 'float32' and self.amd_float32 is not None:
@@ -129,9 +128,8 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
         """
         This method was used to generate the graph: sigmoid_prec.png in the doc
         """
-        import matplotlib
         data = numpy.arange(-15, 15, .1)
-        val = 1/(1+numpy.exp(-data))
+        val = 1 / (1 + numpy.exp(-data))
 
         def hard_sigmoid(x):
             return theano.tensor.nnet.hard_sigmoid(x)
@@ -164,10 +162,10 @@ scalar_sigmoid = ScalarSigmoid(scalar.upgrade_to_float, name='scalar_sigmoid')
 sigmoid = elemwise.Elemwise(scalar_sigmoid, name='sigmoid')
 
 sigmoid_inplace = elemwise.Elemwise(
-        ScalarSigmoid(scalar.transfer_type(0)),
-        inplace_pattern={0: 0},
-        name='sigmoid_inplace',
-        )
+    ScalarSigmoid(scalar.transfer_type(0)),
+    inplace_pattern={0: 0},
+    name='sigmoid_inplace',
+)
 
 pprint.assign(sigmoid, printing.FunctionPrinter('sigmoid'))
 
@@ -240,7 +238,7 @@ pprint.assign(ultra_fast_sigmoid,
               printing.FunctionPrinter('ultra_fast_sigmoid'))
 
 
-#@opt.register_uncanonicalize
+# @opt.register_uncanonicalize
 @gof.local_optimizer([sigmoid])
 def local_ultra_fast_sigmoid(node):
     """
@@ -290,7 +288,7 @@ def hard_sigmoid(x):
     return x
 
 
-#@opt.register_uncanonicalize
+# @opt.register_uncanonicalize
 @gof.local_optimizer([sigmoid])
 def local_hard_sigmoid(node):
     if (isinstance(node.op, tensor.Elemwise) and
@@ -412,7 +410,7 @@ def is_1pexp(t):
     """
     if t.owner and t.owner.op == tensor.add:
         scalars, scalar_inputs, nonconsts = \
-                opt.scalarconsts_rest(t.owner.inputs)
+            opt.scalarconsts_rest(t.owner.inputs)
         # scalar_inputs are potentially dimshuffled and fill'd scalars
         if len(nonconsts) == 1:
             maybe_exp = nonconsts[0]
@@ -439,11 +437,12 @@ def is_1pexp(t):
     return None
 
 
-AddConfigVar('warn.identify_1pexp_bug',
-        'Warn if Theano versions prior to 7987b51 (2011-12-18) could have '
-        'yielded a wrong result due to a bug in the is_1pexp function',
-        BoolParam(theano.configdefaults.warn_default('0.4.1')),
-        in_c_key=False)
+AddConfigVar(
+    'warn.identify_1pexp_bug',
+    'Warn if Theano versions prior to 7987b51 (2011-12-18) could have '
+    'yielded a wrong result due to a bug in the is_1pexp function',
+    BoolParam(theano.configdefaults.warn_default('0.4.1')),
+    in_c_key=False)
 
 
 def is_exp(var):
@@ -778,9 +777,9 @@ def perform_sigm_times_exp(tree, exp_x=None, exp_minus_x=None, sigm_x=None,
         rval = False
         for sub_idx, sub_tree in enumerate(inputs):
             rval |= perform_sigm_times_exp(
-                    tree=sub_tree, parent=tree, child_idx=sub_idx,
-                    exp_x=exp_x, exp_minus_x=exp_minus_x, sigm_x=sigm_x,
-                    sigm_minus_x=sigm_minus_x, full_tree=full_tree)
+                tree=sub_tree, parent=tree, child_idx=sub_idx,
+                exp_x=exp_x, exp_minus_x=exp_minus_x, sigm_x=sigm_x,
+                sigm_minus_x=sigm_minus_x, full_tree=full_tree)
         return rval
     else:
         # Reached a leaf: if it is an exponential or a sigmoid, then we
@@ -867,15 +866,15 @@ def local_inv_1_plus_exp(node):
         inv_arg = node.inputs[0]
         if inv_arg.owner and inv_arg.owner.op == tensor.add:
             scalars, scalar_inputs, nonconsts = \
-                    opt.scalarconsts_rest(inv_arg.owner.inputs)
+                opt.scalarconsts_rest(inv_arg.owner.inputs)
             # scalar_inputs are potentially dimshuffled and fill'd scalars
             if len(nonconsts) == 1:
                 if nonconsts[0].owner and nonconsts[0].owner.op == tensor.exp:
                     if scalars and numpy.allclose(numpy.sum(scalars), 1):
                         return opt._fill_chain(
-                                sigmoid(
-                                    tensor.neg(nonconsts[0].owner.inputs[0])),
-                                scalar_inputs)
+                            sigmoid(
+                                tensor.neg(nonconsts[0].owner.inputs[0])),
+                            scalar_inputs)
 
 # Registration is below, and conditional.
 
@@ -892,7 +891,7 @@ def local_1msigmoid(node):
         if sub_r.owner and sub_r.owner.op == sigmoid:
             try:
                 val_l = opt.get_scalar_constant_value(sub_l)
-            except Exception as e:
+            except Exception:
                 return
             if numpy.allclose(numpy.sum(val_l), 1):
                 return [sigmoid(-sub_r.owner.inputs[0])]
@@ -921,7 +920,6 @@ if 0:
         print(sigm_canonicalize(node))
 
     def sigm_canonicalize(node):
-        add = tensor.add
         mul = tensor.mul
         div = tensor.true_div
 
