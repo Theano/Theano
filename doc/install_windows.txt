@@ -120,7 +120,7 @@ dependencies is to install `Enthought Python Distribution (EPD) <http://enthough
 If you are affiliated with a university (as student or employee), you can
 download the installation for free.
 EPD installation includes, in particular, Python (and the development headers),
-NumPy, SciPy, nose, sphinx, easy_install, pydot (but *not* `Graphviz`_, which is
+NumPy, SciPy, nose, sphinx, easy_install, pydot (but *not* Graphviz, which is
 necessary for it to work), g++, and the MKL
 implementation of blas.
 
@@ -299,7 +299,7 @@ By default neither Python, GCC, nor Visual Studio was added to the
 PATH. Save the following shell script as ``c:\scisoft\env.bat`` to
 configure the system path:
 
-.. code-block:: cmd
+.. code-block:: none
 
    REM configuration of paths
    set VSFORPYTHON="C:\Program Files (x86)\Common Files\Microsoft\Visual C++ for Python\9.0"
@@ -335,7 +335,7 @@ programs are found:
 Finally we need to create a link library for GCC. Open up the Python
 shell and ``cd`` to ``c:\SciSoft``. Then execute:
 
-.. code-block:: cmd
+.. code-block:: none
 
    gendef WinPython-64bit-2.7.9.4\python-2.7.9.amd64\python27.dll
 

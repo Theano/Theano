@@ -886,7 +886,7 @@ To understand this profile here is some explanation of how optimizations work:
   * 0.028s means it spent that time calls to ``fgraph.validate()``
   * 0.131s means it spent that time for callbacks. This is a mechanism that can trigger other execution when there is a change to the FunctionGraph.
   * ``time      - (name, class, index) - validate time`` tells how the information for each sub-optimizer get printed.
-  * All other instances of ``SeqOptimizer`` are described like this. In particular, some sub-optimizer from OPT_FAST_RUN that are also ``SeqOptimizer``s.
+  * All other instances of ``SeqOptimizer`` are described like this. In particular, some sub-optimizer from OPT_FAST_RUN that are also ``SeqOptimizer``.
 
 
 * The ``SeqOptimizer`` will print some stats at the start:
@@ -965,7 +965,7 @@ To understand this profile here is some explanation of how optimizations work:
     a total of .7s. Its name is ``'canonicalize'``. It is an
     ``EquilibriumOptimizer``. It was executed at index 4 by the
     ``SeqOptimizer``. It spent 0.004s in the *validate* phase.
-  * All other lines are from the profiler of the ``EquilibriumOptimizer`.
+  * All other lines are from the profiler of the ``EquilibriumOptimizer``.
 
   * An ``EquilibriumOptimizer`` does multiple passes on the Apply nodes from
     the graph, trying to apply local and global optimizations.
