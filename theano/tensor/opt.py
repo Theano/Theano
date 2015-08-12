@@ -1372,7 +1372,8 @@ def local_fill_sink(node):
         return False
     c = node.op(*inputs)
     for model in models:
-        c = T.fill(model, c)
+        if model.type != c.type:
+            c = T.fill(model, c)
 
     # The newly created node c doesn't has 'clients',
     # so this iteration is took place with node.outputs[0]
@@ -3623,11 +3624,10 @@ register_canonicalize(local_fill_cut)
 
 register_canonicalize(gof.OpRemove(T.tensor_copy), name='remove_tensor_copy')
 
-
-
 ################
 # Canonization #
 ################
+
 
 class Canonizer(gof.LocalOptimizer):
     """
