@@ -208,6 +208,11 @@ class TensorType(Type):
         if other.type == self:
             return other
 
+        # Attempt safe broadcast conversion.
+        other = self.convert_variable(other)
+        if other.type == self:
+            return other
+
         raise TypeError(
             'Cannot convert Type %(othertype)s '
             '(of Variable %(other)s) into Type %(self)s. '
