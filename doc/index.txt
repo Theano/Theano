@@ -245,7 +245,6 @@ StackOverflow, follow their guidance for `answering questions <http://stackoverf
    glossary
    links
    internal/index
-   proposals/index
    acknowledgement
    LICENSE
 

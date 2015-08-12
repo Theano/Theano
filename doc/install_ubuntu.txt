@@ -1,3 +1,5 @@
+:orphan:
+
 .. _install_ubuntu:
 
 Easy Installation of an Optimized Theano on Current Ubuntu
