@@ -32,10 +32,11 @@ except OSError:
 
 def local_bitwidth():
     """
-    Return 32 for 32bit arch, 64 for 64bit arch
+    Return 32 for 32bit arch, 64 for 64bit arch.
 
     By "architecture", we mean the size of memory pointers (size_t in C),
     *not* the size of long int, as it can be different.
+
     """
     # Note that according to Python documentation, `platform.architecture()` is
     # not reliable on OS X with universal binaries.
@@ -49,6 +50,7 @@ def python_int_bitwidth():
     Return the bit width of Python int (C long int).
 
     Note that it can be different from the size of a memory pointer.
+
     """
     # 'l' denotes a C long int, and the size is expressed in bytes.
     return struct.calcsize('l') * 8
@@ -67,7 +69,8 @@ compiledir_format_dict = {
 
 
 def short_platform(r=None, p=None):
-    """Return a safe shorter version of platform.platform().
+    """
+    Return a safe shorter version of platform.platform().
 
     The old default Theano compiledir used platform.platform in
     it. This use the platform.version() as a substring. This is too
@@ -103,13 +106,11 @@ def short_platform(r=None, p=None):
     compiledir_Linux-2.6.32-220.7.1.el6.x86_64-x86_64-with-redhat-6.2-Santiago-x86_64-2.6.6
     compiledir_Linux-2.6.32-220.4.1.el6.x86_64-x86_64-with-redhat-6.2-Santiago-x86_64-2.6.6
 
-    We suppose the version are ``X.Y[.*]-(digit)*(anything)*``. We
-    keep ``X.Y`` and don't keep less important digit in the part
-    before ``-`` and we remove the leading digit after the first
-    ``-``.
+    We suppose the version are ``X.Y[.*]-(digit)*(anything)*``. We keep ``X.Y``
+    and don't keep less important digit in the part before ``-`` and we remove
+    the leading digit after the first ``-``.
 
-    If the information don't fit that pattern, we do not modify
-    platform.
+    If the information don't fit that pattern, we do not modify platform.
 
     """
     if r is None:
@@ -214,6 +215,7 @@ def filter_compiledir(path):
 def get_home_dir():
     """
     Return location of the user's home directory.
+
     """
     home = os.getenv('HOME')
     if home is None:
@@ -269,6 +271,7 @@ def cleanup():
     3) They do not have a compile version string
 
     If there is no key left for a compiled module, we delete the module.
+
     """
     compiledir = theano.config.compiledir
     for directory in os.listdir(compiledir):
