@@ -1777,8 +1777,16 @@ class T_Scan(unittest.TestCase):
         analytic_grad = reset_rng_grad_fn(v_u, v_x0, vW_in)
         utt.assert_allclose(analytic_grad[0][:2], numpy.zeros((2, 2)))
 
-    @attr('slow')
     def test_grad_multiple_outs_some_disconnected(self):
+        final_cost = self._grad_mout_helper(100, mode_nodebug)
+        assert final_cost < 0.02
+
+    def test_grad_multiple_outs_some_disconnected_2(self):
+        # This is to try the network in DEBUG_MODE, but not fully
+        # train it since that would take 3 hours
+        self._grad_mout_helper(1, None)
+
+    def _grad_mout_helper(self, n_iters, mode):
         # Created on Tue Oct 07 13:28:51 2014
         # @author: vaneetke
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -1820,7 +1828,8 @@ class T_Scan(unittest.TestCase):
             sequences=dict(input=x),
             # corresponds to the return type of one_step
             outputs_info=[dict(initial=h0, taps=[-2, -1]), None],
-            non_sequences=[W_ih, W_hh, b_h, W_ho, b_o])
+            non_sequences=[W_ih, W_hh, b_h, W_ho, b_o],
+            mode=mode)
 
         # target values
         t = tensor.matrix()
@@ -1835,8 +1844,6 @@ class T_Scan(unittest.TestCase):
         gparams = theano.grad(cost, params)
         updates = [(param, param - gparam * learning_rate)
                    for param, gparam in zip(params, gparams)]
-        mode = copy.copy(theano.compile.get_default_mode())
-        mode.check_py_code = False
         learn_rnn_fn = theano.function(inputs=[x, t],
                                        outputs=cost,
                                        updates=updates,
@@ -1851,10 +1858,10 @@ class T_Scan(unittest.TestCase):
         s_v = numpy.sin(x_v)
         t_v = numpy.roll(s_v, -1)[:-1]
         s_v = s_v[:-1]
-        for i in xrange(100):
+        for i in xrange(n_iters):
             cost = learn_rnn_fn(s_v, t_v)
         pred = eval_rnn_fn(s_v)
-        assert cost < 0.02
+        return cost
 
     def test_draw_as_input_to_scan(self):
         trng = theano.tensor.shared_randomstreams.RandomStreams(123)
