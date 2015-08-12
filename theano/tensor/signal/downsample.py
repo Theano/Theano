@@ -1120,7 +1120,7 @@ class DownsampleFactorMaxGradGrad(Op):
     def c_code_cache_version(self):
         return (0,1)
 
-@register_canonicalize
+@register_canonicalize('fast_compile')
 @gof.local_optimizer([MaxPoolGrad])
 def local_average_pool_grad(node):
     # To assure backward compatibility with
