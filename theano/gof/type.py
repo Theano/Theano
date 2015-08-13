@@ -278,6 +278,11 @@ class PureType(object):
             other = self.Constant(type=self, data=other)
 
         if other.type != self:
+            other2 = self.convert_variable(other)
+            if other2 is not None:
+                return other2
+
+        if other.type != self:
             raise TypeError(
                 'Cannot convert Type %(othertype)s '
                 '(of Variable %(other)s) into Type %(self)s. '

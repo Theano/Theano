@@ -146,10 +146,14 @@ class CudaNdarrayType(Type):
             raise TypeError('Incompatible number of dimensions.'
                             ' Expected %d, got %d.' % (self.ndim, other.ndim))
         if other.type.broadcastable != self.broadcastable:
-            raise TypeError('Incompatible broadcastable dimensions.'
-                            ' Expected %s, got %s.' %
-                            (str(other.type.broadcastable),
-                             str(self.broadcastable)))
+            type2 = other.type.clone(broadcastable=self.broadcastable)
+            other2 = type2.convert_variable(other)
+            if other2 is None:
+                raise TypeError('Incompatible broadcastable dimensions.'
+                                ' Expected %s, got %s.' %
+                                (str(other.type.broadcastable),
+                                 str(self.broadcastable)))
+            other = other2
 
         return theano.sandbox.cuda.basic_ops.GpuFromHost()(other)
 

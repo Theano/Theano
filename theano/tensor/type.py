@@ -209,9 +209,9 @@ class TensorType(Type):
             return other
 
         # Attempt safe broadcast conversion.
-        other = self.convert_variable(other)
-        if other.type == self:
-            return other
+        other2 = self.convert_variable(other)
+        if other2 is not None and other2.type == self:
+            return other2
 
         raise TypeError(
             'Cannot convert Type %(othertype)s '
