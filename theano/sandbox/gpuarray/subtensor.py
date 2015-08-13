@@ -167,7 +167,7 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
     Implement IncSubtensor on the gpu.
 
     Notes
-    ----- 
+    -----
     The optimization to make this inplace is in tensor/opt.
     The same optimization handles IncSubtensor and GpuIncSubtensor.
     This Op has c_code too; it inherits tensor.IncSubtensor's c_code.
@@ -307,7 +307,7 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
     def make_view_array(self, x, view_ndim):
         """
         //TODO
-        
+
         Parameters
         ----------
         x
@@ -832,6 +832,8 @@ __device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
               }
               if (kerr != 0) {
                 PyErr_SetString(PyExc_IndexError, "Index out of bounds");
+                kerr = 0;
+                py_self->ga.ops->buffer_write(errbuf, 0, &kerr, sizeof(int));
                 return 1;
               }
             }
