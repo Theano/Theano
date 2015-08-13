@@ -11,13 +11,14 @@ from theano.compat import OrderedDict, PY3
 
 
 def simple_extract_stack(f=None, limit=None):
-    """This is traceback.extract_stack from python 2.7 with this
-    change:
+    """
+    This is traceback.extract_stack from python 2.7 with this change:
 
-    - Comment the update of the cache
+    - Comment the update of the cache.
 
     This is because this update cause an call to os.stat to get the
     line content. This cause too much long on cluster.
+
     """
     if f is None:
         try:
@@ -54,14 +55,22 @@ if sys.version_info[:2] > (3, 4):
 
 
 def add_tag_trace(thing, user_line=1):
-    """Add tag.trace to an node or variable.
+    """
+    Add tag.trace to an node or variable.
 
     The argument is returned after being affected (inplace).
-    :param thing: the object where we add .tag.trace
-    :param user_line: The max number of user line to keep.
 
-    :note: we alse use config.traceback.limit for the maximum number
-        of stack level we look.
+    Parameters
+    ----------
+    thing
+        The object where we add .tag.trace.
+    user_line
+        The max number of user line to keep.
+
+    Notes
+    -----
+    We alse use config.traceback.limit for the maximum number of stack level
+    we look.
 
     """
     limit = config.traceback.limit
@@ -117,6 +126,7 @@ class MethodNotDefined(Exception):
 
     When the user sees such an error, it is because an important interface
     function has been left out of an implementation class.
+
     """
 
 
@@ -159,8 +169,10 @@ class D:
 
 
 def memoize(f):
-    """Cache the return value for each tuple of arguments
-    (which must be hashable) """
+    """
+    Cache the return value for each tuple of arguments (which must be hashable).
+
+    """
     cache = {}
 
     def rval(*args, **kwargs):
@@ -177,15 +189,16 @@ def memoize(f):
 
 
 def deprecated(filename, msg=''):
-    """Decorator which will print a warning message on the first call.
+    """
+    Decorator which will print a warning message on the first call.
 
-    Use it like this::
+    Use it like this:
 
       @deprecated('myfile', 'do something different...')
       def fn_name(...)
           ...
 
-    And it will print::
+    And it will print:
 
       WARNING myfile.fn_name deprecated. do something different...
 
@@ -209,6 +222,7 @@ def uniq(seq):
     Do not use set, this must always return the same value at the same index.
     If we just exchange other values, but keep the same pattern of duplication,
     we must keep the same order.
+
     """
     # TODO: consider building a set out of seq so that the if condition
     # is constant time -JB
@@ -217,7 +231,8 @@ def uniq(seq):
 
 def difference(seq1, seq2):
     """
-    Returns all elements in seq1 which are not in seq2: i.e ``seq1\seq2``
+    Returns all elements in seq1 which are not in seq2: i.e ``seq1\seq2``.
+
     """
     try:
         # try to use O(const * len(seq1)) algo
@@ -252,6 +267,7 @@ def toposort(prereqs_d):
 
     prereqs_d[x] contains all the elements that must come before x
     in the ordering.
+
     """
 
 #     all1 = set(prereqs_d.keys())
@@ -390,6 +406,7 @@ def type_guard(type1):
 def flatten(a):
     """
     Recursively flatten tuple, list and set in a list.
+
     """
     if isinstance(a, (tuple, list, set)):
         l = []
@@ -412,9 +429,12 @@ def hist(coll):
 
 
 def give_variables_names(variables):
-    """ Gives unique names to an iterable of variables. Modifies input.
+    """
+    Gives unique names to an iterable of variables. Modifies input.
 
-    This function is idempotent."""
+    This function is idempotent.
+
+    """
     names = [var.name for var in variables]
     h = hist(names)
 
@@ -431,13 +451,17 @@ def give_variables_names(variables):
 
 
 def remove(predicate, coll):
-    """ Return those items of collection for which predicate(item) is true.
+    """
+    Return those items of collection for which predicate(item) is true.
 
+    Examples
+    --------
     >>> from itertoolz import remove
     >>> def even(x):
     ...     return x % 2 == 0
     >>> remove(even, [1, 2, 3, 4])
     [1, 3]
+
     """
     return [x for x in coll if not predicate(x)]
 
@@ -466,12 +490,16 @@ else:
 
 
 def hash_from_file(file_path):
-    """Return the MD5 hash of a file."""
+    """
+    Return the MD5 hash of a file.
+
+    """
     return hash_from_code(open(file_path, 'rb').read())
 
 
 def hash_from_dict(d):
-    """Work around the fact that dict are not hashable in python
+    """
+    Work around the fact that dict are not hashable in python.
 
     This request that all object have a sorted order that depend only
     on the key of the object. We support only integer/float/string keys.
@@ -479,8 +507,10 @@ def hash_from_dict(d):
     Also, we transform values that are list into tuple as list are not
     hashable.
 
-    :note: special case for OrderedDict, it use the order of the dict,
-        so the key don't need to be sortable.
+    Notes
+    -----
+    Special case for OrderedDict, it use the order of the dict,
+    so the key don't need to be sortable.
 
     """
     if isinstance(d, OrderedDict):
