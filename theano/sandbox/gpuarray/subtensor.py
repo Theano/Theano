@@ -263,6 +263,9 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
 
     def __setstate__(self, d):
         self.__dict__.update(d)
+        owner = getattr(self, "owner", None)
+        if owner:
+            self.create_iadd_node(owner)
 
     def __getstate__(self):
         d = copy.copy(self.__dict__)
