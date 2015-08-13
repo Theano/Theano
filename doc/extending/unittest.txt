@@ -236,16 +236,16 @@ Example:
         def test_validity(self):
             a = T.dmatrix('a')
             b = T.dmatrix('b')
-            c = T.dot(a,b)
-            f = theano.function([a,b],[c])
-            cmp = f(self.avals,self.bvals) == numpy.dot(self.avals,self.bvals)
+            c = T.dot(a, b)
+            f = theano.function([a, b], [c])
+            cmp = f(self.avals, self.bvals) == numpy.dot(self.avals, self.bvals)
             self.assertTrue(numpy.all(cmp))
 
 Avoid hard-coding variables, as in the following case:
 
-.. testcode:: writeUnitest
+.. code-block:: python
 
-    self.assertTrue(numpy.all(f(self.avals,self.bvals)==numpy.array([[25,25,30,28],[21,18,14,25]])))
+    self.assertTrue(numpy.all(f(self.avals, self.bvals) == numpy.array([[25, 25, 30, 28], [21, 18, 14, 25]])))
 
 This makes the test case less manageable and forces the user to update
 the variables each time the input is changed or possibly when the

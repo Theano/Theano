@@ -55,6 +55,11 @@ Suppose you had an Op which took ``x`` as input and returned
 purpose, you would set the ``view_map`` field as follows:
 
 
+.. testsetup::
+
+   from theano import Op
+   myop = Op()
+
 .. testcode::
 
    myop.view_map = {0: [0]}

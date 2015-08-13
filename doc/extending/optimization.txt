@@ -119,9 +119,6 @@ Global optimization
 Here is the code for a global optimization implementing the
 simplification described above:
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_2
-
 .. testcode::
 
    import theano
@@ -182,9 +179,6 @@ pointer-following game you need to get ahold of the nodes of interest
 for the simplification (``x``, ``y``, ``z``, ``a``, ``b``, etc.).
 
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_2
-
 Test time:
 
 >>> from theano.scalar import float64, add, mul, true_div
@@ -222,8 +216,8 @@ computation, using the ``merge_optimizer`` defined in
 ``theano.gof.opt``.
 
 >>> from theano.gof.opt import merge_optimizer
->>> merge_optimizer.optimize(e)
-(0, 0.0001430511474609375, None, None, {}, 1, 0)
+>>> merge_optimizer.optimize(e)  # doctest: +ELLIPSIS
+(0, ..., None, None, {}, 1, 0)
 >>> e
 [true_div(mul(*1 -> add(y, z), x), *1)]
 >>> simplify.optimize(e)
@@ -253,9 +247,6 @@ Local optimization
 ------------------
 
 The local version of the above code would be the following:
-
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_2
 
 
 .. testcode::
@@ -295,9 +286,6 @@ with a :ref:`navigator`. Basically, a :ref:`navigator` is a global
 optimizer that loops through all nodes in the graph (or a well-defined
 subset of them) and applies one or several local optimizers on them.
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_2
-
 >>> x = float64('x')
 >>> y = float64('y')
 >>> z = float64('z')
@@ -307,7 +295,7 @@ subset of them) and applies one or several local optimizers on them.
 [add(z, mul(true_div(mul(y, x), y), true_div(z, x)))]
 >>> simplify = gof.TopoOptimizer(local_simplify)
 >>> simplify.optimize(e)
-(<theano.gof.opt.TopoOptimizer object at 0x7f3219787f90>, 1, 5, 3, 0.00017309188842773438, 0.00020599365234375, 6.4849853515625e-05)
+(<theano.gof.opt.TopoOptimizer object at 0x...>, 1, 5, 3, ..., ..., ...)
 >>> e
 [add(z, mul(x, true_div(z, x)))]
 
@@ -334,6 +322,9 @@ Theano defines some shortcuts to make LocalOptimizers:
   Replaces all occurrences of the first pattern by the second pattern.
   See :class:`PatternSub`.
 
+.. testsetup::
+
+   from theano.scalar import identity
 
 .. testcode::
 
@@ -438,9 +429,9 @@ Query
 
 A Query is built by the following call:
 
-.. testcode::
+.. code-block:: python
 
-   theano.gof.Query(include, require = None, exclude = None, subquery = None)
+   theano.gof.Query(include, require=None, exclude=None, subquery=None)
 
 .. class:: Query
 
@@ -481,20 +472,21 @@ Optimizer:
 
 .. testcode::
    
+   from theano.gof import Query
    from theano.compile import optdb
 
    # This is how the optimizer for the fast_run mode is defined
-   fast_run = optdb.query(Query(include = ['fast_run']))
+   fast_run = optdb.query(Query(include=['fast_run']))
 
    # This is how the optimizer for the fast_compile mode is defined
-   fast_compile = optdb.query(Query(include = ['fast_compile']))
+   fast_compile = optdb.query(Query(include=['fast_compile']))
 
    # This is the same as fast_run but no optimizations will replace
    # any operation by an inplace version. This assumes, of course,
    # that all inplace operations are tagged as 'inplace' (as they
    # should!)
-   fast_run_no_inplace = optdb.query(Query(include = ['fast_run'], exclude = ['inplace']))
-   fast_run_no_inplace = fast_run.excluding('inplace')
+   fast_run_no_inplace = optdb.query(Query(include=['fast_run'],
+                                           exclude=['inplace']))
 
 
 Registering an Optimizer

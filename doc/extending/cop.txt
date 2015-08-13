@@ -253,8 +253,10 @@ We will be defining C code for the multiplication Op on doubles.
 
 **c_code**
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_2
+.. testsetup::
+
+   from theano import Op
+   mul = Op()
 
 .. testcode::
 
@@ -297,10 +299,6 @@ Final version
 As before, I tried to organize the code in order to minimize
 repetition. You can check that mul produces the same C code in this
 version that it produces in the code I gave above.
-
-
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_2
 
 .. testcode::
 
