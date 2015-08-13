@@ -1,4 +1,6 @@
-"""Define the `function` function
+"""
+Define the `function` function.
+
 """
 import six.moves.cPickle as pickle
 import logging
@@ -23,8 +25,9 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
                   no_default_updates=False, accept_inplace=False, name=None,
                   rebuild_strict=True, allow_input_downcast=None, profile=None,
                   on_unused_input=None):
-    """This is helpful to make a reproducable case for problem during
-    Theano compilation.
+    """
+    This is helpful to make a reproducable case for problem during Theano
+    compilation.
 
     Ex:
 
@@ -65,78 +68,67 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
     """
     Return a callable object that will calculate `outputs` from `inputs`.
 
-    :type inputs: list of either Variable or Param instances.
-    :param inputs: function parameters, these are not allowed to be shared
-    variables
+    Parameters
+    ----------
+    inputs : list of either Variable or Param instances.
+        Function parameters, these are not allowed to be shared variables.
+    outputs : list or dict of Variables or Out instances.
+        If it is a dict, the keys must be strings. Expressions to compute.
+    mode : string or `Mode` instance.
+        Compilation mode.
+    updates : iterable over pairs (shared_variable, new_expression). List, tuple
+              or OrderedDict.
+        Updates the values for SharedVariable inputs according to these
+        expressions.
+    givens : iterable over pairs (Var1, Var2) of Variables. List, tuple or dict.
+             The Var1 and Var2 in each pair must have the same Type.
+        Specific substitutions to make in the computation graph (Var2 replaces
+        Var1).
+    no_default_updates: either bool or list of Variables
+        If True, do not perform any automatic update on Variables. If False
+        (default), perform them all. Else, perform automatic updates on all
+        Variables that are neither in "updates" nor in "no_default_updates".
+    name : str
+        An optional name for this function. The profile mode will print the time
+        spent in this function.
+    rebuild_strict : bool
+        True (Default) is the safer and better tested setting, in which case
+        `givens` must substitute new variables with the same Type as the
+        variables they replace.
+        False is a you-better-know-what-you-are-doing setting, that permits
+        `givens` to replace variables with new variables of any Type.
+        The consequence of changing a Type is that all results depending on that
+        variable may have a different Type too (the graph is rebuilt from inputs
+        to outputs). If one of the new types does not make sense for one of the
+        Ops in the graph, an Exception will be raised.
+    allow_input_downcast: bool or None
+        True means that the values passed as inputs when calling the function
+        can be silently downcasted to fit the dtype of the corresponding
+        Variable, which may lose precision. False means that it will only be
+        cast to a more general, or precise, type. None (default) is almost like
+        False, but allows downcasting of Python float scalars to floatX.
+    profile: None, True, or ProfileStats instance
+        Accumulate profiling information into a given ProfileStats instance.
+        If argument is `True` then a new ProfileStats instance will be used.
+        This profiling object will be available via self.profile.
+    on_unused_input
+        What to do if a variable in the 'inputs' list is not used in the graph.
+        Possible values are 'raise', 'warn', 'ignore' and None.
 
-    :type outputs: list or dict of Variables or Out instances.  If it is a
-                   dict, the keys must be strings
-    :param outputs: expressions to compute
+    Returns
+    -------
+    Function instance
+        A callable object that will compute the outputs (given the inputs) and
+        update the implicit function arguments according to the `updates`.
 
-    :type mode: string or `Mode` instance.
-    :param mode: compilation mode
-
-    :type updates: iterable over pairs (shared_variable, new_expression).
-                   List, tuple or OrderedDict.
-    :param updates: update the values for SharedVariable inputs
-                    according to these expressions
-
-    :type givens: iterable over pairs (Var1, Var2) of Variables. List,
-                  tuple or dict.  The Var1 and Var2 in each pair must
-                  have the same Type.
-    :param givens: specific substitutions to make in the computation
-                   graph (Var2 replaces Var1).
-
-    :type no_default_updates: either bool or list of Variables
-    :param no_default_updates: if True, do not perform any automatic
-        update on Variables.  If False (default), perform them
-        all. Else, perform automatic updates on all Variables that are
-        neither in "updates" nor in "no_default_updates".
-
-    :param name: an optional name for this function. The profile mode
-        will print the time spent in this function.
-
-    :param rebuild_strict: True (Default) is the safer and better
-        tested setting, in which case `givens` must substitute new
-        variables with the same Type as the variables they replace.
-        False is a you-better-know-what-you-are-doing setting, that
-        permits `givens` to replace variables with new variables of
-        any Type.  The consequence of changing a Type is that all
-        results depending on that variable may have a different Type
-        too (the graph is rebuilt from inputs to outputs).  If one of
-        the new types does not make sense for one of the Ops in the
-        graph, an Exception will be raised.
-
-    :type allow_input_downcast: Boolean or None
-    :param allow_input_downcast: True means that the values passed as
-        inputs when calling the function can be silently downcasted to
-        fit the dtype of the corresponding Variable, which may lose
-        precision.  False means that it will only be cast to a more
-        general, or precise, type. None (default) is almost like
-        False, but allows downcasting of Python float scalars to
-        floatX.
-
-    :type profile: None, True, or ProfileStats instance
-    :param profile: accumulate profiling information into a given
-        ProfileStats instance. If argument is `True` then a new
-        ProfileStats instance will be used.  This profiling object
-        will be available via self.profile.
-
-    :param on_unused_input: What to do if a variable in the 'inputs'
-        list is not used in the graph. Possible values are 'raise',
-        'warn', 'ignore' and None.
-
-    :rtype: Function instance
-    :returns: a callable object that will compute the outputs (given
-        the inputs) and update the implicit function arguments
-        according to the `updates`.
-
-    :note: Regarding givens: Be careful to make sure that these
-        substitutions are independent--behaviour when Var1 of one pair
-        appears in the graph leading to Var2 in another expression is
-        undefined.  Replacements specified with givens are different
-        from optimizations in that Var2 is not expected to be
-        equivalent to Var1.
+    Notes
+    -----
+    Regarding givens: Be careful to make sure that these
+    substitutions are independent--behaviour when Var1 of one pair
+    appears in the graph leading to Var2 in another expression is
+    undefined.  Replacements specified with givens are different
+    from optimizations in that Var2 is not expected to be
+    equivalent to Var1.
 
 
     Internal documentation:
@@ -214,6 +206,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
         was easier to develop the VM in Python then translate it to C instead
         of just writing it in C from scratch.
                CVM stands for C Virtual Machine.
+
     """
     if isinstance(outputs, dict):
         output_items = list(outputs.items())
