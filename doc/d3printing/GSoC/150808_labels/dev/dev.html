@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link rel="stylesheet" href="d3-context-menu.css"/>
+	<link rel="stylesheet" href="d3theano.css"/>
+	<script type="text/javascript" src="d3.v3.min.js"></script>
+	<script type='text/javascript' src="dagre-d3.js"></script>
+	<script type='text/javascript' src="graphlib-dot.js"></script>
+	<script src="d3-context-menu.js"></script>
+	<script src="d3theano.js"></script>
+</head>
+<body>
+	<div id='menu'>
+	    <input name="resetNodes" 
+	           type="button" 
+	           value="Reset nodes" 
+	           onclick="resetNodes()"/>
+	    <input name="releaseNodes" 
+	           type="button" 
+	           value="Release nodes" 
+	           onclick="releaseNodes()"/>
+	</div>
+
+	<script type="text/javascript">
+		var path = 'graph.dot'; // '%% DOT_FILE %%';
+		var dotGraph;
+		var graph = {};
+		var nodes = [];
+		var edges = [];
+		
+		var isProfiled = false;
+		var colorProfile = false;
+		var fixedDefault = true;
+		var maxProfilePer = 0;
+		var profileColors = ["#fff5f0","#fee0d2","#fcbba1","#fc9272","#fb6a4a","#ef3b2c","#cb181d","#a50f15"];
+		
+		var pad = 10;
+		var isEditNode = false;
+    	var menuItems = [
+			{
+				title: 'Edit',
+				action: function(elm, d, i) {
+					editNode(elm, d);
+				}
+			},
+			{
+				title: 'Release',
+				action: function(elm, d, i) {
+					releaseNode(d);
+				}
+			}
+		];
+
+		var layout;
+		var scaleDotX;
+		var scaleDotY;
+		
+		d3.select('body').select('svg').remove();
+		var svg = d3.select('body').append('svg')
+			.attr('width', '100%')
+			.attr('height', '95%');
+		var pane = svg.append('g');
+		
+		var edgeDiv = d3.select('body').append('div')
+			.attr('class', 'edgeTooltip')
+			.style('opacity', 0.0);
+			
+		var nodeDiv = d3.select('body').append('div')
+			.attr('class', 'nodeTooltip')
+			.style('opacity', 0.0);
+		
+		// Definition head of edges
+		var markerData = [
+			{'id': 'n', 'color': 'black'},
+			{'id': 'r', 'color': 'red'},
+			{'id': 'b', 'color': 'dodgerblue'}];
+			
+		svg.append("defs").selectAll('marker').data(markerData).enter().append("marker")
+		    .attr("id", function(d) { return 'edgeArrow_' + d.id;})
+		    .attr("markerWidth", 4)
+		    .attr("markerHeight", 4)
+		    .attr("refX", 2)
+		    .attr("refY", 2)
+		    .attr("orient", "auto")
+		  	.append("path")
+		    .attr("d", "M0,0 L4,2 L0,4 Z")
+		    .attr('fill', function(d) { return d.color;});
+		
+		// Zoom behaviour
+		function zoom(d) {
+			var trans = d3.event.translate;
+			trans[0] += 300;
+			trans[1] += 100;
+			pane.attr('transform', 'translate(' + trans + ') scale(' + d3.event.scale + ')');
+		}
+		
+		var bZoom = d3.behavior.zoom()
+			.scaleExtent([0.2, 8])
+			.on('zoom', zoom);
+		svg.call(bZoom);
+		bZoom.event(svg);
+		
+		svg.on("dblclick.zoom", null);
+		
+		var curve = d3.svg.line()
+		    .interpolate("cardinal-closed")
+		    .tension(.85);
+		
+		// Read and initialize graph
+		d3.text(path, function(data) {
+			dotGraph = graphlibDot.read(data);
+			processDotGraph(dotGraph);		
+			graph = forceGraph(dotGraph);
+			setupGraph();
+		});
+	</script>
+</body>
+</html>

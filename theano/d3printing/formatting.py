@@ -1,6 +1,7 @@
 import numpy as np
 import logging
 import re
+import os.path as pt
 
 try:
     import pydot as pd
@@ -84,17 +85,19 @@ class GraphFormatter(object):
         self.all_strings = set()
         self.apply_name_cache = {}
 
+        profile = None
         if isinstance(fct, Function):
             mode = fct.maker.mode
-            profile = getattr(fct, "profile", None)
             if (not isinstance(mode, ProfileMode) or
-                    fct not in mode.profile_stats):
+                fct not in mode.profile_stats):
                     mode = None
+            if mode:
+                profile = mode.profile_stats[fct]
+            else:
+                profile = getattr(fct, "profile", None)
             outputs = fct.maker.fgraph.outputs
             topo = fct.maker.fgraph.toposort()
         elif isinstance(fct, gof.FunctionGraph):
-            mode = None
-            profile = None
             outputs = fct.outputs
             topo = fct.toposort()
         else:
@@ -106,8 +109,6 @@ class GraphFormatter(object):
             assert all(isinstance(v, gof.Variable) for v in fct)
             fct = gof.FunctionGraph(inputs=gof.graph.inputs(fct),
                                     outputs=fct)
-            mode = None
-            profile = None
             outputs = fct.outputs
             topo = fct.toposort()
         if not pydot_imported:
@@ -125,29 +126,40 @@ class GraphFormatter(object):
                 if i.update is not None:
                     self.input_update[outputs.pop()] = i
 
-        apply_shape = 'ellipse'
-        var_shape = 'box'
         for node in topo:
+            nparams = {}
             node_id = self.node_id(node)
-            astr, aprof = self.apply_name(node, fct, topo, mode, profile)
+            nparams['name'] = node_id
+            nparams['label'] = self.apply_label(node)
+            nparams['profile'] = self.apply_profile(node, profile)
 
             use_color = None
             for opName, color in self.colorCodes.items():
                 if opName in node.op.__class__.__name__:
                     use_color = color
+            if use_color:
+                nparams['style'] = 'filled'
+                nparams['fillcolor'] = use_color
+                nparams['type'] = 'colored'
 
-            if use_color is None:
-                pd_node = pd.Node(node_id, label=astr, shape=apply_shape, profile=aprof)
-            else:
-                pd_node = pd.Node(node_id, label=astr, style='filled', fillcolor=use_color,
-                                shape=apply_shape, type='colored', profile=aprof)
+            pd_node = self.dict_to_pdnode(nparams)
             graph.add_node(pd_node)
 
-            def make_node(_id, label, **kwargs):
-                t = {k:v for k,v in kwargs.items() if v is not None}
-                return pd.Node(_id, label=label, **t)
-
             for id, var in enumerate(node.inputs):
+                var_id = self.node_id(var.owner if var.owner else var)
+                if var.owner is None:
+                    vparams = {}
+                    vparams['name'] = var_id
+                    vparams['label'] = self.var_label(var)
+                    vparams['dtype'] = str(var.type)
+                    vparams['tag'] = self.var_tag(var)
+                    vparams['style'] = 'filled'
+                    vparams['fillcolor'] = self.node_colors['input']
+                    vparams['shape'] = 'ellipse'
+                    vparams['profile'] = nparams['profile']
+                    pd_var = self.dict_to_pdnode(vparams)
+                    graph.add_node(pd_var)
+
                 edge_params = {}
                 if hasattr(node.op, 'view_map') and id in reduce(list.__add__, node.op.view_map.values(), []):
                     edge_params['color'] = self.node_colors['output']
@@ -158,37 +170,32 @@ class GraphFormatter(object):
                 edge_label = str(var.type)
                 if len(node.inputs) > 1:
                     edge_label = str(id) + ' ' + edge_label
-
-                var_id = self.node_id(var.owner if var.owner else var)
-
-                if var.owner is None:
-                    var_name = self.var_name(var)
-                    n = make_node(var_id, var_name, style='filled',
-                                  fillcolor=self.node_colors['input'],
-                                  shape=var_shape, profile=aprof)
-                    graph.add_node(n)
-
-                graph.add_edge(pd.Edge(var_id, node_id, label=edge_label, **edge_params))
+                pdedge = pd.Edge(var_id, node_id, label=edge_label,
+                                 **edge_params)
+                graph.add_edge(pdedge)
 
             for id, var in enumerate(node.outputs):
                 var_id = self.node_id(var)
-                var_name = self.var_name(var)
-                edge_label = str(var.type)
 
-                if var in outputs:
-                    n = make_node(var_id, var_name, style='filled',
-                                  fillcolor=self.node_colors['output'],
-                                  shape=var_shape, profile=aprof)
-                    graph.add_node(n)
-                    graph.add_edge(pd.Edge(node_id, var_id, label=edge_label))
-                elif len(var.clients) == 0:
-                    n = make_node(var_id, var_name, style='filled',
-                                    fillcolor=self.node_colors['unused'],
-                                    shape=var_shape, profile=aprof)
-                    graph.add_node(n)
-                    graph.add_edge(pd.Edge(node_id, var_id, label=edge_label))
+                if var in outputs or len(var.clients) == 0:
+                    vparams = {}
+                    vparams['name'] = var_id
+                    vparams['label'] = self.var_label(var)
+                    vparams['dtype'] = str(var.type)
+                    vparams['tag'] = self.var_tag(var)
+                    vparams['style'] = 'filled'
+                    if len(var.clients) == 0:
+                        vparams['fillcolor'] = self.node_colors['unused']
+                    else:
+                        vparams['fillcolor'] = self.node_colors['output']
+                    vparams['shape'] = 'box'
+                    vparams['profile'] = nparams['profile']
+                    pd_var = self.dict_to_pdnode(vparams)
+                    graph.add_node(pd_var)
+
+                    graph.add_edge(pd.Edge(node_id, var_id, label=str(var.type)))
                 elif var.name or not self.compact:
-                    graph.add_edge(pd.Edge(node_id, var_id, label=edge_label))
+                    graph.add_edge(pd.Edge(node_id, var_id, label=str(var.type)))
 
             if isinstance(node.op, builders.OpFromGraph):
                 subgraph = pd.Cluster(node_id)
@@ -223,7 +230,39 @@ class GraphFormatter(object):
 
         return graph
 
+    def dict_to_pdnode(self, d):
+        e = dict()
+        for k, v in d.items():
+            if v is not None:
+                v = str(v)
+                v = v.replace('"', '')
+                e[k] = v
+        pynode = pd.Node(**e)
+        return pynode
 
+    def var_label(self, var):
+        if var.name is not None:
+            return var.name
+        elif isinstance(var, gof.Constant):
+            dstr = 'val=' + str(np.asarray(var.data))
+            if '\n' in dstr:
+                dstr = dstr[:dstr.index('\n')]
+            return dstr
+        elif (var in self.input_update and
+            self.input_update[var].variable.name is not None):
+            return self.input_update[var].variable.name + " UPDATE"
+        else:
+            return str(var.type)
+
+    def var_tag(self, var):
+        tag = var.tag
+        if hasattr(tag, 'trace') and len(tag.trace) and len(tag.trace[0]) == 4:
+            path, line, _, src = tag.trace[0]
+            path = pt.basename(path)
+            src = src.encode()
+            return (path, line, src)
+        else:
+            return None
 
     def var_name(self, var):
         if var in self.var_str:
@@ -269,6 +308,19 @@ class GraphFormatter(object):
         self.all_strings.add(varstr)
 
         return varstr
+
+    def apply_label(self, node):
+        name = str(node.op).replace(':', '_')
+        name = re.sub('^<', '', name)
+        name = re.sub('>$', '', name)
+        return name
+
+    def apply_profile(self, node, profile):
+        if not profile:
+            return None
+        time = profile.apply_time.get(node, 0)
+        call_time = profile.fct_call_time
+        return [time, call_time]
 
     def apply_name(self, node, fct, topo, mode=None, profile=None):
         if node in self.apply_name_cache:
