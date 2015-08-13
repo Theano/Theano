@@ -11,18 +11,24 @@ from theano.gof import graph
 
 
 class AlreadyThere(Exception):
-    """Raised by a Feature's on_attach callback method if the FunctionGraph
+    """
+    Raised by a Feature's on_attach callback method if the FunctionGraph
     attempting to attach the feature already has a functionally identical
-    feature."""
+    feature.
+
+    """
+
     pass
 
 
 class ReplacementDidntRemovedError(Exception):
-    """This exception should be thrown by replace_all_validate_remove
+    """
+    This exception should be thrown by replace_all_validate_remove
     when an optimization wanted to remove a Variable or a Node from
     the graph, but the replacement it gived didn't do that.
 
     """
+
     pass
 
 
@@ -34,7 +40,10 @@ class Feature(object):
     by various operations on FunctionGraphs. It can be used to enforce
     graph properties at all stages of graph optimization.
 
-    See :func:`theano.gof.toolbox` for common extensions.
+    See Also
+    --------
+    theano.gof.toolbox : for common extensions.
+
     """
 
     def on_attach(self, function_graph):
@@ -51,12 +60,14 @@ class Feature(object):
 
         The feature has great freedom in what it can do with the
         function_graph: it may, for example, add methods to it dynamically.
+
         """
 
     def on_detach(self, function_graph):
         """
         Called by remove_feature(feature).  Should remove any dynamically-added
         functionality that it installed into the function_graph.
+
         """
 
     def on_import(self, function_graph, node, reason):
@@ -66,12 +77,14 @@ class Feature(object):
         Note: on_import is not called when the graph is created. If you
         want to detect the first nodes to be implemented to the graph,
         you should do this by implementing on_attach.
+
         """
 
     def on_prune(self, function_graph, node, reason):
         """
         Called whenever a node is pruned (removed) from the function_graph,
         after it is disconnected from the graph.
+
         """
 
     def on_change_input(self, function_graph, node, i, r, new_r, reason=None):
@@ -82,6 +95,7 @@ class Feature(object):
 
         If you raise an exception in this function, the state of the graph
         might be broken for all intents and purposes.
+
         """
 
     def orderings(self, function_graph):
@@ -92,6 +106,7 @@ class Feature(object):
 
         If you raise an exception in this function, the state of the graph
         might be broken for all intents and purposes.
+
         """
         return OrderedDict()
 
@@ -166,8 +181,9 @@ class History(Feature):
     def revert(self, fgraph, checkpoint):
         """
         Reverts the graph to whatever it was at the provided
-        checkpoint (undoes all replacements).  A checkpoint at any
+        checkpoint (undoes all replacements). A checkpoint at any
         given time can be obtained using self.checkpoint().
+
         """
         h = self.history[fgraph]
         self.history[fgraph] = None
@@ -302,8 +318,9 @@ class ReplaceValidate(History, Validator):
 
     def replace_all_validate_remove(self, fgraph, replacements,
                                     remove, reason=None, warn=True):
-        """As replace_all_validate, revert the replacement if the ops
-        in the list remove are still in the graph. It also print a warning.
+        """
+        As replace_all_validate, revert the replacement if the ops
+        in the list remove are still in the graph. Also print a warning.
 
         """
         chk = fgraph.replace_all_validate(replacements, reason)
