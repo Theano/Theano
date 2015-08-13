@@ -52,15 +52,15 @@ IfElse vs Switch
        f_lazyifelse(val1, val2, big_mat1, big_mat2)
    print 'time spent evaluating one value %f sec' % (time.clock() - tic)
 
-In this example, the ``IfElse`` op spends less time (about half as much) than ``Switch``
-since it computes only one variable out of the two.
-
 .. testoutput::
    :hide:
    :options: +ELLIPSIS
 
-  time spent evaluating both values ... sec
-  time spent evaluating one value ... sec
+   time spent evaluating both values ... sec
+   time spent evaluating one value ... sec
+
+In this example, the ``IfElse`` op spends less time (about half as much) than ``Switch``
+since it computes only one variable out of the two.
 
 .. code-block:: none
 

@@ -55,10 +55,6 @@ Borrowing when Creating Shared Variables
 
 A ``borrow`` argument can be provided to the shared-variable constructor.
 
-
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_aliasing.test_aliasing_1
-
 .. testcode:: borrow
 
    import numpy, theano
@@ -124,9 +120,6 @@ A ``borrow`` argument can also be used to control how a ``shared`` variable's va
 retrieved.
 
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_aliasing.test_aliasing_2
-
 .. testcode:: borrow
 
    s = theano.shared(np_array)
@@ -185,6 +178,11 @@ that Theano *may* reuse the buffer you provide as the internal storage for the v
 A standard pattern for manually updating the value of a ``shared`` variable is as
 follows:
 
+.. testsetup:: borrow
+
+   def some_inplace_fn(v):
+       return v
+
 .. testcode:: borrow
 
     s.set_value(
@@ -231,9 +229,6 @@ Borrowing when Constructing Function Objects
 A ``borrow`` argument can also be provided to the ``In`` and ``Out`` objects
 that control how ``theano.function`` handles its argument[s] and return value[s].
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_aliasing.test_aliasing_3
-
 .. testcode::
 
     import theano, theano.tensor
@@ -268,7 +263,7 @@ graph.
 
 For GPU graphs, this borrowing can have a major speed impact.  See the following code:
 
-.. testcode::
+.. code-block:: python
 
    from theano import function, config, shared, sandbox, tensor, Out
    import numpy

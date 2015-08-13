@@ -54,8 +54,8 @@ file and run it.
     for i in xrange(iters):
         r = f()
     t1 = time.time()
-    print("Looping %d times took" % iters, t1 - t0, "seconds")
-    print("Result is", r)
+    print("Looping %d times took %f seconds" % (iters, t1 - t0))
+    print("Result is %s" % (r,))
     if numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()]):
         print('Used the cpu')
     else:
@@ -75,18 +75,10 @@ same floating-point numbers as the CPU. As a benchmark, a loop that calls ``nump
    :hide:
    :options: +ELLIPSIS
 
-    $ THEANO_FLAGS=mode=FAST_RUN,device=cpu,floatX=float32 python check1.py
-    [Elemwise{exp,no_inplace}(<TensorType(float32, vector)>)]
-    Looping 1000 times took ... seconds
-    Result is ...
-    Used the cpu
-
-    $ THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python check1.py
-    Using gpu device 0: GeForce GTX 580
-    [GpuElemwise{exp,no_inplace}(<CudaNdarrayType(float32, vector)>), HostFromGpu(GpuElemwise{exp,no_inplace}.0)]
-    Looping 1000 times took ... seconds
-    Result is ...
-    Used the gpu
+   [Elemwise{exp,no_inplace}(<TensorType(float64, vector)>)]
+   Looping 1000 times took ... seconds
+   Result is ...
+   Used the cpu
 
 .. code-block:: none
 
@@ -134,16 +126,16 @@ after the ``T.exp(x)`` is replaced by a GPU version of ``exp()``.
     iters = 1000
 
     rng = numpy.random.RandomState(22)
-    x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
+    x = shared(numpy.asarray(rng.rand(vlen), 'float32'))
     f = function([], sandbox.cuda.basic_ops.gpu_from_host(T.exp(x)))
     print(f.maker.fgraph.toposort())
     t0 = time.time()
     for i in xrange(iters):
         r = f()
     t1 = time.time()
-    print("Looping %d times took" % iters, t1 - t0, "seconds")
-    print("Result is", r)
-    print("Numpy result is", numpy.asarray(r))
+    print("Looping %d times took %f seconds" % (iters, t1 - t0))
+    print("Result is %s" % (r,))
+    print("Numpy result is %s" % (numpy.asarray(r),))
     if numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()]):
         print('Used the cpu')
     else:
@@ -153,15 +145,14 @@ The output from this program is
 
 .. testoutput::
    :hide:
-   :options: +ELLIPSIS
+   :options: +ELLIPSIS, +SKIP
 
-    $ THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python check2.py
-    Using gpu device 0: GeForce GTX 580
-    [GpuElemwise{exp,no_inplace}(<CudaNdarrayType(float32, vector)>)]
-    Looping 1000 times took ... seconds
-    Result is <CudaNdarray object at 0x6a7a5f0>
-    Numpy result is ...
-    Used the gpu
+   Using gpu device 0: GeForce GTX 580
+   [GpuElemwise{exp,no_inplace}(<CudaNdarrayType(float32, vector)>)]
+   Looping 1000 times took ... seconds
+   Result is <CudaNdarray object at 0x...>
+   Numpy result is ...
+   Used the gpu
 
 .. code-block:: none
 
@@ -302,8 +293,6 @@ Consider again the logistic regression:
     b = theano.shared(numpy.asarray(0., dtype=theano.config.floatX), name="b")
     x.tag.test_value = D[0]
     y.tag.test_value = D[1]
-    #print "Initial model:"
-    #print w.get_value(), b.get_value()
 
     # Construct Theano expression graph
     p_1 = 1 / (1 + T.exp(-T.dot(x, w)-b)) # Probability of having a one
@@ -316,7 +305,7 @@ Consider again the logistic regression:
     train = theano.function(
                 inputs=[x,y],
                 outputs=[prediction, xent],
-                updates={w:w-0.01*gw, b:b-0.01*gb},
+                updates=[(w, w-0.01*gw), (b, b-0.01*gb)],
                 name = "train")
     predict = theano.function(inputs=[x], outputs=prediction,
                 name = "predict")
@@ -333,8 +322,6 @@ Consider again the logistic regression:
 
     for i in range(training_steps):
         pred, err = train(D[0], D[1])
-    #print "Final model:"
-    #print w.get_value(), b.get_value()
 
     print("target values for D")
     print(D[1])
@@ -346,52 +333,11 @@ Consider again the logistic regression:
    :hide:
    :options: + ELLIPSIS
    
-    Used the cpu
-    target values for D
-    ...
-    prediction on D
-    ...
-
-.. code-block:: none
-
-    Used the cpu
-    target values for D
-    [ 0.  1.  0.  0.  1.  1.  1.  0.  1.  1.  1.  1.  1.  1.  1.  0.  1.  0.
-      0.  0.  0.  0.  1.  1.  0.  1.  1.  0.  0.  1.  1.  1.  1.  0.  1.  1.
-      0.  0.  0.  0.  0.  0.  1.  1.  1.  0.  1.  1.  0.  0.  0.  0.  1.  0.
-      0.  1.  0.  0.  0.  0.  1.  1.  0.  1.  0.  0.  1.  1.  0.  1.  0.  0.
-      1.  1.  0.  0.  0.  0.  0.  1.  1.  1.  0.  1.  0.  0.  0.  0.  1.  0.
-      0.  0.  0.  1.  0.  1.  1.  0.  0.  0.  1.  1.  1.  1.  1.  1.  0.  0.
-      0.  1.  0.  1.  0.  1.  1.  0.  0.  1.  0.  0.  1.  0.  1.  1.  0.  1.
-      1.  1.  0.  1.  0.  1.  1.  0.  1.  1.  1.  0.  0.  0.  0.  0.  1.  0.
-      0.  0.  0.  0.  1.  0.  1.  0.  0.  0.  1.  1.  0.  0.  0.  1.  0.  0.
-      0.  1.  1.  0.  1.  1.  1.  1.  1.  1.  0.  0.  1.  1.  1.  1.  1.  0.
-      1.  0.  1.  1.  1.  0.  0.  0.  1.  0.  1.  1.  0.  1.  1.  0.  1.  1.
-      1.  1.  0.  0.  0.  0.  0.  1.  0.  1.  0.  0.  1.  1.  1.  0.  0.  0.
-      1.  0.  0.  0.  0.  1.  1.  1.  0.  1.  0.  1.  1.  0.  1.  0.  0.  1.
-      0.  0.  0.  1.  1.  0.  0.  0.  1.  1.  0.  1.  0.  1.  0.  0.  1.  0.
-      1.  1.  1.  1.  1.  1.  0.  0.  0.  0.  0.  0.  0.  1.  0.  0.  1.  1.
-      0.  0.  0.  0.  0.  0.  1.  0.  1.  1.  1.  0.  1.  1.  0.  1.  1.  1.
-      0.  1.  0.  1.  0.  0.  0.  1.  1.  1.  0.  1.  0.  1.  1.  1.  0.  0.
-      0.  1.  0.  1.  1.  0.  0.  0.  1.  0.  1.  0.  1.  0.  1.  0.  0.  0.
-      1.  1.  0.  1.  0.  1.  1.  1.  1.  1.  0.  1.  1.  0.  0.  0.  0.  1.
-      1.  1.  0.  1.  1.  1.  0.  1.  0.  1.  1.  0.  1.  0.  0.  1.  0.  1.
-      0.  0.  0.  0.  0.  0.  1.  1.  1.  1.  1.  1.  0.  0.  1.  1.  1.  0.
-      0.  0.  1.  1.  0.  0.  0.  0.  0.  0.  1.  1.  0.  0.  0.  0.  1.  1.
-      1.  1.  0.  1.]
-    prediction on D
-    [0 1 0 0 1 1 1 0 1 1 1 1 1 1 1 0 1 0 0 0 0 0 1 1 0 1 1 0 0 1 1 1 1 0 1 1 0
-     0 0 0 0 0 1 1 1 0 1 1 0 0 0 0 1 0 0 1 0 0 0 0 1 1 0 1 0 0 1 1 0 1 0 0 1 1
-     0 0 0 0 0 1 1 1 0 1 0 0 0 0 1 0 0 0 0 1 0 1 1 0 0 0 1 1 1 1 1 1 0 0 0 1 0
-     1 0 1 1 0 0 1 0 0 1 0 1 1 0 1 1 1 0 1 0 1 1 0 1 1 1 0 0 0 0 0 1 0 0 0 0 0
-     1 0 1 0 0 0 1 1 0 0 0 1 0 0 0 1 1 0 1 1 1 1 1 1 0 0 1 1 1 1 1 0 1 0 1 1 1
-     0 0 0 1 0 1 1 0 1 1 0 1 1 1 1 0 0 0 0 0 1 0 1 0 0 1 1 1 0 0 0 1 0 0 0 0 1
-     1 1 0 1 0 1 1 0 1 0 0 1 0 0 0 1 1 0 0 0 1 1 0 1 0 1 0 0 1 0 1 1 1 1 1 1 0
-     0 0 0 0 0 0 1 0 0 1 1 0 0 0 0 0 0 1 0 1 1 1 0 1 1 0 1 1 1 0 1 0 1 0 0 0 1
-     1 1 0 1 0 1 1 1 0 0 0 1 0 1 1 0 0 0 1 0 1 0 1 0 1 0 0 0 1 1 0 1 0 1 1 1 1
-     1 0 1 1 0 0 0 0 1 1 1 0 1 1 1 0 1 0 1 1 0 1 0 0 1 0 1 0 0 0 0 0 0 1 1 1 1
-     1 1 0 0 1 1 1 0 0 0 1 1 0 0 0 0 0 0 1 1 0 0 0 0 1 1 1 1 0 1]
-
+   Used the cpu
+   target values for D
+   ...
+   prediction on D
+   ...
 
 Modify and execute this example to run on GPU with ``floatX=float32`` and
 time it using the command line ``time python file.py``. (Of course, you may use some of your answer
@@ -461,15 +407,15 @@ into a file and run it.
   iters = 1000
 
   rng = numpy.random.RandomState(22)
-  x = shared(numpy.asarrayx = shared(numpy.asarray(rng.rand(vlen), config.floatX))
+  x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
   f = function([], tensor.exp(x))
   print(f.maker.fgraph.toposort())
   t0 = time.time()
   for i in xrange(iters):
       r = f()
   t1 = time.time()
-  print("Looping %d times took" % iters, t1 - t0, "seconds")
-  print("Result is", r)
+  print("Looping %d times took %f seconds" % (iters, t1 - t0))
+  print("Result is %s" % (r,))
   if numpy.any([isinstance(x.op, tensor.Elemwise) and
                 ('Gpu' not in type(x.op).__name__)
                 for x in f.maker.fgraph.toposort()]):
@@ -485,18 +431,10 @@ input *x* is stored on the GPU.
    :hide:
    :options: +ELLIPSIS
 
-  $ THEANO_FLAGS=device=cpu python check1.py
-  [Elemwise{exp,no_inplace}(<TensorType(float64, vector)>)]
-  Looping 1000 times took ... seconds
-  Result is ...
-  Used the cpu
-
-  $ THEANO_FLAGS=device=cuda0 python check1.py
-  Using device cuda0: GeForce GTX 275
-  [GpuElemwise{exp,no_inplace}(<GpuArray<float64>>), HostFromGpu(gpuarray)(GpuElemwise{exp,no_inplace}.0)]
-  Looping 1000 times took ... seconds
-  Result is ...
-  Used the gpu
+   [Elemwise{exp,no_inplace}(<TensorType(float64, vector)>)]
+   Looping 1000 times took ... seconds
+   Result is ...
+   Used the cpu
 
 .. code-block:: none
 
@@ -545,8 +483,8 @@ the GPU object directly.  The following code is modifed to do just that.
   for i in xrange(iters):
       r = f()
   t1 = time.time()
-  print("Looping %d times took" % iters, t1 - t0, "seconds")
-  print("Result is", numpy.asarray(r))
+  print("Looping %d times took %f seconds" % (iters, t1 - t0))
+  print("Result is %s" % (numpy.asarray(r),))
   if numpy.any([isinstance(x.op, tensor.Elemwise) and
                 ('Gpu' not in type(x.op).__name__)
                 for x in f.maker.fgraph.toposort()]):
@@ -742,7 +680,7 @@ you feel competent enough, you may try yourself on the corresponding exercises.
 **Example: PyCUDA**
 
 
-.. testcode::
+.. code-block:: python
 
   # (from PyCUDA's documentation)
   import pycuda.autoinit
@@ -786,7 +724,7 @@ Modify and execute to work for a matrix of shape (20, 10).
 **Example: Theano + PyCUDA**
 
 
-.. testcode::
+.. code-block:: python
 
     import numpy, theano
     import theano.misc.pycuda_init
@@ -828,10 +766,10 @@ Modify and execute to work for a matrix of shape (20, 10).
 Use this code to test it:
 
 >>> x = theano.tensor.fmatrix()
->>> f = theano.function([x], PyCUDADoubleOp()(x))
+>>> f = theano.function([x], PyCUDADoubleOp()(x))  # doctest: +SKIP
 >>> xv = numpy.ones((4, 5), dtype="float32")
->>> assert numpy.allclose(f(xv), xv*2)
->>> print(numpy.asarray(f(xv)))
+>>> assert numpy.allclose(f(xv), xv*2)  # doctest: +SKIP
+>>> print(numpy.asarray(f(xv)))  # doctest: +SKIP
 
 
 Exercise

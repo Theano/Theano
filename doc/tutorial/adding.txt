@@ -11,9 +11,6 @@ To get us started with Theano and get a feel of what we're working with,
 let's make a simple function: add two numbers together. Here is how you do
 it:
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_adding.test_adding_1
-
 >>> import theano.tensor as T
 >>> from theano import function
 >>> x = T.dscalar('x')
@@ -150,9 +147,6 @@ You might already have guessed how to do this. Indeed, the only change
 from the previous example is that you need to instantiate *x* and
 *y* using the matrix Types:
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_adding.test_adding_2
-
 >>> x = T.dmatrix('x')
 >>> y = T.dmatrix('y')
 >>> z = x + y
@@ -207,7 +201,7 @@ Exercise
    a = theano.tensor.vector() # declare variable
    out = a + a ** 10               # build symbolic expression
    f = theano.function([a], out)   # compile function
-   print f([0, 1, 2])
+   print(f([0, 1, 2]))
 
 .. testoutput::
 

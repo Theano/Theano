@@ -38,6 +38,10 @@ The two modules ``pickle`` and ``cPickle`` have the same functionalities, but
 You can serialize (or *save*, or *pickle*) objects to a file with
 ``cPickle.dump``:
 
+.. testsetup::
+
+   my_obj = object()
+
 >>> f = file('obj.save', 'wb')
 >>> cPickle.dump(my_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
 >>> f.close()
@@ -63,6 +67,12 @@ To de-serialize (or *load*, or *unpickle*) a pickled file, use
 
 You can pickle several objects into the same file, and load them all (in the
 same order):
+
+.. testsetup::
+
+   obj1 = object()
+   obj2 = object()
+   obj3 = object()
 
 >>> f = file('objects.save', 'wb')
 >>> for obj in [obj1, obj2, obj3]:
@@ -127,7 +137,7 @@ The main advantage of this approach is that you don't even need Theano installed
 in order to look at the values of shared variables that you pickled. You can
 just load the parameters manually with `numpy`.
 
-.. testcode::
+.. code-block:: python
 
     import numpy
     numpy.load('model.zip')

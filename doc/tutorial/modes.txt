@@ -63,8 +63,6 @@ Consider the logistic regression:
     b = theano.shared(numpy.asarray(0., dtype=theano.config.floatX), name="b")
     x.tag.test_value = D[0]
     y.tag.test_value = D[1]
-    #print "Initial model:"
-    #print w.get_value(), b.get_value()
 
     # Construct Theano expression graph
     p_1 = 1 / (1 + T.exp(-T.dot(x, w)-b)) # Probability of having a one
@@ -77,7 +75,7 @@ Consider the logistic regression:
     train = theano.function(
                 inputs=[x,y],
                 outputs=[prediction, xent],
-                updates={w:w-0.01*gw, b:b-0.01*gb},
+                updates=[(w, w-0.01*gw), (b, b-0.01*gb)],
                 name = "train")
     predict = theano.function(inputs=[x], outputs=prediction,
                 name = "predict")
@@ -94,8 +92,6 @@ Consider the logistic regression:
 
     for i in range(training_steps):
         pred, err = train(D[0], D[1])
-    #print "Final model:"
-    #print w.get_value(), b.get_value()
 
     print("target values for D")
     print(D[1])
@@ -107,52 +103,11 @@ Consider the logistic regression:
    :hide:
    :options: +ELLIPSIS
  
-    Used the cpu
-    targe values for D
-    ...
-    prediction on D
-    ...
-
-.. code-block:: none
-
-    Used the cpu
-    target values for D
-    [ 0.  0.  1.  0.  1.  1.  0.  1.  0.  1.  0.  1.  0.  0.  0.  0.  1.  0.
-      1.  0.  1.  1.  0.  1.  0.  0.  1.  1.  1.  0.  1.  0.  0.  1.  1.  1.
-      0.  0.  0.  0.  0.  1.  1.  1.  0.  0.  1.  1.  1.  1.  1.  0.  0.  1.
-      0.  1.  0.  0.  1.  1.  0.  1.  1.  1.  1.  0.  0.  1.  1.  0.  1.  1.
-      1.  1.  0.  0.  0.  0.  0.  0.  0.  0.  1.  0.  0.  0.  0.  0.  0.  0.
-      1.  0.  1.  0.  1.  0.  0.  0.  1.  1.  0.  1.  0.  1.  0.  1.  0.  1.
-      0.  1.  0.  0.  0.  1.  0.  0.  1.  1.  1.  0.  1.  1.  0.  0.  1.  0.
-      1.  1.  1.  0.  1.  1.  0.  0.  1.  0.  1.  0.  0.  1.  0.  0.  0.  1.
-      0.  0.  0.  0.  0.  1.  1.  1.  1.  1.  1.  0.  0.  1.  1.  0.  1.  0.
-      0.  0.  0.  1.  1.  1.  0.  0.  0.  1.  1.  1.  0.  1.  0.  0.  0.  0.
-      1.  1.  1.  1.  1.  0.  1.  1.  0.  0.  0.  0.  0.  1.  1.  1.  1.  1.
-      0.  1.  1.  1.  0.  1.  1.  0.  0.  0.  1.  1.  1.  0.  0.  0.  1.  0.
-      0.  1.  0.  1.  1.  1.  0.  1.  1.  1.  0.  0.  0.  1.  1.  0.  1.  0.
-      0.  1.  1.  0.  1.  1.  1.  0.  0.  1.  1.  1.  0.  1.  1.  1.  1.  0.
-      1.  0.  1.  0.  0.  0.  1.  0.  0.  1.  0.  0.  1.  0.  1.  0.  0.  0.
-      1.  0.  0.  0.  0.  0.  1.  1.  0.  1.  0.  0.  0.  0.  1.  0.  0.  0.
-      1.  0.  0.  0.  1.  1.  0.  1.  0.  0.  0.  0.  0.  0.  0.  1.  1.  1.
-      1.  1.  1.  1.  0.  0.  0.  1.  1.  1.  0.  1.  1.  1.  0.  1.  1.  0.
-      1.  1.  1.  0.  1.  1.  0.  0.  1.  1.  0.  1.  0.  1.  1.  1.  1.  1.
-      0.  0.  0.  1.  1.  0.  0.  1.  1.  1.  0.  0.  0.  0.  1.  0.  0.  0.
-      0.  1.  0.  0.  0.  0.  0.  1.  1.  0.  0.  1.  1.  1.  0.  1.  1.  0.
-      0.  0.  1.  0.  1.  1.  1.  1.  1.  1.  0.  1.  1.  1.  1.  0.  0.  1.
-      1.  1.  1.  1.]
-    prediction on D
-    [0 0 1 0 1 1 0 1 0 1 0 1 0 0 0 0 1 0 1 0 1 1 0 1 0 0 1 1 1 0 1 0 0 1 1 1 0
-     0 0 0 0 1 1 1 0 0 1 1 1 1 1 0 0 1 0 1 0 0 1 1 0 1 1 1 1 0 0 1 1 0 1 1 1 1
-     0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 1 0 1 0 0 0 1 1 0 1 0 1 0 1 0 1 0 1 0
-     0 0 1 0 0 1 1 1 0 1 1 0 0 1 0 1 1 1 0 1 1 0 0 1 0 1 0 0 1 0 0 0 1 0 0 0 0
-     0 1 1 1 1 1 1 0 0 1 1 0 1 0 0 0 0 1 1 1 0 0 0 1 1 1 0 1 0 0 0 0 1 1 1 1 1
-     0 1 1 0 0 0 0 0 1 1 1 1 1 0 1 1 1 0 1 1 0 0 0 1 1 1 0 0 0 1 0 0 1 0 1 1 1
-     0 1 1 1 0 0 0 1 1 0 1 0 0 1 1 0 1 1 1 0 0 1 1 1 0 1 1 1 1 0 1 0 1 0 0 0 1
-     0 0 1 0 0 1 0 1 0 0 0 1 0 0 0 0 0 1 1 0 1 0 0 0 0 1 0 0 0 1 0 0 0 1 1 0 1
-     0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 1 1 1 0 1 1 1 0 1 1 0 1 1 1 0 1 1 0 0 1
-     1 0 1 0 1 1 1 1 1 0 0 0 1 1 0 0 1 1 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 0 1 1 0
-     0 1 1 1 0 1 1 0 0 0 1 0 1 1 1 1 1 1 0 1 1 1 1 0 0 1 1 1 1 1]
-     
+   Used the cpu
+   target values for D
+   ...
+   prediction on D
+   ...
 
 Modify and execute this example to run on CPU (the default) with floatX=float32 and 
 time the execution using the command line ``time python file.py``.  Save your code 
@@ -346,8 +301,9 @@ Compiling your Graph with ProfileMode
 Once the ProfileMode instance is created, simply compile your graph as you
 would normally, by specifying the mode parameter.
 
->>> # with functions
->>> f = theano.function([input1,input2],[output1], mode=profmode)
+>>> v1, v2 = T.vectors(2)
+>>> o = v1 + v2
+>>> f = theano.function([v1,v2],[o], mode=profmode)
 
 Retrieving Timing Information
 -----------------------------
@@ -361,7 +317,7 @@ regression example.
 Compiling the module with ``ProfileMode`` and calling ``profmode.print_summary()``
 generates the following output:
 
-.. testcode::
+.. code-block:: python
 
     """
     ProfileMode.print_summary()

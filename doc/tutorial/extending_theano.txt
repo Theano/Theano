@@ -73,9 +73,9 @@ possibilities you may encounter or need.  For that refer to
 
         # Other type of implementation
         # C implementation: [see theano web site for other functions]
-        def c_code(...):
-            # ...
+        def c_code(self, node, inputs, outputs, sub):
             pass
+
         # Other implementations (pycuda, ...):
         def make_thunk(self, node, storage_map, _, _2):
             pass
@@ -83,7 +83,7 @@ possibilities you may encounter or need.  For that refer to
         # optional:
         check_input = True
 
-        def __init__(self, ...):
+        def __init__(self, *args):
             pass
 
         def grad(self, inputs, g):
@@ -92,7 +92,7 @@ possibilities you may encounter or need.  For that refer to
         def R_op(self, inputs, eval_points):
             pass
 
-        def infer_shape(node, (i0_shapes, ...)):
+        def infer_shape(node, input_shapes):
             pass
 
 .. ../extending/op.txt
@@ -684,8 +684,8 @@ You can try it as follows:
     x = theano.tensor.fmatrix()
     y = theano.tensor.fmatrix()
     f = function([x, y], numpy_dot(x, y))
-    inp1 = numpy.random.rand(5, 4)
-    inp2 = numpy.random.rand(4, 7)
+    inp1 = numpy.random.rand(5, 4).astype('float32')
+    inp2 = numpy.random.rand(4, 7).astype('float32')
     out = f(inp1, inp2)
 
 

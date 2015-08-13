@@ -895,7 +895,7 @@ defined to False. In these descrptions 'i' refers to the position
         corresponds to ``npy_float32`` and can directly be used to declare a
         new variable of the same dtype as the data in the array :
 
-        .. testcode::
+        .. code-block:: c
 
             DTYPE_INPUT_0 myVar = someValue;
 
@@ -914,11 +914,11 @@ In addition to these macros, the ``init_code_struct``, ``code``, and
 *     ``FAIL`` : Code to insert at error points.  A python exception
       should be set prior to this code.  An invocation look like this:
 
-      .. testcode::
+      .. code-block:: c
 
         if (error) {
-	  // Set python exception
-	  FAIL
+          // Set python exception
+          FAIL
         }
 
       You can add a semicolon after the macro if it makes your editor
