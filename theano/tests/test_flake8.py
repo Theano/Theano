@@ -37,7 +37,6 @@ whitelist_flake8 = [
     "tests/test_pickle_unpickle_theano_fn.py",
     "tests/test_determinism.py",
     "tests/record.py",
-    "tests/test_tutorial.py",
     "tests/unittest_tools.py",
     "compile/__init__.py",
     "compile/profiling.py",
