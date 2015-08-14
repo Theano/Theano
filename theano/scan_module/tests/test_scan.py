@@ -43,6 +43,11 @@ if theano.config.mode == 'FAST_COMPILE':
 else:
     mode_with_opt = theano.compile.mode.get_default_mode()
 mode_with_gpu = mode_with_opt.including('gpu', 'scan')
+if theano.config.mode in ('DEBUG_MODE', 'DebugMode'):
+    mode_nodebug = theano.compile.mode.get_mode('FAST_RUN')
+else:
+    mode_nodebug = mode_with_opt
+mode_with_gpu_nodebug = mode_nodebug.including('gpu', 'scan')
 
 
 type_eps = {'float64': 1e-7,
@@ -1772,8 +1777,16 @@ class T_Scan(unittest.TestCase):
         analytic_grad = reset_rng_grad_fn(v_u, v_x0, vW_in)
         utt.assert_allclose(analytic_grad[0][:2], numpy.zeros((2, 2)))
 
-    @attr('slow')
     def test_grad_multiple_outs_some_disconnected(self):
+        final_cost = self._grad_mout_helper(100, mode_nodebug)
+        assert final_cost < 0.02
+
+    def test_grad_multiple_outs_some_disconnected_2(self):
+        # This is to try the network in DEBUG_MODE, but not fully
+        # train it since that would take 3 hours
+        self._grad_mout_helper(1, None)
+
+    def _grad_mout_helper(self, n_iters, mode):
         # Created on Tue Oct 07 13:28:51 2014
         # @author: vaneetke
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -1815,7 +1828,8 @@ class T_Scan(unittest.TestCase):
             sequences=dict(input=x),
             # corresponds to the return type of one_step
             outputs_info=[dict(initial=h0, taps=[-2, -1]), None],
-            non_sequences=[W_ih, W_hh, b_h, W_ho, b_o])
+            non_sequences=[W_ih, W_hh, b_h, W_ho, b_o],
+            mode=mode)
 
         # target values
         t = tensor.matrix()
@@ -1830,8 +1844,6 @@ class T_Scan(unittest.TestCase):
         gparams = theano.grad(cost, params)
         updates = [(param, param - gparam * learning_rate)
                    for param, gparam in zip(params, gparams)]
-        mode = copy.copy(theano.compile.get_default_mode())
-        mode.check_py_code = False
         learn_rnn_fn = theano.function(inputs=[x, t],
                                        outputs=cost,
                                        updates=updates,
@@ -1846,10 +1858,10 @@ class T_Scan(unittest.TestCase):
         s_v = numpy.sin(x_v)
         t_v = numpy.roll(s_v, -1)[:-1]
         s_v = s_v[:-1]
-        for i in xrange(100):
+        for i in xrange(n_iters):
             cost = learn_rnn_fn(s_v, t_v)
         pred = eval_rnn_fn(s_v)
-        assert cost < 0.02
+        return cost
 
     def test_draw_as_input_to_scan(self):
         trng = theano.tensor.shared_randomstreams.RandomStreams(123)
@@ -4602,7 +4614,7 @@ class ScanGpuTests:
 
         l1_out, _ = theano.scan(scan_l, sequences=[l1_base],
                                 outputs_info=[zero_output],
-                                mode=self.mode_with_gpu)
+                                mode=self.mode_with_gpu_nodebug)
 
         l2_out = tensor.dot(l1_out, W)
 
@@ -4613,7 +4625,7 @@ class ScanGpuTests:
 
         # Compile the theano function
         feval_backprop = theano.function([xin, yout], cost, updates=updates,
-                                         mode=self.mode_with_gpu)
+                                         mode=self.mode_with_gpu_nodebug)
 
         # Validate that the PushOutScanOutput optimization has been applied
         # by checking the number of outputs of the grad Scan node in the
@@ -4676,7 +4688,8 @@ class T_Scan_Cuda(unittest.TestCase, ScanGpuTests):
     def __init__(self, *args, **kwargs):
         from theano.sandbox import cuda
         self.gpu_backend = cuda
-        self.mode_with_gpu = mode_with_opt.including('gpu', 'scan')
+        self.mode_with_gpu = mode_with_gpu
+        self.mode_with_gpu_nodebug = mode_with_gpu_nodebug
         super(T_Scan_Cuda, self).__init__(*args, **kwargs)
 
     def setUp(self):
@@ -4737,6 +4750,7 @@ class T_Scan_Gpuarray(unittest.TestCase, ScanGpuTests):
         from theano.sandbox import gpuarray
         self.gpu_backend = gpuarray
         self.mode_with_gpu = mode_with_opt.including('gpuarray', 'scan')
+        self.mode_with_gpu_nodebug = mode_nodebug.including('gpuarray', 'scan')
         super(T_Scan_Gpuarray, self).__init__(*args, **kwargs)
 
     def setUp(self):

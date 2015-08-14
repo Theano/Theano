@@ -21,7 +21,7 @@ class NullType(Type):
     def filter(self, data, strict=False, allow_downcast=None):
         raise ValueError("No values may be assigned to a NullType")
 
-    def filter_variable(self, other):
+    def filter_variable(self, other, allow_convert=True):
         raise ValueError("No values may be assigned to a NullType")
 
     def may_share_memory(a, b):

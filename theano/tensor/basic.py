@@ -712,11 +712,9 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                     ndim = grandparent.type.ndim
                     if grandparent.owner and isinstance(grandparent.owner.op,
                                                         Rebroadcast):
-                        l = []
-                        for idx, (b1, b2) in enumerate(
-                                zip(grandparent.owner.inputs[0].broadcastable,
-                                    gp_broadcastable)):
-                            l.append(b1 or b2)
+                        ggp_broadcastable = grandparent.owner.inputs[0].broadcastable
+                        l = [b1 or b2 for b1, b2 in zip(ggp_broadcastable,
+                                                        gp_broadcastable)]
                         gp_broadcastable = tuple(l)
 
                     assert ndim == len(gp_broadcastable)

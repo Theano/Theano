@@ -400,12 +400,7 @@ def expand(tensor_var, size):
     shapes = [tensor_var.shape[x] for x in xrange(tensor_var.ndim)]
     zeros_shape = [size + shapes[0]] + shapes[1:]
     empty = tensor.zeros(zeros_shape,
-                               dtype=tensor_var.dtype)
-
-    # Make sure to reuse the broadcast pattern of the original tensor for
-    # every dimension but the first one.
-    broadcastable = (False,) + tensor_var.broadcastable[1:]
-    empty = tensor.patternbroadcast(empty, broadcastable)
+                         dtype=tensor_var.dtype)
 
     return tensor.set_subtensor(empty[:shapes[0]], tensor_var)
 

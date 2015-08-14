@@ -101,7 +101,8 @@ def rebuild_collect_shared(outputs,
                     # Do not use default_update if a "real" update was
                     # provided
                     if v not in update_d:
-                        v_update = v.type.filter_variable(v.default_update)
+                        v_update = v.type.filter_variable(v.default_update,
+                                                          allow_convert=False)
                         if v_update.type != v.type:
                             raise TypeError(
                                 'an update must have the same type as '
@@ -197,7 +198,8 @@ def rebuild_collect_shared(outputs,
 
         # filter_variable ensure smooth conversion of cpu/gpu Types
         try:
-            update_val = store_into.type.filter_variable(update_val)
+            update_val = store_into.type.filter_variable(update_val,
+                                                         allow_convert=False)
         except TypeError:
             err_msg = ('An update must have the same type as the'
                        ' original shared variable (shared_var=%s,'
