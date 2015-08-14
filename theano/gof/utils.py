@@ -456,7 +456,6 @@ def remove(predicate, coll):
 
     Examples
     --------
-    >>> from itertoolz import remove
     >>> def even(x):
     ...     return x % 2 == 0
     >>> remove(even, [1, 2, 3, 4])

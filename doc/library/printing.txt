@@ -9,6 +9,10 @@
    :synopsis: Provides the Print Op and graph-printing routines.
 .. moduleauthor:: LISA
 
+.. testsetup::
+
+   import theano
+
 Guide
 ======
 
@@ -19,12 +23,13 @@ Intermediate values in a computation cannot be printed in
 the normal python way with the print statement, because Theano has no *statements*.
 Instead there is the :class:`Print` Op.
 
+>>> from theano import tensor as T, function, printing
 >>> x = T.dvector()
 >>> hello_world_op = printing.Print('hello world')
 >>> printed_x = hello_world_op(x)
 >>> f = function([x], printed_x)
->>> f([1, 2, 3])
->>> # output: "hello world __str__ = [ 1.  2.  3.]"
+>>> r = f([1, 2, 3])
+hello world __str__ = [ 1.  2.  3.]
 
 If you print more than one thing in a function like `f`, they will not
 necessarily be printed in the order that you think.  The order might even depend
@@ -46,14 +51,15 @@ Theano also provides :func:`theano.printing.pydotprint` that creates a png image
 
 1) The first is :func:`theano.pp`.
 
+>>> from theano import pp, tensor as T
 >>> x = T.dscalar('x') 
 >>> y = x ** 2
 >>> gy = T.grad(y, x)
 >>> pp(gy)  # print out the gradient prior to optimization
-'((fill((x ** 2), 1.0) * 2) * (x ** (2 - 1)))'
+'((fill((x ** TensorConstant{2}), TensorConstant{1.0}) * TensorConstant{2}) * (x ** (TensorConstant{2} - TensorConstant{1})))'
 >>> f = function([x], gy)
 >>> pp(f.maker.fgraph.outputs[0])
-'(2.0 * x)'
+'(TensorConstant{2.0} * x)'
 
 The parameter in T.dscalar('x') in the first line is the name of this variable 
 in the graph. This name is used when printing the graph to make it more readable.
@@ -74,8 +80,7 @@ iteration number or other kinds of information in the name.
 
 2) The second function to print a graph is :func:`theano.printing.debugprint`
 
-
->>> theano.printing.debugprint(f.maker.fgraph.outputs[0])
+>>> theano.printing.debugprint(f.maker.fgraph.outputs[0])  # doctest: +NORMALIZE_WHITESPACE
 Elemwise{mul,no_inplace} [@A] ''
  |TensorConstant{2.0} [@B]
  |x [@C]
@@ -100,7 +105,7 @@ happen when that Variable has already been printed.  Where else has it been
 printed?  Look for debugprint identifier using the Find feature of your text
 editor.
 
->>> theano.printing.debugprint(gy)
+>>> theano.printing.debugprint(gy)  # doctest: +NORMALIZE_WHITESPACE
 Elemwise{mul} [@A] ''
  |Elemwise{mul} [@B] ''
  | |Elemwise{second,no_inplace} [@C] ''
@@ -113,10 +118,10 @@ Elemwise{mul} [@A] ''
    |x [@E]
    |Elemwise{sub} [@I] ''
      |TensorConstant{2} [@F]
-     |InplaceDimShuffle{} [@J] ''
+     |DimShuffle{} [@J] ''
        |TensorConstant{1} [@K]
 
->>> theano.printing.debugprint(gy, depth=2)
+>>> theano.printing.debugprint(gy, depth=2)  # doctest: +NORMALIZE_WHITESPACE
 Elemwise{mul} [@A] ''   
  |Elemwise{mul} [@B] ''   
  |Elemwise{pow} [@C] ''   

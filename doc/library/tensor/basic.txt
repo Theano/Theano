@@ -1665,8 +1665,8 @@ Linear Algebra
            [0, 1, 2],
            [0, 1, 2],
            [0, 1, 2],
-           [0, 1, 2]], dtype=int8)	    
-	    
+           [0, 1, 2]], dtype=int8)
+
 .. function:: ogrid
 
     :returns: an instance which returns an open (i.e. not fleshed out) mesh-grid 
@@ -1685,8 +1685,8 @@ Linear Algebra
            [3],
            [4]], dtype=int8)
     >>> b[1].eval()
-    array([[0, 1, 2, 3]], dtype=int8)
-      
+    array([[0, 1, 2]], dtype=int8)
+
       
 Gradient / Differentiation
 ==========================

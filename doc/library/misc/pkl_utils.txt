@@ -5,6 +5,10 @@
 :mod:`misc.pkl_utils` - Tools for serialization.
 ================================================
 
+.. testsetup:: *
+
+   from theano.misc.pkl_utils import *
+
 .. autofunction:: theano.misc.pkl_utils.dump
 
 .. autofunction:: theano.misc.pkl_utils.load

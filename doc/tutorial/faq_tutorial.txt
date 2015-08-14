@@ -21,36 +21,50 @@ should be written:
 
 Defining a shared variable for the lookup table
 
->>> lookup_table = theano.shared(matrix_ndarray).
+.. code-block:: python
+
+   lookup_table = theano.shared(matrix_ndarray)
 
 Getting a subset of the table (some rows or some columns) by passing
 an integer vector of indices corresponding to those rows or columns.
 
->>> subset = lookup_table[vector_of_indices]
+.. code-block:: python
+
+   subset = lookup_table[vector_of_indices]
 
 From now on, use only 'subset'. Do not call lookup_table[vector_of_indices]
 again. This causes problems with grad as this will create new variables.
 
 Defining cost which depends only on subset and not the entire lookup_table
 
->>> cost = something that depends on subset
->>> g = theano.grad(cost, subset)
+.. code-block:: python
+
+   cost = something that depends on subset
+   g = theano.grad(cost, subset)
 
 There are two ways for updating the parameters:
 Either use inc_subtensor or set_subtensor. It is recommended to use
 inc_subtensor. Some theano optimizations do the conversion between
 the two functions, but not in all cases.
 
->>> updates = inc_subtensor(subset, g*lr)
+.. code-block:: python
+
+   updates = inc_subtensor(subset, g*lr)
+
 OR
->>> updates = set_subtensor(subset, subset + g*lr)
+
+.. code-block:: python
+
+   updates = set_subtensor(subset, subset + g*lr)
 
 Currently we just cover the case here,
 not if you use inc_subtensor or set_subtensor with other types of indexing.
 
 Defining the theano function
 
->>> f=theano.function(..., updates=updates)
+.. code-block:: python
+
+   f = theano.function(..., updates=updates)
 
 Note that you can compute the gradient of the cost function w.r.t.
 the entire lookup_table, and the gradient will have nonzero rows only

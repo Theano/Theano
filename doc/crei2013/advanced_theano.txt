@@ -148,8 +148,7 @@ Pretty Printing
 ~~~~~~~~~~~~~~~
 
 >>> theano.printing.pprint(prediction) # doctest: +NORMALIZE_WHITESPACE
-'gt((TensorConstant{1} / (TensorConstant{1} + exp(((-(x \\dot w)) - b)))),
-TensorConstant{0.5})'
+'gt((TensorConstant{1} / (TensorConstant{1} + exp(((-(x \\dot w)) - b)))), TensorConstant{0.5})'
 
 
 Debug Print
@@ -157,8 +156,11 @@ Debug Print
 
 The graph before optimization:
 
->>> theano.printing.debugprint(prediction) # doctest: +NORMALIZE_WHITESPACE
-    Elemwise{gt,no_inplace} [@A] ''
+.. doctest::
+   :options: +SKIP
+
+   >>> theano.printing.debugprint(prediction) # doctest: +NORMALIZE_WHITESPACE
+   Elemwise{gt,no_inplace} [@A] ''
     |Elemwise{true_div,no_inplace} [@B] ''
     | |DimShuffle{x} [@C] ''
     | | |TensorConstant{1} [@D]
@@ -178,20 +180,23 @@ The graph before optimization:
 
 The graph after optimization:
 
->>> theano.printing.debugprint(predict) # doctest: +NORMALIZE_WHITESPACE
-    Elemwise{Composite{GT(scalar_sigmoid((-((-i0) - i1))), i2)}} [@A] ''   4
-     |CGemv{inplace} [@B] ''   3
-     | |Alloc [@C] ''   2
-     | | |TensorConstant{0.0} [@D]
-     | | |Shape_i{0} [@E] ''   1
-     | |   |x [@F]
-     | |TensorConstant{1.0} [@G]
-     | |x [@F]
-     | |w [@H]
-     | |TensorConstant{0.0} [@D]
-     |InplaceDimShuffle{x} [@I] ''   0
-     | |b [@J]
-     |TensorConstant{(1,) of 0.5} [@K]
+.. doctest::
+   :options: +SKIP
+
+   >>> theano.printing.debugprint(predict) # doctest: +NORMALIZE_WHITESPACE
+   Elemwise{Composite{GT(scalar_sigmoid((-((-i0) - i1))), i2)}} [@A] ''   4
+    |CGemv{inplace} [@B] ''   3
+    | |Alloc [@C] ''   2
+    | | |TensorConstant{0.0} [@D]
+    | | |Shape_i{0} [@E] ''   1
+    | |   |x [@F]
+    | |TensorConstant{1.0} [@G]
+    | |x [@F]
+    | |w [@H]
+    | |TensorConstant{0.0} [@D]
+    |InplaceDimShuffle{x} [@I] ''   0
+    | |b [@J]
+    |TensorConstant{(1,) of 0.5} [@K]
 
 
 Picture Printing of Graphs
@@ -201,24 +206,33 @@ Picture Printing of Graphs
 
 The graph before optimization:
 
->>> theano.printing.pydotprint(prediction, outfile="pics/logreg_pydotprint_prediction.png", var_with_name_simple=True)
-The output file is available at pics/logreg_pydotprint_prediction.png
+.. doctest::
+   :options: +SKIP
+
+   >>> theano.printing.pydotprint(prediction, outfile="pics/logreg_pydotprint_prediction.png", var_with_name_simple=True)
+   The output file is available at pics/logreg_pydotprint_prediction.png
 
 .. image:: ./pics/logreg_pydotprint_prediction.png
    :width: 800 px
 
 The graph after optimization:
 
->>> theano.printing.pydotprint(predict, outfile="pics/logreg_pydotprint_predict.png", var_with_name_simple=True)
-The output file is available at pics/logreg_pydotprint_predict.png
+.. doctest::
+   :options: +SKIP
+
+   >>> theano.printing.pydotprint(predict, outfile="pics/logreg_pydotprint_predict.png", var_with_name_simple=True)
+   The output file is available at pics/logreg_pydotprint_predict.png
 
 .. image:: ./pics/logreg_pydotprint_predict.png
    :width: 800 px
 
 The optimized training graph:
 
->>> theano.printing.pydotprint(train, outfile="pics/logreg_pydotprint_train.png", var_with_name_simple=True)
-The output file is available at pics/logreg_pydotprint_train.png
+.. doctest::
+   :options: +SKIP
+
+   >>> theano.printing.pydotprint(train, outfile="pics/logreg_pydotprint_train.png", var_with_name_simple=True)
+   The output file is available at pics/logreg_pydotprint_train.png
 
 .. image:: ./pics/logreg_pydotprint_train.png
    :width: 1500 px
