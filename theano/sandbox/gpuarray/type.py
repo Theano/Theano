@@ -89,7 +89,7 @@ class GpuArrayType(Type):
                                 " dimension.", shp, self.broadcastable)
         return data
 
-    def filter_variable(self, other):
+    def filter_variable(self, other, allow_convert=True):
         if hasattr(other, '_as_GpuArrayVariable'):
             other = other._as_GpuArrayVariable()
 
@@ -108,8 +108,11 @@ class GpuArrayType(Type):
             raise TypeError('Incompatible number of dimensions.'
                             ' Expected %d, got %d.' % (self.ndim, other.ndim))
         if other.type.broadcastable != self.broadcastable:
-            type2 = other.type.clone(broadcastable=self.broadcastable)
-            other2 = type2.convert_variable(other)
+            if allow_convert:
+                type2 = other.type.clone(broadcastable=self.broadcastable)
+                other2 = type2.convert_variable(other)
+            else:
+                other2 = None
             if other2 is None:
                 raise TypeError('Incompatible broadcastable dimensions.'
                                 ' Expected %s, got %s.' %

@@ -190,7 +190,7 @@ class TensorType(Type):
             raise ValueError("non-finite elements not allowed")
         return data
 
-    def filter_variable(self, other):
+    def filter_variable(self, other, allow_convert=True):
         """Convert a symbolic Variable into a TensorType, if compatible.
 
         For the moment, only a TensorType or CudaNdarrayType will be
@@ -208,10 +208,11 @@ class TensorType(Type):
         if other.type == self:
             return other
 
-        # Attempt safe broadcast conversion.
-        other2 = self.convert_variable(other)
-        if other2 is not None and other2.type == self:
-            return other2
+        if allow_convert:
+            # Attempt safe broadcast conversion.
+            other2 = self.convert_variable(other)
+            if other2 is not None and other2.type == self:
+                return other2
 
         raise TypeError(
             'Cannot convert Type %(othertype)s '

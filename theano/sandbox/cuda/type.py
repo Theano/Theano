@@ -119,7 +119,7 @@ class CudaNdarrayType(Type):
                         % (self, self.dtype, data, converted_data, self.dtype),
                         data)
 
-    def filter_variable(self, other):
+    def filter_variable(self, other, allow_convert=True):
         """Convert a Variable into a CudaNdarrayType, if compatible.
 
         This Variable should either already be a CudaNdarrayType, or be
@@ -146,8 +146,11 @@ class CudaNdarrayType(Type):
             raise TypeError('Incompatible number of dimensions.'
                             ' Expected %d, got %d.' % (self.ndim, other.ndim))
         if other.type.broadcastable != self.broadcastable:
-            type2 = other.type.clone(broadcastable=self.broadcastable)
-            other2 = type2.convert_variable(other)
+            if allow_convert:
+                type2 = other.type.clone(broadcastable=self.broadcastable)
+                other2 = type2.convert_variable(other)
+            else:
+                other2 = None
             if other2 is None:
                 raise TypeError('Incompatible broadcastable dimensions.'
                                 ' Expected %s, got %s.' %

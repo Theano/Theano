@@ -263,7 +263,7 @@ class PureType(object):
 
     # def filter_inplace(value, storage, strict=False, allow_downcast=None)
 
-    def filter_variable(self, other):
+    def filter_variable(self, other, allow_convert=True):
         """Convert a symbolic variable into this Type, if compatible.
 
         For the moment, the only Types compatible with one another are
@@ -277,7 +277,7 @@ class PureType(object):
             # a Constant of the appropriate Type.
             other = self.Constant(type=self, data=other)
 
-        if other.type != self:
+        if other.type != self and allow_convert:
             other2 = self.convert_variable(other)
             if other2 is not None:
                 return other2
@@ -289,6 +289,24 @@ class PureType(object):
                 'You can try to manually convert %(other)s into a %(self)s.'
                 % dict(othertype=other.type, other=other, self=self))
         return other
+
+    def convert_variable(self, var):
+        """Patch variable so that its type will match self, if possible.
+
+        If the variable can't be converted, this should return None.
+
+        The conversion can only happen if the following implication is
+        true for all possible `val`.
+
+          self.is_valid_value(val) => var.type.is_valid_value(val)
+
+        For the majority of types this means that you can only have
+        non-broadcastable dimensions become broadcastable and not the
+        inverse.
+
+        The default is to not convert anything which is always safe.
+        """
+        return None
 
     def is_valid_value(self, a):
         """Required: Return True for any python object `a` that would be a
@@ -409,23 +427,6 @@ class Type(object2, PureType, CLinkerType):
     do type-checking in pattern-based optimizations.
 
     """
-    def convert_variable(self, var):
-        """Patch variable so that its type will match self, if possible.
-
-        If the variable can't be converted, this should return None.
-
-        The conversion can only happen if the following implication is
-        true for all possible `val`.
-
-          self.is_valid_value(val) => var.type.is_valid_value(val)
-
-        For the majority of types this means that you can only have
-        non-broadcastable dimensions become broadcastable and not the
-        inverse.
-
-        The default is to not convert anything which is always safe.
-        """
-        return None
 
 
 class SingletonType(Type):
