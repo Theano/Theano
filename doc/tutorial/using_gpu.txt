@@ -33,9 +33,6 @@ Testing Theano with GPU
 To see if your GPU is being used, cut and paste the following program into a
 file and run it.
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_using_gpu.test_using_gpu_1
-
 .. testcode::
 
     from theano import function, config, shared, sandbox
@@ -110,9 +107,6 @@ if you don't mind less portability, you might gain a bigger speedup by changing
 the graph to express a computation with a GPU-stored result.  The ``gpu_from_host``
 op means "copy the input from the host to the GPU" and it is optimized away
 after the ``T.exp(x)`` is replaced by a GPU version of ``exp()``.
-
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_using_gpu.test_using_gpu_2
 
 .. testcode::
 
@@ -466,7 +460,6 @@ If you don't mind a loss of flexibility, you can ask theano to return
 the GPU object directly.  The following code is modifed to do just that.
 
 .. testcode::
-  :emphasize-lines: 10,17
 
   from theano import function, config, shared, tensor, sandbox
   import numpy
@@ -501,14 +494,13 @@ The output is
 
 .. testoutput::
    :hide:
-   :options: +ELLIPSIS
+   :options: +ELLIPSIS, +SKIP
    
-  $ THEANO_FLAGS=device=cuda0 python check2.py
-  Using device cuda0: GeForce GTX 275
-  [GpuElemwise{exp,no_inplace}(<GpuArray<float64>>)]
-  Looping 1000 times took ... seconds
-  Result is ...
-  Used the gpu
+   Using device cuda0: ...
+   [GpuElemwise{exp,no_inplace}(<GpuArray<float64>>)]
+   Looping 1000 times took ... seconds
+   Result is ...
+   Used the gpu
 
 .. code-block:: none
 
