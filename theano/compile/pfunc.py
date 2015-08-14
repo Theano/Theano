@@ -1,4 +1,7 @@
-"""Provide a simple user friendly API """
+"""
+Provide a simple user friendly API.
+
+"""
 from theano import config
 from six import iteritems
 from theano.compile import orig_function, In, Out
@@ -22,42 +25,35 @@ def rebuild_collect_shared(outputs,
                            no_default_updates=False,
                            ):
     """
-    Function that allows replacing subgraphs of a computational
-    graph.
+    Function that allows replacing subgraphs of a computational graph.
 
     It returns a set of dictionaries and lists which collect (partial?)
     different information about shared variables. This info is required by
     `pfunc`.
 
-
-    :type outputs: list of Theano Variables ( or Theano expressions)
-    :param outputs: list of Theano variables or expressions representing the
-                    outputs of the computational graph
-
-    :type inputs: list of Theano Variables ( or Theano expressions)
-    :param inputs: list of Theano variables or expressions representing the
-                    inputs of the computational graph (or None)
-    :type replace: dict
-    :param replace: dictionary describing which subgraphs should be
-                    replaced by what. orig_value => new_value
-
-    :type updates: dict
-    :param updates: dictionary describing updates expressions for shared
-                    variables
-
-    :type rebuild_strict: bool
-    :param rebuild_strict: flag, if true the type of all inputs should be
-                            the same as the for the current node
-
-    :type copy_inputs_over: bool
-    :param copy_inputs_over: flag; if False it will clone inputs
-
-    :type no_default_updates: either bool or list of Variables
-    :param no_default_updates: if True, do not perform any automatic update
-                               on Variables. If False (default), perform
-                               them all. Else, perform automatic updates
-                               on all Variables that are neither in
-                               "updates" nor in "no_default_updates".
+    Parameters
+    ----------
+    outputs : list of Theano Variables (or Theano expressions)
+        List of Theano variables or expressions representing the outputs of the
+        computational graph.
+    inputs : list of Theano Variables (or Theano expressions)
+        List of Theano variables or expressions representing the inputs of the
+        computational graph (or None).
+    replace : dict
+        Dictionary describing which subgraphs should be replaced by what.
+        orig_value => new_value
+    updates : dict
+        Dictionary describing updates expressions for shared variables.
+    rebuild_strict : bool
+        Flag, if true the type of all inputs should be the same as the one for
+        the current node.
+    copy_inputs_over : bool
+        Flag; if False it will clone inputs.
+    no_default_updates : either bool or list of Variables
+        If True, do not perform any automatic update on Variables.
+        If False (default), perform them all.
+        Else, perform automatic updates on all Variables that are neither in
+        "updates" nor in "no_default_updates".
 
     """
 
@@ -73,15 +69,15 @@ def rebuild_collect_shared(outputs,
     shared_inputs = []
 
     def clone_v_get_shared_updates(v, copy_inputs_over):
-        '''
-        Clones a variable and its inputs recursively until all are in
-        clone_d. Also appends all shared variables met along the way to
-        shared inputs, and their default_update (if applicable) to update_d
-        and update_expr.
+        """
+        Clones a variable and its inputs recursively until all are in clone_d.
+        Also appends all shared variables met along the way to shared inputs,
+        and their default_update (if applicable) to update_d and update_expr.
 
         v can have an fgraph attached to it, case in which we want to clone
-        constants ( to avoid having a constant belonging to two fgraphs)
-        '''
+        constants (to avoid having a constant belonging to two fgraphs).
+
+        """
         # this co-recurses with clone_a
         assert v is not None
         if v in clone_d:
@@ -119,10 +115,11 @@ def rebuild_collect_shared(outputs,
             return clone_d.setdefault(v, v)
 
     def clone_a(a, copy_inputs_over):
-        '''
+        """
         Clones a variable and its inputs recursively until all are in
-        clone_d. It occures with clone_v_get_shared_updates
-        '''
+        clone_d. It occures with clone_v_get_shared_updates.
+
+        """
         if a is None:
             return None
         if a not in clone_d:
@@ -275,40 +272,43 @@ def rebuild_collect_shared(outputs,
 
 
 class Param(object):
+    """
+
+    Parameters
+    ----------
+    variable
+        A variable in an expression graph to use as a compiled-function
+        parameter.
+    default
+        The default value to use at call-time (can also be a Container where
+        the function will find a value at call-time).
+    name : str
+        A string to identify this parameter from function kwargs.
+    mutable : bool
+        True : function is allowed to modify this argument.
+    borrow
+        Whether the function is allowed to alias some output to this input.
+        Using None (default) means we re-use the same value as the `mutable`
+        flag. False: do not permit any output to be aliased to the input.
+    strict : bool
+        False : function arguments may be copied or cast to match the type
+        required by the parameter `variable`.
+        True : function arguments must exactly match the type required by
+        `variable`.
+    allow_downcast : bool or None
+        Only applies if `strict` is False.
+        True : allow assigned value to lose precision when cast during
+        assignment.
+        False : never allow precision loss.
+        None : only allow downcasting of a Python float to a scalar floatX.
+    implicit
+        See help(theano.io.In)
+
+    """
+
     def __init__(self, variable, default=None, name=None, mutable=False,
                  strict=False, allow_downcast=None, implicit=None,
                  borrow=None):
-        """
-        :param variable: A variable in an expression graph to use as a
-            compiled-function parameter
-
-        :param default: The default value to use at call-time (can
-            also be a Container where the function will find a value
-            at call-time.)
-
-        :param name: A string to identify this parameter from function kwargs.
-
-        :param mutable: True -> function is allowed to modify this argument.
-
-        :param borrow: Whether the function is allowed to alias some
-            output to this input. Using None (default) means we re-use
-            the same value as the `mutable` flag.
-            False: do not permit any output to be aliased to the input
-
-        :param strict: False -> function arguments may be copied or
-            cast to match the type required by the parameter
-            `variable`.
-            True -> function arguments must exactly match the type
-            required by `variable`.
-
-        :param allow_downcast: Only applies if `strict` is False.
-        True -> allow assigned value to lose precision when cast
-            during assignment.
-        False -> never allow precision loss.
-        None -> only allow downcasting of a Python float to a scalar floatX.
-
-        :param implicit: see help(theano.io.In)
-        """
         self.variable = variable
         self.default = default
         self.name = name
@@ -340,75 +340,61 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
           no_default_updates=False, accept_inplace=False, name=None,
           rebuild_strict=True, allow_input_downcast=None,
           profile=None, on_unused_input=None, output_keys=None):
-    """Function-constructor for graphs with shared variables.
+    """
+    Function-constructor for graphs with shared variables.
 
-    :type params: list of either Variable or Param instances.
-    :param params: function parameters, these are not allowed to be shared
-    variables
-
-    :type outputs: list of Variables or Out instances
-    :param outputs: expressions to compute
-
-    :type mode: string or `theano.compile.Mode` instance.
-    :param mode: compilation mode
-
-    :type updates: iterable over pairs (shared_variable,
-        new_expression). List, tuple or dict.
-    :param updates: update the values for SharedVariable inputs
-        according to these expressions
-
-    :type givens: iterable over pairs (Var1, Var2) of Variables. List,
-        tuple or dict.  The Var1 and Var2 in each pair must have the
-        same Type.
-
-    :param givens: specific substitutions to make in the computation
-        graph (Var2 replaces Var1).
-
-    :type no_default_updates: either bool or list of Variables
-    :param no_default_updates: if True, do not perform any automatic
-        update on Variables.  If False (default), perform them
-        all. Else, perform automatic updates on all Variables that are
-        neither in "updates" nor in "no_default_updates".
-
-    :type name: None or string
-    :param name: attaches a name to the profiling result of this function.
-
-    :type allow_input_downcast: Boolean
-    :param allow_input_downcast: True means that the values passed as
-        inputs when calling the function can be silently downcasted to
-        fit the dtype of the corresponding Variable, which may lose
-        precision.  False means that it will only be cast to a more
+    Parameters
+    ----------
+    params : list of either Variable or Param instances
+        Function parameters, these are not allowed to be shared variables.
+    outputs : list of Variables or Out instances
+        Expressions to compute.
+    mode : string or `theano.compile.Mode` instance
+        Compilation mode.
+    updates : iterable over pairs (shared_variable, new_expression). List, tuple or dict.
+        Update the values for SharedVariable inputs according to these
+        expressions
+    givens : iterable over pairs (Var1, Var2) of Variables. List, tuple or dict.
+        The Var1 and Var2 in each pair must have the same Type. Specific
+        substitutions to make in the computation graph (Var2 replaces Var1).
+    no_default_updates : either bool or list of Variables
+        If True, do not perform any automatic update on Variables.
+        If False (default), perform them all. Else, perform automatic updates
+        on all Variables that are neither in "updates" nor in
+        "no_default_updates".
+    name : None or string
+        Attaches a name to the profiling result of this function.
+    allow_input_downcast : bool
+        True means that the values passed as inputs when calling the function
+        can be silently downcasted to fit the dtype of the corresponding
+        Variable, which may lose precision. False means that it will only be cast to a more
         general, or precise, type. None (default) is almost like
         False, but allows downcasting of Python float scalars to
         floatX.
+    profile : None, True, str, or ProfileStats instance
+        Accumulate profiling information into a given ProfileStats instance.
+        None is the default, and means to use the value of config.profile.
+        If argument is `True` then a new ProfileStats instance will be used.
+        If argument is a string, a new ProfileStats instance will be created
+        with that string as its `message` attribute. This profiling object will
+        be available via self.profile.
+    on_unused_input : {'raise', 'warn','ignore', None}
+        What to do if a variable in the 'inputs' list is not used in the graph.
 
-    :type profile: None, True, str, or ProfileStats instance
-    :param profile: accumulate profiling information into a given ProfileStats
-    instance. None is the default, and means to use the value of
-    config.profile.
-    If argument is `True` then a new ProfileStats instance will be
-    used.  If argument is a string, a new ProfileStats instance will be created
-    with that string as its `message` attribute.  This profiling object will be
-    available via self.profile.
+    Returns
+    -------
+    theano.compile.Function
+        A callable object that will compute the outputs (given the inputs) and
+        update the implicit function arguments according to the `updates`.
 
-    :type on_unused_input: str
-    :param on_unused_input: What to do if a variable in the 'inputs' list
-        is not used in the graph. Possible values are 'raise', 'warn',
-        'ignore' and None.
+    Notes
+    -----
+    Regarding givens: Be careful to make sure that these substitutions are
+    independent--behaviour when Var1 of one pair appears in the graph leading
+    to Var2 in another expression is undefined. Replacements specified with
+    givens are different from optimizations in that Var2 is not expected to be
+    equivalent to Var1.
 
-
-    :rtype: theano.compile.Function
-    :returns: a callable object that will compute the outputs (given
-        the inputs) and update the implicit function arguments
-        according to the `updates`.
-
-
-    :note: Regarding givens: Be careful to make sure that these
-        substitutions are independent--behaviour when Var1 of one pair
-        appears in the graph leading to Var2 in another expression is
-        undefined.  Replacements specified with givens are different
-        from optimizations in that Var2 is not expected to be
-        equivalent to Var1.
     """
     #
     # This function works by cloning the graph (except for the
@@ -547,13 +533,17 @@ def iter_over_pairs(pairs):
     """
     Return an iterator over pairs present in the 'pairs' input.
 
-    :type pairs: dictionary or iterable
-    :param pairs: The pairs to iterate upon. These may be stored either as
-    (key, value) items in a dictionary, or directly as pairs in any kind of
-    iterable structure
+    Parameters
+    ----------
+    pairs : dictionary or iterable
+        The pairs to iterate upon. These may be stored either as (key, value)
+        items in a dictionary, or directly as pairs in any kind of iterable
+        structure.
 
-    :rtype: iterable
-    :returns: an iterable yielding pairs
+    Returns
+    -------
+    iterable
+        An iterable yielding pairs.
 
     """
     if isinstance(pairs, dict):
