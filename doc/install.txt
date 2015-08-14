@@ -328,10 +328,10 @@ Testing your installation
 Once you have installed Theano, you should run the test suite. At
 a Python (or IPython) interpreter,
 
-.. testcode::
+.. code-block:: python
 
     import theano
-    theano.test() # doctest: +SKIP
+    theano.test()
 
 You can also run them in-place from the Git checkout directory by typing
 

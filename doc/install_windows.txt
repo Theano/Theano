@@ -585,7 +585,7 @@ follows:
      This setting can also be changed in Python for testing purpose (in which
      case it will remain only for the duration of your Python session):
 
-    .. testcode::
+    .. code-block:: python
 
         theano.config.blas.ldflags = "-LX:\\YYY\\YYY -lopenblas"
 
