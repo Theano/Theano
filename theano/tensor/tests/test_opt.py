@@ -4079,7 +4079,6 @@ class T_local_switch_sink(unittest.TestCase):
 
         self.mode = theano.compile.mode.get_default_mode().including(
                 'canonicalize', 'fast_run').excluding('gpu', 'fusion')
-        theano.config.experimental.local_alloc_elemwise_assert = False
         self.mode = copy.copy(self.mode)
         self.mode.check_isfinite = False
 
