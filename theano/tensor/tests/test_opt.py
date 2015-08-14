@@ -2875,7 +2875,6 @@ class Test_local_elemwise_alloc(unittest.TestCase):
         )
 
     def _verify_assert_count(self, f, count):
-        theano.printing.debugprint(f.maker.fgraph)
         assert(
             sum([isinstance(elem.op, T.opt.Assert)
                  for elem in f.maker.fgraph.toposort()
