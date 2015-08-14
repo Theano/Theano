@@ -43,12 +43,12 @@
    Example:
 
    .. testcode::
-       
+
        import theano.tensor as T
-       
-       x,y,b = T.dvectors('x','y','b')
+
+       x, y, b = T.dvectors('x', 'y', 'b')
        W = T.dmatrix('W')
-       y = T.nnet.sigmoid(T.dot(W,x) + b)
+       y = T.nnet.sigmoid(T.dot(W, x) + b)
 
    .. note:: The underlying code will return an exact 0 or 1 if an
       element of x is too small or too big.
@@ -126,7 +126,7 @@
        optimize this by inserting the softmax op itself.  The code of
        the softmax op is more numeriacaly stable by using this code:
 
-       .. testcode::
+       .. code-block:: python
 
            e_x = exp(x - x.max(axis=1, keepdims=True))
            out = e_x / e_x.sum(axis=1, keepdims=True)
@@ -159,8 +159,9 @@
 
    .. testcode::
 
-       x, y, b = T.dvectors('x', 'y', 'b')
+       x, y, b, c = T.dvectors('x', 'y', 'b', 'c')
        W = T.dmatrix('W')
+       V = T.dmatrix('V')
        h = T.nnet.sigmoid(T.dot(W, x) + b)
        x_recons = T.nnet.sigmoid(T.dot(V, h) + c)
        recon_cost = T.nnet.binary_crossentropy(x_recons, x).mean()
@@ -192,6 +193,11 @@
        which corresponds to computing the neg-log-probability of the
        correct class (which is typically the training criterion in
        classification settings).
+
+   .. testsetup::
+
+      import theano
+      o = theano.tensor.ivector()
 
    .. testcode::
 

@@ -47,6 +47,14 @@ example, if we pass the following values to ``fun``:
         (numpy.asarray(100.) ** 1000000).astype(theano.config.floatX), (3, 5))
     fun(infa)
 
+.. testoutput::
+   :hide:
+   :options: +ELLIPSIS
+
+   Traceback (most recent call last):
+     ...
+   AssertionError: ...
+
 It will raise an AssertionError indicating that Inf value is detected while
 executing the function.
 

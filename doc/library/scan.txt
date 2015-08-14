@@ -254,28 +254,39 @@ Another useful feature of scan, is that it can handle shared variables.
 For example, if we want to implement a Gibbs chain of length 10 we would do
 the following:
 
-.. testcode:: 
+.. testsetup:: scan1
 
-    W = theano.shared(W_values) # we assume that ``W_values`` contains the
-                                # initial values of your weight matrix
+   import theano
+   import numpy
+   W_values = numpy.random.random((2, 2))
+   bvis_values = numpy.random.random((2,))
+   bhid_values = numpy.random.random((2,))
 
-    bvis = theano.shared(bvis_values)
-    bhid = theano.shared(bhid_values)
+.. testcode:: scan1
 
-    trng = T.shared_randomstreams.RandomStreams(1234)
+   import theano
+   from theano import tensor as T
 
-    def OneStep(vsample) :
-        hmean = T.nnet.sigmoid(theano.dot(vsample, W) + bhid)
-        hsample = trng.binomial(size=hmean.shape, n=1, p=hmean)
-        vmean = T.nnet.sigmoid(theano.dot(hsample, W.T) + bvis)
-        return trng.binomial(size=vsample.shape, n=1, p=vmean,
-                         dtype=theano.config.floatX)
+   W = theano.shared(W_values) # we assume that ``W_values`` contains the
+                               # initial values of your weight matrix
 
-    sample = theano.tensor.vector()
+   bvis = theano.shared(bvis_values)
+   bhid = theano.shared(bhid_values)
 
-    values, updates = theano.scan(OneStep, outputs_info=sample, n_steps=10)
+   trng = T.shared_randomstreams.RandomStreams(1234)
 
-    gibbs10 = theano.function([sample], values[-1], updates=updates)
+   def OneStep(vsample) :
+       hmean = T.nnet.sigmoid(theano.dot(vsample, W) + bhid)
+       hsample = trng.binomial(size=hmean.shape, n=1, p=hmean)
+       vmean = T.nnet.sigmoid(theano.dot(hsample, W.T) + bvis)
+       return trng.binomial(size=vsample.shape, n=1, p=vmean,
+                            dtype=theano.config.floatX)
+
+   sample = theano.tensor.vector()
+
+   values, updates = theano.scan(OneStep, outputs_info=sample, n_steps=10)
+
+   gibbs10 = theano.function([sample], values[-1], updates=updates)
 
 
 The first, and probably most crucial observation is that the updates
@@ -286,7 +297,11 @@ update dictionary to your function, you will always get the same 10
 sets of random numbers. You can even use the ``updates`` dictionary
 afterwards. Look at this example :
 
-.. testcode::
+.. testsetup:: scan2
+
+   import theano
+
+.. testcode:: scan2
 
     a = theano.shared(1)
     values, updates = theano.scan(lambda: {a: a+1}, n_steps=10)
@@ -295,15 +310,22 @@ In this case the lambda expression does not require any input parameters
 and returns an update dictionary which tells how ``a`` should be updated
 after each step of scan. If we write :
 
-.. testcode::
+.. testcode:: scan2
 
     b = a + 1
     c = updates[a] + 1
     f = theano.function([], [b, c], updates=updates)
 
-    print b
-    print c
-    print a.value
+    print(b)
+    print(c)
+    print(a.get_value())
+
+.. testoutput:: scan2
+   :hide:
+
+   Elemwise{add,no_inplace}.0
+   Elemwise{add,no_inplace}.0
+   1
 
 We will see that because ``b`` does not use the updated version of
 ``a``, it will be 2, ``c`` will be 12, while ``a.value`` is ``11``.
@@ -324,7 +346,7 @@ execution. To pass the shared variables to Scan you need to put them in a list
 and give it to the ``non_sequences`` argument. Here is the Gibbs sampling code
 updated:
 
-.. testcode::
+.. testcode:: scan1
 
     W = theano.shared(W_values) # we assume that ``W_values`` contains the
                                 # initial values of your weight matrix
@@ -367,7 +389,7 @@ to be ensured by the user. Otherwise, it will result in an error.
 
 Using the previous Gibbs sampling example:
 
-.. testcode::
+.. testcode:: scan1
 
     # The new scan, using strict=True
     values, updates = theano.scan(fn=OneStep,
@@ -404,7 +426,12 @@ In this case we have a sequence over which we need to iterate ``u``,
 and two outputs ``x`` and ``y``. To implement this with scan we first
 construct a function that computes one iteration step :
 
-.. testcode::
+.. testsetup:: scan3
+
+   import theano
+   from theano import tensor as T
+
+.. testcode:: scan3
 
   def oneStep(u_tm4, u_t, x_tm3, x_tm1, y_tm1, W, W_in_1, W_in_2,  W_feedback, W_out):
 
@@ -427,9 +454,15 @@ an order, but also variables, since this is how scan figures out what should
 be represented by what. Given that we have all
 the Theano variables needed we construct our RNN as follows :
 
-.. testcode::
+.. testcode:: scan3
 
-   u  = T.matrix() # it is a sequence of vectors
+   W = T.matrix()
+   W_in_1 = T.matrix()
+   W_in_2 = T.matrix()
+   W_feedback = T.matrix()
+   W_out = T.matrix()
+
+   u = T.matrix() # it is a sequence of vectors
    x0 = T.matrix() # initial state of x has to be a matrix, since
                    # it has to cover x[-3]
    y0 = T.vector() # y0 is just a vector since scan has only to provide
