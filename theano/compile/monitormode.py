@@ -8,7 +8,6 @@ from theano.compile.mode import Mode
 
 
 class MonitorMode(Mode):
-
     """
     `MonitorMode` is a debug mode to easily step through function execution.
 
@@ -19,28 +18,28 @@ class MonitorMode(Mode):
 
     A typical use case is to detect the introduction of NaN values in a graph.
     For an example of such a use case, see doc/tutorial/debug_faq.txt.
+
+    Parameters
+    ----------
+    pre_func
+        A function to call before executing a thunk, with arguments:
+        - the thunk index
+        - the Apply node
+        - the thunk to be called
+    post_func
+        A function to call after executing a thunk, with the same three
+        arguments as `pre_func`.
+    optimizer
+        The optimizer to use. One may use for instance 'fast_compile' to skip
+        optimizations.
+    linker
+        DO NOT USE. This mode uses its own linker. The parameter is needed to
+        allow selecting optimizers to use.
+
     """
 
     def __init__(self, pre_func=None, post_func=None,
                  optimizer='default', linker=None):
-        """
-        Constructor.
-
-        :param pre_func: A function to call before executing a thunk, with
-            arguments:
-                - the thunk index
-                - the Apply node
-                - the thunk to be called
-
-        :param post_func: A function to call after executing a thunk, with the
-            same three arguments as `pre_func`.
-
-        :param optimizer: The optimizer to use. One may use for instance
-            'fast_compile' to skip optimizations.
-
-        :param linker: DO NOT USE. This mode uses its own linker.
-            The parameter is needed to allow selecting optimizers to use.
-        """
         self.pre_func = pre_func
         self.post_func = post_func
         wrap_linker = theano.gof.WrapLinkerMany([theano.gof.OpWiseCLinker()],
@@ -67,6 +66,7 @@ class MonitorMode(Mode):
     def eval(self, i, node, fn):
         """
         The method that calls the thunk `fn`.
+
         """
         if self.pre_func is not None:
             self.pre_func(i, node, fn)
@@ -96,9 +96,9 @@ class MonitorMode(Mode):
         """
         Create a new instance of this Mode.
 
-        Keyword arguments can be provided for the linker,
-        but they will be ignored, because ProfileMode needs
-        to use its own linker.
+        Keyword arguments can be provided for the linker, but they will be
+        ignored, because ProfileMode needs to use its own linker.
+
         """
         new_mode = type(self)(pre_func=self.pre_func,
                               post_func=self.post_func,
