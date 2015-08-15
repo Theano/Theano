@@ -21,7 +21,7 @@ incorrect output.
 It is much slower to evaluate a function or method with DebugMode than
 it would be in ``'FAST_RUN'`` or even ``'FAST_COMPILE'``.  We recommended you use
 DebugMode during development, but not when you launch 1000 processes on
-a cluster.
+a cluster. We also do not recommend to use DebugMode with GPU.
 
 DebugMode can be used as follows:
 
