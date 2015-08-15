@@ -20,6 +20,7 @@ from theano import OpenMPOp
 from theano.tensor import (as_tensor_variable, blas, get_scalar_constant_value,
                            patternbroadcast, NotScalarConstantError)
 from theano.gof import Apply
+from theano.sandbox.cpu_corr import CpuCorrMM
 
 try:
     # TODO: move these back out to global scope when they no longer
