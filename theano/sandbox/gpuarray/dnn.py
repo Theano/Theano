@@ -13,7 +13,7 @@ from theano.compile.ops import shape_i
 from theano.configparser import AddConfigVar, EnumStr, StrParam
 from theano.tensor.nnet import SoftmaxGrad
 from theano.tensor.signal.downsample import (
-    DownsampleFactorMax, DownsampleFactorMaxGrad)
+    DownsampleFactorMax, MaxPoolGrad, AveragePoolGrad)
 
 from . import pygpu, init_dev
 from .basic_ops import (as_gpuarray_variable,
@@ -1659,7 +1659,7 @@ def local_pool_dnn_alternative(node):
 
 
 @register_opt('cudnn')
-@op_lifter([DownsampleFactorMaxGrad])
+@op_lifter([MaxPoolGrad])
 def local_pool_dnn_grad_stride(node):
     if not dnn_available():
         return
@@ -1674,6 +1674,26 @@ def local_pool_dnn_grad_stride(node):
     desc = GpuDnnPoolDesc(ws=ds, stride=st, mode=mode, pad=pad)()
     return GpuDnnPoolGrad()(gpu_contiguous(inp),
                             gpu_contiguous(out),
+                            gpu_contiguous(inp_grad),
+                            desc)
+
+
+@register_opt('cudnn')
+@op_lifter([AveragePoolGrad])
+def local_avg_pool_dnn_grad_stride(node):
+    if not dnn_available():
+        return
+    if not node.op.ignore_border:
+        return
+    inp, inp_grad = node.inputs
+    ds = node.op.ds
+    st = node.op.st
+    pad = node.op.padding
+    mode = node.op.mode
+
+    desc = GpuDnnPoolDesc(ws=ds, stride=st, mode=mode, pad=pad)()
+    return GpuDnnPoolGrad()(gpu_contiguous(inp),
+                            gpu_contiguous(numpy.empty((1, 1, 1, 1), dtype=numpy.float32)),
                             gpu_contiguous(inp_grad),
                             desc)
 

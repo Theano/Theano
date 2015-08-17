@@ -120,7 +120,8 @@ cpu_ops_moved_to_gpu = [
     tensor.blas.Dot22, tensor.blas.Dot22Scalar, tensor.blas.Gemm,
     tensor.blas.Gemv, tensor.blas.Ger, tensor.nnet.conv.ConvOp,
     tensor.signal.downsample.DownsampleFactorMax,
-    tensor.signal.downsample.DownsampleFactorMaxGrad,
+    tensor.signal.downsample.MaxPoolGrad,
+    tensor.signal.downsample.AveragePoolGrad,
     theano.tensor.nnet.neighbours.Images2Neibs,
     tensor.nnet.CrossentropySoftmaxArgmax1HotWithBias,
     tensor.nnet.CrossentropySoftmax1HotWithBiasDx,
@@ -1765,9 +1766,9 @@ def local_gpu_downsample_factor_max(node):
 
 
 @register_opt()
-@local_optimizer([downsample.DownsampleFactorMaxGrad])
+@local_optimizer([downsample.MaxPoolGrad])
 def local_gpu_downsample_factor_max_grad(node):
-    if (isinstance(node.op, downsample.DownsampleFactorMaxGrad) and
+    if (isinstance(node.op, downsample.MaxPoolGrad) and
         node.op.ds == node.op.st):
         assert node.op.__props__ == ('ds', 'ignore_border', 'st', 'padding',
                                      'mode')

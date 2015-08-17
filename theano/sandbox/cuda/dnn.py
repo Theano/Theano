@@ -13,7 +13,7 @@ from theano.compile.ops import shape_i
 from theano.configparser import AddConfigVar, EnumStr
 from theano.tensor.nnet import SoftmaxGrad
 from theano.tensor.signal.downsample import (
-    DownsampleFactorMax, DownsampleFactorMaxGrad)
+    DownsampleFactorMax, MaxPoolGrad, AveragePoolGrad)
 from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            host_from_gpu,
@@ -2204,11 +2204,11 @@ if True:
                                      desc)]
 
     @register_opt('cudnn')
-    @local_optimizer([DownsampleFactorMaxGrad])
+    @local_optimizer([MaxPoolGrad])
     def local_pool_dnn_grad_stride(node):
         if not dnn_available():
             return
-        if isinstance(node.op, DownsampleFactorMaxGrad):
+        if isinstance(node.op, MaxPoolGrad):
             if not node.op.ignore_border:
                 return
             inp, out, inp_grad = node.inputs
@@ -2224,6 +2224,31 @@ if True:
                 desc = GpuDnnPoolDesc(ws=ds, stride=st, mode=mode, pad=pad)()
                 ret = GpuDnnPoolGrad()(gpu_contiguous(inp),
                                        gpu_contiguous(out),
+                                       gpu_contiguous(inp_grad),
+                                       desc)
+                return [host_from_gpu(ret)]
+
+    @register_opt('cudnn')
+    @local_optimizer([AveragePoolGrad])
+    def local_avgpool_dnn_grad_stride(node):
+        if not dnn_available():
+            return
+        if isinstance(node.op, AveragePoolGrad):
+            if not node.op.ignore_border:
+                return
+            inp, inp_grad = node.inputs
+            ds = node.op.ds
+            st = node.op.st
+            pad = node.op.padding
+            mode = node.op.mode
+
+            if ((inp.owner and isinstance(inp.owner.op, HostFromGpu)) or
+                (inp_grad.owner and isinstance(inp_grad.owner.op,
+                                               HostFromGpu))):
+                desc = GpuDnnPoolDesc(ws=ds, stride=st, mode=mode, pad=pad)()
+                ret = GpuDnnPoolGrad()(gpu_contiguous(inp),
+                                       gpu_contiguous(numpy.empty((1,1,1,1),
+                                           dtype=numpy.float32)),
                                        gpu_contiguous(inp_grad),
                                        desc)
                 return [host_from_gpu(ret)]
