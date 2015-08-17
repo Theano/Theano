@@ -1,9 +1,9 @@
 """
-This module provides syntax shortcut for the Scan Op
+This module provides syntax shortcut for the Scan Op.
 
-See scan.py for details on scan
+See scan.py for details on scan.
+
 """
-
 __docformat__ = 'restructedtext en'
 __authors__ = ("Razvan Pascanu "
                "Frederic Bastien "
@@ -37,26 +37,27 @@ def map(fn,
     """
     Similar behaviour as python's map.
 
-    :param fn: The function that ``map`` applies at each iteration step
-               (see ``scan`` for more info).
+    Parameters
+    ----------
+    fn
+        The function that ``map`` applies at each iteration step
+        (see ``scan`` for more info).
+    sequences
+        List of sequences over which ``map`` iterates 
+        (see ``scan`` for more info).
+    non_sequences
+        List of arguments passed to ``fn``. ``map`` will not iterate over
+        these arguments (see ``scan`` for more info).
+    truncate_gradient
+        See ``scan``.
+    go_backwards : bool
+        Decides the direction of iteration. True means that sequences are parsed
+        from the end towards the begining, while False is the other way around.
+    mode
+        See ``scan``.
+    name
+        See ``scan``.
 
-    :param sequences: List of sequences over which ``map`` iterates
-                      (see ``scan`` for more info).
-
-    :param non_sequences: List of arguments passed to ``fn``. ``map`` will
-                          not iterate over these arguments (see ``scan`` for
-                          more info).
-
-    :param truncate_gradient: See ``scan``.
-
-    :param go_backwards: Boolean value that decides the direction of
-                         iteration. True means that sequences are parsed
-                         from the end towards the begining, while False
-                         is the other way around.
-
-    :param mode: See ``scan``.
-
-    :param name: See ``scan``.
     """
     return scan(fn=fn,
                      sequences=sequences,
@@ -77,29 +78,31 @@ def reduce(fn,
            mode=None,
            name=None):
     """
-    Similar behaviour as python's reduce
+    Similar behaviour as python's reduce.
 
-    :param fn: The function that ``reduce`` applies at each iteration step
-               (see ``scan``  for more info).
-
-    :param sequences: List of sequences over which ``reduce`` iterates
-                      (see ``scan`` for more info)
-
-    :param outputs_info: List of dictionaries describing the outputs of
-                        reduce (see ``scan`` for more info).
-
-    :param non_sequences: List of arguments passed to ``fn``. ``reduce`` will
+    Parameters
+    ----------
+    fn
+        The function that ``reduce`` applies at each iteration step
+        (see ``scan``  for more info).
+    sequences
+        List of sequences over which ``reduce`` iterates
+        (see ``scan`` for more info).
+    outputs_info
+        List of dictionaries describing the outputs of
+        reduce (see ``scan`` for more info).
+    non_sequences
+        List of arguments passed to ``fn``. ``reduce`` will
                           not iterate over these arguments (see ``scan`` for
                           more info).
+    go_backwards : bool 
+        Decides the direction of iteration. True means that sequences are parsed
+        from the end towards the begining, while False is the other way around.
+    mode
+        See ``scan``.
+    name
+        See ``scan``.
 
-    :param go_backwards: Boolean value that decides the direction of
-                         iteration. True means that sequences are parsed
-                         from the end towards the begining, while False
-                         is the other way around.
-
-    :param mode: See ``scan``.
-
-    :param name: See ``scan``.
     """
     rval = scan(fn=fn,
                      sequences=sequences,
@@ -123,25 +126,27 @@ def foldl(fn,
           mode=None,
           name=None):
     """
-    Similar behaviour as haskell's foldl
+    Similar behaviour as haskell's foldl.
 
-    :param fn: The function that ``foldl`` applies at each iteration step
-               (see ``scan`` for more info).
+    Parameters
+    ----------
+    fn
+        The function that ``foldl`` applies at each iteration step
+        (see ``scan`` for more info).
+    sequences
+        List of sequences over which ``foldl`` iterates
+        (see ``scan`` for more info).
+    outputs_info
+        List of dictionaries describing the outputs of reduce
+        (see ``scan`` for more info).
+    non_sequences
+        List of arguments passed to `fn`. ``foldl`` will not iterate over
+        these arguments (see ``scan`` for more info).
+    mode
+        See ``scan``.
+    name
+        See ``scan``.
 
-
-    :param sequences: List of sequences over which ``foldl`` iterates
-                      (see ``scan`` for more info)
-
-    :param outputs_info: List of dictionaries describing the outputs of
-                        reduce (see ``scan`` for more info).
-
-    :param non_sequences: List of arguments passed to `fn`. ``foldl`` will
-                          not iterate over these arguments (see ``scan`` for
-                          more info).
-
-    :param mode: See ``scan``.
-
-    :param name: See ``scan``.
     """
     return reduce(fn=fn,
                   sequences=sequences,
@@ -160,25 +165,27 @@ def foldr(fn,
           mode=None,
           name=None):
     """
-    Similar behaviour as haskell' foldr
+    Similar behaviour as haskell' foldr.
 
-    :param fn: The function that ``foldr`` applies at each iteration step
-               (see ``scan`` for more info).
+    Parameters
+    ----------
+    fn
+        The function that ``foldr`` applies at each iteration step
+        (see ``scan`` for more info).
+    sequences
+        List of sequences over which ``foldr`` iterates
+        (see ``scan`` for more info).
+    outputs_info
+        List of dictionaries describing the outputs of reduce
+        (see ``scan`` for more info).
+    non_sequences
+        List of arguments passed to `fn`. ``foldr`` will not iterate over these
+        arguments (see ``scan`` for more info).
+    mode
+        See ``scan``.
+    name
+        See ``scan``.
 
-
-    :param sequences: List of sequences over which ``foldr`` iterates
-                      (see ``scan`` for more info)
-
-    :param outputs_info: List of dictionaries describing the outputs of
-                        reduce (see ``scan`` for more info).
-
-    :param non_sequences: List of arguments passed to `fn`. ``foldr`` will
-                          not iterate over these arguments (see ``scan`` for
-                          more info).
-
-    :param mode: See ``scan``.
-
-    :param name: See ``scan``.
     """
     return reduce(fn=fn,
                   sequences=sequences,
