@@ -6,7 +6,6 @@ from theano.gof.opt import *  # noqa
 from theano.gof.fg import FunctionGraph as Env
 from theano.gof.toolbox import *  # noqa
 
-from theano.tensor.opt import Assert
 from theano import tensor as T
 
 

@@ -288,7 +288,7 @@ class PycudaElemwiseSourceModuleMakeThunkOp(Op):
     # As we have a dict in props, we need to implement __hash__
     def __hash__(self):
         return hash(type(self), hash(self.scalar_op),
-                hash_from_dict(self.inplace_pattern))
+                    hash_from_dict(self.inplace_pattern))
 
     def __str__(self):
         if self.name is None:
