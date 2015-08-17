@@ -274,6 +274,7 @@ class SequenceDB(DB):
 
     def register(self, name, obj, position, *tags):
         super(SequenceDB, self).register(name, obj, *tags)
+        assert isinstance(position, (int, float))
         self.__position__[name] = position
 
     def query(self, *tags, **kwtags):

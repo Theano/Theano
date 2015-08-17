@@ -167,11 +167,6 @@ class OpFromGraph(gof.Op):
         return ret
 
     def grad(self, inputs, output_grads):
-        # OpFromGraph doesn't implement a connection_pattern, so for
-        # now we regard all inputs and outputs as connected. This will
-        # compute the right numerical value for the gradients but
-        # could fail to raise the disconnected inputs error in some
-        # cases.
         if hasattr(self, "grad_ops"):
             grad_ops = self.grad_ops
         else:

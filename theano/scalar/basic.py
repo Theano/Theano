@@ -715,7 +715,7 @@ def same_out_float_only(type):
 
 class transfer_type(gof.utils.object2):
     def __init__(self, *transfer):
-        assert all(type(x) == int for x in transfer)
+        assert all(type(x) in [int, str] or x is None for x in transfer)
         self.transfer = transfer
 
     def __str__(self):
@@ -727,6 +727,8 @@ class transfer_type(gof.utils.object2):
         for i in self.transfer:
             if i is None:
                 retval += [upcast]
+            elif isinstance(i, str):
+                retval += [i]
             else:
                 retval += [types[i]]
         return retval
@@ -3349,7 +3351,10 @@ class Composite(ScalarOp):
                 return lambda inputs: r.data
             node = r.owner
             producers = [compose_impl(input) for input in node.inputs]
-            return lambda inputs: node.op.impl(*[p(inputs) for p in producers])
+
+            def f(inputs):
+                return node.op.impl(*[p(inputs) for p in producers])
+            return f
         self._impls = [compose_impl(r) for r in self.fgraph.outputs]
 
     def init_name(self):
@@ -3404,6 +3409,8 @@ class Composite(ScalarOp):
         # that will flatten Composite. We don't need to do this
         # recusively, as the way the fusion optimizer work, we have
         # only 1 new Composite each time at the output.
+        for i in inputs:
+            assert i not in outputs  # This isn't supported, use identity
         if len(outputs) > 1 or not any([isinstance(var.owner.op, Composite)
                                         for var in outputs]):
             # No inner Composite
@@ -3475,8 +3482,11 @@ class Composite(ScalarOp):
     def impl(self, *inputs):
         output_storage = [[None] for i in xrange(self.nout)]
         self.perform(None, inputs, output_storage)
-        return utils.to_return_values([storage[0] for storage in
-                                       output_storage])
+        ret = utils.to_return_values([storage[0] for storage in
+                                      output_storage])
+        if self.nout > 1:
+            ret = tuple(ret)
+        return ret
 
     def grad(self, inputs, output_grads):
         raise NotImplementedError("grad is not implemented for Composite")

@@ -279,6 +279,7 @@ def inplace_elemwise_optimizer_op(OP):
             # gpuarray GpuElemwise inherit from Elemwise
             if not type(op) == OP:
                 continue
+
             baseline = op.inplace_pattern
             protected_inputs = [
                 f.protected for f in node.fgraph._features if
@@ -314,8 +315,8 @@ def inplace_elemwise_optimizer_op(OP):
                         if hasattr(op.scalar_op, "make_new_inplace"):
                             new_scal = op.scalar_op.make_new_inplace(
                                 scalar.transfer_type(
-                                    *[inplace_pattern.get(i, None)
-                                      for i in xrange(len(node.outputs))]))
+                                    *[inplace_pattern.get(i, o.dtype)
+                                      for i, o in enumerate(node.outputs)]))
                         else:
                             new_scal = op.scalar_op.__class__(
                                 scalar.transfer_type(
@@ -1481,7 +1482,11 @@ def local_subtensor_make_vector(node):
                     # Python 2.4 wants to index only with Python integers
                     v = int(v)
                 # We don't need to copy over any stack traces here
-                return [x.owner.inputs[v]]
+                try:
+                    ret = [x.owner.inputs[v]]
+                except IndexError:
+                    raise NotScalarConstantError("Bad user graph!")
+                return ret
             except NotScalarConstantError:
                 pass
         elif idx.ndim == 1 and isinstance(idx, T.Constant):
@@ -5735,15 +5740,17 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 32,
                             tmp_s_input.append(tmp)
                             tmp_input.append(ii)
                             tmp_scalar.append(tmp_s_input[-1])
-                    s_op = i.owner.op.scalar_op(*tmp_s_input)
+                    s_op = i.owner.op.scalar_op(*tmp_s_input,
+                                                return_list=True)
 
                     # if the scalar_op don't have a c implementation,
                     # we skip its fusion to allow the fusion of the
                     # other ops.
-                    i.owner.op.scalar_op.c_code(s_op.owner,
+                    i.owner.op.scalar_op.c_code(s_op[0].owner,
                                                 "test_presence_of_c_code",
                                                 ["x" for x in i.owner.inputs],
-                                                "z", {})
+                                                ["z" for z in i.owner.outputs],
+                                                {})
                 except MethodNotDefined:
                     catch = True
                 except NotImplementedError:
@@ -5774,7 +5781,7 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 32,
                 new_nb_input = new_nb_input_
                 inputs.extend(tmp_input)
                 s_inputs.extend(tmp_scalar)
-                s_g.append(s_op)
+                s_g.extend(s_op)
             else:
                 # We must support the case where the same variable appear many
                 # time in the inputs
@@ -5802,25 +5809,26 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 32,
 fusion optimization. We skip this optimization. You can ignore this message,
 your code will run correctly, but may be slower.""")
 
-        s_new_out = node.op.scalar_op(*s_g)
+        s_new_out = node.op.scalar_op(*s_g, return_list=True)
         try:
-            s_new_out.owner.op.c_code(s_new_out.owner,
-                                      "test_presence_of_c_code",
-                                      ["x" for x in s_g],
-                                      "z", {})
+            s_new_out[0].owner.op.c_code(s_new_out[0].owner,
+                                         "test_presence_of_c_code",
+                                         ["x" for x in s_g],
+                                         ["z" for x in s_new_out], {})
         except MethodNotDefined:
             _logger.info(("%s does not implement the c_code function."
                           " As well as being potentially slow, this disables "
-                          "loop fusion of this op.") % str(s_new_out.owner.op))
+                          "loop fusion of this op.") % str(
+                              s_new_out[0].owner.op))
             return False
         except NotImplementedError:
             _logger.info(("%s does not implement the c_code function. As well"
                           " as being potentially slow, this disables loop"
-                          " fusion of this op.") % str(s_new_out.owner.op))
+                          " fusion of this op.") % str(s_new_out[0].owner.op))
             return False
 
         # create the composite op.
-        C = scalar.Composite(s_inputs, [s_new_out])
+        C = scalar.Composite(s_inputs, s_new_out)
 
         # create the new node.
         # Do not call make_node to have test_value

@@ -259,10 +259,9 @@ def local_gpu_elemwise_0(node):
                                   'uint16'])
                 # case 1 - all inputs are already float32
                 if all([i.type.dtype == 'float32' for i in node.inputs]):
-                    # TODO: change this when fusion makes Elemwise with multiple
-                    # outputs
                     gpu_elemwise = new_op(*(gpu_from_host(i)
-                                            for i in node.inputs))
+                                            for i in node.inputs),
+                                          return_list=True)
                 # case 2 - it is still ok if some inputs were upcast to float32
                 elif all([i.type.dtype in upcastable
                           for i in node.inputs]):
@@ -275,18 +274,19 @@ def local_gpu_elemwise_0(node):
 
                         new_inputs = [gpu_from_host(tensor.cast(i, 'float32'))
                                       for i in node.inputs]
-                        gpu_elemwise = new_op(*new_inputs)
+                        gpu_elemwise = new_op(*new_inputs, return_list=True)
                     else:
                         return False
                 else:
                     return False
 
-                gpu_elemwise = split_huge_add_or_mul(gpu_elemwise.owner)
+                gpu_elemwise = split_huge_add_or_mul(gpu_elemwise[0].owner)
                 if not gpu_elemwise:
                     return False
-                if max_inputs_to_GpuElemwise(node) < len(gpu_elemwise.inputs):
+                if (max_inputs_to_GpuElemwise(node) <
+                        len(gpu_elemwise.inputs)):
                     return False
-                return [host_from_gpu(gpu_elemwise.outputs[0])]
+                return [host_from_gpu(out) for out in gpu_elemwise.outputs]
 
 
 @register_opt()
@@ -749,7 +749,7 @@ def local_gpu_careduce(node):
             x, = node.inputs
             # Otherwise, is some corner case, we will try to move it
             # to the GPU later and this cause not wanted user warning.
-            if x.dtype != 'float32':
+            if x.dtype != 'float32' or node.outputs[0].dtype != "float32":
                 return
             replace = False
             if x.owner and isinstance(x.owner.op, HostFromGpu):
@@ -1069,6 +1069,13 @@ def local_gpu_incsubtensor(node):
             incsubt = host_output.owner.op
             x, y = host_output.owner.inputs[0:2]
             coords = host_output.owner.inputs[2:]
+            if x.dtype != "float32":
+                return
+            if y.dtype != "float32":
+                # The IncSubtensor upcast to float32 y, so we do it
+                # explicitly to move it to the GPU.
+                y = y.astype('float32')
+
             return [GpuIncSubtensor(
                 incsubt.idx_list,
                 inplace=incsubt.inplace,
@@ -1079,7 +1086,7 @@ def local_gpu_incsubtensor(node):
     # Incrementing a float32 x results in a float32
     # output even if y is float64, so we can downcast
     # y to put it on GPU
-    if type(node.op) == tensor.IncSubtensor and \
+    elif type(node.op) == tensor.IncSubtensor and \
        node.inputs[0].dtype == "float32":
         x, y = node.inputs[0:2]
         assert isinstance(x.type, tensor.TensorType)

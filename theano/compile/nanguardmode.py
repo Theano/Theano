@@ -1,10 +1,28 @@
-import logging
 import collections
+import logging
+
 import numpy as np
+
 import theano
+from theano.configparser import config, AddConfigVar, BoolParam
 import theano.tensor as T
 import theano.sandbox.cuda as cuda
 from theano.compile import Mode
+
+AddConfigVar('NanGuardMode.nan_is_error',
+             "Default value for nan_is_error",
+             BoolParam(True),
+             in_c_key=False)
+
+AddConfigVar('NanGuardMode.inf_is_error',
+             "Default value for inf_is_error",
+             BoolParam(True),
+             in_c_key=False)
+
+AddConfigVar('NanGuardMode.big_is_error',
+             "Default value for big_is_error",
+             BoolParam(True),
+             in_c_key=False)
 
 
 logger = logging.getLogger("theano.compile.nanguardmode")
@@ -104,25 +122,62 @@ class NanGuardMode(Mode):
         mlp.max_pool) and these will cause an error if inf_is_error is True.
     big_is_error: bool
         If True, raise an error when a value greater than 1e10 is encountered.
+
+    Note
+    ----
+
+        We ignore the linker parameter
     """
-    def __init__(self, nan_is_error, inf_is_error, big_is_error=True):
+    # We currently loose the 3 first param freuquently, when calling
+    # mode.including() and variant.
+    def __init__(self, nan_is_error=None, inf_is_error=None, big_is_error=None,
+                 optimizer=None, linker=None):
+        self.provided_optimizer = optimizer
+        cuda_compile_failed = False
+        if nan_is_error is None:
+            nan_is_error = config.NanGuardMode.nan_is_error
+        if inf_is_error is None:
+            inf_is_error = config.NanGuardMode.inf_is_error
+        if big_is_error is None:
+            big_is_error = config.NanGuardMode.big_is_error
+
+        assert nan_is_error or inf_is_error or big_is_error
+
         if cuda.cuda_available:
             self.guard_input = cuda.fvector('nan_guard')
             if nan_is_error or inf_is_error:
-                self.gpumin = theano.function(
-                    [self.guard_input], T.min(self.guard_input),
-                    mode='FAST_RUN'
-                )
-            if inf_is_error:
-                self.gpumax = theano.function(
-                    [self.guard_input], T.max(self.guard_input),
-                    mode='FAST_RUN'
-                )
-            if big_is_error:
-                self.gpuabsmax = theano.function(
-                    [self.guard_input], T.max(T.abs_(self.guard_input)),
-                    mode='FAST_RUN'
-                )
+                try:
+                    self.gpumin = theano.function(
+                        [self.guard_input], T.min(self.guard_input),
+                        mode='FAST_RUN'
+                    )
+                except RuntimeError:
+                    # This can happen if cuda is available, but the
+                    # device is in exclusive mode and used by another
+                    # process.
+                    cuda_compile_failed = True
+            if inf_is_error and not cuda_compile_failed:
+                try:
+                    self.gpumax = theano.function(
+                        [self.guard_input], T.max(self.guard_input),
+                        mode='FAST_RUN'
+                    )
+                except RuntimeError:
+                    # This can happen if cuda is available, but the
+                    # device is in exclusive mode and used by another
+                    # process.
+                    cuda_compile_failed = True
+            if big_is_error and not cuda_compile_failed:
+                try:
+                    self.gpuabsmax = theano.function(
+                        [self.guard_input], T.max(T.abs_(self.guard_input)),
+                        mode='FAST_RUN'
+                    )
+                except RuntimeError:
+                    # This can happen if cuda is available, but the
+                    # device is in exclusive mode and used by another
+                    # process.
+                    cuda_compile_failed = True
 
         def do_check_on(var, nd, f, is_input):
             """
@@ -146,7 +201,10 @@ class NanGuardMode(Mode):
             if nan_is_error:
                 err = False
                 if cuda.cuda_available and isinstance(var, cuda.CudaNdarray):
-                    err = np.isnan(self.gpumin(var.reshape(var.size)))
+                    if not isinstance(nd.op,
+                                      # It store ints in float container
+                                      theano.sandbox.rng_mrg.GPU_mrg_uniform):
+                        err = np.isnan(self.gpumin(var.reshape(var.size)))
                 else:
                     err = contains_nan(var)
                 if err:
@@ -216,4 +274,4 @@ class NanGuardMode(Mode):
         wrap_linker = theano.gof.WrapLinker([theano.gof.OpWiseCLinker()],
                                             nan_check)
         super(NanGuardMode, self).__init__(wrap_linker,
-                                           optimizer=theano.config.optimizer)
+                                           optimizer=self.provided_optimizer)
