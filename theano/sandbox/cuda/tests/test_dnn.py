@@ -489,6 +489,25 @@ def test_log_softmax():
         utt.assert_allclose(out, expected_out)
 
 
+def test_dnn_softmax_grad():
+    utt.seed_rng()
+    softmax_op = dnn.GpuDnnSoftmax('bc01', 'accurate', 'channel')
+
+    x_val = numpy.random.normal(0, 1, (3, 4, 1, 1)).astype('float32')
+
+    utt.verify_grad(softmax_op, [x_val])
+
+
+def test_dnn_softmax_grad_opt():
+    from theano.tensor.nnet import softmax_op
+    from theano.gradient import verify_grad
+    utt.seed_rng()
+
+    x_val = numpy.random.normal(0, 1, (3, 4)).astype('float32')
+
+    utt.verify_grad(softmax_op, [x_val], mode=mode_with_gpu)
+
+
 def test_dnn_tag():
     """
     Test that if cudnn isn't avail we crash and that if it is avail, we use it.
