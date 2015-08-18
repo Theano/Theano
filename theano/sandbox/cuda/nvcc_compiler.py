@@ -244,6 +244,7 @@ class NVCC_compiler(Compiler):
 
         Returns
         -------
+        module
             Dynamically-imported python module of the compiled code.
             (unless py_module is False, in that case returns None.)
 

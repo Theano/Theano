@@ -279,6 +279,7 @@ class GpuIncSubtensor(IncSubtensor):
 
         Returns
         -------
+        str
             C code expression to make a copy of x.
 
         Notes
@@ -344,6 +345,7 @@ class GpuIncSubtensor(IncSubtensor):
 
         Returns
         -------
+        str
             C code expression to copy source into view, and 0 on success.
 
         """

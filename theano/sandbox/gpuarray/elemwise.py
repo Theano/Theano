@@ -1116,6 +1116,7 @@ class GpuCAReduceCuda(HideC, CAReduceDtype):
 
         Returns
         -------
+        str
             C code to reduce left and right, assigning the result to left.
 
         """
