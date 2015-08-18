@@ -465,9 +465,9 @@ There are :ref:`other distributions implemented <libdoc_tensor_raw_random>`.
 Other Implementations
 ---------------------
 
-There is 2 other implementations based on :ref:`MRG31k3p
+There are 2 other implementations based on :ref:`MRG31k3p
 <libdoc_rng_mrg>` and :class:`CURAND <theano.sandbox.cuda.rng_curand>`.
- The RandomStream only work on the CPU, MRG31k3p
+The RandomStream only work on the CPU, MRG31k3p
 work on the CPU and GPU. CURAND only work on the GPU.
 
 .. note::

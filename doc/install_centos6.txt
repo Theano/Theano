@@ -1,3 +1,4 @@
+:orphan:
 
 .. _install_centos6:
 

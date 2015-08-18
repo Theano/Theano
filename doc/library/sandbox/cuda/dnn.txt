@@ -129,23 +129,27 @@ Functions
 =========
 
 .. automodule:: theano.sandbox.cuda.dnn
-    :members: dnn_conv, dnn_pool
+   :noindex:
+   :members: dnn_conv, dnn_pool
 
 Convolution Ops
 ===============
 
 .. automodule:: theano.sandbox.cuda.dnn
-    :members: GpuDnnConvDesc, GpuDnnConv, GpuDnnConv3d, GpuDnnConvGradW,
-              GpuDnnConv3dGradW, GpuDnnConvGradI, GpuDnnConv3dGradI
+   :noindex:
+   :members: GpuDnnConvDesc, GpuDnnConv, GpuDnnConv3d, GpuDnnConvGradW,
+             GpuDnnConv3dGradW, GpuDnnConvGradI, GpuDnnConv3dGradI
 
 Pooling Ops
 ===========
 
 .. automodule:: theano.sandbox.cuda.dnn
-    :members: GpuDnnPoolDesc, GpuDnnPool, GpuDnnPoolGrad
+   :noindex:
+   :members: GpuDnnPoolDesc, GpuDnnPool, GpuDnnPoolGrad
 
 Softmax Ops
 ===========
 
 .. automodule:: theano.sandbox.cuda.dnn
-    :members: GpuDnnSoftmax, GpuDnnSoftmaxGrad
+   :noindex:
+   :members: GpuDnnSoftmax, GpuDnnSoftmaxGrad

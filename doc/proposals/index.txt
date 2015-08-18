@@ -1,3 +1,4 @@
+:orphan:
 
 .. _proposals:
 
@@ -7,9 +8,7 @@ Proposals for new/revised features
 
 .. toctree::
     :maxdepth: 1
+    :glob:
 
-    pfunc
-    noupdates
-    opt_patterns2
-    graphical_models
-    complex_gradient
+    *
+
