@@ -684,23 +684,21 @@ def sparse_block_dot_SS(W, h, inputIdx, b, outputIdx):
 
     Parameters
     ----------
-    var
-        Shape, comment.
-    W
-        (iBlocks, oBlocks, iSize, oSize), weight matrix.
-    h
-        (batch, iWin, iSize), input from lower layer (sparse).
-    inputIdx
-        (batch, iWin), indexes of the input blocks.
-    b
-        (oBlocks, oSize), bias vector.
-    outputIdx
-        (batch, oWin), indexes of the output blocks.
+    W : (iBlocks, oBlocks, iSize, oSize)
+        Weight matrix.
+    h : (batch, iWin, iSize)
+        Input from lower layer (sparse).
+    inputIdx : (batch, iWin)
+        Indexes of the input blocks.
+    b : (oBlocks, oSize)
+        Bias vector.
+    outputIdx : (batch, oWin)
+        Indexes of the output blocks.
 
     Returns
     -------
-    (batch, oWin, oSize), dot(W[i, j], h[i]) + b[j]
-    but b[j] is only added once
+    (batch, oWin, oSize)
+        dot(W[i, j], h[i]) + b[j], but b[j] is only added once.
 
     Notes
     -----

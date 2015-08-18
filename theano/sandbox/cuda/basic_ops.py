@@ -1020,7 +1020,8 @@ class GpuCAReduce(GpuOp):
 
         Returns
         -------
-        C code to reduce left and right, assigning the result to left.
+        str
+            C code to reduce left and right, assigning the result to left.
 
         """
         x, = node.inputs
@@ -3223,7 +3224,8 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
 
         Returns
         -------
-        C code expression to make a copy of x.
+        str
+            C code expression to make a copy of x.
 
         Notes
         -----
@@ -3293,7 +3295,8 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
 
         Returns
         -------
-        A C code expression to copy source into view, and 0 on success.
+        str
+            A C code expression to copy source into view, and 0 on success.
 
         """
         # On the CPU it unbroadcast based on the run time shapes. We
