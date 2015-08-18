@@ -1258,6 +1258,14 @@ class ScanSaveMem(gof.Optimizer):
                 real_steps = None
             nw_steps = select_min(select_max(sym_steps, real_steps),
                                   node.inputs[0])
+
+            # Make sure the ScanSaveMem optimization never makes the new
+            # number of steps to be 0 (this could happen, for instance, if
+            # the optimization detects that the outputs of the Scan go through
+            # subtensor nodes that end up taking no elements) because Scan with
+            # 0 iterations are not supported. Make sure the new number of steps
+            # is at least 1.
+            nw_steps = select_max(nw_steps, 1)
         else:
             nw_steps = node.inputs[0]
             global_nsteps = None

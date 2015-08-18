@@ -3706,6 +3706,49 @@ class T_Scan(unittest.TestCase):
                                         n_steps=5)
         rval = theano.function([], y2.sum())()
 
+    def test_savemem_opt_0_step(self):
+        # Test a case where the savemem optimization has the opportunity to
+        # lower the number of steps of a Scan to 0. It tests that the
+        # optimization doesn't do so since Scan nodes with 0
+        # steps are not currently supported and doing so would result in a
+        # crash during the function execution.
+
+        def inner_scan_step(x_t_t, h_tm1, w):
+            return tensor.dot(h_tm1, w) + x_t_t
+
+        def outer_scan_step(x_t, w):
+            h, _ = theano.scan(inner_scan_step,
+                            sequences=[x_t[1:]],
+                            outputs_info=[x_t[0]],
+                            non_sequences=[w],
+                            strict=True,
+                            name="the_inner_scan")
+            return h
+
+        def get_outputs(x, w):
+            features, _ = theano.scan(outer_scan_step,
+                                    sequences=[x],
+                                    non_sequences=[w],
+                                    strict=True,
+                                    name="the_outer_scan")
+
+            return_val =  tensor.grad(features.sum(), w)
+            return return_val
+
+        # Compile the theano function
+        x = tensor.tensor3('x')
+        w = tensor.matrix('w')
+        f = theano.function(inputs=[x, w], outputs=get_outputs(x, w))
+
+        # Test the function to ensure it returns valid results
+        x_value = numpy.random.random((2, 2, 3)).astype(theano.config.floatX)
+        w_value = numpy.random.random((3, 3)).astype(theano.config.floatX)
+        expected_output = numpy.tile(x_value[:, 0].sum(0), (3, 1)).transpose()
+
+        output = f(x_value, w_value)
+        utt.assert_allclose(output, expected_output)
+
+
     def test_grad_multiple_taps_state(self):
         # The test is based on the code provided by Timothy Lillicrap
 
