@@ -359,9 +359,9 @@ def print_compiledir_content():
                 elif len(ops) > 1:
                     more_than_one_ops += 1
                 else:
-                    types = list(set([x for x in flatten(keydata.keys)
-                                      if isinstance(x, theano.gof.Type)]))
-                    table.append((dir, ops[0], types))
+                    types = list([x for x in flatten(keydata.keys)
+                                  if isinstance(x, theano.gof.Type)])
+                    table.append((dir, len(ops), ops[0], types))
 
                 size = os.path.getsize(filename)
                 total_key_sizes += size
@@ -379,17 +379,23 @@ def print_compiledir_content():
     print("List of %d compiled individual ops in this theano cache %s:" % (
         len(table), compiledir))
     print("sub directory/Op/a set of the different associated Theano type")
-    table = sorted(table, key=lambda t: str(t[1]))
+    table = sorted(table, key=lambda t: str(t[2]) + str(t[3]))
     table_op_class = {}
-    for dir, op, types in table:
-        print(dir, op, types)
-        table_op_class.setdefault(op.__class__, 0)
-        table_op_class[op.__class__] += 1
+    for dir, nb_ops, first_op, types in table:
+        print(dir, nb_ops, first_op, types)
+        table_op_class.setdefault(first_op.__class__, 0)
+        table_op_class[first_op.__class__] += 1
 
     print()
     print(("List of %d individual compiled Op classes and "
            "the number of times they got compiled" % len(table_op_class)))
-    table_op_class = sorted(iteritems(table_op_class), key=lambda t: t[1])
+    table_op_class = sorted(iteritems(table_op_class),
+                            key=lambda t: (t[1], str(t[0])))
+    for dir, nb_ops, first_op, types in table:
+        print(dir, nb_ops, first_op, types)
+        table_op_class.setdefault(first_op.__class__, 0)
+        table_op_class[first_op.__class__] += 1
+
     for op_class, nb in table_op_class:
         print(op_class, nb)
 

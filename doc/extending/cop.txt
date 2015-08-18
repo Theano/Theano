@@ -226,6 +226,17 @@ There are less methods to define for an Op than for a Type:
 
        This attribute is internal and may go away at any point during
        developpment if a better solution is found.
+       
+    .. method:: c_code_multiple(node, name, input_names, output_names, sub)
+
+       Optional. 
+       Accept the same parameters as c_code. Should return 
+       a string containing the op c_code for different dtypes and dimensions.
+       This function will be called instead of c_code if the compilation
+       unit contains only one node. 
+       The compiled file will be longer but the number of generated 
+       files should be reduced.
+       Refer to Elemwise code for an example.
 
 The ``name`` argument is currently given an invalid value, so steer
 away from it. As was the case with Type, ``sub['fail']`` provides
