@@ -71,7 +71,7 @@ svg {
 	pointer-events: none;
 }
 
-.nodeTooltip {
+.nodeInfo {
 	position: absolute;
 	text-align: left;
 	vertical-align: middle;

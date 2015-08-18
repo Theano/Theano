@@ -12,6 +12,7 @@ try:
 except ImportError:
     pydot_imported = False
 
+import theano
 from theano import gof
 from theano.compile.profilemode import ProfileMode
 from theano.compile import Function
@@ -29,8 +30,6 @@ class GraphFormatter(object):
         :param compact: if True, will remove intermediate var that don't have name.
         :param with_ids: Print the toposort index of the node in the node name.
             and an index number in the variable ellipse.
-        :param colorCodes: dictionary with names of ops as keys and colors as
-            values
         :param scan_graphs: if true it will plot the inner graph of each scan op
             in files with the same name as the name given for the main
             file to which the name of the scan op is concatenated and
@@ -44,7 +43,12 @@ class GraphFormatter(object):
         self.with_ids = False
         self.scan_graphs = True
         self.var_with_name_simple = False
-        self.colorCodes = {'GpuFromHost': 'red',
+        self.node_colors = {'input': 'limegreen',
+                            'constant_input': 'SpringGreen',
+                            'shared_input': 'YellowGreen',
+                            'output': 'dodgerblue',
+                            'unused': 'lightgrey'}
+        self.apply_colors = {'GpuFromHost': 'red',
                             'HostFromGpu': 'red',
                             'Scan': 'yellow',
                             'Shape': 'cyan',
@@ -52,10 +56,6 @@ class GraphFormatter(object):
                             'Elemwise': '#FFAABB',  # dark pink
                             'Subtensor': '#FFAAFF',  # purple
                             'Alloc': '#FFAA22'}  # orange
-        self.node_colors = {'input': 'limegreen',
-                            'output': 'dodgerblue',
-                            'unused': 'lightgrey'
-                            }
         self.max_label_size = 70
         self.node_prefix = 'n'
 
@@ -130,11 +130,13 @@ class GraphFormatter(object):
             nparams = {}
             node_id = self.node_id(node)
             nparams['name'] = node_id
-            nparams['label'] = self.apply_label(node)
+            nparams['label'] = apply_label(node)
             nparams['profile'] = self.apply_profile(node, profile)
+            nparams['node_type'] = 'apply'
+            nparams['apply_op'] = apply_op(node)
 
             use_color = None
-            for opName, color in self.colorCodes.items():
+            for opName, color in self.apply_colors.items():
                 if opName in node.op.__class__.__name__:
                     use_color = color
             if use_color:
@@ -151,12 +153,16 @@ class GraphFormatter(object):
                     vparams = {}
                     vparams['name'] = var_id
                     vparams['label'] = self.var_label(var)
-                    vparams['dtype'] = str(var.type)
+                    vparams['node_type'] = 'input'
+                    if isinstance(var, gof.Constant):
+                        vparams['node_type'] = 'constant_input'
+                    elif isinstance(var, theano.tensor.sharedvar.TensorSharedVariable):
+                        vparams['node_type'] = 'shared_input'
+                    vparams['dtype'] = type_to_str(var.type)
                     vparams['tag'] = self.var_tag(var)
                     vparams['style'] = 'filled'
-                    vparams['fillcolor'] = self.node_colors['input']
+                    vparams['fillcolor'] = self.node_colors[vparams['node_type']]
                     vparams['shape'] = 'ellipse'
-                    vparams['profile'] = nparams['profile']
                     pd_var = self.dict_to_pdnode(vparams)
                     graph.add_node(pd_var)
 
@@ -181,7 +187,8 @@ class GraphFormatter(object):
                     vparams = {}
                     vparams['name'] = var_id
                     vparams['label'] = self.var_label(var)
-                    vparams['dtype'] = str(var.type)
+                    vparams['node_type'] = 'output'
+                    vparams['dtype'] = type_to_str(var.type)
                     vparams['tag'] = self.var_tag(var)
                     vparams['style'] = 'filled'
                     if len(var.clients) == 0:
@@ -189,7 +196,6 @@ class GraphFormatter(object):
                     else:
                         vparams['fillcolor'] = self.node_colors['output']
                     vparams['shape'] = 'box'
-                    vparams['profile'] = nparams['profile']
                     pd_var = self.dict_to_pdnode(vparams)
                     graph.add_node(pd_var)
 
@@ -240,19 +246,26 @@ class GraphFormatter(object):
         pynode = pd.Node(**e)
         return pynode
 
-    def var_label(self, var):
+    def var_label(self, var, precision=3):
         if var.name is not None:
             return var.name
         elif isinstance(var, gof.Constant):
-            dstr = 'val=' + str(np.asarray(var.data))
+            h = np.asarray(var.data)
+            is_const = False
+            if h.ndim == 0:
+                is_const = True
+                h = np.array([h])
+            dstr = np.array2string(h, precision=precision)
             if '\n' in dstr:
                 dstr = dstr[:dstr.index('\n')]
+            if is_const:
+                dstr = dstr.replace('[', '').replace(']', '')
             return dstr
         elif (var in self.input_update and
             self.input_update[var].variable.name is not None):
             return self.input_update[var].variable.name + " UPDATE"
         else:
-            return str(var.type)
+            return type_to_str(var.type)
 
     def var_tag(self, var):
         tag = var.tag
@@ -264,97 +277,60 @@ class GraphFormatter(object):
         else:
             return None
 
-    def var_name(self, var):
-        if var in self.var_str:
-            return self.var_str[var]
-
-        if var.name is not None:
-            if self.var_with_name_simple:
-                varstr = var.name
-            else:
-                varstr = 'name=' + var.name + " " + str(var.type)
-        elif isinstance(var, gof.Constant):
-            dstr = 'val=' + str(np.asarray(var.data))
-            if '\n' in dstr:
-                dstr = dstr[:dstr.index('\n')]
-            varstr = '%s %s' % (dstr, str(var.type))
-        elif (var in self.input_update and
-            self.input_update[var].variable.name is not None):
-            if self.var_with_name_simple:
-                varstr = self.input_update[var].variable.name + " UPDATE"
-            else:
-                varstr = (self.input_update[var].variable.name + " UPDATE " +
-                        str(var.type))
-        else:
-            # a var id is needed as otherwise var with the same type will be
-            # merged in the graph.
-            varstr = str(var.type)
-        if (varstr in self.all_strings) or self.with_ids:
-            idx = ' id=' + str(len(self.var_str))
-            if len(varstr) + len(idx) > self.max_label_size:
-                varstr = varstr[:self.max_label_size - 3 - len(idx)] + idx + '...'
-            else:
-                varstr = varstr + idx
-        elif len(varstr) > self.max_label_size:
-            varstr = varstr[:self.max_label_size - 3] + '...'
-            idx = 1
-            while varstr in self.all_strings:
-                idx += 1
-                suffix = ' id=' + str(idx)
-                varstr = (varstr[:self.max_label_size - 3 - len(suffix)] +
-                        '...' +
-                        suffix)
-        self.var_str[var] = varstr
-        self.all_strings.add(varstr)
-
-        return varstr
-
-    def apply_label(self, node):
-        name = str(node.op).replace(':', '_')
-        name = re.sub('^<', '', name)
-        name = re.sub('>$', '', name)
-        return name
-
     def apply_profile(self, node, profile):
-        if not profile:
+        if not profile or profile.fct_call_time == 0:
             return None
         time = profile.apply_time.get(node, 0)
         call_time = profile.fct_call_time
         return [time, call_time]
 
-    def apply_name(self, node, fct, topo, mode=None, profile=None):
-        if node in self.apply_name_cache:
-            return self.apply_name_cache[node]
 
-        prof = ''
-        if mode:
-            profile = mode.profile_stats[fct]
-        if profile:
-            time = profile.apply_time.get(node, 0)
-            call_time = profile.fct_call_time
-            prof = str([time, call_time])
+def broadcastable_to_str(b):
+    named_broadcastable = {(): 'scalar',
+             (False,): 'vector',
+             (False, True): 'col',
+             (True, False): 'row',
+             (False, False): 'matrix'}
+    if b in named_broadcastable:
+        bcast = named_broadcastable[b]
+    else:
+        bcast = ''
+    return bcast
 
-        applystr = str(node.op).replace(':', '_')
-        applystr = re.sub('^<', '', applystr)
-        applystr = re.sub('>$', '', applystr)
-        if (applystr in self.all_strings) or self.with_ids:
-            idx = ' id=' + str(topo.index(node))
-            if len(applystr) + len(idx) > self.max_label_size:
-                applystr = (applystr[:self.max_label_size - 3 - len(idx)] + idx +
-                            '...')
-            else:
-                applystr = applystr + idx
-        elif len(applystr) > self.max_label_size:
-            applystr = applystr[:self.max_label_size - 3] + '...'
-            idx = 1
-            while applystr in self.all_string:
-                idx += 1
-                suffix = ' id=' + str(idx)
-                applystr = (applystr[:self.max_label_size - 3 - len(suffix)] +
-                            '...' +
-                            suffix)
 
-        self.all_strings.add(applystr)
-        rv = (applystr, prof)
-        self.apply_name_cache[node] = rv
-        return rv
+def dtype_to_char(dtype):
+    dtype_char = {
+        'complex64': 'c',
+        'complex128': 'z',
+        'float32': 'f',
+        'float64': 'd',
+        'int8': 'b',
+        'int16': 'w',
+        'int32': 'i',
+        'int64': 'l'}
+    if dtype in dtype_char:
+        return dtype_char[dtype]
+    else:
+        return 'X'
+
+
+def type_to_str(t):
+    if not hasattr(t, 'broadcastable'):
+        return str(t)
+    s = broadcastable_to_str(t.broadcastable)
+    if s == '':
+        s = str(t.dtype)
+    else:
+        s = dtype_to_char(t.dtype) + s
+    return s
+
+
+def apply_label(node):
+    return node.op.__class__.__name__
+
+
+def apply_op(node):
+    name = str(node.op).replace(':', '_')
+    name = re.sub('^<', '', name)
+    name = re.sub('>$', '', name)
+    return name

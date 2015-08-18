@@ -7,7 +7,7 @@ digraph G {
 		label=Shape_i,
 		node_type=apply,
 		pos="598,478",
-		profile="[0.0, 0.00011181831359863281]",
+		profile="[0.0, 0.00013184547424316406]",
 		style=filled,
 		type=colored,
 		width=1.1152];
@@ -16,7 +16,7 @@ digraph G {
 		label=MakeVector,
 		node_type=apply,
 		pos="383,390",
-		profile="[9.5367431640625e-07, 0.00011181831359863281]",
+		profile="[9.5367431640625e-07, 0.00013184547424316406]",
 		width=1.5402];
 	n1 -> n9	 [label="1 TensorType(int64, scalar)",
 		lp="604,434",
@@ -39,7 +39,7 @@ digraph G {
 		label=Dot,
 		node_type=apply,
 		pos="77,478",
-		profile="[6.008148193359375e-05, 0.00011181831359863281]",
+		profile="[7.700920104980469e-05, 0.00013184547424316406]",
 		width=0.75];
 	n2 -> n7	 [label="1 TensorType(float32, matrix)",
 		lp="501,522",
@@ -51,7 +51,7 @@ digraph G {
 		label=Shape_i,
 		node_type=apply,
 		pos="250,478",
-		profile="[1.1920928955078125e-06, 0.00011181831359863281]",
+		profile="[0.0, 0.00013184547424316406]",
 		style=filled,
 		type=colored,
 		width=1.1152];
@@ -66,7 +66,7 @@ digraph G {
 		pos="140,566",
 		shape=ellipse,
 		style=filled,
-		tag="('<ipython-input-9-bf645def67b8>', 6, X = T.dmatrix('X'))",
+		tag="('<ipython-input-15-bf645def67b8>', 6, X = T.dmatrix('X'))",
 		width=0.75];
 	n5 -> n4	 [label="TensorType(float64, matrix)",
 		lp="309,522",
@@ -80,7 +80,7 @@ digraph G {
 		label=Elemwise,
 		node_type=apply,
 		pos="77,390",
-		profile="[1.0967254638671875e-05, 0.00011181831359863281]",
+		profile="[1.0967254638671875e-05, 0.00013184547424316406]",
 		style=filled,
 		type=colored,
 		width=1.2888];
@@ -94,7 +94,7 @@ digraph G {
 		label=Elemwise,
 		node_type=apply,
 		pos="383,302",
-		profile="[9.5367431640625e-07, 0.00011181831359863281]",
+		profile="[2.1457672119140625e-06, 0.00013184547424316406]",
 		style=filled,
 		type=colored,
 		width=1.2888];
@@ -118,7 +118,7 @@ digraph G {
 		label=Sum,
 		node_type=apply,
 		pos="27,248",
-		profile="[1.9073486328125e-06, 0.00011181831359863281]",
+		profile="[2.1457672119140625e-06, 0.00013184547424316406]",
 		width=0.75413];
 	n11 -> n15	 [label="TensorType(float64, matrix)",
 		lp="89,346",
@@ -129,7 +129,7 @@ digraph G {
 		label=Subtensor,
 		node_type=apply,
 		pos="525,194",
-		profile="[0.0, 0.00011181831359863281]",
+		profile="[0.0, 0.00013184547424316406]",
 		style=filled,
 		type=colored,
 		width=1.3117];
@@ -143,7 +143,7 @@ digraph G {
 		label=Subtensor,
 		node_type=apply,
 		pos="302,194",
-		profile="[9.5367431640625e-07, 0.00011181831359863281]",
+		profile="[9.5367431640625e-07, 0.00013184547424316406]",
 		style=filled,
 		type=colored,
 		width=1.3117];
@@ -157,7 +157,7 @@ digraph G {
 		label=Elemwise,
 		node_type=apply,
 		pos="302,106",
-		profile="[9.5367431640625e-07, 0.00011181831359863281]",
+		profile="[1.1920928955078125e-06, 0.00013184547424316406]",
 		style=filled,
 		type=colored,
 		width=1.2888];

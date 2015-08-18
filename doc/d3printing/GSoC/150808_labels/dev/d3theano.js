@@ -461,11 +461,11 @@ function setupGraph() {
 		
 		// Show node details if node is not edited as has profiling information
 		if (!isEditNode) {
-		   	nodeDiv.transition()        
+		   	nodeInfo.transition()        
 		        .duration(200)      
 		        .style('opacity', .9);
-		    nodeDiv
-		    	.html(nodeDetails(node))  
+		    nodeInfo
+		    	.html(formatNodeInfos(node))
 		        .style('left', (d3.event.pageX) + 30 + 'px')     
 		        .style('top', (d3.event.pageY - 28) + 'px');
 		}
@@ -480,7 +480,7 @@ function setupGraph() {
 					.style('opacity', 0.4);
 			}
 		});
-	   	hideNodeDiv();
+	   	hideNodeInfo();
 	});
 	
 	nodes.on('contextmenu', d3.contextMenu(menuItems));
@@ -655,10 +655,10 @@ function profileColor(per) {
 	return s(per);
 }
 
-
-function fillColor(d) {
-	if (colorProfile && exists(d.value.profile)) {
-		if (d.value.shape == 'ellipse') {
+function nodeFillColor(d) {
+	if (colorProfile) {
+		var p = d.value.profile;
+		if (d.value.node_type == 'apply' && exists(p)) {
 			return profileColor(d.value.profile[0] / d.value.profile[1]);
 		} else {
 			return 'white';
@@ -678,21 +678,30 @@ function formatTime(sec) {
 	return s;
 }
 
-function nodeDetails(node) {
+function formatNodeInfos(node) {
 	var v = node.value;
-	var s = '<b><center>' + v.label + '</center></b>';
+	var s = '<b><center>' + v.label + '</center></b><hr>';
+	s += '<b>Node:</b> ' + replaceAll(v.node_type, '_', ' ') + ' node';
 	if (exists(v.dtype)) {
-		s += 'Type: ' + v.dtype;
+		s += '</br>';
+		s += '<b>Type:</b> <source>' + v.dtype + '</source>';
+	}
+	if (exists(v.apply_op)) {
+		s += '</br>';
+		s += '<b>Apply:</b> <source>' + v.apply_op + '</source>';
 	}
 	if (exists(v.tag)) {
-		s += '<br>File: ' + v.tag[0];
-		s += '<br>Line: ' + v.tag[1];
-		s += '<br>Definition: ' + v.tag[2];
+		s += '<p>';
+		s += '<b>Location:</b> <source>' + v.tag[1] + ': ' + v.tag[0] + '</source><br>';
+		s += '<b>Definition:</b> <source>' + v.tag[2] + '</source><br>';
+		s += '</p>';
 	}
 	var p = v.profile;
-	if (exists(p) && length(p)) {
-		s += '<br>Time: ' + formatTime(p[0]);
-		s += '<br>Time: ' + (p[0] / p[1] * 100).toFixed(1) + '%';
+	if (exists(p)) {
+		s += '<p>';
+		s += '<b>Time:</b> ' + formatTime(p[0]) + '<br>';
+		s += '<b>Time:</b> ' + (p[0] / p[1] * 100).toFixed(1) + '%';
+		s += '</p>';
 	}
 	return s;	
 }
@@ -715,7 +724,7 @@ function updateNode(d, node) {
 			.attr('width', d.value.width)
 			.attr('height', d.value.height);
 	}
-	shape.attr('fill', fillColor(d));
+	shape.attr('fill', nodeFillColor(d));
 	
 	node.selectAll('text').remove();
 	var text = node.append('text')
@@ -736,8 +745,8 @@ function updateNodes() {
 	});	
 }
 
-function hideNodeDiv() {
-	nodeDiv.transition()        
+function hideNodeInfo() {
+	nodeInfo.transition()        
         .duration(200)      
         .style('opacity', 0);
 }
@@ -756,7 +765,7 @@ function editNode(elm, d) {
 		if (d3.event.defaultPrevented) return;
 		
 		isEditNode = true;
-		hideNodeDiv();
+		hideNodeInfo();
 		
 		var form = node.append('foreignObject')
 		.attr('x', pos.x)
