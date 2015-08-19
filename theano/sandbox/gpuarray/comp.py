@@ -16,6 +16,7 @@ class NVCC_compiler(NVCC_base):
         """
         Re-implementation of compile_args that does not create an
         additionnal context on the GPU.
+
         """
         flags = [flag for flag in config.nvcc.flags.split(' ') if flag]
         if config.nvcc.fastmath:

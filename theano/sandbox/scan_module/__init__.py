@@ -1,10 +1,10 @@
 """
-This module provides the Scan Op
+This module provides the Scan Op.
 
 Scanning is a general form of recurrence, which can be used for looping.
 The idea is that you *scan* a function along some input sequence, producing
 an output at each time-step that can be seen (but not modified) by the
-function at the next time-step. (Technically, the function can see the
+function at the next time-step. Technically, the function can see the
 previous K  time-steps of your outputs and L time steps (from the past and
 future) of your inputs.
 
@@ -26,6 +26,7 @@ the symbolic graph.
 The Scan Op should typically be used by calling any of the following
 functions: ``scan()``, ``map()``, ``reduce()``, ``foldl()``,
 ``foldr()``.
+
 """
 
 

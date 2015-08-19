@@ -12,7 +12,10 @@ from theano.sandbox.cuda import CudaNdarrayType, GpuOp
 
 
 class GpuConv3D(GpuOp):
-    """ GPU implementation of Conv3D """
+    """
+    GPU implementation of Conv3D.
+
+    """
 
     def __eq__(self, other):
         return type(self) == type(other)
@@ -25,10 +28,18 @@ class GpuConv3D(GpuOp):
 
     def make_node(self, V, W, b, d):
         """
-            :param V: Visible unit, input
-            :param W: Weights, filter
-            :param b: bias
-            :param d: strides when moving the filter over the input
+
+        Parameters
+        ----------
+        V
+            Visible unit, input.
+        W
+            Weights, filter.
+        b
+            Bias.
+        d
+            Strides when moving the filter over the input.
+
         """
         V_ = as_cuda_ndarray_variable(V)
         W_ = as_cuda_ndarray_variable(W)

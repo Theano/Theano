@@ -163,12 +163,16 @@ class GpuIncSubtensor(IncSubtensor):
     """
     Implement IncSubtensor on the gpu.
 
-    Note: The optimization to make this inplace is in tensor/opt.
-          The same optimization handles IncSubtensor and GpuIncSubtensor.
-          This Op has c_code too; it inherits tensor.IncSubtensor's c_code.
-          The helper methods like do_type_checking, copy_of_x, etc. specialize
-          the c_code for this Op.
+    Notes
+    ----- 
+    The optimization to make this inplace is in tensor/opt.
+    The same optimization handles IncSubtensor and GpuIncSubtensor.
+    This Op has c_code too; it inherits tensor.IncSubtensor's c_code.
+    The helper methods like do_type_checking, copy_of_x, etc. specialize
+    the c_code for this Op.
+
     """
+
     @property
     def _f16_ok(self):
         return self.iadd_node.op._f16_ok
@@ -256,8 +260,10 @@ class GpuIncSubtensor(IncSubtensor):
         return d
 
     def do_type_checking(self, node):
-        """ Should raise NotImplementedError if c_code does not support
+        """
+        Should raise NotImplementedError if c_code does not support
         the types involved in this node.
+
         """
 
         if not isinstance(node.inputs[0].type, GpuArrayType):
@@ -265,13 +271,22 @@ class GpuIncSubtensor(IncSubtensor):
 
     def copy_of_x(self, x):
         """
-            :param x: a string giving the name of a C variable
-                pointing to an array
 
-            :return: C code expression to make a copy of x
+        Parameters
+        ----------
+        x
+            A string giving the name of a C variable pointing to an array.
 
-            Base class uses `PyArrayObject *`, subclasses may override for
-            different types of arrays.
+        Returns
+        -------
+        str
+            C code expression to make a copy of x.
+
+        Notes
+        -----
+        Base class uses `PyArrayObject *`, subclasses may override for
+        different types of arrays.
+
         """
         return """pygpu_copy(%(x)s, GA_ANY_ORDER)""" % locals()
 
@@ -279,13 +294,18 @@ class GpuIncSubtensor(IncSubtensor):
         return "PyGpuArrayObject* zview = NULL;"
 
     def make_view_array(self, x, view_ndim):
-        """//TODO
-            :param x: a string identifying an array to be viewed
-            :param view_ndim: a string specifying the number of dimensions
-                to have in the view
-
+        """
+        //TODO
+        
+        Parameters
+        ----------
+        x
+            A string identifying an array to be viewed.
+        view_ndim
+            A string specifying the number of dimensions to have in the view.
             This doesn't need to actually set up the view with the
             right indexing; we'll do that manually later.
+
         """
         ret = """
         size_t dims[%(view_ndim)s];
@@ -305,18 +325,29 @@ class GpuIncSubtensor(IncSubtensor):
         return ret
 
     def get_helper_c_code_args(self):
-        """ Return a dictionary of arguments to use with helper_c_code"""
+        """
+        Return a dictionary of arguments to use with helper_c_code.
+
+        """
         return {'c_prefix': 'PyGpuArray',
                 'strides_mul': 1
                 }
 
     def copy_into(self, view, source):
         """
-            view: string, C code expression for an array
-            source: string, C code expression for an array
 
-            returns a C code expression to copy source into view, and
-            return 0 on success
+        Parameters
+        ----------
+        view : string
+            C code expression for an array.
+        source : string
+            C code expression for an array.
+
+        Returns
+        -------
+        str
+            C code expression to copy source into view, and 0 on success.
+
         """
         return """GpuArray_setarray(&%(view)s->ga, &%(source)s->ga)""" % locals()
 
@@ -365,7 +396,9 @@ class GpuIncSubtensor(IncSubtensor):
 class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
     """
     Implement AdvancedIncSubtensor1 on the gpu.
+
     """
+
     def make_node(self, x, y, ilist):
         x_ = as_gpuarray_variable(x)
         y_ = as_gpuarray_variable(y)
@@ -454,9 +487,12 @@ class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
 
 
 class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
-    """Implement AdvancedIncSubtensor1 on the gpu, but use function
-    only avail on compute capability 2.0 and more recent.
     """
+    Implement AdvancedIncSubtensor1 on the gpu, but use function
+    only avail on compute capability 2.0 and more recent.
+
+    """
+
     _f16_ok = True
 
     def make_node(self, x, y, ilist):

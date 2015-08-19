@@ -1,4 +1,5 @@
-"""This file implement 3 different version of the elemwise op on the
+"""
+This file implement 3 different version of the elemwise op on the
 gpu. Only NaiveAlgo is used and it is not very naive now.
 
 The elemwise fct are also used with scalar operation! So it can happen
@@ -40,12 +41,25 @@ def get_str_list_logical_scalar(node, value_str='ii_i%i_value',
 
 
 class SupportCodeError(Exception):
-    """It is currently not possible to auto-generate a GPU implementation for
+    """
+    It is currently not possible to auto-generate a GPU implementation for
     an elementwise Op with c_support_code_apply().
-    But we support Op.c_support_code."""
+    But we support Op.c_support_code.
+
+    """
 
 
 class NaiveAlgo(object):
+    """
+    Parameters
+    ----------
+    scalar_op
+        The scalar operation to execute on each element.
+    sync
+        If True, will wait after the kernel launch and check for error call.
+
+    """
+
     verbose = 0  # 1, 2 or 3 for more verbose output.
 
     @property
@@ -57,10 +71,6 @@ class NaiveAlgo(object):
             return ver
 
     def __init__(self, scalar_op, sync=True, inplace_pattern=None):
-        """
-        :param scalar_op: the scalar operation to execute on each element.
-        :param sync: if True, will wait after the kernel launch and check for error call.
-        """
         if inplace_pattern is None:
             inplace_pattern = {}
         try:
@@ -154,8 +164,10 @@ class NaiveAlgo(object):
         return sio.getvalue()
 
     def c_src_kernel_tiling(self, node, nodename):
-        """ The kernel applies to problems with <= 5 dimensions """
+        """
+        The kernel applies to problems with <= 5 dimensions.
 
+        """
         # The kernel is intended to be structured roughly like this:
         """
         static __global__ void kernel()
@@ -278,8 +290,10 @@ class NaiveAlgo(object):
         return sio.getvalue()
 
     def c_src_kernel_tiling_less_registers(self, node, nodename):
-        """ The kernel applies to problems with <= 5 dimensions """
+        """
+        The kernel applies to problems with <= 5 dimensions.
 
+        """
         nd = node.outputs[0].type.ndim
         n_in = len(node.inputs)
         n_out = len(node.outputs)
@@ -1049,12 +1063,16 @@ class ErfinvGPU(Erfinv):
     """
     Provides a c-code implementation of the inverse error function for GPU.
 
-    Note: We do not add this c_code to theano.scalar.basic_scipy.Erfinv, as we
+    Notes
+    -----
+    We do not add this c_code to theano.scalar.basic_scipy.Erfinv, as we
     currently rely on Nvidia's cublas library to provide the erfinv
     c-implementation (which requires different c_headers). As it stands,
     theano.scalar.basic_scipy.Erfinv does not have c_code as scipy does not
-    export the required C function
+    export the required C function.
+
     """
+
     def c_headers(self):
         return ['math_functions.h', 'cublas_v2.h']
 
@@ -1070,14 +1088,19 @@ erfinv_gpu = ErfinvGPU(upgrade_to_float_no_complex, name='erfinv_gpu')
 
 class ErfcxGPU(Erfinv):
     """
-    Provides a c-code implementation of the scaled complementary error function for GPU.
+    Provides a c-code implementation of the scaled complementary error function
+    for GPU.
 
-    Note: We do not add this c_code to theano.scalar.basic_scipy.Erfcx, as we
+    Notes
+    -----
+    We do not add this c_code to theano.scalar.basic_scipy.Erfcx, as we
     currently rely on Nvidia's cublas library to provide the erfcx
     c-implementation (which requires different c_headers). As it stands,
     theano.scalar.basic_scipy.Erfcx does not have c_code as scipy does not
-    export the required C function
+    export the required C function.
+
     """
+
     def c_headers(self):
         return ['math_functions.h', 'cublas_v2.h']
 
