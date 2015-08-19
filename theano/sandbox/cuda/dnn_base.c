@@ -7,8 +7,9 @@ c_set_tensorNd(CudaNdarray *var, cudnnTensorDescriptor_t desc) {
 
 
   int dim = CudaNdarray_NDIM(var);
-  int strides[dim];
+  int *strides = (int *)malloc(dim * sizeof(int));
   int default_str = 1;
+  int return_value = 0;
 
   for (int i = dim-1; i >= 0; i--)
   {
@@ -22,14 +23,18 @@ c_set_tensorNd(CudaNdarray *var, cudnnTensorDescriptor_t desc) {
   cudnnStatus_t err = cudnnSetTensorNdDescriptor(desc, CUDNN_DATA_FLOAT, dim,
                                                  CudaNdarray_HOST_DIMS(var),
                                                  strides);
+											
+
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError,
 		 "Could not set tensorNd descriptor: %s"
 		 "dim=%d",
 		 cudnnGetErrorString(err), dim);
-    return -1;
+    return_value = -1;
   }
-  return 0;
+
+  free(strides);
+  return return_value;
 }
 
 
