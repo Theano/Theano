@@ -1,5 +1,5 @@
 """
-This module provides optimizations for scan
+This module provides optimizations for scan.
 The Optimization provided in this file:
 
 local opt: remove_constants_and_unused_inputs_scan,
@@ -48,9 +48,8 @@ scan_eqopt2 -> They are all global optimizer. (in2out convert local to global).
                in2out(scan_merge_inouts),
                ScanSaveMem,
                in2out(remove_constants_and_unused_inputs_scan3)
+
 """
-
-
 __docformat__ = 'restructedtext en'
 __authors__ = ("Razvan Pascanu "
                "Frederic Bastien "
@@ -104,7 +103,7 @@ def info(*msg):
 
 @gof.local_optimizer([scan_op.Scan])
 def remove_constants_and_unused_inputs_scan(node):
-    '''
+    """
     Move constants into the inner graph, and remove unused inputs.
 
     Constants that are in the outer graph are represented by a free symbolic
@@ -112,7 +111,8 @@ def remove_constants_and_unused_inputs_scan(node):
     constant-folding can happen in the inner graph.
     This is applied only on sequences and non-sequences,
     not on initial states.
-    '''
+
+    """
     if not isinstance(node.op, scan_op.Scan):
         return False
     op = node.op
@@ -214,7 +214,9 @@ class PushOutNonSeqScan(gof.Optimizer):
     """
     A global optimizer for pushing out the variables inside the scan that
     are not used by the scan.
+
     """
+
     def __init__(self):
         gof.Optimizer.__init__(self)
 
@@ -233,6 +235,7 @@ class PushOutNonSeqScan(gof.Optimizer):
         By default they are not ordered for efficiency reasons. Take care
         and make sure of changing them with their Ordered counterparts if you
         need to iterate over these variables.
+
         """
         # this flag tells if there was any change during the last iterations
         clean_inputs, clean_outputs = scan_utils.reconstruct_graph(
@@ -410,7 +413,9 @@ class PushOutSeqScan(gof.Optimizer):
     """
     A global optimizer for pushing out the input variables that are not being
     used inside the scan and provided in the sequences.
+
     """
+
     def __init__(self):
         gof.Optimizer.__init__(self)
 
@@ -429,6 +434,7 @@ class PushOutSeqScan(gof.Optimizer):
         By default they are not ordered for efficiency reasons. Take care
         and make sure of changing them to Ordered versions if you need to
         iterate over those variables.
+
         """
         # this flag tells if there was any change during the last iterations
         clean_inputs, clean_outputs = scan_utils.reconstruct_graph(
@@ -653,7 +659,9 @@ class PushOutScanOutput(gof.Optimizer):
     """
     This is an optimization that can push operations performed
     at the end of the inner graph of scan to outside of scan.
+
     """
+
     def __init__(self):
         gof.Optimizer.__init__(self)
 
@@ -701,8 +709,8 @@ class PushOutScanOutput(gof.Optimizer):
                 The Dot product is pushed out of the scan and its inputs are
                 now the original matrix and a new matrix obtained by
                 concatenating the vectors into a matrix.
+ 
                 """
-
                 # Ensure that the output of the Dot is used in the outer
                 # graph to avoid apply the optimization needlessly
                 dot_out_nitsot_idx = args.inner_out_nit_sot.index(nd.out)
@@ -715,6 +723,7 @@ class PushOutScanOutput(gof.Optimizer):
                 non-sequence input to scan and that the other input is a
                 vector and either an sequence input to scan or the result
                 of computation in the inner function of scan.
+ 
                 """
                 valid_inputs = False
                 idx_matrix_input = -1
@@ -863,6 +872,7 @@ class PushOutScanOutput(gof.Optimizer):
         nit_sot output has only one client and that client is a Subtensor
         instance that takes only the last step (last element along the first
         axis).
+
         """
         idx = scan_args.inner_out_sit_sot.index(var)
         outer_var = scan_args.outer_out_sit_sot[idx]
@@ -988,7 +998,11 @@ class PushOutScanOutput(gof.Optimizer):
 
 
 class ScanInplaceOptimizer(Optimizer):
-    """Graph optimizer for Scan(makes it run inplace)"""
+    """
+    Graph optimizer for Scan (makes it run inplace).
+
+    """
+
     def __init__(self, typeConstructor=None, gpu_flag=False, gpua_flag=False):
         Optimizer.__init__(self)
         self.typeConstructor = typeConstructor
@@ -1052,7 +1066,11 @@ class ScanInplaceOptimizer(Optimizer):
 
 
 class ScanSaveMem(gof.Optimizer):
-    """ Graph Optimizer that reduces scan memory consumption """
+    """
+    Graph Optimizer that reduces scan memory consumption.
+
+    """
+
     def __init__(self):
         gof.Optimizer.__init__(self)
 
@@ -1604,7 +1622,11 @@ class ScanSaveMem(gof.Optimizer):
 
 
 class ScanMerge(gof.Optimizer):
-    """ Graph Optimizer that merges different scan ops """
+    """
+    Graph Optimizer that merges different scan ops.
+
+    """
+
     def add_requirements(self, fgraph):
         fgraph.attach_feature(gof.toolbox.ReplaceValidate())
 
@@ -1783,6 +1805,7 @@ class ScanMerge(gof.Optimizer):
         over the same number of steps, have the same condition (if any),
         have the same value for truncate_gradient, and have the same mode.
         Questionable, we should also consider profile ?
+
         """
         rep = set_nodes[0]
         if rep.op.as_while != node.op.as_while:
@@ -1852,13 +1875,19 @@ class ScanMerge(gof.Optimizer):
 
 
 def has_duplicates(l):
-    """returns true if l has any duplicates (according to __eq__)."""
+    """
+    Returns true if l has any duplicates (according to __eq__).
+
+    """
     return len(set(l)) < len(l)
 
 
 def make_equiv(lo, li):
-    """builds a dictionary of equivalences between inner inputs based on
-    the equivalence of their corresponding outer inputs."""
+    """
+    Builds a dictionary of equivalences between inner inputs based on
+    the equivalence of their corresponding outer inputs.
+
+    """
     seeno = OrderedDict()
     left = []
     right = []
@@ -2034,7 +2063,11 @@ def scan_merge_inouts(node):
 
 
 class PushOutDot1(gof.Optimizer):
-    """Graph optimizer for Scan(makes it run inplace)"""
+    """
+    Graph optimizer for Scan(makes it run inplace).
+
+    """
+
     def __init__(self):
         Optimizer.__init__(self)
 
