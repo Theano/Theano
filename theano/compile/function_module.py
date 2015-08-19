@@ -5,7 +5,7 @@ Driver of graph construction, optimization, and linking.
 from __future__ import print_function
 
 import copy
-from six import string_types, iteritems
+from six import string_types, iteritems, iterkeys
 from six.moves import xrange
 import six.moves.copyreg as copyreg
 import six.moves.cPickle as pickle
@@ -613,11 +613,10 @@ class Function(object):
 
         # swap SharedVariable
         if swap is not None:
-            swap_svs_ori = swap.keys()
             exist_svs = [i.variable for i in maker.inputs]
 
             # Check if given ShareVariables exist
-            for sv in swap_svs_ori:
+            for sv in iterkeys(swap):
                 if sv not in exist_svs:
                     raise ValueError("SharedVariable: %s not found" %
                                      (sv.name))
@@ -629,7 +628,7 @@ class Function(object):
                 # Otherwise we don't touch them.
                 var = maker.inputs[index].variable
 
-                if var in swap_svs_ori:
+                if var in iterkeys(swap):
                     swap_sv = swap[var]
                     checkSV(i.variable, swap_sv)
 
@@ -702,7 +701,7 @@ class Function(object):
                                             f_cpy.input_storage):
 
             # Share immutable ShareVariable and constant input's storage
-            swapped = swap is not None and in_ori.variable in swap_svs_ori
+            swapped = swap is not None and swap.has_key(in_ori.variable)
 
             # Using the original storage if SharedVariable will not be updated
             # and is not swapped
