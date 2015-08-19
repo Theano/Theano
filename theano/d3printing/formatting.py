@@ -173,7 +173,7 @@ class GraphFormatter(object):
                         list.__add__, node.op.destroy_map.values(), []):
                             edge_params['color'] = 'red'
 
-                edge_label = str(var.type)
+                edge_label = vparams['dtype']
                 if len(node.inputs) > 1:
                     edge_label = str(id) + ' ' + edge_label
                 pdedge = pd.Edge(var_id, node_id, label=edge_label,
@@ -199,9 +199,9 @@ class GraphFormatter(object):
                     pd_var = self.dict_to_pdnode(vparams)
                     graph.add_node(pd_var)
 
-                    graph.add_edge(pd.Edge(node_id, var_id, label=str(var.type)))
+                    graph.add_edge(pd.Edge(node_id, var_id, label=vparams['dtype']))
                 elif var.name or not self.compact:
-                    graph.add_edge(pd.Edge(node_id, var_id, label=str(var.type)))
+                    graph.add_edge(pd.Edge(node_id, var_id, label=vparams['dtype']))
 
             if isinstance(node.op, builders.OpFromGraph):
                 subgraph = pd.Cluster(node_id)

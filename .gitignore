@@ -26,7 +26,6 @@ doc/indexes/oplist.txt
 doc/indexes/typelist.txt
 html
 pdf
-pull.sh
 setuptools-*.egg
 theano/generated_version.py
 theano/generated_version.py.out
@@ -39,4 +38,3 @@ Theano.suo
 
 doc/d3printing/GSoC/150724_opfrom/bundle/
 doc/d3printing/GSoC/150724_opfrom/bundle2/
-

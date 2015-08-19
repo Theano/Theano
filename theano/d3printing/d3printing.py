@@ -3,14 +3,13 @@
 # Authors: Christof Angermueller <cangermueller@gmail.com>
 
 import os
+import os.path as pt
 from glob import glob
 import shutil
 
-from theano.printing import pydotprint
 from formatting import GraphFormatter
 
-
-__path__ = os.path.dirname(os.path.realpath(__file__))
+__path__ = pt.dirname(pt.realpath(__file__))
 
 
 def replace_patterns(x, replace):
@@ -18,20 +17,6 @@ def replace_patterns(x, replace):
     for from_, to in replace.items():
         x = x.replace(str(from_), str(to))
     return x
-
-
-def d3dot(fct, node_colors=None, *args, **kwargs):
-    if node_colors is None:
-        node_colors = {'input': 'limegreen',
-                       'output': 'dodgerblue',
-                       'unused': 'lightgrey'
-                       }
-
-    dot_graph = pydotprint(fct, format='dot', return_image=True,
-                           node_colors=node_colors, *args, **kwargs)
-    dot_graph = dot_graph.replace('\n', ' ')
-    dot_graph = dot_graph.replace('node [label="\N"];', '')
-    return dot_graph
 
 
 def d3write(fct, path, *args, **kwargs):
@@ -49,22 +34,25 @@ def d3print(fct, outfile,  *args, **kwargs):
     :param outfile: The output file
     """
 
-    outdir = os.path.dirname(outfile)
-    if not os.path.exists(outdir):
+    outdir = pt.dirname(outfile)
+    if not pt.exists(outdir):
         os.makedirs(outdir)
 
     # Create dot file
-    dot_file = os.path.splitext(outfile)[0] + '.dot'
+    dot_file = pt.splitext(outfile)[0] + '.dot'
     d3write(fct, dot_file, *args, **kwargs)
 
-
-    # Read template HTML file and replace variables
-    template_file = os.path.join(__path__, 'template.html')
+    # Read template HTML file
+    template_file = pt.join(__path__, 'html', 'template.html')
     f = open(template_file)
     template = f.read()
     f.close()
+
+    # Replace patterns in template
     replace = {
-        '%% DOT_FILE %%': os.path.basename(dot_file),
+        '%% JS_DIR %%': pt.join(__path__, 'js'),
+        '%% CSS_DIR %%': pt.join(__path__, 'css'),
+        '%% DOT_FILE %%': pt.basename(dot_file),
     }
     html = replace_patterns(template, replace)
 
@@ -73,9 +61,3 @@ def d3print(fct, outfile,  *args, **kwargs):
         f = open(outfile, 'w')
         f.write(html)
         f.close()
-
-    # Copy dependencies
-    deps = glob(os.path.join(__path__, 'javascript', '*'))
-    for dep in deps:
-        o = os.path.join(outdir, os.path.basename(dep))
-        shutil.copyfile(dep, o)
