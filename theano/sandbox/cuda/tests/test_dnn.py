@@ -9,6 +9,7 @@ from six import StringIO
 import theano.tensor as T
 import theano.tests.unittest_tools as utt
 from theano.sandbox.neighbours import images2neibs
+from theano.tensor.nnet import softmax_op
 from theano.tensor.signal.downsample import max_pool_2d
 from theano.tensor.signal.downsample import DownsampleFactorMaxGrad
 import theano.sandbox.cuda.dnn as dnn
@@ -499,8 +500,6 @@ def test_dnn_softmax_grad():
 
 
 def test_dnn_softmax_grad_opt():
-    from theano.tensor.nnet import softmax_op
-    from theano.gradient import verify_grad
     utt.seed_rng()
 
     x_val = numpy.random.normal(0, 1, (3, 4)).astype('float32')
