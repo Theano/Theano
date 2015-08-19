@@ -27,9 +27,11 @@ sys.path.append(os.path.abspath(theano_path))
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.todo', 'sphinx.ext.doctest']
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.todo', 'sphinx.ext.doctest', 'sphinx.ext.napoleon']
 
 todo_include_todos = True
+napoleon_google_docstring = False
+napoleon_include_special_with_doc = False
 
 try:
     from sphinx.ext import pngmath
