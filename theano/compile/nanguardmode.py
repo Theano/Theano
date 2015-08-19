@@ -56,6 +56,8 @@ def contains_nan(arr):
     """
     if isinstance(arr, theano.gof.type.CDataType._cdata_type):
         return False
+    elif isinstance(arr, np.random.mtrand.RandomState):
+        return False
     return np.isnan(np.min(arr))
 
 
@@ -81,6 +83,8 @@ def contains_inf(arr):
     boolean array with the same shape as the input array.
     """
     if isinstance(arr, theano.gof.type.CDataType._cdata_type):
+        return False
+    elif isinstance(arr, np.random.mtrand.RandomState):
         return False
     return np.isinf(np.nanmax(arr)) or np.isinf(np.nanmin(arr))
 
@@ -163,6 +167,8 @@ class NanGuardMode(Mode):
                 if cuda.cuda_available and isinstance(var, cuda.CudaNdarray):
                     err = (self.gpuabsmax(var.reshape(var.size)) > 1e10)
                 elif isinstance(var, theano.gof.type.CDataType._cdata_type):
+                    err = False
+                elif isinstance(var, np.random.mtrand.RandomState):
                     err = False
                 else:
                     err = (np.abs(var).max() > 1e10)

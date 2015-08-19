@@ -2,7 +2,7 @@ import logging
 
 from nose.plugins.skip import SkipTest
 import numpy
-from itertools import product
+from itertools import chain, product
 
 import theano
 from six import StringIO
@@ -13,6 +13,7 @@ from theano.tensor.signal.downsample import max_pool_2d
 from theano.tensor.signal.downsample import DownsampleFactorMaxGrad
 import theano.sandbox.cuda.dnn as dnn
 from theano.sandbox.cuda.basic_ops import GpuAllocEmpty, gpu_alloc_empty
+from theano.sandbox.cuda import float32_shared_constructor as shared
 
 # Skip test if cuda_ndarray is not available.
 import theano.sandbox.cuda as cuda
@@ -160,8 +161,28 @@ def test_dnn_conv_inplace():
     assert len([n for n in topo if isinstance(n.op, GpuAllocEmpty)]) == 2
 
 
-def pool_2d_i2n(input, ds=(2, 2), strides=None,
-                pad=(0, 0),
+def pool3d2d(input, ds=(2, 2, 2), strides=None, pad=(0, 0, 0),
+             pool_func=T.max, mode='ignore_borders'):
+    if strides is None:
+        strides = ds
+
+    shape = input.shape
+
+    # resahpe to B, C*0, 1, 2 and do the pooling on 1, 2
+    first = input.reshape((shape[0], shape[1] * shape[2], shape[3], shape[4]))
+    pooled1 = pool_2d_i2n(first, ds=ds[1:], strides=strides[1:], pad=pad[1:],
+                          pool_function=pool_func, mode=mode)
+
+    shp1 = pooled1.shape
+    # reshape to B, C, 0, 1*2 and do the pooling on 0
+    second = pooled1.reshape((shape[0], shape[1], shape[2], shp1[2] * shp1[3]))
+    pooled2 = pool_2d_i2n(second, ds=(ds[0], 1), strides=(strides[0], 1),
+                          pad=(pad[0], 0), pool_function=pool_func, mode=mode)
+    shp2 = pooled2.shape
+    return pooled2.reshape((shape[0], shape[1], shp2[2], shp1[2], shp1[3]))
+
+
+def pool_2d_i2n(input, ds=(2, 2), strides=None, pad=(0, 0),
                 pool_function=T.max, mode='ignore_borders'):
     if strides is None:
         strides = ds
@@ -301,6 +322,111 @@ def test_pooling():
             assert numpy.allclose(c_out, g_out)
 
 
+def test_pooling3d():
+    # CuDNN 3d pooling requires CuDNN v3. Don't test if the CuDNN version is
+    # too old.
+    if not cuda.dnn.dnn_available() or cuda.dnn.version() < (3000, 3000):
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+
+    x = T.TensorType(broadcastable=(False, False, False, False, False),
+                     dtype='float32')()
+    for mode, pad in product(('max', 'average_inc_pad', 'average_exc_pad'),
+                             ((0, 0, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1),
+                              (2, 3, 2), (3, 2, 2), (2, 2, 3))):
+        if mode == 'max':
+            func = T.max
+        else:
+            func = T.mean
+        if pad != (0, 0, 0) and cuda.dnn.version() == -1:
+            continue
+
+        if pad != (0, 0, 0) and func is T.mean:
+            continue
+
+        for ws in (4, 2, 5):
+            for stride in (2, 3):
+                if stride > ws:
+                    continue
+                if pad[0] > stride or pad[1] > stride or pad[2] > stride:
+                    # Not implemented
+                    continue
+                out1 = cuda.dnn.dnn_pool(x, (ws, ws, ws),
+                                         stride=(stride, stride, stride),
+                                         pad=pad, mode=mode)
+                out2 = pool3d2d(x, ds=(ws, ws, ws),
+                                strides=(stride, stride, stride),
+                                pad=pad, pool_func=func)
+
+                # For max pooling pool3d2d explicitly pads the input with
+                # -inf. Because of this, the compilation mode for the function
+                # that uses pool3d2d should not check for infinite values or
+                # it will falsely believe there is a error in the graph.
+                mode_without_gpu2 = mode_without_gpu.including()
+                mode_without_gpu2.check_isfinite = False
+
+                f1 = theano.function([x], out1, mode=mode_with_gpu)
+                assert any([isinstance(node.op, cuda.dnn.GpuDnnPool)
+                            for node in f1.maker.fgraph.apply_nodes])
+                f2 = theano.function([x], out2, mode=mode_without_gpu2)
+                assert not any([isinstance(node.op, cuda.dnn.GpuDnnPool)
+                                for node in f2.maker.fgraph.apply_nodes])
+                for shp in [(1, 10, 100, 100, 100),
+                            (1, 3, 99, 99, 99),
+                            (32, 1, 147, 197, 37),
+                            ]:
+                    data = numpy.random.normal(0, 1, shp).astype("float32")
+                    a = f1(data).__array__()
+
+                    b = f2(data).__array__()
+
+                    utt.assert_allclose(a, b,
+                                        atol=numpy.finfo(numpy.float32).eps)
+
+        # Test the grad
+        for shp in [(1, 1, 2, 2, 2),
+                    (1, 1, 3, 3, 3),
+                    (1, 1, 3, 3, 4),
+                    (1, 1, 3, 4, 3),
+                    (1, 1, 4, 3, 3),
+                    (1, 1, 4, 4, 4),
+                    (1, 1, 5, 5, 5)]:
+            data = numpy.random.normal(0, 1, shp).astype("float32") * 10
+
+            ws = 2
+            stride = 2
+            if pad[0] > stride or pad[1] > stride or pad[2] > stride:
+                # Not implemented
+                continue
+
+            # Test the GPU grad + GPU implementation
+            def fn(x):
+                dnn_op = cuda.dnn.dnn_pool(
+                    x, ws=(ws, ws, ws),
+                    stride=(stride, stride, stride),
+                    pad=pad,
+                    mode=mode)
+                return dnn_op
+            theano.tests.unittest_tools.verify_grad(
+                fn, [data],
+                cast_to_output_type=False,
+                mode=mode_with_gpu)
+            # Confirm that we get the good op.
+            fg = theano.function([x], theano.grad(fn(x).sum(), x),
+                                 mode=mode_with_gpu)
+            assert any([isinstance(node.op, cuda.dnn.GpuDnnPoolGrad)
+                        for node in fg.maker.fgraph.toposort()])
+            g_out = fg(data)
+
+            # Compare again the CPU result
+            out = pool3d2d(x, (ws, ws, ws),
+                           strides=(stride, stride, stride),
+                           pad=pad, pool_func=func)
+            fc = theano.function([x], theano.grad(out.sum(), x),
+                                 mode=mode_without_gpu)
+            c_out = fc(data)
+            assert numpy.allclose(c_out, g_out)
+
+
 def test_pooling_opt():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
@@ -322,6 +448,45 @@ def test_pooling_opt():
 
     assert any([isinstance(n.op, cuda.dnn.GpuDnnPoolGrad)
                 for n in f.maker.fgraph.toposort()])
+
+
+def test_log_softmax():
+    # This is a test for an optimization that depends on CuDNN v3 or
+    # more recent. Don't test if the CuDNN version is too old.
+    if not cuda.dnn.dnn_available() or cuda.dnn.version() < (3000, 3000):
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+
+    x = T.ftensor4()
+    softmax_out = dnn.GpuDnnSoftmax('bc01', 'accurate', 'channel')(x)
+    log_out = T.log(T.as_tensor_variable(softmax_out))
+
+    f = theano.function([x], log_out, mode=mode_with_gpu)
+
+    # Ensure that the optimization has been applied
+    dnn_softmax_nodes = [n for n in f.maker.fgraph.toposort() if
+                         isinstance(n.op, cuda.dnn.GpuDnnSoftmax)]
+    assert len(dnn_softmax_nodes) == 1
+    assert dnn_softmax_nodes[0].op.algo == "log"
+
+    # Ensure that the output of the function is valid
+    input_shapes = [(3, 4, 5, 6),
+                    (1025, 2, 3, 4),
+                    (2, 1025, 3, 4),
+                    (2, 3, 1025, 4),
+                    (2, 3, 4, 1025),
+                    (66000, 2, 3, 4),
+                    (2, 66000, 3, 4),
+                    (2, 3, 66000, 4),
+                    (2, 3, 4, 66000)]
+
+    for inp_shape in input_shapes:
+        input_val = numpy.random.normal(0, 1, inp_shape).astype("float32")
+
+        out = f(input_val)
+        expected_out = numpy.log(numpy.exp(input_val) /
+                                 numpy.exp(input_val).sum(1)[:, None, :, :])
+
+        utt.assert_allclose(out, expected_out)
 
 
 def test_dnn_tag():
@@ -432,6 +597,45 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 dnn.GpuDnnConv
             )
 
+    def test_conv3d(self):
+        if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
+            raise SkipTest('"CuDNN 3D convolution requires CuDNN v2')
+        ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
+        img = ftensor5('img')
+        kerns = ftensor5('kerns')
+        out = ftensor5('out')
+        img_val = numpy.asarray(
+            numpy.random.rand(7, 2, 6, 4, 11),
+            dtype='float32'
+        )
+        kern_vals = numpy.asarray(
+            numpy.random.rand(8, 2, 4, 3, 1),
+            dtype='float32'
+        )
+
+        for params in product(
+            ['valid', 'full'],
+            [(1, 1, 1), (2, 2, 2)],
+            ['conv', 'cross']
+        ):
+            out_vals = numpy.zeros(
+                dnn.GpuDnnConv3d.get_out_shape(img_val.shape, kern_vals.shape,
+                                               border_mode=params[0],
+                                               subsample=params[1]),
+                dtype='float32')
+            desc = dnn.GpuDnnConvDesc(
+                border_mode=params[0],
+                subsample=params[1],
+                conv_mode=params[2]
+            )(img.shape, kerns.shape)
+            conv = dnn.GpuDnnConv3d()(img, kerns, out, desc)
+            self._compile_and_check(
+                [img, kerns, out],
+                [conv],
+                [img_val, kern_vals, out_vals],
+                dnn.GpuDnnConv3d
+            )
+
     def test_conv_gradw(self):
         if not dnn.dnn_available():
             raise SkipTest(dnn.dnn_available.msg)
@@ -481,6 +685,51 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 dnn.GpuDnnConvGradW
             )
 
+    def test_conv3d_gradw(self):
+        if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
+            raise SkipTest('"CuDNN 3D convolution requires CuDNN v2')
+        ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
+        img = ftensor5('img')
+        kerns = ftensor5('kerns')
+        out = ftensor5('out')
+        img_val = numpy.asarray(
+            numpy.random.rand(9, 2, 4, 8, 7),
+            dtype='float32'
+        )
+        kern_vals = numpy.asarray(
+            numpy.random.rand(11, 2, 3, 1, 4),
+            dtype='float32'
+        )
+
+        for params in product(
+            ['valid', 'full'],
+            [(1, 1, 1), (2, 2, 2)],
+            ['conv', 'cross']
+        ):
+            out_vals = numpy.zeros(
+                dnn.GpuDnnConv3d.get_out_shape(img_val.shape, kern_vals.shape,
+                                               border_mode=params[0],
+                                               subsample=params[1]),
+                dtype='float32')
+
+            desc = dnn.GpuDnnConvDesc(
+                border_mode=params[0],
+                subsample=params[1],
+                conv_mode=params[2]
+            )(img.shape, out.shape)
+            conv_grad_w = dnn.GpuDnnConv3dGradW()(
+                img,
+                out,
+                kerns,
+                desc,
+            )
+            self._compile_and_check(
+                [img, out, kerns],
+                [conv_grad_w],
+                [img_val, out_vals, kern_vals],
+                dnn.GpuDnnConv3dGradW
+            )
+
     def test_conv_gradi(self):
         if not dnn.dnn_available():
             raise SkipTest(dnn.dnn_available.msg)
@@ -492,7 +741,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
             dtype='float32'
         )
         kern_vals = numpy.asarray(
-            numpy.random.rand(13, 14, 15, 16),
+            numpy.random.rand(4, 14, 15, 16),
             dtype='float32'
         )
 
@@ -524,6 +773,51 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 [conv_grad_i],
                 [kern_vals, img_val, out_vals],
                 dnn.GpuDnnConvGradI
+            )
+
+    def test_conv3d_gradi(self):
+        if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
+            raise SkipTest('"CuDNN 3D convolution requires CuDNN v2')
+        ftensor5 = T.TensorType(dtype="float32", broadcastable=(False,) * 5)
+        img = ftensor5('img')
+        kerns = ftensor5('kerns')
+        out = ftensor5('out')
+        img_val = numpy.asarray(
+            numpy.random.rand(8, 4, 6, 7, 5),
+            dtype='float32'
+        )
+        kern_vals = numpy.asarray(
+            numpy.random.rand(9, 4, 5, 1, 2),
+            dtype='float32'
+        )
+
+        for params in product(
+            ['valid', 'full'],
+            [(1, 1, 1), (2, 2, 2)],
+            ['conv', 'cross']
+        ):
+            out_vals = numpy.zeros(
+                dnn.GpuDnnConv3d.get_out_shape(img_val.shape, kern_vals.shape,
+                                               border_mode=params[0],
+                                               subsample=params[1]),
+                dtype='float32')
+
+            desc = dnn.GpuDnnConvDesc(
+                border_mode=params[0],
+                subsample=params[1],
+                conv_mode=params[2]
+            )(img.shape, kerns.shape)
+            conv_grad_i = dnn.GpuDnnConv3dGradI()(
+                kerns,
+                out,
+                img,
+                desc,
+            )
+            self._compile_and_check(
+                [kerns, out, img],
+                [conv_grad_i],
+                [kern_vals, out_vals, img_val],
+                dnn.GpuDnnConv3dGradI
             )
 
     def test_pool(self):
@@ -761,6 +1055,202 @@ def test_dnn_conv_grad():
     utt.verify_grad(dconv, [img_val, kern_val, out_val])
     utt.verify_grad(dconvi, [img_val, kern_val, out_val])
     utt.verify_grad(dconvw, [img_val, kern_val, out_val])
+
+
+def get_conv3d_test_cases():
+    # Every element of test_shapes follows the format
+    # [input_shape, filter_shape, subsample]
+    test_shapes = [[(128, 3, 5, 5, 5), (64, 3, 1, 2, 4), (1, 1, 1)],
+                   [(8, 4, 20, 12, 15), (5, 4, 6, 12, 4), (2, 2, 2)],
+                   [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 3, 3)],
+                   [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 2, 1)],
+                   [(8, 1, 20, 12, 15), (5, 1, 6, 12, 4), (3, 2, 1)],
+                   # Test with 1x1x1 filters
+                   [(8, 1, 10, 10, 10), (10, 1, 1, 1, 1), (1, 1, 1)],
+                   # Test with dimensions larger than 1024 (thread block dim)
+                   [(1025, 1, 2, 3, 4), (5, 1, 1, 2, 3), (1, 1, 1)],
+                   [(8, 1, 2, 3, 4), (1025, 1, 1, 2, 3), (1, 1, 1)],
+                   [(8, 1025, 2, 3, 4), (5, 1025, 1, 1, 2), (1, 1, 1)],
+                   [(8, 1, 1030, 3, 4), (5, 1, 1025, 1, 1), (1, 1, 1)],
+                   [(8, 1, 2, 1030, 4), (5, 1, 2, 1025, 1), (1, 1, 1)],
+                   [(8, 1, 2, 3, 1030), (5, 1, 1, 2, 1025), (1, 1, 1)],
+                   # The equivalent of this caused a crash with conv2d
+                   [(1, 1, 1, 44800, 1), (6, 1, 1, 1, 1), (1, 1, 1)]]
+
+    # With border mode 'full', test with kernel bigger than image in some/all
+    # dimensions
+    test_shapes_full = [[(6, 2, 2, 2, 2), (4, 2, 3, 1, 1), (1, 1, 1)],
+                        [(6, 2, 2, 2, 2), (4, 2, 1, 3, 1), (1, 1, 1)],
+                        [(6, 2, 2, 2, 2), (4, 2, 1, 1, 3), (1, 1, 1)],
+                        [(6, 2, 2, 2, 2), (4, 2, 5, 5, 5), (1, 1, 1)]]
+    border_modes = ['valid', 'full', (1, 2, 3), (3, 2, 1), 1, 2]
+    conv_modes = ['conv', 'cross']
+
+    if cuda.dnn.dnn_available() and dnn.version() >= (3000, 3000):
+        itt = chain(product(test_shapes, border_modes, conv_modes),
+                    product(test_shapes_full, ['full'], conv_modes))
+    else:
+        # CuDNN, before V3, did not support kernels larger than the inputs,
+        # even if the original inputs were padded so they would be larger than
+        # the kernels. If using a version older than V3 don't run the tests
+        # with kernels larger than the unpadded inputs.
+        itt = product(test_shapes, border_modes, conv_modes)
+
+    return itt
+
+
+def test_conv3d_fwd():
+
+    if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
+        raise SkipTest('"CuDNN 3D convolution requires CuDNN v2')
+
+    def run_conv3d_fwd(inputs_shape, filters_shape, subsample,
+                       border_mode, conv_mode):
+
+        inputs_val = numpy.random.random(inputs_shape).astype('float32')
+        filters_val = numpy.random.random(filters_shape).astype('float32')
+
+        # Scale down the input values to prevent very large absolute errors
+        # due to float rounding
+        inputs_val /= 10
+        filters_val /= 10
+
+        inputs = shared(inputs_val)
+        filters = shared(filters_val)
+        bias = shared(numpy.zeros(filters_shape[0]).astype('float32'))
+
+        # Compile a theano function for the CuDNN implementation
+        conv = dnn.dnn_conv3d(img=inputs, kerns=filters,
+                              border_mode=border_mode, subsample=subsample,
+                              conv_mode=conv_mode)
+        f = theano.function([], conv, mode=mode_with_gpu)
+
+        # If conv_mode is 'conv' the reference implementation should use
+        # filters filpped according to the width, height and time axis
+        if conv_mode == 'conv':
+            flipped_filters = filters[:, :, ::-1, ::-1, ::-1]
+        else:
+            flipped_filters = filters
+
+        # If border mode is anything but 'valid', the reference implementation
+        # should operate on padded inputs
+        if border_mode == 'valid':
+            padded_inputs = inputs
+        else:
+            if border_mode == 'full':
+                pad_per_dim = [filters_shape[i] - 1 for i in range(2, 5)]
+            else:
+                if isinstance(border_mode, int):
+                    pad_per_dim = [border_mode] * 3
+                else:
+                    pad_per_dim = border_mode
+
+            pad_before_after = ([(0, 0), (0, 0)] +
+                                [(p, p) for p in pad_per_dim])
+            padded_inputs_val = numpy.pad(inputs_val, pad_before_after,
+                                          'constant')
+            padded_inputs = shared(padded_inputs_val)
+
+        # Compile a theano function for the reference implementation
+        conv_ref = theano.tensor.nnet.conv3D(
+            V=padded_inputs.dimshuffle(0, 2, 3, 4, 1),
+            W=flipped_filters.dimshuffle(0, 2, 3, 4, 1),
+            b=bias, d=subsample)
+        f_ref = theano.function([], conv_ref.dimshuffle(0, 4, 1, 2, 3))
+
+        # Compare the results of the two implementations
+        res_ref = f_ref()
+        res = f()
+        utt.assert_allclose(res_ref, res)
+
+    test_cases = get_conv3d_test_cases()
+    for (i_shape, f_shape, subsample), border_mode, conv_mode in test_cases:
+        yield (run_conv3d_fwd, i_shape, f_shape, subsample, border_mode,
+               conv_mode)
+
+
+def test_conv3d_bwd():
+
+    if not (cuda.dnn.dnn_available() and dnn.version() >= (2000, 2000)):
+        raise SkipTest('"CuDNN 3D convolution requires CuDNN v2')
+
+    def run_conv3d_bwd(inputs_shape, filters_shape, subsample,
+                       border_mode, conv_mode):
+
+        inputs_val = numpy.random.random(inputs_shape).astype('float32')
+        filters_val = numpy.random.random(filters_shape).astype('float32')
+
+        inputs = shared(inputs_val)
+        filters = shared(filters_val)
+        bias = shared(numpy.zeros(filters_shape[0]).astype('float32'))
+
+        # Compile a theano function for the CuDNN implementation
+        conv = dnn.dnn_conv3d(img=inputs, kerns=filters,
+                              border_mode=border_mode, subsample=subsample,
+                              conv_mode=conv_mode)
+
+        grad_i, grad_w = theano.tensor.grad(conv.sum(), [inputs, filters])
+
+        f = theano.function([], [grad_i, grad_w], mode=mode_with_gpu)
+
+        # If conv_mode is 'conv' the reference implementation should use
+        # filters filpped according to the width, height and time axis
+        if conv_mode == 'conv':
+            flipped_filters = filters[:, :, ::-1, ::-1, ::-1]
+        else:
+            flipped_filters = filters
+
+        # If border mode is anything but 'valid', the reference implementation
+        # should operate on padded inputs
+        if border_mode == 'valid':
+            padded_inputs = inputs
+        else:
+            if border_mode == 'full':
+                pad_per_dim = [filters_shape[i] - 1 for i in range(2, 5)]
+            else:
+                if isinstance(border_mode, int):
+                    pad_per_dim = [border_mode] * 3
+                else:
+                    pad_per_dim = border_mode
+
+            pad_before_after = ([(0, 0), (0, 0)] +
+                                [(p, p) for p in pad_per_dim])
+            padded_inputs_val = numpy.pad(inputs_val, pad_before_after,
+                                          'constant')
+            padded_inputs = shared(padded_inputs_val)
+
+        # Compile a theano function for the reference implementation
+        conv_ref = theano.tensor.nnet.conv3D(
+            V=padded_inputs.dimshuffle(0, 2, 3, 4, 1),
+            W=flipped_filters.dimshuffle(0, 2, 3, 4, 1),
+            b=bias, d=subsample)
+        (grad_padded_i_ref,
+         grad_w_ref) = theano.tensor.grad(conv_ref.sum(),
+                                          [padded_inputs, filters])
+
+        # Recover grad_i_ref from grad_padded_i_ref
+        if border_mode == 'valid':
+            grad_i_ref = grad_padded_i_ref
+        else:
+            shp = grad_padded_i_ref.shape
+            grad_i_ref = grad_padded_i_ref[
+                :, :,
+                pad_per_dim[0]:shp[2] - pad_per_dim[0],
+                pad_per_dim[1]:shp[3] - pad_per_dim[1],
+                pad_per_dim[2]:shp[4] - pad_per_dim[2]]
+
+        f_ref = theano.function([], [grad_i_ref, grad_w_ref])
+
+        # Compare the results of the two implementations
+        res_ref = f_ref()
+        res = f()
+        utt.assert_allclose(res_ref[0], res[0])
+        utt.assert_allclose(res_ref[1], res[1])
+
+    test_cases = get_conv3d_test_cases()
+    for (i_shape, f_shape, subsample), border_mode, conv_mode in test_cases:
+        yield (run_conv3d_bwd, i_shape, f_shape, subsample, border_mode,
+               conv_mode)
 
 
 def test_version():

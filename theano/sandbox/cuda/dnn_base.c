@@ -1,61 +1,53 @@
 #section support_code
 static cudnnHandle_t _handle = NULL;
 
+
 static int
-c_set_tensor4d(CudaNdarray *var, cudnnTensorDescriptor_t desc) {
-  cudnnStatus_t err = cudnnSetTensor4dDescriptorEx(
-    desc, CUDNN_DATA_FLOAT,
-    CudaNdarray_HOST_DIMS(var)[0],
-    CudaNdarray_HOST_DIMS(var)[1],
-    CudaNdarray_HOST_DIMS(var)[2],
-    CudaNdarray_HOST_DIMS(var)[3],
-    CudaNdarray_HOST_STRIDES(var)[0]?CudaNdarray_HOST_STRIDES(var)[0]:CudaNdarray_HOST_DIMS(var)[2]*CudaNdarray_HOST_DIMS(var)[3]*CudaNdarray_HOST_DIMS(var)[1],
-    CudaNdarray_HOST_STRIDES(var)[1]?CudaNdarray_HOST_STRIDES(var)[1]:CudaNdarray_HOST_DIMS(var)[2]*CudaNdarray_HOST_DIMS(var)[3],
-    CudaNdarray_HOST_STRIDES(var)[2]?CudaNdarray_HOST_STRIDES(var)[2]:CudaNdarray_HOST_DIMS(var)[3],
-    CudaNdarray_HOST_STRIDES(var)[3]?CudaNdarray_HOST_STRIDES(var)[3]:1
-    );
+c_set_tensorNd(CudaNdarray *var, cudnnTensorDescriptor_t desc) {
+
+
+  int dim = CudaNdarray_NDIM(var);
+  int strides[dim];
+  int default_str = 1;
+
+  for (int i = dim-1; i >= 0; i--)
+  {
+    if (CudaNdarray_HOST_STRIDES(var)[i])
+      strides[i] = CudaNdarray_HOST_STRIDES(var)[i];
+    else
+      strides[i] = default_str;
+    default_str *= CudaNdarray_HOST_DIMS(var)[i];
+  }
+
+  cudnnStatus_t err = cudnnSetTensorNdDescriptor(desc, CUDNN_DATA_FLOAT, dim,
+                                                 CudaNdarray_HOST_DIMS(var),
+                                                 strides);
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError,
-		 "Could not set tensor4d descriptor: %s"
-		 "shapes=%d %d %d %d strides=%d %d %d %d",
-		 cudnnGetErrorString(err),
-		 CudaNdarray_HOST_DIMS(var)[0],
-		 CudaNdarray_HOST_DIMS(var)[1],
-		 CudaNdarray_HOST_DIMS(var)[2],
-		 CudaNdarray_HOST_DIMS(var)[3],
-		 CudaNdarray_HOST_STRIDES(var)[0]?CudaNdarray_HOST_STRIDES(var)[0]:CudaNdarray_HOST_DIMS(var)[2]*CudaNdarray_HOST_DIMS(var)[3]*CudaNdarray_HOST_DIMS(var)[1],
-		 CudaNdarray_HOST_STRIDES(var)[1]?CudaNdarray_HOST_STRIDES(var)[1]:CudaNdarray_HOST_DIMS(var)[2]*CudaNdarray_HOST_DIMS(var)[3],
-		 CudaNdarray_HOST_STRIDES(var)[2]?CudaNdarray_HOST_STRIDES(var)[2]:CudaNdarray_HOST_DIMS(var)[3],
-		 CudaNdarray_HOST_STRIDES(var)[3]?CudaNdarray_HOST_STRIDES(var)[3]:1
-      );
+		 "Could not set tensorNd descriptor: %s"
+		 "dim=%d",
+		 cudnnGetErrorString(err), dim);
     return -1;
   }
   return 0;
 }
 
+
 static int
-c_set_filter(CudaNdarray *var, cudnnFilterDescriptor_t desc) {
+c_set_filterNd(CudaNdarray *var, cudnnFilterDescriptor_t desc) {
   if (!CudaNdarray_is_c_contiguous(var)) {
     PyErr_SetString(PyExc_ValueError,
 		    "Only contiguous filters (kernels) are supported.");
     return -1;
   }
-  cudnnStatus_t err = cudnnSetFilter4dDescriptor(
-    desc, CUDNN_DATA_FLOAT,
-    CudaNdarray_HOST_DIMS(var)[0],
-    CudaNdarray_HOST_DIMS(var)[1],
-    CudaNdarray_HOST_DIMS(var)[2],
-    CudaNdarray_HOST_DIMS(var)[3]
-    );
+  int dim = CudaNdarray_NDIM(var);
+  cudnnStatus_t err = cudnnSetFilterNdDescriptor(desc, CUDNN_DATA_FLOAT, dim,
+                                                 CudaNdarray_HOST_DIMS(var));
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError,
 		 "Could not set filter descriptor: %s."
-		 " dims= %d %d %d %d",
-		 cudnnGetErrorString(err),
-		 CudaNdarray_HOST_DIMS(var)[0],
-		 CudaNdarray_HOST_DIMS(var)[1],
-		 CudaNdarray_HOST_DIMS(var)[2],
-		 CudaNdarray_HOST_DIMS(var)[3]);
+		 " dims= %d",
+		 cudnnGetErrorString(err), dim);
     return -1;
   }
   return 0;
