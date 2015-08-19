@@ -1,4 +1,5 @@
-"""A shared variable container for true scalars - for internal use.
+"""
+A shared variable container for true scalars - for internal use.
 
 Why does this file exist?
 -------------------------
@@ -37,9 +38,12 @@ class ScalarSharedVariable(_scalar_py_operators, SharedVariable):
 
 
 def shared(value, name=None, strict=False, allow_downcast=None):
-    """SharedVariable constructor for scalar values. Default: int64 or float64.
+    """
+    SharedVariable constructor for scalar values. Default: int64 or float64.
 
-    :note: We implement this using 0-d tensors for now.
+    Notes
+    -----
+    We implement this using 0-d tensors for now.
 
     """
     if not isinstance(value, (numpy.number, float, int, complex)):
