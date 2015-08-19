@@ -628,7 +628,7 @@ class Function(object):
                 # Otherwise we don't touch them.
                 var = maker.inputs[index].variable
 
-                if var in iterkeys(swap):
+                if swap.has_key(var):
                     swap_sv = swap[var]
                     checkSV(i.variable, swap_sv)
 
