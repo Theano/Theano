@@ -305,7 +305,7 @@ class PureType(object):
 
     def filter_variable(self, other, allow_convert=True):
         """
-	Convert a symbolic variable into this Type, if compatible.
+        Convert a symbolic variable into this Type, if compatible.
 
         For the moment, the only Types compatible with one another are
         TensorType and CudaNdarrayType, provided they have the same
