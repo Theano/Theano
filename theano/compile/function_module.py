@@ -624,7 +624,7 @@ class Function(object):
 
             # Check if given ShareVariables exist
             for sv in iterkeys(swap):
-                if sv not in exist_svs:
+                if not exist_svs.has_key(sv):
                     raise ValueError("SharedVariable: %s not found" %
                                      (sv.name))
 
@@ -648,7 +648,6 @@ class Function(object):
 
                     # Swap SharedVariable in fgraph
                     # if inputs was replaced, change self.inputs
-
                     fg_cpy.inputs[index] = swap_sv
                     fg_cpy.replace(in_v, swap_sv, reason="Swap SV")
 
