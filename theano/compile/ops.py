@@ -1,6 +1,7 @@
-"""This file contains auxiliary Ops, used during the compilation phase
-and Ops building class (:class:`FromFunctionOp`) and decorator
-(:func:`as_op`) that help make new Ops more rapidly.
+"""
+This file contains auxiliary Ops, used during the compilation phase and Ops
+building class (:class:`FromFunctionOp`) and decorator (:func:`as_op`) that
+help make new Ops more rapidly.
 
 """
 import copy
@@ -18,14 +19,19 @@ import numpy
 
 
 def register_view_op_c_code(type, code, version=()):
-    """ Tell ViewOp how to generate C code for a Theano Type
+    """
+    Tell ViewOp how to generate C code for a Theano Type.
 
-    :param type: A Theano type. It must be the Theano class itself and not an
-                instance of the class.
-    :param code: C code that returns a view for the Theano type 'type'.
-                 Use %(iname)s and %(oname)s for the input and output C
-                 variable names respectively.
-    :param version: A number indicating the version of the code, for cache.
+    Parameters
+    ----------
+    type : Theano type
+        It must be the Theano class itself and not an instance of the class.
+    code : C code
+        Returns a view for the Theano type 'type'. Use %(iname)s and %(oname)s
+        for the input and output C variable names respectively.
+    version
+        A number indicating the version of the code, for cache.
+
     """
     ViewOp.c_code_and_version[type] = (code, version)
 
@@ -33,7 +39,9 @@ def register_view_op_c_code(type, code, version=()):
 class ViewOp(gof.Op):
     """
     Returns an inplace view of the input. Used internally by Theano.
+
     """
+
     view_map = {0: [0]}
     # Mapping from Type to C code (and version) to use.
     # In the C code, the name of the input variable is %(iname)s,
@@ -96,9 +104,9 @@ class OutputGuard(ViewOp):
 
     Only the AddDestroyHandler optimizer tries to insert them in the graph.
 
-    This Op is declared as destructive while it is not destroying
-    anything. It returns a view. This is used to prevent destruction of
-    the output variables of a Theano function.
+    This Op is declared as destructive while it is not destroying anything.
+    It returns a view. This is used to prevent destruction of the output
+    variables of a Theano function.
 
     There is a mechanism in Theano that should prevent this, but the use
     of OutputGuard adds a safeguard: it may be possible for some optimization
@@ -106,6 +114,7 @@ class OutputGuard(ViewOp):
     making in-place optimizations.
 
     TODO: find a current full explanation.
+
     """
     destroy_map = {0: [0]}
 
@@ -115,14 +124,19 @@ _output_guard = OutputGuard()
 
 
 def register_deep_copy_op_c_code(typ, code, version=()):
-    """ Tell DeepCopyOp how to generate C code for a Theano Type
+    """
+    Tell DeepCopyOp how to generate C code for a Theano Type.
 
-    :param typ: A Theano type. It must be the Theano class itself and not an
-                instance of the class.
-    :param code: C code that deep copies the Theano type 'typ'.
-                 Use %(iname)s and %(oname)s for the input and output C
-                 variable names respectively.
-    :param version: A number indicating the version of the code, for cache.
+    Parameters
+    ----------
+    typ : Theano type
+        It must be the Theano class itself and not an instance of the class.
+    code: C code
+        Deep copies the Theano type 'typ'. Use %(iname)s and %(oname)s for the
+        input and output C variable names respectively.
+    version
+        A number indicating the version of the code, for cache.
+
     """
     DeepCopyOp.c_code_and_version[typ] = (code, version)
 
@@ -189,15 +203,20 @@ deep_copy_op = DeepCopyOp()
 
 
 def register_shape_c_code(type, code, version=()):
-    """ Tell Shape Op how to generate C code for a Theano Type
+    """
+    Tell Shape Op how to generate C code for a Theano Type.
 
-    :param typ: A Theano type. It must be the Theano class itself and not an
-                instance of the class.
-    :param code: C code that return a vector representing the shape
-                 for the Theano type 'typ'.
-                 Use %(iname)s and %(oname)s for the input and output C
-                 variable names respectively.
-    :param version: A number indicating the version of the code, for cache.
+    Parameters
+    ----------
+    typ : Theano type
+        It must be the Theano class itself and not an instance of the class.
+    code : C code
+        Returns a vector representing the shape for the Theano type 'typ'.
+        Use %(iname)s and %(oname)s for the input and output C variable names
+        respectively.
+    version
+        A number indicating the version of the code, for cache.
+
     """
     Shape.c_code_and_version[type] = (code, version)
 
@@ -206,8 +225,12 @@ class Shape(gof.Op):
     """
     L{Op} to return the shape of a matrix.
 
-    @note: Non-differentiable.
+    Notes
+    -----
+    Non-differentiable.
+
     """
+
     _f16_ok = True
 
     # Mapping from Type to C code (and version) to use.
@@ -293,8 +316,12 @@ class Shape_i(gof.Op):
     """
     L{Op} to return the shape of a matrix.
 
-    @note: Non-differentiable.
+    Notes
+    -----
+    Non-differentiable.
+
     """
+
     _f16_ok = True
 
     # Mapping from Type to C code (and version) to use.
@@ -381,18 +408,24 @@ class Shape_i(gof.Op):
 
 
 def shape_i(var, i, fgraph=None):
-    """Equivalent of var.shape[i], but apply if possible the shape
-    feature optimization
+    """
+    Equivalent of var.shape[i], but apply if possible the shape feature
+    optimization.
 
     This is useful in optimization that need to get the shape. This
     remove the need of the following shape_feature optimization that
     convert it. So this speed up optimization and remove Equilibrium
     max iteration problems.
 
-    :param var: the variable we want to take the shape of
-    :param i: The shape dimensions we want
-    :param fgraph: optional. If var.fgraph do not exist, the fgraph that
-        have the shape_feature to introduce var in to get the optimized shape.
+    Parameters
+    ----------
+    var
+        The variable we want to take the shape of.
+    i
+        The shape dimensions we want
+    fgraph : optional
+        If var.fgraph do not exist, the fgraph that have the shape_feature to
+        introduce var in to get the optimized shape.
 
     """
     if fgraph is None and hasattr(var, 'fgraph'):
@@ -421,15 +454,20 @@ def shape_i(var, i, fgraph=None):
 
 
 def register_shape_i_c_code(typ, code, check_input, version=()):
-    """ Tell Shape_i how to generate C code for a Theano Type
+    """
+    Tell Shape_i how to generate C code for a Theano Type.
 
-    :param typ: A Theano type. It must be the Theano class itself and not
-                an instance of the class.
-    :param code: C code that gets the shape of dimensions %(i)s for the
-                 Theano type 'typ'.
-                 Use %(iname)s and %(oname)s for the input and output C
-                 variable names respectively.
-    :param version: A number indicating the version of the code, for cache.
+    Parameters
+    ----------
+    typ : Theano type
+        It must be the Theano class itself and not an instance of the class.
+    code : C code
+        Gets the shape of dimensions %(i)s for the Theano type 'typ'.
+        Use %(iname)s and %(oname)s for the input and output C variable names
+        respectively.
+    version
+        A number indicating the version of the code, for cache.
+
     """
     Shape_i.c_code_and_version[typ] = (code, check_input, version)
 
@@ -459,6 +497,7 @@ class FromFunctionOp(gof.Op):
     Also the gradient is undefined in the resulting op and Theano will
     raise an error if you attempt to get the gradient of a graph
     containing this op.
+
     """
 
     def __init__(self, fn, itypes, otypes, infer_shape):
@@ -519,29 +558,29 @@ class FromFunctionOp(gof.Op):
 
 def as_op(itypes, otypes, infer_shape=None):
     """
-    Decorator that converts a function into a basic Theano op that
-    will call the supplied function as its implementation.
+    Decorator that converts a function into a basic Theano op that will call
+    the supplied function as its implementation.
 
-    It takes an optional infer_shape parameter that should be a
-    callable with this signature:
+    It takes an optional infer_shape parameter that should be a callable with
+    this signature:
 
         def infer_shape(node, input_shapes):
             ...
             return output_shapes
 
-    Here `input_shapes` and `output_shapes` are lists of tuples that
-    represent the shape of the corresponding inputs/outputs.
+    Here `input_shapes` and `output_shapes` are lists of tuples that represent
+    the shape of the corresponding inputs/outputs.
 
-    This should not be used when performance is a concern since the
-    very basic nature of the resulting Op may interfere with certain
-    graph optimizations.
+    This should not be used when performance is a concern since the very basic
+    nature of the resulting Op may interfere with certain graph optimizations.
 
-    Example usage:
+    Examples
+    --------
+    @as_op(itypes=[theano.tensor.fmatrix, theano.tensor.fmatrix],
+           otypes=[theano.tensor.fmatrix])
+    def numpy_dot(a, b):
+        return numpy.dot(a, b)
 
-       @as_op(itypes=[theano.tensor.fmatrix, theano.tensor.fmatrix],
-              otypes=[theano.tensor.fmatrix])
-       def numpy_dot(a, b):
-           return numpy.dot(a, b)
     """
     if not isinstance(itypes, (list, tuple)):
         itypes = [itypes]
@@ -565,18 +604,19 @@ def as_op(itypes, otypes, infer_shape=None):
 
 
 def register_rebroadcast_c_code(typ, code, version=()):
-    """Tell Rebroadcast how to generate C code for a Theano Type
+    """
+    Tell Rebroadcast how to generate C code for a Theano Type.
 
-    :param typ: A Theano type. It must be the Theano class itself and not an
-                instance of the class.
+    typ : Theano type
+        It must be the Theano class itself and not an instance of the class.
+    code : C code
+        That checks if the dimension %(axis)s is of shape 1 for the Theano type
+        'typ'. Use %(iname)s and %(oname)s for the input and output C variable
+        names respectively, and %(axis)s for the axis that we need to check.
+        This code is put in a loop for all axes.
+    version
+        A number indicating the version of the code, for cache.
 
-    :param code: C code that checks if the dimension %(axis)s is of
-                 shape 1 for the Theano type 'typ'.  Use %(iname)s and
-                 %(oname)s for the input and output C variable names
-                 respectively, and %(axis)s for the axis that we need to
-                 check. This code is put in a loop for all axes.
-
-    :param version: A number indicating the version of the code, for cache.
     """
     Rebroadcast.c_code_and_version[typ] = (code, version)
 
@@ -585,17 +625,23 @@ class Rebroadcast(gof.Op):
     """
     Change the input's broadcastable fields in some predetermined way.
 
-    :code:`Rebroadcast((0, True), (1, False))(x)` would make :code:`x`
-    broadcastable in axis 0 and not broadcastable in axis 1
+    See Also
+    --------
+    unbroadcast <theano.tensor.unbroadcast>
+    addbroadcast <theano.tensor.addbroadcast>
+    patternbroadcast <theano.tensor.patternbroadcast>
 
-    .. seealso::
+    Notes
+    -----
+    Works inplace and works for CudaNdarrayType.
 
-      :func:`unbroadcast <theano.tensor.unbroadcast>`
-      :func:`addbroadcast <theano.tensor.addbroadcast>`
-      :func:`patternbroadcast <theano.tensor.patternbroadcast>`
+    Example
+    -------
+    `Rebroadcast((0, True), (1, False))(x)` would make `x` broadcastable in
+    axis 0 and not broadcastable in axis 1.
 
-    ..note: works inplace and works for CudaNdarrayType
     """
+
     view_map = {0: [0]}
     _f16_ok = True
     # Mapping from Type to C code (and version) to use.
@@ -717,17 +763,23 @@ class Rebroadcast(gof.Op):
 
 def register_specify_shape_c_code(typ, code, version=(),
                                   c_support_code_apply=None):
-    """ Tell SpecifyShape how to generate C code for a Theano Type
+    """
+    Tell SpecifyShape how to generate C code for a Theano Type.
 
-    :param typ: A Theano type. It must be the Theano class itself and
-                not an instance of the class.
-    :param code: C code that checks the shape and returns a view for
-                 the Theano type 'typ'. Use %(iname)s and %(oname)s
-                 for the input and output C variable names
-                 respectively.  %(shape)s is the vector of shape of
-                 %(iname)s.  Check that its length is good.
-    :param version: A number indicating the version of the code, for cache.
-    :param c_support_code_apply: extra code.
+    Parameters
+    ----------
+    typ : Theano type
+        It must be the Theano class itself and not an instance of the class.
+    code : C code
+        Checks the shape and returns a view for the Theano type 'typ'.
+        Use %(iname)s and %(oname)s for the input and output C variable names
+        respectively. %(shape)s is the vector of shape of %(iname)s.
+        Check that its length is good.
+    version
+        A number indicating the version of the code, for cache.
+    c_support_code_apply
+        Extra code.
+
     """
     SpecifyShape.c_code_and_version[typ] = (code, version,
                                             c_support_code_apply)
@@ -742,12 +794,16 @@ class SpecifyShape(gof.Op):
     the case most of the time if we only take the shape of the output.
     Maybe there are other optimizations that will mess with this.
 
-    @note:     Maybe in the future we will never do the assert!
-    @note:     We currently don't support specifying partial shape information.
+    Notes
+    -----
+    Maybe in the future we will never do the assert!
 
-    @todo:     test this op with sparse and cuda ndarray.
-               Do C code for them too.
+    We currently don't support specifying partial shape information.
+
+    TODO : test this op with sparse and cuda ndarray. Do C code for them too.
+
     """
+
     view_map = {0: [0]}
     # Mapping from Type to C code (and version) to use.
     # In the C code, the name of the input variable is %(iname)s,

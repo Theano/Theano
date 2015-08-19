@@ -1,4 +1,6 @@
-"""WRITEME
+"""
+WRITEME
+
 """
 from __future__ import print_function
 import logging
@@ -34,8 +36,9 @@ AddConfigVar('optimizer_requiring',
 
 def check_equal(x, y):
     """
-    Returns True iff x[0] and y[0] are equal (checks the dtype and
-    shape if x and y are numpy.ndarray instances). Used internally.
+    Returns True iff x[0] and y[0] are equal (checks the dtype and shape if x
+    and y are numpy.ndarray instances). Used internally.
+
     """
     # I put the import here to allow using theano without scipy.
     import scipy.sparse as sp
@@ -125,17 +128,19 @@ def register_optimizer(name, opt):
 
 
 class AddDestroyHandler(gof.Optimizer):
-    """This optimizer performs two important functions:
+    """
+    This optimizer performs two important functions:
 
     1) It has a 'requirement' of the destroyhandler. This means that the fgraph
     will include it as a feature for this optimization, and keep this feature
-    enabled for subsequent optimizations.  All optimizations that work inplace
+    enabled for subsequent optimizations. All optimizations that work inplace
     on any of their inputs must run *after* this optimization to ensure that
     the DestroyHandler has been included in the fgraph.
 
     2) It tries to replace each output with an Op that purports to destroy it
-    (but it won't I promise).  If this replacement succeeds it means that
-    there is a bug in theano.  It should not be possible to destroy outputs.
+    (but it won't I promise). If this replacement succeeds it means that
+    there is a bug in theano. It should not be possible to destroy outputs.
+
     """
     def apply(self, fgraph):
         for o in fgraph.outputs:
@@ -157,11 +162,13 @@ class AddDestroyHandler(gof.Optimizer):
 
 
 class AddNoOutputFromInplace(gof.Optimizer):
-    """This optimizer adds to the fgraph a feature that will prevent outputs
+    """
+    This optimizer adds to the fgraph a feature that will prevent outputs
     of a fgraph to be created by performing inplace operations on intermediary
     variables. This is useful when the outputs of the fgraph are preallocated
     to prevent useless copying of the data. Currently, scan preallocates its
     outputs
+
     """
     def add_requirements(self, fgraph):
         super(AddNoOutputFromInplace, self).add_requirements(fgraph)
@@ -169,10 +176,12 @@ class AddNoOutputFromInplace(gof.Optimizer):
 
 
 class PrintCurrentFunctionGraph(gof.Optimizer):
-    """This optimizer is for debugging.
+    """
+    This optimizer is for debugging.
 
     Toss it into the optimization pipeline to see the state of things at any
     given point.
+
     """
     def __init__(self, header):
         self.header = header
@@ -233,18 +242,23 @@ optdb.register('merge3', gof.MergeOptimizer(),
 
 class Mode(object):
     """
-    The Mode represents a way to optimize and then link a computation
-    graph.
+    The Mode represents a way to optimize and then link a computation graph.
 
-     * optimizer -> a structure of type Optimizer. An Optimizer may
-       simplify the math, put similar computations together, improve
-       numerical stability and various other improvements.
-     * linker -> a structure of type Linker. A Linker decides which
-       implementations to use (C or Python, for example) and how to
-       string them together to perform the computation.
+    Parameters
+    ----------
+    optimizer : a structure of type Optimizer
+        An Optimizer may simplify the math, put similar computations together,
+        improve numerical stability and various other improvements.
+    linker : a structure of type Linker
+        A Linker decides which implementations to use (C or Python, for example)
+        and how to string them together to perform the computation.
 
-    See predefined_linkers, predefined_optimizers and also
-    predefined_modes.
+    See Also
+    --------
+    predefined_linkers
+    predefined_optimizers
+    predefined_modes
+
     """
 
     def __init__(self, linker=None, optimizer='default'):
@@ -326,6 +340,7 @@ class Mode(object):
         Keyword arguments can be provided for the linker,
         in which case its `clone` method will be called with these
         arguments.
+
         """
         new_linker = self.linker.clone(**link_kwargs)
         new_optimizer = self.provided_optimizer
@@ -412,7 +427,10 @@ def get_default_mode():
 
 
 def register_mode(name, mode):
-    """Add a `Mode` which can be referred to by `name` in `function`."""
+    """
+    Add a `Mode` which can be referred to by `name` in `function`.
+
+    """
     if name in predefined_modes:
         raise ValueError('Mode name already taken: %s' % name)
     predefined_modes[name] = mode
