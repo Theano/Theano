@@ -1451,7 +1451,7 @@ def _factor_canonicalized(lst):
 def _gemm_from_factored_list(lst):
     """
     Returns None, or a list to replace node.outputs.
-    
+
     """
     lst2 = []
     # Remove the tuple that can't be cast correctly.
