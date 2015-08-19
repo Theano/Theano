@@ -579,6 +579,13 @@ class Function(object):
                 1. same type
                 2. same shape or dim?
             """
+            SharedVariable = theano.tensor.sharedvar.SharedVariable
+            assert isinstance(sv_ori, SharedVariable), (
+                "Key of swap should be SharedVariable, given:", sv_ori,
+                " type", type(sv_ori))
+            assert isinstance(sv_rpl, SharedVariable), (
+                "Value of swap should be SharedVariable, given:", sv_rpl,
+                "type", type(sv_ori))
             assert sv_ori.type == sv_rpl.type, (
                 "Type of given SharedVariable conflicts with original one",
                 "Type of given SharedVariable:", sv_rpl.type,
@@ -641,6 +648,7 @@ class Function(object):
 
                     # Swap SharedVariable in fgraph
                     # if inputs was replaced, change self.inputs
+
                     fg_cpy.inputs[index] = swap_sv
                     fg_cpy.replace(in_v, swap_sv, reason="Swap SV")
 
