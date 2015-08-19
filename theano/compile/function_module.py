@@ -580,7 +580,7 @@ class Function(object):
                 2. same shape or dim?
             """
             assert sv_ori.type == sv_rpl.type, (
-                "Type of given SharedVariable conflicts with origianl one",
+                "Type of given SharedVariable conflicts with original one",
                 "Type of given SharedVariable:", sv_rpl.type,
                 "Type of original SharedVariable:", sv_ori.type)
 
@@ -592,7 +592,7 @@ class Function(object):
 
         # Delete update output in fgraph and updates In instances if needed
         if delete_updates:
-            # The first len(maker.outputs) variabels are original variables.
+            # The first len(maker.outputs) variables are original variables.
             # The rest are the updates.
             out_vars = maker.fgraph.outputs[:len(maker.outputs)]
         else:
