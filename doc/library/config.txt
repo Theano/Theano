@@ -370,7 +370,7 @@ import theano and print the config variable, as in:
     `amdlibm <http://developer.amd.com/cpu/libraries/libm/>`__
     library, which is faster than the standard libm.
 
-.. attribute:: lib.cnmem
+.. attribute:: config.lib.cnmem
 
     Float value: >= 0
 
