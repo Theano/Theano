@@ -84,7 +84,19 @@ class SparseBlockGemv(Op):
         return Apply(self, [o, W, h, inputIdx, outputIdx], [output])
 
     def perform(self, node, inp, out_):
-        raise NotImplementedError('Optimization of SparseBlockGemv failed.')
+        o, W, h, iIdx, oIdx = inp[:5]
+
+        if not self.inplace:
+            o = o.copy()
+
+        for b in range(o.shape[0]):
+            for j in range(o.shape[1]):
+                outputIdx = oIdx[b, j]
+                for i in range(h.shape[1]):
+                    inputIdx = iIdx[b, i]
+                    w = W[inputIdx, outputIdx]
+                    o[b, j, :] += numpy.dot(h[b, i], w)
+        out_[0][0] = o
 
     def grad(self, inputs, grads):
         o, W, h, inputIdx, outputIdx = inputs
@@ -161,50 +173,6 @@ class SparseBlockOuter(Op):
                      [output])
 
     def perform(self, node, inp, out_):
-        raise NotImplementedError('Optimization of SparseBlockOuter failed.')
-
-    def grad(self, inputs, output_gradients):
-        raise NotImplementedError("SparseBlockOuter has no gradient "
-                                  "implemented")
-
-
-class CpuSparseBlockGemv(SparseBlockGemv):
-    """
-    CPU version of SparseBlockGemv. Check SparseBlockGemv's docstring for more
-    information.
-
-    This should not be directly called since the interface is subject
-    to change without notice.  Use the sandbox.blocksparse.sparse_block_dot()
-    function for a stable interface.
-    """
-
-    def perform(self, node, inp, out_):
-        o, W, h, iIdx, oIdx = inp[:5]
-
-        if not self.inplace:
-            o = o.copy()
-
-        for b in range(o.shape[0]):
-            for j in range(o.shape[1]):
-                outputIdx = oIdx[b, j]
-                for i in range(h.shape[1]):
-                    inputIdx = iIdx[b, i]
-                    w = W[inputIdx, outputIdx]
-                    o[b, j, :] += numpy.dot(h[b, i], w)
-        out_[0][0] = o
-
-
-class CpuSparseBlockOuter(SparseBlockOuter):
-    """
-    CPU version of SparseBlockOuter. See SparseBlockOuter's docstring for more
-    information.
-
-    This op should not be called directly since its interface is
-    subject to change without notice.  It is involved in the gradient
-    of GpuSparseBlockGemv. The gradient is not implemented.
-    """
-
-    def perform(self, node, inp, out_):
         o, x, y, xIdx, yIdx, alpha = inp[:6]
 
         if not self.inplace:
@@ -222,11 +190,6 @@ sparse_block_gemv = SparseBlockGemv(False)
 sparse_block_gemv_inplace = SparseBlockGemv(True)
 sparse_block_outer = SparseBlockOuter(False)
 sparse_block_outer_inplace = SparseBlockOuter(True)
-
-cpu_sparse_block_gemv = CpuSparseBlockGemv(False)
-cpu_sparse_block_gemv_inplace = CpuSparseBlockGemv(True)
-cpu_sparse_block_outer = CpuSparseBlockOuter(False)
-cpu_sparse_block_outer_inplace = CpuSparseBlockOuter(True)
 
 
 def sparse_block_dot(W, h, inputIdx, b, outputIdx):

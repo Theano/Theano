@@ -11,7 +11,7 @@ from theano import tensor
 import theano.tests.unittest_tools as utt
 
 from theano.sandbox.blocksparse import sparse_block_dot, \
-    cpu_sparse_block_gemv, cpu_sparse_block_outer
+    sparse_block_gemv, sparse_block_outer
 
 
 class BlockSparse_Gemv_and_Outer(unittest.TestCase):
@@ -24,8 +24,8 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         self.mode = theano.compile.get_default_mode().excluding(
             'constant_folding'
         )
-        self.gemv_op = cpu_sparse_block_gemv
-        self.outer_op = cpu_sparse_block_outer
+        self.gemv_op = sparse_block_gemv
+        self.outer_op = sparse_block_outer
 
     @staticmethod
     def gemv_data():

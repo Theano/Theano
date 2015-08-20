@@ -1,10 +1,9 @@
 import theano
 from theano import tensor
-from theano.sandbox.blocksparse import CpuSparseBlockGemv, \
-    CpuSparseBlockOuter, sparse_block_dot
+from theano.sandbox.blocksparse import sparse_block_dot
 
 
-def test_blocksparse_cpu_gemv_opt():
+def test_blocksparse_inplace_gemv_opt():
     b = tensor.fmatrix()
     W = tensor.ftensor4()
     h = tensor.ftensor3()
@@ -15,10 +14,13 @@ def test_blocksparse_cpu_gemv_opt():
 
     f = theano.function([W, h, iIdx, b, oIdx], o)
 
-    assert isinstance(f.maker.fgraph.toposort()[-1].op, CpuSparseBlockGemv)
+    if theano.config.mode == "FAST_COMPILE":
+        assert not f.maker.fgraph.toposort()[-1].op.inplace
+    else:
+        assert f.maker.fgraph.toposort()[-1].op.inplace
 
 
-def test_blocksparse_cpu_outer_opt():
+def test_blocksparse_inplace_outer_opt():
     b = tensor.fmatrix()
     W = tensor.ftensor4()
     h = tensor.ftensor3()
@@ -32,4 +34,7 @@ def test_blocksparse_cpu_outer_opt():
     f = theano.function([W, h, iIdx, b, oIdx],
                         [o, tensor.grad(o.sum(), wrt=W)])
 
-    assert isinstance(f.maker.fgraph.toposort()[-1].op, CpuSparseBlockOuter)
+    if theano.config.mode == "FAST_COMPILE":
+        assert not f.maker.fgraph.toposort()[-1].op.inplace
+    else:
+        assert f.maker.fgraph.toposort()[-1].op.inplace
