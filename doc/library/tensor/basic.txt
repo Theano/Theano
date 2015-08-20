@@ -567,7 +567,7 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`.
     :type x: any TensorVariable (or compatible)
 
     :type n_ones: int
-    :type n_ones: number of dimension to be added to `x`
+    :param n_ones: number of dimension to be added to `x`
 
 
 
@@ -581,7 +581,21 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`.
     :type x: any TensorVariable (or compatible)
 
     :type n_ones: int
-    :type n_ones: number of dimension to be added to `x`
+    :param n_ones: number of dimension to be added to `x`
+
+
+.. function:: shape_padaxis(t, axis)
+
+    Reshape `t` by adding 1 at the dimension `axis`. Note that this new
+    dimension will be broadcastable. To make it non-broadcastable
+    see the :func:`unbroadcast`.
+
+    :type x: any TensorVariable (or compatible)
+    :param x: variable to be reshaped
+
+    :type axis: int
+    :param  axis: axis where to add the new dimension to `x`
+
 
 .. autofunction:: unbroadcast(x, *axes)
 

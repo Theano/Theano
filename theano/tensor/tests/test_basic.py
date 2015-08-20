@@ -48,7 +48,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         nonzero, flatnonzero, nonzero_values,
         stacklists, DimShuffle, hessian, ptp, power,
         swapaxes, choose, Choose, NoneConst, AllocEmpty,
-        isclose, allclose, mgrid, ogrid, shape_padaxis
+        isclose, allclose, mgrid, ogrid
         )
 
 from theano.tests import unittest_tools as utt
