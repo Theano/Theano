@@ -624,7 +624,7 @@ class Function(object):
 
             # Check if given ShareVariables exist
             for sv in iterkeys(swap):
-                if not exist_svs.has_key(sv):
+                if not sv in exist_svs:
                     raise ValueError("SharedVariable: %s not found" %
                                      (sv.name))
 
@@ -635,7 +635,7 @@ class Function(object):
                 # Otherwise we don't touch them.
                 var = maker.inputs[index].variable
 
-                if swap.has_key(var):
+                if var in swap:
                     swap_sv = swap[var]
                     checkSV(i.variable, swap_sv)
 
@@ -708,7 +708,7 @@ class Function(object):
                                             f_cpy.input_storage):
 
             # Share immutable ShareVariable and constant input's storage
-            swapped = swap is not None and swap.has_key(in_ori.variable)
+            swapped = swap is not None and in_ori.variable in swap
 
             # Using the original storage if SharedVariable will not be updated
             # and is not swapped
