@@ -729,6 +729,52 @@ class T_Scan(unittest.TestCase):
         sum_of_grads = sum([g.sum() for g in gradients])
         second_gradients = theano.grad(sum_of_grads, inputs[0])
 
+    def test_verify_second_grad_sitsot(self):
+
+        def get_sum_of_grad(inp):
+
+            scan_outputs, updates = theano.scan(fn=lambda x: x * 2,
+                                                outputs_info=[inp],
+                                                n_steps=5)
+
+            # Take the gradient of each output wrt its corresponding initial
+            # state
+            return theano.grad(scan_outputs.sum(), inp).sum()
+
+        # Call verify_grad to ensure the correctness of the second gradients
+        floatX = theano.config.floatX
+        inputs_test_values = [numpy.random.random((3)).astype(floatX)]
+        theano.tests.unittest_tools.verify_grad(get_sum_of_grad,
+                                                inputs_test_values)
+
+    def test_verify_second_grad_mitsot1(self):
+
+        def inner_fct(mitsot_m2, sitsot):
+            total = mitsot_m2 + sitsot
+            output = total ** 2
+            return output, output
+
+        def get_sum_of_grad(input0, input1):
+            outputs_info = [dict(initial=input0, taps=[-2]), input1]
+
+            scan_outputs, updates = theano.scan(fn=inner_fct,
+                                                outputs_info=outputs_info,
+                                                n_steps=5)
+
+            # Take the gradient of each output wrt its corresponding initial
+            # state
+            gradients = [theano.grad(scan_outputs[0].sum(), input0),
+                         theano.grad(scan_outputs[1].sum(), input1)]
+
+            return gradients[0].sum() + gradients[1].sum()
+
+        # Call verify_grad to ensure the correctness of the second gradients
+        floatX = theano.config.floatX
+        inputs_test_values = [numpy.random.random((2, 3)).astype(floatX),
+                              numpy.random.random((3)).astype(floatX)]
+        theano.tests.unittest_tools.verify_grad(get_sum_of_grad,
+                                                inputs_test_values)
+
     def test_grad_two_scans(self):
 
         # data input & output
