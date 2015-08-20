@@ -1,7 +1,8 @@
 """ Header text for the C and Fortran BLAS interfaces.
 
 There is no standard name or location for this header, so we just insert it
-ourselves into the C code
+ourselves into the C code.
+
 """
 import logging
 import textwrap
@@ -32,6 +33,7 @@ def detect_macos_sdot_bug():
           detected. Its value is returned by the function
         - detect_macos_sdot_bug.fix_works will be set to True if the fix was
           attempted, and succeeded.
+
     """
     _logger.debug('Starting detection of bug in Mac OS BLAS sdot_ routine')
     if detect_macos_sdot_bug.tested:

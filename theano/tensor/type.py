@@ -12,7 +12,27 @@ _logger = logging.getLogger("theano.tensor.type")
 
 
 class TensorType(Type):
-    """Symbolic `Type` representing a numpy.ndarray value."""
+    """
+    Symbolic `Type` representing a numpy.ndarray value.
+
+    Initialize self.dtype and self.broadcastable.
+
+    Parameters
+    ----------
+    dtype: str
+        Corresponding to numpy dtype (e.g., 'int64')
+        The value (ndarray) associated to a `Variable` of this `Type` will
+        have this dtype.
+    broadcastable: tuple, list, or array of boolean values
+        This argument serves two purposes. First, the True elements of this
+        list indicate the dimensions where the shape of an associated value
+        must be 1. Secondly, the length of this list is the number of
+        dimensions that an associated value must have. See
+        doc:`broadcasting` for an explanation of how this list is used.
+    name : str
+        Optional name for this type.
+
+    """
 
     filter_checks_isfinite = False
     """
@@ -21,21 +41,6 @@ class TensorType(Type):
     """
 
     def __init__(self, dtype, broadcastable, name=None, sparse_grad=False):
-        """Initialize self.dtype and self.broadcastable.
-
-        :Parameters:
-         - `dtype`: str corresponding to numpy dtype (e.g., 'int64')
-           The value (ndarray) associated to a `Variable` of this `Type` will
-           have this dtype.
-         - `broadcastable`: tuple, list, or array of boolean values
-           This argument serves two purposes.  First, the True elements of this
-           list indicate the dimensions where the shape of an associated value
-           must be 1.  Secondly, the length of this list is the number of
-           dimensions that an associated value must have.  See
-           :doc:`broadcasting` for an explanation of how this list is used.
-         - `name`: str
-           Optional name for this type.
-        """
         self.dtype = str(dtype)
         if self.dtype == 'floatX':
             self.dtype = config.floatX
@@ -56,6 +61,7 @@ class TensorType(Type):
         """
         Return a copy of the type optionally with a new dtype or
         broadcastable pattern.
+
         """
         if dtype is None:
             dtype = self.dtype
@@ -65,11 +71,13 @@ class TensorType(Type):
                               sparse_grad=self.sparse_grad)
 
     def filter(self, data, strict=False, allow_downcast=None):
-        """Convert `data` to something which can be associated to a
+        """
+        Convert `data` to something which can be associated to a
         `TensorVariable`.
 
-        This function is not meant to be called in user code.  It is for
+        This function is not meant to be called in user code. It is for
         `Linker` instances to use when running a compiled graph.
+
         """
         # Explicit error message when one accidentally uses a Variable as
         # input (typical mistake, especially with shared variables).
@@ -191,11 +199,13 @@ class TensorType(Type):
         return data
 
     def filter_variable(self, other, allow_convert=True):
-        """Convert a symbolic Variable into a TensorType, if compatible.
+        """
+        Convert a symbolic Variable into a TensorType, if compatible.
 
         For the moment, only a TensorType or CudaNdarrayType will be
         converted, provided they have the same number of dimensions,
         broadcastable pattern, and dtype.
+
         """
         if hasattr(other, '_as_TensorVariable'):
             other = other._as_TensorVariable()
@@ -230,10 +240,12 @@ class TensorType(Type):
         return "value is valid"
 
     def dtype_specs(self):
-        """Return a tuple (python type, c type, numpy typenum) that corresponds
+        """
+        Return a tuple (python type, c type, numpy typenum) that corresponds
         to self.dtype.
 
         This function is used internally as part of C code generation.
+
         """
         # TODO: add more type correspondances for e.g. int32, int64, float32,
         # complex64, etc.
@@ -261,7 +273,10 @@ class TensorType(Type):
         return scal.get_scalar_type(dtype=self.dtype)
 
     def __eq__(self, other):
-        """Compare True iff other is the same kind of TensorType"""
+        """
+        Compare True iff other is the same kind of TensorType.
+
+        """
         return type(self) == type(other) and other.dtype == self.dtype \
             and other.broadcastable == self.broadcastable
 
@@ -305,14 +320,19 @@ class TensorType(Type):
     def values_eq_approx(a, b, allow_remove_inf=False, allow_remove_nan=False,
                          rtol=None, atol=None):
         """
-        :param allow_remove_inf: If True, when there is an inf in a,
-                                 we allow any value in b in that position.
-                                 Event -inf
-        :param allow_remove_nan: If True, when there is a nan in a,
-                                 we allow any value in b in that position.
-                                 Event +-inf
-        :param rtol: relative tolerance, passed to _allclose
-        :param atol: absolute tolerance, passed to _allclose
+        Parameters
+        ----------
+        allow_remove_inf
+            If True, when there is an inf in a, we allow any value in b in
+            that position. Event -inf
+        allow_remove_nan
+            If True, when there is a nan in a, we allow any value in b in
+            that position. Event +-inf
+        rtol
+            Relative tolerance, passed to _allclose.
+        atol
+            Absolute tolerance, passed to _allclose.
+
         """
         if isinstance(a, numpy.ndarray) and isinstance(b, numpy.ndarray):
             if a.shape != b.shape:
@@ -389,7 +409,8 @@ class TensorType(Type):
 
     ndim = property(lambda self: len(self.broadcastable),
                     doc="number of dimensions")
-    """Number of dimensions
+    """
+    Number of dimensions.
 
     This read-only property is the preferred way to get the number of
     dimensions of a `TensorType`.
@@ -397,12 +418,15 @@ class TensorType(Type):
     """
 
     def make_variable(self, name=None):
-        """Return a `TensorVariable` of this type
+        """
+        Return a `TensorVariable` of this type.
 
-        :Parameters:
-         - `name`: str
-           A pretty name to identify this `Variable` when printing and
-           debugging
+        Parameters
+        ----------
+        name : str
+            A pretty name to identify this `Variable` when printing and
+            debugging
+
         """
         return self.Variable(self, name=name)
 
@@ -430,7 +454,10 @@ class TensorType(Type):
         # "TensorType{%s, %s}" % (str(self.dtype), str(self.broadcastable))
 
     def c_declare(self, name, sub, check_input=True):
-        """Override `CLinkerType.c_declare` """
+        """
+        Override `CLinkerType.c_declare`.
+
+        """
         if(check_input):
             check = """
             typedef %(dtype)s dtype_%(name)s;
@@ -444,13 +471,19 @@ class TensorType(Type):
         return declaration + check
 
     def c_init(self, name, sub):
-        """Override `CLinkerType.c_init` """
+        """
+        Override `CLinkerType.c_init`.
+
+        """
         return """
         %(name)s = NULL;
         """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
 
     def c_extract(self, name, sub, check_input=True):
-        """Override `CLinkerType.c_extract` """
+        """
+        Override `CLinkerType.c_extract`.
+
+        """
         if(check_input):
             check = """
             %(name)s = NULL;
@@ -509,7 +542,10 @@ class TensorType(Type):
         """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
 
     def c_cleanup(self, name, sub):
-        """Override `CLinkerType.c_cleanup` """
+        """
+        Override `CLinkerType.c_cleanup`.
+
+        """
         return """
         if (%(name)s) {
             Py_XDECREF(%(name)s);
@@ -517,7 +553,10 @@ class TensorType(Type):
         """ % locals()
 
     def c_sync(self, name, sub):
-        """Override `CLinkerType.c_sync` """
+        """
+        Override `CLinkerType.c_sync`.
+
+        """
         fail = sub['fail']
         type_num = self.dtype_specs()[2]
         return """
@@ -558,7 +597,10 @@ class TensorType(Type):
         """ % locals()
 
     def c_headers(self):
-        """Override `CLinkerObject.c_headers` """
+        """
+        Override `CLinkerObject.c_headers`.
+
+        """
         return scal.get_scalar_type(self.dtype).c_headers()
 
     def c_libraries(self):
@@ -568,7 +610,10 @@ class TensorType(Type):
         return scal.get_scalar_type(self.dtype).c_compile_args()
 
     def c_support_code(self):
-        """Override `CLinkerObject.c_support_code` """
+        """
+        Override `CLinkerObject.c_support_code`.
+
+        """
         return scal.get_scalar_type(self.dtype).c_support_code()
 
     def c_init_code(self):
@@ -584,6 +629,7 @@ class TensorType(Type):
     def value_zeros(self, shape):
         """
         Create an numpy ndarray full of 0 values.
+
         """
         return numpy.zeros(shape, dtype=self.dtype)
 
@@ -604,17 +650,33 @@ class TensorType(Type):
         ``get_size()`` will be called on the output of this function
         when printing the memory profile.
 
-        :param obj: The object that this Type represents during execution
-        :return: Python object that ``self.get_size()`` understands
+        Parameters
+        ----------
+        obj
+            The object that this Type represents during execution.
+
+        Returns
+        -------
+        object
+            Python object that ``self.get_size()`` understands.
+
         """
         return obj.shape
 
     def get_size(self, shape_info):
-        """ Number of bytes taken by the object represented by shape_info.
+        """
+        Number of bytes taken by the object represented by shape_info.
 
-        :param shape_info: the output of the call to get_shape_info()
-        :return: the number of bytes taken by the object described by
-            ``shape_info``.
+        Parameters
+        ----------
+        shape_info
+            The output of the call to get_shape_info().
+
+        Returns
+        -------
+        int
+            The number of bytes taken by the object described by ``shape_info``.
+
         """
         if shape_info:
             return numpy.prod(shape_info) * numpy.dtype(self.dtype).itemsize

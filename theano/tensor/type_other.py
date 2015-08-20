@@ -105,6 +105,7 @@ SliceType.Constant = SliceConstant
 class NoneTypeT(Generic):
     """
     Inherit from Generic to have c code working.
+
     """
 
     def filter(self, x, strict=False, allow_downcast=None):

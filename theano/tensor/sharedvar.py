@@ -8,9 +8,12 @@ from theano.compile import shared_constructor, SharedVariable
 
 
 def load_shared_variable(val):
-    """This function is only here to keep some pickles loading
+    """
+    This function is only here to keep some pickles loading
     after a failed fix done in August 2011.
-    It can be removed after sufficient time has passed."""
+    It can be removed after sufficient time has passed.
+
+    """
     return tensor_constructor(val)
 
 
@@ -22,13 +25,15 @@ class TensorSharedVariable(_tensor_py_operators, SharedVariable):
 @shared_constructor
 def tensor_constructor(value, name=None, strict=False, allow_downcast=None,
                        borrow=False, broadcastable=None):
-    """SharedVariable Constructor for TensorType
+    """
+    SharedVariable Constructor for TensorType.
 
-    :note: Regarding the inference of the broadcastable pattern...
+    Notes
+    -----
+    Regarding the inference of the broadcastable pattern...
     The default is to assume that the value might be resized in any
-    dimension, so the default broadcastable is
-    ``(False,)*len(value.shape)``.  The optional `broadcastable`
-    argument will override this default.
+    dimension, so the default broadcastable is ``(False,)*len(value.shape)``.
+    The optional `broadcastable` argument will override this default.
 
     """
     if not isinstance(value, numpy.ndarray):
@@ -61,13 +66,16 @@ class ScalarSharedVariable(_tensor_py_operators, SharedVariable):
 @shared_constructor
 def scalar_constructor(value, name=None, strict=False, allow_downcast=None,
                        borrow=False):
-    """SharedVariable constructor for scalar values. Default: int64 or float64.
+    """
+    SharedVariable constructor for scalar values. Default: int64 or float64.
 
-    :note: We implement this using 0-d tensors for now.
+    Notes
+    -----
+    We implement this using 0-d tensors for now.
 
-    :note: We ignore the borrow parameter as we convert ``value`` to an
-      ndarray (this is a new object). This respects the semantic of
-      borrow, as it is a hint to Theano that we can reuse it.
+    We ignore the borrow parameter as we convert ``value`` to an
+    ndarray (this is a new object). This respects the semantic of
+    borrow, as it is a hint to Theano that we can reuse it.
 
     """
     if not isinstance(value, (numpy.number, float, int, complex)):

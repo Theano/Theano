@@ -1,4 +1,5 @@
-""" Ops for downsampling images.
+""" 
+Ops for downsampling images.
 
 Planned:
 DownsampleFactorMax, DownsampleAvg, DownsampleSoftmax.
@@ -29,12 +30,14 @@ def max_pool_2d_same_size(input, patch_size):
     keeping only the maximum values. The output has the same dimensions as
     the input.
 
-    :type input: 4-D theano tensor of input images.
-    :param input: input images. Max pooling will be done over the 2 last
-        dimensions.
-    :type patch_size: tuple of length 2
-    :param patch_size: size of the patch (patch height, patch width).
+    Parameters
+    ----------
+    input : 4-D theano tensor of input images
+        Input images. Max pooling will be done over the 2 last dimensions.
+    patch_size : tuple of length 2
+        Size of the patch (patch height, patch width).
         (2,2) will retain only one non-zero value per patch of 4 values.
+
     """
     output = DownsampleFactorMax(patch_size, True)(input)
     outs = MaxPoolGrad(patch_size, True)(input, output, output)
@@ -48,29 +51,29 @@ def max_pool_2d(input, ds, ignore_border=False, st=None, padding=(0, 0),
     the specified factor, by keeping only the maximum value of non-overlapping
     patches of size (ds[0],ds[1])
 
-    :type input: N-D theano tensor of input images.
-    :param input: input images. Max pooling will be done over the 2 last
-        dimensions.
-    :type ds: tuple of length 2
-    :param ds: factor by which to downscale (vertical ds, horizontal ds).
+    Parameters
+    ----------
+    input : N-D theano tensor of input images
+        Input images. Max pooling will be done over the 2 last dimensions.
+    ds : tuple of length 2
+        Factor by which to downscale (vertical ds, horizontal ds).
         (2,2) will halve the image in each dimension.
-    :type ignore_border: bool
-    :param ignore_border: When True, (5,5) input with ds=(2,2)
-        will generate a (2,2) output. (3,3) otherwise.
-    :type st: tuple of lenght 2
-    :param st: stride size, which is the number of shifts
-        over rows/cols to get the the next pool region.
-        if st is None, it is considered equal to ds
-        (no overlap on pooling regions)
-    :param padding: (pad_h, pad_w), pad zeros to extend beyond four borders
+    ignore_border : bool
+        When True, (5,5) input with ds=(2,2) will generate a (2,2) output.
+        (3,3) otherwise.
+    st : tuple of lenght 2
+        Stride size, which is the number of shifts over rows/cols to get the
+        next pool region. If st is None, it is considered equal to ds
+        (no overlap on pooling regions).
+    padding : tuple of two ints
+        (pad_h, pad_w), pad zeros to extend beyond four borders
             of the images, pad_h is the size of the top and bottom margins,
             and pad_w is the size of the left and right margins.
-    :type padding: tuple of two ints
-    :param mode: 'max', 'sum', 'average_inc_pad' or 'average_exc_pad'.
-        Operation executed on each window.  `max` and `sum` always exclude
+    mode : {'max', 'sum', 'average_inc_pad', 'average_exc_pad'}
+        Operation executed on each window. `max` and `sum` always exclude
         the padding in the computation. `average` gives you the choice to
         include or exclude it.
-    :type mode: string
+
     """
     if input.ndim < 2:
         raise NotImplementedError('max_pool_2d requires a dimension >= 2')
@@ -104,44 +107,69 @@ def max_pool_2d(input, ds, ignore_border=False, st=None, padding=(0, 0),
 
 
 class DownsampleFactorMax(Op):
-    """For N-dimensional tensors, consider that the last two
-    dimensions span images.  This Op downsamples these images by
-    taking the max, sum or average over different patch.
+    """
+    For N-dimensional tensors, consider that the last two dimensions span
+    images. This Op downsamples these images by taking the max, sum or average
+    over different patch.
+
+    The constructor takes the max, sum or average or different input patches.
+
+    Parameters
+    ----------
+    ds : list or tuple of two ints
+        Downsample factor over rows and column.
+        ds indicates the pool region size.
+    ignore_border : bool
+        If ds doesn't divide imgshape, do we include an extra row/col of partial
+        downsampling (False) or ignore it (True).
+    st : list or tuple of two ints or None
+        Stride size, which is the number of shifts over rows/cols to get the
+        next pool region. If st is None, it is considered equal to ds
+        (no overlap on pooling regions).
+    padding: tuple of two ints
+        (pad_h, pad_w), pad zeros to extend beyond four borders of the images,
+        pad_h is the size of the top and bottom margins, and pad_w is the size
+        of the left and right margins.
+    mode : {'max', 'sum', 'average_inc_pad', 'average_exc_pad'}
+        ('average_inc_pad' excludes the padding from the count,
+        'average_exc_pad' include it)
 
     """
+
     __props__ = ('ds', 'ignore_border', 'st', 'padding', 'mode')
 
     @staticmethod
     def out_shape(imgshape, ds, ignore_border=False, st=None, padding=(0, 0)):
-        """Return the shape of the output from this op, for input of given
+        """
+        Return the shape of the output from this op, for input of given
         shape and flags.
 
-        :param imgshape: the shape of a tensor of images. The last two elements
-            are interpreted as the number of rows, and the number of cols.
-        :type imgshape: tuple, list, or similar of integer or
-            scalar Theano variable.
-
-        :param ds: downsample factor over rows and columns
-                   this parameter indicates the size of the pooling region
-        :type ds: list or tuple of two ints
-
-        :param st: the stride size. This is the distance between the pooling
-                   regions. If it's set to None, in which case it equlas ds.
-        :type st: list or tuple of two ints
-
-        :param ignore_border: if ds doesn't divide imgshape, do we include an
-            extra row/col of partial downsampling (False) or ignore it (True).
-        :type ignore_border: bool
-
-        :param padding: (pad_h, pad_w), pad zeros to extend beyond four borders
+        Parameters
+        ----------
+        imgshape : tuple, list, or similar of integer or scalar Theano variable
+            The shape of a tensor of images. The last two elements are
+            interpreted as the number of rows, and the number of cols.
+        ds : list or tuple of two ints
+            Downsample factor over rows and columns this parameter indicates
+            the size of the pooling region.
+        st : list or tuple of two ints
+            The stride size. This is the distance between the pooling regions.
+            If it's set to None, it equals ds.
+        ignore_border : bool
+            If ds doesn't divide imgshape, do we include an extra row/col of
+            partial downsampling (False) or ignore it (True).
+        padding : tuple of two ints
+            (pad_h, pad_w), pad zeros to extend beyond four borders
             of the images, pad_h is the size of the top and bottom margins,
             and pad_w is the size of the left and right margins.
-        :type padding: tuple of two ints
 
-        :rtype: list
-        :returns: the shape of the output from this op, for input of given
-            shape.  This will have the same length as imgshape, but with last
-            two elements reduced as per the downsampling & ignore_border flags.
+        Returns
+        -------
+        list
+            The shape of the output from this op, for input of given shape.
+            This will have the same length as imgshape, but with last two
+            elements reduced as per the downsampling & ignore_border flags.
+
         """
         if len(imgshape) < 2:
             raise TypeError('imgshape must have at least two elements '
@@ -190,33 +218,6 @@ class DownsampleFactorMax(Op):
 
     def __init__(self, ds, ignore_border=False, st=None, padding=(0, 0),
                  mode='max'):
-        """ Take the max, sum or average or different input patches.
-
-        :param ds: downsample factor over rows and column.
-                   ds indicates the pool region size.
-        :type ds: list or tuple of two ints
-
-        :param ignore_border: if ds doesn't divide imgshape, do we include
-            an extra row/col of partial downsampling (False) or
-            ignore it (True).
-        :type ignore_border: bool
-
-        : param st: stride size, which is the number of shifts
-            over rows/cols to get the the next pool region.
-            if st is None, it is considered equal to ds
-            (no overlap on pooling regions)
-        : type st: list or tuple of two ints or None
-
-        :param padding: (pad_h, pad_w), pad zeros to extend beyond four borders
-            of the images, pad_h is the size of the top and bottom margins,
-            and pad_w is the size of the left and right margins.
-        :type padding: tuple of two ints
-
-        :param mode: 'max', 'sum', 'average_inc_pad', 'average_exc_pad'.
-            ('average_inc_pad' excludes the padding from the count,
-            'average_exc_pad' include it)
-
-        """
         self.ds = tuple(ds)
         if not all([isinstance(d, int) for d in ds]):
             raise ValueError(
@@ -876,35 +877,36 @@ class DownsampleFactorMaxGradGrad(Op):
 
     @staticmethod
     def out_shape(imgshape, ds, ignore_border=False, st=None, padding=(0, 0)):
-        """Return the shape of the output from this op, for input of given
+        """
+        Return the shape of the output from this op, for input of given
         shape and flags.
-
-        :param imgshape: the shape of a tensor of images. The last two elements
+        
+        Parameters
+        ----------
+        imgshape : tuple, list, or similar of integer or scalar Theano variable
+            The shape of a tensor of images. The last two elements
             are interpreted as the number of rows, and the number of cols.
-        :type imgshape: tuple, list, or similar of integer or
-            scalar Theano variable.
-
-        :param ds: downsample factor over rows and columns
-                   this parameter indicates the size of the pooling region
-        :type ds: list or tuple of two ints
-
-        :param st: the stride size. This is the distance between the pooling
-                   regions. If it's set to None, in which case it equlas ds.
-        :type st: list or tuple of two ints
-
-        :param ignore_border: if ds doesn't divide imgshape, do we include an
+        ds : list or tuple of two ints
+            Downsample factor over rows and columns this parameter indicates the
+            size of the pooling region.
+        st: list or tuple of two ints
+            The stride size. This is the distance between the pooling regions.
+            If it's set to None, in which case it equlas ds.
+        ignore_border: bool
+            If ds doesn't divide imgshape, do we include an
             extra row/col of partial downsampling (False) or ignore it (True).
-        :type ignore_border: bool
-
-        :param padding: (pad_h, pad_w), pad zeros to extend beyond four borders
+        padding : tuple of two ints
+            (pad_h, pad_w), pad zeros to extend beyond four borders
             of the images, pad_h is the size of the top and bottom margins,
             and pad_w is the size of the left and right margins.
-        :type padding: tuple of two ints
 
-        :rtype: list
-        :returns: the shape of the output from this op, for input of given
-            shape.  This will have the same length as imgshape, but with last
-            two elements reduced as per the downsampling & ignore_border flags.
+        Returns
+        -------
+        list
+            The shape of the output from this op, for input of given shape.
+            This will have the same length as imgshape, but with last two
+            elements reduced as per the downsampling & ignore_border flags.
+
         """
         if len(imgshape) < 2:
             raise TypeError('imgshape must have at least two elements '

@@ -62,67 +62,70 @@ class DimShuffle(Op):
     dimension and a numerical index represents the dimension of the same
     rank in the tensor passed to perform.
 
-    Examples:
-      DimShuffle((False, False, False), ['x', 2, 'x', 0, 1])
+    Parameters
+    ----------
+    input_broadcastable
+        The expected broadcastable pattern of the input
+    new_order
+        A list representing the relationship between the input's
+        dimensions and the output's dimensions. Each element of the
+        list can either be an index or 'x'. Indices must be encoded
+        as python integers, not theano symbolic integers.
+    inplace : bool, optional
+        If True, the output will be a view of the input.
+        If False (default), the output will be a copy of the input.
 
-       This op will only work on 3d tensors with no broadcastable
-       dimensions.  The first dimension will be broadcastable,
-       then we will have the third dimension of the input tensor as
-       the second of the resulting tensor, etc. If the tensor has
-       shape (20, 30, 40), the resulting tensor will have dimensions
-       (1, 40, 1, 20, 30). (AxBxC tensor is mapped to 1xCx1xAxB tensor)
+    If j = new_order[i] is an index, the output's ith dimension
+    will be the input's jth dimension.
+    If new_order[i] is 'x', the output's ith dimension will
+    be 1 and Broadcast operations will be allowed to do broadcasting
+    over that dimension.
 
-      DimShuffle((True, False), [1])
+    If input.broadcastable[i] == False then i must be found in new_order.
+    Broadcastable dimensions, on the other hand, can be discarded.
 
-       This op will only work on 2d tensors with the first dimension
-       broadcastable.
-       The second dimension of the input tensor will be the first dimension of
-       the resulting tensor.
-       If the tensor has shape (1, 20), the resulting tensor will have shape
-       (20, ).
+    Extended Summary
+    ----------------
+    DimShuffle((False, False, False), ['x', 2, 'x', 0, 1])
 
-    More examples:
-      DimShuffle((), ['x']) -> make a 0d (scalar) into a 1d vector
-      DimShuffle((False, False), [0, 1]) -> identity
-      DimShuffle((False, False), [1, 0]) -> inverts the 1st and 2nd dimensions
-      DimShuffle((False,), ['x', 0]) -> make a row out
-                                        of a 1d vector (N to 1xN)
-      DimShuffle((False,), [0, 'x']) -> make a column
-                                        out of a 1d vector (N to Nx1)
-      DimShuffle((False, False, False), [2, 0, 1]) -> AxBxC to CxAxB
-      DimShuffle((False, False), [0, 'x', 1]) -> AxB to Ax1xB
-      DimShuffle((False, False), [1, 'x', 0]) -> AxB to Bx1xA
+    This op will only work on 3d tensors with no broadcastable
+    dimensions.  The first dimension will be broadcastable,
+    then we will have the third dimension of the input tensor as
+    the second of the resulting tensor, etc. If the tensor has
+    shape (20, 30, 40), the resulting tensor will have dimensions
+    (1, 40, 1, 20, 30). (AxBxC tensor is mapped to 1xCx1xAxB tensor)
+
+    DimShuffle((True, False), [1])
+
+    This op will only work on 2d tensors with the first dimension
+    broadcastable.
+    The second dimension of the input tensor will be the first dimension of
+    the resulting tensor.
+    If the tensor has shape (1, 20), the resulting tensor will have shape
+    (20, ).
+
+    More examples :
+    DimShuffle((), ['x']) -> make a 0d (scalar) into a 1d vector
+    DimShuffle((False, False), [0, 1]) -> identity
+    DimShuffle((False, False), [1, 0]) -> inverts the 1st and 2nd dimensions
+    DimShuffle((False,), ['x', 0]) -> make a row out
+                                      of a 1d vector (N to 1xN)
+    DimShuffle((False,), [0, 'x']) -> make a column
+                                      out of a 1d vector (N to Nx1)
+    DimShuffle((False, False, False), [2, 0, 1]) -> AxBxC to CxAxB
+    DimShuffle((False, False), [0, 'x', 1]) -> AxB to Ax1xB
+    DimShuffle((False, False), [1, 'x', 0]) -> AxB to Bx1xA
 
     The reordering of the dimensions can be done in numpy with the
     transpose function.
     Adding, subtracting dimensions can be done with reshape.
+
     """
+
     _f16_ok = True
     check_input = False
 
     def __init__(self, input_broadcastable, new_order, inplace=False):
-        """
-        Usage: DimShuffle(input_broadcastable, new_order, inplace = False)
-
-        - input_broadcastable: the expected broadcastable pattern of the
-                               input
-        - new_order: a list representing the relationship between the
-                     input's dimensions and the output's dimensions. Each
-                     element of the list can either be an index or 'x'.
-                     Indices must be encoded as python integers, not
-                     theano symbolic integers.
-        - inplace: if True, the output will be a view of the input.
-                   If False, the output will be a copy of the input.
-
-        If j = new_order[i] is an index, the output's ith dimension
-          will be the input's jth dimension.
-        If new_order[i] is 'x', the output's ith dimension will
-          be 1 and Broadcast operations will be allowed to do broadcasting
-          over that dimension.
-
-        If input.broadcastable[i] == False then i must be found in new_order.
-        Broadcastable dimensions, on the other hand, can be discarded.
-        """
         input_broadcastable = tuple(input_broadcastable)
         self.input_broadcastable = input_broadcastable
         new_order = tuple(new_order)
@@ -456,36 +459,40 @@ class Elemwise(OpenMPOp):
     be the same as the corresponding input type (see the doc of
     scalar.ScalarOp to get help about controlling the output type)
 
-    Examples:
-      Elemwise(add) # represents + on tensors (x + y)
-      Elemwise(add, {0 : 0}) # represents the += operation (x += y)
-      Elemwise(add, {0 : 1}) # represents += on the second argument (y += x)
-      Elemwise(mul)(rand(10, 5), rand(1, 5)) # the second input is completed
-        # along the first dimension to match the first input
-      Elemwise(true_div)(rand(10, 5), rand(10, 1)) # same but along the
-        # second dimension
-      Elemwise(int_div)(rand(1, 5), rand(10, 1)) # the output has size (10, 5)
-      Elemwise(log)(rand(3, 4, 5))
+    Parameters
+    -----------
+    scalar_op
+        An instance of a subclass of scalar.ScalarOp which works uniquely
+        on scalars.
+    inplace_pattern
+        A dictionary that maps the index of an output to the
+        index of an input so the output is calculated inplace using
+        the input's storage. (Just like destroymap, but without the lists.)
+    nfunc_spec
+        Either None or a tuple of three elements,
+        (nfunc_name, nin, nout) such that getattr(numpy, nfunc_name)
+        implements this operation, takes nin inputs and nout outputs.
+        Note that nin cannot always be inferred from the scalar op's
+        own nin field because that value is sometimes 0 (meaning a
+        variable number of inputs), whereas the numpy function may
+        not have varargs.
+
+    Examples
+    --------
+    Elemwise(add) # represents + on tensors (x + y)
+    Elemwise(add, {0 : 0}) # represents the += operation (x += y)
+    Elemwise(add, {0 : 1}) # represents += on the second argument (y += x)
+    Elemwise(mul)(rand(10, 5), rand(1, 5)) # the second input is completed
+    # along the first dimension to match the first input
+    Elemwise(true_div)(rand(10, 5), rand(10, 1)) # same but along the
+    # second dimension
+    Elemwise(int_div)(rand(1, 5), rand(10, 1)) # the output has size (10, 5)
+    Elemwise(log)(rand(3, 4, 5))
+
     """
 
     def __init__(self, scalar_op, inplace_pattern=None, name=None,
                  nfunc_spec=None, openmp=None):
-        """
-        Usage: Elemwise(scalar_op, inplace_pattern = {})
-
-        * scalar_op: an instance of a subclass of scalar.ScalarOp which works
-            uniquely on scalars
-        * inplace_pattern: a dictionary that maps the index of an output to the
-            index of an input so the output is calculated inplace using
-            the input's storage. (Just like destroymap, but without the lists.)
-        * nfunc_spec: either None or a tuple of three elements,
-            (nfunc_name, nin, nout) such that getattr(numpy, nfunc_name)
-            implements this operation, takes nin inputs and nout outputs.
-            Note that nin cannot always be inferred from the scalar op's
-            own nin field because that value is sometimes 0 (meaning a
-            variable number of inputs), whereas the numpy function may
-            not have varargs.
-        """
         if inplace_pattern is None:
             inplace_pattern = {}
         self.name = name
@@ -1252,14 +1259,25 @@ class CAReduce(Op):
     dimensions. It will contain the variable of accumulating all values
     over the reduced dimensions using the specified scalar op.
 
-    Examples:
-     CAReduce(add) -> sum (ie, acts like the numpy sum operation)
-     CAReduce(mul) -> product
-     CAReduce(maximum) -> max
-     CAReduce(minimum) -> min
-     CAReduce(or_) -> any # not lazy
-     CAReduce(and_) -> all # not lazy
-     CAReduce(xor) -> a bit at 1 tell that there was an odd number of bit at
+    Parameters
+    ----------
+    scalar_op
+        A binary scalar op with only one output.
+        It must be commutative and associative.
+    axis
+        - The dimension along which we want to reduce
+        - List of dimensions that we want to reduce
+        - If None, all dimensions are reduced
+
+    Examples
+    --------
+    CAReduce(add) -> sum (ie, acts like the numpy sum operation)
+    CAReduce(mul) -> product
+    CAReduce(maximum) -> max
+    CAReduce(minimum) -> min
+    CAReduce(or_) -> any # not lazy
+    CAReduce(and_) -> all # not lazy
+    CAReduce(xor) -> a bit at 1 tell that there was an odd number of bit at
                       that position that where 1.
                       0 it was an even number ...
 
@@ -1270,18 +1288,10 @@ class CAReduce(Op):
     operation represented by the reduction must be both commutative
     and associative (eg add, multiply, maximum, binary or/and/xor - but not
     subtract, divide or power).
+
     """
 
     def __init__(self, scalar_op, axis=None):
-        """
-        Usage: CAReduce(scalar_op, axis = None)
-
-        * scalar_op: a binary scalar op with only one output.
-                     It must be commutative and associative.
-        * axis: - the dimension along which we want to reduce
-                - list of dimensions that we want to reduce
-                - if None, all dimensions are reduced
-        """
         if scalar_op.nin not in [-1, 2] or scalar_op.nout != 1:
             raise NotImplementedError((
                 "CAReduce only supports binary functions with a single "
@@ -1656,8 +1666,10 @@ class All(CAReduce):
     """ Applies `bitwise and` to all the values of a tensor along the
     specified axis(es).
 
-    Equivalent to CAReduce(scalar.and_, axis=axis)
+    Equivalent to CAReduce(scalar.and_, axis=axis).
+
     """
+
     def __init__(self, axis=None):
         CAReduce.__init__(self, scalar.and_, axis)
 
@@ -1686,8 +1698,10 @@ class Any(CAReduce):
     """ Applies `bitwise or` to all the values of a tensor along the
     specified axis(es).
 
-    Equivalent to CAReduce(scalar.or_, axis=axis)
+    Equivalent to CAReduce(scalar.or_, axis=axis).
+
     """
+
     def __init__(self, axis=None):
         CAReduce.__init__(self, scalar.or_, axis)
 
@@ -1727,40 +1741,42 @@ class CAReduceDtype(CAReduce):
 
     If no dtype is provided, one will be inferred so as not to lose
     too much precision.
+
+    Parameters
+    ----------
+    scalar_op
+        A binary scalar op with only one output.
+        It must be commutative and associative.
+
+    axis
+        - the dimension along which we want to reduce
+        - list of dimensions that we want to reduce
+        - if None, all dimensions are reduced
+
+    dtype
+        The dtype of the returned tensor. If None, then we use the default
+        dtype which is the same as the input tensor's dtype except when:
+        - the input dtype is a signed integer of precision < 64 bit, in
+        which case we use int64
+        - the input dtype is an unsigned integer of precision < 64 bit, in
+        which case we use uint64
+        This default dtype does _not_ depend on the value of "acc_dtype".
+        This behavior is similar in spirit to that of numpy (except numpy
+        uses the default machine integer while we always use 64 bit
+        integers to avoid platform-dependent behavior).
+
+    acc_dtype
+        The dtype of the internal accumulator.
+        If None (default), we use the dtype in the list below,
+        or the input dtype if its precision is higher:
+        - for int dtypes, we use at least int64;
+        - for uint dtypes, we use at least uint64;
+        - for float dtypes, we use at least float64;
+        - for complex dtypes, we use at least complex128.
+
     """
 
     def __init__(self, scalar_op, axis=None, dtype=None, acc_dtype=None):
-        """
-        Usage: CAReduceDtype(scalar_op, axis=None, dtype=None, acc_dtype=None)
-
-        :param scalar_op: a binary scalar op with only one output.
-                     It must be commutative and associative.
-
-        :param axis: - the dimension along which we want to reduce
-                     - list of dimensions that we want to reduce
-                     - if None, all dimensions are reduced
-
-        :param dtype: The dtype of the returned
-            tensor. If None, then we use the default dtype which is the same
-            as the input tensor's dtype except when:
-            - the input dtype is a signed integer of precision < 64 bit, in
-              which case we use int64
-            - the input dtype is an unsigned integer of precision < 64 bit, in
-              which case we use uint64
-            This default dtype does _not_ depend on the value of "acc_dtype".
-            This behavior is similar in spirit to that of numpy (except numpy
-            uses the default machine integer while we always use 64 bit
-            integers to avoid platform-dependent behavior).
-
-        :param acc_dtype: The dtype of the internal accumulator.
-            If None (default), we use the dtype in the list below,
-            or the input dtype if its precision is higher:
-            - for int dtypes, we use at least int64;
-            - for uint dtypes, we use at least uint64;
-            - for float dtypes, we use at least float64;
-            - for complex dtypes, we use at least complex128.
-
-        """
         CAReduce.__init__(self, scalar_op, axis=axis)
         self.dtype = dtype
         self.acc_dtype = acc_dtype
@@ -1888,33 +1904,36 @@ class Sum(CAReduceDtype):
     Equivalent to CAReduceDtype(scalar.add, axis=axis, dtype=dtype),
     with the difference that this defines the gradient of sum wrt its
     tensor input.
-    """
 
-    def __init__(self, axis=None, dtype=None, acc_dtype=None):
-        """
-        Constructor.
-
-        :param axis: Axis(es) along which the tensor should be summed
+    Parameters
+    ----------
+    axis
+        Axis(es) along which the tensor should be summed
         (use None to sum over all axes, and a list or tuple to sum along more
         than one axis).
 
-        :param dtype: The dtype of the internal accumulator and returned
+    dtype
+        The dtype of the internal accumulator and returned
         tensor. If None, then we use the default dtype which is the same as the
         input tensor's dtype except when:
-            - the input dtype is a signed integer of precision < 64 bit, in
-              which case we use int64
-            - the input dtype is an unsigned integer of precision < 64 bit, in
-              which case we use uint64
-            This value does not depend on the value of "acc_dtype".
+        - the input dtype is a signed integer of precision < 64 bit, in
+        which case we use int64
+        - the input dtype is an unsigned integer of precision < 64 bit, in
+        which case we use uint64
+        This value does not depend on the value of "acc_dtype".
 
-        :param acc_dtype: The dtype of the internal accumulator.
-            If None (default), we use the dtype in the list below,
-            or the input dtype if its precision is higher:
-            - for int dtypes, we use at least int64;
-            - for uint dtypes, we use at least uint64;
-            - for float dtypes, we use at least float64;
-            - for complex dtypes, we use at least complex128.
-        """
+    acc_dtype
+        The dtype of the internal accumulator.
+        If None (default), we use the dtype in the list below,
+        or the input dtype if its precision is higher:
+        - for int dtypes, we use at least int64;
+        - for uint dtypes, we use at least uint64;
+        - for float dtypes, we use at least float64;
+        - for complex dtypes, we use at least complex128.
+
+    """
+
+    def __init__(self, axis=None, dtype=None, acc_dtype=None):
         CAReduceDtype.__init__(self, scalar.add, axis=axis,
                                dtype=dtype, acc_dtype=acc_dtype)
 
@@ -1960,7 +1979,9 @@ class Prod(CAReduceDtype):
     Equivalent to CAReduce(scalar.prod, axis = axis), with the
     difference that this defines the gradient of prod wrt its tensor
     input.
+
     """
+
     def __init__(self, axis=None, dtype=None, acc_dtype=None,
                  no_zeros_in_input=False):
         CAReduceDtype.__init__(self, scalar.mul, axis=axis,
@@ -1982,7 +2003,7 @@ class Prod(CAReduceDtype):
                 hash(self.no_zeros_in_input))
 
     def grad(self, inp, grads):
-        '''
+        """
         The grad of this Op could be very easy, if it is was not for the case
         where zeros are present in a given "group" (ie. elements reduced
         together to form the product).
@@ -2026,7 +2047,8 @@ class Prod(CAReduceDtype):
         I do this by first counting the number of zeros in each group (see
         the "T.eq()" bits), then taking this or that behavior (see T.switch)
         based on the result of this count.
-        '''
+
+        """
         prod_in, = inp
         gz, = grads
 

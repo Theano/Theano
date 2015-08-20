@@ -6,7 +6,8 @@ from theano.gof.utils import hash_from_code
 
 
 def hash_from_ndarray(data):
-    """Return a hash from an ndarray
+    """
+    Return a hash from an ndarray.
 
     It takes care of the data, shapes, strides and dtype.
 
@@ -32,23 +33,31 @@ def hash_from_ndarray(data):
 
 def shape_of_variables(fgraph, input_shapes):
     """
-    Compute the numeric shape of all intermediate variables given input shapes
+    Compute the numeric shape of all intermediate variables given input shapes.
 
-    Inputs:
-        fgraph - the theano.FunctionGraph in question
-        input_shapes - a dict mapping input to shape
+    Parameters
+    ----------
+    fgraph
+        The theano.FunctionGraph in question.
+    input_shapes : dict
+        A dict mapping input to shape.
 
-    Outputs:
-        shapes - a dict mapping variable to shape
+    Returns
+    -------
+    shapes : dict
+        A dict mapping variable to shape
 
-    WARNING : This modifies the fgraph. Not pure.
+    .. warning:: This modifies the fgraph. Not pure.
 
+    Examples
+    --------
     >>> import theano
     >>> x = theano.tensor.matrix('x')
     >>> y = x[512:]; y.name = 'y'
     >>> fgraph = theano.FunctionGraph([x], [y], clone=False)
     >>> shape_of_variables(fgraph, {x: (1024, 1024)})
     {y: (512, 1024), x: (1024, 1024)}
+
     """
 
     if not hasattr(fgraph, 'shape_feature'):

@@ -1,7 +1,8 @@
-"""Define RandomStreams, providing random number variables for Theano
-graphs.
 """
+Define RandomStreams, providing random number variables for Theano
+graphs.
 
+"""
 import copy
 
 import numpy
@@ -20,7 +21,10 @@ class RandomStateSharedVariable(SharedVariable):
 @shared_constructor
 def randomstate_constructor(value, name=None, strict=False,
                             allow_downcast=None, borrow=False):
-    """SharedVariable Constructor for RandomState"""
+    """
+    SharedVariable Constructor for RandomState.
+
+    """
     if not isinstance(value, numpy.random.RandomState):
         raise TypeError
     if not borrow:
@@ -37,20 +41,20 @@ class RandomStreams(raw_random.RandomStreamsBase):
     """
     Module component with similar interface to numpy.random
     (numpy.random.RandomState)
+
+    Parameters
+    ----------
+    seed: None or int
+        A default seed to initialize the RandomState
+        instances after build.  See `RandomStreamsInstance.__init__`
+        for more details.
+
     """
 
     def updates(self):
         return list(self.state_updates)
 
     def __init__(self, seed=None):
-        """
-        :type seed: None or int
-
-        :param seed: a default seed to initialize the RandomState
-        instances after build.  See `RandomStreamsInstance.__init__`
-        for more details.
-
-        """
         super(RandomStreams, self).__init__()
         # A list of pairs of the form (input_r, output_r).  This will be
         # over-ridden by the module instance to contain stream generators.
@@ -62,14 +66,18 @@ class RandomStreams(raw_random.RandomStreamsBase):
         self.gen_seedgen = numpy.random.RandomState(seed)
 
     def seed(self, seed=None):
-        """Re-initialize each random stream
+        """
+        Re-initialize each random stream.
 
-        :param seed: each random stream will be assigned a unique
-        state that depends deterministically on this value.
+        Parameters
+        ----------
+        seed : None or integer in range 0 to 2**30
+            Each random stream will be assigned a unique state that depends
+            deterministically on this value.
 
-        :type seed: None or integer in range 0 to 2**30
-
-        :rtype: None
+        Returns
+        -------
+        None
 
         """
         if seed is None:
@@ -82,54 +90,72 @@ class RandomStreams(raw_random.RandomStreamsBase):
                             borrow=True)
 
     def __getitem__(self, item):
-        """Retrieve the numpy RandomState instance associated with a
-        particular stream
+        """
+        Retrieve the numpy RandomState instance associated with a particular
+        stream.
 
-        :param item: a variable of type RandomStateType, associated
-        with this RandomStream
+        Parameters
+        ----------
+        item
+            A variable of type RandomStateType, associated
+            with this RandomStream.
 
-        :rtype: numpy RandomState (or None, before initialize)
+        Returns
+        -------
+        numpy RandomState (or None, before initialize)
 
-        :note: This is kept for compatibility with
-        `tensor.randomstreams.RandomStreams`.  The simpler syntax
-        ``item.rng.get_value()`` is also valid.
+        Notes
+        -----
+        This is kept for compatibility with `tensor.randomstreams.RandomStreams`.
+        The simpler syntax ``item.rng.get_value()`` is also valid.
 
         """
         return item.get_value(borrow=True)
 
     def __setitem__(self, item, val):
-        """Set the numpy RandomState instance associated with a
-        particular stream
+        """
+        Set the numpy RandomState instance associated with a particular stream.
 
-        :param item: a variable of type RandomStateType, associated
-        with this RandomStream
+        Parameters
+        ----------
+        item
+            A variable of type RandomStateType, associated with this
+            RandomStream.
 
-        :param val: the new value
-        :type val: numpy RandomState
+        val : numpy RandomState
+            The new value.
 
-        :rtype:  None
+        Returns
+        -------
+        None
 
-        :note: This is kept for compatibility with
-        `tensor.randomstreams.RandomStreams`.  The simpler syntax
-        ``item.rng.set_value(val)`` is also valid.
+        Notes
+        -----
+        This is kept for compatibility with `tensor.randomstreams.RandomStreams`.
+        The simpler syntax ``item.rng.set_value(val)`` is also valid.
 
         """
         item.set_value(val, borrow=True)
 
     def gen(self, op, *args, **kwargs):
-        """Create a new random stream in this container.
+        """
+        Create a new random stream in this container.
 
-        :param op: a RandomFunction instance to
+        Parameters
+        ----------
+        op
+            A RandomFunction instance to
+        args
+            Interpreted by `op`.
+        kwargs
+            Interpreted by `op`.
 
-        :param args: interpreted by `op`
-
-        :param kwargs: interpreted by `op`
-
-        :returns: The symbolic random draw part of op()'s return
-        value.  This function stores the updated RandomStateType
-        Variable for use at `build` time.
-
-        :rtype: TensorVariable
+        Returns
+        -------
+        Tensor Variable
+            The symbolic random draw part of op()'s return value.
+            This function stores the updated RandomStateType Variable
+            for use at `build` time.
 
         """
         seed = int(self.gen_seedgen.randint(2 ** 30))

@@ -17,10 +17,12 @@ There are four kinds of BLAS Ops in Theano:
     - C-based (blas_c)
     - CUDA-based (theano.sandbox.cuda.blas)
 
-:note: Unfortunately (because it's confusing) this file currently contains Ops
-    that contain both Python and C versions.  I think it would be better to
-    move the C implementations to blas_c so that this file is pure Python.
-    -JB
+Notes
+-----
+Unfortunately (because it's confusing) this file currently contains Ops
+that contain both Python and C versions.  I think it would be better to
+move the C implementations to blas_c so that this file is pure Python.
+-JB
 
 
 Ops
@@ -120,7 +122,6 @@ Specialize Gemm to Gemv
 
 If arguments to GEMM are dimshuffled vectors, then we can use GEMV
 instead. This optimization is `local_gemm_to_gemv`.
-
 
 """
 from __future__ import print_function
@@ -359,7 +360,9 @@ class Gemv(Op):
     x, y are vectors
     alpha, beta are scalars
     output is a vector that can be inplace on y
+
     """
+
     __props__ = ("inplace",)
 
     def __init__(self, inplace):
@@ -443,12 +446,13 @@ class Ger(Op):
     for matrix A, scalar alpha, vectors x and y.
 
     This interface to GER allows non-destructive operation on A via the
-    `destructive`
-    argument to the constructor.
+    `destructive` argument to the constructor.
 
     :TODO: Create better classes ScipyGer and CGer that inherit from this class
     and override the make_thunk() method to use Scipy and C respectively.
+
     """
+
     __props__ = ("destructive",)
 
     def __init__(self, destructive):
@@ -508,16 +512,22 @@ def ldflags(libs=True, flags=False, libs_dir=False, include_dir=False):
     It returns a list of libraries against which an Op's object file
     should be linked to benefit from a BLAS implementation.
 
-    :type libs: bool, defaults to True
-    :param libs: extract flags starting with "-l"
-    :type libs_dir: bool, defaults to False
-    :param libs_dir: extract flags starting with "-L"
-    :type include_dir: bool, defaults to False
-    :param include_dir: extract flags starting with "-I"
-    :type flags: bool, defaults to False
-    :param flags: extract all the other flags
-    :rtype: list of strings
-    :returns: extracted flags
+    Parameters
+    ----------
+    libs : bool, optional
+        Extract flags starting with "-l" (the default is True).
+    libs_dir : bool, optional
+        Extract flags starting with "-L" (the default is False).
+    include_dir : bool, optional
+        Extract flags starting with "-I" (the default is False).
+    flags: bool, optional
+        Extract all the other flags (the default is False).
+
+    Returns
+    -------
+    list of strings
+        Extracted flags.
+
     """
     ldflags_str = theano.config.blas.ldflags
     return _ldflags(ldflags_str=ldflags_str,
@@ -533,19 +543,25 @@ def _ldflags(ldflags_str, libs, flags, libs_dir, include_dir):
 
     Depending on the options, different type of flags will be kept.
 
-    :type ldflags_str: string
-    :param ldflags_str: the string to process. Typically, this will
-        be the content of `theano.config.blas.ldflags`
-    :type libs: bool
-    :param libs: extract flags starting with "-l"
-    :type libs_dir: bool
-    :param libs_dir: extract flags starting with "-L"
-    :type include_dir: bool
-    :param include_dir: extract flags starting with "-I"
-    :type flags: bool
-    :param flags: extract all the other flags
-    :rtype: list of strings
-    :returns: extracted flags
+    Parameters
+    ----------
+    ldflags_str : string
+        The string to process. Typically, this will be the content of
+        `theano.config.blas.ldflags`.
+    libs : bool
+        Extract flags starting with "-l".
+    flags: bool
+        Extract all the other flags.
+    libs_dir: bool
+        Extract flags starting with "-L".
+    include_dir: bool
+        Extract flags starting with "-I".
+
+    Returns
+    -------
+    list of strings
+        Extracted flags.
+
     """
     rval = []
     if libs_dir:
@@ -598,10 +614,12 @@ def _ldflags(ldflags_str, libs, flags, libs_dir, include_dir):
 
 
 class GemmRelated(Op):
-    """Base class for Gemm and Dot22
+    """Base class for Gemm and Dot22.
 
     This class provides a kind of templated gemm Op.
+
     """
+
     __props__ = ()
 
     def c_support_code(self):
@@ -915,7 +933,7 @@ class GemmRelated(Op):
 
 
 class Gemm(GemmRelated):
-    """In-place version of matrix-matrix multiplication (with accumulation):
+    """In-place version of matrix-matrix multiplication (with accumulation).
 
     When a and b are scalars and x, y, and z are matrices, then
 
@@ -936,6 +954,7 @@ class Gemm(GemmRelated):
     optimized linear algebra operations.)
 
     """
+
     E_rank = 'gemm only works for rank 2'
     E_scalar = 'gemm requires scalar argument'
     E_z_uniq = 'argument z aliased to x or y'  # TODO: justify / delete this
@@ -1430,9 +1449,10 @@ def _factor_canonicalized(lst):
 
 
 def _gemm_from_factored_list(lst):
-    """Returns None, or a list to replace node.outputs
     """
+    Returns None, or a list to replace node.outputs.
 
+    """
     lst2 = []
     # Remove the tuple that can't be cast correctly.
     # This can happen when we try to cast a complex to a real
@@ -1524,7 +1544,7 @@ def _gemm_from_node2(node):
 
 
 class GemmOptimizer(Optimizer):
-    """Graph optimizer for inserting Gemm operations"""
+    """Graph optimizer for inserting Gemm operations."""
     def __init__(self):
         Optimizer.__init__(self)
         self.warned = False
@@ -1645,8 +1665,11 @@ class GemmOptimizer(Optimizer):
 
 class Dot22(GemmRelated):
     """Compute a matrix-matrix product.
-    This is a specialization of the more general Dot()
+
+    This is a specialization of the more general Dot().
+
     """
+
     def make_node(self, x, y):
         dtypes = ('float32', 'float64', 'complex64', 'complex128')
         if x.type.ndim != 2 or x.type.dtype not in dtypes:
@@ -1780,8 +1803,7 @@ def local_inplace_ger(node):
 
 @local_optimizer([gemm_no_inplace])
 def local_gemm_to_gemv(node):
-    """GEMM acting on row or column matrices -> GEMV
-    """
+    """GEMM acting on row or column matrices -> GEMV."""
     if node.op == gemm_no_inplace:
         z, a, x, y, b = node.inputs
         if z.broadcastable == x.broadcastable == (True, False):
@@ -1794,8 +1816,7 @@ def local_gemm_to_gemv(node):
 
 @local_optimizer([gemm_no_inplace])
 def local_gemm_to_ger(node):
-    """GEMM computing an outer-product -> GER
-    """
+    """GEMM computing an outer-product -> GER."""
     if node.op == gemm_no_inplace:
         z, a, x, y, b = node.inputs
         if x.broadcastable[1] and y.broadcastable[0]:
@@ -1825,8 +1846,7 @@ def local_gemm_to_ger(node):
 #      working
 @local_optimizer([_dot22])
 def local_dot22_to_ger_or_gemv(node):
-    """dot22 computing an outer-product -> GER
-    """
+    """dot22 computing an outer-product -> GER."""
     if node.op == _dot22:
         x, y = node.inputs
         xb = x.broadcastable
@@ -1904,11 +1924,14 @@ optdb.register('InplaceBlasOpt',
 
 class Dot22Scalar(GemmRelated):
     """Compute a matrix-matrix product.
+
     This is a specialization of the more general Dot()
     Used to call optimized gemm implementation.
     Also used to generate a gemm later.
-    compute scalar*dot(x,y)
+    compute scalar*dot(x,y).
+
     """
+
     def make_node(self, x, y, a):
         if a.ndim != 0:
             raise TypeError(Gemm.E_scalar, a)
@@ -1996,25 +2019,27 @@ _dot22scalar = Dot22Scalar()
 @local_optimizer([T.mul])
 def local_dot22_to_dot22scalar(node):
     """
-    :note: Previous attempts to alter this optimization to replace dot22 with
-        gemm instead of dot22scalar resulted in some Scan nodes being
-        duplicated and the ScanSaveMem optimization never running on them,
-        resulting in highly increased memory usage. Until this issue is
-        resolved, this optimization should keep using dot22scalar instead of
-        gemm.
+    Notes
+    -----
+    Previous attempts to alter this optimization to replace dot22 with
+    gemm instead of dot22scalar resulted in some Scan nodes being
+    duplicated and the ScanSaveMem optimization never running on them,
+    resulting in highly increased memory usage. Until this issue is
+    resolved, this optimization should keep using dot22scalar instead of
+    gemm.
 
-    :note: we upcast the scalar if after the multiplication with the
-        dot this give the same type.
+    We upcast the scalar if after the multiplication with the dot this give
+    the same type.
 
-    .. note: We execute this optimizer after the gemm optimizer. This
-        allow to give more priority to gemm that give more speed up
-        then this optimizer, but allow the gemm optimizer to ignore
-        this op.
-
+    We execute this optimizer after the gemm optimizer. This
+    allow to give more priority to gemm that give more speed up
+    then this optimizer, but allow the gemm optimizer to ignore
+    this op.
 
     TODO: support when we can reorder the mul to generate a
     dot22scalar or fix the canonizer to merge them(1 mul with multiple
     inputs)
+
     """
     if node.op != T.mul:
         return False
@@ -2101,7 +2126,6 @@ def local_dot22_to_dot22scalar(node):
     else:
         return [T.mul(_dot22scalar(d.owner.inputs[0],
                                    d.owner.inputs[1], a), *o)]
-
 
 # must happen after gemm as the gemm optimizer don't understant
 # dot22scalar and gemm give more speed up then dot22scalar
