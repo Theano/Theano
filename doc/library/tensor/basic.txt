@@ -678,12 +678,15 @@ Creating Tensor
               except for the main diagonal, whose values are equal to one. The output
               will have same dtype as `x`.
 
-.. function:: stack(*tensors)
+.. function:: stack(tensors, axis=0)
+    
+    Warning: The interface stack(*tensors) is deprecated!
 
     Return a Tensor representing for the arguments all stacked up into a single Tensor.
     (of 1 rank greater).
 
-    :param tensors: one or more tensors of the same rank
+    :param tensors: a list or a tuple of one or more tensors of the same rank.
+    :param axis: the axis along which the tensors will be stacked.
     :returns: A tensor such that rval[0] == tensors[0], rval[1] == tensors[1], etc.
 
     >>> x0 = T.scalar()

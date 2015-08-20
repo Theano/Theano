@@ -48,7 +48,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         nonzero, flatnonzero, nonzero_values,
         stacklists, DimShuffle, hessian, ptp, power,
         swapaxes, choose, Choose, NoneConst, AllocEmpty,
-        isclose, allclose, mgrid, ogrid,
+        isclose, allclose, mgrid, ogrid, shape_padleft
         )
 
 from theano.tests import unittest_tools as utt
@@ -3440,6 +3440,23 @@ class T_Join_and_Split(unittest.TestCase):
         assert len([n for n in topo if isinstance(n.op, opt.MakeVector)]) > 0
         assert len([n for n in topo if isinstance(n, type(self.join_op))]) == 0
         assert f.maker.fgraph.outputs[0].dtype == 'int64'
+
+    def test_stack_new_interface(self):
+        """Test the new numpy-like interface: stack(tensors, axis=0)."""
+        a = tensor.imatrix('a')
+        b = tensor.imatrix('b')
+        s1 = stack(a, b)
+        s2 = stack([a, b])
+        f = function([a, b], [s1, s2], mode=self.mode)
+        v1, v2 = f([[1, 2]], [[3, 4]])
+        self.assertTrue(v1.shape == v2.shape)
+        self.assertTrue(numpy.all(v1 == v2))
+        s3 = join(1, *[shape_padleft(t, 1) for t in [a, b]])
+        s4 = stack([a, b], 1)
+        f = function([a, b], [s3, s4], mode=self.mode)
+        v3, v4 = f([[1, 2]], [[3, 4]])
+        self.assertTrue(v3.shape == v4.shape)
+        self.assertTrue(numpy.all(v3 == v4))
 
     def test_stack_hessian(self):
         # Test the gradient of stack when used in hessian, see gh-1589
