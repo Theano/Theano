@@ -226,9 +226,10 @@ optdb.register('add_no_output_from_inplace', AddNoOutputFromInplace(),
 optdb.register('add_destroy_handler', AddDestroyHandler(),
                49.5, 'fast_run', 'inplace')
 
+# 'merge3' seems useless
 # final pass just to make sure
-optdb.register('merge3', gof.MergeOptimizer(),
-               100, 'fast_run', 'merge')
+# optdb.register('merge3', gof.MergeOptimizer(),
+#                100, 'fast_run', 'merge')
 
 
 class Mode(object):
