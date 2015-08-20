@@ -5,7 +5,8 @@ from theano.tensor.basic import mul, arange
 
 class SortOp(theano.Op):
     """
-    This class is a wrapper for numpy sort function
+    This class is a wrapper for numpy sort function.
+
     """
 
     __props__ = ("kind", "order")
@@ -62,12 +63,15 @@ class SortOp(theano.Op):
         return index_val
 
     def __get_argsort_indices(self, a, axis):
-        """Calculates indices which can be used to reverse
-        sorting operation of "a" tensor along "axis"
+        """
+        Calculates indices which can be used to reverse sorting operation of
+        "a" tensor along "axis".
 
-        returns:
-          1d array if axis is None
-          list of lenght len(a.shape) otherwise
+        Returns
+        -------
+        1d array if axis is None
+        list of lenght len(a.shape) otherwise
+
         """
 
         # The goal is to get gradient wrt input from gradient
@@ -99,23 +103,25 @@ class SortOp(theano.Op):
 
 def sort(a, axis=-1, kind='quicksort', order=None):
     """
-    Return a sorted copy of an array.
+
+    Parameters
+    ----------
     a : Tensor
-    Tensor to be sorted
-
+        Tensor to be sorted
     axis : Tensor
-        Axis along which to sort. If None, the array is
-        flattened before sorting.
-
+        Axis along which to sort. If None, the array is flattened before
+        sorting.
     kind : {'quicksort', 'mergesort', 'heapsort'}, optional
-
         Sorting algorithm. Default is 'quicksort'.
-
     order : list, optional
-
         When `a` is a structured array, this argument specifies which
         fields to compare first, second, and so on. This list does not
         need to include all of the fields.
+
+    Returns
+    -------
+    array
+        A sorted copy of an array.
 
     """
     if axis is None:
@@ -126,7 +132,8 @@ def sort(a, axis=-1, kind='quicksort', order=None):
 
 class ArgSortOp(theano.Op):
     """
-    This class is a wrapper for numpy argsort function
+    This class is a wrapper for numpy argsort function.
+
     """
 
     __props__ = ("kind", "order")
@@ -196,6 +203,7 @@ def argsort(a, axis=-1, kind='quicksort', order=None):
     specified by the kind keyword.  It returns an array of indices of
     the same shape as a that index data along the given axis in sorted
     order.
+
     """
     if axis is None:
         a = a.flatten()

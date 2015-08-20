@@ -19,15 +19,18 @@ except ImportError:
 
 
 class _operators(tensor.basic._tensor_py_operators):
-    """Define a few properties and conversion methods for CudaNdarray Variables.
+    """
+    Define a few properties and conversion methods for CudaNdarray Variables.
 
-    The default implementation of arithemetic operators is to build graphs of TensorType
-    variables.
+    The default implementation of arithemetic operators is to build graphs of
+    TensorType variables.
 
     The optimization pass (specialization) will insert pure GPU implementations.
-    This approach relieves the Cuda-Ops of having to deal with input argument checking and
-    gradients.
+    This approach relieves the Cuda-Ops of having to deal with input argument
+    checking and gradients.
+
     """
+
     def _as_TensorVariable(self):
         return HostFromGpu()(self)
     def _as_CudaNdarrayVariable(self):
@@ -63,7 +66,8 @@ CudaNdarrayType.Constant = CudaNdarrayConstant
 
 class CudaNdarraySharedVariable(_operators, SharedVariable):
     """
-    Shared Variable interface to CUDA-allocated arrays
+    Shared Variable interface to CUDA-allocated arrays.
+
     """
 
     get_value_return_ndarray = True
@@ -72,20 +76,23 @@ class CudaNdarraySharedVariable(_operators, SharedVariable):
         """
         Return the value of this SharedVariable's internal array.
 
-        :param borrow:
-                permit the return of internal storage, when used in conjunction with
-                ``return_internal_type=True``
-        :param return_internal_type:
-                True to return the internal ``cuda_ndarray`` instance rather than a ``numpy.ndarray``
-                (Default False)
+        Parameters
+        ----------
+        borrow
+            Permit the return of internal storage, when used in conjunction with
+            ``return_internal_type=True``.
+        return_internal_type
+            True to return the internal ``cuda_ndarray`` instance rather than a
+            ``numpy.ndarray`` (Default False).
 
-        By default ``get_value()`` copies from the GPU to a ``numpy.ndarray`` and returns that
-        host-allocated array.
+        By default ``get_value()`` copies from the GPU to a ``numpy.ndarray``
+        and returns that host-allocated array.
 
-        ``get_value(False,True)`` will return a GPU-allocated copy of the original GPU array.
+        ``get_value(False,True)`` will return a GPU-allocated copy of the
+        original GPU array.
 
-        ``get_value(True,True)`` will return the original GPU-allocated array without any
-        copying.
+        ``get_value(True,True)`` will return the original GPU-allocated array
+        without any copying.
 
         """
         if return_internal_type or not self.get_value_return_ndarray:
@@ -101,33 +108,39 @@ class CudaNdarraySharedVariable(_operators, SharedVariable):
         """
         Assign `value` to the GPU-allocated array.
 
-        :param borrow: ``True`` permits reusing `value` itself, ``False`` requires that this function
-                       copies `value` into internal storage.
+        Parameters
+        ----------
+        borrow : bool
+            ``True`` permits reusing `value` itself, ``False`` requires that
+            this function copies `value` into internal storage.
 
-        :note:
+        Notes
+        -----
+        Prior to Theano 0.3.1, set_value did not work in-place on the GPU. This
+        meant that sometimes, GPU memory for the new value would be allocated
+        before the old memory was released. If you're running near the limits of
+        GPU memory, this could cause you to run out of GPU memory.
 
-            Prior to Theano 0.3.1, set_value did not work in-place on the GPU. This meant that sometimes,
-            GPU memory for the new value would be allocated before the old memory was released. If you're
-            running near the limits of GPU memory, this could cause you to run out of GPU memory.
-
-            Beginning with Theano 0.3.1, set_value will work in-place on the GPU, if the following conditions
-            are met:
+        Beginning with Theano 0.3.1, set_value will work in-place on the GPU, if
+        the following conditions are met:
 
             * The destination on the GPU must be c_contiguous.
             * The source is on the CPU.
-            * The old value must have the same dtype as the new value (which is a given for now,
-              since only float32 is supported).
+            * The old value must have the same dtype as the new value (which is
+            a given for now, since only float32 is supported).
             * The old and new value must have the same shape.
-            * The old value is being completely replaced by the new value (not partially modified,
-              e.g. by replacing some subtensor of it).
-            * You change the value of the shared variable via set_value, not via the .value
-              accessors. You should not use the .value accessors anyway, since they will soon be
-              deprecated and removed.
+            * The old value is being completely replaced by the new value (not
+            partially modified, e.g. by replacing some subtensor of it).
+            * You change the value of the shared variable via set_value, not via
+            the .value accessors. You should not use the .value accessors
+            anyway, since they will soon be deprecated and removed.
 
-            It is also worth mentioning that, for efficient transfer to the GPU, Theano will make the new data
-            ``c_contiguous``. This can require an extra copy of the data on the host.
+        It is also worth mentioning that, for efficient transfer to the GPU,
+        Theano will make the new data ``c_contiguous``. This can require an
+        extra copy of the data on the host.
 
-            The inplace on gpu memory work when borrow is either True or False.
+        The inplace on gpu memory work when borrow is either True or False.
+
         """
         if not borrow:
             # TODO: check for cuda_ndarray type
@@ -147,8 +160,10 @@ CudaNdarrayType.SharedVariable = CudaNdarraySharedVariable
 
 def cuda_shared_constructor(value, name=None, strict=False,
         allow_downcast=None, borrow=False, broadcastable=None):
-    """SharedVariable Constructor for CudaNdarrayType"""
+    """
+    SharedVariable Constructor for CudaNdarrayType.
 
+    """
     # THIS CONSTRUCTOR TRIES TO CAST VALUE TO A FLOAT32, WHICH THEN GOES ONTO THE CARD
     # SO INT shared vars, float64 shared vars, etc. all end up on the card.
     # THIS IS NOT THE DEFAULT BEHAVIOUR THAT WE WANT.
@@ -179,7 +194,11 @@ def cuda_shared_constructor(value, name=None, strict=False,
 
 def float32_shared_constructor(value, name=None, strict=False,
         allow_downcast=None, borrow=False, broadcastable=None):
-    """SharedVariable Constructor for CudaNdarrayType from numpy.ndarray or CudaNdarray"""
+    """
+    SharedVariable Constructor for CudaNdarrayType from numpy.ndarray or
+    CudaNdarray.
+
+    """
     if theano.sandbox.cuda.use.device_number is None:
         theano.sandbox.cuda.use("gpu",
                                 force=True,

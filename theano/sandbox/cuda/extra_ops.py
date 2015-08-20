@@ -13,13 +13,19 @@ if cuda_available:
 
 
 class GpuCumsum(CumsumOp, GpuOp):
+    """
+
+    Parameters
+    ----------
+    axis
+        Can not be None. If you want the array flatten, do it before.
+
+    """
+
     SUPPORTED_NDIMS = 3
     __props__ = ('axis', 'max_threads_dim0', 'max_grid_size1', 'max_grid_size2')
 
     def __init__(self, axis):
-        """
-        ``axis`` can not be None. If you want the array flatten, do it before.
-        """
         self.axis = axis
         self.max_threads_dim0 = None
         self.max_grid_size1 = None
@@ -415,11 +421,13 @@ class GpuCumsum(CumsumOp, GpuOp):
 
 
 def values_eq_approx_high_tol(a, b):
-    """This fct is needed to don't have DebugMode raise useless
+    """
+    This fct is needed to don't have DebugMode raise useless
     error due to rounding error.
 
     This happen with big input size due to change in the order of
     operation.
+
     """
     rtol = None
     if a.size > 100000:

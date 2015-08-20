@@ -1,7 +1,7 @@
 """
-This module provides the Scan Op
+This module provides the Scan Op.
 
-See scan.py for details on scan
+See scan.py for details on scan.
 
 
 Memory reuse in scan
@@ -44,6 +44,7 @@ relies on the following elements to work properly :
   the outputs are stored as they are computed which means that, if the buffer
   is too small, computing an output can overwrite an input that is still
   needed to compute another output.
+
 """
 from __future__ import print_function
 
@@ -96,35 +97,43 @@ AddConfigVar('scan.allow_output_prealloc',
 
 
 class Scan(PureOp):
+    """
+
+    Parameters
+    ----------
+    inputs
+        Inputs of the inner function of scan.
+    outputs
+        Outputs of the inner function of scan.
+    info
+        Dictionary containing different properties of the scan op (like number
+        of different types of arguments, name, mode, if it should run on GPU or
+        not, etc.).
+    typeConstructor
+        Function that constructs an equivalent to Theano TensorType.
+
+    Notes
+    -----
+    ``typeConstructor`` had been added to refactor how
+    Theano deals with the GPU. If it runs on the GPU, scan needs
+    to construct certain outputs (those who reside in the GPU
+    memory) as the GPU-specific type.  However we can not import
+    gpu code in this file (as it is in sandbox, and not available
+    on each machine) so the workaround is that the GPU
+    optimization passes to the constructor of this class a
+    function that is able to construct a GPU type. This way the
+    class Scan does not need to be aware of the details for the
+    GPU, it just constructs any tensor using this function (which
+    by default constructs normal tensors).
+
+    """
+
     def __init__(self,
                  inputs,
                  outputs,
                  info,
                  typeConstructor=None,
                 ):
-        """
-        :param inputs: inputs of the inner function of scan
-        :param outputs: outputs of the inner function of scan
-        :param info: dictionary containing different properties of
-            the scan op (like number of different types of
-            arguments, name, mode, if it should run on GPU or
-            not, etc.)
-        :param typeConstructor: function that constructs an equivalent
-            to Theano TensorType
-
-
-        Note: ``typeConstructor`` had been added to refactor how
-        Theano deals with the GPU. If it runs on the GPU, scan needs
-        to construct certain outputs (those who reside in the GPU
-        memory) as the GPU-specific type.  However we can not import
-        gpu code in this file (as it is in sandbox, and not available
-        on each machine) so the workaround is that the GPU
-        optimization passes to the constructor of this class a
-        function that is able to construct a GPU type. This way the
-        class Scan does not need to be aware of the details for the
-        GPU, it just constructs any tensor using this function (which
-        by default constructs normal tensors).
-        """
         if 'gpua' not in info:
             info['gpua'] = False
         # adding properties into self
@@ -228,8 +237,10 @@ class Scan(PureOp):
         self.var_mappings = self.get_oinp_iinp_iout_oout_mappings()
 
     def validate_inner_graph(self):
-        """ Perform some elementary validations on the inner graph to ensure
+        """
+        Perform some elementary validations on the inner graph to ensure
         that it is coherent.
+
         """
 
         # For every recurrent output, iterate over the associated inner
@@ -323,6 +334,7 @@ class Scan(PureOp):
             inner_X_out - the variable representing the new value of X after
                           executing one step of scan (i.e. outputs given by
                           the inner function)
+
         """
         assert numpy.all(isinstance(i, gof.Variable) for i in inputs)
         # Check that the number of inputs to the Scan node corresponds to
@@ -391,10 +403,12 @@ class Scan(PureOp):
                    )
 
         def format(var, as_var):
-            """ This functions ensures that ``out`` has the same dtype as
+            """
+            This functions ensures that ``out`` has the same dtype as
             ``inp`` as well as calling filter_variable to make sure they are
             both TensorType or CudaNdarrayType. It internally deals with the
             corner case where inp.ndim + 1 = out.ndim
+
             """
             if not hasattr(var, 'dtype'):
                 return var
@@ -686,24 +700,31 @@ class Scan(PureOp):
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         """
-        :param node: something previously returned by self.make_node
 
-        :param storage_map: dict variable -> one-element-list where a computed
-                value for this variable may be found.
+        Parameters
+        ----------
+        node
+            Something previously returned by self.make_node.
+        storage_map
+            dict variable -> one-element-list where a computed
+            value for this variable may be found.
+        compute_map
+            dict variable -> one-element-list where a boolean
+            value will be found. The boolean indicates whether the
+            variable's storage_map container contains a valid value (True)
+            or if it has not been computed yet (False).
+        no_recycling
+            List of variables for which it is forbidden to reuse memory
+            allocated by a previous call.
 
-        :param compute_map: dict variable -> one-element-list where a boolean
-                value will be found.  The boolean indicates whether the
-                variable's storage_map container contains a valid value (True)
-                or if it has not been computed yet (False).
+        Notes
+        -----
+        If the thunk consults the storage_map on every call, it is safe
+        for it to ignore the no_recycling argument, because elements of the
+        no_recycling list will have a value of None in the storage map. If
+        the thunk can potentially cache return values (like CLinker does),
+        then it must not do so for variables in the no_recycling list.
 
-        :param no_recycling: list of variables for which it is forbidden to
-                reuse memory allocated by a previous call.
-
-        :note: If the thunk consults the storage_map on every call, it is safe
-            for it to ignore the no_recycling argument, because elements of the
-            no_recycling list will have a value of None in the storage map.  If
-            the thunk can potentially cache return values (like CLinker does),
-            then it must not do so for variables in the no_recycling list.
         """
 
         # Before building the thunk, validate that the inner graph is
@@ -1531,7 +1552,8 @@ class Scan(PureOp):
         return connection_pattern
 
     def get_oinp_iinp_iout_oout_mappings(self):
-        """ Compute and return dictionary mappings between the inputs and
+        """ 
+        Compute and return dictionary mappings between the inputs and
         outputs of the inner function and the inputs and outputs of the Scan
         node in the outer graph.
 
@@ -1541,7 +1563,8 @@ class Scan(PureOp):
         the values are individual integer indices. In dictionaries
         representing mappings to inner variables, the values are sequences of
         indices because multiple inner variables can be associated with the
-        same state
+        same state.
+
         """
         # Lists for outer variables contain individual indices, lists for
         # inner variables contain sequences of indices because many inner

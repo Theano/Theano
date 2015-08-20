@@ -13,7 +13,11 @@ from theano.gradient import DisconnectedType
 # than visiting each weight gradient element once and passing through whole video
 
 class ConvGrad3D(theano.Op):
-    """ Gradient of Conv3D with respect to W """
+    """
+    Gradient of Conv3D with respect to W.
+
+    """
+
     __props__ = ()
 
     def c_code_cache_version(self):

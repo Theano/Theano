@@ -47,6 +47,7 @@ hostname = socket.gethostname()
 def force_unlock():
     """
     Delete the compilation lock if someone else has it.
+
     """
     get_lock(min_wait=0, max_wait=0.001, timeout=0)
     release_lock()
@@ -67,10 +68,16 @@ def _get_lock(lock_dir=None, **kw):
     """
     Obtain lock on compilation directory.
 
-    :param kw: Additional arguments to be forwarded to the `lock` function when
-    acquiring the lock.
+    Parameters
+    ----------
+    kw
+        Additional arguments to be forwarded to the `lock` function when
+        acquiring the lock.
 
-    :note: We can lock only on 1 directory at a time.
+    Notes
+    -----
+    We can lock only on 1 directory at a time.
+
     """
     if lock_dir is None:
         lock_dir = os.path.join(config.compiledir, 'lock_dir')
@@ -125,6 +132,7 @@ get_lock = _get_lock
 def release_lock():
     """
     Release lock on compilation directory.
+
     """
     get_lock.n_lock -= 1
     assert get_lock.n_lock >= 0
@@ -140,8 +148,11 @@ def set_lock_status(use_lock):
     by default). Disabling may make compilation slightly faster (but is not
     recommended for parallel execution).
 
-    :param use_lock: whether to use the compilation lock or not
-    :type  use_lock: bool
+    Parameters
+    ----------
+    use_lock : bool
+        Whether to use the compilation lock or not.
+
     """
     get_lock.lock_is_enabled = use_lock
 
@@ -169,22 +180,22 @@ def lock(tmp_dir, timeout=notset, min_wait=None, max_wait=None, verbosity=1):
     displayed each time we re-check for the presence of the lock. Otherwise it
     is displayed only when we notice the lock's owner has changed.
 
-    :param str tmp_dir: lock directory that will be created when
-                        acquiring the lock
+    Parameters
+    ----------
+    tmp_dir : str
+        Lock directory that will be created when acquiring the lock.
+    timeout : int or None
+        Time (in seconds) to wait before replacing an existing lock (default
+        config 'compile.timeout').
+    min_wait: int
+        Minimum time (in seconds) to wait before trying again to get the lock
+        (default config 'compile.wait').
+    max_wait: int
+        Maximum time (in seconds) to wait before trying again to get the lock
+        (default 2 * min_wait).
+    verbosity : int
+        Amount of feedback displayed to screen (default 1).
 
-    :param timeout: time (in seconds) to wait before replacing an
-                    existing lock (default config 'compile.timeout')
-    :type  timeout: int or None
-
-    :param int min_wait: minimum time (in seconds) to wait before
-                         trying again to get the lock
-                         (default config 'compile.wait')
-
-    :param int max_wait: maximum time (in seconds) to wait before
-                         trying again to get the lock
-                         (default 2 * min_wait)
-
-    :param int verbosity: amount of feedback displayed to screen (default 1)
     """
     if min_wait is None:
         min_wait = config.compile.wait
@@ -321,6 +332,7 @@ def refresh_lock(lock_file):
     """
     'Refresh' an existing lock by re-writing the file containing the owner's
     unique id, using a new (randomly generated) id, which is also returned.
+
     """
     unique_id = '%s_%s_%s' % (
         os.getpid(),
@@ -348,19 +360,22 @@ class Unlocker(object):
     Class wrapper around release mechanism so that the lock is automatically
     released when the program exits (even when crashing or being interrupted),
     using the __del__ class method.
+
     """
 
     def __init__(self, tmp_dir):
         self.tmp_dir = tmp_dir
 
     def unlock(self, force=False):
-        """Remove current lock.
+        """
+        Remove current lock.
 
         This function does not crash if it is unable to properly
         delete the lock file and directory. The reason is that it
         should be allowed for multiple jobs running in parallel to
         unlock the same directory at the same time (e.g. when reaching
         their timeout limit).
+
         """
         # If any error occurs, we assume this is because someone else tried to
         # unlock this directory at the same time.

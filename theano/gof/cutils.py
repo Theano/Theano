@@ -194,7 +194,10 @@ fail:
 
 
 def compile_cutils():
-    """Do just the compilation of cutils_ext"""
+    """
+    Do just the compilation of cutils_ext.
+
+    """
     code = ("""
         #include <Python.h>
         #include "numpy/arrayobject.h"

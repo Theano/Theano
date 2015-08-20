@@ -1,5 +1,5 @@
 """
-This module provides the Scan Op
+This module provides the Scan Op.
 
 Scanning is a general form of recurrence, which can be used for looping.
 The idea is that you *scan* a function along some input sequence, producing
@@ -26,9 +26,8 @@ the symbolic graph.
 The Scan Op should typically be used by calling any of the following
 functions: ``scan()``, ``map()``, ``reduce()``, ``foldl()``,
 ``foldr()``.
+
 """
-
-
 __docformat__ = 'restructedtext en'
 __authors__ = ("Razvan Pascanu "
                "Frederic Bastien "

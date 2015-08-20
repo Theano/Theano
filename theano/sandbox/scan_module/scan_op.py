@@ -1,7 +1,8 @@
 """
-This module provides the Scan Op
+This module provides the Scan Op.
 
-See scan.py for details on scan
+See scan.py for details on scan.
+
 """
 from __future__ import print_function
 
@@ -157,25 +158,32 @@ class ScanOp(PureOp):
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         """
-        :param node: the Apply node returned by the ``make_node`` function
-                     of the scan op class
 
-        :param storage_map: dict variable -> one-element-list where a computed
-               value for this variable may be found.
+        Parameters
+        ----------
+        node
+            The Apply node returned by the ``make_node`` function of the scan
+            op class.
+        storage_map
+            dict variable -> one-element-list where a computed value for this
+            variable may be found.
+        compute_map
+            dict variable -> one-element-list where a boolean value will be
+            found. The boolean indicates whether the variable's storage_map
+            container contains a valid value (True) or if it has not been
+            computed yet (False).
+        no_recycling
+            List of variables for which it is forbidden to reuse memory
+            allocated by a previous call.
 
-        :param compute_map: dict variable -> one-element-list where a boolean
-                value will be found.  The boolean indicates whether the
-                variable's storage_map container contains a valid value (True)
-                or if it has not been computed yet (False).
+        Notes
+        -----
+        If the thunk consults the storage_map on every call, it is safe
+        for it to ignore the no_recycling argument, because elements of the
+        no_recycling list will have a value of None in the storage map. If
+        the thunk can potentially cache return values (like CLinker does),
+        then it must not do so for variables in the no_recycling list.
 
-        :param no_recycling: list of variables for which it is forbidden to
-                reuse memory allocated by a previous call.
-
-        :note: If the thunk consults the storage_map on every call, it is safe
-            for it to ignore the no_recycling argument, because elements of the
-            no_recycling list will have a value of None in the storage map.  If
-            the thunk can potentially cache return values (like CLinker does),
-            then it must not do so for variables in the no_recycling list.
         """
         # 1. Collect all memory buffers
         node_input_storage = [storage_map[r] for r in node.inputs]

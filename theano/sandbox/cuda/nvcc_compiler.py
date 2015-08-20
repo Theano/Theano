@@ -85,7 +85,10 @@ nvcc_version = None
 
 
 def is_nvcc_available():
-    """Return True iff the nvcc compiler is found."""
+    """
+    Return True iff the nvcc compiler is found.
+
+    """
     def set_version():
         p_out = output_subprocess_Popen([nvcc_path, '--version'])
         ver_line = decode(p_out[0]).strip().split('\n')[-1]
@@ -150,6 +153,7 @@ class NVCC_compiler(Compiler):
         """
         This args will be received by compile_str() in the preargs paramter.
         They will also be included in the "hard" part of the key module.
+
         """
         flags = [flag for flag in config.nvcc.flags.split(' ') if flag]
         if config.nvcc.fastmath:
@@ -209,33 +213,47 @@ class NVCC_compiler(Compiler):
             module_name, src_code,
             location=None, include_dirs=[], lib_dirs=[], libs=[], preargs=[],
             rpaths=rpath_defaults, py_module=True, hide_symbols=True):
-        """:param module_name: string (this has been embedded in the src_code
-        :param src_code: a complete c or c++ source listing for the module
-        :param location: a pre-existing filesystem directory where the
-                         cpp file and .so will be written
-        :param include_dirs: a list of include directory names
-                             (each gets prefixed with -I)
-        :param lib_dirs: a list of library search path directory names
-                         (each gets prefixed with -L)
-        :param libs: a list of libraries to link with
-                     (each gets prefixed with -l)
-        :param preargs: a list of extra compiler arguments
-        :param rpaths: list of rpaths to use with Xlinker.
-                       Defaults to `rpath_defaults`.
-        :param py_module: if False, compile to a shared library, but
-            do not import as a Python module.
-
-        :param hide_symbols: if True (the default), hide all symbols
-        from the library symbol table unless explicitely exported.
-
-        :returns: dynamically-imported python module of the compiled code.
-            (unless py_module is False, in that case returns None.)
-
-        :note 1: On Windows 7 with nvcc 3.1 we need to compile in the
-                 real directory Otherwise nvcc never finish.
-
         """
 
+        Parameters
+        ----------
+        module_name: str
+             This has been embedded in the src_code.
+        src_code
+            A complete c or c++ source listing for the module.
+        location
+            A pre-existing filesystem directory where the
+            cpp file and .so will be written.
+        include_dirs
+            A list of include directory names (each gets prefixed with -I).
+        lib_dirs
+            A list of library search path directory names (each gets 
+            prefixed with -L).
+        libs
+            A list of libraries to link with (each gets prefixed with -l).
+        preargs
+            A list of extra compiler arguments.
+        rpaths
+            List of rpaths to use with Xlinker. Defaults to `rpath_defaults`.
+        py_module
+            If False, compile to a shared library, but
+            do not import as a Python module.
+        hide_symbols
+            If True (the default), hide all symbols from the library symbol
+            table unless explicitely exported.
+
+        Returns
+        -------
+        module
+            Dynamically-imported python module of the compiled code.
+            (unless py_module is False, in that case returns None.)
+
+        Notes
+        -----
+        On Windows 7 with nvcc 3.1 we need to compile in the real directory
+        Otherwise nvcc never finish.
+
+        """
         rpaths = list(rpaths)
 
         if sys.platform == "win32":

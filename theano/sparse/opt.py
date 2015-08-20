@@ -19,8 +19,11 @@ _is_dense = sparse._is_dense
 
 @gof.local_optimizer([csm_properties])
 def local_csm_properties_csm(node):
-    """if we find csm_properties(CSM(*args)), then we can replace that with the
-    *args directly"""
+    """
+    If we find csm_properties(CSM(*args)), then we can replace that with the
+    *args directly.
+
+    """
     if node.op == csm_properties:
         csm, = node.inputs
         if csm.owner and (csm.owner.op == CSC or csm.owner.op == CSR):
@@ -39,6 +42,7 @@ register_specialize(local_csm_properties_csm)
 def local_inplace_remove0(node):
     """
     Optimization to insert inplace versions of Remove0.
+
     """
     # If inplace is not enabled, enable it and replace that op with a
     # new op which has inplace enabled
@@ -56,15 +60,27 @@ theano.compile.optdb.register(
 
 
 class AddSD_ccode(gof.op.Op):
-    """Add a sparse and a dense matrix.
-
-    :param x: A sparse matrix.
-    :param y: A dense matrix
-
-    :return: `x`+`y`
-
-    :note: The grad implemented is structured on `x`.
     """
+    Add a sparse and a dense matrix.
+
+    Parameters
+    ----------
+    x
+        A sparse matrix.
+    y
+        A dense matrix
+
+    Returns
+    -------
+    matrix
+        `x`+`y`
+
+    Notes
+    -----
+    The grad implemented is structured on `x`.
+
+    """
+
     __props__ = ("format", "inplace")
 
     def __init__(self, format, inplace=False, *args, **kwargs):
@@ -161,6 +177,7 @@ class AddSD_ccode(gof.op.Op):
 def local_inplace_addsd_ccode(node):
     """
     Optimization to insert inplace versions of AddSD.
+
     """
     if isinstance(node.op, sparse.AddSD) and theano.config.cxx:
         out_dtype = scalar.upcast(*node.inputs)
@@ -191,6 +208,7 @@ def local_dense_from_sparse_sparse_from_dense(node):
 def local_addsd_ccode(node):
     """
     Convert AddSD to faster AddSD_ccode.
+
     """
     if isinstance(node.op, sparse.AddSD) and theano.config.cxx:
         new_node = AddSD_ccode(format=node.inputs[0].type.format)(*node.inputs)
@@ -203,21 +221,31 @@ theano.compile.optdb.register('local_addsd_ccode',
 
 
 class StructuredDotCSC(gof.Op):
-    """Structured Dot CSC is like dot, except that only the
-    gradient wrt non-zero elements of the sparse matrix
-    `a` are calculated and propagated.
+    """
+    Structured Dot CSC is like dot, except that only the gradient wrt non-zero
+    elements of the sparse matrix `a` are calculated and propagated.
 
     The output is presumed to be a dense matrix, and is represented by a
     TensorType instance.
 
-    :param a: A sparse matrix in csc format.
-    :param b: A sparse or dense matrix.
+    Parameters
+    ----------
+    a
+        A sparse matrix in csc format.
+    b
+        A sparse or dense matrix.
 
-    :return: The dot product of `a` and `b`.
+    Returns
+    -------
+    The dot product of `a` and `b`.
 
-    :note: The grad implemented is structured.
-    :note: This op is used as an optimization for StructuredDot.
+    Notes
+    -----
+    The grad implemented is structured.
+    This op is used as an optimization for StructuredDot.
+
     """
+
     __props__ = ()
 
     def make_node(self, a_val, a_ind, a_ptr, a_nrows, b):
@@ -389,20 +417,31 @@ sd_csc = StructuredDotCSC()
 
 
 class StructuredDotCSR(gof.Op):
-    """Structured Dot CSR is like dot, except that only the
+    """
+    Structured Dot CSR is like dot, except that only the
     gradient wrt non-zero elements of the sparse matrix
     `a` are calculated and propagated.
 
     The output is presumed to be a dense matrix, and is represented by a
     TensorType instance.
 
-    :param a: A sparse matrix in csr format.
-    :param b: A sparse or dense matrix.
+    Parameters
+    ----------
+    a
+        A sparse matrix in csr format.
+    b
+        A sparse or dense matrix.
 
-    :return: The dot product of `a` and `b`.
+    Returns
+    -------
+    matrix
+        The dot product of `a` and `b`.
 
-    :note: The grad implemented is structured.
-    :note: This op is used as an optimization for StructuredDot.
+    Notes
+    -----
+    The grad implemented is structured.
+    This op is used as an optimization for StructuredDot.
+
     """
     __props__ = ()
 
@@ -427,17 +466,27 @@ class StructuredDotCSR(gof.Op):
 
     def c_code(self, node, name, inputs, outputs, sub):
         """
-        C-implementation of the dot product of the sparse matrix A and matrix
-        B.
-        @param a_val: non-zero values of the sparse matrix
-        @param a_ind: column indices of the non-null values (.indices of a
-        scipy.csc_matrix)
-        @param a_ptr: a_ptr indicates col indices for col. i are in the range
-        a_ptr[i]:a_ptr[i+1]
-        @param n_cols: number of columns of sparse matrix
-        @param b: dense matrix to perform dot product with, as in dot(a, b)
-        @param z: return value
-        @param sub: TODO, not too sure, something to do with weave probably
+        C-implementation of the dot product of the sparse matrix A and matrix B.
+
+        Parameters
+        ----------
+        a_val
+            Non-zero values of the sparse matrix.
+        a_ind
+            Column indices of the non-null values (.indices of a
+            scipy.csc_matrix).
+        a_ptr
+            Indicates col indices for col. i are in the range
+            a_ptr[i]:a_ptr[i+1].
+        n_cols
+            Number of columns of sparse matrix.
+        b
+            Dense matrix to perform dot product with, as in dot(a, b).
+        z
+            Return value.
+        sub
+            TODO, not too sure, something to do with weave probably.
+
         """
         (a_val, a_ind, a_ptr, b) = inputs
         (z,) = outputs
@@ -569,19 +618,30 @@ def local_structured_dot(node):
 
 
 class UsmmCscDense(gof.Op):
-    """Performs the expression is `alpha` * `x` `y` + `z`.
-
-    :param x: Matrix variable.
-    :param y: Matrix variable.
-    :param z: Dense matrix.
-    :param alpha: A tensor scalar.
-
-    :return: The dense matrix resulting from `alpha` * `x` `y` + `z`.
-
-    :note: The grad is not implemented for this op.
-    :note: Optimized version os Usmm when `x` is in csc format and
-           `y` is dense.
     """
+    Performs the expression is `alpha` * `x` `y` + `z`.
+
+    Parameters
+    ----------
+    x
+        Matrix variable.
+    y
+        Matrix variable.
+    z
+        Dense matrix.
+    alpha
+        A tensor scalar.
+
+    Returns
+    -------
+    The dense matrix resulting from `alpha` * `x` `y` + `z`.
+
+    Notes
+    -----
+    The grad is not implemented for this op.
+    Optimized version os Usmm when `x` is in csc format and `y` is dense.
+    """
+
     __props__ = ("inplace",)
 
     def __init__(self, inplace):
@@ -837,7 +897,10 @@ register_specialize(local_usmm_csc_dense_inplace, 'cxx_only', 'inplace')
 # This is tested in tests/test_basic.py:UsmmTests
 @gof.local_optimizer([usmm])
 def local_usmm_csx(node):
-    """ usmm -> usmm_csc_dense """
+    """
+    usmm -> usmm_csc_dense
+
+    """
     if node.op == usmm:
         alpha, x, y, z = node.inputs
 
@@ -987,7 +1050,10 @@ csm_grad_c = CSMGradC()
 # This is tested in tests/test_opt.py:test_local_csm_grad_c
 @gof.local_optimizer([csm_grad(None)])
 def local_csm_grad_c(node):
-    """ csm_grad(None) -> csm_grad_c """
+    """
+    csm_grad(None) -> csm_grad_c
+
+    """
     if node.op == csm_grad(None):
         return [csm_grad_c(*node.inputs)]
     return False
@@ -996,22 +1062,37 @@ def local_csm_grad_c(node):
 
 
 class MulSDCSC(gof.Op):
-    """Multiplication of sparse matrix by a broadcasted dense vector
+    """
+    Multiplication of sparse matrix by a broadcasted dense vector
     element wise.
 
-    :param a_data: Sparse matrix data.
-    :param a_indices: Sparse matrix indices.
-    :param a_indptr: Sparse matrix indptr.
-    :param b: Tensor type matrix.
+    Parameters
+    ----------
+    a_data
+        Sparse matrix data.
+    a_indices
+        Sparse matrix indices.
+    a_indptr
+        Sparse matrix indptr.
+    b
+        Tensor type matrix.
 
-    :return: The multiplication of the two matrix element wise.
+    Returns
+    -------
+    The multiplication of the two matrices element-wise.
 
-    :note: `a_data`, `a_indices` and `a_indptr` must be the properties
-            of a sparse matrix in csc format.
-    :note: The dtype of `a_data`, i.e. the dtype of the sparse matrix,
-           cannot be a complex type.
-    :note: This op is used as an optimization of mul_s_d.
+    Notes
+    -----
+    `a_data`, `a_indices` and `a_indptr` must be the properties of a sparse
+    matrix in csc format.
+
+    The dtype of `a_data`, i.e. the dtype of the sparse matrix, cannot be a
+    complex type.
+
+    This op is used as an optimization of mul_s_d.
+
     """
+
     __props__ = ()
 
     def make_node(self, a_data, a_indices, a_indptr, b):
@@ -1108,21 +1189,35 @@ mul_s_d_csc = MulSDCSC()
 
 
 class MulSDCSR(gof.Op):
-    """Multiplication of sparse matrix by a broadcasted dense vector
+    """
+    Multiplication of sparse matrix by a broadcasted dense vector
     element wise.
 
-    :param a_data: Sparse matrix data.
-    :param a_indices: Sparse matrix indices.
-    :param a_indptr: Sparse matrix indptr.
-    :param b: Tensor type matrix.
+    Parameters
+    ----------
+    a_data
+        Sparse matrix data.
+    a_indices
+        Sparse matrix indices.
+    a_indptr
+        Sparse matrix indptr.
+    b
+        Tensor type matrix.
 
-    :return: The multiplication of the two matrix element wise.
+    Returns
+    -------
+    The multiplication of the two matrix element wise.
 
-    :note: `a_data`, `a_indices` and `a_indptr` must be the properties
-            of a sparse matrix in csr format.
-    :note: The dtype of `a_data`, i.e. the dtype of the sparse matrix,
-           cannot be a complex type.
-    :note: This op is used as an optimization of mul_s_d.
+    Notes
+    -----
+    `a_data`, `a_indices` and `a_indptr` must be the properties
+    of a sparse matrix in csr format.
+
+    The dtype of `a_data`, i.e. the dtype of the sparse matrix,
+    cannot be a complex type.
+
+    This op is used as an optimization of mul_s_d.
+
     """
     __props__ = ()
 
@@ -1262,21 +1357,35 @@ register_specialize(local_mul_s_d, 'cxx_only')
 
 
 class MulSVCSR(gof.Op):
-    """Multiplication of sparse matrix by a broadcasted dense vector
+    """
+    Multiplication of sparse matrix by a broadcasted dense vector
     element wise.
 
-    :param a_data: Sparse matrix data.
-    :param a_indices: Sparse matrix indices.
-    :param a_indptr: Sparse matrix indptr.
-    :param b: Tensor type matrix.
+    Parameters
+    ----------
+    a_data
+        Sparse matrix data.
+    a_indices
+        Sparse matrix indices.
+    a_indptr
+        Sparse matrix indptr.
+    b
+        Tensor type matrix.
 
-    :return: The multiplication of the two matrix element wise.
+    Returns
+    -------
+    The multiplication of the two matrix element wise.
 
-    :note: `a_data`, `a_indices` and `a_indptr` must be the properties
-            of a sparse matrix in csr format.
-    :note: The dtype of `a_data`, i.e. the dtype of the sparse matrix,
-           cannot be a complex type.
-    :note: This op is used as an optimization of MulSV.
+    Notes
+    -----
+    `a_data`, `a_indices` and `a_indptr` must be the properties
+    of a sparse matrix in csr format.
+
+    The dtype of `a_data`, i.e. the dtype of the sparse matrix,
+    cannot be a complex type.
+
+    This op is used as an optimization of MulSV.
+
     """
     __props__ = ()
 
@@ -1399,23 +1508,36 @@ register_specialize(local_mul_s_v, 'cxx_only')
 
 
 class StructuredAddSVCSR(gof.Op):
-    """Structured addition of a sparse matrix and a dense vector.
+    """
+    Structured addition of a sparse matrix and a dense vector.
     The elements of the vector are are only added to the corresponding
     non-zero elements. Therefore, this operation outputs another sparse
     matrix.
 
-    :param a_data: Sparse matrix data.
-    :param a_indices: Sparse matrix indices.
-    :param a_indptr: Sparse matrix indptr.
-    :param b: Tensor type vector.
+    Parameters
+    ----------
+    a_data
+        Sparse matrix data.
+    a_indices
+        Sparse matrix indices.
+    a_indptr
+        Sparse matrix indptr.
+    b
+        Tensor type vector.
 
-    :return: A sparse matrix containing the addition of the vector to
-             the data of the sparse matrix.
+    Returns
+    -------
+    A sparse matrix containing the addition of the vector to the data of the
+    sparse matrix.
 
-    :note: The a_* are the properties of a sparse matrix in csr
-           format.
-    :note: This op is used as an optimization for StructuredAddSV.
+    Notes
+    -----
+    The a_* are the properties of a sparse matrix in csr format.
+
+    This op is used as an optimization for StructuredAddSV.
+
     """
+
     __props__ = ()
 
     def make_node(self, a_data, a_indices, a_indptr, b):
@@ -1553,7 +1675,8 @@ register_specialize(local_structured_add_s_v, 'cxx_only')
 
 
 class SamplingDotCSR(gof.Op):
-    """Operand optimized for calculating the dot product dot(`x`, `y`.T) = `z`
+    """
+    Operand optimized for calculating the dot product dot(`x`, `y`.T) = `z`
     when you only want to calculate a subset of `z`.
 
     It is equivalent to `p` o (`x` . `y`.T) where o is the element-wise
@@ -1563,28 +1686,41 @@ class SamplingDotCSR(gof.Op):
     interface than `dot` because SamplingDot requires `x` to be a `m`x`k`
     matrix while `y` is a `n`x`k` matrix instead of the usual `k`x`n` matrix.
 
-    .. note::
+    Parameters
+    ----------
+    x
+        Tensor matrix.
+    y
+        Tensor matrix.
+    p_data
+        Sparse matrix data.
+    p_ind
+        Sparse matrix indices.
+    p_ptr
+        Sparse matric indptr.
+    p_ncols
+        Sparse matrix number of columns.
 
-        It will work if the pattern is not binary value, but if the
-        pattern doesn't have a high sparsity proportion it will be slower
-        then a more optimized dot followed by a normal elemwise
-        multiplication.
+    Returns
+    -------
+    A dense matrix containing the dot product of `x` by `y`.T only
+    where `p` is 1.
 
-    :param x: Tensor matrix.
-    :param y: Tensor matrix.
-    :param p_data: Sparse matrix data.
-    :param p_ind: Sparse matrix indices.
-    :param p_ptr: Sparse matric indptr.
-    :param p_ncols: Sparse matrix number of columns.
+    Notes
+    -----
+    It will work if the pattern is not binary value, but if the
+    pattern doesn't have a high sparsity proportion it will be slower
+    then a more optimized dot followed by a normal elemwise
+    multiplication.
 
-    :return: A dense matrix containing the dot product of `x` by `y`.T only
-             where `p` is 1.
+    If we have the input of mixed dtype, we insert cast elemwise
+    in the graph to be able to call blas function as they don't
+    allow mixed dtype.
 
-    :note: If we have the input of mixed dtype, we insert cast elemwise
-           in the graph to be able to call blas function as they don't
-           allow mixed dtype.
-    :note: This op is used as an optimization for SamplingDot.
+    This op is used as an optimization for SamplingDot.
+
     """
+
     __props__ = ()
 
     def make_node(self, x, y, p_data, p_ind, p_ptr, p_ncols):

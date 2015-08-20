@@ -1,4 +1,7 @@
-"""Provide a simple user friendly API to Theano-managed memory"""
+"""
+Provide a simple user friendly API to Theano-managed memory.
+
+"""
 # Standard imports
 import copy
 import logging
@@ -18,6 +21,32 @@ class SharedVariable(Variable):
     Variable that is (defaults to being) shared between functions that
     it appears in.
 
+    Parameters
+    ----------
+    name : str
+        The name for this variable (see `Variable`).
+    type : str
+        The type for this variable (see `Variable`).
+    value
+        A value to associate with this variable (a new container will be
+        created).
+    strict
+        True : assignments to .value will not be cast or copied, so they must
+        have the correct type.
+    allow_downcast
+        Only applies if `strict` is False.
+        True : allow assigned value to lose precision when cast during
+        assignment.
+        False : never allow precision loss.
+        None : only allow downcasting of a Python float to a scalar floatX.
+    container
+        The container to use for this variable. Illegal to pass this as well as
+        a value.
+
+    Notes
+    -----
+    For more user-friendly constructor, see `shared`.
+
     """
 
     # Container object
@@ -36,29 +65,6 @@ class SharedVariable(Variable):
 
     def __init__(self, name, type, value, strict,
                  allow_downcast=None, container=None):
-        """
-        :param name: The name for this variable (see `Variable`).
-
-        :param type: The type for this variable (see `Variable`).
-
-        :param value: A value to associate with this variable (a new
-        container will be created).
-
-        :param strict: True -> assignments to .value will not be cast
-        or copied, so they must have the correct type.
-
-        :param allow_downcast: Only applies if `strict` is False.
-        True -> allow assigned value to lose precision when cast
-                during assignment.
-        False -> never allow precision loss.
-        None -> only allow downcasting of a Python float to a scalar floatX.
-
-        :param container: The container to use for this
-        variable. Illegal to pass this as well as a value.
-
-        :note: For more user-friendly constructor, see `shared`
-
-        """
         super(SharedVariable, self).__init__(type=type, name=name,
                                              owner=None, index=None)
 
@@ -79,18 +85,21 @@ class SharedVariable(Variable):
                 allow_downcast=allow_downcast)
 
     def get_value(self, borrow=False, return_internal_type=False):
-        """Get the non-symbolic value associated with this SharedVariable.
+        """
+        Get the non-symbolic value associated with this SharedVariable.
 
-        :param borrow: True to permit returning of an object aliased
-            to internal memory.
-        :param return_internal_type: True to permit the returning of
-            an arbitrary type object used internally to store the
-            shared variable.
+        Parameters
+        ----------
+        borrow : bool
+            True to permit returning of an object aliased to internal memory.
+        return_internal_type : bool
+            True to permit the returning of an arbitrary type object used
+            internally to store the shared variable.
 
-        Only with borrow=False and return_internal_type=True does this
-        function guarantee that you actually get the internal object.
-        But in that case, you may get different return types when
-        using different compute devices.
+        Only with borrow=False and return_internal_type=True does this function
+        guarantee that you actually get the internal object.
+        But in that case, you may get different return types when using
+        different compute devices.
 
         """
         if borrow:
@@ -99,14 +108,18 @@ class SharedVariable(Variable):
             return copy.deepcopy(self.container.value)
 
     def set_value(self, new_value, borrow=False):
-        """Set the non-symbolic value associated with this SharedVariable.
+        """
+        Set the non-symbolic value associated with this SharedVariable.
 
-        :param borrow:
+        Parameters
+        ----------
+        borrow : bool
             True to use the new_value directly, potentially creating problems
             related to aliased memory.
 
         Changes to this value will be visible to all functions using
         this SharedVariable.
+
         """
         if borrow:
             self.container.value = new_value
@@ -114,15 +127,19 @@ class SharedVariable(Variable):
             self.container.value = copy.deepcopy(new_value)
 
     def zero(self, borrow=False):
-        """Set the values of a shared variable to 0.
+        """
+        Set the values of a shared variable to 0.
 
-        :param borrow:
+        Parameters
+        ----------
+        borrow : bbol
             True to modify the value of a shared variable directly by using
             its previous value. Potentially this can cause problems
             regarding to the aliased memory.
 
         Changes done with this function will be visible to all functions using
         this SharedVariable.
+
         """
         if borrow:
             self.container.value[...] = 0
@@ -183,7 +200,8 @@ def shared_constructor(ctor, remove=False):
 
 
 def shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
-    """Return a SharedVariable Variable, initialized with a copy or
+    """
+    Return a SharedVariable Variable, initialized with a copy or
     reference of `value`.
 
     This function iterates over
@@ -196,23 +214,25 @@ def shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
 
     ``theano.shared`` is a shortcut to this function.
 
-    :note: By passing kwargs, you effectively limit the set of
-        potential constructors to those that can accept those kwargs.
+    Notes
+    -----
+    By passing kwargs, you effectively limit the set of potential constructors
+    to those that can accept those kwargs.
 
-    :note: Some shared variable have ``borrow`` as extra kwargs.
-           `See <http://deeplearning.net/software/theano/tutorial/aliasing.\
-html#borrowing-when-creating-shared-variables>`_ for detail.
+    Some shared variable have ``borrow`` as extra kwargs.
+    `See <http://deeplearning.net/software/theano/tutorial/aliasing.\
+    html#borrowing-when-creating-shared-variables>`_ for details.
 
-    :note: Some shared variable have ``broadcastable`` as extra kwargs.
-        As shared variable shapes can change, all dimensions default
-        to not being broadcastable, even if ``value`` has a shape of 1
-        along some dimension. This parameter allows you to create
-        for example a `row` or `column` 2d tensor.
+    Some shared variable have ``broadcastable`` as extra kwargs. As shared
+    variable shapes can change, all dimensions default to not being
+    broadcastable, even if ``value`` has a shape of 1 along some dimension.
+    This parameter allows you to create for example a `row` or `column` 2d
+    tensor.
 
     .. attribute:: constructors
 
-        A list of shared variable constructors that will be tried in reverse
-        order.
+    A list of shared variable constructors that will be tried in reverse
+    order.
 
     """
 
@@ -251,6 +271,9 @@ shared.constructors = []
 
 @shared_constructor
 def generic_constructor(value, name=None, strict=False, allow_downcast=None):
-    """SharedVariable Constructor"""
+    """
+    SharedVariable Constructor.
+
+    """
     return SharedVariable(type=generic, value=value, name=name, strict=strict,
                           allow_downcast=allow_downcast)

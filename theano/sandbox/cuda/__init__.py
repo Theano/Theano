@@ -94,12 +94,14 @@ cuda_enabled = False
 # Code factorized within a function so that it may be called from multiple
 # places (which is not currently the case, but may be useful in the future).
 def set_cuda_disabled():
-    """Function used to disable cuda.
+    """
+    Function used to disable cuda.
 
     A warning is displayed, so that the user is aware that cuda-based code is
     not going to work.
     Note that there is no point calling this function from outside of
     `cuda.__init__`, since it has no effect once the module is loaded.
+
     """
     global cuda_available, cuda_warning_is_displayed
     cuda_available = False
@@ -116,8 +118,9 @@ libcuda_ndarray_so = os.path.join(cuda_ndarray_loc,
 
 def try_import():
     """
-    load the cuda_ndarray module if present and up to date
-    return True if loaded correctly, otherwise return False
+    Load the cuda_ndarray module if present and up to date.
+    Return True if loaded correctly, otherwise return False.
+
     """
     cuda_files = (
         'cuda_ndarray.cu',
@@ -219,6 +222,7 @@ if cuda_available:
     def ok():
         """
         Check if an existing library exists and can be read.
+
         """
         try:
             open(libcuda_ndarray_so).close()
@@ -266,6 +270,7 @@ class GpuOp(theano.gof.Op):
 
     It is defined in __init__.py so that it exists even when `cuda_available`
     is False (this is necessary to avoid breaking the test suite).
+
     """
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
@@ -331,18 +336,23 @@ def use(device,
         test_driver=True):
     """
     Error and warning about CUDA should be displayed only when this
-    function is called.  We need to be able to load this module only
+    function is called. We need to be able to load this module only
     to check if it is available!
 
-    :param device: string "cpu", "gpu", "gpuN" (N is the device number to use)
-    :param force: Will always raise an exception if we can't use the gpu.
-    :param default_to_move_computation_to_gpu: If gpu init succeeded, enable by
-                                               default optimizations to move
-                                               computations to the gpu
-    :param move_shared_float32_to_gpu: If gpu init succeeded, put new shared
-                                       variables in float32 on the gpu.
-    :param enable_cuda: If the gpu is correctly enabled,
-                        set the variable cuda_enabled to True.
+    Parameters
+    ----------
+    device : string 
+        "cpu", "gpu", "gpuN" (N is the device number to use).
+    force
+        Will always raise an exception if we can't use the gpu.
+    default_to_move_computation_to_gpu
+        If gpu init succeeded, enable by default optimizations to move
+        computations to the gpu.
+    move_shared_float32_to_gpu
+        If gpu init succeeded, put new shared variables in float32 on the gpu.
+    enable_cuda
+        If the gpu is correctly enabled, set the variable cuda_enabled to True.
+
     """
     global cuda_enabled, cuda_initialization_error_message
     if force and not cuda_available and device.startswith('gpu'):
@@ -480,7 +490,7 @@ use.device_number = None
 
 def unuse():
     """
-    This undo what was done by the call to
+    This undo what was done by the call to.
 
     use('gpu[0-9]', default_to_move_computation_to_gpu=True,
         move_shared_float32_to_gpu=True,
@@ -488,7 +498,9 @@ def unuse():
 
     This is used in Pylearn2 tests to enable/disable the GPU when needed.
 
-    After this call, the rest of Theano think the GPU shouldn't be used by default.
+    After this call, the rest of Theano think the GPU shouldn't be used by
+    default.
+
     """
     global cuda_enabled
     cuda_enabled = False
@@ -502,9 +514,11 @@ def unuse():
 
 
 def handle_shared_float32(tf):
-    """Set the default shared type for float32 tensor to CudaNdarrayType
+    """
+    Set the default shared type for float32 tensor to CudaNdarrayType.
 
     This function is intended to be called from use(gpu_index), not directly.
+
     """
     if tf:
         theano.compile.shared_constructor(float32_shared_constructor)

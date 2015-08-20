@@ -11,7 +11,12 @@ from theano.gradient import DisconnectedType
 
 
 class ConvTransp3D(theano.Op):
-    """ "Transpose" of Conv3D (Conv3D implements multiplication by an implicitly defined matrix W. This implements multiplication by its transpose) """
+    """
+    "Transpose" of Conv3D (Conv3D implements multiplication by an implicitly
+    defined matrix W. This implements multiplication by its transpose).
+
+    """
+
     __props__ = ()
 
     def c_code_cache_version(self):
@@ -19,10 +24,17 @@ class ConvTransp3D(theano.Op):
 
     def make_node(self, W, b, d, H, RShape=None):
         """
-        :param W: Weights, filter
-        :param b: bias, shape == (W.shape[0],)
-        :param d: strides when moving the filter over the input
-        :param H: The output of Conv3D
+        Parameters
+        ----------
+        W
+            Weights, filter
+        b
+            Bias, shape == (W.shape[0],).
+        d
+            Strides when moving the filter over the input.
+        H
+            The output of Conv3D.
+
         """
         W_ = T.as_tensor_variable(W)
         b_ = T.as_tensor_variable(b)

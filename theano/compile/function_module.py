@@ -1,4 +1,6 @@
-"""Driver of graph construction, optimization, and linking.
+"""
+Driver of graph construction, optimization, and linking.
+
 """
 from __future__ import print_function
 
@@ -31,13 +33,18 @@ __docformat__ = "restructuredtext en"
 
 class UnusedInputError(Exception):
     """
-    A symbolic input passed to function is not needed
+    A symbolic input passed to function is not needed.
+
     """
+
     pass
 
 
 def alias_root(v):
-    "Return the variable to which v is aliased by view_maps and destroy_maps"
+    """
+    Return the variable to which v is aliased by view_maps and destroy_maps.
+
+    """
     if v.owner is None:
         return v
     vmap = getattr(v.owner.op, 'view_map', {})
@@ -56,8 +63,11 @@ def alias_root(v):
 
 
 def view_tree_set(v, treeset):
-    """Add to `treeset` all variables that are views of v, given that v is
-    not a view"""
+    """
+    Add to `treeset` all variables that are views of v, given that v is
+    not a view.
+
+    """
     treeset.add(v)
     for cl, v_input_pos_to_cl in v.clients:
         if cl == 'output':
@@ -79,6 +89,7 @@ def infer_reuse_pattern(fgraph, outputs_to_disown):
 
     This list (or set) is also refered to as no_recycling sometimes,
     especially by linker code.
+
     """
     rval = set()
     for o in outputs_to_disown:
@@ -94,7 +105,10 @@ def fgraph_updated_vars(fgraph, expanded_inputs):
     Reconstruct the full "updates" dictionary, mapping from FunctionGraph input
     variables to the fgraph outputs that will replace their values.
 
-    :rtype: dict variable -> variable
+    Returns
+    -------
+    dict variable -> variable
+
     """
     updated_vars = {}
     potential_values = list(fgraph.outputs)  # copy the list
@@ -111,7 +125,9 @@ class Supervisor:
     Listener for FunctionGraph events which makes sure that no
     operation overwrites the contents of protected Variables. The
     outputs of the FunctionGraph are protected by default.
+
     """
+
     def __init__(self, protected):
         self.protected = list(protected)
 
@@ -139,6 +155,7 @@ def std_fgraph(input_specs, output_specs, accept_inplace=False):
 
     The returned FunctionGraph is a clone of the graph between the provided
     inputs and outputs.
+
     """
     orig_inputs = [spec.variable for spec in input_specs]
     updates = [spec.update for spec in input_specs if spec.update]
@@ -173,7 +190,10 @@ std_fgraph.features = [gof.toolbox.PreserveNames]
 
 
 class AliasedMemoryError(Exception):
-    """Memory is aliased that should not be"""
+    """
+    Memory is aliased that should not be.
+
+    """
     pass
 
 
@@ -190,19 +210,16 @@ class Function(object):
     Type of the functions returned by theano.function or
     theano.FunctionMaker.create.
 
+    `Function` is the callable object that does computation.  It has the storage
+    of inputs and outputs, performs the packing and unpacking of inputs and
+    return values. It implements the square-bracket indexing so that you can
+    look up the value of a symbolic node.
 
-    `Function` is the callable object that does computation.  It has
-    the storage of inputs and outputs, performs the packing and
-    unpacking of inputs and return values.  It implements the
-    square-bracket indexing so that you can look up the value of a
-    symbolic node.
-
-    Functions are copyable via {{{fn.copy()}}} and
-    {{{copy.copy(fn)}}}.  When a function is copied, this instance is
-    duplicated.  Contrast with self.maker (instance of
-    `FunctionMaker`) that is shared between copies.  The meaning of
-    copying a function is that the containers and their current values
-    will all be duplicated.  This requires that mutable inputs be
+    Functions are copyable via {{{fn.copy()}}} and {{{copy.copy(fn)}}}.
+    When a function is copied, this instance is duplicated. Contrast with
+    self.maker (instance of `FunctionMaker`) that is shared between copies.
+    The meaning of copying a function is that the containers and their current
+    values will all be duplicated. This requires that mutable inputs be
     copied, whereas immutable inputs may be shared between copies.
 
     A Function instance is hashable, on the basis of its memory
@@ -220,62 +237,93 @@ class Function(object):
     the good results if you pass a python or numpy scalar instead of a
     numpy tensor.  C code should raise an error if you pass an object
     of the wrong type.
+
+    Attributes
+    ----------
+    finder
+    inv_finder
+
     """
 
     pickle_aliased_memory_strategy = 'warn'
-    """How to deal with pickling finding aliased storage.
+    """
+    How to deal with pickling finding aliased storage.
 
-    Meaningful settings are: 'ignore', 'warn', 'raise'
+    Meaningful settings are: 'ignore', 'warn', 'raise'.
 
     If the value is 'warn', then a message will be printed to stderr
     if aliased storage is dectected during pickle.dump.
 
     If the value is 'raise', then an AliasedMemoryError will be raised
     if aliased storage is detected during pickle.dump.
+
     """
 
     input_storage = None
-    """list of Container instances"""
+    """
+    List of Container instances.
+
+    """
 
     output_storage = None
-    """list of Container instances"""
+    """
+    List of Container instances.
+
+    """
 
     indices = None
-    """list of (SymbolicInput|SymbolicInputKit, indices,
-    [SymbolicInput,...]), one tuple for each input
+    """
+    List of (SymbolicInput|SymbolicInputKit, indices, [SymbolicInput,...]),
+    one tuple for each input.
 
-    The first tuple element is the SymbolicInput object for the
-    corresponding function input.
+    The first tuple element is the SymbolicInput object for the corresponding
+    function input.
 
     The second and third tuple elements are used only by Kits, which
     are deprecated.
+
     """
 
     defaults = None
-    """ list of 3-tuples, one 3-tuple for each input.
+    """
+    List of 3-tuples, one 3-tuple for each input.
 
     Tuple element 0: Bool:  Is this input required at each function call?
     Tuple element 1: Bool: Should this inputs value be reverted after
         each call?
     Tuple element 2: Any:  The value associated with this input.
+
     """
 
     unpack_single = None
-    """Bool: for outputs lists of length 1, should the 0'th element be
-returned directly?"""
+    """
+    Bool: for outputs lists of length 1, should the 0'th element be
+    returned directly?
+
+    """
 
     return_none = None
-    """Bool: whether the function should return None or not"""
+    """
+    Bool: whether the function should return None or not.
+
+    """
 
     maker = None
-    """FunctionMaker instance"""
+    """
+    FunctionMaker instance.
+
+    """
 
     fn = None
-    """a function that evaluates the graph.  Typically a linker's
-    make_thunk method created this function."""
+    """
+    A function that evaluates the graph. Typically a linker's make_thunk method
+    created this function.
+
+    """
 
     finder = None
-    """Dictionary mapping several kinds of things to containers.
+    """
+    Dictionary mapping several kinds of things to containers.
 
     We set an entry in finder for:
 
@@ -286,21 +334,20 @@ returned directly?"""
     - the name of the input
 
     All entries map to the container or to DUPLICATE if an ambiguity
-    is detected
+    is detected.
+
     """
 
     inv_finder = None
-    """Dict. Reverse lookup of `finder`.
+    """
+    Dict. Reverse lookup of `finder`.
 
     It maps container -> SymbolicInput
+
     """
 
     def __init__(self, fn, input_storage, output_storage, indices, outputs,
                  defaults, unpack_single, return_none, output_keys, maker):
-        """
-        Initialize attributes. create finder, inv_finder.
-        """
-
         self.fn = fn
         self.input_storage = input_storage
         self.output_storage = output_storage
@@ -875,12 +922,34 @@ NODEFAULT = ['NODEFAULT']
 
 
 class FunctionMaker(object):
-    """`FunctionMaker` is the class to `create` `Function` instances.
+    """
+    `FunctionMaker` is the class to `create` `Function` instances.
 
-    This class has the fgraph, the optimizer, and the linker.  When
+    This class has the fgraph, the optimizer, and the linker. When
     copying a `Function`, there is no need to duplicate the
-    `FunctionMaker` instance.  Deepcopy still copies both, which can
+    `FunctionMaker` instance. Deepcopy still copies both, which can
     variable in re-compilation.
+
+    Parameters
+    ----------
+    inputs : list of SymbolicInput instances
+    outputs : list of SymbolicOutput instances
+        Outputs may also be a single Variable (not a list), in which case the
+        functions produced by FunctionMaker will return their output value
+        directly.
+    mode : Mode instance
+        Telling FunctionMaker how to optimize and link. None means to use the
+        `config.mode`.
+    accept_inplace : bool
+        True iff it is acceptable to have inplace operations in the graph from
+        the inputs to the outputs.
+    on_unused_input : {'raise', 'warn', 'ignore', None}
+        What to do if a variable in the 'inputs' list is not used in the graph.
+        Possible values are:
+        - 'raise': raise an error
+        - 'warn': log a warning
+        - 'ignore': do not do anything
+        - None: Use the value in the Theano flags on_unused_input.
 
     """
 
@@ -1101,29 +1170,6 @@ class FunctionMaker(object):
                  mode=None, accept_inplace=False, function_builder=Function,
                  profile=None, on_unused_input=None, fgraph=None,
                  output_keys=None):
-        """
-        :type inputs: a list of SymbolicInput instances
-
-
-        :type outputs: a list of SymbolicOutput instances outputs may
-            also be a single Variable (not a list), in which case the
-            functions produced by FunctionMaker will return their
-            output value directly
-
-        :param mode: a Mode instance telling FunctionMaker how to
-            optimize and link.  None means to use the `config.mode`.
-
-        :param accept_inplace: True iff it is acceptable to have
-            inplace operations in the graph from the inputs to the
-            outputs
-
-        :param on_unused_input: What to do if a variable in the 'inputs' list
-            is not used in the graph. Possible values are:
-                - 'raise': raise an error
-                - 'warn': log a warning
-                - 'ignore': do not do anything
-                - None: Use the value in the Theano flags on_unused_input
-        """
         mode = theano.compile.mode.get_mode(mode)
 
         # figure out which profile object to use (if any)
@@ -1313,12 +1359,15 @@ class FunctionMaker(object):
         """
         Create a function.
 
-        input_storage -> a list matching the inputs list and providing
-                    default values if the default for an input is
-                    None, then that input is a required input. For an
-                    input with an update, the default acts as
-                    initialization.
-        trustme -> disables some exceptions, used internally
+        Parameters
+        ----------
+        input_storage
+            A list matching the inputs list and providing default values if the
+            default for an input is None, then that input is a required input.
+            For an input with an update, the default acts as initialization.
+        trustme
+            Disables some exceptions, used internally.
+
         """
 
         if input_storage is None:
@@ -1453,43 +1502,43 @@ def orig_function(inputs, outputs, mode=None, accept_inplace=False,
     """
     Return a Function that will calculate the outputs from the inputs.
 
-    :param inputs: list of `SymbolicInput` or `In` instances
+    Parameters
+    ----------
+    inputs : list of `SymbolicInput` or `In` instances
+    outputs : a SymbolicOutput or a list of `SymbolicOutput` or `Out` instances
+        The return value of the returned function will match the format of this
+        argument (either the value itself or a list of one or more return
+        values).
+    mode : descriptive string or Mode instance
+        Default of None means to use `config.mode` (see below for descriptive
+        string list).
+    name : str
+        An optional name for this fct. If used, the profile mode will print the
+        time spent in this fct.
+    accept_inplace : bool
+        True iff the graph can contain inplace operations prior to the
+        optimization phase (default is False).
+    profile : None or ProfileStats instance
+    on_unused_input : {'raise', 'warn', 'ignore', None}
+        What to do if a variable in the 'inputs' list is not used in the graph.
+    output_keys :
+        If the outputs were provided to theano.function as a list, then
+        output_keys is None. Otherwise, if outputs were provided as a dict,
+        output_keys is the sorted list of keys from the outputs.
 
-    :param outputs: a SymbolicOutput or a list of `SymbolicOutput` or
-        `Out` instances. The return value of the returned function
-        will match the format of this argument (either the value
-        itself or a list of one or more return values)
-
-    :param mode: a descriptive string or a Mode instance. (Default of None
-        means to use `config.mode` (See below for descriptive string list).
-
-    :param name: an optional name for this fct. If used, the profile mode will
-        print the time spent in this fct.
-
+    Notes
+    -----
     Currently, the library provides the following mode strings:
 
-     - FAST_RUN (default) (optimize without too much time)
+    - FAST_RUN (default) (optimize without too much time)
 
-     - FAST_COMPILE (minimal optimization)
+    - FAST_COMPILE (minimal optimization)
 
-     - ProfileMode(deprecated): allow to print a profile mode with
-       mode.print_summary
+    - ProfileMode(deprecated): allow to print a profile mode with
+      mode.print_summary
 
-     - DebugMode: verify many internal conditions that are normally assumed
-       (slow)
-
-    :param accept_inplace: True iff the graph can contain inplace operations
-        prior to the optimization phase (default is False)
-
-    :param profile: None or ProfileStats instance
-
-    :param on_unused_input: What to do if a variable in the 'inputs' list is
-        not used in the graph. Possible values are 'raise', 'warn', 'ignore'
-        and None
-
-    :param output_keys: If the outputs were provided to theano.function as a
-        list, then output_keys is None.  Otherwise, if outputs were provided
-        as a dict, output_keys is the sorted list of keys from the outputs
+    - DebugMode: verify many internal conditions that are normally assumed
+      (slow)
 
     """
 
@@ -1554,6 +1603,7 @@ def convert_function_input(input):
 
     - a tuple (name, (r,up), val) will be
       `In`(r, name=name, value=val, update=up, autoname=True)
+
     """
     if isinstance(input, (SymbolicInput, SymbolicInputKit)):
         return input
@@ -1615,7 +1665,10 @@ def convert_function_input(input):
 
 
 def get_info_on_inputs(named_inputs, n_unnamed_inputs):
-    """Return a human-readable description of named and un-named inputs."""
+    """
+    Return a human-readable description of named and un-named inputs.
+
+    """
     n_named_inputs = len(named_inputs)
 
     def get_plural(n):

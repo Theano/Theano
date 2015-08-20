@@ -1,4 +1,5 @@
-"""Provides Ops for FFT and DCT.
+"""
+Provides Ops for FFT and DCT.
 
 """
 import numpy
@@ -23,18 +24,19 @@ grad_todo = GradTodo()
 
 
 class FFT(Op):
-    """Fast Fourier Transform
+    """
+    Fast Fourier Transform.
 
     .. TODO:
-        The current implementation just works for matrix inputs, and permits taking a 1D FFT over
-        either rows or columns.  Add support for N-D FFTs as provided by either numpy or FFTW
-        directly.
+        The current implementation just works for matrix inputs, and permits
+        taking a 1D FFT over either rows or columns. Add support for N-D FFTs
+        as provided by either numpy or FFTW directly.
 
     .. TODO:
         Give the C code that uses FFTW.
 
     .. TODO:
-        unit tests.
+        Unit tests.
 
     """
 
@@ -42,7 +44,7 @@ class FFT(Op):
     # don't return the plan object in the 'buf' output
 
     half = False
-    """Only return the first half (positive-valued) of the frequency components"""
+    """Only return the first half (positive-valued) of the frequency components."""
     __props__ = ("half", "inverse")
 
     def __init__(self, half=False, inverse=False):
@@ -50,7 +52,10 @@ class FFT(Op):
         self.inverse = inverse
 
     def make_node(self, frames, n, axis):
-        """ compute an n-point fft of frames along given axis """
+        """
+        Compute an n-point fft of frames along given axis.
+
+        """
         _frames = tensor.as_tensor(frames, ndim=2)
         _n = tensor.as_tensor(n, ndim=0)
         _axis = tensor.as_tensor(axis, ndim=0)
@@ -103,8 +108,8 @@ def dct_matrix(rows, cols, unitary=True):
     """
     Return a (rows x cols) matrix implementing a discrete cosine transform.
 
-    This algorithm is adapted from Dan Ellis' Rastmat
-    spec2cep.m, lines 15 - 20.
+    This algorithm is adapted from Dan Ellis' Rastmat spec2cep.m, lines 15-20.
+
     """
     rval = numpy.zeros((rows, cols))
     col_range = numpy.arange(cols)

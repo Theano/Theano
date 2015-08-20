@@ -26,9 +26,13 @@ class GpuSolve(GpuOp):
     """
     CULA GPU solver OP.
 
-    :param trans: Whether to take the transpose of the input matrix
-    or not.
+    Parameters
+    ----------
+    trans
+        Whether to take the transpose of the input matrix or not.
+
     """
+
     __props__ = ('trans',)
 
     def __init__(self, trans='N'):

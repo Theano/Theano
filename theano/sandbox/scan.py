@@ -49,13 +49,18 @@ def scan(fn,
     control over the scan op, avoiding certain difficulties that arose from
     missing optimizations.
 
-    :param fn: lambda function that describes one step of scan (see the
+    Parameters
+    ----------  
+    fn 
+        Lambda function that describes one step of scan (see the
         official Theano scan function)
-    :param sequences: similar to the official Theano's scan. This version
+    sequences
+        Similar to the official Theano's scan. This version
         of scan does not support taps for the sequences (it can only be a
         list of tensor). Scan assumes that sequences have the right length
         and it does not check for this.
-    :param states: similar to outputs_info of the official scan function.
+    states
+        Similar to outputs_info of the official scan function.
         There is one crucial difference though, namely that the `initial`
         key in the dictionary has been replace by 'membuf' key. This
         reflects the change of meaning. Instead of passing to scan just
@@ -72,37 +77,43 @@ def scan(fn,
         For states that do not require a initial state, one has to provide a
         dictionary with a single key 'steps' that says how many intermediate
         results to store. See examples below for more insight.
-    :param n_steps: This parameter is mandatory and it will represent the
+    n_steps
+        This parameter is mandatory and it will represent the
         number of steps scan will do (scan will not check sequences or any
         other source of information to figure out how many steps it needs
         to do).
-    :param mode: Same as for the official scan
-    :param name: Same as for the official scan
-    :param profile: Same as for the official scan
+    mode
+        Same as for the official scan.
+    name
+        Same as for the official scan.
+    profile
+        Same as for the official scan.
 
-    Note:
-     - there is no truncate / go_backwards anymore !
-     - the outputs returned by scan contain the initial states as well (i.e.
-     if I loop over k steps, with my smallest tap for an output -3 and keep
-     al intermediate results, my output will be of length k+3
+    Notes
+    -----
+    - There is no truncate / go_backwards anymore !
+    - The outputs returned by scan contain the initial states as well (i.e.
+    if I loop over k steps, with my smallest tap for an output -3 and keep
+    al intermediate results, my output will be of length k+3.
 
-     Examples:
-         (a) if you do not want to store any intermediate results (just the
-         last one)
+    Examples
+    --------
+    (a) if you do not want to store any intermediate results (just the
+    last one)
 
-         # The memory buffer can be the initial state, just that we need to
-         # add one extra dimension in front of it
-         state = TT.unbroadcast(TT.shape_padleft(x0),0)
-         out,_ = scan(lambda x:x+1, states = state, n_steps = 5)
-         # Once we got our result we need to remove the extra dimension
-         out = out[0]
+    # The memory buffer can be the initial state, just that we need to
+    # add one extra dimension in front of it
+    state = TT.unbroadcast(TT.shape_padleft(x0),0)
+    out,_ = scan(lambda x:x+1, states = state, n_steps = 5)
+    # Once we got our result we need to remove the extra dimension
+    out = out[0]
 
-        (b) if you want to keep every intermediate results
+    (b) if you want to keep every intermediate results
 
-        state = TT.alloc(TT.constant(0), 6, x0.shape[0])
-        state = TT.set_subtensor(state[0], x0)
-        out,_ = scan(lambda x:x+1, states = state, n_steps = 5)
-        out = out[1:]
+    state = TT.alloc(TT.constant(0), 6, x0.shape[0])
+    state = TT.set_subtensor(state[0], x0)
+    out,_ = scan(lambda x:x+1, states = state, n_steps = 5)
+    out = out[1:]
 
     """
     def wrap_into_list(x):
