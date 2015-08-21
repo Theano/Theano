@@ -276,7 +276,7 @@ class FunctionGraph(utils.object2):
             return True
         return False
 
-    ### import ###
+    # import #
     def __import_r__(self, variable, reason):
         """
         Import variables to this FunctionGraph and also their apply_node,

@@ -624,7 +624,7 @@ class Function(object):
 
             # Check if given ShareVariables exist
             for sv in iterkeys(swap):
-                if not sv in exist_svs:
+                if sv not in exist_svs:
                     raise ValueError("SharedVariable: %s not found" %
                                      (sv.name))
 
