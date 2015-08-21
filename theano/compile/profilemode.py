@@ -43,8 +43,9 @@ AddConfigVar('ProfileMode.profile_memory',
 
 
 class Profile_Maker(FunctionMaker):
-    def create(self, input_storage=None, trustme=False):
-        ret = super(Profile_Maker, self).create(input_storage, trustme)
+    def create(self, input_storage=None, trustme=False, storage_map=None):
+        ret = super(Profile_Maker, self).create(input_storage, trustme,
+                                                storage_map)
 
         if (hasattr(theano, 'sandbox') and
                 hasattr(theano.sandbox, 'cuda') and

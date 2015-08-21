@@ -421,7 +421,7 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
     if profile is True:
         profile = ProfileStats(message=name)
         # profile -> object
-    if type(profile) == str:
+    elif type(profile) == str:
         profile = ProfileStats(message=profile)
     # profile is typically either False or an object at this point.
     # No need to block other objects being passed through though. It might be

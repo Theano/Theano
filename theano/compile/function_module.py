@@ -5,7 +5,7 @@ Driver of graph construction, optimization, and linking.
 from __future__ import print_function
 
 import copy
-from six import string_types, iteritems
+from six import string_types, iteritems, iterkeys
 from six.moves import xrange
 import six.moves.copyreg as copyreg
 import six.moves.cPickle as pickle
@@ -15,9 +15,10 @@ import warnings
 import numpy
 
 import theano
-from theano import gof
+from theano import config, gof
 from functools import partial
 from theano.compat import izip
+from theano.gof import graph
 import theano.compile.mode
 from theano.compile.io import (
     In, SymbolicInput, SymbolicInputKit, SymbolicOutput)
@@ -136,8 +137,8 @@ class Supervisor:
             return True
         for r in self.protected + list(fgraph.outputs):
             if fgraph.destroyers(r):
-                raise gof.InconsistencyError(
-                    "Trying to destroy a protected Variable.", r)
+                raise gof.InconsistencyError("Trying to destroy a protected"
+                                             "Variable.", r)
 
 
 def std_fgraph(input_specs, output_specs, accept_inplace=False):
@@ -535,16 +536,201 @@ class Function(object):
         self.value[item] = value
 
     def __copy__(self):
-        defaults = [default for _1, _2, default in self.defaults]
-        cpy = self.maker.create(defaults, trustme=True)
-        for (input, _1, _2), here, there in zip(self.indices,
-                                                self.input_storage,
-                                                cpy.input_storage):
-            if input.mutable and here is not None:
-                there.data = copy.copy(here.data)
+        """
+        Copy a function. Copied function have separate intermediate
+        storages and output storages with original function
+        """
+        return self.copy()
+
+    def copy(self, share_memory=False, swap=None, delete_updates=False,
+             name=None, profile=None):
+        """
+        Copy this function. Copied function will have separated maker and
+        fgraph with original function. User can choose whether to separate
+        storage by changing the share_memory arguments.
+        ---------------------
+        Params:
+            share_memory -- { boolean } Default is False. When True, two
+            function share intermediate storages(storages except input and
+            output storages). Otherwise two functions will only share partial
+            storages and same maker. If two functions share memory and
+            allow_gc=False, this will increase executing speed and save memory.
+
+            swap -- { dict } Dictionary that map old SharedVariables to new
+            SharedVariables. Default is None.
+            NOTE: The shared variable swap in only done in the new returned
+            function, not in the user graph.
+
+            delete_updates -- { boolean } Default is False. If True, Copied
+            function will not have update.
+
+            name -- { string } If provided, will be the name of the new
+            Function. Otherwise, it will be old + " copy"
+
+            profile -- as theano.function profile parameter
+        ---------------------
+        Returns:
+            func -- Copied theano.Function
+        """
+        # helper function
+        def checkSV(sv_ori, sv_rpl):
+            """
+            Assert two SharedVariable follow some restirctions:
+                1. same type
+                2. same shape or dim?
+            """
+            SharedVariable = theano.tensor.sharedvar.SharedVariable
+            assert isinstance(sv_ori, SharedVariable), (
+                "Key of swap should be SharedVariable, given:", sv_ori,
+                " type", type(sv_ori))
+            assert isinstance(sv_rpl, SharedVariable), (
+                "Value of swap should be SharedVariable, given:", sv_rpl,
+                "type", type(sv_ori))
+            assert sv_ori.type == sv_rpl.type, (
+                "Type of given SharedVariable conflicts with original one",
+                "Type of given SharedVariable:", sv_rpl.type,
+                "Type of original SharedVariable:", sv_ori.type)
+
+        maker = self.maker
+
+        # Copy Ins and their storage.
+        # so that they have different storage as their value
+        ins = [copy.copy(input) for input in maker.inputs]
+
+        # Delete update output in fgraph and updates In instances if needed
+        if delete_updates:
+            # The first len(maker.outputs) variables are original variables.
+            # The rest are the updates.
+            out_vars = maker.fgraph.outputs[:len(maker.outputs)]
+        else:
+            out_vars = maker.fgraph.outputs
+
+        # Init new fgraph using copied variables and get memo
+        # memo: a dict that map old variables to new variables
+        memo = graph.clone_get_equiv(maker.fgraph.inputs, out_vars)
+        fg_cpy = gof.fg.FunctionGraph([memo[i] for i in maker.fgraph.inputs],
+                                      [memo[o] for o in out_vars],
+                                      clone=False)
+
+        # Re initialize Outs and swap update and variable in Ins
+        # By doing this, we can pass FunctionMaker._check_unused_inputs()
+        outs = list(map(SymbolicOutput, fg_cpy.outputs[:len(maker.outputs)]))
+        for out_ori, out_cpy in zip(maker.outputs, outs):
+            out_cpy.borrow = out_ori.borrow
+
+        # swap SharedVariable
+        if swap is not None:
+            exist_svs = [i.variable for i in maker.inputs]
+
+            # Check if given ShareVariables exist
+            for sv in iterkeys(swap):
+                if sv not in exist_svs:
+                    raise ValueError("SharedVariable: %s not found" %
+                                     (sv.name))
+
+            # Swap SharedVariable in fgraph and In instances
+            for index, (i, in_v) in enumerate(zip(ins, fg_cpy.inputs)):
+                # Variables in maker.inputs are defined by user, therefore we
+                # use them to make comparision and do the mapping.
+                # Otherwise we don't touch them.
+                var = maker.inputs[index].variable
+
+                if var in swap:
+                    swap_sv = swap[var]
+                    checkSV(i.variable, swap_sv)
+
+                    # swap variable and value of In instances
+                    i.variable = swap_sv
+                    i.value = swap_sv.container
+
+                    # In the fgraph we use the cloned SharedVariable
+                    swap_sv = swap_sv.clone()
+
+                    # Swap SharedVariable in fgraph
+                    # if inputs was replaced, change self.inputs
+                    fg_cpy.inputs[index] = swap_sv
+                    fg_cpy.replace(in_v, swap_sv, reason="Swap SV")
+
+        # Delete update if needed
+        update_i = len(outs)
+        for i, in_var in zip(ins, fg_cpy.inputs):
+            i.variable = in_var
+            if not delete_updates and i.update is not None:
+                i.update = fg_cpy.outputs[update_i]
+                update_i += 1
             else:
-                there.data = here.data
-        return cpy
+                i.update = None
+
+        # Construct new storage_map that map new variable to old storage,
+        # so that the ensuing function shares storage with the original one
+        storage_map = self.fn.storage_map
+        new_storage_map = {}
+        # TODO: We could share the output storage, but we must make sure
+        # 2 different function call won't override each other values. This
+        # is already done elsewhere, so to reuse it the user would need to
+        # use Out(var, borrow=True) and maybe the mutable=True flag too.
+        # But to be safe for now as it isn't documented and we aren't sure
+        # it is well tested, we don't share the part of the storage_map.
+        if share_memory:
+            i_o_vars = maker.fgraph.inputs + maker.fgraph.outputs
+            for key in storage_map.keys():
+                if key not in i_o_vars:
+                    new_storage_map[memo[key]] = storage_map[key]
+
+        if not name and self.name:
+            name = self.name + " copy"
+
+        input_storage = [i.value for i in ins]
+        # reinitialize new maker and create new function
+        if profile is None:
+            profile = config.profile
+            # profile -> True or False
+        if profile is True:
+            if name:
+                message = name
+            else:
+                message = str(maker.profile.message) + " copy"
+            profile = theano.compile.profiling.ProfileStats(message=message)
+            # profile -> object
+        elif type(profile) == str:
+            profile = theano.compile.profiling.ProfileStats(message=profile)
+
+        f_cpy = maker.__class__(inputs=ins, outputs=outs, fgraph=fg_cpy,
+                                mode=maker.mode, profile=profile,
+                                on_unused_input=maker.on_unused_input,
+                                function_builder=maker.function_builder,
+                                accept_inplace=maker.accept_inplace
+                                ).create(input_storage,
+                                         storage_map=new_storage_map)
+
+        for in_ori, in_cpy, ori, cpy in zip(maker.inputs, f_cpy.maker.inputs,
+                                            self.input_storage,
+                                            f_cpy.input_storage):
+
+            # Share immutable ShareVariable and constant input's storage
+            swapped = swap is not None and in_ori.variable in swap
+
+            # Using the original storage if SharedVariable will not be updated
+            # and is not swapped
+            if not in_ori.mutable and not swapped:
+                cpy.data = ori.data
+                in_cpy.value = in_ori.value
+
+            # Reconstruct Function.finder which map Variable defined by user
+            # to container, to make Function.value and Function.data work well.
+            # Replace variable in new maker.inputs by the original ones.
+            # So that user can swap SharedVariable in a swapped function
+            container = f_cpy.finder.pop(in_cpy.variable)
+            if not swapped:
+                f_cpy.finder[in_ori.variable] = container
+                in_cpy.vairable = in_ori.variable
+            else:
+                f_cpy.finder[swap[in_ori.variable]] = container
+                in_cpy.variable = swap[in_ori.variable]
+
+        f_cpy.name = name
+        f_cpy.maker.fgraph.name = name
+        return f_cpy
 
     def __call__(self, *args, **kwargs):
         profile = self.profile
@@ -1232,8 +1418,8 @@ class FunctionMaker(object):
         else:
             # fgraph is already an optimized one
             need_opt = False
-            _, additional_outputs = std_fgraph(inputs, outputs, accept_inplace)
-            pass
+            updates = [spec.update for spec in inputs if spec.update]
+            additional_outputs = list(map(SymbolicOutput, updates))
 
         self.fgraph = fgraph
 
@@ -1355,7 +1541,7 @@ class FunctionMaker(object):
                                      "'%s'.\nValid values are 'raise', "
                                      "'warn', and 'ignore'." % on_unused_input)
 
-    def create(self, input_storage=None, trustme=False):
+    def create(self, input_storage=None, trustme=False, storage_map=None):
         """
         Create a function.
 
@@ -1436,7 +1622,7 @@ class FunctionMaker(object):
         try:
             theano.config.traceback.limit = 0
             _fn, _i, _o = self.linker.make_thunk(
-                input_storage=input_storage_lists)
+                input_storage=input_storage_lists, storage_map=storage_map)
         finally:
             theano.config.traceback.limit = limit_orig
 

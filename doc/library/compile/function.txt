@@ -83,7 +83,7 @@ Reference
 
 .. function:: function(inputs, outputs, mode=None, updates=None, givens=None, no_default_updates=False, accept_inplace=False, name=None, rebuild_strict=True, allow_input_downcast=None, profile=None, on_unused_input='raise')
 
-    Return a callable object that will calculate `outputs` from `inputs`.
+    Return a :class:`callable object <theano.compile.function_module.Function>` that will calculate `outputs` from `inputs`.
 
     :type params: list of either Variable or Param instances, but not shared
         variables.
@@ -189,3 +189,6 @@ Reference
     equivalent to Var1.
 
 .. autofunction:: theano.compile.function.function_dump
+
+.. autoclass:: theano.compile.function_module.Function
+   :members: free, copy

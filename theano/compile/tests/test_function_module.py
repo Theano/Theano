@@ -241,6 +241,143 @@ class T_function(unittest.TestCase):
         f(1, 2)  # put them out of sync
         self.assertFalse(f(1, 2) == g(1, 2))  # they should not be equal anymore.
 
+    def test_copy_share_memory(self):
+        x = T.fscalar('x')
+        # SharedVariable for tests, one of them has update
+        y = theano.shared(value=1)
+        z = theano.shared(value=2)
+        out = T.tanh((x+y+2)/(x+z-0.2)**2)
+
+        # Test for different linkers
+        for mode in ["FAST_RUN","FAST_COMPILE"]:
+            ori = theano.function([x], [out], mode=mode,updates={z:z+1})
+            cpy = ori.copy(share_memory=True)
+
+            # Test if memories shared
+            storage_map_ori = ori.fn.storage_map
+            storage_map_cpy = cpy.fn.storage_map
+            fgraph_ori = ori.maker.fgraph
+            fgraph_cpy = cpy.maker.fgraph
+
+            # Assert intermediate and Constants storages are shared.
+            # and output stoarges are not shared
+            i_o_variables = fgraph_cpy.inputs + fgraph_cpy.outputs
+            ori_storages = storage_map_ori.values()
+            for key in storage_map_cpy.keys():
+                storage = storage_map_cpy[key]
+                if key not in i_o_variables or isinstance(key, theano.tensor.Constant):
+                    self.assertTrue(any([ storage is s for s in ori_storages]))
+
+            # Assert storages of SharedVariable without updates are shared
+            for (input, _1, _2), here, there in zip(ori.indices,
+                                                    ori.input_storage,
+                                                    cpy.input_storage):
+                self.assertTrue(here.data is there.data)
+
+    def test_swap_SharedVariable(self):
+        i = T.iscalar()
+        x_list = theano.shared(value=numpy.random.rand(10).astype(config.floatX))
+
+        x = T.scalar('x')
+        # SharedVariable for tests, one of them has update
+        y = theano.shared(value=1, name='y')
+        z = theano.shared(value=2, name='z')
+        m = theano.shared(value=0, name='m')
+
+        # SharedVariable to replace
+        y_rpl = theano.shared(value=3,name ='y_rpl')
+        z_rpl = theano.shared(value=4, name='z_rpl')
+        swap = {y:y_rpl, z:z_rpl}
+        map_SV = {'y_rpl':y_rpl, 'z_rpl':z_rpl}
+
+        out = x+y+z+m
+
+        # Test for different linkers
+        # for mode in ["FAST_RUN","FAST_COMPILE"]:
+        second_time = False
+        for mode in ["FAST_RUN","FAST_COMPILE"]:
+            ori = theano.function([i], [out], mode=mode,
+                                  updates=[(z,z+1),(m,m+2)],
+                                  givens={x:x_list[i]})
+            cpy = ori.copy(swap=swap)
+
+            # run fuction several time
+            ori(1), cpy(1),cpy(2)
+
+            # assert same SharedVariable are update in different function
+            if not second_time:
+                # m should be updated 3 times
+                assert m.get_value() == 6
+                # z should be updated once
+                assert z.get_value() == 3
+                # z_rpl should be updated twice
+                assert z_rpl.get_value() == 6 
+                # y and y_rpl should not be updated
+                assert y_rpl.get_value() == 3
+                assert y.get_value() == 1
+            elif second_time:
+                # doule update for sharedvariable
+                assert m.get_value() == 12
+                assert z.get_value() == 4
+                assert z_rpl.get_value() == 8
+                assert y_rpl.get_value() == 3
+
+            # test cpy function:
+            # 2. SharedVariable is updatable -> values did update(z == 5)
+            # 1. sharedvariable is swap ->  Rpl sharedvariables share storage
+            names = map_SV.keys()
+            for key in cpy.fn.storage_map:
+                if key.name in names:
+                    assert map_SV[key.name].container.storage[0] ==\
+                           cpy.fn.storage_map[key][0]
+
+            second_time = True
+
+    def test_swap_SharedVaraile_with_given(self):
+        """
+        A special testcase for logistic_sgd.py in Deep Learning Tutorial
+        This test assert that SharedVariable in different function have same storage
+        """
+        train_x = theano.shared(value=numpy.random.rand(10,10).astype(config.floatX))
+        test_x = theano.shared(value=numpy.random.rand(10,10).astype(config.floatX))
+
+        train_y = theano.shared(value=numpy.random.rand(10,1).astype(config.floatX))
+        test_y = theano.shared(value=numpy.random.rand(10,1).astype(config.floatX))
+
+        i = T.iscalar('index')
+        x = T.vector('x')
+        y = T.vector('y')
+        # this formular has no sense but for a test
+        out = (T.sum(x) - y) ** 2
+        train = theano.function([i], out,
+                                givens={x:train_x[i], y:train_y[i]},
+                                updates={train_x:train_x+0.1})
+
+        test_def = theano.function([i], out, givens={x:test_x[i], y:test_y[i]})
+        test_cpy = train.copy(swap={train_x:test_x, train_y:test_y},
+                              delete_updates=True)
+
+        for in1, in2 in zip( test_def.maker.inputs, test_def.maker.inputs):
+            assert in1.value is in2.value
+
+    def test_copy_delete_updates(self):
+        x = T.fscalar('x')
+        # SharedVariable for tests, one of them has update
+        y = theano.shared(value=1, name='y')
+        z = theano.shared(value=2, name='z')
+        out = x+y+z
+
+        # Test for different linkers
+        # for mode in ["FAST_RUN","FAST_COMPILE"]:
+        second_time = False
+        for mode in ["FAST_RUN","FAST_COMPILE"]:
+            ori = theano.function([x], out, mode=mode,updates={z:z*2})
+            cpy = ori.copy(delete_updates=True)
+
+            assert cpy(1)[0] == 4
+            assert cpy(1)[0] == 4
+            assert cpy(1)[0] == 4
+
     def test_shared_state0(self):
         a = T.scalar()  # the a is for 'anonymous' (un-named).
         x, s = T.scalars('xs')

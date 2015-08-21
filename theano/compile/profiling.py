@@ -690,7 +690,8 @@ class ProfileStats(object):
         print('', file=file)
 
         # The validation time is a subset of optimizer_time
-        assert self.validate_time < self.optimizer_time
+        if self.optimizer_time > 0:
+            assert self.validate_time < self.optimizer_time
 
     def summary_globals(self, file):
         print('Time in all call to theano.grad() %es' %
