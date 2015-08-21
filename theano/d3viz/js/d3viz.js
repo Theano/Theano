@@ -1,3 +1,50 @@
+/*
+ * Theano javascript library for interactive visualiztion.
+ *
+ * Author: Christof Angermueller <cangermueller@gmail.com
+*/
+
+
+/*
+ * Checks if variable is defined.
+ */
+function exists(x) {
+	return typeof(x) != 'undefined';
+}
+
+/*
+ * Replace all patterns in string.
+ */
+function replaceAll(str, find, replace) {
+	return str.replace(new RegExp(find, 'g'), replace);
+}
+
+
+/*
+ * Computes len equally spaces points between start and end.
+ */
+function linspace(start, end, len) {
+	var d = (end - start) / (len - 1);
+	var rv = [start];
+	for (i = 1; i < len; ++i) {
+		rv.push(rv[i - 1] + d);
+	}
+	return rv;
+}
+
+
+/*
+ * Converts string to list
+ */
+function str2List(s) {
+	s = s.split('\t');
+	return s;
+}
+
+
+/*
+ * Flips y-scale such that (0, 0) points to top-left corner.
+ */
 function flipAxes(nodes) {
 	var size = [0, 0];
 	for (var i in nodes) {
@@ -12,7 +59,11 @@ function flipAxes(nodes) {
 }
 
 
+/*
+ * Preprocesses raw dotGraph
+ */
 function processDotGraph(dotGraph) {
+	// Ignore cluster nodes
 	dotGraph.rnodes = {};
 	for (var nodeId in dotGraph._nodes) {
 		var node = dotGraph._nodes[nodeId];
@@ -23,6 +74,7 @@ function processDotGraph(dotGraph) {
 		}
 	}
 	
+	// Precompute attributes
 	var i = 0;
 	for (var nodeId in dotGraph.rnodes) {
 		var node = dotGraph._nodes[nodeId];
@@ -39,7 +91,7 @@ function processDotGraph(dotGraph) {
 			isProfiled = true;
 		}
 		if (exists(node.tag)) {
-			node.tag = parseList(node.tag);
+			node.tag = str2List(node.tag);
 		}
 		if (exists(node.subg_map_inputs)) {
 			node.subg_map_inputs = eval(node.subg_map_inputs)
@@ -67,6 +119,7 @@ function processDotGraph(dotGraph) {
 		pos[1] = 1.2 * pos[1];
 	}
 	
+	// Preprocess edges
 	var edges = dotGraph.edges();
 	for (var i in edges) {
 		var edge = dotGraph.edge(edges[i]);
@@ -90,9 +143,27 @@ function processDotGraph(dotGraph) {
 }
 
 
+/*
+ * Extracts profiling information from string.
+ */
+function parseProfile(s) {
+	var p = str2List(s);
+	p = p.map(function(x) { return parseFloat(x); });
+	return p;
+}
+
+
+/*
+ * Preprocesses DOT nodes for front-end visualization.
+ * Assigns all children of parent (root of graph if not specified)
+ * to the same group and calls function recursively on children.
+ * 
+ */
 function traverseChilds(dotGraph, nodes, groups, parent) {
 	var preId = '';
 	var ref = undefined;
+	
+	// Create new group with parent as parent
 	var group = {'id': groups.length, 'nodes': [], 'parent': parent};
 	if (exists(parent)) {
 		ref = parent.value.subg;
@@ -101,6 +172,8 @@ function traverseChilds(dotGraph, nodes, groups, parent) {
 		parent.group = group;
 	}
 	groups.push(group);
+	
+	// Loop over all children
 	var childs = dotGraph.children(ref);
 	for (var i in childs) {
 		var child = dotGraph.node(childs[i]);
@@ -111,24 +184,31 @@ function traverseChilds(dotGraph, nodes, groups, parent) {
 			'id': child.id,
 			'value': child,
 			'index': nodes.length,
-			'fixed': fixedDefault,
+			'fixed': fixOnInit,
 			'group': group,
 			'isParent': child.showChilds,
 			'parent': parent
 			};
 		nodes.push(node);
 		if (child.showChilds) {
+			// Recurse if child is root of subcluster that should be expandend
 			traverseChilds(dotGraph, nodes, groups, node);
 		} else {
 			group.nodes.push(node);
 		}
-		group.childs = [];
-		for (var i = group.id + 1; i < groups.length; ++i) {
-			group.childs.push(groups[i].id);
-		}
+	}
+	
+	// Groups appended to groups after group are group children.
+	group.childs = [];
+	for (var i = group.id + 1; i < groups.length; ++i) {
+		group.childs.push(groups[i].id);
 	}
 }
 
+
+/*
+ * Computes width and height of group of nodes.
+ */
 function groupSize(nodes) {
 	var minPos = [Infinity, Infinity];
 	var maxPos = [-Infinity, -Infinity];
@@ -145,25 +225,34 @@ function groupSize(nodes) {
 	return [maxPos[0] - minPos[0], maxPos[1] - minPos[1]];
 }
 
-function forceGraph(dotGraph, prevGraph) {
+
+/*
+ * Creates front-end graph for visualizing from DOT graph.
+ */
+function frontEndGraph(dotGraph, prevGraph) {
 	var graph = {'nodes': [], 'groups': []};
 	traverseChilds(dotGraph, graph.nodes, graph.groups);
 	
+	// Dictionary to access nodes by id
 	graph.nodesd = {};
 	for (var i in graph.nodes) {
 		var node = graph.nodes[i];
 		graph.nodesd[node.id] = node;
 	}
 	
+	// Dictionary to access groups by id
 	graph.groupsd = {};
 	for (var i in graph.groups) {
 		var group = graph.groups[i];
 		graph.groupsd[group.id] = group;
 	}
 	
+	// Parent nodes
 	graph.nodesp = graph.nodes.filter(function(d) {return d.isParent;});
+	// Non-parent nodes
 	graph.nodesn = graph.nodes.filter(function(d) {return !d.isParent;});
 	
+	// Compute size of groups
 	for (i in graph.groups) {
 		var group = graph.groups[i];
 		group.size = groupSize(group.nodes);
@@ -171,8 +260,10 @@ function forceGraph(dotGraph, prevGraph) {
 		if (exists(parent)) {
 			var prevParent = prevGraph.nodesd[group.parent.id];
 			if (exists(prevParent)) {
+				// Restore previous group position if given
 				group.pos = [prevParent.x, prevParent.y];
 			} else {
+				// Use position of parent otherwise
 				group.pos = parent.value.pos.slice(0);
 			}
 			group.pos[0] += parent.value.cx;
@@ -180,6 +271,7 @@ function forceGraph(dotGraph, prevGraph) {
 		} else {
 			group.pos = [group.size[0] / 2, group.size[1] / 2];
 		}
+		// Offset nodes on group center
 		var min = [Infinity, Infinity];
 		for (var j in group.nodes) {
 			var node = group.nodes[j];
@@ -238,6 +330,8 @@ function forceGraph(dotGraph, prevGraph) {
 				graph.edges.push(edge);
 			}
 			
+			// Redirect edges to subgraph
+			
 			function redirectEdges(map, dotEdge) {
 				for (var k in map) {
 					var kmap = map[k];
@@ -275,6 +369,10 @@ function forceGraph(dotGraph, prevGraph) {
 	return graph;
 }
 
+/*
+ * Computes d3.js convex hull surrounding nodes that
+ * belong to the same group.
+ */
 function convexHulls(graph, offset) {
 	var hulls = [];
 	offset = offset || 20;
@@ -310,17 +408,28 @@ function convexHulls(graph, offset) {
 	return hulls;
 }
 
-function drawCluster(d) {
-  return curve(d.path); // 0.8
+
+/*
+ * Draws convex hull.
+ */
+function drawConvexHull(d) {
+	var curve = d3.svg.line()
+	    .interpolate("cardinal-closed")
+	    .tension(.85);
+	return curve(d.path);
 }
 
-function setupGraph() {
+/*
+ * Creates skeleton for graph visualization.
+ * Positions will be updated by updateGraph().
+ */
+function drawGraph() {
 	if (isProfiled) {
 		d3.select('body').select('#menu').append('input')
 			.attr('name', 'tColors')
 			.attr('type', 'button')
 			.attr('value', 'Toggle profile colors')
-			.attr('onclick', "toggleColors()");
+			.attr('onclick', "toggleNodeColors()");
 			
 		maxProfilePer = 0;
 		for (i in graph.nodes) {
@@ -333,16 +442,17 @@ function setupGraph() {
 	
 	var isEdgeOver = false;
 	var isEdgeLabelOver = false;
-	
 
+	// Event handler for dragging groups
 	var dragHulls = d3.behavior.drag()
 		.origin(function(d) { return d; })
 	    .on("dragstart", function(d) {
 	    	d3.event.sourceEvent.stopPropagation();
 			d3.event.sourceEvent.preventDefault();
-			layout.stop();
+			forceLayout.stop();
 	    })
 	    .on("drag", function dragged(d) {
+	    		// Shift all group members
 	    		var group = graph.groups[d.group];
 				for (var i in group.nodes) {
 					var node = group.nodes[i];
@@ -353,6 +463,7 @@ function setupGraph() {
 				}
 				group.pos[0] += d3.event.dx;
 				group.pos[1] += d3.event.dy;
+				// Shift all members of sub groups
 				for (var k in group.childs) {
 					var cgroup = graph.groupsd[group.childs[k]];
 					var nodes = cgroup.nodes;
@@ -368,8 +479,9 @@ function setupGraph() {
 				}
 				updateGraph();
 			})
-		.on('dragend', function(d) {layout.resume();});
+		.on('dragend', function(d) {forceLayout.resume();});
 	
+	// Draw convex hull surrounding group of nodes
 	graph.hulls = convexHulls(graph);
 	hulls = pane.selectAll('#hulls').remove();
 	hulls = pane.append('g').attr('id', 'hulls')
@@ -377,9 +489,10 @@ function setupGraph() {
 		.data(graph.hulls).enter()
 		.append('path')
 		.attr('class', 'hull')
-		.attr('d', drawCluster)
+		.attr('d', drawConvexHull)
 		.call(dragHulls);
 		
+	// Event handler to open/close groups
 	hulls.on('dblclick', function(d) {
 		var group = graph.groups[d.group];
 		group.parent.value.showChilds = !group.parent.value.showChilds;
@@ -389,8 +502,8 @@ function setupGraph() {
 				child.parent.value.showChilds = false;
 			}
 		}
-		graph = forceGraph(dotGraph, graph);
-		setupGraph();
+		graph = frontEndGraph(dotGraph, graph);
+		drawGraph();
 	});
 	
 	// Add edges
@@ -437,14 +550,14 @@ function setupGraph() {
 	nodes.on('dblclick', function(d) {
 		if (d.value.hasChilds) {
 			d.value.showChilds = !d.value.showChilds;
-			graph = forceGraph(dotGraph, graph);
-			if (!fixedDefault && d.value.showChilds) {
+			graph = frontEndGraph(dotGraph, graph);
+			if (!fixOnInit && d.value.showChilds) {
 				var n = dotGraph.neighbors(d.id);
 				for (i in n) {
 					graph.nodesd[n[i]].fixed = false;
 				}
 			}
-			setupGraph();
+			drawGraph();
 		}
 	});
 		
@@ -458,8 +571,7 @@ function setupGraph() {
 					.style('opacity', 1.0);
 			}
 		});
-		
-		// Show node details if node is not edited as has profiling information
+		// Show node details
 		if (!isEditNode) {
 		   	nodeInfo.transition()        
 		        .duration(200)      
@@ -485,8 +597,7 @@ function setupGraph() {
 	
 	nodes.on('contextmenu', d3.contextMenu(menuItems));
 	
-	// Force layout
-	layout = d3.layout.force()
+	forceLayout = d3.layout.force()
 		.nodes(graph.nodes)
 		.links(graph.edges)
 		.size(graph.size)
@@ -501,7 +612,7 @@ function setupGraph() {
 		.start();
 		
 	// Drag behavour
-	var drag = layout.drag()
+	var drag = forceLayout.drag()
 		.on('dragstart', function(d) {
 			d3.event.sourceEvent.stopPropagation();
 			d3.event.sourceEvent.preventDefault();
@@ -510,17 +621,22 @@ function setupGraph() {
 	nodes.call(drag);
 }
 
-function length(x1, y1, x2, y2) {
-	return Math.sqrt(Math.pow(x1-x2, 2) + Math.pow(y1-y2, 2));
-}
 
-function pathPos(x1, y1, x2, y2, c) {
+/*
+ * Computes weighted average between two points.
+ */
+function avgPos(x1, y1, x2, y2, c) {
 	x = (1 - c) * x1 + c * x2;
 	y = (1 - c) * y1 + c * y2;
 	p = x + ',' + y;
 	return p;
 }
 
+
+/*
+ * Checks for collisions in d3.js quadtree.
+ * See http://bl.ocks.org/mbostock/3231298 for more details.
+ */
 function collide(node) {
 	var eps = 10;
 	var nx1 = node.x - node.value.cx - eps;
@@ -562,7 +678,20 @@ function collide(node) {
 	};
 }
 
+
+/*
+ * Computes euclidean distance between points.
+ */
+function distance(x1, y1, x2, y2) {
+	return Math.sqrt(Math.pow(x1-x2, 2) + Math.pow(y1-y2, 2));
+}
+
+
+/*
+ * Updates graph visualization.
+ */
 function updateGraph() {
+	// Avoid collisions
  	var q = d3.geom.quadtree(graph.nodes);
 	for (var i in graph.nodes) {
 		q.visit(collide(graph.nodes[i]));
@@ -570,33 +699,42 @@ function updateGraph() {
 		
 	graph.hulls = convexHulls(graph);
 	hulls.data(graph.hulls)
-		.attr('d', drawCluster);
+		.attr('d', drawConvexHull);
 	
 	// Update nodes
 	nodes.attr('transform', function(d) { return 'translate(' + (d.x - d.value.cx) + ' ' + (d.y - d.value.cy) + ')'; });
 	// Update edges
 	edges.attr('d', function(d) {
 		var dist = 100;
-		var l = length(d.source.x, d.source.y, d.target.x, d.target.y);
+		var l = distance(d.source.x, d.source.y, d.target.x, d.target.y);
 		var n = Math.max(2, Math.floor(l / dist));
 		var marker = [];
 		for (var i = 1; i < n; ++i) {
 			marker.push(i / n);
 		}
-		var markerPos = marker.map(function(c) {return pathPos(d.source.x, d.source.y, d.target.x, d.target.y, c);});
+		var markerPos = marker.map(function(c) {
+			return avgPos(d.source.x, d.source.y, d.target.x, d.target.y, c);});
 		var markerPos = ' L' + markerPos.join(' L');
 		return 'M' + d.source.x + ',' + d.source.y + markerPos + ' L' + d.target.x + ',' + d.target.y;
 	});
 }
-		
-function toggleColors() {
-		colorProfile = !colorProfile;
+
+
+/*
+ * Toggles between usual nodes colors and profiling colors
+ */	
+function toggleNodeColors() {
+		useProfileColors = !useProfileColors;
 		updateNodes();
 		updateGraph();
 	}
-		
+
+
+/*
+ * Computes bounding box that fits text of a certain length.
+ */	
 function textSize(text, attr) {
-		var t = svg.append('text').text(text);
+	var t = svg.append('text').text(text);
 	if (typeof(attr) != 'undefined') {
 		for (a in attr) {
 			t.attr(a, attr[a]);
@@ -607,46 +745,10 @@ function textSize(text, attr) {
 	return bbox;
 }
 
-function assert(condition, message) {
-    if (!condition) {
-        throw message || "Assertion failed";
-    }
-}
 
-function exists(x) {
-	return typeof(x) != 'undefined';
-}
-
-function replaceAll(str, find, replace) {
-	return str.replace(new RegExp(find, 'g'), replace);
-}
-
-function parseList(s) {
-	var h = ['(', ')', '[', ']', '<', '>'];
-	for (var i = 0; i < h.length; ++i) {
-		s = s.replace(h[i], '');
-	}
-	s = replaceAll(s, "'", "");
-	s = replaceAll(s, ' ', '');
-	s = s.split(',');
-	return s;
-}
-
-function parseProfile(s) {
-	var p = parseList(s);
-	p = p.map(function(x) { return parseFloat(x); });
-	return p;
-}
-
-function linspace(start, end, len) {
-	var d = (end - start) / (len - 1);
-	var rv = [start];
-	for (i = 1; i < len; ++i) {
-		rv.push(rv[i - 1] + d);
-	}
-	return rv;
-}
-
+/*
+ * Computes profiling color.
+ */
 function profileColor(per) {
 	var s = d3.scale.linear()
 		.domain(linspace(0, maxProfilePer, profileColors.length))
@@ -655,8 +757,12 @@ function profileColor(per) {
 	return s(per);
 }
 
+
+/*
+ * Retuns node fill color.
+ */
 function nodeFillColor(d) {
-	if (colorProfile) {
+	if (useProfileColors) {
 		var p = d.value.profile;
 		if (d.value.node_type == 'apply' && exists(p)) {
 			return profileColor(d.value.profile[0] / d.value.profile[1]);
@@ -668,16 +774,24 @@ function nodeFillColor(d) {
 	}
 }
 
+
+/*
+ * Formats profiling timing information.
+ */
 function formatTime(sec) {
 	var s;
 	if (sec < 0.1) {
-		s = (sec * 1000).toFixed(1) + 'ms';
+		s = (sec * 1000).toFixed(1) + ' ms';
 	} else {
-		s = sec.toFixed(1) + 's';
+		s = sec.toFixed(1) + ' s';
 	}
 	return s;
 }
 
+
+/*
+ * Formats node details.
+ */
 function formatNodeInfos(node) {
 	var v = node.value;
 	var s = '<b><center>' + v.label + '</center></b><hr>';
@@ -699,13 +813,17 @@ function formatNodeInfos(node) {
 	var p = v.profile;
 	if (exists(p)) {
 		s += '<p>';
-		s += '<b>Time:</b> ' + formatTime(p[0]) + '<br>';
-		s += '<b>Time:</b> ' + (p[0] / p[1] * 100).toFixed(1) + '%';
+		s += '<b>Time:</b> ' + formatTime(p[0]);
+		s += ' / ' + (p[0] / p[1] * 100).toFixed(1) + ' %';
 		s += '</p>';
 	}
 	return s;	
 }
 
+
+/*
+ * Updates node visualization.
+ */
 function updateNode(d, node) {
 	var shape;
 	if (d.value.shape == 'ellipse') {
@@ -738,6 +856,10 @@ function updateNode(d, node) {
 	}
 }
 
+
+/*
+ * Updates visualization of all nodes.
+ */
 function updateNodes() {
 	nodes.each(function(d) {
 		var node = d3.select(this);
@@ -745,12 +867,20 @@ function updateNodes() {
 	});	
 }
 
+
+/*
+ * Hides node information field.
+ */
 function hideNodeInfo() {
 	nodeInfo.transition()        
         .duration(200)      
         .style('opacity', 0);
 }
 
+
+/*
+ * Adjusts node size.
+ */
 function setNodeSize(node) {
 	var size = textSize(node.value.label, {'class': 'nodeText'});
 		node.value.width = size.width + 2 * pad;
@@ -758,7 +888,11 @@ function setNodeSize(node) {
 		node.value.cx = node.value.width / 2;
 		node.value.cy = node.value.height / 2;
 	}
-	
+
+
+/* 
+ * Event handler for editing nodes.
+ */
 function editNode(elm, d) {
 		var node = d3.select(elm);
 		var pos = elm.getBBox();
@@ -807,28 +941,31 @@ function editNode(elm, d) {
 		});
 }
 
+
+/*
+ * Release node from fixed positions.
+ */
 function releaseNode(d) {
 	d.fixed = false;
-	layout.start();
+	forceLayout.start();
 }
 
+
+/*
+ * Releases positions of all nodes.
+ */
 function releaseNodes() {
 	graph['nodes'].forEach (function (d) {
 		d.fixed = false;
 	});
-	layout.start();
+	forceLayout.start();
 }
 
+
+/*
+ * Restores original node positions.
+ */
 function resetNodes() {
-	layout.stop();
-	var nodes = graph['nodes'];
-	nodes.forEach(function (node, i){
-		nodes[i].x = scaleDotX(node.value.pos[0]);
-		nodes[i].y = scaleDotY(dotGraph.values.height - (node.value.pos[1] + node.value.height));
-		nodes[i].px = nodes[i].x;
-		nodes[i].py = nodes[i].y;
-		nodes[i].fixed = true;
-	});
-	updateGraph();
-	layout.start();
+	graph = frontEndGraph(dotGraph);
+	drawGraph();
 }

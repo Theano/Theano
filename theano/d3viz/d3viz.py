@@ -1,37 +1,37 @@
-"""Dynamic visualization of Theano graphs."""
+"""Dynamic visualization of Theano graphs.
 
-# Authors: Christof Angermueller <cangermueller@gmail.com>
+Author: Christof Angermueller <cangermueller@gmail.com
+"""
 
 import os
 import os.path as pt
-from glob import glob
-import shutil
 
-from formatting import GraphFormatter
+from formatting import PyDotFormatter
 
 __path__ = pt.dirname(pt.realpath(__file__))
 
 
 def replace_patterns(x, replace):
-    """ Replaces patterns defined by `replace` in x."""
+    """ Replace patterns `replace` in x."""
     for from_, to in replace.items():
         x = x.replace(str(from_), str(to))
     return x
 
 
 def d3write(fct, path, *args, **kwargs):
-    # Convert theano graph to pydot graph and write to file
-    gf = GraphFormatter(*args, **kwargs)
-    g = gf.to_pydot(fct)
+    """Convert theano graph to pydot graph and write to file."""
+    gf = PyDotFormatter(*args, **kwargs)
+    g = gf(fct)
     g.write_dot(path)
 
 
-def d3print(fct, outfile,  *args, **kwargs):
-    """Creates dynamic graph visualization using d3.js javascript library.
+def d3viz(fct, outfile,  *args, **kwargs):
+    """Create dynamic graph visualization using d3.js javascript library.
 
     :param fct: A compiled Theano function, variable, apply or a list of
-                variables
+                variables.
     :param outfile: The output file
+    :param args, kwargs: Additional parameters passed to PyDotFromatter.
     """
 
     outdir = pt.dirname(outfile)
