@@ -3963,6 +3963,19 @@ def shape_padright(t, n_ones=1):
 
 
 @constructor
+def shape_padaxis(t, axis):
+    """Reshape `t` by adding 1 at the dimension `axis`.
+
+    See also: `shape_padleft`, `shape_padright` and `Dimshuffle`
+    """
+    _t = as_tensor_variable(t)
+
+    pattern = [i for i in xrange(_t.type.ndim)]
+    pattern.insert(axis, 'x')
+    return DimShuffle(_t.broadcastable, pattern)(_t)
+
+
+@constructor
 def stack(*tensors):
     """Insert the arguments as slices into a tensor of 1 rank greater.
 
@@ -3973,6 +3986,21 @@ def stack(*tensors):
     if len(tensors) == 0:
         raise Exception('theano.tensor.stack(*tensors) must have at least'
                         ' one parameter')
+
+    # Remove this when moving to the new interface: stack(tensors, axis=0)
+    # New numpy-like interface:
+    if isinstance(tensors[0], (list, tuple)):
+        if len(tensors) == 1:
+            axis = 0
+        else:
+            axis = tensors[1]
+        tensors = tensors[0]
+    # Deprecated interface:
+    else:
+        warnings.warn('stack(*tensors) interface is deprecated, use'
+                      ' stack(tensors, axis=0) instead.', stacklevel=3)
+        axis = 0
+
     # If all tensors are scalars of the same type, call make_vector.
     # It makes the graph simpler, by not adding DimShuffles and Rebroadcasts
 
@@ -3994,7 +4022,7 @@ def stack(*tensors):
         tensors = list(map(as_tensor_variable, tensors))
         dtype = scal.upcast(*[i.dtype for i in tensors])
         return theano.tensor.opt.MakeVector(dtype)(*tensors)
-    return join(0, *[shape_padleft(t, 1) for t in tensors])
+    return join(axis, *[shape_padaxis(t, axis) for t in tensors])
 
 
 @constructor
