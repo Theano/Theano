@@ -583,6 +583,20 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`.
     :type n_ones: int
     :type n_ones: number of dimension to be added to `x`
 
+
+.. function:: shape_padaxis(t, axis)
+
+    Reshape `t` by adding 1 at the dimension `axis`. Note that this new
+    dimension will be broadcastable. To make it non-broadcastable
+    see the :func:`unbroadcast`.
+
+    :type x: any TensorVariable (or compatible)
+    :param x: variable to be reshaped
+
+    :type axis: int
+    :param  axis: axis where to add the new dimension to `x`
+
+
 .. autofunction:: unbroadcast(x, *axes)
 
 .. autofunction:: addbroadcast(x, *axes)
@@ -677,6 +691,26 @@ Creating Tensor
     :returns: A tensor of same shape as `x` that is filled with 0s everywhere
               except for the main diagonal, whose values are equal to one. The output
               will have same dtype as `x`.
+
+
+.. function:: stack(tensors, axis=0)
+
+    Warning: The interface stack(*tensors) is deprecated!
+
+    Return a Tensor representing for the arguments all stacked up into a single Tensor.
+    (of 1 rank greater).
+
+    :param tensors: a list or a tuple of one or more tensors of the same rank.
+    :param axis: the axis along which the tensors will be stacked.
+    :returns: A tensor such that rval[0] == tensors[0], rval[1] == tensors[1], etc.
+
+    >>> x0 = T.scalar()
+    >>> x1 = T.scalar()
+    >>> x2 = T.scalar()
+    >>> x = T.stack(x0, x1, x2)
+    >>> x.ndim # x is a vector of length 3.
+    1
+
 
 .. function:: stack(*tensors)
 

@@ -3441,6 +3441,23 @@ class T_Join_and_Split(unittest.TestCase):
         assert len([n for n in topo if isinstance(n, type(self.join_op))]) == 0
         assert f.maker.fgraph.outputs[0].dtype == 'int64'
 
+    def test_stack_new_interface(self):
+        """Test the new numpy-like interface: stack(tensors, axis=0)."""
+        a = tensor.imatrix('a')
+        b = tensor.imatrix('b')
+        s1 = stack(a, b)
+        s2 = stack([a, b])
+        f = function([a, b], [s1, s2], mode=self.mode)
+        v1, v2 = f([[1, 2]], [[3, 4]])
+        self.assertTrue(v1.shape == v2.shape)
+        self.assertTrue(numpy.all(v1 == v2))
+        s3 = stack([a, b], 1)
+        f = function([a, b], s3, mode=self.mode)
+        v3 = f([[1, 2]], [[3, 4]])
+        v4 = numpy.array([[[1, 2], [3, 4]]])
+        self.assertTrue(v3.shape == v4.shape)
+        self.assertTrue(numpy.all(v3 == v4))
+
     def test_stack_hessian(self):
         # Test the gradient of stack when used in hessian, see gh-1589
         a = tensor.dvector('a')
