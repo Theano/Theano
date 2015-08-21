@@ -3823,7 +3823,7 @@ def stack(*tensors):
     of tensors passed.
 
     Note: The interface stack(*tensors) is deprecated, you should use
-    stack(tensors, axis=0) insted.
+    stack(tensors, axis=0) insted!
 
     :Parameters:
      - `tensors` : list or tuple of tensors
