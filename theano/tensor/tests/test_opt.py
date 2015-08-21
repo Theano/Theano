@@ -1864,10 +1864,17 @@ class test_local_subtensor_make_vector(unittest.TestCase):
         #self.assertTrue(hasattr(f.outputs[0].tag, 'trace'))
 
 class test_local_subtensor_lift(unittest.TestCase):
+    def _verify_stack_trace(self, f):
+        for output in f.outputs:
+            # Check stacktrace was copied over correctly after opt was applied
+            self.assertTrue(hasattr(output.variable.tag, 'trace'))
+
     def test0(self):
         # basic test that the Op works
         x = tensor.matrix('x')
         f = function([x], tensor.exp(x)[0], mode=mode_opt)
+
+        self._verify_stack_trace(f)
 
         prog = f.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.Subtensor)  # first subtensor
@@ -1880,6 +1887,8 @@ class test_local_subtensor_lift(unittest.TestCase):
         # So we should not lift the subtensor
         x = tensor.matrix('x')
         f = function([x], [tensor.exp(x)[0], tensor.exp(x)], mode=mode_opt)
+
+        self._verify_stack_trace(f)
 
         prog = f.maker.fgraph.toposort()
         assert prog[0].op == tensor.exp
@@ -1894,6 +1903,8 @@ class test_local_subtensor_lift(unittest.TestCase):
         y = tensor.scalar('y')
         z = tensor.matrix('z')
         f = function([x, y, z], tensor.exp(x + y + z)[0], mode=mode_opt)
+
+        self._verify_stack_trace(f)
 
         prog = f.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.DimShuffle)
@@ -1912,6 +1923,8 @@ class test_local_subtensor_lift(unittest.TestCase):
         z = tensor.matrix('z')
         f = function([x, y, z], tensor.exp(x + y + z)[0:2], mode=mode_opt)
 
+        self._verify_stack_trace(f)
+
         prog = f.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.DimShuffle)
         assert isinstance(prog[1].op, tensor.Subtensor)  # first subtensor
@@ -1928,6 +1941,8 @@ class test_local_subtensor_lift(unittest.TestCase):
         y = tensor.vector('y')
         f = function([y], tensor.exp(y.dimshuffle(0, 'x'))[0], mode=mode_opt)
 
+        self._verify_stack_trace(f)
+
         prog = f.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.DimShuffle)
         assert isinstance(prog[1].op, tensor.Subtensor)
@@ -1942,6 +1957,8 @@ class test_local_subtensor_lift(unittest.TestCase):
         x = tensor.matrix('x')
         y = tensor.vector('y')
         f = function([x, y], tensor.exp(x + y)[0], mode=mode_opt)
+
+        self._verify_stack_trace(f)
 
         prog = f.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.DimShuffle)
@@ -1958,6 +1975,8 @@ class test_local_subtensor_lift(unittest.TestCase):
         y = tensor.vector('y')
         f = function([x, y], [tensor.exp(x + y)[0], tensor.exp(x + y) + x],
                      mode=mode_opt)
+
+        self._verify_stack_trace(f)
 
         prog = f.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.DimShuffle)
@@ -1976,6 +1995,8 @@ class test_local_subtensor_lift(unittest.TestCase):
         x = tensor.vector('x')
         y = tensor.scalar('y')
         f = function([x, y], tensor.exp(x + y)[0], mode=mode_opt)
+
+        self._verify_stack_trace(f)
 
         prog = f.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.Subtensor)
@@ -1996,6 +2017,7 @@ class test_local_subtensor_lift(unittest.TestCase):
         assert newx.broadcastable == (True, False)
 
         f1 = function([x], newx[:2, :5], mode=mode_opt)
+        self._verify_stack_trace(f1)
         prog = f1.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.Subtensor)
         assert isinstance(prog[1].op, tensor.Rebroadcast)
@@ -2009,6 +2031,7 @@ class test_local_subtensor_lift(unittest.TestCase):
         assert newy.broadcastable == (True, False, True, False)
 
         f2 = function([y], newy[:, 3, 0, :], mode=mode_opt)
+        self._verify_stack_trace(f2)
         prog = f2.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.Subtensor)
         assert isinstance(prog[1].op, tensor.Rebroadcast)
@@ -2016,6 +2039,7 @@ class test_local_subtensor_lift(unittest.TestCase):
 
         # corner case 2: subtensor idx_list is shorter than resulting broadcast pattern
         f3 = function([y], newy[:, 3, 0], mode=mode_opt)
+        self._verify_stack_trace(f3)
         prog = f3.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.Subtensor)
         assert isinstance(prog[1].op, tensor.Rebroadcast)
@@ -2030,6 +2054,7 @@ class test_local_subtensor_lift(unittest.TestCase):
 
         out = newz[:, 3, 0]
         f4 = function([z], newz[:, 3, 0], mode=mode_opt)
+        self._verify_stack_trace(f4)
         prog = f4.maker.fgraph.toposort()
         assert isinstance(prog[0].op, tensor.Subtensor)
         assert isinstance(prog[1].op, tensor.Rebroadcast)
@@ -2037,6 +2062,11 @@ class test_local_subtensor_lift(unittest.TestCase):
 
 
 class test_local_subtensor_merge(unittest.TestCase):
+    def _verify_stack_trace(self, f):
+        for output in f.outputs:
+            # Check stacktrace was copied over correctly after opt was applied
+            self.assertTrue(hasattr(output.variable.tag, 'trace'))
+
     def setUp(self):
         utt.seed_rng()
         self.x_shapes = [(2, 2), (5, 3), (4, 1), (1, 2),
@@ -2050,6 +2080,8 @@ class test_local_subtensor_merge(unittest.TestCase):
             f = function([x], x[idx::][-1], mode=mode_opt)
             g = function([x], x[idx::][-1], mode=mode_opt.excluding(
                 'local_subtensor_merge'))
+
+            self._verify_stack_trace(f)
 
             topo = f.maker.fgraph.toposort()
             assert len([t for t in topo
@@ -2077,6 +2109,8 @@ class test_local_subtensor_merge(unittest.TestCase):
                      mode=mode_opt.excluding('local_subtensor_merge'))
         #theano.printing.debugprint(f, print_type=True)
 
+        self._verify_stack_trace(f)
+
         topo = f.maker.fgraph.toposort()
         # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
         assert len([t for t in topo
@@ -2103,6 +2137,8 @@ class test_local_subtensor_merge(unittest.TestCase):
             f = function([x], x[::-1][idx], mode=mode_opt)
             g = function([x], x[::-1][idx],
                          mode=mode_opt.excluding('local_subtensor_merge'))
+
+            self._verify_stack_trace(f)
 
             #theano.printing.debugprint(f, print_type=True)
             topo = f.maker.fgraph.toposort()
@@ -2132,6 +2168,8 @@ class test_local_subtensor_merge(unittest.TestCase):
                      mode=mode_opt.excluding('local_subtensor_merge'))
         #theano.printing.debugprint(f, print_type=True)
 
+        self._verify_stack_trace(f)
+
         topo = f.maker.fgraph.toposort()
         # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
         assert len([t for t in topo
@@ -2154,6 +2192,8 @@ class test_local_subtensor_merge(unittest.TestCase):
         for idx in xrange(-9, 8):
             f = function([x], x[::-1][:idx], mode=mode_opt)
 
+            self._verify_stack_trace(f)
+
             #theano.printing.debugprint(f, print_type=True)
             topo = f.maker.fgraph.toposort()
             # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
@@ -2171,6 +2211,9 @@ class test_local_subtensor_merge(unittest.TestCase):
         x = tensor.matrix('x')
         y = tensor.iscalar('y')
         f = function([x, y], x[::-1][:y], mode=mode_opt)
+
+        self._verify_stack_trace(f)
+
         #theano.printing.debugprint(f, print_type=True)
 
         topo = f.maker.fgraph.toposort()
@@ -2192,6 +2235,8 @@ class test_local_subtensor_merge(unittest.TestCase):
             for idx2 in xrange(-7, 7):
                 f = function([x], x[idx1:][:idx2], mode=mode_opt)
 
+                self._verify_stack_trace(f)
+
                 #theano.printing.debugprint(f, print_type=True)
                 topo = f.maker.fgraph.toposort()
                 # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
@@ -2210,6 +2255,9 @@ class test_local_subtensor_merge(unittest.TestCase):
         y = tensor.iscalar('y')
         z = tensor.iscalar('y')
         f = function([x, y, z], x[y:][:z], mode=mode_opt)
+
+        self._verify_stack_trace(f)
+
         #theano.printing.debugprint(f, print_type=True)
 
         topo = f.maker.fgraph.toposort()
@@ -2239,6 +2287,9 @@ class test_local_subtensor_merge(unittest.TestCase):
             z = x[slice(*sl1)][slice(*sl2)]
             f = function([x], z, mode=mode_opt)
 
+            self._verify_stack_trace(f)
+
+
             x_val = self.rng.uniform(size=shape).astype(config.floatX)
             f(x_val)
 
@@ -2254,6 +2305,9 @@ class test_local_subtensor_merge(unittest.TestCase):
         s2 = tensor.iscalar('s2')
         f = function([x, b1, e1, s1, b2, e2, s2], x[b1:e1:s1][b2:e2:s2],
                      mode=mode_opt)
+
+        self._verify_stack_trace(f)
+
         #theano.printing.debugprint(f, print_type=True)
 
         topo = f.maker.fgraph.toposort()
@@ -2292,6 +2346,7 @@ class test_local_subtensor_merge(unittest.TestCase):
         t = theano.shared(numpy.int64(0))
 
         fun = theano.function([x], y[t])
+
         val = fun(data)
         assert val == data[7:1:-1][0]
 
@@ -2337,6 +2392,9 @@ class test_local_subtensor_merge(unittest.TestCase):
         s = tensor.iscalar('s')
         i = tensor.iscalar('i')
         f = function([x, b, e, s, i], x[b:e:s][i], mode=mode_opt)
+
+        self._verify_stack_trace(f)
+
         #theano.printing.debugprint(f, print_type=True)
 
         topo = f.maker.fgraph.toposort()
@@ -2428,6 +2486,9 @@ class test_local_subtensor_merge(unittest.TestCase):
             sub_x = x[slice1][slice2]
             f = theano.function([x] + input_vars, sub_x, mode=mode_opt)
 
+            self._verify_stack_trace(f)
+
+
             topo = f.maker.fgraph.toposort()
             # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
             assert len([t for t in topo if isinstance(t.op,
@@ -2484,6 +2545,8 @@ class test_local_subtensor_merge(unittest.TestCase):
             symbol_slice = slice(*slice_inputs[:3])
             sub_x = x[symbol_slice][i]
             f = theano.function([x] + input_vars, sub_x, mode=mode_opt)
+
+            self._verify_stack_trace(f)
 
             topo = f.maker.fgraph.toposort()
             # print [t for t in topo if isinstance(t.op, tensor.Subtensor)]
@@ -2911,7 +2974,7 @@ class Test_local_elemwise_alloc(unittest.TestCase):
     def _verify_stack_trace(self, f):
         for output in f.outputs:
             # Check stacktrace was copied over correctly after opt was applied
-            self.assertTrue(hasattr(output.tag, 'trace'))
+            self.assertTrue(hasattr(output.variable.tag, 'trace'))
 
     def test_remove_alloc_wo_dimshuffle(self):
         # No optimization on alloc

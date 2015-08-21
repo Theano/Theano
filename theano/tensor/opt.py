@@ -91,8 +91,8 @@ def copy_stack_trace(from_var, to_var):
             tr += getattr(v.tag, 'trace', [])
 
     else:
-        # If from_var is not a list, it must be a single tensor
-        # variable, so just store that particular stack trace
+        # If from_var is not a list, it must be a single tensor variable, 
+        # so just store that particular stack trace
         tr = getattr(from_var.tag, 'trace', [])
 
     # Copy over stack traces to to_var
@@ -2565,7 +2565,7 @@ def local_subtensor_lift(node):
             ret = u.owner.op(x_idx)
             # Copy over previous output stacktrace 
             # and stacktrace from previous unary operation
-            copy_stack_trace([node.outputs, node.inputs[0]], ret)
+            copy_stack_trace([node.outputs[0], node.inputs[0]], ret)
             return [ret]
 
         if isinstance(u.owner.op, T.Elemwise):
@@ -2574,7 +2574,14 @@ def local_subtensor_lift(node):
                 # There is no broadcastable in the inputs
                 idx = node.inputs[1:]
                 new_inputs = [node.op(i, *idx) for i in u.owner.inputs]
-                return [u.owner.op(*new_inputs)]
+                # Copy over previous output stacktrace
+                copy_stack_trace(node.outputs[0], new_inputs)
+
+                ret = u.owner.op(*new_inputs)
+                # Copy over previous output stacktrace 
+                # and stacktrace from previous unary operation
+                copy_stack_trace([node.outputs[0], node.inputs[0]], ret)
+                return [ret]
             elif all([sum(i.type.broadcastable) in [i.ndim, 0]
                       for i in u.owner.inputs]):
                 # There is no broadcastable in the inputs or it is scalar
@@ -2591,7 +2598,15 @@ def local_subtensor_lift(node):
                         else:
                             new_inputs.append(
                                 i.dimshuffle(['x'] * node.outputs[0].ndim))
-                return [u.owner.op(*new_inputs)]
+
+                # Copy over previous output stacktrace
+                copy_stack_trace(node.outputs[0], new_inputs)
+
+                ret = u.owner.op(*new_inputs)
+                # Copy over previous output stacktrace 
+                # and stacktrace from previous unary operation
+                copy_stack_trace([node.outputs[0], node.inputs[0]], ret)
+                return [ret]
 
         if isinstance(u.owner.op, T.Rebroadcast):
             # make sure that Rebroadcast has only 1 input
@@ -2617,7 +2632,13 @@ def local_subtensor_lift(node):
                 j += 1
 
             subt_x = node.op(u.owner.inputs[0], *node.inputs[1:])
+            # Copy over previous output stacktrace
+            copy_stack_trace(node.outputs[0], subt_x)
+
             rbcast_subt_x = T.Rebroadcast(*new_axis)(subt_x)
+            # Copy over previous output stacktrace 
+            # and stacktrace from previous unary operation
+            copy_stack_trace([node.outputs[0], node.inputs[0]], rbcast_subt_x)
 
             return [rbcast_subt_x]
 
@@ -2809,11 +2830,18 @@ def local_subtensor_merge(node):
 
             merged_slices = make_constant(merged_slices)
             subtens = Subtensor(merged_slices)
+
             sl_ins = Subtensor.collapse(
                 merged_slices,
                 lambda x: isinstance(x, T.Variable))
             # Do not call make_node for test_value
             out = subtens(x, *sl_ins)
+
+            # Copy over previous output stacktrace
+            # and stacktrace from previous slicing operation.
+            # Why? Because, the merged slicing operation could have failed
+            # because of either of the two original slicing operations
+            copy_stack_trace([node.outputs[0], node.inputs[0]], out)
             return [out]
 
 
@@ -2821,6 +2849,7 @@ def local_subtensor_merge(node):
 @register_specialize
 @gof.local_optimizer([Subtensor])
 def local_subtensor_of_alloc(node):
+    #TODO Julian: Document this better!
     """alloc[x:y] -> alloc"""
     if not isinstance(node.op, Subtensor):
         return False
