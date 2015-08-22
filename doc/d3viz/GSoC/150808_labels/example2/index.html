@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<link rel="stylesheet" href="d3-context-menu.css"/>
-	<link rel="stylesheet" href="d3theano.css"/>
-	<script type="text/javascript" src="d3.v3.min.js"></script>
-	<script type='text/javascript' src="dagre-d3.js"></script>
-	<script type='text/javascript' src="graphlib-dot.js"></script>
-	<script src="d3-context-menu.js"></script>
-	<script src="d3theano.js"></script>
+	<link rel="stylesheet" href="/Users/angermue/python/projects/theano/theano/theano/d3viz/css/d3viz.css"/>
+	<link rel="stylesheet" href="/Users/angermue/python/projects/theano/theano/theano/d3viz/css/d3-context-menu.css"/>
+	<script type='text/javascript' src="/Users/angermue/python/projects/theano/theano/theano/d3viz/js/d3viz.js"></script>
+	<script type="text/javascript" src="/Users/angermue/python/projects/theano/theano/theano/d3viz/js/d3.v3.min.js"></script>
+	<script type='text/javascript' src="/Users/angermue/python/projects/theano/theano/theano/d3viz/js/dagre-d3.js"></script>
+	<script type='text/javascript' src="/Users/angermue/python/projects/theano/theano/theano/d3viz/js/graphlib-dot.js"></script>
+	<script type='text/javascript' src="/Users/angermue/python/projects/theano/theano/theano/d3viz/js/d3-context-menu.js"></script>
 </head>
 <body>
 	<div id='menu'>
@@ -22,20 +22,21 @@
 	</div>
 
 	<script type="text/javascript">
+		// Path to DOT file
 		var path = 'index.dot';
+		// Backend graph in DOT format
 		var dotGraph;
+		// Frontend graph for visualization
 		var graph = {};
-		var nodes = [];
-		var edges = [];
 		
-		var isProfiled = false;
-		var colorProfile = false;
-		var fixedDefault = true;
+		var forceLayout;
+		var isProfiled = false; // true if profiling information available
+		var useProfileColors = false;
+		var fixOnInit = true; // fix nodes on initialization
 		var maxProfilePer = 0;
 		var profileColors = ["#fff5f0","#fee0d2","#fcbba1","#fc9272","#fb6a4a","#ef3b2c","#cb181d","#a50f15"];
-		
 		var pad = 10;
-		var isEditNode = false;
+		var isEditNode = false; // true if node is edited
     	var menuItems = [
 			{
 				title: 'Edit',
@@ -51,20 +52,32 @@
 			}
 		];
 
-		var layout;
-		var scaleDotX;
-		var scaleDotY;
-		
+		// Create main panel
 		d3.select('body').select('svg').remove();
 		var svg = d3.select('body').append('svg')
 			.attr('width', '100%')
 			.attr('height', '95%');
 		var pane = svg.append('g');
 		
+		// Zoom behaviour
+		var zoom = d3.behavior.zoom()
+			.scaleExtent([0.2, 8])
+			.on('zoom', function(d) {
+				var trans = d3.event.translate;
+				trans[0] += 300;
+				trans[1] += 100;
+				pane.attr('transform', 'translate(' + trans + ') scale(' + d3.event.scale + ')');
+			});
+		svg.call(zoom);
+		zoom.event(svg);
+		svg.on("dblclick.zoom", null);
+		
+		// Edges
 		var edgeDiv = d3.select('body').append('div')
 			.attr('class', 'edgeTooltip')
 			.style('opacity', 0.0);
-			
+		
+		// Div for node details	
 		var nodeInfo = d3.select('body').append('div')
 			.attr('class', 'nodeInfo')
 			.style('opacity', 0.0);
@@ -74,7 +87,6 @@
 			{'id': 'n', 'color': 'black'},
 			{'id': 'r', 'color': 'red'},
 			{'id': 'b', 'color': 'dodgerblue'}];
-			
 		svg.append("defs").selectAll('marker').data(markerData).enter().append("marker")
 		    .attr("id", function(d) { return 'edgeArrow_' + d.id;})
 		    .attr("markerWidth", 4)
@@ -85,33 +97,13 @@
 		  	.append("path")
 		    .attr("d", "M0,0 L4,2 L0,4 Z")
 		    .attr('fill', function(d) { return d.color;});
-		
-		// Zoom behaviour
-		function zoom(d) {
-			var trans = d3.event.translate;
-			trans[0] += 300;
-			trans[1] += 100;
-			pane.attr('transform', 'translate(' + trans + ') scale(' + d3.event.scale + ')');
-		}
-		
-		var bZoom = d3.behavior.zoom()
-			.scaleExtent([0.2, 8])
-			.on('zoom', zoom);
-		svg.call(bZoom);
-		bZoom.event(svg);
-		
-		svg.on("dblclick.zoom", null);
-		
-		var curve = d3.svg.line()
-		    .interpolate("cardinal-closed")
-		    .tension(.85);
-		
+	
 		// Read and initialize graph
 		d3.text(path, function(data) {
 			dotGraph = graphlibDot.read(data);
 			processDotGraph(dotGraph);		
-			graph = forceGraph(dotGraph);
-			setupGraph();
+			graph = frontEndGraph(dotGraph);
+			drawGraph();
 		});
 	</script>
 </body>
