@@ -1,6 +1,6 @@
 """Functions for formatting Theano compute graphs.
 
-Author: Christof Angermueller <cangermueller@gmail.com
+Author: Christof Angermueller <cangermueller@gmail.com>
 """
 
 import numpy as np
@@ -48,6 +48,9 @@ class PyDotFormatter(object):
                              'Elemwise': '#FFAABB',  # dark pink
                              'Subtensor': '#FFAAFF',  # purple
                              'Alloc': '#FFAA22'}  # orange
+        self.shapes = {'input': 'box',
+                       'output': 'box',
+                       'apply': 'ellipse'}
         self.__node_prefix = 'n'
 
     def __add_node(self, node):
@@ -117,6 +120,7 @@ class PyDotFormatter(object):
             nparams['profile'] = apply_profile(node, profile)
             nparams['node_type'] = 'apply'
             nparams['apply_op'] = apply_op(node)
+            nparams['shape'] = self.shapes['apply']
 
             use_color = None
             for opName, color in self.apply_colors.items():
@@ -148,7 +152,7 @@ class PyDotFormatter(object):
                     vparams['style'] = 'filled'
                     vparams['fillcolor'] = self.node_colors[
                         vparams['node_type']]
-                    vparams['shape'] = 'ellipse'
+                    vparams['shape'] = self.shapes['input']
                     pd_var = dict_to_pdnode(vparams)
                     graph.add_node(pd_var)
 
@@ -185,7 +189,7 @@ class PyDotFormatter(object):
                         vparams['fillcolor'] = self.node_colors['unused']
                     else:
                         vparams['fillcolor'] = self.node_colors['output']
-                    vparams['shape'] = 'box'
+                    vparams['shape'] = self.shapes['output']
                     pd_var = dict_to_pdnode(vparams)
                     graph.add_node(pd_var)
 

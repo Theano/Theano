@@ -1,6 +1,6 @@
 """Dynamic visualization of Theano graphs.
 
-Author: Christof Angermueller <cangermueller@gmail.com
+Author: Christof Angermueller <cangermueller@gmail.com>
 """
 
 import os
@@ -19,19 +19,34 @@ def replace_patterns(x, replace):
 
 
 def d3write(fct, path, *args, **kwargs):
-    """Convert theano graph to pydot graph and write to file."""
+    """Convert Theano graph to pydot graph and write to file."""
     gf = PyDotFormatter(*args, **kwargs)
     g = gf(fct)
     g.write_dot(path)
 
 
 def d3viz(fct, outfile,  *args, **kwargs):
-    """Create dynamic graph visualization using d3.js javascript library.
+    """Create HTML file with dynamic visualizing of a Theano function graph.
 
     :param fct: A compiled Theano function, variable, apply or a list of
                 variables.
-    :param outfile: The output file
-    :param args, kwargs: Additional parameters passed to PyDotFromatter.
+    :param outfile: The output HTML file
+    :param compact=False: if True, will remove intermediate variables without
+                          name.
+
+    In the HTML file, the whole graph or single nodes can be moved by drag and
+    drop. Zooming is possible via the mouse wheel. Detailed information about
+    nodes and edges are displayed via mouse-over events. Node labels can be
+    edited by selecting Edit from the context menu.
+
+    Input nodes are colored in green, output nodes in blue. Apply nodes are
+    ellipses, and colored depending on the type of operation they perform. Red
+    ellipses are transfers from/to the GPU (ops with names GpuFromHost,
+    HostFromGpu).
+
+    Edges are black by default. If a node returns a view of an
+    input, the input edge will be blue. If it returns a destroyed input, the
+    edge will be red.
     """
 
     outdir = pt.dirname(outfile)

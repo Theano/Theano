@@ -1,7 +1,7 @@
 /*
- * Theano javascript library for interactive visualiztion.
+ * Theano javascript library for interactive visualization.
  *
- * Author: Christof Angermueller <cangermueller@gmail.com
+ * Author: Christof Angermueller <cangermueller@gmail.com>
 */
 
 
