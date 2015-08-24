@@ -22,10 +22,8 @@
 	</div>
 
 	<script type="text/javascript">
-		// Path to DOT file
-		var path = '%% DOT_FILE %%'; // '%% DOT_FILE %%';
 		// Backend graph in DOT format
-		var dotGraph;
+		var dotGraph = graphlibDot.read("%% DOT_GRAPH %%");
 		// Frontend graph for visualization
 		var graph = {};
 		
@@ -98,13 +96,10 @@
 		    .attr("d", "M0,0 L4,2 L0,4 Z")
 		    .attr('fill', function(d) { return d.color;});
 	
-		// Read and initialize graph
-		d3.text(path, function(data) {
-			dotGraph = graphlibDot.read(data);
-			processDotGraph(dotGraph);		
-			graph = frontEndGraph(dotGraph);
-			drawGraph();
-		});
+		// Initialize graph
+		processDotGraph(dotGraph);		
+		graph = frontEndGraph(dotGraph);
+		drawGraph();
 	</script>
 </body>
 </html>

@@ -15,10 +15,8 @@ class TestD3Viz(unittest.TestCase):
 
     def check(self, f):
         _, html_file = mkstemp('.html')
-        dot_file = html_file.replace('.html', '.dot')
         d3v.d3viz(f, html_file)
         assert pt.getsize(html_file) > 0
-        assert pt.getsize(dot_file) > 0
 
     def test_mlp(self):
         m = models.Mlp(rng=self.rng)

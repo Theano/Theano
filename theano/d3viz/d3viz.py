@@ -6,6 +6,7 @@ Author: Christof Angermueller <cangermueller@gmail.com>
 import os
 import os.path as pt
 import shutil
+import re
 
 from formatting import PyDotFormatter
 
@@ -13,17 +14,16 @@ __path__ = pt.dirname(pt.realpath(__file__))
 
 
 def replace_patterns(x, replace):
-    """ Replace patterns `replace` in x."""
+    """Replace patterns `replace` in x."""
     for from_, to in replace.items():
         x = x.replace(str(from_), str(to))
     return x
 
 
-def d3write(fct, path, *args, **kwargs):
-    """Convert Theano graph to pydot graph and write to file."""
-    gf = PyDotFormatter(*args, **kwargs)
-    g = gf(fct)
-    g.write_dot(path)
+def escape_quotes(s):
+    """Escape quotes in string."""
+    s = re.sub(r'''(['"])''', r'\\\1', s)
+    return s
 
 
 def d3viz(fct, outfile,  copy_deps=True, *args, **kwargs):
@@ -50,13 +50,15 @@ def d3viz(fct, outfile,  copy_deps=True, *args, **kwargs):
     edge will be red.
     """
 
+    # Create DOT graph
+    formatter = PyDotFormatter(*args, **kwargs)
+    graph = formatter(fct)
+    dot_graph = escape_quotes(graph.create_dot()).replace('\n', '')
+
+    # Create output directory if not existing
     outdir = pt.dirname(outfile)
     if not pt.exists(outdir):
         os.makedirs(outdir)
-
-    # Create dot file
-    dot_file = pt.splitext(outfile)[0] + '.dot'
-    d3write(fct, dot_file, *args, **kwargs)
 
     # Read template HTML file
     template_file = pt.join(__path__, 'html', 'template.html')
@@ -64,6 +66,7 @@ def d3viz(fct, outfile,  copy_deps=True, *args, **kwargs):
     template = f.read()
     f.close()
 
+    # Copy dependencies to output directory
     src_deps = __path__
     if copy_deps:
         dst_deps = 'd3viz'
@@ -78,7 +81,7 @@ def d3viz(fct, outfile,  copy_deps=True, *args, **kwargs):
     replace = {
         '%% JS_DIR %%': pt.join(dst_deps, 'js'),
         '%% CSS_DIR %%': pt.join(dst_deps, 'css'),
-        '%% DOT_FILE %%': pt.basename(dot_file),
+        '%% DOT_GRAPH %%': pt.basename(dot_graph),
     }
     html = replace_patterns(template, replace)
 
@@ -87,3 +90,10 @@ def d3viz(fct, outfile,  copy_deps=True, *args, **kwargs):
         f = open(outfile, 'w')
         f.write(html)
         f.close()
+
+
+def d3write(fct, path, *args, **kwargs):
+    """Convert Theano graph to pydot graph and write to file."""
+    formatter = PyDotFormatter(*args, **kwargs)
+    graph = formatter(fct)
+    graph.write_dot(path)

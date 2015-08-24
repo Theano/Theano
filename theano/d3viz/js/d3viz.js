@@ -68,7 +68,7 @@ function processDotGraph(dotGraph) {
 	for (var nodeId in dotGraph._nodes) {
 		var node = dotGraph._nodes[nodeId];
 		node.id = nodeId;
-		node.isCluster = nodeId.startsWith('cluster');
+		node.isCluster = nodeId.substr(0, 7) == 'cluster';
 		if (!node.isCluster) {
 			dotGraph.rnodes[nodeId] = node;
 		}
