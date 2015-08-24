@@ -111,12 +111,12 @@ def run_command(command, **params):
     to be executed;
     :param **params: optional named parametrs passed to
     output_subprocess_Popen()."""
-    _out, _err, _exit_code = '', '', -1
+    stdout, stderr, exit_code = '', '', -1
     try:
-        _out, _err, _exit_code = output_subprocess_Popen(command, **params)
+        stdout, stderr, exit_code = output_subprocess_Popen(command, **params)
     except Exception as e:
-        _err = str(e)
-    return _exit_code, decode(_out), decode(_err)
+        stderr = str(e)
+    return exit_code, decode(stdout), decode(stderr)
 
 
 # Detect the version of the nvcc compiler
@@ -124,8 +124,8 @@ def nvcc_get_version(path_to_nvcc):
     """Get the version of the CUDA Runtime compiler, by running 'nvcc'
     with --version flag. Raises an OSError exception if the path sepcified
     is invalid or non-executable."""
-    _exit_code, _out, _err = run_command([path_to_nvcc, '--version'])
-    ver_line = _out.strip().split('\n')[-1]
+    exit_code, stdout, stderr = run_command([path_to_nvcc, '--version'])
+    ver_line = stdout.strip().split('\n')[-1]
     return ver_line.split(',')[1].strip().split()
 
 
@@ -169,7 +169,7 @@ def add_standard_rpath(rpath):
 
 
 # A primitive for creating a source code file.
-def __tmp_source(code, suffix='', prefix=''):
+def tmp_source(code, suffix='', prefix=''):
     """A primitive for writing the supplied source code into a temporary file.
     :param code: a complete source code listing to be written to a temporary
         file;
@@ -215,19 +215,19 @@ def test_build_and_run(compiler, source, suffix='', prefix='',
     :param output: should the output of the compiled code be collected
         (defaults to False);
     """
-    compilation_ok, run_ok, _out, _err = False, False, '', ''
+    compilation_ok, run_ok, stdout, stderr = False, False, '', ''
     # Put the source code in a temporary file,
-    input_path, _err = __tmp_source(source, suffix=suffix, prefix=prefix)
+    input_path, stderr = tmp_source(source, suffix=suffix, prefix=prefix)
     if input_path:
         output_path = input_path[:-(len(suffix) + 1)]
         # ... then compile it,
-        _exit_code, _out, _err = run_command(
+        exit_code, stdout, stderr = run_command(
             [compiler, input_path, '-o', output_path] + flags)
-        compilation_ok = _exit_code == 0
+        compilation_ok = exit_code == 0
         if compilation_ok and run:
             # ... and run, if necessary.
-            _exit_code, _out, _err = run_command([output_path])
-            run_ok = _exit_code == 0
+            exit_code, stdout, stderr = run_command([output_path])
+            run_ok = exit_code == 0
         # Remove temporary files.
         for path in [input_path, output_path, output_path + ".exe"]:
             if os.path.exists(path):
@@ -235,11 +235,11 @@ def test_build_and_run(compiler, source, suffix='', prefix='',
     if not run and not output:
         return compilation_ok
     elif not run and output:
-        return (compilation_ok, _out, _err)
+        return (compilation_ok, stdout, stderr)
     elif not output:
         return (compilation_ok, run_ok)
     else:
-        return (compilation_ok, run_ok, _out, _err)
+        return (compilation_ok, run_ok, stdout, stderr)
 
 
 # A class for the NVCC compiler
@@ -511,6 +511,7 @@ class NVCC_compiler(Compiler):
         # cmd.append("--ptxas-options=-v") #uncomment this to see
         # register and shared-mem requirements
         _logger.debug('Running cmd %s', ' '.join(cmd))
+
         # If cwd is not None, the child's current directory will be changed to
         #  cwd before it is executed.
         nvcc_exit_code, nvcc_stdout, nvcc_stderr = run_command(cmd,

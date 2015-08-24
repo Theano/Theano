@@ -2,7 +2,7 @@ import os
 import subprocess
 
 
-def __check_params(params, forbidden=['stdout', 'stderr', 'stdin']):
+def check_popen_params(params, forbidden=['stdout', 'stderr', 'stdin']):
     if any([par in params for par in forbidden]):
         raise TypeError(
             "Please, do not use the following parameters with either "
@@ -55,13 +55,13 @@ def call_subprocess_Popen(command, **params):
    :see: documentation for subprocess.Popen for the list of possible
     parameters.
     """
-    __check_params(params)
+    check_popen_params(params)
     with open(os.devnull, 'w') as null:
         params['stdout'] = null.fileno()
         params['stderr'] = null.fileno()
         proc = subprocess_Popen(command, **params)
-        _exit_code = proc.wait()
-    return _exit_code
+        exit_code = proc.wait()
+    return exit_code
 
 
 def output_subprocess_Popen(command, **params):
@@ -71,12 +71,12 @@ def output_subprocess_Popen(command, **params):
    :see: documentation for subprocess.Popen for the list of possible
    parameters.
     """
-    __check_params(params)
+    check_popen_params(params)
     params['stdout'] = subprocess.PIPE
     params['stderr'] = subprocess.PIPE
     # Communication with subprocesses should be done with proc.communicate()
     # to avoid deadlocks around the stdour/stderr pipe.
     proc = subprocess_Popen(command, **params)
-    _stdout, _stderr = proc.communicate()
-    _exit_code = proc.returncode
-    return _stdout, _stderr, _exit_code
+    stdout, stderr = proc.communicate()
+    exit_code = proc.returncode
+    return stdout, stderr, exit_code

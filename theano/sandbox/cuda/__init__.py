@@ -105,22 +105,22 @@ def set_cuda_disabled():
     cuda_available = False
 
 # Add the compilation dir to the list of paths for module import
-if config.compiledir not in sys.path :
-    sys.path.insert( 0, config.compiledir )
+if config.compiledir not in sys.path:
+    sys.path.insert(0, config.compiledir)
 
-def check_module( module, library, source_files ):
+def check_module(module, library, source_files):
     """ Load the module 'module' if present and up to date
     return True if loaded correctly, otherwise return False"""
-    if not os.path.exists( library ) :
+    if not os.path.exists(library):
         return False
-    date = max( [ os.stat( cuda_file )[ stat.ST_MTIME ]
-                        for cuda_file in source_files ] )
-    if date >= os.stat( library )[ stat.ST_MTIME ] :
+    date = max([os.stat(cuda_file)[stat.ST_MTIME]
+                        for cuda_file in source_files])
+    if date >= os.stat(library)[stat.ST_MTIME]:
         return False
-    try :
-        mod = __import__( "%s.%s" % ( module, module, ),
-                            globals( ), locals( ), [ '' ] )
-    except Exception as e :
+    try:
+        mod = __import__("%s.%s" % (module, module,),
+                         globals(), locals(), [''])
+    except Exception as e:
         return False
     return True
 
@@ -137,67 +137,67 @@ elif not config.device.startswith('gpu') and config.force_device:
     set_cuda_disabled()
 
 # If $TMPDIR is defined, nvopencc wants it to exist
-if cuda_available and 'TMPDIR' in os.environ :
-    tmpdir = os.environ[ 'TMPDIR' ]
-    if not os.path.exists( tmpdir ) :
-        os.makedirs( tmpdir )
+if cuda_available and 'TMPDIR' in os.environ:
+    tmpdir = os.environ['TMPDIR']
+    if not os.path.exists(tmpdir):
+        os.makedirs(tmpdir)
 
 # The path to source fiels for cuda_ndarray and cuda_devquery
-cuda_path = os.path.abspath( os.path.split( __file__ )[ 0 ] )
+cuda_path = os.path.abspath(os.path.split(__file__)[0])
 
 # Early on detection and architecture selection via cuda_devquery
-cuda_devquery_loc = os.path.join( config.compiledir, 'cuda_devquery' )
-cuda_devquery_so = os.path.join( cuda_devquery_loc,
-                                'cuda_devquery.' + get_lib_extension( ) )
-cuda_devquery_cu = os.path.join( cuda_path, "cuda_devquery.cu" )
+cuda_devquery_loc = os.path.join(config.compiledir, 'cuda_devquery')
+cuda_devquery_so = os.path.join(cuda_devquery_loc,
+                                'cuda_devquery.' + get_lib_extension())
+cuda_devquery_cu = os.path.join(cuda_path, "cuda_devquery.cu")
 
-def try_devquery( ) :
-    return check_module( 'cuda_devquery', cuda_devquery_so, [ cuda_devquery_cu ] )
+def try_devquery():
+    return check_module('cuda_devquery', cuda_devquery_so, [cuda_devquery_cu])
 
 # Figure out if cuda_devquery needs compilation
-if cuda_available and not try_devquery( ) :
-    get_lock( )
-    try :
-        if not try_devquery( ) :
-            code = open( cuda_devquery_cu ).read( )
-            if not os.path.exists( cuda_devquery_loc ):
-                os.makedirs( cuda_devquery_loc )
+if cuda_available and not try_devquery():
+    get_lock()
+    try:
+        if not try_devquery():
+            code = open(cuda_devquery_cu).read()
+            if not os.path.exists(cuda_devquery_loc):
+                os.makedirs(cuda_devquery_loc)
             try:
-                nvcc_compiler.NVCC_compiler( ).compile_str(
+                nvcc_compiler.NVCC_compiler().compile_str(
                         'cuda_devquery', code,
                         location = cuda_devquery_loc,
-                        include_dirs = [ cuda_path ],
-                        libs = [ ], preargs = [ ] )
-            except Exception as e :
-                _logger.error( "Failed to compile cuda_devquery.cu: %s", str( e ) )
-                set_cuda_disabled( )
-    finally :
-        release_lock( )
+                        include_dirs = [cuda_path],
+                        libs = [], preargs = [])
+            except Exception as e:
+                _logger.error("Failed to compile cuda_devquery.cu: %s", str(e))
+                set_cuda_disabled()
+    finally:
+        release_lock()
 
-if cuda_available :
+if cuda_available:
     try:
         from cuda_devquery.cuda_devquery import cuda_device_count
-        assert( cuda_device_count( ) > 0 )
-    except Exception as e :
-        _logger.error( "Failed to detect the number of CUDA devices : %s", str( e ) )
-        set_cuda_disabled( )
+        assert(cuda_device_count() > 0)
+    except Exception as e:
+        _logger.error("Failed to detect the number of CUDA devices: %s", str(e))
+        set_cuda_disabled()
 
 # Now as the CUDA driver is functional, select the specified GPU and compile
 #  an ndarray library specifically for its architecture.
-def __get_arch( device ) :
+def get_arch(device):
     arch_flag = ""
-    if device == 'gpu' :
+    if device == 'gpu':
         device = 0
-    elif device.startswith('gpu') :
-        device = int( device[ 3: ] )
-    elif device == 'cpu' :
+    elif device.startswith('gpu'):
+        device = int(device[3:])
+    elif device == 'cpu':
         return -1, arch_flag
     else:
-        raise ValueError( "Invalid device identifier", device )
+        raise ValueError("Invalid device identifier", device)
 
     from cuda_devquery.cuda_devquery import cuda_device_capability
-    major, minor = cuda_device_capability( device )
-    arch_flag = '-arch=sm_' + str( major ) + str( minor )
+    major, minor = cuda_device_capability(device)
+    arch_flag = '-arch=sm_' + str(major) + str(minor)
     return device, arch_flag
 
 # cuda_ndarray compile and import
@@ -207,15 +207,15 @@ cuda_ndarray_so = os.path.join(cuda_ndarray_loc,
 libcuda_ndarray_so = os.path.join(cuda_ndarray_loc,
                                'libcuda_ndarray.' + get_lib_extension())
 
-def try_import() :
-    return check_module( "cuda_ndarray", cuda_ndarray_so,
-        [ os.path.join( cuda_path, cu ) for cu in [
+def try_import():
+    return check_module("cuda_ndarray", cuda_ndarray_so,
+        [os.path.join(cuda_path, cu) for cu in [
             'cuda_ndarray.cu',
             'cuda_ndarray.cuh',
             'conv_full_kernel.cu',
             'cnmem.h',
             'cnmem.cpp',
-            'conv_kernel.cu' ] ] )
+            'conv_kernel.cu']])
 
 if not try_import() and cuda_available:
     get_lock()
@@ -235,7 +235,7 @@ if not try_import() and cuda_available:
                         os.makedirs(cuda_ndarray_loc)
 
                     # Get the architecture of the selected device
-                    dev_id, dev_arch = __get_arch( config.device )
+                    dev_id, dev_arch = get_arch(config.device)
 
                     compiler = nvcc_compiler.NVCC_compiler()
                     compiler.compile_str(
