@@ -4,7 +4,15 @@ svg {
 	display:block;
 	position: fixed;
 	border: 0px solid black;
-	top:5%; left:0%; right:0% bottom=10%
+	top: 32px; left:0%; right:0% bottom=0%
+}
+
+.menuBar {
+	border-bottom: 1px solid black;
+	height: 22px;
+}
+
+input.menuBar {
 }
 
 .nodeRect {

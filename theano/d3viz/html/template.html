@@ -10,20 +10,20 @@
 	<script type='text/javascript' src="%% JS_DIR %%/d3-context-menu.js"></script>
 </head>
 <body>
-	<div id='menu'>
+	<div id='menu' class='menuBar'>
 	    <input name="resetNodes" 
 	           type="button" 
-	           value="Reset nodes" 
+	           value="Reset nodes"
 	           onclick="resetNodes()"/>
 	    <input name="releaseNodes" 
 	           type="button" 
-	           value="Release nodes" 
+	           value="Release nodes"
 	           onclick="releaseNodes()"/>
 	</div>
 
 	<script type="text/javascript">
 		// Path to DOT file
-		var path = '%% DOT_FILE %%';
+		var path = '%% DOT_FILE %%'; // '%% DOT_FILE %%';
 		// Backend graph in DOT format
 		var dotGraph;
 		// Frontend graph for visualization

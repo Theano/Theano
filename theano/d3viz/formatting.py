@@ -34,6 +34,11 @@ class PyDotFormatter(object):
         :param compact: if True, will remove intermediate variables without
                         name.
         """
+
+        if not pydot_imported:
+            raise RuntimeError("Failed to import pydot. You must install pydot"
+                               " for `pydotprint` to work.")
+
         self.compact = compact
         self.node_colors = {'input': 'limegreen',
                             'constant_input': 'SpringGreen',
@@ -106,9 +111,6 @@ class PyDotFormatter(object):
                                     outputs=fct)
             outputs = fct.outputs
             topo = fct.toposort()
-        if not pydot_imported:
-            raise RuntimeError("Failed to import pydot. You must install pydot"
-                               " for `pydotprint` to work.")
         outputs = list(outputs)
 
         # Loop over apply nodes

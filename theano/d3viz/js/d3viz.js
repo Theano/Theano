@@ -424,13 +424,13 @@ function drawConvexHull(d) {
  * Positions will be updated by updateGraph().
  */
 function drawGraph() {
+	d3.select('body').select('#menu').select('#toggleColors').remove();
 	if (isProfiled) {
 		d3.select('body').select('#menu').append('input')
-			.attr('name', 'tColors')
+			.attr('id', 'toggleColors')
 			.attr('type', 'button')
 			.attr('value', 'Toggle profile colors')
 			.attr('onclick', "toggleNodeColors()");
-			
 		maxProfilePer = 0;
 		for (i in graph.nodes) {
 			var p = graph.nodes[i].value.profile;
@@ -601,11 +601,9 @@ function drawGraph() {
 		.nodes(graph.nodes)
 		.links(graph.edges)
 		.size(graph.size)
-		.linkDistance(function(d) {
-			return 300;
-		})
-		.charge(-600)
-		.linkStrength(1)
+		.linkDistance(200)
+		.charge(-1000)
+		.linkStrength(0.2)
 		.gravity(0.05)
 		.friction(0.5)
 		.on('tick', updateGraph)
