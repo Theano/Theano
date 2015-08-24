@@ -37,9 +37,9 @@ Theano.suo
 .ipynb_checkpoints
 .pydevproject
 
-doc/d3viz/GSoC/150724_opfrom/bundle/
-doc/d3viz/GSoC/150724_opfrom/bundle2/
-doc/d3viz/GSoC/150819
-doc/d3viz/GSoC/150820
-doc/d3viz/examples/
-doc/d3viz/index_files/
+doc/library/d3viz/GSoC/150724_opfrom/bundle/
+doc/library/d3viz/GSoC/150724_opfrom/bundle2/
+doc/library/d3viz/GSoC/150819
+doc/library/d3viz/GSoC/150820
+doc/library/d3viz/examples/
+doc/library/d3viz/index_files/
