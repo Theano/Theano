@@ -4127,8 +4127,8 @@ class Reshape(Op):
         shp_orig = shp
         shp = as_tensor_variable(shp, ndim=1)
         if not shp.dtype.startswith('int') and not(isinstance(shp,
-                                                   TensorConstant)
-                                                   and shp.data.size == 0):
+                                                   TensorConstant) and
+                                                   shp.data.size == 0):
             # if shp is an instace of TensorConstant and
             # shp.data is empty, then shp.dtype is float64
             raise TypeError("Shape must be integers", shp, shp.dtype)
