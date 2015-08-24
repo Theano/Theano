@@ -5,6 +5,7 @@ Author: Christof Angermueller <cangermueller@gmail.com>
 
 import os
 import os.path as pt
+import shutil
 
 from formatting import PyDotFormatter
 
@@ -25,14 +26,14 @@ def d3write(fct, path, *args, **kwargs):
     g.write_dot(path)
 
 
-def d3viz(fct, outfile,  *args, **kwargs):
+def d3viz(fct, outfile,  copy_deps=True, *args, **kwargs):
     """Create HTML file with dynamic visualizing of a Theano function graph.
 
     :param fct: A compiled Theano function, variable, apply or a list of
                 variables.
-    :param outfile: The output HTML file
-    :param compact=False: if True, will remove intermediate variables without
-                          name.
+    :param outfile: The output HTML file.
+    :param copy_deps: Copy javascript and CSS dependencies to output directory.
+    :param *args, **kwargs: Arguments passed to PyDotFormatter.
 
     In the HTML file, the whole graph or single nodes can be moved by drag and
     drop. Zooming is possible via the mouse wheel. Detailed information about
@@ -63,10 +64,20 @@ def d3viz(fct, outfile,  *args, **kwargs):
     template = f.read()
     f.close()
 
+    src_deps = __path__
+    if copy_deps:
+        dst_deps = 'd3viz'
+        for d in ['js', 'css']:
+            dep = pt.join(outdir, dst_deps, d)
+            if not pt.exists(dep):
+                shutil.copytree(pt.join(src_deps, d), dep)
+    else:
+        dst_deps = src_deps
+
     # Replace patterns in template
     replace = {
-        '%% JS_DIR %%': pt.join(__path__, 'js'),
-        '%% CSS_DIR %%': pt.join(__path__, 'css'),
+        '%% JS_DIR %%': pt.join(dst_deps, 'js'),
+        '%% CSS_DIR %%': pt.join(dst_deps, 'css'),
         '%% DOT_FILE %%': pt.basename(dot_file),
     }
     html = replace_patterns(template, replace)
