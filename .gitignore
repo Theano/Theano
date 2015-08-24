@@ -35,6 +35,7 @@ Theano.suo
 *.DS_Store
 *.bak
 .ipynb_checkpoints
+.pydevproject
 
 doc/d3viz/GSoC/150724_opfrom/bundle/
 doc/d3viz/GSoC/150724_opfrom/bundle2/
