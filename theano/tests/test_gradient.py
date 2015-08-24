@@ -5,10 +5,11 @@ from __future__ import print_function
 import unittest
 
 import numpy as np
+from six.moves import xrange
 
 import theano
 from theano import gof
-from theano.compat import OrderedDict
+from theano.compat import OrderedDict, izip
 from theano.tests import unittest_tools as utt
 
 from theano import gradient
@@ -26,8 +27,8 @@ def grad_sources_inputs(sources, inputs):
     """
     if inputs is None:
         inputs = theano.gof.graph.inputs([source[0] for source in sources])
-    return dict(zip(inputs, theano.gradient.grad(cost=None, known_grads=dict(sources),
-        wrt=inputs, consider_constant=inputs)))
+    return dict(izip(inputs, theano.gradient.grad(cost=None, known_grads=dict(sources),
+                                                  wrt=inputs, consider_constant=inputs)))
 
 
 class testgrad_sources_inputs(unittest.TestCase):
@@ -35,6 +36,7 @@ class testgrad_sources_inputs(unittest.TestCase):
     def test_retNone1(self):
         """Test that it is not ok to return None from op.grad()"""
         class retNone(gof.op.Op):
+            __props__ = ()
             def make_node(self):
                 inputs = [theano.tensor.vector()]
                 outputs = [theano.tensor.vector()]
@@ -51,6 +53,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         """Test that it is not ok to return the wrong number of gradient terms
         """
         class retOne(gof.op.Op):
+            __props__ = ()
             def make_node(self, *inputs):
                 outputs = [theano.tensor.vector()]
                 return gof.Apply(self, inputs, outputs)
@@ -71,6 +74,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         gval = theano.tensor.matrix()
 
         class O(gof.op.Op):
+            __props__ = ()
             def make_node(self):
                 inputs = [theano.tensor.matrix()]
                 outputs = [theano.tensor.matrix()]
@@ -87,6 +91,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         gval = theano.tensor.matrix()
 
         class O(gof.op.Op):
+            __props__ = ()
             def make_node(self):
                 inputs = [theano.tensor.matrix()]
                 outputs = [theano.tensor.scalar(), theano.tensor.scalar()]
@@ -106,6 +111,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         gval1 = theano.tensor.scalar()
 
         class O(gof.op.Op):
+            __props__ = ()
             def make_node(self):
                 inputs = [theano.tensor.scalar(), theano.tensor.scalar()]
                 outputs = [theano.tensor.matrix()]
@@ -126,6 +132,7 @@ class testgrad_sources_inputs(unittest.TestCase):
         gval1 = theano.tensor.matrix()
 
         class O(gof.op.Op):
+            __props__ = ()
             def make_node(self):
                 inputs = [theano.tensor.matrix(), theano.tensor.matrix()]
                 outputs = [theano.tensor.matrix(), theano.tensor.matrix()]
@@ -160,6 +167,7 @@ class test_grad(unittest.TestCase):
         # tests that unimplemented grads are caught in the grad method
 
         class DummyOp(gof.Op):
+            __props__ = ()
             def make_node(self, x):
                 return gof.Apply(self, [x], [x.type()])
 
@@ -349,6 +357,7 @@ class test_grad(unittest.TestCase):
         # Op1 has two outputs, f and g
         # x is connected to f but not to g
         class Op1(theano.gof.Op):
+            __props__ = ()
             def make_node(self, x):
                 return theano.Apply(self, inputs=[x],
                         outputs=[x.type(), theano.tensor.scalar()])
@@ -362,6 +371,7 @@ class test_grad(unittest.TestCase):
         # Op2 has two inputs, f and g
         # Its gradient with respect to g is not defined
         class Op2(theano.gof.Op):
+            __props__ = ()
             def make_node(self, f, g):
                 return theano.Apply(self, inputs=[f, g],
                         outputs=[theano.tensor.scalar()])
@@ -467,7 +477,7 @@ def test_known_grads():
     for layer in layers:
         print('Testing by separately computing ', layer)
         first = theano.tensor.grad(cost, layer, disconnected_inputs='ignore')
-        known = dict(zip(layer, first))
+        known = dict(izip(layer, first))
         full = theano.tensor.grad(cost=None,
                 known_grads=known, wrt=inputs, disconnected_inputs='ignore')
         full = theano.function(inputs, full)
@@ -599,7 +609,7 @@ def test_subgraph_grad():
             wrt=params[i], end=grad_ends[i],
             start=next_grad, cost=costs[i]
         )
-        next_grad = OrderedDict(zip(grad_ends[i], next_grad))
+        next_grad = OrderedDict(izip(grad_ends[i], next_grad))
         param_grads.extend(param_grad)
     
     pgrads = theano.function(inputs, param_grads)

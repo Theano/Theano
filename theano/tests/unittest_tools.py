@@ -2,7 +2,7 @@ from __future__ import print_function
 from copy import copy, deepcopy
 from functools import wraps
 import logging
-from StringIO import StringIO
+from six.moves import StringIO
 import sys
 import unittest
 
@@ -104,7 +104,7 @@ verify_grad.E_grad = T.verify_grad.E_grad
 
 
 class TestOptimizationMixin(object):
-    def assertFunctionContains(self, f, op, min=1, max=sys.maxint):
+    def assertFunctionContains(self, f, op, min=1, max=sys.maxsize):
         toposort = f.maker.fgraph.toposort()
         matches = [node for node in toposort if node.op == op]
         assert (min <= len(matches) <= max), (toposort, matches,
@@ -119,7 +119,7 @@ class TestOptimizationMixin(object):
     def assertFunctionContainsN(self, f, op, N):
         return self.assertFunctionContains(f, op, min=N, max=N)
 
-    def assertFunctionContainsClass(self, f, op, min=1, max=sys.maxint):
+    def assertFunctionContainsClass(self, f, op, min=1, max=sys.maxsize):
         toposort = f.maker.fgraph.toposort()
         matches = [node for node in toposort if isinstance(node.op, op)]
         assert (min <= len(matches) <= max), (toposort, matches,

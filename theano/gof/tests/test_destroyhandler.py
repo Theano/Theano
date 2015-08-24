@@ -1,12 +1,11 @@
 from __future__ import print_function
 
-import unittest
-
+from six.moves import xrange
 from theano.gof.type import Type
 from theano.gof import graph
 from theano.gof.graph import Variable, Apply
 from theano.gof.op import Op
-from theano.gof.opt import *
+from theano.gof.opt import *  # noqa
 
 from theano.gof import destroyhandler
 from theano.gof.fg import FunctionGraph, InconsistencyError
@@ -14,8 +13,14 @@ from theano.gof.toolbox import ReplaceValidate
 
 from copy import copy
 
-PatternOptimizer = lambda p1, p2, ign=True: OpKeyOptimizer(PatternSub(p1, p2), ignore_newtrees=ign)
-OpSubOptimizer = lambda op1, op2, fail=NavigatorOptimizer.warn_ignore, ign=True: TopoOptimizer(OpSub(op1, op2), ignore_newtrees=ign, failure_callback=fail)
+
+def PatternOptimizer(p1, p2, ign=True):
+    return OpKeyOptimizer(PatternSub(p1, p2), ignore_newtrees=ign)
+
+
+def OpSubOptimizer(op1, op2, fail=NavigatorOptimizer.warn_ignore, ign=True):
+    return TopoOptimizer(OpSub(op1, op2),
+                         ignore_newtrees=ign, failure_callback=fail)
 
 
 def as_variable(x):
@@ -64,7 +69,7 @@ class MyOp(Op):
 
     def make_node(self, *inputs):
         assert len(inputs) == self.nin
-        inputs = map(as_variable, inputs)
+        inputs = list(map(as_variable, inputs))
         for input in inputs:
             if not isinstance(input.type, MyType):
                 raise Exception("Error 1")
@@ -328,7 +333,7 @@ def test_long_destroyers_loop():
                  add_in_place(y, z)),
              add_in_place(z, x))
     try:
-        g2 = Env(*graph.clone([x, y, z], [e2]))
+        Env(*graph.clone([x, y, z], [e2]))
         raise Exception("Shouldn't have reached this point.")
     except InconsistencyError:
         pass
@@ -348,7 +353,7 @@ def test_multi_destroyers():
     x, y, z = inputs()
     e = add(add_in_place(x, y), add_in_place(x, y))
     try:
-        g = Env([x, y, z], [e])
+        Env([x, y, z], [e])
         raise Exception("Shouldn't have reached this point.")
     except InconsistencyError as e:
         pass

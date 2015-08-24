@@ -57,23 +57,23 @@ class TestCGer(TestCase, TestOptimizationMixin):
         return tensor.as_tensor_variable(numpy.asarray(bval, dtype=self.dtype))
 
     def test_eq(self):
-        self.assert_(CGer(True) == CGer(True))
-        self.assert_(CGer(False) == CGer(False))
-        self.assert_(CGer(False) != CGer(True))
+        self.assertTrue(CGer(True) == CGer(True))
+        self.assertTrue(CGer(False) == CGer(False))
+        self.assertTrue(CGer(False) != CGer(True))
 
-        self.assert_(CGer(True) != ScipyGer(True))
-        self.assert_(CGer(False) != ScipyGer(False))
-        self.assert_(CGer(True) != Ger(True))
-        self.assert_(CGer(False) != Ger(False))
+        self.assertTrue(CGer(True) != ScipyGer(True))
+        self.assertTrue(CGer(False) != ScipyGer(False))
+        self.assertTrue(CGer(True) != Ger(True))
+        self.assertTrue(CGer(False) != Ger(False))
 
         # assert that eq works for non-CGer instances
-        self.assert_(CGer(False) is not None)
-        self.assert_(CGer(True) is not None)
+        self.assertTrue(CGer(False) is not None)
+        self.assertTrue(CGer(True) is not None)
 
     def test_hash(self):
-        self.assert_(hash(CGer(True)) == hash(CGer(True)))
-        self.assert_(hash(CGer(False)) == hash(CGer(False)))
-        self.assert_(hash(CGer(False)) != hash(CGer(True)))
+        self.assertTrue(hash(CGer(True)) == hash(CGer(True)))
+        self.assertTrue(hash(CGer(False)) == hash(CGer(False)))
+        self.assertTrue(hash(CGer(False)) != hash(CGer(True)))
 
     def test_optimization_pipeline(self):
         f = self.function([self.x, self.y], tensor.outer(self.x, self.y))

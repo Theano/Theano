@@ -1,7 +1,10 @@
 from __future__ import print_function
+
 from collections import MutableSet
-from theano.compat import OrderedDict
 import types
+import weakref
+
+from six import string_types
 
 
 def check_deterministic(iterable):
@@ -13,7 +16,7 @@ def check_deterministic(iterable):
     # theano to use exceptions correctly, so that this can be a TypeError.
     if iterable is not None:
         assert isinstance(iterable, (
-            list, tuple, OrderedSet, types.GeneratorType, basestring))
+            list, tuple, OrderedSet, types.GeneratorType, string_types))
 
 # Copyright (C) 2009 Raymond Hettinger
 # Permission is hereby granted, free of charge, to any person obtaining a
@@ -35,7 +38,7 @@ def check_deterministic(iterable):
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # {{{ http://code.activestate.com/recipes/576696/ (r5)
-import weakref
+
 
 class Link(object):
     # This make that we need to use a different pickle protocol
@@ -58,6 +61,7 @@ class Link(object):
         self.next = weakref.ref(state[1])
         if len(state) == 3:
             self.key = state[2]
+
 
 class OrderedSet(MutableSet):
     'Set the remembers the order elements were added'
@@ -177,10 +181,10 @@ class OrderedSet(MutableSet):
         elif isinstance(other, set):
             # Raise exception to avoid confusion.
             raise TypeError(
-                    'Cannot compare an `OrderedSet` to a `set` because '
-                    'this comparison cannot be made symmetric: please '
-                    'manually cast your `OrderedSet` into `set` before '
-                    'performing this comparison.')
+                'Cannot compare an `OrderedSet` to a `set` because '
+                'this comparison cannot be made symmetric: please '
+                'manually cast your `OrderedSet` into `set` before '
+                'performing this comparison.')
         else:
             return NotImplemented
 

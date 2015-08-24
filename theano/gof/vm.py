@@ -1,9 +1,12 @@
 """
 VMs that run Theano graph computations.
+
 A VM is not actually different from a Linker, we just decided
 VM was a better name at some point.
+
 """
-import link
+from . import link
+from collections import defaultdict
 import logging
 import os
 import sys
@@ -15,7 +18,8 @@ from theano.configparser import (config, AddConfigVar,
 
 import theano.gof.cmodule
 
-from theano.compat import defaultdict
+from six import iteritems, itervalues
+from six.moves import xrange
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +108,7 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
                 if ins not in view_of and not viewed_by.get(ins, []):
                     # where gc
                     for i in range(idx + 1, len(order)):
-                        if reuse_out:
+                        if reuse_out is not None:
                             break
                         for out in order[i].outputs:
                             if (getattr(out, 'ndim', None) == 0 and
@@ -113,6 +117,7 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
                                 reuse_out = out
                                 pre_allocated.add(out)
                                 allocated.add(ins)
+                                break
                 elif ins in view_of:
                     origin = view_of[ins]
                     if ins in viewed_by[origin]:
@@ -122,7 +127,7 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
                             not isinstance(origin, theano.Constant)):
                         # where gc
                         for i in range(idx + 1, len(order)):
-                            if reuse_out:
+                            if reuse_out is not None:
                                 break
                             for out in order[i].outputs:
                                 if (getattr(out, 'ndim', None) == 0 and
@@ -131,15 +136,14 @@ def calculate_reallocate_info(order, fgraph, storage_map, compute_map_re,
                                     reuse_out = out
                                     pre_allocated.add(out)
                                     allocated.add(ins)
-
-                if reuse_out:
+                                    break
+                if reuse_out is not None:
                     reallocated_info[ins] = [ins, reuse_out]
 
     return reallocated_info
 
 
 class VM(object):
-
     """
     A VM object's __call__ method evaluates a Theano program.
 
@@ -152,33 +156,35 @@ class VM(object):
     advantage of lazy computation, though they still produce the correct
     output for lazy nodes.
 
-    Attributes:
+    Parameters
+    ----------
+    nodes
+        A list of nodes in toposort order.
+    thunks
+        A list of thunks to execute those nodes, in toposort order.
+    pre_call_clear
+        A list of containers to empty at the beginning of each call.
 
-    call_counts - list of integers, one for each thunk. call_count[i] is the
-        number of times thunks[i] was called in the course of computations
-        performed by call_with_timers().
+    Attributes
+    ----------
+    call_counts
+        List of integers, one for each thunk. call_count[i] is the number of
+        times thunks[i] was called in the course of computations performed by
+        call_with_timers().
+    call_times
+        List of floats, one for each thunk. call_times[i] is the amount of
+        runtime spent on thunks[i] in the course of computations performed by
+        call_with_timers().
 
-    call_times - list of floats, one for each thunk. call_times[i] is
-        the amount of runtime spent on thunks[i] in the course of
-        computations performed by call_with_timers().
-
-    need_update_inputs - bool. True indicates that Function.__call__
-        must implement the feedback from output storage to input
-        storage. False means it *must not* repeat that feedback.
+    need_update_inputs : bool
+        True indicates that Function.__call__ must implement the feedback from
+        output storage to input storage. False means it *must not* repeat that
+        feedback.
 
     """
 
     def __init__(self, nodes, thunks, pre_call_clear):
-        """
-        Allocate a virtual machine.
 
-        nodes - a list of nodes in toposort order
-
-        thunks - a list of thunks to execute those nodes, in toposort order
-
-        pre_call_clear - a list of containers to empty at the beginning of each
-                         call.
-        """
         if len(nodes) != len(thunks):
             raise ValueError()
         self.nodes = nodes
@@ -199,6 +205,7 @@ class VM(object):
 
         Postcondition - all output variables have been computed.  VMs vary in
         what exactly this means and how it is done.
+
         """
         raise NotImplementedError('override me')
 
@@ -209,6 +216,7 @@ class VM(object):
         Free internal variables and outputs.  Essentially, free as much memory
         as possible without intefering with the ability to evaluate subsequent
         calls.
+
         """
         raise NotImplementedError('override me')
 
@@ -244,10 +252,10 @@ class VM(object):
 
 
 class Loop(VM):
-
     """
     Unconditional start-to-finish program execution in Python.
     No garbage collection is allowed on intermediate results.
+
     """
     # Some other part of Theano query that information
     allow_gc = False
@@ -277,10 +285,10 @@ class Loop(VM):
 
 
 class LoopGC(VM):
-
     """
     Unconditional start-to-finish program execution in Python.
     Garbage collection is possible on intermediate results.
+
     """
 
     def __init__(self, nodes, thunks, pre_call_clear, post_thunk_clear):
@@ -324,7 +332,6 @@ class LoopGC(VM):
 
 
 class Stack(VM):
-
     """
     Finish-to-start evalution order of thunks.
 
@@ -378,8 +385,8 @@ class Stack(VM):
             # destroy_dependencies
             # --------------------
             # The destroy_dependencies is a list of variables that are implicit
-            # dependencies induced by a destroy_map (compare node.inputs which
-            # are *explicit* dependencies). The variables in
+            # dependencies induced by destroy_map and view_map (compared to
+            # node.inputs which are *explicit* dependencies). The variables in
             # destroy_dependencies would be impossible to compute after the
             # current `node` runs, because node.thunk() is going to destroy a
             # common input variable needed by whatever node owns each variable
@@ -396,9 +403,11 @@ class Stack(VM):
             raise ValueError("Must set dependencies when using GC")
 
     def run_thunk_of_node(self, node):
-        """Run the thunk corresponding to Apply instance `node`
+        """
+        Run the thunk corresponding to Apply instance `node`.
 
         Calls self.callback if it is defined.
+
         """
         idx = self.node_idx[node]
         t0 = time.time()
@@ -435,7 +444,7 @@ class Stack(VM):
         last_apply_stack_len = -1
 
         # This record all function inputs/shared varibles and constants
-        for var, data in self.storage_map.iteritems():
+        for var, data in iteritems(self.storage_map):
             if data[0] is None:
                 continue
             if hasattr(var.type, 'get_shape_info'):
@@ -660,7 +669,7 @@ class Stack(VM):
 
 
 try:
-    import lazylinker_c
+    from . import lazylinker_c
 
     class CVM(lazylinker_c.CLazyLinker, VM):
 
@@ -680,32 +689,36 @@ except (OSError, theano.gof.cmodule.MissingGXX) as e:
 
 
 class VM_Linker(link.LocalLinker):
-
     """
     Class that satisfies the Linker interface by acting as a VM factory.
+
+    Parameters
+    ----------
+    allow_gc
+        Force the virtual machine to clean up unnecessary
+        references, in order to allow garbage collection on
+        intermediate values during computation of a function.
+        If None use as default the value of the Theano flag allow_gc.
+    use_cloop
+        Use the C-based virtual machine if possible
+    callback
+        A callable object to call after each call to a thunk within
+        the virtual machine.  It will be called with four arguments called
+        'node', 'thunk', 'storage_map', and 'compute_map'.
+    lazy
+        Useful only when use_cloop is False. When lazy is None, use the
+        theano flag vm.lazy value. Then if we have a None (default) we auto
+        detect if lazy evaluation is needed and use the apropriate
+        version. If lazy is True or False, we force the version used
+        between Loop/LoopGC and Stack.
+    c_thunks
+        If None or True, don't change the default. If False,
+        don't compile c code for the thunks.
+
     """
 
     def __init__(self, allow_gc=None, use_cloop=False, callback=None,
-                 lazy=None, schedule=None):
-        """
-        allow_gc - force the virtual machine to clean up unnecessary
-            references, in order to allow garbage collection on
-            intermediate values during computation of a function.
-            If None use as default the value of the Theano flag allow_gc.
-
-        use_cloop - use the C-based virtual machine if possible
-
-        callback - a callable object to call after each call to a thunk within
-            the virtual machine.  It will be called with four arguments called
-            'node', 'thunk', 'storage_map', and 'compute_map'.
-
-        lazy - Useful only when use_cloop is False. When lazy is None, use the
-            theano flag vm.lazy value. Then if we have a None (default) we auto
-            detect if lazy evaluation is needed and use the apropriate
-            version. If lazy is True or False, we force the version used
-            between Loop/LoopGC and Stack.
-
-        """
+                 lazy=None, schedule=None, c_thunks=None):
         # Note: if more parameters are added to __init__, make sure to forward
         # them in the "type(self)(...)" call in the "accept" method below.
         if allow_gc is None:
@@ -715,19 +728,27 @@ class VM_Linker(link.LocalLinker):
         self.use_cloop = use_cloop
         self.callback = callback
         self.lazy = lazy
+        self.c_thunks = c_thunks
         self.updated_vars = {}
         if schedule:
             self.schedule = schedule
 
     def accept(self, fgraph, no_recycling=None):
         """
-        :param fgraph: a PerformLinker can have accepted one FunctionGraph
-            instance at a time.
 
-        :param no_recycling: WRITEME
+        Parameters
+        ----------
+        fgraph
+            A PerformLinker can have accepted one FunctionGraph instance
+            at a time.
+        no_recycling
+            WRITEME
 
-        :returns: self if fgraph is the first FunctionGraph that has ever been
-            associated to self, else, a new VM_Linker associated to fgraph.
+        Returns
+        -------
+        Self if fgraph is the first FunctionGraph that has ever been
+        associated to self, else, a new VM_Linker associated to fgraph.
+
         """
         if (config.profile and
                 hasattr(theano, 'sandbox') and
@@ -753,7 +774,8 @@ class VM_Linker(link.LocalLinker):
                 use_cloop=self.use_cloop,
                 callback=self.callback,
                 lazy=self.lazy,
-                schedule=self.schedule
+                schedule=self.schedule,
+                c_thunks=self.c_thunks,
             ).accept(fgraph, no_recycling)
         self.fgraph = fgraph
         self.no_recycling = no_recycling
@@ -772,18 +794,21 @@ class VM_Linker(link.LocalLinker):
         Returns dict: variable K -> list of variables [v1, v2, v3, ...]
         for each K in variables.
 
-
         The variables v1, v2, ... are the full set of variables that depend
         directly on K. When we know that none of them will need to be
         computed, we know that:
-        * K will not need to be computed
-        * if K is already computed, it can be released for garbage collection
-
+        * K will not need to be computed.
+        * If K is already computed, it can be released for garbage collection.
 
         Parameters
         ----------
-        variables - iterable over the variables used in a graph computation.
+        variables
+            Iterable over the variables used in a graph computation.
 
+        Notes
+        -----
+        It doesn't take care of the view_map/destroy_map. So it means it relies
+        on Python gc no to free the object real storage.
 
         N.B. gc means garbage collection
 
@@ -796,6 +821,9 @@ class VM_Linker(link.LocalLinker):
             # way of getting it back.
             #
             # XXX if k has no clients... what is it doing in the computation?
+            # Fred guess: it could happen for node with multiple outputs when
+            # we don't use all outputs.
+
             if k.owner and k.clients:
                 ls = []
                 for cl in k.clients:
@@ -843,9 +871,9 @@ class VM_Linker(link.LocalLinker):
 
             nodes_idx_inv = {}
             vars_idx_inv = {}
-            for (node, i) in nodes_idx.items():
+            for (node, i) in iteritems(nodes_idx):
                 nodes_idx_inv[i] = node
-            for (var, i) in vars_idx.items():
+            for (var, i) in iteritems(vars_idx):
                 vars_idx_inv[i] = var
 
             # put storage_map and compute_map into a int-based scheme
@@ -881,7 +909,7 @@ class VM_Linker(link.LocalLinker):
 
             # build the var owner array
             var_owner = [None] * len(vars_idx)
-            for (var, i) in vars_idx.items():
+            for (var, i) in iteritems(vars_idx):
                 if var.owner:
                     var_owner[i] = nodes_idx[var.owner]
 
@@ -909,7 +937,7 @@ class VM_Linker(link.LocalLinker):
             # values of the update expressions).
             update_storage = []
             update_in_from_out = {}
-            for (ivar, ovar) in updated_vars.items():
+            for (ivar, ovar) in iteritems(updated_vars):
                 update_in_from_out[vars_idx[ovar]] = vars_idx[ivar]
             for oidx in output_vars:
                 if oidx in update_in_from_out:
@@ -972,14 +1000,14 @@ class VM_Linker(link.LocalLinker):
         return vm
 
     def make_all(self, profiler=None, input_storage=None,
-                 output_storage=None,
+                 output_storage=None, storage_map=None,
                  ):
         fgraph = self.fgraph
         order = self.schedule(fgraph)
         no_recycling = self.no_recycling
 
         input_storage, output_storage, storage_map = link.map_storage(
-            fgraph, order, input_storage, output_storage)
+            fgraph, order, input_storage, output_storage, storage_map)
         compute_map = {}
         for k in storage_map:
             compute_map[k] = [k.owner is None]
@@ -1001,6 +1029,8 @@ class VM_Linker(link.LocalLinker):
 
         for node in order:
             try:
+                if self.c_thunks is False:
+                    node.op._op_use_c_code = False
                 thunks.append(node.op.make_thunk(node,
                                                  storage_map,
                                                  compute_map,
@@ -1025,7 +1055,7 @@ class VM_Linker(link.LocalLinker):
             lazy = not all([(not th.lazy) for th in thunks])
         if not (lazy or (config.profile and config.profile_memory) or
                 self.use_cloop or self.callback):
-            for pair in reallocated_info.values():
+            for pair in itervalues(reallocated_info):
                 storage_map[pair[1]] = storage_map[pair[0]]
 
         computed, last_user = link.gc_helper(order)
@@ -1037,7 +1067,7 @@ class VM_Linker(link.LocalLinker):
                     if (input in computed and
                             input not in fgraph.outputs and
                             node == last_user[input] and
-                            input not in reallocated_info.keys()):
+                            input not in reallocated_info):
                         clear_after_this_thunk.append(storage_map[input])
                 post_thunk_clear.append(clear_after_this_thunk)
         else:
@@ -1060,3 +1090,8 @@ class VM_Linker(link.LocalLinker):
                  for output, storage in zip(fgraph.outputs, output_storage)],
                 thunks,
                 order)
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, 'c_thunks'):
+            self.c_thunks = True

@@ -1,4 +1,6 @@
-"""WRITEME
+"""
+WRITEME
+
 """
 from __future__ import print_function
 import logging
@@ -10,6 +12,7 @@ from theano import gof
 import theano.gof.vm
 from theano.configparser import config, AddConfigVar, StrParam
 from theano.compile.ops import _output_guard
+from six import string_types
 
 
 _logger = logging.getLogger('theano.compile.mode')
@@ -33,8 +36,9 @@ AddConfigVar('optimizer_requiring',
 
 def check_equal(x, y):
     """
-    Returns True iff x[0] and y[0] are equal (checks the dtype and
-    shape if x and y are numpy.ndarray instances). Used internally.
+    Returns True iff x[0] and y[0] are equal (checks the dtype and shape if x
+    and y are numpy.ndarray instances). Used internally.
+
     """
     # I put the import here to allow using theano without scipy.
     import scipy.sparse as sp
@@ -70,8 +74,7 @@ predefined_linkers = {
     'vm': gof.vm.VM_Linker(use_cloop=False),  # Use allow_gc Theano flag
     'cvm': gof.vm.VM_Linker(use_cloop=True),  # Use allow_gc Theano flag
     'vm_nogc': gof.vm.VM_Linker(allow_gc=False, use_cloop=False),
-    'cvm_nogc': gof.vm.VM_Linker(allow_gc=False, use_cloop=True),
-    }
+    'cvm_nogc': gof.vm.VM_Linker(allow_gc=False, use_cloop=True)}
 
 
 def register_linker(name, linker):
@@ -114,8 +117,7 @@ predefined_optimizers = {
     'fast_run': OPT_FAST_RUN,
     'fast_run_stable': OPT_FAST_RUN_STABLE,
     'fast_compile': OPT_FAST_COMPILE,
-    'stabilize': OPT_STABILIZE
-    }
+    'stabilize': OPT_STABILIZE}
 
 
 def register_optimizer(name, opt):
@@ -126,17 +128,19 @@ def register_optimizer(name, opt):
 
 
 class AddDestroyHandler(gof.Optimizer):
-    """This optimizer performs two important functions:
+    """
+    This optimizer performs two important functions:
 
     1) It has a 'requirement' of the destroyhandler. This means that the fgraph
     will include it as a feature for this optimization, and keep this feature
-    enabled for subsequent optimizations.  All optimizations that work inplace
+    enabled for subsequent optimizations. All optimizations that work inplace
     on any of their inputs must run *after* this optimization to ensure that
     the DestroyHandler has been included in the fgraph.
 
     2) It tries to replace each output with an Op that purports to destroy it
-    (but it won't I promise).  If this replacement succeeds it means that
-    there is a bug in theano.  It should not be possible to destroy outputs.
+    (but it won't I promise). If this replacement succeeds it means that
+    there is a bug in theano. It should not be possible to destroy outputs.
+
     """
     def apply(self, fgraph):
         for o in fgraph.outputs:
@@ -158,11 +162,13 @@ class AddDestroyHandler(gof.Optimizer):
 
 
 class AddNoOutputFromInplace(gof.Optimizer):
-    """This optimizer adds to the fgraph a feature that will prevent outputs
+    """
+    This optimizer adds to the fgraph a feature that will prevent outputs
     of a fgraph to be created by performing inplace operations on intermediary
     variables. This is useful when the outputs of the fgraph are preallocated
     to prevent useless copying of the data. Currently, scan preallocates its
     outputs
+
     """
     def add_requirements(self, fgraph):
         super(AddNoOutputFromInplace, self).add_requirements(fgraph)
@@ -170,10 +176,12 @@ class AddNoOutputFromInplace(gof.Optimizer):
 
 
 class PrintCurrentFunctionGraph(gof.Optimizer):
-    """This optimizer is for debugging.
+    """
+    This optimizer is for debugging.
 
     Toss it into the optimization pipeline to see the state of things at any
     given point.
+
     """
     def __init__(self, header):
         self.header = header
@@ -234,18 +242,23 @@ optdb.register('merge3', gof.MergeOptimizer(),
 
 class Mode(object):
     """
-    The Mode represents a way to optimize and then link a computation
-    graph.
+    The Mode represents a way to optimize and then link a computation graph.
 
-     * optimizer -> a structure of type Optimizer. An Optimizer may
-       simplify the math, put similar computations together, improve
-       numerical stability and various other improvements.
-     * linker -> a structure of type Linker. A Linker decides which
-       implementations to use (C or Python, for example) and how to
-       string them together to perform the computation.
+    Parameters
+    ----------
+    optimizer : a structure of type Optimizer
+        An Optimizer may simplify the math, put similar computations together,
+        improve numerical stability and various other improvements.
+    linker : a structure of type Linker
+        A Linker decides which implementations to use (C or Python, for example)
+        and how to string them together to perform the computation.
 
-    See predefined_linkers, predefined_optimizers and also
-    predefined_modes.
+    See Also
+    --------
+    predefined_linkers
+    predefined_optimizers
+    predefined_modes
+
     """
 
     def __init__(self, linker=None, optimizer='default'):
@@ -253,7 +266,7 @@ class Mode(object):
             linker = config.linker
         if optimizer is 'default':
             optimizer = config.optimizer
-        self.__setstate__((linker, optimizer))
+        Mode.__setstate__(self, (linker, optimizer))
 
         # self.provided_optimizer - typically the `optimizer` arg.
         # But if the `optimizer` arg is keyword corresponding to a predefined
@@ -271,10 +284,10 @@ class Mode(object):
         linker, optimizer = state
         self.provided_linker = linker
         self.provided_optimizer = optimizer
-        if isinstance(linker, basestring) or linker is None:
+        if isinstance(linker, string_types) or linker is None:
             linker = predefined_linkers[linker]
         self.linker = linker
-        if isinstance(optimizer, basestring) or optimizer is None:
+        if isinstance(optimizer, string_types) or optimizer is None:
             optimizer = predefined_optimizers[optimizer]
         if isinstance(optimizer, gof.Query):
             self.provided_optimizer = optimizer
@@ -297,9 +310,9 @@ class Mode(object):
     optimizer = property(__get_optimizer)
 
     def get_linker_optimizer(self, linker, optimizer):
-        if isinstance(linker, basestring) or linker is None:
+        if isinstance(linker, string_types) or linker is None:
             linker = predefined_linkers[linker]
-        if isinstance(optimizer, basestring) or optimizer is None:
+        if isinstance(optimizer, string_types) or optimizer is None:
             optimizer = predefined_optimizers[optimizer]
         return (linker, optimizer)
 
@@ -320,10 +333,28 @@ class Mode(object):
                                               self.provided_optimizer)
         return self.__class__(linker=link, optimizer=opt.requiring(*tags))
 
+    def clone(self, link_kwargs=None, **kwargs):
+        """
+        Create a new instance of this Mode.
+
+        Keyword arguments can be provided for the linker,
+        in which case its `clone` method will be called with these
+        arguments.
+
+        """
+        new_linker = self.linker.clone(**link_kwargs)
+        new_optimizer = self.provided_optimizer
+        new_mode = type(self)(linker=new_linker,
+                              optimizer=new_optimizer)
+        return new_mode
+
+
 # If a string is passed as the mode argument in function or
 # FunctionMaker, the Mode will be taken from this dictionary using the
 # string as the key
-FAST_COMPILE = Mode('py', 'fast_compile')
+# Use VM_linker to allow lazy evaluation by default.
+FAST_COMPILE = Mode(theano.gof.vm.VM_Linker(use_cloop=False, c_thunks=False),
+                    'fast_compile')
 if theano.config.cxx:
     FAST_RUN = Mode('cvm', 'fast_run')
 else:
@@ -341,7 +372,7 @@ def get_mode(orig_string):
         string = config.mode
     else:
         string = orig_string
-    if not isinstance(string, basestring):
+    if not isinstance(string, string_types):
         return string  # it is hopefully already a mode...
 
     global instanciated_default_mode
@@ -359,13 +390,13 @@ def get_mode(orig_string):
     if string in ['Mode', 'ProfileMode', 'DebugMode']:
         if string == 'DebugMode':
             # need to import later to break circular dependency.
-            from debugmode import DebugMode
+            from .debugmode import DebugMode
             # DebugMode use its own linker.
             ret = DebugMode(optimizer=config.optimizer)
         else:
             # This might be required if the string is 'ProfileMode'
-            from profilemode import ProfileMode  # noqa
-            from profilemode import prof_mode_instance_to_print
+            from .profilemode import ProfileMode  # noqa
+            from .profilemode import prof_mode_instance_to_print
             ret = eval(string +
                        '(linker=config.linker, optimizer=config.optimizer)')
     elif string in predefined_modes:
@@ -396,7 +427,10 @@ def get_default_mode():
 
 
 def register_mode(name, mode):
-    """Add a `Mode` which can be referred to by `name` in `function`."""
+    """
+    Add a `Mode` which can be referred to by `name` in `function`.
+
+    """
     if name in predefined_modes:
         raise ValueError('Mode name already taken: %s' % name)
     predefined_modes[name] = mode

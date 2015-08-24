@@ -1,28 +1,37 @@
-"""This file contains auxiliary Ops, used during the compilation phase
-and Ops building class (:class:`FromFunctionOp`) and decorator
-(:func:`as_op`) that help make new Ops more rapidly.
+"""
+This file contains auxiliary Ops, used during the compilation phase and Ops
+building class (:class:`FromFunctionOp`) and decorator (:func:`as_op`) that
+help make new Ops more rapidly.
 
 """
 import copy
-import cPickle
+import six.moves.cPickle as pickle
 import warnings
 
 import theano
 from theano import gof
+from theano.compat import OrderedDict
+from six import iteritems
+from six.moves import xrange
 
 
 import numpy
 
 
 def register_view_op_c_code(type, code, version=()):
-    """ Tell ViewOp how to generate C code for a Theano Type
+    """
+    Tell ViewOp how to generate C code for a Theano Type.
 
-    :param type: A Theano type. It must be the Theano class itself and not an
-                instance of the class.
-    :param code: C code that returns a view for the Theano type 'type'.
-                 Use %(iname)s and %(oname)s for the input and output C
-                 variable names respectively.
-    :param version: A number indicating the version of the code, for cache.
+    Parameters
+    ----------
+    type : Theano type
+        It must be the Theano class itself and not an instance of the class.
+    code : C code
+        Returns a view for the Theano type 'type'. Use %(iname)s and %(oname)s
+        for the input and output C variable names respectively.
+    version
+        A number indicating the version of the code, for cache.
+
     """
     ViewOp.c_code_and_version[type] = (code, version)
 
@@ -30,21 +39,18 @@ def register_view_op_c_code(type, code, version=()):
 class ViewOp(gof.Op):
     """
     Returns an inplace view of the input. Used internally by Theano.
+
     """
+
     view_map = {0: [0]}
     # Mapping from Type to C code (and version) to use.
     # In the C code, the name of the input variable is %(iname)s,
     # the output variable is %(oname)s.
     c_code_and_version = {}
+    __props__ = ()
 
     def make_node(self, x):
         return gof.Apply(self, [x], [x.type()])
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
 
     def perform(self, node, inp, out):
         x, = inp
@@ -71,7 +77,7 @@ class ViewOp(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, v) in sorted(self.c_code_and_version.items(),
+        for t, (c, v) in sorted(iteritems(self.c_code_and_version),
                                 key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for ViewOp, but it has no "
@@ -98,9 +104,9 @@ class OutputGuard(ViewOp):
 
     Only the AddDestroyHandler optimizer tries to insert them in the graph.
 
-    This Op is declared as destructive while it is not destroying
-    anything. It returns a view. This is used to prevent destruction of
-    the output variables of a Theano function.
+    This Op is declared as destructive while it is not destroying anything.
+    It returns a view. This is used to prevent destruction of the output
+    variables of a Theano function.
 
     There is a mechanism in Theano that should prevent this, but the use
     of OutputGuard adds a safeguard: it may be possible for some optimization
@@ -108,6 +114,7 @@ class OutputGuard(ViewOp):
     making in-place optimizations.
 
     TODO: find a current full explanation.
+
     """
     destroy_map = {0: [0]}
 
@@ -117,14 +124,19 @@ _output_guard = OutputGuard()
 
 
 def register_deep_copy_op_c_code(typ, code, version=()):
-    """ Tell DeepCopyOp how to generate C code for a Theano Type
+    """
+    Tell DeepCopyOp how to generate C code for a Theano Type.
 
-    :param typ: A Theano type. It must be the Theano class itself and not an
-                instance of the class.
-    :param code: C code that deep copies the Theano type 'typ'.
-                 Use %(iname)s and %(oname)s for the input and output C
-                 variable names respectively.
-    :param version: A number indicating the version of the code, for cache.
+    Parameters
+    ----------
+    typ : Theano type
+        It must be the Theano class itself and not an instance of the class.
+    code: C code
+        Deep copies the Theano type 'typ'. Use %(iname)s and %(oname)s for the
+        input and output C variable names respectively.
+    version
+        A number indicating the version of the code, for cache.
+
     """
     DeepCopyOp.c_code_and_version[typ] = (code, version)
 
@@ -136,18 +148,10 @@ class DeepCopyOp(gof.Op):
     c_code_and_version = {}
 
     check_input = False
+    __props__ = ()
 
     def __init__(self):
         pass
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __eq__(self, other):
-        return type(self) == type(other)
 
     def make_node(self, x):
         return gof.Apply(self, [x], [x.type()])
@@ -166,7 +170,7 @@ class DeepCopyOp(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, v) in sorted(self.c_code_and_version.items(),
+        for t, (c, v) in sorted(iteritems(self.c_code_and_version),
                                 key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for DeepCopyOp, but it has "
@@ -199,15 +203,20 @@ deep_copy_op = DeepCopyOp()
 
 
 def register_shape_c_code(type, code, version=()):
-    """ Tell Shape Op how to generate C code for a Theano Type
+    """
+    Tell Shape Op how to generate C code for a Theano Type.
 
-    :param typ: A Theano type. It must be the Theano class itself and not an
-                instance of the class.
-    :param code: C code that return a vector representing the shape
-                 for the Theano type 'typ'.
-                 Use %(iname)s and %(oname)s for the input and output C
-                 variable names respectively.
-    :param version: A number indicating the version of the code, for cache.
+    Parameters
+    ----------
+    typ : Theano type
+        It must be the Theano class itself and not an instance of the class.
+    code : C code
+        Returns a vector representing the shape for the Theano type 'typ'.
+        Use %(iname)s and %(oname)s for the input and output C variable names
+        respectively.
+    version
+        A number indicating the version of the code, for cache.
+
     """
     Shape.c_code_and_version[type] = (code, version)
 
@@ -216,8 +225,12 @@ class Shape(gof.Op):
     """
     L{Op} to return the shape of a matrix.
 
-    @note: Non-differentiable.
+    Notes
+    -----
+    Non-differentiable.
+
     """
+
     _f16_ok = True
 
     # Mapping from Type to C code (and version) to use.
@@ -226,15 +239,7 @@ class Shape(gof.Op):
     c_code_and_version = {}
 
     check_input = False
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, x):
         # Must work for all type that have a shape attribute.
@@ -287,7 +292,7 @@ class Shape(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, v) in sorted(self.c_code_and_version.items(),
+        for t, (c, v) in sorted(iteritems(self.c_code_and_version),
                                 key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for Shape, but it has no "
@@ -311,8 +316,12 @@ class Shape_i(gof.Op):
     """
     L{Op} to return the shape of a matrix.
 
-    @note: Non-differentiable.
+    Notes
+    -----
+    Non-differentiable.
+
     """
+
     _f16_ok = True
 
     # Mapping from Type to C code (and version) to use.
@@ -359,7 +368,7 @@ class Shape_i(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, ci, v) in sorted(self.c_code_and_version.items(),
+        for t, (c, ci, v) in sorted(iteritems(self.c_code_and_version),
                                     key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for Shape_i, but it has "
@@ -399,18 +408,24 @@ class Shape_i(gof.Op):
 
 
 def shape_i(var, i, fgraph=None):
-    """Equivalent of var.shape[i], but apply if possible the shape
-    feature optimization
+    """
+    Equivalent of var.shape[i], but apply if possible the shape feature
+    optimization.
 
     This is useful in optimization that need to get the shape. This
     remove the need of the following shape_feature optimization that
     convert it. So this speed up optimization and remove Equilibrium
     max iteration problems.
 
-    :param var: the variable we want to take the shape of
-    :param i: The shape dimensions we want
-    :param fgraph: optional. If var.fgraph do not exist, the fgraph that
-        have the shape_feature to introduce var in to get the optimized shape.
+    Parameters
+    ----------
+    var
+        The variable we want to take the shape of.
+    i
+        The shape dimensions we want
+    fgraph : optional
+        If var.fgraph do not exist, the fgraph that have the shape_feature to
+        introduce var in to get the optimized shape.
 
     """
     if fgraph is None and hasattr(var, 'fgraph'):
@@ -439,15 +454,20 @@ def shape_i(var, i, fgraph=None):
 
 
 def register_shape_i_c_code(typ, code, check_input, version=()):
-    """ Tell Shape_i how to generate C code for a Theano Type
+    """
+    Tell Shape_i how to generate C code for a Theano Type.
 
-    :param typ: A Theano type. It must be the Theano class itself and not
-                an instance of the class.
-    :param code: C code that gets the shape of dimensions %(i)s for the
-                 Theano type 'typ'.
-                 Use %(iname)s and %(oname)s for the input and output C
-                 variable names respectively.
-    :param version: A number indicating the version of the code, for cache.
+    Parameters
+    ----------
+    typ : Theano type
+        It must be the Theano class itself and not an instance of the class.
+    code : C code
+        Gets the shape of dimensions %(i)s for the Theano type 'typ'.
+        Use %(iname)s and %(oname)s for the input and output C variable names
+        respectively.
+    version
+        A number indicating the version of the code, for cache.
+
     """
     Shape_i.c_code_and_version[typ] = (code, check_input, version)
 
@@ -477,7 +497,9 @@ class FromFunctionOp(gof.Op):
     Also the gradient is undefined in the resulting op and Theano will
     raise an error if you attempt to get the gradient of a graph
     containing this op.
+
     """
+
     def __init__(self, fn, itypes, otypes, infer_shape):
         self.__fn = fn
         self.itypes = itypes
@@ -497,8 +519,13 @@ class FromFunctionOp(gof.Op):
         return 'FromFunctionOp{%s}' % self.__fn.__name__
 
     def make_node(self, *inputs):
-        assert len(inputs) == len(self.itypes)
-        assert all(inp.type == it for inp, it in zip(inputs, self.itypes))
+        if len(inputs) != len(self.itypes):
+            raise ValueError("We expected %d inputs but got %d." %
+                             (len(self.itypes), len(inputs)))
+        if not all(inp.type == it for inp, it in zip(inputs, self.itypes)):
+            raise TypeError(
+                "We expected inputs of types '%s' but got types '%s' " %
+                (str([inp.type for inp in inputs]), str(self.itypes)))
         return theano.Apply(self, inputs, [o() for o in self.otypes])
 
     def perform(self, node, inputs, outputs):
@@ -515,12 +542,12 @@ class FromFunctionOp(gof.Op):
         try:
             obj = load_back(mod, name)
         except (ImportError, KeyError, AttributeError):
-            raise cPickle.PicklingError(
+            raise pickle.PicklingError(
                 "Can't pickle as_op(), not found as %s.%s" %
                 (mod, name))
         else:
             if obj is not self:
-                raise cPickle.PicklingError(
+                raise pickle.PicklingError(
                     "Can't pickle as_op(), not the object "
                     "at %s.%s" % (mod, name))
         return load_back, (mod, name)
@@ -531,29 +558,29 @@ class FromFunctionOp(gof.Op):
 
 def as_op(itypes, otypes, infer_shape=None):
     """
-    Decorator that converts a function into a basic Theano op that
-    will call the supplied function as its implementation.
+    Decorator that converts a function into a basic Theano op that will call
+    the supplied function as its implementation.
 
-    It takes an optional infer_shape parameter that should be a
-    callable with this signature:
+    It takes an optional infer_shape parameter that should be a callable with
+    this signature:
 
         def infer_shape(node, input_shapes):
             ...
             return output_shapes
 
-    Here `input_shapes` and `output_shapes` are lists of tuples that
-    represent the shape of the corresponding inputs/outputs.
+    Here `input_shapes` and `output_shapes` are lists of tuples that represent
+    the shape of the corresponding inputs/outputs.
 
-    This should not be used when performance is a concern since the
-    very basic nature of the resulting Op may interfere with certain
-    graph optimizations.
+    This should not be used when performance is a concern since the very basic
+    nature of the resulting Op may interfere with certain graph optimizations.
 
-    Example usage:
+    Examples
+    --------
+    @as_op(itypes=[theano.tensor.fmatrix, theano.tensor.fmatrix],
+           otypes=[theano.tensor.fmatrix])
+    def numpy_dot(a, b):
+        return numpy.dot(a, b)
 
-       @as_op(itypes=[theano.tensor.fmatrix, theano.tensor.fmatrix],
-              otypes=[theano.tensor.fmatrix])
-       def numpy_dot(a, b):
-           return numpy.dot(a, b)
     """
     if not isinstance(itypes, (list, tuple)):
         itypes = [itypes]
@@ -577,18 +604,19 @@ def as_op(itypes, otypes, infer_shape=None):
 
 
 def register_rebroadcast_c_code(typ, code, version=()):
-    """Tell Rebroadcast how to generate C code for a Theano Type
+    """
+    Tell Rebroadcast how to generate C code for a Theano Type.
 
-    :param typ: A Theano type. It must be the Theano class itself and not an
-                instance of the class.
+    typ : Theano type
+        It must be the Theano class itself and not an instance of the class.
+    code : C code
+        That checks if the dimension %(axis)s is of shape 1 for the Theano type
+        'typ'. Use %(iname)s and %(oname)s for the input and output C variable
+        names respectively, and %(axis)s for the axis that we need to check.
+        This code is put in a loop for all axes.
+    version
+        A number indicating the version of the code, for cache.
 
-    :param code: C code that checks if the dimension %(axis)s is of
-                 shape 1 for the Theano type 'typ'.  Use %(iname)s and
-                 %(oname)s for the input and output C variable names
-                 respectively, and %(axis)s for the axis that we need to
-                 check. This code is put in a loop for all axes.
-
-    :param version: A number indicating the version of the code, for cache.
     """
     Rebroadcast.c_code_and_version[typ] = (code, version)
 
@@ -597,17 +625,23 @@ class Rebroadcast(gof.Op):
     """
     Change the input's broadcastable fields in some predetermined way.
 
-    :code:`Rebroadcast((0, True), (1, False))(x)` would make :code:`x`
-    broadcastable in axis 0 and not broadcastable in axis 1
+    See Also
+    --------
+    unbroadcast <theano.tensor.unbroadcast>
+    addbroadcast <theano.tensor.addbroadcast>
+    patternbroadcast <theano.tensor.patternbroadcast>
 
-    .. seealso::
+    Notes
+    -----
+    Works inplace and works for CudaNdarrayType.
 
-      :func:`unbroadcast <theano.tensor.unbroadcast>`
-      :func:`addbroadcast <theano.tensor.addbroadcast>`
-      :func:`patternbroadcast <theano.tensor.patternbroadcast>`
+    Example
+    -------
+    `Rebroadcast((0, True), (1, False))(x)` would make `x` broadcastable in
+    axis 0 and not broadcastable in axis 1.
 
-    ..note: works inplace and works for CudaNdarrayType
     """
+
     view_map = {0: [0]}
     _f16_ok = True
     # Mapping from Type to C code (and version) to use.
@@ -616,19 +650,23 @@ class Rebroadcast(gof.Op):
     c_code_and_version = {}
 
     check_input = False
+    __props__ = ("axis",)
 
     def __init__(self, *axis):
-        self.axis = dict(axis)
-        for axis, broad in self.axis.iteritems():
+        # Sort them to make sure we merge all possible case.
+        items = sorted(axis)
+        self.axis = OrderedDict(items)
+        for axis, broad in iteritems(self.axis):
             assert isinstance(axis, (numpy.integer, int)), (
                 "Rebroadcast needs integer axes. Got ", axis)
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.axis == other.axis
+            assert isinstance(broad, bool), (
+                "Rebroadcast needs bool for new broadcast pattern. Got ",
+                broad)
 
     def __hash__(self):
+        # Need special __hash__ as dict aren't hashable.
         # no ambiguity because each item key is unique
-        items = sorted(self.axis.iteritems())
+        items = sorted(iteritems(self.axis))
         return hash((type(self), tuple(items)))
 
     def __str__(self):
@@ -636,14 +674,14 @@ class Rebroadcast(gof.Op):
             broadcast_pattern = []
         else:
             broadcast_pattern = ['?' for i
-                                 in xrange(1 + numpy.max(self.axis.keys()))]
-        for k, v in self.axis.iteritems():
+                                 in xrange(1 + max(self.axis.keys()))]
+        for k, v in iteritems(self.axis):
             broadcast_pattern[k] = str(int(v))
         return '%s{%s}' % (self.__class__.__name__,
                            ','.join(broadcast_pattern))
 
     def make_node(self, x):
-        if self.axis.keys() and (x.ndim <= numpy.max(self.axis.keys())):
+        if self.axis.keys() and (x.ndim <= max(self.axis.keys())):
             raise ValueError('Trying to rebroadcast non-existent dimension')
         t = x.type.clone(
             broadcastable=[self.axis.get(i, b)
@@ -653,7 +691,7 @@ class Rebroadcast(gof.Op):
     def perform(self, node, inp, out_):
         x, = inp
         out, = out_
-        for axis, value in self.axis.iteritems():
+        for axis, value in iteritems(self.axis):
             if value and x.shape[axis] != 1:
                 raise ValueError('Dimension %s in Rebroadcast\'s input was'
                                  ' supposed to be 1 (got %s instead)' %
@@ -665,7 +703,7 @@ class Rebroadcast(gof.Op):
         gz, = grads
         # restore the broadcasting pattern of the input
         return Rebroadcast(*[(axis, x.type.broadcastable[axis])
-                             for axis, value in self.axis.iteritems()])(gz),
+                             for axis, value in iteritems(self.axis)])(gz),
 
     def infer_shape(self, node, ishapes):
         assert len(ishapes) == 1
@@ -693,7 +731,7 @@ class Rebroadcast(gof.Op):
         if itype in self.c_code_and_version:
             code, version = self.c_code_and_version[itype]
             final_code = ""
-            for axis, value in self.axis.iteritems():
+            for axis, value in iteritems(self.axis):
                 if value:
                     final_code += code % locals()
             return final_code + """
@@ -707,7 +745,7 @@ class Rebroadcast(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, v) in sorted(self.c_code_and_version.items(),
+        for t, (c, v) in sorted(iteritems(self.c_code_and_version),
                                 key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for Rebroadcast, but it "
@@ -725,17 +763,23 @@ class Rebroadcast(gof.Op):
 
 def register_specify_shape_c_code(typ, code, version=(),
                                   c_support_code_apply=None):
-    """ Tell SpecifyShape how to generate C code for a Theano Type
+    """
+    Tell SpecifyShape how to generate C code for a Theano Type.
 
-    :param typ: A Theano type. It must be the Theano class itself and
-                not an instance of the class.
-    :param code: C code that checks the shape and returns a view for
-                 the Theano type 'typ'. Use %(iname)s and %(oname)s
-                 for the input and output C variable names
-                 respectively.  %(shape)s is the vector of shape of
-                 %(iname)s.  Check that its length is good.
-    :param version: A number indicating the version of the code, for cache.
-    :param c_support_code_apply: extra code.
+    Parameters
+    ----------
+    typ : Theano type
+        It must be the Theano class itself and not an instance of the class.
+    code : C code
+        Checks the shape and returns a view for the Theano type 'typ'.
+        Use %(iname)s and %(oname)s for the input and output C variable names
+        respectively. %(shape)s is the vector of shape of %(iname)s.
+        Check that its length is good.
+    version
+        A number indicating the version of the code, for cache.
+    c_support_code_apply
+        Extra code.
+
     """
     SpecifyShape.c_code_and_version[typ] = (code, version,
                                             c_support_code_apply)
@@ -750,26 +794,22 @@ class SpecifyShape(gof.Op):
     the case most of the time if we only take the shape of the output.
     Maybe there are other optimizations that will mess with this.
 
-    @note:     Maybe in the future we will never do the assert!
-    @note:     We currently don't support specifying partial shape information.
+    Notes
+    -----
+    Maybe in the future we will never do the assert!
 
-    @todo:     test this op with sparse and cuda ndarray.
-               Do C code for them too.
+    We currently don't support specifying partial shape information.
+
+    TODO : test this op with sparse and cuda ndarray. Do C code for them too.
+
     """
+
     view_map = {0: [0]}
     # Mapping from Type to C code (and version) to use.
     # In the C code, the name of the input variable is %(iname)s,
     # the output variable is %(oname)s.
     c_code_and_version = {}
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __str__(self):
-        return self.__class__.__name__
+    __props__ = ()
 
     def make_node(self, x, shape):
         if not isinstance(x, gof.Variable):
@@ -850,7 +890,7 @@ class SpecifyShape(gof.Op):
         version = []
         # If any of the c code is unversionned, we have to return ()
         # Else, we will return a list of (type name, version) pairs.
-        for t, (c, v, _) in sorted(self.c_code_and_version.items(),
+        for t, (c, v, _) in sorted(iteritems(self.c_code_and_version),
                                    key=lambda pair: str(pair[0])):
             if not v:
                 warnings.warn("Type %s has C code for SpecifyShape, but it "

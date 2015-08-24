@@ -30,7 +30,9 @@ class SparseBlockGemvSS(GpuOp):
     This should not be directly called since the interface is subject
     to change without notice.  Use the sparse_block_dot_SS() function
     for a stable interface.
+
     """
+
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
@@ -208,22 +210,28 @@ static int SparseBlockGemv_copy(PyArrayObject *a, npy_intp *b) {
         static int %(n)s_prep(int b, int i, int j, int outsize) {
           int s = b*i*j;
           if (%(n)s_list_len < s) {
-            cudaFree(%(n)s_inp_list);
-            cudaFree(%(n)s_out_list);
-            cudaFree(%(n)s_W_list);
-            if (cudaMalloc(&%(n)s_inp_list, s*sizeof(float *)) != cudaSuccess) return -1;
-            if (cudaMalloc(&%(n)s_out_list, s*sizeof(float *)) != cudaSuccess) return -1;
-            if (cudaMalloc(&%(n)s_W_list, s*sizeof(float *)) != cudaSuccess) return -1;
+            device_free(%(n)s_inp_list);
+            device_free(%(n)s_out_list);
+            device_free(%(n)s_W_list);
+            %(n)s_inp_list = (const float **) device_malloc(s*sizeof(float *));
+            if (%(n)s_inp_list == NULL) return -1;
+            %(n)s_out_list = (float **) device_malloc(s*sizeof(float *));
+            if (%(n)s_out_list == NULL) return -1;
+            %(n)s_W_list = (const float **) device_malloc(s*sizeof(float *));
+            if (%(n)s_W_list == NULL) return -1;
+
             %(n)s_list_len = s;
           }
           if (%(n)s_iIdx_len < b*i) {
-            cudaFree(%(n)s_iIdx);
-            if (cudaMalloc(&%(n)s_iIdx, b*i*sizeof(npy_intp)) != cudaSuccess) return -1;
+            device_free(%(n)s_iIdx);
+        %(n)s_iIdx = (npy_intp*) device_malloc(b*i*sizeof(npy_intp));
+        if (%(n)s_iIdx == NULL) return -1;
             %(n)s_iIdx_len = b*i;
           }
           if (%(n)s_oIdx_len < b*j) {
-            cudaFree(%(n)s_oIdx);
-            if (cudaMalloc(&%(n)s_oIdx, b*j*sizeof(npy_intp)) != cudaSuccess) return -1;
+            device_free(%(n)s_oIdx);
+            %(n)s_oIdx = (npy_intp*) device_malloc(b*j*sizeof(npy_intp));
+            if (%(n)s_oIdx == NULL) return -1;
             %(n)s_oIdx_len = b*j;
           }
           return 0;
@@ -326,7 +334,7 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
                    W=W, fail=sub['fail'], name=nodename)
 
     def c_code_cache_version(self):
-        return (11,)
+        return (12,)
 
     def grad(self, inputs, grads):
         o, W, h, inputIdx, outputIdx = inputs
@@ -361,9 +369,11 @@ class SparseBlockOuterSS(GpuOp):
     The i and j are taken from the xIdx and yIdx lists respectively.
 
     This op should not be called directly since its interface is
-    subject to change without notice.  It is involved in the gradient
+    subject to change without notice. It is involved in the gradient
     of SparseBlockGemvSS.
+
     """
+
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
@@ -509,24 +519,27 @@ static size_t %(n)s_yIdx_len;
 static int %(n)s_prep(int b, int i, int j) {
   int s = b*i*j;
   if (%(n)s_list_len < s) {
-    cudaFree(%(n)s_x_list);
-    cudaFree(%(n)s_y_list);
-    cudaFree(%(n)s_out_list);
-    if (cudaMalloc(&%(n)s_x_list, s*sizeof(float *)) != cudaSuccess) return -1;
-    if (cudaMalloc(&%(n)s_y_list, s*sizeof(float *)) != cudaSuccess) return -1;
-    if (cudaMalloc(&%(n)s_out_list, s*sizeof(float *)) != cudaSuccess) return -1;
+    device_free(%(n)s_x_list);
+    device_free(%(n)s_y_list);
+    device_free(%(n)s_out_list);
+    %(n)s_x_list = (const float **) device_malloc(s*sizeof(float *));
+    if (%(n)s_x_list == NULL) return -1;
+    %(n)s_y_list = (const float **) device_malloc(s*sizeof(float *));
+    if (%(n)s_y_list == NULL) return -1;
+    %(n)s_out_list = (float **) device_malloc(s*sizeof(float *));
+    if (%(n)s_out_list == NULL) return -1;
     %(n)s_list_len = s;
   }
   if (%(n)s_xIdx_len < b*i) {
-    cudaFree(%(n)s_xIdx);
-    if (cudaMalloc(&%(n)s_xIdx, b*i*sizeof(npy_intp)) != cudaSuccess)
-      return -1;
+    device_free(%(n)s_xIdx);
+    %(n)s_xIdx = (npy_intp*) device_malloc(b*i*sizeof(npy_intp));
+    if (%(n)s_xIdx == NULL) return -1;
     %(n)s_xIdx_len = b*i;
   }
   if (%(n)s_yIdx_len < b*j) {
-    cudaFree(%(n)s_yIdx);
-    if (cudaMalloc(&%(n)s_yIdx, b*j*sizeof(npy_intp)) != cudaSuccess)
-      return -1;
+    device_free(%(n)s_yIdx);
+    %(n)s_yIdx = (npy_intp*) device_malloc(b*j*sizeof(npy_intp));
+    if (%(n)s_yIdx == NULL) return -1;
     %(n)s_yIdx_len = b*j;
   }
   return 0;
@@ -626,7 +639,7 @@ CudaNdarray_HOST_STRIDES(%(out)s)[0], CudaNdarray_HOST_STRIDES(%(out)s)[1],
             alpha=alpha, fail=sub['fail'])
 
     def c_code_cache_version(self):
-        return (10,)
+        return (11,)
 
 
 sparse_block_outer_ss = SparseBlockOuterSS(False)
@@ -671,28 +684,36 @@ def sparse_block_dot_SS(W, h, inputIdx, b, outputIdx):
 
     Parameters
     ----------
-    var: shape, comment
-    W: (iBlocks, oBlocks, iSize, oSize), weight matrix
-    h: (batch, iWin, iSize), input from lower layer (sparse)
-    inputIdx: (batch, iWin), indexes of the input blocks
-    b: (oBlocks, oSize), bias vector
-    outputIdx: (batch, oWin), indexes of the output blocks
+    W : (iBlocks, oBlocks, iSize, oSize)
+        Weight matrix.
+    h : (batch, iWin, iSize)
+        Input from lower layer (sparse).
+    inputIdx : (batch, iWin)
+        Indexes of the input blocks.
+    b : (oBlocks, oSize)
+        Bias vector.
+    outputIdx : (batch, oWin)
+        Indexes of the output blocks.
 
-    returns (batch, oWin, oSize), dot(W[i, j], h[i]) + b[j]
-         but b[j] is only added once
+    Returns
+    -------
+    (batch, oWin, oSize)
+        dot(W[i, j], h[i]) + b[j], but b[j] is only added once.
 
-    Notation
-    --------
+    Notes
+    -----
     - `batch` is the number of examples in a minibatch (batch size).
     - `iBlocks` is the total number of blocks in the input (from lower layer).
     - `iSize` is the size of each of these input blocks.
     - `iWin` is the number of blocks that will be used as inputs. Which blocks
-      will be used is specified in `inputIdx`.
+    will be used is specified in `inputIdx`.
     - `oBlocks` is the number or possible output blocks.
     - `oSize` is the size of each of these output blocks.
     - `oWin` is the number of output blocks that will actually be computed.
-      Which blocks will be computed is specified in `outputIdx`.
+    Which blocks will be computed is specified in `outputIdx`.
+
     """
+
     assert inputIdx.ndim == h.ndim - 1
     assert outputIdx.ndim == inputIdx.ndim
     if h.ndim == 2:

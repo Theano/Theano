@@ -13,15 +13,15 @@ if cuda_available:
 
 
 class MultinomialFromUniform(Op):
-    '''Converts samples from a uniform into sample from a multinomial.'''
+    """
+    Converts samples from a uniform into sample from a multinomial.
+
+    """
+
+    __props__ = ("odtype",)
+
     def __init__(self, odtype):
         self.odtype = odtype
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.odtype == other.odtype
-
-    def __hash__(self):
-        return hash((type(self), self.odtype))
 
     def __str__(self):
         return '%s{%s}' % (self.__class__.__name__, self.odtype)
@@ -155,7 +155,6 @@ class MultinomialFromUniform(Op):
             unis_n = unis[n]
 
             for m in range(nb_outcomes):
-                z_nm = z[0][n, m]
                 cummul += pvals[n, m]
                 if (waiting and (cummul > unis_n)):
                     z[0][n, m] = 1
@@ -169,7 +168,8 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
     The output is transposed compared to MultinomialFromUniform.
     We must insert a Transpose op after it.
 
-    The optimization that move it to the gpu do it.
+    The optimization that moves it to the gpu does it.
+
     """
 
     def make_node(self, pvals, unis):
@@ -356,8 +356,8 @@ def local_gpu_multinomial(node):
             return [host_from_gpu(gpu_op(*[gpu_from_host(i)
                                            for i in node.inputs])).T]
     if (isinstance(node.op, theano.sandbox.cuda.GpuFromHost) and
-        node.inputs[0].owner and type(node.inputs[0].owner.op)
-        is MultinomialFromUniform):
+            node.inputs[0].owner and
+            type(node.inputs[0].owner.op) is MultinomialFromUniform):
         multi = node.inputs[0].owner
         p, u = multi.inputs
         m, = multi.outputs

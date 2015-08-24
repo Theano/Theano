@@ -10,7 +10,7 @@ from theano.gof.type import Type
 from theano.gof.op import Op
 from theano.gof import fg
 
-from theano.gof.link import *
+from theano.gof.link import *  # noqa
 from theano.compat import cmp
 
 
@@ -31,6 +31,9 @@ def double(name):
 
 
 class MyOp(Op):
+
+    __props__ = ("nin", "name", "impl")
+
     def __init__(self, nin, name, impl=None):
         self.nin = nin
         self.name = name
@@ -39,7 +42,7 @@ class MyOp(Op):
 
     def make_node(self, *inputs):
         assert len(inputs) == self.nin
-        inputs = map(as_variable, inputs)
+        inputs = [as_variable(i) for i in inputs]
         for input in inputs:
             if input.type is not tdouble:
                 raise Exception("Error 1")
@@ -175,8 +178,11 @@ def test_sort_schedule_fn():
     import theano
     from theano.gof.sched import sort_schedule_fn, make_depends
     x = theano.tensor.matrix('x')
-    y = theano.tensor.dot(x[:5]*2, x.T+1).T
-    str_cmp = lambda a, b: cmp(str(a), str(b))  # lexicographical sort
+    y = theano.tensor.dot(x[:5] * 2, x.T + 1).T
+
+    def str_cmp(a, b):
+        return cmp(str(a), str(b))  # lexicographical sort
+
     linker = theano.OpWiseCLinker(schedule=sort_schedule_fn(str_cmp))
     mode = theano.Mode(linker=linker)
     f = theano.function((x,), (y,), mode=mode)

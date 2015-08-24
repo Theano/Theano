@@ -1,26 +1,34 @@
 from __future__ import print_function
+from functools import partial
 import sys
 import time
+import inspect
 
 import theano
 from theano import config
-from theano.compat import partial, OrderedDict
+from theano.compat import OrderedDict
 from theano.gof import graph
 
 
 class AlreadyThere(Exception):
-    """Raised by a Feature's on_attach callback method if the FunctionGraph
+    """
+    Raised by a Feature's on_attach callback method if the FunctionGraph
     attempting to attach the feature already has a functionally identical
-    feature."""
+    feature.
+
+    """
+
     pass
 
 
 class ReplacementDidntRemovedError(Exception):
-    """This exception should be thrown by replace_all_validate_remove
+    """
+    This exception should be thrown by replace_all_validate_remove
     when an optimization wanted to remove a Variable or a Node from
     the graph, but the replacement it gived didn't do that.
 
     """
+
     pass
 
 
@@ -32,7 +40,10 @@ class Feature(object):
     by various operations on FunctionGraphs. It can be used to enforce
     graph properties at all stages of graph optimization.
 
-    See :func:`theano.gof.toolbox` for common extensions.
+    See Also
+    --------
+    theano.gof.toolbox : for common extensions.
+
     """
 
     def on_attach(self, function_graph):
@@ -49,12 +60,14 @@ class Feature(object):
 
         The feature has great freedom in what it can do with the
         function_graph: it may, for example, add methods to it dynamically.
+
         """
 
     def on_detach(self, function_graph):
         """
         Called by remove_feature(feature).  Should remove any dynamically-added
         functionality that it installed into the function_graph.
+
         """
 
     def on_import(self, function_graph, node, reason):
@@ -64,12 +77,14 @@ class Feature(object):
         Note: on_import is not called when the graph is created. If you
         want to detect the first nodes to be implemented to the graph,
         you should do this by implementing on_attach.
+
         """
 
     def on_prune(self, function_graph, node, reason):
         """
         Called whenever a node is pruned (removed) from the function_graph,
         after it is disconnected from the graph.
+
         """
 
     def on_change_input(self, function_graph, node, i, r, new_r, reason=None):
@@ -80,6 +95,7 @@ class Feature(object):
 
         If you raise an exception in this function, the state of the graph
         might be broken for all intents and purposes.
+
         """
 
     def orderings(self, function_graph):
@@ -90,6 +106,7 @@ class Feature(object):
 
         If you raise an exception in this function, the state of the graph
         might be broken for all intents and purposes.
+
         """
         return OrderedDict()
 
@@ -164,8 +181,9 @@ class History(Feature):
     def revert(self, fgraph, checkpoint):
         """
         Reverts the graph to whatever it was at the provided
-        checkpoint (undoes all replacements).  A checkpoint at any
+        checkpoint (undoes all replacements). A checkpoint at any
         given time can be obtained using self.checkpoint().
+
         """
         h = self.history[fgraph]
         self.history[fgraph] = None
@@ -199,7 +217,27 @@ class Validator(Feature):
 
     def validate_(self, fgraph):
         t0 = time.time()
-        ret = fgraph.execute_callbacks('validate')
+        try:
+            ret = fgraph.execute_callbacks('validate')
+        except Exception as e:
+            cf = inspect.currentframe()
+            uf = cf.f_back
+            uf_info = inspect.getframeinfo(uf)
+
+            # If the caller is replace_all_validate, just raise the
+            # exception. replace_all_validate will print out the
+            # verbose output.
+            # Or it has to be done here before raise.
+            if uf_info.function == 'replace_all_validate':
+                raise
+            else:
+                verbose = uf.f_locals.get('verbose', False)
+                if verbose:
+                    r = uf.f_locals.get('r', "")
+                    reason = uf_info.function
+                    print("validate failed on node %s.\n Reason: %s, %s" %
+                          (r, reason, e))
+                raise
         t1 = time.time()
         if fgraph.profile:
             fgraph.profile.validate_time += t1 - t0
@@ -271,6 +309,8 @@ class ReplaceValidate(History, Validator):
             fgraph.validate()
         except Exception as e:
             fgraph.revert(chk)
+            if verbose:
+                print("validate failed on node %s.\n Reason: %s, %s" % (r, reason, e))
             raise
         if verbose:
             print(reason, r, new_r)
@@ -278,8 +318,9 @@ class ReplaceValidate(History, Validator):
 
     def replace_all_validate_remove(self, fgraph, replacements,
                                     remove, reason=None, warn=True):
-        """As replace_all_validate, revert the replacement if the ops
-        in the list remove are still in the graph. It also print a warning.
+        """
+        As replace_all_validate, revert the replacement if the ops
+        in the list remove are still in the graph. Also print a warning.
 
         """
         chk = fgraph.replace_all_validate(replacements, reason)
@@ -412,7 +453,7 @@ class NoOutputFromInplace(Feature):
             node = out.owner
             op = node.op
             out_idx = node.outputs.index(out)
-            if hasattr(op, 'destroy_map') and out_idx in op.destroy_map.keys():
+            if hasattr(op, 'destroy_map') and out_idx in op.destroy_map:
                 raise theano.gof.InconsistencyError(
                     "A function graph Feature has requested (probably for ",
                     "efficiency reasons for scan) that outputs of the graph",

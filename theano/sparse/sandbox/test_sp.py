@@ -12,6 +12,7 @@ import scipy.sparse
 from scipy.signal import convolve2d
 import scipy.sparse as sparse
 import numpy
+from six.moves import xrange
 
 from theano import function, tensor
 import theano

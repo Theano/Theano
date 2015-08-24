@@ -35,12 +35,7 @@ you should check the strides and alignment.
     """
     An arbitrarily generalized Fibbonacci sequence
     """
-
-    def __eq__(self, other): 
-      return type(self) == type(other)
-
-    def __hash__(self):
-      return hash(type(self))
+    __props__ = ()
 
     def make_node(self, x):
       x_ = tensor.as_tensor_variable(x)

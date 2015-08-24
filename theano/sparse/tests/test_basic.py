@@ -1,9 +1,11 @@
+from itertools import product
 import time
 import unittest
 
 from nose.plugins.attrib import attr
 from nose.plugins.skip import SkipTest
 import numpy
+from six.moves import xrange
 try:
     import scipy.sparse as sp
     import scipy.sparse
@@ -16,7 +18,6 @@ from theano import tensor
 from theano import sparse
 from theano import compile, config, gof
 from theano.sparse import enable_sparse
-from theano.compat import product
 from theano.tensor.basic import _allclose
 
 if not enable_sparse:
@@ -150,7 +151,7 @@ def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5, gap=None,
     if unsorted_indices:
         for idx in range(n):
             d = data[idx]
-            d = d[range(d.shape[0])]
+            d = d[list(range(d.shape[0]))]
             assert not d.has_sorted_indices
             data[idx] = d
     if explicit_zero:
@@ -2258,7 +2259,7 @@ class Test_getitem(unittest.TestCase):
                                   x.__getitem__, (slice(a, b), slice(c, d, 2)))
             else:
                 raise SkipTest("Slicing with step is supported.")
-                
+
             # Advanced indexing is not supported
             self.assertRaises(ValueError,
                               x.__getitem__,
@@ -2879,6 +2880,11 @@ SqrtTester = elemwise_checker(
     sparse.sqrt,
     numpy.sqrt,
     gap=(0, 10))
+
+ConjTester = elemwise_checker(
+    sparse.conj,
+    numpy.conj,
+    grad_test=False)
 
 
 class MulSVTester(unittest.TestCase):

@@ -1,4 +1,5 @@
-import cPickle
+import six.moves.cPickle as pickle
+from six.moves import xrange
 import numpy
 import unittest
 

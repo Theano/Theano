@@ -108,6 +108,7 @@ after the ``T.exp(x)`` is replaced by a GPU version of ``exp()``.
 .. code-block:: python
 
     from theano import function, config, shared, sandbox
+    import theano.sandbox.cuda.basic_ops
     import theano.tensor as T
     import numpy
     import time
@@ -214,6 +215,10 @@ Tips for Improving Performance on GPU
   enable all of them with the `nvcc.flags=--use_fast_math` Theano
   flag or you can enable them individually as in this example:
   `nvcc.flags=-ftz=true --prec-div=false`.
+* To investigate whether if all the Ops in the computational graph are running on GPU. 
+  It is possible to debug or check your code by providing a value to `assert_no_cpu_op`
+  flag, i.e. `warn`, for warning `raise` for raising an error or `pdb` for putting a breakpoint
+  in the computational graph if there is a CPU Op.
 
 .. _gpu_async:
 
@@ -683,14 +688,8 @@ Modify and execute to work for a matrix of shape (20, 10).
     import theano.sandbox.cuda as cuda
 
     class PyCUDADoubleOp(theano.Op):
-        def __eq__(self, other):
-            return type(self) == type(other)
 
-        def __hash__(self):
-            return hash(type(self))
-
-        def __str__(self):
-            return self.__class__.__name__
+        __props__ = ()
 
         def make_node(self, inp):
             inp = cuda.basic_ops.gpu_contiguous(

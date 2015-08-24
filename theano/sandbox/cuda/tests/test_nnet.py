@@ -276,7 +276,7 @@ class test_SoftMax(unittest.TestCase):
 
     def test_softmax(self):
         x = T.fmatrix('x')
-        z = T.nnet.softmax
+        z = T.nnet.softmax_op
 
         def check_types_without_cudnn(graph, graph_gpu):
             self._check_types(
@@ -307,7 +307,7 @@ class test_SoftMax(unittest.TestCase):
         if not cuda.dnn.dnn_available():
             raise SkipTest(cuda.dnn.dnn_available.msg)
         x = T.fmatrix('x')
-        z = T.nnet.softmax
+        z = T.nnet.softmax_op
 
         def check_types_with_cudnn(graph, graph_gpu):
             self._check_types(
@@ -341,7 +341,7 @@ class test_SoftMax(unittest.TestCase):
 
         x = T.matrix('x', 'float32')
         x_gpu = T.tensor4('x_gpu', 'float32')
-        f_z = T.nnet.softmax
+        f_z = T.nnet.softmax_op
         f_gpu = theano.sandbox.cuda.dnn.GpuDnnSoftmax(
             'bc01',
             'accurate',

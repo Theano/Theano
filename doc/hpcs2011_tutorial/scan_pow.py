@@ -1,6 +1,7 @@
 from __future__ import print_function
 import theano
 import theano.tensor as T
+from six.moves import xrange
 
 k = T.iscalar("k"); A = T.vector("A")
 
@@ -17,4 +18,4 @@ final_result = result[-1]
 power = theano.function(inputs=[A,k], outputs=final_result,
                         updates=updates)
 
-print(power(range(10),2))
+print(power(list(range(10)), 2))

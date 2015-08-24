@@ -1,17 +1,38 @@
 import logging
-_logger = logging.getLogger("theano.tensor.type")
+import warnings
 
 import numpy
 
 import theano
 from theano import config
-from theano.gof import Constant, hashtype, Type, Variable
-from theano.gof.utils import MethodNotDefined
+from theano.gof import hashtype, Type, Variable
 from theano import scalar as scal
+
+_logger = logging.getLogger("theano.tensor.type")
 
 
 class TensorType(Type):
-    """Symbolic `Type` representing a numpy.ndarray value."""
+    """
+    Symbolic `Type` representing a numpy.ndarray value.
+
+    Initialize self.dtype and self.broadcastable.
+
+    Parameters
+    ----------
+    dtype: str
+        Corresponding to numpy dtype (e.g., 'int64')
+        The value (ndarray) associated to a `Variable` of this `Type` will
+        have this dtype.
+    broadcastable: tuple, list, or array of boolean values
+        This argument serves two purposes. First, the True elements of this
+        list indicate the dimensions where the shape of an associated value
+        must be 1. Secondly, the length of this list is the number of
+        dimensions that an associated value must have. See
+        doc:`broadcasting` for an explanation of how this list is used.
+    name : str
+        Optional name for this type.
+
+    """
 
     filter_checks_isfinite = False
     """
@@ -20,26 +41,11 @@ class TensorType(Type):
     """
 
     def __init__(self, dtype, broadcastable, name=None, sparse_grad=False):
-        """Initialize self.dtype and self.broadcastable.
-
-        :Parameters:
-         - `dtype`: str corresponding to numpy dtype (e.g., 'int64')
-           The value (ndarray) associated to a `Variable` of this `Type` will
-           have this dtype.
-         - `broadcastable`: tuple, list, or array of boolean values
-           This argument serves two purposes.  First, the True elements of this
-           list indicate the dimensions where the shape of an associated value
-           must be 1.  Secondly, the length of this list is the number of
-           dimensions that an associated value must have.  See
-           :doc:`broadcasting` for an explanation of how this list is used.
-         - `name`: str
-           Optional name for this type.
-        """
         self.dtype = str(dtype)
         if self.dtype == 'floatX':
             self.dtype = config.floatX
         # broadcastable is immutable, and all elements are either
-        ###    True or False
+        # True or False
         self.broadcastable = tuple(bool(b) for b in broadcastable)
         self.dtype_specs()  # error checking is done there
         self.name = name
@@ -55,6 +61,7 @@ class TensorType(Type):
         """
         Return a copy of the type optionally with a new dtype or
         broadcastable pattern.
+
         """
         if dtype is None:
             dtype = self.dtype
@@ -64,27 +71,29 @@ class TensorType(Type):
                               sparse_grad=self.sparse_grad)
 
     def filter(self, data, strict=False, allow_downcast=None):
-        """Convert `data` to something which can be associated to a
+        """
+        Convert `data` to something which can be associated to a
         `TensorVariable`.
 
-        This function is not meant to be called in user code.  It is for
+        This function is not meant to be called in user code. It is for
         `Linker` instances to use when running a compiled graph.
+
         """
         # Explicit error message when one accidentally uses a Variable as
         # input (typical mistake, especially with shared variables).
         if isinstance(data, Variable):
             raise TypeError(
-                    'Expected an array-like object, but found a Variable: '
-                    'maybe you are trying to call a function on a (possibly '
-                    'shared) variable instead of a numeric array?')
+                'Expected an array-like object, but found a Variable: '
+                'maybe you are trying to call a function on a (possibly '
+                'shared) variable instead of a numeric array?')
 
-        if ((type(data) is numpy.ndarray)
-                and (data.dtype == self.numpy_dtype)):
+        if ((type(data) is numpy.ndarray) and
+                (data.dtype == self.numpy_dtype)):
             if data.dtype.num != self.numpy_dtype.num:
                 data = theano._asarray(data, dtype=self.dtype)
             # -- now fall through to ndim check
-        elif((type(data) is numpy.memmap)
-                and (data.dtype == self.numpy_dtype)):
+        elif ((type(data) is numpy.memmap) and
+              (data.dtype == self.numpy_dtype)):
             # numpy.memmap is a "safe" subclass of ndarray,
             # so we can use it whereever we expect a base ndarray.
             # however, casting it would defeat the purpose of not
@@ -95,11 +104,11 @@ class TensorType(Type):
             # we raise a meaningful TypeError.
             if not (type(data) is numpy.ndarray):
                 raise TypeError("%s expected a ndarray object." % self,
-                        data, type(data))
+                                data, type(data))
             if data.dtype != self.numpy_dtype:
                 raise TypeError(("%s expected a ndarray object with "
-                        "dtype = %s (got %s).") % (
-                            self, self.numpy_dtype, data.dtype))
+                                "dtype = %s (got %s).") %
+                                (self, self.numpy_dtype, data.dtype))
             assert False, "This point should never be reached."
         else:
             if allow_downcast:
@@ -185,16 +194,18 @@ class TensorType(Type):
                                 " dimension.", data.shape, self.broadcastable)
             i += 1
         if (self.filter_checks_isfinite and
-            not numpy.all(numpy.isfinite(data))):
+                not numpy.all(numpy.isfinite(data))):
             raise ValueError("non-finite elements not allowed")
         return data
 
-    def filter_variable(self, other):
-        """Convert a symbolic Variable into a TensorType, if compatible.
+    def filter_variable(self, other, allow_convert=True):
+        """
+        Convert a symbolic Variable into a TensorType, if compatible.
 
         For the moment, only a TensorType or CudaNdarrayType will be
         converted, provided they have the same number of dimensions,
         broadcastable pattern, and dtype.
+
         """
         if hasattr(other, '_as_TensorVariable'):
             other = other._as_TensorVariable()
@@ -207,15 +218,19 @@ class TensorType(Type):
         if other.type == self:
             return other
 
+        if allow_convert:
+            # Attempt safe broadcast conversion.
+            other2 = self.convert_variable(other)
+            if other2 is not None and other2.type == self:
+                return other2
+
         raise TypeError(
-                'Cannot convert Type %(othertype)s '
-                '(of Variable %(other)s) into Type %(self)s. '
-                'You can try to manually convert %(other)s into a %(self)s.'
-                % dict(
-                    othertype=other.type,
-                    other=other,
-                    self=self)
-                )
+            'Cannot convert Type %(othertype)s '
+            '(of Variable %(other)s) into Type %(self)s. '
+            'You can try to manually convert %(other)s into a %(self)s.' %
+            dict(othertype=other.type,
+                 other=other,
+                 self=self))
 
     def value_validity_msg(self, a):
         try:
@@ -225,10 +240,12 @@ class TensorType(Type):
         return "value is valid"
 
     def dtype_specs(self):
-        """Return a tuple (python type, c type, numpy typenum) that corresponds
+        """
+        Return a tuple (python type, c type, numpy typenum) that corresponds
         to self.dtype.
 
         This function is used internally as part of C code generation.
+
         """
         # TODO: add more type correspondances for e.g. int32, int64, float32,
         # complex64, etc.
@@ -247,25 +264,28 @@ class TensorType(Type):
                 'int64': (int, 'npy_int64', 'NPY_INT64'),
                 'complex128': (complex, 'theano_complex128', 'NPY_COMPLEX128'),
                 'complex64': (complex, 'theano_complex64', 'NPY_COMPLEX64')
-                }[self.dtype]
+            }[self.dtype]
         except KeyError:
             raise TypeError("Unsupported dtype for %s: %s"
-                    % (self.__class__.__name__, self.dtype))
+                            % (self.__class__.__name__, self.dtype))
 
     def to_scalar_type(self):
         return scal.get_scalar_type(dtype=self.dtype)
 
     def __eq__(self, other):
-        """Compare True iff other is the same kind of TensorType"""
+        """
+        Compare True iff other is the same kind of TensorType.
+
+        """
         return type(self) == type(other) and other.dtype == self.dtype \
             and other.broadcastable == self.broadcastable
 
     def convert_variable(self, var):
-        if (type(self) == type(var.type) and
+        if (type(self) == type(var.type) and  # noqa
             self.dtype == var.type.dtype and
             self.ndim == var.type.ndim and
             all(sb == ob or ob for sb, ob in zip(self.broadcastable,
-                                                var.type.broadcastable))):
+                                                 var.type.broadcastable))):
             return theano.tensor.patternbroadcast(var, self.broadcastable)
 
     @staticmethod
@@ -300,14 +320,19 @@ class TensorType(Type):
     def values_eq_approx(a, b, allow_remove_inf=False, allow_remove_nan=False,
                          rtol=None, atol=None):
         """
-        :param allow_remove_inf: If True, when there is an inf in a,
-                                 we allow any value in b in that position.
-                                 Event -inf
-        :param allow_remove_nan: If True, when there is a nan in a,
-                                 we allow any value in b in that position.
-                                 Event +-inf
-        :param rtol: relative tolerance, passed to _allclose
-        :param atol: absolute tolerance, passed to _allclose
+        Parameters
+        ----------
+        allow_remove_inf
+            If True, when there is an inf in a, we allow any value in b in
+            that position. Event -inf
+        allow_remove_nan
+            If True, when there is a nan in a, we allow any value in b in
+            that position. Event +-inf
+        rtol
+            Relative tolerance, passed to _allclose.
+        atol
+            Absolute tolerance, passed to _allclose.
+
         """
         if isinstance(a, numpy.ndarray) and isinstance(b, numpy.ndarray):
             if a.shape != b.shape:
@@ -351,7 +376,7 @@ class TensorType(Type):
                 rtol = 1.0000000000000001e-05
                 atol = 1e-8
                 cmp_elemwise = (numpy.absolute(a - b) <=
-                        (atol + rtol * numpy.absolute(b)))
+                                (atol + rtol * numpy.absolute(b)))
                 # Find places where both a and b have missing values.
                 both_missing = a_missing * numpy.isnan(b)
 
@@ -361,9 +386,9 @@ class TensorType(Type):
                 # cmp_elemwise is weird when we have inf and -inf.
                 # set it to False
                 cmp_elemwise = numpy.where(
-                        both_inf & cmp_elemwise,
-                        a == b,
-                        cmp_elemwise)
+                    both_inf & cmp_elemwise,
+                    a == b,
+                    cmp_elemwise)
 
                 # check the sign of the inf
                 both_inf = numpy.where(both_inf, (a == b), both_inf)
@@ -383,8 +408,9 @@ class TensorType(Type):
         return hashtype(self) ^ hash(self.dtype) ^ hash(self.broadcastable)
 
     ndim = property(lambda self: len(self.broadcastable),
-            doc="number of dimensions")
-    """Number of dimensions
+                    doc="number of dimensions")
+    """
+    Number of dimensions.
 
     This read-only property is the preferred way to get the number of
     dimensions of a `TensorType`.
@@ -392,12 +418,15 @@ class TensorType(Type):
     """
 
     def make_variable(self, name=None):
-        """Return a `TensorVariable` of this type
+        """
+        Return a `TensorVariable` of this type.
 
-        :Parameters:
-         - `name`: str
-           A pretty name to identify this `Variable` when printing and
-           debugging
+        Parameters
+        ----------
+        name : str
+            A pretty name to identify this `Variable` when printing and
+            debugging
+
         """
         return self.Variable(self, name=name)
 
@@ -407,10 +436,10 @@ class TensorType(Type):
         else:
             b = self.broadcastable
             named_broadcastable = {(): 'scalar',
-                     (False,): 'vector',
-                     (False, True): 'col',
-                     (True, False): 'row',
-                     (False, False): 'matrix'}
+                                   (False,): 'vector',
+                                   (False, True): 'col',
+                                   (True, False): 'row',
+                                   (False, False): 'matrix'}
             if b in named_broadcastable:
                 bcast = named_broadcastable[b]
             else:
@@ -422,10 +451,13 @@ class TensorType(Type):
 
     def __repr__(self):
         return str(self)
-        #"TensorType{%s, %s}" % (str(self.dtype), str(self.broadcastable))
+        # "TensorType{%s, %s}" % (str(self.dtype), str(self.broadcastable))
 
     def c_declare(self, name, sub, check_input=True):
-        """Override `CLinkerType.c_declare` """
+        """
+        Override `CLinkerType.c_declare`.
+
+        """
         if(check_input):
             check = """
             typedef %(dtype)s dtype_%(name)s;
@@ -439,13 +471,19 @@ class TensorType(Type):
         return declaration + check
 
     def c_init(self, name, sub):
-        """Override `CLinkerType.c_init` """
+        """
+        Override `CLinkerType.c_init`.
+
+        """
         return """
         %(name)s = NULL;
         """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
 
     def c_extract(self, name, sub, check_input=True):
-        """Override `CLinkerType.c_extract` """
+        """
+        Override `CLinkerType.c_extract`.
+
+        """
         if(check_input):
             check = """
             %(name)s = NULL;
@@ -504,7 +542,10 @@ class TensorType(Type):
         """ % dict(sub, name=name, type_num=self.dtype_specs()[2])
 
     def c_cleanup(self, name, sub):
-        """Override `CLinkerType.c_cleanup` """
+        """
+        Override `CLinkerType.c_cleanup`.
+
+        """
         return """
         if (%(name)s) {
             Py_XDECREF(%(name)s);
@@ -512,7 +553,10 @@ class TensorType(Type):
         """ % locals()
 
     def c_sync(self, name, sub):
-        """Override `CLinkerType.c_sync` """
+        """
+        Override `CLinkerType.c_sync`.
+
+        """
         fail = sub['fail']
         type_num = self.dtype_specs()[2]
         return """
@@ -553,7 +597,10 @@ class TensorType(Type):
         """ % locals()
 
     def c_headers(self):
-        """Override `CLinkerObject.c_headers` """
+        """
+        Override `CLinkerObject.c_headers`.
+
+        """
         return scal.get_scalar_type(self.dtype).c_headers()
 
     def c_libraries(self):
@@ -563,7 +610,10 @@ class TensorType(Type):
         return scal.get_scalar_type(self.dtype).c_compile_args()
 
     def c_support_code(self):
-        """Override `CLinkerObject.c_support_code` """
+        """
+        Override `CLinkerObject.c_support_code`.
+
+        """
         return scal.get_scalar_type(self.dtype).c_support_code()
 
     def c_init_code(self):
@@ -579,6 +629,7 @@ class TensorType(Type):
     def value_zeros(self, shape):
         """
         Create an numpy ndarray full of 0 values.
+
         """
         return numpy.zeros(shape, dtype=self.dtype)
 
@@ -599,17 +650,33 @@ class TensorType(Type):
         ``get_size()`` will be called on the output of this function
         when printing the memory profile.
 
-        :param obj: The object that this Type represents during execution
-        :return: Python object that ``self.get_size()`` understands
+        Parameters
+        ----------
+        obj
+            The object that this Type represents during execution.
+
+        Returns
+        -------
+        object
+            Python object that ``self.get_size()`` understands.
+
         """
         return obj.shape
 
     def get_size(self, shape_info):
-        """ Number of bytes taken by the object represented by shape_info.
+        """
+        Number of bytes taken by the object represented by shape_info.
 
-        :param shape_info: the output of the call to get_shape_info()
-        :return: the number of bytes taken by the object described by
-            ``shape_info``.
+        Parameters
+        ----------
+        shape_info
+            The output of the call to get_shape_info().
+
+        Returns
+        -------
+        int
+            The number of bytes taken by the object described by ``shape_info``.
+
         """
         if shape_info:
             return numpy.prod(shape_info) * numpy.dtype(self.dtype).itemsize
@@ -636,13 +703,13 @@ def values_eq_approx_always_true(a, b):
 
 # Register TensorType C code for ViewOp.
 theano.compile.register_view_op_c_code(
-        TensorType,
-        """
-        Py_XDECREF(%(oname)s);
-        %(oname)s = %(iname)s;
-        Py_XINCREF(%(oname)s);
-        """,
-        version=1)
+    TensorType,
+    """
+    Py_XDECREF(%(oname)s);
+    %(oname)s = %(iname)s;
+    Py_XINCREF(%(oname)s);
+    """,
+    version=1)
 
 
 # Register TensorType C code for Shape Op.
@@ -665,51 +732,51 @@ theano.compile.register_shape_c_code(
 
 # Register TensorType C code for ViewOp.
 theano.compile.register_shape_i_c_code(
-        TensorType,
-        """
-        if(!%(oname)s)
-            %(oname)s=(PyArrayObject*)PyArray_EMPTY(0, NULL, NPY_INT64, 0);
-        ((npy_int64*)PyArray_DATA(%(oname)s))[0]=PyArray_DIMS(%(iname)s)[%(i)s];
-        """,
-        """
-        if (%(i)s>=PyArray_NDIM(%(iname)s)){
-            PyErr_SetString(PyExc_TypeError,
-                "Number of dimensions lower than expected");
-            %(fail)s
-        }
-        """,
-        version=3)
+    TensorType,
+    """
+    if(!%(oname)s)
+        %(oname)s=(PyArrayObject*)PyArray_EMPTY(0, NULL, NPY_INT64, 0);
+    ((npy_int64*)PyArray_DATA(%(oname)s))[0]=PyArray_DIMS(%(iname)s)[%(i)s];
+    """,
+    """
+    if (%(i)s>=PyArray_NDIM(%(iname)s)){
+        PyErr_SetString(PyExc_TypeError,
+            "Number of dimensions lower than expected");
+        %(fail)s
+    }
+    """,
+    version=3)
 
 # Register TensorType C code for DeepCopyOp
 theano.compile.register_deep_copy_op_c_code(
-        TensorType,
-        """
-        int alloc = %(oname)s == NULL;
-        for(int i=0; !alloc && i<PyArray_NDIM(%(oname)s); i++) {
-           if(PyArray_DIMS(%(iname)s)[i] != PyArray_DIMS(%(oname)s)[i]) {
-               alloc = true;
-               break;
-           }
+    TensorType,
+    """
+    int alloc = %(oname)s == NULL;
+    for(int i=0; !alloc && i<PyArray_NDIM(%(oname)s); i++) {
+       if(PyArray_DIMS(%(iname)s)[i] != PyArray_DIMS(%(oname)s)[i]) {
+           alloc = true;
+           break;
+       }
+    }
+    if(alloc) {
+        Py_XDECREF(%(oname)s);
+        %(oname)s = (PyArrayObject*)PyArray_NewCopy(%(iname)s,
+                                                    NPY_ANYORDER);
+        if (!%(oname)s)
+        {
+            PyErr_SetString(PyExc_ValueError,
+                            "DeepCopyOp: the copy failed!");
+            %(fail)s;
         }
-        if(alloc) {
-            Py_XDECREF(%(oname)s);
-            %(oname)s = (PyArrayObject*)PyArray_NewCopy(%(iname)s,
-                                                        NPY_ANYORDER);
-            if (!%(oname)s)
-            {
-                PyErr_SetString(PyExc_ValueError,
-                                "DeepCopyOp: the copy failed!");
-                %(fail)s;
-            }
-        } else {
-            if(PyArray_CopyInto(%(oname)s, %(iname)s)){
-                PyErr_SetString(PyExc_ValueError,
-            "DeepCopyOp: the copy failed into already allocated space!");
-                %(fail)s;
-            }
+    } else {
+        if(PyArray_CopyInto(%(oname)s, %(iname)s)){
+            PyErr_SetString(PyExc_ValueError,
+        "DeepCopyOp: the copy failed into already allocated space!");
+            %(fail)s;
         }
-        """,
-        version=2)
+    }
+    """,
+    version=2)
 
 
 theano.compile.register_rebroadcast_c_code(
@@ -723,7 +790,7 @@ theano.compile.register_rebroadcast_c_code(
         %(fail)s
     }
     """,
-        version=1)
+    version=1)
 
 
 theano.compile.register_specify_shape_c_code(

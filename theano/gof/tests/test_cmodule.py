@@ -27,7 +27,8 @@ class MyOp(theano.compile.ops.DeepCopyOp):
             rand = numpy.random.rand()
             return ("""printf("%(rand)s\\n");""" + code) % locals()
         # Else, no C code
-        return super(DeepCopyOp, self).c_code(node, name, inames, onames, sub)
+        return super(theano.compile.ops.DeepCopyOp, self).c_code(
+            node, name, inames, onames, sub)
 
 
 def test_inter_process_cache():

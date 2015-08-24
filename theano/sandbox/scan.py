@@ -10,15 +10,17 @@ __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 
-import itertools
 import logging
 import numpy
 import warnings
 
 from theano.compile import SharedVariable, function
+from six import iteritems
+from six.moves import xrange
 from theano import compile
 from theano import gof
-from theano.compat import OrderedDict
+from theano.compat import izip
+from theano.compat import OrderedDict, ifilter
 from theano.tensor import opt
 from theano import tensor
 from theano import config
@@ -47,13 +49,18 @@ def scan(fn,
     control over the scan op, avoiding certain difficulties that arose from
     missing optimizations.
 
-    :param fn: lambda function that describes one step of scan (see the
+    Parameters
+    ----------  
+    fn 
+        Lambda function that describes one step of scan (see the
         official Theano scan function)
-    :param sequences: similar to the official Theano's scan. This version
+    sequences
+        Similar to the official Theano's scan. This version
         of scan does not support taps for the sequences (it can only be a
         list of tensor). Scan assumes that sequences have the right length
         and it does not check for this.
-    :param states: similar to outputs_info of the official scan function.
+    states
+        Similar to outputs_info of the official scan function.
         There is one crucial difference though, namely that the `initial`
         key in the dictionary has been replace by 'membuf' key. This
         reflects the change of meaning. Instead of passing to scan just
@@ -70,37 +77,43 @@ def scan(fn,
         For states that do not require a initial state, one has to provide a
         dictionary with a single key 'steps' that says how many intermediate
         results to store. See examples below for more insight.
-    :param n_steps: This parameter is mandatory and it will represent the
+    n_steps
+        This parameter is mandatory and it will represent the
         number of steps scan will do (scan will not check sequences or any
         other source of information to figure out how many steps it needs
         to do).
-    :param mode: Same as for the official scan
-    :param name: Same as for the official scan
-    :param profile: Same as for the official scan
+    mode
+        Same as for the official scan.
+    name
+        Same as for the official scan.
+    profile
+        Same as for the official scan.
 
-    Note:
-     - there is no truncate / go_backwards anymore !
-     - the outputs returned by scan contain the initial states as well (i.e.
-     if I loop over k steps, with my smallest tap for an output -3 and keep
-     al intermediate results, my output will be of length k+3
+    Notes
+    -----
+    - There is no truncate / go_backwards anymore !
+    - The outputs returned by scan contain the initial states as well (i.e.
+    if I loop over k steps, with my smallest tap for an output -3 and keep
+    al intermediate results, my output will be of length k+3.
 
-     Examples:
-         (a) if you do not want to store any intermediate results (just the
-         last one)
+    Examples
+    --------
+    (a) if you do not want to store any intermediate results (just the
+    last one)
 
-         # The memory buffer can be the initial state, just that we need to
-         # add one extra dimension in front of it
-         state = TT.unbroadcast(TT.shape_padleft(x0),0)
-         out,_ = scan(lambda x:x+1, states = state, n_steps = 5)
-         # Once we got our result we need to remove the extra dimension
-         out = out[0]
+    # The memory buffer can be the initial state, just that we need to
+    # add one extra dimension in front of it
+    state = TT.unbroadcast(TT.shape_padleft(x0),0)
+    out,_ = scan(lambda x:x+1, states = state, n_steps = 5)
+    # Once we got our result we need to remove the extra dimension
+    out = out[0]
 
-        (b) if you want to keep every intermediate results
+    (b) if you want to keep every intermediate results
 
-        state = TT.alloc(TT.constant(0), 6, x0.shape[0])
-        state = TT.set_subtensor(state[0], x0)
-        out,_ = scan(lambda x:x+1, states = state, n_steps = 5)
-        out = out[1:]
+    state = TT.alloc(TT.constant(0), 6, x0.shape[0])
+    state = TT.set_subtensor(state[0], x0)
+    out,_ = scan(lambda x:x+1, states = state, n_steps = 5)
+    out = out[1:]
 
     """
     def wrap_into_list(x):
@@ -456,16 +469,15 @@ def scan(fn,
     # extract still missing inputs (there still might be so) and add them
     # as non sequences at the end of our args
     fake_nonseqs = [x.type() for x in non_seqs]
-    fake_outputs = scan_utils.clone(outputs + updates.values(),
-                                    replace=dict(zip(non_seqs,
-                                                     fake_nonseqs)))
-    all_inputs = itertools.ifilter(
+    fake_outputs = scan_utils.clone(outputs + list(updates.values()),
+                                    replace=dict(izip(non_seqs,
+                                                      fake_nonseqs)))
+    all_inputs = ifilter(
         lambda x: (isinstance(x, gof.Variable) and
                    not isinstance(x, SharedVariable) and
                    not isinstance(x, gof.Constant)),
         gof.graph.inputs(fake_outputs))
-    extra_inputs = filter(lambda x: x not in args + fake_nonseqs,
-                                    all_inputs)
+    extra_inputs = [x for x in all_inputs if x not in args + fake_nonseqs]
     non_seqs += extra_inputs
     # Note we do not use all_inputs directly since the order of variables
     # in args is quite important
@@ -568,7 +580,7 @@ def scan(fn,
                          if (not isinstance(arg, SharedVariable) and
                              not isinstance(arg, tensor.Constant))]
 
-    givens.update(dict(zip(other_scan_args, other_inner_args)))
+    givens.update(dict(izip(other_scan_args, other_inner_args)))
     other_shared_scan_args = [arg.variable for arg
                         in dummy_f.maker.expanded_inputs
                         if (isinstance(arg.variable, SharedVariable) and
@@ -577,8 +589,7 @@ def scan(fn,
                         in dummy_f.maker.expanded_inputs
                         if (isinstance(arg.variable, SharedVariable) and
                             not arg.update)]
-    givens.update(dict(zip(other_shared_scan_args,
-                           other_shared_inner_args)))
+    givens.update(dict(izip(other_shared_scan_args, other_shared_inner_args)))
 
     ##
     # Step 6. Re-order the outputs and clone them replacing things
@@ -600,7 +611,7 @@ def scan(fn,
     if condition is not None:
         inner_outs.append(condition)
     new_givens = OrderedDict()
-    for w, w_copy in givens.iteritems():
+    for w, w_copy in iteritems(givens):
         new_givens[w] = w.type.filter_variable(w_copy)
 
     new_outs = scan_utils.clone(inner_outs, replace=new_givens)

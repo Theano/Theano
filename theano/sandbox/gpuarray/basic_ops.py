@@ -12,6 +12,8 @@ from theano.tensor.basic import Alloc, Join, Split
 from theano.gof import HideC
 from theano.gof.utils import MethodNotDefined
 from theano.compat import PY3
+from six import string_types
+from six.moves import xrange
 
 try:
     import pygpu
@@ -24,15 +26,13 @@ from .fp16_help import write_w
 
 
 def as_gpuarray_variable(x):
-    # This is needed to lower the number of useless transfer
-    # introduced during optimization.  This speed up optimization and
-    # "canonicalize" the graph, so it make easier making some
-    # optimization.
-    if (hasattr(x, 'fgraph') and
-        len(x.clients) == 1 and
-        x.owner and
-        isinstance(x.owner.op, HostFromGpu)):
-        return x.owner.inputs[0]
+    if getattr(x, 'owner', None):
+        if isinstance(x.owner.op, HostFromGpu):
+            return x.owner.inputs[0]
+        elif (isinstance(x.owner.op, GpuFromHost) and
+              x.owner.inputs[0].owner and
+              isinstance(x.owner.inputs[0].owner.op, HostFromGpu)):
+            return x.owner.inputs[0].owner.inputs[0]
     if hasattr(x, '_as_GpuArrayVariable'):
         return x._as_GpuArrayVariable()
     # TODO we need to have the cuda -> gpu path taken care of.
@@ -47,7 +47,9 @@ def as_gpuarray(x):
 class Kernel(object):
     """
     This class groups together all the attributes of a gpu kernel.
+
     """
+
     def __init__(self, code, params, name, flags,
                  codevar=None, binvar=None, objvar=None):
         self.code = code
@@ -67,14 +69,14 @@ class Kernel(object):
     @staticmethod
     def get_flags(*types):
         def get_dtype(t):
-            if isinstance(t, (str, unicode)):
+            if isinstance(t, string_types):
                 return numpy.dtype(t)
             elif isinstance(t, Type):
                 return t.dtype
             elif isinstance(t, Variable):
                 return t.type.dtype
             else:
-                raise TypeError, "can't get a dtype from %s" % (type(t),)
+                raise TypeError("can't get a dtype from %s" % (type(t),))
         dtypes = [get_dtype(t) for t in types]
         flags = dict(cluda=True)
         if any(d == numpy.float64 for d in dtypes):
@@ -113,11 +115,11 @@ class Kernel(object):
 class GpuKernelBase(object):
     def gpu_kernels(self, node, name):
         """
-        This is the method to override.  This should return an
-        iterable of Kernel objects that describe the kernels this op
-        will need.
+        This is the method to override. This should return an iterable of Kernel
+        objects that describe the kernels this op will need.
+
         """
-        raise MethodNotDefined, 'gpu_kernels'
+        raise MethodNotDefined('gpu_kernels')
 
     def c_headers(self):
         try:
@@ -323,15 +325,7 @@ gpu_from_host = GpuFromHost()
 
 class GpuFromCuda(Op):
     view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return 'GpuFromCuda'
+    __props__ = ()
 
     def make_node(self, x):
         from theano.sandbox.cuda import CudaNdarrayType
@@ -455,15 +449,7 @@ gpu_from_cuda = GpuFromCuda()
 
 class CudaFromGpu(Op):
     view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return 'CudaFromGpu'
+    __props__ = ()
 
     def make_node(self, x):
         from theano.sandbox.cuda import CudaNdarrayType
@@ -568,13 +554,20 @@ cuda_from_gpu = CudaFromGpu()
 
 
 class GpuAlloc(HideC, Alloc):
+    """
+
+    Parameters
+    ----------
+    memset_0
+        It's only an optimized version. True, it means the
+        value is always 0, so the c code call memset as it is faster.
+
+    """
+ 
     __props__ = ('memset_0',)
     _f16_ok = True
 
     def __init__(self, memset_0=False):
-        """memset_0 is only an optimized version. True, it mean the
-        value is always 0, so the c code call memset as it is faster.
-        """
         self.memset_0 = memset_0
 
     def __str__(self):
@@ -729,6 +722,8 @@ class GpuAllocEmpty(HideC, Alloc):
         sh, bcast = self.validate_shape(shape)
         output = GpuArrayType(dtype=self.dtype, broadcastable=bcast)()
         output.tag.values_eq_approx = tensor.type.values_eq_approx_always_true
+        # The outut can contain nan/inf.
+        output.type.filter_checks_isfinite = False
         return Apply(self, sh, [output])
 
     def perform(self, node, inputs, out_):
@@ -783,11 +778,17 @@ if (theano_prep_output(&%(zz)s, %(ndim)s, shape, %(type)s, GA_C_ORDER,
         raise NotImplementedError("grad disabled")
 
 
+def empty_like(var):
+    return GpuAllocEmpty(var.type.dtype)(*var.shape)
+
+
 class GpuContiguous(Op):
     """
     Always return a c contiguous output. Copy the input only if it is
     not already c contiguous.
+ 
     """
+
     __props__ = ()
     view_map = {0: [0]}
     _f16_ok = True
@@ -845,7 +846,9 @@ gpu_contiguous = GpuContiguous()
 class GpuReshape(HideC, tensor.Reshape):
     """
     Implement Reshape on the gpu.
+
     """
+
     _f16_ok = True
 
     # __hash__, __eq__, __str__ come from tensor.Reshape
@@ -883,15 +886,92 @@ class GpuReshape(HideC, tensor.Reshape):
                 raise ValueError("total size of new array must be unchanged")
         out[0] = x.reshape(tuple(shp))
 
+    def c_code_cache_version(self):
+        return (1,)
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        x, shape = inputs
+        output, = outputs
+        new_ndim = self.ndim
+        sdtype = node.inputs[1].type.dtype_specs()[1]
+        fail = sub['fail']
+        return """
+        size_t old_size = 1, new_size = 1;
+        size_t new_dims[%(new_ndim)s];
+        int compute_axis = -1;
+
+        assert (PyArray_NDIM(%(shape)s) == 1);
+        if (PyArray_DIM(%(shape)s, 0) != %(new_ndim)s)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "GpuReshape: given shape is of incorrect "
+                         "length (%%d should be %%d).",
+                         PyArray_DIM(%(shape)s, 0), %(new_ndim)s);
+            %(fail)s;
+        }
+
+        for (size_t i = 0; i < %(x)s->ga.nd; ++i)
+            old_size *= %(x)s->ga.dimensions[i];
+
+        for (size_t i = 0; i < %(new_ndim)s; ++i)
+        {
+            new_dims[i] = ((%(sdtype)s*)(
+                    PyArray_BYTES(%(shape)s) +
+                    i * PyArray_STRIDES(%(shape)s)[0]))[0];
+            if (new_dims[i] == -1)
+            {
+                if (compute_axis != -1)
+                {
+                    PyErr_Format(PyExc_ValueError,
+                                 "GpuReshape: only one -1 is accepted "
+                                 "in the new shape, but got two at "
+                                 "indices %%d and %%zu.",
+                                 compute_axis, i);
+                    %(fail)s;
+                }
+                compute_axis = i;
+            }
+            else
+                new_size *= new_dims[i];
+        }
+
+        if (compute_axis == -1 && new_size != old_size)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "GpuReshape: trying to reshape an array of "
+                         "total size %%zu into an array of total size "
+                         "%%zu.", old_size, new_size);
+            %(fail)s;
+        }
+        else if (compute_axis != -1 && old_size %% new_size != 0)
+        {
+            PyErr_Format(PyExc_ValueError,
+                         "GpuReshape: -1 axis found at index %%d in "
+                         "new shape but the total size of the array "
+                         "(%%zu) is not divisible by the given shapes "
+                         "(%%zu).", compute_axis, old_size, new_size);
+            %(fail)s;
+        }
+
+        Py_XDECREF(%(output)s);
+        %(output)s = pygpu_reshape(%(x)s, %(new_ndim)s, new_dims,
+                                   GA_C_ORDER, 0, compute_axis);
+        if (%(output)s == NULL)
+        {
+            %(fail)s;
+        }
+        """ % locals()
+
 
 class GpuJoin(HideC, Join):
+
     _f16_ok = True
 
     def make_node(self, axis, *tensors):
         node = Join.make_node(self, axis, *tensors)
 
-        return Apply(self, [node.inputs[0]] + map(as_gpuarray_variable,
-                                                  tensors),
+        return Apply(self, [node.inputs[0]] + list(map(as_gpuarray_variable,
+                                                  tensors)),
                      [GpuArrayType(broadcastable=node.outputs[0].broadcastable,
                                    dtype=node.outputs[0].dtype)()])
 

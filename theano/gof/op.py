@@ -1,23 +1,15 @@
-"""Defines base classes `Op`, `PureOp`, and `CLinkerOp`
+"""
+Defines base classes `Op`, `PureOp`, and `CLinkerOp`.
 
 The `Op` class is the base interface for all operations
 compatible with `gof`'s :doc:`graph` routines.
+
 """
-
-__authors__   = "theano-dev"
-__copyright__ = "(c) 2010, Universite de Montreal"
-__license__   = "3-clause BSD License"
-__contact__   = "theano-dev <theano-dev@googlegroups.com>"
-
-
-__docformat__ = "restructuredtext en"
-
 import inspect
 import logging
 import numpy
 import os
 import re
-import StringIO
 import sys
 import traceback
 import warnings
@@ -26,129 +18,175 @@ import theano
 from theano import config
 
 import theano.gof.cc
+from six import itervalues
+from six.moves import StringIO
 from theano.gof import graph
 from theano.gof import utils
 from theano.gof.cmodule import GCC_compiler
 from theano.gof.fg import FunctionGraph
 
+__authors__ = "theano-dev"
+__copyright__ = "(c) 2010, Universite de Montreal"
+__license__ = "3-clause BSD License"
+__contact__ = "theano-dev <theano-dev@googlegroups.com>"
+
+__docformat__ = "restructuredtext en"
+
 
 class CLinkerObject(object):
-    """Standard elements of an Op or Type used with the CLinker
+    """
+    Standard elements of an Op or Type used with the CLinker.
+
     """
     def c_headers(self):
-        """Optional: Return a list of header files required by code returned by
+        """
+        Optional: Return a list of header files required by code returned by
         this class.
 
-        For example: return ['<iostream>', '<math.h>', '/full/path/to/header.h']
+        Examples
+        --------
+        return ['<iostream>', '<math.h>', '/full/path/to/header.h']
 
-        These strings will be prefixed with "#include " and inserted at the beginning of the c
-        source code.
+        These strings will be prefixed with "#include " and inserted at the
+        beginning of the c source code.
 
-        Strings in this list that start neither with '<' nor '"' will be enclosed in
-        double-quotes.
+        Strings in this list that start neither with '<' nor '"' will be
+        enclosed in double-quotes.
 
-        :Exceptions:
-         - `MethodNotDefined`: Subclass does not implement this method
+        Raises
+        ------
+        MethodNotDefined
+            Subclass does not implement this method.
 
         """
         raise utils.MethodNotDefined("c_headers", type(self), self.__class__.__name__)
 
     def c_header_dirs(self):
-        """Optional: Return a list of header search paths required by code returned by
-        this class.
+        """
+        Optional: Return a list of header search paths required by code
+        returned by this class.
 
-        For example: return ['/usr/local/include', '/opt/weirdpath/src/include'].
+        Examples
+        --------
+        return ['/usr/local/include', '/opt/weirdpath/src/include']
 
-        Provide search paths for headers, in addition to those in any relevant environment
-        variables.
+        Provides search paths for headers, in addition to those in any relevant
+        environment variables.
 
-        Hint: for unix compilers, these are the things that get '-I' prefixed in the compiler
-        cmdline.
+        Hint: for unix compilers, these are the things that get '-I' prefixed
+        in the compiler cmdline.
 
-        :Exceptions:
-         - `MethodNotDefined`: Subclass does not implement this method
+        Raises
+        ------
+        MethodNotDefined
+            Subclass does not implement this method.
 
         """
         raise utils.MethodNotDefined("c_header_dirs", type(self), self.__class__.__name__)
 
     def c_libraries(self):
-        """Optional: Return a list of libraries required by code returned by
+        """
+        Optional: Return a list of libraries required by code returned by
         this class.
 
-        For example: return ['gsl', 'gslcblas', 'm', 'fftw3', 'g2c'].
+        Examples
+        --------
+        return ['gsl', 'gslcblas', 'm', 'fftw3', 'g2c'].
 
         The compiler will search the directories specified by the environment
         variable LD_LIBRARY_PATH in addition to any returned by `c_lib_dirs`.
 
-        Hint: for unix compilers, these are the things that get '-l' prefixed in the compiler
-        cmdline.
+        Hint: for unix compilers, these are the things that get '-l' prefixed
+        in the compiler cmdline.
 
-        :Exceptions:
-         - `MethodNotDefined`: Subclass does not implement this method
+        Raises
+        ------
+        MethodNotDefined
+            Subclass does not implement this method.
 
         """
         raise utils.MethodNotDefined("c_libraries", type(self), self.__class__.__name__)
 
     def c_lib_dirs(self):
-        """Optional: Return a list of library search paths required by code returned by
-        this class.
+        """
+        Optional: Return a list of library search paths required by code
+        returned by this class.
 
-        For example: return ['/usr/local/lib', '/opt/weirdpath/build/libs'].
+        Examples
+        --------
+        return ['/usr/local/lib', '/opt/weirdpath/build/libs'].
 
-        Provide search paths for libraries, in addition to those in any relevant environment
-        variables (e.g. LD_LIBRARY_PATH).
+        Provides search paths for libraries, in addition to those in any
+        relevant environment variables (e.g. LD_LIBRARY_PATH).
 
-        Hint: for unix compilers, these are the things that get '-L' prefixed in the compiler
-        cmdline.
+        Hint: for unix compilers, these are the things that get '-L' prefixed
+        in the compiler cmdline.
 
-        :Exceptions:
-         - `MethodNotDefined`: Subclass does not implement this method
+        Raises
+        ------
+        MethodNotDefined
+            Subclass does not implement this method.
 
         """
         raise utils.MethodNotDefined("c_lib_dirs", type(self), self.__class__.__name__)
 
     def c_support_code(self):
-        """Optional: Return utility code for use by a `Variable` or `Op` to be
+        """
+        Optional: Return utility code for use by a `Variable` or `Op` to be
         included at global scope prior to the rest of the code for this class.
 
         QUESTION: How many times will this support code be emitted for a graph
         with many instances of the same type?
 
-        :Exceptions:
-         - `MethodNotDefined`: Subclass does not implement this method
+        Raises
+        ------
+        MethodNotDefined
+            Subclass does not implement this method.
 
         """
         raise utils.MethodNotDefined("c_support_code", type(self), self.__class__.__name__)
 
     def c_code_cache_version(self):
-        """Return a tuple of integers indicating the version of this Op.
+        """
+        Return a tuple of integers indicating the version of this Op.
 
-        An empty tuple indicates an 'unversioned' Op that will not be cached between processes.
+        An empty tuple indicates an 'unversioned' Op that will not be cached
+        between processes.
 
-        The cache mechanism may erase cached modules that have been superceded by newer
-        versions.  See `ModuleCache` for details.
+        The cache mechanism may erase cached modules that have been superceded
+        by newer versions. See `ModuleCache` for details.
 
-        :note: See also `c_code_cache_version_apply()`
+        See Also
+        --------
+        c_code_cache_version_apply()
+
         """
         return ()
 
     def c_compile_args(self):
-        """Optional: Return a list of compile args recommended to compile the
+        """
+        Optional: Return a list of compile args recommended to compile the
         code returned by other methods in this class.
 
-        Example: return ['-ffast-math']
+        Example
+        -------
+        return ['-ffast-math']
 
-        Compiler arguments related to headers, libraries and search paths should be provided
-        via the functions `c_headers`, `c_libraries`, `c_header_dirs`, and `c_lib_dirs`.
+        Compiler arguments related to headers, libraries and search paths should
+        be provided via the functions `c_headers`, `c_libraries`,
+        `c_header_dirs`, and `c_lib_dirs`.
 
-        :Exceptions:
-         - `MethodNotDefined`: Subclass does not implement this method
+        Raises
+        ------
+        MethodNotDefined
+            Subclass does not implement this method.
 
         """
         raise utils.MethodNotDefined("c_compile_args", type(self), self.__class__.__name__)
 
     def c_no_compile_args(self):
-        """Optional: Return a list of incompatible gcc compiler arguments.
+        """
+        Optional: return a list of incompatible gcc compiler arguments.
 
         We will remove those arguments from the command line of gcc. So if
         another Op adds a compile arg in the graph that is incompatible
@@ -159,8 +197,10 @@ class CLinkerObject(object):
 
         WRITEME
 
-        :Exceptions:
-         - `MethodNotDefined`: the subclass does not override this method
+        Raises
+        ------
+        MethodNotDefined
+            The subclass does not override this method.
 
         """
         raise utils.MethodNotDefined("c_no_compile_args", type(self), self.__class__.__name__)
@@ -170,8 +210,11 @@ class CLinkerObject(object):
         Optional: return a list of code snippets to be inserted in module
         initialization.
 
-        :Exceptions:
-         - `MethodNotDefined`: the subclass does not override this method
+        Raises
+        ------
+        MethodNotDefined
+            The subclass does not override this method.
+
         """
         raise utils.MethodNotDefined("c_init_code", type(self),
                                      self.__class__.__name__)
@@ -183,51 +226,56 @@ class CLinkerOp(CLinkerObject):
 
     A subclass should implement WRITEME.
 
-    WRITEME: structure of automatically generated C code.  Put this in doc/code_structure.txt
+    WRITEME: structure of automatically generated C code.
+    Put this in doc/code_structure.txt
 
     """
 
     def c_code(self, node, name, inputs, outputs, sub):
-        """Required: Return the C implementation of an Op.
+        """
+        Required: return the C implementation of an Op.
 
         Returns C code that does the computation associated to this `Op`,
         given names for the inputs and outputs.
 
-        :Parameters:
-         `node` : Apply instance
-           The node for which we are compiling the current c_code.
+        Parameters
+        ----------
+        node : Apply instance
+            The node for which we are compiling the current c_code.
            The same Op may be used in more than one node.
-         `name` : A string
-           A name that is automatically assigned and guaranteed to be
-           unique.
-         `inputs` : list of strings
-           There is a string for each input of the function, and the
-           string is the name of a C variable pointing to that input.
-           The type of the variable depends on the declared type of
-           the input.  There is a corresponding python variable that
-           can be accessed by prepending "py_" to the name in the
-           list.
-         `outputs` : list of strings
-           Each string is the name of a C variable where the Op should
-           store its output.  The type depends on the declared type of
-           the output.  There is a corresponding python variable that
-           can be accessed by prepending "py_" to the name in the
-           list.  In some cases the outputs will be preallocated and
-           the value of the variable may be pre-filled.  The value for
-           an unallocated output is type-dependent.
-         `sub` : dict of strings
-           extra symbols defined in `CLinker` sub symbols (such as 'fail').
-           WRITEME
+        name : str
+            A name that is automatically assigned and guaranteed to be
+            unique.
+        inputs : list of strings
+            There is a string for each input of the function, and the
+            string is the name of a C variable pointing to that input.
+            The type of the variable depends on the declared type of
+            the input.  There is a corresponding python variable that
+            can be accessed by prepending "py_" to the name in the
+            list.
+        outputs : list of strings
+            Each string is the name of a C variable where the Op should
+            store its output.  The type depends on the declared type of
+            the output.  There is a corresponding python variable that
+            can be accessed by prepending "py_" to the name in the
+            list.  In some cases the outputs will be preallocated and
+            the value of the variable may be pre-filled.  The value for
+            an unallocated output is type-dependent.
+        sub : dict of strings
+            Extra symbols defined in `CLinker` sub symbols (such as 'fail').
+            WRITEME
 
-        :Exceptions:
-         - `MethodNotDefined`: the subclass does not override this method
+        Raises
+        ------
+        MethodNotDefined
+            The subclass does not override this method.
 
         """
-        raise utils.MethodNotDefined('%s.c_code' \
-                % self.__class__.__name__)
+        raise utils.MethodNotDefined('%s.c_code' % self.__class__.__name__)
 
     def c_code_cache_version_apply(self, node):
-        """Return a tuple of integers indicating the version of this Op.
+        """
+        Return a tuple of integers indicating the version of this Op.
 
         An empty tuple indicates an 'unversioned' Op that will not be
         cached between processes.
@@ -235,92 +283,111 @@ class CLinkerOp(CLinkerObject):
         The cache mechanism may erase cached modules that have been
         superceded by newer versions.  See `ModuleCache` for details.
 
-        :note: See also `c_code_cache_version()`
+        See Also
+        --------
+        c_code_cache_version()
 
-        :note: This function overrides `c_code_cache_version` unless
-               it explicitly calls `c_code_cache_version`.  The
-               default implementation simply calls
-               `c_code_cache_version` and ignores the `node` argument.
+        Notes
+        -----
+            This function overrides `c_code_cache_version` unless it explicitly
+            calls `c_code_cache_version`. The default implementation simply
+            calls `c_code_cache_version` and ignores the `node` argument.
+
         """
         return self.c_code_cache_version()
 
     def c_code_cleanup(self, node, name, inputs, outputs, sub):
         """
-        Optional: Return C code to run after c_code, whether it failed
-                  or not.
+        Optional: return C code to run after c_code, whether it failed or not.
 
         This is a convenient place to clean up things allocated by c_code().
 
-        :Parameters:
-         `node` : Apply instance
-           WRITEME
-         `name` : A string
-           A name that is automatically assigned and guaranteed to be
-           unique.
-         `inputs` : list of strings
-           There is a string for each input of the function, and the
-           string is the name of a C variable pointing to that input.
-           The type of the variable depends on the declared type of
-           the input. There is a corresponding python variable that
-           can be accessed by prepending "py_" to the name in the
-           list.
-         `outputs` : list of strings
-           Each string is the name of a C variable correspoinding to
-           one of the outputs of the Op. The type depends on the
-           declared type of the output. There is a corresponding
-           python variable that can be accessed by prepending "py_" to
-           the name in the list.
-         `sub` : dict of strings
-           extra symbols defined in `CLinker` sub symbols (such as 'fail').
-           WRITEME
+        Parameters
+        ----------
+        node : Apply instance
+            WRITEME
+        name : str
+            A name that is automatically assigned and guaranteed to be
+            unique.
+        inputs : list of strings
+            There is a string for each input of the function, and the
+            string is the name of a C variable pointing to that input.
+            The type of the variable depends on the declared type of
+            the input. There is a corresponding python variable that
+            can be accessed by prepending "py_" to the name in the
+            list.
+        outputs : list of strings
+            Each string is the name of a C variable correspoinding to
+            one of the outputs of the Op. The type depends on the
+            declared type of the output. There is a corresponding
+            python variable that can be accessed by prepending "py_" to
+            the name in the list.
+        sub : dict of strings
+            extra symbols defined in `CLinker` sub symbols (such as 'fail').
+            WRITEME
 
-        :Exceptions:
-         - `MethodNotDefined`: the subclass does not override this method
+        Raises
+        ------
+        MethodNotDefined
+            The subclass does not override this method.
+
         """
-        raise utils.MethodNotDefined('%s.c_code_cleanup' \
-                % self.__class__.__name__)
+        raise utils.MethodNotDefined('%s.c_code_cleanup' %
+                                     self.__class__.__name__)
 
     def c_support_code_apply(self, node, name):
-        """Optional: Return utility code for use by an `Op` that will be
+        """
+        Optional: return utility code for use by an `Op` that will be
         inserted at global scope, that can be specialized for the
         support of a particular `Apply` node.
 
-        :param node: an Apply instance in the graph being compiled
+        Parameters
+        ----------
+        node: an Apply instance in the graph being compiled
+        name: str
+            A string or number that serves to uniquely identify this node.
+            Symbol names defined by this support code should include the name,
+            so that they can be called from the c_code, and so that they do not
+            cause name collisions.
 
-        :param name: a string or number that serves to uniquely
-                     identify this node.  Symbol names defined by this
-                     support code should include the name, so that
-                     they can be called from the c_code, and so that
-                     they do not cause name collisions.
+        Notes
+        -----
+        This function is called in addition to c_support_code and will
+        supplement whatever is returned from there.
 
-        :note: This function is called in addition to c_support_code
-               and will supplement whatever is returned from there.
-
-        :Exceptions:
-         - `MethodNotDefined`: Subclass does not implement this method
+        Raises
+        ------
+        MethodNotDefined
+            Subclass does not implement this method.
 
         """
         raise utils.MethodNotDefined("c_support_code_apply",
-                type(self), self.__class__.__name__)
+                                     type(self), self.__class__.__name__)
 
     def c_init_code_apply(self, node, name):
         """
         Optional: return a code string specific to the apply
         to be inserted in the module initialization code.
 
-        :param node: an Apply instance in the graph being compiled
+        Parameters
+        ----------
+        node : an Apply instance in the graph being compiled
+        name : str
+            A string or number that serves to uniquely identify this node.
+            Symbol names defined by this support code should include the name,
+            so that they can be called from the c_code, and so that they do not
+            cause name collisions.
 
-        :param name: a string or number that serves to uniquely
-                     identify this node.  Symbol names defined by this
-                     support code should include the name, so that
-                     they can be called from the c_code, and so that
-                     they do not cause name collisions.
+        Notes
+        -----
+        This function is called in addition to c_init_code and will supplement
+        whatever is returned from there.
 
-        :note: This function is called in addition to c_init_code
-               and will supplement whatever is returned from there.
+        Raises
+        ------
+        MethodNotDefined
+            The subclass does not override this method.
 
-        :Exceptions:
-         - `MethodNotDefined`: the subclass does not override this method
         """
         raise utils.MethodNotDefined("c_init_code_apply", type(self),
                                      self.__class__.__name__)
@@ -330,51 +397,63 @@ class CLinkerOp(CLinkerObject):
         Optional: return a code string specific to the apply
         to be inserted in the struct initialization code.
 
-        :param node: an Apply instance in the graph being compiled
+        Parameters
+        ----------
+        node : an Apply instance in the graph being compiled
+        name : str
+            A unique name to distinguish variables from those of other nodes.
+        sub
+            A dictionary of values to substitute in the code.
+            Most notably it contains a 'fail' entry that you should place in
+            your code after setting a python exception to indicate an error.
 
-        :param name: a unique name to distinguish you variables from
-                     those of other nodes.
+        Raises
+        ------
+        MethodNotDefined
+            The subclass does not override this method.
 
-        :param sub: a dictionary of values to substitute in the code.
-                    Most notably it contains a 'fail' entry that you
-                    should place in your code after setting a python
-                    exception to indicate an error.
-
-        :Exceptions:
-         - `MethodNotDefined`: the subclass does not override this method
         """
         raise utils.MethodNotDefined("c_init_code_apply", type(self),
                                      self.__class__.__name__)
 
     def c_support_code_struct(self, node, name):
-        """Optional: Return utility code for use by an `Op` that will be
+        """
+        Optional: return utility code for use by an `Op` that will be
         inserted at struct scope, that can be specialized for the
         support of a particular `Apply` node.
 
-        :param node: an Apply instance in the graph being compiled
+        Parameters
+        ----------
+        node : an Apply instance in the graph being compiled
+        name : str
+            A unique name to distinguish you variables from those of other
+            nodes.
 
-        :param name: a unique name to distinguish you variables from
-                     those of other nodes.
-
-        :Exceptions:
-         - `MethodNotDefined`: Subclass does not implement this method
+        Raises
+        ------
+        MethodNotDefined
+            Subclass does not implement this method.
 
         """
         raise utils.MethodNotDefined("c_support_code_struct",
-                type(self), self.__class__.__name__)
+                                     type(self), self.__class__.__name__)
 
     def c_cleanup_code_struct(self, node, name):
         """
         Optional: return a code string specific to the apply to be
         inserted in the struct cleanup code.
 
-        :param node: an Apply instance in the graph being compiled
+        Parameters
+        ----------
+        node : an Apply instance in the graph being compiled
+        name : str
+            A unique name to distinguish variables from those of other nodes.
 
-        :param name: a unique name to distinguish you variables from
-                     those of other nodes.
+        Raises
+        ------
+        MethodNotDefined
+            The subclass does not override this method.
 
-        :Exceptions:
-        - `MethodNotDefined`: the subclass does not override this method
         """
         raise utils.MethodNotDefined("c_cleanup_code_struct", type(self),
                                      self.__class__.__name__)
@@ -384,31 +463,33 @@ class PureOp(object):
     """
     An :term:`Op` is a type of operation.
 
-    `Op` is an abstract class that documents the interface for theano's data transformations.
-    It has many subclasses, such as
+    `Op` is an abstract class that documents the interface for theano's data
+    transformations. It has many subclasses, such as
     `sparse dot <http://pylearn.org/epydoc/theano.sparse.Dot-class.html>`__,
     and `Shape <http://pylearn.org/epydoc/theano.tensor.Shape-class.html>`__.
 
     These subclasses are meant to be instantiated.
     An instance has several responsabilities:
 
-    - making `Apply` instances, which mean "apply this type of operation to some particular inputs" (via `make_node`),
+    - making `Apply` instances, which mean "apply this type of operation to some
+      particular inputs" (via `make_node`),
 
-    - performing the calculation of outputs from given inputs (via the `perform`),
+    - performing the calculation of outputs from given inputs
+      (via the `perform`),
 
     - [optionally] building gradient-calculating graphs (via `grad`).
 
+    To see how `Op`, `Type`, `Variable`, and `Apply` fit together see the page
+    on :doc:`graph`.
 
-    To see how `Op`, `Type`, `Variable`, and `Apply` fit together see the page on :doc:`graph`.
-
-    For more specifications on how these methods should behave: see the `Op Contract` in the
-    sphinx docs (advanced tutorial on Op-making).
+    For more specifications on how these methods should behave: see the
+    `Op Contract` in the sphinx docs (advanced tutorial on Op-making).
 
     """
 
     default_output = None
     """
-    configuration variable for `__call__`
+    Configuration variable for `__call__`.
 
     A subclass should not change this class variable, but instead over-ride it with a subclass
     variable or an instance variable.
@@ -426,8 +507,9 @@ class PureOp(object):
 
         All subclasses should over-ride this function.
 
-        :Exceptions:
-         - `MethodNotDefined`: the subclass does not override this method
+        Raises
+        ------
+        MethodNotDefined : the subclass does not override this method.
 
         """
         raise utils.MethodNotDefined("make_node", type(self), self.__class__.__name__)
@@ -435,11 +517,13 @@ class PureOp(object):
     @classmethod
     def _get_test_value(cls, v):
         """
-        Extract test value from variable v. Raises AttributeError if there is none.
+        Extract test value from variable v.
+        Raises AttributeError if there is none.
 
         For a Constant, the test value is v.value.
         For a Shared variable, it is the internal value.
         For another Variable, it is the content of v.tag.test_value.
+
         """
         # avoid circular import
         from theano.compile.sharedvalue import SharedVariable
@@ -457,14 +541,17 @@ class PureOp(object):
                 detailed_err_msg = (
                     "For compute_test_value, one input test value does not"
                     " have the requested type.\n")
-                tr = getattr(v.tag, 'trace', None)
-                if tr:
-                    sio = StringIO.StringIO()
-                    traceback.print_list(tr, sio)
-                    tr = sio.getvalue()
+                tr = getattr(v.tag, 'trace', [])
+                if len(tr) > 0:
                     detailed_err_msg += (
                         " \nBacktrace when that variable is created:\n")
-                    detailed_err_msg += str(tr)
+                    # Print separate message for each element in the list
+                    # of batcktraces
+                    sio = StringIO()
+                    for subtr in tr:
+                        traceback.print_list(subtr, sio)
+                    detailed_err_msg += str(sio.getvalue())
+
                 detailed_err_msg += (
                     "\nThe error when converting the test value to that"
                     " variable type:")
@@ -479,7 +566,8 @@ class PureOp(object):
         raise AttributeError('%s has no test value' % v)
 
     def __call__(self, *inputs, **kwargs):
-        """Optional: Return some or all output[s] of `make_node`.
+        """
+        Optional: return some or all output[s] of `make_node`.
 
         It is called by code such as:
 
@@ -487,21 +575,26 @@ class PureOp(object):
 
            x = tensor.matrix()
 
-           # tensor.exp is an Op instance, calls Op.__call__(self=<instance of exp>, inputs=(x,))
+           # tensor.exp is an Op instance, calls
+           # Op.__call__(self=<instance of exp>, inputs=(x,))
            y = tensor.exp(x)
 
-        This class implements a convenience function (for graph-building) which uses
-        `default_output`, but subclasses are free to override this function and ignore
-        `default_output`.
+        This class implements a convenience function (for graph-building) which
+        uses `default_output`, but subclasses are free to override this function
+        and ignore `default_output`.
 
-        :param inputs: The Op's inputs, forwarded to the call to `make_node()`.
-
-        :param kwargs: Additional keyword arguments to be forwarded to
+        Parameters
+        ----------
+        inputs
+            The Op's inputs, forwarded to the call to `make_node()`.
+        kwargs
+            Additional keyword arguments to be forwarded to
             `make_node()` *except* for optional argument `return_list` (which
             defaults to False). If `return_list` is True, then the returned
             value is always a list. Otherwise it is either a single Variable
             when the output of `make_node()` contains a single element, or this
             output (unchanged) when it contains multiple elements.
+
         """
         return_list = kwargs.pop('return_list', False)
         node = self.make_node(*inputs, **kwargs)
@@ -538,7 +631,7 @@ class PureOp(object):
                 # copy the values of the inputs in destroy_map
                 destroyed_inputs_idx = set()
                 if getattr(node.op, 'destroy_map', None):
-                    for i_pos_list in node.op.destroy_map.itervalues():
+                    for i_pos_list in itervalues(node.op.destroy_map):
                         destroyed_inputs_idx.update(i_pos_list)
                 for inp_idx in destroyed_inputs_idx:
                     inp = node.inputs[inp_idx]
@@ -551,7 +644,7 @@ class PureOp(object):
 
                 # compute output value once with test inputs to validate graph
                 thunk = node.op.make_thunk(node, storage_map, compute_map,
-                        no_recycling=[])
+                                           no_recycling=[])
                 thunk.inputs = [storage_map[v] for v in node.inputs]
                 thunk.outputs = [storage_map[v] for v in node.outputs]
 
@@ -592,47 +685,52 @@ class PureOp(object):
 
     def R_op(self, inputs, eval_points):
         """
-
         This method is primarily used by tensor.Rop
 
         Suppose the op outputs
 
         [ f_1(inputs), ..., f_n(inputs) ]
 
-        inputs: a Variable or list of Variables
-        eval_points: a Variable or list of Variables with
-                    the same length as inputs. Each element
-                    of eval_points specifies the value of
-                    the corresponding input at the point
-                    where the R op is to be evaluated.
+        Parameters
+        ----------
+        inputs : a Variable or list of Variables
+        eval_points
+            A Variable or list of Variables with the same length as inputs.
+            Each element of eval_points specifies the value of the corresponding
+            input at the point where the R op is to be evaluated.
 
-
-        returns: a list of n elements
-                    rval[i] should be Rop(f=f_i(inputs),
-                                          wrt=inputs,
-                                          eval_points=eval_points)
+        Returns
+        -------
+        list of n elements
+            rval[i] should be Rop(f=f_i(inputs),
+                                  wrt=inputs,
+                                  eval_points=eval_points)
 
         """
         raise NotImplementedError(
-                "%s of class %s does not "
-                "implement R_op. If this is a theano op, write to the "
-                "theano-dev mailing list for assistance. If it is your "
-                "own op, implement the R_op method." %
-                (self, self.__class__.__name__))
+            "%s of class %s does not "
+            "implement R_op. If this is a theano op, write to the "
+            "theano-dev mailing list for assistance. If it is your "
+            "own op, implement the R_op method." %
+            (self, self.__class__.__name__))
 
     def perform(self, node, inputs, output_storage):
         """
-        Required:  Calculate the function on the inputs and put the variables in the
-        output storage.  Return None.
+        Required: Calculate the function on the inputs and put the variables in
+        the output storage. Return None.
 
-        :Parameters:
-         `node` : Apply instance
-            contains the symbolic inputs and outputs
-         `inputs` : list
-            sequence of inputs (immutable)
-         `output_storage` : list
-             list of mutable 1-element lists (do not change the length of these lists)
+        Parameters
+        ----------
+        node : Apply instance
+            Contains the symbolic inputs and outputs.
+        inputs : list
+            Sequence of inputs (immutable).
+        output_storage : list
+             List of mutable 1-element lists (do not change the length of
+             these lists)
 
+        Notes
+        -----
         The `output_storage` list might contain data. If an element of
         output_storage is not None, it has to be of the right type,
         for instance, for a TensorVariable, it has to be a Numpy ndarray,
@@ -642,8 +740,10 @@ class PureOp(object):
         could be allocated by another Op impl is free to reuse it as it
         sees fit, or to discard it and allocate new memory.
 
-        :Exceptions:
-         - `MethodNotDefined`: the subclass does not override this method
+        Raises
+        ------
+        MethodNotDefined
+            The subclass does not override this method.
 
         """
         raise utils.MethodNotDefined("perform", type(self), self.__class__.__name__)
@@ -655,12 +755,16 @@ class PureOp(object):
         choose where it puts its memory/speed trade-off. Also, it
         could make things faster as constants can't be used for inplace
         operations (see *IncSubtensor).
+
         """
         return True
 
 
 class Op(utils.object2, PureOp, CLinkerOp):
-    """Convenience class to bundle `PureOp` and `CLinkerOp`"""
+    """
+    Convenience class to bundle `PureOp` and `CLinkerOp`.
+
+    """
     def __new__(cls, *args, **kwargs):
         # this function exists to silently and transparently ensure that all
         # existing Ops get a _op_use_c_code attribute
@@ -702,6 +806,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
     def make_c_thunk(self, node, storage_map, compute_map, no_recycling):
         """
         Like make_thunk, but will only try to make a C thunk.
+
         """
         logger = logging.getLogger('theano.gof.op.Op')
 
@@ -715,9 +820,9 @@ class Op(utils.object2, PureOp, CLinkerOp):
                 return getattr(t, 'dtype', '') == 'float16'
 
             if (any(is_f16(i.type) for i in node.inputs) or
-                any(is_f16(o.type) for o in node.outputs)):
-                print ("Disabling C code for %s due to unsupported "
-                       "float16" % (self,))
+                    any(is_f16(o.type) for o in node.outputs)):
+                print("Disabling C code for %s due to unsupported "
+                      "float16" % (self,))
                 raise NotImplementedError("float16")
         e = FunctionGraph(node.inputs, node.outputs)
         e_no_recycling = [new_o
@@ -745,6 +850,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
     def make_py_thunk(self, node, storage_map, compute_map, no_recycling):
         """
         Like make_thunk() but only makes python thunks.
+
         """
         node_input_storage = [storage_map[r] for r in node.inputs]
         node_output_storage = [storage_map[r] for r in node.outputs]
@@ -762,6 +868,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
                 return r
         else:
             ctx_val = node.context_type.filter(ctx)
+
             def rval(p=p, i=node_input_storage, o=node_output_storage, n=node,
                      ctx=ctx_val):
                 r = p(n, [x[0] for x in i], o, ctx)
@@ -777,24 +884,31 @@ class Op(utils.object2, PureOp, CLinkerOp):
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         """
-        :param node: something previously returned by self.make_node
 
-        :param storage_map: dict variable -> one-element-list where a computed
-                value for this variable may be found.
+        Parameters
+        ----------
+        node
+            Something previously returned by self.make_node.
+        storage_map
+            dict variable -> one-element-list where a computed
+            value for this variable may be found.
+        compute_map
+            dict variable -> one-element-list where a boolean
+            value will be found. The boolean indicates whether the
+            variable's storage_map container contains a valid value (True)
+            or if it has not been computed yet (False).
+        no_recycling
+            List of variables for which it is forbidden to reuse memory
+            allocated by a previous call.
 
-        :param compute_map: dict variable -> one-element-list where a boolean
-                value will be found.  The boolean indicates whether the
-                variable's storage_map container contains a valid value (True)
-                or if it has not been computed yet (False).
+        Notes
+        -----
+        If the thunk consults the storage_map on every call, it is safe
+        for it to ignore the no_recycling argument, because elements of the
+        no_recycling list will have a value of None in the storage map.  If
+        the thunk can potentially cache return values (like CLinker does),
+        then it must not do so for variables in the no_recycling list.
 
-        :param no_recycling: list of variables for which it is forbidden to
-                reuse memory allocated by a previous call.
-
-        :note: If the thunk consults the storage_map on every call, it is safe
-            for it to ignore the no_recycling argument, because elements of the
-            no_recycling list will have a value of None in the storage map.  If
-            the thunk can potentially cache return values (like CLinker does),
-            then it must not do so for variables in the no_recycling list.
         """
         logger = logging.getLogger('theano.gof.op.Op')
 
@@ -820,6 +934,7 @@ def get_test_value(v):
     For a Constant, the test value is v.value.
     For a Shared variable, it is the internal value.
     For another Variable, it is the content of v.tag.test_value.
+
     """
     if not isinstance(v, graph.Variable):
         v_var = theano.tensor.as_tensor_variable(v)
@@ -829,14 +944,20 @@ def get_test_value(v):
 
 
 def missing_test_message(msg):
-    """ Displays msg, a message saying that some test_value is missing,
+    """
+    Displays msg, a message saying that some test_value is missing,
     in the appropriate form based on config.compute_test_value:
 
-        off: the interactive debugger is off, so we do nothing
-        ignore: the interactive debugger is set to ignore missing inputs,
-                so do nothing
-        warn: display msg as a warning
-        raise: raise an AttributeError with msg as the exception text
+        off: The interactive debugger is off, so we do nothing.
+        ignore: The interactive debugger is set to ignore missing inputs,
+                so do nothing.
+        warn: Display msg as a warning.
+
+    Raises
+    ------
+    AttributeError
+        With msg as the exception text.
+
     """
     action = config.compute_test_value
     if action == 'raise':
@@ -848,10 +969,12 @@ def missing_test_message(msg):
 
 
 def debug_error_message(msg):
-    """ Displays a message saying that an error was found in some
+    """
+    Displays a message saying that an error was found in some
     test_values. Becomes a warning or a ValueError depending on
-    config.compute_test_value"""
+    config.compute_test_value.
 
+    """
     action = config.compute_test_value
 
     # this message should never be called when the debugger is off
@@ -897,7 +1020,7 @@ def get_debug_values(*args):
         3. If the interactive debugger is on, and some variable does
             not have a debug value, issue a missing_test_message about
             the variable, and, if still in control of execution, return
-            an empty list
+            an empty list.
 
     """
 
@@ -935,11 +1058,13 @@ self.fn, the value will be 'fn'.
 We need that to be able not to run debug checks a number of times that is
 exponential in the nesting level of those ops.
 For instance, Scan will be registered here.
+
 """
 
 
 class OpenMPOp(Op):
-    """All op using OpenMP code should inherit from this Op.
+    """
+    All op using OpenMP code should inherit from this Op.
 
     This op will check that the compiler support correctly OpenMP code.
     If not, it will print a warning and disable openmp for this Op.
@@ -951,9 +1076,11 @@ class OpenMPOp(Op):
     We also add the correct compiler flags in c_compile_args.
 
     """
+
     gxx_support_openmp = None
     """
     True/False after we tested this.
+
     """
 
     def __init__(self, openmp=None):
@@ -993,15 +1120,16 @@ int main( int argc, const char* argv[] )
 }
         """
         default_openmp = GCC_compiler.try_compile_tmp(
-                src_code=code,
-                tmp_prefix='test_omp_',
-                flags=['-fopenmp'],
-                try_run=False)
+            src_code=code,
+            tmp_prefix='test_omp_',
+            flags=['-fopenmp'],
+            try_run=False)
         return default_openmp
 
     def update_self_openmp(self):
         """
-        Make sure self.openmp is not True if there is no support in gxx
+        Make sure self.openmp is not True if there is no support in gxx.
+
         """
         if self.openmp:
             if OpenMPOp.gxx_support_openmp is None:
@@ -1053,21 +1181,24 @@ def apply_meth(tag):
 
 
 class COp(Op):
-    """ Class to allow an op to have an external C implementation.
+    """
+    Class to allow an op to have an external C implementation.
 
     An op can use this class by inheriting from it and calling its
     __init__() method, providing it with a path to an external file containing
     the C implementation and the name of the function, in that file, to call
     to perform the computations for the op.
+
     """
+
     section_re = re.compile(r'^#section ([a-zA-Z0-9_]+)$', re.MULTILINE)
     backward_re = re.compile(r'^THEANO_(APPLY|SUPPORT)_CODE_SECTION$', re.MULTILINE)
     # This is the set of allowed markers
     SECTIONS = set([
-            'init_code', 'init_code_apply', 'init_code_struct',
-            'support_code', 'support_code_apply', 'support_code_struct',
-            'cleanup_code_struct',
-            'code', 'code_cleanup'])
+        'init_code', 'init_code_apply', 'init_code_struct',
+        'support_code', 'support_code_apply', 'support_code_struct',
+        'cleanup_code_struct',
+        'code', 'code_cleanup'])
 
     @classmethod
     def get_path(cls, f):
@@ -1075,6 +1206,7 @@ class COp(Op):
         Convert a path relative to the location of the class file into
         an aboslute path. Paths that are already absolute are passed
         through unchanged.
+
         """
         if not os.path.isabs(f):
             class_file = inspect.getfile(cls)
@@ -1086,6 +1218,7 @@ class COp(Op):
         """
         Sections are loaded from files in order with sections in later
         files overriding sections in previous files.
+
         """
         if not isinstance(func_files, list):
             func_files = [func_files]
@@ -1140,9 +1273,9 @@ class COp(Op):
                 n = 1
                 while n < len(split):
                     if split[n] == 'APPLY':
-                        self.code_sections['support_code_apply'] = split[n+1]
+                        self.code_sections['support_code_apply'] = split[n + 1]
                     elif split[n] == 'SUPPORT':
-                        self.code_sections['support_code'] = split[n+1]
+                        self.code_sections['support_code'] = split[n + 1]
                     n += 2
                 continue
 
@@ -1163,7 +1296,7 @@ class COp(Op):
                                          (self.func_files[i], split[n]))
                     if split[n] not in self.code_sections:
                         self.code_sections[split[n]] = ""
-                    self.code_sections[split[n]] += split[n+1]
+                    self.code_sections[split[n]] += split[n + 1]
                     n += 2
 
             else:
@@ -1178,6 +1311,7 @@ class COp(Op):
 
         The names must be strings that are not a C keyword and the
         values must be strings of literal C representations.
+
         """
         return []
 
@@ -1266,12 +1400,12 @@ class COp(Op):
     def get_sub_macros(self, sub):
         define_macros = []
         undef_macros = []
-        define_macros.append("#define FAIL %s" %
-                            (self._lquote_macro(sub['fail']),))
+        define_macros.append("#define FAIL %s" % (
+                             self._lquote_macro(sub['fail']),))
         undef_macros.append("#undef FAIL")
         if 'context' in sub:
             define_macros.append("#define CONTEXT %s" % (sub['context'],))
-            undef_macos.append("#undef CONTEXT")
+            undef_macros.append("#undef CONTEXT")
 
         return os.linesep.join(define_macros), os.linesep.join(undef_macros)
 
@@ -1304,25 +1438,24 @@ class COp(Op):
     def c_code(self, node, name, inp, out, sub):
         if self.func_name is not None:
             assert 'code' not in self.code_sections
-            func_name = self.func_name
-            func_args = self.format_c_function_args(inp, out)
-            fail = sub['fail']
 
             define_macros, undef_macros = self.get_c_macros(node, name,
                                                             check_input=False)
 
             # Generate the C code
             return """
-%(define_macros)s
-{
-  if (%(func_name)s(%(func_args)s) != 0) {
-    %(fail)s
-  }
-}
-%(undef_macros)s
-""" % dict(func_name=self.func_name, fail=sub['fail'],
-           func_args=self.format_c_function_args(inp, out),
-           define_macros=define_macros, undef_macros=undef_macros)
+                %(define_macros)s
+                {
+                  if (%(func_name)s(%(func_args)s) != 0) {
+                    %(fail)s
+                  }
+                }
+                %(undef_macros)s
+                """ % dict(func_name=self.func_name,
+                           fail=sub['fail'],
+                           func_args=self.format_c_function_args(inp, out),
+                           define_macros=define_macros,
+                           undef_macros=undef_macros)
         else:
             if 'code' in self.code_sections:
                 op_code = self.code_sections['code']
@@ -1344,7 +1477,7 @@ class COp(Op):
 
             def_macros, undef_macros = self.get_c_macros(node, name)
             def_sub, undef_sub = self.get_sub_macros(sub)
-            def_io, undef_io = self.get_io_macros(inp, out)
+            def_io, undef_io = self.get_io_macros(inputs, outputs)
 
             return os.linesep.join([def_macros, def_sub, def_io,
                                     op_code,

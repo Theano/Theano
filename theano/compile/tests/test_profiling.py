@@ -4,11 +4,10 @@ Test of memory profiling
 """
 import unittest
 
-import StringIO
-
 import numpy
 
 import theano
+from six.moves import StringIO
 import theano.tensor as T
 from theano.ifelse import ifelse
 
@@ -47,7 +46,7 @@ class Test_profiling(unittest.TestCase):
             inp = [numpy.arange(1024, dtype='float32') + 1 for i in range(len(x))]
             output = f(*inp)
 
-            buf = StringIO.StringIO()
+            buf = StringIO()
             f.profile.summary(buf)
 
             # regression testing for future algo speed up

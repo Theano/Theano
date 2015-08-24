@@ -1,16 +1,19 @@
-"""Ops and optimizations: sigmoid, softplus
+"""
+Ops and optimizations: sigmoid, softplus.
 
-These functions implement special cases of exp and log to improve numerical stability.
+These functions implement special cases of exp and log to improve numerical
+stability.
+
 """
 from __future__ import print_function
 
 import warnings
-from itertools import imap
 
 import numpy
 
 import theano
 from theano import config, gof, printing, scalar
+from theano.compat import imap
 from theano.configparser import AddConfigVar, BoolParam
 from theano.printing import pprint
 from theano.tensor import basic as tensor
@@ -25,6 +28,7 @@ from theano.tensor import elemwise, opt, NotScalarConstantError
 class ScalarSigmoid(scalar.UnaryScalarOp):
     """
     This is just speed opt. Not for stability.
+
     """
     @staticmethod
     def st_impl(x):
@@ -91,7 +95,7 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
         x, = inp
         z, = out
         if (not theano.config.lib.amdlibm or
-            node.inputs[0].dtype != node.outputs[0].dtype):
+                node.inputs[0].dtype != node.outputs[0].dtype):
             raise theano.gof.utils.MethodNotDefined()
         dtype = node.inputs[0].dtype
         if dtype == 'float32' and self.amd_float32 is not None:
@@ -126,11 +130,11 @@ class ScalarSigmoid(scalar.UnaryScalarOp):
     @staticmethod
     def gen_graph():
         """
-        This method was used to generate the graph: sigmoid_prec.png in the doc
+        This method was used to generate the graph: sigmoid_prec.png in the doc.
+
         """
-        import matplotlib
         data = numpy.arange(-15, 15, .1)
-        val = 1/(1+numpy.exp(-data))
+        val = 1 / (1 + numpy.exp(-data))
 
         def hard_sigmoid(x):
             return theano.tensor.nnet.hard_sigmoid(x)
@@ -163,10 +167,10 @@ scalar_sigmoid = ScalarSigmoid(scalar.upgrade_to_float, name='scalar_sigmoid')
 sigmoid = elemwise.Elemwise(scalar_sigmoid, name='sigmoid')
 
 sigmoid_inplace = elemwise.Elemwise(
-        ScalarSigmoid(scalar.transfer_type(0)),
-        inplace_pattern={0: 0},
-        name='sigmoid_inplace',
-        )
+    ScalarSigmoid(scalar.transfer_type(0)),
+    inplace_pattern={0: 0},
+    name='sigmoid_inplace',
+)
 
 pprint.assign(sigmoid, printing.FunctionPrinter('sigmoid'))
 
@@ -174,6 +178,7 @@ pprint.assign(sigmoid, printing.FunctionPrinter('sigmoid'))
 class UltraFastScalarSigmoid(scalar.UnaryScalarOp):
     """
     This is just speed opt. Not for stability.
+
     """
     @staticmethod
     def st_impl(x):
@@ -239,14 +244,14 @@ pprint.assign(ultra_fast_sigmoid,
               printing.FunctionPrinter('ultra_fast_sigmoid'))
 
 
-#@opt.register_uncanonicalize
+# @opt.register_uncanonicalize
 @gof.local_optimizer([sigmoid])
 def local_ultra_fast_sigmoid(node):
     """
     When enabled, change all sigmoid to ultra_fast_sigmoid.
 
     For example do mode.including('local_ultra_fast_sigmoid')
-    or use the Theano flag optimizer_including=local_ultra_fast_sigmoid
+    or use the Theano flag optimizer_including=local_ultra_fast_sigmoid.
 
     This speeds up the sigmoid op by using an approximation.
 
@@ -270,11 +275,12 @@ theano.compile.optdb['uncanonicalize'].register("local_ultra_fast_sigmoid",
 
 
 def hard_sigmoid(x):
-    """An approximation of sigmoid.
+    """
+    An approximation of sigmoid.
 
     More approximate and faster than ultra_fast_sigmoid.
 
-    Approx in 3 parts: 0, scaled linear, 1
+    Approx in 3 parts: 0, scaled linear, 1.
 
     Removing the slope and shift does not make it faster.
 
@@ -289,7 +295,7 @@ def hard_sigmoid(x):
     return x
 
 
-#@opt.register_uncanonicalize
+# @opt.register_uncanonicalize
 @gof.local_optimizer([sigmoid])
 def local_hard_sigmoid(node):
     if (isinstance(node.op, tensor.Elemwise) and
@@ -376,7 +382,13 @@ logsigm_to_softplus = gof.PatternSub(
 
 
 def _is_1(expr):
-    """rtype bool. True iff expr is a constant close to 1
+    """
+
+    Returns
+    -------
+    bool
+        True iff expr is a constant close to 1.
+
     """
     try:
         v = opt.get_scalar_constant_value(expr)
@@ -406,12 +418,17 @@ opt.register_stabilize(log1pexp_to_softplus, name='log1pexp_to_softplus')
 
 def is_1pexp(t):
     """
-    If 't' is of the form (1+exp(x)), return (False, x).
-    Else return None.
+
+    Returns
+    -------
+    object
+        If 't' is of the form (1+exp(x)), return (False, x).
+        Else return None.
+
     """
     if t.owner and t.owner.op == tensor.add:
         scalars, scalar_inputs, nonconsts = \
-                opt.scalarconsts_rest(t.owner.inputs)
+            opt.scalarconsts_rest(t.owner.inputs)
         # scalar_inputs are potentially dimshuffled and fill'd scalars
         if len(nonconsts) == 1:
             maybe_exp = nonconsts[0]
@@ -438,22 +455,30 @@ def is_1pexp(t):
     return None
 
 
-AddConfigVar('warn.identify_1pexp_bug',
-        'Warn if Theano versions prior to 7987b51 (2011-12-18) could have '
-        'yielded a wrong result due to a bug in the is_1pexp function',
-        BoolParam(theano.configdefaults.warn_default('0.4.1')),
-        in_c_key=False)
+AddConfigVar(
+    'warn.identify_1pexp_bug',
+    'Warn if Theano versions prior to 7987b51 (2011-12-18) could have '
+    'yielded a wrong result due to a bug in the is_1pexp function',
+    BoolParam(theano.configdefaults.warn_default('0.4.1')),
+    in_c_key=False)
 
 
 def is_exp(var):
     """
     Match a variable with either of the `exp(x)` or `-exp(x)` patterns.
 
-    :param var: The Variable to analyze.
+    Parameters
+    ----------
+    var
+        The Variable to analyze.
 
-    :return: A pair (b, x) with `b` a boolean set to True if `var` is of the
-    form `-exp(x)` and False if `var` is of the form `exp(x)`. If `var` cannot
-    be cast into either form, then return `None`.
+    Returns
+    -------
+    tuple
+        A pair (b, x) with `b` a boolean set to True if `var` is of the
+        form `-exp(x)` and False if `var` is of the form `exp(x)`. If `var`
+        cannot be cast into either form, then return `None`.
+
     """
     neg = False
     neg_info = is_neg(var)
@@ -468,10 +493,17 @@ def is_mul(var):
     """
     Match a variable with `x * y * z * ...`.
 
-    :param var: The Variable to analyze.
+    Parameters
+    ----------
+    var
+        The Variable to analyze.
 
-    :return: A list [x, y, z, ...] if `var` is of the form `x * y * z * ...`,
-    or None if `var` cannot be cast into this form.
+    Returns
+    -------
+    object
+        A list [x, y, z, ...] if `var` is of the form `x * y * z * ...`,
+        or None if `var` cannot be cast into this form.
+
     """
     if var.owner and var.owner.op == tensor.mul:
         return var.owner.inputs
@@ -504,9 +536,16 @@ def is_neg(var):
     """
     Match a variable with the `-x` pattern.
 
-    :param var: The Variable to analyze.
+    Parameters
+    ----------
+    var
+        The Variable to analyze.
 
-    :return: `x` if `var` is of the form `-x`, or None otherwise.
+    Returns
+    -------
+    object
+        `x` if `var` is of the form `-x`, or None otherwise.
+
     """
     apply = var.owner
     if not apply:
@@ -538,8 +577,10 @@ def is_neg(var):
 @opt.register_stabilize
 @gof.local_optimizer([tensor.true_div])
 def local_exp_over_1_plus_exp(node):
-    """exp(x)/(1+exp(x)) -> sigm(x)
+    """
+    exp(x)/(1+exp(x)) -> sigm(x)
     c/(1+exp(x)) -> c*sigm(-x)
+
     """
     # this optimization should be done for numerical stability
     # so we don't care to check client counts
@@ -585,20 +626,28 @@ def parse_mul_tree(root):
     """
     Parse a tree of multiplications starting at the given root.
 
-    :param root: The variable at the root of the tree.
+    Parameters
+    ----------
+    root
+        The variable at the root of the tree.
 
-    :return: A tree where each non-leaf node corresponds to a multiplication
-    in the computation of `root`, represented by the list of its inputs. Each
-    input is a pair [n, x] with `n` a boolean value indicating whether
-    sub-tree `x` should be negated.
+    Returns
+    -------
+    object
+        A tree where each non-leaf node corresponds to a multiplication
+        in the computation of `root`, represented by the list of its inputs.
+        Each input is a pair [n, x] with `n` a boolean value indicating whether
+        sub-tree `x` should be negated.
 
-    Examples:
+    Examples
+    --------
         x * y               -> [False, [[False, x], [False, y]]]
         -(x * y)            -> [True, [[False, x], [False, y]]]
         -x * y              -> [False, [[True, x], [False, y]]]
         -x                  -> [True, x]
         (x * y) * -z        -> [False, [[False, [[False, x], [False, y]]],
                                         [True, z]]]
+
     """
     # Is it a multiplication?
     mul_info = is_mul(root)
@@ -614,34 +663,41 @@ def parse_mul_tree(root):
             return [not neg, sub_tree]
     else:
         # Recurse into inputs.
-        return [False, map(parse_mul_tree, mul_info)]
+        return [False, list(map(parse_mul_tree, mul_info))]
 
 
 def replace_leaf(arg, leaves, new_leaves, op, neg):
     """
-    Attempts to replace a leaf of a multiplication tree.
+    Attempt to replace a leaf of a multiplication tree.
 
     We search for a leaf in `leaves` whose argument is `arg`, and if we find
     one, we remove it from `leaves` and add to `new_leaves` a leaf with
     argument `arg` and variable `op(arg)`.
 
-    :param arg: The argument of the leaf we are looking for.
+    Parameters
+    ----------
+    arg
+        The argument of the leaf we are looking for.
+    leaves
+        List of leaves to look into. Each leaf should be a pair
+        (x, l) with `x` the argument of the Op found in the leaf, and `l` the
+        actual leaf as found in a multiplication tree output by `parse_mul_tree`
+        (i.e. a pair [boolean, variable]).
+    new_leaves
+        If a replacement occurred, then the leaf is removed from `leaves`
+        and added to the list `new_leaves` (after being modified by `op`).
+    op
+        A function that, when applied to `arg`, returns the Variable
+        we want to replace the original leaf variable with.
+    neg : bool
+        If True, then the boolean value associated to the leaf should
+        be swapped. If False, then this value should remain unchanged.
 
-    :param leaves: List of leaves to look into. Each leaf should be a pair
-    (x, l) with `x` the argument of the Op found in the leaf, and `l` the
-    actual leaf as found in a multiplication tree output by `parse_mul_tree`
-    (i.e. a pair [boolean, variable]).
+    Returns
+    -------
+    bool
+        True if a replacement occurred, or False otherwise.
 
-    :param new_leaves: If a replacement occurred, then the leaf is removed from
-    `leaves` and added to the list `new_leaves` (after being modified by `op`).
-
-    :param op: A function that, when applied to `arg`, returns the Variable
-    we want to replace the original leaf variable with.
-
-    :param neg: If True, then the boolean value associated to the leaf should
-    be swapped. If False, then this value should remain unchanged.
-
-    :return: True if a replacement occurred, or False otherwise.
     """
     for idx, x in enumerate(leaves):
         if x[0] == arg:
@@ -657,12 +713,19 @@ def simplify_mul(tree):
     """
     Simplify a multiplication tree.
 
-    :param tree: A multiplication tree (as output by `parse_mul_tree`).
+    Parameters
+    ----------
+    tree
+        A multiplication tree (as output by `parse_mul_tree`).
 
-    :return: A multiplication tree computing the same output as `tree` but
-    without useless multiplications by 1 nor -1 (identified by leaves of the
-    form [False, None] or [True, None] respectively). Useless multiplications
-    (with less than two inputs) are also removed from the tree.
+    Returns
+    -------
+    object
+        A multiplication tree computing the same output as `tree` but without
+        useless multiplications by 1 nor -1 (identified by leaves of the form
+        [False, None] or [True, None] respectively). Useless multiplications
+        (with less than two inputs) are also removed from the tree.
+
     """
     neg, inputs = tree
     if isinstance(inputs, list):
@@ -694,12 +757,18 @@ def compute_mul(tree):
     Compute the Variable that is the output of a multiplication tree.
 
     This is the inverse of the operation performed by `parse_mul_tree`, i.e.
-        compute_mul(parse_mul_tree(tree)) == tree
+    compute_mul(parse_mul_tree(tree)) == tree.
 
-    :param tree: A multiplication tree (as output by `parse_mul_tree`).
+    Parameters
+    ----------
+    tree
+        A multiplication tree (as output by `parse_mul_tree`).
 
-    :return: A Variable that computes the multiplication represented by the
-    tree.
+    Returns
+    -------
+    object
+        A Variable that computes the multiplication represented by the tree.
+
     """
     neg, inputs = tree
     if inputs is None:
@@ -708,7 +777,7 @@ def compute_mul(tree):
             'call `simplify_mul` on the tree first?')
     elif isinstance(inputs, list):
         # Recurse through inputs.
-        rval = tensor.mul(*map(compute_mul, inputs))
+        rval = tensor.mul(*list(map(compute_mul, inputs)))
     else:
         rval = inputs
     if neg:
@@ -727,32 +796,38 @@ def perform_sigm_times_exp(tree, exp_x=None, exp_minus_x=None, sigm_x=None,
     by replacing matching pairs (exp, sigmoid) with the desired optimized
     version.
 
-    :param tree: The sub-tree to operate on.
+    Parameters
+    ----------
+    tree
+        The sub-tree to operate on.
+    exp_x
+        List of arguments x so that `exp(x)` exists somewhere in the whole
+        multiplication tree. Each argument is a pair (x, leaf) with `x` the
+        argument of the exponential, and `leaf` the corresponding leaf in the
+        multiplication tree (of the form [n, exp(x)] -- see `parse_mul_tree`).
+        If None, this argument is initialized to an empty list.
+    exp_minus_x
+        Similar to `exp_x`, but for `exp(-x)`.
+    sigm_x
+        Similar to `exp_x`, but for `sigmoid(x)`.
+    sigm_minus_x
+        Similar to `exp_x`, but for `sigmoid(-x)`.
+    parent
+        Parent of `tree` (None if `tree` is the global root).
+    child_idx
+        Index of `tree` in its parent's inputs (None if `tree` is the global
+        root).
+    full_tree
+        The global multiplication tree (should not be set except by recursive
+        calls to this function). Used for debugging only.
 
-    :exp_x: List of arguments x so that `exp(x)` exists somewhere in the whole
-    multiplication tree. Each argument is a pair (x, leaf) with `x` the
-    argument of the exponential, and `leaf` the corresponding leaf in the
-    multiplication tree (of the form [n, exp(x)] -- see `parse_mul_tree`).
-    If None, this argument is initialized to an empty list.
+    Returns
+    -------
+    bool
+        True if a modification was performed somewhere in the whole multiplication
+        tree, or False otherwise.
 
-    :param exp_minus_x: Similar to `exp_x`, but for `exp(-x)`.
-
-    :param sigm_x: Similar to `exp_x`, but for `sigmoid(x)`.
-
-    :param sigm_minus_x: Similar to `exp_x`, but for `sigmoid(-x)`.
-
-    :param parent: Parent of `tree` (None if `tree` is the global root).
-
-    :param child_idx: Index of `tree` in its parent's inputs (None if `tree` is
-    the global root).
-
-    :param full_tree: The global multiplication tree (should not be set except
-    by recursive calls to this function). Used for debugging only.
-
-    :return: True if a modification was performed somewhere in the whole
-    multiplication tree, or False otherwise.
     """
-
     if exp_x is None:
         exp_x = []
     if exp_minus_x is None:
@@ -777,9 +852,9 @@ def perform_sigm_times_exp(tree, exp_x=None, exp_minus_x=None, sigm_x=None,
         rval = False
         for sub_idx, sub_tree in enumerate(inputs):
             rval |= perform_sigm_times_exp(
-                    tree=sub_tree, parent=tree, child_idx=sub_idx,
-                    exp_x=exp_x, exp_minus_x=exp_minus_x, sigm_x=sigm_x,
-                    sigm_minus_x=sigm_minus_x, full_tree=full_tree)
+                tree=sub_tree, parent=tree, child_idx=sub_idx,
+                exp_x=exp_x, exp_minus_x=exp_minus_x, sigm_x=sigm_x,
+                sigm_minus_x=sigm_minus_x, full_tree=full_tree)
         return rval
     else:
         # Reached a leaf: if it is an exponential or a sigmoid, then we
@@ -836,6 +911,7 @@ def local_sigm_times_exp(node):
     """
     exp(x) * sigm(-x) -> sigm(x)
     exp(-x) * sigm(x) -> sigm(-x)
+
     """
     # Bail early if it is not a multiplication.
     if node.op != tensor.mul:
@@ -859,6 +935,7 @@ def local_sigm_times_exp(node):
 def local_inv_1_plus_exp(node):
     """
     1/(1+exp(x)) -> sigm(-x)
+
     """
     # this optimization should be done for numerical stability
     # so we don't care to check client counts
@@ -866,15 +943,15 @@ def local_inv_1_plus_exp(node):
         inv_arg = node.inputs[0]
         if inv_arg.owner and inv_arg.owner.op == tensor.add:
             scalars, scalar_inputs, nonconsts = \
-                    opt.scalarconsts_rest(inv_arg.owner.inputs)
+                opt.scalarconsts_rest(inv_arg.owner.inputs)
             # scalar_inputs are potentially dimshuffled and fill'd scalars
             if len(nonconsts) == 1:
                 if nonconsts[0].owner and nonconsts[0].owner.op == tensor.exp:
                     if scalars and numpy.allclose(numpy.sum(scalars), 1):
                         return opt._fill_chain(
-                                sigmoid(
-                                    tensor.neg(nonconsts[0].owner.inputs[0])),
-                                scalar_inputs)
+                            sigmoid(
+                                tensor.neg(nonconsts[0].owner.inputs[0])),
+                            scalar_inputs)
 
 # Registration is below, and conditional.
 
@@ -883,6 +960,7 @@ def local_inv_1_plus_exp(node):
 def local_1msigmoid(node):
     """
     1-sigm(x) -> sigm(-x)
+
     """
     if node.op == tensor.sub:
         sub_l, sub_r = node.inputs
@@ -891,7 +969,7 @@ def local_1msigmoid(node):
         if sub_r.owner and sub_r.owner.op == sigmoid:
             try:
                 val_l = opt.get_scalar_constant_value(sub_l)
-            except Exception as e:
+            except Exception:
                 return
             if numpy.allclose(numpy.sum(val_l), 1):
                 return [sigmoid(-sub_r.owner.inputs[0])]
@@ -920,7 +998,6 @@ if 0:
         print(sigm_canonicalize(node))
 
     def sigm_canonicalize(node):
-        add = tensor.add
         mul = tensor.mul
         div = tensor.true_div
 

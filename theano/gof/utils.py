@@ -3,17 +3,22 @@ import linecache
 import traceback
 import sys
 
+import numpy
+from six import iteritems
+
 from theano import config
+from theano.compat import OrderedDict, PY3
 
 
 def simple_extract_stack(f=None, limit=None):
-    """This is traceback.extract_stack from python 2.7 with this
-    change:
+    """
+    This is traceback.extract_stack from python 2.7 with this change:
 
-    - Comment the update of the cache
+    - Comment the update of the cache.
 
     This is because this update cause an call to os.stat to get the
     line content. This cause too much long on cluster.
+
     """
     if f is None:
         try:
@@ -50,14 +55,22 @@ if sys.version_info[:2] > (3, 4):
 
 
 def add_tag_trace(thing, user_line=1):
-    """Add tag.trace to an node or variable.
+    """
+    Add tag.trace to an node or variable.
 
     The argument is returned after being affected (inplace).
-    :param thing: the object where we add .tag.trace
-    :param user_line: The max number of user line to keep.
 
-    :note: we alse use config.traceback.limit for the maximum number
-        of stack level we look.
+    Parameters
+    ----------
+    thing
+        The object where we add .tag.trace.
+    user_line
+        The max number of user line to keep.
+
+    Notes
+    -----
+    We alse use config.traceback.limit for the maximum number of stack level
+    we look.
 
     """
     limit = config.traceback.limit
@@ -72,13 +85,13 @@ def add_tag_trace(thing, user_line=1):
     while tr:
         file_path = tr[-1][0]
         rm = False
-        for p in ["theano/tensor/",
-                  "theano/gof/",
-                  "theano/scalar/basic.py",
-                  "theano/sandbox/",
-                  "theano/scan_module/",
-                  "theano/sparse/",
-                  "theano/typed_list/",
+        for p in ["theano/tensor/", "theano\\tensor\\",
+                  "theano/gof/", "theano\\gof\\",
+                  "theano/scalar/basic.py", "theano\\scalar\\basic.py",
+                  "theano/sandbox/", "theano\\sandbox\\",
+                  "theano/scan_module/", "theano\\scan_module\\",
+                  "theano/sparse/", "theano\\sparse\\",
+                  "theano/typed_list/", "theano\\typed_list\\",
                   ]:
             if p in file_path:
                 tr = tr[:-1]
@@ -90,7 +103,10 @@ def add_tag_trace(thing, user_line=1):
     # The order is from the oldest to the newest
     if len(tr) > user_line:
         tr = tr[-user_line:]
-    thing.tag.trace = tr
+    if tr:
+        thing.tag.trace = [tr]
+    else:
+        thing.tag.trace = tr
     return thing
 
 
@@ -110,6 +126,7 @@ class MethodNotDefined(Exception):
 
     When the user sees such an error, it is because an important interface
     function has been left out of an implementation class.
+
     """
 
 
@@ -142,7 +159,7 @@ class scratchpad:
 
     def info(self):
         print("<theano.gof.utils.scratchpad instance at %i>" % id(self))
-        for k, v in self.__dict__.items():
+        for k, v in iteritems(self.__dict__):
             print("  %s: %s" % (k, v))
 
 
@@ -152,8 +169,10 @@ class D:
 
 
 def memoize(f):
-    """Cache the return value for each tuple of arguments
-    (which must be hashable) """
+    """
+    Cache the return value for each tuple of arguments (which must be hashable).
+
+    """
     cache = {}
 
     def rval(*args, **kwargs):
@@ -170,15 +189,16 @@ def memoize(f):
 
 
 def deprecated(filename, msg=''):
-    """Decorator which will print a warning message on the first call.
+    """
+    Decorator which will print a warning message on the first call.
 
-    Use it like this::
+    Use it like this:
 
       @deprecated('myfile', 'do something different...')
       def fn_name(...)
           ...
 
-    And it will print::
+    And it will print:
 
       WARNING myfile.fn_name deprecated. do something different...
 
@@ -202,6 +222,7 @@ def uniq(seq):
     Do not use set, this must always return the same value at the same index.
     If we just exchange other values, but keep the same pattern of duplication,
     we must keep the same order.
+
     """
     # TODO: consider building a set out of seq so that the if condition
     # is constant time -JB
@@ -210,7 +231,8 @@ def uniq(seq):
 
 def difference(seq1, seq2):
     """
-    Returns all elements in seq1 which are not in seq2: i.e ``seq1\seq2``
+    Returns all elements in seq1 which are not in seq2: i.e ``seq1\seq2``.
+
     """
     try:
         # try to use O(const * len(seq1)) algo
@@ -245,18 +267,19 @@ def toposort(prereqs_d):
 
     prereqs_d[x] contains all the elements that must come before x
     in the ordering.
+
     """
 
 #     all1 = set(prereqs_d.keys())
 #     all2 = set()
-#     for x, y in prereqs_d.items():
+#     for x, y in iteritems(prereqs_d):
 #         all2.update(y)
 #     print all1.difference(all2)
 
     seq = []
     done = set()
     postreqs_d = {}
-    for x, prereqs in prereqs_d.items():
+    for x, prereqs in iteritems(prereqs_d):
         for prereq in prereqs:
             postreqs_d.setdefault(prereq, set()).add(x)
     next = set([k for k in prereqs_d if not prereqs_d[k]])
@@ -284,6 +307,11 @@ class Keyword:
         self.nonzero = nonzero
 
     def __nonzero__(self):
+        # Python 2.x
+        return self.__bool__()
+
+    def __bool__(self):
+        # Python 3.x
         return self.nonzero
 
     def __str__(self):
@@ -306,7 +334,7 @@ FALL_THROUGH = Keyword("FALL_THROUGH")
 
 def comm_guard(type1, type2):
     def wrap(f):
-        old_f = f.func_globals[f.__name__]
+        old_f = f.__globals__[f.__name__]
 
         def new_f(arg1, arg2, *rest):
             if ((type1 is ANY_TYPE or isinstance(arg1, type1)) and
@@ -345,7 +373,7 @@ def comm_guard(type1, type2):
 
 def type_guard(type1):
     def wrap(f):
-        old_f = f.func_globals[f.__name__]
+        old_f = f.__globals__[f.__name__]
 
         def new_f(arg1, *rest):
             if (type1 is ANY_TYPE or isinstance(arg1, type1)):
@@ -378,6 +406,7 @@ def type_guard(type1):
 def flatten(a):
     """
     Recursively flatten tuple, list and set in a list.
+
     """
     if isinstance(a, (tuple, list, set)):
         l = []
@@ -400,10 +429,13 @@ def hist(coll):
 
 
 def give_variables_names(variables):
-    """ Gives unique names to an iterable of variables. Modifies input.
+    """
+    Gives unique names to an iterable of variables. Modifies input.
 
-    This function is idempotent."""
-    names = map(lambda var: var.name, variables)
+    This function is idempotent.
+
+    """
+    names = [var.name for var in variables]
     h = hist(names)
 
     def bad_var(var):
@@ -412,19 +444,87 @@ def give_variables_names(variables):
     for i, var in enumerate(filter(bad_var, variables)):
         var.name = (var.name or "") + "_%d" % i
 
-    if not unique(map(str, variables)):
+    if not unique([str(v) for v in variables]):
         raise ValueError("Not all variables have unique names. Maybe you've "
                          "named some of the variables identically")
     return variables
 
 
 def remove(predicate, coll):
-    """ Return those items of collection for which predicate(item) is true.
+    """
+    Return those items of collection for which predicate(item) is true.
 
+    Examples
+    --------
     >>> from itertoolz import remove
     >>> def even(x):
     ...     return x % 2 == 0
     >>> remove(even, [1, 2, 3, 4])
     [1, 3]
+
     """
-    return filter(lambda x: not predicate(x), coll)
+    return [x for x in coll if not predicate(x)]
+
+
+if PY3:
+    import hashlib
+
+    def hash_from_code(msg):
+        # hashlib.md5() requires an object that supports buffer interface,
+        # but Python 3 (unicode) strings don't.
+        if isinstance(msg, str):
+            msg = msg.encode()
+        # Python 3 does not like module names that start with
+        # a digit.
+        return 'm' + hashlib.md5(msg).hexdigest()
+
+else:
+    import hashlib
+
+    def hash_from_code(msg):
+        try:
+            return hashlib.md5(msg).hexdigest()
+        except TypeError:
+            assert isinstance(msg, numpy.ndarray)
+            return hashlib.md5(numpy.getbuffer(msg)).hexdigest()
+
+
+def hash_from_file(file_path):
+    """
+    Return the MD5 hash of a file.
+
+    """
+    return hash_from_code(open(file_path, 'rb').read())
+
+
+def hash_from_dict(d):
+    """
+    Work around the fact that dict are not hashable in python.
+
+    This request that all object have a sorted order that depend only
+    on the key of the object. We support only integer/float/string keys.
+
+    Also, we transform values that are list into tuple as list are not
+    hashable.
+
+    Notes
+    -----
+    Special case for OrderedDict, it use the order of the dict,
+    so the key don't need to be sortable.
+
+    """
+    if isinstance(d, OrderedDict):
+        items = list(iteritems(d))
+    else:
+        items = list(d.items())
+        items.sort()
+    first_part = [k for k, v in items]
+    second_part = []
+    for k, v in items:
+        assert isinstance(k, (str, int, float))
+        if isinstance(v, (tuple, list)):
+            second_part += [tuple(v)]
+        else:
+            second_part += [v]
+    tuple_items = tuple(first_part + second_part + [d.__class__])
+    return hash(tuple_items)

@@ -682,15 +682,11 @@ arithmetic operators:
 
    class BinaryDoubleOp(gof.Op):
 
+       __props__ = ("name", "fn")
+
        def __init__(self, name, fn):
            self.name = name
            self.fn = fn
-
-       def __eq__(self, other):
-           return type(self) == type(other) and (self.name == other.name) and (self.fn == other.fn)
-
-       def __hash__(self):
-           return hash(type(self)) ^ hash(self.name) ^ hash(self.fn)
 
        def make_node(self, x, y):
            if isinstance(x, (int, float)):

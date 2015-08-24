@@ -1,4 +1,6 @@
-"""ProfileStats object for runtime and memory profiling.
+"""
+ProfileStats object for runtime and memory profiling.
+
 """
 from __future__ import print_function
 #
@@ -20,16 +22,17 @@ import copy
 import os
 import sys
 import time
-from theano.compat import defaultdict
+from collections import defaultdict
 
 import numpy
 
 import theano
+from six import iteritems
 from theano.gof import graph
 from theano.configparser import AddConfigVar, BoolParam, IntParam, StrParam
 
 
-import_time = time.time()
+theano_imported_time = time.time()
 config = theano.config
 
 _atexit_print_list = []
@@ -75,7 +78,9 @@ AddConfigVar('profiling.destination',
 
 
 def _atexit_print_fn():
-    """Print ProfileStat objects in _atexit_print_list to _atexit_print_file
+    """
+    Print ProfileStat objects in _atexit_print_list to _atexit_print_file.
+
     """
     to_sum = []
 
@@ -112,7 +117,7 @@ def _atexit_print_fn():
             for attr in ["apply_time", "apply_callcount",
                          "apply_cimpl", "variable_shape", "variable_strides"]:
                 cum_attr = getattr(cum, attr)
-                for key, val in getattr(ps, attr).iteritems():
+                for key, val in iteritems(getattr(ps, attr)):
                     assert key not in cum_attr
                     cum_attr[key] = val
 
@@ -134,6 +139,16 @@ class ProfileStats(object):
     """
     Object to store runtime and memory profiling information for all of
     Theano's operations: compilation, optimization, execution.
+
+    Parameters
+    ----------
+    atexit_print : bool
+        True means that this object will be printed to stderr (using .summary())
+        at the end of the program.
+    **kwargs : misc initializers
+        These should (but need not) match the names of the class vars declared
+        in this class.
+
     """
 
     #
@@ -211,12 +226,6 @@ class ProfileStats(object):
     # param is called flag_time_thunks because most other attributes with time
     # in the name are times *of* something, rather than configuration flags.
     def __init__(self, atexit_print=True, flag_time_thunks=None, **kwargs):
-        """
-        atexit_print - bool. True means that this object will be printed to
-                       stderr (using .summary()) at the end of the program.
-        **kwargs - misc initializers. These should (but need not) match the
-                   names of the class vars declared in this class.
-        """
         if (hasattr(theano, 'sandbox') and
                 hasattr(theano.sandbox, 'cuda') and
                 theano.sandbox.cuda.cuda_enabled):
@@ -249,37 +258,49 @@ class ProfileStats(object):
                 _atexit_registered = True
 
     def class_time(self):
-        """dict op -> total time on thunks"""
+        """
+        dict op -> total time on thunks
+
+        """
         # timing is stored by node, we compute timing by class on demand
         rval = {}
-        for node, t in self.apply_time.items():
+        for node, t in iteritems(self.apply_time):
             typ = type(node.op)
             rval.setdefault(typ, 0)
             rval[typ] += t
         return rval
 
     def class_callcount(self):
-        """dict op -> total number of thunk calls"""
+        """
+        dict op -> total number of thunk calls
+
+        """
         # timing is stored by node, we compute timing by class on demand
         rval = {}
-        for node, count in self.apply_callcount.items():
+        for node, count in iteritems(self.apply_callcount):
             typ = type(node.op)
             rval.setdefault(typ, 0)
             rval[typ] += count
         return rval
 
     def class_nodes(self):
-        """dict op -> total number of nodes"""
+        """
+        dict op -> total number of nodes
+
+        """
         # timing is stored by node, we compute timing by class on demand
         rval = {}
-        for node, count in self.apply_callcount.items():
+        for node, count in iteritems(self.apply_callcount):
             typ = type(node.op)
             rval.setdefault(typ, 0)
             rval[typ] += 1
         return rval
 
     def class_impl(self):
-        """dict op -> total number of nodes"""
+        """
+        dict op -> total number of nodes
+
+        """
         # timing is stored by node, we compute timing by class on demand
         rval = {}
         for node in self.apply_callcount:
@@ -294,53 +315,71 @@ class ProfileStats(object):
         return rval
 
     def op_time(self):
-        """dict op -> total time on thunks"""
+        """
+        dict op -> total time on thunks
+
+        """
         # timing is stored by node, we compute timing by Op on demand
         rval = {}
-        for node, t in self.apply_time.items():
+        for node, t in iteritems(self.apply_time):
             rval.setdefault(node.op, 0)
             rval[node.op] += t
         return rval
 
     def fill_node_total_time(self, node, total_times):
-        """node -> fill total time icluding its parents (returns nothing)"""
+        """
+        node -> fill total time icluding its parents (returns nothing)
+
+        """
         # timing is stored by node, we compute total time on demand
         total = self.apply_time[node]
         for parent in node.get_parents():
-            if parent.owner in self.apply_time.keys():
-                if parent.owner not in total_times.keys():
+            if parent.owner in self.apply_time:
+                if parent.owner not in total_times:
                     self.fill_node_total_time(parent.owner, total_times)
                 total += total_times[parent.owner]
         total_times[node] = total
 
     def compute_total_times(self):
-        """dict op -> total time icluding the time for parents"""
+        """
+        dict op -> total time icluding the time for parents
+
+        """
         rval = {}
-        for node in self.apply_time.keys():
+        for node in self.apply_time:
             if node not in rval:
                 self.fill_node_total_time(node, rval)
         return rval
 
     def op_callcount(self):
-        """dict op -> total number of thunk calls"""
+        """
+        dict op -> total number of thunk calls
+
+        """
         # timing is stored by node, we compute timing by Op on demand
         rval = {}
-        for node, count in self.apply_callcount.items():
+        for node, count in iteritems(self.apply_callcount):
             rval.setdefault(node.op, 0)
             rval[node.op] += count
         return rval
 
     def op_nodes(self):
-        """dict op -> total number of nodes"""
+        """
+        dict op -> total number of nodes
+
+        """
         # timing is stored by node, we compute timing by Op on demand
         rval = {}
-        for node, count in self.apply_callcount.items():
+        for node, count in iteritems(self.apply_callcount):
             rval.setdefault(node.op, 0)
             rval[node.op] += 1
         return rval
 
     def op_impl(self):
-        """dict op -> 'C' or 'Py' depending how the op is implemented"""
+        """
+        dict op -> 'C' or 'Py' depending how the op is implemented
+
+        """
         # timing is stored by node, we compute timing by Op on demand
         rval = {}
         for node in self.apply_callcount:
@@ -371,7 +410,7 @@ class ProfileStats(object):
                    class_impl.get(clas, '  '),
                    class_call.get(clas, 0),
                    class_apply.get(clas, 0))
-                  for clas, t in class_time.items()]
+                  for clas, t in iteritems(class_time)]
         otimes.sort(key=lambda t: (t[1], t[4], t[5]), reverse=True)
         tot = 0
         print('Class', file=file)
@@ -453,7 +492,7 @@ class ProfileStats(object):
                    op_impl.get(op, '  '),
                    op_call.get(op, 0),
                    op_apply.get(op, 0))
-                  for op, t in op_time.items()]
+                  for op, t in iteritems(op_time)]
         otimes.sort(key=lambda t: (t[1], t[4], t[5]), reverse=True)
         tot = 0
         print('Ops', file=file)
@@ -563,7 +602,7 @@ class ProfileStats(object):
 
         topos = {}  # Only do the topo once per fct.
         atimes = []
-        for a, t in self.apply_time.items():
+        for a, t in iteritems(self.apply_time):
             if a.fgraph not in topos:
                 topo = a.fgraph.toposort()
                 topos[a.fgraph] = topo
@@ -651,11 +690,14 @@ class ProfileStats(object):
         print('', file=file)
 
         # The validation time is a subset of optimizer_time
-        assert self.validate_time < self.optimizer_time
+        if self.optimizer_time > 0:
+            assert self.validate_time < self.optimizer_time
 
     def summary_globals(self, file):
         print('Time in all call to theano.grad() %es' %
               theano.gradient.grad_time, file=file)
+        total_time = time.time() - theano_imported_time
+        print('Time since theano import %.3fs' % (total_time))
 
     def summary_memory(self, file, N=None):
         fct_memory = {}  # fgraph->dict(node->[outputs size])
@@ -663,14 +705,14 @@ class ProfileStats(object):
         var_mem = {}  # varible->size in bytes; don't include input variables
         node_mem = {}  # node->total outputs size (only dense outputs)
 
-        for node in self.apply_callcount.keys():
+        for node in self.apply_callcount:
             fct_memory.setdefault(node.fgraph, {})
             fct_memory[node.fgraph].setdefault(node, [])
             fct_shapes.setdefault(node.fgraph, {})
             fct_shapes[node.fgraph].setdefault(node, [])
             sum_dense = 0
             for out in node.outputs:
-                if out in self.variable_shape.keys():
+                if out in self.variable_shape:
                     sh = self.variable_shape[out]
                     if hasattr(out.type, 'get_size'):
                         v = out.type.get_size(sh)
@@ -708,21 +750,23 @@ class ProfileStats(object):
 
         def count_running_memory(order, fgraph, nodes_mem):
             """
-            Calculate memory with specific node order
+            Calculate memory with specific node order.
+
             Return a list including the following values
             1.  node_memory_size
                 Sum of the size of all variables that actually allocate
-                memory (excluding views, and inplace);
-            2. running_memory_size
-                The memory allocated after the current apply node
-            3. running_max_memory_size
-                The maximum of running_memory_size during the function
+                memory (excluding views, and inplace).
+            2.  running_memory_size
+                The memory allocated after the current apply node.
+            3.  running_max_memory_size
+                The maximum of running_memory_size during the function.
             4.  node_memory_saved_by_view
                 The sum of memory saved by returning view instead of new
-                allocation
+                allocation.
             5.  node_memory_saved_by_inplace
                 The sum of memory saved by reusing the input instead of
-                new allocation
+                new allocation.
+
             """
             from theano.sandbox.cuda import CudaNdarrayType
             # Initial Mem info values [CPU, GPU]
@@ -871,10 +915,14 @@ class ProfileStats(object):
 
             def min_memory_generator(executable_nodes, viewed_by, view_of):
                 """
-                Generate all valid node order from node_list
-                and compute its memory peak.
+                Generate all valid node order from node_list and compute its
+                memory peak.
 
-                :param executable_nodes: Set of executable nodes
+                Parameters
+                ----------
+                executable_nodes
+                    Set of executable nodes.
+
                 """
                 global mem_count, mem_bound, max_mem_count
 
@@ -1004,11 +1052,11 @@ class ProfileStats(object):
                     for var in node.outputs:
                         compute_map[var][0] = 0
 
-                    for k_remove, v_remove in viewedby_remove.iteritems():
+                    for k_remove, v_remove in iteritems(viewedby_remove):
                         for i in v_remove:
                             viewed_by[k_remove].append(i)
 
-                    for k_add, v_add in viewedby_add.iteritems():
+                    for k_add, v_add in iteritems(viewedby_add):
                         for i in v_add:
                             viewed_by[k_add].remove(i)
 
@@ -1030,10 +1078,10 @@ class ProfileStats(object):
 
             return mem_bound
 
-        for fgraph, nodes_mem in fct_memory.iteritems():
+        for fgraph, nodes_mem in iteritems(fct_memory):
             # Sum of the size of all variables in bytes
-            sum_size = sum([sum([v for v in val if not isinstance(v, str)])
-                            for key, val in nodes_mem.iteritems()])
+            sum_size = sum(sum(v for v in val if not isinstance(v, str))
+                           for key, val in iteritems(nodes_mem))
 
             order = fgraph.toposort()
             # A list of intermediate variable that are not need
@@ -1180,13 +1228,13 @@ class ProfileStats(object):
               " <created/inplace/view>"
               " <Apply node>", file=file)
         print("", file=file)
-        items = node_mem.items()
+        items = list(node_mem.items())
         items.sort(key=lambda a: a[1], reverse=True)
         for idx, (node, node_outputs_size) in enumerate(items[:N]):
             code = ['c'] * len(node.outputs)
-            for out, inp in getattr(node.op, 'destroy_map', {}).iteritems():
+            for out, inp in iteritems(getattr(node.op, 'destroy_map', {})):
                 code[out] = "i"
-            for out, inp in getattr(node.op, 'view_map', {}).iteritems():
+            for out, inp in iteritems(getattr(node.op, 'view_map', {})):
                 code[out] = "v"
             shapes = str(fct_shapes[node.fgraph][node])
 
@@ -1252,9 +1300,13 @@ if False:  # old code still to be ported from ProfileMode
         """
         Print a readable summary of the stats.
 
-        param: n_apply_to_print the number of apply to print. Default 15.
+        Parameters
+        ----------
+        n_apply_to_print
+            The number of apply to print. Default 15.
+        n_ops_to_print
+            The number of ops to print. Default 20.
 
-        param: n_ops_to_print the number of ops to print. Default 20.
         """
         local_time = sum(self.apply_time.values())
 
@@ -1272,7 +1324,7 @@ if False:  # old code still to be ported from ProfileMode
         sop_op = {}
         # map each op class to Bool. True iff all applies were done in c.
         sop_c = {}
-        for a, t in op_time.items():
+        for a, t in iteritems(op_time):
             typ = type(a)
             sop_time.setdefault(typ, 0)
             sop_time[typ] += t
@@ -1283,7 +1335,7 @@ if False:  # old code still to be ported from ProfileMode
             sop_call[typ] = sop_call.get(typ, 0) + op_call[a]
         print('\nSingle Op-wise summary: <% of local_time spent on this kind of Op> <cumulative %%> <self seconds> <cumulative seconds> <time per call> <nb_call> <nb_op> <nb_op> <Op name>')
         sotimes = [(t * 100 / local_time, t, a, sop_c[a],
-                    sop_call[a], sop_op[a]) for a, t in sop_time.items()]
+                    sop_call[a], sop_op[a]) for a, t in iteritems(sop_time)]
         sotimes.sort(key=lambda t: (t[1], t[4], t[5]), reverse=True)
         tot = 0
         for f, t, a, ci, nb_call, nb_op in sotimes[:n_ops_to_print]:
@@ -1304,13 +1356,13 @@ if False:  # old code still to be ported from ProfileMode
                sum(t for f, t, a, ci, nb_call, nb_op in
                    sotimes[n_ops_to_print:])))
 
-        total_time = time.time() - import_time
+        total_time = time.time() - theano_imported_time
         total_fct_time = sum(fct_call_time.values())
         total_fct_call = sum(fct_call.values())
         other_time = total_time - total_fct_time - compile_time
         print()
         print('Theano fct summary: <% total fct time> <total time> <time per call> <nb call> <fct name>')
-        for key in fct_call.keys():
+        for key in fct_call:
             if fct_call[key] > 0:
                 print('   %4.1f%% %.3fs %.2es %d %s' % (
                     fct_call_time[key] / total_fct_time * 100,
@@ -1343,7 +1395,7 @@ if False:  # old code still to be ported from ProfileMode
         print()
         print("List of apply that don't have float64 as input but have float64 in outputs. Usefull to know if we forgot some cast when using floatX=float32 or gpu code.")
         print('<Apply> <Apply position> <fct name> <inputs type> <outputs type>')
-        for fct in fct_call.keys():
+        for fct in fct_call:
             for idx, node in enumerate(fct.maker.fgraph.toposort()):
                 if any(hasattr(i, 'dtype') and i.dtype == 'float64' for i in node.outputs) and not any(hasattr(i, 'dtype') and i.dtype == 'float64' for i in node.inputs):
                     print(str(node), idx, fct.name, str([getattr(i, 'dtype', None) for i in node.inputs]), str([getattr(i, 'dtype', None) for i in node.outputs]))
@@ -1369,7 +1421,7 @@ if False:  # old code still to be ported from ProfileMode
 
             print("Theano function input that are float64")
             print("<fct name> <input name> <input type> <str input>")
-            for fct in fct_call.keys():
+            for fct in fct_call:
                 for i in fct.input_storage:
                     if hasattr(i.type, 'dtype') and i.type.dtype == 'float64':
                         print(fct.name, i.name, i.type, i)
@@ -1432,7 +1484,7 @@ if False:  # old code still to be ported from ProfileMode
             print("  - With the default gcc libm, exp in float32 is slower than in float64! Try Theano flags floatX=float64 or install amdlibm and set the theano flags lib.amdlibm=True")
 
         # tip 4
-        for a, t in apply_time.iteritems():
+        for a, t in iteritems(apply_time):
             node = a
             if (isinstance(node.op, T.Dot) and
                     all([len(i.type.broadcastable) == 2 for i in node.inputs])):
@@ -1443,7 +1495,7 @@ if False:  # old code still to be ported from ProfileMode
                        [i.type for i in node.inputs]))
 
         # tip 5
-        for a, t in apply_time.iteritems():
+        for a, t in iteritems(apply_time):
             node = a
             if isinstance(node.op, RandomFunction):
                 print ("  - Replace the default random number generator by "
@@ -1480,11 +1532,13 @@ if False:  # old code still to be ported from ProfileMode
         There is a hack with the Op-wise summary. Go see it if you want to know
         more.
 
-        :param n_apply_to_print: the number of apply to print. Default 15, or
-            n_ops_to_print flag.
+        Parameters
+        ----------
+        n_apply_to_print
+            The number of apply to print. Default 15, or n_ops_to_print flag.
+        n_ops_to_print
+            The number of ops to print. Default 20, or n_apply_to_print flag.
 
-        :param n_ops_to_print: the number of ops to print. Default 20, or
-            n_apply_to_print flag.
         """
         fct_call_time = self.mode.fct_call_time
         fct_call = self.mode.fct_call
@@ -1514,24 +1568,27 @@ if False:  # old code still to be ported from ProfileMode
         now.
         TODO: make comparaison with gpu code.
 
-        :param other: the other instance of ProfileMode that we want to be
-            compared to.
+        Parameters
+        ----------
+        other
+            The other instance of ProfileMode that we want to be compared to.
+        n_apply_to_print
+            The number of apply to print. Default 15.
+        n_ops_to_print
+            The number of ops to print. Default 20.
 
-        :param n_apply_to_print: the number of apply to print. Default 15.
-
-        :param n_ops_to_print: the number of ops to print. Default 20.
         """
 
         def diff_dict(a_time, b_time_):
             r = {}
             b_time = copy.copy(b_time_)
-            for a, ta in a_time.items():
+            for a, ta in iteritems(a_time):
                 r.setdefault(a, 0)
                 tb = b_time.pop(a, 0)
                 r[a] += ta - tb
 
             # they are missing in a
-            for a, t in b_time.items():
+            for a, t in iteritems(b_time):
                 r.setdefault(a, 0)
                 r[a] += t
             return r

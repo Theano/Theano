@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import numpy as N
 import sys
 import time
+from six.moves import xrange
 
 # c: aa.cc
 

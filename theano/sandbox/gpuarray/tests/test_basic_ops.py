@@ -1,6 +1,8 @@
 import unittest
-from itertools import izip
+from theano.compat import izip
 from copy import copy, deepcopy
+
+from six import iteritems
 
 import numpy
 import theano
@@ -12,7 +14,6 @@ from theano.tensor.basic import alloc
 from theano.tensor.tests import test_basic
 from theano.tensor.tests.test_basic import rand, safe_make_node
 from theano.tests.unittest_tools import SkipTest
-from numpy.testing.noseclasses import KnownFailureTest
 
 import theano.sandbox.gpuarray
 
@@ -71,7 +72,7 @@ def may_fail(msg, EClass):
                 f()
             except Exception as e:
                 if isinstance(e, EClass):
-                    raise KnownFailureTest(msg, e)
+                    raise SkipTest(msg, e)
                 raise
         wrapper.__name__ = f.__name__
         return wrapper
@@ -104,7 +105,7 @@ def rand_gpuarray(*shape, **kwargs):
     dtype = kwargs.pop('dtype', theano.config.floatX)
     cls = kwargs.pop('cls', None)
     if len(kwargs) != 0:
-        raise TypeError('Unexpected argument %s', kwargs.keys()[0])
+        raise TypeError('Unexpected argument %s', list(kwargs.keys())[0])
     return gpuarray.array(r, dtype=dtype, cls=cls)
 
 
@@ -133,7 +134,7 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
             if skip:
                 raise SkipTest(skip)
 
-            for testname, inputs in cases.items():
+            for testname, inputs in iteritems(cases):
                 self.run_case(testname, inputs)
 
         def run_case(self, testname, inputs):
@@ -200,7 +201,7 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
                             self.op, testname, i, inputs, expected,
                             expected.dtype, variable, variable.dtype))
 
-            for description, check in self.checks.items():
+            for description, check in iteritems(self.checks):
                 if not check(inputs, variables):
                     self.fail(("Test %s::%s: Failed check: %s "
                                "(inputs were %s, ouputs were %s)") %
@@ -381,6 +382,14 @@ class G_reshape(test_basic.T_reshape):
                          theano.tensor.opt.Shape_i,
                          theano.tensor.opt.MakeVector))
         assert self.op == GpuReshape
+
+
+class G_comparison(test_basic.test_comparison):
+    def setUp(self):
+        utt.seed_rng()
+        self.mode = mode_with_gpu
+        self.shared = gpuarray_shared_constructor
+        self.dtypes = ['float64', 'float32']
 
 
 class G_Join_and_Split(test_basic.T_Join_and_Split):

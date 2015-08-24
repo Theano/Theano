@@ -4,7 +4,7 @@ import numpy
 
 import theano
 from theano import config, function, tensor
-import multinomial
+from . import multinomial
 from theano.compile.mode import get_default_mode, predefined_linkers
 import theano.sandbox.cuda as cuda
 
@@ -18,6 +18,8 @@ def get_mode(gpu):
                               'local_gpu_multinomial')
     if isinstance(mode.linker, theano.gof.PerformLinker):
         mode.linker = predefined_linkers['c|py']
+    if hasattr(mode.linker, 'c_thunks'):
+        mode.linker.c_thunks = True
     return mode
 
 

@@ -8,6 +8,7 @@ from theano.tensor.nnet.ConvTransp3D import convTransp3D, ConvTransp3D
 from theano.tensor.nnet.ConvGrad3D import convGrad3D, ConvGrad3D
 from theano.tensor.nnet.Conv3D import conv3D, Conv3D
 import numpy as N
+from six.moves import xrange
 import copy
 import theano.sparse
 if theano.sparse.enable_sparse:

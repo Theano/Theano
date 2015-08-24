@@ -1,25 +1,32 @@
-"""WRITEME"""
+"""
+WRITEME
+
+"""
 from __future__ import print_function
 from copy import copy, deepcopy
 from sys import getsizeof
-import StringIO
 import sys
 import traceback
 import numpy
 
 import theano
+from theano.compat import izip
+from six import reraise
+from six.moves import StringIO
 from theano.gof import utils
 from theano.gof import graph
 from theano.gof.type import Type
 
-from .utils import MethodNotDefined, undef
+from .utils import undef
 
 __excepthook = sys.excepthook
 
 
 def log_thunk_trace(value, f=sys.stderr):
-    """Log Theano's diagnostic stack trace for an exception
+    """
+    Log Theano's diagnostic stack trace for an exception
     raised by raise_with_op.
+
     """
     # in future, consider accepting `write` as arg rather than file
     # to support writing to a logger
@@ -44,7 +51,9 @@ def log_thunk_trace(value, f=sys.stderr):
 
 
 def thunk_hook(type, value, trace):
-    """WRITEME
+    """
+    WRITEME
+
     This function is meant to replace excepthook and do some
     special work if the exception value has a __thunk_trace__
     field. In that case, it retrieves the field, which should
@@ -53,7 +62,10 @@ def thunk_hook(type, value, trace):
 
     The normal excepthook is then called.
 
-    :note: This hook replaced by nosetests, so it does not run in nose tests.
+    Notes
+    -----
+    This hook replaced by nosetests, so it does not run in nose tests.
+
     """
     log_thunk_trace(value)
     __excepthook(type, value, trace)
@@ -80,7 +92,6 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
 
     Notes
     -----
-
     This re-raises the exception described by `exc_info` (or the last
     one raised, if `exc_info` is omitted) and annotates the exception
     object with several new members which may be helpful for debugging
@@ -94,13 +105,14 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
        to this op in `op.fgraph.toposort()`.
 
     The exception is not annotated if it is of type `KeyboardInterrupt`.
+
     """
     if exc_info is None:
         exc_info = sys.exc_info()
     exc_type, exc_value, exc_trace = exc_info
     if exc_type == KeyboardInterrupt:
         # print a simple traceback from KeyboardInterrupt
-        raise exc_type, exc_value, exc_trace
+        reraise(exc_type, exc_value, exc_trace)
     try:
         trace = node.outputs[0].tag.trace
     except AttributeError:
@@ -144,21 +156,26 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
         clients = [[c[0] for c in var.clients] for var in node.outputs]
         detailed_err_msg += ("Inputs shapes: %s" % shapes +
                              "\nInputs strides: %s" % strides +
-                             "\nInputs values: %s" % scalar_values +
-                             "\nOutputs clients: %s\n" % clients)
+                             "\nInputs values: %s" % scalar_values)
+        if hasattr(node.op, '__input_name__'):
+            detailed_err_msg += "\nInputs name: %s\n" % str(node.op.__input_name__)
+
+        detailed_err_msg += "\nOutputs clients: %s\n" % clients
     else:
         hints.append(
             "HINT: Use another linker then the c linker to"
             " have the inputs shapes and strides printed.")
 
-    # Print node backtrace
-    tr = getattr(node.outputs[0].tag, 'trace', None)
-    if tr:
-        sio = StringIO.StringIO()
-        traceback.print_list(tr, sio)
-        tr = sio.getvalue()
+    # Print node backtraces
+    tr = getattr(node.outputs[0].tag, 'trace', [])
+    if len(tr) > 0:
         detailed_err_msg += "\nBacktrace when the node is created:\n"
-        detailed_err_msg += str(tr)
+
+        # Print separate message for each element in the list of batcktraces
+        sio = StringIO()
+        for subtr in tr:
+            traceback.print_list(subtr, sio)
+        detailed_err_msg += str(sio.getvalue())
     else:
         hints.append(
             "HINT: Re-running with most Theano optimization disabled could"
@@ -169,7 +186,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
 
     if theano.config.exception_verbosity == 'high':
 
-        f = StringIO.StringIO()
+        f = StringIO()
         theano.printing.debugprint(node, file=f, stop_on_name=True,
                                    print_type=True)
         detailed_err_msg += "\nDebugprint of the apply node: \n"
@@ -187,7 +204,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
         storage_map_list = []
         total_size = 0
         total_size_inputs = 0
-        for k in storage_map.keys():
+        for k in storage_map:
             storage_map_item = []
 
             # storage_map_item[0]: the variable
@@ -276,9 +293,9 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
             else:
                 detailed_err_msg += "\n"
         detailed_err_msg += " TotalSize: %s Byte(s) %.3f GB\n" % (
-            total_size, total_size/1024./1024/1024)
+            total_size, total_size / 1024. / 1024 / 1024)
         detailed_err_msg += " TotalSize inputs: %s Byte(s) %.3f BG\n" % (
-            total_size_inputs, total_size_inputs/1024./1024/1024)
+            total_size_inputs, total_size_inputs / 1024. / 1024 / 1024)
 
     else:
         hints.append(
@@ -287,11 +304,14 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
 
     exc_value = exc_type(str(exc_value) + detailed_err_msg +
                          '\n' + '\n'.join(hints))
-    raise exc_type, exc_value, exc_trace
+    reraise(exc_type, exc_value, exc_trace)
 
 
 class Linker(object):
-    """WRITEME"""
+    """
+    WRITEME
+
+    """
 
     def clone(self, allow_gc=undef):
         new = copy(self)
@@ -301,55 +321,60 @@ class Linker(object):
 
     def make_thunk(self):
         """
-        This function must return a triplet (function, input_variables, output_variables)
-        where function is a thunk that operates on the returned variables. If inplace
-        is True, the input_variables and output_variables lists will be the same as the
-        inputs and outputs of the graph provided to the L{Linker}. Else, independent
+        This function must return a triplet (function, input_variables,
+        output_variables) where function is a thunk that operates on the
+        returned variables. If inplace is True, the input_variables and
+        output_variables lists will be the same as the inputs and outputs
+        of the graph provided to the L{Linker}. Else, independent
         variables will be returned.
 
-        Example::
-         x, y = Variable(Double), Variable(Double)
-         e = x + y
-         fgraph = FunctionGraph([x, y], [e])
-         fn, (new_x, new_y), (new_e, ) = MyLinker(fgraph).make_thunk(inplace)
-         new_x.data = 1.0
-         new_y.data = 2.0
-         fn()
-         print new_e.data # 3.0
-         print e.data # 3.0 iff inplace == True (else unknown)
+        Examples
+        --------
+        x, y = Variable(Double), Variable(Double)
+        e = x + y
+        fgraph = FunctionGraph([x, y], [e])
+        fn, (new_x, new_y), (new_e, ) = MyLinker(fgraph).make_thunk(inplace)
+        new_x.data = 1.0
+        new_y.data = 2.0
+        fn()
+        print new_e.data # 3.0
+        print e.data # 3.0 iff inplace == True (else unknown)
+
         """
         raise utils.MethodNotDefined("make_thunk", type(self),
                                      self.__class__.__name__)
 
-    ## DELETEME ##
+    # DELETEME #
     def make_function(self, unpack_single=True, **kwargs):
         """
         Returns a function that takes values corresponding to the inputs of the
-        fgraph used by this L{Linker} and returns values corresponding the the outputs
-        of that fgraph. If inplace is True, the calculations will operate in the
-        same storage the fgraph uses, else independent storage will be allocated
-        for the function.
+        fgraph used by this L{Linker} and returns values corresponding the the
+        outputs of that fgraph. If inplace is True, the calculations will
+        operate in the same storage the fgraph uses, else independent storage
+        will be allocated for the function.
 
-        Example::
-         e = x + y
-         fgraph = FunctionGraph([x, y], [e])
-         fn = MyLinker(fgraph).make_function(inplace)
-         print fn(1.0, 2.0) # 3.0
-         print e.data # 3.0 iff inplace == True (else unknown)
+        Example
+        -------
+        e = x + y
+        fgraph = FunctionGraph([x, y], [e])
+        fn = MyLinker(fgraph).make_function(inplace)
+        print fn(1.0, 2.0) # 3.0
+        print e.data # 3.0 iff inplace == True (else unknown)
 
         If unpack_single is True (default) and that the function has only one
         output, then that output will be returned. Else, a list or tuple of
         length 1 will be returned.
+
         """
         thunk, inputs, outputs = self.make_thunk(**kwargs)
 
         def execute(*args):
             def e_arity(takes, got):
-                return 'Function call takes exactly %i %s (%i given)' \
-                        % (takes, ['argument', 'arguments'][takes > 1], got)
+                return 'Function call takes exactly %i %s (%i given)' % (
+                    takes, ['argument', 'arguments'][takes > 1], got)
             if (len(args) != len(inputs)):
                 raise TypeError(e_arity(len(inputs), len(args)))
-            for arg, variable in zip(args, inputs):
+            for arg, variable in izip(args, inputs):
                 variable.data = arg
             thunk()
             if unpack_single:
@@ -369,27 +394,34 @@ class Linker(object):
 
 # TODO: Move this class to the compile module, where it is used (and for which it exists).
 class Container(object):
-    """This class joins a variable with its computed value.
-    It is used in linkers, especially for the inputs and outputs of a Function.
     """
+    This class joins a variable with its computed value.
+
+    It is used in linkers, especially for the inputs and outputs of a Function.
+
+    Parameters
+    ----------
+    r : a Variable or a Type
+    storage
+        A list of length 1, whose element is the value for `r`.
+    readonly : bool
+        True indicates that this should not be setable by Function[r] = val.
+    strict : bool
+        If True, we don't allow type casting.
+    allow_downcast
+        If True (and `strict` is False), allow upcasting of type, but not
+        downcasting. If False, prevent it. If None (default), allows only
+        downcasting of float to floatX scalar.
+    name : str
+        A string (for pretty-printing?)
+
+    """
+
     def __init__(self, r, storage, readonly=False, strict=False,
                  allow_downcast=None, name=None):
-        """WRITEME
-
-        :Parameters:
-         `r`: a Variable or a Type
-         `storage`: a list of length 1, whose element is the value for `r`
-         `readonly`: True indicates that this should not be setable by Function[r] = val
-         `strict`: if True, we don't allow type casting.
-         `allow_downcast`: if True (and `strict` is False), allow upcasting
-            of type, but not downcasting. If False, prevent it. If None
-            (default), allows only downcasting of float to floatX scalar.
-         `name`: A string (for pretty-printing?)
-
-        """
         if not isinstance(storage, list) or not len(storage) >= 1:
             raise TypeError("storage must be a list of length at least one")
-        #self.r = r
+        # self.r = r
         if isinstance(r, Type):
             self.type = r
         else:
@@ -449,12 +481,11 @@ class Container(object):
             deepcopy(self.strict, memo=memo),
             deepcopy(self.allow_downcast, memo=memo),
             deepcopy(self.name, memo=memo),
-            )
+        )
         # Work around NumPy deepcopy of ndarray with 0 dimention that
         # don't return an ndarray.
         if (r.storage[0] is not None and
-            not self.type.is_valid_value(r.storage[0])):
-
+                not self.type.is_valid_value(r.storage[0])):
             assert not data_was_in_memo
             assert self.type.is_valid_value(self.storage[0])
             # This should also work for read only container.
@@ -465,7 +496,7 @@ class Container(object):
         return r
 
 
-def map_storage(fgraph, order, input_storage, output_storage):
+def map_storage(fgraph, order, input_storage, output_storage, storage_map=None):
     """Ensure there is storage (a length-1 list) for inputs, outputs, and interior nodes.
 
     :param fgraph: The current fgraph.  This function uses the inputs and outputs attributes.
@@ -476,16 +507,40 @@ def map_storage(fgraph, order, input_storage, output_storage):
     :rtype: 3-tuple
     :returns: (list of storage for inputs, list of storage for outputs, and the `storage_map`)
 
+    Parameters
+    ----------
+    fgraph
+        The current fgraph. This function uses the inputs and outputs
+        attributes.
+    order
+        An iterable over Apply instances (in program running order).
+    input_storage
+        None or existing input storage (see below).
+    output_storage
+        None or existing output storage (see below).
 
+    Returns
+    -------
+    3-tuple
+        List of storage for inputs, list of storage for outputs, and
+        the `storage_map`.
+
+    Extended summary
+    ----------------
     This function iterates over the nodes in `order` and ensures that for every
-    input and output `Variable`, there is a unique storage container.  This is
-    returned as a dictionary Variable->storage called the `storage_map`.
+    input and output `Variable`, there is a unique storage container. This is
+    returned as a dictionary Variable -> storage called the `storage_map`.
 
-    This function also returns `input_storage` which is a list of storages corresponding to fgraph.inputs.
-    This function also returns `output_storage` which is a list of storages corresponding to fgraph.outputs.
+    This function also returns `input_storage`, which is a list of storages
+    corresponding to fgraph.inputs.
+    This function also returns `output_storage`, which is a list of storages
+    corresponding to fgraph.outputs.
 
     """
     # each Apply argument's data is stored in a list of length 1 (these lists act like pointers)
+
+    if storage_map is None:
+        storage_map = {}
 
     # input_storage is a list of data-containers for the inputs.
     if input_storage is None:
@@ -493,19 +548,36 @@ def map_storage(fgraph, order, input_storage, output_storage):
     else:
         assert len(fgraph.inputs) == len(input_storage)
 
-    storage_map = {}
+    # add input storage into storage_map
     for r, storage in zip(fgraph.inputs, input_storage):
-        storage_map[r] = storage
+        if r in storage_map:
+            assert storage_map[r] is storage, ("Given input_storage conflicts "
+                                               "with storage in given storage_"
+                                               "map. Given input_storage: ",
+                                               storage, "Storage in storage_ma"
+                                               "p: ", storage_map[r])
+        else:
+            storage_map[r] = storage
 #     for orphan in fgraph.orphans:
 #         if not isinstance(orphan, Constant):
 #             raise TypeError("Cannot link a graph with non-constant orphans.", orphan)
 #         storage_map[orphan] = [orphan.data]
 
+    # allocate output storage
     if output_storage is not None:
         assert len(fgraph.outputs) == len(output_storage)
         for r, storage in zip(fgraph.outputs, output_storage):
-            storage_map[r] = storage
+            if r in storage_map:
+                assert storage_map[r] is storage, ("Given output_storage confl"
+                                                   "icts with storage in given"
+                                                   " storage_map. Given output"
+                                                   "_storage: ", storage, "Sto"
+                                                   "rage in storage_map: ",
+                                                   storage_map[r])
+            else:
+                storage_map[r] = storage
 
+    # allocate storage for intermediate computation
     for node in order:
         for r in node.inputs:
             if r not in storage_map:
@@ -517,6 +589,7 @@ def map_storage(fgraph, order, input_storage, output_storage):
         if isinstance(r, graph.Constant):
             storage_map.setdefault(r, [r.data])
 
+    # extract output storage
     if output_storage is None:
         output_storage = [storage_map[r] for r in fgraph.outputs]
 
@@ -525,23 +598,28 @@ def map_storage(fgraph, order, input_storage, output_storage):
 
 def streamline(fgraph, thunks, order, post_thunk_old_storage=None,
                no_recycling=None, nice_errors=True):
-    """WRITEME
+    """
+    WRITEME
 
-    :param fgraph:
+    Parameters
+    ----------
+    fgraph
+    thunks
+        The list of program instructions.
+    order
+        The list of apply instances that gave rise to the thunks
+        (same order as thunks).
+    post_thunk_old_storage
+        A list (corresponding to thunks, order) whose elements are lists of
+        storage cells, that should be cleared after running thecorresponding
+        thunk. A value of None disables this functionality.
+    no_recycling
+        Storage elements that cannot be 'recycled' by repeatedly executing the
+        program. These storage elements are cleared before re-running.
+    nice_errors
+        Run in such a way that the double-traceback is printed. This costs a
+        bit of performance in the inner python loop.
 
-    :param thunks: the list of program instructions
-
-    :param order: the list of apply instances that gave rise to the thunks (same order as thunks)
-
-    :param post_thunk_old_storage: a list (corresponding to thunks, order) whose elements are
-    lists of storage cells, that should be cleared after running the corresponding thunk.  A
-    value of None disables this functionality
-
-    :param no_recycling: storage elements that cannot be 'recycled' by repeatedly executing the
-    program.  These storage elements are cleared before re-running.
-
-    :param nice_errors: run in such a way that the double-traceback is printed.  This costs a
-    bit of performance in the inner python loop.
     """
     if no_recycling is None:
         no_recycling = []
@@ -560,8 +638,8 @@ def streamline(fgraph, thunks, order, post_thunk_old_storage=None,
             for x in no_recycling:
                 x[0] = None
             try:
-                for thunk, node, old_storage in zip(thunks, order,
-                                                    post_thunk_old_storage):
+                for thunk, node, old_storage in izip(thunks, order,
+                                                     post_thunk_old_storage):
                     thunk()
                     for old_s in old_storage:
                         old_s[0] = None
@@ -569,13 +647,11 @@ def streamline(fgraph, thunks, order, post_thunk_old_storage=None,
                 raise_with_op(node, thunk)
         f = streamline_default_f
     elif nice_errors:
-        thunk_node_list = zip(thunks, order)
-
         def streamline_nice_errors_f():
             for x in no_recycling:
                 x[0] = None
             try:
-                for thunk, node in thunk_node_list:
+                for thunk, node in izip(thunks, order):
                     thunk()
             except Exception:
                 raise_with_op(node, thunk)
@@ -593,14 +669,18 @@ def streamline(fgraph, thunks, order, post_thunk_old_storage=None,
 
 
 class LocalLinker(Linker):
-    """WRITEME
-    Useful base class for L{Linker}s which keep all nodes in the graph, and run a
-    thunk associated with each node.
+    """
+    WRITEME
+
+    Useful base class for L{Linker}s which keep all nodes in the graph, and run
+    a thunk associated with each node.
+
     """
 
-    def make_thunk(self, input_storage=None, output_storage=None):
+    def make_thunk(self, input_storage=None, output_storage=None, storage_map=None):
         return self.make_all(input_storage=input_storage,
-                             output_storage=output_storage)[:3]
+                             output_storage=output_storage,
+                             storage_map=storage_map)[:3]
 
     def make_all(self, input_storage, output_storage):
         # By convention, subclasses of LocalLinker should implement this function!
@@ -617,13 +697,28 @@ class LocalLinker(Linker):
 
 def gc_helper(node_list):
     """
-    :param node_list: list of Apply instances in program execution order
 
-    :rtype: a 2-tuple
-    :returns: FIRST, the set of Variable instances which are computed by node_list, and SECOND a
-    dictionary that maps each Variable instance to a the last node to use Variable as an input.
+    Parameters
+    ----------
+    node_list
+        List of Apply instances in program execution order.
 
+    Returns
+    -------
+    2-tuple
+        FIRST, the set of Variable instances which are computed by node_list,
+        and SECOND a dictionary that maps each Variable instance to a the last
+        node to use Variable as an input.
+
+    Extended Summary
+    ----------------
     This is used to allow garbage collection within graphs.
+
+    It ignores view_map and destroy_map. This isn't needed as python
+    have reference count. In Theano gc, we should not take into
+    account view_map and destroy_map as if the thunk decided to create
+    a new output, we would delay uselessly its gc by Python.
+
     """
     # for freeing memory
     last_user = {}
@@ -637,10 +732,12 @@ def gc_helper(node_list):
 
 
 class PerformLinker(LocalLinker):
-    """WRITEME
+    """
+    WRITEME
 
     Basic L{Linker} subclass that calls the perform method on each L{Op} in
     the L{FunctionGraph} in the order given by L{Linker.schedule}.
+
     """
 
     def __init__(self, allow_gc=None, schedule=None):
@@ -653,34 +750,53 @@ class PerformLinker(LocalLinker):
 
     def accept(self, fgraph, no_recycling=None):
         """
-        :param fgraph: a PerformLinker can have accepted one FunctionGraph instance at a time.
 
-        :param no_recycling: WRITEME
+        Parameters
+        ----------
+        fgraph
+            A PerformLinker can have accepted one FunctionGraph instance at a
+            time.
+        no_recycling
+            WRITEME
 
-        :returns: self (TODO: WHY? Who calls this function?)
+        Returns
+        -------
+        object
+            self (TODO: WHY? Who calls this function?)
+
         """
         if no_recycling is None:
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
             return type(self)(allow_gc=self.allow_gc).accept(fgraph, no_recycling)
-            #raise Exception("Cannot accept from a Linker that is already tied to another FunctionGraph.")
+            # raise Exception("Cannot accept from a Linker that is already tied to another FunctionGraph.")
         self.fgraph = fgraph
         self.no_recycling = no_recycling
         return self
 
-    def make_all(self, input_storage=None, output_storage=None):
+    def make_all(self, input_storage=None, output_storage=None, storage_map=None):
         """
-        :param input_storage: WRITEME
-        :param output_storage: WRITEME
 
-        :returns: function to run all nodes, list of input containers, list of output containers, list of thunks (for all of program), list of nodes (for all of program)
+        Parameters
+        ----------
+        input_storage
+            WRITEME
+        output_storage
+            WRITEME
+
+        Returns
+        -------
+        object
+            Function to run all nodes, list of input containers, list of output
+            containers, list of thunks (for all programs), list of nodes
+            (for all programs).
 
         """
         fgraph = self.fgraph
         order = self.schedule(fgraph)
         no_recycling = self.no_recycling
 
-        input_storage, output_storage, storage_map = map_storage(fgraph, order, input_storage, output_storage)
+        input_storage, output_storage, storage_map = map_storage(fgraph, order, input_storage, output_storage, storage_map)
 
         compute_map = {}
         for k in storage_map:
@@ -712,14 +828,17 @@ class PerformLinker(LocalLinker):
 
         for node in order:
             if self.allow_gc:
-                post_thunk_old_storage.append([storage_map[input]
-                    for input in node.inputs
-                    if (input in computed) and (input not in fgraph.outputs) and node == last_user[input]])
+                post_thunk_old_storage.append(
+                    [storage_map[input]
+                     for input in node.inputs
+                     if (input in computed) and (
+                        input not in fgraph.outputs) and (
+                        node == last_user[input])])
 
         if no_recycling is True:
             # True seems like some special code for *everything*?? -JB
             # FunctionMaker always passes a list I think   -JB
-            no_recycling = storage_map.values()
+            no_recycling = list(storage_map.values())
             no_recycling = utils.difference(no_recycling, input_storage)
         else:
             no_recycling = [storage_map[r] for r in no_recycling if r not in fgraph.inputs]
@@ -732,9 +851,13 @@ class PerformLinker(LocalLinker):
         add_clear_storage(f, computed, storage_map)
         f.storage_map = storage_map
 
-        return f, [Container(input, storage) for input, storage in zip(fgraph.inputs, input_storage)], \
-            [Container(output, storage, True) for output, storage in zip(fgraph.outputs, output_storage)], \
-            thunks, order
+        return (f,
+                [Container(input, storage)
+                 for input, storage in izip(fgraph.inputs, input_storage)],
+                [Container(output, storage, True)
+                 for output, storage in izip(fgraph.outputs, output_storage)],
+                thunks,
+                order)
 
 
 def add_clear_storage(f, computed, storage_map):
@@ -747,41 +870,39 @@ def add_clear_storage(f, computed, storage_map):
 class WrapLinker(Linker):
     """
     WRITEME
+
     This class makes it easier to run several L{LocalLinker}s in parallel, and
     offers some control over how each thunk is run.
 
     A wrapper function must be provided, and it can be used to execute the
     thunks, inspect the nodes, print stuff out, etc.
 
-    @note:
+    The constructor initializes a WrapLinker.
+
+    Parameters
+    ----------
+    linkers : list of L{LocalLinker} subclasses, whose make_all() method returns
+        thunks in the same order.
+        For each node in the graph, each linker will provide a
+        thunk.  This class makes it possible to iterate over each linker's
+        program in parallel.
+    wrapper : lambda (i, i_node, i_thunk1, i_thunk2, ...) : None
+        Does some user-defined action for the i'th element of the program.
+        i_thunk<n> is the thunk returned by the n'th linker. (If you want
+        to run the program, make sure to call the necessary thunks in this
+        function.)
+
+    Notes
+    -----
     The outputs of the first linker will be returned.
 
-    @note:
-    This linker ensures that each linker has its own storage for
-    inputs and outputs and intermediate variables.  There is no interference
-    between linkers.
+    This linker ensures that each linker has its own storage for inputs and
+    outputs and intermediate variables. There is no interference between
+    linkers.
 
     """
 
     def __init__(self, linkers, wrapper):
-        """
-        Initialize a WrapLinker.
-
-        @type linkers: list of L{LocalLinker} subclasses, whose make_all()
-        method returns thunks in the same order.
-
-        @param linkers: for each node in the graph, each linker will provide a
-        thunk.  This class makes it possible to iterate over each linker's
-        program in parallel.
-
-        @type wrapper: lambda (i, i_node, i_thunk1, i_thunk2, ...) : None
-
-        @param wrapper: do some user-defined action for the i'th element of the
-        program.  i_thunk<n> is the thunk returned by the n'th linker.  (If you
-        want to run the program, make sure to call the necessary thunks in this
-        function.)
-
-        """
         self.fgraph = None
         self.linkers = linkers
         self.wrapper = wrapper
@@ -790,12 +911,16 @@ class WrapLinker(Linker):
         """
         Shallow copy of a WrapLinker.
 
-        @returns: A copy of self, where each of the linkers in self.linkers
+        Returns
+        -------
+        object
+            A copy of self, where each of the linkers in self.linkers
             have been shallow-copied.
 
         It is useful because in FunctionMaker, copy.copy is called on the
         Mode's linker, so that it is not modified inplace when linker.accept()
         is called. In this case, we want the wrapped linkers to be copied too.
+
         """
         other = self.__class__(
             linkers=[copy(l) for l in self.linkers],
@@ -809,14 +934,15 @@ class WrapLinker(Linker):
 
     def accept(self, fgraph, no_recycling=None):
         """
-        @type fgraph: gof.FunctionGraph
-        @param fgraph: the fgraph which we will link
 
-        @type no_recycling: a list of Variables that belong to fgraph.
-
-        @param no_recycling: If a Variable is in no_recycling, L{WrapLinker} will clear
-        the output storage associated to it (for each linker in linkers) during
-        the computation to avoid reusing it.
+        Parameters
+        ----------
+        fgraph : gof.FunctionGraph
+            The fgraph which we will link.
+        no_recycling : a list of Variables that belong to fgraph.
+            If a Variable is in no_recycling, L{WrapLinker} will clear
+            the output storage associated to it (for each linker in linkers)
+            during the computation to avoid reusing it.
 
         """
         if no_recycling is None:
@@ -842,7 +968,7 @@ class WrapLinker(Linker):
         make_all += [l.make_all(**kwargs) for l in self.linkers[1:]]
 
         fns, input_lists, output_lists, thunk_lists, order_lists \
-                = zip(*make_all)
+            = zip(*make_all)
 
         order_list0 = order_lists[0]
         for order_list in order_lists[1:]:
@@ -853,11 +979,11 @@ class WrapLinker(Linker):
         inputs0 = input_lists[0]
         outputs0 = output_lists[0]
 
-        thunk_groups = zip(*thunk_lists)
+        thunk_groups = list(zip(*thunk_lists))
         order = [x[0] for x in zip(*order_lists)]
 
         to_reset = []
-        for thunks, node in zip(thunk_groups, order):
+        for thunks, node in izip(thunk_groups, order):
             for j, output in enumerate(node.outputs):
                 if output in no_recycling:
                     for thunk in thunks:
@@ -868,13 +994,13 @@ class WrapLinker(Linker):
 
         def f():
             for inputs in input_lists[1:]:
-                for input1, input2 in zip(inputs0, inputs):
+                for input1, input2 in izip(inputs0, inputs):
                     input2.storage[0] = copy(input1.storage[0])
             for x in to_reset:
                 x[0] = None
             pre(self, [input.data for input in input_lists[0]],
                 order, thunk_groups)
-            for i, (thunks, node) in enumerate(zip(thunk_groups, order)):
+            for i, (thunks, node) in enumerate(izip(thunk_groups, order)):
                 try:
                     wrapper(i, node, *thunks)
                 except Exception:
@@ -888,6 +1014,7 @@ def WrapLinkerMany(linkers, wrappers):
     """
     Variant on WrapLinker that runs a series of wrapper functions instead of
     just one.
+
     """
     def wrapper(*args):
         for f in wrappers:

@@ -1,6 +1,7 @@
 import copy
 import theano
 import numpy
+from six.moves import xrange
 
 try:
     import pygpu
@@ -11,12 +12,17 @@ from theano import tensor, scalar, gof
 from theano.compile import optdb
 from theano.gof import (local_optimizer, EquilibriumDB,
                         SequenceDB, Optimizer, toolbox)
+from theano.gof.optdb import LocalGroupDB
 
+from theano.scalar.basic import Scalar, Pow, Cast
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
 from theano.tensor.nnet.conv import ConvOp
+from theano.tests.breakpoint import PdbBreakpoint
+
 from .type import GpuArrayType, GpuArrayConstant
-from .basic_ops import (host_from_gpu, gpu_from_host,
+from .basic_ops import (as_gpuarray_variable,
+                        host_from_gpu, gpu_from_host,
                         HostFromGpu, GpuFromHost,
                         GpuSplit, GpuContiguous,
                         gpu_alloc, GpuAlloc, GpuReshape,
@@ -36,6 +42,10 @@ gpu_optimizer = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
 
 gpu_seqopt = SequenceDB()
+
+# Don't register this right now
+conv_groupopt = LocalGroupDB()
+conv_groupopt.__name__ = "gpua_conv_opts"
 
 gpu_seqopt.register('gpuarray_local_optimiziations', gpu_optimizer, 1,
                     'fast_compile', 'fast_run', 'inplace', 'gpuarray')
@@ -79,7 +89,9 @@ def safe_to_cpu(x):
 def op_lifter(OP, cuda_only=False):
     """
     OP(..., host_from_gpu(), ...) -> host_from_gpu(GpuOP(...))
+
     gpu_from_host(OP(inp0, ...)) -> GpuOP(inp0, ...)
+
     """
     def f(maker):
         def local_opt(node):
@@ -112,7 +124,10 @@ def op_lifter(OP, cuda_only=False):
 
 
 class InputToGpuOptimizer(Optimizer):
-    "Transfer the input to the gpu to start the rolling wave."
+    """
+    Transfer the input to the gpu to start the rolling wave.
+
+    """
 
     def add_requirements(self, fgraph):
         fgraph.attach_feature(toolbox.ReplaceValidate())
@@ -163,6 +178,7 @@ def local_gpuaalloc2(node):
     Join(axis, {Alloc or HostFromGPU}, ...) -> Join(axis, GpuAlloc, Alloc, ...)
 
     Moves an alloc that is an input to join to the gpu.
+
     """
     if (isinstance(node.op, tensor.Alloc) and
         all(c != 'output' and
@@ -253,11 +269,39 @@ def local_gpu_elemwise(node):
     scal_op = op.scalar_op
     name = op.name
     if name:
-        name = 'Gpu'+name
+        name = 'Gpu' + name
+
     res = GpuElemwise(scal_op, name=name,
                       inplace_pattern=copy.copy(op.inplace_pattern),
                       nfunc_spec=op.nfunc_spec)
-    return res
+
+    # If the elemwise operation is a pow, casts might be required on the
+    # inputs and or outputs because only the (float, float)->float and
+    # (double, double)->double cases are implemented at the moment.
+    if isinstance(op.scalar_op, Pow):
+
+        # Only transfer the computation on the gpu if the output dtype is
+        # floating point. Else, give up on the transfer to the gpu.
+        out_dtype = node.outputs[0].dtype
+        if out_dtype not in ['float16', 'float32', 'float64']:
+            return
+
+        # Transfer the inputs on the GPU and cast them to the right dtype.
+        new_inputs = []
+        for inp in node.inputs:
+            if inp.dtype != out_dtype:
+                gpu_cast_op = GpuElemwise(Cast(Scalar(out_dtype)))
+                new_inputs.append(gpu_cast_op(as_gpuarray_variable(inp)))
+            else:
+                new_inputs.append(as_gpuarray_variable(inp))
+
+        # Perform the exponent on the gpu and transfer the output back to the
+        # cpu.
+        gpu_output = res(*new_inputs)
+        cpu_output = host_from_gpu(gpu_output)
+        return [cpu_output]
+    else:
+        return res
 
 
 def max_inputs_to_GpuElemwise(node):
@@ -328,6 +372,69 @@ def local_gpu_print_op(node):
     new_op = node.op.__class__(global_fn=gpu_print_wrapper)
     new_op.old_op = node.op
     return new_op(gpu_x)
+
+
+@register_opt('fast_compile')
+@local_optimizer([PdbBreakpoint])
+def local_gpu_pdbbreakpoint_op(node):
+    if isinstance(node.op, PdbBreakpoint):
+
+        old_inputs = node.inputs
+        old_outputs = node.outputs
+
+        new_inputs = node.inputs[:1]
+        input_transfered = []
+
+        # Go through the monitored variables, only transfering on GPU those
+        # for which the input comes from the GPU or the output will be
+        # transfered on the GPU.
+        nb_monitored_vars = len(node.outputs)
+        for i in range(nb_monitored_vars):
+
+            inp = old_inputs[i + 1]
+            out = old_outputs[i]
+
+            input_is_from_gpu = (inp.owner and
+                                 isinstance(inp.owner.op, HostFromGpu))
+            output_goes_to_gpu = any([c[0] != "output" and
+                                      isinstance(c[0].op, GpuFromHost)
+                                      for c in out.clients])
+
+            if input_is_from_gpu:
+                # The op should be applied on the GPU version of the input
+                new_inputs.append(inp.owner.inputs[0])
+                input_transfered.append(True)
+
+            elif output_goes_to_gpu:
+                # The input should be transfered to the gpu
+                new_inputs.append(gpu_from_host(inp))
+                input_transfered.append(True)
+
+            else:
+                # No transfer is required.
+                new_inputs.append(inp)
+                input_transfered.append(False)
+
+        # Only continue the optimization if at least one input has been
+        # transfered to the gpu
+        if not any(input_transfered):
+            return False
+
+        # Apply the op on the new inputs
+        new_op_outputs = node.op(*new_inputs, return_list=True)
+
+        # Propagate the transfer to the gpu through the outputs that require
+        # it
+        new_outputs = []
+        for i in range(len(new_op_outputs)):
+            if input_transfered[i]:
+                new_outputs.append(host_from_gpu(new_op_outputs[i]))
+            else:
+                new_outputs.append(new_op_outputs[i])
+
+        return new_outputs
+
+    return False
 
 
 @register_opt('fast_compile')
@@ -553,6 +660,7 @@ def local_gpu_conv(node):
     gpu_from_host(conv) -> gpu_conv(gpu_from_host)
 
     conv(host_from_gpu) -> host_from_gpu(gpu_conv)
+
     """
     def GpuConvOp_from_ConvOp(op):
         logical_img_hw = None
@@ -568,8 +676,12 @@ def local_gpu_conv(node):
                       logical_kern_align_top=op.kshp_logical_top_aligned,
                       kshp=op.kshp,
                       version=op.version,
+                      direction_hint=op.direction_hint,
                       verbose=op.verbose,
                       imshp=op.imshp,
+                      nkern=op.nkern,
+                      bsize=op.bsize,
+                      fft_opt=op.fft_opt
                       )
         if op.imshp_logical is not None:
             logical_img_hw = op.imshp_logical[1:3]
@@ -593,7 +705,8 @@ def local_gpu_conv(node):
         return ret
 
     def values_eq_approx(a, b):
-        """This fct is needed to don't have DebugMode raise useless
+        """
+        This fct is needed to don't have DebugMode raise useless
         error due to ronding error.
 
         This happen as We reduce on the two last dimensions, so this
@@ -624,11 +737,17 @@ def local_gpu_conv(node):
     out.values_eq_approx = values_eq_approx
     return [out]
 
+# Register this here so that it goes after 'local_gpu_conv'
+register_opt()(conv_groupopt)
+
 
 @register_opt("low_memory")
 @local_optimizer([GpuCAReduceCuda])
 def local_gpu_elemwise_careduce(node):
-    """ Merge some GpuCAReduceCuda and GPUElemwise"""
+    """
+    Merge some GpuCAReduceCuda and GPUElemwise.
+
+    """
     if (isinstance(node.op, GpuCAReduceCuda) and
             node.op.pre_scalar_op is None and
             node.inputs[0].owner and
@@ -659,10 +778,11 @@ def tensor_to_gpu(x):
 def gpu_safe_new(x, tag=''):
     """
     Internal function that constructs a new variable from x with the same
-    type, but with a different name ( old name + tag). This function is used
+    type, but with a different name (old name + tag). This function is used
     by gradient, or the R-op to construct new variables for the inputs of
     the inner graph such that there is no interference between the original
     graph and the newly constructed graph.
+
     """
     if hasattr(x, 'name') and x.name is not None:
         nw_name = x.name + tag
@@ -680,8 +800,9 @@ def gpu_reconstruct_graph(inputs, outputs, tag=None):
     """
     Different interface to clone, that allows you to pass inputs.
     Compared to clone, this method always replaces the inputs with
-    new variables of the same type, and returns those ( in the same
+    new variables of the same type, and returns those (in the same
     order as the original inputs).
+
     """
     if tag is None:
         tag = ''
@@ -723,8 +844,8 @@ def local_scan_to_gpua(node):
         scan_outs = [safe_to_gpu(x) for x in node.op.outputs]
     scan_outs = scan_utils.clone(
         scan_outs,
-        replace=zip(node.op.inputs,
-                    [safe_to_cpu(x) for x in scan_ins]))
+        replace=list(zip(node.op.inputs,
+                         (safe_to_cpu(x) for x in scan_ins))))
 
     # We need to construct the hash here, because scan
     # __init__ does not know about the gpu and can not

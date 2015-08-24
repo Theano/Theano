@@ -3,6 +3,7 @@ import theano
 import numpy as N
 from theano import tensor as T
 from theano.tensor import nnet as NN
+from six.moves import xrange
 from theano.compile import module as M
 
 class RegressionLayer(M.Module):

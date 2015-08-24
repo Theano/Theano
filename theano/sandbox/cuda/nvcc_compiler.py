@@ -10,7 +10,7 @@ import numpy
 
 from theano.compat import decode, decode_iter
 from theano.gof import local_bitwidth
-from theano.gof.cc import hash_from_file
+from theano.gof.utils import hash_from_file
 from theano.gof.cmodule import (std_libs, std_lib_dirs,
                                 std_include_dirs, dlimport,
                                 Compiler,
@@ -85,7 +85,10 @@ nvcc_version = None
 
 
 def is_nvcc_available():
-    """Return True iff the nvcc compiler is found."""
+    """
+    Return True iff the nvcc compiler is found.
+
+    """
     def set_version():
         p_out = output_subprocess_Popen([nvcc_path, '--version'])
         ver_line = decode(p_out[0]).strip().split('\n')[-1]
@@ -150,6 +153,7 @@ class NVCC_compiler(Compiler):
         """
         This args will be received by compile_str() in the preargs paramter.
         They will also be included in the "hard" part of the key module.
+
         """
         flags = [flag for flag in config.nvcc.flags.split(' ') if flag]
         if config.nvcc.fastmath:
@@ -162,18 +166,18 @@ class NVCC_compiler(Compiler):
         # to use the new API, but not everywhere. When finished, enable
         # the following macro to assert that we don't bring new code
         # that use the old API.
-        flags.append("-D NPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
+        flags.append("-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
 
         # numpy 1.7 deprecated the following macro but the didn't
         # existed in the past
         numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
         if bool(numpy_ver < [1, 7]):
-            flags.append("-D NPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
-            flags.append("-D NPY_ARRAY_ALIGNED=NPY_ALIGNED")
-            flags.append("-D NPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
-            flags.append("-D NPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
-            flags.append("-D NPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
-            flags.append("-D NPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
+            flags.append("-DNPY_ARRAY_ENSURECOPY=NPY_ENSURECOPY")
+            flags.append("-DNPY_ARRAY_ALIGNED=NPY_ALIGNED")
+            flags.append("-DNPY_ARRAY_WRITEABLE=NPY_WRITEABLE")
+            flags.append("-DNPY_ARRAY_UPDATE_ALL=NPY_UPDATE_ALL")
+            flags.append("-DNPY_ARRAY_C_CONTIGUOUS=NPY_C_CONTIGUOUS")
+            flags.append("-DNPY_ARRAY_F_CONTIGUOUS=NPY_F_CONTIGUOUS")
 
         # If the user didn't specify architecture flags add them
         if not any(['-arch=sm_' in f for f in flags]):
@@ -208,31 +212,48 @@ class NVCC_compiler(Compiler):
     def compile_str(
             module_name, src_code,
             location=None, include_dirs=[], lib_dirs=[], libs=[], preargs=[],
-            rpaths=rpath_defaults, py_module=True):
-        """:param module_name: string (this has been embedded in the src_code
-        :param src_code: a complete c or c++ source listing for the module
-        :param location: a pre-existing filesystem directory where the
-                         cpp file and .so will be written
-        :param include_dirs: a list of include directory names
-                             (each gets prefixed with -I)
-        :param lib_dirs: a list of library search path directory names
-                         (each gets prefixed with -L)
-        :param libs: a list of libraries to link with
-                     (each gets prefixed with -l)
-        :param preargs: a list of extra compiler arguments
-        :param rpaths: list of rpaths to use with Xlinker.
-                       Defaults to `rpath_defaults`.
-        :param py_module: if False, compile to a shared library, but
-            do not import as a Python module.
-
-        :returns: dynamically-imported python module of the compiled code.
-            (unless py_module is False, in that case returns None.)
-
-        :note 1: On Windows 7 with nvcc 3.1 we need to compile in the
-                 real directory Otherwise nvcc never finish.
-
+            rpaths=rpath_defaults, py_module=True, hide_symbols=True):
         """
 
+        Parameters
+        ----------
+        module_name: str
+             This has been embedded in the src_code.
+        src_code
+            A complete c or c++ source listing for the module.
+        location
+            A pre-existing filesystem directory where the
+            cpp file and .so will be written.
+        include_dirs
+            A list of include directory names (each gets prefixed with -I).
+        lib_dirs
+            A list of library search path directory names (each gets 
+            prefixed with -L).
+        libs
+            A list of libraries to link with (each gets prefixed with -l).
+        preargs
+            A list of extra compiler arguments.
+        rpaths
+            List of rpaths to use with Xlinker. Defaults to `rpath_defaults`.
+        py_module
+            If False, compile to a shared library, but
+            do not import as a Python module.
+        hide_symbols
+            If True (the default), hide all symbols from the library symbol
+            table unless explicitely exported.
+
+        Returns
+        -------
+        module
+            Dynamically-imported python module of the compiled code.
+            (unless py_module is False, in that case returns None.)
+
+        Notes
+        -----
+        On Windows 7 with nvcc 3.1 we need to compile in the real directory
+        Otherwise nvcc never finish.
+
+        """
         rpaths = list(rpaths)
 
         if sys.platform == "win32":
@@ -320,6 +341,9 @@ class NVCC_compiler(Compiler):
             # in both math_functions.h and pymath.h,
             # by not including the one in pymath.h
             cmd.extend(['-D HAVE_ROUND'])
+        else:
+            if hide_symbols:
+                preargs2.append('-fvisibility=hidden')
 
         if local_bitwidth() == 64:
             cmd.append('-m64')

@@ -1,14 +1,13 @@
 """A `Type` and `Op` classes to work with numpy.ndarrays symbolically."""
-
-__docformat__ = "restructuredtext en"
-
 import sys
 import warnings
-from itertools import izip
 
 import numpy
+from six.moves import xrange
+import numbers
 
 import theano
+from theano.compat import izip
 from theano.configparser import config
 from theano import gof
 from theano.gof import Apply, Constant, Op, Variable
@@ -20,13 +19,12 @@ from theano.tensor.var import (AsTensorError, TensorVariable,
 from theano.tensor.type import TensorType, values_eq_approx_always_true
 from theano.tensor.type_other import NoneConst
 from theano import scalar as scal
-from theano.compat import partial
-from theano.gof.utils import hashtype
+from functools import partial
+from six import integer_types
 from theano import compile, printing
 from theano.printing import pprint, min_informative_str
 # For history
 from theano.compile import Rebroadcast, Shape, shape
-
 
 # We use these exceptions as well.
 import theano.scalar.sharedvar
@@ -40,19 +38,21 @@ from theano.tensor.elemwise import Elemwise, DimShuffle, CAReduce, Sum
 import logging
 _logger = logging.getLogger("theano.tensor.basic")
 
+__docformat__ = "restructuredtext en"
+
 # This is needed as we will hide it later
 python_complex = complex
 python_any = any
 python_all = all
 
 # Define common subsets of dtypes (as strings).
-complex_dtypes = map(str, scal.complex_types)
-continuous_dtypes = map(str, scal.continuous_types)
-float_dtypes = map(str, scal.float_types)
-discrete_dtypes = map(str, scal.discrete_types)
-all_dtypes = map(str, scal.all_types)
-int_dtypes = map(str, scal.int_types)
-uint_dtypes = map(str, scal.uint_types)
+complex_dtypes = list(map(str, scal.complex_types))
+continuous_dtypes = list(map(str, scal.continuous_types))
+float_dtypes = list(map(str, scal.float_types))
+discrete_dtypes = list(map(str, scal.discrete_types))
+all_dtypes = list(map(str, scal.all_types))
+int_dtypes = list(map(str, scal.int_types))
+uint_dtypes = list(map(str, scal.uint_types))
 
 
 class ShapeError(Exception):
@@ -62,8 +62,10 @@ class ShapeError(Exception):
 
 def check_equal_numpy(x, y):
     """
-    Returns True iff x and y are equal (checks the dtype and
-    shape if x and y are numpy.ndarray instances).
+    Return True iff x and y are equal.
+
+    Checks the dtype and shape if x and y are numpy.ndarray instances.
+
     """
     if isinstance(x, numpy.ndarray) and isinstance(y, numpy.ndarray):
         return (x.dtype == y.dtype and x.shape == y.shape and
@@ -88,6 +90,7 @@ def constructor(f):
 
     Make `f` appear as a constructor in the oplist (`gen_oplist`,
     doc/oplist.txt).
+
     """
     __oplist_constructor_list.append(f)
     return f
@@ -106,8 +109,7 @@ if 0:
     # - JB 20100226
     def as_cuda_or_tensor_variable(x, name=None, ndim=None):
         """
-        This function do the same as_tensor_variable, but don't
-        transfert the value on the gpu
+        Do the same as_tensor_variable, but do not transfer the value on the gpu.
         """
         if hasattr(x, '_as_CudaNdarrayVariable'):
             # TODO: pass name and ndim arguments
@@ -116,29 +118,31 @@ if 0:
 
 
 def as_tensor_variable(x, name=None, ndim=None):
-    """Return `x`, transformed into a `TensorType`
+    """Return `x`, transformed into a `TensorType`.
 
-    This function is often used by `make_node` methods of `Op`
-    subclasses to turn ndarrays, numbers, `Scalar` instances, `Apply`
-    instances and `TensorType` instances into valid input list
-    elements.
+    This function is often used by `make_node` methods of `Op` subclasses
+    to turn ndarrays, numbers, `Scalar` instances, `Apply` instances and
+    `TensorType` instances into valid input list elements.
 
-    :Parameters:
-     - `x`: Apply instance, Variable instance, numpy.ndarray, or number
-       This thing will be transformed into a `Variable` in a sensible way.  An
-       ndarray argument will not be copied, but a list of numbers will be
-       copied to make an ndarray.
-     - `name`: str or None
-       If a new `Variable` instance is created, it will be named with this
-       string.
-     - `ndim`: None or integer
-       Return a Variable with this many dimensions.  Raise TypeError if it's
-       not possible.
+    Parameters
+    ----------
+    x : Apply instance, Variable instance, numpy.ndarray, or number
+        This thing will be transformed into a `Variable` in a sensible way. An
+        ndarray argument will not be copied, but a list of numbers will be
+        copied to make an ndarray.
+    name : str or None
+        If a new `Variable` instance is created, it will be named with this
+        string.
+    ndim : None or integer
+        Return a Variable with this many dimensions. Raise TypeError if it's
+        not possible.
 
-    :Exceptions:
-     - `ValueError`: raised if an `Apply` with more then one output is fetched
-     - `AsTensorError`: raised if `x` cannot be converted to a TensorType
-       Variable
+    Raises
+    ------
+    ValueError
+        If an `Apply` with more than one output is fetched.
+    AsTensorError
+        If `x` cannot be converted to a TensorType Variable.
 
     """
     if hasattr(x, '_as_TensorVariable'):
@@ -165,9 +169,9 @@ def as_tensor_variable(x, name=None, ndim=None):
         else:
             if (x.type.ndim > ndim):
                 # strip off leading broadcastable dimensions
-                first_non_broadcastable = [idx for idx in range(x.ndim)
+                first_non_broadcastable = [idx for idx in xrange(x.ndim)
                                            if not x.broadcastable[idx]][0]
-                x = x.dimshuffle(range(x.ndim)[first_non_broadcastable:])
+                x = x.dimshuffle(list(range(x.ndim))[first_non_broadcastable:])
                 if x.ndim > ndim:
                     raise ValueError(
                         'TensorType could not be cast to have %i dimensions'
@@ -230,21 +234,23 @@ class NumpyAutocaster(object):
               float32);
             - if no data type can represent `x` without loss of precision, then
               the last data type in the tuple will be used.
-    """
-    def __init__(self, dtypes):
-        """
-        Constructor.
 
-        :type dtypes: Tuple of strings.
-        :param dtypes: The ordered list of preferred data types (only used when
-        `config.cast_policy` is set to 'custom', see the `NumpyAutocaster` help
-        for details).
-        """
+
+    Parameters
+    ----------
+    dtypes: tuple of strings
+        The ordered list of preferred data types (only used when
+        `config.cast_policy` is set to 'custom', see the `NumpyAutocaster`
+        help for details).
+
+    """
+
+    def __init__(self, dtypes):
         self.dtypes = tuple(dtypes)
 
     def __call__(self, x):
         # Make sure we only deal with scalars.
-        assert (isinstance(x, int) or
+        assert (isinstance(x, integer_types) or
                 isinstance(x, float) or
                 (isinstance(x, numpy.ndarray) and x.ndim == 0))
 
@@ -311,17 +317,20 @@ autocast_float = NumpyAutocaster(('float16', 'float32', 'float64'))
 #
 class autocast_float_as(object):
     """
+    Temporarily adjust autocasting behavior.
+
     This class makes it possible to temporarily and locally adjust autocasting
     behavior when `config.cast_policy` is set to 'custom'.
     If `config.cast_policy` is not 'custom', an exception is raised.
+    This class might be convenient in some code, but it definitely
+    helps to test the autocasting mechanism.
 
-    For example:
+    Examples
+    --------
     >>> with autocast_float_as('float32'):
     ...    assert (fvector() + 1.1).dtype == 'float32'  # temporary downcasting
     >>> assert (fvector() + 1.1).dtype == 'float64' # back to default behaviour
 
-    This class might be convenient in some code, but it definitely
-    helps to test the autocasting mechanism.
     """
     def __init__(self, *dtypes):
         self.dtypes = dtypes
@@ -338,11 +347,14 @@ class autocast_float_as(object):
 
 
 def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
-    """Return a symbolic `Constant` with value `x`
+    """Return a symbolic `Constant` with value `x`.
 
-    :Exceptions:
-     - `TypeError`: `x` could not be converted to a numpy.ndarray
-     - `ValueError`: `x` could not be expanded to have ndim dimensions
+    Raises
+    ------
+    TypeError
+        `x` could not be converted to a numpy.ndarray.
+    ValueError
+        `x` could not be expanded to have ndim dimensions.
 
     """
     if dtype is not None:
@@ -352,23 +364,15 @@ def constant_or_value(x, rtype, name=None, ndim=None, dtype=None):
         # In this case, this function should infer the dtype according to the
         # autocasting rules. See autocasting above.
         x_ = None
-        if rtype is TensorConstant and isinstance(x, int):
-            x_ = autocast_int(x)
+        if rtype is TensorConstant and isinstance(x, integer_types):
+            try:
+                x_ = autocast_int(x)
+            except OverflowError:
+                # This is to imitate numpy behavior which tries to fit
+                # bigger numbers into a uint64.
+                x_ = theano._asarray(x, dtype='uint64')
         elif rtype is TensorConstant and isinstance(x, float):
             x_ = autocast_float(x)
-        elif rtype is TensorConstant and isinstance(x, long):
-            # We need to address the case where a long number is used in a
-            # Theano graph, because on Windows 64, all shapes are expressed
-            # with longs.
-            # If a long fits in int64, we convert it into an int64, like
-            # numpy.asarray() does up to 1.7. NumPy 1.7.1 upcasts to int64
-            # if possible, but falls back to uint64 if int64 isn't possible but
-            # uint64 is. We always do as NumPy 1.7.1  here.
-            # If x is too big, an OverflowError will be raised by numpy.
-            try:
-                x_ = theano._asarray(x, dtype='int64')
-            except OverflowError:
-                x_ = theano._asarray(x, dtype='uint64')
         elif isinstance(x, numpy.ndarray):
             x_ = x
             # Currently we do not have a bool dtype in Theano.
@@ -514,8 +518,13 @@ class EmptyConstantError(NotScalarConstantError):
 
 
 def numpy_scalar(data):
-    """ Return a scalar stored in a numpy ndarray, or raise
-    NotScalarConstantError if the numpy ndarray is not a scalar
+    """ Return a scalar stored in a numpy ndarray.
+
+    Raises
+    ------
+     NotScalarConstantError
+        If the numpy ndarray is not a scalar.
+
     """
 
     # handle case where data is numpy.array([])
@@ -543,26 +552,29 @@ get_scalar_constant_value_elemwises = (
 
 def get_scalar_constant_value(orig_v, elemwise=True,
                               only_process_constants=False):
-    """return the constant scalar(0-D) value underlying variable `v`
+    """Return the constant scalar(0-D) value underlying variable `v`.
 
-    If v is the output of dimshuffles, fills, allocs, rebroadcasts,
-    cast, OutputGuard, DeepCopyOp, ScalarFromTensor, ScalarOp,
-    Elemwise and some pattern with Subtensor,
-    this function digs through them.
+    If `v` is the output of dimshuffles, fills, allocs, rebroadcasts,
+    cast, OutputGuard, DeepCopyOp, ScalarFromTensor, ScalarOp, Elemwise
+    and some pattern with Subtensor, this function digs through them.
 
     If `v` is not some view of constant scalar data, then raise a
     NotScalarConstantError.
 
-    :param elemwise: If False, we won't try to go into elemwise.
-        So this call is faster.
+    Parameters
+    ----------
+    elemwise : bool
+        If False, we won't try to go into elemwise. So this call is faster.
+    only_process_constants : bool
+        If True, we only attempt to obtain the value of `orig_v` if it's
+        directly constant and don't try to dig through dimshuffles, fills,
+        allocs, and other to figure out its value.
 
-    :param only_process_constants: If True, we only attempt to obtain
-            the value of `orig_v` if it's directly constant and don't
-            try to dig through dimshuffles, fills, allocs, and other to figure
-            out its value.
+    Notes
+    -----
+        There may be another function similar to this one in the code,
+        but I'm not sure where it is.
 
-    :note: There may be another function similar to this one in the
-        code, but I'm not sure where it is.
     """
     v = orig_v
     while True:
@@ -599,7 +611,7 @@ def get_scalar_constant_value(orig_v, elemwise=True,
             # mess with the stabilization optimization and be too slow.
             # We put all the scalar Ops used by get_canonical_form_slice()
             # to allow it to determine the broadcast pattern correctly.
-            elif isinstance(v.owner.op, ScalarFromTensor):
+            elif isinstance(v.owner.op, (ScalarFromTensor, TensorFromScalar)):
                 return get_scalar_constant_value(v.owner.inputs[0])
             elif isinstance(v.owner.op, scal.ScalarOp):
                 if isinstance(v.owner.op, scal.Second):
@@ -626,8 +638,8 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                     ret = [[None]]
                     v.owner.op.perform(v.owner, const, ret)
                     return ret[0][0]
-            elif (isinstance(v.owner.op, theano.tensor.subtensor.Subtensor)
-                  and v.ndim == 0):
+            elif (isinstance(v.owner.op, theano.tensor.subtensor.Subtensor) and
+                  v.ndim == 0):
                 if isinstance(v.owner.inputs[0], TensorConstant):
                     cdata = tuple(v.owner.op.get_constant_idx(v.owner.inputs))
                     try:
@@ -719,11 +731,9 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                     ndim = grandparent.type.ndim
                     if grandparent.owner and isinstance(grandparent.owner.op,
                                                         Rebroadcast):
-                        l = []
-                        for idx, (b1, b2) in enumerate(
-                                zip(grandparent.owner.inputs[0].broadcastable,
-                                    gp_broadcastable)):
-                            l.append(b1 or b2)
+                        ggp_broadcastable = grandparent.owner.inputs[0].broadcastable
+                        l = [b1 or b2 for b1, b2 in zip(ggp_broadcastable,
+                                                        gp_broadcastable)]
                         gp_broadcastable = tuple(l)
 
                     assert ndim == len(gp_broadcastable)
@@ -782,8 +792,14 @@ lscalar = TensorType('int64', ())
 
 def scalar(name=None, dtype=None):
     """Return a symbolic scalar variable.
-    :param dtype: numeric type (None means to use theano.config.floatX)
-    :param name: a name to attach to this variable
+
+    Parameters
+    ----------
+    dtype: numeric
+        None means to use theano.config.floatX.
+    name
+        A name to attach to this variable.
+
     """
     if dtype is None:
         dtype = config.floatX
@@ -812,8 +828,14 @@ lvector = TensorType('int64', (False, ))
 
 def vector(name=None, dtype=None):
     """Return a symbolic vector variable.
-    :param dtype: numeric type (None means to use theano.config.floatX)
-    :param name: a name to attach to this variable
+
+    Parameters
+    ----------
+    dtype: numeric
+        None means to use theano.config.floatX.
+    name
+        A name to attach to this variable
+
     """
     if dtype is None:
         dtype = config.floatX
@@ -839,8 +861,14 @@ lmatrix = TensorType('int64', (False, False))
 
 def matrix(name=None, dtype=None):
     """Return a symbolic matrix variable.
-    :param dtype: numeric type (None means to use theano.config.floatX)
-    :param name: a name to attach to this variable
+
+    Parameters
+    ----------
+    dtype: numeric
+        None means to use theano.config.floatX.
+    name
+        A name to attach to this variable.
+
     """
     if dtype is None:
         dtype = config.floatX
@@ -866,8 +894,14 @@ lrow = TensorType('int64', (True, False))
 
 def row(name=None, dtype=None):
     """Return a symbolic row variable (ndim=2, broadcastable=[True,False]).
-    :param dtype: numeric type (None means to use theano.config.floatX)
-    :param name: a name to attach to this variable
+
+    Parameters
+    ----------
+    dtype: numeric type
+        None means to use theano.config.floatX.
+    name
+        A name to attach to this variable.
+
     """
     if dtype is None:
         dtype = config.floatX
@@ -887,8 +921,14 @@ lcol = TensorType('int64', (False, True))
 
 def col(name=None, dtype=None):
     """Return a symbolic column variable (ndim=2, broadcastable=[False,True]).
-    :param dtype: numeric type (None means to use theano.config.floatX)
-    :param name: a name to attach to this variable
+
+    Parameters
+    ----------
+    dtype : numeric
+        None means to use theano.config.floatX.
+    name
+        A name to attach to this variable.
+
     """
     if dtype is None:
         dtype = config.floatX
@@ -908,8 +948,14 @@ ltensor3 = TensorType('int64', ((False,) * 3))
 
 def tensor3(name=None, dtype=None):
     """Return a symbolic 3-D variable.
-    :param dtype: numeric type (None means to use theano.config.floatX)
-    :param name: a name to attach to this variable
+
+    Parameters
+    ----------
+    dtype: numeric type
+        None means to use theano.config.floatX.
+    name
+        A name to attach to this variable.
+
     """
     if dtype is None:
         dtype = config.floatX
@@ -931,8 +977,14 @@ ltensor4 = TensorType('int64', ((False,) * 4))
 
 def tensor4(name=None, dtype=None):
     """Return a symbolic 4-D variable.
-    :param dtype: numeric type (None means to use theano.config.floatX)
-    :param name: a name to attach to this variable
+
+    Parameters
+    ----------
+    dtype: numeric type
+        None means to use theano.config.floatX.
+    name
+        A name to attach to this variable.
+
     """
     if dtype is None:
         dtype = config.floatX
@@ -966,6 +1018,7 @@ def _scal_elemwise_with_nfunc(nfunc, nin, nout):
     **destination** inputs it takes. That is, the function should
     take nin+nout inputs. nout == 0 means that the numpy function
     does not take a numpy array argument to put its result in.
+
     """
     def construct(symbol):
         symbolname = symbol.__name__
@@ -1008,6 +1061,9 @@ _scal_elemwise = _scal_elemwise_with_nfunc(None, None, None)
 #########################
 
 class TensorFromScalar(Op):
+
+    __props__ = ()
+
     def make_node(self, s):
         assert isinstance(s.type, scal.Scalar)
         return Apply(self,
@@ -1039,18 +1095,12 @@ class TensorFromScalar(Op):
 
         raise NotImplementedError("grad not implemented for complex dtypes")
 
-    def __str__(self):
-        return self.__class__.__name__
-
 tensor_from_scalar = TensorFromScalar()
 
 
 class ScalarFromTensor(Op):
-    def __eq__(self, other):
-        return type(self) == type(other)
 
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, t):
         assert isinstance(t.type, TensorType)
@@ -1078,9 +1128,6 @@ class ScalarFromTensor(Op):
             return [None]
         return self.make_node(*eval_points).outputs
 
-    def __str__(self):
-        return self.__class__.__name__
-
     def c_code(self, node, name, inputs, outputs, sub):
         x, = inputs
         z, = outputs
@@ -1096,7 +1143,7 @@ scalar_from_tensor = ScalarFromTensor()
 
 
 # to be removed as we get the epydoc routine-documenting thing going
-#-JB 20080924
+# -JB 20080924
 def _conversion(real_value, name):
     __oplist_tag(real_value, 'casting')
     real_value.__module__ = 'tensor.basic'
@@ -1198,17 +1245,14 @@ def cast(x, dtype):
 
 
 class MaxAndArgmax(Op):
-    """Calculate the max and argmax over a given axis or over all axes.
+    """
+    Calculate the max and argmax over a given axis or over all axes.
+
     """
     nin = 2  # tensor, axis
     nout = 2  # max val, max idx
     E_axis = 'invalid axis'
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, x, axis=None):
         x = _as_tensor_variable(x)
@@ -1217,13 +1261,13 @@ class MaxAndArgmax(Op):
             axis = [int(a) for a in axis]
             if len(axis) != 1:
                 axis = list(axis)
-                for idx in range(len(axis)):
+                for idx in xrange(len(axis)):
                     if axis[idx] < 0:
                         axis[idx] += x.type.ndim
                 axis.sort()
-                if axis == range(-x.type.ndim, 0, 1):
-                    axis = range(x.type.ndim)
-                assert axis == range(x.type.ndim), (
+                if axis == list(range(-x.type.ndim, 0, 1)):
+                    axis = list(range(x.type.ndim))
+                assert axis == list(range(x.type.ndim)), (
                     "MaxAndArgmax does not support multiple"
                     " axes. the max fct supports it. Got %s" % axis)
                 axis = None
@@ -1241,8 +1285,8 @@ class MaxAndArgmax(Op):
                 raise TypeError(
                     "MaxAndArgmax needs a constant axis. Got %s" % axis)
             else:
-                assert (axis.dtype.startswith("int")
-                        or axis.dtype.startswith("uint"))
+                assert (axis.dtype.startswith("int") or
+                        axis.dtype.startswith("uint"))
                 axis = int(axis.data)
         # we make the axis all positive to make the infer_shape work
         # with negative axis
@@ -1260,7 +1304,7 @@ class MaxAndArgmax(Op):
                     'input is: %s)' % (axis, x.type.ndim))
             all_axes.add(axis)
         else:
-            all_axes = range(x.ndim)
+            all_axes = list(range(x.ndim))
         if axis is None:
             axis = NoneConst.clone()
         else:
@@ -1379,13 +1423,13 @@ class MaxAndArgmax(Op):
         # Lebesgue measure, the result may be interpreted as weak gradient.
 
         # @note: This function should work correctly for L{vector}s.
-#        (x, y), (gz, gw)
-#        gz*dz/dx + gw*dw/dx, gz*dz/dy + gw*dw/dy
-#        gMax * dMax/dx + gArgMax * dArgMax/dx,
-#                           gMax * dMax/daxis + gArgMax * dArgMax/daxis
-#       g_max has one less dimension than x, so you need to complete
-#        g_max to x's shape when axis=0 the broadcasting mechanism
-#        does it automatically
+        # (x, y), (gz, gw)
+        # gz*dz/dx + gw*dw/dx, gz*dz/dy + gw*dw/dy
+        # gMax * dMax/dx + gArgMax * dArgMax/dx,
+        # gMax * dMax/daxis + gArgMax * dArgMax/daxis
+        # g_max has one less dimension than x, so you need to complete
+        # g_max to x's shape when axis=0 the broadcasting mechanism
+        # does it automatically
         x, axis = inp
         g_max, g_max_idx = grads
 
@@ -1406,7 +1450,7 @@ class MaxAndArgmax(Op):
         if g_max_disconnected:
             return [x.zeros_like(), axis_grad]
         if NoneConst.equals(axis):
-            axis_ = range(x.ndim)
+            axis_ = list(range(x.ndim))
         else:
             axis_ = axis
         xmax = max(x, axis_)
@@ -1417,7 +1461,7 @@ class MaxAndArgmax(Op):
         if NoneConst.equals(axis):
             # We are taking the max/argmax over all dimensions.
             axis = None
-        for i in range(x.ndim):
+        for i in xrange(x.ndim):
             if axis is None or i == axis.data:
                 pattern.append('x')
             else:
@@ -1430,10 +1474,6 @@ class MaxAndArgmax(Op):
         g_x = eq(xmax_pad, x) * g_max_pad
         return g_x, axis_grad
 
-    def __str__(self):
-        return self.__class__.__name__
-
-
 _max_and_argmax = MaxAndArgmax()
 
 
@@ -1442,12 +1482,13 @@ def makeKeepDims(x, y, axis):
     Reintroduces in y with length one the axes of x which have been left out
     in a prior reduction of x. With this option, the resulting tensor will
     broadcast correctly against the original tensor x.
+
     """
     x = as_tensor_variable(x)
     y = as_tensor_variable(y)
 
     if axis is None:
-        axis = range(x.type.ndim)
+        axis = list(range(x.type.ndim))
     elif isinstance(axis, (int, numpy.integer)):
         axis = [axis]
     elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
@@ -1477,14 +1518,18 @@ def makeKeepDims(x, y, axis):
 def max_and_argmax(a, axis=None, keepdims=False):
     """
     Returns maximum elements and their indices obtained by iterating over
-    given axis
+    given axis.
 
     When axis is None (the default value), the max is performed
     over the flattened tensor.
 
-    keepdims: If this is set to True, the axes which are reduced are left in
+    Parameters
+    ----------
+    keepdims : bool
+        If this is set to True, the axes which are reduced are left in
         the result as dimensions with size one. With this option, the result
         will broadcast correctly against the original tensor.
+
     """
 
     out, argout = _max_and_argmax(a, axis)
@@ -1498,16 +1543,22 @@ def max_and_argmax(a, axis=None, keepdims=False):
 @constructor
 def max(x, axis=None, keepdims=False):
     """
-    Returns maximum elements obtained by iterating over given axis
+    Returns maximum elements obtained by iterating over given axis.
 
     When axis is None (the default value), the max is performed
     over the flattened tensor.
 
-    keepdims: If this is set to True, the axes which are reduced are left in
+    Parameters
+    ----------
+    keepdims: bool
+        If this is set to True, the axes which are reduced are left in
         the result as dimensions with size one. With this option, the result
         will broadcast correctly against the original tensor.
 
-    :note: we return an error as numpy when we reduce a dim with a shape of 0
+    Notes
+    -----
+    We return an error as numpy when we reduce a dim with a shape of 0.
+
     """
 
     # We have a choice of implementing this call with the
@@ -1535,14 +1586,18 @@ def max(x, axis=None, keepdims=False):
 @constructor
 def argmax(x, axis=None, keepdims=False):
     """
-    Returns indices of maximum elements obtained by iterating over given axis
+    Returns indices of maximum elements obtained by iterating over given axis.
 
     When axis is None (the default value), the argmax is performed
     over the flattened tensor.
 
-    keepdims: If this is set to True, the axes which are reduced are left in
+    Parameters
+    ----------
+    keepdims : bool
+        If this is set to True, the axes which are reduced are left in
         the result as dimensions with size one. With this option, the result
         will broadcast correctly against the original tensor.
+
     """
     # In python (using MaxAndArgmax.perform()) this leads to a wasteful
     # implementation that goes through the data twice instead of once
@@ -1558,14 +1613,18 @@ def argmax(x, axis=None, keepdims=False):
 @constructor
 def min(x, axis=None, keepdims=False):
     """
-    Returns minimum elements obtained by iterating over given axis
+    Returns minimum elements obtained by iterating over given axis.
 
     When axis is None (the default value), the min is performed
     over the flattened tensor.
 
-    keepdims: If this is set to True, the axes which are reduced are left in
+    Parameters
+    ----------
+    keepdims: bool
+        If this is set to True, the axes which are reduced are left in
         the result as dimensions with size one. With this option, the result
         will broadcast correctly against the original tensor.
+
     """
     x = as_tensor_variable(x)
     str_x_type = str(x.dtype)
@@ -1579,14 +1638,18 @@ def min(x, axis=None, keepdims=False):
 @constructor
 def argmin(x, axis=None, keepdims=False):
     """
-    Returns indices of minimum elements obtained by iterating over given axis
+    Returns indices of minimum elements obtained by iterating over given axis.
 
     When axis is None (the default value), the argmin is performed
     over the flattened tensor.
 
-    keepdims: If this is set to True, the axes which are reduced are left in
+    Parameters
+    ----------
+    keepdims: bool
+        If this is set to True, the axes which are reduced are left in
         the result as dimensions with size one. With this option, the result
         will broadcast correctly against the original tensor.
+
     """
     x = as_tensor_variable(x)
     str_x_type = str(x.dtype)
@@ -1603,6 +1666,7 @@ def smallest(*args):
     Return the [elementwise] smallest of a variable number of arguments.
 
     Like python's min.
+
     """
     if len(args) == 2:
         a, b = args
@@ -1617,6 +1681,7 @@ def largest(*args):
     Return the [elementwise] largest of a variable number of arguments.
 
     Like python's max.
+
     """
     if len(args) == 2:
         a, b = args
@@ -1667,6 +1732,146 @@ def isnan(a):
 @_scal_elemwise_with_nfunc('isinf', 1, 1)
 def isinf(a):
     """isinf(a)"""
+
+
+def allclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
+    """
+    Implement Numpy's ``allclose`` on tensors.
+
+    ``absolute(a - b) <= (atol + rtol * absolute(b))``
+
+    Parameters
+    ----------
+    a : tensor
+        Input to compare.
+    b : tensor
+        Input to compare.
+    rtol : float
+        The relative tolerance parameter.
+    atol : float
+        The absolute tolerance parameter.
+    equal_nan: bool
+        Whether to consider nan's in the same place to be close.
+
+    Returns
+    -------
+    bool
+        A boolean value (of type int8 returned by the tensor elementwise `all`
+        function) whether all elements in a and b are in the tolerance range
+        defined above.
+
+    Notes
+    -----
+    Not a symmetric equation. See Numpy's documentation.
+
+    """
+    return all(isclose(a, b, rtol, atol, equal_nan))
+
+
+def isclose(a, b, rtol=1.e-5, atol=1.e-8, equal_nan=False):
+    """
+    Implements Numpy's ``isclose`` on tensors.
+
+    The tolerance values are positive, typically very small numbers. The
+    relative difference (`rtol` * abs(`b`)) and the absolute difference
+    `atol` are added together to compare against the absolute difference
+    between `a` and `b`.
+
+    ``absolute(a - b) <= (atol + rtol * absolute(b))``
+
+    Parameters
+    ----------
+    a : tensor
+        Input to compare.
+    b : tensor
+        Input to compare.
+    rtol : float
+        The relative tolerance parameter.
+    atol : float
+        The absolute tolerance parameter.
+    equal_nan : bool
+        Whether to consider nan's in the same place to be close
+
+    Returns
+    -------
+    int8
+        A boolean (int8) array where two arrays are element-wise equal
+        within a tolerance.
+
+    Notes
+    -----
+    Not a symmetric equation. See Numpy's documentation.
+
+    Examples
+    --------
+    >>> import theano
+    >>> import numpy as np
+    >>> a = theano._asarray([1e10, 1e-7], dtype="float64")
+    >>> b = theano._asarray([1.00001e10, 1e-8], dtype="float64")
+    >>> theano.tensor.isclose(a, b).eval()
+    array([1, 0], dtype=int8)
+    >>> a = theano._asarray([1e10, 1e-8], dtype="float64")
+    >>> b = theano._asarray([1.00001e10, 1e-9], dtype="float64")
+    >>> theano.tensor.isclose(a, b).eval()
+    array([1, 1], dtype=int8)
+    >>> a = theano._asarray([1e10, 1e-8], dtype="float64")
+    >>> b = theano._asarray([1.0001e10, 1e-9], dtype="float64")
+    >>> theano.tensor.isclose(a, b).eval()
+    array([0, 1], dtype=int8)
+    >>> a = theano._asarray([1.0, np.nan], dtype="float64")
+    >>> b = theano._asarray([1.0, np.nan], dtype="float64")
+    >>> theano.tensor.isclose(a, b).eval()
+    array([1, 0], dtype==int8)
+    >>> a = theano._asarray([1.0, np.nan], dtype="float64")
+    >>> b = theano._asarray([1.0, np.nan], dtype="float64")
+    >>> theano.tensor.isclose(a, b, equal_nan=True).eval()
+    array([1, 1], dtype==int8)
+    >>> a = theano._asarray([1.0, np.inf], dtype="float64")
+    >>> b = theano._asarray([1.0, -np.inf], dtype="float64")
+    >>> theano.tensor.isclose(a, b).eval()
+    array([1, 0], dtype==int8)
+    >>> a = theano._asarray([1.0, np.inf], dtype="float64")
+    >>> b = theano._asarray([1.0, np.inf], dtype="float64")
+    >>> theano.tensor.isclose(a, b).eval()
+    array([1, 1], dtype==int8)
+
+    """
+    # close will be an int8 array of 1 where within tolerance
+    # and 0 where not within tolerance or there was a nan or inf value.
+    diff = abs(a - b)
+    tolerance = atol + rtol * abs(b)
+    close_prelim = le(diff, tolerance)
+
+    a_nan = isnan(a)
+    b_nan = isnan(b)
+    nans = bitwise_or(a_nan, b_nan)
+
+    a_inf = isinf(a)
+    b_inf = isinf(b)
+    infs = bitwise_or(a_inf, b_inf)
+
+    nans_or_infs = bitwise_or(nans, infs)
+
+    # close is now an array of 0's except where elements are not nan or inf
+    # and are withing the tolerance.
+    close = bitwise_and(close_prelim, bitwise_not(nans_or_infs))
+
+    # deal with signed inf values. this will make an array inf_eq of 0's
+    # except where inf values have the same sign.
+    both_infs = bitwise_and(a_inf, b_inf)
+    inf_signs_eq = eq(a_inf * sgn(a), b_inf * sgn(b))
+    inf_eq = bitwise_and(both_infs, inf_signs_eq)
+
+    # now create the potential result combining close and inf_eq
+    close_with_infs = bitwise_or(close, inf_eq)
+
+    # deal with comparing nan's.
+    if equal_nan:
+        both_nans = bitwise_and(a_nan, b_nan)
+        return bitwise_or(close_with_infs, both_nans)
+    # otherwise nan's aren't considered close.
+    else:
+        return close_with_infs
 
 
 ##########################
@@ -1952,7 +2157,7 @@ def chi2sf(x, k):
 
 
 # numpy.real(float32) return a view on the inputs.
-#@_scal_elemwise_with_nfunc('real', 1, 1)
+# @_scal_elemwise_with_nfunc('real', 1, 1)
 @_scal_elemwise
 def real(z):
     """Return real component of complex-valued tensor `z`"""
@@ -1990,7 +2195,7 @@ def complex_from_polar(abs, angle):
 
 
 # fill, _fill_inplace = _elemwise(scal.second, 'fill',
-    #"""fill WRITEME (elemwise)""")
+# """fill WRITEME (elemwise)""")
 @_scal_elemwise
 def second(a, b):
     """Create a matrix by filling the shape of a with b"""
@@ -2056,8 +2261,8 @@ class Nonzero(gof.Op):
 
     Returns
     -------
-    result : matrix
-        matrix containing the indices of the non-zero elements of a.
+    matrix
+        Matrix containing the indices of the non-zero elements of a.
 
     See Also
     --------
@@ -2112,14 +2317,13 @@ def nonzero(a, return_matrix=False):
     ----------
     a : array_like
         Input array.
-
     return_matrix : bool
         If True, returns a symbolic matrix. If False, returns a tuple of
         arrays. Defaults to False.
 
     Returns
     -------
-    result : tuple of vectors or matrix
+    tuple of vectors or matrix
 
     See Also
     --------
@@ -2152,7 +2356,7 @@ def flatnonzero(a):
 
     Returns
     -------
-    res : vector
+    vector
         Output vector, containing the indices of the elements of `a.flatten()`
         that are non-zero.
 
@@ -2160,6 +2364,7 @@ def flatnonzero(a):
     --------
     nonzero : Return the indices of the non-zero elements of the input array.
     nonzero_values : Return the non-zero elements of the input array
+
     """
     if a.ndim == 0:
         raise ValueError('Nonzero only supports non-scalar arrays.')
@@ -2191,7 +2396,7 @@ def nonzero_values(a):
 
     Returns
     -------
-    res : vector
+    vector
         Output vector, containing the non-zero elements of a.
 
     See Also
@@ -2199,11 +2404,15 @@ def nonzero_values(a):
     nonzero : Return the indices of the non-zero elements of the input array.
     flatnonzero : Return the indices of the non-zero elements of the
         flattened input array.
+
     """
     return a.flatten()[flatnonzero(a)]
 
 
 class Tri(gof.Op):
+
+    __props__ = ("dtype",)
+
     def __init__(self, dtype=None):
         if dtype is None:
             dtype = config.floatX
@@ -2230,12 +2439,6 @@ class Tri(gof.Op):
     def grad(self, inp, grads):
         return [grad_undefined(self, i, inp[i]) for i in xrange(3)]
 
-    def __eq__(self, other):
-        return type(self) == type(other) and self.dtype == other.dtype
-
-    def __hash__(self):
-        return hash(self.dtype) ^ hash(type(self))
-
 
 def tri(N, M=None, k=0, dtype=None):
     """
@@ -2257,9 +2460,10 @@ def tri(N, M=None, k=0, dtype=None):
 
     Returns
     -------
-    tri : Array of shape (N, M)
+    Array of shape (N, M)
         Array with its lower triangle filled with ones and zero elsewhere;
         in other words ``T[i,j] == 1`` for ``i <= j + k``, 0 otherwise.
+
     """
     if dtype is None:
         dtype = config.floatX
@@ -2285,12 +2489,13 @@ def tril(m, k=0):
 
     Returns
     -------
-    tril : array, shape (M, N)
+    array, shape (M, N)
         Lower triangle of `m`, of same shape and data-type as `m`.
 
     See Also
     --------
-    triu : same thing, only for the upper triangle
+    triu : Same thing, only for the upper triangle.
+
     """
     return m * tri(m.shape[0], m.shape[1], k=k, dtype=m.dtype)
 
@@ -2306,12 +2511,16 @@ def triu(m, k=0):
 
     See Also
     --------
-    tril : lower triangle of an array
+    tril : Lower triangle of an array.
+
     """
     return m * (1 - tri(m.shape[0], m.shape[1], k=k - 1, dtype=m.dtype))
 
 
 class Eye(gof.Op):
+
+    __props__ = ("dtype", )
+
     def __init__(self, dtype=None):
         if dtype is None:
             dtype = config.floatX
@@ -2341,12 +2550,6 @@ class Eye(gof.Op):
     def grad(self, inp, grads):
         return [grad_undefined(self, i, inp[i]) for i in xrange(3)]
 
-    def __eq__(self, other):
-        return type(self) == type(other) and self.dtype == other.dtype
-
-    def __hash__(self):
-        return hash(self.dtype) ^ hash(type(self))
-
 
 def eye(n, m=None, k=0, dtype=None):
     """Return a 2-D array with ones on the diagonal and zeros elsewhere.
@@ -2354,21 +2557,22 @@ def eye(n, m=None, k=0, dtype=None):
     Parameters
     ----------
     n : int
-      Number of rows in the output.
+        Number of rows in the output.
     m : int, optional
-      Number of columns in the output. If None, defaults to `N`.
+        Number of columns in the output. If None, defaults to `N`.
     k : int, optional
-      Index of the diagonal: 0 (the default) refers to the main diagonal,
-      a positive value refers to an upper diagonal, and a negative value
-      to a lower diagonal.
+        Index of the diagonal: 0 (the default) refers to the main diagonal,
+        a positive value refers to an upper diagonal, and a negative value
+        to a lower diagonal.
     dtype : data-type, optional
-      Data-type of the returned array.
+        Data-type of the returned array.
 
     Returns
     -------
-    I : ndarray of shape (N,M)
-      An array where all elements are equal to zero, except for the `k`-th
-      diagonal, whose values are equal to one.
+    ndarray of shape (N,M)
+        An array where all elements are equal to zero, except for the `k`-th
+        diagonal, whose values are equal to one.
+
     """
     if dtype is None:
         dtype = config.floatX
@@ -2383,7 +2587,7 @@ def identity_like(x):
 
 
 class Alloc(gof.Op):
-    """Create a Tensor from an initial value and a desired shape
+    """Create a Tensor from an initial value and a desired shape.
 
     alloc(value, shape0, shape1, ..., shapeN)
 
@@ -2398,6 +2602,7 @@ class Alloc(gof.Op):
 
     This Op is used to replace fill() during optimizations because after shapes
     are lifted, the first argument to fill can often be pruned from the graph.
+
     """
     __props__ = ()
 
@@ -2505,7 +2710,7 @@ class Alloc(gof.Op):
         gz = grads[0]
         n_axes_to_sum = gz.ndim - x.ndim
         # The number of dimensions added
-        axis = range(n_axes_to_sum)
+        axis = list(range(n_axes_to_sum))
         # The broadcasted dimensions
         axis_broadcasted = []
         axis_kept = []
@@ -2540,6 +2745,7 @@ class Alloc(gof.Op):
         for size mismatches.
 
         If you always want an Alloc node, call make_node.
+
         """
         ret = super(Alloc, self).__call__(val, *shapes, **kwargs)
         try:
@@ -2607,18 +2813,22 @@ pprint.assign(tensor_copy, printing.IgnorePrinter())
 @constructor
 def sum(input, axis=None, dtype=None, keepdims=False, acc_dtype=None):
     """
-    Computes the sum along the given axis(es) of a tensor `input`
+    Computes the sum along the given axis(es) of a tensor `input`.
 
     When axis is None (the default value), the sum is performed
     over the flattened tensor.
 
-    keepdims: If this is set to True, the axes which are reduced are left in
-        the result as dimensions with size one. With this option, the result
-        will broadcast correctly against the original tensor.
-
     For full documentation see ``tensor.elemwise.Sum``.
     In particular please pay attention to the important warning when using
     a custom acc_dtype.
+
+    Parameters
+    ----------
+    keepdims: bool
+        If this is set to True, the axes which are reduced are left in
+        the result as dimensions with size one. With this option, the result
+        will broadcast correctly against the original tensor.
+
     """
 
     out = elemwise.Sum(axis=axis, dtype=dtype, acc_dtype=acc_dtype)(input)
@@ -2634,16 +2844,20 @@ pprint.assign(Sum(), printing.FunctionPrinter('sum'))
 def prod(input, axis=None, dtype=None, keepdims=False, acc_dtype=None,
          no_zeros_in_input=False):
     """
-    Computes the product along the given axis(es) of a tensor `input`
+    Computes the product along the given axis(es) of a tensor `input`.
 
     When axis is None (the default value), the product is performed
     over the flattened tensor.
 
-    keepdims: If this is set to True, the axes which are reduced are left in
+    For full documentation see ``tensor.elemwise.Prod``.
+
+    Parameters
+    ----------
+    keepdims: bool
+        If this is set to True, the axes which are reduced are left in
         the result as dimensions with size one. With this option, the result
         will broadcast correctly against the original tensor.
 
-    For full documentation see ``tensor.elemwise.Prod``.
     """
 
     out = elemwise.Prod(axis, dtype=dtype, acc_dtype=acc_dtype,
@@ -2701,31 +2915,32 @@ class Mean(elemwise.CAReduce):
 def mean(input, axis=None, dtype=None, op=False, keepdims=False,
          acc_dtype=None):
     """
-    Computes the mean value along the given axis(es) of a tensor `input`
+    Computes the mean value along the given axis(es) of a tensor `input`.
 
-    :param axis: compute the mean along this axis of the tensor.
-                 None means all axes (like numpy).
-    :type axis: None or int or (list of int) (see `Sum`)
-
-    :param dtype: dtype to cast the result of the inner summation into.
+    Parameters
+    ----------
+    axis : None or int or (list of int) (see `Sum`)
+        Compute the mean along this axis of the tensor.
+        None means all axes (like numpy).
+    dtype: None or string
+        Dtype to cast the result of the inner summation into.
         For instance, by default, a sum of a float32 tensor will be
         done in float64 (acc_dtype would be float64 by default),
         but that result will be casted back in float32.
-    :type dtype: None or string
-
-    :param keepdims: If this is set to True, the axes which are reduced are
+    keepdims: bool
+        If this is set to True, the axes which are reduced are
         left in the result as dimensions with size one. With this option,
         the result will broadcast correctly against the original tensor.
+    acc_dtype: None or string
+        Dtype to use for the inner summation. This will not
+        necessarily be the dtype of the output (in particular
+        if it is a discrete (int/uint) dtype, the output will
+        be in a float type). If None, then we use the same rules as `sum()`.
 
-    :param acc_dtype: dtype to use for the inner summation. This will not
-                  necessarily be the dtype of the output (in particular
-                  if it is a discrete (int/uint) dtype, the output will
-                  be in a float type).
-                  If None, then we use the same rules as `sum()`.
-    :type acc_dtype: None or string
+    Notes
+    -----
+    For gpu, if you specify dtype=float32, everything will be done on the gpu.
 
-    :note: for gpu, if you specify dtype=float32, everything will be done
-           on the gpu.
     """
 
     if op:
@@ -2771,7 +2986,7 @@ def mean(input, axis=None, dtype=None, op=False, keepdims=False,
         shp = cast(shp, 'float64')
 
     if axis is None:
-        axis = range(input.ndim)
+        axis = list(range(input.ndim))
     elif isinstance(axis, (int, numpy.integer)):
         axis = [axis]
     elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
@@ -2794,23 +3009,28 @@ def var(input, axis=None, keepdims=False):
     """
     Computes the variance along the given axis(es) of a tensor `input`.
 
-    :param axis: Compute the variance along this axis of the tensor.
-                 None means all axes (like numpy).
-    :type axis: None or int or (list of int) (see `Sum`)
-
-    :param keepdims: If this is set to True, the axes which are reduced are
+    Parameters
+    ----------
+    axis: None or int or (list of int) (see `Sum`)
+        Compute the variance along this axis of the tensor.
+        None means all axes (like numpy).
+    keepdims : bool
+        If this is set to True, the axes which are reduced are
         left in the result as dimensions with size one. With this option,
         the result will broadcast correctly against the original tensor.
 
-    :note: It uses the two-pass algorithm for more stable results.
-        https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Two-pass_algorithm
-        There exist other implementations that are even more stable, but
-        probably slower.
+    Notes
+    -----
+    It uses the two-pass algorithm for more stable results.
+    https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Two-pass_algorithm
+    There exist other implementations that are even more stable, but probably
+    slower.
+
     """
 
     input_ndim = input.type.ndim
     if axis is None:
-        axis = range(input_ndim)
+        axis = list(range(input_ndim))
     elif isinstance(axis, (int, numpy.integer)):
         axis = [axis]
     elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
@@ -2831,26 +3051,26 @@ def var(input, axis=None, keepdims=False):
 @constructor
 def std(input, axis=None, keepdims=False):
     """
-    Computes the standard deviation along the given axis(es)
-    of a tensor `input`.
+    Computes the standard deviation along the given axis(es) of a tensor `input`.
 
-    :param axis: Compute the standard deviation along this
-                axis of the tensor.
-                 None means all axes (like numpy).
-    :type axis: None or int or (list of int) (see `Sum`)
+    Parameters
+    ----------
+    axis : None or int or (list of int) (see `Sum`)
+        Compute the standard deviation along this axis of the tensor.
+        None means all axes (like numpy).
+    keepdims : bool
+        If this is set to True, the axes which are reduced are left in the
+        result as dimensions with size one. With this option, the result will
+        broadcast correctly against the original tensor.
 
-    :param keepdims: If this is set to True, the axes
-        which are reduced are
-        left in the result as dimensions with size one.
-        With this option,
-        the result will broadcast correctly against the
-        original tensor.
+    Notes
+    -----
+    It calls `var()` and `var()` uses the two-pass algorithm for more stable
+    results.
+    https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Two-pass_algorithm
+    There exist other implementations that are even more stable, but probably
+    slower.
 
-    :note: It calls `var()` and `var()` uses the two-pass algorithm for more
-        stable results.
-        https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Two-pass_algorithm
-        There exist other implementations that are even more stable, but
-        probably slower.
     """
 
     return sqrt(var(input=input, axis=axis, keepdims=keepdims))
@@ -2858,12 +3078,15 @@ def std(input, axis=None, keepdims=False):
 
 class Default(gof.Op):
     """
-    Takes an input x and a default value. If the input is not None, a
-    reference to it is returned. If the input is None, a copy of the
-    default value is returned instead. The input and the default must
-    have exactly the same type.
+    Takes an input x and a default value.
+
+    If the input is not None, a reference to it is returned.
+    If the input is None, a copy of the default value is returned instead.
+    The input and the default must have exactly the same type.
+
     """
     view_map = {0: [0]}
+    __props__ = ()
 
     def make_node(self, x, default):
         x, default = as_tensor_variable(x), as_tensor_variable(default)
@@ -2891,15 +3114,13 @@ setdefault = default  # legacy
 ##########################
 @_scal_elemwise_with_nfunc('maximum', 2, 1)
 def maximum(x, y):
-    """elemwise maximum. See max for the maximum in one tensor
-    """
+    """elemwise maximum. See max for the maximum in one tensor"""
     # see decorator for function body
 
 
 @_scal_elemwise_with_nfunc('minimum', 2, 1)
 def minimum(x, y):
-    """elemwise minimum. See min for the minimum in one tensor
-    """
+    """elemwise minimum. See min for the minimum in one tensor"""
     # see decorator for function body
 
 
@@ -2941,16 +3162,13 @@ def true_div(a, b):
 
 
 @_scal_elemwise_with_nfunc('floor_divide', 2, 1)
-def floor_div(a, b):
+def int_div(a, b):
     """elementwise [floor] division (inverse of multiplication)"""
     # see decorator for function body
 
 
-# not a c/p error, floor_div and int_div are the same thing
-@_scal_elemwise_with_nfunc('floor_divide', 2, 1)
-def int_div(a, b):
-    """elementwise integer-division"""
-    # see decorator for function body
+# floor_div and int_div are the same thing
+floor_div = int_div
 
 
 def ceil_intdiv(a, b):
@@ -2958,6 +3176,7 @@ def ceil_intdiv(a, b):
     Safely compute ceil(float_division(a, b)).
 
     Works for all dtypes, but mostly useful when a and b are int.
+
     """
     # If a and b are int with not many significant bits, we could
     # cast them to float to avoid doing the modulo. We do not know if this
@@ -2999,13 +3218,17 @@ def pow(a, b):
 # So we do not use @scal_elemwise_with_nfunc('clip', 3, 1)
 @_scal_elemwise
 def clip(x, min, max):
-    """clip x to be between min and max.
+    """
+    Clip x to be between min and max.
 
-    :note: When `x` is equal to the boundaries, the output is considered
-        to be `x`, so at these points, the gradient of the cost wrt the output
-        will be propagated to `x`, not to `min` nor `max`. In other words,
-        on these points, the gradient wrt `x` will be equal to the gradient wrt
-        the output, and the gradient wrt `min` and `max` will be zero.
+    Notes
+    -----
+    When `x` is equal to the boundaries, the output is considered
+    to be `x`, so at these points, the gradient of the cost wrt the output
+    will be propagated to `x`, not to `min` nor `max`. In other words,
+    on these points, the gradient wrt `x` will be equal to the gradient wrt
+    the output, and the gradient wrt `min` and `max` will be zero.
+
     """
     # see decorator for function body
     # for grep: clamp, bound
@@ -3025,14 +3248,16 @@ pprint.assign(pow, printing.OperatorPrinter('**', 1, 'right'))
 
 
 def extract_constant(x, elemwise=True):
-    '''
-     This function is basically a call to tensor.get_scalar_constant_value. The
-     main difference is the behaviour in case of failure. While
-     get_scalar_constant_value raises an TypeError, this function returns x,
-     as a tensor if possible. If x is a ScalarVariable from a
-     scalar_from_tensor, we remove the conversion. If x is just a
-     ScalarVariable, we convert it to a tensor with tensor_from_scalar.
-    '''
+    """
+    This function is basically a call to tensor.get_scalar_constant_value.
+
+    The main difference is the behaviour in case of failure. While
+    get_scalar_constant_value raises an TypeError, this function returns x,
+    as a tensor if possible. If x is a ScalarVariable from a
+    scalar_from_tensor, we remove the conversion. If x is just a
+    ScalarVariable, we convert it to a tensor with tensor_from_scalar.
+
+    """
     try:
         x = get_scalar_constant_value(x, elemwise=elemwise)
     except NotScalarConstantError:
@@ -3050,32 +3275,46 @@ def transpose(x, axes=None):
     """
     Reorder the dimensions of x. (Default: reverse them)
 
-    This is a macro around dimshuffle that matches the numpy.transpose
-    function.
+    This is a macro around dimshuffle that matches the numpy.transpose function.
 
     """
     if axes is None:
-        axes = range((x.ndim - 1), -1, -1)
+        axes = list(range((x.ndim - 1), -1, -1))
     ret = DimShuffle(x.broadcastable, axes, inplace=False)(x)
-    if x.name and axes == range((x.ndim - 1), -1, -1):
+    if x.name and axes == list(range((x.ndim - 1), -1, -1)):
         ret.name = x.name + '.T'
     return ret
 
 
 def batched_dot(x, y):
     """
-    :param x: A Tensor with sizes e.g.: for  3D (dim1, dim3, dim2)
-    :param y: A Tensor with sizes e.g.: for 3D (dim1, dim2, dim4)
     This function computes the dot product between the two tensors, by
     iterating over the first dimension using scan.
-    Returns a tensor of size e.g. if it is 3D: (dim1, dim3, dim4)
-    Example:
+
+    Parameters
+    ----------
+    x : tensor
+        A Tensor with sizes e.g.: for  3D (dim1, dim3, dim2).
+    y : tensor
+        A Tensor with sizes e.g.: for 3D (dim1, dim2, dim4).
+
+    Returns
+    -------
+    tensor
+        A tensor of size e.g. if it is 3D: (dim1, dim3, dim4).
+
+    Notes
+    -----
+    This is a subset of numpy.einsum, but we do not provide it for now.
+    But numpy einsum is slower than dot or tensordot:
+    http://mail.scipy.org/pipermail/numpy-discussion/2012-October/064259.html
+
+    Examples
+    --------
     >>> first = tensor.tensor3('first')
     >>> second = tensor.tensor3('second')
     >>> result = batched_dot(first, second)
-    :note:  This is a subset of numpy.einsum, but we do not provide it for now.
-    But numpy einsum is slower than dot or tensordot:
-    http://mail.scipy.org/pipermail/numpy-discussion/2012-October/064259.html
+
     """
     result, updates = theano.scan(
         fn=lambda x_mat, y_mat:
@@ -3088,17 +3327,28 @@ def batched_dot(x, y):
 
 def batched_tensordot(x, y, axes=2):
     """
-    :param x: A Tensor with sizes e.g.: for 3D (dim1, dim3, dim2)
-    :param y: A Tensor with sizes e.g.: for 3D (dim1, dim2, dim4)
-    :param axes: an integer or array. If an integer, the number of axes
-        to sum over. If an array, it must have two array
-        elements containing the axes to sum over in each tensor.
+    Compute the tensordot product.
+
+    A hybrid of batch_dot and tensordot, this function computes the
+    tensordot product between the two tensors, by iterating over the
+    first dimension using scan to perform a sequence of tensordots.
+
+    Parameters
+    ----------
+    x : tensor
+        A Tensor with sizes e.g.: for 3D (dim1, dim3, dim2)
+    y : tensor
+        A Tensor with sizes e.g.: for 3D (dim1, dim2, dim4)
+    axes: int or array-like of length 2
+        If an integer, the number of axes to sum over.
+        If an array, it must have two array elements containing the axes to sum
+        over in each tensor.
 
         If an integer i, it is converted to an array containing
         the last i dimensions of the first tensor and the first
         i dimensions of the second tensor (excluding the first
         (batch) dimension):
-            axes = [range(a.ndim - i, b.ndim), range(1,i+1)]
+            axes = [list(range(a.ndim - i, b.ndim)), list(range(1,i+1))]
 
         If an array, its two elements must contain compatible axes
         of the two tensors. For example, [[1, 2], [2, 4]] means sum
@@ -3106,11 +3356,7 @@ def batched_tensordot(x, y, axes=2):
         (Remember axes are zero-indexed!) The 2nd axis of a and the
         3rd axis of b must have the same shape; the same is true for
         the 3rd axis of a and the 5th axis of b.
-    :type axes: int or array-like of length 2
 
-    A hybrid of batch_dot and tensordot, this function computes the
-    tensordot product between the two tensors, by iterating over the
-    first dimension using scan to perform a sequence of tensordots.
     """
     if isinstance(axes, (list, numpy.ndarray)):
         if isinstance(axes, list):
@@ -3139,20 +3385,17 @@ def split(x, splits_size, n_splits, axis=0):
 class Split(Op):
     """Partition a `TensorVariable` along some axis.
 
-    .. python::
-
-        x = vector()
-        splits = lvector()
-        # you have to declare right away how many split_points there will be.
-        ra, rb, rc = split(x, splits, n_splits = 3, axis = 0)
-
-        f = function([x, splits], [ra, rb, rc])
-
-        a, b, c = f([0,1,2,3,4,5], [3, 2, 1])
-
-        #a == [0,1,2]
-        #b == [3, 4]
-        #c == [5]
+    Examples
+    --------
+    >>> x = vector()
+    >>> splits = lvector()
+    You have to declare right away how many split_points there will be.
+    >>> ra, rb, rc = split(x, splits, n_splits = 3, axis = 0)
+    >>> f = function([x, splits], [ra, rb, rc])
+    >>> a, b, c = f([0,1,2,3,4,5], [3, 2, 1])
+    a == [0,1,2]
+    b == [3, 4]
+    c == [5]
 
     """
 
@@ -3160,19 +3403,13 @@ class Split(Op):
     """A Split instance will have this many outputs, and require that
     the splits argument to `perform` have exactly this many elements.
     """
+    __props__ = ("len_splits",)
 
     def __init__(self, len_splits):
         self.len_splits = int(len_splits)
 
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.len_splits == other.len_splits)
-
     def __str__(self):
         return self.__class__.__name__ + "{%s}" % self.len_splits
-
-    def __hash__(self):
-        return hash(Split) ^ self.len_splits
 
     def make_node(self, x, axis, splits):
         """WRITEME"""
@@ -3238,10 +3475,10 @@ class Split(Op):
         splits = node.inputs[2]
         shp_x, shp_axis, shp_splits = in_shapes
         out_shapes = []
-        for i in range(self.len_splits):
+        for i in xrange(self.len_splits):
             temp = as_tensor_variable(shp_x)
             temp = theano.tensor.subtensor.set_subtensor(temp[axis], splits[i])
-            temp = [temp[i] for i in range(len(shp_x))]
+            temp = [temp[i] for i in xrange(len(shp_x))]
             out_shapes.append(temp)
         return out_shapes
 
@@ -3276,6 +3513,7 @@ class Split(Op):
 def addbroadcast(x, *axes):
     """
     Make the input broadcastable in the specified axes.
+
     For example, addbroadcast(x, 0) will make the first dimension of
     x broadcastable. When performing the function, if the length of
     x along that dimension is not 1, a ValueError will be raised.
@@ -3283,20 +3521,19 @@ def addbroadcast(x, *axes):
     We apply the opt here not to pollute the graph especially during
     the gpu optimization
 
-    Parameters:
-    ------------
-        x : tensor_like
-            Input theano tensor.
-        axis : an int or an iterable object such as list or tuple
-               of int values
-
-               The dimension along which the tensor x should be
-               broadcastable.  if the length of x along these
-               dimensions is not 1, a ValueError will be raised.
-
-    returns:
+    Parameters
     ----------
-        a theano tensor, which is broadcastable along the specified dimensions.
+    x : tensor_like
+        Input theano tensor.
+    axis : an int or an iterable object such as list or tuple of int values
+        The dimension along which the tensor x should be broadcastable.
+        If the length of x along these dimensions is not 1, a ValueError will
+        be raised.
+
+    Returns
+    -------
+    tensor
+        A theano tensor, which is broadcastable along the specified dimensions.
 
     """
     rval = Rebroadcast(*[(axis, True) for axis in axes])(x)
@@ -3306,6 +3543,7 @@ def addbroadcast(x, *axes):
 def unbroadcast(x, *axes):
     """
     Make the input impossible to broadcast in the specified axes.
+
     For example, addbroadcast(x, 0) will make the first dimension
     of x broadcastable. When performing the function, if the length
     of x along that dimension is not 1, a ValueError will be raised.
@@ -3313,20 +3551,19 @@ def unbroadcast(x, *axes):
     We apply the opt here not to pollute the graph especially during
     the gpu optimization
 
-    Parameters:
-    ------------
-        x : tensor_like
-            Input theano tensor.
-        axis : an int or an iterable object such as list or tuple
-               of int values
-
-               The dimension along which the tensor x should be
-               unbroadcastable.  if the length of x along these
-               dimensions is not 1, a ValueError will be raised.
-
-    returns:
+    Parameters
     ----------
-        a theano tensor, which is unbroadcastable along the specified dimensions.
+    x : tensor_like
+        Input theano tensor.
+    axis : an int or an iterable object such as list or tuple of int values
+        The dimension along which the tensor x should be unbroadcastable.
+        If the length of x along these dimensions is not 1, a ValueError will
+        be raised.
+
+    Returns
+    -------
+    tensor
+        A theano tensor, which is unbroadcastable along the specified dimensions.
 
     """
     rval = Rebroadcast(*[(axis, False) for axis in axes])(x)
@@ -3336,7 +3573,8 @@ def unbroadcast(x, *axes):
 def patternbroadcast(x, broadcastable):
     """
     Make the input adopt a specific broadcasting pattern.
-    broadcastable must be iterable. For example,
+
+    Broadcastable must be iterable. For example,
     patternbroadcast(x, (True, False)) will make the first
     dimension of x broadcastable and the second dimension
     not broadcastable, so x will now be a row.
@@ -3344,21 +3582,20 @@ def patternbroadcast(x, broadcastable):
     We apply the opt here not to pollute the graph especially during the gpu
     optimization.
 
-    Parameters:
-    ------------
-        x : tensor_like
-            Input theano tensor.
-        broadcastable : an iterable object such as list or tuple
-                        of bool values
-
-            a set of boolean values indicating whether a dimension
-            should be broadcastable or not.
-            if the length of x along these dimensions is not 1,
-            a ValueError will be raised.
-
-    returns:
+    Parameters
     ----------
-        a theano tensor, which is unbroadcastable along the specified dimensions.
+    x : tensor_like
+        Input theano tensor.
+    broadcastable : an iterable object such as list or tuple of bool values
+        A set of boolean values indicating whether a dimension should be
+        broadcastable or not. If the length of x along these dimensions is
+        not 1, a ValueError will be raised.
+
+    Returns
+    -------
+    tensor
+        A theano tensor, which is unbroadcastable along the specified dimensions.
+
     """
     rval = Rebroadcast(*[(i, broadcastable[i])
                          for i in xrange(len(broadcastable))])(x)
@@ -3374,39 +3611,39 @@ class Join(Op):
     Of course, TensorVariable instances do not have a shape, so this error
     cannot be caught until runtime.  See `perform()`.
 
-    For joins involving scalar values, see @stack.
+    See Also
+    --------
+    stack : For joins involving scalar values
 
-    .. python::
+    Examples
+    --------
+    >>> x, y, z = tensor.matrix(), tensor.matrix(), tensor.matrix()
+    >>> u = tensor.vector()
 
-        x, y, z = tensor.matrix(), tensor.matrix(), tensor.matrix()
-        u = tensor.vector()
+    >>> r = join(0, x, y, z)
+    >>> c = join(1, x, y, z)
+    >>> join(2, x, y, z)    # WRONG: the axis has to be an index into the shape
+    >>> join(0, x, u)       # WRONG: joined tensors must have the same rank
 
-        r = join(0, x, y, z)
-        c = join(1, x, y, z)
-        join(2, x, y, z)    # WRONG: the axis has to be an index into the shape
-        join(0, x, u)       # WRONG: joined tensors must have the same rank
     """
     check_input = False
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return '%s' % (self.__class__.__name__)
+    __props__ = ()
 
     def make_node(self, *axis_and_tensors):
         """
-        :param axis: an Int or integer-valued Variable
+        Parameters
+        ----------
+        axis: an Int or integer-valued Variable
+        tensors
+            A variable number (but not zero) of tensors to
+            concatenate along the specified axis.  These tensors must have
+            the same shape along all dimensions other than this axis.
 
-        :param tensors: a variable number (but not zero) of tensors to
-          concatenate along the specified axis.  These tensors must have
-          the same shape along all dimensions other than this axis.
-
-        :returns: a symbolic Variable.  It has the same ndim as the
-            input tensors, and the most inclusive dtype.
+        Returns
+        -------
+        A symbolic Variable
+            It has the same ndim as the input tensors, and the most inclusive
+            dtype.
 
         """
         axis, tensors = axis_and_tensors[0], axis_and_tensors[1:]
@@ -3417,8 +3654,8 @@ class Join(Op):
         dtypes = [x.type.dtype for x in as_tensor_variable_args]
         out_dtype = scal.upcast(*dtypes)
 
-        output_maker = lambda bcastable: tensor(dtype=out_dtype,
-                                                broadcastable=bcastable)
+        def output_maker(bcastable):
+            return tensor(dtype=out_dtype, broadcastable=bcastable)
 
         return self._make_node_internal(
             axis, tensors, as_tensor_variable_args, output_maker)
@@ -3468,7 +3705,7 @@ class Join(Op):
 
                 for x in as_tensor_variable_args:
                     for current_axis, bflag in enumerate(x.type.broadcastable):
-                        # Constant negative axis can no longer be negative at 
+                        # Constant negative axis can no longer be negative at
                         # this point. It safe to compare this way.
                         if current_axis == axis:
                             continue
@@ -3534,7 +3771,7 @@ class Join(Op):
         int axis = ((%(adtype)s *)PyArray_DATA(%(axis)s))[0];
         int ndim = PyArray_NDIM(%(input_1)s);
         if( axis < -ndim ){
-            PyErr_Format(PyExc_IndexError, 
+            PyErr_Format(PyExc_IndexError,
                          "Join axis %%d out of bounds [0, %%d)", axis, ndim);
             %(fail)s
         }
@@ -3623,26 +3860,25 @@ class Join(Op):
 """
     Convenience function to concatenate `TensorType`s along the given axis.
 
-    :Parameters:
-     - `tensors` : list of tensors (or list-like)
-       A list of tensors to be concatenated along the given axis.
-     - `axis` : int (symbolic or literal)
+    Parameters
+    ----------
+    tensors : list of tensors (or list-like)
+        A list of tensors to be concatenated along the given axis.
+        The shapes of the tensors to be concatenated must be all
+        identical, except in the dimension (`axis`) on which they are to
+        be joined.
+    axis : int (symbolic or literal)
+        On which dimension should the tensors be joined?  The `axis`
+        must be a valid index into the shape of the tensors to be
+        concatenated.
+        The `axis` parameter may either be an integer or an object that
+        can be converted to a scalar using `as_scalar`(`axis`). In the
+        former case, the axis is fixed at construction, while in the
+        latter it may vary over time depending on the value of the
+        `axis` variable.
 
-       On which dimension should the tensors be joined?  The `axis`
-       must be a valid index into the shape of the tensors to be
-       concatenated.
+"""
 
-       The `axis` parameter may either be an integer or an object that
-       can be converted to a scalar using `as_scalar`(`axis`). In the
-       former case, the axis is fixed at construction, while in the
-       latter it may vary over time depending on the value of the
-       `axis` variable.
-
-    The shapes of the tensors to be concatenated must be all
-    identical, except in the dimension (`axis`) on which they are to
-    be joined.
-
-    """
 join = Join()
 
 pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Join),
@@ -3652,7 +3888,8 @@ pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Join),
 def roll(x, shift, axis=None):
     """
     Convenience function to roll `TensorType`s along the given axis.
-    Syntax copies numpy.roll function
+
+    Syntax copies numpy.roll function.
 
     Parameters
     ----------
@@ -3660,15 +3897,16 @@ def roll(x, shift, axis=None):
         Input tensor.
     shift : int (symbolic or literal)
         The number of places by which elements are shifted.
-    axis : int (symbolic or literal) (optional)
+    axis : int (symbolic or literal), optional
         The axis along which elements are shifted. By default, the array
         is flattened before shifting, after which the original
         shape is restored.
 
     Returns
     -------
-    res : tensor
+    tensor
         Output tensor, with the same shape as `x`.
+
     """
     if axis is None:
         if x.ndim > 1:
@@ -3694,9 +3932,13 @@ def roll(x, shift, axis=None):
 
 @constructor
 def shape_padleft(t, n_ones=1):
-    """Reshape `t` by left-padding the shape with `n_ones` 1s
+    """Reshape `t` by left-padding the shape with `n_ones` 1s.
 
-    See also: `shape_padright` and `Dimshuffle`
+    See Also
+    --------
+    shape_padright
+    Dimshuffle
+
     """
     _t = as_tensor_variable(t)
 
@@ -3706,9 +3948,13 @@ def shape_padleft(t, n_ones=1):
 
 @constructor
 def shape_padright(t, n_ones=1):
-    """Reshape `t` by right-padding the shape with `n_ones` 1s
+    """Reshape `t` by right-padding the shape with `n_ones` 1s.
 
-    See also: `shape_padleft` and `Dimshuffle`
+    See Also
+    --------
+    shape_padleft
+    Dimshuffle
+
     """
     _t = as_tensor_variable(t)
 
@@ -3722,6 +3968,7 @@ def stack(*tensors):
 
     The size in dimension 0 of the result will be equal to the number
     of tensors passed.
+
     """
     if len(tensors) == 0:
         raise Exception('theano.tensor.stack(*tensors) must have at least'
@@ -3737,14 +3984,14 @@ def stack(*tensors):
     # See ticket #660
     if numpy.all(
         [  # in case there is direct int in tensors.
-            isinstance(t, (numpy.number, float, int, python_complex,
-                           long)) or
+            isinstance(t, (numpy.number, float, integer_types,
+                           python_complex)) or
             (isinstance(t, Variable) and
              isinstance(t.type, TensorType) and
              t.ndim == 0)
             for t in tensors]):
         # in case there is direct int
-        tensors = map(as_tensor_variable, tensors)
+        tensors = list(map(as_tensor_variable, tensors))
         dtype = scal.upcast(*[i.dtype for i in tensors])
         return theano.tensor.opt.MakeVector(dtype)(*tensors)
     return join(0, *[shape_padleft(t, 1) for t in tensors])
@@ -3757,9 +4004,10 @@ def concatenate(tensor_list, axis=0):
     This function is similar to `join`, but uses the signature of
     numpy's concatenate function.
 
-    This function
-    :Exceptions:
-     - `TypeError` : the tensor_list must be a tuple or list
+    Raises
+    ------
+    TypeError
+        The tensor_list must be a tuple or list.
 
     """
     # Check someone did not make the common mistake to do something like:
@@ -3777,16 +4025,20 @@ def concatenate(tensor_list, axis=0):
 def get_vector_length(v):
     """Return the run-time length of a symbolic vector.
 
-    :Parameters:
-     - `v` : A rank-1 TensorType variable.
+    Parameters
+    ----------
+    v
+        A rank-1 TensorType variable.
 
-    :Exceptions:
-     - `TypeError` : `v` hasn't the proper type.
-     - `ValueError` : No special case applies, the length is not known.
-
-    In general this is not possible, but for a number of special cases
-    the length can be determined at compile / graph-construction time.
-    This function implements these special cases.
+    Raises
+    ------
+    TypeError
+        `v` hasn't the proper type.
+    ValueError
+        No special case applies, the length is not known.
+        In general this is not possible, but for a number of special cases
+        the length can be determined at compile / graph-construction time.
+        This function implements these special cases.
 
     """
     v = as_tensor_variable(v)
@@ -3800,15 +4052,22 @@ def get_vector_length(v):
         return len(v.owner.inputs)
     if v.owner and isinstance(v.owner.op, Shape):
         return v.owner.inputs[0].type.ndim
-    # If we take this slice: var[:0], we know it will have 0 elements.
+    # If we take a slice, we know how many elements it will result in
     if ((v.owner and
          isinstance(v.owner.op, theano.tensor.subtensor.Subtensor) and
-         isinstance(v.owner.op.idx_list[0], slice) and
-         v.owner.op.idx_list[0].start in [None, 0])):
-        stop = theano.tensor.subtensor.get_idx_list(
-            v.owner.inputs, v.owner.op.idx_list)[0].stop
-        if extract_constant(stop) == 0:
-            return 0
+         isinstance(v.owner.op.idx_list[0], slice))):
+        start = extract_constant(theano.tensor.subtensor.get_idx_list(
+            v.owner.inputs, v.owner.op.idx_list)[0].start)
+        stop = extract_constant(theano.tensor.subtensor.get_idx_list(
+            v.owner.inputs, v.owner.op.idx_list)[0].stop)
+        if start is None:
+            start = 0
+        if stop is None:
+            stop = 0
+        if ((isinstance(stop, numbers.Integral) and
+             isinstance(start, numbers.Integral))):
+            return stop - start
+
     raise ValueError("length not known")
 
 
@@ -3816,9 +4075,11 @@ def get_vector_length(v):
 def horizontal_stack(*args):
     """
     Horizontally stack two L{TensorType}s.
+
     Stack two L{TensorType}s along the second axis (column wise). These
     L{TensorType}s must have the same shape along all dimensions but the
     second.
+
     """
     # Note: 'horizontal_stack' and 'vertical_stack' do not behave exactly like
     # Numpy's hstack and vstack functions. This is intended, because Numpy's
@@ -3844,23 +4105,19 @@ class Reshape(Op):
     """Perform a reshape operation of the input x to the new shape shp.
 
     The number of dimensions to which to reshape to (ndim) must be
-    known at graph build time."""
+    known at graph build time.
+
+    """
     view_map = {0: [0]}  # output 0 is potentially aliased to inputs [0]
     _f16_ok = True
 
     check_input = False
+    __props__ = ("ndim",)
+    # name does not participate because it doesn't affect computations
 
     def __init__(self, ndim, name=None):
         self.ndim = ndim
         self.name = name
-
-    def __eq__(self, other):
-        # .name does not participate because it doesn't affect computations
-        return (type(other) is type(self)) and (other.ndim == self.ndim)
-
-    def __hash__(self):
-        # .name does not participate because it doesn't affect computations
-        return hash(type(self)) ^ hash(self.ndim)
 
     def __str__(self):
         return '%s{%s}' % (self.__class__.__name__, self.ndim)
@@ -4044,21 +4301,19 @@ def reshape(x, newshape, ndim=None, name=None):
 
 class Flatten(Op):
     """
+    Flatten a tensor.
+
     Flattens a tensor to `outdim` dimensions by preserving the leading
     outdim - 1 shape components.
+
     """
     view_map = {0: [0]}
 
     check_input = False
+    __props__ = ("outdim",)
 
     def __init__(self, outdim=1):
         self.outdim = int(outdim)
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.outdim == other.outdim
-
-    def __hash__(self):
-        return hashtype(self) ^ hash(self.outdim)
 
     def __str__(self):
         return '%s{%s}' % (self.__class__.__name__, self.outdim)
@@ -4068,8 +4323,18 @@ class Flatten(Op):
         if self.outdim < 1 or (x.ndim and self.outdim > x.ndim):
             raise ValueError('invalid output ndimensions (%i) for tensor of '
                              'rank %i' % (self.outdim, t_x.ndim))
+
+        # Infer the broadcastable pattern of the output. For every dimension
+        # unaffected by the flatten, the broadcast flag should be unchanged.
+        # For the dimension resulting from the collapse of other dimensions,
+        # it should be broadcastable iff all the collapsed dimensions were
+        # broadcastable.
+        bcast_kept_dims = x.broadcastable[:self.outdim - 1]
+        bcast_new_dim = python_all(x.broadcastable[self.outdim - 1:])
+        broadcastable = bcast_kept_dims + (bcast_new_dim,)
+
         return gof.Apply(self, [t_x], [tensor(x.type.dtype,
-                                              (False,) * self.outdim)])
+                                              broadcastable)])
 
     def perform(self, node, inp, out_):
         x, = inp
@@ -4213,33 +4478,31 @@ def flatten(x, outdim=1):
 
 class Tile(Op):
     """
-    DEPRECATED: use tile() instead.
-
     Construct an array by repeating the input x according to reps pattern.
+
+    .. note:: Deprecated
+              Use tile() instead.
 
     Tiles its input according to reps. The length of reps is the number of
     dimension of x and contains the number of times to tile x in each
     dimension.
 
-    :see: `numpy.tile
-    <http://docs.scipy.org/doc/numpy/reference/generated/numpy.tile.html>`_
+    See Also
+    --------
+    numpy.tile : http://docs.scipy.org/doc/numpy/reference/generated/numpy.tile.html
+
     """
+    __props__ = ("ndim",)
+
     def __init__(self, ndim):
         self.ndim = ndim
-
-    def __eq__(self, other):
-        return (type(other) is Tile) and (other.ndim == self.ndim)
-
-    def __hash__(self):
-        return hash(Tile) ^ hash(self.ndim)
 
     def __str__(self):
         return self.__class__.__name__ + "{ndim=%d}" % self.ndim
 
     def make_node(self, x, reps):
         warnings.warn((
-            "Tile op is deprecated, use tile function instead."),
-                      stacklevel=3)
+            "Tile op is deprecated, use tile function instead."), stacklevel=3)
         x = as_tensor_variable(x)
         reps = as_tensor_variable(reps)
         return gof.Apply(self, [x, reps], [tensor(x.type.dtype, [False] *
@@ -4277,7 +4540,7 @@ class Tile(Op):
         shp = in_shapes[0]
         tiled_shp = shp * reps
         out_shape = []
-        for i in range(self.ndim):
+        for i in xrange(self.ndim):
             out_shape.append(tiled_shp[i])
         return [out_shape]
 
@@ -4290,22 +4553,25 @@ class Tile(Op):
 
 def tile(x, reps, ndim=None):
     """
-    Tile input array `x` according to `reps`. See the docstring of `numpy.tile`
-    for details.
+    Tile input array `x` according to `reps`.
+
+    See the docstring of `numpy.tile` for details.
 
     Currently, x.ndim and len(reps) must be equal, and, if specified, 'ndim'
     must be equal to both.
 
     TODO: expand this.
+
     """
 
     try:
         iter(reps)
     except TypeError:
         raise ValueError("reps must be iterable")
-    if not numpy.all([isinstance(r, (int, long)) or
-        (isinstance(r, TensorVariable) and
-            r.dtype in ["int8", "int16", "int32", "int64"]) for r in reps]):
+    if not numpy.all([isinstance(r, integer_types) or
+                      (isinstance(r, TensorVariable) and
+                      r.dtype in ["int8", "int16", "int32", "int64"])
+                      for r in reps]):
         raise ValueError("elements of reps must be scalars of integer dtype")
     elif len(reps) != x.ndim:
         raise ValueError("len(reps) != x.ndim not currently supported")
@@ -4319,10 +4585,10 @@ def tile(x, reps, ndim=None):
     shape = [x.shape[i] for i in xrange(ndim)]
     alloc_shape = reps + shape
     y = alloc(x, *alloc_shape)
-    shuffle_ind = numpy.arange(ndim*2).reshape(2, ndim)
+    shuffle_ind = numpy.arange(ndim * 2).reshape(2, ndim)
     shuffle_ind = shuffle_ind.transpose().flatten()
     y = y.dimshuffle(*shuffle_ind)
-    new_shapes = [sh*reps[i] for i, sh in enumerate(shape)]
+    new_shapes = [sh * reps[i] for i, sh in enumerate(shape)]
     y = y.reshape(new_shapes)
 
     return y
@@ -4332,19 +4598,12 @@ class ARange(Op):
     """Create an array containing evenly spaced values within a given interval.
 
     Parameters and behaviour are the same as numpy.arange().
+
     """
+    __props__ = ("dtype",)
 
     def __init__(self, dtype):
         self.dtype = dtype
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.dtype == other.dtype
-
-    def __hash__(self):
-        return hash(self.dtype)
-
-    def __str__(self):
-        return self.__class__.__name__
 
     def make_node(self, start, stop, step):
         start, stop, step = map(as_tensor_variable, (start, stop, step))
@@ -4370,12 +4629,12 @@ class ARange(Op):
 
         def upcast(var):
             if ('int' in var.dtype and
-                # We do not want to cast uint64 to int64 as this can
-                # loose information. If we upcast uint64 with int64,
-                # this give float64. This is safer then checking for
-                # uint64 in case we support [u]int128 or other in the
-                # future.
-                scal.upcast(var.dtype, 'int64') == 'int64'):
+                    # We do not want to cast uint64 to int64 as this can
+                    # loose information. If we upcast uint64 with int64,
+                    # this give float64. This is safer then checking for
+                    # uint64 in case we support [u]int128 or other in the
+                    # future.
+                    scal.upcast(var.dtype, 'int64') == 'int64'):
                 return cast(var, 'int64')
             return var
 
@@ -4389,8 +4648,8 @@ class ARange(Op):
         else:
             stop = upcast(stop)
             start = upcast(start)
-            return [(maximum(cast(ceil(cast((stop - start), 'float64')
-                                       / step), 'int64'), 0),)]
+            return [(maximum(cast(ceil(cast((stop - start), 'float64') / step),
+                    'int64'), 0),)]
 
     def perform(self, node, inp, out_):
         start, stop, step = inp
@@ -4463,6 +4722,81 @@ def arange(start, stop=None, step=1, dtype=None):
     return _arange[dtype](start, stop, step)
 
 
+class _nd_grid(object):
+    """Create a dense n-dimensional 'meshgrid' with equally spaced points.
+
+    Used to create the instance ``mgrid`` and ``ogrid`` which act similarly
+    to their numpy equivalents.
+
+    Parameters
+    ----------
+    sparse : boolean, optional, default=True
+        Specifying False leads to the equivalent of numpy's mgrid functionality.
+        Specifying True leads to the equivalent of ogrid.
+
+    Examples
+    --------
+    >>> a = T.mgrid[0:5, 0:3]
+    >>> a[0].eval()
+    array([[0, 0, 0],
+           [1, 1, 1],
+           [2, 2, 2],
+           [3, 3, 3],
+           [4, 4, 4]], dtype=int8)
+    >>> a[1].eval()
+    array([[0, 1, 2],
+           [0, 1, 2],
+           [0, 1, 2],
+           [0, 1, 2],
+           [0, 1, 2]], dtype=int8)
+    >>> b = T.ogrid[0:5, 0:3]
+    >>> b[0].eval()
+    array([[0],
+           [1],
+           [2],
+           [3],
+           [4]], dtype=int8)
+    >>> b[1].eval()
+    array([[0, 1, 2, 3]], dtype=int8)
+
+    """
+
+    def __init__(self, sparse=False):
+        self.sparse = sparse
+
+    def __getitem__(self, *args):
+
+        ndim = len(args[0])
+        for sl in args[0]:
+            if isinstance(sl.step, python_complex):
+                raise NotImplementedError("Not implemented for slices "
+                                          "whose step is complex")
+        ranges = [arange(sl.start or 0,
+                         sl.stop,
+                         sl.step or 1) for sl in args[0]]
+        shapes = [tuple([1] * j + [r.shape[0]] + [1] * (ndim - 1 - j))
+                  for j, r in enumerate(ranges)]
+        ranges = [r.reshape(shape) for r, shape in zip(ranges, shapes)]
+        if self.sparse:
+            grids = ranges
+        else:
+            grids = []
+            ones = [ones_like(r) for r in ranges]
+            for i in range(ndim):
+                grid = 1
+                for j in range(ndim):
+                    if j == i:
+                        grid = grid * ranges[j]
+                    else:
+                        grid = grid * ones[j]
+                grids.append(grid)
+        return grids
+
+
+mgrid = _nd_grid()
+ogrid = _nd_grid(sparse=True)
+
+
 class PermuteRowElements(Op):
     """Permute the elements of each row (inner-most dim) of a tensor.
 
@@ -4487,6 +4821,7 @@ class PermuteRowElements(Op):
     If the "inverse" argument is True, the Op will perform the inverse
     permutation instead.
     """
+    __props__ = ()
 
     def make_node(self, x, y, inverse):
         x = as_tensor_variable(x)
@@ -4533,11 +4868,19 @@ class PermuteRowElements(Op):
         The terminal case is reached when the current tensors are vector,
         then the permutation contained in y is applied to x.
 
-        :param x: The input tensor, on which the permutation is applied
-        :param y: Tensor containing the permutations to apply
-        :param out: Tensor storing the output result
-        :param curdim: Counter of the current depth of recursion
-        :param inverse: Wether to apply permutations or their inverse
+        Parameters
+        ----------
+        x : tensor
+            The input tensor, on which the permutation is applied.
+        y : tensor
+            Tensor containing the permutations to apply.
+        out : tensor
+            Tensor storing the output result.
+        curdim : int
+            Counter of the current depth of recursion.
+        inverse
+            Wether to apply permutations or their inverse.
+
         """
         if len(x.shape) == 1:
             # Numpy advanced indexing works in this case
@@ -4603,7 +4946,7 @@ class PermuteRowElements(Op):
         shp_y = in_shapes[1]
         assert len(shp_x) == len(shp_y)
         out_shape = []
-        for i in range(len(shp_x)):
+        for i in xrange(len(shp_x)):
             out_shape.append(maximum(shp_x[i], shp_y[i]))
         return [out_shape]
 
@@ -4619,8 +4962,8 @@ class PermuteRowElements(Op):
         # the gradient over these axes, but keep the dimension (as
         # broadcastable)
         broadcasted_dims = [dim for dim in xrange(gz.type.ndim)
-                            if x.type.broadcastable[dim]
-                            and not gz.type.broadcastable[dim]]
+                            if x.type.broadcastable[dim] and
+                            not gz.type.broadcastable[dim]]
         gx = Sum(axis=broadcasted_dims)(gx)
 
         # Sum(...) removed the dimensions in broadcasted_dims,
@@ -4661,7 +5004,9 @@ def permute_row_elements(x, y, inverse=0):
 
 def inverse_permutation(perm):
     """Computes the inverse of permutations.
+
     Each row of input should contain a permutation of the first integers.
+
     """
     return permute_row_elements(
         arange(perm.shape[-1], dtype=perm.dtype),
@@ -4684,28 +5029,23 @@ class Dot(Op):
     equivalent to matrix multiplication. For two vectors, this is the inner
     product.
 
-    :note: matrix-matrix products are sometimes optimized to Dot22 or Gemm ops.
-    (see tensor.blas)
-
-    :note: vector-vector products are sometimes optimized to Ger or CGer.  (see
-    tensor.blas)
-
-    :note: matrix-vector products are sometimes optimized to Gemv, CGemv (see
-    tensor.blas)
+    Notes
+    -----
+    Matrix-matrix products are sometimes optimized to Dot22 or Gemm ops
+    (see tensor.blas).
+    Vector-vector products are sometimes optimized to Ger or CGer (see
+    tensor.blas).
+    Matrix-vector products are sometimes optimized to Gemv, CGemv (see
+    tensor.blas).
 
     """
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     # the rationale for Dot22 is related to getting GEMM Ops into the
     # graph.  See Dot22 in tensor.blas for details.
 
     def make_node(self, *inputs):
-        inputs = map(as_tensor_variable, inputs)
+        inputs = list(map(as_tensor_variable, inputs))
 
         if len(inputs) != 2:
             raise TypeError(
@@ -4753,17 +5093,17 @@ class Dot(Op):
             xgrad = gz * y
             ygrad = gz * x
 
-        #x is vector, y is matrix, grad is vector
+        # x is vector, y is matrix, grad is vector
         elif xdim == 1 and ydim == 2:
             xgrad = dot(gz, y.T)
             ygrad = outer(x.T, gz)
 
-        #x is matrix, y is vector, grad is vector
+        # x is matrix, y is vector, grad is vector
         elif xdim == 2 and ydim == 1:
             xgrad = outer(gz, y.T)
             ygrad = dot(x.T, gz)
 
-        #x is matrix, y is matrix, grad is matrix
+        # x is matrix, y is matrix, grad is matrix
         elif xdim == ydim == 2:
             xgrad = dot(gz, y.T)
             ygrad = dot(x.T, gz)
@@ -4835,8 +5175,8 @@ class Dot(Op):
                 if eval_point_values[i] is not None and \
                    input_values[i].shape != eval_point_values[i].shape:
                     raise ValueError(
-                        'input ' + str(i) + ' and eval_point ' + str(i)
-                        + ' to Dot.R_op should have the same shape, but '
+                        'input ' + str(i) + ' and eval_point ' + str(i) +
+                        ' to Dot.R_op should have the same shape, but '
                         'their shapes are %s and %s, respectively' % (
                             str(input_values[i].shape),
                             str(eval_point_values[i].shape)))
@@ -4880,10 +5220,12 @@ pprint.assign(_dot, printing.OperatorPrinter(printing.special['middle_dot'],
 
 def dot(a, b):
     """
-    Computes the dot product of two variables. For two matrices, this is
-    equivalent to matrix multiplication. For two vectors, this is the inner
-    product. When one variable is a scalar, this is like elementwise
-    multiplication.  For N dimensions, this is a sum product over the last axis
+    Computes the dot product of two variables.
+
+    For two matrices, this is equivalent to matrix multiplication.
+    For two vectors, this is the inner product.
+    When one variable is a scalar, this is like elementwise multiplication.
+    For N dimensions, this is a sum product over the last axis
     of the first array and the second-to-last axis of the second array:
 
         dot(a, b)[i,j,k,m] = sum(a[i,j,:] * b[k,:,m])
@@ -4903,14 +5245,14 @@ def dot(a, b):
         3.  If both a and b have either 1 or 2 dimensions, it calls Theano's
             Dot op on a and b.
 
-    :note: matrix-matrix products are sometimes optimized to Dot22 or Gemm ops.
-    (see tensor.blas)
-
-    :note: vector-vector products are sometimes optimized to Ger or CGer.  (see
-    tensor.blas)
-
-    :note: matrix-vector products are sometimes optimized to Gemv, CGemv (see
-    tensor.blas)
+    Notes
+    -----
+    Matrix-matrix products are sometimes optimized to Dot22 or Gemm ops
+    (see tensor.blas).
+    Vector-vector products are sometimes optimized to Ger or CGer (see
+    tensor.blas).
+    Matrix-vector products are sometimes optimized to Gemv, CGemv (see
+    tensor.blas).
 
     """
     a, b = as_tensor_variable(a), as_tensor_variable(b)
@@ -4929,46 +5271,52 @@ def dot(a, b):
 
 def tensordot(a, b, axes=2):
     """
-    Given two tensors a and b,tensordot computes a generalized dot product over
+    Compute a generalized dot product over provided axes.
+
+    Given two tensors a and b, tensordot computes a generalized dot product over
     the provided axes. Theano's implementation reduces all expressions to
     matrix or vector dot products and is based on code from Tijmen Tieleman's
     gnumpy (http://www.cs.toronto.edu/~tijmen/gnumpy.html).
 
-    :param a: the first tensor variable
-    :type a: symbolic tensor
+    Parameters
+    ----------
+    a: symbolic tensor
+        The first tensor variable.
+    b: symbolic tensor
+        The second tensor variable
+    axes: int or array-like of length 2
+        If an integer, the number of axes to sum over.
+        If an array, it must have two array elements containing the axes
+        to sum over in each tensor.
 
-    :param b: the second tensor variable
-    :type b: symbolic tensor
+        Note that the default value of 2 is not guaranteed to work
+        for all values of a and b, and an error will be raised if
+        that is the case. The reason for keeping the default is to
+        maintain the same signature as numpy's tensordot function
+        (and np.tensordot raises analogous errors for non-compatible
+        inputs).
 
-    :param axes: an integer or array. If an integer, the number of axes
-                 to sum over. If an array, it must have two array
-                 elements containing the axes to sum over in each tensor.
+        If an integer i, it is converted to an array containing
+        the last i dimensions of the first tensor and the first
+        i dimensions of the second tensor:
+            axes = [list(range(a.ndim - i, b.ndim)), list(range(i))]
 
-                 Note that the default value of 2 is not guaranteed to work
-                 for all values of a and b, and an error will be raised if
-                 that is the case. The reason for keeping the default is to
-                 maintain the same signature as numpy's tensordot function
-                 (and np.tensordot raises analogous errors for non-compatible
-                 inputs).
+        If an array, its two elements must contain compatible axes
+        of the two tensors. For example, [[1, 2], [2, 0]] means sum
+        over the 2nd and 3rd axes of a and the 3rd and 1st axes of b.
+        (Remember axes are zero-indexed!) The 2nd axis of a and the
+        3rd axis of b must have the same shape; the same is true for
+        the 3rd axis of a and the 1st axis of b.
 
-                 If an integer i, it is converted to an array containing
-                 the last i dimensions of the first tensor and the first
-                 i dimensions of the second tensor:
-                     axes = [range(a.ndim - i, b.ndim), range(i)]
+    Returns
+    -------
+    symbolic tensor
+        A tensor with shape equal to the concatenation of a's shape
+        (less any dimensions that were summed over) and b's shape
+        (less any dimensions that were summed over).
 
-                 If an array, its two elements must contain compatible axes
-                 of the two tensors. For example, [[1, 2], [2, 0]] means sum
-                 over the 2nd and 3rd axes of a and the 3rd and 1st axes of b.
-                 (Remember axes are zero-indexed!) The 2nd axis of a and the
-                 3rd axis of b must have the same shape; the same is true for
-                 the 3rd axis of a and the 1st axis of b.
-    :type axes: int or array-like of length 2
-
-    :returns: a tensor with shape equal to the concatenation of a's shape
-              (less any dimensions that were summed over) and b's shape
-              (less any dimensions that were summed over).
-    :rtype: symbolic tensor
-
+    Examples
+    --------
     It may be helpful to consider an example to see what tensordot does.
     Theano's implementation is identical to NumPy's. Here a has shape (2, 3, 4)
     and b has shape (5, 6, 4, 3). The axes to sum over are [[1, 2], [3, 2]] --
@@ -4976,29 +5324,30 @@ def tensordot(a, b, axes=2):
     are compatible. The resulting tensor will have shape (2, 5, 6) -- the
     dimensions that are not being summed:
 
-        a = np.random.random((2,3,4))
-        b = np.random.random((5,6,4,3))
+    >>> a = np.random.random((2,3,4))
+    >>> b = np.random.random((5,6,4,3))
 
-        #tensordot
-        c = np.tensordot(a, b, [[1,2],[3,2]])
+    #tensordot
+    >>> c = np.tensordot(a, b, [[1,2],[3,2]])
 
-        #loop replicating tensordot
-        a0, a1, a2 = a.shape
-        b0, b1, _, _ = b.shape
-        cloop = np.zeros((a0,b0,b1))
+    #loop replicating tensordot
+    >>> a0, a1, a2 = a.shape
+    >>> b0, b1, _, _ = b.shape
+    >>> cloop = np.zeros((a0,b0,b1))
 
-        #loop over non-summed indices -- these exist
-        #in the tensor product.
-        for i in range(a0):
-            for j in range(b0):
-                for k in range(b1):
-                    #loop over summed indices -- these don't exist
-                    #in the tensor product.
-                    for l in range(a1):
-                        for m in range(a2):
-                            cloop[i,j,k] += a[i,l,m] * b[j,k,m,l]
+    #loop over non-summed indices -- these exist
+    #in the tensor product.
+    >>> for i in range(a0):
+    ...     for j in range(b0):
+    ...         for k in range(b1):
+    ...             #loop over summed indices -- these don't exist
+    ...             #in the tensor product.
+    ...             for l in range(a1):
+    ...                 for m in range(a2):
+    ...                     cloop[i,j,k] += a[i,l,m] * b[j,k,m,l]
 
-        np.allclose(c, cloop) #true
+    >>> np.allclose(c, cloop)
+    true
 
     This specific implementation avoids a loop by transposing a and b such that
     the summed axes of a are last and the summed axes of b are first. The
@@ -5009,12 +5358,16 @@ def tensordot(a, b, axes=2):
     In an extreme case, no axes may be specified. The resulting tensor
     will have shape equal to the concatenation of the shapes of a and b:
 
-        c = np.tensordot(a, b, 0)
-        print(a.shape) #(2,3,4)
-        print(b.shape) #(5,6,4,3)
-        print(c.shape) #(2,3,4,5,6,4,3)
+    >>> c = np.tensordot(a, b, 0)
+    >>> print(a.shape)
+    (2,3,4)
+    >>> print(b.shape)
+    (5,6,4,3)
+    >>> print(c.shape)
+    (2,3,4,5,6,4,3)
 
     See the documentation of numpy.tensordot for more examples.
+
     """
     a, b = as_tensor_variable(a), as_tensor_variable(b)
 
@@ -5041,13 +5394,13 @@ def tensordot(a, b, axes=2):
         outndim = a.ndim + b.ndim - (2 * axes)
 
         a_shape_0 = b_shape_0 = a_shape_1 = b_shape_1 = 1
-        for s0 in range(a.ndim - axes):
+        for s0 in xrange(a.ndim - axes):
             a_shape_0 *= a.shape[s0]
-        for s0 in range(axes):
+        for s0 in xrange(axes):
             b_shape_0 *= b.shape[s0]
-        for s1 in range(a.ndim - axes, a.ndim):
+        for s1 in xrange(a.ndim - axes, a.ndim):
             a_shape_1 *= a.shape[s1]
-        for s1 in range(axes, b.ndim):
+        for s1 in xrange(axes, b.ndim):
             b_shape_1 *= b.shape[s1]
 
         a_reshaped = a.reshape((a_shape_0, a_shape_1), ndim=2)
@@ -5107,8 +5460,8 @@ def tensordot(a, b, axes=2):
                              'equal to b.ndim (b.ndim=%i, max(axes[1])=%i).' %
                              (b.ndim, numpy.max(numpy.array(b_axes))))
 
-        a_order = (tuple(x for x in tuple(xrange(a.ndim)) if x not in a_axes)
-                   + a_axes)
+        a_order = (tuple(x for x in tuple(xrange(a.ndim)) if x not in a_axes) +
+                   a_axes)
         b_order = (b_axes + tuple(x
                                   for x in tuple(xrange(b.ndim))
                                   if x not in b_axes))
@@ -5124,6 +5477,7 @@ def outer(x, y):
     """Return vector-vector outer product.
 
     If an input isn't a vector, we flatten it first.
+
     """
     if x.ndim != 1:
         x = x.flatten()
@@ -5159,10 +5513,18 @@ del x
 class Diagonal(Op):
     """Return specified diagonals.
 
-    :param x: A tensor variable with x.ndim >= 2.
+    Parameters
+    ----------
+    x
+        A tensor variable with x.ndim >= 2.
 
-    :return: A vector representing the diagonal elements.
+    Returns
+    -------
+    vector
+        A vector representing the diagonal elements.
+
     """
+    __props__ = ("offset", "axis1", "axis2")
 
     def __init__(self, offset=0, axis1=0, axis2=1):
         if numpy_diagonal_return_view:
@@ -5170,16 +5532,6 @@ class Diagonal(Op):
         self.offset = offset
         self.axis1 = axis1
         self.axis2 = axis2
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.offset == other.offset and
-                self.axis1 == other.axis1 and
-                self.axis2 == other.axis2)
-
-    def __hash__(self):
-        return (hash(type(self)) ^ hash(self.offset) ^
-                hash(self.axis1) ^ hash(self.axis2))
 
     def make_node(self, x):
         x = as_tensor_variable(x)
@@ -5214,9 +5566,6 @@ class Diagonal(Op):
         out_shape.append(diag_size)
         return [tuple(out_shape)]
 
-    def __str__(self):
-        return self.__class__.__name__
-
 
 def diagonal(a, offset=0, axis1=0, axis2=1):
     if (offset, axis1, axis2) == (0, 0, 1):
@@ -5226,11 +5575,7 @@ def diagonal(a, offset=0, axis1=0, axis2=1):
 
 class Diag(Op):
 
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, diag):
         diag = as_tensor_variable(diag)
@@ -5250,9 +5595,6 @@ class Diag(Op):
     def infer_shape(self, nodes, shapes):
         return [(shapes[0][0],) * 2]
 
-    def __str__(self):
-        return self.__class__.__name__
-
 
 def diag(v, k=0):
     if v.ndim == 1:
@@ -5270,6 +5612,8 @@ def stacklists(arg):
 
     This function can create a tensor from a shaped list of scalars:
 
+    Examples
+    --------
     >>> from theano.tensor import stacklists, scalars, matrices
     >>> from theano import function
     >>> a, b, c, d = scalars('abcd')
@@ -5289,9 +5633,10 @@ def stacklists(arg):
     >>> x = ones((4, 4), 'float32')
     >>> f(x, x, x, x).shape
     (2, 2, 4, 4)
+
     """
     if isinstance(arg, (tuple, list)):
-        return stack(*map(stacklists, arg))
+        return stack(*list(map(stacklists, arg)))
     else:
         return arg
 
@@ -5302,12 +5647,18 @@ def ptp(a, axis=None):
 
     The name of the function comes from the acronym for peak to peak.
 
-    :param a : Input tensor.
+    Parameters
+    ----------
+    a
+        Input tensor.
+    axis
+        Axis along which to find the peaks. By default, flatten the array.
 
-    :param axis : Axis along which to find the peaks. By default,
-                flatten the array.
+    Returns
+    -------
+    array
+        A new array holding the result.
 
-    :return : A new array holding the result.
     """
 
     a = as_tensor_variable(a)
@@ -5325,7 +5676,7 @@ def swapaxes(y, axis1, axis2):
     "swap axes of inputted tensor"
     y = as_tensor_variable(y)
     ndim = y.ndim
-    li = range(0, ndim)
+    li = list(range(0, ndim))
     li[axis1], li[axis2] = li[axis2], li[axis1]
     return y.dimshuffle(li)
 
@@ -5363,28 +5714,36 @@ def choose(a, choices, out=None, mode='raise'):
       negative integers are mapped to 0; values greater than n-1 are mapped
       to n-1; and then the new array is constructed as above.
 
-    :Parameter: *a* - int array
+    Parameters
+    ----------
+    a : int array
         This array must contain integers in [0, n-1], where n is the number of
         choices, unless mode=wrap or mode=clip, in which cases any integers
         are permissible.
-    :Parameter: *choices* - sequence of arrays
+    choices : sequence of arrays
         Choice arrays. a and all of the choices must be broadcastable to
         the same shape. If choices is itself an array (not recommended),
         then its outermost dimension (i.e., the one corresponding to
         choices.shape[0]) is taken as defining the ``sequence``.
-    :Parameter: *out* - array, optional
+    out : array, optional
         If provided, the result will be inserted into this array.
         It should be of the appropriate shape and dtype.
-    :Parameter: *mode* - {``raise`` (default), ``wrap``, ``clip``}, optional
+    mode : {``raise`` (default), ``wrap``, ``clip``}, optional
         Specifies how indices outside [0, n-1] will be treated:
         ``raise`` : an exception is raised
         ``wrap`` : value becomes value mod n
         ``clip`` : values < 0 are mapped to 0, values > n-1 are mapped to n-1
-    :Returns: merged_array - array
+
+    Returns
+    -------
+    merged_array - array
         The merged result.
-    :Raises:
-        ValueError - shape mismatch
+
+    Raises
+    ------
+    ValueError - shape mismatch
         If a and each choice array are not all broadcastable to the same shape.
+
     """
     # This is done to keep the same function signature then NumPy.
     assert out is None
@@ -5405,8 +5764,8 @@ class Choose(Op):
             # dimensions for the output
             l = []
             for sh1, sh2, b1 in zip(shapes[0],
-                                        shapes[1][1:],
-                                        node.inputs[0].broadcastable):
+                                    shapes[1][1:],
+                                    node.inputs[0].broadcastable):
                 if b1:
                     l.append(sh2)
                 else:
@@ -5418,7 +5777,7 @@ class Choose(Op):
                               theano.typed_list.TypedListVariable)
             raise ShapeError("Case not implemented")
             shape = shapes[0]
-            for i in range(len(shapes[0]) - 1):
+            for i in xrange(len(shapes[0]) - 1):
                 shape[i] = shapes[1][i]
             return [(shape)]
 
@@ -5477,6 +5836,7 @@ class Choose(Op):
 
 class AllocEmpty(gof.Op):
     """Implement Alloc on the cpu, but without initializing memory."""
+
     __props__ = ("dtype",)
 
     # specify the type of the data
@@ -5503,6 +5863,9 @@ class AllocEmpty(gof.Op):
     def make_node(self, *shape):
         shape, output = self.validate_shape(shape)
         output.tag.values_eq_approx = values_eq_approx_always_true
+        # The outut can contain nan/inf.  output.type is a new
+        # instance, so we can do this only for that variable.
+        output.type.filter_checks_isfinite = False
         return Apply(self, shape, [output])
 
     def perform(self, node, inputs, out_):
@@ -5512,7 +5875,7 @@ class AllocEmpty(gof.Op):
             out[0] = numpy.empty(sh, dtype=self.dtype)
 
     def c_code(self, node, name, inputs, out_, sub):
-        dtype = "NPY_"+self.dtype.upper()
+        dtype = "NPY_" + self.dtype.upper()
         out, = out_
         fail = sub['fail']
         shps = inputs

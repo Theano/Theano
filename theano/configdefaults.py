@@ -246,7 +246,7 @@ AddConfigVar(
     'on_opt_error',
     ("What to do when an optimization crashes: warn and skip it, raise "
      "the exception, or fall into the pdb debugger."),
-    EnumStr('warn', 'raise', 'pdb'),
+    EnumStr('warn', 'raise', 'pdb', 'ignore'),
     in_c_key=False)
 
 
@@ -537,7 +537,6 @@ AddConfigVar(
     "Re-optimize the graph when a theano function is unpickled from the disk.",
     BoolParam(True, allow_override=True),
     in_c_key=False)
-
 
 """Note to developers:
     Generally your exceptions should use an apply node's __str__

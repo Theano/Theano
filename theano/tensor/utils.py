@@ -1,11 +1,13 @@
 import numpy
 
 import theano
-from theano.gof.cc import hash_from_code
+from theano.compat import izip
+from theano.gof.utils import hash_from_code
 
 
 def hash_from_ndarray(data):
-    """Return a hash from an ndarray
+    """
+    Return a hash from an ndarray.
 
     It takes care of the data, shapes, strides and dtype.
 
@@ -29,60 +31,43 @@ def hash_from_ndarray(data):
                           hash_from_code(str(data.dtype)))
 
 
-def hash_from_dict(d):
-    """Work around the fact that dict are not hashable in python
-
-    This request that all object have a sorted order that depend only
-    on the value of the object. This is true for integer/float/string
-
-    We do not verify that the objects in the dict have this property.
-
-    Also, we transform values that are list into tuple as list are not
-    hashable.
-
-    """
-    items = d.items()
-    items.sort()
-    first_part = [k for k, v in items]
-    second_part = []
-    for k, v in items:
-        if isinstance(v, (tuple, list)):
-            second_part += [tuple(v)]
-        else:
-            second_part += [v]
-    tuple_items = tuple(first_part + second_part)
-    return hash(tuple_items)
-
-
 def shape_of_variables(fgraph, input_shapes):
     """
-    Compute the numeric shape of all intermediate variables given input shapes
+    Compute the numeric shape of all intermediate variables given input shapes.
 
-    Inputs:
-        fgraph - the theano.FunctionGraph in question
-        input_shapes - a dict mapping input to shape
+    Parameters
+    ----------
+    fgraph
+        The theano.FunctionGraph in question.
+    input_shapes : dict
+        A dict mapping input to shape.
 
-    Outputs:
-        shapes - a dict mapping variable to shape
+    Returns
+    -------
+    shapes : dict
+        A dict mapping variable to shape
 
-    WARNING : This modifies the fgraph. Not pure.
+    .. warning:: This modifies the fgraph. Not pure.
 
+    Examples
+    --------
     >>> import theano
     >>> x = theano.tensor.matrix('x')
     >>> y = x[512:]; y.name = 'y'
     >>> fgraph = theano.FunctionGraph([x], [y], clone=False)
     >>> shape_of_variables(fgraph, {x: (1024, 1024)})
     {y: (512, 1024), x: (1024, 1024)}
+
     """
 
     if not hasattr(fgraph, 'shape_feature'):
         fgraph.attach_feature(theano.tensor.opt.ShapeFeature())
 
-    input_dims  = [dimension for inp in fgraph.inputs
-                             for dimension in fgraph.shape_feature.shape_of[inp]]
+    input_dims = [dimension for inp in fgraph.inputs
+                  for dimension in fgraph.shape_feature.shape_of[inp]]
 
     output_dims = [dimension for shape in fgraph.shape_feature.shape_of.values()
-                             for dimension in shape]
+                   for dimension in shape]
 
     compute_shapes = theano.function(input_dims, output_dims)
 
@@ -92,11 +77,11 @@ def shape_of_variables(fgraph, input_shapes):
             " interface changed. Now by default, it clones the graph it receives."
             " To have the old behavior, give it this new parameter `clone=False`.")
 
-    numeric_input_dims  = [dim for inp in fgraph.inputs
-                               for dim in input_shapes[inp]]
+    numeric_input_dims = [dim for inp in fgraph.inputs
+                          for dim in input_shapes[inp]]
     numeric_output_dims = compute_shapes(*numeric_input_dims)
 
-    sym_to_num_dict = dict(zip(output_dims, numeric_output_dims))
+    sym_to_num_dict = dict(izip(output_dims, numeric_output_dims))
 
     l = {}
     for var in fgraph.shape_feature.shape_of:

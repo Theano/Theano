@@ -1,9 +1,9 @@
 from __future__ import print_function
 import unittest
-from itertools import imap
 
 import numpy
 
+from theano.compat import imap
 import theano.tensor.inplace
 from theano.tensor import basic as tensor
 from theano import tensor as T

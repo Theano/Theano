@@ -68,12 +68,14 @@ CudaNdarray_conv_valid(const CudaNdarray *img, const CudaNdarray * kern,
     }
 
     //Check the output size is valid
-    assert (CudaNdarray_HOST_DIMS(out)[2] == ceil_intdiv(CudaNdarray_HOST_DIMS(img)[2]- CudaNdarray_HOST_DIMS(kern)[2] + 1, subsample_rows));
-    assert (CudaNdarray_HOST_DIMS(out)[3] == ceil_intdiv(CudaNdarray_HOST_DIMS(img)[3]- CudaNdarray_HOST_DIMS(kern)[3] + 1, subsample_cols));
-
-    assert (CudaNdarray_HOST_DIMS(out)[0] == CudaNdarray_HOST_DIMS(img)[0]);
-    assert (CudaNdarray_HOST_DIMS(out)[1] == CudaNdarray_HOST_DIMS(kern)[0]);
-    assert (CudaNdarray_HOST_DIMS(img)[1] == CudaNdarray_HOST_DIMS(kern)[1]);
+    if (!(CudaNdarray_HOST_DIMS(out)[2] == ceil_intdiv(CudaNdarray_HOST_DIMS(img)[2]- CudaNdarray_HOST_DIMS(kern)[2] + 1, subsample_rows) ||
+          CudaNdarray_HOST_DIMS(out)[3] == ceil_intdiv(CudaNdarray_HOST_DIMS(img)[3]- CudaNdarray_HOST_DIMS(kern)[3] + 1, subsample_cols) ||
+          CudaNdarray_HOST_DIMS(out)[0] == CudaNdarray_HOST_DIMS(img)[0] ||
+          CudaNdarray_HOST_DIMS(out)[1] == CudaNdarray_HOST_DIMS(kern)[0] ||
+          CudaNdarray_HOST_DIMS(img)[1] == CudaNdarray_HOST_DIMS(kern)[1])) {
+        PyErr_SetString(PyExc_ValueError, "GpuConv: sizes don't match");
+        return -1;
+    }
 
     // we now search through a few implementations until one applies to our arguments.
 

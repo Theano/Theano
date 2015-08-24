@@ -28,15 +28,13 @@ problem.
 Also, we should make the fgraph refuse optimization that break the
 canonization of the graph in the optimizations phases where the graph is
 supposed to be canonical.
-"""
 
+"""
 # TODO: intelligent merge for mul/add
 # TODO: 0*x -> 0
 import logging
-_logger = logging.getLogger('theano.tensor.opt')
 
 from theano import gof
-from theano.compat import deque
 from theano.tensor.elemwise import CAReduce
 from theano.tensor import basic as T
 
@@ -44,6 +42,8 @@ from theano.tensor.basic import (get_scalar_constant_value,
                                  NotScalarConstantError)
 from theano.tensor.opt import register_uncanonicalize
 from theano import scalar as scal
+
+_logger = logging.getLogger('theano.tensor.opt')
 
 
 @register_uncanonicalize
@@ -72,18 +72,21 @@ def local_max_and_argmax(node):
 @gof.local_optimizer([T.neg])
 def local_max_to_min(node):
     """
-    change -(max(-x)) to min
+    Change -(max(-x)) to min.
 
-    This is tested in tensor/tests/test_basic.py:test_min_max
+    This is tested in tensor/tests/test_basic.py:test_min_max.
 
-    :note: we don't need an opt that will do the reverse as by default
-           the interface put only MaxAndArgmax into the graph.
+    Notes
+    -----
+    We don't need an opt that will do the reverse as by default
+    the interface put only MaxAndArgmax into the graph.
+
     """
     if node.op == T.neg and node.inputs[0].owner:
         max = node.inputs[0]
         if (max.owner and
-            isinstance(max.owner.op, CAReduce)
-            and max.owner.op.scalar_op == scal.maximum):
+                isinstance(max.owner.op, CAReduce) and
+                max.owner.op.scalar_op == scal.maximum):
             neg = max.owner.inputs[0]
             if neg.owner and neg.owner.op == T.neg:
                 return [CAReduce(scal.minimum,

@@ -1,5 +1,5 @@
 from theano import scalar as scal
-import elemwise
+from . import elemwise
 from theano import printing
 from theano.printing import pprint
 
@@ -28,10 +28,6 @@ def _scal_inplace(symbol):
     def chk(pstate, r):
         if not r.owner:
             return False
-        op = r.owner.op
-#         print op, rval, r.owner and op == rval
-#         print op.inplace_pattern, rval.inplace_pattern, op.inplace_pattern == rval.inplace_pattern
-#         print op.scalar_op, rval.scalar_op, op.scalar_op == rval.scalar_op
         return r.owner.op == rval
 
     pprint.assign(chk, printing.FunctionPrinter(symbolname.replace('_inplace', '=')))
@@ -348,17 +344,13 @@ def conj_inplace(a):
 pprint.assign(add_inplace, printing.OperatorPrinter('+=', -2, 'either'))
 pprint.assign(mul_inplace, printing.OperatorPrinter('*=', -1, 'either'))
 pprint.assign(sub_inplace, printing.OperatorPrinter('-=', -2, 'left'))
-pprint.assign(neg_inplace, printing.OperatorPrinter('-=',  0, 'either'))
+pprint.assign(neg_inplace, printing.OperatorPrinter('-=', 0, 'either'))
 pprint.assign(true_div_inplace, printing.OperatorPrinter('/=', -1, 'left'))
 pprint.assign(int_div_inplace, printing.OperatorPrinter('//=', -1, 'left'))
 pprint.assign(pow_inplace, printing.OperatorPrinter('**=', 1, 'right'))
 
 
 def transpose_inplace(x, **kwargs):
-    """Perform a transpose on a tensor without copying the underlying storage"""
-    dims = range(x.ndim-1, -1, -1)
+    "Perform a transpose on a tensor without copying the underlying storage"
+    dims = list(range(x.ndim - 1, -1, -1))
     return elemwise.DimShuffle(x.broadcastable, dims, inplace=True)(x)
-
-#pprint.assign(transpose_inplace, printing.MemberPrinter('T'))
-
-

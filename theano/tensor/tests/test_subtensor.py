@@ -1,4 +1,3 @@
-from itertools import izip
 import logging
 import sys
 import unittest
@@ -6,10 +5,11 @@ import unittest
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
 import numpy
+from six import StringIO
+from six.moves import xrange
 
 import theano
-from theano.compat import exc_message
-from theano.compat.six import StringIO
+from theano.compat import exc_message, izip, PY3
 from theano.compile import DeepCopyOp
 from theano import config
 from theano import gof
@@ -34,6 +34,13 @@ from theano.tensor import (as_tensor_variable, _shared,
                            fmatrix, dmatrix, lmatrix, matrix,
                            ctensor3, dtensor4)
 from theano.tensor.tests.test_basic import rand, randint_ranged, inplace_func
+
+if PY3:
+    def L(i):
+        return i
+else:
+    def L(i):
+        return long(i)
 
 
 class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
@@ -303,7 +310,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
     def test_long(self):
         n = self.shared(numpy.arange(12, dtype=self.dtype).reshape((4, 3)))
-        t = n[1L:4L:2L, 1L]
+        t = n[L(1):L(4):L(2), L(1)]
         self.assertTrue(isinstance(t.owner.op, Subtensor))
         tval = self.eval_output_and_check(t)
         self.assertTrue(tval.shape == (2,))
@@ -313,7 +320,13 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         # Currently, we cast Python longs to int64 when used for indexing.
         # This test checks that using a long that does not fit raises an error.
         n = self.shared(numpy.arange(12, dtype=self.dtype).reshape((4, 3)))
-        self.assertRaises(Exception, lambda: n[:(2L ** 63)])
+        self.assertRaises(Exception, lambda: n[:L(2 ** 63)])
+
+    def test_list_slice(self):
+        x = theano.tensor.arange(100).reshape((5, 5, 4))
+        res = x[[slice(1, -1)] * x.ndim].eval()
+        x = numpy.arange(100).reshape((5, 5, 4))
+        numpy.allclose(res, x[[slice(1, -1)] * x.ndim])
 
     def test_newaxis(self):
         """
@@ -424,7 +437,7 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
 
     def test_ok_list(self):
         for data, idx in [(rand(4), [1, 0]),
-                          (rand(4, 5), [2, 3]),
+                          (rand(4, 5), [2, 3, -1]),
                           (rand(4, 2, 3), [0, 3]),
                           (rand(4, 2, 3), [3, 3, 1, 1, 2, 2, 0, 0]),
                           (rand(4, 2, 3), [3, 3, 1, 1, 2, 2, 0, 0,
@@ -466,6 +479,15 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                 out2 = test_out[0][0]
                 assert out1 is out2
 
+            # test the grad
+            gn = theano.grad(t.sum(), n)
+            g = self.function([], gn, op=self.adv_incsub1)
+            utt.verify_grad(lambda m: m[[1, 3]],
+                            [numpy.random.rand(5, 5).astype(self.dtype)])
+            g_0 = g()
+            utt.verify_grad(lambda m: m[idx],
+                            [data])
+
     def test_err_invalid_list(self):
         n = self.shared(numpy.asarray(5, dtype=self.dtype))
         self.assertRaises(TypeError, n.__getitem__, [0, 0])
@@ -482,13 +504,15 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor1))
 
         f = self.function([l], t, op=self.adv_sub1)
-        topo = f.maker.fgraph.toposort()
-        topo_ = [node for node in topo if not isinstance(node.op,
-             self.ignore_topo)]
-        assert len(topo_) == 1
-        self.assertTrue(isinstance(topo_[0].op, self.adv_sub1))
+
+        # the grad
+        g = self.function([l],
+                          inc_subtensor(t, numpy.asarray([[1.]], self.dtype)),
+                          op=self.adv_incsub1)
+
         for shp in [[0, 4], [0, -3], [-10]]:
             self.assertRaises(IndexError, f, shp)
+            self.assertRaises(IndexError, g, shp)
 
     def test_adv_sub1_broadcast(self):
         ones = numpy.ones((1, 3), dtype=self.dtype)

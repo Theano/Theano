@@ -42,19 +42,26 @@
     #define SIZE_MAX ((size_t)-1)
 #endif
 
+// Cuda GPUs only accept a single representation for NaN whereas CPU may have
+// more than one. So it's better to use the CUDA one to be sure
+#ifdef NAN
+#undef NAN
+#endif
+#include <math_constants.h>
+#define NAN CUDART_NAN_F
 
 #include <cublas_v2.h>
 
 #ifdef _WIN32
-#ifdef _CUDA_NDARRAY_C
-#define DllExport   __declspec( dllexport )
-#else
-#define DllExport   __declspec( dllimport )
-#endif
-#define ALWAYS_INLINE
+# ifdef _CUDA_NDARRAY_C
+#  define DllExport   __declspec( dllexport )
+# else
+#  define DllExport   __declspec( dllimport )
+# endif
+# define ALWAYS_INLINE
 #else //else _WIN32
-#define DllExport
-#define ALWAYS_INLINE __attribute__((always_inline))
+# define DllExport __attribute__((visibility ("default")))
+# define ALWAYS_INLINE __attribute__((always_inline))
 #endif
 
 typedef float real;
@@ -74,6 +81,21 @@ typedef float real;
 #else
 // This is useful for using normal profiling tools
 #define CNDA_THREAD_SYNC cudaThreadSynchronize();
+#endif
+
+//If true, we release the GIL around blocking GPU calls, to allow other Python
+//threads to run in the meantime. For a single-threaded program, the overhead
+//is neglectible (about 20ms for 1 million GIL release/reclaim cycles). Can
+//still be overridden on compilation with -DRELEASE_GIL=0 in nvcc.flags.
+#ifndef RELEASE_GIL
+#define RELEASE_GIL 1
+#endif
+#if RELEASE_GIL
+#define CNDA_BEGIN_ALLOW_THREADS Py_BEGIN_ALLOW_THREADS
+#define CNDA_END_ALLOW_THREADS Py_END_ALLOW_THREADS
+#else
+#define CNDA_BEGIN_ALLOW_THREADS
+#define CNDA_END_ALLOW_THREADS
 #endif
 
 
@@ -100,6 +122,76 @@ DllExport void * device_malloc(size_t size);
 DllExport void * device_malloc(size_t size, int verbose);
 DllExport int device_free(void * ptr);
 DllExport void *get_work_mem(size_t sz);
+
+// Pointor to 1 int on the device
+// Used in CudaNdarray_TakeFrom and in an op
+// to tell that there is an out of bound error
+// When it is allocated, it should always be 0
+// So if there is an error, we must reset it to 0 BEFORE we raise the error
+// This prevent us from setting it to 0 before each use
+extern DllExport int* err_var;
+
+static inline int init_err_var(){
+    if (err_var == NULL) {
+        err_var = (int*)device_malloc(sizeof(int));
+        if (!err_var) { // PyErr set by device_malloc
+            return -1;
+        }
+        cudaError_t err = cudaMemset((void*)err_var, 0,
+                                     sizeof(int));
+        if (cudaSuccess != err) {
+            // Clear the error flag, cudaMemset doesn't do it.
+            cudaGetLastError();
+            PyErr_Format(
+                PyExc_RuntimeError,
+                "Error setting device error code to 0. %s",
+                cudaGetErrorString(err));
+            return -1;
+        }
+    }
+    return 0;
+}
+
+static inline int check_err_var(){
+    //-10 could be any value different then 0.
+    int cpu_err_var=-10;
+    cudaError_t err;
+
+    CNDA_BEGIN_ALLOW_THREADS
+    // As we execute cudaMemcpy on the default stream, it waits
+    // for all kernels (on all streams) to be finished before
+    // starting to copy
+    err = cudaMemcpy(&cpu_err_var, err_var, sizeof(int),
+                     cudaMemcpyDeviceToHost);
+    CNDA_END_ALLOW_THREADS
+
+    if (cudaSuccess != err) {
+        PyErr_Format(
+            PyExc_RuntimeError,
+            "Cuda error: %s when trying to get the error"
+            " value.\\n",
+            cudaGetErrorString(err));
+        return -1;
+    }
+
+    if (cpu_err_var != 0) {
+        PyErr_Format(
+            PyExc_IndexError,
+            "One of the index value is out of bound. Error code: %i.\\n",
+            cpu_err_var);
+        // Must reset it to 0 to don't reset it before each use.
+        err = cudaMemset((void*)err_var, 0, sizeof(int));
+        if (cudaSuccess != err) {
+            PyErr_Format(PyExc_MemoryError,
+                "Error setting device error code to 0 after having"
+                " an index error. %s", cudaGetErrorString(err));
+            return -1;
+        }
+        return -1;
+    }
+    return 0;
+}
+
 
 template <typename T>
 static T ceil_intdiv(T a, T b)
@@ -500,6 +592,11 @@ DllExport PyObject * CudaNdarray_Copy(const CudaNdarray * self);
  * Return a new object obtained by summing over the dimensions for which there is a 1 in the mask.
  */
 DllExport PyObject * CudaNdarray_ReduceSum(CudaNdarray * self, PyObject * py_reduce_mask);
+
+/**
+ * Reshape self to the new shape gived by the tuple shape.
+ */
+DllExport PyObject * CudaNdarray_Reshape(CudaNdarray * self, PyObject * shape);
 
 /**
  * Transfer the contents of numpy array `obj` to `self`.

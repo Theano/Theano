@@ -1,5 +1,6 @@
 from __future__ import print_function
 from copy import copy
+from itertools import product as itertools_product
 from unittest import TestCase
 
 import numpy
@@ -8,11 +9,12 @@ from numpy import (arange, array, common_type, complex64, complex128, float32,
 from numpy.testing import assert_array_almost_equal
 
 from nose.plugins.attrib import attr
+from six.moves import xrange
 
 import theano
 import theano.tensor as T
 from theano import tensor, Param, shared, config
-from theano.compat import exc_message, product as itertools_product
+from theano.compat import exc_message
 from theano.printing import pp
 from theano.tensor.blas import (_dot22, _dot22scalar, res_is_a, _as_scalar,
                                 _is_real_matrix, _gemm_canonicalize,
@@ -20,7 +22,7 @@ from theano.tensor.blas import (_dot22, _dot22scalar, res_is_a, _as_scalar,
                                 gemm_inplace, gemm_no_inplace,
                                 InconsistencyError, Ger, ger, ger_destructive)
 from theano.tests import unittest_tools
-from test_basic import (as_tensor_variable, inplace_func,
+from .test_basic import (as_tensor_variable, inplace_func,
                         compile, inplace)
 import theano.tensor.blas_scipy
 
@@ -71,10 +73,10 @@ class t_gemm(TestCase):
             b = numpy.asarray(b_, dtype=dtype)
 
             def cmp_linker(z, a, x, y, b, l):
-                z, a, x, y, b = [numpy.asarray(p) for p in z, a, x, y, b]
+                z, a, x, y, b = [numpy.asarray(p) for p in (z, a, x, y, b)]
                 z_orig = z.copy()
                 tz, ta, tx, ty, tb = [as_tensor_variable(p).type()
-                                      for p in z, a, x, y, b]
+                                      for p in (z, a, x, y, b)]
 
                 f = inplace_func([tz, ta, tx, ty, tb],
                                  gemm_inplace(tz, ta, tx, ty, tb),
@@ -266,11 +268,11 @@ class t_gemm(TestCase):
 
         def t(z, x, y, a=1.0, b=0.0, l='c|py', dt='float64'):
             z, a, x, y, b = [theano._asarray(p, dtype=dt)
-                             for p in z, a, x, y, b]
+                             for p in (z, a, x, y, b)]
             z_orig = z.copy()
             z_after = self._gemm(z, a, x, y, b)
 
-            tz, ta, tx, ty, tb = [shared(p) for p in z, a, x, y, b]
+            tz, ta, tx, ty, tb = [shared(p) for p in (z, a, x, y, b)]
 
             # f = inplace_func([tz,ta,tx,ty,tb], gemm_inplace(tz,ta,tx,ty,tb),
             #                 mode = compile.Mode(optimizer = None, linker=l))
@@ -326,14 +328,14 @@ class t_gemm(TestCase):
 
         def t(z, x, y, a=1.0, b=0.0, l='c|py', dt='float64'):
             z, a, x, y, b = [theano._asarray(p, dtype=dt)
-                             for p in z, a, x, y, b]
+                             for p in (z, a, x, y, b)]
             z_orig = z.copy()
             z_after = numpy.zeros_like(z_orig)
             for i in xrange(3):
                 z_after[:, :, i] = self._gemm(z[:, :, i], a,
                                               x[:, :, i], y[:, :, i], b)
 
-            tz, ta, tx, ty, tb = [shared(p) for p in z, a, x, y, b]
+            tz, ta, tx, ty, tb = [shared(p) for p in (z, a, x, y, b)]
             for i in xrange(3):
                 f_i = inplace_func([],
                         gemm_inplace(tz[:, :, i],
@@ -1547,13 +1549,13 @@ class TestGer_make_node(TestCase):
         self.za = T.zscalar()
 
     def test_works_on_all_valid_dtypes(self):
-        self.assertEquals(self.fm.type,
+        self.assertEqual(self.fm.type,
             ger(self.fm, self.fa, self.fv, self.fv_2).type)
-        self.assertEquals(self.fm.type,
+        self.assertEqual(self.fm.type,
             ger(self.fm, self.fa, self.fv, self.fv_2).type)
-        self.assertEquals(self.fm.type,
+        self.assertEqual(self.fm.type,
             ger(self.fm, self.fa, self.fv, self.fv_2).type)
-        self.assertEquals(self.fm.type,
+        self.assertEqual(self.fm.type,
             ger(self.fm, self.fa, self.fv, self.fv_2).type)
 
     def test_fails_on_invalid_dtypes(self):
@@ -1569,7 +1571,7 @@ class TestGer_make_node(TestCase):
         self.assertRaises(TypeError,
                 ger, self.fm, self.fv1, self.fv, self.fv_2)
         # actually doing the aforementioned dimshuffle makes it work
-        self.assertEquals(self.fm.type,
+        self.assertEqual(self.fm.type,
                 ger(self.fm, self.fv1.dimshuffle(), self.fv, self.fv_2).type)
 
     def test_fails_for_nonmatrix_A(self):

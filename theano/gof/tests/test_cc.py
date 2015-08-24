@@ -1,9 +1,8 @@
 from __future__ import print_function
 
-import unittest
-
 from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
+
+import numpy
 
 import theano
 from theano.gof.link import PerformLinker
@@ -81,13 +80,15 @@ def double(name):
 
 class MyOp(Op):
 
+    __props__ = ("nin", "name")
+
     def __init__(self, nin, name):
         self.nin = nin
         self.name = name
 
     def make_node(self, *inputs):
         assert len(inputs) == self.nin
-        inputs = map(as_variable, inputs)
+        inputs = list(map(as_variable, inputs))
         for input in inputs:
             if input.type is not tdouble:
                 raise Exception("Error 1")
@@ -96,14 +97,6 @@ class MyOp(Op):
 
     def __str__(self):
         return self.name
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.name == other.name and
-                self.nin == other.nin)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.name) ^ hash(self.nin)
 
     def perform(self, node, inputs, out_):
         out, = out_
@@ -324,7 +317,7 @@ def test_duallinker_mismatch():
         # this runs OpWiseCLinker and PerformLinker in parallel and feeds
         # variables of matching operations to _my_checker to verify that they
         # are the same.
-        res = fn(1.0, 2.0, 3.0)
+        fn(1.0, 2.0, 3.0)
         raise Exception("An exception should have been raised here!")
     except MyExc as e:
         pass
@@ -357,8 +350,69 @@ def test_c_fail_error():
     lnk = OpWiseCLinker().accept(Env([y, z], [e]))
     fn = lnk.make_function()
     try:
-        res = fn(1.5, 3.0)
+        fn(1.5, 3.0)
     except RuntimeError:
         print('Yay, TEST PASSED')
         return  # test passed
     assert 0  # test failed
+
+
+def test_shared_input_output():
+    # Test bug reported on the mailing list by Alberto Orlandi
+    # https://groups.google.com/d/topic/theano-users/6dLaEqc2R6g/discussion
+    # The shared variable is both an input and an output of the function.
+    inc = theano.tensor.iscalar('inc')
+    state = theano.shared(0)
+    state.name = 'state'
+    linker = theano.gof.CLinker()
+    mode = theano.Mode(linker=linker)
+    f = theano.function([inc], state, updates=[(state, state + inc)],
+                        mode=mode)
+    g = theano.function([inc], state, updates=[(state, state + inc)])
+
+    # Initial value
+    f0 = f(0)
+    g0 = g(0)
+    assert f0 == g0 == 0, (f0, g0)
+
+    # Increment state via f, returns the previous value.
+    f2 = f(2)
+    assert f2 == f0, (f2, f0)
+    f0 = f(0)
+    g0 = g(0)
+    assert f0 == g0 == 2, (f0, g0)
+
+    # Increment state via g, returns the previous value
+    g3 = g(3)
+    assert g3 == g0, (g3, g0)
+    f0 = f(0)
+    g0 = g(0)
+    assert f0 == g0 == 5, (f0, g0)
+
+    vstate = theano.shared(numpy.zeros(3, dtype='int32'))
+    vstate.name = 'vstate'
+    fv = theano.function([inc], vstate, updates=[(vstate, vstate + inc)],
+                         mode=mode)
+    gv = theano.function([inc], vstate, updates=[(vstate, vstate + inc)])
+
+    # Initial value
+    fv0 = fv(0)
+    gv0 = gv(0)
+    assert numpy.all(fv0 == 0), fv0
+    assert numpy.all(gv0 == 0), gv0
+
+    # Increment state via f, returns the previous value.
+    fv2 = fv(2)
+    assert numpy.all(fv2 == fv0), (fv2, fv0)
+    fv0 = fv(0)
+    gv0 = gv(0)
+    assert numpy.all(fv0 == 2), fv0
+    assert numpy.all(gv0 == 2), gv0
+
+    # Increment state via g, returns the previous value
+    gv3 = gv(3)
+    assert numpy.all(gv3 == gv0), (gv3, gv0)
+    fv0 = fv(0)
+    gv0 = gv(0)
+    assert numpy.all(fv0 == 5), fv0
+    assert numpy.all(gv0 == 5), gv0

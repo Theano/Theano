@@ -1,13 +1,16 @@
-import cPickle
+import six.moves.cPickle as pickle
 from copy import copy
-from itertools import imap
 import unittest
 
 import numpy
 from nose.plugins.skip import SkipTest
 from nose.plugins.attrib import attr
+from nose.tools import raises
+
+from six.moves import xrange
 
 import theano
+from theano.compat import imap
 from theano import gof, scalar, config
 
 from theano import tensor
@@ -347,7 +350,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
                 e = as_tensor_variable(tensor_op(x, axis=tosum, **d))
 
             if tosum is None:
-                tosum = range(len(xsh))
+                tosum = list(range(len(xsh)))
 
             f = copy(linker).accept(FunctionGraph([x], [e])).make_function()
             xv = numpy.asarray(numpy.random.rand(*xsh))
@@ -461,7 +464,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             else:
                 e = tensor_op(x, axis=tosum)
             if tosum is None:
-                tosum = range(len(xsh))
+                tosum = list(range(len(xsh)))
             f = copy(linker).accept(FunctionGraph([x],
                                                   [e.shape])).make_function()
             if not(scalar_op in [scalar.maximum, scalar.minimum] and
@@ -545,7 +548,7 @@ class test_CAReduce(unittest_tools.InferShapeTester):
             if pre_scalar_op is not None:
                 x = pre_scalar_op(x)
             if tosum is None:
-                tosum = range(len(xsh))
+                tosum = list(range(len(xsh)))
             xv = numpy.asarray(numpy.random.rand(*xsh), dtype=dtype)
             d = {}
             if pre_scalar_op is not None:
@@ -671,6 +674,13 @@ class test_Prod(unittest.TestCase):
         fn_a0 = theano.function([x], pwz_a0, mode=self.mode)
         assert numpy.allclose(fn_a0(x_val), [1, 10, 162])
 
+    @raises(theano.gradient.NullTypeGradError)
+    def test_prod_without_zeros_grad(self):
+        x = theano.tensor.dmatrix()
+        pwz_a1 = ProdWithoutZeros(axis=0)(x)
+        pwz_grad = theano.grad(theano.tensor.sum(pwz_a1), x)
+        fn_a1 = theano.function([x], pwz_grad, mode=self.mode)
+
     @attr('slow')
     def test_other_grad_tests(self):
         x = theano.tensor.dmatrix()
@@ -710,9 +720,9 @@ class test_Prod(unittest.TestCase):
     def test_pickle_bug(self):
         # Regression test for bug fixed in 24d4fd291054.
         o = Prod()
-        s = cPickle.dumps(o, protocol=-1)
-        o = cPickle.loads(s)
-        cPickle.dumps(o)
+        s = pickle.dumps(o, protocol=-1)
+        o = pickle.loads(s)
+        pickle.dumps(o)
 
 
 class test_IsInf_IsNan(unittest.TestCase):
@@ -1161,7 +1171,7 @@ class TestElemwise(unittest_tools.InferShapeTester):
         s = a + b + c + d + e + f
         g = theano.function([a, b, c, d, e, f], s,
                              mode=theano.compile.Mode(linker='py'))
-        g(*[numpy.zeros(2 ** 11, config.floatX) for i in range(6)])
+        g(*[numpy.zeros(2 ** 11, config.floatX) for i in xrange(6)])
 
 
 def test_gt_grad():

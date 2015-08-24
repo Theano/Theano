@@ -1,7 +1,5 @@
 """
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-WARNING
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+.. warning::
 
 This directory is for the internal of Theano.
 
@@ -13,26 +11,28 @@ you probably want to use theano.tensor.[c,z,f,d,b,w,i,l,]scalar!
 """
 from __future__ import print_function
 
+from itertools import chain
 import math
 import warnings
 from copy import copy
-from itertools import imap
 from textwrap import dedent
 
 import numpy
+from six.moves import xrange
 
 import theano
-from theano.compat import PY3
+from theano.compat import PY3, imap, izip
 from theano import gof, printing
 from theano.gof import (Op, utils, Variable, Constant, Type, Apply,
                         FunctionGraph)
-from theano.compat import partial
+from functools import partial
 from theano.configparser import config
 
 from theano.gradient import DisconnectedType
 from theano.gradient import grad_undefined
 
 from theano.printing import pprint
+import collections
 
 builtin_complex = complex
 builtin_int = int
@@ -40,12 +40,18 @@ builtin_float = float
 
 
 class ComplexError(Exception):
-    """Raised if complex numbers are used in an unsupported operation."""
+    """
+    Raised if complex numbers are used in an unsupported operation.
+
+    """
     pass
 
 
 class IntegerDivisionError(Exception):
-    """Raised if someone tries to divide integers with '/' instead of '//'."""
+    """
+    Raised if someone tries to divide integers with '/' instead of '//'.
+
+    """
     pass
 
 
@@ -85,6 +91,7 @@ def get_scalar_type(dtype):
     Return a Scalar(dtype) object.
 
     This caches objects to save allocation and run time.
+
     """
     if dtype not in get_scalar_type.cache:
         get_scalar_type.cache[dtype] = Scalar(dtype=dtype)
@@ -145,13 +152,16 @@ def constant(x):
 class Scalar(Type):
 
     """
-        Internal class, should not be used by clients
-        Primarily used by tensor.elemwise and tensor.reduce
-        Analogous to TensorType, but for zero-dimensional objects
-        Maps directly to C primitives
+    Internal class, should not be used by clients.
 
-        TODO: refactor to be named ScalarType for consistency with TensorType
+    Primarily used by tensor.elemwise and tensor.reduce.
+    Analogous to TensorType, but for zero-dimensional objects.
+    Maps directly to C primitives.
+
+    TODO: refactor to be named ScalarType for consistency with TensorType.
+
     """
+
     ndim = 0
 
     def __init__(self, dtype):
@@ -240,22 +250,21 @@ class Scalar(Type):
                 print(dtype, np.zeros(1, dtype=dtype).dtype.num)
             """
             return {  # dtype: (py_type, c_type, cls_name)
-                    'float16': (numpy.float16, 'npy_float16', 'Float16'),
-                    'float32': (numpy.float32, 'npy_float32', 'Float32'),
-                    'float64': (numpy.float64, 'npy_float64', 'Float64'),
-                    'complex128': (numpy.complex128, 'theano_complex128',
-                                   'Complex128'),
-                    'complex64': (numpy.complex64, 'theano_complex64',
-                                  'Complex64'),
-                    'uint8':  (numpy.uint8, 'npy_uint8', 'UInt8'),
-                    'int8':  (numpy.int8, 'npy_int8', 'Int8'),
-                    'uint16':  (numpy.uint16, 'npy_uint16', 'UInt16'),
-                    'int16': (numpy.int16, 'npy_int16', 'Int16'),
-                    'uint32':  (numpy.uint32, 'npy_uint32', 'UInt32'),
-                    'int32': (numpy.int32, 'npy_int32', 'Int32'),
-                    'uint64':  (numpy.uint64, 'npy_uint64', 'UInt64'),
-                    'int64': (numpy.int64, 'npy_int64', 'Int64')
-                    }[self.dtype]
+                'float16': (numpy.float16, 'npy_float16', 'Float16'),
+                'float32': (numpy.float32, 'npy_float32', 'Float32'),
+                'float64': (numpy.float64, 'npy_float64', 'Float64'),
+                'complex128': (numpy.complex128, 'theano_complex128',
+                               'Complex128'),
+                'complex64': (numpy.complex64, 'theano_complex64', 'Complex64'),
+                'uint8': (numpy.uint8, 'npy_uint8', 'UInt8'),
+                'int8': (numpy.int8, 'npy_int8', 'Int8'),
+                'uint16': (numpy.uint16, 'npy_uint16', 'UInt16'),
+                'int16': (numpy.int16, 'npy_int16', 'Int16'),
+                'uint32': (numpy.uint32, 'npy_uint32', 'UInt32'),
+                'int32': (numpy.int32, 'npy_int32', 'Int32'),
+                'uint64': (numpy.uint64, 'npy_uint64', 'UInt64'),
+                'int64': (numpy.int64, 'npy_int64', 'Int64')
+            }[self.dtype]
         except KeyError:
             raise TypeError("Unsupported dtype for %s: %s" % (
                 self.__class__.__name__, self.dtype))
@@ -346,7 +355,7 @@ class Scalar(Type):
             # 'npy_intX', some C code may not compile, e.g. when assigning
             # the value 0 (cast to 'int' in C) to a theano_complex64.
             if (numpy.dtype('intc').num not in
-                [numpy.dtype(d[4:]).num for d in real_types]):
+                    [numpy.dtype(d[4:]).num for d in real_types]):
                 # In that case we add the 'int' type to the real types.
                 real_types.append('int')
 
@@ -419,12 +428,12 @@ class Scalar(Type):
                 { this->real=y.real; this->imag=y.imag; return *this; }
                 ''' % dict(mytype=mytype, othertype=othertype)
 
-            operator_eq = ''.join(operator_eq_real(ctype, rtype)
-                                  for ctype in cplx_types
-                                  for rtype in real_types) \
-                        + ''.join(operator_eq_cplx(ctype1, ctype2)
-                                  for ctype1 in cplx_types
-                                  for ctype2 in cplx_types)
+            operator_eq = (''.join(operator_eq_real(ctype, rtype)
+                                   for ctype in cplx_types
+                                   for rtype in real_types) +
+                           ''.join(operator_eq_cplx(ctype1, ctype2)
+                                   for ctype1 in cplx_types
+                                   for ctype2 in cplx_types))
 
             # We are not using C++ generic templating here, because this would
             # generate two different functions for adding a complex64 and a
@@ -471,12 +480,12 @@ class Scalar(Type):
                                    for ctype in cplx_types
                                    for rtype in real_types)
 
-            return template % dict(nbits=64, half_nbits=32) \
-                   + template % dict(nbits=128, half_nbits=64) \
-                   + operator_eq \
-                   + operator_plus \
-                   + operator_minus \
-                   + operator_mul
+            return (template % dict(nbits=64, half_nbits=32) +
+                    template % dict(nbits=128, half_nbits=64) +
+                    operator_eq +
+                    operator_plus +
+                    operator_minus +
+                    operator_mul)
 
         else:
             return ""
@@ -532,7 +541,7 @@ class _scalar_py_operators:
     ndim = 0
 
     dtype = property(lambda self: self.type.dtype)
-    """ The dtype of this scalar.  """
+    """The dtype of this scalar."""
 
     # UNARY
     def __abs__(self):
@@ -542,9 +551,9 @@ class _scalar_py_operators:
         return neg(self)
 
     # CASTS
-    #def __int__(self): return AsInt(self).out
-    #def __float__(self): return AsDouble(self).out
-    #def __complex__(self): return AsComplex(self).out
+    # def __int__(self): return AsInt(self).out
+    # def __float__(self): return AsDouble(self).out
+    # def __complex__(self): return AsComplex(self).out
 
     # BITWISE
     def __invert__(self):
@@ -581,7 +590,7 @@ class _scalar_py_operators:
     def __ge__(self, other):
         return ge(self, other)
 
-    #ARITHMETIC - NORMAL
+    # ARITHMETIC - NORMAL
     def __add__(self, other):
         return add(self, other)
 
@@ -607,7 +616,7 @@ class _scalar_py_operators:
     def __pow__(self, other):
         return pow(self, other)
 
-    #ARITHMETIC - RIGHT-OPERAND
+    # ARITHMETIC - RIGHT-OPERAND
     def __radd__(self, other):
         return add(other, self)
 
@@ -682,6 +691,7 @@ class upgrade_to_float(object):
     def __new__(self, *types):
         """
         Upgrade any int types to float32 or float64 to avoid losing precision.
+
         """
         conv = {int8: float32,
                 int16: float32,
@@ -692,7 +702,7 @@ class upgrade_to_float(object):
                 uint32: float64,
                 uint64: float64}
         return get_scalar_type(Scalar.upcast(*[conv.get(type, type)
-                                      for type in types])),
+                               for type in types])),
 
 
 class same_out(object):
@@ -762,7 +772,8 @@ def float_out(*types):
 
 def upgrade_to_float_no_complex(*types):
     """
-    don't accept complex, otherwise call upgrade_to_float().
+    Don't accept complex, otherwise call upgrade_to_float().
+
     """
     for type in types:
         if type in complex_types:
@@ -792,12 +803,13 @@ def float_out_nocomplex(*types):
 
 class unary_out_lookup(gof.utils.object2):
     """
-    get a output_types_preference object by passing a dictionary:
+    Get a output_types_preference object by passing a dictionary:
 
     unary_out_lookup({int8:int32, float32:complex128})
 
     The result is an op that maps in8 to int32 and float32 to
     complex128 and other input types lead to a TypeError.
+
     """
     def __init__(self, type_table):
         self.tbl = type_table
@@ -837,7 +849,7 @@ class ScalarOp(Op):
     def __init__(self, output_types_preference=None, name=None):
         self.name = name
         if output_types_preference is not None:
-            if not callable(output_types_preference):
+            if not isinstance(output_types_preference, collections.Callable):
                 raise TypeError(
                     "Expected a callable for the 'output_types_preference' argument to %s. (got: %s)" %
                     (self.__class__, output_types_preference))
@@ -889,9 +901,9 @@ class ScalarOp(Op):
                                      self.__class__.__name__)
 
     def __eq__(self, other):
-        test = type(self) == type(other) \
-            and getattr(self, 'output_types_preference', None) \
-            == getattr(other, 'output_types_preference', None)
+        test = (type(self) == type(other) and
+                getattr(self, 'output_types_preference', None) ==
+                getattr(other, 'output_types_preference', None))
         return test
 
     def __hash__(self):
@@ -916,9 +928,9 @@ class ScalarOp(Op):
         return (4,)
 
     def c_code_contiguous(self, node, name, inp, out, sub):
-        """This function is called by Elemwise when all inputs and
-        outputs are c_contiguous. This allows to use the SIMD version
-        of this op.
+        """
+        This function is called by Elemwise when all inputs and outputs are
+        c_contiguous. This allows to use the SIMD version of this op.
 
         The inputs are the same as c_code except that:
 
@@ -940,9 +952,9 @@ class UnaryScalarOp(ScalarOp):
         (x,) = inputs
         (z,) = outputs
         if (not theano.config.lib.amdlibm or
-            # We compare the dtype AND the broadcast flag
-            # as this function do not broadcast
-            node.inputs[0].type != node.outputs[0].type):
+                # We compare the dtype AND the broadcast flag
+                # as this function do not broadcast
+                node.inputs[0].type != node.outputs[0].type):
             raise theano.gof.utils.MethodNotDefined()
 
         dtype = node.inputs[0].type.dtype_specs()[1]
@@ -1001,6 +1013,7 @@ class LogicalComparison(BinaryScalarOp):
 class FixedLogicalComparison(UnaryScalarOp):
     """
     Comparison to a fixed value.
+
     """
     def output_types(self, *input_dtypes):
         return [int8]
@@ -1095,8 +1108,6 @@ class EQ(LogicalComparison):
     def c_code(self, node, name, inputs, outputs, sub):
         (x, y) = inputs
         (z,) = outputs
-        if node.inputs[0].type in complex_types:
-            raise NotImplementedError()
         return "%(z)s = (%(x)s == %(y)s);" % locals()
 eq = EQ()
 
@@ -1174,7 +1185,7 @@ class InRange(LogicalComparison):
             cmp1 = '>='
 
         # backport
-        #cmp1 = '>' if self.openlow else '>='
+        # cmp1 = '>' if self.openlow else '>='
 
         if self.openhi:
             cmp2 = '<'
@@ -1182,14 +1193,14 @@ class InRange(LogicalComparison):
             cmp2 = '<='
 
         # backport
-        #cmp2 = '<' if self.openhi else '<='
+        # cmp2 = '<' if self.openhi else '<='
         return ("%(z)s = %(x)s %(cmp1)s %(low)s &&"
                 " %(x)s %(cmp2)s %(hi)s;" % locals())
 
     def get_grad(self, elem):
         if elem.type in complex_types:
-            msg = "No gradient implemented for complex numbers in\
-                                 class scalar.basic.InRange"
+            msg = ("No gradient implemented for complex numbers in "
+                   "class scalar.basic.InRange")
             raise NotImplementedError(msg)
         elif elem.type in discrete_types:
             return elem.zeros_like().astype(theano.config.floatX)
@@ -1471,7 +1482,7 @@ class Mul(ScalarOp):
         # output is complex. The rest of this function make this supposition.
         output_type = self.output_types([i.type for i in inputs])[0]
         if output_type in complex_types:
-            if not gz.type in complex_types:
+            if gz.type not in complex_types:
                 raise TypeError(
                     'Mul with output_type ' + str(output_type) +
                     ' expected gz type to be complex, got gz with type ' +
@@ -1532,17 +1543,29 @@ def int_or_true_div(x_discrete, y_discrete):
     """
     Return 'int' or 'true' depending on the type of division used for x / y.
 
-    :param x_discrete: True if `x` is discrete ([unsigned] integer).
+    Parameters
+    ----------
+    x_discrete : bool
+        True if `x` is discrete ([unsigned] integer).
+    y_discrete : bool
+        True if `y` is discrete ([unsigned] integer).
 
-    :param y_discrete: True if `x` is discrete ([unsigned] integer).
+    Returns
+    -------
+    str
+        'int' if `x / y` should be an integer division, or `true` if it
+        should be a true division.
 
-    :returns: 'int' if `x / y` should be an integer division, or `true` if it
-    should be a true division.
+    Raises
+    ------
+    IntegerDivisionError
+        If both `x_discrete` and `y_discrete` are True and `config.int_division`
+        is set to 'raise'.
 
-    Raises an IntegerDivisionError if both `x_discrete` and `y_discrete` are
-    True and `config.int_division` is set to 'raise'.
+    Notes
+    -----
+    This function is used by both scalar/basic.py and tensor/basic.py.
 
-    This function is used by both scalar/basic.py and tensor.basic/py.
     """
     if (x_discrete and y_discrete):
         if config.int_division == 'raise':
@@ -1569,7 +1592,10 @@ def int_or_true_div(x_discrete, y_discrete):
 
 
 def div_proxy(x, y):
-    """Proxy for either true_div or int_div, depending on types of x, y."""
+    """
+    Proxy for either true_div or int_div, depending on types of x, y.
+
+    """
     f = eval('%s_div' % int_or_true_div(as_scalar(x).type in discrete_types,
                                         as_scalar(y).type in discrete_types))
     return f(x, y)
@@ -1598,7 +1624,7 @@ class TrueDiv(BinaryScalarOp):
                 node.inputs[1].type in complex_types]) == 1:
             raise NotImplementedError('type not supported', type)
         if (node.inputs[0].type in discrete_types and
-            node.inputs[1].type in discrete_types):
+                node.inputs[1].type in discrete_types):
             return "%(z)s = ((double)%(x)s) / %(y)s;" % locals()
         return "%(z)s = %(x)s / %(y)s;" % locals()
 
@@ -1708,7 +1734,7 @@ floor_div = int_div
 
 def mod_check(x, y):
     if (as_scalar(x).type in complex_types or
-        as_scalar(y).type in complex_types):
+            as_scalar(y).type in complex_types):
         # Currently forbidden.
         raise Mod.complex_error
     else:
@@ -1736,8 +1762,9 @@ class Mod(BinaryScalarOp):
 
     def c_code(self, node, name, inputs, outputs, sub):
         """
-        We want the result to have the same sign as python, not the other
+        We want the result to have the same sign as Python, not the other
         implementation of mod.
+
         """
         (x, y) = inputs
         (z,) = outputs
@@ -1806,7 +1833,7 @@ class Pow(BinaryScalarOp):
         (x, y) = inputs
         (z,) = outputs
         if (node.inputs[0].type in complex_types or
-            node.inputs[1].type in complex_types):
+                node.inputs[1].type in complex_types):
             raise NotImplementedError('type not supported', type)
         return "%(z)s = pow(%(x)s, %(y)s);" % locals()
 
@@ -1836,10 +1863,10 @@ class Pow(BinaryScalarOp):
         # We compare the dtype AND the broadcast flag
         # as this function do not broadcast
         if (node.inputs[0].type == node.outputs[0].type and
-            node.inputs[1].type == node.outputs[0].type and
-            # amdlibm 3.0 do not have a float64 version of this SIMD function
-            node.inputs[0].dtype == 'float32' and
-            node.inputs[1].dtype == 'float32'):
+                node.inputs[1].type == node.outputs[0].type and
+                # amdlibm 3.0 do not have a float64 version of this SIMD function
+                node.inputs[0].dtype == 'float32' and
+                node.inputs[1].dtype == 'float32'):
             dtype = 'float'
             fct = "amd_vrsa_powf"
             return """
@@ -1903,7 +1930,7 @@ class Clip(ScalarOp):
                 return v.zeros_like().astype(config.floatX)
             return v
 
-        return map(handle_int, [gx, gmn, gmx])
+        return list(map(handle_int, [gx, gmn, gmx]))
 
 # Don't allow complex even if numpy do
 # As there is no mathematical reason for this function on complex
@@ -2012,23 +2039,26 @@ convert_to_complex64 = Cast(complex64, name='convert_to_complex64')
 convert_to_complex128 = Cast(complex128, name='convert_to_complex128')
 
 _cast_mapping = {
-           'int8': convert_to_int8,
-           'int16': convert_to_int16,
-           'int32': convert_to_int32,
-           'int64': convert_to_int64,
-           'uint8': convert_to_uint8,
-           'uint16': convert_to_uint16,
-           'uint32': convert_to_uint32,
-           'uint64': convert_to_uint64,
-           'float16': convert_to_float16,
-           'float32': convert_to_float32,
-           'float64': convert_to_float64,
-           'complex64': convert_to_complex64,
-           'complex128': convert_to_complex128}
+    'int8': convert_to_int8,
+    'int16': convert_to_int16,
+    'int32': convert_to_int32,
+    'int64': convert_to_int64,
+    'uint8': convert_to_uint8,
+    'uint16': convert_to_uint16,
+    'uint32': convert_to_uint32,
+    'uint64': convert_to_uint64,
+    'float16': convert_to_float16,
+    'float32': convert_to_float32,
+    'float64': convert_to_float64,
+    'complex64': convert_to_complex64,
+    'complex128': convert_to_complex128}
 
 
 def cast(x, dtype):
-    """Symbolically cast `x` to a Scalar of given `dtype`."""
+    """
+    Symbolically cast `x` to a Scalar of given `dtype`.
+
+    """
     if dtype == 'floatX':
         dtype = config.floatX
 
@@ -2103,7 +2133,7 @@ class Sgn(UnaryScalarOp):
         (z,) = outputs
         type = node.inputs[0].type
         if type in float_types:
-            return "%(z)s = (%(x)s >= 0) ? (%(x)s == 0) ? 0.0 : 1.0 : -1.0;" % locals()
+            return '%(z)s = (%(x)s > 0) ? 1. : ((%(x)s < 0) ? -1. : (isnan(%(x)s) ? NAN : 0.));' % locals()
         if type in int_types:
             return "%(z)s = (%(x)s >= 0) ? (%(x)s == 0) ? 0 : 1 : -1;" % locals()
         raise TypeError()  # complex has no sgn
@@ -2111,7 +2141,7 @@ class Sgn(UnaryScalarOp):
     def c_code_cache_version(self):
         s = super(Sgn, self).c_code_cache_version()
         if s:
-            return (3,) + s
+            return (4,) + s
         else:  # if parent is unversioned, we are too
             return s
 sgn = Sgn(same_out_nocomplex, name='sgn')
@@ -2177,10 +2207,11 @@ trunc = Trunc(same_out_nocomplex, name='trunc')
 
 class RoundHalfToEven(UnaryScalarOp):
     """
-    This function implement the same rounding than numpy: Round half to even
+    This function implement the same rounding than numpy: Round half to even.
 
     c/c++ round fct IS DIFFERENT!
-    See http://en.wikipedia.org/wiki/Rounding for more detail
+    See http://en.wikipedia.org/wiki/Rounding for more details.
+
     """
     def impl(self, x):
         return numpy.round(x)
@@ -2199,7 +2230,7 @@ class RoundHalfToEven(UnaryScalarOp):
         (x,) = inputs
         (z,) = outputs
         typ = node.outputs[0].type.dtype
-        if not typ in ['float32', 'float64']:
+        if typ not in ['float32', 'float64']:
             Exception("The output should be float32 or float64")
 
         return dedent("""
@@ -2274,9 +2305,10 @@ def round_half_away_from_zero_vec(a):
 class RoundHalfAwayFromZero(UnaryScalarOp):
     """
     Implement the same rounding algo as c round() fct.
-    numpy.round fct IS DIFFERENT!
 
-    See http://en.wikipedia.org/wiki/Rounding for more detail
+    numpy.round fct IS DIFFERENT!
+    See http://en.wikipedia.org/wiki/Rounding for more details.
+
     """
     def impl(self, x):
         return round_half_away_from_zero_vec(x)
@@ -2333,7 +2365,10 @@ pprint.assign(mod, printing.OperatorPrinter('%', -1, 'left'))
 
 
 class Inv(UnaryScalarOp):
-    """ multiplicative inverse. Also called reciprocal"""
+    """
+    Multiplicative inverse. Also called reciprocal.
+
+    """
     def impl(self, x):
         return numpy.float32(1.0) / x
 
@@ -2360,7 +2395,10 @@ inv = Inv(upgrade_to_float, name='inv')
 
 
 class Log(UnaryScalarOp):
-    """ log base e """
+    """
+    log base e.
+
+    """
     amd_float32 = "amd_vrsa_logf"
     amd_float64 = "amd_vrda_log"
 
@@ -2398,7 +2436,10 @@ log = Log(upgrade_to_float, name='log')
 
 
 class Log2(UnaryScalarOp):
-    """ log base 2 """
+    """
+    log base 2.
+
+    """
     amd_float32 = "amd_vrsa_log2f"
     amd_float64 = "amd_vrda_log2"
 
@@ -2433,7 +2474,10 @@ log2 = Log2(upgrade_to_float, name='log2')
 
 
 class Log10(UnaryScalarOp):
-    """ log base 10 """
+    """
+    log base 10.
+
+    """
     amd_float32 = "amd_vrsa_log10f"
     amd_float64 = "amd_vrda_log10"
 
@@ -2468,7 +2512,10 @@ log10 = Log10(upgrade_to_float, name='log10')
 
 
 class Log1p(UnaryScalarOp):
-    """ log(1+x) """
+    """
+    log(1+x).
+
+    """
     def impl(self, x):
         # If x is an int8 or uint8, numpy.log1p will compute the result in
         # half-precision (float16), where we want float32.
@@ -2944,7 +2991,7 @@ class ArcTan2(BinaryScalarOp):
         (y, x) = inputs
         (z,) = outputs
         if (node.inputs[0].type in complex_types or
-            node.inputs[1].type in complex_types):
+                node.inputs[1].type in complex_types):
             raise NotImplementedError('type not supported', type)
         return "%(z)s = atan2(%(y)s, %(x)s);" % locals()
 arctan2 = ArcTan2(upgrade_to_float, name='arctan2')
@@ -2952,7 +2999,8 @@ arctan2 = ArcTan2(upgrade_to_float, name='arctan2')
 
 class Cosh(UnaryScalarOp):
     """
-    cosh(x) = (exp(x) + exp(-x)) / 2
+    cosh(x) = (exp(x) + exp(-x)) / 2.
+
     """
     def impl(self, x):
         # If x is an int8 or uint8, numpy.cosh will compute the result in
@@ -3017,7 +3065,8 @@ arccosh = ArcCosh(upgrade_to_float, name='arccosh')
 
 class Sinh(UnaryScalarOp):
     """
-    sinh(x) = (exp(x) - exp(-x)) / 2
+    sinh(x) = (exp(x) - exp(-x)) / 2.
+
     """
     def impl(self, x):
         # If x is an int8 or uint8, numpy.sinh will compute the result in
@@ -3083,7 +3132,8 @@ arcsinh = ArcSinh(upgrade_to_float, name='arcsinh')
 class Tanh(UnaryScalarOp):
     """
     tanh(x) = sinh(x) / cosh(x)
-            = (exp(2*x) - 1) / (exp(2*x) + 1)
+            = (exp(2*x) - 1) / (exp(2*x) + 1).
+
     """
     def impl(self, x):
         # If x is an int8 or uint8, numpy.tanh will compute the result in
@@ -3147,7 +3197,10 @@ arctanh = ArcTanh(upgrade_to_float, name='arctanh')
 
 
 class Real(UnaryScalarOp):
-    """Extract the real coordinate of a complex number.  """
+    """
+    Extract the real coordinate of a complex number.
+
+    """
     def impl(self, x):
         return numpy.real(x)
 
@@ -3272,6 +3325,7 @@ class Composite(ScalarOp):
     fusion.
 
     Composite depends on all the Ops in its graph having C code.
+
     """
     def __str__(self):
         return self.name
@@ -3281,6 +3335,7 @@ class Composite(ScalarOp):
         This op.__init__ fct don't have the same parameter as other scalar op.
         This break the insert_inplace_optimizer optimization.
         This fct allow fix patch this.
+
         """
         out = self.__class__(self.inputs, self.outputs)
         if name:
@@ -3291,12 +3346,13 @@ class Composite(ScalarOp):
         return out
 
     def init_c_code(self):
-        """Return the C code for this Composite Op.  """
-        subd = dict(
-                zip(self.fgraph.inputs,
-                    ["%%(i%i)s" % i for i in xrange(len(self.fgraph.inputs))])
-                + zip(self.fgraph.outputs,
-                    ["%%(o%i)s" % i for i in xrange(len(self.fgraph.outputs))]))
+        """
+        Return the C code for this Composite Op.
+
+        """
+        subd = dict(chain(
+            ((e, "%%(i%i)s" % i) for i, e in enumerate(self.fgraph.inputs)),
+            ((e, "%%(o%i)s" % i) for i, e in enumerate(self.fgraph.outputs))))
 
         for var in self.fgraph.variables:
             if var.owner is None:
@@ -3309,7 +3365,7 @@ class Composite(ScalarOp):
                             "All orphans in the fgraph to Composite must"
                             " be Constant instances.")
             elif (any(i.dtype == 'float16' for i in var.owner.inputs) or
-                      any(o.dtype == 'float16' for o in var.owner.outputs)):
+                  any(o.dtype == 'float16' for o in var.owner.outputs)):
                 # flag for elemwise ops to check.
                 self.inner_float16 = True
 
@@ -3325,20 +3381,22 @@ class Composite(ScalarOp):
                     name = "V%%(id)s_tmp%i" % i
                     subd[output] = name
                     _c_code += "%s %s;\n" % (
-                            output.type.dtype_specs()[1], name)
-            s = node.op.c_code(node,
-                      self.nodenames[j],
-                      [subd[input] for input in node.inputs],
-                      [subd[output] for output in node.outputs],
-                      dict(fail="%(fail)s",
-                          id="%%(id)s_%i" % j))
+                        output.type.dtype_specs()[1], name)
+            s = node.op.c_code(
+                node,
+                self.nodenames[j],
+                [subd[input] for input in node.inputs],
+                [subd[output] for output in node.outputs],
+                dict(fail="%(fail)s", id="%%(id)s_%i" % j))
             _c_code += s
             _c_code += "\n"
         _c_code += "}\n"
         self._c_code = _c_code
 
     def init_py_impls(self):
-        """Return a list of functions that compute each output of self
+        """
+        Return a list of functions that compute each output of self.
+
         """
         def compose_impl(r):
             # this is not optimal at all eg in add(*1 -> mul(x, y), *1)
@@ -3356,7 +3414,9 @@ class Composite(ScalarOp):
         self._impls = [compose_impl(r) for r in self.fgraph.outputs]
 
     def init_name(self):
-        """Return a readable string representation of self.fgraph
+        """
+        Return a readable string representation of self.fgraph.
+
         """
         try:
             rval = self.name
@@ -3425,7 +3485,7 @@ class Composite(ScalarOp):
             res2 = theano.compile.rebuild_collect_shared(
                 inputs=outputs[0].owner.op.inputs,
                 outputs=outputs[0].owner.op.outputs,
-                replace=dict(zip(outputs[0].owner.op.inputs, res[1]))
+                replace=dict(izip(outputs[0].owner.op.inputs, res[1]))
             )
             assert len(res2[1]) == len(outputs)
             assert len(res[0]) == len(inputs)
@@ -3454,14 +3514,14 @@ class Composite(ScalarOp):
 
     def make_node(self, *inputs):
         if (tuple([i.type for i in self.inputs]) ==
-            tuple([i.type for i in inputs])):
+                tuple([i.type for i in inputs])):
             return super(Composite, self).make_node(*inputs)
         else:
             # Make a new op with the right input type.
             assert len(inputs) == self.nin
             res = theano.compile.rebuild_collect_shared(
                 self.outputs,
-                replace=dict(zip(self.inputs, inputs)),
+                replace=dict(izip(self.inputs, inputs)),
                 rebuild_strict=False)
             # After rebuild_collect_shared, the Variable in inputs
             # are not necessarily in the graph represented by res.
@@ -3485,13 +3545,11 @@ class Composite(ScalarOp):
         raise NotImplementedError("grad is not implemented for Composite")
 
     def c_code(self, node, nodename, inames, onames, sub):
-        d = dict(zip(["i%i" % i for i in xrange(len(inames))],
-                     inames) +
-                 zip(["o%i" % i for i in xrange(len(onames))],
-                     onames),
-                 **sub)
+        d = dict(chain(izip(("i%i" % i for i in xrange(len(inames))), inames),
+                       izip(("o%i" % i for i in xrange(len(onames))),
+                            onames)), **sub)
         d['nodename'] = nodename
-        if not 'id' in sub:
+        if 'id' not in sub:
             # The use of a dummy id is safe as the code is in a separate block.
             # It won't generate conflicting variable name.
             d['id'] = '_DUMMY_ID_'
@@ -3523,8 +3581,8 @@ class Composite(ScalarOp):
         for subnode, subnodename in zip(self.fgraph.toposort(), self.nodenames):
             try:
                 subnode_support_code = subnode.op.c_support_code_apply(
-                            subnode,
-                            subnodename % dict(nodename=name))
+                    subnode,
+                    subnodename % dict(nodename=name))
                 if subnode_support_code:
                     rval.append(subnode_support_code)
             except gof.utils.MethodNotDefined:
@@ -3538,9 +3596,9 @@ class Composite(ScalarOp):
     def __eq__(self, other):
         if self is other:
             return True
-        if (type(self) != type(other)
-                or self.nin != other.nin
-                or self.nout != other.nout):
+        if (type(self) != type(other) or
+                self.nin != other.nin or
+                self.nout != other.nout):
             return False
         # see __hash__ for comment on why there is no mention of fgraph
         # or module cache key here.
@@ -3548,9 +3606,9 @@ class Composite(ScalarOp):
 
     def __hash__(self):
         rval = hash((type(self),
-            self.nin,
-            self.nout,
-            self._c_code))
+                    self.nin,
+                    self.nout,
+                    self._c_code))
         # Note that in general, the configparser settings at the time
         # of code generation (__init__) affect the semantics of this Op.
         # This function assumes that all relevant info about the configparser

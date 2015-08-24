@@ -1,5 +1,5 @@
 from __future__ import print_function
-import cPickle
+import six.moves.cPickle as pickle
 import errno
 import logging
 import os
@@ -14,6 +14,7 @@ import textwrap
 import numpy
 
 import theano
+from six import string_types, iteritems
 from theano.configparser import config, AddConfigVar, ConfigParam, StrParam
 from theano.gof.utils import flatten
 from theano.misc.windows import output_subprocess_Popen
@@ -31,10 +32,11 @@ except OSError:
 
 def local_bitwidth():
     """
-    Return 32 for 32bit arch, 64 for 64bit arch
+    Return 32 for 32bit arch, 64 for 64bit arch.
 
     By "architecture", we mean the size of memory pointers (size_t in C),
     *not* the size of long int, as it can be different.
+
     """
     # Note that according to Python documentation, `platform.architecture()` is
     # not reliable on OS X with universal binaries.
@@ -48,6 +50,7 @@ def python_int_bitwidth():
     Return the bit width of Python int (C long int).
 
     Note that it can be different from the size of a memory pointer.
+
     """
     # 'l' denotes a C long int, and the size is expressed in bytes.
     return struct.calcsize('l') * 8
@@ -62,12 +65,12 @@ compiledir_format_dict = {
     "theano_version": theano.__version__,
     "numpy_version": numpy.__version__,
     "gxx_version": gcc_version_str.replace(" ", "_"),
-    "hostname": socket.gethostname(),
-    }
+    "hostname": socket.gethostname()}
 
 
 def short_platform(r=None, p=None):
-    """Return a safe shorter version of platform.platform().
+    """
+    Return a safe shorter version of platform.platform().
 
     The old default Theano compiledir used platform.platform in
     it. This use the platform.version() as a substring. This is too
@@ -103,13 +106,11 @@ def short_platform(r=None, p=None):
     compiledir_Linux-2.6.32-220.7.1.el6.x86_64-x86_64-with-redhat-6.2-Santiago-x86_64-2.6.6
     compiledir_Linux-2.6.32-220.4.1.el6.x86_64-x86_64-with-redhat-6.2-Santiago-x86_64-2.6.6
 
-    We suppose the version are ``X.Y[.*]-(digit)*(anything)*``. We
-    keep ``X.Y`` and don't keep less important digit in the part
-    before ``-`` and we remove the leading digit after the first
-    ``-``.
+    We suppose the version are ``X.Y[.*]-(digit)*(anything)*``. We keep ``X.Y``
+    and don't keep less important digit in the part before ``-`` and we remove
+    the leading digit after the first ``-``.
 
-    If the information don't fit that pattern, we do not modify
-    platform.
+    If the information don't fit that pattern, we do not modify platform.
 
     """
     if r is None:
@@ -185,7 +186,7 @@ def filter_compiledir(path):
                 " or listing permissions." % path)
     else:
         try:
-            os.makedirs(path, 0770)  # read-write-execute for user and group
+            os.makedirs(path, 0o770)  # read-write-execute for user and group
         except OSError as e:
             # Maybe another parallel execution of theano was trying to create
             # the same directory at the same time.
@@ -214,6 +215,7 @@ def filter_compiledir(path):
 def get_home_dir():
     """
     Return location of the user's home directory.
+
     """
     home = os.getenv('HOME')
     if home is None:
@@ -269,6 +271,7 @@ def cleanup():
     3) They do not have a compile version string
 
     If there is no key left for a compiled module, we delete the module.
+
     """
     compiledir = theano.config.compiledir
     for directory in os.listdir(compiledir):
@@ -279,7 +282,7 @@ def cleanup():
                 file = open(filename, 'rb')
                 # print file
                 try:
-                    keydata = cPickle.load(file)
+                    keydata = pickle.load(file)
                     for key in list(keydata.keys):
                         have_npy_abi_version = False
                         have_c_compiler = False
@@ -289,7 +292,7 @@ def cleanup():
                                 # force the removing of key
                                 have_npy_abi_version = False
                                 break
-                            elif isinstance(obj, basestring):
+                            elif isinstance(obj, string_types):
                                 if obj.startswith('NPY_ABI_VERSION=0x'):
                                     have_npy_abi_version = True
                                 elif obj.startswith('c_compiler_str='):
@@ -351,7 +354,7 @@ def print_compiledir_content():
             try:
                 filename = os.path.join(compiledir, dir, "key.pkl")
                 file = open(filename, 'rb')
-                keydata = cPickle.load(file)
+                keydata = pickle.load(file)
                 ops = list(set([x for x in flatten(keydata.keys)
                                 if isinstance(x, theano.gof.Op)]))
                 if len(ops) == 0:
@@ -389,7 +392,7 @@ def print_compiledir_content():
     print()
     print(("List of %d individual compiled Op classes and "
            "the number of times they got compiled" % len(table_op_class)))
-    table_op_class = sorted(table_op_class.iteritems(), key=lambda t: t[1])
+    table_op_class = sorted(iteritems(table_op_class), key=lambda t: t[1])
     for op_class, nb in table_op_class:
         print(op_class, nb)
 
@@ -405,7 +408,7 @@ def print_compiledir_content():
         for dir, size, ops in big_key_files:
             print(dir, size, ops)
 
-    nb_keys = sorted(nb_keys.iteritems())
+    nb_keys = sorted(iteritems(nb_keys))
     print()
     print("Number of keys for a compiled module")
     print("number of keys/number of modules with that number of keys")

@@ -23,7 +23,7 @@ pycuda_available = False
 # If theano.sandbox.cuda don't exist, it is because we are importing
 # it and it try to import this file! This mean we must init the device.
 if (not hasattr(theano.sandbox, 'cuda') or
-    theano.sandbox.cuda.use.device_number is None):
+        theano.sandbox.cuda.use.device_number is None):
     try:
         import pycuda
         import pycuda.autoinit

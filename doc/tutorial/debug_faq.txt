@@ -295,6 +295,26 @@ Tips:
   of type *float64*.
 
 
+"Why does my GPU function seem to be slow?"
+-------------------------------------------
+
+When you compile a theano function, if you do not get the speedup that you expect over the 
+CPU performance of the same code. It is oftentimes due to the fact that some Ops might be running
+on CPU instead GPU. If that is the case, you can use assert_no_cpu_op to check if there 
+is a CPU Op on your computational graph. assert_no_cpu_op can take the following one of the three 
+options:
+
+* ``warn``: Raise a warning
+* ``pdb``: Stop with a pdb in the computational graph during the compilation
+* ``raise``: Raise an error,
+  if there is a CPU Op in the computational graph.
+
+It is possible to use this mode by providing the flag in THEANO_FLAGS, such as:
+``THEANO_FLAGS="float32,device=gpu,assert_no_cpu_op='raise'" python test.py``
+
+But note that this optimization will not catch all the CPU Ops, it might miss some 
+Ops.
+
 .. _faq_monitormode:
 
 "How do I Step through a Compiled Function?"

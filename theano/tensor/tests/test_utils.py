@@ -3,8 +3,7 @@ import unittest
 import numpy
 
 import theano
-from theano.tensor.utils import (hash_from_ndarray, hash_from_dict,
-                                 shape_of_variables)
+from theano.tensor.utils import (hash_from_ndarray, shape_of_variables)
 
 
 def test_hash_from_ndarray():
@@ -35,21 +34,6 @@ def test_hash_from_ndarray():
     assert hash_from_ndarray(rng[:4]) == hash_from_ndarray(rng[:4].copy())
     assert hash_from_ndarray(rng[::2]) == hash_from_ndarray(rng[::2].copy())
     assert hash_from_ndarray(rng[::-1]) == hash_from_ndarray(rng[::-1].copy())
-
-
-def test_hash_from_dict():
-    dicts = [{}, {0: 0}, {0: 1}, {1: 0}, {1: 1},
-             {0: (0,)}, {0: [1]},
-             {0: (0, 1)}, {0: [1, 0]},
-         ]
-    hashs = []
-    for idx, d in enumerate(dicts):
-        h = hash_from_dict(d)
-        assert h not in hashs
-        hashs.append(h)
-
-    # List are not hashable. So they are transformed into tuple.
-    assert hash_from_dict({0: (0,)}) == hash_from_dict({0: [0]})
 
 
 class Tshape_of_variables(unittest.TestCase):

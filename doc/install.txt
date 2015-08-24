@@ -199,10 +199,13 @@ the Theano cache like this:
 Bleeding-edge install instructions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Master Tests Status:
+.. only:: html
 
-.. image:: https://secure.travis-ci.org/Theano/Theano.png?branch=master
-    :target: http://travis-ci.org/Theano/Theano/builds
+   Master Tests Status:
+
+   .. raw:: html
+
+      <a href="http://travis-ci.org/Theano/Theano/builds"><img src="https://secure.travis-ci.org/Theano/Theano.png?branch=master" /></a>&nbsp;
 
 If you are a developer of Theano, then check out the :ref:`dev_start_guide`.
 

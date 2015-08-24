@@ -8,6 +8,7 @@ import unittest
 
 
 import numpy
+from six.moves import xrange
 
 from nose.plugins.skip import SkipTest
 imported_scipy_convolve2d = False
@@ -26,6 +27,8 @@ from .test_basic_ops import (mode_with_gpu,
                              mode_without_gpu)
 from ..type import GpuArrayType
 from ..conv import GpuConv
+from theano.sandbox.gpuarray import dnn
+
 import pygpu
 gftensor4 = GpuArrayType('float32', [False] * 4)
 
@@ -500,6 +503,9 @@ def test_subsample():
 
 
 class TestConv2DGPU(unittest.TestCase):
+    conv_ops = (GpuConv,
+                dnn.DnnBase)
+
     def test_logical_shapes(self):
         seed_rng()
         for stride in range(1, 4):
@@ -526,7 +532,7 @@ class TestConv2DGPU(unittest.TestCase):
 
             func = theano.function([a, A], image_estimate, mode=mode_with_gpu)
             # theano.printing.debugprint(func,)
-            assert any([isinstance(node.op, GpuConv)
+            assert any([isinstance(node.op, self.conv_ops)
                         for node in func.maker.fgraph.toposort()])
 
             a_in = numpy.random.randn(*featshp).astype("float32")

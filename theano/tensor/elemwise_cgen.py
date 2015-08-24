@@ -1,11 +1,12 @@
+from six.moves import xrange
 import theano
 
 
 def make_declare(loop_orders, dtypes, sub):
     """
     Produce code to declare all necessary variables.
-    """
 
+    """
     decl = ""
     for i, (loop_order, dtype) in enumerate(zip(loop_orders, dtypes)):
         var = sub['lv%i' % i]  # input name corresponding to ith loop variable
@@ -116,8 +117,11 @@ def make_checks(loop_orders, dtypes, sub):
 def make_alloc(loop_orders, dtype, sub, fortran='0'):
     """Generate C code to allocate outputs.
 
-    :param fortran: a string included in the generated code. If it
-        evaludate to non-zero, an ndarray in fortran order will be
+    Parameters
+    ----------
+    fortran : str
+        A string included in the generated code. If it
+        evaluate to non-zero, an ndarray in fortran order will be
         created, otherwise it will be c order.
 
     """
@@ -178,25 +182,24 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub, openmp=None):
     Make a nested loop over several arrays and associate specific code
     to each level of nesting.
 
-    @type loop_orders: list of N tuples of length M.
-    @param loop_orders: Each value of each
-      tuple can be either the index of a dimension to loop over or
-      the letter 'x' which means there is no looping to be done
-      over that variable at that point (in other words we broadcast
-      over that dimension). If an entry is an integer, it will become
-      an alias of the entry of that rank.
-
-    @type loop_tasks: list of M+1 pieces of code.
-    @param loop_tasks: The ith loop_task is a pair of strings, the first
-      string is code to be executed before the ith loop starts, the second
-      one contains code to be executed just before going to the next element
-      of the ith dimension.
-      The last element if loop_tasks is a single string, containing code
-      to be executed at the very end.
-
-    @type sub: a dictionary.
-    @param sub: Maps 'lv#' to a suitable variable name.
-      The 'lvi' variable corresponds to the ith element of loop_orders.
+    Parameters
+    ----------
+    loop_orders : list of N tuples of length M
+        Each value of each tuple can be either the index of a dimension to
+        loop over or the letter 'x' which means there is no looping to be done
+        over that variable at that point (in other words we broadcast
+        over that dimension). If an entry is an integer, it will become
+        an alias of the entry of that rank.
+    loop_tasks : list of M+1 pieces of code
+        The ith loop_task is a pair of strings, the first
+        string is code to be executed before the ith loop starts, the second
+        one contains code to be executed just before going to the next element
+        of the ith dimension.
+        The last element if loop_tasks is a single string, containing code
+        to be executed at the very end.
+    sub : dictionary
+        Maps 'lv#' to a suitable variable name.
+        The 'lvi' variable corresponds to the ith element of loop_orders.
 
     """
     def loop_over(preloop, code, indices, i):
@@ -236,15 +239,16 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub, openmp=None):
 
     s = ""
 
-    for i, (pre_task, task), indices in reversed(zip(xrange(len(loop_tasks) - 1), loop_tasks, zip(*loop_orders))):
+    for i, (pre_task, task), indices in reversed(list(zip(xrange(len(loop_tasks) - 1), loop_tasks, list(zip(*loop_orders))))):
             s = loop_over(preloops.get(i, "") + pre_task, s + task, indices, i)
 
     s += loop_tasks[-1]
     return "{%s}" % s
 
 
-def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, openmp=None):
-    '''A bit like make_loop, but when only the inner-most loop executes code.
+def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub,
+                        openmp=None):
+    """A bit like make_loop, but when only the inner-most loop executes code.
 
     All the loops will be reordered so that the loops over the output tensor
     are executed with memory access as contiguous as possible.
@@ -252,7 +256,8 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
     will be on its rows; if it's f_contiguous, it will be on its columns.
 
     The output tensor's index among the loop variables is indicated by olv_index.
-    '''
+
+    """
 
     # Number of variables
     nvars = len(init_loop_orders)
@@ -275,7 +280,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
         if index != 'x':
             order_loops += """
             %(ovar)s_loops_it->first = abs(PyArray_STRIDES(%(ovar)s)[%(index)i]);
-            """  % locals()
+            """ % locals()
         else:
             # Stride is 0 when dimension is broadcastable
             order_loops += """
@@ -310,15 +315,13 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
                 total = "%(var)s_n%(candidate)s" % locals()
                 break
         else:
-            total = '1';
+            total = '1'
         totals.append(total)
 
     declare_totals = """
     int init_totals[%(nnested)s] = {%(totals)s};
-    """ % dict(
-            nnested=nnested,
-            totals=', '.join(totals)
-            )
+    """ % dict(nnested=nnested,
+               totals=', '.join(totals))
 
     # Sort totals to match the new order that was computed by sorting
     # the loop vector. One integer variable per loop is declared.
@@ -339,6 +342,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
         Returns a list containing a C expression representing the
         stride for each dimension of the ith variable, in the
         specified loop_order.
+
         """
         var = sub["lv%i" % i]
         r = []
@@ -354,13 +358,11 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
     declare_strides = """
     int init_strides[%(nvars)i][%(nnested)i] = {
         %(strides)s
-    };""" % dict(
-            nvars=nvars,
-            nnested=nnested,
-            strides=', \n'.join(
-                ', '.join(get_loop_strides(lo, i))
-                for i, lo in enumerate(init_loop_orders)
-                if len(lo) > 0))
+    };""" % dict(nvars=nvars,
+                 nnested=nnested,
+                 strides=', \n'.join(', '.join(get_loop_strides(lo, i))
+                                     for i, lo in enumerate(init_loop_orders)
+                                     if len(lo) > 0))
 
     # Declare (sorted) stride and for each variable
     # we iterate from innermost loop to outermost loop
@@ -372,7 +374,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
         var = sub["lv%i" % i]
         declare_strides += """
         %(ovar)s_loops_rit = %(ovar)s_loops.rbegin();""" % locals()
-        for j in reversed(range(nnested)):
+        for j in reversed(xrange(nnested)):
             declare_strides += """
             int %(var)s_stride_l%(j)i = init_strides[%(i)i][%(ovar)s_loops_rit->second];
             ++%(ovar)s_loops_rit;
@@ -384,9 +386,9 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
         declare_iter += "%(var)s_iter = (%(dtype)s*)(PyArray_DATA(%(var)s));\n" % locals()
 
     pointer_update = ''
-    for j , dtype in enumerate(dtypes):
+    for j, dtype in enumerate(dtypes):
         var = sub["lv%i" % j]
-        pointer_update += "%(dtype)s &%(var)s_i = * ( %(var)s_iter"%locals()
+        pointer_update += "%(dtype)s &%(var)s_i = * ( %(var)s_iter" % locals()
         tot_jump = ''
         for i in reversed(range(nnested)):
             iterv = 'ITER_%i' % i
@@ -400,7 +402,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
         update = ''
         forloop = ''
         # The pointers are defined only in the most inner loop
-        if i == nnested-1:
+        if i == nnested - 1:
             update = pointer_update
         if i == 0:
             if openmp:
@@ -412,19 +414,17 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
         %(forloop)s
         { // begin loop %(i)i
             %(update)s
-            %(loop)s 
+            %(loop)s
         } // end loop %(i)i
         """ % locals()
 
-    return '\n'.join([
-            '{',
-            order_loops,
-            declare_totals,
-            declare_strides,
-            declare_iter,
-            loop,
-            '}\n',
-            ])
+    return '\n'.join(['{',
+                      order_loops,
+                      declare_totals,
+                      declare_strides,
+                      declare_iter,
+                      loop,
+                      '}\n'])
 
 # print make_declare(((0, 1, 2, 3), ('x', 1, 0, 3), ('x', 'x', 'x', 0)),
 #                    ('double', 'int', 'float'),
@@ -450,16 +450,16 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub, op
 
 
 ##################
-### DimShuffle ###
+#   DimShuffle   #
 ##################
 
 #################
-### Broadcast ###
+#   Broadcast   #
 #################
 
 
 ################
-### CAReduce ###
+#   CAReduce   #
 ################
 
 
@@ -468,25 +468,25 @@ def make_loop_careduce(loop_orders, dtypes, loop_tasks, sub):
     Make a nested loop over several arrays and associate specific code
     to each level of nesting.
 
-    @type loop_orders: list of N tuples of length M.
-    @param loop_orders: Each value of each
-      tuple can be either the index of a dimension to loop over or
-      the letter 'x' which means there is no looping to be done
-      over that variable at that point (in other words we broadcast
-      over that dimension). If an entry is an integer, it will become
-      an alias of the entry of that rank.
+    Parameters
+    ----------
+    loop_orders : list of N tuples of length M
+        Each value of each tuple can be either the index of a dimension to
+        loop over or the letter 'x' which means there is no looping to be done
+        over that variable at that point (in other words we broadcast
+        over that dimension). If an entry is an integer, it will become
+        an alias of the entry of that rank.
+    loop_tasks : list of M+1 pieces of code
+        The ith loop_task is a pair of strings, the first
+        string is code to be executed before the ith loop starts, the second
+        one contains code to be executed just before going to the next element
+        of the ith dimension.
+        The last element if loop_tasks is a single string, containing code
+        to be executed at the very end.
+    sub: dictionary
+        Maps 'lv#' to a suitable variable name.
+        The 'lvi' variable corresponds to the ith element of loop_orders.
 
-    @type loop_tasks: list of M+1 pieces of code.
-    @param loop_tasks: The ith loop_task is a pair of strings, the first
-      string is code to be executed before the ith loop starts, the second
-      one contains code to be executed just before going to the next element
-      of the ith dimension.
-      The last element if loop_tasks is a single string, containing code
-      to be executed at the very end.
-
-    @type sub: a dictionary.
-    @param sub: Maps 'lv#' to a suitable variable name.
-      The 'lvi' variable corresponds to the ith element of loop_orders.
     """
 
     def loop_over(preloop, code, indices, i):
@@ -521,9 +521,8 @@ def make_loop_careduce(loop_orders, dtypes, loop_tasks, sub):
         s = preloops.get(0, "")
     else:
         s = ""
-        for i, (pre_task, task), indices in reversed(zip(xrange(len(loop_tasks) - 1), loop_tasks, zip(*loop_orders))):
+        for i, (pre_task, task), indices in reversed(list(zip(xrange(len(loop_tasks) - 1), loop_tasks, list(zip(*loop_orders))))):
             s = loop_over(preloops.get(i, "") + pre_task, s + task, indices, i)
 
     s += loop_tasks[-1]
     return "{%s}" % s
-

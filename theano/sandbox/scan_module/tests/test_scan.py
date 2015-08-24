@@ -6,7 +6,8 @@ import time
 import sys
 import unittest
 
-import cPickle
+import six.moves.cPickle as pickle
+from six.moves import xrange
 import numpy
 from numpy.testing import dec
 
@@ -15,9 +16,9 @@ import theano.sandbox.rng_mrg
 from theano import tensor
 from theano.compile.pfunc import rebuild_collect_shared
 from theano.tests  import unittest_tools as utt
-from numpy.testing.noseclasses import KnownFailureTest
+from theano.tests.unittest_tools import SkipTest
 
-from test_utils import *
+from .test_utils import *
 import theano.sandbox.scan_module as scan_module
 from theano.sandbox.scan_module.scan_op import ScanOp
 
@@ -136,8 +137,7 @@ class TestScan(unittest.TestCase):
                 shared_outs = [sh * 5 for sh in shared_vars]
                 states_out = [x for x in states_out]
                 pure_outs = [2 for x in xrange(n_outputs)]
-            return states_out + pure_outs, dict(zip(shared_vars,
-                                                    shared_outs))
+            return states_out + pure_outs, dict(izip(shared_vars, shared_outs))
 
         def execute_inner_graph(*args):
             """
@@ -471,8 +471,9 @@ class TestScan(unittest.TestCase):
         # place (even when told not to by DebugMode). As this op will change
         # soon, and it is in the sandbox and not for user consumption, the
         # error is marked as KnownFailure
-        raise KnownFailureTest('Work-in-progress sandbox ScanOp is not fully '
-                               'functional yet')
+
+        raise SkipTest("Work-in-progress sandbox ScanOp is "
+                       "not fully functional yet")
 
         def f_pow2(x_tm1):
             return 2 * x_tm1
@@ -508,9 +509,8 @@ class TestScan(unittest.TestCase):
         # place (even when told not to by DebugMode). As this op will change
         # soon, and it is in the sandbox and not for user consumption, the
         # error is marked as KnownFailure
-
-        raise KnownFailureTest('Work-in-progress sandbox ScanOp is not fully '
-                               'functional yet')
+        raise SkipTest("Work-in-progress sandbox "
+                       "ScanOp is not fully functional yet")
 
         def f_rnn(u_t, x_tm1, W_in, W):
             return u_t * W_in + x_tm1 * W

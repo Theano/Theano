@@ -1,3 +1,4 @@
+:orphan:
 
 .. _faq:
 
@@ -72,12 +73,17 @@ and use directly the optimized graph from the pickled file.
 Faster Theano function
 ----------------------
 
-You can set the Theano flag ``allow_gc`` to ``False`` to get a speed-up by using
+You can set the Theano flag :attr:`allow_gc <config.allow_gc>` to ``False`` to get a speed-up by using
 more memory. By default, Theano frees intermediate results when we don't need
 them anymore. Doing so prevents us from reusing this memory. So disabling the
 garbage collection will keep all intermediate results' memory space to allow to
 reuse them during the next call to the same Theano function, if they are of the
 correct shape. The shape could change if the shapes of the inputs change.
+
+.. note::
+
+   With :attr:`CNMeM <config.lib.cnmem>`, this isn't very useful with GPU
+   anymore.
 
 .. _unsafe_optimization:
 
@@ -134,6 +140,17 @@ making a Theano function that does not take any input. You can use shared
 variables to achieve this. Then you can call it like this: ``f.fn()`` or
 ``f.fn(n_calls=N)`` to speed it up. In the last case, only the last
 function output (out of N calls) is returned.
+
+You can also use the ``C`` linker that will put all nodes in the same C
+compilation unit. This removes some overhead between node in the graph,
+but requires that all nodes in the graph have a C implementation:
+
+.. code-block:: python
+
+    x = theano.tensor.scalar('x')
+    f = function([x], (x + 1.) * 2, mode=theano.Mode(linker='c'))
+    f(10.)
+
 
 Out of memory... but not really
 -------------------------------

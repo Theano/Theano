@@ -1,16 +1,15 @@
-import unittest, os
+import os
 import numpy
-import cPickle
-from theano.compat import DictMixin, OrderedDict
 import theano
 import theano.tensor as T
 
 floatX = 'float32'
 
+
 def test_graph_opt_caching():
-    opt_db_file = theano.config.compiledir+'/optimized_graphs.pkl'
-    os.system('rm %s'%opt_db_file)
-    
+    opt_db_file = theano.config.compiledir + '/optimized_graphs.pkl'
+    os.system('rm %s' % opt_db_file)
+
     mode = theano.config.mode
     if mode in ["DEBUG_MODE", "DebugMode"]:
         mode = "FAST_RUN"
@@ -30,12 +29,12 @@ def test_graph_opt_caching():
         q = theano.shared(numpy.ones((10, 10), dtype=floatX))
         j = T.sum(T.sum(T.sum(m ** 2 + n) + p) + q)
         f2 = theano.function([m, n], j, mode=mode)
-        
+
         in1 = numpy.ones((10, 10), dtype=floatX)
         in2 = numpy.ones((10, 10), dtype=floatX)
         assert f1(in1, in2) == f2(in1, in2)
     finally:
         theano.config.cache_optimizations = default
-        
+
 if __name__ == '__main__':
     test_graph_opt_caching()

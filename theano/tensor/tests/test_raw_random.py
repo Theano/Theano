@@ -1,6 +1,7 @@
 from __future__ import print_function
-__docformat__ = "restructuredtext en"
 import numpy
+import pickle
+
 from theano.tests import unittest_tools as utt
 
 from theano.tensor.raw_random import *
@@ -9,6 +10,8 @@ from theano.tensor import (raw_random, ivector, dvector, iscalar, dcol,
 from theano import tensor
 
 from theano import compile, config, gof
+
+__docformat__ = "restructuredtext en"
 
 
 class T_random_function(utt.InferShapeTester):
@@ -1180,6 +1183,22 @@ class T_random_function(utt.InferShapeTester):
                                 [rng_R_val, n_val,
                                 pvals_val], RandomFunction)
         """
+
+    def test_pkl(self):
+        # Test pickling of RandomFunction.
+        # binomial was created by calling RandomFunction on a string,
+        # random_integers by calling it on a function.
+        rng_r = random_state_type()
+        mode = None
+        if theano.config.mode in ["DEBUG_MODE", "DebugMode"]:
+            mode = 'FAST_COMPILE'
+        post_bin_r, bin_sample = binomial(rng_r, (3, 5), 1, .3)
+        f = theano.function([rng_r], [post_bin_r, bin_sample], mode=mode)
+        pkl_f = pickle.dumps(f)
+
+        post_int_r, int_sample = random_integers(rng_r, (3, 5), -1, 8)
+        g = theano.function([rng_r], [post_int_r, int_sample], mode=mode)
+        pkl_g = pickle.dumps(g)
 
 
 if __name__ == '__main__':

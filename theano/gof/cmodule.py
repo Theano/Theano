@@ -1,8 +1,11 @@
-"""Generate and compile C modules for Python,
+"""
+Generate and compile C modules for Python.
+
 """
 from __future__ import print_function
+
 import atexit
-import cPickle
+import six.moves.cPickle as pickle
 import logging
 import os
 import re
@@ -15,20 +18,14 @@ import time
 import platform
 import distutils.sysconfig
 
-importlib = None
-try:
-    import importlib
-except ImportError:
-    pass
-
 import numpy.distutils  # TODO: TensorType should handle this
 
 import theano
 from theano.compat import PY3, decode, decode_iter
-from theano.compat.six import b, BytesIO, StringIO
+from six import b, BytesIO, StringIO, string_types, iteritems
 from theano.gof.utils import flatten
 from theano.configparser import config
-from theano.gof.cc import hash_from_code
+from theano.gof.utils import hash_from_code
 from theano.misc.windows import (subprocess_Popen,
                                  output_subprocess_Popen)
 
@@ -38,10 +35,17 @@ from theano.gof.compiledir import gcc_version_str, local_bitwidth
 
 from theano.configparser import AddConfigVar, BoolParam
 
-AddConfigVar('cmodule.mac_framework_link',
-        "If set to True, breaks certain MacOS installations with the infamous "
-        "Bus Error",
-        BoolParam(False))
+importlib = None
+try:
+    import importlib
+except ImportError:
+    pass
+
+AddConfigVar(
+    'cmodule.mac_framework_link',
+    "If set to True, breaks certain MacOS installations with the infamous "
+    "Bus Error",
+    BoolParam(False))
 
 AddConfigVar('cmodule.warn_no_version',
              "If True, will print a warning when compiling one or more Op "
@@ -78,16 +82,23 @@ import_time = 0
 class MissingGXX(Exception):
     """
     This error is raised when we try to generate c code,
-    but g++ is not available
+    but g++ is not available.
+
     """
+
     pass
 
 
 def debug_counter(name, every=1):
-    """Debug counter to know how often we go through some piece of code.
+    """
+    Debug counter to know how often we go through some piece of code.
 
-    This is a utility function one may use when debugging. Usage example:
-        debug_counter('I want to know how often I run this line')
+    This is a utility function one may use when debugging.
+
+    Example
+    -------
+    debug_counter('I want to know how often I run this line')
+
     """
     setattr(debug_counter, name, getattr(debug_counter, name, 0) + 1)
     n = getattr(debug_counter, name)
@@ -96,27 +107,36 @@ def debug_counter(name, every=1):
 
 
 class ExtFunction(object):
-    """A C function to put into a DynamicModule """
+    """
+    A C function to put into a DynamicModule.
+
+    """
 
     name = ""
-    """string - function's name"""
+    """
+    str - function's name.
 
+    """
     code_block = ""
-    """string - the entire code for the function.
+    """
+    str - the entire code for the function.
 
     Has the form ``static PyObject* <name>([...]){ ... }
 
     See Python's C API Reference for how to write c functions for python
     modules.
-    """
 
+    """
     method = ""
     """
-    str - calling method for this function (i.e. 'METH_VARARGS', 'METH_NOARGS')
-    """
+    str - calling method for this function (i.e. 'METH_VARARGS', 'METH_NOARGS').
 
+    """
     doc = ""
-    """str - documentation string for this function"""
+    """
+    str - documentation string for this function.
+
+    """
 
     def __init__(self, name, code_block, method, doc="undocumented"):
         self.name = name
@@ -129,17 +149,19 @@ class ExtFunction(object):
         Returns the signature for this function.
 
         It goes into the DynamicModule's method table.
+
         """
         return '\t{"%s", %s, %s, "%s"}' % (
-                self.name, self.name, self.method, self.doc)
+            self.name, self.name, self.method, self.doc)
 
 
 class DynamicModule(object):
     def __init__(self, name=None):
-        assert name is None, ("The 'name' parameter of DynamicModule"
-                " cannot be specified anymore. Instead, 'code_hash'"
-                " will be automatically computed and can be used as"
-                " the module's name.")
+        assert name is None, (
+            "The 'name' parameter of DynamicModule"
+            " cannot be specified anymore. Instead, 'code_hash'"
+            " will be automatically computed and can be used as"
+            " the module's name.")
         # While the module is not finalized, we can call add_...
         # when it is finalized, a hash is computed and used instead of
         # the placeholder, and as module name.
@@ -149,7 +171,7 @@ class DynamicModule(object):
 
         self.support_code = []
         self.functions = []
-        self.includes = ["<Python.h>", "<iostream>"]
+        self.includes = ["<Python.h>", "<iostream>", '"theano_mod_helper.h"']
         self.init_blocks = []
 
     def print_methoddef(self, stream):
@@ -171,18 +193,18 @@ static struct PyModuleDef moduledef = {{
 }};
 """.format(name=self.hash_placeholder), file=stream)
             print(("PyMODINIT_FUNC PyInit_%s(void) {" %
-                              self.hash_placeholder), file=stream)
+                  self.hash_placeholder), file=stream)
             for block in self.init_blocks:
                 print('  ', block, file=stream)
             print("    PyObject *m = PyModule_Create(&moduledef);", file=stream)
             print("    return m;", file=stream)
         else:
             print(("PyMODINIT_FUNC init%s(void){" %
-                              self.hash_placeholder), file=stream)
+                  self.hash_placeholder), file=stream)
             for block in self.init_blocks:
                 print('  ', block, file=stream)
             print('  ', ('(void) Py_InitModule("%s", MyMethods);'
-                                    % self.hash_placeholder), file=stream)
+                  % self.hash_placeholder), file=stream)
         print("}", file=stream)
 
     def add_include(self, str):
@@ -240,7 +262,10 @@ static struct PyModuleDef moduledef = {{
         return rval
 
     def list_code(self, ofile=sys.stdout):
-        """Print out the code with line numbers to `ofile` """
+        """
+        Print out the code with line numbers to `ofile`.
+
+        """
         for i, line in enumerate(self.code().split('\n')):
             print(('%4i' % (i + 1)), line, file=ofile)
         ofile.flush()
@@ -249,15 +274,21 @@ static struct PyModuleDef moduledef = {{
 
 
 def dlimport(fullpath, suffix=None):
-    """Dynamically load a .so, .pyd, .dll, or .py file
+    """
+    Dynamically load a .so, .pyd, .dll, or .py file.
 
-    :type fullpath: string
-    :param fullpath: a fully-qualified path do a compiled python module
-    :param suffix: a suffix to strip from the end of fullpath to get the
-        import name
-    :type suffix: string
+    Parameters
+    ----------
+    fullpath : str
+        A fully-qualified path do a compiled python module.
+    suffix : str
+        A suffix to strip from the end of fullpath to get the
+        import name.
 
-    :returns: the dynamically loaded module (from __import__)
+    Returns
+    -------
+    object
+        The dynamically loaded module (from __import__).
 
     """
     if not os.path.isabs(fullpath):
@@ -306,7 +337,8 @@ def dlimport_workdir(basedir):
     """
     Return a directory where you should put your .so file for dlimport
     to be able to load it, given a basedir which should normally be
-    config.compiledir
+    config.compiledir.
+
     """
     return tempfile.mkdtemp(dir=basedir)
 
@@ -315,6 +347,7 @@ def last_access_time(path):
     """
     Return the number of seconds since the epoch of the last access of a
     given file.
+
     """
     return os.stat(path)[stat.ST_ATIME]
 
@@ -323,6 +356,7 @@ def module_name_from_dir(dirname, err=True, files=None):
     """
     Scan the contents of a cache directory and return full path of the
     dynamic lib in it.
+
     """
     if files is None:
         files = os.listdir(dirname)
@@ -345,15 +379,16 @@ def is_same_entry(entry_1, entry_2):
         - They are equal.
         - Their real paths are equal.
         - They share the same temporary work directory and module file name.
+
     """
     if entry_1 == entry_2:
         return True
     if os.path.realpath(entry_1) == os.path.realpath(entry_2):
         return True
     if (os.path.basename(entry_1) == os.path.basename(entry_2) and
-        (os.path.basename(os.path.dirname(entry_1)) ==
-         os.path.basename(os.path.dirname(entry_2))) and
-        os.path.basename(os.path.dirname(entry_1)).startswith('tmp')):
+            (os.path.basename(os.path.dirname(entry_1)) ==
+             os.path.basename(os.path.dirname(entry_2))) and
+            os.path.basename(os.path.dirname(entry_1)).startswith('tmp')):
         return True
     return False
 
@@ -368,6 +403,7 @@ def get_module_hash(src_code, key):
         3. The compiler options defined in `key` (command line parameters and
            libraries to link against).
         4. The NumPy ABI version.
+
     """
     # `to_hash` will contain any element such that we know for sure that if
     # it changes, then the module hash should be different.
@@ -376,7 +412,7 @@ def get_module_hash(src_code, key):
     to_hash = [l.strip() for l in src_code.split('\n')]
     # Get the version part of the key (ignore if unversioned).
     if key[0]:
-        to_hash += map(str, key[0])
+        to_hash += list(map(str, key[0]))
     c_link_key = key[1]
     # Currently, in order to catch potential bugs early, we are very
     # convervative about the structure of the key and raise an exception
@@ -396,7 +432,7 @@ def get_module_hash(src_code, key):
             # This should be the C++ compilation command line parameters or the
             # libraries to link against.
             to_hash += list(key_element)
-        elif isinstance(key_element, basestring):
+        elif isinstance(key_element, string_types):
             if key_element.startswith('md5:'):
                 # This is the md5 hash of the config options. We can stop
                 # here.
@@ -421,6 +457,7 @@ def get_safe_part(key):
     It is used to reduce the amount of key comparisons one has to go through
     in order to find broken keys (i.e. keys with bad implementations of __eq__
     or __hash__).
+
     """
     version = key[0]
     # This function should only be called on versioned keys.
@@ -429,8 +466,8 @@ def get_safe_part(key):
     # Find the md5 hash part.
     c_link_key = key[1]
     for key_element in c_link_key[1:]:
-        if (isinstance(key_element, basestring)
-                and key_element.startswith('md5:')):
+        if (isinstance(key_element, string_types) and
+                key_element.startswith('md5:')):
             md5 = key_element[4:]
             break
 
@@ -438,35 +475,43 @@ def get_safe_part(key):
 
 
 class KeyData(object):
+    """
+    Used to store the key information in the cache.
 
-    """Used to store the key information in the cache."""
+    Parameters
+    ----------
+    keys
+        Set of keys that are associated to the exact same module.
+    module_hash
+        Hash identifying the module (it should hash both the code and the
+        compilation options).
+    key_pkl
+        Path to the file in which this KeyData object should be
+        pickled.
+
+    """
 
     def __init__(self, keys, module_hash, key_pkl, entry):
-        """
-        Constructor.
-
-        :param keys: Set of keys that are associated to the exact same module.
-
-        :param module_hash: Hash identifying the module (it should hash both
-        the code and the compilation options).
-
-        :param key_pkl: Path to the file in which this KeyData object should be
-        pickled.
-        """
         self.keys = keys
         self.module_hash = module_hash
         self.key_pkl = key_pkl
         self.entry = entry
 
     def add_key(self, key, save_pkl=True):
-        """Add a key to self.keys, and update pickled file if asked to."""
+        """
+        Add a key to self.keys, and update pickled file if asked to.
+
+        """
         assert key not in self.keys
         self.keys.add(key)
         if save_pkl:
             self.save_pkl()
 
     def remove_key(self, key, save_pkl=True):
-        """Remove a key from self.keys, and update pickled file if asked to."""
+        """
+        Remove a key from self.keys, and update pickled file if asked to.
+
+        """
         self.keys.remove(key)
         if save_pkl:
             self.save_pkl()
@@ -477,19 +522,23 @@ class KeyData(object):
 
         May raise a cPickle.PicklingError if such an exception is raised at
         pickle time (in which case a warning is also displayed).
+
         """
         # Note that writing in binary mode is important under Windows.
         try:
             with open(self.key_pkl, 'wb') as f:
-                cPickle.dump(self, f, protocol=cPickle.HIGHEST_PROTOCOL)
-        except cPickle.PicklingError:
+                pickle.dump(self, f, protocol=pickle.HIGHEST_PROTOCOL)
+        except pickle.PicklingError:
             _logger.warning("Cache leak due to unpickle-able key data %s",
                             self.keys)
             os.remove(self.key_pkl)
             raise
 
     def get_entry(self):
-        """Return path to the module file."""
+        """
+        Return path to the module file.
+
+        """
         # TODO This method may be removed in the future (e.g. in 0.5) since
         # its only purpose is to make sure that old KeyData objects created
         # before the 'entry' field was added are properly handled.
@@ -504,13 +553,14 @@ class KeyData(object):
         Note that broken keys will not appear in the keys field, so we also
         manually look for keys associated to the same entry, unless
         do_manual_check is False.
+
         """
         entry = self.get_entry()
         for key in self.keys:
             del entry_from_key[key]
         if do_manual_check:
             to_del = []
-            for key, key_entry in entry_from_key.iteritems():
+            for key, key_entry in iteritems(entry_from_key):
                 if key_entry == entry:
                     to_del.append(key)
             for key in to_del:
@@ -518,7 +568,8 @@ class KeyData(object):
 
 
 class ModuleCache(object):
-    """Interface to the cache of dynamically compiled modules on disk
+    """
+    Interface to the cache of dynamically compiled modules on disk.
 
     Note that this interface does not assume exclusive use of the cache
     directory. It is built to handle the case where multiple programs are also
@@ -565,43 +616,58 @@ class ModuleCache(object):
         - They share the same C code.
     These three elements uniquely identify a module, and are summarized
     in a single "module hash".
+
+    Parameters
+    ----------
+    check_for_broken_eq
+        A bad __eq__ implementation can break this cache mechanism.
+        This option turns on a not-too-expensive sanity check every
+        time a new key is added to the cache.
+
+    do_refresh : bool
+        If True, then the ``refresh`` method will be called
+        in the constructor.
+
     """
 
     dirname = ""
-    """The working directory that is managed by this interface"""
-
-    module_from_name = {}
-    """maps a module filename to the loaded module object"""
-
-    entry_from_key = {}
-    """Maps keys to the filename of a .so/.pyd.
     """
+    The working directory that is managed by this interface.
 
+    """
+    module_from_name = {}
+    """
+    Maps a module filename to the loaded module object.
+
+    """
+    entry_from_key = {}
+    """
+    Maps keys to the filename of a .so/.pyd.
+
+    """
     similar_keys = {}
-    """Maps a part-of-key to all keys that share this same part."""
+    """
+    Maps a part-of-key to all keys that share this same part.
 
+    """
     module_hash_to_key_data = {}
-    """Maps a module hash to its corresponding KeyData object."""
+    """
+    Maps a module hash to its corresponding KeyData object.
 
+    """
     stats = []
     """
     A list with counters for the number of hits, loads, compiles issued by
-    module_from_key()
-    """
+    module_from_key().
 
+    """
     loaded_key_pkl = set()
-    """set of all key.pkl files that have been loaded.
+    """
+    Set of all key.pkl files that have been loaded.
+
     """
 
     def __init__(self, dirname, check_for_broken_eq=True, do_refresh=True):
-        """
-        :param check_for_broken_eq: A bad __eq__ implementation can break this
-        cache mechanism. This option turns on a not-too-expensive sanity check
-        every time a new key is added to the cache.
-
-        :param do_refresh: If True, then the ``refresh`` method will be called
-        in the constructor.
-        """
         self.dirname = dirname
         self.module_from_name = dict(self.module_from_name)
         self.entry_from_key = dict(self.entry_from_key)
@@ -620,11 +686,13 @@ class ModuleCache(object):
     The default age threshold (in seconds) for cache files we want to use.
 
     Older modules will be deleted in ``clear_old``.
+
     """
 
     def _get_module(self, name):
         """
         Fetch a compiled module from the loaded cache or the disk.
+
         """
         if name not in self.module_from_name:
             _logger.debug('loading name %s', name)
@@ -637,25 +705,31 @@ class ModuleCache(object):
 
     def refresh(self, age_thresh_use=None, delete_if_problem=False,
                 cleanup=True):
-        """Update cache data by walking the cache directory structure.
+        """
+        Update cache data by walking the cache directory structure.
 
         Load key.pkl files that have not been loaded yet.
         Remove entries which have been removed from the filesystem.
         Also, remove malformed cache directories.
 
-        :param age_thresh_use: Do not use modules olther than this.
-        Defaults to self.age_thresh_use.
-
-        :param delete_if_problem: If True, cache entries that meet one
-        of those two conditions are deleted:
+        Parameters
+        ----------
+        age_thresh_use
+            Do not use modules other than this. Defaults to self.age_thresh_use.
+        delete_if_problem : bool
+            If True, cache entries that meet one of those two conditions are
+            deleted:
             - Those for which unpickling the KeyData file fails with
               an unknown exception.
             - Duplicated modules, regardless of their age.
+        cleanup : bool
+            Do a cleanup of the cache removing expired and broken modules.
 
-        :param cleanup: Do a cleanup of the cache removing expired and
-        broken modules.
+        Returns
+        -------
+        list
+            A list of modules of age higher than age_thresh_use.
 
-        :returns: a list of modules of age higher than age_thresh_use.
         """
         if age_thresh_use is None:
             age_thresh_use = self.age_thresh_use
@@ -721,7 +795,7 @@ class ModuleCache(object):
 
                     try:
                         with open(key_pkl, 'rb') as f:
-                            key_data = cPickle.load(f)
+                            key_data = pickle.load(f)
                     except EOFError:
                         # Happened once... not sure why (would be worth
                         # investigating if it ever happens again).
@@ -761,9 +835,9 @@ class ModuleCache(object):
                         # simpler to implement).
                         rmtree(root, ignore_nocleanup=True,
                                msg=(
-                                'invalid cache entry format -- this '
-                                'should not happen unless your cache '
-                                'was really old'),
+                                   'invalid cache entry format -- this '
+                                   'should not happen unless your cache '
+                                   'was really old'),
                                level=logging.WARN)
                         continue
 
@@ -869,7 +943,7 @@ class ModuleCache(object):
         del root, files, subdirs
 
         # Remove entries that are not in the filesystem.
-        items_copy = list(self.module_hash_to_key_data.iteritems())
+        items_copy = list(self.module_hash_to_key_data.items())
         for module_hash, key_data in items_copy:
             entry = key_data.get_entry()
             try:
@@ -931,6 +1005,7 @@ class ModuleCache(object):
         and None otherwise.
 
         May raise ValueError if the key is malformed.
+
         """
         name = None
         if key is not None:
@@ -957,14 +1032,14 @@ class ModuleCache(object):
                 try:
                     key_data.add_key(key, save_pkl=bool(key[0]))
                     key_broken = False
-                except cPickle.PicklingError:
+                except pickle.PicklingError:
                     key_data.remove_key(key)
                     key_broken = True
                 # We need the lock while we check in case of parallel
                 # process that could be changing the file at the same
                 # time.
                 if (key[0] and not key_broken and
-                    self.check_for_broken_eq):
+                        self.check_for_broken_eq):
                     self.check_key(key, key_data.key_pkl)
             self._update_mappings(key, key_data, module.__file__, check_in_keys=not key_broken)
             return module
@@ -989,6 +1064,7 @@ class ModuleCache(object):
     def _add_to_cache(self, module, key, module_hash):
         """
         This function expects the compile lock to be held.
+
         """
         name = module.__file__
         _logger.debug("Adding module to cache %s %s",
@@ -1011,7 +1087,7 @@ class ModuleCache(object):
         if key[0]:
             try:
                 key_data.save_pkl()
-            except cPickle.PicklingError:
+            except pickle.PicklingError:
                 key_broken = True
                 key_data.remove_key(key)
                 key_data.save_pkl()
@@ -1032,18 +1108,19 @@ class ModuleCache(object):
         """
         Return a module from the cache, compiling it if necessary.
 
-        :param key: The key object associated with the module. If this
-                    hits a match, we avoid compilation.
+        Parameters
+        ----------
+        key
+            The key object associated with the module. If this hits a match,
+            we avoid compilation.
+        lnk
+            Usually a CLinker instance, but it can be any object that defines
+            the `get_src_code()` and `compile_cmodule(location)` functions. The
+            first one returns the source code of the module to load/compile and
+            the second performs the actual compilation.
+        keep_lock : bool
+            If True, the compilation lock will not be released if taken.
 
-        :param lnk: Usually a CLinker instance, but it can be any
-                    object that defines the `get_src_code()` and
-                    `compile_cmodule(location)` functions. The first
-                    one returns the source code of the module to
-                    load/compile and the second performs the actual
-                    compilation.
-
-        :param keep_lock: If True, the compilation lock will not be
-                          released if taken.
         """
         # Is the module in the cache?
         module = self._get_from_key(key)
@@ -1119,8 +1196,13 @@ class ModuleCache(object):
         """
         Perform checks to detect broken __eq__ / __hash__ implementations.
 
-        :param key: The key to be checked.
-        :param key_pkl: Its associated pickled file containing a KeyData.
+        Parameters
+        ----------
+        key
+            The key to be checked.
+        key_pkl
+            Its associated pickled file containing a KeyData.
+
         """
         start_time = time.time()
         # Verify that when we reload the KeyData from the pickled file, the
@@ -1129,7 +1211,7 @@ class ModuleCache(object):
         for i in range(3):
             try:
                 with open(key_pkl, 'rb') as f:
-                    key_data = cPickle.load(f)
+                    key_data = pickle.load(f)
                 break
             except EOFError:
                 # This file is probably getting written/updated at the
@@ -1138,7 +1220,7 @@ class ModuleCache(object):
                 if i == 2:
                     with compilelock.lock_ctx():
                         with open(key_pkl, 'rb') as f:
-                            key_data = cPickle.load(f)
+                            key_data = pickle.load(f)
                 time.sleep(2)
 
         found = sum(key == other_key for other_key in key_data.keys)
@@ -1149,15 +1231,14 @@ class ModuleCache(object):
                 # This is to make debugging in pdb easier, by providing
                 # the offending keys in the local context.
                 # key_data_keys = list(key_data.keys)
-                ## import pdb; pdb.set_trace()
+                # import pdb; pdb.set_trace()
                 pass
         elif found > 1:
             msg = 'Multiple equal keys found in unpickled KeyData file'
         if msg:
             raise AssertionError(
-                    "%s. Verify the __eq__ and __hash__ functions of your "
-                    "Ops. The file is: %s. The key is: %s" %
-                    (msg, key_pkl, key))
+                "%s. Verify the __eq__ and __hash__ functions of your "
+                "Ops. The file is: %s. The key is: %s" % (msg, key_pkl, key))
         # Also verify that there exists no other loaded key that would be equal
         # to this key. In order to speed things up, we only compare to keys
         # with the same version part and config md5, since we can assume this
@@ -1174,18 +1255,24 @@ class ModuleCache(object):
 
     age_thresh_del = 60 * 60 * 24 * 31  # 31 days
     age_thresh_del_unversioned = 60 * 60 * 24 * 7  # 7 days
-
-    """The default age threshold for `clear_old` (in seconds)
     """
+    The default age threshold for `clear_old` (in seconds).
+
+    """
+
     def clear_old(self, age_thresh_del=None, delete_if_problem=False):
         """
         Delete entries from the filesystem for cache entries that are too old.
 
-        :param age_thresh_del: Dynamic modules whose last access time is more
-        than ``age_thresh_del`` seconds ago will be erased. Defaults to 31-day
-        age if not provided.
+        Parameters
+        ----------
+        age_thresh_del
+            Dynamic modules whose last access time is more than
+            ``age_thresh_del`` seconds ago will be erased.
+            Defaults to 31-day age if not provided.
+        delete_if_problem
+            See help of refresh() method.
 
-        :param delete_if_problem: See help of refresh() method.
         """
         if age_thresh_del is None:
             age_thresh_del = self.age_thresh_del
@@ -1195,10 +1282,10 @@ class ModuleCache(object):
         if age_thresh_del < self.age_thresh_use:
             if age_thresh_del > 0:
                 _logger.warning("Clearing modules that were not deemed "
-                        "too old to use: age_thresh_del=%d, "
-                        "self.age_thresh_use=%d",
-                        age_thresh_del,
-                        self.age_thresh_use)
+                                "too old to use: age_thresh_del=%d, "
+                                "self.age_thresh_use=%d",
+                                age_thresh_del,
+                                self.age_thresh_use)
             else:
                 _logger.info("Clearing all modules.")
             age_thresh_use = age_thresh_del
@@ -1210,8 +1297,8 @@ class ModuleCache(object):
             # processes and get all module that are too old to use
             # (not loaded in self.entry_from_key).
             too_old_to_use = self.refresh(
-                    age_thresh_use=age_thresh_use,
-                    delete_if_problem=delete_if_problem)
+                age_thresh_use=age_thresh_use,
+                delete_if_problem=delete_if_problem)
 
             for entry in too_old_to_use:
                 # TODO: we are assuming that modules that haven't been
@@ -1229,21 +1316,24 @@ class ModuleCache(object):
         """
         Clear all elements in the cache.
 
-        :param unversioned_min_age: Forwarded to `clear_unversioned`. In
-        particular, you can set it to -1 in order to delete all unversioned
-        cached modules regardless of their age.
+        Parameters
+        ----------
+        unversioned_min_age
+            Forwarded to `clear_unversioned`. In particular, you can set it
+            to -1 in order to delete all unversioned cached modules regardless
+            of their age.
+        clear_base_files : bool
+            If True, then delete base directories 'cuda_ndarray', 'cutils_ext',
+            'lazylinker_ext' and 'scan_perform' if they are present.
+            If False, those directories are left intact.
+        delete_if_problem
+            See help of refresh() method.
 
-        :param clear_base_files: If True, then delete base directories
-        'cuda_ndarray', 'cutils_ext', 'lazylinker_ext' and 'scan_perform'
-        if they are present.
-        If False, those directories are left intact.
-
-        :param delete_if_problem: See help of refresh() method.
         """
         with compilelock.lock_ctx():
             self.clear_old(
-                    age_thresh_del=-1.0,
-                    delete_if_problem=delete_if_problem)
+                age_thresh_del=-1.0,
+                delete_if_problem=delete_if_problem)
             self.clear_unversioned(min_age=unversioned_min_age)
             if clear_base_files:
                 self.clear_base_files()
@@ -1257,6 +1347,7 @@ class ModuleCache(object):
         some systems due to these modules being currently in use. Instead we
         rename them with the '.delete.me' extension, to mark them to be deleted
         next time we clear the cache.
+
         """
         with compilelock.lock_ctx():
             for base_dir in ('cuda_ndarray', 'cutils_ext', 'lazylinker_ext',
@@ -1284,14 +1375,18 @@ class ModuleCache(object):
         They are deleted both from the internal dictionaries and from the
         filesystem.
 
-        :param min_age: Minimum age to be deleted, in seconds. Defaults to
-        7-day age if not provided.
+        Parameters
+        ----------
+        min_age
+            Minimum age to be deleted, in seconds. Defaults to
+            7-day age if not provided.
+
         """
         if min_age is None:
             min_age = self.age_thresh_del_unversioned
 
         with compilelock.lock_ctx():
-            all_key_datas = self.module_hash_to_key_data.values()
+            all_key_datas = list(self.module_hash_to_key_data.values())
             for key_data in all_key_datas:
                 if not key_data.keys:
                     # May happen for broken versioned keys.
@@ -1333,7 +1428,7 @@ class ModuleCache(object):
                 if filename.startswith('tmp'):
                     try:
                         open(os.path.join(self.dirname, filename, 'key.pkl')
-                                ).close()
+                             ).close()
                         has_key = True
                     except IOError:
                         has_key = False
@@ -1406,8 +1501,13 @@ _module_cache = None
 
 def get_module_cache(dirname, init_args=None):
     """
-    :param init_args: If not None, the (k, v) pairs in this dictionary will
-    be forwarded to the ModuleCache constructor as keyword arguments.
+
+    Parameters
+    ----------
+    init_args
+        If not None, the (k, v) pairs in this dictionary will be forwarded to
+        the ModuleCache constructor as keyword arguments.
+
     """
     global _module_cache
     if init_args is None:
@@ -1420,13 +1520,16 @@ def get_module_cache(dirname, init_args=None):
                         'was created prior to this call')
     if _module_cache.dirname != dirname:
         _logger.warning("Returning module cache instance with different "
-                "dirname (%s) than you requested (%s)",
-                _module_cache.dirname, dirname)
+                        "dirname (%s) than you requested (%s)",
+                        _module_cache.dirname, dirname)
     return _module_cache
 
 
 def get_lib_extension():
-    """Return the platform-dependent extension for compiled modules."""
+    """
+    Return the platform-dependent extension for compiled modules.
+
+    """
     if sys.platform in ['win32', 'cygwin']:
         return 'pyd'
     else:
@@ -1434,7 +1537,10 @@ def get_lib_extension():
 
 
 def get_gcc_shared_library_arg():
-    """Return the platform-dependent GCC argument for shared libraries."""
+    """
+    Return the platform-dependent GCC argument for shared libraries.
+
+    """
     if sys.platform == 'darwin':
         return '-dynamiclib'
     else:
@@ -1447,7 +1553,8 @@ def std_include_dirs():
     py_plat_spec_inc = distutils.sysconfig.get_python_inc(plat_specific=True)
     python_inc_dirs = ([py_inc] if py_inc == py_plat_spec_inc
                        else [py_inc, py_plat_spec_inc])
-    return numpy_inc_dirs + python_inc_dirs
+    gof_inc_dir = os.path.abspath(os.path.dirname(__file__))
+    return numpy_inc_dirs + python_inc_dirs + [gof_inc_dir]
 
 
 def std_lib_dirs_and_libs():
@@ -1530,9 +1637,11 @@ def gcc_version():
 
 
 def gcc_llvm():
-    """ Detect if the g++ version used is the llvm one or not.
+    """
+    Detect if the g++ version used is the llvm one or not.
 
     It don't support all g++ parameters even if it support many of them.
+
     """
     if gcc_llvm.is_llvm is None:
         try:
@@ -1554,12 +1663,15 @@ gcc_llvm.is_llvm = None
 
 class Compiler(object):
     """
-    Meta compiler that offer some generic function
+    Meta compiler that offer some generic function.
+
     """
+
     @staticmethod
     def _try_compile_tmp(src_code, tmp_prefix='', flags=(),
                          try_run=False, output=False, compiler=None):
-        """Try to compile (and run) a test program.
+        """
+        Try to compile (and run) a test program.
 
         This is useful in various occasions, to check if libraries
         or compilers are behaving as expected.
@@ -1570,6 +1682,7 @@ class Compiler(object):
         If try_run is False, returns the compilation status.
         If try_run is True, returns a (compile_status, run_status) pair.
         If output is there, we append the stdout and stderr to the output.
+
         """
         if not compiler:
             return False
@@ -1627,12 +1740,13 @@ class Compiler(object):
     @staticmethod
     def _try_flags(flag_list, preambule="", body="",
                    try_run=False, output=False, compiler=None):
-        '''
+        """
         Try to compile a dummy file with these flags.
 
         Returns True if compilation was successful, False if there
         were errors.
-        '''
+
+        """
         if not compiler:
             return False
 
@@ -1684,7 +1798,7 @@ class GCC_compiler(Compiler):
                     break
 
         if ('g++' not in theano.config.cxx and
-            'clang++' not in theano.config.cxx):
+                'clang++' not in theano.config.cxx):
             _logger.warn(
                 "OPTIMIZATION WARNING: your Theano flag `cxx` seems not to be"
                 " the g++ compiler. So we disable the compiler optimization"
@@ -1718,9 +1832,9 @@ class GCC_compiler(Compiler):
                     selected_lines = []
                     for line in lines:
                         if ("COLLECT_GCC_OPTIONS=" in line or
-                            "CFLAGS=" in line or
-                            "CXXFLAGS=" in line or
-                            "-march=native" in line):
+                                "CFLAGS=" in line or
+                                "CXXFLAGS=" in line or
+                                "-march=native" in line):
                             continue
                         elif "-march=" in line:
                             selected_lines.append(line.strip())
@@ -1804,9 +1918,9 @@ class GCC_compiler(Compiler):
                     for line in default_lines:
                         if line.startswith(part[0]):
                             part2 = [p for p in join_options(line.split())
-                                     if (not 'march' in p and
-                                         not 'mtune' in p and
-                                         not 'target-cpu' in p)]
+                                     if ('march' not in p and
+                                         'mtune' not in p and
+                                         'target-cpu' not in p)]
                             new_flags = [p for p in part if p not in part2]
                             # Replace '-target-cpu value', which is an option
                             # of clang, with '-march=value', for g++
@@ -1927,31 +2041,40 @@ class GCC_compiler(Compiler):
     @staticmethod
     def compile_str(module_name, src_code, location=None,
                     include_dirs=None, lib_dirs=None, libs=None,
-                    preargs=None, py_module=True):
+                    preargs=None, py_module=True, hide_symbols=True):
         """
-        :param module_name: string (this has been embedded in the src_code
 
-        :param src_code: a complete c or c++ source listing for the module
+        Parameters
+        ----------
+        module_name : str
+            This has been embedded in the src_code.
+        src_code
+            A complete c or c++ source listing for the module.
+        location
+            A pre-existing filesystem directory where the cpp file and .so will
+            be written.
+        include_dirs
+            A list of include directory names (each gets prefixed with -I).
+        lib_dirs
+            A list of library search path directory names (each gets prefixed
+            with -L).
+        libs
+            A list of libraries to link with (each gets prefixed with -l).
+        preargs
+            A list of extra compiler arguments.
+        py_module
+            If False, compile to a shared library, but do not import it as a
+            Python module.
+        hide_symbols
+            If True (the default) all symbols will be hidden from the library
+            symbol table (which means that other objects can't use them).
 
-        :param location: a pre-existing filesystem directory where the
-        cpp file and .so will be written
+        Returns
+        -------
+        object
+            Dynamically-imported python module of the compiled code (unless
+            py_module is False, in that case returns None).
 
-        :param include_dirs: a list of include directory names (each
-        gets prefixed with -I)
-
-        :param lib_dirs: a list of library search path directory names
-        (each gets prefixed with -L)
-
-        :param libs: a list of libraries to link with (each gets
-        prefixed with -l)
-
-        :param preargs: a list of extra compiler arguments
-
-        :param py_module: if False, compile to a shared library, but do not
-            import it as a Python module.
-
-        :returns: dynamically-imported python module of the compiled code.
-            (unless py_module is False, in that case returns None.)
         """
         # TODO: Do not do the dlimport in this function
 
@@ -2004,18 +2127,25 @@ class GCC_compiler(Compiler):
         else:
             cmd.extend(preargs)
         cmd.extend('-I%s' % idir for idir in include_dirs)
+        if hide_symbols and sys.platform != 'win32':
+            # This has been available since gcc 4.0 so we suppose it
+            # is always available. We pass it here since it
+            # significantly reduces the size of the symbol table for
+            # the objects we want to share. This in turns leads to
+            # improved loading times on most platforms (win32 is
+            # different, as usual).
+            cmd.append('-fvisibility=hidden')
         cmd.extend(['-o', lib_filename])
         cmd.append(cppfilename)
         cmd.extend(['-L%s' % ldir for ldir in lib_dirs])
         cmd.extend(['-l%s' % l for l in libs])
-        #print >> sys.stderr, 'COMPILING W CMD', cmd
+        # print >> sys.stderr, 'COMPILING W CMD', cmd
         _logger.debug('Running cmd: %s', ' '.join(cmd))
 
         def print_command_line_error():
             # Print command line when a problem occurred.
-            print((
-                    "Problem occurred during compilation with the "
-                    "command line below:"), file=sys.stderr)
+            print(("Problem occurred during compilation with the "
+                   "command line below:"), file=sys.stderr)
             print(' '.join(cmd), file=sys.stderr)
 
         try:

@@ -13,19 +13,13 @@ from theano import scalar
 from theano import tensor as T
 from theano.gof import Apply, Op
 from theano.gof import utils
-from theano.scan_module import scan
 from theano.tensor.basic import _allclose
 
 
 # Used in TestComputeTestValue.test_no_perform
 class IncOneC(Op):
     """An Op with only a C (c_code) implementation"""
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, input):
         input = scalar.as_scalar(input)
@@ -241,7 +235,7 @@ class TestComputeTestValue(unittest.TestCase):
         orig_compute_test_value = theano.config.compute_test_value
         try:
             theano.config.compute_test_value = 'raise'
-            #theano.config.compute_test_value = 'warn'
+            # theano.config.compute_test_value = 'warn'
             k = T.iscalar("k")
             A = T.vector("A")
             k.tag.test_value = 3
@@ -286,7 +280,7 @@ class TestComputeTestValue(unittest.TestCase):
                     non_sequences=A,
                     n_steps=k)
                 assert False
-            except ValueError as e:
+            except ValueError:
                 # Get traceback
                 tb = sys.exc_info()[2]
                 # Get frame info 4 layers up
@@ -343,12 +337,7 @@ class TestComputeTestValue(unittest.TestCase):
     def test_no_c_code(self):
         class IncOnePython(Op):
             """An Op with only a Python (perform) implementation"""
-
-            def __eq__(self, other):
-                return type(self) == type(other)
-
-            def __hash__(self):
-                return hash(type(self))
+            __props__ = ()
 
             def make_node(self, input):
                 input = scalar.as_scalar(input)
@@ -416,6 +405,6 @@ class TestComputeTestValue(unittest.TestCase):
             init_Mu1 = theano.shared(
                 numpy.zeros((5,), dtype=config.floatX)).dimshuffle('x', 0)
 
-            f = theano.function([], outputs=[init_Mu1])
+            theano.function([], outputs=[init_Mu1])
         finally:
             theano.config.compute_test_value = orig_compute_test_value

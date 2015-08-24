@@ -1,3 +1,3 @@
-from type import TypedListType
-from basic import *
-import opt
+from .type import TypedListType
+from .basic import *
+from . import opt

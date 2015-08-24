@@ -1,6 +1,7 @@
 from __future__ import print_function
 from nose.plugins.skip import SkipTest
 import numpy
+import unittest
 
 import theano
 import theano.tensor as T
@@ -11,11 +12,12 @@ from theano.sandbox import gpuarray
 # We let that import do the init of the back-end if needed.
 from .test_basic_ops import (mode_with_gpu,
                              mode_without_gpu)
-
 from ..nnet import (
     GpuCrossentropySoftmaxArgmax1HotWithBias,
     GpuCrossentropySoftmax1HotWithBiasDx,
     GpuSoftmaxWithBias, GpuSoftmax)
+
+mode_wo_cudnn = mode_with_gpu.excluding("cudnn")
 
 
 def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
@@ -258,9 +260,10 @@ def softmax_unittest_template(dtypeInput):
         x = T.dmatrix('x')
 
     z = T.nnet.softmax(x)
+    mode = mode_with_gpu.excluding('cudnn')
     f = theano.function([x], z, mode=mode_without_gpu)
-    f_gpu = theano.function([x], z, mode=mode_with_gpu)
-    assert f.maker.fgraph.toposort()[-1].op == T.nnet.softmax
+    f_gpu = theano.function([x], z, mode=mode)
+    assert f.maker.fgraph.toposort()[-1].op == T.nnet.softmax_op
     assert isinstance(f_gpu.maker.fgraph.toposort()[-2].op,
                       GpuSoftmax)
 
@@ -290,3 +293,96 @@ def softmax_unittest_template(dtypeInput):
     cmp(2, 10000)
     cmp(128, 16 * 1024)
     cmp(128, 64 * 1024)
+
+
+class test_SoftMax(unittest.TestCase):
+    gpu_op = GpuSoftmax
+    mode = mode_wo_cudnn
+
+    def _test_softmax(
+        self,
+        x,
+        x_gpu,
+        f_z,
+        f_gpu_z,
+        cmp
+    ):
+        """
+        This is basic test for GpuSoftmax and GpuDnnSoftmax
+
+        We check that we loop when there is too much block
+        We use slower code when there isn't enough shared memory
+        """
+        f_z_out = f_z(x)
+        f_gpu_z_out = f_gpu_z(x_gpu)
+
+        f = theano.function([x], f_z_out, mode=mode_without_gpu)
+        f_gpu = theano.function([x_gpu], f_gpu_z_out, mode=self.mode)
+        self._check_types(f, f_gpu, T.nnet.Softmax, self.gpu_op)
+
+        # we need to test n>32*1024 to check that we make the block loop.
+        cmp(1, 5, f, f_gpu)
+        cmp(2, 5, f, f_gpu)
+        cmp(10, 5, f, f_gpu)
+        cmp(100, 5, f, f_gpu)
+        cmp(1000, 5, f, f_gpu)
+        cmp(10000, 5, f, f_gpu)
+        cmp(4074, 400, f, f_gpu)
+        cmp(784, 784, f, f_gpu)
+        cmp(4, 1000, f, f_gpu)
+        cmp(4, 1024, f, f_gpu)
+        cmp(4, 2000, f, f_gpu)
+        cmp(4, 2024, f, f_gpu)
+        # The GTX285 don't have enough shared memory.
+        cmp(4, 4074, f, f_gpu)
+        # The GTX580, 680 and kepler don't have enough shared memory.
+        cmp(2, 10000, f, f_gpu)
+        cmp(128, 16 * 1024, f, f_gpu)
+        cmp(128, 64 * 1024, f, f_gpu)
+        # cudnn permits no more than 2^15 - 1 rows
+        cmp((2 << 15) - 1, 5, f, f_gpu)
+        cmp(5, 2 << 15, f, f_gpu)
+
+        return f, f_gpu
+
+    def _cmp(self, n, m, f, f_gpu):
+        # print "test_softmax",n,m
+        data = numpy.arange(n * m, dtype='float32').reshape(n, m)
+        out = f(data)
+        gout = f_gpu(data)
+        assert numpy.allclose(out, gout), numpy.absolute(out - gout)
+
+    def _check_types(self, graph, graph_gpu, f_type, f_gpu_type):
+        assert isinstance(graph.maker.fgraph.toposort()[-1].op, f_type)
+        assert len([node for node in graph_gpu.maker.fgraph.toposort()
+                    if isinstance(node.op, f_gpu_type)]) == 1
+
+    def test_softmax(self):
+        x = T.fmatrix('x')
+        z = T.nnet.softmax_op
+
+        f, f_gpu = self._test_softmax(
+            x,
+            x,
+            z,
+            z,
+            self._cmp
+        )
+
+        # cuDNN R1 cannot handle these test cases but the Theano softmax can so
+        # we test them only for the Theano softmax.
+        self._cmp(2 << 15, 5, f, f_gpu)
+
+    def test_softmax_shape_0(self):
+        x = T.fmatrix('x')
+        z = T.nnet.softmax_op
+
+        f, f_gpu = self._test_softmax(
+            x,
+            x,
+            z,
+            z,
+            self._cmp
+        )
+        # Theano can handle that case, but cudnn can't
+        self._cmp(0, 10, f, f_gpu)

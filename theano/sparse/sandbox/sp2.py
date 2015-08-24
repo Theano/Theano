@@ -1,4 +1,5 @@
 import numpy
+from six.moves import xrange
 import theano
 import scipy.sparse
 
@@ -60,12 +61,7 @@ class Poisson(gof.op.Op):
     :return: A sparse matrix of random integers of a Poisson density
              with mean of `x` element wise.
     """
-
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, x):
         x = as_sparse_variable(x)
@@ -90,8 +86,6 @@ class Poisson(gof.op.Op):
     def infer_shape(self, node, ins_shapes):
         return ins_shapes
 
-    def __str__(self):
-        return self.__class__.__name__
 poisson = Poisson()
 
 
@@ -111,18 +105,11 @@ class Binomial(gof.op.Op):
     :return: A sparse matrix of integers representing the number
              of success.
     """
+    __props__ = ("format", "dtype")
 
     def __init__(self, format, dtype):
         self.format = format
         self.dtype = dtype
-
-    def __eq__(self, other):
-        return ((type(self) == type(other)) and
-                self.format == other.format and
-                self.dtype == other.dtype)
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.format) ^ hash(self.dtype)
 
     def make_node(self, n, p, shape):
         n = tensor.as_tensor_variable(n)
@@ -130,7 +117,7 @@ class Binomial(gof.op.Op):
         shape = tensor.as_tensor_variable(shape)
         return gof.Apply(self, [n, p, shape],
                          [SparseType(dtype=self.dtype,
-                                     format=self.format).make_variable()])
+                                     format=self.format)()])
 
     def perform(self, node, inputs, outputs):
         (n, p, shape) = inputs
@@ -157,9 +144,6 @@ class Binomial(gof.op.Op):
 
     def infer_shape(self, node, ins_shapes):
         return [(node.inputs[2][0], node.inputs[2][1])]
-
-    def __str__(self):
-        return self.__class__.__name__
 
 csr_fbinomial = Binomial('csr', 'float32')
 csc_fbinomial = Binomial('csc', 'float32')
@@ -188,12 +172,7 @@ class Multinomial(gof.op.Op):
 
     :note: It will works only if `p` have csr format.
     """
-
-    def __eq__(self, other):
-        return (type(self) == type(other))
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, n, p):
         n = tensor.as_tensor_variable(n)
@@ -237,6 +216,4 @@ class Multinomial(gof.op.Op):
     def infer_shape(self, node, ins_shapes):
         return [ins_shapes[1]]
 
-    def __str__(self):
-        return self.__class__.__name__
 multinomial = Multinomial()

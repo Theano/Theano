@@ -5,6 +5,7 @@ import numpy
 
 import theano
 import theano.gof.op as op
+from six import string_types
 from theano.gof.type import Type, Generic
 from theano.gof.graph import Apply, Variable
 import theano.tensor as T
@@ -38,7 +39,7 @@ class MyType(Type):
     def filter(self, x, strict=False, allow_downcast=None):
         # Dummy filter: we want this type to represent strings that
         # start with `self.thingy`.
-        if not isinstance(x, basestring):
+        if not isinstance(x, string_types):
             raise TypeError("Invalid type")
         if not x.startswith(self.thingy):
             raise ValueError("Invalid value")
@@ -55,8 +56,10 @@ class MyType(Type):
 
 class MyOp(Op):
 
+    __props__ = ()
+
     def make_node(self, *inputs):
-        inputs = map(as_variable, inputs)
+        inputs = list(map(as_variable, inputs))
         for input in inputs:
             if not isinstance(input.type, MyType):
                 raise Exception("Error 1")
@@ -69,12 +72,7 @@ MyOp = MyOp()
 class NoInputOp(Op):
 
     """An Op to test the corner-case of an Op with no input."""
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self):
         return Apply(self, [], [MyType('test')()])
@@ -161,12 +159,7 @@ class TestMakeThunk(unittest.TestCase):
     def test_no_c_code(self):
         class IncOnePython(Op):
             """An Op with only a Python (perform) implementation"""
-
-            def __eq__(self, other):
-                return type(self) == type(other)
-
-            def __hash__(self):
-                return hash(type(self))
+            __props__ = ()
 
             def make_node(self, input):
                 input = scalar.as_scalar(input)
@@ -203,12 +196,7 @@ class TestMakeThunk(unittest.TestCase):
     def test_no_perform(self):
         class IncOneC(Op):
             """An Op with only a C (c_code) implementation"""
-
-            def __eq__(self, other):
-                return type(self) == type(other)
-
-            def __hash__(self):
-                return hash(type(self))
+            __props__ = ()
 
             def make_node(self, input):
                 input = scalar.as_scalar(input)
@@ -247,7 +235,7 @@ class TestMakeThunk(unittest.TestCase):
 
 
 def test_test_value_python_objects():
-    for x in (range(3), 0, 0.5, 1):
+    for x in ([0, 1, 2], 0, 0.5, 1):
         assert (op.get_test_value(x) == x).all()
 
 

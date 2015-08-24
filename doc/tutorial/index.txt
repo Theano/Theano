@@ -41,6 +41,7 @@ you out.
     aliasing
     shape_info
     debug_faq
+    nan_tutorial
     profiling
     extending_theano
     extending_theano_c

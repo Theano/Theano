@@ -13,8 +13,9 @@ from theano.compile import optdb
 from theano.gof import EquilibriumDB, SequenceDB
 from theano.gof.cmodule import get_lib_extension
 from theano.gof.compilelock import get_lock, release_lock
-from theano.configparser import config, AddConfigVar, StrParam, BoolParam
-import nvcc_compiler
+from theano.configparser import (
+    config, AddConfigVar, BoolParam, FloatParam, StrParam)
+from . import nvcc_compiler
 
 # ignore_newtrees is to speed the optimization as this is the pattern
 # we use for optimization. Otherwise, we can iterate 100s of time on
@@ -27,10 +28,11 @@ def register_opt(*tags, **kwargs):
     if any([not isinstance(t, str) for t in tags]):
         raise RuntimeError("Bad call to register_opt."
                            " All tags must be strings.", tags)
+
     def f(local_opt):
         name = (kwargs and kwargs.pop('name')) or local_opt.__name__
         gpu_optimizer.register(name, local_opt, 'fast_run', 'fast_compile',
-                               'gpu', *tags)
+                               'gpu', *tags, **kwargs)
         return local_opt
     return f
 
@@ -52,6 +54,21 @@ AddConfigVar('pycuda.init',
 AddConfigVar('cublas.lib',
         """Name of the cuda blas library for the linker.""",
         StrParam('cublas'))
+
+AddConfigVar('lib.cnmem',
+             """Do we enable CNMeM or not (a faster CUDA memory allocator).
+
+             The parameter represent the start size (in MB or % of
+             total GPU memory) of the memory pool.
+
+             0: not enabled.
+             0 < N <= 1: % of the total GPU memory (clipped to .985 for driver memory)
+             > 0: use that number of MB of memory.
+
+             """,
+             # We should not mix both allocator, so we can't override
+             FloatParam(0, lambda i: i >= 0, allow_override=False),
+             in_c_key=False)
 
 # is_nvcc_available called here to initialize global vars in
 # nvcc_compiler module
@@ -77,12 +94,14 @@ cuda_enabled = False
 # Code factorized within a function so that it may be called from multiple
 # places (which is not currently the case, but may be useful in the future).
 def set_cuda_disabled():
-    """Function used to disable cuda.
+    """
+    Function used to disable cuda.
 
     A warning is displayed, so that the user is aware that cuda-based code is
     not going to work.
     Note that there is no point calling this function from outside of
     `cuda.__init__`, since it has no effect once the module is loaded.
+
     """
     global cuda_available, cuda_warning_is_displayed
     cuda_available = False
@@ -99,13 +118,16 @@ libcuda_ndarray_so = os.path.join(cuda_ndarray_loc,
 
 def try_import():
     """
-    load the cuda_ndarray module if present and up to date
-    return True if loaded correctly, otherwise return False
+    Load the cuda_ndarray module if present and up to date.
+    Return True if loaded correctly, otherwise return False.
+
     """
     cuda_files = (
         'cuda_ndarray.cu',
         'cuda_ndarray.cuh',
         'conv_full_kernel.cu',
+        'cnmem.h',
+        'cnmem.cpp',
         'conv_kernel.cu')
     stat_times = [os.stat(os.path.join(cuda_path, cuda_file))[stat.ST_MTIME]
                   for cuda_file in cuda_files]
@@ -177,7 +199,8 @@ if compile_cuda_ndarray and cuda_available:
                             location=cuda_ndarray_loc,
                             include_dirs=[cuda_path],
                             libs=[config.cublas.lib],
-                            preargs=['-O3'] + compiler.compile_args())
+                            preargs=['-O3'] + compiler.compile_args(),
+                    )
                     from cuda_ndarray.cuda_ndarray import *
             except Exception as e:
                 _logger.error("Failed to compile cuda_ndarray.cu: %s", str(e))
@@ -199,6 +222,7 @@ if cuda_available:
     def ok():
         """
         Check if an existing library exists and can be read.
+
         """
         try:
             open(libcuda_ndarray_so).close()
@@ -246,6 +270,7 @@ class GpuOp(theano.gof.Op):
 
     It is defined in __init__.py so that it exists even when `cuda_available`
     is False (this is necessary to avoid breaking the test suite).
+
     """
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
@@ -311,18 +336,23 @@ def use(device,
         test_driver=True):
     """
     Error and warning about CUDA should be displayed only when this
-    function is called.  We need to be able to load this module only
+    function is called. We need to be able to load this module only
     to check if it is available!
 
-    :param device: string "cpu", "gpu", "gpuN" (N is the device number to use)
-    :param force: Will always raise an exception if we can't use the gpu.
-    :param default_to_move_computation_to_gpu: If gpu init succeeded, enable by
-                                               default optimizations to move
-                                               computations to the gpu
-    :param move_shared_float32_to_gpu: If gpu init succeeded, put new shared
-                                       variables in float32 on the gpu.
-    :param enable_cuda: If the gpu is correctly enabled,
-                        set the variable cuda_enabled to True.
+    Parameters
+    ----------
+    device : string 
+        "cpu", "gpu", "gpuN" (N is the device number to use).
+    force
+        Will always raise an exception if we can't use the gpu.
+    default_to_move_computation_to_gpu
+        If gpu init succeeded, enable by default optimizations to move
+        computations to the gpu.
+    move_shared_float32_to_gpu
+        If gpu init succeeded, put new shared variables in float32 on the gpu.
+    enable_cuda
+        If the gpu is correctly enabled, set the variable cuda_enabled to True.
+
     """
     global cuda_enabled, cuda_initialization_error_message
     if force and not cuda_available and device.startswith('gpu'):
@@ -376,9 +406,10 @@ def use(device,
         try:
             if (device != 'gpu') and not pycuda_init_dev:
                 assert isinstance(device, int)
-                gpu_init(device)
+                gpu_init(device, config.lib.cnmem)
                 use.device_number = device
-                assert active_device_number() == device
+                active_device = active_device_number()
+                assert active_device == device, (active_device, device)
             else:
                 # This mean the driver should select the GPU.  As we
                 # need to get the device number now, we force the
@@ -386,10 +417,10 @@ def use(device,
                 # query the active GPU. If we check the active GPU before
                 # the device is initialized we will always receive 0
                 # event if another device is selected later.
-                cuda_ndarray.cuda_ndarray.CudaNdarray.zeros((2, 3))
+                cuda_ndarray.cuda_ndarray.select_a_gpu()
                 use.device_number = active_device_number()
                 # This is needed to initialize the cublas handle.
-                gpu_init(use.device_number)
+                gpu_init(use.device_number, config.lib.cnmem)
 
             if test_driver:
                 import theano.sandbox.cuda.tests.test_driver
@@ -402,8 +433,9 @@ def use(device,
                                  " this property")
 
             if config.print_active_device:
-                print("Using gpu device %d: %s" % (
-                        active_device_number(), active_device_name()), file=sys.stderr)
+                cnmem_enabled = "enabled" if config.lib.cnmem else "disabled"
+                print("Using gpu device %d: %s (CNMeM is %s)" % (
+                        active_device_number(), active_device_name(), cnmem_enabled), file=sys.stderr)
             if device_properties(use.device_number)['regsPerBlock'] < 16384:
                 # We will try to use too much register per bloc at many places
                 # when there is only 8k register per multi-processor.
@@ -458,7 +490,7 @@ use.device_number = None
 
 def unuse():
     """
-    This undo what was done by the call to
+    This undo what was done by the call to.
 
     use('gpu[0-9]', default_to_move_computation_to_gpu=True,
         move_shared_float32_to_gpu=True,
@@ -466,7 +498,9 @@ def unuse():
 
     This is used in Pylearn2 tests to enable/disable the GPU when needed.
 
-    After this call, the rest of Theano think the GPU shouldn't be used by default.
+    After this call, the rest of Theano think the GPU shouldn't be used by
+    default.
+
     """
     global cuda_enabled
     cuda_enabled = False
@@ -480,9 +514,11 @@ def unuse():
 
 
 def handle_shared_float32(tf):
-    """Set the default shared type for float32 tensor to CudaNdarrayType
+    """
+    Set the default shared type for float32 tensor to CudaNdarrayType.
 
     This function is intended to be called from use(gpu_index), not directly.
+
     """
     if tf:
         theano.compile.shared_constructor(float32_shared_constructor)

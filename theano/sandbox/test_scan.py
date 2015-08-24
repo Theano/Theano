@@ -1,6 +1,6 @@
 import theano
 import numpy
-import scan
+from . import scan
 
 
 def test_001():

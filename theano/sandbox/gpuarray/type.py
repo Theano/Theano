@@ -89,7 +89,7 @@ class GpuArrayType(Type):
                                 " dimension.", shp, self.broadcastable)
         return data
 
-    def filter_variable(self, other):
+    def filter_variable(self, other, allow_convert=True):
         if hasattr(other, '_as_GpuArrayVariable'):
             other = other._as_GpuArrayVariable()
 
@@ -108,10 +108,17 @@ class GpuArrayType(Type):
             raise TypeError('Incompatible number of dimensions.'
                             ' Expected %d, got %d.' % (self.ndim, other.ndim))
         if other.type.broadcastable != self.broadcastable:
-            raise TypeError('Incompatible broadcastable dimensions.'
-                            ' Expected %s, got %s.' %
-                            (str(other.type.broadcastable),
-                             str(self.broadcastable)))
+            if allow_convert:
+                type2 = other.type.clone(broadcastable=self.broadcastable)
+                other2 = type2.convert_variable(other)
+            else:
+                other2 = None
+            if other2 is None:
+                raise TypeError('Incompatible broadcastable dimensions.'
+                                ' Expected %s, got %s.' %
+                                (str(other.type.broadcastable),
+                                 str(self.broadcastable)))
+            other = other2
 
         return theano.sandbox.gpuarray.basic_ops.gpu_from_host(other)
 
@@ -121,7 +128,20 @@ class GpuArrayType(Type):
             return False
         if a.typecode != b.typecode:
             return False
-        return numpy.asarray(compare(a, '==', b)).all()
+        a_eq_b = numpy.asarray(compare(a, '==', b))
+        if a_eq_b.all():
+            return True
+
+        # maybe the trouble is that there are NaNs
+        a = numpy.asarray(a)
+        b = numpy.asarray(b)
+
+        a_missing = numpy.isnan(a)
+        if a_missing.any():
+            b_missing = numpy.isnan(b)
+            return numpy.all(a_eq_b + (a_missing == b_missing))
+        else:
+            return False
 
     @staticmethod
     def values_eq_approx(a, b,
@@ -157,7 +177,15 @@ class GpuArrayType(Type):
                             op_tmpl="res[i] = (fabs(%%(a)s - %%(b)s) <"
                             "(%(atol_)s + %(rtol_)s * fabs(%%(b)s)))" %
                             locals())
-            return numpy.asarray(res).all()
+            ret = numpy.asarray(res).all()
+            if ret:
+                return True
+            # maybe the trouble is that there are NaNs
+            an = numpy.asarray(a)
+            bn = numpy.asarray(b)
+            return tensor.TensorType.values_eq_approx(
+                an, bn, allow_remove_inf=allow_remove_inf,
+                allow_remove_nan=allow_remove_nan, rtol=rtol, atol=atol)
 
     @staticmethod
     def may_share_memory(a, b):
@@ -189,10 +217,12 @@ class GpuArrayType(Type):
         return (hash(self.typecode) ^ hash(self.broadcastable))
 
     def dtype_specs(self):
-        """Return a tuple (python type, c type, numpy typenum) that corresponds
+        """
+        Return a tuple (python type, c type, numpy typenum) that corresponds
         to self.dtype.
 
         This function is used internally as part of C code generation.
+
         """
         # TODO: add more type correspondances for e.g. int32, int64, float32,
         # complex64, etc.
@@ -296,7 +326,7 @@ class GpuArrayType(Type):
 
 class _operators(_tensor_py_operators):
     def _as_TensorVariable(self):
-        from basic_ops import host_from_gpu
+        from .basic_ops import host_from_gpu
         return host_from_gpu(self)
 
     def _as_GpuArrayVariable(self):
@@ -358,7 +388,10 @@ GpuArrayType.SharedVariable = GpuArraySharedVariable
 def gpuarray_shared_constructor(value, name=None, strict=False,
                                 allow_downcast=None, borrow=False,
                                 broadcastable=None):
-    """SharedVariable constructor for GpuArrayType"""
+    """
+    SharedVariable constructor for GpuArrayType.
+
+    """
     if not isinstance(value, (numpy.ndarray, pygpu.gpuarray.GpuArray)):
         raise TypeError('ndarray or GpuArray required')
 

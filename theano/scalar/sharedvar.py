@@ -1,4 +1,5 @@
-"""A shared variable container for true scalars - for internal use.
+"""
+A shared variable container for true scalars - for internal use.
 
 Why does this file exist?
 -------------------------
@@ -14,16 +15,17 @@ default when calling theano.shared(value) then users must really go out of their
 way (as scan does) to create a shared variable of this kind.
 
 """
-__authors__   = "James Bergstra"
-__copyright__ = "(c) 2010, Universite de Montreal"
-__license__   = "3-clause BSD License"
-__contact__   = "theano-dev <theano-dev@googlegroups.com>"
-
-__docformat__ = "restructuredtext en"
 
 import numpy
 from theano.compile import SharedVariable
-from basic import Scalar, _scalar_py_operators
+from .basic import Scalar, _scalar_py_operators
+
+__authors__ = "James Bergstra"
+__copyright__ = "(c) 2010, Universite de Montreal"
+__license__ = "3-clause BSD License"
+__contact__ = "theano-dev <theano-dev@googlegroups.com>"
+
+__docformat__ = "restructuredtext en"
 
 
 class ScalarSharedVariable(_scalar_py_operators, SharedVariable):
@@ -36,12 +38,15 @@ class ScalarSharedVariable(_scalar_py_operators, SharedVariable):
 
 
 def shared(value, name=None, strict=False, allow_downcast=None):
-    """SharedVariable constructor for scalar values. Default: int64 or float64.
+    """
+    SharedVariable constructor for scalar values. Default: int64 or float64.
 
-    :note: We implement this using 0-d tensors for now.
+    Notes
+    -----
+    We implement this using 0-d tensors for now.
 
     """
-    if not isinstance (value, (numpy.number, float, int, complex)):
+    if not isinstance(value, (numpy.number, float, int, complex)):
         raise TypeError()
     try:
         dtype = value.dtype
@@ -52,7 +57,9 @@ def shared(value, name=None, strict=False, allow_downcast=None):
     value = getattr(numpy, dtype)(value)
     scalar_type = Scalar(dtype=dtype)
     rval = ScalarSharedVariable(
-            type=scalar_type,
-            value=value,
-            name=name, strict=strict, allow_downcast=allow_downcast)
+        type=scalar_type,
+        value=value,
+        name=name,
+        strict=strict,
+        allow_downcast=allow_downcast)
     return rval

@@ -5,7 +5,7 @@ import numpy
 
 from theano.compat import DefaultOrderedDict
 from theano.misc.ordered_set import OrderedSet
-from theano.compat.six import StringIO
+from six import StringIO
 from theano.gof import opt
 from theano.configparser import AddConfigVar, FloatParam
 from theano import config
@@ -36,11 +36,17 @@ class DB(object):
 
     def register(self, name, obj, *tags, **kwargs):
         """
-        :param name: name of the optimizer.
-        :param obj: the optimizer to register.
-        :param tags: tag name that allow to select the optimizer.
-        :param kwargs: If non empty, should contain
-            only use_db_name_as_tag=False.
+
+        Parameters
+        ----------
+        name : str
+            Name of the optimizer.
+        obj
+            The optimizer to register.
+        tags
+            Tag name that allow to select the optimizer.
+        kwargs
+            If non empty, should contain only use_db_name_as_tag=False.
             By default, all optimizations registered in EquilibriumDB
             are selected when the EquilibriumDB name is used as a
             tag. We do not want this behavior for some optimizer like
@@ -156,14 +162,18 @@ multiple time in a DB. Tryed to register "%s" again under the new name "%s".
 
 
 class Query(object):
+    """
+
+    Parameters
+    ----------
+    position_cutoff : float
+        Used by SequenceDB to keep only optimizer that are positioned before
+        the cut_off point.
+
+    """
 
     def __init__(self, include, require=None, exclude=None,
                  subquery=None, position_cutoff=None):
-        """
-        :type position_cutoff: float
-        :param position_cutoff: Used by SequenceDB to keep only optimizer that
-                                are positioned before the cut_off point.
-        """
         self.include = OrderedSet(include)
         self.require = require or OrderedSet()
         self.exclude = exclude or OrderedSet()
@@ -206,37 +216,59 @@ class Query(object):
 
 
 class EquilibriumDB(DB):
-    """A set of potential optimizations which should be applied in an
-        arbitrary order until equilibrium is reached.
+    """
+    A set of potential optimizations which should be applied in an arbitrary
+    order until equilibrium is reached.
 
     Canonicalize, Stabilize, and Specialize are all equilibrium optimizations.
 
-    :param ignore_newtrees: If False, we will apply local opt on new
-        node introduced during local optimization application. This
-        could result in less fgraph iterations, but this don't mean it
-        will be faster globally.
+    Parameters
+    ----------
+    ignore_newtrees
+        If False, we will apply local opt on new node introduced during local
+        optimization application. This could result in less fgraph iterations,
+        but this doesn't mean it will be faster globally.
 
-    .. note::
-
-        We can put LocalOptimizer and Optimizer as EquilibriumOptimizer
-        suppor both.
+    Notes
+    -----
+    We can put LocalOptimizer and Optimizer as EquilibriumOptimizer
+    suppor both.
 
     """
+
     def __init__(self, ignore_newtrees=True):
         super(EquilibriumDB, self).__init__()
         self.ignore_newtrees = ignore_newtrees
+        self.__final__ = {}
+
+    def register(self, name, obj, *tags, **kwtags):
+        # if name == 'cut_gpua_constant_transfers':
+        #     import ipdb;ipdb.set_trace()
+        if 'final_opt' in kwtags:
+            final_opt = kwtags['final_opt']
+            kwtags.pop('final_opt', None)
+        else:
+            final_opt = False
+        super(EquilibriumDB, self).register(name, obj, *tags, **kwtags)
+        self.__final__[name] = final_opt
 
     def query(self, *tags, **kwtags):
-        opts = super(EquilibriumDB, self).query(*tags, **kwtags)
+        _opts = super(EquilibriumDB, self).query(*tags, **kwtags)
+        final_opts = [o for o in _opts if self.__final__.get(o.name, False)]
+        opts = [o for o in _opts if o not in final_opts]
+        if len(final_opts) == 0:
+            final_opts = None
         return opt.EquilibriumOptimizer(
             opts,
             max_use_ratio=config.optdb.max_use_ratio,
             ignore_newtrees=self.ignore_newtrees,
-            failure_callback=opt.NavigatorOptimizer.warn_inplace)
+            failure_callback=opt.NavigatorOptimizer.warn_inplace,
+            final_optimizers=final_opts)
 
 
 class SequenceDB(DB):
-    """A sequence of potential optimizations.
+    """
+    A sequence of potential optimizations.
 
     Retrieve a sequence of optimizations (a SeqOptimizer) by calling query().
 
@@ -248,6 +280,7 @@ class SequenceDB(DB):
     other tags) fast_run and fast_compile optimizers are drawn is a SequenceDB.
 
     """
+
     seq_opt = opt.SeqOptimizer
 
     def __init__(self, failure_callback=opt.SeqOptimizer.warn):
@@ -261,9 +294,12 @@ class SequenceDB(DB):
 
     def query(self, *tags, **kwtags):
         """
-        :type position_cutoff: float or int
-        :param position_cutoff: only optimizations with position less than
-                                the cutoff are returned.
+
+        Parameters
+        ----------
+        position_cutoff : float or int
+            Only optimizations with position less than the cutoff are returned.
+
         """
         opts = super(SequenceDB, self).query(*tags, **kwtags)
 
@@ -292,10 +328,10 @@ class SequenceDB(DB):
 
     def print_summary(self, stream=sys.stdout):
         print(self.__class__.__name__ + " (id %i)" % id(self), file=stream)
-        positions = self.__position__.items()
+        positions = list(self.__position__.items())
 
         def c(a, b):
-            return cmp(a[1], b[1])
+            return ((a[1] > b[1]) - (a[1] < b[1]))
         positions.sort(c)
 
         print("  position", positions, file=stream)
@@ -309,11 +345,14 @@ class SequenceDB(DB):
 
 
 class LocalGroupDB(SequenceDB):
-    """This generate a local optimizer of type LocalOptGroup instead
+    """
+    Generate a local optimizer of type LocalOptGroup instead
     of a global optimizer.
 
-    It support the tracks, to only get applied to some Op.
+    It supports the tracks, to only get applied to some Op.
+
     """
+
     seq_opt = opt.LocalOptGroup
 
     def __init__(self, failure_callback=opt.SeqOptimizer.warn):
@@ -325,9 +364,11 @@ class ProxyDB(DB):
     """
     Wrap an existing proxy.
 
-    This is needed as we can't register the same DB mutiple time in
-    different position in a SequentialDB
+    This is needed as we can't register the same DB mutiple times in
+    different positions in a SequentialDB.
+
     """
+
     def __init__(self, db):
         assert isinstance(db, DB), ""
         self.db = db

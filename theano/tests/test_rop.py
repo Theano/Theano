@@ -20,7 +20,7 @@ from theano import tensor
 import numpy
 from theano.gof import Op, Apply
 from theano.gradient import grad_undefined
-from numpy.testing.noseclasses import KnownFailureTest
+from theano.tests.unittest_tools import SkipTest
 from theano.tensor.signal.downsample import DownsampleFactorMax
 from theano.tensor.nnet import conv
 
@@ -34,11 +34,7 @@ class BreakRop(Op):
     """
     @note: Non-differentiable.
     """
-    def __hash__(self):
-        return hash(type(self))
-
-    def __eq__(self, other):
-        return type(self) == type(other)
+    __props__ = ()
 
     def make_node(self, x):
         return Apply(self, [x], [x.type()])
@@ -190,9 +186,8 @@ class RopLop_checker(unittest.TestCase):
         assert numpy.allclose(v1, v2), ('LOP mismatch: %s %s' % (v1, v2))
 
         if known_fail:
-            raise KnownFailureTest("Rop doesn't handle non-differentiable "
-                    "inputs correctly. Bug exposed by fixing Add.grad"
-                    " method.")
+            raise SkipTest('Rop does not handle non-differentiable inputs '
+                           'correctly. Bug exposed by fixing Add.grad method.')
 
 
 class test_RopLop(RopLop_checker):

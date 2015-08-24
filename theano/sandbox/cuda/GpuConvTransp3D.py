@@ -5,6 +5,7 @@ import theano.tensor as T
 from theano.misc import strutil
 import theano
 
+from six.moves import xrange
 from theano.tensor.nnet.ConvTransp3D import ConvTransp3D
 from theano.gof import local_optimizer
 
@@ -15,7 +16,11 @@ from theano.sandbox.cuda import (CudaNdarrayType, HostFromGpu,
 
 
 class GpuConvTransp3D(GpuOp):
-    """ The gpu version of ConvTransp3D """
+    """
+    The gpu version of ConvTransp3D.
+
+    """
+
     def __eq__(self, other):
         return type(self) == type(other)
 

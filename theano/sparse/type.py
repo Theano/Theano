@@ -7,13 +7,17 @@ except ImportError:
 
 import theano
 from theano import gof
+from six import string_types
 
 
 def _is_sparse(x):
     """
-    @rtype: boolean
-    @return: True iff x is a L{scipy.sparse.spmatrix} (and not a
-    L{numpy.ndarray})
+
+    Returns
+    -------
+    boolean
+        True iff x is a L{scipy.sparse.spmatrix} (and not a L{numpy.ndarray}).
+
     """
     if not isinstance(x, (scipy.sparse.spmatrix, numpy.ndarray, tuple, list)):
         raise NotImplementedError("this function should only be called on "
@@ -24,13 +28,26 @@ def _is_sparse(x):
 
 class SparseType(gof.Type):
     """
-    @type dtype: numpy dtype string such as 'int64' or 'float64' (among others)
-    @type format: string
-    @ivar format: The sparse storage strategy.
+    Fundamental way to create a sparse node.
 
-    @note As far as I can tell, L{scipy.sparse} objects must be matrices, i.e.
+    Parameters
+    ----------
+    dtype : numpy dtype string such as 'int64' or 'float64' (among others)
+        Type of numbers in the matrix.
+    format: str
+        The sparse storage strategy.
+
+    Returns
+    -------
+    An empty SparseVariable instance.
+
+    Notes
+    -----
+    As far as I can tell, L{scipy.sparse} objects must be matrices, i.e.
     have dimension 2.
+
     """
+
     if imported_scipy:
         format_cls = {'csr': scipy.sparse.csr_matrix,
                       'csc': scipy.sparse.csc_matrix,
@@ -45,12 +62,6 @@ class SparseType(gof.Type):
     Constant = None
 
     def __init__(self, format, dtype):
-        """
-        Fundamental way to create a sparse node.
-        @param dtype:   Type of numbers in the matrix.
-        @param format:  The sparse storage strategy.
-        @return         An empty SparseVariable instance.
-        """
         if not imported_scipy:
             raise Exception("You can't make SparseType object as SciPy"
                             " is not available.")
@@ -61,12 +72,12 @@ class SparseType(gof.Type):
             raise NotImplementedError('unsupported dtype "%s" not in list' %
                                       dtype, list(self.dtype_set))
 
-        assert isinstance(format, basestring)
+        assert isinstance(format, string_types)
         if format in self.format_cls:
             self.format = format
         else:
             raise NotImplementedError('unsupported format "%s" not in list' %
-                                      format, self.format_cls.keys())
+                                      format, list(self.format_cls.keys()))
 
     def filter(self, value, strict=False, allow_downcast=None):
         if isinstance(value, self.format_cls[self.format])\
@@ -99,8 +110,8 @@ class SparseType(gof.Type):
             a, b = b, a
         if _is_sparse(a) and isinstance(b, numpy.ndarray):
             if (numpy.may_share_memory(a.data, b) or
-                numpy.may_share_memory(a.indices, b) or
-                numpy.may_share_memory(a.indptr, b)):
+                    numpy.may_share_memory(a.indices, b) or
+                    numpy.may_share_memory(a.indptr, b)):
                 # currently we can't share memory with a.shape as it is a tuple
                 return True
         return False
@@ -142,8 +153,8 @@ class SparseType(gof.Type):
         # we definitely do not want to be doing this un-necessarily during
         # a FAST_RUN computation..
         return scipy.sparse.issparse(a) \
-                and scipy.sparse.issparse(b) \
-                and abs(a - b).sum() == 0.0
+            and scipy.sparse.issparse(b) \
+            and abs(a - b).sum() == 0.0
 
     def is_valid_value(self, a):
         return scipy.sparse.issparse(a) and (a.format == self.format)
@@ -161,10 +172,10 @@ class SparseType(gof.Type):
 
 # Register SparseType's C code for ViewOp.
 theano.compile.register_view_op_c_code(
-        SparseType,
-        """
-        Py_XDECREF(%(oname)s);
-        %(oname)s = %(iname)s;
-        Py_XINCREF(%(oname)s);
-        """,
-        1)
+    SparseType,
+    """
+    Py_XDECREF(%(oname)s);
+    %(oname)s = %(iname)s;
+    Py_XINCREF(%(oname)s);
+    """,
+    1)

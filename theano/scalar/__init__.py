@@ -1,4 +1,4 @@
 
-from basic import *
+from .basic import *
 
-from basic_scipy import *
+from .basic_scipy import *

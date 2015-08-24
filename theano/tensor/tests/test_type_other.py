@@ -29,7 +29,7 @@ def test_none_Constant():
     assert o2.equals(NoneConst)
 
     # This trigger equals that returned the wrong answer in the past.
-    import cPickle
+    import six.moves.cPickle as pickle
     import theano
     from theano import tensor
 
@@ -40,4 +40,4 @@ def test_none_Constant():
     if theano.config.mode in ["DebugMode", "DEBUG_MODE"]:
         kwargs = {'mode': 'FAST_RUN'}
     f = theano.function([x], [y], **kwargs)
-    cPickle.loads(cPickle.dumps(f))
+    pickle.loads(pickle.dumps(f))

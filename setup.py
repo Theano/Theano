@@ -5,7 +5,6 @@
 #   * Add download_url
 
 import os
-import sys
 import subprocess
 import codecs
 from fnmatch import fnmatchcase
@@ -14,18 +13,6 @@ try:
     from setuptools import setup
 except ImportError:
     from distutils.core import setup
-try:
-    from distutils.command.build_py import build_py_2to3 as build_py
-except ImportError:
-    from distutils.command.build_py import build_py
-    from distutils.command.build_scripts import build_scripts
-else:
-    exclude_fixers = ['fix_next', 'fix_filter']
-    from distutils.util import Mixin2to3
-    from lib2to3.refactor import get_fixers_from_package
-    Mixin2to3.fixer_names = [f for f in get_fixers_from_package('lib2to3.fixes')
-                             if f.rsplit('.', 1)[-1] not in exclude_fixers]
-    from distutils.command.build_scripts import build_scripts_2to3 as build_scripts
 
 
 CLASSIFIERS = """\
@@ -54,12 +41,12 @@ MAINTAINER          = "LISA laboratory, University of Montreal"
 MAINTAINER_EMAIL    = "theano-dev@googlegroups.com"
 DESCRIPTION         = ('Optimizing compiler for evaluating mathematical ' +
                        'expressions on CPUs and GPUs.')
-LONG_DESCRIPTION    = (codecs.open("DESCRIPTION.txt",encoding='utf-8').read() + "\n\n" +
-                       codecs.open("NEWS.txt",encoding='utf-8').read())
+LONG_DESCRIPTION    = (codecs.open("DESCRIPTION.txt", encoding='utf-8').read() +
+                       "\n\n" + codecs.open("NEWS.txt", encoding='utf-8').read())
 URL                 = "http://deeplearning.net/software/theano/"
 DOWNLOAD_URL        = ""
 LICENSE             = 'BSD'
-CLASSIFIERS         = filter(None, CLASSIFIERS.split('\n'))
+CLASSIFIERS         = [_f for _f in CLASSIFIERS.split('\n') if _f]
 AUTHOR              = "LISA laboratory, University of Montreal"
 AUTHOR_EMAIL        = "theano-dev@googlegroups.com"
 PLATFORMS           = ["Windows", "Linux", "Solaris", "Mac OS-X", "Unix"]
@@ -174,10 +161,10 @@ def do_setup():
           license=LICENSE,
           platforms=PLATFORMS,
           packages=find_packages(),
-          install_requires=['numpy>=1.6.2', 'scipy>=0.11'],
+          install_requires=['numpy>=1.6.2', 'scipy>=0.11', 'six>=1.9.0'],
           package_data={
               '': ['*.txt', '*.rst', '*.cu', '*.cuh', '*.c', '*.sh', '*.pkl',
-                   '*.h', 'ChangeLog'],
+                   '*.h', '*.cpp', 'ChangeLog'],
               'theano.misc': ['*.sh']
           },
           scripts=['bin/theano-cache', 'bin/theano-nose', 'bin/theano-test'],
@@ -185,8 +172,6 @@ def do_setup():
               'theano', 'math', 'numerical', 'symbolic', 'blas',
               'numpy', 'gpu', 'autodiff', 'differentiation'
           ]),
-          cmdclass={'build_py': build_py,
-                    'build_scripts': build_scripts}
     )
 if __name__ == "__main__":
     do_setup()

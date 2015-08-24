@@ -45,7 +45,10 @@ def main():
             from theano import config
             if config.device != "cpu":
                 raise ValueError("Theano tests must be run with device=cpu."
-                                 " This will also run GPU tests when possible.")
+                                 " This will also run GPU tests when possible.\n"
+                                 " If you want GPU-related tests to run on a"
+                                 " specific GPU device, and not the default one,"
+                                 " you should use the init_gpu_device theano flag.")
         except ImportError:
             pass
 
@@ -119,7 +122,7 @@ def main():
         else:
             ret = nose.main()
         return ret
-    except TypeError, e:
+    except TypeError as e:
         if "got an unexpected keyword argument 'addplugins'" in e.message:
             # This means nose is too old and does not support plugins
             _logger.warn(

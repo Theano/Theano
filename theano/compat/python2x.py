@@ -80,9 +80,9 @@ if sys.version_info[:2] < (2, 7):
             if not self:
                 raise KeyError('dictionary is empty')
             if last:
-                key = reversed(self).next()
+                key = next(reversed(self))
             else:
-                key = iter(self).next()
+                key = next(iter(self))
             value = self.pop(key)
             return key, value
 
@@ -111,7 +111,7 @@ if sys.version_info[:2] < (2, 7):
         def __repr__(self):
             if not self:
                 return '%s()' % (self.__class__.__name__,)
-            return '%s(%r)' % (self.__class__.__name__, self.items())
+            return '%s(%r)' % (self.__class__.__name__, list(self.items()))
 
         def copy(self):
             return self.__class__(self)
@@ -163,7 +163,8 @@ if sys.version_info[:2] < (2, 7):
 
     from operator import itemgetter
     from heapq import nlargest
-    from itertools import repeat, ifilter
+    from itertools import repeat
+    from theano.compat import ifilter
 
     class Counter(dict):
         '''Dict subclass for counting hashable objects.
@@ -367,7 +368,6 @@ else:
         from UserDict import DictMixin
     except ImportError:
         from collections import MutableMapping as DictMixin
-    from collections import OrderedDict, Callable, Counter
-    Callable = Callable
+    from collections import OrderedDict, Counter
 
 __all__ = ['DictMixin', 'OrderedDict', 'Counter']

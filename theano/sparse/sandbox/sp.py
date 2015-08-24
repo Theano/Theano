@@ -11,6 +11,7 @@ U{http://www-users.cs.umn.edu/~saad/software/SPARSKIT/paper.ps}.
 import numpy
 import scipy
 from scipy import sparse as scipy_sparse
+from six.moves import xrange
 
 import theano
 import theano.sparse
@@ -40,6 +41,7 @@ class ConvolutionIndices(Op):
        patch. Convolution is then simply the dot product of (img x M)
        and the kernels.
     """
+    __props__ = ()
 
     @staticmethod
     def sparse_eval(inshp, kshp, nkern, strides=(1, 1), mode='valid'):

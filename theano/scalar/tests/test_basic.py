@@ -21,7 +21,7 @@ from theano.scalar.basic import (floats, float32, float64,
                                  ints, int8, int32, complex64,
                                  ComplexError, IntDiv, TrueDiv,
                                  Composite, add, div_proxy,
-                                 and_, eq, neq, invert, mul, Scalar)
+                                 and_, eq, neq, invert, mul, Scalar, InRange)
 from theano.scalar.basic import (
     true_div, inv, log, log2, log10, log1p, exp, exp2, expm1, sqrt, deg2rad,
     rad2deg, cos, arccos, sin, arcsin, tan, arctan, arctan2, cosh, arccosh,
@@ -237,32 +237,32 @@ class test_upgrade_to_float(object):
     # at least float32, not float16.
 
     unary_ops_vals = [
-        (inv, range(-127, 0) + range(1, 127)),
-        (sqrt, range(0, 128)),
-        (log, range(1, 128)),
-        (log2, range(1, 128)),
-        (log10, range(1, 128)),
-        (log1p, range(0, 128)),
-        (exp, range(-127, 89)),
-        (exp2, range(-127, 89)),
-        (expm1, range(-127, 89)),
-        (deg2rad, range(-127, 128)),
-        (rad2deg, range(-127, 128)),
-        (cos, range(-127, 128)),
-        (arccos, range(-1, 2)),
-        (cosh, range(-89, 90)),
-        (arccosh, range(1, 128)),
-        (sin, range(-127, 128)),
-        (arcsin, range(-1, 2)),
-        (sinh, range(-89, 90)),
-        (arcsinh, range(-127, 128)),
-        (tan, range(-3, 4)),
-        (arctan, range(-127, 128)),
-        (tanh, range(-127, 128)),
+        (inv, list(range(-127, 0)) + list(range(1, 127))),
+        (sqrt, list(range(0, 128))),
+        (log, list(range(1, 128))),
+        (log2, list(range(1, 128))),
+        (log10, list(range(1, 128))),
+        (log1p, list(range(0, 128))),
+        (exp, list(range(-127, 89))),
+        (exp2, list(range(-127, 89))),
+        (expm1, list(range(-127, 89))),
+        (deg2rad, list(range(-127, 128))),
+        (rad2deg, list(range(-127, 128))),
+        (cos, list(range(-127, 128))),
+        (arccos, list(range(-1, 2))),
+        (cosh, list(range(-89, 90))),
+        (arccosh, list(range(1, 128))),
+        (sin, list(range(-127, 128))),
+        (arcsin, list(range(-1, 2))),
+        (sinh, list(range(-89, 90))),
+        (arcsinh, list(range(-127, 128))),
+        (tan, list(range(-3, 4))),
+        (arctan, list(range(-127, 128))),
+        (tanh, list(range(-127, 128))),
         (arctanh, [0])]
 
     binary_ops_vals = [
-        (arctan2, range(-127, 128), range(-127, 128))]
+        (arctan2, list(range(-127, 128)), list(range(-127, 128)))]
 
     @staticmethod
     def _test_unary(unary_op, x_range):
@@ -306,8 +306,8 @@ class test_upgrade_to_float(object):
     def test_true_div(self):
         # true_div's upcast policy is not exactly "upgrade_to_float",
         # so the test is a little bit different
-        x_range = range(-127, 128)
-        y_range = range(-127, 0) + range(1, 127)
+        x_range = list(range(-127, 128))
+        y_range = list(range(-127, 0)) + list(range(1, 127))
 
         xi = int8('xi')
         yi = int8('yi')
@@ -411,6 +411,32 @@ def test_grad_identity():
     y = theano.tensor.tensor_copy(x)
     l = y.sum(dtype=theano.config.floatX)
     theano.gradient.grad(l, x)
+
+
+def test_grad_inrange():
+    for bound_definition in [(True, True), (False, False)]:
+        # Instantiate op, and then take the gradient
+        op = InRange(*bound_definition)
+        x = theano.tensor.fscalar('x')
+        low = theano.tensor.fscalar('low')
+        high = theano.tensor.fscalar('high')
+        out = op(x, low, high)
+        gx, glow, ghigh = theano.tensor.grad(out, [x, low, high])
+
+        # We look if the gradient are equal to zero
+        # if x is lower than the lower bound,
+        # equal to the lower bound, between lower and higher bound,
+        # equal to the higher bound and higher than the higher
+        # bound.
+        # Mathematically we should have an infinite gradient when
+        # x is equal to the lower or higher bound but in that case
+        # Theano defines the gradient to be zero for stability.
+        f = theano.function([x, low, high], [gx, glow, ghigh])
+        utt.assert_allclose(f(0, 1, 5), [0, 0, 0])
+        utt.assert_allclose(f(1, 1, 5), [0, 0, 0])
+        utt.assert_allclose(f(2, 1, 5), [0, 0, 0])
+        utt.assert_allclose(f(5, 1, 5), [0, 0, 0])
+        utt.assert_allclose(f(7, 1, 5), [0, 0, 0])
 
 
 # Testing of Composite is done in tensor/tests/test_opt.py

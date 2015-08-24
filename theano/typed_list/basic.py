@@ -2,7 +2,7 @@ import copy
 
 import numpy
 
-from type import TypedListType
+from .type import TypedListType
 import theano
 from theano.gof import Apply, Constant, Op, Variable
 from theano.tensor.type_other import SliceType
@@ -48,6 +48,7 @@ class _typed_list_py_operators:
 class TypedListVariable(_typed_list_py_operators, Variable):
     """
     Subclass to add the typed list operators to the basic `Variable` class.
+
     """
 
 TypedListType.Variable = TypedListVariable
@@ -56,12 +57,7 @@ TypedListType.Variable = TypedListVariable
 class GetItem(Op):
     # See doc in instance of this Op or function after this class definition.
     view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, x, index):
         assert isinstance(x.type, TypedListType)
@@ -109,13 +105,20 @@ getitem = GetItem()
 """
 Get specified slice of a typed list.
 
-:param x: typed list.
-:param index: the index of the value to return from `x`.
+Parameters
+----------
+x
+    Typed list.
+index 
+    The index of the value to return from `x`.
+
 """
 
 
 class Append(Op):
     # See doc in instance of this Op after the class definition.
+    __props__ = ("inplace",)
+
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
@@ -127,12 +130,6 @@ class Append(Op):
             # TODO: make destroy_handler support multiple view
             # self.view_map = {0: [0, 1]}
             self.view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.inplace == other.inplace
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.inplace)
 
     def make_node(self, x, toAppend):
         assert isinstance(x.type, TypedListType)
@@ -183,13 +180,20 @@ append = Append()
 """
 Append an element at the end of another list.
 
-:param x: the base typed list.
-:param y: the element to append to `x`.
+Parameters
+----------
+x
+    The base typed list.
+y
+    The element to append to `x`.
+
 """
 
 
 class Extend(Op):
     # See doc in instance of this Op after the class definition.
+    __props__ = ("inplace",)
+
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
@@ -201,12 +205,6 @@ class Extend(Op):
             # TODO: make destroy_handler support multiple view
             # self.view_map = {0: [0, 1]}
             self.view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.inplace == other.inplace
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.inplace)
 
     def make_node(self, x, toAppend):
         assert isinstance(x.type, TypedListType)
@@ -263,13 +261,20 @@ extend = Extend()
 """
 Append all elements of a list at the end of another list.
 
-:param x: The typed list to extend.
-:param toAppend: The typed list that will be added at the end of `x`.
+Parameters
+----------
+x
+    The typed list to extend.
+toAppend
+    The typed list that will be added at the end of `x`.
+
 """
 
 
 class Insert(Op):
     # See doc in instance of this Op after the class definition.
+    __props__ = ("inplace",)
+
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
@@ -281,12 +286,6 @@ class Insert(Op):
             # TODO: make destroy_handler support multiple view
             # self.view_map = {0: [0, 2]}
             self.view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.inplace == other.inplace
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.inplace)
 
     def make_node(self, x, index, toInsert):
         assert isinstance(x.type, TypedListType)
@@ -342,26 +341,28 @@ insert = Insert()
 """
 Insert an element at an index in a typed list.
 
-:param x: the typed list to modify.
-:param index: the index where to put the new element in `x`.
-:param toInsert: The new element to insert.
+Parameters
+----------
+x
+    The typed list to modify.
+index
+    The index where to put the new element in `x`.
+toInsert
+    The new element to insert.
+
 """
 
 
 class Remove(Op):
     # See doc in instance of this Op after the class definition.
+    __props__ = ("inplace",)
+
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
         else:
             self.view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.inplace == other.inplace
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.inplace)
 
     def make_node(self, x, toRemove):
         assert isinstance(x.type, TypedListType)
@@ -377,9 +378,9 @@ class Remove(Op):
             out[0] = x
 
         """
-        inelegant workaround for ValueError: The truth value of an
+        Inelegant workaround for ValueError: The truth value of an
         array with more than one element is ambiguous. Use a.any() or a.all()
-        being thrown when trying to remove a matrix from a matrices list
+        being thrown when trying to remove a matrix from a matrices list.
         """
         for y in range(out[0].__len__()):
                 if node.inputs[0].ttype.values_eq(out[0][y], toRemove):
@@ -392,31 +393,32 @@ class Remove(Op):
 remove = Remove()
 """Remove an element from a typed list.
 
-:param x: the typed list to be changed.
-:param toRemove: an element to be removed from the typed list.
+Parameters
+----------
+x
+    The typed list to be changed.
+toRemove
+    An element to be removed from the typed list.
     We only remove the first instance.
 
-:note: Python implementation of remove doesn't work when we want to
-    remove an ndarray from a list. This implementation works in that
-    case.
+Notes
+-----
+Python implementation of remove doesn't work when we want to remove an ndarray
+from a list. This implementation works in that case.
 
 """
 
 
 class Reverse(Op):
     # See doc in instance of this Op after the class definition.
+    __props__ = ("inplace",)
+
     def __init__(self, inplace=False):
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [0]}
         else:
             self.view_map = {0: [0]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and self.inplace == other.inplace
-
-    def __hash__(self):
-        return hash(type(self)) ^ hash(self.inplace)
 
     def make_node(self, x):
         assert isinstance(x.type, TypedListType)
@@ -462,17 +464,17 @@ reverse = Reverse()
 """
 Reverse the order of a typed list.
 
-:param x: the typed list to be reversed.
+Parameters
+----------
+x
+    The typed list to be reversed.
+
 """
 
 
 class Index(Op):
     # See doc in instance of this Op after the class definition.
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, x, elem):
         assert isinstance(x.type, TypedListType)
@@ -481,7 +483,7 @@ class Index(Op):
 
     def perform(self, node, inputs, outputs):
         """
-        inelegant workaround for ValueError: The truth value of an
+        Inelegant workaround for ValueError: The truth value of an
         array with more than one element is ambiguous. Use a.any() or a.all()
         being thrown when trying to remove a matrix from a matrices list
         """
@@ -500,11 +502,7 @@ index_ = Index()
 
 class Count(Op):
     # See doc in instance of this Op after the class definition.
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, x, elem):
         assert isinstance(x.type, TypedListType)
@@ -513,7 +511,7 @@ class Count(Op):
 
     def perform(self, node, inputs, outputs):
         """
-        inelegant workaround for ValueError: The truth value of an
+        Inelegant workaround for ValueError: The truth value of an
         array with more than one element is ambiguous. Use a.any() or a.all()
         being thrown when trying to remove a matrix from a matrices list
         """
@@ -532,25 +530,25 @@ count = Count()
 """
 Count the number of times an element is in the typed list.
 
-:param x: The typed list to look into.
-:param elem: The element we want to count in list.
+Parameters
+----------
+x
+    The typed list to look into.
+elem
+    The element we want to count in list.
     The elements are compared with equals.
 
-:note: Python implementation of count doesn't work when we want to
-    count an ndarray from a list. This implementation works in that
-    case.
+Notes
+-----
+Python implementation of count doesn't work when we want to count an ndarray
+from a list. This implementation works in that case.
 
 """
 
 
 class Length(Op):
     # See doc in instance of this Op after the class definition.
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, x):
         assert isinstance(x.type, TypedListType)
@@ -581,17 +579,17 @@ length = Length()
 """
 Returns the size of a list.
 
-:param x: typed list.
+Parameters
+----------
+x
+    Typed list.
+
 """
 
 
 class MakeList(Op):
 
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
+    __props__ = ()
 
     def make_node(self, a):
         assert isinstance(a, (tuple, list))
@@ -615,7 +613,12 @@ make_list = MakeList()
 """
 Build a Python list from those Theano variable.
 
-:param a: tuple/list of Theano variable
+Parameters
+----------
+a : tuple/list of Theano variable
 
-:note: All Theano variable must have the same type.
+Notes
+-----
+All Theano variables must have the same type.
+
 """

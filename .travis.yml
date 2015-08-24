@@ -1,40 +1,48 @@
 # After changing this file, check it on:
 # http://lint.travis-ci.org/
 sudo: false
+cache:
+  directories:
+    - $HOME/download
+    - $HOME/.cache/pip
+
 language: python
 python:
   - "2.6"
+  - "3.3"
 
 # command to install dependencies
 before_install:
 # Install miniconda to avoid compiling scipy
-  - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
+  - mkdir -p download
+  - cd download
+  - wget -c http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
   - chmod +x miniconda.sh
   - ./miniconda.sh -b
+  - cd ..
   - export PATH=/home/travis/miniconda/bin:$PATH
   - conda update --yes conda
 
 install:
-  - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda create --yes -q -n pyenv mkl python=2.6 numpy=1.6.2 scipy=0.11 nose=1.1 pyparsing=1.5 pip flake8==2.3; fi
-  - if [[ $TRAVIS_PYTHON_VERSION == '3.3' ]]; then conda create --yes -q -n pyenv mkl python=3.3 numpy=1.9.1 scipy=0.14.0 nose=1.3.4 pip flake8==2.3; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda create --yes -q -n pyenv mkl python=2.6 numpy=1.6.2 scipy=0.11 nose=1.1 pyparsing=1.5 pip flake8==2.3 six==1.9.0 pep8==1.6.2 pyflakes==0.8.1; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == '3.3' ]]; then conda create --yes -q -n pyenv mkl python=3.3 numpy=1.9.1 scipy=0.14.0 nose=1.3.4 pyparsing=1.5 pip flake8==2.3 six==1.9.0 pep8==1.6.2 pyflakes==0.8.1; fi
   - source activate pyenv
   - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then pip install pydot; fi
   - pip install . --no-deps
 
 # command to run tests
-env:
-  - PART="scan_module"
-  - PART="sandbox sparse scalar tensor/nnet"
-  - PART="tensor/tests/test_basic.py tensor/signal compile gof misc tests compat"
-  - PART="-e test_basic.py tensor/tests"
-
 matrix:
-  # Explicitly add one part to be run with Python 3, and a complete run in FAST_COMPILE
+  fast_finish: true
   include:
     - python: "3.3"
-      env: PART="tensor/tests/test_basic.py tensor/signal compile gof misc tests compat"
-    - python: "2.6"
       env: PART="." THEANO_FLAGS="mode=FAST_COMPILE"
+    - python: "2.6"
+      env: PART="." THEANO_FLAGS="mode=FAST_COMPILE,floatX=float32"
+
+env:
+  - PART="sandbox sparse scalar tensor/nnet scan_module"
+  - PART="tensor/tests/test_basic.py tensor/signal compile gof misc tests compat"
+  - PART="-e test_basic.py tensor/tests"
 
 script:
   - export THEANO_FLAGS=$THEANO_FLAGS,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,gcc.cxxflags=-pipe

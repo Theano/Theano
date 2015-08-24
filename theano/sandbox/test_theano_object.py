@@ -1,5 +1,5 @@
 from __future__ import print_function
-from theano_object import *
+from .theano_object import *
 
 
 RUN_TESTS = False

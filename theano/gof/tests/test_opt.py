@@ -2,9 +2,12 @@
 from theano.gof.type import Type
 from theano.gof.graph import Variable, Apply, Constant
 from theano.gof.op import Op
-from theano.gof.opt import *
+from theano.gof.opt import *  # noqa
 from theano.gof.fg import FunctionGraph as Env
-from theano.gof.toolbox import *
+from theano.gof.toolbox import *  # noqa
+
+from theano.tensor.opt import Assert
+from theano import tensor as T
 
 
 def as_variable(x):
@@ -39,7 +42,7 @@ class MyOp(Op):
         self.x = x
 
     def make_node(self, *inputs):
-        inputs = map(as_variable, inputs)
+        inputs = list(map(as_variable, inputs))
         for input in inputs:
             if not isinstance(input.type, MyType):
                 raise Exception("Error 1")
@@ -53,7 +56,7 @@ class MyOp(Op):
         return self.name
 
     def __eq__(self, other):
-        #rval = (self is other) or (isinstance(other, MyOp) and self.x is not None and self.x == other.x and self.name == other.name)
+        # rval = (self is other) or (isinstance(other, MyOp) and self.x is not None and self.x == other.x and self.name == other.name)
         rval = (self is other) or (isinstance(other, MyOp) and self.x is not None and self.x == other.x)
         return rval
 
@@ -84,8 +87,12 @@ def inputs():
     return x, y, z
 
 
-PatternOptimizer = lambda p1, p2, ign=False: OpKeyOptimizer(PatternSub(p1, p2), ignore_newtrees=ign)
-TopoPatternOptimizer = lambda p1, p2, ign=True: TopoOptimizer(PatternSub(p1, p2), ignore_newtrees=ign)
+def PatternOptimizer(p1, p2, ign=False):
+    return OpKeyOptimizer(PatternSub(p1, p2), ignore_newtrees=ign)
+
+
+def TopoPatternOptimizer(p1, p2, ign=True):
+    return TopoOptimizer(PatternSub(p1, p2), ignore_newtrees=ign)
 
 
 class TestPatternOptimizer:
@@ -205,6 +212,7 @@ class TestPatternOptimizer:
         x, y, z = inputs()
         e = op4(op1(op2(x, y)), op1(op1(x, y)))
         g = Env([x, y, z], [e])
+
         def constraint(r):
             # Only replacing if the input is an instance of Op2
             return r.owner.op == op2
@@ -225,6 +233,7 @@ class TestPatternOptimizer:
         x, y, z = inputs()
         e = op2(op1(x, x), op1(x, y))
         g = Env([x, y, z], [e])
+
         def constraint(r):
             # Only replacing if the input is an instance of Op2
             return r.owner.inputs[0] is not r.owner.inputs[1]
@@ -263,8 +272,8 @@ class TestPatternOptimizer:
 #         assert str(g) == "[Op3(x, y)]"
 
 
-OpSubOptimizer = lambda op1, op2: TopoOptimizer(OpSub(op1, op2))
-OpSubOptimizer = lambda op1, op2: OpKeyOptimizer(OpSub(op1, op2))
+def OpSubOptimizer(op1, op2):
+    return OpKeyOptimizer(OpSub(op1, op2))
 
 
 class TestOpSubOptimizer:
@@ -353,6 +362,129 @@ class TestMergeOptimizer:
         MergeOptimizer().optimize(g)
         strg = str(g)
         assert strg == '[Op1(y, y)]' or strg == '[Op1(z, z)]'
+
+    def test_one_assert_merge(self):
+        # Merge two nodes, one has assert, the other not.
+        x1 = T.matrix('x1')
+        x2 = T.matrix('x2')
+        e = T.dot(x1, x2) + T.dot(T.opt.assert_op(x1, (x1 > x2).all()), x2)
+        g = Env([x1, x2], [e])
+        MergeOptimizer().optimize(g)
+        strg = theano.printing.debugprint(g, file='str')
+        strref = '''Elemwise{add,no_inplace} [@A] ''   4
+ |dot [@B] ''   3
+ | |Assert{msg='Theano Assert failed!'} [@C] ''   2
+ | | |x1 [@D]
+ | | |All [@E] ''   1
+ | |   |Elemwise{gt,no_inplace} [@F] ''   0
+ | |     |x1 [@D]
+ | |     |x2 [@G]
+ | |x2 [@G]
+ |dot [@B] ''   3
+'''
+        assert strg == strref, (strg, strref)
+
+    def test_both_assert_merge_1(self):
+        # Merge two nodes, both have assert on the same node
+        # with different conditions.
+        x1 = T.matrix('x1')
+        x2 = T.matrix('x2')
+        x3 = T.matrix('x3')
+        e = T.dot(T.opt.assert_op(x1, (x1 > x3).all()), x2) +\
+            T.dot(T.opt.assert_op(x1, (x1 > x2).all()), x2)
+        g = Env([x1, x2, x3], [e])
+        MergeOptimizer().optimize(g)
+        strg = theano.printing.debugprint(g, file='str')
+        strref1 = '''Elemwise{add,no_inplace} [@A] ''   6
+ |dot [@B] ''   5
+ | |Assert{msg='Theano Assert failed!'} [@C] ''   4
+ | | |x1 [@D]
+ | | |All [@E] ''   3
+ | | | |Elemwise{gt,no_inplace} [@F] ''   1
+ | | |   |x1 [@D]
+ | | |   |x3 [@G]
+ | | |All [@H] ''   2
+ | |   |Elemwise{gt,no_inplace} [@I] ''   0
+ | |     |x1 [@D]
+ | |     |x2 [@J]
+ | |x2 [@J]
+ |dot [@B] ''   5
+'''
+        strref2 = '''Elemwise{add,no_inplace} [@A] ''   6
+ |dot [@B] ''   5
+ | |Assert{msg='Theano Assert failed!'} [@C] ''   4
+ | | |x1 [@D]
+ | | |All [@E] ''   3
+ | | | |Elemwise{gt,no_inplace} [@F] ''   1
+ | | |   |x1 [@D]
+ | | |   |x2 [@G]
+ | | |All [@H] ''   2
+ | |   |Elemwise{gt,no_inplace} [@I] ''   0
+ | |     |x1 [@D]
+ | |     |x3 [@J]
+ | |x2 [@G]
+ |dot [@B] ''   5
+'''
+        # print(strg)
+        assert strg == strref1 or strg == strref2, (strg, strref1, strref2)
+
+    def test_both_assert_merge_2(self):
+        # Merge two nodes, both have assert on different node
+        x1 = T.matrix('x1')
+        x2 = T.matrix('x2')
+        x3 = T.matrix('x3')
+        e = T.dot(T.opt.assert_op(x1, (x1 > x3).all()), x2) +\
+            T.dot(x1, T.opt.assert_op(x2, (x2 > x3).all()))
+        g = Env([x1, x2, x3], [e])
+        MergeOptimizer().optimize(g)
+        strg = theano.printing.debugprint(g, file='str')
+        strref = '''Elemwise{add,no_inplace} [@A] ''   7
+ |dot [@B] ''   6
+ | |Assert{msg='Theano Assert failed!'} [@C] ''   5
+ | | |x1 [@D]
+ | | |All [@E] ''   3
+ | |   |Elemwise{gt,no_inplace} [@F] ''   1
+ | |     |x1 [@D]
+ | |     |x3 [@G]
+ | |Assert{msg='Theano Assert failed!'} [@H] ''   4
+ |   |x2 [@I]
+ |   |All [@J] ''   2
+ |     |Elemwise{gt,no_inplace} [@K] ''   0
+ |       |x2 [@I]
+ |       |x3 [@G]
+ |dot [@B] ''   6
+'''
+        # print(strg)
+        assert strg == strref, (strg, strref)
+
+    def test_both_assert_merge_2_reverse(self):
+        # Test case "test_both_assert_merge_2" but in reverse order
+        x1 = T.matrix('x1')
+        x2 = T.matrix('x2')
+        x3 = T.matrix('x3')
+        e = T.dot(x1, T.opt.assert_op(x2, (x2 > x3).all())) +\
+            T.dot(T.opt.assert_op(x1, (x1 > x3).all()), x2)
+        g = Env([x1, x2, x3], [e])
+        MergeOptimizer().optimize(g)
+        strg = theano.printing.debugprint(g, file='str')
+        strref = '''Elemwise{add,no_inplace} [@A] ''   7
+ |dot [@B] ''   6
+ | |Assert{msg='Theano Assert failed!'} [@C] ''   5
+ | | |x1 [@D]
+ | | |All [@E] ''   3
+ | |   |Elemwise{gt,no_inplace} [@F] ''   1
+ | |     |x1 [@D]
+ | |     |x3 [@G]
+ | |Assert{msg='Theano Assert failed!'} [@H] ''   4
+ |   |x2 [@I]
+ |   |All [@J] ''   2
+ |     |Elemwise{gt,no_inplace} [@K] ''   0
+ |       |x2 [@I]
+ |       |x3 [@G]
+ |dot [@B] ''   6
+'''
+        print(strg)
+        assert strg == strref, (strg, strref)
 
 
 class TestEquilibrium(object):

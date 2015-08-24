@@ -80,12 +80,17 @@ class test_sort(unittest.TestCase):
 
         data = np.random.rand(2, 3).astype(theano.config.floatX)
         utt.verify_grad(lambda x: sort(x, None), [data])
-        #utt.verify_grad(lambda x: sort(x, 0), [data])
-        #utt.verify_grad(lambda x: sort(x, 1), [data])
         data = np.random.rand(2, 3, 4).astype(theano.config.floatX)
         utt.verify_grad(lambda x: sort(x, None), [data])
 
     def test_grad_negative_axis(self):
+        # test 2D
+        data = np.random.rand(2, 3).astype(theano.config.floatX)
+        utt.verify_grad(lambda x: sort(x, -1), [data])
+        data = np.random.rand(2, 3).astype(theano.config.floatX)
+        utt.verify_grad(lambda x: sort(x, -2), [data])
+
+        # test 3D
         data = np.random.rand(2, 3, 4).astype(theano.config.floatX)
         utt.verify_grad(lambda x: sort(x, -1), [data])
         data = np.random.rand(2, 3, 4).astype(theano.config.floatX)
@@ -93,7 +98,24 @@ class test_sort(unittest.TestCase):
         data = np.random.rand(2, 3, 4).astype(theano.config.floatX)
         utt.verify_grad(lambda x: sort(x, -3), [data])
 
+        # test 4D
+        data = np.random.rand(2, 3, 4, 2).astype(theano.config.floatX)
+        utt.verify_grad(lambda x: sort(x, -1), [data])
+        data = np.random.rand(2, 3, 4, 2).astype(theano.config.floatX)
+        utt.verify_grad(lambda x: sort(x, -2), [data])
+        data = np.random.rand(2, 3, 4, 2).astype(theano.config.floatX)
+        utt.verify_grad(lambda x: sort(x, -3), [data])
+        data = np.random.rand(2, 3, 4, 2).astype(theano.config.floatX)
+        utt.verify_grad(lambda x: sort(x, -4), [data])
+
     def test_grad_nonnegative_axis(self):
+        # test 2D
+        data = np.random.rand(2, 3).astype(theano.config.floatX)
+        utt.verify_grad(lambda x: sort(x, 0), [data])
+        data = np.random.rand(2, 3).astype(theano.config.floatX)
+        utt.verify_grad(lambda x: sort(x, 1), [data])
+
+        # test 3D
         data = np.random.rand(2, 3, 4).astype(theano.config.floatX)
         utt.verify_grad(lambda x: sort(x, 0), [data])
         data = np.random.rand(2, 3, 4).astype(theano.config.floatX)
@@ -101,6 +123,15 @@ class test_sort(unittest.TestCase):
         data = np.random.rand(2, 3, 4).astype(theano.config.floatX)
         utt.verify_grad(lambda x: sort(x, 2), [data])
 
+        # test 4D
+        data = np.random.rand(2, 3, 4, 2).astype(theano.config.floatX)
+        utt.verify_grad(lambda x: sort(x, 0), [data])
+        data = np.random.rand(2, 3, 4, 2).astype(theano.config.floatX)
+        utt.verify_grad(lambda x: sort(x, 1), [data])
+        data = np.random.rand(2, 3, 4, 2).astype(theano.config.floatX)
+        utt.verify_grad(lambda x: sort(x, 2), [data])
+        data = np.random.rand(2, 3, 4, 2).astype(theano.config.floatX)
+        utt.verify_grad(lambda x: sort(x, 3), [data])
 
 class TensorInferShapeTester(utt.InferShapeTester):
     def test_sort(self):

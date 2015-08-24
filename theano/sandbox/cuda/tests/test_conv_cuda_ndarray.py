@@ -8,6 +8,7 @@ import unittest
 import traceback
 
 import numpy
+from six.moves import xrange
 
 from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises
@@ -184,11 +185,6 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
         kern = kern[:, :, ::kern_stride[0], ::kern_stride[1]]
         npy_kern = npy_kern[:, :, ::kern_stride[0], ::kern_stride[1]]
 
-    t2 = None
-
-    t0 = time.time()
-    cpuval = py_conv(npy_img, npy_kern, mode, subsample)
-    t1 = time.time()
     i = cuda.CudaNdarrayType(
         broadcastable=[sh == 1 for sh in npy_img.shape])()
     k = cuda.CudaNdarrayType(
@@ -198,21 +194,28 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
                                           version=version,
                                           verbose=verbose,
                                           kshp=compile_kshp)(i, k)
-    assert [(sh == 1) is br for
-            sh, br in zip(cpuval.shape[:2], op.type.broadcastable[:2])]
     f = theano.function([i, k], op, mode=theano_mode)
     if cls is not None:
         assert any([isinstance(node.op, cls)
                     for node in f.maker.fgraph.toposort()]), "Cannot find class %r in %r" % (cls, f.maker.fgraph.toposort())
-    gpuval = f(img, kern)
     t2 = time.time()
+    gpuval = f(img, kern)
+    t3 = time.time()
     for i in range(nb_iter):
         gpuval2 = f(img, kern)
         assert (numpy.asarray(gpuval) == numpy.asarray(gpuval2)).all()
     gpuval = numpy.asarray(gpuval)
+
+    # CPU val computed after GPU val to get the GPU errors.
+    t0 = time.time()
+    cpuval = py_conv(npy_img, npy_kern, mode, subsample)
+    t1 = time.time()
+
     assert gpuval.shape == cpuval.shape, ("shape mismatch", gpuval.shape, cpuval.shape)
     assert_allclose(cpuval, gpuval, rtol=rtol, atol=atol)
     assert numpy.all(numpy.isfinite(gpuval)), gpuval
+    assert [(sh == 1) is br for
+            sh, br in zip(cpuval.shape[:2], op.type.broadcastable[:2])]
 
     if (t2 is not None):
         if mode == 'valid':
@@ -222,7 +225,7 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
                          kshape[3] * ishape[2] * ishape[3] * 2)
         approx_fp /= 1e6
         cpu_mflops = approx_fp / (t1 - t0)
-        gpu_mflops = approx_fp / (t2 - t1)
+        gpu_mflops = approx_fp / (t3 - t2)
         if verbose > 0:
             print('%15s' % str(ishape), '%15s' % str(kshape), end=' ', file=sys.stdout)
             print('%12.5f  %7.2f %7.2f %7.1f' % (approx_fp,
@@ -410,6 +413,14 @@ def test_dnn_valid():
         yield t
 
 
+def test_dnn_valid_err():
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+    assert_raises(ValueError, _params_allgood, (1, 2, 4, 4), (1, 1, 2, 2),
+                  'valid', theano_mode=theano_mode.including("cudnn"),
+                  cls=DnnBase)
+
+
 def test_default_conv():
     """Just test that we introduce the right GPU convolution
     version.
@@ -441,7 +452,8 @@ def test_default_conv():
                 for a in f.maker.fgraph.apply_nodes])
 
 
-def _test_full(cls, mode=None, version=[-1], extra_shapes=[]):
+def _test_full(cls, mode=None, version=[-1], extra_shapes=[],
+               test_bigger_kernels=True):
     seed_rng()
     shapes = get_basic_shapes()
     shapes += get_shapes2()
@@ -470,14 +482,18 @@ def _test_full(cls, mode=None, version=[-1], extra_shapes=[]):
             , ((16, 5, 64, 64), (8, 5, 8, 8), (1, 1), (1, 1), (1, 1))  # a big one
             , ((16, 1, 28, 28), (20, 1, 5, 5), (1, 1), (1, 1), (1, 1))  # MNIST LeNET layer 1
             , ((20, 16, 32, 32), (1, 16, 28, 28), (1, 1), (1, 1), (1, 1))  # layer 1 backprop to weights
+            ]
 
-        # other test
-            , ((3, 1, 1, 1), (2, 1, 5, 3), (1, 1), (1, 1), (1, 1))  # kernel bigger then image
+    if test_bigger_kernels:
+        # Shapes where the kernel is larger than the image in some dimension
+        shapes += [
+              ((3, 1, 1, 1), (2, 1, 5, 3), (1, 1), (1, 1), (1, 1))
             , ((3, 2, 1, 1), (4, 2, 1, 1), (1, 1), (1, 1), (1, 1))
             , ((3, 2, 4, 4), (4, 2, 2, 6), (1, 1), (1, 1), (1, 1))
-            , ((3, 2, 4, 4), (4, 2, 8, 6), (1, 1), (1, 1), (1, 1))  # kernel bigger then image
+            , ((3, 2, 4, 4), (4, 2, 8, 6), (1, 1), (1, 1), (1, 1))
             , ((4, 2, 10, 10), (3, 2, 2, 12), (1, 1), (1, 1), (1, 1))
             ]
+
     shapes += [
 #        ((60,1,28,28),(20,1,5,5), (1, 1), (1, 1), (1, 1))#test_lenet_28 1 layers
 #            , ((60,20,12,12),(30,20,5,5), (1, 1), (1, 1), (1, 1))#test_lenet_28 2 layers
@@ -505,9 +521,16 @@ def _test_full(cls, mode=None, version=[-1], extra_shapes=[]):
 
 
 def test_full():
-    for t in _test_full(None,
-                        mode=theano_mode,
-                        version=[-1]):
+
+    # If using CuDNN version before v3, only run the tests where the
+    # kernels are not larger than the input in any spatial dimension.
+    if cuda.dnn.dnn_available() and cuda.dnn.version() < (3000, 3000):
+        test_bigger_kernels = False
+    else:
+        test_bigger_kernels = True
+
+    for t in _test_full(None, mode=theano_mode, version=[-1],
+                        test_bigger_kernels=test_bigger_kernels):
         yield t
 
 
@@ -520,7 +543,16 @@ def test_gemm_full():
 def test_dnn_full():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
-    for t in _test_full(DnnBase, mode=theano_mode.including("cudnn")):
+
+    # If using CuDNN version before v3, only run the tests where the
+    # kernels are not larger than the input in any spatial dimension.
+    if cuda.dnn.version() < (3000, 3000):
+        test_bigger_kernels = False
+    else:
+        test_bigger_kernels = True
+
+    for t in _test_full(DnnBase, mode=theano_mode.including("cudnn"),
+                        test_bigger_kernels=test_bigger_kernels):
         yield t
 
 
@@ -849,7 +881,8 @@ def conv_grad(mode, bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsample, op):
 
 
 def test_conv_grads():
-    if cuda.device_properties(cuda.active_device_number())['major'] < 3:
+    if (not cuda.dnn.dnn_available() or
+            cuda.device_properties(cuda.active_device_number())['major'] < 3):
         ops = [gemm_op]
     else:
         ops = [gemm_op, dnn_op]

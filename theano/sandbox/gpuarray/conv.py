@@ -3,6 +3,7 @@ import os
 
 import theano
 from theano import config, gof
+from six.moves import reduce
 from .comp import NVCC_compiler
 from .type import GpuArrayType
 from .basic_ops import as_gpuarray_variable
@@ -11,7 +12,48 @@ from .basic_ops import as_gpuarray_variable
 class GpuConv(gof.Op):
     """
     Implement the batched and stacked 2d convolution on the gpu.
+
+    Parameters
+    ----------
+    version
+        Each version of c_code implements many kernels for the convolution.
+        By default we try to guess the best one. You can force one version with
+        this parameter. This parameter is used by the tests.
+    direction_hint
+        'forward', 'bprop weights' or 'bprop inputs'. Serves as a hint for graph
+        optimizers replacing GpuConv by other implementations. If the GpuConv is
+        inserted automatically, we take its value from ConvOp.
+    verbose
+        For value of 1,2 and 3. Print more information during the execution of
+        the convolution. Mostly used for optimization or debugging.
+    kshp
+        The size of the kernel. If provided, can generate faster code. If the
+        GpuConv op is automatically inserted, we take its value automatically
+        from the Conv op.
+    imshp
+        The size of the image. Not used for code generation but allows to select
+        an experimental new version in another repo.
+    max_threads_dim0
+        The maximum number of threads for the block size dimensions 0
+        (blockDim.x) used by the GPU function.
+    nkern
+        The number of kernels. Not used for this op, but can be used by graph
+        optimizers to select a more optimal convolution implementation. If the
+        GpuConv op is inserted automatically, we take its value from the Conv
+        op.
+    bsize
+        The batch size. Not used for this op, but can be used by graph
+        optimizers to select a more optimal convolution implementation. If the
+        GpuConv op is inserted automatically, we take its value from the Conv
+        op.
+    fft_opt
+        Deactivate fft_opt optimization at the op level when set to False. Note
+        that by default fft optimization aren't enabled.
+        See :ref:`convolution documentation <libdoc_tensor_nnet_conv>` to enable
+        them.
+
     """
+
     @staticmethod
     def logical_output_shape_2d(imshp, kshp, mode):
         if mode == 'valid':
@@ -26,30 +68,14 @@ class GpuConv(gof.Op):
             logical_kern_hw=None,
             logical_kern_align_top=True,
             version=-1,
+            direction_hint=None,
             verbose=0,
             kshp=None,
             imshp=None,
-            max_threads_dim0=None):
-        """
-        :param version: each version of c_code implements many kernels for the
-                        convolution. By default we try to guess the best one.
-                        You can force one version with this parameter. This
-                        parameter is used by the tests.
-        :param verbose: for value of 1,2 and 3. Print more information during
-                        the execution of the convolution. Mostly used for
-                        optimization or debugging.
-        :param kshp:    The size of the kernel. If provided, can generate
-                        faster code. If the GpuConv op is automatically
-                        inserted,
-                        we take its value automatically from the Conv op.
-        :param imshp:   The size of the image. Not used for code generation but
-                        allows to select an experimental new version in another
-                        repo.
-        :param max_threads_dim0: The maximum number of threads for the
-                        block size dimensions 0 (blockDim.x) used by the
-                        GPU function.
-
-        """
+            max_threads_dim0=None,
+            nkern=None,
+            bsize=None,
+            fft_opt=True):
         self.border_mode = border_mode
         self.subsample = subsample
         if logical_img_hw is not None:
@@ -68,10 +94,14 @@ class GpuConv(gof.Op):
         self.logical_kern_hw = logical_kern_hw
         self.logical_kern_align_top = logical_kern_align_top
         self.version = version
+        self.direction_hint = direction_hint
         self.verbose = verbose
         self.kshp = kshp
         self.imshp = imshp
         self.max_threads_dim0 = max_threads_dim0
+        self.nkern = nkern
+        self.bsize = bsize
+        self.fft_opt = fft_opt
 
     def __eq__(self, other):
         return type(self) == type(other) \
@@ -92,6 +122,14 @@ class GpuConv(gof.Op):
             self.imshp = None
         if not hasattr(self, "max_threads_dim0"):
             self.max_threads_dim0 = None
+        if not hasattr(self, "direction_hint"):
+            self.direction_hint = None
+        if not hasattr(self, "nkern"):
+            self.nkern = None
+        if not hasattr(self, "bsize"):
+            self.bsize = None
+        if not hasattr(self, "fft_opt"):
+            self.fft_opt = True
 
     def __hash__(self):
         # don't use hash(self.version) as hash(-1)==-2 and
@@ -135,7 +173,10 @@ class GpuConv(gof.Op):
         return gof.Apply(self, [img, kern], [out])
 
     def flops(self, inputs, outputs):
-        """ Useful with the hack in profilemode to print the MFlops"""
+        """
+        Useful with the hack in profilemode to print the MFlops.
+        
+        """
         images, kerns = inputs
         out, = outputs
         assert images[1] == kerns[1]
@@ -187,7 +228,7 @@ class GpuConv(gof.Op):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 20)
+        return (0, 21)
 
     def c_init_code(self):
         return ['cuda_get_ptr_raw = (CUdeviceptr (*)(gpudata *g))gpuarray_get_extension("cuda_get_ptr");']

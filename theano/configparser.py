@@ -3,17 +3,17 @@ from __future__ import print_function
 # as False, and the string s'True', 'true', '1' as True.
 # We also accept the bool type as its corresponding value!
 
-import inspect
 import logging
 import os
 import shlex
 import sys
 import warnings
 
-from theano.compat.six import StringIO
+from six import StringIO
 
 import theano
 from theano.compat import configparser as ConfigParser
+from six import string_types
 
 _logger = logging.getLogger('theano.configparser')
 
@@ -116,6 +116,10 @@ def change_flags(**kwargs):
                          if v.fullname == k]
                     assert len(l) == 1
                     l[0].__set__(None, old_val[k])
+
+        # Make sure that the name of the decorated function remains the same.
+        inner.__name__ = f.__name__
+
         return inner
     return change_flags_exec
 
@@ -140,7 +144,7 @@ def fetch_val_for_key(key):
     # next try to find it in the config file
 
     # config file keys can be of form option, or section.option
-    key_tokens = key.split('.')
+    key_tokens = key.rsplit('.', 1)
     if len(key_tokens) > 2:
         raise KeyError(key)
 
@@ -177,7 +181,7 @@ def get_config_md5():
     """
     all_opts = sorted([c for c in _config_var_list if c.in_c_key],
                       key=lambda cv: cv.fullname)
-    return theano.gof.cc.hash_from_code('\n'.join(
+    return theano.gof.utils.hash_from_code('\n'.join(
         ['%s = %s' % (cv.fullname, cv.__get__()) for cv in all_opts]))
 
 
@@ -305,11 +309,7 @@ class ConfigParam(object):
             try:
                 val_str = fetch_val_for_key(self.fullname)
             except KeyError:
-                if inspect.isgeneratorfunction(self.default):
-                    for v in self.default():
-                        val_str = v
-                        self.__set__(None, val_str)
-                elif callable(self.default):
+                if callable(self.default):
                     val_str = self.default()
                 else:
                     val_str = self.default
@@ -336,7 +336,7 @@ class EnumStr(ConfigParam):
 
         # All options should be strings
         for val in self.all:
-            if not isinstance(val, basestring):
+            if not isinstance(val, string_types):
                 raise ValueError('Valid values for an EnumStr parameter '
                                  'should be strings', val, type(val))
 
