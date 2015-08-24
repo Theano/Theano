@@ -207,11 +207,11 @@ class TestConv2d(unittest.TestCase):
                                      provide_shape=provide_shape, border_mode=b)
                         self.run_gradweight(inputs_shape=i, filters_shape=f,
                                             output_shape=o, subsample=s,
-                                            verify_grad=False, mode=mode, device='gpu',
+                                            verify_grad=True, mode=mode, device='gpu',
                                             provide_shape=provide_shape, border_mode=b)
                         self.run_gradinput(inputs_shape=i, filters_shape=f,
                                            output_shape=o, subsample=s,
-                                           verify_grad=False, mode=mode, device='gpu',
+                                           verify_grad=True, mode=mode, device='gpu',
                                            provide_shape=provide_shape, border_mode=b)
 
     def test_cormm_conv(self):
