@@ -36,3 +36,8 @@ Theano.suo
 *.DS_Store
 *.bak
 .ipynb_checkpoints
+.pydevproject
+
+doc/library/d3viz/GSoC/
+doc/library/d3viz/examples/
+doc/library/d3viz/index_files/
