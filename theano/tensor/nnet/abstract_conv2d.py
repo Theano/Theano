@@ -496,11 +496,13 @@ def local_conv2d_gradweight_corrmm(node):
     if not isinstance(img.type, CudaNdarrayType) or \
             not isinstance(topgrad.type, CudaNdarrayType):
         return None
-    if node.op.filters_flip:
-        img = img[:, :, ::-1, ::-1]
     rval = GpuCorrMM_gradWeights(border_mode=node.op.border_mode,
                                  subsample=node.op.subsample)(
         gpu_contiguous(img), gpu_contiguous(topgrad), shape)
+    if node.op.filters_flip:
+        rval = rval[:, :, ::-1, ::-1]
+        rval = as_cuda_ndarray_variable(rval)
+    #rval = patternbroadcast(rval, node.outputs[0].broadcastable)
     return [rval]
 register_specialize_device(local_conv2d_gradweight_corrmm, 'conv_gemm')
 
