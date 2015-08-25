@@ -140,7 +140,7 @@ class TestConv2d(unittest.TestCase):
 
         if verify_grad:
             utt.verify_grad(abstract_conv2d_gradweight, [inputs_val, output_val],
-                            mode=mode)
+                            mode=mode, eps=1)
 
 
     def run_gradinput(self, inputs_shape, filters_shape, output_shape, ref=dnn_gradinput,
@@ -185,7 +185,7 @@ class TestConv2d(unittest.TestCase):
             return conv_op(filters_val, output_val, inputs_shape[-2:])
         if verify_grad:
             utt.verify_grad(abstract_conv2d_gradinputs, [filters_val, output_val],
-                            mode=mode)
+                            mode=mode, eps=1)
 
 
     def test_dnn_conv(self):
