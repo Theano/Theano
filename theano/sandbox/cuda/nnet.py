@@ -220,7 +220,8 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuOp):
         # return ()
         return (4,)
 
-gpu_crossentropy_softmax_argmax_1hot_with_bias = GpuCrossentropySoftmaxArgmax1HotWithBias()
+gpu_crossentropy_softmax_argmax_1hot_with_bias = \
+    GpuCrossentropySoftmaxArgmax1HotWithBias()
 
 
 class GpuCrossentropySoftmax1HotWithBiasDx(GpuOp):
@@ -391,7 +392,8 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuOp):
         }
         """ % locals()
 
-gpu_crossentropy_softmax_1hot_with_bias_dx = GpuCrossentropySoftmax1HotWithBiasDx()
+gpu_crossentropy_softmax_1hot_with_bias_dx = \
+    GpuCrossentropySoftmax1HotWithBiasDx()
 
 
 class GpuSoftmax(GpuOp):

@@ -29,6 +29,9 @@ from theano.sandbox.cuda import basic_ops
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.scalar.basic_scipy import erfinv
 
+from theano.sandbox.blocksparse import sparse_block_dot
+from theano.sandbox.cuda.blocksparse import GpuSparseBlockGemv, GpuSparseBlockOuter
+
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
     mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN').excluding('gpu')
@@ -740,6 +743,36 @@ def test_local_gpu_dot_to_dot22dot():
     cmp((3, 4), (4,))
 
 
+def test_blocksparse_gpu_gemv_opt():
+    b = tensor.fmatrix()
+    W = tensor.ftensor4()
+    h = tensor.ftensor3()
+    iIdx = tensor.lmatrix()
+    oIdx = tensor.lmatrix()
+
+    o = sparse_block_dot(W, h, iIdx, b, oIdx)
+
+    f = theano.function([W, h, iIdx, b, oIdx], o, mode=mode_with_gpu)
+
+    assert isinstance(f.maker.fgraph.toposort()[-2].op, GpuSparseBlockGemv)
+
+
+def test_blocksparse_gpu_outer_opt():
+    b = tensor.fmatrix()
+    W = tensor.ftensor4()
+    h = tensor.ftensor3()
+    iIdx = tensor.lmatrix()
+    oIdx = tensor.lmatrix()
+
+    o = sparse_block_dot(W, h, iIdx, b, oIdx)
+
+    f = theano.function([W, h, iIdx, b, oIdx], [o, tensor.grad(o.sum(),
+                                                               wrt=W)],
+                        mode=mode_with_gpu)
+
+    assert isinstance(f.maker.fgraph.toposort()[-2].op, GpuSparseBlockOuter)
+
+
 class test_diag(theano.tensor.tests.test_nlinalg.test_diag):
     mode = mode_with_gpu
     shared = staticmethod(cuda.shared_constructor)
@@ -756,4 +789,3 @@ if __name__ == '__main__':
     test_opt_gpujoin_onlyajoin()
     test_opt_gpujoin_joinvectors_elemwise_then_minusone()
     test_opt_gpujoin_joinvectors_negativeaxes()
-
