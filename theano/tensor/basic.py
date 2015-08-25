@@ -4126,14 +4126,13 @@ class Reshape(Op):
         x = as_tensor_variable(x)
         shp_orig = shp
         shp = as_tensor_variable(shp, ndim=1)
-        if not shp.dtype.startswith('int') and not(isinstance(shp,
-                                                   TensorConstant) and
-                                                   shp.data.size == 0):
-            # if shp is an instace of TensorConstant and
-            # shp.data is empty, then shp.dtype is float64
+        if not (shp.dtype.startswith('int') or
+               (isinstance(shp, TensorConstant) and shp.data.size == 0)):
+            # It raises an error if shp is not of integer type,
+            # except when shp is constant and empty
+            # (in this case, shp.dtype does not matter anymore).
             raise TypeError("Shape must be integers", shp, shp.dtype)
-        if not(isinstance(shp, TensorConstant) and not shp.data.size == 0):
-            assert shp.ndim == 1
+        assert shp.ndim == 1
         if isinstance(shp, TensorConstant):
             bcast = [s == 1 for s in shp.data]
             return gof.Apply(self, [x, shp], [tensor(x.type.dtype, bcast)])
