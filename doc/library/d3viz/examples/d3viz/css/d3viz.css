@@ -1,0 +1,98 @@
+svg {
+	margin-left:auto;
+	margin-right:auto;
+	display:block;
+	position: fixed;
+	border: 0px solid black;
+	top: 32px; left:0%; right:0%; bottom:0%;
+}
+
+.menuBar {
+	border-bottom: 1px solid black;
+	height: 22px;
+}
+
+input.menuBar {
+}
+
+.nodeRect {
+	stroke: black;
+	border: 3px solid black;
+}
+
+.nodeEllipse {
+	stroke: black;
+	border: 3px solid black;
+}
+
+.nodeText {
+	color: black;
+}
+
+.edge {
+	stroke-width: 3px;
+	cursor: pointer;
+	opacity: 0.4;
+}
+
+.edgeLabelRect {
+	stroke: black;
+	border: 1px solid black;
+	fill: skyblue;
+	opacity: 0.9;
+}
+
+.edgeLabelText {
+	fill: black;
+	text-anchor: start;
+}
+
+.arrowHead {
+	stroke: green;
+	stroke-width: 1px;
+}
+
+.arrowHead_n {
+	stroke: green;
+}
+
+.arrowHead_r {
+	stroke-width: 3px;
+	fill: red;
+	stroke: red;
+}
+
+.arrowHead_b {
+	stroke: dodgerblue;
+}
+
+.edgeTooltip {
+	position: absolute;
+	text-align: center;
+	vertical-align: middle;
+	min-width: 10px;
+	min-height: 10px;
+	padding: 5px;
+	background: lightsteelblue;
+	border: 1px solid black;
+	border-radius: 8px;
+	pointer-events: none;
+}
+
+.nodeInfo {
+	position: absolute;
+	text-align: left;
+	vertical-align: middle;
+	min-width: 10px;
+	min-height: 10px;
+	padding: 5px;
+	background: lightsteelblue;
+	border: 1px solid black;
+	border-radius: 8px;
+	pointer-events: none;
+}
+
+path.hull {
+	fill: lightsteelblue;
+	fill-opacity: 0.3;
+}
