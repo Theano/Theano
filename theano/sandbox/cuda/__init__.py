@@ -106,8 +106,9 @@ def set_cuda_disabled():
     global cuda_available, cuda_warning_is_displayed
     cuda_available = False
 
+
 # Add the compilation dir to the list of paths for module import
-if config.compiledir not in sys.path:
+if config.compiledir not in sys.path :
     sys.path.insert(0, config.compiledir)
 
 def check_module(module, library, source_files):
@@ -139,9 +140,9 @@ elif not config.device.startswith('gpu') and config.force_device:
     set_cuda_disabled()
 
 # If $TMPDIR is defined, nvopencc wants it to exist
-if cuda_available and 'TMPDIR' in os.environ:
+if cuda_available and 'TMPDIR' in os.environ :
     tmpdir = os.environ['TMPDIR']
-    if not os.path.exists(tmpdir):
+    if not os.path.exists(tmpdir) :
         os.makedirs(tmpdir)
 
 # The path to source fiels for cuda_ndarray and cuda_devquery
@@ -203,6 +204,8 @@ def get_arch(device):
     return device, arch_flag
 
 # cuda_ndarray compile and import
+cuda_path = os.path.abspath(os.path.split(__file__)[0])
+
 cuda_ndarray_loc = os.path.join(config.compiledir, 'cuda_ndarray')
 cuda_ndarray_so = os.path.join(cuda_ndarray_loc,
                                'cuda_ndarray.' + get_lib_extension())

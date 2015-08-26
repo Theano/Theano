@@ -18,6 +18,8 @@ from theano.gof.cmodule import (std_libs, std_lib_dirs,
                                 get_lib_extension)
 from theano.misc.windows import output_subprocess_Popen
 
+# _logger = logging.getLogger("theano.sandbox.cuda.nvcc_compiler")
+
 from theano.configparser import (config, AddConfigVar, StrParam,
                                  BoolParam, ConfigParam)
 
@@ -47,17 +49,16 @@ def nvcc_path_autodetect():
             return os.path.split(path)[0]
 
 AddConfigVar('cuda.root',
-             """directory with bin/, lib/, include/ for cuda utilities.
-             This directory is included via -L and -rpath when linking
-             dynamically compiled modules.  If AUTO and nvcc is in the
-             path, it will use one of nvcc parent directory.  Otherwise
-             /usr/local/cuda will be used.  Leave empty to prevent extra
-             linker directives.  Default: environment variable "CUDA_ROOT"
-             or else "AUTO".
-             """,
-             StrParam(nvcc_path_autodetect),
-             in_c_key=False)
-
+        """directory with bin/, lib/, include/ for cuda utilities.
+        This directory is included via -L and -rpath when linking
+        dynamically compiled modules.  If AUTO and nvcc is in the
+        path, it will use one of nvcc parent directory.  Otherwise
+        /usr/local/cuda will be used.  Leave empty to prevent extra
+        linker directives.  Default: environment variable "CUDA_ROOT"
+        or else "AUTO".
+        """,
+        StrParam( nvcc_path_autodetect ),
+        in_c_key=False)
 
 # Validate NVCC flags provided in the config
 def filter_nvcc_flags(s):
@@ -84,7 +85,7 @@ AddConfigVar('nvcc.compiler_bindir',
              "If defined, nvcc compiler driver will seek g++ and gcc"
              " in this directory.",
              StrParam(""),
-             in_c_key=False)
+             in_c_key = False )
 
 
 AddConfigVar('nvcc.fastmath',
@@ -101,7 +102,6 @@ AddConfigVar('nvcc.fastmath',
 nvcc_path = 'nvcc'
 nvcc_version = None
 
-
 def run_command(command, **params):
     # Define a primitive function that executes a given command in
     #  a controlled environment and collects all output.
@@ -117,7 +117,6 @@ def run_command(command, **params):
     except Exception as e:
         stderr = str(e)
     return exit_code, decode(stdout), decode(stderr)
-
 
 # Detect the version of the nvcc compiler
 def nvcc_get_version(path_to_nvcc):
@@ -200,7 +199,6 @@ def tmp_source(code, suffix='', prefix=''):
         path, error = None, str(e)
     return path, error
 
-
 def test_build_and_run(compiler, source, suffix='', prefix='',
                        flags=[], run=False, output=False):
     """Attempt to compile the source code using the provided compiler and run
@@ -257,14 +255,14 @@ class NVCC_compiler(Compiler):
         """Try to compile a dummy file with the given flags.
         Returns True if compilation was successful, False if there
         were errors."""
-        return test_build_and_run(nvcc_path, """
+        return test_build_and_run( nvcc_path, """
                 %(preambule)s
-                int main(int argc, char* argv[])
+                int main( int argc, char* argv[] )
                 {
                     %(body)s
                     return 0;
                 }
-            """ % locals(), prefix='try_flags_', suffix='.cu',
+            """ % locals(), prefix='try_flags_', suffix='.cu', 
             flags=list(flag_list), run=try_run,
             output=output)
 
@@ -416,8 +414,8 @@ class NVCC_compiler(Compiler):
             # sometimes, the linker cannot find -lpython so we need to tell it
             # explicitly where it is located
             # this returns somepath/lib/python2.x
-            python_lib = distutils.sysconfig.get_python_lib(plat_specific=1,
-                                                            standard_lib=1)
+            python_lib = distutils.sysconfig.get_python_lib(plat_specific=1, \
+                            standard_lib=1)
             python_lib = os.path.dirname(python_lib)
             if python_lib not in lib_dirs:
                 lib_dirs.append(python_lib)
@@ -430,7 +428,7 @@ class NVCC_compiler(Compiler):
         cppfile.write(src_code)
         cppfile.close()
         lib_filename = os.path.join(location, '%s.%s' %
-                                    (module_name, get_lib_extension()))
+                (module_name, get_lib_extension()))
 
         _logger.debug('Generating shared lib %s', lib_filename)
         # TODO: Why do these args cause failure on gtx285 that has 1.3
@@ -461,7 +459,7 @@ class NVCC_compiler(Compiler):
             # add flags for Microsoft compiler to create .pdb files
             preargs2.extend(['/Zi', '/MD'])
             cmd.extend(['-Xlinker', '/DEBUG'])
-            # remove the complaints for duplication of 'double round(double)'
+            # remove the complaints for the duplication of `double round(double)`
             # in both math_functions.h and pymath.h,
             # by not including the one in pymath.h
             cmd.extend(['-D HAVE_ROUND'])
@@ -482,7 +480,7 @@ class NVCC_compiler(Compiler):
         # otherwise, we don't add it. See gh-1540 and
         # https://wiki.debian.org/RpathIssue for details.
         if (user_provided_cuda_root and
-                os.path.exists(os.path.join(config.cuda.root, 'lib'))):
+            os.path.exists(os.path.join(config.cuda.root, 'lib'))):
 
             rpaths.append(os.path.join(config.cuda.root, 'lib'))
             if sys.platform != 'darwin':
@@ -566,7 +564,6 @@ class NVCC_compiler(Compiler):
             print(cmd)
             raise Exception('nvcc return status', nvcc_exit_code,
                             'for cmd', ' '.join(cmd))
-
         elif config.cmodule.compilation_warning and nvcc_stdout:
             print(nvcc_stdout)
 
