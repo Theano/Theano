@@ -170,7 +170,7 @@ if cuda_available and not try_devquery():
                         'cuda_devquery', code,
                         location = cuda_devquery_loc,
                         include_dirs = [cuda_path],
-                        libs = [], preargs = [])
+                        libs = [], preargs = [], hide_symbols = False)
             except Exception as e:
                 _logger.error("Failed to compile cuda_devquery.cu: %s", str(e))
                 set_cuda_disabled()
