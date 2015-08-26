@@ -1,12 +1,15 @@
-"""Provides neural-network specific Ops.
+"""
+Provides neural-network specific Ops.
 
-:note: TODO: factor this out into a neural-network toolbox.
+Notes
+-----
+TODO: factor this out into a neural-network toolbox.
 
-:note: We register all optimization with the gpu tag as we don't
-    implement all the intermediate case on the GPU (in particular
-    AdvancedSubtensor). So to make sure it run well on the gpu with
-    fast_compile, we register them as needed for the GPU. This can be
-    revisited later when all the intermediate part are on the GPU.
+We register all optimization with the gpu tag as we don't
+implement all the intermediate case on the GPU (in particular
+AdvancedSubtensor). So to make sure it run well on the gpu with
+fast_compile, we register them as needed for the GPU. This can be
+revisited later when all the intermediate part are on the GPU.
 
 """
 import logging
@@ -38,13 +41,16 @@ class SoftmaxWithBias(gof.Op):
     """
     An L{Op} for the output of neural-net multiclass classifiers.
 
-    @type x: is a matrix of floats (32 or 64)
-    @type b: is a [row] vector of floats (32 or 64),
-             length is number of cols in x
+    Attributes
+    ----------
+    x : a matrix of floats (32 or 64)
+    b : a [row] vector of floats (32 or 64), length is number of cols in x
 
     This L{Op}'s output is softmax(x+b).
     softmax(x[i]) is the i'th distribution over len(x[i]) options.
+
     """
+
     nin = 2
     nout = 1
     __props__ = ()
@@ -270,7 +276,11 @@ softmax_with_bias = SoftmaxWithBias()
 
 
 class SoftmaxGrad(gof.Op):
-    """Gradient wrt x of the Softmax Op"""
+    """
+    Gradient wrt x of the Softmax Op.
+
+    """
+
     nin = 2
     nout = 1
     __props__ = ()
@@ -391,6 +401,7 @@ class Softmax(gof.Op):
     \\frac{e^{\mathbf{x}_j}}{\sum_{k=1}^K e^{\mathbf{x}_k}}`
     where :math:`K` is the total number of neurons in the layer. This
     activation function gets applied row-wise.
+
     """
 
     nin = 1
@@ -584,7 +595,9 @@ def softmax(c):
 @opt.register_specialize('fast_compile_gpu')
 @gof.local_optimizer([softmax_op])
 def local_softmax_with_bias(node):
-    """Try to turn softmax(sum_of_stuff) -> softmax_w_bias(matrix, bias)
+    """
+    Try to turn softmax(sum_of_stuff) -> softmax_w_bias(matrix, bias).
+
     """
     if node.op == softmax_op:
         x, = node.inputs
@@ -789,15 +802,19 @@ if 0:
 
 
 class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
-    """A special compound L{Op} for the output of neural-net classifiers.
+    """
+    A special compound L{Op} for the output of neural-net classifiers.
 
-    :type x: is a matrix of floats (32 or 64)
-    :type b: is a [row] vector of floats (32 or 64),
-             length is number of cols in x
-    :type y_idx: a [column] vector of int (32 or 64),
-                 length is number of rows in x
+    Parameters
+    ----------
+    x : a matrix of floats (32 or 64)
+    b : a [row] vector of floats (32 or 64), length is number of cols in x
+    y_idx : a [column] vector of int (32 or 64), length is number of rows in x
 
-    :returns:  row-wise NLL, softmax(x+b), row-wise argmax of (x+b)
+    Returns
+    -------
+    object
+        row-wise NLL, softmax(x+b), row-wise argmax of (x+b).
 
     @precondition: every entry in y_idx is a valid (non-negative)
                    column index into x
@@ -816,6 +833,7 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
     i'th example.
 
     """
+
     nin = 3
     nout = 3
     __props__ = ()
@@ -846,7 +864,8 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
         return Apply(self, [x, b, y_idx], [nll, sm, am])
 
     def perform(self, node, input_storage, output_storage):
-        """The math, where x is an input vector, and t is a target index:
+        """
+        The math, where x is an input vector, and t is a target index:
 
             softmax(x)[i] = exp(x[i]) / sum_j(exp(x[j]))
             nll(x,t) = -log(softmax(x)[t])
@@ -1037,11 +1056,14 @@ class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
 
 
 class CrossentropySoftmax1HotWithBiasDx(gof.Op):
+    """
+    Gradient wrt x of the CrossentropySoftmaxArgmax1HotWithBias Op.
+
+    """
+
     nin = 3
     nout = 1
     __props__ = ()
-
-    """Gradient wrt x of the CrossentropySoftmaxArgmax1HotWithBias Op"""
 
     def make_node(self, dy, sm, y_idx, **kwargs):
         dy = tensor.as_tensor_variable(dy)
@@ -1217,15 +1239,19 @@ def crossentropy_softmax_1hot(x, y_idx, **kwargs):
 
 def crossentropy_softmax_max_and_argmax_1hot_with_bias(x, b, y_idx, **kwargs):
     """
-    @return: The cross-entropy, the softmax output, the max probability,
-             and the argmax index
+    Returns
+    -------
+    object
+        The cross-entropy, the softmax output, the max probability,
+        and the argmax index.
 
-    @todo: Since we are recomputing the argmax,
+    TODO: Since we are recomputing the argmax,
            we might as well assert that it is correct.
 
-    @todo: Make this entire function is
+    TODO: Make this entire function is
     unnecessary? e.g. CrossentropySoftmaxArgmax1HotWithBias should return
     the appropriate information (i.e. the max probability)?
+
     """
     (xent, softmax) = crossentropy_softmax_1hot_with_bias(x, b, y_idx, **kwargs)
     (max_pr, argmax) = tensor.max_and_argmax(softmax, axis=-1)
@@ -1262,29 +1288,34 @@ crossentropy_categorical_1hot_grad = CrossentropyCategorical1HotGrad()
 
 
 class CrossentropyCategorical1Hot(gof.Op):
-
-    """Compute the cross entropy between a coding distribution and
-    a true distribution of the form [0, 0, ... 0, 1, 0, ..., 0]
+    """
+    Compute the cross entropy between a coding distribution and
+    a true distribution of the form [0, 0, ... 0, 1, 0, ..., 0].
 
     .. math::
 
         y[i] = - \log(coding_dist[i, one_of_n[i])
 
-
-    :note: In the case that the coding distribution is the output of a
-           softmax, an application of this Op will probably be optimized
-           away in favour of one with a C implementation.
+    Notes
+    -----
+    In the case that the coding distribution is the output of a
+    softmax, an application of this Op will probably be optimized
+    away in favour of one with a C implementation.
 
     """
     __props__ = ()
 
     def make_node(self, coding_dist, true_one_of_n):
         """
-        :type coding_dist: dense matrix
+        Parameters
+        ----------
+        coding_dist : dense matrix
+        true_one_of_n : lvector
 
-        :type true_one_of_n: lvector
+        Returns
+        -------
+        dvector
 
-        :rtype: dvector
         """
         _coding_dist = tensor.as_tensor_variable(coding_dist)
         _true_one_of_n = tensor.as_tensor_variable(true_one_of_n)
@@ -1332,10 +1363,13 @@ crossentropy_categorical_1hot = CrossentropyCategorical1Hot()
 @opt.register_specialize('fast_compile_gpu')
 @gof.optimizer
 def crossentropy_to_crossentropy_with_softmax_with_bias(fgraph):
-    """This is a stabilization optimization
+    """
+    This is a stabilization optimization.
 
-    :note: not a local optimization because we are replacing outputs
-    from several nodes at once
+    Notes
+    -----
+    Not a local optimization because we are replacing outputs
+    from several nodes at once.
 
     """
 
@@ -1362,16 +1396,19 @@ def crossentropy_to_crossentropy_with_softmax_with_bias(fgraph):
 
 @gof.optimizer
 def crossentropy_to_crossentropy_with_softmax(fgraph):
-    """This is a stabilization optimization that is more general then
-    crossentropy_to_crossentropy_with_softmax_with_bias
+    """
+    This is a stabilization optimization that is more general than
+    crossentropy_to_crossentropy_with_softmax_with_bias.
 
     It must be executed after local_softmax_with_bias optimization in
-    specialize
+    specialize.
 
-    :todo: This is a stabilization optimization! How to make this more cleanly?
+    TODO : This is a stabilization optimization! How to make this more cleanly?
 
-    :note: not a local optimization because we are replacing outputs
-           from several nodes at once
+    Notes
+    -----
+    Not a local optimization because we are replacing outputs from several
+    nodes at once.
 
     """
 
@@ -1460,11 +1497,13 @@ def local_argmax_pushdown(node):
 
 
 def _check_rows_is_arange_len_labels(rows, labels):
-    '''Check that 'rows' is the same node as T.arange(labels.shape[0])
+    """
+    Check that 'rows' is the same node as T.arange(labels.shape[0]).
 
     Also considers the case where labels.shape[0] is constant and equal
     to 1, and T.arange(labels.shape[0]) has been constant-folded into 0.
-    '''
+
+    """
 
     if labels.owner and hasattr(labels.owner.fgraph, 'shape_feature'):
         shape_of = labels.owner.fgraph.shape_feature.shape_of
@@ -1795,10 +1834,11 @@ def graph_merge_softmax_with_crossentropy_softmax(node):
 @gof.local_optimizer([CrossentropySoftmax1HotWithBiasDx])
 def local_useless_crossentropy_softmax_1hot_with_bias_dx_alloc(node):
     """
-    Replaces a CrossentropySoftmax1HotWithBiasDx op, whose incoming gradient is
+    Replace a CrossentropySoftmax1HotWithBiasDx op, whose incoming gradient is
     an `alloc` of a scalar variable or one that has either broadcastable or
     matching dimensions with the output variable, by one that skips the
     intermediate `alloc`.
+
     """
     if isinstance(node.op, CrossentropySoftmax1HotWithBiasDx):
         dy, sm, y_idx = node.inputs
@@ -1850,30 +1890,38 @@ def local_useless_crossentropy_softmax_1hot_with_bias_dx_alloc(node):
 
 def binary_crossentropy(output, target):
     """
-    Compute the crossentropy of binary random variables
-    output and target are each expectations of binary random
+    Compute the crossentropy of binary random variables.
+
+    Output and target are each expectations of binary random
     variables; target may be exactly 0 or 1 but output must
     lie strictly between 0 and 1.
-    @note: we could use the x log y op to support output=0
-    @ and output=1. The gradient would still be undefined though.
-    @note: We do not sum, crossentropy is computed by component.
-    @todo: Rewrite as a scalar, and then broadcast to tensor.
+
+    Notes
+    -----
+    We could use the x log y op to support output=0 and output=1.
+    The gradient would still be undefined though.
+
+    We do not sum, crossentropy is computed by component.
+    TODO : Rewrite as a scalar, and then broadcast to tensor.
+
     """
     return -(target * tensor.log(output) + (1.0 - target) * tensor.log(1.0 - output))
 
 
 def categorical_crossentropy(coding_dist, true_dist):
     """
-    WARNING: THIS FUNCTION IS UNNECESSARILY POLYMORPHIC.
-    We ultimately don't want the polymorphism, and will move this function to pylearn.algorithms.cost.
-    The 1hot version will be removed.
+    Return the cross-entropy between an approximating distribution and a true
+    distribution.
+
+    .. warning:: THIS FUNCTION IS UNNECESSARILY POLYMORPHIC.
+    We ultimately don't want the polymorphism, and will move this function
+    to pylearn.algorithms.cost. The 1hot version will be removed.
     The length of the documentation here is a form of code smell.
 
-    Return the cross-entropy between an approximating distribution and a true distribution
-
-    The cross entropy between two probability distributions measures the average number of bits
-    needed to identify an event from a set of possibilities, if a coding scheme is used based
-    on a given probability distribution q, rather than the "true" distribution p.
+    The cross entropy between two probability distributions measures the average
+    number of bits needed to identify an event from a set of possibilities, if a
+    coding scheme is used based on a given probability distribution q, rather
+    than the "true" distribution p.
 
     Mathematically it is defined as follows:
 
@@ -1881,20 +1929,25 @@ def categorical_crossentropy(coding_dist, true_dist):
 
         H(p,q) = - \sum_x p(x) \log(q(x))
 
-    :type coding_dist: a dense matrix.
-    :param coding_dist: Each slice along axis represents one distribution.
+    Parameters
+    ----------
+    coding_dist : a dense matrix
+        Each slice along axis represents one distribution.
+    true_dist : a dense matrix or sparse matrix or integer vector
+        In the case of a matrix argument, each slice along axis represents one
+        distribution. In the case of an integer vector argument, each element
+        represents the position of the '1' in a 1-of-N encoding.
 
-    :type true_dist: a dense matrix or sparse matrix or integer vector.
-    :param coding_dist: In the case of a matrix argument, each slice along axis represents one
-    distribution.  In the case of an integer vector argument, each element represents the
-    position of the '1' in a 1-of-N encoding.
+    Returns
+    -------
+    tensor of rank one-less-than `coding_dist`
+        The cross entropy between each coding and true distribution.
 
-    :type axis: int
-    :param axis: the dimension over which each distribution runs. (1 for row distributions, 0
-    for column distributions)
-
-    :rtype: tensor of rank one-less-than `coding_dist`
-    :returns: the cross entropy between each coding and true distribution.
+    Notes
+    -----
+    axis : int
+        The dimension over which each distribution runs
+        (1 for row distributions, 0 for column distributions).
 
     """
     if true_dist.ndim == coding_dist.ndim:
@@ -2036,23 +2089,27 @@ def relu(x, alpha=0):
     """
     Compute the element-wise rectified linear activation function.
 
-    :type x: symbolic tensor
-    :param x: Tensor to compute the activation function for.
-
-    :type alpha: scalar or tensor, optional
-    :param alpha: Slope for negative input, usually between 0 and 1. The
-        default value of 0 will lead to the standard rectifier, 1 will lead to
+    Parameters
+    ----------
+    x : symbolic tensor
+        Tensor to compute the activation function for.
+    alpha : scalar or tensor, optional
+        Slope for negative input, usually between 0 and 1. The default value
+        of 0 will lead to the standard rectifier, 1 will lead to
         a linear activation function, and any value in between will give a
         leaky rectifier. A shared variable (broadcastable against `x`) will
         result in a parameterized rectifier with learnable slope(s).
 
-    :rtype: symbolic tensor
-    :return: element-wise rectifier applied to `x`
+    Returns
+    -------
+    symbolic tensor
+        Element-wise rectifier applied to `x`.
 
-    .. note:: This is numerically equivalent to
-        ``T.switch(x > 0, x, alpha * x)``
-        (or ``T.maximum(x, alpha * x)`` for ``alpha < 1``), but uses a faster
-        formulation or an optimized Op, so we encourage to use this function.
+    Notes
+    -----
+    This is numerically equivalent to ``T.switch(x > 0, x, alpha * x)``
+    (or ``T.maximum(x, alpha * x)`` for ``alpha < 1``), but uses a faster
+    formulation or an optimized Op, so we encourage to use this function.
 
     """
     # This is probably the fastest implementation for GPUs. Both the forward

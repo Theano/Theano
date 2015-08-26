@@ -1,8 +1,8 @@
 """
 Contains a wrapper function for tensor.nnet.ConvOp, which can be used to perform
 generic 2D convolution.
-"""
 
+"""
 __docformat__ = "restructuredtext en"
 
 import warnings
@@ -25,20 +25,29 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
 
     Shape parameters are optional and will result in faster execution.
 
-    :type input: dmatrix of dtensor3
-    :param input: symbolic variable for images to be filtered
-    :type filters: dmatrix of dtensor3
-    :param filters: symbolic variable containing filter values
-    :param border_mode: 'valid' or 'full'. see scipy.signal.convolve2d
-    :param subsample: factor by which to subsample output
-    :type image_shape: tuple of length 2 or 3
-    :param image_shape: ([number images,] image height, image width)
-    :type filter_shape: tuple of length 2 or 3
-    :param filter_shape: ([number filters,] filter height, filter width)
-    :param kwargs: see theano.tensor.nnet.conv.conv2d
-    :rtype: symbolic 2D,3D or 4D tensor
-    :return: tensor of filtered images, with shape
-             ([number images,] [number filters,] image height, image width)
+    Parameters
+    ----------
+    input : dmatrix of dtensor3
+        Symbolic variable for images to be filtered.
+    filters : dmatrix of dtensor3
+        Symbolic variable containing filter values.
+    border_mode: {'valid', 'full'}
+        See scipy.signal.convolve2d.
+    subsample
+        Factor by which to subsample output.
+    image_shape : tuple of length 2 or 3
+        ([number images,] image height, image width).
+    filter_shape : tuple of length 2 or 3
+        ([number filters,] filter height, filter width).
+    kwargs
+        See theano.tensor.nnet.conv.conv2d.
+
+    Returns
+    -------
+    symbolic 2D,3D or 4D tensor
+        Tensor of filtered images, with shape
+        ([number images,] [number filters,] image height, image width).
+
     """
     assert input.ndim in (2, 3)
     assert filters.ndim in (2, 3)

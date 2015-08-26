@@ -1,5 +1,6 @@
 """
-Define CURAND_RandomStreams - backed by CURAND
+Define CURAND_RandomStreams - backed by CURAND.
+
 """
 
 __authors__ = "James Bergstra"
@@ -20,7 +21,8 @@ config = theano.config
 
 
 class CURAND_Base(GpuOp):
-    """ Base class for a random number generator implemented in CURAND.
+    """ 
+    Base class for a random number generator implemented in CURAND.
 
     The random number generator itself is an opaque reference managed by
     CURAND.  This Op uses a generic-typed shared variable to point to a CObject
@@ -30,18 +32,23 @@ class CURAND_Base(GpuOp):
     The actual random number generator is allocated from the seed, on the first
     call to allocate random numbers (see c_code).
 
-    :note:
-        One caveat is that the random number state is simply not serializable.
-        Consequently, attempts to serialize functions compiled with these
-        random numbers will fail.
+    Parameters
+    ----------
+    output_type
+        A theano type (e.g. tensor.fvector).
+    seed: int
+    destructive
+        True or False (on the generator)
+
+    Notes
+    -----
+    One caveat is that the random number state is simply not serializable.
+    Consequently, attempts to serialize functions compiled with these
+    random numbers will fail.
 
     """
+
     def __init__(self, output_type, seed, destructive):
-        """
-        output_type: a theano type (e.g. tensor.fvector)
-        seed: integer
-        destructive: True or False (on the generator)
-        """
         theano.gof.Op.__init__(self)
         self.destructive = destructive
         self.seed = seed
@@ -51,11 +58,17 @@ class CURAND_Base(GpuOp):
         assert output_type.dtype == "float32"
 
     def as_destructive(self):
-        """Return an destructive version of self"""
+        """
+        Return an destructive version of self.
+
+        """
         return self.__class__(self.output_type, self.seed, destructive=True)
 
     def _config(self):
-        """Return a tuple of attributes that define the Op"""
+        """
+        Return a tuple of attributes that define the Op.
+
+        """
         return (
                 self.destructive,
                 self.output_type,
@@ -81,7 +94,7 @@ class CURAND_Base(GpuOp):
         """
         Return a symbolic sample from generator.
 
-        cls dictates the random variable (e.g. uniform, normal)
+        cls dictates the random variable (e.g. uniform, normal).
 
         """
         v_size = theano.tensor.as_tensor_variable(size)
@@ -237,8 +250,11 @@ class CURAND_Base(GpuOp):
 
 
 class CURAND_Normal(CURAND_Base):
-    """Op to draw normal numbers using CURAND
     """
+    Op to draw normal numbers using CURAND.
+
+    """
+
     def _curand_call_str(self, **kwargs):
         return """curandGenerateNormal(*gen,
                 CudaNdarray_DEV_DATA(%(o_sample)s),
@@ -248,8 +264,11 @@ class CURAND_Normal(CURAND_Base):
 
 
 class CURAND_Uniform(CURAND_Base):
-    """Op to draw uniform numbers using CURAND
     """
+    Op to draw uniform numbers using CURAND.
+
+    """
+
     def _curand_call_str(self, **kwargs):
         return """ curandGenerateUniform(*gen,
                 CudaNdarray_DEV_DATA(%(o_sample)s),
@@ -262,24 +281,31 @@ class CURAND_RandomStreams(object):
     RandomStreams instance that creates CURAND-based random variables.
 
     One caveat is that generators are not serializable.
+    
+    Parameters
+    ----------
+    seed : int
+
     """
 
     def __init__(self, seed):
-        """ seed: int
-        """
         self._start_seed = seed
         self._cur_seed = seed
         self._has_lost_states = False  # True if self.state_updates incomplete
         self.state_updates = []
 
     def updates(self):
-        """List of all (old, new) generator update pairs created by this
+        """
+        List of all (old, new) generator update pairs created by this
         instance.
+
         """
         return list(self.state_updates)
 
     def next_seed(self):
-        """Return a unique seed for initializing a random variable.
+        """
+        Return a unique seed for initializing a random variable.
+
         """
         self._cur_seed += 1
         return self._cur_seed - 1
@@ -295,6 +321,7 @@ class CURAND_RandomStreams(object):
             dtype=config.floatX):
         """
         Return symbolic tensor of uniform numbers.
+
         """
         if isinstance(size, tuple):
             msg = "size must be a tuple of int or a Theano variable"
@@ -321,8 +348,12 @@ class CURAND_RandomStreams(object):
         """
         Return symbolic tensor of normally-distributed numbers.
 
-        :param: size: Can be a list of integer or Theano variable(ex: the shape
+        Parameters
+        ----------
+        size
+            Can be a list of integer or Theano variable (ex: the shape
             of other Theano Variable)
+
         """
         if isinstance(size, tuple):
             msg = "size must be a tuple of int or a Theano variable"

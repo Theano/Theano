@@ -19,7 +19,8 @@ __docformat__ = "restructuredtext en"
 
 
 class RandomStateType(gof.Type):
-    """A Type wrapper for numpy.random.RandomState
+    """
+    A Type wrapper for numpy.random.RandomState.
 
     The reason this exists (and `Generic` doesn't suffice) is that
     RandomState objects that would appear to be equal do not compare
@@ -99,35 +100,36 @@ random_state_type = RandomStateType()
 
 
 class RandomFunction(gof.Op):
-    """Op that draws random numbers from a numpy.random.RandomState object
+    """
+    Op that draws random numbers from a numpy.random.RandomState object.
+
+    Parameters
+    ----------
+    fn : string or function reference
+        A member function of numpy.random.RandomState. A string will
+        be interpreted as the name of a member function of
+        numpy.random.RandomState.
+        Technically, any function with a signature like the ones in
+        numpy.random.RandomState will do. This function must accept
+        the shape (sometimes called size) of the output as the last
+        positional argument.
+    outtype
+        The theano Type of the output.
+    args
+        A list of default arguments for the function
+        kwargs
+        If the 'inplace' key is there, its value will be used to
+        determine if the op operates inplace or not.
+        If the 'ndim_added' key is there, its value indicates how
+        many more dimensions this op will add to the output, in
+        addition to the shape's dimensions (used in multinomial and
+        permutation).
 
     """
+
     __props__ = ("fn", "outtype", "inplace", "ndim_added")
 
     def __init__(self, fn, outtype, inplace=False, ndim_added=0):
-        """
-        :param fn: a member function of numpy.random.RandomState
-        Technically, any function with a signature like the ones in
-        numpy.random.RandomState will do.  This function must accept
-        the shape (sometimes called size) of the output as the last
-        positional argument.
-
-        :type fn: string or function reference.  A string will
-        be interpreted as the name of a member function of
-        numpy.random.RandomState.
-
-        :param outtype: the theano Type of the output
-
-        :param args: a list of default arguments for the function
-
-        :param kwargs:
-            If the 'inplace' key is there, its value will be used to
-            determine if the op operates inplace or not.
-            If the 'ndim_added' key is there, its value indicates how
-            many more dimensions this op will add to the output, in
-            addition to the shape's dimensions (used in multinomial and
-            permutation).
-        """
         self.__setstate__([fn, outtype, inplace, ndim_added])
 
     def __getstate__(self):
@@ -151,30 +153,33 @@ class RandomFunction(gof.Op):
 
     def make_node(self, r, shape, *args):
         """
-        :param r: a numpy.random.RandomState instance, or a Variable of Type
-        RandomStateType that will contain a RandomState instance.
+        Parameters
+        ----------
+        r
+            A numpy.random.RandomState instance, or a Variable of Type
+            RandomStateType that will contain a RandomState instance.
+        shape
+            An lvector with a shape defining how many samples
+            to draw.  In the case of scalar distributions, it is the shape
+            of the tensor output by this Op.  In that case, at runtime, the
+            value associated with this lvector must have a length equal to
+            the number of dimensions promised by `self.outtype`.
+            In a more general case, the number of output dimensions,
+            len(self.outtype), is equal to len(shape)+self.ndim_added.
+            The special case where len(shape) == 0 means that the smallest
+            shape compatible with the argument's shape will be used.
+        args
+            The values associated with these variables will be passed to the
+            RandomState function during perform as extra "*args"-style
+            arguments. These should be castable to variables of Type TensorType.
 
-        :param shape: an lvector with a shape defining how many samples
-        to draw.  In the case of scalar distributions, it is the shape
-        of the tensor output by this Op.  In that case, at runtime, the
-        value associated with this lvector must have a length equal to
-        the number of dimensions promised by `self.outtype`.
-        In a more general case, the number of output dimensions,
-        len(self.outtype), is equal to len(shape)+self.ndim_added.
-        The special case where len(shape) == 0 means that the smallest
-        shape compatible with the argument's shape will be used.
-
-        :param args: the values associated with these variables will
-        be passed to the RandomState function during perform as extra
-        "*args"-style arguments.  These should be castable to variables
-        of Type TensorType.
-
-        :rtype: Apply
-
-        :return: Apply with two outputs.  The first output is a
-        gof.generic Variable from which to draw further random numbers.
-        The second output is the outtype() instance holding the random
-        draw.
+        Returns
+        -------
+        Apply
+            Apply with two outputs. The first output is a gof.generic Variable
+            from which to draw further random numbers.
+            The second output is the outtype() instance holding the random
+            draw.
 
         """
         shape_ = tensor.as_tensor_variable(shape, ndim=1)
@@ -289,12 +294,15 @@ def _infer_ndim_bcast(ndim, shape, *args):
     """
     Infer the number of dimensions from the shape or the other arguments.
 
-    :rtype: (int, variable, tuple) triple, where the variable is an integer
-    vector, and the tuple contains Booleans.
-    :returns: the first element returned is the inferred number of dimensions.
-    The second element is the shape inferred (combining symbolic and constant
-    informations from shape and args).
-    The third element is a broadcasting pattern corresponding to that shape.
+    Returns
+    -------
+    (int, variable, tuple) triple, where the variable is an integer vector,
+    and the tuple contains Booleans
+        The first element returned is the inferred number of dimensions.
+        The second element is the shape inferred (combining symbolic and
+        constant informations from shape and args).
+        The third element is a broadcasting pattern corresponding to that shape.
+
     """
 
     # Find the minimum value of ndim required by the *args
@@ -390,7 +398,7 @@ def _infer_ndim_bcast(ndim, shape, *args):
 
 
 def _generate_broadcasting_indices(out_shape, *shapes):
-    '''
+    """
     Return indices over each shape that broadcast them to match out_shape.
 
     The first returned list is equivalent to numpy.ndindex(out_shape),
@@ -400,7 +408,8 @@ def _generate_broadcasting_indices(out_shape, *shapes):
 
     The shapes should have the same length as out_shape. If they are longer,
     the right-most dimensions are ignored.
-    '''
+
+    """
     all_shapes = (out_shape,) + shapes
     # Will contain the return value: a list of indices for each argument
     ret_indices = [[()] for shape in all_shapes]
@@ -447,6 +456,7 @@ def uniform(random_state, size=None, low=0.0, high=1.0, ndim=None, dtype=None):
 
     If dtype is not specified, it will be inferred from the dtype of
     low and high, but will be at least as precise as floatX.
+
     """
     low = tensor.as_tensor_variable(low)
     high = tensor.as_tensor_variable(high)
@@ -471,6 +481,7 @@ def normal(random_state, size=None, avg=0.0, std=1.0, ndim=None, dtype=None):
 
     If dtype is not specified, it will be inferred from the dtype of
     avg and std, but will be at least as precise as floatX.
+
     """
     avg = tensor.as_tensor_variable(avg)
     std = tensor.as_tensor_variable(std)
@@ -493,6 +504,7 @@ def binomial(random_state, size=None, n=1, p=0.5, ndim=None,
 
     If size is None, the output shape will be determined by the shapes
     of n and prob.
+
     """
     if prob is not None:
         p = prob
@@ -514,12 +526,13 @@ def binomial(random_state, size=None, n=1, p=0.5, ndim=None,
 
 
 def random_integers_helper(random_state, low, high, size):
-    '''
+    """
     Helper function to draw random integers.
 
     This is a generalization of numpy.random.random_integers to the case where
     low and high are tensors.
-    '''
+
+    """
     # Figure out the output shape
     if size is not None:
         out_ndim = len(size)
@@ -570,6 +583,7 @@ def random_integers(random_state, size=None, low=0, high=1, ndim=None,
 
     If size is None, the output shape will be determined by the shapes
     of low and high.
+
     """
     low = tensor.as_tensor_variable(low)
     high = tensor.as_tensor_variable(high)
@@ -580,11 +594,13 @@ def random_integers(random_state, size=None, low=0, high=1, ndim=None,
 
 
 def choice_helper(random_state, a, replace, p, size):
-    """Helper function to draw random numbers using numpy's choice function.
+    """
+    Helper function to draw random numbers using numpy's choice function.
 
     This is a generalization of numpy.random.choice that coerces
     `replace` to a bool and replaces `p` with None when p is a vector
     of 0 elements.
+
     """
     if a.ndim > 1:
         raise ValueError('a.ndim (%i) must be 0 or 1' % a.ndim)
@@ -608,6 +624,7 @@ def choice(random_state, size=None, a=2, replace=True, p=None, ndim=None,
     may be a plain integer to supplement the missing information.
 
     If size is None, a scalar will be returned.
+
     """
     # numpy.random.choice is only available for numpy versions >= 1.7
     major, minor, _ = numpy.version.short_version.split('.')
@@ -631,17 +648,21 @@ def poisson(random_state, size=None, lam=1.0, ndim=None, dtype='int64'):
     """
     Draw samples from a Poisson distribution.
 
-    The Poisson distribution is the limit of the Binomial distribution for large N.
+    The Poisson distribution is the limit of the Binomial distribution for
+    large N.
 
-    :param lam: float or ndarray-like of the same shape as size parameter
+    Parameters
+    ----------
+    lam : float or ndarray-like of the same shape as size parameter
         Expectation of interval, should be >= 0.
+    size: int or tuple of ints, optional
+        Output shape. If the given shape is, e.g., (m, n, k), then m * n * k
+        samples are drawn.
+    dtype
+        The dtype of the return value (which will represent counts).
 
-    :param size: int or tuple of ints, optional
-        Output shape. If the given shape is, e.g., (m, n, k), then m * n * k samples are drawn.
+    size or ndim must be given.
 
-    :param dtype: the dtype of the return value (which will represent counts)
-
-    size or ndim must be given
     """
     lam = tensor.as_tensor_variable(lam)
 
@@ -653,7 +674,8 @@ def poisson(random_state, size=None, lam=1.0, ndim=None, dtype='int64'):
 
 
 def permutation_helper(random_state, n, shape):
-    """Helper function to generate permutations from integers.
+    """
+    Helper function to generate permutations from integers.
 
     permutation_helper(random_state, n, (1,)) will generate a permutation of
     integers 0..n-1.
@@ -666,6 +688,7 @@ def permutation_helper(random_state, n, shape):
 
     This is a generalization of numpy.random.permutation to tensors.
     Otherwise it behaves the same.
+
     """
     # n should be a 0-dimension array
     assert n.shape == ()
@@ -688,17 +711,20 @@ def permutation_helper(random_state, n, shape):
 
 def permutation(random_state, size=None, n=1, ndim=None, dtype='int64'):
     """
-    Returns permutations of the integers between 0 and n-1, as many times
-    as required by size. For instance, if size=(p,q), p*q permutations
-    will be generated, and the output shape will be (p,q,n), because each
-    permutation is of size n.
+    Return permutations of the integers between 0 and n-1.
+
+    Returns them as many times as required by size. For instance, if size=(p,q),
+    p*q permutations will be generated, and the output shape will be (p,q,n),
+    because each permutation is of size n.
 
     Theano tries to infer the number of dimensions from the length of
     the size argument and the shape of n, but you may always specify it
     with the `ndim` parameter.
 
-    :note:
-        Note that the output will then be of dimension ndim+1.
+    Notes
+    -----
+    Note that the output will then be of dimension ndim+1.
+
     """
     if size is None or size == ():
         if not(ndim is None or ndim == 1):
@@ -718,12 +744,13 @@ def permutation(random_state, size=None, n=1, ndim=None, dtype='int64'):
 
 
 def multinomial_helper(random_state, n, pvals, size):
-    '''
+    """
     Helper function drawing from multinomial distributions.
 
     This is a generalization of numpy.random.multinomial to the case where
     n and pvals are tensors.
-    '''
+
+    """
     # Figure out the shape if it's None
     # Note: the output ndim will be ndim+1, because the multinomial
     # adds a dimension. The length of that dimension is pvals.shape[-1].
@@ -791,31 +818,40 @@ def multinomial_helper(random_state, n, pvals, size):
 
 def multinomial(random_state, size=None, n=1, pvals=[0.5, 0.5],
                 ndim=None, dtype='int64'):
-    """Sample from one or more multinomial distributions defined by
+    """
+    Sample from one or more multinomial distributions defined by
     one-dimensional slices in pvals.
 
-    :param pvals: a tensor of shape "nmulti+(L,)" describing each multinomial
+    Parameters
+    ----------
+    pvals
+        A tensor of shape "nmulti+(L,)" describing each multinomial
         distribution.  This tensor must have the property that
         numpy.allclose(pvals.sum(axis=-1), 1) is true.
-
-    :param size: a vector of shape information for the output; this can also
+    size
+        A vector of shape information for the output; this can also
         specify the "nmulti" part of pvals' shape.  A -1 in the k'th position
         from the right means to borrow the k'th position from the
         right in nmulti. (See examples below.)
         Default ``None`` means size=nmulti.
-
-    :param n: the number of experiments to simulate for each
+    n
+        The number of experiments to simulate for each
         multinomial. This can be a scalar, or tensor, it will be
         broadcasted to have shape "nmulti".
+    dtype
+        The dtype of the return value (which will represent counts)
 
-    :param dtype: the dtype of the return value (which will represent counts)
-
-    :returns: tensor of len(size)+1 dimensions, and shape[-1]==L, with
-        the specified ``dtype``, with the experiment counts.  See
+    Returns
+    -------
+    tensor
+        Tensor of len(size)+1 dimensions, and shape[-1]==L, with
+        the specified ``dtype``, with the experiment counts. See
         examples to understand the shape of the return value, which is
-        derived from both size and pvals.shape.  In return value rval,
+        derived from both size and pvals.shape. In return value rval,
         "numpy.allclose(rval.sum(axis=-1), n)" will be true.
 
+    Extended Summary
+    ----------------
     For example, to simulate n experiments from each multinomial in a batch of
     size B:
 
@@ -881,8 +917,8 @@ class RandomStreamsBase(object):
         return the number of successes.
 
         If the size argument is ambiguous on the number of dimensions,
-        ndim may be a plain integer to supplement the missing
-        information.
+        ndim may be a plain integer to supplement the missing information.
+
         """
         if prob is not None:
             p = prob
@@ -895,8 +931,8 @@ class RandomStreamsBase(object):
         distribution between low and high.
 
         If the size argument is ambiguous on the number of dimensions,
-        ndim may be a plain integer to supplement the missing
-        information.
+        ndim may be a plain integer to supplement the missing information.
+
         """
         return self.gen(uniform, size, low, high, ndim=ndim, dtype=dtype)
 
@@ -906,8 +942,8 @@ class RandomStreamsBase(object):
         the specified standard deviation (std).
 
         If the size argument is ambiguous on the number of dimensions,
-        ndim may be a plain integer to supplement the missing
-        information.
+        ndim may be a plain integer to supplement the missing information.
+
         """
         return self.gen(normal, size, avg, std, ndim=ndim, dtype=dtype)
 
@@ -917,8 +953,8 @@ class RandomStreamsBase(object):
         Sample a random integer between low and high, both inclusive.
 
         If the size argument is ambiguous on the number of dimensions,
-        ndim may be a plain integer to supplement the missing
-        information.
+        ndim may be a plain integer to supplement the missing information.
+
         """
         return self.gen(random_integers, size, low, high, ndim=ndim,
                         dtype=dtype)
@@ -926,13 +962,14 @@ class RandomStreamsBase(object):
     def choice(self, size=None, a=2, replace=True, p=None, ndim=None,
                dtype='int64'):
         """
-        Choose values from `a` with or without replacement. `a` can be a 1-D
-        array or a positive scalar. If `a` is a scalar, the samples are drawn
-        from the range 0,...,a-1.
+        Choose values from `a` with or without replacement.
+
+        `a` can be a 1-D array or a positive scalar.
+        If `a` is a scalar, the samples are drawn from the range 0,...,a-1.
 
         If the size argument is ambiguous on the number of dimensions,
-        ndim may be a plain integer to supplement the missing
-        information.
+        ndim may be a plain integer to supplement the missing information.
+
         """
         return self.gen(choice, size, a, replace, p, ndim=ndim, dtype=dtype)
 
@@ -940,27 +977,32 @@ class RandomStreamsBase(object):
         """
         Draw samples from a Poisson distribution.
 
-        The Poisson distribution is the limit of the Binomial distribution for large N.
+        The Poisson distribution is the limit of the Binomial distribution for
+        large N.
 
         If the size argument is ambiguous on the number of dimensions,
-        ndim may be a plain integer to supplement the missing
-        information.
+        ndim may be a plain integer to supplement the missing information.
+
         """
         return self.gen(poisson, size, lam, ndim=ndim, dtype=dtype)
 
     def permutation(self, size=None, n=1, ndim=None, dtype='int64'):
         """
-        Returns permutations of the integers between 0 and n-1, as many times
-        as required by size. For instance, if size=(p,q), p*q permutations
-        will be generated, and the output shape will be (p,q,n), because each
+        Return permutations of the integers between 0 and n-1.
+
+        Returns them as many times as required by size. For instance,
+        if size=(p,q), p*q permutations will be generated,
+        and the output shape will be (p,q,n), because each
         permutation is of size n.
 
         Theano tries to infer the number of dimensions from the length
         of the size argument and the shape of n, but you may always
         specify it with the `ndim` parameter.
 
-        .. note::
-            Note that the output will then be of dimension ndim+1.
+        Notes
+        -----
+        Note that the output will then be of dimension ndim+1.
+
         """
         return self.gen(permutation, size, n, ndim=ndim, dtype=dtype)
 
@@ -976,16 +1018,20 @@ class RandomStreamsBase(object):
         of the size argument and the shapes of n and pvals, but you may
         always specify it with the `ndim` parameter.
 
-        .. note::
-            Note that the output will then be of dimension ndim+1.
+        Notes
+        -----
+        Note that the output will then be of dimension ndim+1.
+
         """
         return self.gen(multinomial, size, n, pvals, ndim=ndim, dtype=dtype)
 
     def shuffle_row_elements(self, input):
-        """Return a variable with every row (rightmost index) shuffled.
+        """
+        Return a variable with every row (rightmost index) shuffled.
 
         This uses permutation random variable internally, available via
         the ``.permutation`` attribute of the return value.
+
         """
         perm = self.permutation(size=input.shape[:-1], n=input.shape[-1],
                                 ndim=input.ndim - 1)

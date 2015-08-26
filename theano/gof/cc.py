@@ -1,5 +1,6 @@
 """
 Defines Linkers that deal with C implementations.
+
 """
 
 from __future__ import print_function
@@ -45,8 +46,13 @@ run_cthunk = None  # Will be imported only when needed.
 
 def get_module_cache(init_args=None):
     """
-    :param init_args: If not None, the (k, v) pairs in this dictionary will
-    be forwarded to the ModuleCache constructor as keyword arguments.
+
+    Parameters
+    ----------
+    init_args
+        If not None, the (k, v) pairs in this dictionary will be forwarded to
+        the ModuleCache constructor as keyword arguments.
+
     """
     return cmodule.get_module_cache(config.compiledir, init_args=init_args)
 
@@ -63,25 +69,31 @@ def get_persistent_module_cache():
 
 
 class CodeBlock:
-    """WRITEME
+    """
+    WRITEME
+
     Represents a computation unit composed of declare, behavior, and cleanup.
-    @ivar declare: C code that declares variables for use by the computation
-    @ivar behavior: C code that performs the computation
-    @ivar cleanup: C code that cleans up things allocated or incref-ed
-        in behavior
+
+    The constructor initializes a L{CodeBlock} with templatized declare,
+    behavior and cleanup. The sub parameter will be used in the other
+    arguments' templates. sub should contain a key called 'id' that maps to an
+    identifier for this block. The identifier will be used to determine the
+    failure code and a label to jump to. It should also contain a key called
+    'failure_var' that contains the name of the variable that contains the error
+    code.
+
+    Parameters
+    ----------
+    declare
+        C code that declares variables for use by the computation.
+    behavior
+        C code that performs the computation.
+    cleanup
+        C code that cleans up things allocated or incref-ed in behavior.
+
     """
 
     def __init__(self, declare, behavior, cleanup, sub):
-        """
-        Initialize a L{CodeBlock} with templatized declare, behavior
-        and cleanup.  The sub parameter will be used in the other
-        arguments' templates. sub should contain a key called 'id'
-        that maps to an identifier for this block.
-        The identifier will be used to determine the failure code and
-        a label to jump to. It should also contain a key called
-        'failure_var' that contains the name of the variable that
-        contains the error code.
-        """
         self.declare = declare
         self.behavior = behavior
         # the dummy is because gcc throws an error when a label's
@@ -94,10 +106,12 @@ class CodeBlock:
 
 
 def failure_code(sub):
-    """Code contained in sub['fail'], usually substituted for %(fail)s.
+    """
+    Code contained in sub['fail'], usually substituted for %(fail)s.
 
     It sets information about current error, then goto the code
     actually handling the failure, which is defined in struct_gen().
+
     """
     return '''{
         %(failure_var)s = %(id)s;
@@ -110,7 +124,10 @@ def failure_code(sub):
 
 
 def failure_code_init(sub):
-    "Code for failure in the struct init."
+    """
+    Code for failure in the struct init.
+
+    """
     return '''{
         if (!PyErr_Occurred()) {
             PyErr_SetString(PyExc_RuntimeError,
@@ -122,10 +139,13 @@ def failure_code_init(sub):
 
 
 def code_gen(blocks):
-    """WRITEME From a list of L{CodeBlock} instances, returns a string
+    """
+    WRITEME
+
+    From a list of L{CodeBlock} instances, returns a string
     that executes them all in sequence. eg for C{(decl1, task1,
     cleanup1)} and C{(decl2, task2, cleanup2)} the returned string
-    will be of the form::
+    will be of the form:
 
         decl1
         decl2
@@ -137,8 +157,8 @@ def code_gen(blocks):
          }
          cleanup1
         }
-    """
 
+    """
     decl = ""
     head = ""
     tail = ""
@@ -150,27 +170,39 @@ def code_gen(blocks):
 
 
 def struct_gen(args, struct_builders, blocks, sub):
-    """WRITEME
-    Generates a struct conforming to the following specifications:
-     * args -> all of the PyObject* type, stored in the struct
-       they represent the storage and must be length 1 python lists.
-     * struct_builders -> list of L{CodeBlock} instances such that
-       * declarations are in the struct
-       * behavior is in the constructor
-       * cleanup is in the destructor
-     * blocks -> list of CodeBlock instances such that
-       * declarations, behavior and cleanup are in the run()
-         method of the struct
-     * sub -> dictionary used to template the struct.
-       * failure_var -> must contain a variable name to use for
-         the failure code.
-
-    In a nutshell, this returns code for a struct that represents
-    a function with state. The state's initialization and destruction
-    are handled by struct_builders and the actual behavior of the
-    function is handled by blocks.
     """
+    WRITEME
 
+    Generates a struct conforming to the following specifications:
+
+    Parameters
+    ----------
+     args
+        All of the PyObject* type, stored in the struct
+        they represent the storage and must be length 1 python lists.
+     struct_builders
+        List of L{CodeBlock} instances such that
+        * declarations are in the struct
+        * behavior is in the constructor
+        * cleanup is in the destructor
+     blocks
+        List of CodeBlock instances such that
+        * declarations, behavior and cleanup are in the run()
+        method of the struct
+     sub
+        Dictionary used to template the struct.
+        * failure_var -> must contain a variable name to use for
+        the failure code.
+
+    Returns
+    -------
+    object
+        In a nutshell, this returns code for a struct that represents
+        a function with state. The state's initialization and destruction
+        are handled by struct_builders and the actual behavior of the
+        function is handled by blocks.
+
+    """
     struct_decl = ""
     struct_init_head = ""
     struct_init_tail = ""
@@ -276,12 +308,18 @@ def struct_gen(args, struct_builders, blocks, sub):
 # with handling of the py_<name> variable.
 
 def get_nothing(r, name, sub):
-    """WRITEME"""
+    """
+    WRITEME
+
+    """
     return ""
 
 
 def get_c_declare(r, name, sub):
-    """Wrapper around c_declare that declares py_name"""
+    """
+    Wrapper around c_declare that declares py_name.
+
+    """
     # The declaration will be used by the Apply node that
     # is computing it (`r.owner`), and by each of the clients.
     # If some of these have `check_input=True` in their `.op`,
@@ -302,7 +340,10 @@ def get_c_declare(r, name, sub):
 
 
 def get_c_init(r, name, sub):
-    """Wrapper around c_init that initializes py_name to Py_None"""
+    """
+    Wrapper around c_init that initializes py_name to Py_None.
+
+    """
     pre = "" """
     py_%(name)s = Py_None;
     {Py_XINCREF(py_%(name)s);}
@@ -311,7 +352,10 @@ def get_c_init(r, name, sub):
 
 
 def get_c_extract(r, name, sub):
-    """Wrapper around c_extract that initializes py_name from storage."""
+    """
+    Wrapper around c_extract that initializes py_name from storage.
+
+    """
     # `c_extract` is called when getting the value of an apply node's
     # input from the compute map, before being used by its clients.
     # If one of the clients has `check_input=True`, we need to perform
@@ -346,7 +390,10 @@ def get_c_extract(r, name, sub):
 
 
 def get_c_extract_out(r, name, sub):
-    """Wrapper around c_extract_out that initializes py_name from storage."""
+    """
+    Wrapper around c_extract_out that initializes py_name from storage.
+
+    """
     # `c_extract_out` is used to extract an output variable from
     # the compute map, to be used as pre-allocated memory for `r`
     # before its value gets computed.
@@ -376,7 +423,10 @@ def get_c_extract_out(r, name, sub):
 
 
 def get_c_cleanup(r, name, sub):
-    """Wrapper around c_cleanup that decrefs py_name"""
+    """
+    Wrapper around c_cleanup that decrefs py_name.
+
+    """
     post = """
     {Py_XDECREF(py_%(name)s);}
     """ % locals()
@@ -384,7 +434,10 @@ def get_c_cleanup(r, name, sub):
 
 
 def get_c_sync(r, name, sub):
-    """Wrapper around c_sync that syncs py_name with storage."""
+    """
+    Wrapper around c_sync that syncs py_name with storage.
+
+    """
     return """
     if (!%(failure_var)s) {
       %(sync)s
@@ -397,11 +450,21 @@ def get_c_sync(r, name, sub):
 
 
 def apply_policy(policy, r, name, sub):
-    """WRITEME
-    @param policy: list of functions that map a L{Variable} to a string,
-        or a single such function
-    @type r: L{Variable}
-    @return: C{policy[0](r) + policy[1](r) + ...}
+    """
+    WRITEME
+
+    Parameters
+    ----------
+    policy
+        List of functions that map a L{Variable} to a string,
+        or a single such function.
+    r: L{Variable}
+
+    Returns
+    -------
+    object
+        C{policy[0](r) + policy[1](r) + ...}.
+
     """
     if isinstance(policy, (list, tuple)):
         ret = ""
@@ -412,22 +475,27 @@ def apply_policy(policy, r, name, sub):
 
 
 def struct_variable_codeblocks(variable, policies, id, symbol_table, sub):
-    """WRITEME
-    variable -> a Variable
-    policies -> a pair of tuples ((declare_policy, behavior_policy,
-                                   cleanup_policy), -- at construction
-                                  (declare_policy, behavior_policy,
-                                   cleanup_policy)) -- at execution
-                the first list will produce an element of the
-                'struct_builders' argument in struct_gen the second
-                list will produce an element of the 'blocks' argument
-                in struct_gen
+    """
+    WRITEME
 
-    id -> the id assigned to this variable's task in the computation
-    symbol_table -> a dict that maps variables to variable names. It
-        is not read by this function but a variable name for the
-        variable is computed and added to the table.
-    sub -> dictionary for use by L{CodeBlock}.
+    Parameters
+    ----------
+    variable : a Variable
+    policies : a pair of tuples
+        (declare_policy, behavior_policy, cleanup_policy) -- at construction.
+        (declare_policy, behavior_policy, cleanup_policy)) -- at execution.
+        The first list will produce an element of the 'struct_builders' argument
+        in struct_gen. The second list will produce an element of the 'blocks'
+        argument in struct_gen.
+    id
+        The id assigned to this variable's task in the computation.
+    symbol_table
+        A dict that maps variables to variable names. It is not read by this
+        function but a variable name for the variable is computed and added to
+        the table.
+    sub
+        Dictionary for use by L{CodeBlock}.
+
     """
 
     name = "V%i" % id
@@ -453,7 +521,8 @@ def struct_variable_codeblocks(variable, policies, id, symbol_table, sub):
 
 
 class CLinker(link.Linker):
-    """WRITEME
+    """
+    WRITEME
 
     Creates C code for an fgraph, compiles it and returns callables
     through make_thunk and make_function that make use of the compiled
@@ -462,6 +531,7 @@ class CLinker(link.Linker):
     no_recycling can contain a list of Variables that belong to the fgraph.
     If a Variable is in no_recycling, CLinker will clear the output storage
     associated to it during the computation (to avoid reusing it).
+
     """
 
     def __init__(self, schedule=None):
@@ -470,7 +540,10 @@ class CLinker(link.Linker):
             self.schedule = schedule
 
     def accept(self, fgraph, no_recycling=None):
-        """WRITEME"""
+        """
+        WRITEME
+
+        """
         if no_recycling is None:
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
@@ -483,9 +556,12 @@ class CLinker(link.Linker):
         return self
 
     def fetch_variables(self):
-        """WRITEME
-        Fills the inputs, outputs, variables, orphans,
-        temps and node_order fields.
+        """
+        WRITEME
+
+        Fills the inputs, outputs, variables, orphans, temps and node_order
+        fields.
+
         """
         fgraph = self.fgraph
         self.inputs = fgraph.inputs
@@ -527,7 +603,9 @@ class CLinker(link.Linker):
         self.consts = []
 
     def code_gen(self):
-        """WRITEME
+        """
+        WRITEME
+
         Generates code for a struct that does the computation of the fgraph and
         stores it in the struct_code field of the instance.
 
@@ -538,6 +616,7 @@ class CLinker(link.Linker):
         is avoided.
 
         This method caches its computations.
+
         """
 
         if getattr(self, 'struct_code', False):
@@ -804,12 +883,15 @@ class CLinker(link.Linker):
         return self.struct_code
 
     def support_code(self):
-        """WRITEME
+        """
+        WRITEME
+
         Returns a list of support code strings that are needed by
         one or more Variables or Ops. The support code from Variables is
         added before the support code from Ops.
 
         This might contain duplicates.
+
         """
         ret = []
         # generic support code
@@ -822,11 +904,14 @@ class CLinker(link.Linker):
         return ret
 
     def compile_args(self):
-        """WRITEME
+        """
+        WRITEME
+
         Returns a list of compile args that are needed by one
         or more Variables or Ops.
 
         This might contain duplicates.
+
         """
         ret = ["-O3"]
 # this is the param the -ffast-math activate. I put the explicitly as
@@ -871,11 +956,14 @@ class CLinker(link.Linker):
         return ret
 
     def headers(self):
-        """WRITEME
+        """
+        WRITEME
+
         Returns a list of headers that are needed by one
         or more Types or Ops.
 
         The return value will not contain duplicates.
+
         """
         ret = []
         for x in [y.type for y in self.variables] + [
@@ -890,7 +978,9 @@ class CLinker(link.Linker):
         """
         Return a list of code snippets that have to be inserted
         in the module initialization code.
+
         The return value will not contain duplicates.
+
         """
         ret = []
         for x in [y.type for y in self.variables] + [
@@ -923,11 +1013,14 @@ class CLinker(link.Linker):
             return c_compiler
 
     def header_dirs(self):
-        """WRITEME
+        """
+        WRITEME
+
         Returns a list of lib directories that are needed by one
         or more Types or Ops.
 
         The return value will not contain duplicates.
+
         """
         ret = []
         for x in [y.type for y in self.variables] + [
@@ -939,11 +1032,14 @@ class CLinker(link.Linker):
         return utils.uniq(ret)
 
     def libraries(self):
-        """WRITEME
+        """
+        WRITEME
+
         Returns a list of libraries that are needed by one
         or more Types or Ops.
 
         The return value will not contain duplicates.
+
         """
         ret = []
         for x in [y.type for y in self.variables] + [
@@ -955,11 +1051,14 @@ class CLinker(link.Linker):
         return utils.uniq(ret)
 
     def lib_dirs(self):
-        """WRITEME
+        """
+        WRITEME
+
         Returns a list of lib directories that are needed by one
         or more Types or Ops.
 
         The return value will not contain duplicates.
+
         """
         ret = []
         for x in [y.type for y in self.variables] + [
@@ -970,20 +1069,26 @@ class CLinker(link.Linker):
                 pass
         return utils.uniq(ret)
 
-    def __compile__(self, input_storage=None,
-                    output_storage=None, keep_lock=False):
+    def __compile__(self, input_storage=None, output_storage=None,
+                    storage_map=None, keep_lock=False):
         """WRITEME
         Compiles this linker's fgraph.
 
-        @type input_storage: list or None
-        @param input_storage: list of lists of length 1. In order to use
-            the thunk returned by __compile__, the inputs must be put in
-            that storage. If None, storage will be allocated.
-        @param output_storage: list of lists of length 1. The thunk returned
-            by __compile__ will put the variables of the computation in these
-            lists. If None, storage will be allocated.
+        Parameters
+        ----------
+        input_storage: list or None
+            List of lists of length 1. In order to use the thunk returned
+            by __compile__, the inputs must be put in that storage.
+            If None, storage will be allocated.
+        output_storage: list of lists of length 1
+            The thunk returned by __compile__ will put the variables of the
+            computation in these lists. If None, storage will be allocated.
 
-        Returns: thunk, input_storage, output_storage, error_storage
+        Returns
+        -------
+        object
+            Thunk, input_storage, output_storage, error_storage.
+
         """
         error_storage = [None, None, None]
         if input_storage is None:
@@ -1004,6 +1109,7 @@ class CLinker(link.Linker):
         thunk = self.cthunk_factory(error_storage,
                                     input_storage,
                                     output_storage,
+                                    storage_map,
                                     keep_lock=keep_lock)
         return (thunk,
                 [link.Container(input, storage) for input, storage in
@@ -1036,19 +1142,23 @@ class CLinker(link.Linker):
         return init_tasks, tasks
 
     def make_thunk(self, input_storage=None, output_storage=None,
-                   keep_lock=False):
+                   storage_map=None, keep_lock=False):
         """WRITEME
         Compiles this linker's fgraph and returns a function to perform the
-        computations, as well as lists of storage cells for both the
-        inputs and outputs.
+        computations, as well as lists of storage cells for both the inputs
+        and outputs.
 
-        @type input_storage: list or None
-        @param input_storage: list of lists of length 1. In order to use
+        Parameters
+        ----------
+        input_storage: list or None
+            List of lists of length 1. In order to use
             the thunk returned by __compile__, the inputs must be put in
             that storage. If None, storage will be allocated.
         @param output_storage: list of lists of length 1. The thunk returned
             by __compile__ will put the variables of the computation in these
             lists. If None, storage will be allocated.
+        @param storage_map: dict that map variables to storages. This is used
+            when you need to customize the storage of this thunk.
 
         Returns: thunk, input_storage, output_storage
 
@@ -1061,7 +1171,7 @@ class CLinker(link.Linker):
         """
         init_tasks, tasks = self.get_init_tasks()
         cthunk, in_storage, out_storage, error_storage = self.__compile__(
-            input_storage, output_storage,
+            input_storage, output_storage, storage_map,
             keep_lock=keep_lock)
 
         res = _CThunk(cthunk, init_tasks, tasks, error_storage)
@@ -1069,7 +1179,8 @@ class CLinker(link.Linker):
         return res, in_storage, out_storage
 
     def cmodule_key(self):
-        """Return a complete hashable signature of the module we compiled.
+        """
+        Return a complete hashable signature of the module we compiled.
 
         This function must have the property that no two programs that
         compute different things yield the same key.
@@ -1090,8 +1201,8 @@ class CLinker(link.Linker):
         The outer tuple has a brief header, containing the compilation options
         passed to the compiler, the libraries to link against, an md5 hash
         of theano.config (for all config options where "in_c_key" is True).
-        It is followed by elements for every node in the
-        topological ordering of `self.fgraph`.
+        It is followed by elements for every node in the topological ordering
+        of `self.fgraph`.
 
         If the Op of any Apply in the FunctionGraph does not have
         c_code_cache_ok()==True, then this function raises a KeyError
@@ -1101,7 +1212,7 @@ class CLinker(link.Linker):
         ---------------
 
         Each input signature is a tuple with an element for each input
-        to the corresponding Apply node.  Each element identifies the
+        to the corresponding Apply node. Each element identifies the
         type of the node input, and the nature of that input in the
         graph.
 
@@ -1115,7 +1226,6 @@ class CLinker(link.Linker):
 
         If a variable is also a graph output, then its position in the
         outputs list is also bundled with this tuple (after the b).
-
 
         The nature of a Constant instance is defined as its signature,
         together with two integers: the topological position of the
@@ -1141,6 +1251,7 @@ class CLinker(link.Linker):
         booleans, indicating whether each output is in the
         no_recycling set. Older versions of compiled modules only have the
         no_recycle list.
+
         """
         return self.cmodule_key_(self.fgraph, self.no_recycling,
                                  compile_args=self.compile_args(),
@@ -1154,7 +1265,8 @@ class CLinker(link.Linker):
                      c_compiler=None):
         """
         Do the actual computation of cmodule_key in a static method
-        to allow it to be reused in scalar.Composite.__eq__
+        to allow it to be reused in scalar.Composite.__eq__.
+
         """
         if compile_args is None:
             compile_args = []
@@ -1311,6 +1423,7 @@ class CLinker(link.Linker):
         """
         This compiles the source code for this linker and returns a
         loaded module.
+
         """
         if location is None:
             location = cmodule.dlimport_workdir(config.compiledir)
@@ -1353,11 +1466,12 @@ class CLinker(link.Linker):
         return module
 
     def get_dynamic_module(self):
-        """Return a cmodule.DynamicModule instance full of the code
-        for our fgraph.
+        """
+        Return a cmodule.DynamicModule instance full of the code for our fgraph.
 
         This method is cached on the first call so it can be called
         multiple times without penalty.
+
         """
         if not hasattr(self, '_mod'):
             self.code_gen()
@@ -1411,7 +1525,7 @@ class CLinker(link.Linker):
         return self._mod
 
     def cthunk_factory(self, error_storage, in_storage, out_storage,
-                       keep_lock=False):
+                       storage_map=None, keep_lock=False):
         """WRITEME
         error_storage -> list of length 3
         in_storage -> list of lists of length 1, one per input
@@ -1443,7 +1557,10 @@ class CLinker(link.Linker):
         out_storage = [x for i, x in enumerate(out_storage)
                        if (i + len(in_storage)) not in dupidx]
         in_storage = [x for i, x in enumerate(in_storage) if i not in dupidx]
-        orphd = [[orphan.data] for orphan in self.orphans]
+        if storage_map is None:
+            orphd = [[orphan.data] for orphan in self.orphans]
+        else:
+            orphd = [storage_map[orphan] for orphan in self.orphans]
 
         ret = module.instantiate(error_storage,
                                  *(in_storage + out_storage + orphd))
@@ -1481,18 +1598,22 @@ class CLinker(link.Linker):
 
 class _CThunk(object):
     """
-    A thunk with a C implementation
+    A thunk with a C implementation.
+
+    Parameters
+    ----------
+    cthunk
+        The CObject pointer used by run_cthunk.
+    init_tasks
+        WRITEME
+    tasks
+        WRITEME
+    error_storage
+        WRITEME
+
     """
 
     def __init__(self, cthunk, init_tasks, tasks, error_storage):
-        """
-        Parameters
-        ----------
-        cthunk: the CObject pointer used by run_cthunk
-        init_tasks: WRITEME
-        tasks: WRITEME
-        error_storage: WRITEME
-        """
         global run_cthunk
         if run_cthunk is None:
             # Lazy import to avoid compilation when importing theano.
@@ -1505,6 +1626,7 @@ class _CThunk(object):
     def find_task(self, failure_code):
         """
         Maps a failure code to the task that is associated to it.
+
         """
         failure_code -= 1
         n = len(self.init_tasks)
@@ -1540,7 +1662,9 @@ class _CThunk(object):
 
 
 class OpWiseCLinker(link.LocalLinker):
-    """WRITEME
+    """
+    WRITEME
+
     Uses CLinker on the individual Ops that comprise an fgraph and loops
     over them in Python. The variable is slower than a compiled version of
     the whole fgraph, but saves on compilation time because small changes
@@ -1554,10 +1678,12 @@ class OpWiseCLinker(link.LocalLinker):
     If a Variable is in no_recycling, CLinker will clear the output storage
     associated to it prior to computation (to avoid reusing it).
 
-    :note: This is in a sense the 'default' linker for Theano.  The
+    Notes
+    -----
+    This is in a sense the 'default' linker for Theano. The
     overhead of using the OpWiseCLinker as compared with the CLinker
     is only noticeable for graphs of very small tensors (such as 20
-    elements or less)
+    elements or less).
 
     """
 
@@ -1592,7 +1718,8 @@ class OpWiseCLinker(link.LocalLinker):
         self.no_recycling = no_recycling
         return self
 
-    def make_all(self, profiler=None, input_storage=None, output_storage=None):
+    def make_all(self, profiler=None, input_storage=None, output_storage=None,
+                 storage_map=None):
 
         # The lock will be acquired when we compile the first
         # C code. We will keep the lock untill all the function
@@ -1606,7 +1733,7 @@ class OpWiseCLinker(link.LocalLinker):
             no_recycling = self.no_recycling
 
             input_storage, output_storage, storage_map = link.map_storage(
-                fgraph, order, input_storage, output_storage)
+                fgraph, order, input_storage, output_storage, storage_map)
             if self.allow_gc:
                 computed, last_user = link.gc_helper(order)
                 post_thunk_old_storage = []
@@ -1676,9 +1803,12 @@ class OpWiseCLinker(link.LocalLinker):
 
 
 def _default_checker(x, y):
-    """WRITEME
+    """
+    WRITEME
+
     Default checker for DualLinker. This checks that the
     variables contain the same data using ==.
+
     """
     if x[0] != y[0]:
         raise Exception("Output mismatch.",
@@ -1686,7 +1816,9 @@ def _default_checker(x, y):
 
 
 class DualLinker(link.Linker):
-    """WRITEME
+    """
+    WRITEME
+
     Runs the fgraph in parallel using PerformLinker and CLinker.
 
     The thunk/function produced by DualLinker uses PerformLinker as the
@@ -1695,6 +1827,7 @@ class DualLinker(link.Linker):
     the fgraph on which it runs OpWiseCLinker. At each step, the variables
     of perform and of the C implementation are verified using a checker
     function.
+
     """
 
     def __init__(self, checker=_default_checker, schedule=None):
@@ -1719,6 +1852,7 @@ class DualLinker(link.Linker):
         no_recycling can contain a list of Variables that belong to the fgraph.
         If a Variable is in no_recycling, CLinker will clear the output storage
         associated to it during the computation (to avoid reusing it).
+
         """
         self.fgraph = None
         self.checker = checker

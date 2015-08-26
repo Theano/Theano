@@ -7,6 +7,7 @@ from theano import scalar
 class XlogX(scalar.UnaryScalarOp):
     """
     Compute X * log(X), with special case 0 log(0) = 0.
+
     """
     @staticmethod
     def st_impl(x):
@@ -39,6 +40,7 @@ xlogx = Elemwise(scalar_xlogx, name='xlogx')
 class XlogY0(scalar.BinaryScalarOp):
     """
     Compute X * log(Y), with special case 0 log(0) = 0.
+
     """
     @staticmethod
     def st_impl(x, y):

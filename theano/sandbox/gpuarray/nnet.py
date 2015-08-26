@@ -22,7 +22,9 @@ from .fp16_help import work_dtype, load_w, write_w
 class GpuCrossentropySoftmaxArgmax1HotWithBias(Op):
     """
     Implement CrossentropySoftmaxArgmax1HotWithBias on the gpu.
+
     """
+
     nin = 3
     nout = 3
     __props__ = ()
@@ -276,8 +278,10 @@ class GpuCrossentropySoftmax1HotWithBiasDx(Op):
     """
     Implement CrossentropySoftmax1HotWithBiasDx on the gpu.
 
-    Gradient wrt x of the CrossentropySoftmax1Hot Op
+    Gradient wrt x of the CrossentropySoftmax1Hot Op.
+
     """
+
     nin = 3
     nout = 1
     __props__ = ()
@@ -462,7 +466,9 @@ gpu_crossentropy_softmax_1hot_with_bias_dx = GpuCrossentropySoftmax1HotWithBiasD
 class GpuSoftmax (Op):
     """
     Implement Softmax on the gpu.
+
     """
+
     __props__ = ()
     _f16_ok = True
 
@@ -651,7 +657,9 @@ gpu_softmax = GpuSoftmax()
 class GpuSoftmaxWithBias (Op):
     """
     Implement SoftmaxWithBias on the gpu.
+
     """
+
     nin = 2
     nout = 1
     __props__ = ()

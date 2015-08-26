@@ -12,9 +12,11 @@ class SparseTensorSharedVariable(_sparse_py_operators, SharedVariable):
 @shared_constructor
 def sparse_constructor(value, name=None, strict=False, allow_downcast=None,
                        borrow=False, format=None):
-    """SharedVariable Constructor for SparseType
+    """
+    SharedVariable Constructor for SparseType.
 
     writeme
+
     """
     if not isinstance(value, scipy.sparse.spmatrix):
         raise TypeError("Expected a sparse matrix in the sparse shared variable constructor. Received: ",

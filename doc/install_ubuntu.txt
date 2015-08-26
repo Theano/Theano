@@ -1,3 +1,5 @@
+:orphan:
+
 .. _install_ubuntu:
 
 Easy Installation of an Optimized Theano on Current Ubuntu
@@ -173,11 +175,6 @@ Change to the Theano directory and run:
 
 Manual Openblas instruction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. comment::
-
-    I believe this is outdated, my machine seems to be using 8 threads 
-    happily with the binary openblas...
 
 The openblas included in some older Ubuntu version is limited to 2
 threads. Ubuntu 14.04 do not have this limit. If you want to use more

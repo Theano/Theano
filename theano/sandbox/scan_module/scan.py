@@ -1,10 +1,10 @@
 """
-This module provides the Scan Op
+This module provides the Scan Op.
 
 Scanning is a general form of recurrence, which can be used for looping.
 The idea is that you *scan* a function along some input sequence, producing
 an output at each time-step that can be seen (but not modified) by the
-function at the next time-step. (Technically, the function can see the
+function at the next time-step. Technically, the function can see the
 previous K  time-steps of your outputs and L time steps (from past and
 future) of your inputs.
 
@@ -32,6 +32,7 @@ host at each step
 The Scan Op should typically be used by calling any of the following
 functions: ``scan()``, ``map()``, ``reduce()``, ``foldl()``,
 ``foldr()``.
+
 """
 __docformat__ = 'restructedtext en'
 __authors__ = ("Razvan Pascanu "
@@ -76,7 +77,9 @@ def scan(fn,
     This function constructs and applies a Scan op to the provided
     arguments.
 
-    :param fn:
+    Parameters
+    ----------
+    fn
         ``fn`` is a function that describes the operations involved in one
         step of ``scan``. ``fn`` should construct variables describing the
         output of one iteration step. It should expect as input theano
@@ -167,7 +170,7 @@ def scan(fn,
         number of steps ) is still required even though a condition is
         passed (and it is used to allocate memory if needed). = {}):
 
-    :param sequences:
+    sequences
         ``sequences`` is the list of Theano variables or dictionaries
         describing the sequences ``scan`` has to iterate over. If a
         sequence is given as wrapped in a dictionary, then a set of optional
@@ -185,8 +188,7 @@ def scan(fn,
         Any Theano variable in the list ``sequences`` is automatically
         wrapped into a dictionary where ``taps`` is set to ``[0]``
 
-
-    :param outputs_info:
+    outputs_info
         ``outputs_info`` is the list of Theano variables or dictionaries
         describing the initial state of the outputs computed
         recurrently. When this initial states are given as dictionary
@@ -243,15 +245,13 @@ def scan(fn,
         raised (because there is no convention on how scan should map
         the provided information to the outputs of ``fn``)
 
-
-    :param non_sequences:
+    non_sequences
         ``non_sequences`` is the list of arguments that are passed to
         ``fn`` at each steps. One can opt to exclude variable
         used in ``fn`` from this list as long as they are part of the
         computational graph, though for clarity we encourage not to do so.
 
-
-    :param n_steps:
+    n_steps
         ``n_steps`` is the number of steps to iterate given as an int
         or Theano scalar. If any of the input sequences do not have
         enough elements, scan will raise an error. If the *value is 0* the
@@ -261,8 +261,7 @@ def scan(fn,
         in time. If n stpes is not provided, ``scan`` will figure
         out the amount of steps it should run given its input sequences.
 
-
-    :param truncate_gradient:
+    truncate_gradient
         ``truncate_gradient`` is the number of steps to use in truncated
         BPTT.  If you compute gradients through a scan op, they are
         computed using backpropagation through time. By providing a
@@ -270,16 +269,14 @@ def scan(fn,
         of classical BPTT, where you go for only ``truncate_gradient``
         number of steps back in time.
 
-
-    :param go_backwards:
+    go_backwards
         ``go_backwards`` is a flag indicating if ``scan`` should go
         backwards through the sequences. If you think of each sequence
         as indexed by time, making this flag True would mean that
         ``scan`` goes back in time, namely that for any sequence it
         starts from the end and goes towards 0.
 
-
-    :param name:
+    name
         When profiling ``scan``, it is crucial to provide a name for any
         instance of ``scan``. The profiler will produce an overall
         profile of your code as well as profiles for the computation of
@@ -287,7 +284,7 @@ def scan(fn,
         appears in those profiles and can greatly help to disambiguate
         information.
 
-    :param mode:
+    mode
         It is recommended to leave this argument to None, especially
         when profiling ``scan`` (otherwise the results are not going to
         be accurate). If you prefer the computations of one step of
@@ -296,7 +293,7 @@ def scan(fn,
         loop are done (see ``theano.function`` for details about
         possible values and their meaning).
 
-    :param profile:
+    profile
         Flag or string. If true, or different from the empty string, a
         profile object will be created and attached to the inner graph of
         scan. In case ``profile`` is True, the profile object will have the
@@ -305,18 +302,21 @@ def scan(fn,
         inner graph with the new cvm linker ( with default modes,
         other linkers this argument is useless)
 
-    :rtype: tuple
-    :return: tuple of the form (outputs, updates); ``outputs`` is either a
-             Theano variable or a list of Theano variables representing the
-             outputs of ``scan`` (in the same order as in
-             ``outputs_info``). ``updates`` is a subclass of dictionary
-             specifying the
-             update rules for all shared variables used in scan
-             This dictionary should be passed to ``theano.function`` when
-             you compile your function. The change compared to a normal
-             dictionary is that we validate that keys are SharedVariable
-             and addition of those dictionary are validated to be consistent.
-    """
+    Returns
+    -------
+    tuple
+        Tuple of the form (outputs, updates); ``outputs`` is either a
+        Theano variable or a list of Theano variables representing the
+        outputs of ``scan`` (in the same order as in
+        ``outputs_info``). ``updates`` is a subclass of dictionary
+        specifying the
+        update rules for all shared variables used in scan
+        This dictionary should be passed to ``theano.function`` when
+        you compile your function. The change compared to a normal
+        dictionary is that we validate that keys are SharedVariable
+        and addition of those dictionary are validated to be consistent.
+
+        """
     # Note : see the internal documentation of the scan op for naming
     # conventions and all other details
     if options is None:
@@ -544,6 +544,7 @@ def one_step_scan(fn,
                   truncate_gradient):
     """
     This function is evaluated if `n_steps` evaluates to either 1 or -1.
+
     """
     # 1. Grab slices of sequences
     inputs_slices = [input[0] for input in inputs]

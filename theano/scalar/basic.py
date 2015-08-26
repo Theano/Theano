@@ -1,7 +1,5 @@
 """
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-WARNING
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+.. warning::
 
 This directory is for the internal of Theano.
 
@@ -42,12 +40,18 @@ builtin_float = float
 
 
 class ComplexError(Exception):
-    """Raised if complex numbers are used in an unsupported operation."""
+    """
+    Raised if complex numbers are used in an unsupported operation.
+
+    """
     pass
 
 
 class IntegerDivisionError(Exception):
-    """Raised if someone tries to divide integers with '/' instead of '//'."""
+    """
+    Raised if someone tries to divide integers with '/' instead of '//'.
+
+    """
     pass
 
 
@@ -87,6 +91,7 @@ def get_scalar_type(dtype):
     Return a Scalar(dtype) object.
 
     This caches objects to save allocation and run time.
+
     """
     if dtype not in get_scalar_type.cache:
         get_scalar_type.cache[dtype] = Scalar(dtype=dtype)
@@ -147,13 +152,16 @@ def constant(x):
 class Scalar(Type):
 
     """
-        Internal class, should not be used by clients
-        Primarily used by tensor.elemwise and tensor.reduce
-        Analogous to TensorType, but for zero-dimensional objects
-        Maps directly to C primitives
+    Internal class, should not be used by clients.
 
-        TODO: refactor to be named ScalarType for consistency with TensorType
+    Primarily used by tensor.elemwise and tensor.reduce.
+    Analogous to TensorType, but for zero-dimensional objects.
+    Maps directly to C primitives.
+
+    TODO: refactor to be named ScalarType for consistency with TensorType.
+
     """
+
     ndim = 0
 
     def __init__(self, dtype):
@@ -533,7 +541,7 @@ class _scalar_py_operators:
     ndim = 0
 
     dtype = property(lambda self: self.type.dtype)
-    """ The dtype of this scalar.  """
+    """The dtype of this scalar."""
 
     # UNARY
     def __abs__(self):
@@ -683,6 +691,7 @@ class upgrade_to_float(object):
     def __new__(self, *types):
         """
         Upgrade any int types to float32 or float64 to avoid losing precision.
+
         """
         conv = {int8: float32,
                 int16: float32,
@@ -763,7 +772,8 @@ def float_out(*types):
 
 def upgrade_to_float_no_complex(*types):
     """
-    don't accept complex, otherwise call upgrade_to_float().
+    Don't accept complex, otherwise call upgrade_to_float().
+
     """
     for type in types:
         if type in complex_types:
@@ -793,12 +803,13 @@ def float_out_nocomplex(*types):
 
 class unary_out_lookup(gof.utils.object2):
     """
-    get a output_types_preference object by passing a dictionary:
+    Get a output_types_preference object by passing a dictionary:
 
     unary_out_lookup({int8:int32, float32:complex128})
 
     The result is an op that maps in8 to int32 and float32 to
     complex128 and other input types lead to a TypeError.
+
     """
     def __init__(self, type_table):
         self.tbl = type_table
@@ -917,9 +928,9 @@ class ScalarOp(Op):
         return (4,)
 
     def c_code_contiguous(self, node, name, inp, out, sub):
-        """This function is called by Elemwise when all inputs and
-        outputs are c_contiguous. This allows to use the SIMD version
-        of this op.
+        """
+        This function is called by Elemwise when all inputs and outputs are
+        c_contiguous. This allows to use the SIMD version of this op.
 
         The inputs are the same as c_code except that:
 
@@ -1002,6 +1013,7 @@ class LogicalComparison(BinaryScalarOp):
 class FixedLogicalComparison(UnaryScalarOp):
     """
     Comparison to a fixed value.
+
     """
     def output_types(self, *input_dtypes):
         return [int8]
@@ -1531,17 +1543,29 @@ def int_or_true_div(x_discrete, y_discrete):
     """
     Return 'int' or 'true' depending on the type of division used for x / y.
 
-    :param x_discrete: True if `x` is discrete ([unsigned] integer).
+    Parameters
+    ----------
+    x_discrete : bool
+        True if `x` is discrete ([unsigned] integer).
+    y_discrete : bool
+        True if `y` is discrete ([unsigned] integer).
 
-    :param y_discrete: True if `x` is discrete ([unsigned] integer).
+    Returns
+    -------
+    str
+        'int' if `x / y` should be an integer division, or `true` if it
+        should be a true division.
 
-    :returns: 'int' if `x / y` should be an integer division, or `true` if it
-    should be a true division.
+    Raises
+    ------
+    IntegerDivisionError
+        If both `x_discrete` and `y_discrete` are True and `config.int_division`
+        is set to 'raise'.
 
-    Raises an IntegerDivisionError if both `x_discrete` and `y_discrete` are
-    True and `config.int_division` is set to 'raise'.
+    Notes
+    -----
+    This function is used by both scalar/basic.py and tensor/basic.py.
 
-    This function is used by both scalar/basic.py and tensor.basic/py.
     """
     if (x_discrete and y_discrete):
         if config.int_division == 'raise':
@@ -1568,7 +1592,10 @@ def int_or_true_div(x_discrete, y_discrete):
 
 
 def div_proxy(x, y):
-    """Proxy for either true_div or int_div, depending on types of x, y."""
+    """
+    Proxy for either true_div or int_div, depending on types of x, y.
+
+    """
     f = eval('%s_div' % int_or_true_div(as_scalar(x).type in discrete_types,
                                         as_scalar(y).type in discrete_types))
     return f(x, y)
@@ -1735,8 +1762,9 @@ class Mod(BinaryScalarOp):
 
     def c_code(self, node, name, inputs, outputs, sub):
         """
-        We want the result to have the same sign as python, not the other
+        We want the result to have the same sign as Python, not the other
         implementation of mod.
+
         """
         (x, y) = inputs
         (z,) = outputs
@@ -2027,7 +2055,10 @@ _cast_mapping = {
 
 
 def cast(x, dtype):
-    """Symbolically cast `x` to a Scalar of given `dtype`."""
+    """
+    Symbolically cast `x` to a Scalar of given `dtype`.
+
+    """
     if dtype == 'floatX':
         dtype = config.floatX
 
@@ -2176,10 +2207,11 @@ trunc = Trunc(same_out_nocomplex, name='trunc')
 
 class RoundHalfToEven(UnaryScalarOp):
     """
-    This function implement the same rounding than numpy: Round half to even
+    This function implement the same rounding than numpy: Round half to even.
 
     c/c++ round fct IS DIFFERENT!
-    See http://en.wikipedia.org/wiki/Rounding for more detail
+    See http://en.wikipedia.org/wiki/Rounding for more details.
+
     """
     def impl(self, x):
         return numpy.round(x)
@@ -2273,9 +2305,10 @@ def round_half_away_from_zero_vec(a):
 class RoundHalfAwayFromZero(UnaryScalarOp):
     """
     Implement the same rounding algo as c round() fct.
-    numpy.round fct IS DIFFERENT!
 
-    See http://en.wikipedia.org/wiki/Rounding for more detail
+    numpy.round fct IS DIFFERENT!
+    See http://en.wikipedia.org/wiki/Rounding for more details.
+
     """
     def impl(self, x):
         return round_half_away_from_zero_vec(x)
@@ -2332,7 +2365,10 @@ pprint.assign(mod, printing.OperatorPrinter('%', -1, 'left'))
 
 
 class Inv(UnaryScalarOp):
-    """ multiplicative inverse. Also called reciprocal"""
+    """
+    Multiplicative inverse. Also called reciprocal.
+
+    """
     def impl(self, x):
         return numpy.float32(1.0) / x
 
@@ -2359,7 +2395,10 @@ inv = Inv(upgrade_to_float, name='inv')
 
 
 class Log(UnaryScalarOp):
-    """ log base e """
+    """
+    log base e.
+
+    """
     amd_float32 = "amd_vrsa_logf"
     amd_float64 = "amd_vrda_log"
 
@@ -2397,7 +2436,10 @@ log = Log(upgrade_to_float, name='log')
 
 
 class Log2(UnaryScalarOp):
-    """ log base 2 """
+    """
+    log base 2.
+
+    """
     amd_float32 = "amd_vrsa_log2f"
     amd_float64 = "amd_vrda_log2"
 
@@ -2432,7 +2474,10 @@ log2 = Log2(upgrade_to_float, name='log2')
 
 
 class Log10(UnaryScalarOp):
-    """ log base 10 """
+    """
+    log base 10.
+
+    """
     amd_float32 = "amd_vrsa_log10f"
     amd_float64 = "amd_vrda_log10"
 
@@ -2467,7 +2512,10 @@ log10 = Log10(upgrade_to_float, name='log10')
 
 
 class Log1p(UnaryScalarOp):
-    """ log(1+x) """
+    """
+    log(1+x).
+
+    """
     def impl(self, x):
         # If x is an int8 or uint8, numpy.log1p will compute the result in
         # half-precision (float16), where we want float32.
@@ -2951,7 +2999,8 @@ arctan2 = ArcTan2(upgrade_to_float, name='arctan2')
 
 class Cosh(UnaryScalarOp):
     """
-    cosh(x) = (exp(x) + exp(-x)) / 2
+    cosh(x) = (exp(x) + exp(-x)) / 2.
+
     """
     def impl(self, x):
         # If x is an int8 or uint8, numpy.cosh will compute the result in
@@ -3016,7 +3065,8 @@ arccosh = ArcCosh(upgrade_to_float, name='arccosh')
 
 class Sinh(UnaryScalarOp):
     """
-    sinh(x) = (exp(x) - exp(-x)) / 2
+    sinh(x) = (exp(x) - exp(-x)) / 2.
+
     """
     def impl(self, x):
         # If x is an int8 or uint8, numpy.sinh will compute the result in
@@ -3082,7 +3132,8 @@ arcsinh = ArcSinh(upgrade_to_float, name='arcsinh')
 class Tanh(UnaryScalarOp):
     """
     tanh(x) = sinh(x) / cosh(x)
-            = (exp(2*x) - 1) / (exp(2*x) + 1)
+            = (exp(2*x) - 1) / (exp(2*x) + 1).
+
     """
     def impl(self, x):
         # If x is an int8 or uint8, numpy.tanh will compute the result in
@@ -3146,7 +3197,10 @@ arctanh = ArcTanh(upgrade_to_float, name='arctanh')
 
 
 class Real(UnaryScalarOp):
-    """Extract the real coordinate of a complex number.  """
+    """
+    Extract the real coordinate of a complex number.
+
+    """
     def impl(self, x):
         return numpy.real(x)
 
@@ -3271,6 +3325,7 @@ class Composite(ScalarOp):
     fusion.
 
     Composite depends on all the Ops in its graph having C code.
+
     """
     def __str__(self):
         return self.name
@@ -3280,6 +3335,7 @@ class Composite(ScalarOp):
         This op.__init__ fct don't have the same parameter as other scalar op.
         This break the insert_inplace_optimizer optimization.
         This fct allow fix patch this.
+
         """
         out = self.__class__(self.inputs, self.outputs)
         if name:
@@ -3290,7 +3346,10 @@ class Composite(ScalarOp):
         return out
 
     def init_c_code(self):
-        """Return the C code for this Composite Op.  """
+        """
+        Return the C code for this Composite Op.
+
+        """
         subd = dict(chain(
             ((e, "%%(i%i)s" % i) for i, e in enumerate(self.fgraph.inputs)),
             ((e, "%%(o%i)s" % i) for i, e in enumerate(self.fgraph.outputs))))
@@ -3335,7 +3394,9 @@ class Composite(ScalarOp):
         self._c_code = _c_code
 
     def init_py_impls(self):
-        """Return a list of functions that compute each output of self
+        """
+        Return a list of functions that compute each output of self.
+
         """
         def compose_impl(r):
             # this is not optimal at all eg in add(*1 -> mul(x, y), *1)
@@ -3353,7 +3414,9 @@ class Composite(ScalarOp):
         self._impls = [compose_impl(r) for r in self.fgraph.outputs]
 
     def init_name(self):
-        """Return a readable string representation of self.fgraph
+        """
+        Return a readable string representation of self.fgraph.
+
         """
         try:
             rval = self.name

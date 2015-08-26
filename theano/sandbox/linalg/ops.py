@@ -64,7 +64,7 @@ except ImportError:
 
 class Hint(Op):
     """
-    Provide arbitrary information to the optimizer
+    Provide arbitrary information to the optimizer.
 
     These ops are removed from the graph during canonicalization
     in order to not interfere with other optimizations.
@@ -122,7 +122,7 @@ def remove_hint_nodes(node):
 
 class HintsFeature(object):
     """
-    FunctionGraph Feature to track matrix properties
+    FunctionGraph Feature to track matrix properties.
 
     This is a similar feature to variable 'tags'. In fact, tags are one way
     to provide hints.
@@ -209,8 +209,12 @@ class HintsFeature(object):
 
 
 class HintsOptimizer(Optimizer):
-    """Optimizer that serves to add HintsFeature as an fgraph feature.
     """
+    Optimizer that serves to add HintsFeature as an fgraph feature.
+    
+
+    """
+
     def __init__(self):
         Optimizer.__init__(self)
 
@@ -231,6 +235,7 @@ def psd(v):
     """
     Apply a hint that the variable `v` is positive semi-definite, i.e.
     it is a symmetric matrix and :math:`x^T A x \ge 0` for any vector x.
+
     """
     return Hint(psd=True, symmetric=True)(v)
 
@@ -294,6 +299,7 @@ def tag_solve_triangular(node):
     """
     If a general solve() is applied to the output of a cholesky op, then
     replace it with a triangular solve.
+
     """
     if node.op == solve:
         if node.op.A_structure == 'general':
@@ -396,12 +402,13 @@ def spectral_radius_bound(X, log2_exponent):
     Returns upper bound on the largest eigenvalue of square symmetrix matrix X.
 
     log2_exponent must be a positive-valued integer. The larger it is, the
-    slower and tighter the bound.  Values up to 5 should usually suffice.  The
+    slower and tighter the bound. Values up to 5 should usually suffice. The
     algorithm works by multiplying X by itself this many times.
 
     From V.Pan, 1990. "Estimating the Extremal Eigenvalues of a Symmetric
     Matrix", Computers Math Applic. Vol 20 n. 2 pp 17-22.
     Rq: an efficient algorithm, not used here, is defined in this paper.
+
     """
     if X.type.ndim != 2:
         raise TypeError('spectral_radius_bound requires a matrix argument', X)

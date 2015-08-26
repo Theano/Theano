@@ -230,8 +230,6 @@ if run_memory_usage_tests:
             a = cuda.CudaNdarray(n)
             a.sum()
             assert c == sys.getrefcount(n)
-            # This is to confuse flake8
-            a = a
             del a
             if not i % 1000:
                 print('.', end=' ')

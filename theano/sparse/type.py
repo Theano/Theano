@@ -12,9 +12,12 @@ from six import string_types
 
 def _is_sparse(x):
     """
-    @rtype: boolean
-    @return: True iff x is a L{scipy.sparse.spmatrix} (and not a
-    L{numpy.ndarray})
+
+    Returns
+    -------
+    boolean
+        True iff x is a L{scipy.sparse.spmatrix} (and not a L{numpy.ndarray}).
+
     """
     if not isinstance(x, (scipy.sparse.spmatrix, numpy.ndarray, tuple, list)):
         raise NotImplementedError("this function should only be called on "
@@ -25,13 +28,26 @@ def _is_sparse(x):
 
 class SparseType(gof.Type):
     """
-    @type dtype: numpy dtype string such as 'int64' or 'float64' (among others)
-    @type format: string
-    @ivar format: The sparse storage strategy.
+    Fundamental way to create a sparse node.
 
-    @note As far as I can tell, L{scipy.sparse} objects must be matrices, i.e.
+    Parameters
+    ----------
+    dtype : numpy dtype string such as 'int64' or 'float64' (among others)
+        Type of numbers in the matrix.
+    format: str
+        The sparse storage strategy.
+
+    Returns
+    -------
+    An empty SparseVariable instance.
+
+    Notes
+    -----
+    As far as I can tell, L{scipy.sparse} objects must be matrices, i.e.
     have dimension 2.
+
     """
+
     if imported_scipy:
         format_cls = {'csr': scipy.sparse.csr_matrix,
                       'csc': scipy.sparse.csc_matrix,
@@ -46,12 +62,6 @@ class SparseType(gof.Type):
     Constant = None
 
     def __init__(self, format, dtype):
-        """
-        Fundamental way to create a sparse node.
-        @param dtype:   Type of numbers in the matrix.
-        @param format:  The sparse storage strategy.
-        @return         An empty SparseVariable instance.
-        """
         if not imported_scipy:
             raise Exception("You can't make SparseType object as SciPy"
                             " is not available.")

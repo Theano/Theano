@@ -1,4 +1,9 @@
-"""WRITEME Defines the `Type` class."""
+"""
+WRITEME
+
+Defines the `Type` class.
+
+"""
 from theano.compat import PY3
 from six import string_types
 
@@ -15,7 +20,8 @@ __docformat__ = "restructuredtext en"
 
 
 class CLinkerType(CLinkerObject):
-    """Interface specification for Types that can be arguments to a `CLinkerOp`.
+    """
+    Interface specification for Types that can be arguments to a `CLinkerOp`.
 
     A CLinkerType instance is mainly reponsible  for providing the C code that
     interfaces python objects with a C `CLinkerOp` implementation.
@@ -25,84 +31,101 @@ class CLinkerType(CLinkerObject):
     """
 
     def c_is_simple(self):
-        """Optional: Return True for small or builtin C types.
+        """
+        Optional: Return True for small or builtin C types.
 
         A hint to tell the compiler that this type is a builtin C type or a
-        small struct and that its memory footprint is negligible.  Simple
+        small struct and that its memory footprint is negligible. Simple
         objects may be passed on the stack.
 
         """
         return False
 
     def c_literal(self, data):
-        """Optional: WRITEME
+        """
+        Optional: WRITEME
 
-        :Parameters:
-         - `data`: WRITEME
+        Parameters
+        ----------
+        data : WRITEME
             WRITEME
 
-        :Exceptions:
-         - `MethodNotDefined`: Subclass does not implement this method
+        Raises
+        ------
+        MethodNotDefined
+            Subclass does not implement this method.
 
         """
         raise MethodNotDefined("c_literal", type(self),
                                self.__class__.__name__)
 
     def c_declare(self, name, sub, check_input=True):
-        """Required: Return c code to declare variables that will be
+        """
+        Required: Return c code to declare variables that will be
         instantiated by `c_extract`.
 
-        Example:
+        Parameters
+        ----------
+        name: str
+            The name of the ``PyObject *`` pointer that will
+            the value for this Type
+        sub: dict string -> string
+            a dictionary of special codes.  Most importantly
+            sub['fail']. See CLinker for more info on `sub` and ``fail``.
+
+        Notes
+        -----
+        It is important to include the `name` inside of variables which
+        are declared here, so that name collisions do not occur in the
+        source file that is generated.
+
+        The variable called ``name`` is not necessarily defined yet
+        where this code is inserted. This code might be inserted to
+        create class variables for example, whereas the variable ``name``
+        might only exist inside certain functions in that class.
+
+        TODO: Why should variable declaration fail?  Is it even allowed to?
+
+        Raises
+        ------
+        MethodNotDefined
+            Subclass does not implement this method.
+
+        Examples
+        --------
         .. code-block: python
 
             return "PyObject ** addr_of_%(name)s;"
 
-        :param name: the name of the ``PyObject *`` pointer that will
-            the value for this Type
-
-        :type name: string
-
-        :param sub: a dictionary of special codes.  Most importantly
-            sub['fail']. See CLinker for more info on `sub` and ``fail``.
-
-        :type sub: dict string -> string
-
-        :note: It is important to include the `name` inside of variables which
-            are declared here, so that name collisions do not occur in the
-            source file that is generated.
-
-        :note: The variable called ``name`` is not necessarily defined yet
-            where this code is inserted.  This code might be inserted to
-            create class variables for example, whereas the variable ``name``
-            might only exist inside certain functions in that class.
-
-        :todo: Why should variable declaration fail?  Is it even allowed to?
-
-        :Exceptions:
-         - `MethodNotDefined`: Subclass does not implement this method
         """
         raise MethodNotDefined()
 
     def c_init(self, name, sub):
-        """Required: Return c code to initialize the variables that were declared by
-        self.c_declare()
+        """
+        Required: Return c code to initialize the variables that were declared
+        by self.c_declare().
 
-        Example:
+        Notes
+        -----
+        The variable called ``name`` is not necessarily defined yet
+        where this code is inserted. This code might be inserted in a
+        class constructor for example, whereas the variable ``name``
+        might only exist inside certain functions in that class.
+
+        TODO: Why should variable initialization fail?  Is it even allowed to?
+
+        Examples
+        --------
         .. code-block: python
 
             return "addr_of_%(name)s = NULL;"
 
-        :note: The variable called ``name`` is not necessarily defined yet
-            where this code is inserted.  This code might be inserted in a
-            class constructor for example, whereas the variable ``name``
-            might only exist inside certain functions in that class.
-
-        :todo: Why should variable initialization fail?  Is it even allowed to?
         """
         raise MethodNotDefined("c_init", type(self), self.__class__.__name__)
 
     def c_extract(self, name, sub, check_input=True):
-        """Required: Return c code to extract a PyObject * instance.
+        """
+        Required: Return c code to extract a PyObject * instance.
 
         The code returned from this function must be templated using
         ``%(name)s``, representing the name that the caller wants to
@@ -112,11 +135,25 @@ class CLinkerType(CLinkerObject):
         of py_%(name)s. If the data is improper, set an appropriate
         exception and insert "%(fail)s".
 
-        :todo: Point out that template filling (via sub) is now performed
-            by this function. --jpt
+        TODO: Point out that template filling (via sub) is now performed
+              by this function. --jpt
 
+        Parameters
+        ----------
+        name : str
+            The name of the ``PyObject *`` pointer that will
+            store the value for this Type.
+        sub : dict string -> string
+            A dictionary of special codes. Most importantly
+            sub['fail']. See CLinker for more info on `sub` and ``fail``.
 
-        Example:
+        Raises
+        ------
+        MethodNotDefined
+            Subclass does not implement this method.
+
+        Examples
+        --------
         .. code-block: python
 
             return "if (py_%(name)s == Py_None)" + \\\
@@ -125,29 +162,17 @@ class CLinkerType(CLinkerObject):
                    { PyErr_SetString(PyExc_ValueError, \\\
                         'was expecting None'); %(fail)s;}"
 
-
-        :param name: the name of the ``PyObject *`` pointer that will
-            store the value for this Type
-
-        :type name: string
-
-        :param sub: a dictionary of special codes.  Most importantly
-            sub['fail'].  See CLinker for more info on `sub` and ``fail``.
-
-        :type sub: dict string -> string
-
-        :Exceptions:
-         - `MethodNotDefined`: Subclass does not implement this method
-
         """
         raise MethodNotDefined("c_extract", type(self),
                                self.__class__.__name__)
 
     def c_extract_out(self, name, sub, check_input=True):
-        """Optional: C code to extract a PyObject * instance.
+        """
+        Optional: C code to extract a PyObject * instance.
 
         Unlike c_extract, c_extract_out has to accept Py_None,
         meaning that the variable should be left uninitialized.
+
         """
         return """
         if (py_%(name)s == Py_None)
@@ -164,7 +189,8 @@ class CLinkerType(CLinkerObject):
             c_extract_code=self.c_extract(name, sub, check_input))
 
     def c_cleanup(self, name, sub):
-        """Return c code to clean up after `c_extract`.
+        """
+        Return C code to clean up after `c_extract`.
 
         This returns C code that should deallocate whatever `c_extract`
         allocated or decrease the reference counts. Do not decrease
@@ -172,55 +198,64 @@ class CLinkerType(CLinkerObject):
 
         WRITEME
 
-        :Parameters:
-         - `name`: WRITEME
+        Parameters
+        ----------
+        name : WRITEME
             WRITEME
-         - `sub`: WRITEME
+        sub : WRITEME
             WRITEME
 
-        :Exceptions:
-         - `MethodNotDefined`: Subclass does not implement this method
+        Raises
+        ------
+         MethodNotDefined
+            Subclass does not implement this method.
 
         """
         raise MethodNotDefined()
 
     def c_sync(self, name, sub):
-        """Required: Return c code to pack C types back into a PyObject.
+        """
+        Required: Return C code to pack C types back into a PyObject.
 
         The code returned from this function must be templated using
         "%(name)s", representing the name that the caller wants to
-        call this Variable.  The returned code may set "py_%(name)s"
+        call this Variable. The returned code may set "py_%(name)s"
         to a PyObject* and that PyObject* will be accessible from
         Python via variable.data. Do not forget to adjust reference
         counts if "py_%(name)s" is changed from its original value.
 
-        :Parameters:
-         - `name`: WRITEME
+        Parameters
+        ----------
+        name : WRITEME
             WRITEME
-         - `sub`: WRITEME
+        sub : WRITEME
             WRITEME
 
-        :Exceptions:
-         - `MethodNotDefined`: Subclass does not implement this method
+        Raises
+        ------
+        MethodNotDefined
+            Subclass does not implement this method.
 
         """
         raise MethodNotDefined("c_sync", type(self), self.__class__.__name__)
 
     def c_code_cache_version(self):
-        """Return a tuple of integers indicating the version of this Type.
+        """
+        Return a tuple of integers indicating the version of this Type.
 
         An empty tuple indicates an 'unversioned' Type that will not
         be cached between processes.
 
         The cache mechanism may erase cached modules that have been
-        superceded by newer versions.  See `ModuleCache` for details.
+        superceded by newer versions. See `ModuleCache` for details.
 
         """
         return ()
 
 
 class PureType(object):
-    """Interface specification for variable type instances.
+    """
+    Interface specification for variable type instances.
 
     A :term:`Type` instance is mainly reponsible for two things:
 
@@ -228,8 +263,10 @@ class PureType(object):
 
     - filtering a value assigned to a `Variable` so that the value
       conforms to restrictions imposed by the type (also known as
-      casting, this is done by `filter`),
+      casting, this is done by `filter`).
+
     """
+
     # the type that will be created by call to make_variable.
     Variable = graph.Variable
 
@@ -237,7 +274,8 @@ class PureType(object):
     Constant = graph.Constant
 
     def filter(self, data, strict=False, allow_downcast=None):
-        """Required: Return data or an appropriately wrapped/converted data.
+        """
+        Required: Return data or an appropriately wrapped/converted data.
 
         Subclass implementation should raise a TypeError exception if
         the data is not of an acceptable type.
@@ -250,8 +288,10 @@ class PureType(object):
         Type-dependent, but for now it means only Python floats can be
         downcasted, and only to floatX scalars.
 
-        :Exceptions:
-         - `MethodNotDefined`: subclass doesn't implement this function.
+        Raises
+        ------
+        MethodNotDefined
+            Subclass doesn't implement this function.
 
         """
         raise MethodNotDefined("filter", type(self), self.__class__.__name__)
@@ -263,19 +303,26 @@ class PureType(object):
 
     # def filter_inplace(value, storage, strict=False, allow_downcast=None)
 
-    def filter_variable(self, other):
-        """Convert a symbolic variable into this Type, if compatible.
+    def filter_variable(self, other, allow_convert=True):
+        """
+        Convert a symbolic variable into this Type, if compatible.
 
         For the moment, the only Types compatible with one another are
         TensorType and CudaNdarrayType, provided they have the same
         number of dimensions, same broadcasting pattern, and same dtype.
 
         If Types are not compatible, a TypeError should be raised.
+
         """
         if not isinstance(other, graph.Variable):
             # The value is not a Variable: we cast it into
             # a Constant of the appropriate Type.
             other = self.Constant(type=self, data=other)
+
+        if other.type != self and allow_convert:
+            other2 = self.convert_variable(other)
+            if other2 is not None:
+                return other2
 
         if other.type != self:
             raise TypeError(
@@ -285,9 +332,32 @@ class PureType(object):
                 % dict(othertype=other.type, other=other, self=self))
         return other
 
+    def convert_variable(self, var):
+        """
+        Patch variable so that its type will match self, if possible.
+
+        If the variable can't be converted, this should return None.
+
+        The conversion can only happen if the following implication is
+        true for all possible `val`.
+
+          self.is_valid_value(val) => var.type.is_valid_value(val)
+
+        For the majority of types this means that you can only have
+        non-broadcastable dimensions become broadcastable and not the
+        inverse.
+
+        The default is to not convert anything which is always safe.
+
+        """
+        return None
+
     def is_valid_value(self, a):
-        """Required: Return True for any python object `a` that would be a
-legal value for a Variable of this Type"""
+        """
+        Required: Return True for any python object `a` that would be a
+        legal value for a Variable of this Type.
+
+        """
         try:
             self.filter(a, strict=True)
             return True
@@ -295,15 +365,20 @@ legal value for a Variable of this Type"""
             return False
 
     def value_validity_msg(self, a):
-        """Optional: return a message explaining the output of
-is_valid_value"""
+        """
+        Optional: Return a message explaining the output of
+        is_valid_value.
+
+        """
         return "none"
 
     def make_variable(self, name=None):
-        """Return a new `Variable` instance of Type `self`.
+        """
+        Return a new `Variable` instance of Type `self`.
 
-        :Parameters:
-         - `name`: None or str
+        Parameters
+        ----------
+        name : None or str
             A pretty string for printing and debugging.
 
         """
@@ -313,10 +388,12 @@ is_valid_value"""
         return self.Constant(type=self, data=value, name=name)
 
     def __call__(self, name=None):
-        """Return a new `Variable` instance of Type `self`.
+        """
+        Return a new `Variable` instance of Type `self`.
 
-        :Parameters:
-         - `name`: None or str
+        Parameters
+        ----------
+        name : None or str
             A pretty string for printing and debugging.
 
         """
@@ -327,6 +404,7 @@ is_valid_value"""
         Return True if a and b can be considered exactly equal.
 
         a and b are assumed to be valid values of this Type.
+
         """
         return a == b
 
@@ -334,29 +412,38 @@ is_valid_value"""
         """
         Return True if a and b can be considered approximately equal.
 
-        :param a: a potential value for a Variable of this Type.
-
-        :param b: a potential value for a Variable of this Type.
-
-        :rtype: Bool
-
         This function is used by theano debugging tools to decide
         whether two values are equivalent, admitting a certain amount
-        of numerical instability.  For example, for floating-point
+        of numerical instability. For example, for floating-point
         numbers this function should be an approximate comparison.
 
         By default, this does an exact comparison.
+
+        Parameters
+        ----------
+        a
+            A potential value for a Variable of this Type.
+
+        b
+            A potential value for a Variable of this Type.
+
+        Returns
+        -------
+        bool
+
         """
         return self.values_eq(a, b)
 
 #    def get_shape_info(self, obj):
         """
-        Optional function. See TensorType().get_shape_info for definition
+        Optional function. See TensorType().get_shape_info for definition.
+
         """
 
 #    def get_size(self, shape_info):
         """
-        Optional function. See TensorType().get_size for definition
+        Optional function. See TensorType().get_size for definition.
+
         """
 
 _nothing = """
@@ -364,7 +451,8 @@ _nothing = """
 
 
 class Type(object2, PureType, CLinkerType):
-    """Convenience wrapper combining `PureType` and `CLinkerType`.
+    """
+    Convenience wrapper combining `PureType` and `CLinkerType`.
 
     Theano comes with several subclasses of such as:
 
@@ -376,8 +464,8 @@ class Type(object2, PureType, CLinkerType):
 
     But you are encouraged to write your own, as described in WRITEME.
 
-    The following following code illustrates the use of a Type
-    instance, here tensor.fvector:
+    The following code illustrates the use of a Type instance,
+    here tensor.fvector:
 
     .. code-block:: python
 
@@ -388,7 +476,7 @@ class Type(object2, PureType, CLinkerType):
         c = tensor.fvector()
 
     Whenever you create a symbolic variable in theano (technically,
-    `Variable`) it will contain a reference to a Type instance.  That
+    `Variable`) it will contain a reference to a Type instance. That
     reference is typically constant during the lifetime of the
     Variable.  Many variables can refer to a single Type instance, as
     do b and c above.  The Type instance defines the kind of value
@@ -404,30 +492,16 @@ class Type(object2, PureType, CLinkerType):
     do type-checking in pattern-based optimizations.
 
     """
-    def convert_variable(self, var):
-        """Patch variable so that its type will match self, if possible.
-
-        If the variable can't be converted, this should return None.
-
-        The conversion can only happen if the following implication is
-        true for all possible `val`.
-
-          self.is_valid_value(val) => var.type.is_valid_value(val)
-
-        For the majority of types this means that you can only have
-        non-broadcastable dimensions become broadcastable and not the
-        inverse.
-
-        The default is to not convert anything which is always safe.
-        """
-        return None
 
 
 class SingletonType(Type):
-    """Convenient Base class for a Type subclass with no attributes
-
-    It saves having to implement __eq__ and __hash__
     """
+    Convenient Base class for a Type subclass with no attributes.
+
+    It saves having to implement __eq__ and __hash__.
+
+    """
+
     __instance = None
 
     def __new__(cls):
@@ -467,6 +541,7 @@ class Generic(SingletonType):
     EXAMPLE of what this means, or when you would use this type.
 
     WRITEME
+
     """
 
     def filter(self, data, strict=False, allow_downcast=None):
@@ -517,7 +592,20 @@ class CDataType(Type):
     """
     Represents opaque C data to be passed around. The intent is to
     ease passing arbitrary data between ops C code.
+
+    The constructor builds a type made to represent a C pointer in theano.
+
+    Parameters
+    ----------
+    ctype
+        The type of the pointer (complete with the `*`).
+
+    freefunc
+        A function to call to free the pointer. This function must have a `void`
+        return and take a single pointer argument.
+
     """
+
     import ctypes
     if PY3:
         _cdata_type = ctypes.py_object.from_address(
@@ -528,15 +616,6 @@ class CDataType(Type):
     del ctypes
 
     def __init__(self, ctype, freefunc=None):
-        """
-        Build a type made to represent a C pointer in theano.
-
-        :param ctype: The type of the pointer (complete with the `*`)
-
-        :param freefunc: a function to call to free the pointer.  This
-                         function must have a `void` return and take a
-                         single pointer argument.
-        """
         assert isinstance(ctype, string_types)
         self.ctype = ctype
         if freefunc is not None:

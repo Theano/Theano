@@ -2,16 +2,20 @@ from theano import gof
 
 
 class TypedListType(gof.Type):
+    """
+   
+    Parameters
+    ----------
+    ttype
+        Type of theano variable this list will contains, can be another list.
+    depth
+        Optionnal parameters, any value above 0 will create a nested list of
+        this depth. (0-based)
+
+    """
 
     def __init__(self, ttype, depth=0):
-        """
-        :Parameters:
-            -'ttype' : Type of theano variable this list
-            will contains, can be another list.
-            -'depth' : Optionnal parameters, any value
-            above 0 will create a nested list of this
-            depth. (0-based)
-        """
+       
         if depth < 0:
             raise ValueError('Please specify a depth superior or'
                             'equal to 0')
@@ -25,10 +29,16 @@ class TypedListType(gof.Type):
 
     def filter(self, x, strict=False, allow_downcast=None):
         """
-        :Parameters:
-            -'x' : value to filter
-            -'strict' : if true, only native python list will be accepted
-            -'allow_downcast' : does not have any utility at the moment
+
+        Parameters
+        ----------
+        x
+            Value to filter.
+        strict
+            If true, only native python list will be accepted.
+        allow_downcast
+            Does not have any utility at the moment.
+
         """
         if strict:
             if not isinstance(x, list):
@@ -45,9 +55,9 @@ class TypedListType(gof.Type):
 
     def __eq__(self, other):
         """
-        two list are equals if they contains the same type.
-        """
+        Two lists are equal if they contain the same type.
 
+        """
         return  type(self) == type(other) and self.ttype == other.ttype
 
     def __hash__(self):
@@ -58,8 +68,8 @@ class TypedListType(gof.Type):
 
     def get_depth(self):
         """
-        utilitary function to get the 0 based
-        level of the list
+        Utilitary function to get the 0 based level of the list.
+
         """
         if isinstance(self.ttype, TypedListType):
             return self.ttype.get_depth() + 1

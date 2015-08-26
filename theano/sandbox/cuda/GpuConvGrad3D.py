@@ -15,14 +15,25 @@ from theano.sandbox.cuda import (CudaNdarrayType, HostFromGpu,
 
 
 class GpuConvGrad3D(GpuOp):
-    """ GPU version of gradient of ConvGrad3D with respect to W """
+    """
+    GPU version of gradient of ConvGrad3D with respect to W.
+
+    """
 
     def make_node(self, V, d, WShape, dCdH):
         """
-        :param V: visible
-        :param d: strides
-        :param WShape: shapes of the weights -> shape of this op output
-        :param dCdH: other input with what V will be convolved.
+
+        Parameters
+        ----------
+        V
+            Visible.
+        d
+            Strides.
+        WShape
+            Shapes of the weights -> shape of this op output.
+        dCdH
+            Other input with what V will be convolved.
+
         """
         V_ = as_cuda_ndarray_variable(V)
         d_ = T.as_tensor_variable(d)

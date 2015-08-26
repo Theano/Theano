@@ -89,7 +89,7 @@ class GpuArrayType(Type):
                                 " dimension.", shp, self.broadcastable)
         return data
 
-    def filter_variable(self, other):
+    def filter_variable(self, other, allow_convert=True):
         if hasattr(other, '_as_GpuArrayVariable'):
             other = other._as_GpuArrayVariable()
 
@@ -108,10 +108,17 @@ class GpuArrayType(Type):
             raise TypeError('Incompatible number of dimensions.'
                             ' Expected %d, got %d.' % (self.ndim, other.ndim))
         if other.type.broadcastable != self.broadcastable:
-            raise TypeError('Incompatible broadcastable dimensions.'
-                            ' Expected %s, got %s.' %
-                            (str(other.type.broadcastable),
-                             str(self.broadcastable)))
+            if allow_convert:
+                type2 = other.type.clone(broadcastable=self.broadcastable)
+                other2 = type2.convert_variable(other)
+            else:
+                other2 = None
+            if other2 is None:
+                raise TypeError('Incompatible broadcastable dimensions.'
+                                ' Expected %s, got %s.' %
+                                (str(other.type.broadcastable),
+                                 str(self.broadcastable)))
+            other = other2
 
         return theano.sandbox.gpuarray.basic_ops.gpu_from_host(other)
 
@@ -210,10 +217,12 @@ class GpuArrayType(Type):
         return (hash(self.typecode) ^ hash(self.broadcastable))
 
     def dtype_specs(self):
-        """Return a tuple (python type, c type, numpy typenum) that corresponds
+        """
+        Return a tuple (python type, c type, numpy typenum) that corresponds
         to self.dtype.
 
         This function is used internally as part of C code generation.
+
         """
         # TODO: add more type correspondances for e.g. int32, int64, float32,
         # complex64, etc.
@@ -379,7 +388,10 @@ GpuArrayType.SharedVariable = GpuArraySharedVariable
 def gpuarray_shared_constructor(value, name=None, strict=False,
                                 allow_downcast=None, borrow=False,
                                 broadcastable=None):
-    """SharedVariable constructor for GpuArrayType"""
+    """
+    SharedVariable constructor for GpuArrayType.
+
+    """
     if not isinstance(value, (numpy.ndarray, pygpu.gpuarray.GpuArray)):
         raise TypeError('ndarray or GpuArray required')
 

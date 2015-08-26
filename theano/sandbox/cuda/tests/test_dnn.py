@@ -10,7 +10,7 @@ import theano.tensor as T
 import theano.tests.unittest_tools as utt
 from theano.sandbox.neighbours import images2neibs
 from theano.tensor.signal.downsample import max_pool_2d
-from theano.tensor.signal.downsample import DownsampleFactorMaxGrad
+from theano.tensor.signal.downsample import MaxPoolGrad, AveragePoolGrad
 import theano.sandbox.cuda.dnn as dnn
 from theano.sandbox.cuda.basic_ops import GpuAllocEmpty, gpu_alloc_empty
 from theano.sandbox.cuda import float32_shared_constructor as shared
@@ -316,8 +316,12 @@ def test_pooling():
                               ignore_border=True, mode=mode)
             fc = theano.function([x], theano.grad(out.sum(), x),
                                  mode=mode_without_gpu)
-            assert any([isinstance(node.op, DownsampleFactorMaxGrad)
-                        for node in fc.maker.fgraph.toposort()])
+            if mode == 'max':
+                assert any([isinstance(node.op, MaxPoolGrad)
+                            for node in fc.maker.fgraph.toposort()])
+            else:
+                assert any([isinstance(node.op, AveragePoolGrad)
+                            for node in fc.maker.fgraph.toposort()])
             c_out = fc(data)
             assert numpy.allclose(c_out, g_out)
 

@@ -14,15 +14,6 @@ import hashlib
 import numpy as np
 from six import string_types, integer_types, iteritems
 
-try:
-    import pydot as pd
-    if pd.find_graphviz():
-        pydot_imported = True
-    else:
-        pydot_imported = False
-except ImportError:
-    pydot_imported = False
-
 import theano
 from theano import gof
 from theano import config
@@ -30,6 +21,26 @@ from six.moves import StringIO, reduce
 from theano.gof import Op, Apply
 from theano.compile import Function, debugmode, SharedVariable
 from theano.compile.profilemode import ProfileMode
+
+# pydot-ng is a fork of pydot that is better maintained, and works
+# with more recent version of its dependencies (in particular pyparsing)
+try:
+    import pydot_ng as pd
+    if pd.find_graphviz():
+        pydot_imported = True
+    else:
+        pydot_imported = False
+except Exception:
+    # Sometimes, a Windows-specific exception is raised
+    pydot_imported = False
+# Fall back on pydot if necessary
+if not pydot_imported:
+    try:
+        import pydot as pd
+        if pd.find_graphviz():
+            pydot_imported = True
+    except Exception:
+        pass
 
 _logger = logging.getLogger("theano.printing")
 VALID_ASSOC = set(['left', 'right', 'either'])

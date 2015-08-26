@@ -44,8 +44,13 @@ from theano.gradient import grad_undefined
 # the output function is only defined when dr, dc, dt are natural numbers.
 
 class Conv3D(theano.Op):
-    """ 3D `convolution` of multiple filters on a minibatch
-        :note: does not flip the kernel, moves kernel with a user specified stride
+    """
+    3D `convolution` of multiple filters on a minibatch.
+
+    Notes
+    -----
+    Does not flip the kernel, moves kernel with a user specified stride.
+
     """
     __props__ = ()
 
@@ -54,10 +59,17 @@ class Conv3D(theano.Op):
 
     def make_node(self, V, W, b, d):
         """
-            :param V: Visible unit, input(batch,row,column,time,in channel)
-            :param W: Weights, filter(out channel,row,column,time,in channel)
-            :param b: bias, shape == (W.shape[0],)
-            :param d: strides when moving the filter over the input(dx,dy,dt)
+        Parameters
+        ----------
+        V
+            Visible unit, input(batch,row,column,time,in channel)
+        W
+            Weights, filter(out channel,row,column,time,in channel)
+        b
+            bias, shape == (W.shape[0],)
+        d
+            strides when moving the filter over the input(dx,dy,dt)
+
         """
 
         V_ = T.as_tensor_variable(V)
@@ -539,28 +551,39 @@ _conv3D = Conv3D()
 
 def conv3D(V, W, b, d):
     """
-    3D "convolution" of multiple filters on a minibatch
+    3D "convolution" of multiple filters on a minibatch.
+
     (does not flip the kernel, moves kernel with a user specified stride)
 
-    :param V: Visible unit, input.
-        dimensions: (batch, row, column, time, in channel)
-    :param W: Weights, filter.
-        dimensions: (out channel, row, column, time ,in channel)
-    :param b: bias, shape == (W.shape[0],)
-    :param d: strides when moving the filter over the input(dx, dy, dt)
+    Parameters
+    ----------
+    V
+        Visible unit, input.
+        Dimensions: (batch, row, column, time, in channel).
+    W
+        Weights, filter.
+        Dimensions: (out channel, row, column, time ,in channel).
+    b
+        Bias, shape == (W.shape[0],).
+    d
+        Strides when moving the filter over the input(dx, dy, dt).
 
-    :note: The order of dimensions does not correspond to the one in `conv2d`.
-           This is for optimization.
+    Notes
+    -----
+    The order of dimensions does not correspond to the one in `conv2d`.
+    This is for optimization.
 
-    :note: The GPU implementation is very slow. You should use
-           :func:`conv3d2d <theano.tensor.nnet.conv3d2d.conv3d>` or
-           :func:`conv3d_fft <theano.sandbox.cuda.fftconv.conv3d_fft>` for a
-           GPU graph instead.
+    The GPU implementation is very slow. You should use
+    :func:`conv3d2d <theano.tensor.nnet.conv3d2d.conv3d>` or
+    :func:`conv3d_fft <theano.sandbox.cuda.fftconv.conv3d_fft>` for a
+    GPU graph instead.
 
-    :see: Someone made a script that shows how to swap the axes
-          between both 3d convolution implementations in Theano. See
-          the last `attachment
-          <https://groups.google.com/d/msg/theano-users/1S9_bZgHxVw/0cQR9a4riFUJ>`_.
+    See Also
+    --------
+    Someone made a script that shows how to swap the axes
+    between both 3d convolution implementations in Theano. See
+    the last `attachment <https://groups.google.com/d/msg/theano-users/1S9_bZgHxVw/0cQR9a4riFUJ>`_
+
 """
     return _conv3D(V, W, b, d)
 

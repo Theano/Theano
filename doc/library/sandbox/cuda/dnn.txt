@@ -53,7 +53,7 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
    * ``small`` (default) : use a convolution implementation with small memory
      usage
    * ``none`` : use a slower implementation with minimal memory usage
-   * ``large`` : use a faster implementation with large memory usage
+   * ``large`` : use a sometimes faster implementation with large memory usage
    * ``fft`` : use the Fast Fourrier Transform implementation of convolution
      (very high memory usage)
    * ``guess_once`` : the first time a convolution is executed, the
@@ -91,6 +91,10 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
      implementation selected every time the shapes of the inputs and kernels
      don't match the shapes from the last execution.
 
+   ``guess_*`` and ``time_*`` flag values take into account the amount of
+   available memory when selecting an implementation. This means that slower
+   implementations might be selected if not enough memory is available for the
+   faster implementations.
 
 .. note::
 
@@ -125,23 +129,27 @@ Functions
 =========
 
 .. automodule:: theano.sandbox.cuda.dnn
-    :members: dnn_conv, dnn_pool
+   :noindex:
+   :members: dnn_conv, dnn_pool
 
 Convolution Ops
 ===============
 
 .. automodule:: theano.sandbox.cuda.dnn
-    :members: GpuDnnConvDesc, GpuDnnConv, GpuDnnConv3d, GpuDnnConvGradW,
-              GpuDnnConv3dGradW, GpuDnnConvGradI, GpuDnnConv3dGradI
+   :noindex:
+   :members: GpuDnnConvDesc, GpuDnnConv, GpuDnnConv3d, GpuDnnConvGradW,
+             GpuDnnConv3dGradW, GpuDnnConvGradI, GpuDnnConv3dGradI
 
 Pooling Ops
 ===========
 
 .. automodule:: theano.sandbox.cuda.dnn
-    :members: GpuDnnPoolDesc, GpuDnnPool, GpuDnnPoolGrad
+   :noindex:
+   :members: GpuDnnPoolDesc, GpuDnnPool, GpuDnnPoolGrad
 
 Softmax Ops
 ===========
 
 .. automodule:: theano.sandbox.cuda.dnn
-    :members: GpuDnnSoftmax, GpuDnnSoftmaxGrad
+   :noindex:
+   :members: GpuDnnSoftmax, GpuDnnSoftmaxGrad

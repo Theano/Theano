@@ -10,10 +10,11 @@ from functools import reduce
 
 
 class OpFromGraph(gof.Op):
-    """This creates an `Op` from inputs and outputs lists of variables.
+    """
+    This creates an `Op` from inputs and outputs lists of variables.
 
     The signature is similar to theano.function() and the resulting
-    `Op`'s perform will do the same operation as::
+    `Op`'s perform will do the same operation as:
 
         orig_function(inputs, outputs, **kwargs)
 
@@ -31,11 +32,15 @@ class OpFromGraph(gof.Op):
         - Add support to pickle this Op.
         - Add support/test with random generator
 
-    :note:
-        - We support shared variables in the inner graph. This is automatic and
-          invisible to the user. They can be as input to the node or in the
-          inner graph.
-        - We support unused inputs. This is needed for the grad.
+    Notes
+    -----
+    - We support shared variables in the inner graph. This is automatic and
+      invisible to the user. They can be as input to the node or in the
+      inner graph.
+    - We support unused inputs. This is needed for the grad.
+
+    Examples
+    --------
 
     Example 1:
 
@@ -48,8 +53,6 @@ class OpFromGraph(gof.Op):
         # op behaves like a normal theano op
         e2 = op(x, y, z) + op(z, y, x)
         fn = function([x, y, z], [e2])
-
-
 
     Example 2 with shared variable:
 
@@ -139,7 +142,8 @@ class OpFromGraph(gof.Op):
 
     def connection_pattern(self, node):
         """
-        Return connection pattern of subfgraph defined by inputs and outputs
+        Return connection pattern of subfgraph defined by inputs and outputs.
+
         """
         return io_connection_pattern(self.new_inputs, self.new_outputs)
 

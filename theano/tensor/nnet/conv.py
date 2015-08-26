@@ -36,61 +36,58 @@ _logger = logging.getLogger("theano.tensor.nnet.conv")
 
 def conv2d(input, filters, image_shape=None, filter_shape=None,
            border_mode='valid', subsample=(1, 1), **kargs):
-    """This function will build the symbolic graph for convolving a stack of
+    """
+    This function will build the symbolic graph for convolving a stack of
     input images with a set of filters. The implementation is modelled after
     Convolutional Neural Networks (CNN). It is simply a wrapper to the ConvOp
     but provides a much cleaner interface.
 
-    :type input: symbolic 4D tensor
-    :param input: mini-batch of feature map stacks, of shape
-                  (batch size, stack size, nb row, nb col)
-                  see the optional parameter image_shape
+    Parameters
+    ----------
+    input : symbolic 4D tensor
+        Mini-batch of feature map stacks, of shape
+        (batch size, stack size, nb row, nb col)
+        see the optional parameter image_shape
+    filters: symbolic 4D tensor
+        Set of filters used in CNN layer of shape
+        (nb filters, stack size, nb row, nb col)
+        see the optional parameter filter_shape
+    border_mode : {'valid', 'full'}
+       'valid'only apply filter to complete patches of the image. Generates
+       output of shape: image_shape - filter_shape + 1.
+       'full' zero-pads image to multiple of filter shape to generate output
+       of shape: image_shape + filter_shape - 1.
+    subsample: tuple of len 2
+        Factor by which to subsample the output. Also called strides elsewhere.
+    image_shape: None, tuple/list of len 4 of int, None or Constant variable
+        The shape of the input parameter.
+        Optional, used for optimization like loop unrolling
+        You can put None for any element of the list to tell that this element
+        is not constant.
+    filter_shape : None, tuple/list of len 4 of int, None or Constant variable
+        Optional, used for optimization like loop unrolling
+        You can put None for any element of the list
+        to tell that this element is not constant.
+    kwargs
+        Kwargs are passed onto ConvOp. Can be used to set the following:
+        unroll_batch, unroll_kern, unroll_patch, openmp (see ConvOp doc).
 
-    :type filters: symbolic 4D tensor
-    :param filters: set of filters used in CNN layer of shape
-                    (nb filters, stack size, nb row, nb col)
-                    see the optional parameter filter_shape
+        openmp: By default have the same value as
+                config.openmp. For small image, filter,
+                batch size, nkern and stack size, it can be
+                faster to disable manually openmp. A fast and
+                incomplete test show that with image size
+                6x6, filter size 4x4, batch size==1,
+                n kern==1 and stack size==1, it is faster
+                to disable it in valid mode. But if we
+                grow the batch size to 10, it is faster
+                with openmp on a core 2 duo.
 
-    :param border_mode:
-       'valid'-- only apply filter to complete patches of the image. Generates
-                 output of shape: image_shape - filter_shape + 1
-       'full' -- zero-pads image to multiple of filter shape to generate output
-                 of shape: image_shape + filter_shape - 1
-
-    :type subsample: tuple of len 2
-    :param subsample: factor by which to subsample the output.
-                      Also called strides elsewhere.
-
-    :type image_shape: None, tuple/list of len 4 of int, None or
-                       Constant variable
-    :param image_shape: The shape of the input parameter.
-                        Optional, used for optimization like loop unrolling
-                        You can put None for any element of the list
-                        to tell that this element is not constant.
-    :type filter_shape: None, tuple/list of len 4 of int, None or
-                        Constant variable
-    :param filter_shape: Optional, used for optimization like loop unrolling
-                         You can put None for any element of the list
-                         to tell that this element is not constant.
-    :param kwargs: kwargs are passed onto ConvOp.
-                   Can be used to set the following:
-                   unroll_batch, unroll_kern, unroll_patch,
-                   openmp (see ConvOp doc)
-
-                   openmp: By default have the same value as
-                           config.openmp. For small image, filter,
-                           batch size, nkern and stack size, it can be
-                           faster to disable manually openmp. A fast and
-                           incomplete test show that with image size
-                           6x6, filter size 4x4, batch size==1,
-                           n kern==1 and stack size==1, it is faster
-                           to disable it in valid mode. But if we
-                           grow the batch size to 10, it is faster
-                           with openmp on a core 2 duo.
-
-    :rtype: symbolic 4D tensor
-    :return: set of feature maps generated by convolutional layer. Tensor is
-        of shape (batch size, nb filters, output row, output col)
+    Returns
+    -------
+    symbolic 4D tensor
+        Set of feature maps generated by convolutional layer. Tensor is
+        of shape (batch size, nb filters, output row, output col).
 
     """
 
@@ -171,6 +168,97 @@ class ConvOp(OpenMPOp):
         output[b,k,:,:] = \sum_i input[b,i,:,:] * filter[k,i,:,:] \forall b,k
     where b is the mini-batch index, k the filter index and * is the
     convolution operator.
+
+    The constructor initializes a ConvOp with given output_mode (full/valid).
+    All other parameters are optional and are only used to generate more
+    optimized c code, or to enable graph optimizers to optimally replace the
+    ConvOp.
+
+    NOTES ON OPTIMIZATION:
+    There are two types of optimization. The first is the selection of the
+    fastest algo when bsize and nkern are provided with imshp and kshp.
+    By default we try to select the fastest version. You can specify it
+    with the unroll_batch, unroll_kern, and unroll_patch parameter.
+
+    The second type of optimization is hardcoding some dimensions into the
+    code when all shape are know.
+    This make a significant difference for the 'full' output_mode.
+
+    Sometimes, the fastest implementation on x86-64 uses
+    {unroll_batch=4, unroll_kern=4, unroll_patch=False}
+    with all other shape parameters being provided.
+
+    For optimizing other architectures, see:
+    Kazushige Goto and Robert A. Van De Geijn, Anatomy of High-Performance
+    Matrix Multiplication, (mr x nr). ACM Transactions on Mathematical
+    Software, May 2008.
+    Figure 12: (mr x nr). For x86 use 2x4, itanium 8x8, etc.
+
+    Parameters
+    ----------
+    output_mode : {'valid', 'full'}
+        'valid' gives an output smaller then the image.
+        'full' gives an output bigger then the image.
+         See 'border_mode' in conv2d's doc.
+
+    Optional parameters: (will generate more optimal c code)
+
+    imshp : tuple of len 2 or 3: 2 for 2d image, 3 for a stack of 2d images.
+        Stacksize, nb image row, nb image col.
+    kshp : tuple of len 2
+        Nb kernel row, nb kernel col.
+    nkern : int
+        The number of kernel.
+    bsize : int
+        The size of the minibatch.
+    dx : int
+        Patch stride rows.
+    dy : int
+        Patch stride cols
+
+    Params which select the version of code used:
+
+    unroll_patch : bool
+        Use a version of c_code that unroll the patch loop that don't
+        request all shape information to work, but if all shape information
+        are present, will use it to hardcode the value in the code for
+        faster code.
+    unroll_batch : int
+        Use a version of c_code that unroll the batch (by unroll_batch)
+        and the nkern (by unroll_kern) loop. The size must by a multiple
+        of bsize or nkern respectively.
+    unroll_kern : int
+        Use a version of c_code that unroll the batch
+        (by unroll_batch) and the nkern(by unroll_kern) loop. The size
+        must by a multiple of bsize or nkern respectively.
+    verbose : int
+        Passed to GpuConv.
+    version: int or str
+        Passed to GpuConv, if version='no_fft', fft
+        optimization will be desactivated at the op level.
+    direction_hint: {'forward', 'bprop weights', 'bprop inputs'}
+        Passed to GpuConv, used by graph optimizers to aid algorithm choice.
+
+    The 3 following parameters are used internally when we generate
+    the gradient when dx!=1 or dy!=1.
+
+    imshp_logical
+        Default None. None value is equivalent to imshp value.
+        When imshp_logical != imshp, it tell we need to insert 0 in
+        the image before we do the convolution. For example, when dx==dy==2
+        and the image is [[1, 2], [3, 4]], we should make as if the image
+        was [[1, 0, 2, 0], [0, 0, 0, 0], [3, 0, 4, 0], [0, 0, 0, 0]].
+        Our python code insert the zero, but the c code optimize it.
+        imshp_logical != imshp when taking the grad again the weights or
+        the image when the output_mode is full and `dx != 1` or `dy != 1`.
+    kshp_logical
+        Idem but for kshp and used for the grad again the
+        weights when the output_mode is valid and `dx != 1` or `dy != 1`.
+    kshp_logical_top_aligned
+        Used in the same case. Default to True.
+        Set to False in the grad again the weight when the
+        output_mode is full.
+
     """
 
     __attrnames = ['imshp', 'kshp', 'nkern', 'bsize', 'dx', 'dy', 'out_mode',
@@ -257,10 +345,20 @@ class ConvOp(OpenMPOp):
         with kernels of shape "kshp". Accepts symbolic or integer shapes.
         Propagates `None`s (for unknown shapes).
 
-        :param inshp: (rows,cols) of input image
-        :param kshp: (rows,cols) of filters
-        :param mode: 'valid' or 'full' (see 'border_mode' in conv2d's doc)
-        :return: (rows,cols) of output image
+        Parameters
+        ----------
+        inshp
+            (rows,cols) of input image.
+        kshp
+            (rows,cols) of filters.
+        mode: {'valid', 'full'}
+            See 'border_mode' in conv2d's doc.
+
+        Returns
+        -------
+        object
+            (rows,cols) of output image.
+
         """
         # The formula would be ceil((i + s * k - s * 1) / float(d)),
         # with s=1 for mode=='full' and s=-1 for mode=='valid'.
@@ -284,92 +382,6 @@ class ConvOp(OpenMPOp):
                  version=-1,
                  direction_hint='forward',
                  openmp=None):
-        """
-        Initializes a ConvOp with given output_mode (full/valid). All other
-        parameters are optional and are only used to generate more optimized c
-        code, or to enable graph optimizers to optimally replace the ConvOp.
-
-        NOTES ON OPTIMIZATION:
-        Their is two type of optimization. The first is the selection of the
-        fastest algo when bsize and nkern are probided with imshp and kshp.
-        By default we try to select the fastest version. You can specify it
-        with the unroll_batch, unroll_kern, and unroll_patch parameter.
-
-        The second type of optimization is hardcoding some dimensions into the
-        code when all shape are know.
-        This make a significant difference for the 'full' output_mode.
-
-        Some times, the fastest implementation on x86-64 uses
-        {unroll_batch=4, unroll_kern=4, unroll_patch=False}
-        with all other shape parameters being provided.
-
-        For optimizing other architectures, see:
-        Kazushige Goto and Robert A. Van De Geijn, Anatomy of High-Performance
-        Matrix Multiplication, (mr x nr). ACM Transactions on Mathematical
-        Software, May 2008.
-        Figure 12: (mr x nr). For x86 use 2x4, itanium 8x8, etc.
-
-        :type output_mode: string
-        :param output_mode: 'valid' -- gives an output smaller then the image
-                            'full' -- gives an output bigger then the image
-
-        Optional parameters: (will generate more optimal c code)
-
-        :type imshp: tuple of len 2 or 3: 2 for 2d image,
-                                          3 for a stack of 2d images.
-        :param imshp: (stacksize, nb image row, nb image col)
-        :type kshp: tuple of len 2
-        :param kshp: (nb kernel row, nb kernel col)
-        :type nkern: int
-        :param nkern: the number of kernel
-        :type bsize: int
-        :param bsize: the size of the minibatch
-        :type dx: int
-        :param dx: patch stride rows
-        :type dy: int
-        :param dy: patch stride cols
-
-        Params which select the version of code used:
-
-        :type unroll_patch: bool
-        :param unroll_patch: use a version of c_code that unroll the patch loop
-            that don't request all shape information to work, but if all shape
-            information are present, will
-        use it to hardcode the value in the code for faster code.
-        :type unroll_batch:int
-        :param unroll_batch: use a version of c_code that unroll the batch
-            (by unroll_batch) and the nkern(by unroll_kern) loop. The size
-            must by a multiple of bsize or nkern respectively.
-        :type unroll_kern:int
-        :param unroll_kern: use a version of c_code that unroll the batch
-            (by unroll_batch) and the nkern(by unroll_kern) loop. The size
-            must by a multiple of bsize or nkern
-        respectively.
-
-        :type verbose: int
-        :param verbose: passed to GpuConv
-        :type version: int or str
-        :param version: passed to GpuConv, if version='no_fft', fft
-            optimization will be desactivated at the op level.
-        :param direction_hint: 'forward', 'bprop weights' or 'bprop inputs'.
-            Passed to GpuConv, used by graph optimizers to aid algorithm choice
-
-        The 3 following parameters are used internally when we generate
-        the gradient when dx!=1 or dy!=1.
-        :param imshp_logical: Default None. None value is equivalent to imshp
-            value. When imshp_logical != imshp, it tell we need to insert 0 in
-            the image before we do the convolution. For example, when dx==dy==2
-            and the image is [[1, 2], [3, 4]], we should make as if the image
-            was [[1, 0, 2, 0], [0, 0, 0, 0], [3, 0, 4, 0], [0, 0, 0, 0]].
-            Our python code insert the zero, but the c code optimize it.
-            imshp_logical != imshp when taking the grad again the weights or
-            the image when the output_mode is full and `dx != 1` or `dy != 1`.
-        :param kshp_logical: idem but for kshp and used for the grad again the
-            weights when the output_mode is valid and `dx != 1` or `dy != 1`.
-        :param kshp_logical_top_aligned: Used in the same case.Default to True.
-            Set to False in the grad again the weight when the
-            output_mode is full.
-        """
         # Deactivate fft_optimization at the op level if specified
         if version == "no_fft":
             self.fft_opt = False
@@ -587,7 +599,10 @@ class ConvOp(OpenMPOp):
                                     for a in self.__attrnames) + "}"
 
     def flops(self, inputs, outputs):
-        """ Useful with the hack in profilemode to print the MFlops"""
+        """
+        Useful with the hack in profilemode to print the MFlops.
+
+        """
         images, kerns = inputs
         out, = outputs
         assert images[1] == kerns[1]
@@ -608,8 +623,13 @@ class ConvOp(OpenMPOp):
     def make_node(self, inputs, kerns):
         # TODO: find a way to make ConvOp work for N-D (after NIPS09)
         """
-        inputs - 4 dim: batches x stacksize x rows x cols
-        kerns - 4 dim: nkern x stackidx x rows x cols
+        Parameters
+        ----------
+        inputs
+            4 dim: batches x stacksize x rows x cols.
+        kerns
+            4 dim: nkern x stackidx x rows x cols.
+
         """
         _inputs = as_tensor_variable(inputs)
         _kerns = as_tensor_variable(kerns)
@@ -655,7 +675,8 @@ class ConvOp(OpenMPOp):
 
     def perform(self, node, inp, out):
         """
-        By default if len(img2d.shape)==3, we
+        By default if len(img2d.shape)==3, we TODO
+
         """
         img2d, filtersflipped = inp
         z, = out
@@ -1818,7 +1839,9 @@ Py_XDECREF(img2d);
 
 
 def gen_conv_code_unroll_batch_kern(d, unroll_bsize=1, unroll_ksize=1):
-    """ c_code for ConvOp that unroll the batch size loop
+    """
+    c_code for ConvOp that unroll the batch size loop.
+
     """
     assert unroll_bsize > 0 and unroll_ksize > 0
     if "unroll_bsize" in d or "unroll_ksize" in d or "unroll_iter" in d or "unroll_biter" in d or "unroll_kiter" in d:
