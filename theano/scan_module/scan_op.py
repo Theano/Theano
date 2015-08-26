@@ -2045,7 +2045,6 @@ class Scan(PureOp):
                     # input tap, make sure the computation of the new output
                     # uses it instead of the input it's currently using
                     if tap in mitmot_inp_taps[idx]:
-                        print("Duplicate tap")
                         to_replace = dC_dXtm1s[ins_pos - self.n_seqs]
                         replacement_idx = (len(mitmot_inp_taps[idx]) -
                                            mitmot_inp_taps[idx].index(tap))
