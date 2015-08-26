@@ -1229,11 +1229,11 @@ class Scan(PureOp):
             # 4. collecting slices where the output should be stored
 
             # 4.1. Collect slices for mitmots
-            for idx in xrange(self.n_mit_mot_outs):
+            for idx in xrange(self.thunk_mit_mot_outs):
                 output_storage[idx].storage[0] = None
 
             # 4.2. Collect slices for mitsots, sitsots and nitsots
-            offset = self.n_mit_mot_outs
+            offset = self.thunk_mit_mot_outs
             if i != 0:
                 for idx in xrange(self.n_outs + self.n_nit_sot -
                                   self.n_mit_mot):
@@ -1333,7 +1333,7 @@ class Scan(PureOp):
             offset_out = 0
             # 5.1 Copy over the values for mit_mot outputs
             for j in xrange(self.n_mit_mot):
-                for k in self.mit_mot_out_slices[j]:
+                for k in self.thunk_mit_mot_out_slices[j]:
                     outs[j][0][k + pos[j]] = \
                             output_storage[offset_out].storage[0]
                     offset_out += 1
