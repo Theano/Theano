@@ -4,7 +4,7 @@ from theano.compat import izip
 from theano.compile.function_module import orig_function
 from theano.compile import SharedVariable, rebuild_collect_shared
 from theano.gof import ops_with_inner_function
-from theano.gof.graph import io_connection_pattern, io_toposort
+from theano.gof.graph import io_connection_pattern
 
 from functools import reduce
 
@@ -110,8 +110,8 @@ class OpFromGraph(gof.Op):
 
         # construct fn in order to get optimized fgrap earlier
         self.fn = orig_function(self.new_inputs,
-                        self.new_outputs,
-                        **self.kwargs)
+                                self.new_outputs,
+                                **self.kwargs)
 
     __pros__ = ('nin', 'nout', '_c_code')
 
