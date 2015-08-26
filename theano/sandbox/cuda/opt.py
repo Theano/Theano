@@ -501,7 +501,7 @@ def local_assert_no_cpu_op(node):
 assert_no_cpu_op = theano.tensor.opt.in2out(local_assert_no_cpu_op,
                                             name='assert_no_cpu_op')
 # 49.2 is after device specialization & fusion optimizations for last transfers
-theano.compile.optdb.register('assert_no_cpu_op', assert_no_cpu_op, 49.2)
+optdb.register('assert_no_cpu_op', assert_no_cpu_op, 49.2)
 
 
 @register_opt()
@@ -2575,7 +2575,7 @@ def local_inplace_gpu_sparse_block_gemv(node):
         new_node = gpu_sparse_block_gemv_inplace(*node.inputs)
         return [new_node]
     return False
-compile.optdb.register('local_inplace_gpu_sparse_block_gemv',
+optdb.register('local_inplace_gpu_sparse_block_gemv',
                        TopoOptimizer(
                            local_inplace_gpu_sparse_block_gemv,
                            failure_callback=TopoOptimizer.warn_inplace),
@@ -2591,7 +2591,7 @@ def local_inplace_gpu_sparse_block_outer(node):
         new_node = gpu_sparse_block_outer_inplace(*node.inputs)
         return [new_node]
     return False
-compile.optdb.register('local_inplace_gpu_sparse_block_outer',
+optdb.register('local_inplace_gpu_sparse_block_outer',
                        TopoOptimizer(
                            local_inplace_gpu_sparse_block_outer,
                            failure_callback=TopoOptimizer.warn_inplace),
