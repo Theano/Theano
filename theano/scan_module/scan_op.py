@@ -320,6 +320,13 @@ class Scan(PureOp):
             # Generate the mappings between inner and outer inputs and outputs
             # if they haven't already been generated.
             self.var_mappings = self.get_oinp_iinp_iout_oout_mappings()
+        if (hasattr(self, 'fn') and
+                not hasattr(self, 'thunk_mit_mot_out_slices')):
+            # The thunk has been compiled before mit_mot preallocation feature
+            # was implemented. Set up the value of self.thunk_mit_mot_outs and
+            # self.thunk_mit_mot_out_slices to reflect this.
+            self.thunk_mit_mot_out_slices = self.mit_mot_out_slices
+            self.thunk_mit_mot_outs = self.n_mit_mot_outs
 
         # Ensure that the graph associated with the inner function is valid.
         self.validate_inner_graph()
