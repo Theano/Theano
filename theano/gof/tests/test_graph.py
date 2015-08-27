@@ -196,7 +196,7 @@ class TestMapVariables(X):
             [u])
 
         f = function([c, d], [u, v])
-        for m, n in itertools.combinations(xrange(10), 2):
+        for m, n in itertools.combinations(range(10), 2):
             assert f(m, n) == [m + n, m - n]
 
     def test_scan(self):
