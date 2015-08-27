@@ -849,8 +849,8 @@ def map_variables(fn, graphs, additional_inputs=[]):
 
         # v is now equal to a * b + c
     """
-    from fg import FunctionGraph
-    from opt import TopoOptimizer, local_optimizer
+    from theano.gof.fg import FunctionGraph
+    from theano.gof.opt import TopoOptimizer, local_optimizer
     from theano import clone as the_other_clone
     from theano.scan_module.scan_op import Scan
     from theano.compile import OpFromGraph
