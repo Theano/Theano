@@ -228,7 +228,7 @@ def version():
 version.v = None
 
 
-class GpuDnnConvDesc(Op):
+class GpuDnnConvDesc(COp):
     """
     This Op builds a convolution descriptor for use in the other convolution
     operations.
@@ -251,12 +251,17 @@ class GpuDnnConvDesc(Op):
     def c_lib_dirs(self):
         return [config.dnn.library_path]
 
+    def do_constant_folding(self, node):
+        return False
+
     def __init__(self, border_mode, subsample=(1, 1), conv_mode='conv'):
+        COp.__init__(self, ["conv_desc.c"], "conv_desc")
+
         if isinstance(border_mode, int):
-            border_mode = (border_mode, border_mode)
+            border_mode = (border_mode,) * len(subsample)
         if isinstance(border_mode, tuple):
-            pad_h, pad_w = map(int, border_mode)
-            border_mode = (pad_h, pad_w)
+            assert len(border_mode) == len(subsample)
+            border_mode = tuple(map(int, border_mode))
         if not ((isinstance(border_mode, tuple) and min(border_mode) >= 0) or
                 border_mode in ('valid', 'full')):
             raise ValueError(
@@ -264,7 +269,7 @@ class GpuDnnConvDesc(Op):
                 '"valid", "full", an integer or a pair of'
                 ' integers'.format(border_mode))
         self.border_mode = border_mode
-        assert len(subsample) == 2
+        assert len(subsample) in (2, 3)
         self.subsample = subsample
         assert conv_mode in ('conv', 'cross')
         self.conv_mode = conv_mode
@@ -279,90 +284,40 @@ class GpuDnnConvDesc(Op):
                      [CDataType("cudnnConvolutionDescriptor_t",
                                 freefunc="cudnnDestroyConvolutionDescriptor")()])
 
-    def c_code(self, node, name, inputs, outputs, sub):
-        img_shape, kern_shape = inputs
-        desc, = outputs
-
+    def get_op_params(self):
+        pad0 = '0'
+        pad1 = '0'
+        pad2 = '0'
         if isinstance(self.border_mode, tuple):
-            pad_h_spec, pad_w_spec = map(int, self.border_mode)
-            assert pad_h_spec >= 0 and pad_w_spec >= 0
-            bmode = 2
+            pad0 = str(self.border_mode[0])
+            pad1 = str(self.border_mode[1])
+            if len(self.border_mode) > 2:
+                pad2 = str(self.border_mode[2])
+            bmode = '2'
+        elif self.border_mode == "valid":
+            bmode = 1
+        elif self.border_mode == "full":
+            bmode = 0
         else:
-            pad_h_spec = pad_w_spec = 0
-
-            if self.border_mode == "valid":
-                bmode = 1
-            else:
-                assert self.border_mode == "full"
-                bmode = 0
+            raise ValueError("Invalid value for border_mode")
 
         if self.conv_mode == 'conv':
             conv_flag = 'CUDNN_CONVOLUTION'
         else:
             conv_flag = 'CUDNN_CROSS_CORRELATION'
 
-        return """
-{
-  cudnnStatus_t err;
-  int pad_h%(name)s;
-  int pad_w%(name)s;
+        sub0 = str(self.subsample[0])
+        sub1 = str(self.subsample[1])
+        if len(self.subsample) > 2:
+            sub2 = str(self.subsample[2])
+        else:
+            sub2 = '0'
 
-  if ((err = cudnnCreateConvolutionDescriptor(&%(desc)s)) != CUDNN_STATUS_SUCCESS) {
-    PyErr_Format(PyExc_MemoryError, "could not allocate convolution "
-                 "descriptor: %%s", cudnnGetErrorString(err));
-    %(fail)s
-  }
-
-  if (%(bmode)d == 2) {
-    pad_h%(name)s = %(pad_h_spec)d;
-    pad_w%(name)s = %(pad_w_spec)d;
-  } else if (%(bmode)d == 1) {
-    pad_h%(name)s = 0;
-    pad_w%(name)s = 0;
-  } else if (%(bmode)d == 0) {
-    pad_h%(name)s = *(npy_int64 *)PyArray_GETPTR1(%(kern_shape)s, 2) - 1;
-    pad_w%(name)s = *(npy_int64 *)PyArray_GETPTR1(%(kern_shape)s, 3) - 1;
-  } else {
-    PyErr_SetString(PyExc_ValueError, "bad border mode");
-    %(fail)s
-  }
-#if defined(CUDNN_VERSION) && CUDNN_VERSION >= 20
-  err = cudnnSetConvolution2dDescriptor(
-  %(desc)s,
-  pad_h%(name)s,
-  pad_w%(name)s,
-  %(subsx)d, %(subsy)d, 1, 1,
-  %(conv_flag)s
-  );
-#else
-  err = cudnnSetConvolutionDescriptorEx(
-  %(desc)s,
-  *(npy_int64 *)PyArray_GETPTR1(%(img_shape)s, 0),
-  *(npy_int64 *)PyArray_GETPTR1(%(img_shape)s, 1),
-  *(npy_int64 *)PyArray_GETPTR1(%(img_shape)s, 2),
-  *(npy_int64 *)PyArray_GETPTR1(%(img_shape)s, 3),
-  *(npy_int64 *)PyArray_GETPTR1(%(kern_shape)s, 0),
-  *(npy_int64 *)PyArray_GETPTR1(%(kern_shape)s, 2),
-  *(npy_int64 *)PyArray_GETPTR1(%(kern_shape)s, 3),
-  pad_h%(name)s,
-  pad_w%(name)s,
-  %(subsx)d, %(subsy)d, 1, 1,
-  %(conv_flag)s
-  );
-#endif
-  if (err != CUDNN_STATUS_SUCCESS) {
-    PyErr_Format(PyExc_RuntimeError, "could not set op descriptor: %%s",
-                 cudnnGetErrorString(err));
-    %(fail)s
-  }
-}
-""" % dict(name=name, img_shape=img_shape, kern_shape=kern_shape, desc=desc,
-           bmode=bmode, conv_flag=conv_flag, fail=sub['fail'],
-           subsx=self.subsample[0], subsy=self.subsample[1],
-           pad_h_spec=pad_h_spec, pad_w_spec=pad_w_spec)
-
-    def c_code_cache_version(self):
-        return (1, version())
+        return [('NB_DIMS', str(len(self.subsample))),
+                ('BORDER_MODE', bmode),
+                ('PAD_0', pad0), ('PAD_1', pad1), ('PAD_2', pad2),
+                ('CONV_MODE', conv_flag),
+                ('SUB_0', sub0), ('SUB_1', sub1), ('SUB_2', sub2)]
 
 # scalar constants
 _zero = constant(numpy.asarray(0.0, dtype='float64'))
