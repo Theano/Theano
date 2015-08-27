@@ -10,7 +10,6 @@ from theano.gof.cmodule import GCC_compiler
 from theano.gof.type import CDataType, Generic
 from theano.compile import optdb
 from theano.compile.ops import shape_i
-from theano.configparser import AddConfigVar, EnumStr, StrParam
 from theano.tensor.nnet import SoftmaxGrad
 from theano.tensor.signal.downsample import (
     DownsampleFactorMax, MaxPoolGrad, AveragePoolGrad)
@@ -27,21 +26,7 @@ from .nnet import GpuSoftmax
 from .opt import gpu_seqopt, register_opt, conv_groupopt, op_lifter
 from .opt_util import alpha_merge, output_merge
 
-# This is to avoid conflict with the one in cuda/dnn.py
-if not hasattr(config, 'dnn'):
-    AddConfigVar('dnn.conv.workmem',
-                 "Default value for the workmem attribute of cudnn "
-                 "convolutions.",
-                 EnumStr('small', 'none', 'large'),
-                 in_c_key=False)
-
-AddConfigVar('dnn.include_path',
-             "Location of the cudnn header (defaults to the cuda root)",
-             StrParam(lambda: os.path.join(config.cuda.root, 'include')))
-
-AddConfigVar('dnn.library_path',
-             "Location of the cudnn header (defaults to the cuda root)",
-             StrParam(lambda: os.path.join(config.cuda.root, 'lib64')))
+from theano.sandbox import dnn_flags
 
 
 def dnn_available():
@@ -186,7 +171,6 @@ class DnnBase(COp):
 
 
 class DnnVersion(Op):
-
     __props__ = ()
 
     def c_headers(self):

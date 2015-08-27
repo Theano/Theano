@@ -10,7 +10,6 @@ from theano.gof import Optimizer, local_optimizer, COp
 from theano.gof.type import CDataType, Generic
 from theano.compile import optdb
 from theano.compile.ops import shape_i
-from theano.configparser import AddConfigVar, EnumStr
 from theano.tensor.nnet import SoftmaxGrad
 from theano.tensor.signal.downsample import (
     DownsampleFactorMax, MaxPoolGrad, AveragePoolGrad)
@@ -27,6 +26,8 @@ from theano.sandbox.cuda.opt_util import alpha_merge, output_merge
 from theano.sandbox.cuda import gpu_seqopt, register_opt
 
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
+
+import theano.sandbox.dnn_flags
 
 
 def dnn_available():
@@ -62,8 +63,8 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
             # exclusive mode, this cause bad detection.
             comp, out, err = NVCC_compiler.try_flags(
                 ["-l", "cudnn", "-I" + os.path.dirname(__file__),
-                 "-I" + os.path.join(theano.config.cuda.root, 'include'),
-                 "-L" + os.path.join(theano.config.cuda.root, 'lib64')],
+                 "-I" + config.dnn.include_path,
+                 "-L" + config.dnn.library_path],
                 preambule=preambule, body=body,
                 try_run=False, output=True)
 
@@ -141,7 +142,6 @@ if (%(err)s != CUDNN_STATUS_SUCCESS) {
     %(fail)s
 }
 }
-
         """ % dict(var=var, err=err, desc=desc, fail=fail)
 
 
@@ -359,37 +359,9 @@ class GpuDnnConvDesc(GpuOp):
     def c_code_cache_version(self):
         return (2, version())
 
-
-AddConfigVar('dnn.conv.workmem',
-             "This flag is deprecated; use dnn.conv.algo_fwd.",
-             EnumStr(''),
-             in_c_key=False)
-
-AddConfigVar('dnn.conv.workmem_bwd',
-             "This flag is deprecated; use dnn.conv.algo_bwd.",
-             EnumStr(''),
-             in_c_key=False)
-
-AddConfigVar('dnn.conv.algo_fwd',
-             "Default implementation to use for CuDNN forward convolution.",
-             EnumStr('small', 'none', 'large', 'fft', 'guess_once',
-                     'guess_on_shape_change', 'time_once',
-                     'time_on_shape_change'),
-             in_c_key=False)
-
-AddConfigVar('dnn.conv.algo_bwd',
-             "Default implementation to use for CuDNN backward convolution.",
-             EnumStr('none', 'deterministic', 'fft', 'guess_once',
-                     'guess_on_shape_change', 'time_once',
-                     'time_on_shape_change'),
-             in_c_key=False)
-
-
 # scalar constants
 _zero = constant(numpy.asarray(0.0, dtype='float32'))
 _one = constant(numpy.asarray(1.0, dtype='float32'))
-_ifour = constant(numpy.asarray(4, dtype='int32'))
-_ifive = constant(numpy.asarray(5, dtype='int32'))
 
 
 def ensure_float(val, default, name):
@@ -403,20 +375,6 @@ def ensure_float(val, default, name):
         raise TypeError("%s: expected a scalar value" % (name,))
     if not val.type.dtype == 'float32':
         raise TypeError("%s: type is not float32" % (name,))
-    return val
-
-
-def ensure_int(val, default, name):
-    if val is None:
-        return default.clone()
-    if not isinstance(val, Variable):
-        val = constant(val)
-    if hasattr(val, 'ndim') and val.ndim == 0:
-        val = as_scalar(val)
-    if not isinstance(val.type, theano.scalar.Scalar):
-        raise TypeError("%s: expected a scalar value" % (name,))
-    if not val.type.dtype == 'int32':
-        raise TypeError("%s: type is not int32" % (name,))
     return val
 
 
