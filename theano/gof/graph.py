@@ -867,9 +867,7 @@ def map_variables(fn, graphs, additional_inputs=[]):
                     in zip(inputs_, mapped_inputs_)
                     if mapped_input_ is not input_]
     inputs_ = mapped_inputs_
-    graphs = the_other_clone(graphs,
-                             share_inputs=True,
-                             replace=replacements)
+    graphs = the_other_clone(graphs, share_inputs=True, replace=replacements)
 
     # clone cached constants or FunctionGraph will complain.  this has
     # to occur in a separate pass from the replacement above because
@@ -878,10 +876,9 @@ def map_variables(fn, graphs, additional_inputs=[]):
     # constants, the replacement of said constants has to come after.
     cached_constants = [x for x in inputs_ if getattr(x, "cached", False)]
     copied_constants, _ = clone(cached_constants, [], copy_inputs=True)
+    replacements = list(zip(cached_constants, copied_constants))
     inputs_ = list(set(inputs_) - set(cached_constants)) + list(copied_constants)
-    graphs = the_other_clone(graphs,
-                             share_inputs=True,
-                             replace=zip(cached_constants, copied_constants))
+    graphs = the_other_clone(graphs, share_inputs=True, replace=replacements)
 
     fg = FunctionGraph(inputs_, graphs, clone=False)
 
