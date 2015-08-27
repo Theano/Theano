@@ -1,1 +1,1 @@
-from d3viz import *
+from theano.d3viz.d3viz import d3viz, d3write

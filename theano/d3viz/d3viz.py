@@ -26,7 +26,7 @@ def escape_quotes(s):
     return s
 
 
-def d3viz(fct, outfile,  copy_deps=True, *args, **kwargs):
+def d3viz(fct, outfile, copy_deps=True, *args, **kwargs):
     """Create HTML file with dynamic visualizing of a Theano function graph.
 
     :param fct: A compiled Theano function, variable, apply or a list of

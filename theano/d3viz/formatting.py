@@ -5,8 +5,8 @@ Author: Christof Angermueller <cangermueller@gmail.com>
 
 import numpy as np
 import logging
-import re
 import os.path as pt
+from functools import reduce
 
 try:
     import pydot as pd
@@ -121,7 +121,7 @@ class PyDotFormatter(object):
             nparams['label'] = apply_label(node)
             nparams['profile'] = apply_profile(node, profile)
             nparams['node_type'] = 'apply'
-            nparams['apply_op'] = apply_op(node)
+            nparams['apply_op'] = nparams['label']
             nparams['shape'] = self.shapes['apply']
 
             use_color = None
@@ -175,7 +175,7 @@ class PyDotFormatter(object):
                                  **edge_params)
                 graph.add_edge(pdedge)
 
-            # Loop over ouput nodes
+            # Loop over output nodes
             for id, var in enumerate(node.outputs):
                 var_id = self.__node_id(var)
 
@@ -201,7 +201,7 @@ class PyDotFormatter(object):
                     graph.add_edge(pd.Edge(__node_id, var_id,
                                            label=vparams['dtype']))
 
-            # Create sub-groph for OpFromGraph nodes
+            # Create sub-graph for OpFromGraph nodes
             if isinstance(node.op, builders.OpFromGraph):
                 subgraph = pd.Cluster(__node_id)
                 gf = PyDotFormatter()
@@ -275,14 +275,6 @@ def var_tag(var):
 def apply_label(node):
     """Return label of apply node."""
     return node.op.__class__.__name__
-
-
-def apply_op(node):
-    """Return apply operation."""
-    name = str(node.op).replace(':', '_')
-    name = re.sub('^<', '', name)
-    name = re.sub('>$', '', name)
-    return name
 
 
 def apply_profile(node, profile):

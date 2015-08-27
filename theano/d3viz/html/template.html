@@ -35,18 +35,14 @@
 		var profileColors = ["#fff5f0","#fee0d2","#fcbba1","#fc9272","#fb6a4a","#ef3b2c","#cb181d","#a50f15"];
 		var pad = 10;
 		var isEditNode = false; // true if node is edited
-    	var menuItems = [
+		var menuItems = [
 			{
 				title: 'Edit',
-				action: function(elm, d, i) {
-					editNode(elm, d);
-				}
+				action: function(elm, d, i) { editNode(elm, d); }
 			},
 			{
 				title: 'Release',
-				action: function(elm, d, i) {
-					releaseNode(d);
-				}
+				action: function(elm, d, i) { releaseNode(d); }
 			}
 		];
 

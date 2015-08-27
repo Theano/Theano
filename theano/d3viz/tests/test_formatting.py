@@ -14,7 +14,7 @@ class TestPyDotFormatter(unittest.TestCase):
     def node_counts(self, graph):
         node_types = [node.get_attributes()['node_type']
                       for node in graph.get_nodes()]
-        a, b  = np.unique(node_types, return_counts=True)
+        a, b = np.unique(node_types, return_counts=True)
         nc = dict(zip(a, b))
         return nc
 

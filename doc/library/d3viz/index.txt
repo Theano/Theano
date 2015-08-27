@@ -29,8 +29,8 @@ Overview
 ``d3viz`` extends Theano’s `printing
 module <http://deeplearning.net/software/theano/library/printing.html>`__
 to interactively visualize compute graphs. Instead of creating a static
-picture, it creates an HTML file, which can be opened with any
-web-browser. ``d3viz`` allows
+picture, it creates an HTML file, which can be opened with current
+web-browsers. ``d3viz`` allows
 
 -  to zoom to different regions and to move graphs via drag and drop,
 -  to position nodes both manually and automatically,
@@ -166,7 +166,7 @@ language <http://www.graphviz.org/>`__, using the
 `pydot <https://pypi.python.org/pypi/pydot>`__ package, and defines a
 front-end based on the `d3.js <http://d3js.org/>`__ library to visualize
 it. However, any other Graphviz front-end can be used, which allows to
-export graps to different formats.
+export graphs to different formats.
 
 .. code:: python
 

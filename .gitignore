@@ -37,3 +37,5 @@ Theano.suo
 .ipynb_checkpoints
 .pydevproject
 doc/library/d3viz/GSoC/
+theano/d3viz/tests/data/test_d3viz/*/d3viz/
+

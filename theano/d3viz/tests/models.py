@@ -7,9 +7,11 @@ import theano.tensor as T
 class Mlp(object):
 
     def __init__(self, nfeatures=100, noutputs=10, nhiddens=50, rng=None):
+        if rng is None:
+            rng = 0
+        if isinstance(rng, int):
+            rng = np.random.RandomState(rng)
         self.rng = rng
-        if self.rng is None:
-            self.rng = np.random.RandomState(0)
         self.nfeatures = nfeatures
         self.noutputs = noutputs
         self.nhiddens = nhiddens
