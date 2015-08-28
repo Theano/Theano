@@ -29,7 +29,7 @@ class TestD3Viz(unittest.TestCase):
     def test_mlp(self):
         m = models.Mlp()
         f = th.function(m.inputs, m.outputs)
-        self.check(f, pt.join(self.data_dir, 'mlp', 'index.html'))
+        self.check(f)
 
     def test_mlp_profiled(self):
         m = models.Mlp()
@@ -41,9 +41,9 @@ class TestD3Viz(unittest.TestCase):
     def test_ofg(self):
         m = models.Ofg()
         f = th.function(m.inputs, m.outputs)
-        self.check(f, pt.join(self.data_dir, 'ofg', 'index.html'))
+        self.check(f)
 
     def test_ofg_nested(self):
         m = models.OfgNested()
         f = th.function(m.inputs, m.outputs)
-        self.check(f, pt.join(self.data_dir, 'ofg_nested', 'index.html'))
+        self.check(f)

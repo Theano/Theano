@@ -5,7 +5,6 @@ Author: Christof Angermueller <cangermueller@gmail.com>
 
 import numpy as np
 import logging
-import os.path as pt
 from functools import reduce
 
 try:
@@ -263,7 +262,7 @@ def var_tag(var):
     tag = var.tag
     if hasattr(tag, 'trace') and len(tag.trace) and len(tag.trace[0]) == 4:
         path, line, _, src = tag.trace[0]
-        path = pt.basename(path)
+        path = os.path.basename(path)
         path = path.replace('<', '')
         path = path.replace('>', '')
         src = src.encode()

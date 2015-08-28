@@ -4,13 +4,12 @@ Author: Christof Angermueller <cangermueller@gmail.com>
 """
 
 import os
-import os.path as pt
 import shutil
 import re
 
-from formatting import PyDotFormatter
+from .formatting import PyDotFormatter
 
-__path__ = pt.dirname(pt.realpath(__file__))
+__path__ = os.path.dirname(os.path.realpath(__file__))
 
 
 def replace_patterns(x, replace):
@@ -56,12 +55,12 @@ def d3viz(fct, outfile, copy_deps=True, *args, **kwargs):
     dot_graph = escape_quotes(graph.create_dot()).replace('\n', '')
 
     # Create output directory if not existing
-    outdir = pt.dirname(outfile)
-    if not pt.exists(outdir):
+    outdir = os.path.dirname(outfile)
+    if not os.path.exists(outdir):
         os.makedirs(outdir)
 
     # Read template HTML file
-    template_file = pt.join(__path__, 'html', 'template.html')
+    template_file = os.path.join(__path__, 'html', 'template.html')
     f = open(template_file)
     template = f.read()
     f.close()
@@ -71,17 +70,17 @@ def d3viz(fct, outfile, copy_deps=True, *args, **kwargs):
     if copy_deps:
         dst_deps = 'd3viz'
         for d in ['js', 'css']:
-            dep = pt.join(outdir, dst_deps, d)
-            if not pt.exists(dep):
-                shutil.copytree(pt.join(src_deps, d), dep)
+            dep = os.path.join(outdir, dst_deps, d)
+            if not os.path.exists(dep):
+                shutil.copytree(os.path.join(src_deps, d), dep)
     else:
         dst_deps = src_deps
 
     # Replace patterns in template
     replace = {
-        '%% JS_DIR %%': pt.join(dst_deps, 'js'),
-        '%% CSS_DIR %%': pt.join(dst_deps, 'css'),
-        '%% DOT_GRAPH %%': pt.basename(dot_graph),
+        '%% JS_DIR %%': os.path.join(dst_deps, 'js'),
+        '%% CSS_DIR %%': os.path.join(dst_deps, 'css'),
+        '%% DOT_GRAPH %%': os.path.basename(dot_graph),
     }
     html = replace_patterns(template, replace)
 
