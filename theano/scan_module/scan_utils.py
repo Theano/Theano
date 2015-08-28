@@ -411,8 +411,8 @@ def _map_variables_inner(replacer, inner_inputs, outer_inputs, inner_outputs):
         foreign_inputs = list(set(other_inputs) - set(outer_to_inner.values()))
 
         # skip further processing if there is nothing to do
-        #if not constants and not foreign_inputs:
-        #    return new_graph
+        if not constants and not foreign_inputs:
+            return new_graph
 
         replacements = []
 
