@@ -9,6 +9,7 @@ from __future__ import print_function
 # This file should move along with conv.py
 from six.moves import xrange
 import six.moves.builtins as builtins
+import warnings
 
 import numpy
 
@@ -44,7 +45,7 @@ def max_pool_2d_same_size(input, patch_size):
     return outs
 
 
-def max_pool_2d(input, ds, ignore_border=False, st=None, padding=(0, 0),
+def max_pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
                 mode='max'):
     """
     Takes as input a N-D tensor, where N >= 2. It downscales the input image by
@@ -58,7 +59,7 @@ def max_pool_2d(input, ds, ignore_border=False, st=None, padding=(0, 0),
     ds : tuple of length 2
         Factor by which to downscale (vertical ds, horizontal ds).
         (2,2) will halve the image in each dimension.
-    ignore_border : bool
+    ignore_border : bool (default None, mean print warning and set False)
         When True, (5,5) input with ds=(2,2) will generate a (2,2) output.
         (3,3) otherwise.
     st : tuple of lenght 2
@@ -77,6 +78,14 @@ def max_pool_2d(input, ds, ignore_border=False, st=None, padding=(0, 0),
     """
     if input.ndim < 2:
         raise NotImplementedError('max_pool_2d requires a dimension >= 2')
+    if ignore_border is None:
+        warnings.warn("max_pool_2d() will have the parameter ignore_border"
+                      " default value change to True (currently"
+                      " False). To be safe with all Theano versions,"
+                      " explicitly add the parameter ignore_border=True."
+                      " (this is also faster then ignore_border=False)",
+                      stacklevel=2)
+        ignore_border = False
     if input.ndim == 4:
         op = DownsampleFactorMax(ds, ignore_border, st=st, padding=padding,
                                  mode=mode)
