@@ -11,7 +11,7 @@ from theano import (
 from theano.gof.graph import (
     Apply,
     as_string, clone, general_toposort, inputs, io_toposort,
-    is_same_graph, Variable, map_variables, local_replacer)
+    is_same_graph, Variable, map_variables)
 from theano.gof.op import Op
 from theano.gof.type import Type
 from theano.sandbox.cuda.var import (
@@ -163,6 +163,10 @@ class TestClone(X):
 #################
 
 class TestMapVariables(X):
+    @staticmethod
+    def replacer(graph):
+        return getattr(graph.tag, "replacement", graph)
+
     def test_leaf(self):
         a = tensor.scalar("a")
         b = tensor.scalar("b")
@@ -170,12 +174,8 @@ class TestMapVariables(X):
 
         b.tag.replacement = c
 
-        @local_replacer
-        def replacer(graph):
-            return getattr(graph.tag, "replacement", graph)
-
         u = a + b
-        v, = map_variables(replacer, [u])
+        v, = map_variables(self.replacer, [u])
 
         assert u.owner.inputs == [a, b]
         assert v.owner.inputs == [a, c]
@@ -192,12 +192,8 @@ class TestMapVariables(X):
         c = tensor.scalar()
         d = tensor.scalar()
 
-        @local_replacer
-        def replacer(graph):
-            return getattr(graph.tag, "replacement", graph)
-
         u = OpFromGraph([a, b], [r])(c, d)
-        v, = map_variables(replacer, [u])
+        v, = map_variables(self.replacer, [u])
 
         f = function([c, d], [u, v])
         for m, n in itertools.combinations(range(10), 2):
@@ -225,16 +221,12 @@ class TestMapVariables(X):
             r.tag.replacement = z * (a - x)
             return r
 
-        @local_replacer
-        def replacer(graph):
-            return getattr(graph.tag, "replacement", graph)
-
         s, _ = scan(step, sequences=x,
                     outputs_info=[numpy.array(0.)])
         # ensure z is owned by the outer graph so map_variables() will need to
         # jump through additional hoops to placate FunctionGraph.
         t = z * s
-        s2, = map_variables(replacer, [t])
+        s2, = map_variables(self.replacer, [t])
         t2 = z * s2
 
         f = function([x, outer], [t, t2])
@@ -251,12 +243,8 @@ class TestMapVariables(X):
 
         y.tag.replacement = z
 
-        @local_replacer
-        def replacer(graph):
-            return getattr(graph.tag, "replacement", graph)
-
         s, _ = scan(lambda x: x * y, sequences=x)
-        s2, = map_variables(replacer, [s])
+        s2, = map_variables(self.replacer, [s])
 
         f = function([x, y, z], [s, s2])
         assert numpy.array_equal(

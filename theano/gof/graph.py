@@ -816,29 +816,12 @@ def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None):
     return memo
 
 
-def local_replacer(fn):
-    # FunctionGraph is strict and wants to know its inputs beforehand. we
-    # don't always know the inputs beforehand, so pass the `fg` into `fn`
-    # if it accepts it. it can then use fg.add_input() to add any missing
-    # inputs. this is an internal mechanism currently only used by the
-    # wrapped `fn` in _map_variables_inner.
-    def new_fn(graph, fg=None):
-        import inspect
-        argspec = inspect.getargspec(fn)
-        if fg and len(argspec.args) == 2:
-            new_graph = fn(graph, fg)
-        else:
-            new_graph = fn(graph)
-        return new_graph
-    return new_fn
-
-
 def map_variables(replacer, graphs, additional_inputs=[]):
     """Construct new graphs based on 'graphs' with some variables replaced
     according to 'replacer'.
 
-    :param replacer: `local_replacer` decorated function that takes a
-        variable and returns its replacement.
+    :param replacer: function that takes a variable and returns its
+         replacement.
     :param graphs: an iterable of graphs in which to replace variables
     :param additional_inputs: an iterable of graph inputs not used in any
          of 'graphs' but possibly used in the graphs returned by `replacer`
@@ -857,12 +840,10 @@ def map_variables(replacer, graphs, additional_inputs=[]):
         ab = a + b
         ab.tag.replacement = a * b
 
-        @local_replacer
-        def replacer(graph):
-            return getattr(graph.tag, "replacement", graph)
-
         u = ab + c
-        v, = map_variables(replacer, [u])
+        v, = map_variables(lambda graph:
+            return getattr(graph.tag, "replacement", graph),
+            [u])
 
         # v is now equal to a * b + c
     """
@@ -874,11 +855,11 @@ def map_variables(replacer, graphs, additional_inputs=[]):
 
     # wrap replacer to avoid replacing things we just put there.
     graphs_seen = set()
-    def wrapped_replacer(graph, fg=None):
+    def wrapped_replacer(graph):
         if graph in graphs_seen:
             return graph
         else:
-            new_graph = replacer(graph, fg)
+            new_graph = replacer(graph)
             graphs_seen.add(new_graph)
             return new_graph
 
@@ -888,9 +869,6 @@ def map_variables(replacer, graphs, additional_inputs=[]):
     # perform any desired replacement of input variables.  these
     # aren't replaced by the local optimizer approach because they are
     # not outputs of any Apply node.
-    # NOTE: we don't need to pass any fgraph into the replacer; we can
-    # figure out the correct set of inputs from the graph before we
-    # construct the fgraph.
     new_inputs = list(map(wrapped_replacer, inputs_))
     replacements = [(input_, new_input)
                     for input_, new_input
@@ -944,7 +922,7 @@ def map_variables(replacer, graphs, additional_inputs=[]):
             return new_node.outputs
         else:
             nodes_seen.add(node)
-            return [wrapped_replacer(graph, fg) for graph in node.outputs]
+            return list(map(wrapped_replacer, node.outputs))
 
     topo_transform = TopoOptimizer(local_transform, 'out_to_in')
     topo_transform.optimize(fg)
@@ -974,8 +952,8 @@ def _map_variables_inner(replacer, inner_inputs, outer_inputs, inner_outputs):
     from itertools import chain
     from theano import gof
 
-    def inner_replacer(graph, inner_fg):
-        new_graph = replacer(graph, inner_fg)
+    def inner_replacer(graph):
+        new_graph = replacer(graph)
 
         other_inputs = []
         constants = []
@@ -1012,7 +990,10 @@ def _map_variables_inner(replacer, inner_inputs, outer_inputs, inner_outputs):
                 outer_to_inner[outer_input] = inner_input
                 extra_inner_inputs.append(inner_input)
                 extra_outer_inputs.append(outer_input)
-                inner_fg.add_input(inner_input)
+                # the inner FunctionGraph wants to know its inputs
+                # beforehand, but we don't always know.  so add them
+                # as we discover them.
+                graph.owner.fgraph.add_input(inner_input)
 
         replacements.extend(outer_to_inner.items())
 
