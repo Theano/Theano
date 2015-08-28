@@ -12,7 +12,7 @@ c_set_tensorNd(PyGpuArrayObject *var, cudnnTensorDescriptor_t desc) {
   case GA_DOUBLE:
     dt = CUDNN_DATA_DOUBLE;
     break;
-#ifdef CUDNN_VERSION > 3000
+#if CUDNN_VERSION > 3000
   case GA_HALF:
     dt = CUDNN_DATA_HALF;
     break;
@@ -64,7 +64,7 @@ c_set_filter(PyGpuArrayObject *var, cudnnFilterDescriptor_t desc) {
   case GA_DOUBLE:
     dt = CUDNN_DATA_DOUBLE;
     break;
-#ifdef CUDNN_VERSION > 3000
+#if CUDNN_VERSION > 3000
   case GA_HALF:
     dt = CUDNN_DATA_HALF;
     break;

@@ -533,19 +533,27 @@ class GpuDnnConvGradW(DnnBase, COp):
 
     """
 
-    __props__ = ('inplace',)
+    __props__ = ('algo', 'inplace')
 
-    def __init__(self, inplace=False):
+    def __init__(self, inplace=False, algo=None):
         COp.__init__(self, ["dnn_base.c", "dnn_conv_base.c", "dnn_gw.c"],
                      "APPLY_SPECIFIC(conv_gw)")
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [2]}
+        if algo is None:
+            algo = config.dnn.conv.algo_bwd
+        self.algo = algo
+        assert self.algo in ['none', 'deterministic', 'fft', 'guess_once',
+                             'guess_on_shape_change', 'time_once',
+                             'time_on_shape_change']
 
     def __setstate__(self, d):
         self.__dict__.update(d)
         if not hasattr(self, 'inplace'):
             self.inplace = False
+        if not hasattr(self, 'algo'):
+            self.algo = config.dnn.conv.algo_bwd
 
     def grad(self, inp, grads):
         img, top, output, desc, alpha, beta = inp
@@ -566,24 +574,55 @@ class GpuDnnConvGradW(DnnBase, COp):
         return [[1], [1], [1], [0], [1], [1]]
 
     def get_op_params(self):
+        defs = []
         if self.inplace:
-            return [('CONV_INPLACE', '1')]
+            defs.append(('CONV_INPLACE', '1'))
+
+        if version() < 3000:
+            alg = '0'
         else:
-            return []
+            alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0'
+            if self.algo == 'none':
+                alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0'
+            if self.algo == 'deterministic':
+                alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1'
+            if self.algo == 'fft':
+                alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT'
+
+            if self.algo in ['guess_once', 'guess_on_shape_change',
+                             'time_once', 'time_on_shape_change']:
+                defs.append(('CHOOSE_ALGO', ''))
+            if self.algo in ['guess_once', 'time_once']:
+                defs.append(('CHOOSE_ONCE', ''))
+            if self.algo in ['time_once', 'time_on_shape_change']:
+                defs.append(('CHOOSE_TIME', ''))
+
+        defs.append(('CONV_ALGO', alg))
+
+        return defs
 
     def make_node(self, img, topgrad, output, desc, alpha=None, beta=None):
         img = as_gpuarray_variable(img)
         topgrad = as_gpuarray_variable(topgrad)
         output = as_gpuarray_variable(output)
-        if img.type.ndim != 4:
-            raise TypeError('img must be 4D tensor')
-        if topgrad.type.ndim != 4:
-            raise TypeError('topgrad must be 4D tensor')
-        if output.type.ndim != 4:
-            raise TypeError('output must be 4D tensor')
+        if img.type.ndim not in (4, 5):
+            raise TypeError('img must be 4D or 5D tensor')
+        if topgrad.type.ndim not in (4, 5):
+            raise TypeError('topgrad must be 4D or 5D tensor')
+        if output.type.ndim not in (4, 5):
+            raise TypeError('output must be 4D or 5D tensor')
 
-        if not isinstance(desc.type, CDataType) \
-                or desc.type.ctype != 'cudnnConvolutionDescriptor_t':
+        if (img.type.ndim != topgrad.type.ndim or
+                img.type.ndim != output.type.ndim):
+            raise TypeError("The number of dimensions of "
+                            "img, topgrad and output must match")
+
+        if img.type.ndim == 5 and self.algo in ['fft', 'deterministic']:
+            raise ValueError("convolution algo %s can't be used for "
+                             "3d convolutions", (self.algo,))
+
+        if (not isinstance(desc.type, CDataType) or
+                desc.type.ctype != 'cudnnConvolutionDescriptor_t'):
             raise TypeError('desc must be cudnnConvolutionDescriptor_t')
 
         alpha = ensure_dt(alpha, _one, 'alpha', img.dtype)
@@ -609,14 +648,27 @@ class GpuDnnConvGradI(DnnBase):
 
     """
 
-    __props__ = ('inplace',)
+    __props__ = ('algo', 'inplace',)
 
-    def __init__(self, inplace=False):
+    def __init__(self, inplace=False, algo=None):
         COp.__init__(self, ["dnn_base.c", "dnn_conv_base.c", "dnn_gi.c"],
                      "APPLY_SPECIFIC(conv_gi)")
         self.inplace = inplace
         if self.inplace:
             self.destroy_map = {0: [2]}
+        if algo is None:
+            algo = config.dnn.conv.algo_bwd
+        self.algo = algo
+        assert self.algo in ['none', 'deterministic', 'fft', 'guess_once',
+                             'guess_on_shape_change', 'time_once',
+                             'time_on_shape_change']
+
+    def __setstate__(self, d):
+        self.__dict__.update(d)
+        if not hasattr(self, 'algo'):
+            self.algo = config.dnn.conv.algo_bwd
+        if not hasattr(self, 'inplace'):
+            self.inplace = False
 
     def grad(self, inp, grads):
         kerns, top, output, desc, alpha, beta = inp
@@ -637,24 +689,55 @@ class GpuDnnConvGradI(DnnBase):
         return [[1], [1], [1], [0], [1], [1]]
 
     def get_op_params(self):
+        defs = []
         if self.inplace:
-            return [('CONV_INPLACE', '1')]
+            defs.append(('CONV_INPLACE', '1'))
+
+        if version() < 3000:
+            alg = '0'
         else:
-            return []
+            alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_0'
+            if self.algo == 'none':
+                alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_0'
+            if self.algo == 'deterministic':
+                alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_1'
+            if self.algo == 'fft':
+                alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT'
+
+            if self.algo in ['guess_once', 'guess_on_shape_change',
+                             'time_once', 'time_on_shape_change']:
+                defs.append(('CHOOSE_ALGO', ''))
+            if self.algo in ['guess_once', 'time_once']:
+                defs.append(('CHOOSE_ONCE', ''))
+            if self.algo in ['time_once', 'time_on_shape_change']:
+                defs.append(('CHOOSE_TIME', ''))
+
+        defs.append(('CONV_ALGO', alg))
+
+        return defs
 
     def make_node(self, kern, topgrad, output, desc, alpha=None, beta=None):
         kern = as_gpuarray_variable(kern)
         topgrad = as_gpuarray_variable(topgrad)
         output = as_gpuarray_variable(output)
-        if kern.type.ndim != 4:
-            raise TypeError('kern must be 4D tensor')
-        if topgrad.type.ndim != 4:
-            raise TypeError('topgrad must be 4D tensor')
-        if output.type.ndim != 4:
-            raise TypeError('output must be 4D tensor')
+        if kern.type.ndim not in (4, 5):
+            raise TypeError('kern must be 4D or 5D tensor')
+        if topgrad.type.ndim not in (4, 5):
+            raise TypeError('topgrad must be 4D or 5D tensor')
+        if output.type.ndim not in (4, 5):
+            raise TypeError('output must be 4D or 5D tensor')
 
-        if not isinstance(desc.type, CDataType) \
-                or desc.type.ctype != 'cudnnConvolutionDescriptor_t':
+        if (kern.type.ndim != topgrad.type.ndim or
+                kern.type.ndim != output.type.ndim):
+            raise TypeError("The number of dimensions of "
+                            "kern, topgrad and output must match")
+
+        if kern.type.ndim == 5 and self.algo in ['fft', 'deterministic']:
+            raise ValueError("convolution algo %s can't be used for "
+                             "3d convolutions", (self.algo,))
+
+        if (not isinstance(desc.type, CDataType) or
+                desc.type.ctype != 'cudnnConvolutionDescriptor_t'):
             raise TypeError('desc must be cudnnConvolutionDescriptor_t')
 
         alpha = ensure_dt(alpha, _one, 'alpha', kern.dtype)
@@ -1638,7 +1721,7 @@ def local_dnn_convgw_inplace(node):
             isinstance(dest.owner.op, GpuAllocEmpty) and
             len(dest.clients) > 1):
         inputs[2] = GpuAllocEmpty(dest.owner.op.dtype)(*dest.owner.inputs)
-    return [GpuDnnConvGradW(inplace=True)(*inputs)]
+    return [GpuDnnConvGradW(algo=node.op.algo, inplace=True)(*inputs)]
 
 
 @local_optimizer([GpuDnnConvGradI], inplace=True)
@@ -1651,7 +1734,7 @@ def local_dnn_convgi_inplace(node):
             isinstance(dest.owner.op, GpuAllocEmpty) and
             len(dest.clients) > 1):
         inputs[2] = GpuAllocEmpty(dest.owner.op.dtype)(*dest.owner.inputs)
-    return [GpuDnnConvGradI(inplace=True)(*inputs)]
+    return [GpuDnnConvGradI(algo=node.op.algo, inplace=True)(*inputs)]
 
 optdb.register('local_dnna_conv_inplace',
                tensor.opt.in2out(local_dnn_conv_inplace,
@@ -1674,7 +1757,7 @@ def local_dnn_conv_alpha_merge(node, *inputs):
 def local_dnn_convw_alpha_merge(node, *inputs):
     if not dnn_available() or version() == -1:
         return None
-    return [GpuDnnConvGradW()(*inputs)]
+    return [GpuDnnConvGradW(algo=node.op.algo)(*inputs)]
 
 
 @register_opt('cudnn')
@@ -1682,28 +1765,28 @@ def local_dnn_convw_alpha_merge(node, *inputs):
 def local_dnn_convi_alpha_merge(node, *inputs):
     if not dnn_available() or version() == -1:
         return None
-    return [GpuDnnConvGradI()(*inputs)]
+    return [GpuDnnConvGradI(algo=node.op.algo)(*inputs)]
 
 
 @register_opt('cudnn')
 @output_merge(GpuDnnConv, alpha_in=4, beta_in=5, out_in=2, nd=4)
 def local_dnn_conv_output_merge(node, *inputs):
     inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
-    return [GpuDnnConv(workmem=node.op.workmem)(*inputs)]
+    return [GpuDnnConv(algo=node.op.algo)(*inputs)]
 
 
 @register_opt('cudnn')
 @output_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5, out_in=2, nd=4)
 def local_dnn_convw_output_merge(node, *inputs):
     inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
-    return [GpuDnnConvGradW()(*inputs)]
+    return [GpuDnnConvGradW(algo=node.op.algo)(*inputs)]
 
 
 @register_opt('cudnn')
 @output_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5, out_in=2, nd=4)
 def local_dnn_convi_output_merge(node, *inputs):
     inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
-    return [GpuDnnConvGradI()(*inputs)]
+    return [GpuDnnConvGradI(algo=node.op.algo)(*inputs)]
 
 
 @register_opt('cudnn')

@@ -467,12 +467,12 @@ class TestDnnInferShapes(utt.InferShapeTester):
         img = T.ftensor4('img')
         kerns = T.ftensor4('kerns')
         out = T.ftensor4('out')
-        img_val = numpy.asarray(
-            numpy.random.rand(3, 4, 5, 6),
-            dtype='float32'
-        )
         kern_vals = numpy.asarray(
             numpy.random.rand(13, 14, 15, 16),
+            dtype='float32'
+        )
+        out_vals = numpy.asarray(
+            numpy.random.rand(3, 13, 5, 6),
             dtype='float32'
         )
 
@@ -481,28 +481,27 @@ class TestDnnInferShapes(utt.InferShapeTester):
             [(1, 1)],
             ['conv', 'cross']
         ):
-            temp_kerns = kerns.dimshuffle(1, 0, 2, 3)
             shape = (
-                img_val.shape[0], kern_vals.shape[1],
-                img_val.shape[2] + kern_vals.shape[2] - 1,
-                img_val.shape[3] + kern_vals.shape[3] - 1
+                out_vals.shape[0], kern_vals.shape[1],
+                out_vals.shape[2] + kern_vals.shape[2] - 1,
+                out_vals.shape[3] + kern_vals.shape[3] - 1
             )
-            out_vals = numpy.zeros(shape, dtype='float32')
+            img_vals = numpy.zeros(shape, dtype='float32')
             desc = dnn.GpuDnnConvDesc(
                 border_mode=params[0],
                 subsample=params[1],
                 conv_mode=params[2]
-            )(out.shape, temp_kerns.shape)
+            )(out.shape, kerns.shape)
             conv_grad_i = dnn.GpuDnnConvGradI()(
-                temp_kerns,
-                img,
+                kerns,
                 out,
+                img,
                 desc,
             )
             self._compile_and_check(
-                [temp_kerns, img, out],
+                [kerns, img, out],
                 [conv_grad_i],
-                [kern_vals, img_val, out_vals],
+                [kern_vals, img_vals, out_vals],
                 dnn.GpuDnnConvGradI
             )
 
