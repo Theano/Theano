@@ -711,7 +711,7 @@ class T_Scan(unittest.TestCase):
 
         def inner_fct(mitsot_m2, mitsot_m1, sitsot):
             total = mitsot_m2 + mitsot_m1 + sitsot
-            output = total ** 2
+            output = total ** 1.05
             return output, output
 
         inputs = [tensor.matrix(), tensor.vector()]
@@ -751,7 +751,7 @@ class T_Scan(unittest.TestCase):
 
         def inner_fct(mitsot_m2, sitsot):
             total = mitsot_m2 + sitsot
-            output = total ** 2
+            output = total ** 1.05
             return output, output
 
         def get_sum_of_grad(input0, input1):
