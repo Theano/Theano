@@ -132,7 +132,7 @@ class NanGuardMode(Mode):
     ----
         We ignore the linker parameter
     """
-    # We currently loose the 3 first param freuquently, when calling
+    # We currently loose the 3 first params frequently, when calling
     # mode.including() and variant.
     def __init__(self, nan_is_error=None, inf_is_error=None, big_is_error=None,
                  optimizer=None, linker=None):

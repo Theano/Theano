@@ -709,19 +709,20 @@ import theano and print the config variable, as in:
 
     Bool value, default: True
 
-    Do NanGuardMode generate an error when it see a nan.
+    Controls whether NanGuardMode generates an error when it sees a nan.
 
 .. attribute:: config.NanGuardMode.inf_is_error
 
     Bool value, default: True
 
-    Do NanGuardMode generate an error when it see an inf.
+    Controls whether NanGuardMode generates an error when it sees an inf.
 
 .. attribute:: config.NanGuardMode.nan_is_error
 
     Bool value, default: True
 
-    Do NanGuardMode generate an error when it see a big value (>1e10).
+    Controls whether NanGuardMode generates an error when it sees a
+    big value (>1e10).
 
 .. attribute:: numpy
 
