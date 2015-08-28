@@ -705,6 +705,25 @@ import theano and print the config variable, as in:
     Generate a warning when the destroy_map or view_map tell that an op work
     inplace, but the op did not reuse the input for its output.
 
+.. attribute:: config.NanGuardMode.nan_is_error
+
+    Bool value, default: True
+
+    Controls whether NanGuardMode generates an error when it sees a nan.
+
+.. attribute:: config.NanGuardMode.inf_is_error
+
+    Bool value, default: True
+
+    Controls whether NanGuardMode generates an error when it sees an inf.
+
+.. attribute:: config.NanGuardMode.nan_is_error
+
+    Bool value, default: True
+
+    Controls whether NanGuardMode generates an error when it sees a
+    big value (>1e10).
+
 .. attribute:: numpy
 
     This section contains different attributes for configuring numpy's

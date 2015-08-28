@@ -49,7 +49,12 @@ if __name__ == '__main__':
     else:
         costlySpeed = costlyTimeOpenmp / costlyTime
         costlySpeedstring = "slowdown"
+    print("Timed with vector of %d elements" % options.N)
+    print("Fast op time without openmp %fs with openmp %fs %s %2.2f" % (
+        cheapTime, cheapTimeOpenmp, cheapSpeedstring, cheapSpeed))
 
-    print("Fast op time without openmp %fs with openmp %fs %s %2.2f" % (cheapTime, cheapTimeOpenmp, cheapSpeedstring, cheapSpeed))
+    print("Fast op time without openmp %fs with openmp %fs %s %2.2f" % (
+        cheapTime, cheapTimeOpenmp, cheapSpeedstring, cheapSpeed))
 
-    print("Slow op time without openmp %fs with openmp %fs %s %2.2f" % (costlyTime, costlyTimeOpenmp, costlySpeedstring, costlySpeed))
+    print("Slow op time without openmp %fs with openmp %fs %s %2.2f" % (
+        costlyTime, costlyTimeOpenmp, costlySpeedstring, costlySpeed))
