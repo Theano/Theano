@@ -158,6 +158,12 @@ class FunctionGraph(utils.object2):
         self.variable_locks = {}
         self.profile = None
 
+    def add_input(self, input):
+        if input not in self.inputs:
+            self.inputs.append(input)
+            self.__setup_r__(input)
+            self.variables.add(input)
+
     # Setup a Variable #
     def __setup_r__(self, r):
         # sets up r so it belongs to this fgraph

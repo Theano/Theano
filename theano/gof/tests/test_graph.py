@@ -11,7 +11,7 @@ from theano import (
 from theano.gof.graph import (
     Apply,
     as_string, clone, general_toposort, inputs, io_toposort,
-    is_same_graph, Variable, map_variables)
+    is_same_graph, Variable, map_variables, local_replacer)
 from theano.gof.op import Op
 from theano.gof.type import Type
 from theano.sandbox.cuda.var import (
@@ -170,10 +170,12 @@ class TestMapVariables(X):
 
         b.tag.replacement = c
 
+        @local_replacer
+        def replacer(graph):
+            return getattr(graph.tag, "replacement", graph)
+
         u = a + b
-        v, = map_variables(
-            lambda x: getattr(x.tag, "replacement", x),
-            [u])
+        v, = map_variables(replacer, [u])
 
         assert u.owner.inputs == [a, b]
         assert v.owner.inputs == [a, c]
@@ -190,10 +192,12 @@ class TestMapVariables(X):
         c = tensor.scalar()
         d = tensor.scalar()
 
+        @local_replacer
+        def replacer(graph):
+            return getattr(graph.tag, "replacement", graph)
+
         u = OpFromGraph([a, b], [r])(c, d)
-        v, = map_variables(
-            lambda x: getattr(x.tag, "replacement", x),
-            [u])
+        v, = map_variables(replacer, [u])
 
         f = function([c, d], [u, v])
         for m, n in itertools.combinations(range(10), 2):
@@ -221,6 +225,7 @@ class TestMapVariables(X):
             r.tag.replacement = z * (a - x)
             return r
 
+        @local_replacer
         def replacer(graph):
             return getattr(graph.tag, "replacement", graph)
 
@@ -246,10 +251,12 @@ class TestMapVariables(X):
 
         y.tag.replacement = z
 
+        @local_replacer
+        def replacer(graph):
+            return getattr(graph.tag, "replacement", graph)
+
         s, _ = scan(lambda x: x * y, sequences=x)
-        s2, = map_variables(
-            lambda x: getattr(x.tag, "replacement", x),
-            [s])
+        s2, = map_variables(replacer, [s])
 
         f = function([x, y, z], [s, s2])
         assert numpy.array_equal(
