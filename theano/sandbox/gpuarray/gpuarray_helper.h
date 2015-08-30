@@ -44,14 +44,13 @@ static PyGpuArrayObject *theano_try_copy(PyGpuArrayObject *out,
   return out;
 }
 
-/* This is guaranteed to work and return the raw CUDA/OpenCL object on
- * all recent (as of June 2015) version of libgpuarray. This is also
- * promised to keep working in future versions. */
 static inline void *PyGpuArray_DEV_DATA(PyGpuArrayObject *a) {
+  /* This is guaranteed to work and return the raw CUDA/OpenCL object on
+   * all recent (as of June 2015) version of libgpuarray. This is also
+   * promised to keep working in future versions. */
   char * p = *((char **)a->ga.data);
-  assert((a->ga.offset % gpuarray_get_elsize(a->ga.typecode)) == 0);
 
-  /* This only works on cuda */
+  /* This only works on cuda since we have a real pointer. */
   return (void *)(p + a->ga.offset);
 }
 
