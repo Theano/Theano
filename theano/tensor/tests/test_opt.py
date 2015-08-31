@@ -5039,7 +5039,10 @@ class T_local_sum_prod_dimshuffle(unittest.TestCase):
         d_val = numpy.asarray(rng.randn(), config.floatX)
 
         default_mode = theano.compile.mode.get_default_mode()
-        mode_with_opt = default_mode.including('local_sum_prod_div_dimshuffle')
+        # FusionOptimizer is included to make sure that expected_outer_operator
+        # remains the same for all optimization modes.
+        mode_with_opt = default_mode.including('local_sum_prod_div_dimshuffle',
+                                               'FusionOptimizer')
         mode_without_opt = default_mode.excluding('local_sum_prod_div_dimshuffle')
 
         # Numerical tests: tests whether the numerical values with and without
