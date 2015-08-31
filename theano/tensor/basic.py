@@ -3966,7 +3966,12 @@ def shape_padright(t, n_ones=1):
 def shape_padaxis(t, axis):
     """Reshape `t` by adding 1 at the dimension `axis`.
 
-    See also: `shape_padleft`, `shape_padright` and `Dimshuffle`
+    See Also
+    --------
+    shape_padleft
+    shape_padright
+    Dimshuffle
+
     """
     _t = as_tensor_variable(t)
 
@@ -3985,11 +3990,12 @@ def stack(*tensors):
     Note: The interface stack(*tensors) is deprecated, you should use
     stack(tensors, axis=0) insted.
 
-    :Parameters:
-     - `tensors` : list or tuple of tensors
-       A list of tensors to be stacked.
-     - `axis` : int
-       The index of the new axis.
+    Parameters
+    ----------
+    tensors : list or tuple of tensors
+        A list of tensors to be stacked.
+    axis : int
+        The index of the new axis.
 
     """
     if len(tensors) == 0:
