@@ -2815,7 +2815,6 @@ alloc = Alloc()
 pprint.assign(alloc, printing.FunctionPrinter('alloc'))
 
 
-@constructor
 def tensor_copy(input):
     """Create a duplicate of a tensor `input` with duplicated storage."""
     return elemwise.Elemwise(scal.identity)(input)
