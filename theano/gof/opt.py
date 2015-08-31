@@ -575,7 +575,8 @@ class MergeFeature(object):
                                 if c in self.nodes_seen]
 
             # Put all clients of Assert inputs (if exist) into merge_candidates
-            for i in node.inputs:
+            # TODO: Deactivated for now as this cause cycle in the graph.
+            for i in []:  # node.inputs:
                 if i.owner and isinstance(i.owner.op,
                                           theano.tensor.opt.Assert):
                     node_has_assert = True
