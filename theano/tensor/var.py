@@ -520,8 +520,11 @@ class _tensor_py_operators:
         return theano.tensor.subtensor.take(self, indices, axis, mode)
 
     # COPYING
-    def copy(self):
-        return theano.tensor.basic.tensor_copy(self)
+    def copy(self, name=None):
+        """Copy a variable and set a name to the copy."""
+        copied_variable = theano.tensor.basic.tensor_copy(self)
+        copied_variable.name = name
+        return copied_variable
 
     def __iter__(self):
         try:
