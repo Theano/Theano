@@ -170,9 +170,14 @@ class AddNoOutputFromInplace(gof.Optimizer):
     outputs
 
     """
+
+    def __init__(self, first_output_idx=0, last_output_idx=None):
+        self.feature = gof.NoOutputFromInplace(first_output_idx,
+                                               last_output_idx)
+
     def add_requirements(self, fgraph):
         super(AddNoOutputFromInplace, self).add_requirements(fgraph)
-        fgraph.attach_feature(gof.NoOutputFromInplace())
+        fgraph.attach_feature(self.feature)
 
 
 class PrintCurrentFunctionGraph(gof.Optimizer):
