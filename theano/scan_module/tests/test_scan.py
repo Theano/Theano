@@ -759,7 +759,7 @@ class T_Scan(unittest.TestCase):
 
             scan_outputs, updates = theano.scan(fn=inner_fct,
                                                 outputs_info=outputs_info,
-                                                n_steps=5)
+                                                n_steps=3)
 
             # Take the gradient of each output wrt its corresponding initial
             # state
