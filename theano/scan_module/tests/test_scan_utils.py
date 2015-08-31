@@ -83,7 +83,7 @@ class TestMapVariables(object):
         t2 = z * s2
 
         f = theano.function([x, outer], [t, t2])
-        rval = f(x=numpy.array([1, 2, 3]), outer=0.5)
+        rval = f(x=numpy.array([1, 2, 3], dtype=numpy.float32), outer=0.5)
         assert numpy.array_equal(rval, [[1, 3, 6], [-1, -3, -6]])
 
     def test_leaf_inside_scan(self):
@@ -97,5 +97,5 @@ class TestMapVariables(object):
         s2, = map_variables(self.replacer, [s])
 
         f = theano.function([x, y, z], [s, s2])
-        rval = f(x=numpy.array([1, 2, 3]), y=1, z=2)
+        rval = f(x=numpy.array([1, 2, 3], dtype=numpy.float32), y=1, z=2)
         assert numpy.array_equal(rval, [[1, 2, 3], [2, 4, 6]])
