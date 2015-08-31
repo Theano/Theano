@@ -440,10 +440,21 @@ class PreserveNames(Feature):
 
 class NoOutputFromInplace(Feature):
 
+    def __init__(self, first_output_idx=0, last_output_idx=None):
+        self.first_idx = first_output_idx
+        self.last_idx = last_output_idx
+
     def validate(self, fgraph):
         if not hasattr(fgraph, 'destroyers'):
             return True
-        for out in list(fgraph.outputs):
+
+        if self.last_idx is None:
+            outputs_to_validate = list(fgraph.outputs)[self.first_idx:]
+        else:
+            outputs_to_validate = list(fgraph.outputs)[self.first_idx:
+                                                       self.last_idx]
+
+        for out in outputs_to_validate:
 
             if out.owner is None:
                 continue
