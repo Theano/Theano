@@ -1172,6 +1172,9 @@ class Scan(PureOp):
         offset = self.nit_sot_arg_offset + self.n_nit_sot
         other_args = args[offset:]
         input_storage = self.fn.input_storage
+        old_input_storage = [None] * len(input_storage)
+        old_input_data = [None] * len(input_storage)
+        input_reused = [None] * len(input_storage)
         output_storage = self.fn.output_storage
         old_output_storage = [None] * len(output_storage)
         old_output_data = [None] * len(output_storage)
@@ -1224,11 +1227,13 @@ class Scan(PureOp):
             # 4. collecting slices where the output should be stored
 
             # 4.1. Collect slices for mitmots
-            for idx in xrange(self.thunk_mit_mot_outs):
-                output_storage[idx].storage[0] = None
+            offset = 0
+            for idx in xrange(self.n_mit_mot_outs):
+                if not self.mitmots_preallocated[idx]:
+                    output_storage[offset].storage[0] = None
+                    offset += 1
 
             # 4.2. Collect slices for mitsots, sitsots and nitsots
-            offset = self.thunk_mit_mot_outs
             if i != 0:
                 for idx in xrange(self.n_outs + self.n_nit_sot -
                                   self.n_mit_mot):
@@ -1271,6 +1276,23 @@ class Scan(PureOp):
                     old_output_data[idx] = var.data
                 else:
                     old_output_data[idx] = None
+
+            # 4.6. Keep a reference to the variables (ndarrays, CudaNdarrays,
+            # etc) currently in the input_storage to be able to compare them
+            # with the content of the input_storage after the execution of the
+            # function. Also keep pointers to their data to be able to detect
+            # cases where outputs reused the allocated object but alter the
+            # memory region they refer to.
+            for idx in xrange(len(input_storage)):
+                var = input_storage[idx].storage[0]
+                old_input_storage[idx] = var
+
+                if hasattr(var, 'gpudata'):
+                    old_input_data[idx] = var.gpudata
+                elif hasattr(var, 'data'):
+                    old_input_data[idx] = var.data
+                else:
+                    old_input_data[idx] = None
 
             # 5. compute outputs
             t0_fn = time.time()
@@ -1324,14 +1346,59 @@ class Scan(PureOp):
                 else:
                     output_reused[idx] = False
 
+            # Check which of the input storage have been modified by the inner
+            # function
+            for idx in xrange(len(input_storage)):
+                # If the storage map does not contain the same object, then
+                # the pre-allocated output has not been reused
+                new_var = input_storage[idx].storage[0]
+                if old_input_storage[idx] is new_var:
+
+                    # The pre-allocated output is only considered as having
+                    # been reused if it still points to the same data as it
+                    # did before the execution of the inner function
+                    if old_input_data[idx] is None:
+                        input_reused[idx] = False
+                    else:
+                        if hasattr(new_var, 'gpudata'):
+                            input_reused[idx] = (new_var.gpudata ==
+                                                  old_input_data[idx])
+                        elif hasattr(new_var, 'data'):
+                            input_reused[idx] = (new_var.data ==
+                                                  old_input_data[idx])
+                else:
+                    input_reused[idx] = False
+
+
             t_fn += dt_fn
             offset_out = 0
+
             # 5.1 Copy over the values for mit_mot outputs
+            mitmot_inp_offset = self.n_seqs
+            mitmot_out_idx = 0
             for j in xrange(self.n_mit_mot):
-                for k in self.thunk_mit_mot_out_slices[j]:
-                    outs[j][0][k + pos[j]] = \
-                            output_storage[offset_out].storage[0]
-                    offset_out += 1
+                for k in self.mit_mot_out_slices[j]:
+                    if self.mitmots_preallocated[mitmot_out_idx]:
+                        # This output tap has been preallocated. If the
+                        # corresponding input storage has been replaced,
+                        # recover the value as usual. Otherwise, the input was
+                        # modified inplace and nothing needs to be done.
+                        inp_idx = (mitmot_inp_offset +
+                                   self.tap_array[j].index(k))
+                        if not input_reused[inp_idx]:
+                            outs[j][0][k + pos[j]] = \
+                                input_storage[inp_idx].storage[0]
+
+                    if not self.mitmots_preallocated[mitmot_out_idx]:
+                        # This output tap has not been preallocated, recover
+                        # its value as usual
+                        outs[j][0][k + pos[j]] = \
+                                output_storage[offset_out].storage[0]
+                        offset_out += 1
+
+                    mitmot_out_idx += 1
+
+                mitmot_inp_offset += len(self.tap_array[j])
 
             # 5.2 Copy over the values for mit_sot/sit_sot outputs
             begin = self.n_mit_mot
