@@ -29,5 +29,3 @@ def test_copy():
     f = theano.function([x], y)
     assert_equal(f(data), data)
     assert_string_equal(y.name, 'y')
-
-
