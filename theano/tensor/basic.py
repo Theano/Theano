@@ -2819,7 +2819,7 @@ def tensor_copy(input):
     """Create a duplicate of a tensor `input` with duplicated storage."""
     return elemwise.Elemwise(scal.identity)(input)
 
-pprint.assign(tensor_copy, printing.IgnorePrinter())
+pprint.assign(elemwise.Elemwise(scal.identity), printing.IgnorePrinter())
 
 
 @constructor
