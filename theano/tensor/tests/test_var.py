@@ -23,7 +23,7 @@ def test_numpy_method():
 
 
 def test_copy():
-    x = tt.matrix('x')
+    x = tt.dmatrix('x')
     data = np.random.rand(5, 5)
     y = x.copy(name='y')
     f = theano.function([x], y)
