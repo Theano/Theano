@@ -763,7 +763,7 @@ class Scan(PureOp):
             wrapped_inputs = [In(x, borrow=False)
                               for x in self.inputs[:self.n_seqs]]
             new_outputs = [x for x in self.outputs]
-            preallocated_outputs = []
+            preallocated_mitmot_outs = []
             new_mit_mot_out_slices = copy.deepcopy(self.mit_mot_out_slices)
 
             input_idx = self.n_seqs
@@ -780,10 +780,9 @@ class Scan(PureOp):
                         # output value, possibly inplace, at the end of the
                         # function exectution
                         wrapped_inp = In(variable=self.inputs[input_idx],
-                                         update=self.outputs[output_idx],
-                                         mutable=False, borrow=True)
+                                         update=self.outputs[output_idx])
                         wrapped_inputs.append(wrapped_inp)
-                        preallocated_outputs.append(output_idx)
+                        preallocated_mitmot_outs.append(output_idx)
                         new_mit_mot_out_slices[mitmot_idx].remove(inp_tap)
                     else:
                         # Wrap the corresponding input as usual. Leave the
@@ -803,13 +802,13 @@ class Scan(PureOp):
             # Remove now useless outputs from the output list (start from the
             # end to avoid altering the indices of the other outputs to be
             # deleted.
-            preallocated_outputs.sort()
-            for p in preallocated_outputs[::-1]:
+            preallocated_mitmot_outs.sort()
+            for p in preallocated_mitmot_outs[::-1]:
                 del wrapped_outputs[p]
 
             # Store the list of mitmot output taps that have been altered
             # so they can be preallocated
-            self.mitmots_preallocated = [i in preallocated_outputs
+            self.mitmots_preallocated = [i in preallocated_mitmot_outs
                                          for i in range(self.n_mit_mot_outs)]
 
             """
