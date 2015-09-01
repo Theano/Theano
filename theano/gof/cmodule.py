@@ -2117,8 +2117,9 @@ class GCC_compiler(Compiler):
             cppfile.write('\n')
         cppfile.close()
 
-        lib_filename = os.path.join(location, '%s.%s' %
-                                    (module_name, get_lib_extension()))
+        lib_filename = os.path.join(
+            location,
+            '%s.%s' % (module_name, get_lib_extension()))
 
         _logger.debug('Generating shared lib %s', lib_filename)
         cmd = [theano.config.cxx, get_gcc_shared_library_arg(), '-g']
