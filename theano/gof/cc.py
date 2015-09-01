@@ -1112,8 +1112,7 @@ class CLinker(link.Linker):
                                               input_storage,
                                               output_storage,
                                               storage_map,
-                                              keep_lock=keep_lock,
-                                              c_callable=c_callable)
+                                              keep_lock=keep_lock)
         return (thunk,
                 [link.Container(input, storage) for input, storage in
                  izip(self.fgraph.inputs, input_storage)],
