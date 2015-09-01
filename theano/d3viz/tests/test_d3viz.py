@@ -33,7 +33,8 @@ class TestD3Viz(unittest.TestCase):
 
     def test_mlp_profiled(self):
         m = models.Mlp()
-        f = th.function(m.inputs, m.outputs, profile=True)
+        profile = th.compile.profiling.ProfileStats(False)
+        f = th.function(m.inputs, m.outputs, profile=profile)
         x_val = self.rng.normal(0, 1, (1000, m.nfeatures))
         f(x_val)
         self.check(f)
