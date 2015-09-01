@@ -6,6 +6,7 @@ Author: Christof Angermueller <cangermueller@gmail.com>
 import os
 import shutil
 import re
+from six import iteritems
 
 from .formatting import PyDotFormatter
 
@@ -14,7 +15,7 @@ __path__ = os.path.dirname(os.path.realpath(__file__))
 
 def replace_patterns(x, replace):
     """Replace patterns `replace` in x."""
-    for from_, to in replace.items():
+    for from_, to in iteritems(replace):
         x = x.replace(str(from_), str(to))
     return x
 
@@ -28,11 +29,16 @@ def escape_quotes(s):
 def d3viz(fct, outfile, copy_deps=True, *args, **kwargs):
     """Create HTML file with dynamic visualizing of a Theano function graph.
 
-    :param fct: A compiled Theano function, variable, apply or a list of
-                variables.
-    :param outfile: The output HTML file.
-    :param copy_deps: Copy javascript and CSS dependencies to output directory.
-    :param *args, **kwargs: Arguments passed to PyDotFormatter.
+    Parameters
+    ----------
+    fct -- theano.compile.function_module.Function
+        A compiled Theano function, variable, apply or a list of variables.
+    outfile -- str
+        Path to output HTML file.
+    copy_deps -- bool, optional
+        Copy javascript and CSS dependencies to output directory.
+    *args, **kwargs -- dict, optional
+        Arguments passed to PyDotFormatter.
 
     In the HTML file, the whole graph or single nodes can be moved by drag and
     drop. Zooming is possible via the mouse wheel. Detailed information about
@@ -85,10 +91,8 @@ def d3viz(fct, outfile, copy_deps=True, *args, **kwargs):
     html = replace_patterns(template, replace)
 
     # Write HTML file
-    if outfile is not None:
-        f = open(outfile, 'w')
+    with open(outfile, 'w') as f:
         f.write(html)
-        f.close()
 
 
 def d3write(fct, path, *args, **kwargs):

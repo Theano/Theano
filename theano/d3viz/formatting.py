@@ -5,7 +5,9 @@ Author: Christof Angermueller <cangermueller@gmail.com>
 
 import numpy as np
 import logging
+import os
 from functools import reduce
+from six import iteritems, itervalues
 
 try:
     import pydot as pd
@@ -35,8 +37,7 @@ class PyDotFormatter(object):
         """
 
         if not pydot_imported:
-            raise RuntimeError("Failed to import pydot. You must install pydot"
-                               " for `pydotprint` to work.")
+            raise RuntimeError("Failed to import pydot. Please install pydot!")
 
         self.compact = compact
         self.node_colors = {'input': 'limegreen',
@@ -124,7 +125,7 @@ class PyDotFormatter(object):
             nparams['shape'] = self.shapes['apply']
 
             use_color = None
-            for opName, color in self.apply_colors.items():
+            for opName, color in iteritems(self.apply_colors):
                 if opName in node.op.__class__.__name__:
                     use_color = color
             if use_color:
@@ -160,11 +161,11 @@ class PyDotFormatter(object):
                 edge_params = {}
                 if hasattr(node.op, 'view_map') and \
                         id in reduce(list.__add__,
-                                     node.op.view_map.values(), []):
+                                     itervalues(node.op.view_map), []):
                     edge_params['color'] = self.node_colors['output']
                 elif hasattr(node.op, 'destroy_map') and \
                         id in reduce(list.__add__,
-                                     node.op.destroy_map.values(), []):
+                                     itervalues(node.op.destroy_map), []):
                     edge_params['color'] = 'red'
 
                 edge_label = vparams['dtype']
@@ -329,7 +330,7 @@ def type_to_str(t):
 def dict_to_pdnode(d):
     """Create pydot node from dict."""
     e = dict()
-    for k, v in d.items():
+    for k, v in iteritems(d):
         if v is not None:
             if isinstance(v, list):
                 v = '\t'.join([str(x) for x in v])
