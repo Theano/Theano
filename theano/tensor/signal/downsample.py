@@ -59,7 +59,7 @@ def max_pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
     ds : tuple of length 2
         Factor by which to downscale (vertical ds, horizontal ds).
         (2,2) will halve the image in each dimension.
-    ignore_border : bool (default None, mean print warning and set False)
+    ignore_border : bool (default None, will print a warning and set to False)
         When True, (5,5) input with ds=(2,2) will generate a (2,2) output.
         (3,3) otherwise.
     st : tuple of lenght 2
@@ -80,10 +80,11 @@ def max_pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
         raise NotImplementedError('max_pool_2d requires a dimension >= 2')
     if ignore_border is None:
         warnings.warn("max_pool_2d() will have the parameter ignore_border"
-                      " default value change to True (currently"
-                      " False). To be safe with all Theano versions,"
-                      " explicitly add the parameter ignore_border=True."
-                      " (this is also faster then ignore_border=False)",
+                      " default value changed to True (currently"
+                      " False). To have consistent behavior with all Theano"
+                      " version, explicitly add the parameter"
+                      "  ignore_border=True. (this is also faster than"
+                      " ignore_border=False)",
                       stacklevel=2)
         ignore_border = False
     if input.ndim == 4:
