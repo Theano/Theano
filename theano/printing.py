@@ -586,8 +586,8 @@ default_colorCodes = {'GpuFromHost': 'red',
                       'IfElse': 'magenta',
                       'Elemwise': '#FFAABB',  # dark pink
                       'Subtensor': '#FFAAFF',  # purple
-                      'Alloc': '#FFAA22'}  # orange
-
+                      'Alloc': '#FFAA22',  # orange
+                      'Output': 'blue' }
 
 def pydotprint(fct, outfile=None,
                compact=True, format='png', with_ids=False,
@@ -889,7 +889,7 @@ def pydotprint(fct, outfile=None,
                 param['label'] = label
             if hasattr(node.op, 'view_map') and idx in reduce(
                     list.__add__, node.op.view_map.values(), []):
-                    param['color'] = 'blue'
+                    param['color'] = colorCodes['Output']
             elif hasattr(node.op, 'destroy_map') and idx in reduce(
                     list.__add__, node.op.destroy_map.values(), []):
                         param['color'] = 'red'
@@ -939,9 +939,9 @@ def pydotprint(fct, outfile=None,
                 if high_contrast:
                     g.add_node(pd.Node(varid, style='filled',
                                        label=varstr,
-                                       fillcolor='blue', shape=var_shape))
+                                       fillcolor=colorCodes['Output'], shape=var_shape))
                 else:
-                    g.add_node(pd.Node(varid, color='blue',
+                    g.add_node(pd.Node(varid, color=colorCodes['Output'],
                                        label=varstr,
                                        shape=var_shape))
             elif len(var.clients) == 0:
@@ -971,7 +971,7 @@ def pydotprint(fct, outfile=None,
     for sha, up in input_update.items():
         _, shaid = var_name(sha)
         _, upid = var_name(up)
-        g.add_edge(pd.Edge(shaid, upid, label="UPDATE", color="blue"))
+        g.add_edge(pd.Edge(shaid, upid, label="UPDATE", color=colorCodes['Output']))
 
     if cond_highlight:
         g.add_subgraph(c1)
@@ -1135,7 +1135,7 @@ def pydotprint_variables(vars,
                 my_list[nd] = varastr
                 color = None
                 if nd in vars:
-                    color = 'blue'
+                    color = colorCodes['Output']
                 elif nd in orphanes:
                     color = 'gray'
                 if color is None:
