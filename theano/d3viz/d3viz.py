@@ -8,37 +8,41 @@ import shutil
 import re
 from six import iteritems
 
-from .formatting import PyDotFormatter
+from theano.d3viz.formatting import PyDotFormatter
 
 __path__ = os.path.dirname(os.path.realpath(__file__))
 
 
 def replace_patterns(x, replace):
-    """Replace patterns `replace` in x."""
+    """Replace `replace` in string `x`.
+
+    Parameters
+    ----------
+    s: str
+        String on which function is applied
+    replace: dict
+        `key`, `value` pairs where key is a regular expression and `value` a
+        string by which `key` is replaced
+    """
     for from_, to in iteritems(replace):
         x = x.replace(str(from_), str(to))
     return x
 
 
 def escape_quotes(s):
-    """Escape quotes in string."""
+    """Escape quotes in string.
+
+    Parameters
+    ----------
+    s: str
+        String on which function is applied
+    """
     s = re.sub(r'''(['"])''', r'\\\1', s)
     return s
 
 
 def d3viz(fct, outfile, copy_deps=True, *args, **kwargs):
     """Create HTML file with dynamic visualizing of a Theano function graph.
-
-    Parameters
-    ----------
-    fct -- theano.compile.function_module.Function
-        A compiled Theano function, variable, apply or a list of variables.
-    outfile -- str
-        Path to output HTML file.
-    copy_deps -- bool, optional
-        Copy javascript and CSS dependencies to output directory.
-    *args, **kwargs -- dict, optional
-        Arguments passed to PyDotFormatter.
 
     In the HTML file, the whole graph or single nodes can be moved by drag and
     drop. Zooming is possible via the mouse wheel. Detailed information about
@@ -53,6 +57,19 @@ def d3viz(fct, outfile, copy_deps=True, *args, **kwargs):
     Edges are black by default. If a node returns a view of an
     input, the input edge will be blue. If it returns a destroyed input, the
     edge will be red.
+
+    Parameters
+    ----------
+    fct : theano.compile.function_module.Function
+        A compiled Theano function, variable, apply or a list of variables.
+    outfile : str
+        Path to output HTML file.
+    copy_deps : bool, optional
+        Copy javascript and CSS dependencies to output directory.
+    *args : tuple, optional
+        Arguments passed to PyDotFormatter.
+    *kwargs : dict, optional
+        Arguments passed to PyDotFormatter.
     """
 
     # Create DOT graph
@@ -96,7 +113,20 @@ def d3viz(fct, outfile, copy_deps=True, *args, **kwargs):
 
 
 def d3write(fct, path, *args, **kwargs):
-    """Convert Theano graph to pydot graph and write to file."""
+    """Convert Theano graph to pydot graph and write to dot file.
+
+    Parameters
+    ----------
+    fct : theano.compile.function_module.Function
+        A compiled Theano function, variable, apply or a list of variables.
+    path: str
+        Path to output file
+    *args : tuple, optional
+        Arguments passed to PyDotFormatter.
+    *kwargs : dict, optional
+        Arguments passed to PyDotFormatter.
+    """
+
     formatter = PyDotFormatter(*args, **kwargs)
     graph = formatter(fct)
     graph.write_dot(path)

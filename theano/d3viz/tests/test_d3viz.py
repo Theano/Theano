@@ -3,7 +3,6 @@ import os.path as pt
 import tempfile
 import unittest
 import filecmp
-import sys
 
 import theano as th
 import theano.d3viz as d3v

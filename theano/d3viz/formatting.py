@@ -28,14 +28,25 @@ _logger = logging.getLogger("theano.printing")
 
 
 class PyDotFormatter(object):
+    """Create `pydot` graph object from Theano function.
+
+    Parameters
+    ----------
+    compact : bool
+        if True, will remove intermediate variables without name.
+
+    Attributes
+    ----------
+    node_colors : dict
+        Color table of node types.
+    apply_colors : dict
+        Color table of apply nodes.
+    shapes : dict
+        Shape table of node types.
+    """
 
     def __init__(self, compact=True):
-        """Converts compute to to `pydot` object.
-
-        :param compact: if True, will remove intermediate variables without
-                        name.
-        """
-
+        """Construct PyDotFormatter object."""
         if not pydot_imported:
             raise RuntimeError("Failed to import pydot. Please install pydot!")
 
@@ -59,14 +70,36 @@ class PyDotFormatter(object):
         self.__node_prefix = 'n'
 
     def __add_node(self, node):
-        """Add new node to node list and return unique id."""
+        """Add new node to node list and return unique id.
+
+        Parameters
+        ----------
+        node : Theano graph node
+            Apply node, tensor variable, or shared variable in compute graph.
+
+        Returns
+        -------
+        str
+            Unique node id.
+        """
         assert node not in self.__nodes
         _id = '%s%d' % (self.__node_prefix, len(self.__nodes) + 1)
         self.__nodes[node] = _id
         return _id
 
     def __node_id(self, node):
-        """Return unique node id."""
+        """Return unique node id.
+
+        Parameters
+        ----------
+        node : Theano graph node
+            Apply node, tensor variable, or shared variable in compute graph.
+
+        Returns
+        -------
+        str
+            Unique node id.
+        """
         if node in self.__nodes:
             return self.__nodes[node]
         else:
@@ -75,10 +108,18 @@ class PyDotFormatter(object):
     def __call__(self, fct, graph=None):
         """Create pydot graph from function.
 
-        :param fct: a compiled Theano function, a Variable, an Apply or
-                    a list of Variable.
-        :param graph: `pydot` graph to which nodes are added. Creates new one
-                      if not given.
+        Parameters
+        ----------
+        fct : theano.compile.function_module.Function
+            A compiled Theano function, variable, apply or a list of variables.
+        graph: pydot.Dot
+            `pydot` graph to which nodes are added. Creates new one if
+            undefined.
+
+        Returns
+        -------
+        pydot.Dot
+            Pydot graph of `fct`
         """
         if graph is None:
             graph = pd.Dot()
@@ -287,6 +328,7 @@ def apply_profile(node, profile):
 
 
 def broadcastable_to_str(b):
+    """Return string representation of broadcastable."""
     named_broadcastable = {(): 'scalar',
                            (False,): 'vector',
                            (False, True): 'col',
@@ -300,6 +342,7 @@ def broadcastable_to_str(b):
 
 
 def dtype_to_char(dtype):
+    """Return character that represents data type."""
     dtype_char = {
         'complex64': 'c',
         'complex128': 'z',
