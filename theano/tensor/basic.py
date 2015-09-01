@@ -3981,7 +3981,7 @@ def shape_padaxis(t, axis):
 
 
 @constructor
-def stack(*tensors):
+def stack(*tensors, **kwargs):
     """Insert the arguments as slices into a tensor of 1 rank greater.
 
     The size in dimension 0 of the result will be equal to the number
@@ -3998,23 +3998,30 @@ def stack(*tensors):
         The index of the new axis.
 
     """
+    # ---> Remove this when moving to the new interface:
+    if 'tensors' in kwargs:
+        tensors = kwargs['tensors']
+    # <--- until here.
+
     if len(tensors) == 0:
         raise Exception('theano.tensor.stack(*tensors) must have at least'
                         ' one parameter')
 
-    # Remove this when moving to the new interface: stack(tensors, axis=0)
-    # New numpy-like interface:
+    # ---> Remove this when moving to the new interface:
     if isinstance(tensors[0], (list, tuple)):
         if len(tensors) == 1:
-            axis = 0
+            if 'axis' in kwargs:
+                axis = kwargs['axis']
+            else:
+                axis = 0
         else:
             axis = tensors[1]
         tensors = tensors[0]
-    # Deprecated interface:
     else:
         warnings.warn('stack(*tensors) interface is deprecated, use'
                       ' stack(tensors, axis=0) instead.', stacklevel=3)
         axis = 0
+    # <--- Until here.
 
     # If all tensors are scalars of the same type, call make_vector.
     # It makes the graph simpler, by not adding DimShuffles and Rebroadcasts
