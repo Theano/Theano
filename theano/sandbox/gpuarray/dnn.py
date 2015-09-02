@@ -27,7 +27,8 @@ from .nnet import GpuSoftmax
 from .opt import gpu_seqopt, register_opt, conv_groupopt, op_lifter
 from .opt_util import alpha_merge, output_merge
 
-from theano.sandbox import dnn_flags
+# We need to import this to define the flags.
+from theano.sandbox import dnn_flags  # noqa
 
 
 def dnn_available():
@@ -80,7 +81,6 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
             str(err))
     else:
         # If we can compile, check that we can import and run.
-        v = version()
         if version() == 20:
             dnn_available.avail = False
             dnn_available.msg = (
@@ -1316,7 +1316,7 @@ class GpuDnnSoftmaxBase(DnnBase):
     Parameters
     ----------
     tensor_format
-        Whether the data format is 'bc01' or 'b01c'.
+       *deprecated* Ignored, will look at the strides of the input(s).
     algo
         'fast' or 'accurate' indicating whether computations should be
         optimized for speed or accuracy respectively.
@@ -1327,12 +1327,10 @@ class GpuDnnSoftmaxBase(DnnBase):
 
     """
 
-    __props__ = ('tensor_format', 'mode', 'algo')
+    __props__ = ('mode', 'algo')
 
-    def __init__(self, tensor_format, algo, mode):
-        assert(tensor_format in ('bc01', 'b01c'))
+    def __init__(self, _, algo, mode):
         DnnBase.__init__(self)
-        self.tensor_format = tensor_format
 
         assert(algo in ('fast', 'accurate', 'log'))
         if algo == 'log' and version() < 3000:
@@ -1398,11 +1396,6 @@ cudnnStatus_t err%(name)s;
         ins = inputs
         outs, = outputs
 
-        if self.tensor_format == 'b01c':
-            tensor_format = "CUDNN_TENSOR_NHWC"
-        else:
-            tensor_format = "CUDNN_TENSOR_NCHW"
-
         if self.mode == 'instance':
             mode = "CUDNN_SOFTMAX_MODE_INSTANCE"
         else:
@@ -1465,7 +1458,7 @@ class GpuDnnSoftmax(GpuDnnSoftmaxBase):
     Op for the cuDNN Softmax.
 
     tensor_format
-        Whether the data format is 'bc01' or 'b01c'.
+        *deprecated* Ignored, will look at input strides.
     algo
         'fast' or 'accurate' indicating whether computations should be
         optimized for speed or accuracy respectively.
@@ -1508,10 +1501,10 @@ err%(name)s = cudnnSoftmaxForward(
         g_sm, = grads
         sm = self.make_node(x).outputs[0]
         return [GpuDnnSoftmaxGrad(
-            self.tensor_format,
-            self.algo,
-            self.mode
-        )(g_sm, sm)]
+                None,
+                self.algo,
+                self.mode
+                )(g_sm, sm)]
 
 
 class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
@@ -1521,7 +1514,7 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
     Parameters
     ----------
     tensor_format
-        Whether the data format is 'bc01' or 'b01c'.
+        *deprecated* Ignored, will look at the input strides.
     algo
         'fast' or 'accurate' indicating whether computations should be
         optimized for speed or accuracy respectively.
@@ -1770,6 +1763,7 @@ def local_softmax_dnn(node):
         out = as_gpuarray_variable(out.dimshuffle(0, 1))
         return [out]
 
+
 @register_opt('cudnn')
 @local_optimizer([GpuElemwise])
 def local_log_softmax_dnn(node):
@@ -1782,8 +1776,7 @@ def local_log_softmax_dnn(node):
             isinstance(node.inputs[0].owner.op, GpuDnnSoftmax) and
             len(node.inputs[0].clients) == 1):
         softmax_node = node.inputs[0].owner
-        new_softmax = GpuDnnSoftmax(softmax_node.op.tensor_format, 'log',
-                                    softmax_node.op.mode)
+        new_softmax = GpuDnnSoftmax(None, 'log', softmax_node.op.mode)
         return [new_softmax(softmax_node.inputs[0])]
 
 
