@@ -175,8 +175,6 @@ def test_pooling():
             func = T.max
         else:
             func = T.mean
-        if pad != (0, 0) and dnn.version() == -1:
-            continue
 
         if pad != (0, 0) and func is T.mean:
             continue
@@ -611,15 +609,9 @@ def test_dnn_conv_alpha_output_merge():
 
     lr = numpy.asarray(0.05, dtype='float32')
 
-    if dnn.version() == -1:
-        # Can't merge alpha with cudnn v1
-        fr = conv + out
-        wr = kern + gw
-        ir = img + gi
-    else:
-        fr = lr * (conv + out)
-        wr = kern + lr * gw
-        ir = img + lr * gi
+    fr = lr * (conv + out)
+    wr = kern + lr * gw
+    ir = img + lr * gi
 
     f1 = theano.function([img, kern, out], [fr, wr, ir], mode=mode_with_gpu)
     assert isinstance(f1.maker.fgraph.outputs[0].owner.inputs[0].owner.op,
@@ -656,9 +648,6 @@ def test_dnn_conv_alpha_output_merge():
 
 
 def test_dnn_conv_grad():
-    if not dnn.dnn_available() or dnn.version() == -1:
-        raise SkipTest('alpha != 1.0 not supported in cudnn v1')
-
     b = 1
     c = 4
     f = 3
@@ -696,7 +685,7 @@ def test_dnn_conv_grad():
 def test_version():
     if not dnn.dnn_available():
         raise SkipTest(dnn.dnn_available.msg)
-    assert isinstance(dnn.version(), (int, tuple))
+    assert isinstance(dnn.version(), int)
 
 
 class test_SoftMax(test_nnet.test_SoftMax):
@@ -705,7 +694,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
     mode = mode_with_gpu
 
     def test_softmax_shape_0(self):
-        raise SkipTest("Cudnn do not suport 0 shapes")
+        raise SkipTest("Cudnn doesn't suport 0 shapes")
 
     def test_softmax_grad(self):
         def cmp(n, m, f, f_gpu):
@@ -758,18 +747,20 @@ class test_SoftMax(test_nnet.test_SoftMax):
             mode=mode_with_gpu
         )
         sorted_f = f.maker.fgraph.toposort()
-        assert(len([i
-                    for i in sorted_f
-                    if isinstance(
-                        i.op,
-                        self.gpu_grad_op
-                    )]) == 1)
-        assert(len([i
-                    for i in sorted_f
-                    if isinstance(
-                        i.op,
-                        theano.tensor.nnet.SoftmaxGrad
-                    )]) == 0)
+        # Optimization is disabled for cudnn v3 rc1
+        if dnn.version() == 2000:
+            assert(len([i
+                        for i in sorted_f
+                        if isinstance(
+                            i.op,
+                            self.gpu_grad_op
+                            )]) == 1)
+            assert(len([i
+                        for i in sorted_f
+                        if isinstance(
+                            i.op,
+                            theano.tensor.nnet.SoftmaxGrad
+                            )]) == 0)
 
         # Verify that the SoftmaxGrad -> Gpu[Dnn]SoftmaxGrad
         # optimization is not applied when cudnn is excluded or not
@@ -801,15 +792,17 @@ class test_SoftMax(test_nnet.test_SoftMax):
         o = theano.tensor.nnet.SoftmaxGrad()(y, y * 2)
         f = theano.function([y], o, mode=mode_with_gpu)
         sorted_f = f.maker.fgraph.toposort()
-        assert(len([i
-                    for i in sorted_f
-                    if isinstance(
-                        i.op,
-                        self.gpu_grad_op
-                    )]) == 1)
-        assert(len([i
-                    for i in sorted_f
-                    if isinstance(
-                        i.op,
-                        theano.tensor.nnet.SoftmaxGrad
-                    )]) == 0)
+        if dnn.version() == 2000:
+            # opt disabled for cudnn v3 rc1
+            assert(len([i
+                        for i in sorted_f
+                        if isinstance(
+                            i.op,
+                            self.gpu_grad_op
+                            )]) == 1)
+            assert(len([i
+                        for i in sorted_f
+                        if isinstance(
+                            i.op,
+                            theano.tensor.nnet.SoftmaxGrad
+                            )]) == 0)

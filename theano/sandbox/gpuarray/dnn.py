@@ -1333,15 +1333,17 @@ class GpuDnnSoftmaxBase(DnnBase):
         DnnBase.__init__(self)
         self.tensor_format = tensor_format
 
-        assert(algo in ('fast', 'accurate'))
+        assert(algo in ('fast', 'accurate', 'log'))
+        if algo == 'log' and version() < 3000:
+            raise RuntimeError("Need CuDNN v3 for log-softmax")
         self.algo = algo
 
         assert(mode in ('instance', 'channel'))
         self.mode = mode
 
-        self.tensor_4d_descs = [softmax_input
-                                for softmax_input in self.softmax_inputs]
-        self.tensor_4d_descs.append('softmax_output')
+        self.tensor_descs = [softmax_input
+                             for softmax_input in self.softmax_inputs]
+        self.tensor_descs.append('softmax_output')
 
     def infer_shape(self, node, shape):
         if self.direction == 'forward':
@@ -1349,22 +1351,22 @@ class GpuDnnSoftmaxBase(DnnBase):
         else:
             return [shape[1]]
 
-    def _define_tensor4d_desc(self, name, id):
+    def _define_tensor_desc(self, name, id):
         return """
 cudnnTensorDescriptor_t %(id)s_%(name)s;
 """ % dict(name=name, id=id)
 
-    def _init_tensor4d_desc(self, name, id, fail):
+    def _init_tensor_desc(self, name, id, fail):
         return """
 %(id)s_%(name)s = NULL;
 if ((err%(name)s = cudnnCreateTensorDescriptor(&%(id)s_%(name)s)) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_MemoryError, "could not allocate tensor descriptor "
-               ": %%s", cudnnGetErrorString(err%(name)s));
+  PyErr_Format(PyExc_MemoryError, "could not allocate tensor descriptor : %%s",
+               cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
 """ % dict(name=name, id=id, fail=fail)
 
-    def _clean_tensor4d_desc(self, name, id):
+    def _clean_tensor_desc(self, name, id):
         return """
 if(%(id)s_%(name)s!= NULL)
   cudnnDestroyTensorDescriptor(%(id)s_%(name)s);
@@ -1372,8 +1374,8 @@ if(%(id)s_%(name)s!= NULL)
 
     def c_support_code_struct(self, node, name):
         result = ''
-        for id in self.tensor_4d_descs:
-            result += self._define_tensor4d_desc(name, id)
+        for id in self.tensor_descs:
+            result += self._define_tensor_desc(name, id)
         return result
 
     def c_init_code_struct(self, node, name, sub):
@@ -1381,14 +1383,14 @@ if(%(id)s_%(name)s!= NULL)
 cudnnStatus_t err%(name)s;
 """ % dict(name=name)
 
-        for id in self.tensor_4d_descs:
-            result += self._init_tensor4d_desc(name, id, sub['fail'])
+        for id in self.tensor_descs:
+            result += self._init_tensor_desc(name, id, sub['fail'])
         return result
 
     def c_cleanup_code_struct(self, node, name):
         result = ''
-        for id in self.tensor_4d_descs:
-            result += self._clean_tensor4d_desc(name, id)
+        for id in self.tensor_descs:
+            result += self._clean_tensor_desc(name, id)
         return result
 
     def c_code(self, node, name, inputs, outputs, sub):
@@ -1396,43 +1398,31 @@ cudnnStatus_t err%(name)s;
         outs, = outputs
 
         if self.tensor_format == 'b01c':
-            tensor_format = 1
+            tensor_format = "CUDNN_TENSOR_NHWC"
         else:
-            tensor_format = 0
+            tensor_format = "CUDNN_TENSOR_NCHW"
 
         if self.mode == 'instance':
-            mode = 1
+            mode = "CUDNN_SOFTMAX_MODE_INSTANCE"
         else:
-            mode = 0
+            mode = "CUDNN_SOFTMAX_MODE_CHANNEL"
 
         if self.algo == 'fast':
-            algo = 1
+            algo = "CUDNN_SOFTMAX_FAST"
+        elif self.algo == 'log':
+            algo = "CUDNN_SOFTMAX_LOG"
         else:
-            algo = 0
-
-        # Setup configuration variables.
-        result = """
-cudnnStatus_t err%(name)s;
-cudnnTensorFormat_t format%(name)s = CUDNN_TENSOR_NCHW;
-if (%(tensor_format)d == 1)
-  format%(name)s = CUDNN_TENSOR_NHWC;
-
-cudnnSoftmaxAlgorithm_t algo%(name)s = CUDNN_SOFTMAX_ACCURATE;
-if (%(algo)d == 1)
-  algo%(name)s = CUDNN_SOFTMAX_FAST;
-
-cudnnSoftmaxMode_t mode%(name)s = CUDNN_SOFTMAX_MODE_CHANNEL;
-if (%(mode)d == 1)
-  mode%(name)s = CUDNN_SOFTMAX_MODE_INSTANCE;
-""" % dict(name=name, tensor_format=tensor_format, mode=mode, algo=algo)
+            algo = "CUDNN_SOFTMAX_ACCURATE"
 
         # Validate the input and build the input variables.
         for input_idx, input_name in enumerate(self.softmax_inputs):
-            result += c_set_tensor4d(ins[input_idx], input_name + "_" + name,
-                                     "err" + name, sub['fail'])
+            result += """
+if (c_set_tensorNd(%(t)s, %(desc)s) != 0)
+  %(fail)s
+""" % dict(t=ins[input_idx], desc=input_name + "_" + name, fail=sub['fail'])
 
         subs = dict(ins=ins[-1], outs=outs, fail=sub['fail'],
-                    name=name)
+                    name=name, algo=algo, mode=mode)
 
         for idx, softmax_input in enumerate(self.softmax_inputs):
             subs['name%d' % idx] = softmax_input
@@ -1446,10 +1436,9 @@ if (theano_prep_output(&%(outs)s, PyGpuArray_NDIM(%(ins)s),
 {
   %(fail)s
 }
+if (c_set_tensorNd(%(outs)s, softmax_output_%(name)s) != 0)
+  %(fail)s
 """ % subs
-        result += c_set_tensor4d(outs,
-                                 "softmax_output_" + name,
-                                 "err" + name, sub['fail'])
 
         # Add on a call to the method that does the actual work.
         result += self.method() % subs
@@ -1457,7 +1446,7 @@ if (theano_prep_output(&%(outs)s, PyGpuArray_NDIM(%(ins)s),
         return result
 
     def c_code_cache_version(self):
-        return (0, 7, version())
+        return (0.1, version())
 
     def method(self):
         raise NotImplementedError('GpuDnnSoftmaxBase::method')
@@ -1489,24 +1478,13 @@ class GpuDnnSoftmax(GpuDnnSoftmaxBase):
 
     def method(self):
         return """
-#ifndef CUDNN_VERSION
-err%(name)s = cudnnSoftmaxForward(
-  _handle,
-  algo%(name)s,
-  mode%(name)s,
-  softmax_input_%(name)s,
-  PyGpuArray_DEV_DATA(%(ins)s),
-  softmax_output_%(name)s,
-  PyGpuArray_DEV_DATA(%(outs)s)
-);
-#else
 {
 const float alpha = 1.;
 const float beta = 0.;
 err%(name)s = cudnnSoftmaxForward(
   _handle,
-  algo%(name)s,
-  mode%(name)s,
+  %(algo)s,
+  %(mode)s,
   (void*) &alpha,
   softmax_input_%(name)s,
   PyGpuArray_DEV_DATA(%(ins)s),
@@ -1515,7 +1493,6 @@ err%(name)s = cudnnSoftmaxForward(
   PyGpuArray_DEV_DATA(%(outs)s)
 );
 }
-#endif
 """
 
     def grad(self, inp, grads):
@@ -1558,26 +1535,13 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
 
     def method(self):
         return """
-#ifndef CUDNN_VERSION
-err%(name)s = cudnnSoftmaxBackward(
-  _handle,
-  algo%(name)s,
-  mode%(name)s,
-  %(name1)s_%(name)s,
-  PyGpuArray_DEV_DATA(%(ins1)s),
-  %(name0)s_%(name)s,
-  PyGpuArray_DEV_DATA(%(ins0)s),
-  softmax_output_%(name)s,
-  PyGpuArray_DEV_DATA(%(outs)s)
-);
-#else
 {
 const float alpha = 1.;
 const float beta = 0.;
 err%(name)s = cudnnSoftmaxBackward(
   _handle,
-  algo%(name)s,
-  mode%(name)s,
+  %(algo)s,
+  %(mode)s,
   (void*) &alpha,
   %(name1)s_%(name)s,
   PyGpuArray_DEV_DATA(%(ins1)s),
@@ -1588,8 +1552,7 @@ err%(name)s = cudnnSoftmaxBackward(
   PyGpuArray_DEV_DATA(%(outs)s)
 );
 }
-#endif
-        """
+"""
 
 
 # @register_opt('cudnn')  # this optimizer is registered in opt.py instead.

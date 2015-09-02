@@ -346,7 +346,6 @@ class test_SoftMax(unittest.TestCase):
         return f, f_gpu
 
     def _cmp(self, n, m, f, f_gpu):
-        # print "test_softmax",n,m
         data = numpy.arange(n * m, dtype='float32').reshape(n, m)
         out = f(data)
         gout = f_gpu(data)
@@ -369,8 +368,6 @@ class test_SoftMax(unittest.TestCase):
             self._cmp
         )
 
-        # cuDNN R1 cannot handle these test cases but the Theano softmax can so
-        # we test them only for the Theano softmax.
         self._cmp(2 << 15, 5, f, f_gpu)
 
     def test_softmax_shape_0(self):
