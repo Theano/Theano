@@ -4,10 +4,11 @@ from theano import Op, Apply, config
 
 from theano.compile import optdb
 from theano.gof import local_optimizer, LocalOptGroup
+from theano.tensor.basic import as_tensor_variable
 from theano.tensor.blas import Dot22, Gemv, Gemm, Ger
 from theano.tensor.opt import in2out
 
-from .basic_ops import HideC, as_gpuarray_variable
+from .basic_ops import HideC, as_gpuarray_variable, GpuAllocEmpty
 
 try:
     import pygpu
@@ -112,8 +113,11 @@ gpugemv_inplace = GpuGemv(inplace=True)
 
 
 class GpuGemm(BlasOp, Gemm):
+    _f16_ok = True
+
     def make_node(self, C, alpha, A, B, beta):
-        res = Gemm.make_node(self, C, alpha, A, B, beta)
+        alpha = as_tensor_variable(alpha)
+        beta = as_tensor_variable(beta)
         A = as_gpuarray_variable(A)
         B = as_gpuarray_variable(B)
         C = as_gpuarray_variable(C)
@@ -296,7 +300,12 @@ def local_inplace_gpuagemv(node):
 @local_optimizer([gpugemm_no_inplace], inplace=True)
 def local_inplace_gpuagemm(node):
     if node.op == gpugemm_no_inplace:
-        return [gpugemm_inplace(*node.inputs)]
+        inputs = list(node.inputs)
+        C = inputs[0]
+        if (C.owner and isinstance(C.owner.op, GpuAllocEmpty) and
+                len(C.clients) > 1):
+            inputs[0] = C.owner.op(*C.owner.inputs)
+        return [gpugemm_inplace(*inputs)]
 
 
 @local_optimizer([gpuger_no_inplace], inplace=True)

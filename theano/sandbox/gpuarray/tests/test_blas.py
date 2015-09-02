@@ -1,9 +1,11 @@
 from unittest import TestCase
 from nose.plugins.skip import SkipTest
 
+import numpy
+
 import theano
 from theano import tensor
-from theano.tests import unittest_tools
+from theano.tests import unittest_tools as utt
 from theano.tensor.blas import (gemv_inplace, gemm_inplace, ger_destructive,
                                 _dot22)
 from theano.tensor.tests.test_blas import TestGer, BaseGemv
@@ -15,7 +17,7 @@ from .test_basic_ops import (makeTester, rand,
 from ..blas import (gpugemv_inplace, gpugemv_no_inplace,
                     gpugemm_inplace, gpugemm_no_inplace,
                     gpuger_inplace, gpuger_no_inplace,
-                    GpuGer, gpu_dot22)
+                    GpuGer, gpu_dot22, GpuGemm)
 
 
 GpuGemvTester = makeTester('GpuGemvTester',
@@ -31,7 +33,7 @@ GpuGemvTester = makeTester('GpuGemvTester',
 )
 
 
-class TestGpuSgemv(TestCase, BaseGemv, unittest_tools.TestOptimizationMixin):
+class TestGpuSgemv(TestCase, BaseGemv, utt.TestOptimizationMixin):
     mode = mode_with_gpu
     dtype = 'float32'
 
@@ -92,7 +94,7 @@ class TestGpuSgerNoTransfer(TestGpuSger):
     shared = staticmethod(gpuarray_shared_constructor)
 
 
-class TestGpuGer_OpContract(TestCase, unittest_tools.T_OpContractMixin):
+class TestGpuGer_OpContract(TestCase, utt.T_OpContractMixin):
     def setUp(self):
         self.ops = [gpuger_no_inplace, gpuger_inplace]
 
@@ -115,3 +117,47 @@ GpuDot22Tester = makeTester(
 #        test9=[rand(0, 0), rand(0, 0)],
     )
 )
+
+def test_hgemm_swap():
+    from theano.sandbox.cuda import nvcc_compiler
+    if nvcc_compiler.nvcc_version < '7.5':
+        raise SkipTest("SgemmEx is only avaialble on cuda 7.5+")
+
+    v = tensor.vector(dtype='float16')
+    m = tensor.matrix(dtype='float16')
+    m2 = tensor.matrix(dtype='float16')
+    m32 = tensor.matrix(dtype='float32')
+
+    # test that we don't try to replace anything but matrix x matrix in float16
+    f = theano.function([v, m], tensor.dot(v, m), mode=mode_with_gpu)
+    assert len([node for node in f.maker.fgraph.apply_nodes
+                if isinstance(node.op, GpuGemm)]) == 0
+    f = theano.function([m32, m], tensor.dot(m32, m), mode=mode_with_gpu)
+    assert len([node for node in f.maker.fgraph.apply_nodes
+                if isinstance(node.op, GpuGemm)]) == 0
+
+    f = theano.function([m, m2], tensor.dot(m, m2), mode=mode_with_gpu)
+    assert len([node for node in f.maker.fgraph.apply_nodes
+                if isinstance(node.op, GpuGemm)]) == 1
+
+
+def test_hgemm_value():
+    from theano.sandbox.cuda import nvcc_compiler
+    if nvcc_compiler.nvcc_version < '7.5':
+        raise SkipTest("SgemmEx is only avaialble on cuda 7.5+")
+
+    m = tensor.matrix(dtype='float16')
+    m2 = tensor.matrix(dtype='float16')
+
+    f = theano.function([m, m2], tensor.dot(m, m2), mode=mode_with_gpu)
+
+    assert len([node for node in f.maker.fgraph.apply_nodes
+                if isinstance(node.op, GpuGemm)]) == 1
+
+    v1 = numpy.random.random((3, 4)).astype('float16')
+    v2 = numpy.random.random((4, 2)).astype('float16')
+
+    of = f(v1, v2)
+    on = numpy.dot(v1, v2)
+
+    utt.assert_allclose(of, on)

@@ -10,6 +10,7 @@ except ImportError:
 
 from theano import tensor, scalar, gof
 from theano.compile import optdb
+from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB,
                         SequenceDB, Optimizer, toolbox)
 from theano.gof.optdb import LocalGroupDB
@@ -25,9 +26,10 @@ from .basic_ops import (as_gpuarray_variable,
                         host_from_gpu, gpu_from_host,
                         HostFromGpu, GpuFromHost,
                         GpuSplit, GpuContiguous,
-                        gpu_alloc, GpuAlloc, GpuReshape,
+                        gpu_alloc, GpuAlloc, GpuAllocEmpty, GpuReshape,
                         GpuEye, gpu_join, GpuJoin)
-from .blas import gpu_dot22, GpuGemv, GpuGemm, GpuGer
+from .blas import (gpu_dot22, GpuGemv, GpuGemm, GpuGer,
+                   gpugemm_no_inplace)
 from .conv import GpuConv
 from .nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
                    GpuCrossentropySoftmax1HotWithBiasDx,
@@ -37,6 +39,7 @@ from .elemwise import (GpuElemwise, GpuDimShuffle, GpuCAReduceCuda,
 from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedIncSubtensor1,
                         GpuAdvancedIncSubtensor1_dev20)
+from .opt_util import alpha_merge, output_merge
 
 gpu_optimizer = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
@@ -601,6 +604,33 @@ def local_gpua_gemv(node):
 @op_lifter([tensor.blas.Gemm])
 def local_gpua_gemm(node):
     return GpuGemm(inplace=node.op.inplace)
+
+
+@register_opt('fast_compile')
+@op_lifter([tensor.basic.Dot])
+def local_gpua_hgemm(node):
+    from theano.sandbox.cuda import nvcc_compiler
+    if nvcc_compiler.nvcc_version < '7.5':
+        return
+    A = node.inputs[0]
+    B = node.inputs[1]
+    if (A.ndim == 2 and B.ndim == 2 and
+            A.dtype == 'float16' and B.dtype == 'float16'):
+        fgraph = node.inputs[0].fgraph
+        C = GpuAllocEmpty(dtype='float16')(shape_i(A, 0, fgraph),
+                                           shape_i(B, 1, fgraph))
+        return gpugemm_no_inplace(C, 1.0, A, B, 0.0)
+
+@register_opt()
+@alpha_merge(GpuGemm, alpha_in=1, beta_in=2, nd=2)
+def local_gpuagemm_alpha_merge(node, *inputs):
+    return [gpugemm_no_inplace(*inputs)]
+
+
+@register_opt()
+@output_merge(GpuGemm, alpha_in=1, beta_in=2, out_in=0, nd=2)
+def local_gpuagemm_output_merge(node, *inputs):
+    return [gpugemm_no_inplace(*inputs)]
 
 
 @register_opt('fast_compile')
