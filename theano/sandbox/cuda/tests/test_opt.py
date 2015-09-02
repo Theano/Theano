@@ -819,6 +819,16 @@ class test_diag(theano.tensor.tests.test_nlinalg.test_diag):
               self).__init__(name)
 
 
+def test_local_gpu_reshape():
+    mode = mode_with_gpu
+    a = tensor.fmatrix()
+    b = basic_ops.GpuReshape(3)(a, [2, 3, 4])
+    c = basic_ops.GpuReshape(1)(b, [24])
+    f = theano.function([a], c, mode=mode)
+    topo = f.maker.fgraph.toposort()
+    assert sum(isinstance(node.op, basic_ops.GpuReshape) for node in topo) == 1
+
+
 if __name__ == '__main__':
     test_gpualloc()
     test_opt_gpujoin_onlyajoin()

@@ -944,6 +944,35 @@ def local_gpu_reshape(node):
     return False
 
 
+@local_optimizer([GpuReshape])
+def local_gpu_reshape_chain(node):
+    """
+    GuReshape(GpuReshape(shape1),shape2) -> GpuReshape(shape2)
+
+    """
+    if not tensor.opt.opt.check_chain(node, GpuReshape, GpuReshape):
+        return False
+
+    # TODO: this can permit a failing program to run by eliminating
+    #       the lower reshape
+    rval = node.op(node.inputs[0].owner.inputs[0], node.inputs[1])
+    # It might happen that the desired output of this node has a broadcastable
+    # pattern that does not match that of 'rval'. This is when originally, we
+    # were able to figure out that one of the dimensions of the reshape is one,
+    # but some other transformation replaced the shape by one for which this
+    # cannot be guessed.
+    # We should try to figure out why we lost the information about this
+    # constant value... but in the meantime, better not apply this
+    # optimization.
+    if rval.broadcastable == node.outputs[0].broadcastable:
+        return [rval]
+    else:
+        return False
+gpu_cut_copies.register('cut_local_gpu_reshape_chain',
+                        local_gpu_reshape_chain,
+                        'fast_run', 'gpu')
+
+
 @register_opt()
 @local_optimizer([gpu_from_host, tensor.Flatten])
 def local_gpu_flatten(node):
