@@ -423,8 +423,12 @@ class GpuDnnConv(DnnBase, COp):
     descr
         The convolution descriptor.
     workmem
-	*deprecated*, use parameter algo instead.
-    algo : {'small', 'none', 'large', 'fft', 'guess_once', 'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
+        *deprecated*, use parameter algo instead.
+    algo
+        ['none', 'small', 'large', 'fft', 'guess_once',
+         'guess_on_shape_change', 'time_once',
+         'time_on_shape_change']
+
         Default is the value of :attr:`config.dnn.conv.algo_fwd`.
 
     """
@@ -607,18 +611,17 @@ class GpuDnnConv3d(GpuDnnConv):
     :param image:
     :param kernel:
     :param descr: the convolution descriptor
+    :param workmem:
+        *deprecated*, use parameter algo instead.
+    :param algo: ['none', 'guess_once', 'guess_on_shape_change',
+                  'time_once', 'time_on_shape_change']
+            Default is the value of :attr:`config.dnn.conv.algo_fwd.
     """
     __props__ = ('algo', 'inplace')
     __input_name__ = ('image', 'kernel', 'output',
                       'descriptor', 'alpha', 'beta')
 
     def __init__(self, workmem=None, inplace=False, algo=None):
-        """
-        :param workmem: *deprecated*, use param algo instead
-        :param algo: either 'none', 'guess_once', 'guess_on_shape_change',
-        'time_once' or 'time_on_shape_change'.
-        Default is the value of :attr:`config.dnn.conv.algo_fwd.
-        """
         if workmem is not None:
             warnings.warn(("GpuDnnConv3d: parameter 'workmem' is deprecated. "
                            "Use 'algo' instead."), stacklevel=3)
@@ -712,6 +715,14 @@ class GpuDnnConvGradW(DnnBase, COp):
     kernel
     descr
         The convolution descriptor.
+    workmem
+        *deprecated*, use parameter algo instead.
+    algo
+        ['none', 'deterministic', 'fft', 'guess_once',
+         'guess_on_shape_change', 'time_once',
+         'time_on_shape_change']
+
+        Default is the value of :attr:`config.dnn.conv.algo_bwd`.
 
     """
 
@@ -719,12 +730,6 @@ class GpuDnnConvGradW(DnnBase, COp):
     __input_name__ = ('image', 'grad', 'output', 'descriptor', 'alpha', 'beta')
 
     def __init__(self, inplace=False, workmem=None, algo=None):
-        """
-        :param workmem: *deprecated*, use param algo instead
-        :param algo: either 'none', 'deterministic', 'fft', 'guess_once',
-        'guess_on_shape_change', 'time_once' or 'time_on_shape_change'.
-        Default is the value of :attr:`config.dnn.conv.algo_bwd`.
-        """
         COp.__init__(self, ["dnn_base.c", "dnn_conv_base.c", "dnn_gw.c"],
                      "APPLY_SPECIFIC(conv_gw)")
 
@@ -849,18 +854,17 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
     :param image:
     :param kernel:
     :param descr: the convolution descriptor
+    :param workmem:
+        *deprecated*, use parameter algo instead.
+    :param algo: ['none', 'guess_once', 'guess_on_shape_change',
+                  'time_once', 'time_on_shape_change']
+        Default is the value of :attr:`config.dnn.conv.algo_bwd`.
 
     """
     __props__ = ('algo', 'inplace',)
     __input_name__ = ('image', 'grad', 'output', 'descriptor', 'alpha', 'beta')
 
     def __init__(self, inplace=False, workmem=None, algo=None):
-        """
-        :param workmem: *deprecated*, use param algo instead
-        :param algo: either 'none', 'guess_once', 'guess_on_shape_change',
-        'time_once' or 'time_on_shape_change'.
-        Default is the value of :attr:`config.dnn.conv.algo_bwd.
-        """
         if workmem is not None:
             warnings.warn(("GpuDnnConv3dGradW: parameter 'workmem' is "
                            "deprecated. Use 'algo' instead."), stacklevel=3)
@@ -920,8 +924,12 @@ class GpuDnnConvGradI(DnnBase, COp):
     descr
         The convolution descriptor.
     workmem
-	*deprecated*, use parameter algo instead.
-    algo : {'none', 'deterministic', 'fft', 'guess_once', 'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
+        *deprecated*, use parameter algo instead.
+    algo
+        ['none', 'deterministic', 'fft', 'guess_once',
+         'guess_on_shape_change', 'time_once',
+         'time_on_shape_change']
+
         Default is the value of :attr:`config.dnn.conv.algo_bwd`.
 
     """
@@ -1055,6 +1063,12 @@ class GpuDnnConv3dGradI(GpuDnnConvGradI):
     :param image:
     :param kernel:
     :param descr: the convolution descriptor
+    :param workmem:
+        *deprecated*, use parameter algo instead.
+    :param algo: ['none', 'guess_once', 'guess_on_shape_change',
+                  'time_once', 'time_on_shape_change']
+
+        Default is the value of :attr:`config.dnn.conv.algo_bwd`.
 
     """
     __props__ = ('algo', 'inplace',)
@@ -1062,12 +1076,6 @@ class GpuDnnConv3dGradI(GpuDnnConvGradI):
                       'beta')
 
     def __init__(self, inplace=False, workmem=None, algo=None):
-        """
-        :param workmem: *deprecated*, use param algo instead
-        :param algo: either 'none', 'guess_once', 'guess_on_shape_change',
-        'time_once' or 'time_on_shape_change'.
-        Default is the value of :attr:`config.dnn.conv.algo_bwd.
-        """
         if workmem is not None:
             warnings.warn(("GpuDnnConv3dGradI: parameter 'workmem' is "
                            "deprecated. Use 'algo' instead."), stacklevel=3)

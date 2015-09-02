@@ -5300,7 +5300,7 @@ def _tensordot_as_dot(a, b, axes, dot, batched):
     if not numpy.isscalar(axes) and len(axes) != 2:
         raise ValueError('Axes should be an integer or a '
                          'list/tuple of len 2 (%s was provided)'
-                         % repr(axes))
+                         % str(axes))
 
     # if 'axes' is a number of axes to multiply and sum over (trailing axes
     # of a, leading axes of b), we can just reshape and use dot.
