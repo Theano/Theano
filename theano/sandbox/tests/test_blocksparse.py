@@ -21,7 +21,10 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
 
     def setUp(self):
         utt.seed_rng()
-        self.mode = theano.compile.get_default_mode().excluding(
+        mode = None
+        if theano.config.mode == "FAST_COMPILE":
+            mode = "FAST_RUN"
+        self.mode = theano.compile.get_mode(mode).excluding(
             'constant_folding'
         )
         self.gemv_op = sparse_block_gemv
@@ -304,7 +307,7 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         out = self.outer_op(o, x, y, xIdx, yIdx)
 
         f = theano.function([o, x, y, xIdx, yIdx], out,
-                            on_unused_input="warn")
+                            on_unused_input="warn", mode=self.mode)
 
         o_val, x_val, y_val, xIdx_val, yIdx_val = \
             BlockSparse_Gemv_and_Outer.outer_data()
