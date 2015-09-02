@@ -621,6 +621,7 @@ def local_gpua_hgemm(node):
                                            shape_i(B, 1, fgraph))
         return gpugemm_no_inplace(C, 1.0, A, B, 0.0)
 
+
 @register_opt()
 @alpha_merge(GpuGemm, alpha_in=1, beta_in=2, nd=2)
 def local_gpuagemm_alpha_merge(node, *inputs):
