@@ -173,12 +173,13 @@ class Query(object):
     """
 
     def __init__(self, include, require=None, exclude=None,
-                 subquery=None, position_cutoff=None):
+                 subquery=None, position_cutoff=None, extra_optimizations=[]):
         self.include = OrderedSet(include)
         self.require = require or OrderedSet()
         self.exclude = exclude or OrderedSet()
         self.subquery = subquery or {}
         self.position_cutoff = position_cutoff
+        self.extra_optimizations = extra_optimizations
         if isinstance(self.require, (list, tuple)):
             self.require = OrderedSet(self.require)
         if isinstance(self.exclude, (list, tuple)):
@@ -186,9 +187,9 @@ class Query(object):
 
     def __str__(self):
         return ("Query{inc=%s,ex=%s,require=%s,subquery=%s,"
-                "position_cutoff=%d}" %
+                "position_cutoff=%d,extra_opts=%d}" %
                 (self.include, self.exclude, self.require, self.subquery,
-                 self.position_cutoff))
+                 self.position_cutoff, self.extra_optimizations))
 
     # add all opt with this tag
     def including(self, *tags):
@@ -196,7 +197,8 @@ class Query(object):
                      self.require,
                      self.exclude,
                      self.subquery,
-                     self.position_cutoff)
+                     self.position_cutoff,
+                     self.extra_optimizations)
 
     # remove all opt with this tag
     def excluding(self, *tags):
@@ -204,7 +206,8 @@ class Query(object):
                      self.require,
                      self.exclude.union(tags),
                      self.subquery,
-                     self.position_cutoff)
+                     self.position_cutoff,
+                     self.extra_optimizations)
 
     # keep only opt with this tag.
     def requiring(self, *tags):
@@ -212,7 +215,16 @@ class Query(object):
                      self.require.union(tags),
                      self.exclude,
                      self.subquery,
-                     self.position_cutoff)
+                     self.position_cutoff,
+                     self.extra_optimizations)
+
+    def register(self, *optimizations):
+        return Query(self.include,
+                     self.require,
+                     self.exclude,
+                     self.subquery,
+                     self.position_cutoff,
+                     self.extra_optimizations + list(optimizations))
 
 
 class EquilibriumDB(DB):
@@ -311,6 +323,17 @@ class SequenceDB(DB):
             assert len(tags) == 1
             if getattr(tags[0], 'position_cutoff', None):
                 position_cutoff = tags[0].position_cutoff
+
+            # The Query instance might contain extra optimizations which need
+            # to be added the the sequence of optimizations
+            for extra_opt in tags[0].extra_optimizations:
+                # Give a name to the extra optimization
+                opt, position = extra_opt
+                opt.name = str(opt.__class__)
+
+                # Add the extra optimization to the optimization sequence
+                opts.add(opt)
+                self.__position__[opt.name] = position
 
         opts = [o for o in opts if self.__position__[o.name] < position_cutoff]
         # We want to sort by position and then if collision by name

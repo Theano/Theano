@@ -328,6 +328,32 @@ class Mode(object):
         #     string? Optimizer? OptDB? who knows???
         return self.__class__(linker=link, optimizer=opt.including(*tags))
 
+    def register(self, *optimizations):
+        """Adds new optimization instances to a mode.
+
+        This method adds new optimization instances to a compilation mode. It
+        works like the `including()` method but takes as inputs optimization
+        instances to add instead of tags.
+
+        Parameters
+        ----------
+        optimizations :
+            Every element of `optimizations` is a tuple containing an
+            optimization instance and a floating point value indicating the
+            position at which to insert the optimization in the mode.
+
+        Returns
+        -------
+        Mode
+            Copy of the current Mode which includes the provided
+            optimizations.
+        """
+
+        link, opt = self.get_linker_optimizer(self.provided_linker,
+                                              self.provided_optimizer)
+        return self.__class__(linker=link,
+                              optimizer=opt.register(*optimizations))
+
     def excluding(self, *tags):
         link, opt = self.get_linker_optimizer(self.provided_linker,
                                               self.provided_optimizer)

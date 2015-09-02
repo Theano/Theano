@@ -814,12 +814,14 @@ class Scan(PureOp):
 
             # Add an optimization to the compilation mode to prevent mitsot,
             # sitsot and nitsot outputs from being computed inplace (to allow
-            # their preallocation)
+            # their preallocation). This optimization is added such that it
+            # will run just before the inplace optimizations
             mitsot_start = self.n_mit_mot_outs - len(preallocated_mitmot_outs)
             nitsot_end = (mitsot_start + self.n_mit_sot + self.n_sit_sot +
                           self.n_nit_sot)
-            no_inplace_opt = AddNoOutputFromInplace(0, 4)
-            compilation_mode = self.mode_instance.register(no_inplace_opt)
+            no_inplace_opt = AddNoOutputFromInplace(mitsot_start, nitsot_end)
+            compilation_mode = self.mode_instance.register((no_inplace_opt,
+                                                            0.599))
 
         else:
             # Output preallocation is not activated. Mark every mitmot output
