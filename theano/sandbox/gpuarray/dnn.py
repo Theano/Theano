@@ -3,7 +3,7 @@ import numpy
 
 import theano
 from theano import Op, Apply, tensor, config, Variable
-from theano.scalar import as_scalar, constant
+from theano.scalar import as_scalar, constant, Log
 from theano.gradient import DisconnectedType, grad_not_implemented
 from theano.gof import Optimizer, local_optimizer, COp
 from theano.gof.cmodule import GCC_compiler
@@ -18,6 +18,7 @@ from . import pygpu, init_dev
 from .basic_ops import (as_gpuarray_variable,
                         gpu_contiguous, HostFromGpu,
                         GpuAllocEmpty, empty_like)
+from .elemwise import GpuElemwise
 from .conv import GpuConv
 
 # These don't exist in gpuarray
@@ -1414,12 +1415,13 @@ cudnnStatus_t err%(name)s;
         else:
             algo = "CUDNN_SOFTMAX_ACCURATE"
 
+        result = ['cudnnStatus_t err%s;' % (name,)]
         # Validate the input and build the input variables.
         for input_idx, input_name in enumerate(self.softmax_inputs):
-            result += """
+            result.append("""
 if (c_set_tensorNd(%(t)s, %(desc)s) != 0)
   %(fail)s
-""" % dict(t=ins[input_idx], desc=input_name + "_" + name, fail=sub['fail'])
+""" % dict(t=ins[input_idx], desc=input_name + "_" + name, fail=sub['fail']))
 
         subs = dict(ins=ins[-1], outs=outs, fail=sub['fail'],
                     name=name, algo=algo, mode=mode)
@@ -1429,7 +1431,7 @@ if (c_set_tensorNd(%(t)s, %(desc)s) != 0)
             subs['ins%d' % idx] = inputs[idx]
 
         # Build and prepare the output variable.
-        result += """
+        result.append("""
 if (theano_prep_output(&%(outs)s, PyGpuArray_NDIM(%(ins)s),
                        PyGpuArray_DIMS(%(ins)s), %(ins)s->ga.typecode,
                        GA_C_ORDER, pygpu_default_context()) != 0)
@@ -1438,15 +1440,21 @@ if (theano_prep_output(&%(outs)s, PyGpuArray_NDIM(%(ins)s),
 }
 if (c_set_tensorNd(%(outs)s, softmax_output_%(name)s) != 0)
   %(fail)s
-""" % subs
+""" % subs)
 
         # Add on a call to the method that does the actual work.
-        result += self.method() % subs
+        result.append(self.method() % subs)
 
-        return result
+        result.append("""if (err%(name)s != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_RuntimeError, "error during operation: %%s",
+               cudnnGetErrorString(err%(name)s));
+  %(fail)s
+}""" % subs)
+
+        return '\n'.join(result)
 
     def c_code_cache_version(self):
-        return (0.1, version())
+        return (1, version())
 
     def method(self):
         raise NotImplementedError('GpuDnnSoftmaxBase::method')
@@ -1601,9 +1609,6 @@ def local_conv_dnn_alternative(node):
         rval = dnn_conv(img, kern,
                         border_mode=border_mode, subsample=subsample,
                         direction_hint=direction_hint)
-        if node.outputs[0].broadcastable != rval.broadcastable:
-            rval = tensor.patternbroadcast(
-                rval, node.outputs[0].type.broadcastable)
         return [rval]
 
 
@@ -1660,24 +1665,18 @@ optdb.register('local_dnna_conv_inplace',
 @register_opt('cudnn')
 @alpha_merge(GpuDnnConv, alpha_in=4, beta_in=5, nd=4)
 def local_dnn_conv_alpha_merge(node, *inputs):
-    if not dnn_available() or version() == -1:
-        return None
     return [GpuDnnConv(algo=node.op.algo)(*inputs)]
 
 
 @register_opt('cudnn')
 @alpha_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5, nd=4)
 def local_dnn_convw_alpha_merge(node, *inputs):
-    if not dnn_available() or version() == -1:
-        return None
     return [GpuDnnConvGradW(algo=node.op.algo)(*inputs)]
 
 
 @register_opt('cudnn')
 @alpha_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5, nd=4)
 def local_dnn_convi_alpha_merge(node, *inputs):
-    if not dnn_available() or version() == -1:
-        return None
     return [GpuDnnConvGradI(algo=node.op.algo)(*inputs)]
 
 
@@ -1771,6 +1770,22 @@ def local_softmax_dnn(node):
         out = as_gpuarray_variable(out.dimshuffle(0, 1))
         return [out]
 
+@register_opt('cudnn')
+@local_optimizer([GpuElemwise])
+def local_log_softmax_dnn(node):
+    if not dnn_available() or version() < 3000:
+        # No log-softmax before cudnn v3
+        return
+    if (isinstance(node.op, GpuElemwise) and
+            isinstance(node.op.scalar_op, Log) and
+            node.inputs[0].owner and
+            isinstance(node.inputs[0].owner.op, GpuDnnSoftmax) and
+            len(node.inputs[0].clients) == 1):
+        softmax_node = node.inputs[0].owner
+        new_softmax = GpuDnnSoftmax(softmax_node.op.tensor_format, 'log',
+                                    softmax_node.op.mode)
+        return [new_softmax(softmax_node.inputs[0])]
+
 
 class NoCuDNNRaise(Optimizer):
     def apply(self, fgraph):
@@ -1792,7 +1807,8 @@ gpu_seqopt.register("NoCuDNNRaise", NoCuDNNRaise(), 0, 'cudnn')
 @register_opt('cudnn')
 @op_lifter([SoftmaxGrad])
 def local_softmax_dnn_grad(node):
-    if not dnn_available():
+    if not dnn_available() or version() != 2000:
+        # softmaxgrad (n, c, 1, 1) broken in v3 rc1
         return
     ins = []
     for n in node.inputs:
