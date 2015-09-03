@@ -321,6 +321,8 @@ class SequenceDB(DB):
 
         position_cutoff = kwtags.pop('position_cutoff',
                                      config.optdb.position_cutoff)
+        position_dict = self.__position__.copy()
+
         if len(tags) >= 1 and isinstance(tags[0], Query):
             # the call to super should have raise an error with a good message
             assert len(tags) == 1
@@ -336,15 +338,15 @@ class SequenceDB(DB):
 
                 # Add the extra optimization to the optimization sequence
                 opts.add(opt)
-                self.__position__[opt.name] = position
+                position_dict[opt.name] = position
 
-        opts = [o for o in opts if self.__position__[o.name] < position_cutoff]
+        opts = [o for o in opts if position_dict[o.name] < position_cutoff]
         # We want to sort by position and then if collision by name
         # for deterministic optimization.  Since Python 2.2, sort is
         # stable, so sort by name first, then by position. This give
         # the order we want.
         opts.sort(key=lambda obj: obj.name)
-        opts.sort(key=lambda obj: self.__position__[obj.name])
+        opts.sort(key=lambda obj: position_dict[obj.name])
         kwargs = {}
         if self.failure_callback:
             kwargs["failure_callback"] = self.failure_callback
