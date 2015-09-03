@@ -17,9 +17,12 @@ __authors__ = ("Saizheng Zhang")
 __copyright__ = "(c) 2015, Universite de Montreal"
 __contact__ = "Saizheng Zhang <saizhenglisa..at..gmail.com>"
 
-# This corresponds to "line too long" and it's too much of a pain with
-# all of the C code
-ignore = ('E501',)
+# We ignore:
+# - "line too long"
+#    too complex to do with the C code
+# - "closing bracket does not match indentation of opening bracket’s line"
+#    ignored by default by pep8
+ignore = ('E501', 'E123', 'E133')
 
 whitelist_flake8 = [
     "compat/six.py",  # This is bundled code that will be deleted, don't fix it
