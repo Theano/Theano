@@ -431,6 +431,7 @@ class Softmax(gof.Op):
                              x.type)
         if x.ndim == 1:
             x = tensor.shape_padleft(x, n_ones=1)
+
         return Apply(self, [x], [x.type()])
 
     def perform(self, node, input_storage, output_storage):
@@ -599,12 +600,62 @@ class Softmax(gof.Op):
 softmax_op = Softmax()
 
 
+class LogSoftmax(gof.Op):
+    """
+    LogSoftmax activation function
+    :math:`\\varphi(\\mathbf{x})_j =
+    \\e^{(\mathbf{x}_j - log{\sum_{k=1}^K e^{\mathbf{x}_k})}}
+    where :math:`K` is the total number of neurons in the layer. This
+    activation function gets applied row-wise.
+
+    """
+
+    def make_node(self, x):
+        x = tensor.as_tensor_variable(x)
+        if x.type.ndim not in (1, 2) \
+                or x.type.dtype not in tensor.float_dtypes:
+            raise ValueError('x must be 1-d or 2-d tensor of floats. Got %s' %
+                             x.type)
+        if x.ndim == 1:
+            x = tensor.shape_padleft(x, n_ones=1)
+
+        return Apply(self, [x], [x.type()])
+
+    def perform(self, node, input_storage, output_storage):
+        x, = input_storage
+        xdev = x - x.max(axis=1)[:, None]
+        lsm = xdev - numpy.log(numpy.sum(numpy.exp(xdev), axis=1,
+                               keepdims=True))
+        output_storage[0][0] = lsm
+
+    def grad(self, inp, grads):
+        x, = inp
+        sm = softmax_op(x)
+        return [grads[0] - tensor.sum(grads[0], axis=1, keepdims=True) * sm]
+
+    def R_op(self, inputs, eval_points):
+        # I think the Jacobian is symmetric so the R_op
+        # is the same as the grad
+        if None in eval_points:
+            return [None]
+        return self.grad(inputs, eval_points)
+
+    def infer_shape(self, node, shape):
+        return shape
+
+logsoftmax_op = LogSoftmax()
+
+
 def softmax_graph(c):
     return tensor.exp(c) / tensor.exp(c).sum(axis=-1, keepdims=True)
 
 
 def softmax(c):
     return softmax_op(c)
+
+
+def logsoftmax(c):
+    return logsoftmax_op(c)
 
 
 @opt.register_specialize('fast_compile_gpu')
