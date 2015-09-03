@@ -526,6 +526,8 @@ def _pfunc_param_to_in(param, strict=False, allow_downcast=None):
             borrow=param.borrow,
             allow_downcast=param.allow_downcast,
             implicit=param.implicit)
+    elif isinstance(param, In):
+        return param
     raise TypeError('Unknown parameter type: %s' % type(param))
 
 

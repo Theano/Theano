@@ -280,7 +280,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
                                    (hasattr(i, 'mutable') and i.mutable))):
             check_for_aliased_inputs = True
 
-    if uses_In or uses_tuple:
+    if uses_tuple:
         # we must use old semantics in this case.
         if profile:
             raise NotImplementedError("profiling not supported in old-style "
