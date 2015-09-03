@@ -2,7 +2,6 @@ import numpy
 
 import theano
 from theano import Op, Apply
-from theano import tensor
 from theano.tensor import discrete_dtypes
 from theano.gradient import grad_undefined
 
@@ -183,7 +182,7 @@ class SparseBlockOuter(Op):
           Which blocks will be computed is specified in `yIdx`.
 
         """
-        one = tensor.constant(numpy.asarray(1.0, dtype='float32'))
+        one = theano.tensor.constant(numpy.asarray(1.0, dtype='float32'))
         o = theano.tensor.as_tensor_variable(o)
         x = theano.tensor.as_tensor_variable(x)
         y = theano.tensor.as_tensor_variable(y)

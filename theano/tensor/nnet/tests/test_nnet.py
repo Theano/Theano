@@ -28,7 +28,8 @@ from theano.tensor.nnet import (categorical_crossentropy,
                                 softmax_with_bias, SoftmaxGrad,
                                 Prepend_scalar_constant_to_each_row,
                                 Prepend_scalar_to_each_row,
-                                relu)
+                                relu,
+                                h_softmax)
 from theano.tensor import matrix, vector, lvector, scalar
 
 
@@ -1441,6 +1442,74 @@ def test_relu():
         y = theano.tensor.nnet.relu(x, alpha).eval({x: X, alpha: A})
         assert numpy.allclose(y, numpy.where(X > 0, X, A * X), rtol=3e-5)
 
+
+def test_h_softmax():
+    """
+    Tests the output dimensions of the h_softmax when a target is provided or
+    not.
+    """
+
+    #############
+    # Config
+    #############
+
+    input_size = 4
+    batch_size = 2
+    h_softmax_level1_size = 5
+    h_softmax_level2_size = 3
+    output_size = h_softmax_level1_size * h_softmax_level2_size
+
+    #############
+    # Initialize shared variables
+    #############
+
+    floatX = theano.config.floatX
+    shared = theano.shared
+
+    # First level of h_softmax
+    W1 = numpy.asarray(numpy.random.normal(
+        size=(input_size, h_softmax_level1_size)), dtype=floatX)
+    W1 = shared(W1)
+    b1 = shared(numpy.asarray(numpy.zeros((h_softmax_level1_size,)),
+                              dtype=floatX))
+
+    # Second level of h_softmax
+    W2 = numpy.asarray(numpy.random.normal(
+        size=(h_softmax_level1_size, input_size, h_softmax_level2_size)),
+        dtype=floatX)
+    W2 = shared(W2)
+    b2 = shared(
+        numpy.asarray(numpy.zeros((h_softmax_level1_size,
+                                   h_softmax_level2_size)), dtype=floatX))
+
+    #############
+    # Build graph
+    #############
+    x = tensor.matrix('x')
+    y = tensor.ivector('y')
+
+    # This only computes the output corresponding to the target
+    y_hat_tg = h_softmax(x, batch_size, output_size, W1, b1, W2, b2,
+                         h_softmax_level1_size, h_softmax_level2_size, y)
+
+    # This computes all the outputs
+    y_hat_all = h_softmax(x, batch_size, output_size, W1, b1, W2, b2,
+                          h_softmax_level1_size, h_softmax_level2_size)
+
+    #############
+    # Compile functions
+    #############
+    fun_output_tg = theano.function([x, y], y_hat_tg)
+    fun_output = theano.function([x], y_hat_all)
+
+    #############
+    # Test
+    #############
+    x_mat = numpy.random.normal(size=(batch_size, input_size)).astype(floatX)
+    y_mat = numpy.random.randint(0, output_size, batch_size).astype('int32')
+    
+    assert(fun_output_tg(x_mat, y_mat).shape == (batch_size,))
+    assert(fun_output(x_mat).shape == (batch_size, output_size))
 
 if __name__ == '__main__':
     unittest.main()
