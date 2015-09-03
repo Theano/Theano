@@ -1,3 +1,4 @@
+import sys
 import itertools
 import numpy
 import theano
@@ -85,6 +86,64 @@ class TestMapVariables(object):
         f = theano.function([x, outer], [t, t2])
         rval = f(x=numpy.array([1, 2, 3], dtype=numpy.float32), outer=0.5)
         assert numpy.array_equal(rval, [[1, 3, 6], [-1, -3, -6]])
+
+    def test_scan_with_shared_update(self):
+        x = tensor.vector('x')
+
+        # counts how many times its value is used
+        counter = theano.shared(0, name="shared")
+        counter.update = counter + 1
+
+        def step(x, a):
+            r = a + x
+            # introducing a shared variable with an update into the
+            # inner graph is unsupported and the code must crash rather
+            # than silently produce the wrong result.
+            r.tag.replacement = counter * (a - x)
+            return r
+
+        s, _ = theano.scan(step, sequences=x,
+                           outputs_info=[numpy.array(0.)])
+        try:
+            s2, = map_variables(self.replacer, [s])
+        except NotImplementedError, e:
+            e = sys.exc_info()[1]
+            assert("introduces shared variable" in str(e))
+            return
+
+        # test failed
+        return 0
+
+    def test_scan_with_shared_update3(self):
+        x = tensor.vector('x')
+
+        # counts how many times its value is used
+        counter = theano.shared(0, name="shared")
+        counter.update = counter + 1
+
+        def step(x, a):
+            r = a + x
+            # introducing a shared variable with an update into the
+            # inner graph is unsupported and the code must crash rather
+            # than silently produce the wrong result.
+            r.tag.replacement = counter * (a - x)
+            # the shared variable was already present, but the
+            # replacement changes the number of times it is used,
+            # which would have to change the updates, which is
+            # unsupported.
+            return r + counter
+
+        s, _ = theano.scan(step, sequences=x,
+                           outputs_info=[numpy.array(0.)])
+        try:
+            s2, = map_variables(self.replacer, [s])
+        except NotImplementedError, e:
+            e = sys.exc_info()[1]
+            assert("introduces shared variable" in str(e))
+            return
+
+        # test failed
+        return 0
 
     def test_leaf_inside_scan(self):
         x = tensor.vector('x')

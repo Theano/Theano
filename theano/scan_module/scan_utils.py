@@ -384,8 +384,6 @@ def _map_variables_inner(replacer, inner_inputs, outer_inputs, inner_outputs):
     # variables, which we cannot directly use inside the inner graph.
     # we need to create inner inputs to access them through.
 
-    # TODO: handle potential updates of newly introduced shared variables.
-
     outer_to_inner = dict(zip(outer_inputs, inner_inputs))
     extra_inner_inputs = []
     extra_outer_inputs = []
@@ -424,6 +422,16 @@ def _map_variables_inner(replacer, inner_inputs, outer_inputs, inner_outputs):
             replacements.append((input_, new_input))
 
         for outer_input in foreign_inputs:
+            if getattr(outer_input, "update", False):
+                # when theano.scan() constructs a scan node, it detects
+                # shared variables with updates and returns these updates
+                # to the user.  we need to do the same thing for every new
+                # use of such a variable that is introduced.  it's hard to
+                # do that at this point.
+                raise NotImplementedError(
+                    "Replacement introduces shared variable %s "
+                    "which has an update associated with it. This "
+                    "is not currently supported." % outer_input)
             # if this foreign input is not already available
             # as an inner input, connect it through a new
             # inner input
