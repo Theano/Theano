@@ -3213,9 +3213,10 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
         if (cnmem > 1)
             mem = cnmem * 1024 * 1024;
         else{
-            // Clip to 98.5% to let memory for the driver.
-            if (cnmem > .985){
-                cnmem = .985;
+            // Clip to 98% to let memory for the driver.
+            // 98.5% didn't worked in some cases.
+            if (cnmem > .98){
+                cnmem = .98;
             }
             size_t free = 0, total = 0;
             cudaError_t err = cudaMemGetInfo(&free, &total);
