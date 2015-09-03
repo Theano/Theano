@@ -120,6 +120,9 @@ gpu_optimizer.register('local_remove_all_assert',
                        theano.tensor.opt.local_remove_all_assert,
                        'unsafe')
 
+# Register local_reshape_chain
+register_opt(name='local_gpu_reshape_chain')(
+    theano.tensor.opt.local_reshape_chain(GpuReshape))
 
 # This is a partial list of CPU ops that can be in some circonstance
 # moved to the GPU. This list is used by an optimization.
@@ -942,35 +945,6 @@ def local_gpu_reshape(node):
                     gpu_reshape, node.outputs[0].broadcastable)
             return [host_from_gpu(gpu_reshape)]
     return False
-
-
-@local_optimizer([GpuReshape])
-def local_gpu_reshape_chain(node):
-    """
-    GuReshape(GpuReshape(shape1),shape2) -> GpuReshape(shape2)
-
-    """
-    if not tensor.opt.opt.check_chain(node, GpuReshape, GpuReshape):
-        return False
-
-    # TODO: this can permit a failing program to run by eliminating
-    #       the lower reshape
-    rval = node.op(node.inputs[0].owner.inputs[0], node.inputs[1])
-    # It might happen that the desired output of this node has a broadcastable
-    # pattern that does not match that of 'rval'. This is when originally, we
-    # were able to figure out that one of the dimensions of the reshape is one,
-    # but some other transformation replaced the shape by one for which this
-    # cannot be guessed.
-    # We should try to figure out why we lost the information about this
-    # constant value... but in the meantime, better not apply this
-    # optimization.
-    if rval.broadcastable == node.outputs[0].broadcastable:
-        return [rval]
-    else:
-        return False
-gpu_cut_copies.register('cut_local_gpu_reshape_chain',
-                        local_gpu_reshape_chain,
-                        'fast_run', 'gpu')
 
 
 @register_opt()
