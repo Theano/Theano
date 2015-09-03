@@ -9,7 +9,6 @@ from six import StringIO
 import theano.tensor as T
 import theano.tests.unittest_tools as utt
 from theano.sandbox.neighbours import images2neibs
-from theano.tensor.nnet import softmax_op
 from theano.tensor.signal.downsample import max_pool_2d
 from theano.tensor.signal.downsample import DownsampleFactorMaxGrad
 import theano.sandbox.cuda.dnn as dnn
@@ -526,7 +525,7 @@ class test_DnnSoftMax(test_nnet.test_SoftMax):
         # Verify that the SoftmaxGrad -> GpuDnnSoftmaxGrad do not
         # crash with manual graph
         y = T.fvector('y')
-        o = theano.tensor.nnet.SoftmaxGrad()(y, y*2)
+        o = theano.tensor.nnet.SoftmaxGrad()(y, y * 2)
         f = theano.function([y], o, mode=mode_with_gpu)
         sorted_f = f.maker.fgraph.toposort()
         assert(len([i
@@ -541,7 +540,6 @@ class test_DnnSoftMax(test_nnet.test_SoftMax):
                         i.op,
                         theano.tensor.nnet.SoftmaxGrad
                     )]) == 0)
-
 
     def test_log_softmax(self):
         # This is a test for an optimization that depends on CuDNN v3 or

@@ -9,7 +9,7 @@ import theano.tests.unittest_tools as utt
 
 # Skip test if cuda_ndarray is not available.
 import theano.sandbox.cuda as cuda
-if cuda.cuda_available == False:
+if not cuda.cuda_available:
     raise SkipTest('Optional package cuda disabled')
 
 if theano.config.mode == 'FAST_COMPILE':
@@ -39,15 +39,13 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
         n_in = 4098
         n_out = 4099
 
-    x = T.fmatrix('x')
     y = T.lvector('y')
 
     b = T.fvector('b')
-    #W = T.fmatrix('W')
 
     # we precompute the dot with big shape before to allow the test of
     # GpuCrossentropySoftmax1HotWithBiasDx to don't fail with the error
-    #(the launch timed out and was terminated) on GPU card not
+    # (the launch timed out and was terminated) on GPU card not
     # powerful enough. We need the big shape to check for corner
     # case.
     dot_result = T.fmatrix('dot_result')
@@ -57,7 +55,6 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
 
     xx = numpy.asarray(numpy.random.rand(batch_size, n_in),
                        dtype=numpy.float32)
-    #?????yy = numpy.ones((batch_size,),dtype='float32')
     yy = numpy.ones((batch_size,), dtype='int32')
     b_values = numpy.zeros((n_out,), dtype='float32')
     W_values = numpy.asarray(numpy.random.rand(n_in, n_out), dtype='float32')
@@ -73,7 +70,7 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
                                mode=mode_without_gpu)
     classify_gpu = theano.function(inputs=[y, b, dot_result],
                                    outputs=[loss, y_pred, dW],
-                                    mode=mode_with_gpu)
+                                   mode=mode_with_gpu)
     # theano.printing.debugprint(classify)
     # theano.printing.debugprint(classify_gpu)
 
@@ -104,12 +101,10 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
     We check that we loop when there are too many threads
 
     """
-    n_in = 1000
     batch_size = 4097
     n_out = 1250
 
     if not isinstance(mode_with_gpu, theano.compile.DebugMode):
-        n_in = 4098
         n_out = 4099
 
     # Seed numpy.random with config.unittests.rseed
@@ -162,7 +157,7 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
         print('y_idx_value:', y_idx_value[max_i / n_out])
 
         assert False, "numpy.allclose(cpu_out, gpu_out, rtol=%s, atol=%s)" % (
-                rtol, atol)
+            rtol, atol)
 
 
 def test_softmax_with_bias():
