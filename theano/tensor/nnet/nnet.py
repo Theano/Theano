@@ -29,6 +29,7 @@ from theano.gof import Apply
 from theano.tensor.nnet.sigm import sigmoid, softplus
 from theano.gradient import DisconnectedType
 from theano.gradient import grad_not_implemented
+from theano.sandbox.blocksparse import sparse_block_dot
 from theano.tensor.type import values_eq_approx_remove_nan
 
 
@@ -2049,3 +2050,126 @@ def relu(x, alpha=0):
         f1 = 0.5 * (1 + alpha)
         f2 = 0.5 * (1 - alpha)
         return f1 * x + f2 * abs(x)
+
+
+def h_softmax(x, batch_size, n_outputs, W1, b1, W2, b2,
+              n_classes=None, n_outputs_per_class=None, target=None):
+    """ Two-level hierarchical softmax.
+
+    Outputs are grouped in sqrt(n_outputs) classes.
+    The architecture is composed of two softmax layers: the first predicts the
+    class of the input x while the second predicts the output of the input x in
+    the predicted class.
+    More explanations can be found in the original paper:
+    http://arxiv.org/abs/cs/0108006.
+
+    If target is specified, it will only compute the outputs of the
+    corresponding targets. Otherwise, if target is None, it will compute all
+    the outputs.
+
+    The outputs are grouped in the same order as they are initially defined.
+
+    Arguments:
+    ----------
+    x: tensor of shape (batch_size, number of features)
+        the minibatch input of the two-layer hierarchical softmax.
+
+    batch_size: int
+        the size of the minibatch input x.
+
+    n_outputs: int
+        the number of outputs.
+
+    n_classes: int
+        (optional, default None)
+        the number of classes of the two-layer hierarchical softmax. It
+        corresponds to the number of outputs of the first softmax. It can be
+        set to None, see the note at the end of the docstring.
+
+    n_outputs_per_class: int
+        (optional, default None)
+        the number of outputs per class. It can be set to None, see the note
+        at the end of the docstring.
+
+    W1: tensor of shape (number of features of the input x, number of classes)
+        the weight matrix of the first softmax, which maps the input x to the
+        probabilities of the classes.
+
+    b1: tensor of shape (number of classes,)
+        the bias vector of the first softmax layer.
+
+    W2: tensor of shape (number of classes, number of features of the input x,
+        number of outputs per class)
+        the weight matrix of the second softmax, which maps the input x to
+        the probabilities of the outputs.
+
+    b2: tensor of shape (number of classes, number of outputs per class)
+        the bias vector of the second softmax layer.
+
+    target: tensor of shape either (batch_size,) or (batch_size, 1)
+        (optional, default None)
+        contains the indices of the targets for the minibatch
+        input x. For each input, the function computes the output for its
+        corresponding target. If target is None, then all the outputs are
+        computed for each input.
+
+    :note: n_outputs_per_class and n_classes do not need to be defined. If
+        both are not defined, then they are set to the square root of the
+        number of outputs, which is the most computational efficient
+        configuration. If only one is defined
+
+    """
+
+    # In case one or both of n_outputs_per_class and n_classes are not defined
+    if not n_outputs_per_class and not n_classes:
+        n_outputs_per_class = numpy.ceil(numpy.sqrt(n_outputs))
+        n_classes = numpy.ceil(n_outputs / n_outputs_per_class)
+    elif n_outputs_per_class and not n_classes:
+        n_classes = numpy.ceil(n_outputs / n_outputs_per_class)
+    elif n_classes and not n_outputs_per_class:
+        n_outputs_per_class = numpy.ceil(n_outputs / n_classes)
+
+    # First softmax that computes the probabilities of belonging to each class
+    class_probs = theano.tensor.nnet.softmax(tensor.dot(x, W1) + b1)
+
+    if target is None:  # Computes the probabilites of all the outputs
+
+        class_ids = tensor.tile(
+            tensor.arange(n_classes, dtype="int32")[None, :], (batch_size, 1))
+
+        # Second softmax that computes the output probabilities
+        activations = sparse_block_dot(
+            W2[None, :, :, :], x[:, None, :],
+            tensor.zeros((batch_size, 1), dtype='int32'), b2, class_ids)
+
+        output_probs = theano.tensor.nnet.softmax(
+            activations.reshape((-1, n_outputs_per_class)))
+        output_probs = output_probs.reshape((batch_size, n_classes, -1))
+        output_probs = class_probs[:, :, None] * output_probs
+        output_probs = output_probs.reshape((batch_size, -1))
+        output_probs = output_probs[:, :n_outputs]
+
+    else:  # Computes the probabilities of the outputs specified by the targets
+
+        target = target.flatten()
+
+        # Classes to which belong each target
+        target_classes = target // n_outputs_per_class
+
+        # Outputs to which belong each target inside a class
+        target_outputs_in_class = target % n_classes
+
+        # Second softmax that computes the output probabilities
+        activations = sparse_block_dot(
+            W2[None, :, :, :], x[:, None, :],
+            tensor.zeros((batch_size, 1), dtype='int32'), b2,
+            target_classes[:, None])
+
+        output_probs = theano.tensor.nnet.softmax(activations[:, 0, :])
+        target_class_probs = class_probs[tensor.arange(batch_size),
+                                         target_classes]
+        output_probs = output_probs[tensor.arange(batch_size),
+                                    target_outputs_in_class]
+        output_probs = target_class_probs * output_probs
+
+    return output_probs
