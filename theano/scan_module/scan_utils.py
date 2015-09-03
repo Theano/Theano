@@ -368,7 +368,6 @@ def map_variables(replacer, graphs, additional_inputs=[]):
     topo_transform.optimize(fg)
 
     new_graphs = fg.outputs
-    theano.printing.debugprint(new_graphs)
     fg.disown()
     return new_graphs
 
