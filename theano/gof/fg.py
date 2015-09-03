@@ -109,7 +109,19 @@ class FunctionGraph(utils.object2):
 
     """
 
-    def __init__(self, inputs, outputs, features=None, clone=True):
+    def __init__(self, inputs, outputs, features=None, clone=True,
+                 update_mapping=None):
+        """
+        Create an FunctionGraph which operates on the subgraph bound by the
+        inputs and outputs sets.
+
+        :param inputs: inputs nodes of the graph, usually declared by the user
+        :param outputs: outputs nodes of the graph.
+        :param clone: If true, we will clone the graph. This is
+        useful to remove the constant cache problem.
+        :param update_mapping: dictionnary describing the mapping between
+        the inputs with updates and the outputs corresponding to their updates
+        """
 
         if clone:
             inputs, outputs = graph.clone(inputs, outputs)
@@ -157,6 +169,7 @@ class FunctionGraph(utils.object2):
         self.node_locks = {}
         self.variable_locks = {}
         self.profile = None
+        self.update_mapping = update_mapping
 
     # Setup a Variable #
     def __setup_r__(self, r):
