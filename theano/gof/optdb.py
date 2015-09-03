@@ -254,8 +254,6 @@ class EquilibriumDB(DB):
         self.__final__ = {}
 
     def register(self, name, obj, *tags, **kwtags):
-        # if name == 'cut_gpua_constant_transfers':
-        #     import ipdb;ipdb.set_trace()
         if 'final_opt' in kwtags:
             final_opt = kwtags['final_opt']
             kwtags.pop('final_opt', None)
