@@ -299,7 +299,7 @@ class test_SoftMax(unittest.TestCase):
             check_types
         )
 
-        if do_big:
+        if self.do_big:
             self._cmp(2 << 15, 5, f, f_gpu)
-        if do_0:
+        if self.do_0:
             self._cmp(0, 10, f, f_gpu)
