@@ -4064,8 +4064,11 @@ def get_vector_length(v):
         if ((isinstance(stop, numbers.Integral) and
              isinstance(start, numbers.Integral))):
             return stop - start
-
-    raise ValueError("length not known")
+    if isinstance(v, Variable):
+        msg = theano.printing.debugprint(v, file='str')
+    else:
+        msg = str(v)
+    raise ValueError("length not known: %s" % msg)
 
 
 @constructor
