@@ -1,4 +1,5 @@
 from __future__ import print_function
+import copy
 import sys
 
 import numpy
@@ -117,12 +118,16 @@ multiple time in a DB. Tryed to register "%s" again under the new name "%s".
         add = OrderedSet()
         for obj in variables:
             if isinstance(obj, DB):
-                sq = q.subquery.get(obj.name, q)
-                if sq:
-                    replacement = obj.query(sq)
-                    replacement.name = obj.name
-                    remove.add(obj)
-                    add.add(replacement)
+                def_sub_query = q
+                if q.extra_optimizations:
+                    def_sub_query = copy.copy(q)
+                    def_sub_query.extra_optimizations = []
+                sq = q.subquery.get(obj.name, def_sub_query)
+
+                replacement = obj.query(sq)
+                replacement.name = obj.name
+                remove.add(obj)
+                add.add(replacement)
         variables.difference_update(remove)
         variables.update(add)
         return variables
