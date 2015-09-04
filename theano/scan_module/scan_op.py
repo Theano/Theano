@@ -195,16 +195,6 @@ class Scan(PureOp):
             link_kwargs=dict(allow_gc=self.allow_gc),
             message=message)
 
-        # Now that scan has its mode instance, if memory pre-allocation is
-        # activated for the outputs, we activate the optimization
-        # add_no_output_from_inplace in this mode instance. This will prevent
-        # Scan from producing outputs by means of inplace operations and
-        # therefore allow it to pre-allocate memory storage for the outputs,
-        # avoiding needless copies.
-        if theano.config.scan.allow_output_prealloc:
-            self.mode_instance = self.mode_instance.including(
-                                                "add_no_output_from_inplace")
-
         if not hasattr(self, 'name') or self.name is None:
             self.name = 'scan_fn'
         # to have a fair __eq__ comparison later on, we update the info with
@@ -821,7 +811,7 @@ class Scan(PureOp):
                           self.n_nit_sot)
             no_inplace_opt = AddNoOutputFromInplace(mitsot_start, nitsot_end)
             compilation_mode = self.mode_instance.register((no_inplace_opt,
-                                                            0.599))
+                                                            49.9))
 
         else:
             # Output preallocation is not activated. Mark every mitmot output
