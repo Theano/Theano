@@ -5435,7 +5435,7 @@ def test_local_flatten_lift():
 
 class Test_Reshape(unittest.TestCase):
     def setUp(self):
-        self.mode = compile.mode.get_default_mode()
+        self.mode = mode_opt 
         self.op = tensor.Reshape
 
     def test_local_reshape(self):
