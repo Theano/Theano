@@ -879,6 +879,8 @@ class Scan(PureOp):
                                                     dtype='int32')
             cython_vector_outs = numpy.asarray(self.vector_outs,
                                                     dtype='int32')
+            cython_mitmots_preallocated = numpy.asarray(self.mitmots_preallocated,
+                                                        dtype='int32')
 
             if hasattr(self, 'destroy_map'):
                 cython_destroy_map = [x in self.destroy_map
@@ -906,6 +908,7 @@ class Scan(PureOp):
                         cython_vector_outs,
                         cython_mit_mot_out_slices,
                         cython_mit_mot_out_nslices,
+                        cython_mitmots_preallocated,
                         self.fn.fn,
                         self.fn,
                         cython_destroy_map,
