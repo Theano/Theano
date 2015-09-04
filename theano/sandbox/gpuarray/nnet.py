@@ -1,5 +1,6 @@
 from __future__ import print_function
 import numpy
+import os
 
 from theano import Op, Apply, config
 from six import StringIO
@@ -45,7 +46,6 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
             raise MethodNotDefined('cuda only')
         cuda_root = config.cuda.root
         if cuda_root:
-            import os
             return [os.path.join(cuda_root, 'include')]
 
     def c_headers(self):
@@ -335,7 +335,6 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuKernelBase, Op):
             raise MethodNotDefined('cuda only')
         cuda_root = config.cuda.root
         if cuda_root:
-            import os
             return [os.path.join(cuda_root, 'include')]
 
     def c_headers(self):
@@ -549,7 +548,6 @@ class GpuSoftmax (GpuKernelBase, Op):
             raise MethodNotDefined('cuda only')
         cuda_root = config.cuda.root
         if cuda_root:
-            import os
             return [os.path.join(cuda_root, 'include')]
 
     def c_headers(self):
@@ -754,7 +752,6 @@ class GpuSoftmaxWithBias (GpuKernelBase, Op):
             raise MethodNotDefined('cuda only')
         cuda_root = config.cuda.root
         if cuda_root:
-            import os
             return [os.path.join(cuda_root, 'include')]
         else:
             return []

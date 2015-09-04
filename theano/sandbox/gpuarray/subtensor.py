@@ -1,6 +1,7 @@
 from __future__ import print_function
 import copy
 import numpy
+import os
 
 import theano
 from theano import tensor, gof, Op, config
@@ -180,7 +181,6 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
     def c_header_dirs(self):
         cuda_root = config.cuda.root
         if cuda_root:
-            import os
             return [os.path.join(cuda_root, 'include')]
         else:
             return []
@@ -550,7 +550,6 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, GpuAdvancedIncSubtensor1):
             raise MethodNotDefined('cuda only')
         cuda_root = config.cuda.root
         if cuda_root:
-            import os
             return [os.path.join(cuda_root, 'include')]
 
     def c_init_code(self):

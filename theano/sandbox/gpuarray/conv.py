@@ -241,7 +241,6 @@ class GpuConv(GpuKernelBase, HideC, gof.Op):
             raise MethodNotDefined('cuda only')
         cuda_root = config.cuda.root
         if cuda_root:
-            import os
             return [os.path.join(cuda_root, 'include')]
         else:
             return []
