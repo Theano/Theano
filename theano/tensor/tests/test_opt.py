@@ -5433,6 +5433,20 @@ def test_local_flatten_lift():
         assert isinstance(topo[1].op, tensor.Elemwise)
 
 
+class Test_Reshape(unittest.TestCase):
+    def setUp(self):
+        self.mode = mode_opt 
+        self.op = tensor.Reshape
+
+    def test_local_reshape(self):
+        a = tensor.fmatrix()
+        b = self.op(3)(a, [2, 3, 4])
+        c = self.op(1)(b, [24])
+        f = theano.function([a], c, mode=self.mode)
+        topo = f.maker.fgraph.toposort()
+        assert sum(isinstance(node.op, self.op) for node in topo) == 1
+
+
 def test_local_reshape_lift():
     x = tensor.tensor4()
     out = T.exp(x).reshape([x.size])

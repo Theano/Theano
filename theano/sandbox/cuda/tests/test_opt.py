@@ -32,6 +32,7 @@ from theano.scalar.basic_scipy import erfinv
 from theano.sandbox.blocksparse import sparse_block_dot
 from theano.sandbox.cuda.blocksparse import GpuSparseBlockGemv, GpuSparseBlockOuter
 
+
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
     mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN').excluding('gpu')
@@ -819,14 +820,10 @@ class test_diag(theano.tensor.tests.test_nlinalg.test_diag):
               self).__init__(name)
 
 
-def test_local_gpu_reshape():
-    mode = mode_with_gpu
-    a = tensor.fmatrix()
-    b = basic_ops.GpuReshape(3)(a, [2, 3, 4])
-    c = basic_ops.GpuReshape(1)(b, [24])
-    f = theano.function([a], c, mode=mode)
-    topo = f.maker.fgraph.toposort()
-    assert sum(isinstance(node.op, basic_ops.GpuReshape) for node in topo) == 1
+class Test_GpuReshape(test_opt.Test_Reshape):
+    def setUp(self):
+        self.mode = mode_with_gpu
+        self.op = basic_ops.GpuReshape
 
 
 if __name__ == '__main__':
