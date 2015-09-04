@@ -1385,7 +1385,7 @@ class Scan(PureOp):
                             outs[j][0][k + pos[j]] = \
                                 input_storage[inp_idx].storage[0]
 
-                    if not self.mitmots_preallocated[mitmot_out_idx]:
+                    else:
                         # This output tap has not been preallocated, recover
                         # its value as usual
                         outs[j][0][k + pos[j]] = \
