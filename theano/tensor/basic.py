@@ -3999,29 +3999,34 @@ def stack(*tensors, **kwargs):
 
     """
     # ---> Remove this when moving to the new interface:
-    if 'tensors' in kwargs:
-        tensors = kwargs['tensors']
-    # <--- until here.
-
-    if len(tensors) == 0:
-        raise Exception('theano.tensor.stack(*tensors) must have at least'
+    if not tensors and not kwargs:
+        raise Exception('theano.tensor.stack(tensors, axis) must have at least'
                         ' one parameter')
 
-    # ---> Remove this when moving to the new interface:
-    if isinstance(tensors[0], (list, tuple)):
-        if len(tensors) == 1:
-            if 'axis' in kwargs:
-                axis = kwargs['axis']
-            else:
-                axis = 0
-        else:
-            axis = tensors[1]
-        tensors = tensors[0]
-    else:
+    if not kwargs and not isinstance(tensors[0], (list, tuple)):
         warnings.warn('stack(*tensors) interface is deprecated, use'
-                      ' stack(tensors, axis=0) instead.', stacklevel=3)
+                      ' stack(tensors, axis=0) instead.', DeprecationWarning,
+                      stacklevel=3)
         axis = 0
+    elif 'tensors' in kwargs:
+        tensors = kwargs['tensors']
+        if 'axis' in kwargs:
+            axis = kwargs['axis']
+        else:
+            axis = 0
+    else:
+        if len(tensors) == 2:
+            axis = tensors[1]
+        elif 'axis' in kwargs:
+            axis = kwargs['axis']
+        else:
+            axis = 0
+        tensors = tensors[0]
     # <--- Until here.
+
+    if len(tensors) == 0:
+        raise Exception('tensors is empty. You should at least provide one'
+                        ' tensor to theano.tensor.stack(tensors, axis).')
 
     # If all tensors are scalars of the same type, call make_vector.
     # It makes the graph simpler, by not adding DimShuffles and Rebroadcasts
