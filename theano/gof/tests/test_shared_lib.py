@@ -20,7 +20,7 @@ def test_basic():
         theano.printing.debugprint(f, print_type=True)
         #filename = f.fn.thunks[0].filename  # with linker=vm
         filename = f.fn.filename  # with linker=c
-        print filename
+        print(filename)
 
         #theano.shared_lib(f, name='libtheano_exp')
         #f(np.arange(10))
