@@ -1336,7 +1336,7 @@ class CLinker(link.Linker):
                 if isinstance(var, graph.Constant):
                     constants_vals += str(var.data.flatten())
             if constants_vals != '':
-                sig.append('costants: '+constants_vals)
+                sig.append('constants: '+constants_vals)
 
         error_on_play = [False]
 
@@ -1467,7 +1467,7 @@ class CLinker(link.Linker):
 
         if self.c_callable:
             # Add the include filename with the placeholder, as the hash is not
-            # yet computer, but we need to add the include to compute the hash.
+            # yet computed, but we need to add the include to compute the hash.
             filename_h = os.path.join(location, mod.hash_placeholder + '.h')
             mod.add_include(filename_h)
         src_code = mod.code()
@@ -1553,9 +1553,13 @@ class CLinker(link.Linker):
                         code_filename='exec.cpp',
                         out_filename='exec')
                     mod_exec.gen_header(os.path.join(location, 'exec.h'))
+                    # TODO: make c_callable work also for
+                    # differnt types of windows OS
                     if sys.platform == "win32" and False:
-                        # I don't know why it work now, but this was needed in the past.
-                        # As this is complicated to find how to do it, I keep it here
+                        # I don't know why it work now, but
+                        # this was needed in the past.
+                        # As this is complicated to find how to do
+                        # it, I keep it here
                         # just in case.
                         mt = r"C:\Program Files (x86)\Microsoft SDKs\Windows\v7.0A\Bin\mt.exe"
                         pp = [p for p in sys.path
@@ -1571,7 +1575,7 @@ class CLinker(link.Linker):
                             " -manifest " + manifest +
                             " -outputresource:" + exec_f)
 
-            except Exception, e:
+            except Exception as e:
                 e.args += (str(self.fgraph),)
                 raise
         finally:
@@ -1926,7 +1930,9 @@ class _CThunk(object):
         init_tasks: WRITEME
         tasks: WRITEME
         error_storage: WRITEME
-        filename: the dynamic lib that where this thunk is compiled.
+        filename: str
+                  the name of the dynamic lib
+                  where this thunk is compiled.
         """
         global run_cthunk
         if run_cthunk is None:
