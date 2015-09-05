@@ -2153,7 +2153,6 @@ class GCC_compiler(Compiler):
             out_filename = os.path.join(location, '%s.%s' %
                                         (module_name, get_lib_extension()))
 
-            _logger.debug('Generating shared lib %s', out_filename)
             cmd = [theano.config.cxx, get_gcc_shared_library_arg(), '-g']
         else:
             assert not py_module
@@ -2161,7 +2160,7 @@ class GCC_compiler(Compiler):
                 out_filename = os.path.join(location, module_name)
             else:
                 out_filename = os.path.join(location, out_filename)
-            _logger.debug('Generating exec %s', out_filename)
+
             cmd = [theano.config.cxx, '-g']
 
         if config.cmodule.remove_gxx_opt:
