@@ -5052,6 +5052,11 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
         f = self.function([x], x.reshape((0, 100)))
         assert f(numpy.ndarray((0,), dtype='float32')).shape == (0, 100)
 
+    def test_empty_shp(self):
+        const = theano.tensor.constant([1]).reshape(())
+        f = function([], const)
+        assert f().shape == ()
+
 
 def test_make_column_matrix_broadcastable():
     # The goal of the operation made by `b` is to ensure the second dimension

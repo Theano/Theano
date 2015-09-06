@@ -225,7 +225,7 @@ def test_conv_nnet1():
     rval_cpu = run_conv_nnet1(False)
     utt.seed_rng()
     rval_gpu = run_conv_nnet1(True)
-    assert numpy.allclose(rval_cpu, rval_gpu, rtol=1e-4, atol=1e-6)
+    utt.assert_allclose(rval_cpu, rval_gpu, rtol=1e-4, atol=1e-6)
 
 
 def run_conv_nnet2(use_gpu):  # pretend we are training LeNet for MNIST
@@ -318,7 +318,7 @@ def test_conv_nnet2():
         utt.seed_rng()
         rval_cpu = run_conv_nnet2(False)
         # print rval_cpu[0], rval_gpu[0],rval_cpu[0]-rval_gpu[0]
-        assert numpy.allclose(rval_cpu, rval_gpu, rtol=1e-4, atol=1e-4)
+        utt.assert_allclose(rval_cpu, rval_gpu, rtol=1e-4, atol=1e-4)
 
 
 def build_conv_nnet2_classif(use_gpu, isize, ksize, n_batch,
@@ -559,8 +559,8 @@ def cmp_run_conv_nnet2_classif(seed, isize, ksize, bsize,
                     rval_gpu - rval_cpu) / rval_gpu))
 
             if not ignore_error:
-                assert numpy.allclose(rval_cpu, rval_gpu,
-                     rtol=1e-5, atol=float_atol)
+                utt.assert_allclose(rval_cpu, rval_gpu,
+                                    rtol=1e-5, atol=float_atol)
 
             # Synchronize parameters to start from the same point next time
             if i < n_train - 1:

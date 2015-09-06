@@ -7,6 +7,7 @@ from theano import config, function, tensor
 from theano.sandbox import multinomial
 from theano.compile.mode import get_default_mode, predefined_linkers
 import theano.sandbox.cuda as cuda
+import theano.tests.unittest_tools as utt
 
 
 def get_mode(gpu):
@@ -45,22 +46,22 @@ def test_multinomial_0():
                         for node in f.maker.fgraph.toposort()])
 
         # test that both first and second samples can be drawn
-        assert numpy.allclose(f([[1, 0], [0, 1]], [.1, .1]),
+        utt.assert_allclose(f([[1, 0], [0, 1]], [.1, .1]),
                               [[2, 0], [0, 2]])
 
         # test that both second labels can be drawn
         r = f([[.2, .8], [.3, .7]], [.31, .31])
-        assert numpy.allclose(r, [[0, 2], [0, 2]]), r
+        utt.assert_allclose(r, [[0, 2], [0, 2]])
 
         # test that both first labels can be drawn
         r = f([[.2, .8], [.3, .7]], [.21, .21])
-        assert numpy.allclose(r, [[0, 2], [2, 0]]), r
+        utt.assert_allclose(r, [[0, 2], [2, 0]])
 
         # change the size to make sure output gets reallocated ok
         # and also make sure that the GPU version doesn't screw up the
         # transposed-ness
         r = f([[.2, .8]], [.25])
-        assert numpy.allclose(r, [[0, 2]]), r
+        utt.assert_allclose(r, [[0, 2]])
 
     run_with_c(body)
     if cuda.cuda_available:
@@ -93,9 +94,9 @@ def test_multinomial_large():
             assert mval.dtype == 'float64'
         else:
             raise NotImplementedError(config.cast_policy)
-        assert numpy.allclose(mval.sum(axis=1), 2)
+        utt.assert_allclose(mval.sum(axis=1), 2)
         asdf = numpy.asarray([0, 0, 2, 0])+0*pval
-        assert numpy.allclose(mval, asdf)  # broadcast over all rows
+        utt.assert_allclose(mval, asdf)  # broadcast over all rows
     run_with_c(body)
     if cuda.cuda_available:
         run_with_c(body, True)
