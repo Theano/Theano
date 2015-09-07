@@ -14,11 +14,13 @@ from theano.compile.profilemode import ProfileMode
 from theano.compile import Function
 from theano.compile import builders
 
-pydot_installed = True
+pydot_imported = False
 try:
     import pydot as pd
+    if pd.find_graphviz():
+        pydot_imported = True
 except ImportError:
-    pydot_installed = False
+    pass
 
 
 class PyDotFormatter(object):
@@ -41,7 +43,7 @@ class PyDotFormatter(object):
 
     def __init__(self, compact=True):
         """Construct PyDotFormatter object."""
-        if not pydot_installed:
+        if not pydot_imported:
             raise ImportError('Failed to import pydot. Please install pydot!')
 
         self.compact = compact
