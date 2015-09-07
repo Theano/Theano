@@ -1,3 +1,9 @@
+from nose.plugins.skip import SkipTest
+
+from theano.d3viz import has_requirements
+if not has_requirements:
+    raise SkipTest('Missing requirements')
+
 import numpy as np
 import os.path as pt
 import tempfile

@@ -4,27 +4,21 @@ Author: Christof Angermueller <cangermueller@gmail.com>
 """
 
 import numpy as np
-import logging
 import os
 from functools import reduce
 from six import iteritems, itervalues
 
+pydot_installed = True
 try:
     import pydot as pd
-    if pd.find_graphviz():
-        pydot_imported = True
-    else:
-        pydot_imported = False
 except ImportError:
-    pydot_imported = False
+    pydot_installed = False
 
 import theano
 from theano import gof
 from theano.compile.profilemode import ProfileMode
 from theano.compile import Function
 from theano.compile import builders
-
-_logger = logging.getLogger("theano.printing")
 
 
 class PyDotFormatter(object):
@@ -47,8 +41,8 @@ class PyDotFormatter(object):
 
     def __init__(self, compact=True):
         """Construct PyDotFormatter object."""
-        if not pydot_imported:
-            raise RuntimeError("Failed to import pydot. Please install pydot!")
+        if not pydot_installed:
+            raise ImportError('Failed to import pydot. Please install pydot!')
 
         self.compact = compact
         self.node_colors = {'input': 'limegreen',
