@@ -216,7 +216,9 @@ whitelist_flake8 = [
     "gof/tests/test_cc.py",
     "gof/tests/test_compute_test_value.py",
     "gof/sandbox/equilibrium.py",
-    "d3viz/__init__.py"
+    "d3viz/__init__.py",
+    "d3viz/tests/test_d3viz.py",
+    "d3viz/tests/test_formatting.py"
 ]
 
 

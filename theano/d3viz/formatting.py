@@ -8,17 +8,17 @@ import os
 from functools import reduce
 from six import iteritems, itervalues
 
-pydot_installed = True
-try:
-    import pydot as pd
-except ImportError:
-    pydot_installed = False
-
 import theano
 from theano import gof
 from theano.compile.profilemode import ProfileMode
 from theano.compile import Function
 from theano.compile import builders
+
+pydot_installed = True
+try:
+    import pydot as pd
+except ImportError:
+    pydot_installed = False
 
 
 class PyDotFormatter(object):
