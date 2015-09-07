@@ -169,7 +169,7 @@ def code_gen(blocks):
     return decl + head + tail
 
 
-def struct_gen(args, struct_builders, blocks, sub):
+def struct_gen(args, struct_builders, blocks, sub, is_c_callable=False):
     """
     WRITEME
 
@@ -193,6 +193,8 @@ def struct_gen(args, struct_builders, blocks, sub):
         Dictionary used to template the struct.
         * failure_var -> must contain a variable name to use for
         the failure code.
+    is_c_callable
+         True if the code generate should be used ad share library
 
     Returns
     -------
@@ -295,13 +297,22 @@ def struct_gen(args, struct_builders, blocks, sub):
         int run(void);
     };
     """ % sub
-    run_code = """
-        DllExport int %(name)s::run(void) {
-            int %(failure_var)s = 0;
-            %(behavior)s
-            %(do_return)s
-        }
-    """ % sub
+    if is_c_callable:
+        run_code = """
+            DllExport int %(name)s::run(void) {
+                      int %(failure_var)s = 0;
+                      %(behavior)s
+                      %(do_return)s
+                      }
+        """ % sub
+    else:
+        run_code = """
+            int %(name)s::run(void) {
+                int %(failure_var)s = 0;
+                %(behavior)s
+                %(do_return)s
+         }
+     """ % sub
 
     return struct_code, run_code
 
@@ -855,7 +866,7 @@ class CLinker(link.Linker):
         struct_name = '__struct_compiled_op_%s' % '<<<<HASH_PLACEHOLDER>>>>'
         struct_code, run_code = struct_gen(args, init_blocks, blocks,
                                  dict(failure_var=failure_var,
-                                      name=struct_name))
+                                      name=struct_name), self.c_callable)
 
         self.struct_code = struct_code
         self.run_code = run_code
@@ -1628,7 +1639,6 @@ class CLinker(link.Linker):
         # We add all the support code, compile args, headers and libs we need.
                 for support_code in self.support_code() + self.c_support_code_apply:
                     mod.add_support_code(support_code)
-
                     if not self.c_callable:
                         mod.add_support_code("""
                                              #ifdef _WIN32
