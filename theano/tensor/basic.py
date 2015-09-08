@@ -1205,29 +1205,20 @@ class MaxAndArgmax(Op):
 
     def make_node(self, x, axis=None):
         x = _as_tensor_variable(x)
-        print axis
+
         if isinstance(axis, (tuple, list, numpy.ndarray)):
             # List of axes: make them non-negative, and sort them
             axis = [int(a) for a in axis]
-            if len(axis) != 1:
-                axis = list(axis)
-                #
-                for idx in xrange(len(axis)):
-                    if axis[idx] < 0:
-                        axis[idx] += x.type.ndim
-                axis.sort()
-                
-                #if axis == list(range(-x.type.ndim, 0, 1)):
-                    #axis = list(range(x.type.ndim))
-                #assert axis == list(range(x.type.ndim)), (
-                    #"MaxAndArgmax does not support multiple"
-                    #" axes. the max fct supports it. Got %s" % axis)
-                if axis == list(range(x.type.ndim)):
-                    axis = None
-            else:
-                axis = axis[0]
+            
+            #if axis == list(range(-x.type.ndim, 0, 1)):
+                #axis = list(range(x.type.ndim))
+            #assert axis == list(range(x.type.ndim)), (
+                #"MaxAndArgmax does not support multiple"
+                #" axes. the max fct supports it. Got %s" % axis)
+            if axis == list(range(x.type.ndim)):
+                axis = None
         elif isinstance(axis, (int, numpy.integer)):
-            axis = int(axis)
+            axis = [int(axis)]
         elif isinstance(axis, Variable):
             if NoneConst.equals(axis):
                 axis = None
@@ -1237,11 +1228,17 @@ class MaxAndArgmax(Op):
             else:
                 assert (axis.dtype.startswith("int") or
                         axis.dtype.startswith("uint"))
-                axis = int(axis.data)
+                if isinstance(axis.data, (int, numpy.integer)):
+                    axis = [int(axis.data)]
+                elif isinstance(axis.data, (list, numpy.ndarray)):
+                    axis = [int(i) for i in axis.data]
                 
-        # Make axis non-negative if it is an integer
-        if isinstance(axis, int) and axis < 0:
-            axis = x.type.ndim + axis
+        # Make axis entries non-negative, and sort them
+        if isinstance(axis, list):
+            for idx in xrange(len(axis)):
+                if axis[idx] < 0:
+                    axis[idx] += x.type.ndim
+            axis.sort()
    
         # Verify that axes are valid
         all_axes = set()
@@ -1252,12 +1249,6 @@ class MaxAndArgmax(Op):
                         'Invalid axis: %s (the number of dimensions of the '
                         'input is: %s)' % (ax, x.type.ndim))
                 all_axes.add(ax)
-        elif isinstance(axis, int):
-            if axis < 0 or axis >= x.type.ndim:
-                raise ValueError(
-                    'Invalid axis: %s (the number of dimensions of the '
-                    'input is: %s)' % (axis, x.type.ndim))
-            all_axes.add(axis)
         else:
             all_axes = list(range(x.ndim))
             
@@ -1292,7 +1283,7 @@ class MaxAndArgmax(Op):
         if NoneConst.equals(node.inputs[1]):
             axis_code = "axis = NPY_MAXDIMS;"
         else:
-            assert node.inputs[1].ndim == 0
+            #assert node.inputs[1].ndim == 0
             axis_code = """
             axis = ((dtype_%(axis)s*)PyArray_DATA(%(axis)s))[0];
             if(axis > PyArray_NDIM(%(x)s)-1 || axis < -PyArray_NDIM(%(x)s)){
@@ -1421,7 +1412,7 @@ class MaxAndArgmax(Op):
             # We are taking the max/argmax over all dimensions.
             axis = None
         for i in xrange(x.ndim):
-            if axis is None or i == axis.data:
+            if axis is None or i in axis.data:
                 pattern.append('x')
             else:
                 pattern.append(out_dim)
