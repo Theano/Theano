@@ -2445,6 +2445,8 @@ class GpuReshape(tensor.Reshape, GpuOp):
 
     # __hash__, __eq__, __str__ come from tensor.Subtensor
     def make_node(self, x, shp):
+        x = as_cuda_ndarray_variable(x)
+        shp = tensor.as_tensor_variable(shp)
         host_reshaped = host_from_gpu(x).reshape(shp, ndim=self.ndim)
         return Apply(self, [x, shp],
                      [CudaNdarrayType(host_reshaped.broadcastable)()])

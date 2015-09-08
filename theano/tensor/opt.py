@@ -296,6 +296,7 @@ def inplace_elemwise_optimizer_op(OP):
             # gpuarray GpuElemwise inherit from Elemwise
             if not type(op) == OP:
                 continue
+
             baseline = op.inplace_pattern
             protected_inputs = [
                 f.protected for f in node.fgraph._features if
@@ -331,8 +332,8 @@ def inplace_elemwise_optimizer_op(OP):
                         if hasattr(op.scalar_op, "make_new_inplace"):
                             new_scal = op.scalar_op.make_new_inplace(
                                 scalar.transfer_type(
-                                    *[inplace_pattern.get(i, None)
-                                      for i in xrange(len(node.outputs))]))
+                                    *[inplace_pattern.get(i, o.dtype)
+                                      for i, o in enumerate(node.outputs)]))
                         else:
                             new_scal = op.scalar_op.__class__(
                                 scalar.transfer_type(
@@ -1507,7 +1508,11 @@ def local_subtensor_make_vector(node):
                     # Python 2.4 wants to index only with Python integers
                     v = int(v)
                 # We don't need to copy over any stack traces here
-                return [x.owner.inputs[v]]
+                try:
+                    ret = [x.owner.inputs[v]]
+                except IndexError:
+                    raise NotScalarConstantError("Bad user graph!")
+                return ret
             except NotScalarConstantError:
                 pass
         elif idx.ndim == 1 and isinstance(idx, T.Constant):
@@ -3408,31 +3413,35 @@ def local_flatten_lift(node):
 ##################
 
 
-@gof.local_optimizer([T.Reshape])
-def local_reshape_chain(node):
-    """
-    Reshape(Reshape(shape1),shape2) -> Reshape(shape2)
+def local_reshape_chain(op):
+    @gof.local_optimizer([op])
+    def f(node):
+        """
+        Reshape(Reshape(shape1),shape2) -> Reshape(shape2)
 
-    """
-    if not opt.check_chain(node, T.Reshape, T.Reshape):
-        return False
+        """
+        if not opt.check_chain(node, op, op):
+            return False
 
-    # TODO: this can permit a failing program to run by eliminating
-    #       the lower reshape
-    rval = node.op(node.inputs[0].owner.inputs[0], node.inputs[1])
-    # It might happen that the desired output of this node has a broadcastable
-    # pattern that does not match that of 'rval'. This is when originally, we
-    # were able to figure out that one of the dimensions of the reshape is one,
-    # but some other transformation replaced the shape by one for which this
-    # cannot be guessed.
-    # We should try to figure out why we lost the information about this
-    # constant value... but in the meantime, better not apply this
-    # optimization.
-    if rval.broadcastable == node.outputs[0].broadcastable:
-        return [rval]
-    else:
-        return False
-register_canonicalize(local_reshape_chain)
+        # TODO: this can permit a failing program to run by eliminating
+        #       the lower reshape
+        rval = node.op(node.inputs[0].owner.inputs[0], node.inputs[1])
+        # It might happen that the desired output of this node has a
+        # broadcastable pattern that does not match that of 'rval'. This is
+        # when originally, we were able to figure out that one of the
+        # dimensions of the reshape is one, but some other transformation
+        # replaced the shape by one for which this cannot be guessed.
+        # We should try to figure out why we lost the information about this
+        # constant value... but in the meantime, better not apply this
+        # optimization.
+        if rval.broadcastable == node.outputs[0].broadcastable:
+            return [rval]
+        else:
+            return False
+
+    return f
+register_canonicalize(local_reshape_chain(T.Reshape),
+                      name='local_reshape_chain')
 
 
 @register_canonicalize
@@ -4125,78 +4134,95 @@ def local_elemwise_sub_zeros(node):
 
 @register_canonicalize
 @register_specialize
-@gof.local_optimizer([T.Sum])
-def local_sum_div_dimshuffle(node):
+@gof.local_optimizer([T.Sum, T.elemwise.Prod])
+def local_sum_prod_div_dimshuffle(node):
     """
     sum(a / dimshuffle{...}(b), axis=l) -> sum(a, axis={...}) / b,
-    if dimension l of the DimShuffle is 'x'.
+    if dimension l of the DimShuffle is 'x'
 
+    or
+
+    prod(a / dimshuffle{...}(b), axis=l) ->
+    prod(a, axis={...}) / b ** a.shape[l],
+    if dimension l of the DimShuffle is 'x'
     """
-    # TODO: extend it to product, and quotient of products
 
     # It does not make much sense now to extend it to the case where the
     # dimshuffle is in the numerator, since elemwise inversion of the
-    # denominator would still be needed before the summation.
+    # denominator would still be needed before the summation or production.
 
-    if isinstance(node.op, T.Sum):
+    if isinstance(node.op, (T.Sum, T.elemwise.Prod)):
         axis = node.op.axis
         if axis is None:
             axis = list(range(node.inputs[0].ndim))
-        # print 'axis =', axis
-        thing_summed = node.inputs[0]
-        if thing_summed.owner and thing_summed.owner.op == T.true_div:
-            numerator, denominator = thing_summed.owner.inputs
+        node_input = node.inputs[0]
+        if node_input.owner and node_input.owner.op == T.true_div:
+            numerator, denominator = node_input.owner.inputs
 
             # Old, bugged logic, reproduced here only to warn users
-            if config.warn.sum_div_dimshuffle_bug:
-                if numerator.owner and isinstance(numerator.owner.op,
-                                                  T.DimShuffle):
-                    new_order = numerator.owner.op.new_order
-                    compatible_dims = True
-                    for ax in axis:
-                        if len(new_order) <= ax or new_order[ax] != 'x':
-                            compatible_dims = False
-                            break
-                    if compatible_dims:
-                        _logger.warn('WARNING: Your current code is fine, but'
-                                     ' Theano versions between '
-                                     'rev. 3bd9b789f5e8 (2010-06-16) and'
-                                     ' cfc6322e5ad4 (2010-08-03) would '
-                                     'have given an incorrect result. '
-                                     'To disable this warning, set the Theano'
-                                     ' flag warn.sum_div_dimshuffle_bug to'
-                                     ' False.')
-
-            if denominator.owner and isinstance(denominator.owner.op,
-                                                T.DimShuffle):
-                thing_dimshuffled = denominator.owner.inputs[0]
-                new_order = denominator.owner.op.new_order
-                # print 'new_order =', new_order
-                # check compatibility
+            if (config.warn.sum_div_dimshuffle_bug and
+                    isinstance(node.op, T.Sum) and
+                    numerator.owner and
+                    isinstance(numerator.owner.op, T.DimShuffle)):
+                # Check compatibility
+                new_order = numerator.owner.op.new_order
                 compatible_dims = True
                 for ax in axis:
-                    # print 'ax =', ax
-                    # print 'len(new_order) =', len(new_order)
-                    # print 'new_order[ax] =', new_order[ax]
                     if len(new_order) <= ax or new_order[ax] != 'x':
                         compatible_dims = False
                         break
 
                 if compatible_dims:
-                    # print 'getting denom out'
-                    # Keep needed dimensions for new dimshuffle
-                    new_new_order = list(ax for i, ax in enumerate(new_order)
-                                         if i not in axis or ax != 'x')
-                    # print 'new_new_order =', new_new_order
-                    # Remove useless rebroadcast axes
-                    while len(new_new_order) > 0 and new_new_order[0] == 'x':
-                        del new_new_order[0]
-                    # print 'new_new_order =', new_new_order
+                    _logger.warn('WARNING: Your current code is fine, but'
+                                 ' Theano versions between '
+                                 'rev. 3bd9b789f5e8 (2010-06-16) and'
+                                 ' cfc6322e5ad4 (2010-08-03) would '
+                                 'have given an incorrect result. '
+                                 'To disable this warning, set the Theano'
+                                 ' flag warn.sum_div_dimshuffle_bug to'
+                                 ' False.')
 
-                    if all(i == e for i, e in enumerate(new_new_order)):
-                        new_denom = thing_dimshuffled
+            if denominator.owner and isinstance(denominator.owner.op,
+                                                T.DimShuffle):
+                dimshuffle_input = denominator.owner.inputs[0]
+                dimshuffle_order = denominator.owner.op.new_order
+
+                compatible_dims = []
+                incompatible_dims = []
+                for ax in axis:
+                    if (ax < len(dimshuffle_order) and
+                            dimshuffle_order[ax] == 'x'):
+                        compatible_dims.append(ax)
                     else:
-                        if config.warn.sum_div_dimshuffle_bug:
+                        incompatible_dims.append(ax)
+                reordered_incompatible_dims = []
+                for ic_ax in incompatible_dims:
+                    reordered_incompatible_dims.append(
+                        ic_ax - sum(
+                            [1 for c_ax in compatible_dims if c_ax < ic_ax]))
+
+                if len(compatible_dims) > 0:
+                    optimized_dimshuffle_order = list(
+                        ax for i, ax in enumerate(dimshuffle_order)
+                        if (i not in axis) or (ax != 'x'))
+
+                    # Removing leading 'x' (since it will be done automatically)
+                    while (len(optimized_dimshuffle_order) > 0 and
+                           optimized_dimshuffle_order[0] == 'x'):
+                        del optimized_dimshuffle_order[0]
+
+                    # if optimized_dimshuffle_order is sorted with
+                    # not 'x', then dimshuffle is useless.
+                    if all(i == e for i, e in
+                           enumerate(optimized_dimshuffle_order)):
+                        optimized_dimshuffle = dimshuffle_input
+                    else:
+                        optimized_dimshuffle = T.DimShuffle(
+                            dimshuffle_input.type.broadcastable,
+                            optimized_dimshuffle_order)(dimshuffle_input)
+
+                        if (config.warn.sum_div_dimshuffle_bug and
+                                isinstance(node.op, T.Sum)):
                             _logger.warn('WARNING: Your current code is fine,'
                                          ' but Theano versions between '
                                          'rev. 3bd9b789f5e8 (2010-06-16) and'
@@ -4207,12 +4233,28 @@ def local_sum_div_dimshuffle(node):
                                          'warn.sum_div_dimshuffle_bug'
                                          ' to False.')
 
-                        new_denom = T.DimShuffle(
-                            thing_dimshuffled.type.broadcastable,
-                            new_new_order)(thing_dimshuffled)
-                    return [T.true_div(node.op(numerator), new_denom)]
-                # else:
-                #    print 'incompatible dims:', axis, new_order
+                    if isinstance(node.op, T.Sum):
+                        op_on_compatible_dims = T.sum(
+                            numerator, axis=compatible_dims)
+                        div_op = T.true_div(
+                            op_on_compatible_dims,
+                            optimized_dimshuffle)
+                        op_on_incompatible_dims = T.sum(
+                            div_op,
+                            axis=reordered_incompatible_dims)
+                    elif isinstance(node.op, T.elemwise.Prod):
+                        op_on_compatible_dims = T.prod(
+                            numerator, axis=compatible_dims)
+                        dtype = numerator.dtype
+                        div_op = T.true_div(
+                            op_on_compatible_dims,
+                            (optimized_dimshuffle **
+                                T.prod([numerator.shape[ax].astype(dtype)
+                                        for ax in compatible_dims])))
+                        op_on_incompatible_dims = T.prod(
+                            div_op,
+                            axis=reordered_incompatible_dims)
+                    return [op_on_incompatible_dims]
 
 
 @register_canonicalize
@@ -5867,15 +5909,17 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 32,
                             tmp_s_input.append(tmp)
                             tmp_input.append(ii)
                             tmp_scalar.append(tmp_s_input[-1])
-                    s_op = i.owner.op.scalar_op(*tmp_s_input)
+                    s_op = i.owner.op.scalar_op(*tmp_s_input,
+                                                return_list=True)
 
                     # if the scalar_op don't have a c implementation,
                     # we skip its fusion to allow the fusion of the
                     # other ops.
-                    i.owner.op.scalar_op.c_code(s_op.owner,
+                    i.owner.op.scalar_op.c_code(s_op[0].owner,
                                                 "test_presence_of_c_code",
                                                 ["x" for x in i.owner.inputs],
-                                                "z", {})
+                                                ["z" for z in i.owner.outputs],
+                                                {})
                 except MethodNotDefined:
                     catch = True
                 except NotImplementedError:
@@ -5906,7 +5950,7 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 32,
                 new_nb_input = new_nb_input_
                 inputs.extend(tmp_input)
                 s_inputs.extend(tmp_scalar)
-                s_g.append(s_op)
+                s_g.extend(s_op)
             else:
                 # We must support the case where the same variable appear many
                 # time in the inputs
@@ -5934,25 +5978,26 @@ def local_elemwise_fusion_op(OP, max_input_fct=lambda node: 32,
 fusion optimization. We skip this optimization. You can ignore this message,
 your code will run correctly, but may be slower.""")
 
-        s_new_out = node.op.scalar_op(*s_g)
+        s_new_out = node.op.scalar_op(*s_g, return_list=True)
         try:
-            s_new_out.owner.op.c_code(s_new_out.owner,
-                                      "test_presence_of_c_code",
-                                      ["x" for x in s_g],
-                                      "z", {})
+            s_new_out[0].owner.op.c_code(s_new_out[0].owner,
+                                         "test_presence_of_c_code",
+                                         ["x" for x in s_g],
+                                         ["z" for x in s_new_out], {})
         except MethodNotDefined:
             _logger.info(("%s does not implement the c_code function."
                           " As well as being potentially slow, this disables "
-                          "loop fusion of this op.") % str(s_new_out.owner.op))
+                          "loop fusion of this op.") % str(
+                              s_new_out[0].owner.op))
             return False
         except NotImplementedError:
             _logger.info(("%s does not implement the c_code function. As well"
                           " as being potentially slow, this disables loop"
-                          " fusion of this op.") % str(s_new_out.owner.op))
+                          " fusion of this op.") % str(s_new_out[0].owner.op))
             return False
 
         # create the composite op.
-        C = scalar.Composite(s_inputs, [s_new_out])
+        C = scalar.Composite(s_inputs, s_new_out)
 
         # create the new node.
         # Do not call make_node to have test_value

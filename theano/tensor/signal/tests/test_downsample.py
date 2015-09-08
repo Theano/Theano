@@ -629,7 +629,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         x_vec = tensor.vector('x')
         z = tensor.dot(x_vec.dimshuffle(0, 'x'),
                        x_vec.dimshuffle('x', 0))
-        y = max_pool_2d(input=z, ds=(2, 2))
+        y = max_pool_2d(input=z, ds=(2, 2), ignore_border=True)
         C = tensor.exp(tensor.sum(y))
 
         grad_hess = tensor.hessian(cost=C, wrt=x_vec)
