@@ -521,7 +521,7 @@ class _tensor_py_operators:
 
     # COPYING
     def copy(self, name=None):
-        """Copy a variable and set a name to the copy."""
+        """Copy a variable and optionally assign a name."""
         copied_variable = theano.tensor.basic.tensor_copy(self)
         copied_variable.name = name
         return copied_variable
