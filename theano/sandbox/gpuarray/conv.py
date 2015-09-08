@@ -13,10 +13,10 @@ except ImportError:
 from six.moves import reduce
 from .comp import NVCC_compiler
 from .type import GpuArrayType
-from .basic_ops import (as_gpuarray_variable, GpuKernelBase, HideC, Kernel)
+from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel)
 from theano.gof import utils
 
-class GpuConv(GpuKernelBase, HideC, gof.Op):
+class GpuConv(GpuKernelBase, gof.Op):
     """
     Implement the batched and stacked 2d convolution on the gpu.
 
