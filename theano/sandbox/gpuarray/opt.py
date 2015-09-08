@@ -572,7 +572,7 @@ def local_gpua_careduce(node):
                 dtype=getattr(node.op, 'dtype', None),
                 acc_dtype=getattr(node.op, 'acc_dtype', None))
 
-            reshaped_x = x.reshape(tensor.stack(*new_in_shp))
+            reshaped_x = x.reshape(tensor.stack(new_in_shp))
             gpu_reshaped_x = gpu_from_host(reshaped_x)
             gvar = greduce(gpu_reshaped_x)
             # We need to have the make node called, otherwise the mask can
@@ -584,7 +584,7 @@ def local_gpua_careduce(node):
 
                 if reduce_reshaped_x.ndim != node.outputs[0].ndim:
                     unreshaped_reduce = reduce_reshaped_x.reshape(
-                        tensor.stack(*shape_of[node.outputs[0]]))
+                        tensor.stack(shape_of[node.outputs[0]]))
                 else:
                     unreshaped_reduce = reduce_reshaped_x
                 return [unreshaped_reduce]

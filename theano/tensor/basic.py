@@ -185,7 +185,7 @@ def as_tensor_variable(x, name=None, ndim=None):
     if isinstance(x, (tuple, list)) and python_any(isinstance(xi, Variable)
                                                    for xi in x):
         try:
-            return stack(*x)
+            return stack(x)
         except (TypeError, ValueError):
             pass
 
@@ -1672,7 +1672,7 @@ def smallest(*args):
         a, b = args
         return switch(a < b, a, b)
     else:
-        return min(stack(*args), axis=0)
+        return min(stack(args), axis=0)
 
 
 @constructor
@@ -1687,7 +1687,7 @@ def largest(*args):
         a, b = args
         return switch(a > b, a, b)
     else:
-        return max(stack(*args), axis=0)
+        return max(stack(args), axis=0)
 
 
 ##########################
@@ -3806,8 +3806,8 @@ class Join(Op):
         if 'float' in out_dtype or 'complex' in out_dtype:
             # assume that this is differentiable
             split = Split(len(tensors))
-            split_gz = split(gz, axis, stack(*[shape(x)[axis]
-                                               for x in tensors]))
+            split_gz = split(gz, axis, stack([shape(x)[axis]
+                                              for x in tensors]))
             # If there is only one split, it might not be in a list.
             if not isinstance(split_gz, list):
                 split_gz = [split_gz]
@@ -5691,7 +5691,7 @@ def stacklists(arg):
 
     """
     if isinstance(arg, (tuple, list)):
-        return stack(*list(map(stacklists, arg)))
+        return stack(list(map(stacklists, arg)))
     else:
         return arg
 

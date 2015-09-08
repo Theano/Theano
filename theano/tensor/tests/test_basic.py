@@ -3465,6 +3465,7 @@ class T_Join_and_Split(unittest.TestCase):
         with warnings.catch_warnings(record=True) as w:
             s = stack([a, b])
             s = stack([a, b], 1)
+            s = stack([a, b], axis=1)
             s = stack(tensors=[a, b])
             s = stack(tensors=[a, b], axis=1)
             assert not w
