@@ -2321,10 +2321,10 @@ if True:
                 (inp_grad.owner and isinstance(inp_grad.owner.op,
                                                HostFromGpu))):
                 desc = GpuDnnPoolDesc(ws=ds, stride=st, mode=mode, pad=pad)()
+                contiguous_inp_grad = gpu_contiguous(inp_grad)
                 ret = GpuDnnPoolGrad()(gpu_contiguous(inp),
-                                       gpu_contiguous(numpy.empty((1,1,1,1),
-                                           dtype=numpy.float32)),
-                                       gpu_contiguous(inp_grad),
+                                       contiguous_inp_grad,
+                                       contiguous_inp_grad,
                                        desc)
                 return [host_from_gpu(ret)]
 
