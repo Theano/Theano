@@ -80,6 +80,12 @@ class MonitorMode(Mode):
         ret.post_func = self.post_func
         return ret
 
+    def register(self, *optimizations):
+        ret = super(MonitorMode, self).register(*optimizations)
+        ret.pre_func = self.pre_func
+        ret.post_func = self.post_func
+        return ret
+
     def excluding(self, *tags):
         ret = super(MonitorMode, self).excluding(*tags)
         ret.pre_func = self.pre_func
