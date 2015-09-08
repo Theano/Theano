@@ -330,11 +330,6 @@ class GpuConv(GpuKernelBase, gof.Op):
         code = code.replace('"', '\\"')
         code = code.replace('\n', '\\n')
         mod = """
-        template <typename T>
-        static T ceil_intdiv(T a, T b)
-        {
-            return (a/b) + ((a %% b) ? 1: 0);
-        }
         static const char conv_bcode[] = {%(bcode)s};
         static const char *conv_code = "%(code)s";
         """ % locals()
