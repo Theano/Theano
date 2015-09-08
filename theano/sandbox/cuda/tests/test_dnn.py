@@ -473,7 +473,7 @@ class test_DnnSoftMax(test_nnet.test_SoftMax):
         utt.verify_grad(softmax_op, [x_val])
 
         # Gradient is broken for (n, c, 1, 1) in v3 rc1
-        if cuda.dnn.version() == (2000, 2000):
+        if cuda.dnn.version() != (3000, 3000):
             utt.verify_grad(softmax_op, [x_val2])
 
     def test_cudnn_softmax_grad_opt(self):
