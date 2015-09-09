@@ -3,15 +3,13 @@ import os
 import numpy
 
 import theano
-from theano import Op, Apply
-from theano import tensor, scalar, config
+from theano import Op, Apply, Type, Variable
+from theano import tensor, config
 from theano.gradient import grad_undefined
-from theano.scalar import Scalar
-from theano.tensor.basic import Alloc, Join, Split
+from theano.tensor.basic import Alloc, Join, Split, as_tensor_variable
 
 from theano.gof import HideC
 from theano.gof.utils import MethodNotDefined
-from theano.compat import PY3
 
 from collections import deque
 
@@ -20,7 +18,7 @@ from six.moves import xrange
 
 try:
     import pygpu
-    from pygpu import gpuarray, elemwise
+    from pygpu import gpuarray
 except ImportError:
     pass
 
@@ -208,16 +206,16 @@ class GpuKernelBase(object):
   if (GpuKernel_init(&%(ovar)s, %(ctx)s->ops, %(ctx)s->ctx, 1, &bcode, &sz,
                      "%(kname)s", %(numargs)u, types, GA_USE_BINARY, NULL)
       != GA_NO_ERROR) {
-    if ((%(err)s = GpuKernel_init(&%(ovar)s, %(ctx)s->ops, %(ctx)s->ctx, 1,
-                                  &%(cname)s, NULL, "%(kname)s", %(numargs)u,
-                                  types, %(flags)s, NULL)) != GA_NO_ERROR) {
+    if ((err = GpuKernel_init(&%(ovar)s, %(ctx)s->ops, %(ctx)s->ctx, 1,
+                              &%(cname)s, NULL, "%(kname)s", %(numargs)u,
+                              types, %(flags)s, NULL)) != GA_NO_ERROR) {
       PyErr_Format(PyExc_RuntimeError, "GpuKernel_init error %%d: %%s",
-                   %(err)s, Gpu_error(%(ctx)s->ops, %(ctx)s->ctx, %(err)s));
+                   err, Gpu_error(%(ctx)s->ops, %(ctx)s->ctx, %(err)s));
       %(fail)s
     }
   }
 }""" % dict(numargs=len(k.params), types=k._get_c_types(), bvar=k.binvar,
-            ovar=k.objvar, kname=k.name, err=err, cname=k.codevar,
+            ovar=k.objvar, kname=k.name, cname=k.codevar,
             flags=k._get_c_flags(), fail=fail, ctx=ctx)
 
     def c_init_code_struct(self, node, name, sub):
@@ -350,7 +348,7 @@ class GpuFromHost(Op):
     def grad(self, inputs, grads):
         gz, = grads
         return [host_from_gpu(as_gpuarray_variable(
-                    gz, context_name=self.context_name))]
+                gz, context_name=self.context_name))]
 
     def R_op(self, inputs, eval_points):
         ev, = eval_points
@@ -420,7 +418,7 @@ class GpuAlloc(HideC, Alloc):
         sh, bcast = self.validate_shape(shape)
         if value.ndim > len(sh):
             TypeError("The GpuAlloc value to use has more dimensions "
-                      "than the specified shape", v.ndim, len(sh))
+                      "than the specified shape", value.ndim, len(sh))
         otype = value.type.clone(broadcastable=bcast)
         return Apply(self, [value] + sh, [otype()])
 
@@ -519,16 +517,15 @@ class GpuAlloc(HideC, Alloc):
                 # If the output is a constant, it will have to be deepcopied
                 # each time the function is called.  So we do not fold.
                 return False
-            elif (  # The following ops work inplace of their input id 0.
-                  client[1] == 0 and
+            elif (client[1] == 0 and
                   isinstance(client[0].op, (
-                    # Ops that will work inplace on the Alloc. So if they
-                    # get constant_folded, they would copy the
-                    # constant and this is less efficients.
+                      # Ops that will work inplace on the Alloc. So if they
+                      # get constant_folded, they would copy the
+                      # constant and this is less efficient.
 
-                    # Not doing the constant folding could also lower
-                    # the peak memory usage, as we the "constant" won't
-                    # always exists.
+                      # Not doing the constant folding could also lower
+                      # the peak memory usage, as we the "constant" won't
+                      # always exists.
                       # theano.tensor.subtensor.AdvancedIncSubtensor,
                       theano.sandbox.gpuarray.subtensor.GpuIncSubtensor,
                       theano.sandbox.gpuarray.subtensor.GpuAdvancedIncSubtensor1,
@@ -812,7 +809,7 @@ class GpuJoin(HideC, Join):
     def make_node(self, axis, *tensors):
         node = Join.make_node(self, axis, *tensors)
 
-        ctx_name = infer_context(*tensors)
+        ctx_name = infer_context_name(*tensors)
 
         def agv(v):
             return as_gpuarray_variable(v, context_name=ctx_name)
@@ -935,7 +932,7 @@ KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
                 code=code, name="k",
                 params=[gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SIZE],
                 flags=Kernel.get_flags(self.dtype),
-                objvar='k_eye_'+name,
+                objvar='k_eye_' + name,
                 )]
 
     def c_code(self, node, name, inp, out, sub):
