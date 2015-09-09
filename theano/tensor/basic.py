@@ -1271,9 +1271,9 @@ class MaxAndArgmax(Op):
     def perform(self, node, inp, outs):
         x, axis = inp
         max, max_idx = outs
-        max[0] = theano._asarray(numpy.max(x, axis),
+        max[0] = theano._asarray(numpy.max(x, tuple(axis)),
                                  dtype=node.outputs[0].dtype)
-        max_idx[0] = theano._asarray(numpy.argmax(x, axis), dtype='int64')
+        max_idx[0] = theano._asarray(numpy.argmax(x, tuple(axis)), dtype='int64')
 
     def c_code(self, node, name, inp, out, sub):
         x, axis = inp
@@ -1283,7 +1283,8 @@ class MaxAndArgmax(Op):
         if NoneConst.equals(node.inputs[1]):
             axis_code = "axis = NPY_MAXDIMS;"
         else:
-            #assert node.inputs[1].ndim == 0
+            assert node.inputs[1].ndim == 1
+            if len(axis) > 1: raise NotImplementedError()
             axis_code = """
             axis = ((dtype_%(axis)s*)PyArray_DATA(%(axis)s))[0];
             if(axis > PyArray_NDIM(%(x)s)-1 || axis < -PyArray_NDIM(%(x)s)){
