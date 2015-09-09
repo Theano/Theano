@@ -35,7 +35,7 @@ For example:
 Based on this code snippet, we can relate ``f`` and ``g`` to Ops, ``a``,
 ``b`` and ``c`` to Variables, ``d`` to Shared Variable, ``g(a, c)``,
 ``f(b)`` and ``d = b + c`` (taken as meaning
-the action of computing ``f``, ``g`` or ``+``on their respective inputs) to
+the action of computing ``f``, ``g`` or ``+`` on their respective inputs) to
 Applies. Lastly, ``int`` could be interpreted as the Theano Type of the
 Variables ``a``, ``b``, ``c`` and ``d``.
 
