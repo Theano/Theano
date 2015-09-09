@@ -302,8 +302,15 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
             "HINT: Use the Theano flag 'exception_verbosity=high'"
             " for a debugprint and storage map footprint of this apply node.")
 
-    exc_value = exc_type(str(exc_value) + detailed_err_msg +
-                         '\n' + '\n'.join(hints))
+    try:
+        exc_value = exc_type(str(exc_value) + detailed_err_msg +
+                             '\n' + '\n'.join(hints))
+    except TypeError:
+        print("WARNING: %s error do not allow us to add extra error message" %
+              str(exc_type))
+        # Some exception need extra parameter in inputs. So forget the
+        # extra long error message in that case.
+        pass
     reraise(exc_type, exc_value, exc_trace)
 
 
