@@ -54,8 +54,8 @@ Simple example
 >>> a = theano.tensor.vector("a")      # declare symbolic variable
 >>> b = a + a ** 10                    # build symbolic expression
 >>> f = theano.function([a], b)        # compile function
->>> print f([0, 1, 2])                 # prints `array([0, 2, 1026])`
-
+>>> f([0, 1, 2])
+array([    0.,     2.,  1026.])
 
 ======================================================  =====================================================
         Unoptimized graph                                    Optimized graph
@@ -118,7 +118,7 @@ Where are those optimization applied?
   # Log(1-sigmoid(var)) -> -sigmoid(var)
   prediction = p_1 > 0.5
   cost = xent.mean() + 0.01 * (w ** 2).sum()
-  gw,gb = tt.grad(cost, [w, b])
+  gw, gb = tt.grad(cost, [w, b])
 
   train = theano.function(
             inputs=[x, y],
@@ -294,7 +294,7 @@ Details regarding symbolic broadcasting...
 Differentiation details
 -----------------------
 
->>> gw,gb = tt.grad(cost, [w,b])
+>>> gw, gb = tt.grad(cost, [w,b])  # doctest: +SKIP
 
 * tt.grad works symbolically: takes and returns a Theano variable
 

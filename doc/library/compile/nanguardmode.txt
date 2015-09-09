@@ -21,8 +21,13 @@ of abnormal values: NaNs, Infs, and abnormally big values.
 
 NanGuardMode can be used as follows:
 
-.. code-block:: python
+.. testcode::
 
+    import numpy
+    import theano
+    import theano.tensor as T
+    from theano.compile.nanguardmode import NanGuardMode
+    
     x = T.matrix()
     w = theano.shared(numpy.random.randn(5, 7).astype(theano.config.floatX))
     y = T.dot(x, w)
@@ -36,11 +41,19 @@ input and output variable of each node. When abnormal values are
 detected, it raises an error to indicate which node yields the NaNs. For
 example, if we pass the following values to ``fun``:
 
-.. code-block:: python
+.. testcode::
 
     infa = numpy.tile(
         (numpy.asarray(100.) ** 1000000).astype(theano.config.floatX), (3, 5))
     fun(infa)
+
+.. testoutput::
+   :hide:
+   :options: +ELLIPSIS
+
+   Traceback (most recent call last):
+     ...
+   AssertionError: ...
 
 It will raise an AssertionError indicating that Inf value is detected while
 executing the function.

@@ -46,8 +46,8 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
     To load such a dump and do the compilation:
 
     >>> import cPickle, theano
-    >>> d=cPickle.load(open("func_dump.bin", "rb"))
-    >>> f=theano.function(**d)
+    >>> d = cPickle.load(open("func_dump.bin", "rb"))  # doctest: +SKIP
+    >>> f = theano.function(**d)  # doctest: +SKIP
 
     """
     assert isinstance(filename, string_types)

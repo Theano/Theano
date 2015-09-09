@@ -40,9 +40,11 @@ Well, what you do is this:
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_examples.test_examples_1
 
+>>> import theano
+>>> import theano.tensor as T
 >>> x = T.dmatrix('x')
 >>> s = 1 / (1 + T.exp(-x))
->>> logistic = function([x], s)
+>>> logistic = theano.function([x], s)
 >>> logistic([[0, 1], [-1, -2]])
 array([[ 0.5       ,  0.73105858],
        [ 0.26894142,  0.11920292]])
@@ -63,7 +65,7 @@ We can verify that this alternate form produces the same values:
 .. theano/tests/test_tutorial.py:T_examples.test_examples_2
 
 >>> s2 = (1 + T.tanh(x / 2)) / 2
->>> logistic2 = function([x], s2)
+>>> logistic2 = theano.function([x], s2)
 >>> logistic2([[0, 1], [-1, -2]])
 array([[ 0.5       ,  0.73105858],
        [ 0.26894142,  0.11920292]])
@@ -83,7 +85,7 @@ squared difference between two matrices *a* and *b* at the same time:
 >>> diff = a - b
 >>> abs_diff = abs(diff)
 >>> diff_squared = diff**2
->>> f = function([a, b], [diff, abs_diff, diff_squared])
+>>> f = theano.function([a, b], [diff, abs_diff, diff_squared])
 
 .. note::
    `dmatrices` produces as many outputs as names that you provide.  It is a
@@ -95,11 +97,9 @@ was reformatted for readability):
 
 >>> f([[1, 1], [1, 1]], [[0, 1], [2, 3]])
 [array([[ 1.,  0.],
-        [-1., -2.]]),
- array([[ 1.,  0.],
-        [ 1.,  2.]]),
- array([[ 1.,  0.],
-        [ 1.,  4.]])]
+       [-1., -2.]]), array([[ 1.,  0.],
+       [ 1.,  2.]]), array([[ 1.,  0.],
+       [ 1.,  4.]])]
 
 
 Setting a Default Value for an Argument
@@ -113,6 +113,7 @@ one. You can do it like this:
 .. theano/tests/test_tutorial.py:T_examples.test_examples_6
 
 >>> from theano import Param
+>>> from theano import function
 >>> x, y = T.dscalars('x', 'y')
 >>> z = x + y
 >>> f = function([x, Param(y, default=1)], z)
@@ -257,8 +258,7 @@ for the purpose of one particular function.
 >>> # The type of foo must match the shared variable we are replacing
 >>> # with the ``givens``
 >>> foo = T.scalar(dtype=state.dtype)
->>> skip_shared = function([inc, foo], fn_of_state,
-                           givens=[(state, foo)])
+>>> skip_shared = function([inc, foo], fn_of_state, givens=[(state, foo)])
 >>> skip_shared(1, 3)  # we're using 3 for the state, not state.value
 array(7)
 >>> state.get_value()  # old state still there, but we didn't use it
@@ -311,7 +311,7 @@ Here's a brief example.  The setup code is:
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_examples.test_examples_9
 
-.. code-block:: python
+.. testcode::
 
     from theano.tensor.shared_randomstreams import RandomStreams
     from theano import function
@@ -382,6 +382,8 @@ For example:
 
 >>> state_after_v0 = rv_u.rng.get_value().get_state()
 >>> nearly_zeros()       # this affects rv_u's generator
+array([[ 0.,  0.],
+       [ 0.,  0.]])
 >>> v1 = f()
 >>> rng = rv_u.rng.get_value(borrow=True)
 >>> rng.set_state(state_after_v0)
@@ -410,53 +412,46 @@ corresponding to the random number generation process (i.e. RandomFunction{unifo
 An example of how "random states" can be transferred from one theano function
 to another is shown below.
 
-.. code-block:: python
+>>> from __future__ import print_function
+>>> import theano
+>>> import numpy
+>>> import theano.tensor as T
+>>> from theano.sandbox.rng_mrg import MRG_RandomStreams
+>>> from theano.tensor.shared_randomstreams import RandomStreams
 
-    import theano
-    import numpy
-    import theano.tensor as T
-    from theano.sandbox.rng_mrg import MRG_RandomStreams
-    from theano.tensor.shared_randomstreams import RandomStreams
+>>> class Graph():
+...     def __init__(self, seed=123):
+...         self.rng = RandomStreams(seed)
+...         self.y = self.rng.uniform(size=(1,))
 
-    class Graph():
-        def __init__(self, seed=123):
-            self.rng = RandomStreams(seed)
-            self.y = self.rng.uniform(size=(1,))
+>>> g1 = Graph(seed=123)
+>>> f1 = theano.function([], g1.y)
 
-    g1 = Graph(seed=123)
-    f1 = theano.function([], g1.y)
+>>> g2 = Graph(seed=987)
+>>> f2 = theano.function([], g2.y)
 
-    g2 = Graph(seed=987)
-    f2 = theano.function([], g2.y)
+>>> # By default, the two functions are out of sync.
+>>> f1()
+array([ 0.72803009])
+>>> f2()
+array([ 0.55056769])
 
-    print 'By default, the two functions are out of sync.'
-    print 'f1() returns ', f1()
-    print 'f2() returns ', f2()
+>>> def copy_random_state(g1, g2):
+...     if isinstance(g1.rng, MRG_RandomStreams):
+...         g2.rng.rstate = g1.rng.rstate
+...     for (su1, su2) in zip(g1.rng.state_updates, g2.rng.state_updates):
+...         su2[0].set_value(su1[0].get_value())
 
-    def copy_random_state(g1, g2):
-        if isinstance(g1.rng, MRG_RandomStreams):
-            g2.rng.rstate = g1.rng.rstate
-        for (su1, su2) in zip(g1.rng.state_updates, g2.rng.state_updates):
-            su2[0].set_value(su1[0].get_value())
+>>> # We now copy the state of the theano random number generators.
+>>> copy_random_state(g1, g2)
+>>> f1()
+array([ 0.59044123])
+>>> f2()
+array([ 0.59044123])
 
-    print 'We now copy the state of the theano random number generators.'
-    copy_random_state(g1, g2)
-    print 'f1() returns ', f1()
-    print 'f2() returns ', f2()
-
-This gives the following output:
-
-.. code-block:: bash
-
-    # By default, the two functions are out of sync.
-    f1() returns  [ 0.72803009]
-    f2() returns  [ 0.55056769]
-    # We now copy the state of the theano random number generators.
-    f1() returns  [ 0.59044123]
-    f2() returns  [ 0.59044123]
 
 Other Random Distributions
----------------------------
+--------------------------
 
 There are :ref:`other distributions implemented <libdoc_tensor_raw_random>`. 
 
@@ -487,50 +482,65 @@ A Real Example: Logistic Regression
 The preceding elements are featured in this more realistic example.
 It will be used repeatedly.
 
-.. code-block:: python
+.. testcode::
 
-  import numpy
-  import theano
-  import theano.tensor as T
-  rng = numpy.random
+    import numpy
+    import theano
+    import theano.tensor as T
+    rng = numpy.random
   
-  N = 400
-  feats = 784
-  D = (rng.randn(N, feats), rng.randint(size=N, low=0, high=2))
-  training_steps = 10000
+    N = 400
+    feats = 784
+    D = (rng.randn(N, feats), rng.randint(size=N, low=0, high=2))
+    training_steps = 10000
   
-  # Declare Theano symbolic variables
-  x = T.dmatrix("x")
-  y = T.dvector("y")
-  w = theano.shared(rng.randn(feats), name="w")
-  b = theano.shared(0., name="b")
-  print "Initial model:"
-  print w.get_value(), b.get_value()
+    # Declare Theano symbolic variables
+    x = T.matrix("x")
+    y = T.vector("y")
+    w = theano.shared(rng.randn(feats), name="w")
+    b = theano.shared(0., name="b")
+    print("Initial model:")
+    print(w.get_value())
+    print(b.get_value())
 
-  # Construct Theano expression graph
-  p_1 = 1 / (1 + T.exp(-T.dot(x, w) - b))   # Probability that target = 1
-  prediction = p_1 > 0.5                    # The prediction thresholded
-  xent = -y * T.log(p_1) - (1-y) * T.log(1-p_1) # Cross-entropy loss function
-  cost = xent.mean() + 0.01 * (w ** 2).sum()# The cost to minimize
-  gw, gb = T.grad(cost, [w, b])             # Compute the gradient of the cost
-                                            # (we shall return to this in a
-                                            # following section of this tutorial)
+    # Construct Theano expression graph
+    p_1 = 1 / (1 + T.exp(-T.dot(x, w) - b))   # Probability that target = 1
+    prediction = p_1 > 0.5                    # The prediction thresholded
+    xent = -y * T.log(p_1) - (1-y) * T.log(1-p_1) # Cross-entropy loss function
+    cost = xent.mean() + 0.01 * (w ** 2).sum()# The cost to minimize
+    gw, gb = T.grad(cost, [w, b])             # Compute the gradient of the cost
+                                              # (we shall return to this in a
+                                              # following section of this tutorial)
 
-  # Compile
-  train = theano.function(
-            inputs=[x,y],
-            outputs=[prediction, xent],
-            updates=((w, w - 0.1 * gw), (b, b - 0.1 * gb)))
-  predict = theano.function(inputs=[x], outputs=prediction)
+    # Compile
+    train = theano.function(
+              inputs=[x,y],
+              outputs=[prediction, xent],
+              updates=((w, w - 0.1 * gw), (b, b - 0.1 * gb)))
+    predict = theano.function(inputs=[x], outputs=prediction)
 
-  # Train
-  for i in range(training_steps):
-      pred, err = train(D[0], D[1])
+    # Train
+    for i in range(training_steps):
+        pred, err = train(D[0], D[1])
 
-  print "Final model:"
-  print w.get_value(), b.get_value()
-  print "target values for D:", D[1]
-  print "prediction on D:", predict(D[0])
+    print("Final model:")
+    print(w.get_value())
+    print(b.get_value())
+    print("target values for D:")
+    print(D[1])
+    print("prediction on D:")
+    print(predict(D[0]))
 
+.. testoutput::
+   :hide:
+   :options: +ELLIPSIS
 
-
+   Initial model:
+   ...
+   0.0
+   Final model:
+   ...
+   target values for D:
+   ...
+   prediction on D:
+   ...

@@ -42,11 +42,13 @@
 
    Example:
 
-   .. code-block:: python
+   .. testcode::
 
-       x,y,b = T.dvectors('x','y','b')
+       import theano.tensor as T
+
+       x, y, b = T.dvectors('x', 'y', 'b')
        W = T.dmatrix('W')
-       y = T.nnet.sigmoid(T.dot(W,x) + b)
+       y = T.nnet.sigmoid(T.dot(W, x) + b)
 
    .. note:: The underlying code will return an exact 0 or 1 if an
       element of x is too small or too big.
@@ -102,7 +104,7 @@
 
    .. note:: The underlying code will return an exact 0 if an element of x is too small.
 
-   .. code-block:: python
+   .. testcode::
 
        x,y,b = T.dvectors('x','y','b')
        W = T.dmatrix('W')
@@ -131,7 +133,7 @@
 
    Example of use:
 
-   .. code-block:: python
+   .. testcode::
 
        x,y,b = T.dvectors('x','y','b')
        W = T.dmatrix('W')
@@ -155,10 +157,11 @@
    to the binary cross-entropy (note that this assumes that x will
    contain values between 0 and 1):
 
-   .. code-block:: python
+   .. testcode::
 
-       x, y, b = T.dvectors('x', 'y', 'b')
+       x, y, b, c = T.dvectors('x', 'y', 'b', 'c')
        W = T.dmatrix('W')
+       V = T.dmatrix('V')
        h = T.nnet.sigmoid(T.dot(W, x) + b)
        x_recons = T.nnet.sigmoid(T.dot(V, h) + c)
        recon_cost = T.nnet.binary_crossentropy(x_recons, x).mean()
@@ -191,7 +194,12 @@
        correct class (which is typically the training criterion in
        classification settings).
 
-   .. code-block:: python
+   .. testsetup::
+
+      import theano
+      o = theano.tensor.ivector()
+
+   .. testcode::
 
        y = T.nnet.softmax(T.dot(W, x) + b)
        cost = T.nnet.categorical_crossentropy(y, o)

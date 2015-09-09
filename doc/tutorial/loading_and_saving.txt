@@ -38,6 +38,10 @@ The two modules ``pickle`` and ``cPickle`` have the same functionalities, but
 You can serialize (or *save*, or *pickle*) objects to a file with
 ``cPickle.dump``:
 
+.. testsetup::
+
+   my_obj = object()
+
 >>> f = file('obj.save', 'wb')
 >>> cPickle.dump(my_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
 >>> f.close()
@@ -64,9 +68,15 @@ To de-serialize (or *load*, or *unpickle*) a pickled file, use
 You can pickle several objects into the same file, and load them all (in the
 same order):
 
+.. testsetup::
+
+   obj1 = object()
+   obj2 = object()
+   obj3 = object()
+
 >>> f = file('objects.save', 'wb')
 >>> for obj in [obj1, obj2, obj3]:
->>>     cPickle.dump(obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
+...     cPickle.dump(obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
 >>> f.close()
 
 Then:
@@ -74,7 +84,7 @@ Then:
 >>> f = file('objects.save', 'rb')
 >>> loaded_objects = []
 >>> for i in range(3):
->>>     loaded_objects.append(cPickle.load(f))
+...     loaded_objects.append(cPickle.load(f))
 >>> f.close()
 
 For more details about pickle's usage, see
@@ -102,7 +112,7 @@ along every instance of your model.
 
 For instance, you can define functions along the lines of:
 
-.. code-block:: python
+.. testcode::
 
     def __getstate__(self):
         state = dict(self.__dict__)
@@ -129,6 +139,7 @@ just load the parameters manually with `numpy`.
 
 .. code-block:: python
 
+    import numpy
     numpy.load('model.zip')
 
 This approach could be beneficial if you are sharing your model with people who
@@ -153,7 +164,7 @@ don't.
 For instance, if the only parameters you want to save are a weight
 matrix *W* and a bias *b*, you can define:
 
-.. code-block:: python
+.. testcode::
 
     def __getstate__(self):
         return (self.W, self.b)
@@ -167,7 +178,7 @@ If at some point in time *W* is renamed to *weights* and *b* to
 *bias*, the older pickled files will still be usable, if you update these
 functions to reflect the change in name:
 
-.. code-block:: python
+.. testcode::
 
     def __getstate__(self):
         return (self.weights, self.bias)

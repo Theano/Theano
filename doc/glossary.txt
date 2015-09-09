@@ -3,10 +3,10 @@
 Glossary
 ========
 
-..
-    # This is for the doctests in the file
-    >>> import theano
-    >>> from theano import tensor
+.. testsetup::
+
+   import theano
+   from theano import tensor
 
 .. glossary::
 

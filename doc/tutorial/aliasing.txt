@@ -55,30 +55,33 @@ Borrowing when Creating Shared Variables
 
 A ``borrow`` argument can be provided to the shared-variable constructor.
 
+.. testcode:: borrow
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_aliasing.test_aliasing_1
+   import numpy, theano
+   np_array = numpy.ones(2, dtype='float32')
 
-.. code-block:: python
-
-    import numpy, theano
-    np_array = numpy.ones(2, dtype='float32')
-
-    s_default = theano.shared(np_array)
-    s_false   = theano.shared(np_array, borrow=False)
-    s_true    = theano.shared(np_array, borrow=True)
+   s_default = theano.shared(np_array)
+   s_false   = theano.shared(np_array, borrow=False)
+   s_true    = theano.shared(np_array, borrow=True)
 
 By default (*s_default*) and when explicitly setting ``borrow=False``, the
 shared variable we construct gets a [deep] copy of *np_array*.  So changes we
 subsequently make to *np_array* have no effect on our shared variable.
 
-.. code-block:: python
+.. testcode:: borrow
 
-    np_array += 1 # now it is an array of 2.0 s
+   np_array += 1 # now it is an array of 2.0 s
 
-    s_default.get_value()  # -> array([1.0, 1.0])
-    s_false.get_value()    # -> array([1.0, 1.0])
-    s_true.get_value()     # -> array([2.0, 2.0])
+   print(s_default.get_value())
+   print(s_false.get_value())
+   print(s_true.get_value())
+
+.. testoutput:: borrow
+
+   [ 1.  1.]
+   [ 1.  1.]
+   [ 2.  2.]
+
 
 If we are running this with the CPU as the device,
 then changes we make to *np_array* *right away* will show up in
@@ -117,15 +120,12 @@ A ``borrow`` argument can also be used to control how a ``shared`` variable's va
 retrieved.
 
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_aliasing.test_aliasing_2
+.. testcode:: borrow
 
-.. code-block:: python
+   s = theano.shared(np_array)
 
-    s = theano.shared(np_array)
-
-    v_false = s.get_value(borrow=False) # N.B. borrow default is False
-    v_true = s.get_value(borrow=True)
+   v_false = s.get_value(borrow=False) # N.B. borrow default is False
+   v_true = s.get_value(borrow=True)
 
 
 When ``borrow=False`` is passed to ``get_value``, it means that the return value
@@ -146,7 +146,7 @@ then you should use the ``return_internal_type=True`` argument to
 constant time), but might return various datatypes depending on contextual
 factors (e.g. the compute device, the dtype of the NumPy array).
 
-.. code-block:: python
+.. testcode:: borrow
 
     v_internal = s.get_value(borrow=True, return_internal_type=True)
 
@@ -178,7 +178,12 @@ that Theano *may* reuse the buffer you provide as the internal storage for the v
 A standard pattern for manually updating the value of a ``shared`` variable is as
 follows:
 
-.. code-block:: python
+.. testsetup:: borrow
+
+   def some_inplace_fn(v):
+       return v
+
+.. testcode:: borrow
 
     s.set_value(
         some_inplace_fn(s.get_value(borrow=True)),
@@ -224,10 +229,7 @@ Borrowing when Constructing Function Objects
 A ``borrow`` argument can also be provided to the ``In`` and ``Out`` objects
 that control how ``theano.function`` handles its argument[s] and return value[s].
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_aliasing.test_aliasing_3
-
-.. code-block:: python
+.. testcode::
 
     import theano, theano.tensor
 
@@ -263,40 +265,40 @@ For GPU graphs, this borrowing can have a major speed impact.  See the following
 
 .. code-block:: python
 
-  from theano import function, config, shared, sandbox, tensor, Out
-  import numpy
-  import time
+   from theano import function, config, shared, sandbox, tensor, Out
+   import numpy
+   import time
 
-  vlen = 10 * 30 * 768  # 10 x # cores x # threads per core
-  iters = 1000
+   vlen = 10 * 30 * 768  # 10 x # cores x # threads per core
+   iters = 1000
 
-  rng = numpy.random.RandomState(22)
-  x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
-  f1 = function([], sandbox.cuda.basic_ops.gpu_from_host(tensor.exp(x)))
-  f2 = function([],
-                Out(sandbox.cuda.basic_ops.gpu_from_host(tensor.exp(x)),
-                    borrow=True))
-  t0 = time.time()
-  for i in xrange(iters):
-      r = f1()
-  t1 = time.time()
-  no_borrow = t1 - t0
-  t0 = time.time()
-  for i in xrange(iters):
-      r = f2()
-  t1 = time.time()
-  print 'Looping', iters, 'times took', no_borrow, 'seconds without borrow',
-  print 'and', t1 - t0, 'seconds with borrow.'
-  if numpy.any([isinstance(x.op, tensor.Elemwise) and
-                ('Gpu' not in type(x.op).__name__)
-                for x in f1.maker.fgraph.toposort()]):
-      print 'Used the cpu'
-  else:
-      print 'Used the gpu'
+   rng = numpy.random.RandomState(22)
+   x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
+   f1 = function([], sandbox.cuda.basic_ops.gpu_from_host(tensor.exp(x)))
+   f2 = function([],
+                 Out(sandbox.cuda.basic_ops.gpu_from_host(tensor.exp(x)),
+                     borrow=True))
+   t0 = time.time()
+   for i in xrange(iters):
+       r = f1()
+   t1 = time.time()
+   no_borrow = t1 - t0
+   t0 = time.time()
+   for i in xrange(iters):
+       r = f2()
+   t1 = time.time()
+   print 'Looping', iters, 'times took', no_borrow, 'seconds without borrow',
+   print 'and', t1 - t0, 'seconds with borrow.'
+   if numpy.any([isinstance(x.op, tensor.Elemwise) and
+                 ('Gpu' not in type(x.op).__name__)
+                 for x in f1.maker.fgraph.toposort()]):
+       print 'Used the cpu'
+   else:
+       print 'Used the gpu'
 
 Which produces this output:
 
-.. code-block:: text
+.. code-block:: none
 
    $ THEANO_FLAGS=device=gpu0,floatX=float32 python test1.py
    Using gpu device 0: GeForce GTX 275

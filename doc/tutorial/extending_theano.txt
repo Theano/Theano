@@ -56,7 +56,7 @@ This section provides an overview of the methods you typically have to implement
 possibilities you may encounter or need.  For that refer to
 :ref:`op_contract`.
 
-.. code-block:: python
+.. testcode::
 
     import theano
 
@@ -73,9 +73,9 @@ possibilities you may encounter or need.  For that refer to
 
         # Other type of implementation
         # C implementation: [see theano web site for other functions]
-        def c_code(...):
-            # ...
+        def c_code(self, node, inputs, outputs, sub):
             pass
+
         # Other implementations (pycuda, ...):
         def make_thunk(self, node, storage_map, _, _2):
             pass
@@ -83,7 +83,7 @@ possibilities you may encounter or need.  For that refer to
         # optional:
         check_input = True
 
-        def __init__(self, ...):
+        def __init__(self, *args):
             pass
 
         def grad(self, inputs, g):
@@ -92,7 +92,7 @@ possibilities you may encounter or need.  For that refer to
         def R_op(self, inputs, eval_points):
             pass
 
-        def infer_shape(node, (i0_shapes, ...)):
+        def infer_shape(node, input_shapes):
             pass
 
 .. ../extending/op.txt
@@ -250,7 +250,7 @@ Other methods can be optionally defined by the op.
 Op Example
 ==========
 
-.. code-block:: python
+.. testcode:: example
 
     import theano
 
@@ -288,7 +288,7 @@ Op Example
 
 You can try it as follows:
 
-.. code-block:: python
+.. testcode:: example
 
     x = theano.tensor.matrix()
     f = theano.function([x], DoubleOp()(x))
@@ -296,8 +296,28 @@ You can try it as follows:
     inp = numpy.random.rand(5, 4)
     out = f(inp)
     assert numpy.allclose(inp * 2, out)
-    print inp
-    print out
+    print(inp)
+    print(out)
+
+.. testoutput:: example
+   :hide:
+   :options: +ELLIPSIS
+   
+   ...
+   ...
+   
+.. code-block:: none
+
+    [[ 0.02443785  0.67833979  0.91954769  0.95444365]
+     [ 0.60853382  0.7770539   0.78163219  0.92838837]
+     [ 0.04427765  0.37895602  0.23155797  0.4934699 ]
+     [ 0.20551517  0.7419955   0.34500905  0.49347629]
+     [ 0.24082769  0.49321452  0.24566545  0.15351132]]
+    [[ 0.04887571  1.35667957  1.83909538  1.90888731]
+     [ 1.21706764  1.55410779  1.56326439  1.85677674]
+     [ 0.08855531  0.75791203  0.46311594  0.9869398 ]
+     [ 0.41103034  1.48399101  0.69001811  0.98695258]
+     [ 0.48165539  0.98642904  0.4913309   0.30702264]]
 
 
 Example for properties of a Op
@@ -310,7 +330,7 @@ We create an Op that takes a variable ``x`` and returns ``a*x+b``.
 We want to say that two such ops are equal when their values of ``a``
 and ``b`` are equal.
 
-.. code-block:: python
+.. testcode:: properties
 
     import theano
 
@@ -349,7 +369,7 @@ It also generates a default :func:`__str__` method that prints the attribute nam
 
 We can test this by running the following segment:
 
-.. code-block:: python
+.. testcode:: properties
 
     mult4plus5op = AXPBOp(4, 5)
     another_mult4plus5op = AXPBOp(4, 5)
@@ -383,7 +403,10 @@ returns the right answer. If you detect an error, you must raise an
 *exception*. You can use the ``assert`` keyword to automatically raise an
 ``AssertionError``.
 
-.. code-block:: python
+.. testcode:: tests
+
+    import numpy
+    import theano
 
     from theano.tests import unittest_tools as utt
     from theano import config
@@ -439,7 +462,7 @@ square matrices will not detect the problem. This is why the
 your op works only with such matrices, you can disable the warning with the
 ``warn=False`` parameter.
 
-.. code-block:: python
+.. testcode:: tests
 
     from theano.tests import unittest_tools as utt
     from theano import config
@@ -468,7 +491,7 @@ If there is an error, the function raises an exception. If you want to
 see it fail, you can implement an incorrect gradient (for instance, by removing
 the multiplication by 2).
 
-.. code-block:: python
+.. testcode:: tests
 
         def test_grad(self):
             theano.tests.unittest_tools.verify_grad(self.op,
@@ -486,7 +509,7 @@ implementation of the Rop method of a particular op.
 
 For instance, to verify the Rop method of the DoubleOp, you can use this:
 
-.. code-block:: python
+.. testcode:: tests
 
    import numpy
    import theano.tests
@@ -562,7 +585,7 @@ of the file containing a specific test of interest and run the
 file. In this example, the test *test_DoubleRop* in the class
 *test_double_op* would be performed.
 
-.. code-block:: python
+.. testcode:: tests
 
     if __name__ == '__main__':
        t = test_DoubleRop("test_double_rop")
@@ -572,7 +595,7 @@ file. In this example, the test *test_DoubleRop* in the class
 We recommend that when we execute a file, we run all tests in that
 file. This can be done by adding this at the end of your test files:
 
-.. code-block:: python
+.. testcode:: tests
 
     if __name__ == '__main__':
         unittest.main()
@@ -638,10 +661,11 @@ signature:
 as_op Example
 -------------
 
-.. code-block:: python
+.. testcode:: asop
 
     import theano
     import numpy
+    from theano import function
     from theano.compile.ops import as_op
 
     def infer_shape_numpy_dot(node, input_shapes):
@@ -655,13 +679,13 @@ as_op Example
 
 You can try it as follows:
 
-.. code-block:: python
+.. testcode:: asop
 
     x = theano.tensor.fmatrix()
     y = theano.tensor.fmatrix()
     f = function([x, y], numpy_dot(x, y))
-    inp1 = numpy.random.rand(5, 4)
-    inp2 = numpy.random.rand(4, 7)
+    inp1 = numpy.random.rand(5, 4).astype('float32')
+    inp2 = numpy.random.rand(4, 7).astype('float32')
     out = f(inp1, inp2)
 
 
@@ -701,27 +725,27 @@ the documentation.
 
 Here is an example how to add docstring to a class.
 
-.. code-block:: python
+.. testcode::
 
     import theano
 
     class DoubleOp(theano.Op):
-    """ Double each element of a tensor.
+        """ Double each element of a tensor.
 
-    :param x: input tensor.
+        :param x: input tensor.
 
-    :return: a tensor of the same shape and dtype as the input with all
+        :return: a tensor of the same shape and dtype as the input with all
         values doubled.
 
-    :note:
-        this is a test note
+        :note:
+            this is a test note
 
-    :seealso:
-        You can use the elemwise op to replace this example.
-        Just execute `x * 2` with x being a Theano variable.
+        :seealso:
+            You can use the elemwise op to replace this example.
+            Just execute `x * 2` with x being a Theano variable.
 
-    .. versionadded:: 0.6
-    """
+        .. versionadded:: 0.6
+        """
 
 This is how it will show up for files that we auto-list in the library
 documentation:

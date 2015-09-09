@@ -55,9 +55,11 @@ def shape_of_variables(fgraph, input_shapes):
     >>> x = theano.tensor.matrix('x')
     >>> y = x[512:]; y.name = 'y'
     >>> fgraph = theano.FunctionGraph([x], [y], clone=False)
-    >>> shape_of_variables(fgraph, {x: (1024, 1024)})
-    {y: (512, 1024), x: (1024, 1024)}
-
+    >>> d = shape_of_variables(fgraph, {x: (1024, 1024)})
+    >>> d[y]
+    (array(512), array(1024))
+    >>> d[x]
+    (array(1024), array(1024))
     """
 
     if not hasattr(fgraph, 'shape_feature'):

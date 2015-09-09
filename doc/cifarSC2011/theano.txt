@@ -56,7 +56,8 @@ Simple example
 >>> a = theano.tensor.vector("a")      # declare symbolic variable
 >>> b = a + a**10                      # build symbolic expression
 >>> f = theano.function([a], b)        # compile function
->>> print f([0,1,2])                   # prints `array([0,2,1026])`
+>>> f([0,1,2])
+array([    0.,     2.,  1026.])
 
 
 ======================================================  =====================================================
@@ -332,7 +333,7 @@ Details regarding symbolic broadcasting...
 Differentiation details
 -----------------------
 
->>> gw,gb = T.grad(cost, [w,b])
+>>> gw,gb = T.grad(cost, [w,b])  # doctest: +SKIP
 
 * T.grad works symbolically: takes and returns a Theano variable
 

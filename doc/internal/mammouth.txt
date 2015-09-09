@@ -10,7 +10,9 @@ To run Theano on the Mammouth cluster, follow these simple steps:
       the goodies for using the latest and greatest (optimized) libraries
       (numpy, scipy, etc.)
 
-      >>> source /home/bastienf/.local.bashrc
+      .. code-block:: sh
+
+         source /home/bastienf/.local.bashrc
 
       Perhaps even put this in your ``.bashrc``
 

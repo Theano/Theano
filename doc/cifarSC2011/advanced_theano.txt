@@ -312,8 +312,7 @@ Pretty Printing
 ~~~~~~~~~~~~~~~
 
 >>> theano.printing.pprint(prediction) # doctest: +NORMALIZE_WHITESPACE
-'gt((TensorConstant{1} / (TensorConstant{1} + exp(((-(x \\dot w)) - b)))),
-TensorConstant{0.5})'
+'gt((TensorConstant{1} / (TensorConstant{1} + exp(((-(x \\dot w)) - b)))), TensorConstant{0.5})'
 
 
 Debug Print
@@ -321,7 +320,7 @@ Debug Print
 
 The graph before optimization:
 
->>> theano.printing.debugprint(prediction) # doctest: +NORMALIZE_WHITESPACE
+>>> theano.printing.debugprint(prediction) # doctest: +NORMALIZE_WHITESPACE, +SKIP
     Elemwise{gt,no_inplace} [@A] ''
     |Elemwise{true_div,no_inplace} [@B] ''
     | |DimShuffle{x} [@C] ''
@@ -342,7 +341,7 @@ The graph before optimization:
 
 The graph after optimization:
 
->>> theano.printing.debugprint(predict) # doctest: +NORMALIZE_WHITESPACE
+>>> theano.printing.debugprint(predict) # doctest: +NORMALIZE_WHITESPACE, +SKIP
     Elemwise{Composite{GT(scalar_sigmoid((-((-i0) - i1))), i2)}} [@A] ''   4
      |CGemv{inplace} [@B] ''   3
      | |Alloc [@C] ''   2
@@ -364,7 +363,7 @@ Picture Printing of Graphs
 
 The graph before optimization:
 
->>> theano.printing.pydotprint(prediction, outfile="pics/logreg_pydotprint_prediction.png", var_with_name_simple=True)
+>>> theano.printing.pydotprint(prediction, outfile="pics/logreg_pydotprint_prediction.png", var_with_name_simple=True)  # doctest: +SKIP
 The output file is available at pics/logreg_pydotprint_prediction.png
 
 .. image:: ./pics/logreg_pydotprint_prediction.png
@@ -372,7 +371,7 @@ The output file is available at pics/logreg_pydotprint_prediction.png
 
 The graph after optimization:
 
->>> theano.printing.pydotprint(predict, outfile="pics/logreg_pydotprint_predict.png", var_with_name_simple=True)
+>>> theano.printing.pydotprint(predict, outfile="pics/logreg_pydotprint_predict.png", var_with_name_simple=True)  # doctest: +SKIP
 The output file is available at pics/logreg_pydotprint_predict.png
 
 .. image:: ./pics/logreg_pydotprint_predict.png
@@ -380,7 +379,7 @@ The output file is available at pics/logreg_pydotprint_predict.png
 
 The optimized training graph:
 
->>> theano.printing.pydotprint(train, outfile="pics/logreg_pydotprint_train.png", var_with_name_simple=True)
+>>> theano.printing.pydotprint(train, outfile="pics/logreg_pydotprint_train.png", var_with_name_simple=True)  # doctest: +SKIP
 The output file is available at pics/logreg_pydotprint_train.png
 
 .. image:: ./pics/logreg_pydotprint_train.png
