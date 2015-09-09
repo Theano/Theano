@@ -319,6 +319,7 @@ def inplace_elemwise_optimizer_op(OP):
 
             raised_warning = not verbose
 
+            update_outs = [fgraph.outputs[i] for i in fgraph.update_mapping]
             for candidate_output in candidate_outputs:
 
                 # If the output of the node can be established as an update
@@ -328,9 +329,6 @@ def inplace_elemwise_optimizer_op(OP):
                 candidate_out_var = node.outputs[candidate_output]
                 sorted_candidate_inputs = candidate_inputs
                 if fgraph.update_mapping:
-
-                    update_outs = [fgraph.outputs[i]
-                                   for i in fgraph.update_mapping]
 
                     if candidate_out_var in update_outs:
 
