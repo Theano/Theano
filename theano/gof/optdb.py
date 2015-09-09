@@ -192,7 +192,7 @@ class Query(object):
 
     def __str__(self):
         return ("Query{inc=%s,ex=%s,require=%s,subquery=%s,"
-                "position_cutoff=%d,extra_opts=%d}" %
+                "position_cutoff=%d,extra_opts=%s}" %
                 (self.include, self.exclude, self.require, self.subquery,
                  self.position_cutoff, self.extra_optimizations))
 
