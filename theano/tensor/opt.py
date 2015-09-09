@@ -361,7 +361,7 @@ def inplace_elemwise_optimizer_op(OP):
                             elif (hasattr(fgraph, 'destroy_handler') and
                                   inp.owner and
                                   updated_inp in fgraph.destroy_handler.root_destroyer and
-                                  fgraph.destroy_handler.root_destroyer[updated_inp] == inp.owner):
+                                  fgraph.destroy_handler.root_destroyer[updated_inp] is inp.owner):
 
                                 vars_from_inplace.append(inp_idx)
                             else:
