@@ -173,7 +173,6 @@ whitelist_flake8 = [
     "sandbox/gpuarray/tests/test_blas.py",
     "sandbox/gpuarray/tests/test_elemwise.py",
     "sandbox/gpuarray/tests/test_nnet.py",
-    "sandbox/gpuarray/tests/test_basic_ops.py",
     "scan_module/scan_utils.py",
     "scan_module/scan_views.py",
     "scan_module/scan.py",
