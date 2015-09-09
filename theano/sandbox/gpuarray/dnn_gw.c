@@ -9,6 +9,7 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
   float af = alpha, bf = beta;
   void *alpha_p;
   void *beta_p;
+  PyGpuContextObject *c = pygpu_default_context();
 
   if (PyGpuArray_DIMS(input)[1] != PyGpuArray_DIMS(km)[1]) {
     PyErr_SetString(PyExc_ValueError,
@@ -42,8 +43,7 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
   Py_INCREF(*kerns);
 #else
   if (theano_prep_output(kerns, PyGpuArray_NDIM(km), PyGpuArray_DIMS(km),
-                         km->ga.typecode, GA_C_ORDER,
-                         pygpu_default_context()) != 0)
+                         km->ga.typecode, GA_C_ORDER, c) != 0)
     return 1;
   if (beta != 0.0 && pygpu_move(*kerns, km))
     return 1;
@@ -53,6 +53,8 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
     return 1;
 
   cudnnConvolutionBwdFilterAlgo_t algo = CONV_ALGO;
+
+  cuda_enter(c->ctx);
 
 #ifdef CHOOSE_ALGO
   static int reuse_algo = 0;
@@ -84,6 +86,7 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
       PyErr_Format(PyExc_RuntimeError,
                    "error selecting convolution algo: %s",
                    cudnnGetErrorString(err));
+      cuda_exit(c->ctx);
       return 1;
     }
 
@@ -95,6 +98,7 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
       cudaGetLastError();
       PyErr_Format(PyExc_RuntimeError, "Error when trying to find the memory "
                    "information on the GPU: %s\n", cudaGetErrorString(err2));
+      cuda_exit(c->ctx);
       return 1;
     }
 
@@ -106,6 +110,7 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
       PyErr_Format(PyExc_RuntimeError,
                    "error selecting convolution algo: %s",
                    cudnnGetErrorString(err));
+      cuda_exit(c->ctx);
       return 1;
     }
 #endif
@@ -138,6 +143,7 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
       PyErr_Format(PyExc_RuntimeError,
                    "error getting convolution properties: %s",
                    cudnnGetErrorString(err));
+      cuda_exit(c->ctx);
       return 1;
     }
 
@@ -151,7 +157,6 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
 
   size_t worksize;
   gpudata *workspace;
-  PyGpuContextObject *c;
 
   err = cudnnGetConvolutionBackwardFilterWorkspaceSize(
     _handle, APPLY_SPECIFIC(input), APPLY_SPECIFIC(output), desc,
@@ -160,14 +165,15 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError, "error getting worksize: %s",
                  cudnnGetErrorString(err));
+      cuda_exit(c->ctx);
     return 1;
   }
 
   if (worksize != 0) {
-    c = pygpu_default_context();
     workspace = c->ops->buffer_alloc(c->ctx, worksize, NULL, 0, NULL);
     if (workspace == NULL) {
       PyErr_SetString(PyExc_RuntimeError, "Could not allocate working memory");
+      cuda_exit(c->ctx);
       return 1;
     }
   }
@@ -183,6 +189,8 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
 
   if (worksize != 0)
     c->ops->buffer_release(workspace);
+
+  cuda_exit(c->ctx);
 
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError, "error doing operation: %s",

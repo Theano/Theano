@@ -1,5 +1,4 @@
 #section support_code
-static cudnnHandle_t _handle = NULL;
 
 static int
 c_set_tensorNd(PyGpuArrayObject *var, cudnnTensorDescriptor_t desc) {
@@ -99,15 +98,21 @@ c_set_filter(PyGpuArrayObject *var, cudnnFilterDescriptor_t desc) {
 
 #section init_code
 
-{
-  cudnnStatus_t err;
-  if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
-    PyErr_Format(PyExc_RuntimeError, "could not create cuDNN handle: %s",
-		 cudnnGetErrorString(err));
-#if PY_MAJOR_VERSION >= 3
-    return NULL;
-#else
-    return;
-#endif
-  }
+setup_ext_cuda();
+
+#section support_code_struct
+
+cudnnHandle_t _handle;
+
+#section init_code_struct
+
+cuda_enter(pygpu_default_context()->ctx);
+cudnnStatus_t err;
+_handle = NULL;
+if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_RuntimeError, "could not create cuDNN handle: %s",
+               cudnnGetErrorString(err));
+  cuda_exit(pygpu_default_context()->ctx);
+  FAIL;
 }
+cuda_exit(pygpu_default_context()->ctx);

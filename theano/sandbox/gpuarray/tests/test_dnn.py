@@ -207,11 +207,10 @@ def test_pooling():
                             (32, 1, 147, 197),
                             ]:
                     data = numpy.random.normal(0, 1, shp).astype("float32")
-                    a = f1(data).__array__()
+                    a = f1(data)
+                    b = f2(data)
 
-                    b = f2(data).__array__()
-                    assert numpy.allclose(a, b,
-                                          atol=numpy.finfo(numpy.float32).eps)
+                    utt.assert_allclose(a, b)
 
         # Test the grad
         for shp in [(1, 1, 2, 2),
@@ -228,9 +227,9 @@ def test_pooling():
             def fn(x):
                 return max_pool_2d(x, (ws, ws), ignore_border=True,
                                    padding=pad, mode=mode)
-            theano.tests.unittest_tools.verify_grad(fn, [data],
-                                                    cast_to_output_type=False,
-                                                    mode=mode_with_gpu)
+            utt.verify_grad(fn, [data],
+                            cast_to_output_type=False,
+                            mode=mode_with_gpu)
             # Confirm that the opt would have inserted it.
             fg = theano.function([x], theano.grad(fn(x).sum(), x),
                                  mode=mode_with_gpu)
@@ -245,10 +244,9 @@ def test_pooling():
                     pad=pad,
                     mode=mode)
                 return dnn_op
-            theano.tests.unittest_tools.verify_grad(
-                fn, [data],
-                cast_to_output_type=False,
-                mode=mode_with_gpu)
+            utt.verify_grad(fn, [data],
+                            cast_to_output_type=False,
+                            mode=mode_with_gpu)
             # Confirm that we get the good op.
             fg = theano.function([x], theano.grad(fn(x).sum(), x),
                                  mode=mode_with_gpu)
@@ -256,7 +254,7 @@ def test_pooling():
                         for node in fg.maker.fgraph.toposort()])
             g_out = fg(data)
 
-            # Compare again the CPU result
+            # Compare against the CPU result
             out = max_pool_2d(x, (ws, ws),
                               padding=pad,
                               ignore_border=True, mode=mode)
@@ -269,7 +267,7 @@ def test_pooling():
                 assert any([isinstance(node.op, AveragePoolGrad)
                             for node in fc.maker.fgraph.toposort()])
             c_out = fc(data)
-            assert numpy.allclose(c_out, g_out)
+            utt.assert_allclose(c_out, g_out)
 
 
 def test_pooling_opt():
@@ -703,7 +701,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
 
             out = f(data)
             gout = numpy.asarray(f_gpu(gdata))[:, :, 0, 0]
-            assert numpy.allclose(out, gout), numpy.absolute(out - gout)
+            utt.assert_allclose(out, gout)
 
         x = T.matrix('x', 'float32')
         x_gpu = T.tensor4('x_gpu', 'float32')

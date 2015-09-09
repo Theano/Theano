@@ -10,6 +10,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
   float af = alpha, bf = beta;
   void *alpha_p;
   void *beta_p;
+  PyGpuContextObject *c = pygpu_default_context();
 
   if (PyGpuArray_DIMS(input)[1] != PyGpuArray_DIMS(kerns)[1]) {
     PyErr_SetString(PyExc_ValueError,
@@ -43,8 +44,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
   Py_INCREF(*output);
 #else
   if (theano_prep_output(output, PyGpuArray_NDIM(om), PyGpuArray_DIMS(om),
-                         om->ga.typecode, GA_C_ORDER,
-                         pygpu_default_context()) != 0)
+                         om->ga.typecode, GA_C_ORDER, c) != 0)
     return 1;
   if (beta != 0.0 && pygpu_move(*output, om))
     return 1;
@@ -55,6 +55,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
 
   cudnnConvolutionFwdAlgo_t algo = CONV_ALGO;
 
+  cuda_enter(c->ctx);
 #ifdef CHOOSE_ALGO
   /* Static variables are only initialized once so this will not
    * reset the previous algo every time */
@@ -86,6 +87,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
       PyErr_Format(PyExc_RuntimeError,
                    "error selecting convolution algo: %s",
                    cudnnGetErrorString(err));
+      cuda_exit(c->ctx);
       return 1;
     }
     algo = choice.algo;
@@ -96,6 +98,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
       PyErr_Format(PyExc_RuntimeError, "Error when trying to find the "
                    "memory information on the GPU: %s\n",
                    cudaGetErrorString(err2));
+      cuda_exit(c->ctx);
       return 1;
     }
 
@@ -107,6 +110,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
       PyErr_Format(PyExc_RuntimeError,
                    "error selecting convolution algo: %s",
                    cudnnGetErrorString(err));
+      cuda_exit(c->ctx);
       return 1;
     }
 #endif
@@ -145,6 +149,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
       PyErr_Format(PyExc_RuntimeError,
                    "error getting convolution properties: %s",
                    cudnnGetErrorString(err));
+      cuda_exit(c->ctx);
       return 1;
     }
 
@@ -167,6 +172,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
                       "are padded such that the padded inputs are larger "
                       "than the kernels. Update your installation of CuDNN "
                       "to V3 or more recent to solve the issue.");
+      cuda_exit(c->ctx);
       return 1;
     }
   }
@@ -175,7 +181,6 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
   {
     size_t worksize;
     gpudata *workspace;
-    PyGpuContextObject *c;
     err = cudnnGetConvolutionForwardWorkspaceSize(_handle,
                                                   APPLY_SPECIFIC(input),
                                                   APPLY_SPECIFIC(kerns),
@@ -187,6 +192,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
       PyErr_Format(PyExc_RuntimeError,
                    "error getting worksize: %s",
                    cudnnGetErrorString(err));
+      cuda_exit(c->ctx);
       return 1;
     }
 
@@ -196,11 +202,11 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
      * to place a nice get_work_mem() function in.
      */
     if (worksize != 0) {
-      c = pygpu_default_context();
       workspace = c->ops->buffer_alloc(c->ctx, worksize, NULL, 0, NULL);
       if (workspace == NULL) {
         PyErr_SetString(PyExc_RuntimeError,
                         "Could not allocate working memory");
+        cuda_exit(c->ctx);
         return 1;
       }
     }
@@ -218,6 +224,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     if (worksize != 0)
       c->ops->buffer_release(workspace);
   }
+  cuda_exit(c->ctx);
 
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError, "error doing operation: %s",
