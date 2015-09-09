@@ -14,22 +14,17 @@ from theano.tensor.tests import test_basic
 from theano.tensor.tests.test_basic import rand, safe_make_node
 from theano.tests import unittest_tools as utt
 
-import theano.sandbox.gpuarray
-
-from ..type import (GpuArrayType,
+from ..type import (GpuArrayType, get_context,
                     gpuarray_shared_constructor)
 from ..basic_ops import (
-    host_from_gpu, gpu_from_host, HostFromGpu, GpuFromHost, GpuReshape,
-    gpu_alloc, GpuAlloc, GpuAllocEmpty, GpuContiguous,
+    host_from_gpu, HostFromGpu, GpuFromHost, GpuReshape,
+    GpuAlloc, GpuAllocEmpty, GpuContiguous,
     gpu_join, GpuJoin, GpuSplit, GpuEye, gpu_contiguous)
 from ..subtensor import GpuSubtensor
 
-from .config import mode_with_gpu, mode_without_gpu
+from .config import mode_with_gpu, mode_without_gpu, test_ctx_name
 
-try:
-    from pygpu import gpuarray
-except:
-    pass
+from pygpu import gpuarray
 
 utt.seed_rng()
 rng = numpy.random.RandomState(seed=utt.fetch_seed())
@@ -176,7 +171,7 @@ def test_transfer_cpu_gpu():
     av = numpy.asarray(rng.rand(5, 4), dtype='float32')
     gv = gpuarray.array(av)
 
-    f = theano.function([a], gpu_from_host(a))
+    f = theano.function([a], GpuFromHost(None)(a))
     fv = f(av)
     assert GpuArrayType.values_eq(fv, gv)
 
@@ -198,7 +193,7 @@ def test_transfer_strided():
     av = av[:, ::2]
     gv = gv[:, ::2]
 
-    f = theano.function([a], gpu_from_host(a))
+    f = theano.function([a], GpuFromHost(None)(a))
     fv = f(av)
     assert GpuArrayType.values_eq(fv, gv)
 
@@ -208,14 +203,14 @@ def test_transfer_strided():
 
 
 def gpu_alloc_expected(x, *shp):
-    g = gpuarray.empty(shp, dtype=x.dtype)
+    g = gpuarray.empty(shp, dtype=x.dtype, context=get_context(test_ctx_name))
     g[:] = x
     return g
 
 GpuAllocTester = makeTester(
     name="GpuAllocTester",
     op=alloc,
-    gpu_op=gpu_alloc,
+    gpu_op=GpuAlloc(test_ctx_name),
     cases=dict(
         correct01=(rand(), numpy.int32(7)),
         # just gives a DeepCopyOp with possibly wrong results on the CPU
@@ -413,10 +408,10 @@ def test_hostfromgpu_shape_i():
     cv = gpuarray.asarray(numpy.random.rand(5, 4),
                           dtype='float32')
 
-    f = theano.function([a], gpu_from_host(a), mode=m)
-    assert gpu_from_host in [x.op
-                             for x in f.maker.fgraph.toposort()]
-    f = theano.function([a], gpu_from_host(a).shape, mode=m)
+    f = theano.function([a], GpuFromHost(None)(a), mode=m)
+    assert any([isinstance(x.op, GpuFromHost)
+                for x in f.maker.fgraph.toposort()])
+    f = theano.function([a], GpuFromHost(None)(a).shape, mode=m)
     topo = f.maker.fgraph.toposort()
     assert isinstance(topo[0].op, T.opt.Shape_i)
     assert isinstance(topo[1].op, T.opt.Shape_i)
