@@ -337,7 +337,15 @@ def inplace_elemwise_optimizer_op(OP):
                         # The candidate output is an update. Sort the
                         # variables in candidate_inputs in the following order:
                         # - Vars corresponding to the actual updated input
-                        # - Vars computed inplace on the updates input
+                        #   (best case scenario is for the node that procudes
+                        #   an update to operate inplace on the variable to
+                        #   update)
+                        # - Vars computed inplace on the updates input (second
+                        #   best scenario if for the node to work inplace on
+                        #   a variable obtained by a chain of inplace on the
+                        #   variable to update. In some cases, this will be
+                        #   equivalent to operating inplace on the variable to
+                        #   update)
                         # - Remaining variables
                         fgraph_out_idx = fgraph.outputs.index(candidate_out_var)
                         updated_inp_idx = fgraph.update_mapping[fgraph_out_idx]
