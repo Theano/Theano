@@ -364,9 +364,6 @@ class PushOutNonSeqScan(gof.Optimizer):
                     assert isinstance(y, type(nw_outer_node.outputs[idx]))
                     replace_with_out.append(nw_outer_node.outputs[idx])
 
-            # Remove the node from the bookkeeper
-            #local_fgraph_bookkeeper = local_fgraph_bookkeeper[1:]
-
 
         # We need to check all candidate replacements and choose those that
         # make sense for us
