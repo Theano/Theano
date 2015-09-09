@@ -14,7 +14,11 @@ from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            gpu_contiguous)
 from theano.tensor import as_tensor_variable
 
+
 class BatchedDotOp(GpuOp):
+    """
+    Call cublasSgemmBatched. Take 2 3d tensor as input.
+    """
 
     __props__ = ()
 
