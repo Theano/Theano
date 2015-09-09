@@ -51,6 +51,32 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         assert numpy.allclose(vx, f(1, vx, vy))
         assert numpy.allclose(vy, f(0, vx, vy))
 
+    def test_not_lazy_if_inplace(self):
+        # Tests that if the outputs are scalars and the graph is big,
+        # we disable the inplace opt to speed up optimization
+        x = tensor.vector('x', dtype=self.dtype)
+        y = tensor.vector('y', dtype=self.dtype)
+        c = tensor.iscalar('c')
+        mode = theano.compile.get_mode(self.mode).excluding(
+            # Disable many opt to keep the graph big enough to disable
+            # the opt.
+            'fusion', 'local_add_canonizer',
+            'inplace', 'constant_folding', 'constant_folding')
+        y2 = reduce(lambda x, y: x+y, [y] + range(200))
+        f = theano.function([c, x, y], ifelse(c, x, y2), mode=mode)
+        # For not inplace ifelse
+        self.assertFunctionContains1(f, IfElse(1))
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        xlen = rng.randint(200)
+        ylen = rng.randint(200)
+
+        vx = numpy.asarray(rng.uniform(size=(xlen,)), self.dtype)
+        vy = numpy.asarray(rng.uniform(size=(ylen,)), self.dtype)
+
+        assert numpy.allclose(vx, f(1, vx, vy))
+        assert numpy.allclose(vy + sum(range(200)), f(0, vx, vy))
+
     def test_mixed_dtype(self):
         x1 = tensor.vector('x1', dtype='int32')
         x2 = tensor.vector('x2', dtype=self.dtype)
