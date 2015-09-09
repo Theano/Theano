@@ -321,7 +321,7 @@ class SequenceDB(DB):
 
         position_cutoff = kwtags.pop('position_cutoff',
                                      config.optdb.position_cutoff)
-        position_dict = self.__position__.copy()
+        position_dict = self.__position__
 
         if len(tags) >= 1 and isinstance(tags[0], Query):
             # the call to super should have raise an error with a good message
@@ -330,7 +330,9 @@ class SequenceDB(DB):
                 position_cutoff = tags[0].position_cutoff
 
             # The Query instance might contain extra optimizations which need
-            # to be added the the sequence of optimizations
+            # to be added the the sequence of optimizations (don't alter the
+            # original dictionary)
+            position_dict = position_dict.copy()
             for extra_opt in tags[0].extra_optimizations:
                 # Give a name to the extra optimization
                 opt, position = extra_opt
