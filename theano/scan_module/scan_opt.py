@@ -329,9 +329,9 @@ class PushOutNonSeqScan(gof.Optimizer):
 
                 # Add the nodes only if they are not already
                 # in the bookkeeper's list
-                for nd_cli in node_clients:
-                    if nd_cli not in local_fgraph_bookkeeper:
-                        local_fgraph_bookkeeper.append(nd_cli)
+                nd_cli_cleaned = filter(lambda x: x not in local_fgraph_bookkeeper,
+                                        node_clients)
+                local_fgraph_bookkeeper.extend(nd_cli_cleaned)
 
                 outside_ins = []
                 for x in nd.inputs:
@@ -363,7 +363,6 @@ class PushOutNonSeqScan(gof.Optimizer):
                     replace_with_in.append(y_place_holder)
                     assert isinstance(y, type(nw_outer_node.outputs[idx]))
                     replace_with_out.append(nw_outer_node.outputs[idx])
-
 
         # We need to check all candidate replacements and choose those that
         # make sense for us
@@ -485,7 +484,6 @@ class PushOutSeqScan(gof.Optimizer):
         local_fgraph_inps = local_fgraph.inputs
         local_fgraph_bookkeeper = deque(retrieve_clients_fromnodes(local_fgraph_inps))
 
-
         local_fgraph_outs_set = set(local_fgraph.outputs)
         local_fgraph_outs_map = dict([(v,k) for k,v in \
                                      enumerate(local_fgraph.outputs)])
@@ -519,8 +517,10 @@ class PushOutSeqScan(gof.Optimizer):
         assert len(inner_non_seqs) == len(outer_non_seqs)
         assert len(inner_seqs) == len(outer_seqs)
 
+
         while local_fgraph_bookkeeper:
             nd = local_fgraph_bookkeeper.pop()
+
             if (nd not in to_remove_set and
                 all([(x in inner_non_seqs_set) or
                      (x.owner in to_remove_set) or
@@ -560,14 +560,13 @@ class PushOutSeqScan(gof.Optimizer):
                     # scan.
                     continue
 
-
                 node_clients = retrieve_clients_fromnodes(nd)
 
                 # Add the nodes only if they are not already
                 # in the bookkeeper's list
-                for nd_cli in node_clients:
-                    if nd_cli not in local_fgraph_bookkeeper:
-                        local_fgraph_bookkeeper.append(nd_cli)
+                nd_cli_cleaned = filter(lambda x: x not in local_fgraph_bookkeeper,
+                                        node_clients)
+                local_fgraph_bookkeeper.extend(nd_cli_cleaned)
 
                 # Add the node to remove list
                 to_remove_set.add(nd)
@@ -634,7 +633,7 @@ class PushOutSeqScan(gof.Optimizer):
         clean_replace_with_out = []
 
         existent_nodes = [nd for nd in local_fgraph_topo
-                          if nd not in to_remove_set]
+                        if nd not in to_remove_set]
         existent_nodes_set = set(existent_nodes)
 
         to_keep_set = set([])
@@ -643,10 +642,10 @@ class PushOutSeqScan(gof.Optimizer):
 
         for out, idx in to_replace_map.items():
             if (out in to_keep_set
-               and out.owner not in existent_nodes_set
-               # If types are different, conversion Op will be inserted,
-               # and it may trigger an infinite loop.
-               and replace_with_in[idx].type == out.type):
+            and out.owner not in existent_nodes_set
+            # If types are different, conversion Op will be inserted,
+            # and it may trigger an infinite loop.
+            and replace_with_in[idx].type == out.type):
 
                 clean_to_replace.append(out)
                 clean_replace_with_in.append(replace_with_in[idx])
@@ -658,8 +657,8 @@ class PushOutSeqScan(gof.Optimizer):
             nw_outer = []
             nw_inner = []
             for to_repl, repl_in, repl_out in zip(clean_to_replace,
-                                                  clean_replace_with_in,
-                                                  clean_replace_with_out):
+                                                clean_replace_with_in,
+                                                clean_replace_with_out):
                 if isinstance(repl_out, theano.Constant):
                     repl_in = repl_out.clone()
                 else:
@@ -678,7 +677,7 @@ class PushOutSeqScan(gof.Optimizer):
             nwScan = scan_op.Scan(op_ins, op_outs, nw_info)
             # Do not call make_node for test_value
             nw_node = nwScan(*(node.inputs[:1] + nw_outer + node.inputs[1:]),
-                             **dict(return_list=True))[0].owner
+                            **dict(return_list=True))[0].owner
 
             fgraph.replace_all_validate_remove(
                 list(zip(node.outputs, nw_node.outputs)),
@@ -686,8 +685,8 @@ class PushOutSeqScan(gof.Optimizer):
                 reason='scanOp_pushout_seqs_ops')
             return True
         elif (not to_keep_set and
-              not op.as_while and
-              not op.outer_mitmot(node)):
+            not op.as_while and
+            not op.outer_mitmot(node)):
             # Nothing in the inner graph should be kept
             replace_with = OrderedDict()
             for out, idx in to_replace_map.items():
