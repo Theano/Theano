@@ -16,10 +16,6 @@ from theano.tensor import as_tensor_variable
 
 
 class BatchedDotOp(GpuOp):
-    """
-    Call cublasSgemmBatched. Take 2 3d tensor as input.
-    """
-
     __props__ = ()
 
     def make_node(self, inp1, inp2):
@@ -217,6 +213,10 @@ class BatchedDotOp(GpuOp):
         return (1,)
 
 batched_dot = BatchedDotOp()
+"""
+Call cublasSgemmBatched. Take 2 3d tensor as input.
+"""
+
 
 class GpuDot22(GpuOp):
     """
