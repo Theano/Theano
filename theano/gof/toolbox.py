@@ -448,11 +448,8 @@ class NoOutputFromInplace(Feature):
         if not hasattr(fgraph, 'destroyers'):
             return True
 
-        if self.last_idx is None:
-            outputs_to_validate = list(fgraph.outputs)[self.first_idx:]
-        else:
-            outputs_to_validate = list(fgraph.outputs)[self.first_idx:
-                                                       self.last_idx]
+        outputs_to_validate = list(fgraph.outputs)[self.first_idx:
+                                                   self.last_idx]
 
         for out in outputs_to_validate:
 
