@@ -80,6 +80,9 @@ A non-None `value` argument makes an In() instance an optional parameter
 of the compiled function.  For example, in the following code we are
 defining an arity-2 function ``inc``.
 
+>>> import theano.tensor as T
+>>> from theano import function
+>>> from theano.compile.io import In
 >>> u, x, s = T.scalars('u', 'x', 's')
 >>> inc = function([u, In(x, value=3), In(s, update=(s+x*u), value=10.0)], [])
 
@@ -179,27 +182,38 @@ method to access values by indexing a Function directly by typing
 
 To show some examples of these access methods...
 
-.. code-block:: python
 
-    a, b, c = T.scalars('xys') # set the internal names of graph nodes
-    # Note that the name of c is 's', not 'c'!
-    fn = function([a, b, ((c, c+a+b), 10.0)], [])
+>>> from theano import tensor as T, function
+>>> a, b, c = T.scalars('xys') # set the internal names of graph nodes
+>>> # Note that the name of c is 's', not 'c'!
+>>> fn = function([a, b, ((c, c+a+b), 10.0)], [])
 
-    #the value associated with c is accessible in 3 ways
-    assert fn['s'] is fn.value[c]
-    assert fn['s'] is fn.container[c].value
+>>> # the value associated with c is accessible in 3 ways
+>>> fn['s'] is fn.value[c]
+True
+>>> fn['s'] is fn.container[c].value
+True
 
-    assert fn['s'] == 10.0
-    fn(1, 2)
-    assert fn['s'] == 13.0
-    fn.s = 99.0
-    fn(1, 0)
-    assert fn['s'] == 100.0
-    fn.value[c] = 99.0
-    fn(1,0)
-    assert fn['s'] == 100.0
-    assert fn['s'] == fn.value[c]
-    assert fn['s'] == fn.container[c].value
+>>> fn['s']
+array(10.0)
+>>> fn(1, 2)
+[]
+>>> fn['s']
+array(13.0)
+>>> fn['s'] = 99.0
+>>> fn(1, 0)
+[]
+>>> fn['s']
+array(100.0)
+>>> fn.value[c] = 99.0
+>>> fn(1,0)
+[]
+>>> fn['s']
+array(100.0)
+>>> fn['s'] == fn.value[c]
+True
+>>> fn['s'] == fn.container[c].value
+True
 
 
 Input Shortcuts
@@ -221,31 +235,41 @@ Every element of the inputs list will be upgraded to an In instance if necessary
 
 Example:
 
-.. code-block:: python
+>>> import theano
+>>> from theano import tensor as T
+>>> from theano.compile.io import In
+>>> x = T.scalar()
+>>> y = T.scalar('y')
+>>> z = T.scalar('z')
+>>> w = T.scalar('w')
 
-    import theano
-    from theano import tensor as T
-    from theano.compile.io import In
-    x = T.scalar()
-    y = T.scalar('y')
-    z = T.scalar('z')
-    w = T.scalar('w')
+>>> fn = theano.function(inputs=[x, y, In(z, value=42), ((w, w+x), 0)],
+...                      outputs=x + y + z)
+>>> # the first two arguments are required and the last two are
+>>> # optional and initialized to 42 and 0, respectively.
+>>> # The last argument, w, is updated with w + x each time the
+>>> # function is called.
 
-    fn = theano.function(inputs = [x, y, In(z, value=42), ((w, w+x), 0)],
-                         outputs = x + y + z)
-    # the first two arguments are required and the last two are
-    # optional and initialized to 42 and 0, respectively.
-    # The last argument, w, is updated with w + x each time the
-    # function is called.
-
-    fn(1)               # illegal because there are two required arguments
-    fn(1, 2)            # legal, z is 42, w goes 0 -> 1 (because w <- w + x), returns array(45.0)
-    fn(1, y = 2)        # legal, z is 42, w goes 1 -> 2, returns array(45.0)
-    fn(x = 1, y = 2)    # illegal because x was not named
-    fn(1, 2, 3)         # legal, z is 3, w goes 2 -> 3, returns array(6.0)
-    fn(1, z = 3, y = 2) # legal, z is 3, w goes 3 -> 4, returns array(6.0)
-    fn(1, 2, w = 400)   # legal, z is 42 again, w goes 400 -> 401, returns array(45.0)
-    fn(1, 2)            # legal, z is 42, w goes 401 -> 402, returns array(45.0)
+>>> fn(1)               # illegal because there are two required arguments # doctest: +ELLIPSIS
+Traceback (most recent call last):
+  ...
+TypeError: Missing required input: y
+>>> fn(1, 2)            # legal, z is 42, w goes 0 -> 1 (because w <- w + x)
+array(45.0)
+>>> fn(1, y=2)        # legal, z is 42, w goes 1 -> 2
+array(45.0)
+>>> fn(x=1, y=2)    # illegal because x was not named # doctest: +ELLIPSIS
+Traceback (most recent call last):
+  ...
+TypeError: Unknown input or state: x. The function has 3 named inputs (y, z, w), and 1 unnamed input which thus cannot be accessed through keyword argument (use 'name=...' in a variable's constructor to give it a name).
+>>> fn(1, 2, 3)         # legal, z is 3, w goes 2 -> 3
+array(6.0)
+>>> fn(1, z=3, y=2) # legal, z is 3, w goes 3 -> 4
+array(6.0)
+>>> fn(1, 2, w=400)   # legal, z is 42 again, w goes 400 -> 401
+array(45.0)
+>>> fn(1, 2)            # legal, z is 42, w goes 401 -> 402
+array(45.0)
 
 In the example above, ``z`` has value 42 when no value is explicitly given.
 This default value is potentially used at every function invocation, because
@@ -282,20 +306,25 @@ If a single ``Variable`` or ``Out`` instance is given as argument, then the comp
 
 If a list of ``Variable`` or ``Out`` instances is given as argument, then the compiled function will return a list of their values.
 
-.. code-block:: python
+>>> import numpy
+>>> from theano.compile.io import Out
+>>> x, y, s = T.matrices('xys')
 
-    x, y, s = T.matrices('xys')
+>>> # print a list of 2 ndarrays
+>>> fn1 = theano.function([x], [x+x, Out((x+x).T, borrow=True)])
+>>> fn1(numpy.asarray([[1,0],[0,1]]))
+[array([[ 2.,  0.],
+       [ 0.,  2.]]), array([[ 2.,  0.],
+       [ 0.,  2.]])]
 
-    # print a list of 2 ndarrays
-    fn1 = theano.function([x], [x+x, Out((x+x).T, borrow=True)])
-    print fn1(numpy.asarray([[1,0],[0,1]]))
+>>> # print a list of 1 ndarray
+>>> fn2 = theano.function([x], [x+x])
+>>> fn2(numpy.asarray([[1,0],[0,1]]))
+[array([[ 2.,  0.],
+       [ 0.,  2.]])]
 
-
-    # print a list of 1 ndarray
-    fn2 = theano.function([x], [x+x])
-    print fn2(numpy.asarray([[1,0],[0,1]]))
-
-    # print an ndarray
-    fn3 = theano.function([x], outputs=x+x)
-    print fn3(numpy.asarray([[1,0],[0,1]]))
-
+>>> # print an ndarray
+>>> fn3 = theano.function([x], outputs=x+x)
+>>> fn3(numpy.asarray([[1,0],[0,1]]))
+array([[ 2.,  0.],
+       [ 0.,  2.]])

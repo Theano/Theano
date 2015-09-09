@@ -34,8 +34,9 @@ detail about these building blocks refer to :ref:`variable`, :ref:`op`,
 
 **Code**
 
-.. code-block:: python
+.. testcode::
 
+    import theano.tensor as T
     x = T.dmatrix('x')
     y = T.dmatrix('y')
     z = x + y
@@ -159,9 +160,9 @@ as we apply it. Consider the following example of optimization:
 >>> f = theano.function([a], b)        # compile function
 >>> print f([0, 1, 2])                 # prints `array([0,2,1026])`
 [    0.     2.  1026.]
->>> theano.printing.pydotprint(b, outfile="./pics/symbolic_graph_unopt.png", var_with_name_simple=True)
+>>> theano.printing.pydotprint(b, outfile="./pics/symbolic_graph_unopt.png", var_with_name_simple=True)  # doctest: +SKIP
 The output file is available at ./pics/symbolic_graph_unopt.png
->>> theano.printing.pydotprint(f, outfile="./pics/symbolic_graph_opt.png", var_with_name_simple=True)
+>>> theano.printing.pydotprint(f, outfile="./pics/symbolic_graph_opt.png", var_with_name_simple=True)  # doctest: +SKIP
 The output file is available at ./pics/symbolic_graph_opt.png
 
 

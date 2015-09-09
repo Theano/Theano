@@ -35,7 +35,10 @@ happens automatically.
 
 The equivalent Theano code would be:
 
-.. code-block:: python
+.. testcode::
+
+  import theano
+  import theano.tensor as T
 
   k = T.iscalar("k")
   A = T.vector("A")
@@ -56,6 +59,13 @@ The equivalent Theano code would be:
 
   print power(range(10),2)
   print power(range(10),4)
+
+.. testoutput::
+
+    [  0.   1.   4.   9.  16.  25.  36.  49.  64.  81.]
+    [  0.00000000e+00   1.00000000e+00   1.60000000e+01   8.10000000e+01
+       2.56000000e+02   6.25000000e+02   1.29600000e+03   2.40100000e+03
+       4.09600000e+03   6.56100000e+03]
 
 Let us go through the example line by line. What we did is first to
 construct a function (using a lambda expression) that given ``prior_result`` and
@@ -88,7 +98,9 @@ The tensor(s) to be looped over should be provided to scan using the
 Here's an example that builds a symbolic calculation of a polynomial
 from a list of its coefficients:
 
-.. code-block:: python
+.. testcode::
+
+    import numpy
 
     coefficients = theano.tensor.vector("coefficients")
     x = T.scalar("x")
@@ -111,6 +123,11 @@ from a list of its coefficients:
     test_value = 3
     print calculate_polynomial(test_coefficients, test_value)
     print 1.0 * (3 ** 0) + 0.0 * (3 ** 1) + 2.0 * (3 ** 2)
+
+.. testoutput::
+
+    19.0
+    19.0
 
 There are a few things to note here.
 
@@ -142,7 +159,7 @@ pitfall to be careful of: the initial output state that is supplied, that is
 generated at each iteration and moreover, it **must not involve an implicit
 downcast** of the latter.
 
-.. code-block:: python
+.. testcode::
 
 
     import numpy as np
@@ -169,9 +186,13 @@ downcast** of the latter.
 
     # test
     some_num = 15
-    print triangular_sequence(some_num)
-    print [n * (n + 1) // 2 for n in xrange(some_num)]
+    print(triangular_sequence(some_num))
+    print([n * (n + 1) // 2 for n in xrange(some_num)])
+    
+.. testoutput::
 
+    [  0   1   3   6  10  15  21  28  36  45  55  66  78  91 105]
+    [0, 1, 3, 6, 10, 15, 21, 28, 36, 45, 55, 66, 78, 91, 105]
 
 Another simple example
 ----------------------
@@ -183,7 +204,7 @@ and a "model" output array (whose shape and dtype will be mimicked),
 and produces a sequence of arrays with the shape and dtype of the model,
 with all values set to zero except at the provided array indices.
 
-.. code-block:: python
+.. testcode::
 
     location = T.imatrix("location")
     values = T.vector("values")
@@ -205,7 +226,21 @@ with all values set to zero except at the provided array indices.
     test_locations = numpy.asarray([[1, 1], [2, 3]], dtype=numpy.int32)
     test_values = numpy.asarray([42, 50], dtype=numpy.float32)
     test_output_model = numpy.zeros((5, 5), dtype=numpy.float32)
-    print assign_values_at_positions(test_locations, test_values, test_output_model)
+    print(assign_values_at_positions(test_locations, test_values, test_output_model))
+
+.. testoutput::
+
+    [[[  0.   0.   0.   0.   0.]
+      [  0.  42.   0.   0.   0.]
+      [  0.   0.   0.   0.   0.]
+      [  0.   0.   0.   0.   0.]
+      [  0.   0.   0.   0.   0.]]
+
+     [[  0.   0.   0.   0.   0.]
+      [  0.   0.   0.   0.   0.]
+      [  0.   0.   0.  50.   0.]
+      [  0.   0.   0.   0.   0.]
+      [  0.   0.   0.   0.   0.]]]
 
 This demonstrates that you can introduce new Theano variables into a scan function.
 
@@ -219,28 +254,39 @@ Another useful feature of scan, is that it can handle shared variables.
 For example, if we want to implement a Gibbs chain of length 10 we would do
 the following:
 
-.. code-block:: python
+.. testsetup:: scan1
 
-    W = theano.shared(W_values) # we assume that ``W_values`` contains the
-                                # initial values of your weight matrix
+   import theano
+   import numpy
+   W_values = numpy.random.random((2, 2))
+   bvis_values = numpy.random.random((2,))
+   bhid_values = numpy.random.random((2,))
 
-    bvis = theano.shared(bvis_values)
-    bhid = theano.shared(bhid_values)
+.. testcode:: scan1
 
-    trng = T.shared_randomstreams.RandomStreams(1234)
+   import theano
+   from theano import tensor as T
 
-    def OneStep(vsample) :
-        hmean = T.nnet.sigmoid(theano.dot(vsample, W) + bhid)
-        hsample = trng.binomial(size=hmean.shape, n=1, p=hmean)
-        vmean = T.nnet.sigmoid(theano.dot(hsample, W.T) + bvis)
-        return trng.binomial(size=vsample.shape, n=1, p=vmean,
-                         dtype=theano.config.floatX)
+   W = theano.shared(W_values) # we assume that ``W_values`` contains the
+                               # initial values of your weight matrix
 
-    sample = theano.tensor.vector()
+   bvis = theano.shared(bvis_values)
+   bhid = theano.shared(bhid_values)
 
-    values, updates = theano.scan(OneStep, outputs_info=sample, n_steps=10)
+   trng = T.shared_randomstreams.RandomStreams(1234)
 
-    gibbs10 = theano.function([sample], values[-1], updates=updates)
+   def OneStep(vsample) :
+       hmean = T.nnet.sigmoid(theano.dot(vsample, W) + bhid)
+       hsample = trng.binomial(size=hmean.shape, n=1, p=hmean)
+       vmean = T.nnet.sigmoid(theano.dot(hsample, W.T) + bvis)
+       return trng.binomial(size=vsample.shape, n=1, p=vmean,
+                            dtype=theano.config.floatX)
+
+   sample = theano.tensor.vector()
+
+   values, updates = theano.scan(OneStep, outputs_info=sample, n_steps=10)
+
+   gibbs10 = theano.function([sample], values[-1], updates=updates)
 
 
 The first, and probably most crucial observation is that the updates
@@ -251,7 +297,11 @@ update dictionary to your function, you will always get the same 10
 sets of random numbers. You can even use the ``updates`` dictionary
 afterwards. Look at this example :
 
-.. code-block:: python
+.. testsetup:: scan2
+
+   import theano
+
+.. testcode:: scan2
 
     a = theano.shared(1)
     values, updates = theano.scan(lambda: {a: a+1}, n_steps=10)
@@ -260,15 +310,22 @@ In this case the lambda expression does not require any input parameters
 and returns an update dictionary which tells how ``a`` should be updated
 after each step of scan. If we write :
 
-.. code-block:: python
+.. testcode:: scan2
 
     b = a + 1
     c = updates[a] + 1
     f = theano.function([], [b, c], updates=updates)
 
-    print b
-    print c
-    print a.value
+    print(b)
+    print(c)
+    print(a.get_value())
+
+.. testoutput:: scan2
+   :hide:
+
+   Elemwise{add,no_inplace}.0
+   Elemwise{add,no_inplace}.0
+   1
 
 We will see that because ``b`` does not use the updated version of
 ``a``, it will be 2, ``c`` will be 12, while ``a.value`` is ``11``.
@@ -289,7 +346,7 @@ execution. To pass the shared variables to Scan you need to put them in a list
 and give it to the ``non_sequences`` argument. Here is the Gibbs sampling code
 updated:
 
-.. code-block:: python
+.. testcode:: scan1
 
     W = theano.shared(W_values) # we assume that ``W_values`` contains the
                                 # initial values of your weight matrix
@@ -332,7 +389,7 @@ to be ensured by the user. Otherwise, it will result in an error.
 
 Using the previous Gibbs sampling example:
 
-.. code-block:: python
+.. testcode:: scan1
 
     # The new scan, using strict=True
     values, updates = theano.scan(fn=OneStep,
@@ -369,7 +426,12 @@ In this case we have a sequence over which we need to iterate ``u``,
 and two outputs ``x`` and ``y``. To implement this with scan we first
 construct a function that computes one iteration step :
 
-.. code-block:: python
+.. testsetup:: scan3
+
+   import theano
+   from theano import tensor as T
+
+.. testcode:: scan3
 
   def oneStep(u_tm4, u_t, x_tm3, x_tm1, y_tm1, W, W_in_1, W_in_2,  W_feedback, W_out):
 
@@ -392,9 +454,15 @@ an order, but also variables, since this is how scan figures out what should
 be represented by what. Given that we have all
 the Theano variables needed we construct our RNN as follows :
 
-.. code-block:: python
+.. testcode:: scan3
 
-   u  = T.matrix() # it is a sequence of vectors
+   W = T.matrix()
+   W_in_1 = T.matrix()
+   W_in_2 = T.matrix()
+   W_feedback = T.matrix()
+   W_out = T.matrix()
+
+   u = T.matrix() # it is a sequence of vectors
    x0 = T.matrix() # initial state of x has to be a matrix, since
                    # it has to cover x[-3]
    y0 = T.vector() # y0 is just a vector since scan has only to provide
@@ -432,7 +500,7 @@ provided condition evaluates to True.
 For an example, we will compute all powers of two smaller then some provided
 value ``max_value``.
 
-.. code-block:: python
+.. testcode::
 
     def power_of_2(previous_power, max_value):
         return previous_power*2, theano.scan_module.until(previous_power*2 > max_value)
@@ -446,6 +514,10 @@ value ``max_value``.
     f = theano.function([max_value], values)
 
     print f(45)
+    
+.. testoutput::
+
+    [  2.   4.   8.  16.  32.  64.]
 
 As you can see, in order to terminate on condition, the only thing required
 is that the inner function ``power_of_2`` to return also the condition

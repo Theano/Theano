@@ -9,6 +9,10 @@
    :synopsis: low-level automatic differentiation
 .. moduleauthor:: LISA
 
+.. testsetup:: *
+
+   from theano.gradient import *
+
 Symbolic gradient is usually computed from :func:`gradient.grad`, which offers a
 more convenient syntax for the common case of wanting the gradient in some
 expressions with respect to a scalar cost.  The :func:`grad_sources_inputs`

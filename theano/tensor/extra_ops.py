@@ -1092,6 +1092,7 @@ class Unique(theano.Op):
     Examples
     --------
     >>> import numpy as np
+    >>> import theano
 
     >>> x = theano.tensor.vector()
     >>> f = theano.function([x], Unique(True, True, False)(x))

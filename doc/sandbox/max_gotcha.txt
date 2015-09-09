@@ -22,17 +22,20 @@ max.  The third argument is an array into which the result can be
 written.
 
 So for example:
-.. code-block:: python
 
-    >>> max(3, 4)
-    4
-    >>> numpy.max(3, 4)
-    3
-    >>> a,b,c = [numpy.asarray(i) for i in [0,1,2]]
-    >>> numpy.max(a,b,c)
-    0
-    >>> c
-    array(0)
+.. doctest::
+   :options: +SKIP
+
+   >>> import numpy
+   >>> max(3, 4)
+   4
+   >>> numpy.max(3, 4) # This is an error
+   3
+   >>> a, b, c = [numpy.asarray(i) for i in [0, 1, 2]]
+   >>> numpy.max(a, b, c) # This is an error
+   0
+   >>> c
+   array(0)
 
 Be careful!
 
