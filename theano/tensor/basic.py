@@ -1339,10 +1339,10 @@ class MaxAndArgmax(Op):
     def infer_shape(self, node, shapes):
         ishape, axis_shape = shapes
         axis = node.inputs[1]
-        if node.inputs[1].data is None:
+        if axis.data is None:
             return [(), ()]
         rval = tuple([ishape[i] for (i, b) in enumerate(
-            node.inputs[0].type.broadcastable) if i != axis.data])
+            node.inputs[0].type.broadcastable) if i not in axis.data])
         return [rval, rval]
 
     def R_op(self, inputs, eval_points):
