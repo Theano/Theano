@@ -4,7 +4,7 @@ import logging
 import numpy as np
 
 import theano
-from theano.configparser import config, AddConfigVar, BoolParam
+from theano.configparser import config, AddConfigVar, BoolParam, EnumStr
 import theano.tensor as T
 import theano.sandbox.cuda as cuda
 from theano.compile import Mode
@@ -22,6 +22,11 @@ AddConfigVar('NanGuardMode.inf_is_error',
 AddConfigVar('NanGuardMode.big_is_error',
              "Default value for big_is_error",
              BoolParam(True),
+             in_c_key=False)
+
+AddConfigVar('NanGuardMode.action',
+             "What NanGuardMode do when it find a problem",
+             EnumStr('raise', 'warn', 'pdb'),
              in_c_key=False)
 
 
@@ -266,20 +271,23 @@ class NanGuardMode(Mode):
                     logger.error('Big value detected')
                     error = True
             if error:
-                if is_input:
-                    logger.error('In an input')
+                if not is_input:
+                    logger.error("NanGuardMode found an error in the"
+                                 " output of a node in this variable:")
+                    logger.error(theano.printing.debugprint(nd, file='str'))
                 else:
-                    logger.error('In an output')
-                logger.error('Inputs: ')
-                for ivar, ival in zip(nd.inputs, f.inputs):
-                    logger.error('var')
-                    logger.error(ivar)
-                    logger.error(theano.printing.min_informative_str(ivar))
-                    logger.error('val')
-                    logger.error(ival)
-                logger.error('Node:')
-                logger.error(nd)
-                assert False
+                    logger.error("NanGuardMode found an error in the"
+                                 " input %d of this node.")
+                    logger.error('Node:')
+                    logger.error(nd)
+                    logger.error("The input variable that cause problem:")
+                    logger.error(theano.printing.debugprint(nd, file='str'))
+                if config.NanGuardMode.action == 'raise':
+                    assert False
+                elif config.NanGuardMode.action == 'pdb':
+                    import pdb;pdb.set_trace()
+                elif config.NanGuardMode.action == 'warn':
+                    pass  # already printed
 
         def nan_check(i, node, fn):
             """
