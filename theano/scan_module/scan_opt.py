@@ -211,7 +211,9 @@ def remove_constants_and_unused_inputs_scan(node):
 
 def retrieve_clients_fromnodes(nodes):
     clients = []
-    if not isinstance(nodes, list):
+    if isinstance(nodes, set):
+        nodes = list(nodes)
+    elif not isinstance(nodes, list):
         nodes = [nodes]
 
     for node in nodes:
@@ -219,20 +221,12 @@ def retrieve_clients_fromnodes(nodes):
             node_outs = node.outputs
             for node_out in node_outs:
                 for ncli in node_out.clients:
-                    if isinstance(ncli[0], list) or isinstance(ncli[0], tuple):
-                        if ncli[0][0] != "output" and ncli[0][0] != node:
-                            clients.append(ncli[0][0])
-                    else:
-                        if ncli[0] != "output" and ncli[0] != node:
-                           clients.append(ncli[0])
+                    if ncli[0] != "output":
+                        clients.append(ncli[0])
         else:
             for ncli in node.clients:
-                if isinstance(ncli[0], list) or isinstance(ncli[0], tuple):
-                    if ncli[0][0] != "output" and ncli[0][0] != node:
-                        clients.append(ncli[0][0])
-                else:
-                    if ncli[0] != "output" and ncli[0] != node:
-                        clients.append(ncli[0])
+                if ncli[0] != "output":
+                    clients.append(ncli[0])
 
     return clients
 
@@ -273,7 +267,7 @@ class PushOutNonSeqScan(gof.Optimizer):
                                          clone=False)
 
         local_fgraph_topo = local_fgraph.toposort()
-        local_fgraph_inps = local_fgraph.inputs
+        local_fgraph_inps = set(local_fgraph.inputs)
         local_fgraph_bookkeeper = deque(retrieve_clients_fromnodes(local_fgraph_inps))
 
         local_fgraph_outs_set = set(local_fgraph.outputs)
@@ -325,13 +319,13 @@ class PushOutNonSeqScan(gof.Optimizer):
                 # We have a candidate node to removable
                 # Step 1. Reconstruct it on outside
                 to_remove_set.add(nd)
-                node_clients = retrieve_clients_fromnodes(nd)
+                node_clients = list(set(retrieve_clients_fromnodes(nd)))
 
                 # Add the nodes only if they are not already
                 # in the bookkeeper's list
                 nd_cli_cleaned = filter(lambda x: x not in local_fgraph_bookkeeper,
                                         node_clients)
-                local_fgraph_bookkeeper.extend(nd_cli_cleaned)
+                local_fgraph_bookkeeper.extendleft(nd_cli_cleaned)
 
                 outside_ins = []
                 for x in nd.inputs:
@@ -481,7 +475,7 @@ class PushOutSeqScan(gof.Optimizer):
         local_fgraph = gof.FunctionGraph(clean_inputs, clean_outputs,
                                          clone=False)
         local_fgraph_topo = local_fgraph.toposort()
-        local_fgraph_inps = local_fgraph.inputs
+        local_fgraph_inps = set(local_fgraph.inputs)
         local_fgraph_bookkeeper = deque(retrieve_clients_fromnodes(local_fgraph_inps))
 
         local_fgraph_outs_set = set(local_fgraph.outputs)
@@ -497,8 +491,8 @@ class PushOutSeqScan(gof.Optimizer):
             to_replace_set.add(y)
             to_replace_map[y] = add_to_replace.n
             add_to_replace.n += 1
-        add_to_replace.n = 0
 
+        add_to_replace.n = 0
         replace_with_in = []
         replace_with_out = []
 
@@ -560,13 +554,13 @@ class PushOutSeqScan(gof.Optimizer):
                     # scan.
                     continue
 
-                node_clients = retrieve_clients_fromnodes(nd)
+                node_clients = list(set(retrieve_clients_fromnodes(nd)))
 
                 # Add the nodes only if they are not already
                 # in the bookkeeper's list
                 nd_cli_cleaned = filter(lambda x: x not in local_fgraph_bookkeeper,
                                         node_clients)
-                local_fgraph_bookkeeper.extend(nd_cli_cleaned)
+                local_fgraph_bookkeeper.extendleft(nd_cli_cleaned)
 
                 # Add the node to remove list
                 to_remove_set.add(nd)
@@ -587,15 +581,15 @@ class PushOutSeqScan(gof.Optimizer):
                   (nd.inputs[0] in inner_seqs_set or
                   nd.inputs[0].owner in to_remove_set)):
 
-                node_clients = retrieve_clients_fromnodes(nd)
-
-                # Add the nodes only if they are not already
-                # in the bookkeeper's list
-                for nd_cli in node_clients:
-                    if nd_cli not in local_fgraph_bookkeeper:
-                        local_fgraph_bookkeeper.append(nd_cli)
+                node_clients = list(set(retrieve_clients_fromnodes(nd)))
 
                 to_remove_set.add(nd)
+                # Add the nodes only if they are not already
+                # in the bookkeeper's list
+                nd_cli_cleaned = filter(lambda x: x not in local_fgraph_bookkeeper,
+                                        node_clients)
+                local_fgraph_bookkeeper.extendleft(nd_cli_cleaned)
+
 
                 x = nd.inputs[0]
                 if x in inner_seqs_set:
