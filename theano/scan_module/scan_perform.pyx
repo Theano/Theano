@@ -382,7 +382,7 @@ def perform(
             else:
                 old_input_data[idx] = None
 
-        # 5. compute outputs
+        # 5.0.1 compute outputs
         t0_fn = time.time()
 
         try:
@@ -403,8 +403,20 @@ def perform(
             pdx = offset + n_shared_outs
             cond = output_storage[pdx].storage[0] == 0
 
-        # Check which of the pre-allocated outputs (if applicable) have
-        # been reused by the inner function
+        # 5.0.2. By calling fn() directly instead of calling the theano
+        # function, it is possible that the updates have not been
+        # performed. Perform the updates if needed.
+        offset_out = len(output_storage) - 1
+        if getattr(fn, 'need_update_inputs', True):
+            # Update the inputs that have an update function
+            for inp, storage in zip(self.fn.maker.expanded_inputs,
+                                    self.fn.input_storage)[::-1]:
+                if inp.update is not None:
+                    storage.data = output_storage[offset_out].data
+                    offset_out -= 1
+
+        # 5.0.3. Check which of the pre-allocated outputs (if applicable)
+        # have been reused by the inner function
         for idx in range(len_output_storage):
             # If the storage map does not contain the same object, then
             # the pre-allocated output has not been reused
@@ -426,8 +438,8 @@ def perform(
             else:
                 output_reused[idx] = False
 
-        # Check which of the input storage have been modified by the inner
-        # function
+        # 5.0.4. Check which of the input storage have been modified by the
+        # inner function
         for idx in xrange(len(input_storage)):
             # If the storage map does not contain the same object, then
             # the pre-allocated output has not been reused
