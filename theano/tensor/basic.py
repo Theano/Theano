@@ -3984,7 +3984,7 @@ def shape_padaxis(t, axis):
 def stack(*tensors, **kwargs):
     """Insert the arguments as slices into a tensor of 1 rank greater.
 
-    The size in dimension 0 of the result will be equal to the number
+    The size in dimension `axis` of the result will be equal to the number
     of tensors passed.
 
     Note: The interface stack(*tensors) is deprecated, you should use
@@ -4027,6 +4027,13 @@ def stack(*tensors, **kwargs):
     if len(tensors) == 0:
         raise Exception('tensors is empty. You should at least provide one'
                         ' tensor to theano.tensor.stack(tensors, axis).')
+
+    ndim = tensors[0].ndim + 1
+    if not -ndim <= axis < ndim:
+        msg = 'axis {0} is out of bounds [-{1}, {1})'.format(axis, ndim)
+        raise IndexError(msg)
+    if axis < 0:
+        axis += ndim
 
     # If all tensors are scalars of the same type, call make_vector.
     # It makes the graph simpler, by not adding DimShuffles and Rebroadcasts
