@@ -243,13 +243,11 @@ class GpuDnnConvDesc(COp):
         assert conv_mode in ('conv', 'cross')
         self.conv_mode = conv_mode
 
-    def make_node(self, img_shape, kern_shape):
-        if img_shape.type.ndim != 1 or img_shape.type.dtype != 'int64':
-            raise TypeError('img must be 1D shape tensor')
+    def make_node(self, kern_shape):
         if kern_shape.type.ndim != 1 or kern_shape.type.dtype != 'int64':
             raise TypeError('kern must be 1D shape tensor')
 
-        return Apply(self, [img_shape, kern_shape],
+        return Apply(self, [kern_shape],
                      [CDataType("cudnnConvolutionDescriptor_t",
                                 freefunc="cudnnDestroyConvolutionDescriptor")()])
 
@@ -780,7 +778,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         out = GpuAllocEmpty(img.dtype)(shape_i(kerns, 1, fgraph),
                                        shape_i(img, 1, fgraph), shape2, shape3)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
-                              conv_mode='cross')(img.shape, out.shape)
+                              conv_mode='cross')(out.shape)
         conv = GpuDnnConvGradW()(img, kerns, out, desc)
         return as_gpuarray_variable(conv.dimshuffle(1, 0, 2, 3))
 
@@ -798,7 +796,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
                                        shape_i(kerns, 1, fgraph),
                                        shape2, shape3)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
-                              conv_mode=conv_mode)(out.shape, kerns.shape)
+                              conv_mode=conv_mode)(kerns.shape)
         return GpuDnnConvGradI()(kerns, img, out, desc)
 
     # Standard case: We use GpuDnnConv with suitable padding.
@@ -807,7 +805,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     img = gpu_contiguous(img)
     kerns = gpu_contiguous(kerns)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
-                          conv_mode=conv_mode)(img.shape, kerns.shape)
+                          conv_mode=conv_mode)(kerns.shape)
     desc_op = desc.owner.op
     out_shp = GpuDnnConv.get_out_shape(img.shape, kerns.shape,
                                        desc_op.border_mode,
