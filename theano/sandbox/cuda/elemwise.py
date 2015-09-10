@@ -66,7 +66,7 @@ class NaiveAlgo(object):
     def cache_version(self):
         ver = self.scalar_op.c_code_cache_version()
         if ver:
-            return (18, self.verbose, self.sync, ver)
+            return (19, self.verbose, self.sync, ver)
         else:
             return ver
 
@@ -156,7 +156,7 @@ class NaiveAlgo(object):
             sub=dict(fail='return;'))  # TODO: set a failure code somehow!!!
         print("       ", task_code, file=sio)
         for ipos, _ in enumerate(node.outputs):
-            print("o%i_data[i] = o%i_i;" % (ipos, ipos), file=sio)
+            print("ii_o%i_data[0] = o%i_i;" % (ipos, ipos), file=sio)
         print("    }", file=sio)
 
         #indent = " "*(4*d+7)
