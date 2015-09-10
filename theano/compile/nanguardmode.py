@@ -305,14 +305,16 @@ class NanGuardMode(Mode):
 
             """
             inputs = fn.inputs
-            # TODO: figure out why individual inputs are themselves lists
-            # sometimes
-            for x in flatten(inputs):
-                do_check_on(x, node, fn, True)
+            for x, var in zip(inputs, node.inputs):
+                # If the input is the result of computation, then we
+                # don't need to check it. It is already done after the
+                # computation.
+                if not var.owner:
+                    do_check_on(x[0], node, fn, True)
             fn()
             outputs = fn.outputs
-            for j, x in enumerate(flatten(outputs)):
-                do_check_on(x, node, fn, False)
+            for x in outputs:
+                do_check_on(x[0], node, fn, False)
 
         wrap_linker = theano.gof.WrapLinker([theano.gof.OpWiseCLinker()],
                                             nan_check)
