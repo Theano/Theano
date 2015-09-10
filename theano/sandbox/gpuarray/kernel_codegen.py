@@ -3,6 +3,12 @@ Helper routines for generating gpu kernels for nvcc.
 
 """
 
+try:
+    import pygpu
+    from pygpu import gpuarray
+except ImportError:
+    pass
+
 def nvcc_kernel(name, params, body):
     """
     Return the c code of a kernel function.
@@ -26,7 +32,7 @@ def nvcc_kernel(name, params, body):
             else:
                 yield b
     bodystr = ';\n'.join(flatbody())
-    return """__global__ void %(name)s (%(paramstr)s)
+    return """KERNEL void %(name)s (%(paramstr)s)
     {
         %(bodystr)s;
     }
@@ -167,11 +173,12 @@ def inline_softmax(N, buf, buf2, threadPos, threadCount, dtype="float32"):
     We use __i as an int variable in a loop.
 
     """
+    ctype = gpuarray.dtype_to_ctype(dtype)
     return [
             # get max of buf (trashing all but buf[0])
             inline_reduce_max(N, buf, threadPos, threadCount),
             '__syncthreads()',
-            ('npy_%s row_max = ' + buf + '[0]') % dtype,
+            ('%s row_max = ' + buf + '[0]') % ctype,
             '__syncthreads()',
             'for(int __i=' + threadPos + '; __i<' + N +
                   '; __i+=' + threadCount + '){',
@@ -181,7 +188,7 @@ def inline_softmax(N, buf, buf2, threadPos, threadCount, dtype="float32"):
             '__syncthreads()',
             inline_reduce_sum(N, buf, threadPos, threadCount),
             '__syncthreads()',
-            ('npy_%s row_sum = ' + buf + '[0]') % dtype,
+            ('%s row_sum = ' + buf + '[0]') % ctype,
             '__syncthreads()',
             # divide each exp() result by the sum to complete the job.
             'for(int __i=' + threadPos + '; __i<' + N +
@@ -259,11 +266,12 @@ def inline_reduce_fixed_shared(N, buf, x, stride_x, load_x, pos, count,
     r_2 = manner_fn("%s[%s]" % (buf, pos), "%s[%s+2]" % (buf, pos))
     r_1 = manner_fn("%s[%s]" % (buf, pos), "%s[%s+1]" % (buf, pos))
 
+    ctype = gpuarray.dtype_to_ctype(dtype)
     return """
     {
         // This function trashes buf[1..n_threads],
         // leaving the reduction result in buf[0].
-        npy_%(dtype)s red = %(init)s;
+        %(ctype)s red = %(init)s;
         #pragma unroll 16
         for (int i = %(pos)s + %(count)s; i<%(N)s; i += %(count)s){
           red = %(loop_line)s;
@@ -356,6 +364,7 @@ def inline_softmax_fixed_shared(N, buf, x, stride_x, load_x,
     We use tx as an int variable in a loop.
 
     """
+    ctype = gpuarray.dtype_to_ctype(dtype)
     ret = [
         # get max of buf (trashing all but buf[0])
         inline_reduce_fixed_shared_max(N, buf, x, stride_x, load_x,
@@ -363,7 +372,7 @@ def inline_softmax_fixed_shared(N, buf, x, stride_x, load_x,
                                        b, stride_b, load_b,
                                        dtype),
         '__syncthreads()',
-        ('npy_%s row_max = ' + buf + '[0]') % dtype,
+        ('%s row_max = ' + buf + '[0]') % ctype,
         '__syncthreads()',
         inline_reduce_fixed_shared(N, buf, x, stride_x, load_x,
                                    threadPos, threadCount,
@@ -371,7 +380,7 @@ def inline_softmax_fixed_shared(N, buf, x, stride_x, load_x,
                                    lambda a: "exp(%s - row_max)" % a,
                                    b, stride_b, load_b, dtype),
         '__syncthreads()',
-        ('npy_%s row_sum = ' + buf + '[0]') % dtype,
+        ('%s row_sum = ' + buf + '[0]') % ctype,
         '__syncthreads()',
         "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
         ]

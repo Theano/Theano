@@ -1,3 +1,4 @@
+import os
 import numpy
 
 from theano import Op, Apply, config
@@ -12,13 +13,14 @@ except ImportError:
     pass
 
 from .basic_ops import (as_gpuarray_variable,
-                        host_from_gpu, gpu_from_host)
+                        host_from_gpu, gpu_from_host,
+                        GpuKernelBase, Kernel)
 from .opt import register_opt as register_gpu_opt, op_lifter
 from .type import GpuArrayType
 from .comp import NVCC_compiler
 
 
-class GpuImages2Neibs(Images2Neibs, Op):
+class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
     def __init__(self, mode='valid'):
         if mode not in ['valid', 'ignore_borders', 'wrap_centered']:
             raise NotImplementedError("Only the mode valid, ignore_borders"
@@ -43,25 +45,41 @@ class GpuImages2Neibs(Images2Neibs, Op):
                                    dtype=ten4.type.dtype)()])
 
     def c_code_cache_version(self):
-        return (9, 1)
+        return (10,1)
 
     def c_headers(self):
+        if pygpu.get_default_context().kind == 'opencl':
+            raise MethodNotDefined('cuda only')
         return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
-                '<gpuarray/ext_cuda.h>']
+                '<gpuarray/ext_cuda.h>', '<gpuarray/types.h>']
 
-    def c_compiler(self):
-        return NVCC_compiler
+    def c_header_dirs(self):
+        if pygpu.get_default_context().kind == 'opencl':
+            raise MethodNotDefined('cuda only')
+        cuda_root = config.cuda.root
+        if cuda_root:
+            return [os.path.join(cuda_root, 'include')]
+        else:
+            return []
 
     def c_init_code(self):
+        if pygpu.get_default_context().kind == 'opencl':
+            raise MethodNotDefined('cuda only')
         return ['setup_ext_cuda();']
 
-    def c_support_code_apply(self, node, nodename):
+    def gpu_kernels(self, node, nodename):
         dtype_ten4 = node.inputs[0].dtype
         dtype_z = node.outputs[0].dtype
+        flags = Kernel.get_flags(dtype_ten4, dtype_z)
+        type_ten4 = gpuarray.dtype_to_ctype(dtype_ten4)
+        type_z = gpuarray.dtype_to_ctype(dtype_z)
         mode = self.mode
-        return """
+        kernels = []
+        kname = "k_multi_warp_less"
+        k_var = "k_multi_warp_less_" + nodename
+        code = """
 //a version that use less register but don't work in all case.
-        static __global__ void k_multi_warp_less_%(nodename)s(
+        KERNEL void %(kname)s(
             const int nb_batch,
             const int nb_stack,
             const int height,
@@ -72,15 +90,17 @@ class GpuImages2Neibs(Images2Neibs, Op):
             const int step_y,
             const int grid_c,
             const int grid_d,
-            const int stride0, const int stride1,
-            const int stride2, const int stride3,
-            npy_%(dtype_ten4)s * global_ten4,
-            const int out_s0, const int out_s1,
-            npy_%(dtype_z)s * global_out
+            const size_t stride0, const size_t stride1,
+            const size_t stride2, const size_t stride3,
+            const %(type_ten4)s * global_ten4, const size_t offset_ten4,
+            const size_t out_s0, const size_t out_s1,
+            %(type_z)s * global_out, const size_t offset_out
         )
         {
             const int wrap_centered_idx_shift_x = c/2;
             const int wrap_centered_idx_shift_y = d/2;
+            global_ten4 = (const %(type_ten4)s *)(((char *)global_ten4)+offset_ten4);
+            global_out = (%(type_z)s *)(((char *)global_out)+offset_out);
 
             for(int tblock = blockIdx.x*blockDim.z+threadIdx.z;
                 tblock<nb_batch*nb_stack*grid_c*grid_d;
@@ -131,9 +151,22 @@ class GpuImages2Neibs(Images2Neibs, Op):
                                 }
                             }
             }
-        }
+        }""" % locals()
+        params = [
+            'intc', 'intc', 'intc', 'intc', 'intc', 'intc',
+            'intc', 'intc', 'intc', 'intc',
+            'uintp', 'uintp', 'uintp', 'uintp',
+            gpuarray.GpuArray, 'uintp',
+            'uintp', 'uintp',
+            gpuarray.GpuArray, 'uintp',
+            ]
+        kernels.append(Kernel(code=code, name=kname, params=params,
+                              flags=flags, objvar=k_var))
 
-        static __global__ void k_multi_warp_%(nodename)s(
+        kname = "k_multi_warp"
+        k_var = "k_multi_warp_" + nodename
+        code = """
+        KERNEL void %(kname)s(
             const int nb_batch,
             const int nb_stack,
             const int height,
@@ -144,15 +177,17 @@ class GpuImages2Neibs(Images2Neibs, Op):
             const int step_y,
             const int grid_c,
             const int grid_d,
-            const int stride0, const int stride1,
-            const int stride2, const int stride3,
-            npy_%(dtype_ten4)s * global_ten4,
-            const int out_s0, const int out_s1,
-            npy_%(dtype_z)s * global_out
+            const size_t stride0, const size_t stride1,
+            const size_t stride2, const size_t stride3,
+            const %(type_ten4)s * global_ten4, const size_t offset_ten4,
+            const size_t out_s0, const size_t out_s1,
+            %(type_z)s * global_out, const size_t offset_out
         )
         {
             const int wrap_centered_idx_shift_x = c/2;
             const int wrap_centered_idx_shift_y = d/2;
+            global_ten4 = (const %(type_ten4)s *)(((char *)global_ten4)+offset_ten4);
+            global_out = (%(type_z)s *)(((char *)global_out)+offset_out);
 
             for(int tblock = blockIdx.x*blockDim.z+threadIdx.z;
                 tblock<nb_batch*nb_stack*grid_c*grid_d;
@@ -207,6 +242,17 @@ class GpuImages2Neibs(Images2Neibs, Op):
             }
         }
         """ % locals()
+        params = [
+            'intc', 'intc', 'intc', 'intc', 'intc', 'intc',
+            'intc', 'intc', 'intc', 'intc',
+            'uintp', 'uintp', 'uintp', 'uintp',
+            gpuarray.GpuArray, 'uintp',
+            'uintp', 'uintp',
+            gpuarray.GpuArray, 'uintp',
+            ]
+        kernels.append(Kernel(code=code, name=kname, params=params,
+                              flags=flags, objvar=k_var))
+        return kernels
 
     def c_code(self, node, name, inp, out, sub):
         dtype_ten4 = node.inputs[0].dtype
@@ -220,15 +266,21 @@ class GpuImages2Neibs(Images2Neibs, Op):
         z, = out
         fail = sub['fail']
         mode = self.mode
+        err_check = """
+            if (err != GA_NO_ERROR) {
+                PyErr_Format(PyExc_RuntimeError,
+                             "gpuarray error: *fptr: %%s.",
+                             GpuKernel_error(fptr, err));
+                %(fail)s;
+            }
+        """ % locals()
+        sync = ""
         if config.gpuarray.sync:
-            cnda_thread_sync = "GpuArray_sync(&%(z)s->ga);" % dict(z=z)
-        else:
-            cnda_thread_sync = ""
+            sync = """
+            err = GpuArray_sync(&%(z)s->ga);
+            %(err_check)s
+            """ % locals()
         return """
-#ifndef CEIL_INTDIV
-#define CEIL_INTDIV(a, b) ((a/b) + ((a %% b) ? 1: 0))
-#endif
-
         int grid_c = -1;
         int grid_d = -1;
 
@@ -281,10 +333,10 @@ class GpuImages2Neibs(Images2Neibs, Op):
                                  PyGpuArray_DIMS(%(ten4)s)[3]);
                     %(fail)s;
                 }
-                grid_c = CEIL_INTDIV(((PyGpuArray_DIMS(%(ten4)s))[2]),
-                                     step_x);
-                grid_d = CEIL_INTDIV(((PyGpuArray_DIMS(%(ten4)s))[3]),
-                                     step_y);
+                grid_c = ceil_intdiv(((PyGpuArray_DIMS(%(ten4)s))[2]),
+                                     (size_t)step_x);
+                grid_d = ceil_intdiv(((PyGpuArray_DIMS(%(ten4)s))[3]),
+                                     (size_t)step_y);
 
 
             }else if ( "%(mode)s" == "valid") {
@@ -367,75 +419,57 @@ class GpuImages2Neibs(Images2Neibs, Op):
             const npy_intp step_y = (npy_intp) *(npy_%(dtype_neib_step)s*)
                                          PyArray_GETPTR1(%(neib_step)s, 1);
 
-            dim3 n_threads(d,c,1);
+            size_t threads_per_block[3] = {d, c, 1};
             //Their is a max of 512 threads per blocks
-            while(n_threads.x*n_threads.y>512 && n_threads.y>1)n_threads.y--;
-            while(n_threads.x*n_threads.y>512 && n_threads.x>1)n_threads.x--;
+            while(threads_per_block[0]*threads_per_block[1]>512 && threads_per_block[1]>1)threads_per_block[1]--;
+            while(threads_per_block[0]*threads_per_block[1]>512 && threads_per_block[0]>1)threads_per_block[0]--;
 
             //Make bigger block to have better memory access pattern and
             //a higher core utilisation. for smaller patch size
 
-            while(c*d*(n_threads.z+1) < 128 && n_threads.z<64 &&
-                  n_threads.z<PyGpuArray_DIMS(%(z)s)[0]){
-                n_threads.z++;
+            while(c*d*(threads_per_block[2]+1) < 128 && threads_per_block[2]<64 &&
+                  threads_per_block[2]<PyGpuArray_DIMS(%(z)s)[0]){
+                threads_per_block[2]++;
             }
             int nb_block;
-            if (PyGpuArray_DIMS(%(z)s)[0] %% n_threads.z == 0)
-                nb_block = PyGpuArray_DIMS(%(z)s)[0] / n_threads.z;
+            if (PyGpuArray_DIMS(%(z)s)[0] %% threads_per_block[2] == 0)
+                nb_block = PyGpuArray_DIMS(%(z)s)[0] / threads_per_block[2];
             else
-                nb_block = (PyGpuArray_DIMS(%(z)s)[0] / n_threads.z) + 1;
-            dim3 n_blocks(std::min(32*1024,nb_block));
-            int n_shared = 0;
+                nb_block = (PyGpuArray_DIMS(%(z)s)[0] / threads_per_block[2]) + 1;
+            size_t n_blocks[3] = {std::min(32*1024,nb_block), 1, 1};
 
-            void (*f)(int, int, int ,int,
-                      int, int, int ,int,
-                      int, int,
-                      int, int, int, int,
-                      npy_%(dtype_ten4)s*,
-                      int, int,
-                      npy_%(dtype_z)s*);
-            if(n_threads.x==d && n_threads.y==c){
-                f = k_multi_warp_less_%(name)s;
+            GpuKernel *fptr;
+            if(threads_per_block[0]==d && threads_per_block[1]==c){
+                fptr = &k_multi_warp_less_%(name)s;
             }else{
-                f = k_multi_warp_%(name)s;
+                fptr = &k_multi_warp_%(name)s;
             }
 
-            f<<<n_blocks, n_threads, n_shared>>>(
-                nb_batch,
-                nb_stack,
-                height, width,
-                c, d, step_x, step_y,
-                grid_c, grid_d,
-                PyGpuArray_STRIDES(%(ten4)s)[0] / %(itemsize_ten4)s,
-                PyGpuArray_STRIDES(%(ten4)s)[1] / %(itemsize_ten4)s,
-                PyGpuArray_STRIDES(%(ten4)s)[2] / %(itemsize_ten4)s,
-                PyGpuArray_STRIDES(%(ten4)s)[3] / %(itemsize_ten4)s,
-                (npy_%(dtype_ten4)s*)(
-                                ((char *)cuda_get_ptr(%(ten4)s->ga.data)) +
-                                %(ten4)s->ga.offset),
-                PyGpuArray_STRIDES(%(z)s)[0] / %(itemsize_z)s,
-                PyGpuArray_STRIDES(%(z)s)[1] / %(itemsize_z)s,
-                (npy_%(dtype_z)s*)(((char *)cuda_get_ptr(%(z)s->ga.data)) +
-                                   %(z)s->ga.offset)
-            );
-            %(cnda_thread_sync)s
-            cudaError_t sts = cudaGetLastError();
-            if (cudaSuccess != sts)
-            {
-                PyErr_Format(PyExc_RuntimeError, "GpuImages2Neibs:"
-                             " Cuda error: %%s: %%s. (grid: %%i x %%i;"
-                             " block: %%i x %%i x %%i; shared: %%i)\\n",
-                    "k_multi_warp_%(name)s",
-                    cudaGetErrorString(sts),
-                    n_blocks.x,
-                    n_blocks.y,
-                    n_threads.x,
-                    n_threads.y,
-                    n_threads.z,
-                    n_shared);
-                %(fail)s;
-            }
-
+            size_t stride_A0 = PyGpuArray_STRIDES(%(ten4)s)[0] / %(itemsize_ten4)s;
+            size_t stride_A1 = PyGpuArray_STRIDES(%(ten4)s)[1] / %(itemsize_ten4)s;
+            size_t stride_A2 = PyGpuArray_STRIDES(%(ten4)s)[2] / %(itemsize_ten4)s;
+            size_t stride_A3 = PyGpuArray_STRIDES(%(ten4)s)[3] / %(itemsize_ten4)s;
+            size_t stride_Z0 = PyGpuArray_STRIDES(%(z)s)[0] / %(itemsize_z)s;
+            size_t stride_Z1 = PyGpuArray_STRIDES(%(z)s)[1] / %(itemsize_z)s;
+            void *kernel_params[] = {(void *)&nb_batch,
+                                     (void *)&nb_stack,
+                                     (void *)&height, (void *)&width,
+                                     (void *)&c, (void *)&d,
+                                     (void *)&step_x, (void *)&step_y,
+                                     (void *)&grid_c, (void *)&grid_d,
+                                     (void *)&stride_A0,
+                                     (void *)&stride_A1,
+                                     (void *)&stride_A2,
+                                     (void *)&stride_A3,
+                                     (void *)%(ten4)s->ga.data,
+                                     (void *)&%(ten4)s->ga.offset,
+                                     (void *)&stride_Z0,
+                                     (void *)&stride_Z1,
+                                     (void *)%(z)s->ga.data,
+                                     (void *)&%(z)s->ga.offset};
+            int err = GpuKernel_call(fptr, 3, threads_per_block, n_blocks, 0, kernel_params);
+            %(err_check)s
+            %(sync)s
         } // END NESTED SCOPE
         """ % locals()
 
