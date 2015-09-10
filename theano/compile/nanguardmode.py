@@ -80,6 +80,17 @@ def contains_nan(arr):
         return False
     elif isinstance(arr, np.random.mtrand.RandomState):
         return False
+    elif arr.size == 0:
+        return False
+    elif cuda.cuda_available and isinstance(arr, cuda.CudaNdarray):
+        compile_gpu_func(True, False, False)
+        if (not hasattr(theano.sandbox, 'rng_mrg') or
+            not isinstance(
+                nd.op,
+                # It store ints in float container
+                theano.sandbox.rng_mrg.GPU_mrg_uniform)):
+            return np.isnan(f_gpumin(arr.reshape(arr.size)))
+
     return np.isnan(np.min(arr))
 
 
@@ -109,7 +120,61 @@ def contains_inf(arr):
         return False
     elif isinstance(arr, np.random.mtrand.RandomState):
         return False
+    elif arr.size == 0:
+        return False
+    elif cuda.cuda_available and isinstance(arr, cuda.CudaNdarray):
+        compile_gpu_func(False, True, False)
+        return (np.isinf(f_gpumin(arr.reshape(arr.size))) or
+                np.isinf(f_gpumax(arr.reshape(arr.size))))
+
     return np.isinf(np.nanmax(arr)) or np.isinf(np.nanmin(arr))
+
+f_gpumin = None
+f_gpumax = None
+f_gpuabsmax = None
+
+
+def compile_gpu_func(nan_is_error, inf_is_error, big_is_error):
+    """ compile utility function used by contains_nan and contains_inf
+    """
+    global f_gpumin, f_gpumax, f_gpuabsmax
+    if not cuda.cuda_available:
+        return
+    guard_input = cuda.fvector('nan_guard')
+    cuda_compile_failed = False
+    if (nan_is_error or inf_is_error) and f_gpumin is None:
+        try:
+            f_gpumin = theano.function(
+                [guard_input], T.min(guard_input),
+                mode='FAST_RUN'
+            )
+        except RuntimeError:
+            # This can happen if cuda is available, but the
+            # device is in exclusive mode and used by another
+            # process.
+            cuda_compile_failed = True
+    if inf_is_error and not cuda_compile_failed and f_gpumax is None:
+        try:
+            f_gpumax = theano.function(
+                [guard_input], T.max(guard_input),
+                mode='FAST_RUN'
+            )
+        except RuntimeError:
+            # This can happen if cuda is available, but the
+            # device is in exclusive mode and used by another
+            # process.
+            cuda_compile_failed = True
+    if big_is_error and not cuda_compile_failed and f_gpuabsmax is None:
+        try:
+            f_gpuabsmax = theano.function(
+                [guard_input], T.max(T.abs_(guard_input)),
+                mode='FAST_RUN'
+                )
+        except RuntimeError:
+            # This can happen if cuda is available, but the
+            # device is in exclusive mode and used by another
+            # process.
+            cuda_compile_failed = True
 
 
 class NanGuardMode(Mode):
@@ -137,7 +202,6 @@ class NanGuardMode(Mode):
     def __init__(self, nan_is_error=None, inf_is_error=None, big_is_error=None,
                  optimizer=None, linker=None):
         self.provided_optimizer = optimizer
-        cuda_compile_failed = False
         if nan_is_error is None:
             nan_is_error = config.NanGuardMode.nan_is_error
         if inf_is_error is None:
@@ -146,42 +210,7 @@ class NanGuardMode(Mode):
             big_is_error = config.NanGuardMode.big_is_error
 
         assert nan_is_error or inf_is_error or big_is_error
-
-        if cuda.cuda_available:
-            self.guard_input = cuda.fvector('nan_guard')
-            if nan_is_error or inf_is_error:
-                try:
-                    self.gpumin = theano.function(
-                        [self.guard_input], T.min(self.guard_input),
-                        mode='FAST_RUN'
-                    )
-                except RuntimeError:
-                    # This can happen if cuda is available, but the
-                    # device is in exclusive mode and used by another
-                    # process.
-                    cuda_compile_failed = True
-            if inf_is_error and not cuda_compile_failed:
-                try:
-                    self.gpumax = theano.function(
-                        [self.guard_input], T.max(self.guard_input),
-                        mode='FAST_RUN'
-                    )
-                except RuntimeError:
-                    # This can happen if cuda is available, but the
-                    # device is in exclusive mode and used by another
-                    # process.
-                    cuda_compile_failed = True
-            if big_is_error and not cuda_compile_failed:
-                try:
-                    self.gpuabsmax = theano.function(
-                        [self.guard_input], T.max(T.abs_(self.guard_input)),
-                        mode='FAST_RUN'
-                    )
-                except RuntimeError:
-                    # This can happen if cuda is available, but the
-                    # device is in exclusive mode and used by another
-                    # process.
-                    cuda_compile_failed = True
+        compile_gpu_func(nan_is_error, inf_is_error, big_is_error)
 
         def do_check_on(var, nd, f, is_input):
             """
@@ -204,31 +233,19 @@ class NanGuardMode(Mode):
             """
             error = False
             if nan_is_error:
-                err = False
-                if cuda.cuda_available and isinstance(var, cuda.CudaNdarray):
-                    if not isinstance(nd.op,
-                                      # It store ints in float container
-                                      theano.sandbox.rng_mrg.GPU_mrg_uniform):
-                        err = np.isnan(self.gpumin(var.reshape(var.size)))
-                else:
-                    err = contains_nan(var)
-                if err:
+                if contains_nan(var):
                     logger.error('NaN detected')
                     error = True
             if inf_is_error:
-                err = False
-                if cuda.cuda_available and isinstance(var, cuda.CudaNdarray):
-                    err = (np.isinf(self.gpumin(var.reshape(var.size))) or
-                           np.isinf(self.gpumax(var.reshape(var.size))))
-                else:
-                    err = contains_inf(var)
-                if err:
+                if contains_inf(var):
                     logger.error('Inf detected')
                     error = True
             if big_is_error:
                 err = False
-                if cuda.cuda_available and isinstance(var, cuda.CudaNdarray):
-                    err = (self.gpuabsmax(var.reshape(var.size)) > 1e10)
+                if var.size == 0:
+                    err = False
+                elif cuda.cuda_available and isinstance(var, cuda.CudaNdarray):
+                    err = (f_gpuabsmax(var.reshape(var.size)) > 1e10)
                 elif isinstance(var, theano.gof.type.CDataType._cdata_type):
                     err = False
                 elif isinstance(var, np.random.mtrand.RandomState):
