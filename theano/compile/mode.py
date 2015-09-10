@@ -161,22 +161,16 @@ class AddDestroyHandler(gof.Optimizer):
         fgraph.attach_feature(gof.DestroyHandler())
 
 
-class AddNoOutputFromInplace(gof.Optimizer):
+class AddFeatureOptimizer(gof.Optimizer):
     """
-    This optimizer adds to the fgraph a feature that will prevent outputs
-    of a fgraph to be created by performing inplace operations on intermediary
-    variables. This is useful when the outputs of the fgraph are preallocated
-    to prevent useless copying of the data. Currently, scan preallocates its
-    outputs
-
+    This optimizer adds a provided feature to the function graph.
     """
 
-    def __init__(self, first_output_idx=0, last_output_idx=None):
-        self.feature = gof.NoOutputFromInplace(first_output_idx,
-                                               last_output_idx)
+    def __init__(self, feature):
+        self.feature = feature
 
     def add_requirements(self, fgraph):
-        super(AddNoOutputFromInplace, self).add_requirements(fgraph)
+        super(AddFeatureOptimizer, self).add_requirements(fgraph)
         fgraph.attach_feature(self.feature)
 
 
@@ -233,9 +227,6 @@ optdb.register('specialize_device', gof.EquilibriumDB(),
 # especially constant merge
 optdb.register('merge2', gof.MergeOptimizer(),
                49, 'fast_run', 'merge')
-
-optdb.register('add_no_output_from_inplace', AddNoOutputFromInplace(),
-               49.4)
 
 optdb.register('add_destroy_handler', AddDestroyHandler(),
                49.5, 'fast_run', 'inplace')
