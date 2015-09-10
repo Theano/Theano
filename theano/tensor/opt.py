@@ -291,6 +291,11 @@ def inplace_elemwise_optimizer_op(OP):
         nb_change_no_validate = 0
         chk = fgraph.checkpoint()
 
+        if fgraph.update_mapping:
+            update_outs = [fgraph.outputs[i] for i in fgraph.update_mapping]
+        else:
+            update_outs = []
+
         for node in list(graph.io_toposort(fgraph.inputs, fgraph.outputs)):
             op = node.op
             # gpuarray GpuElemwise inherit from Elemwise
@@ -319,7 +324,6 @@ def inplace_elemwise_optimizer_op(OP):
 
             raised_warning = not verbose
 
-            update_outs = [fgraph.outputs[i] for i in fgraph.update_mapping]
             for candidate_output in candidate_outputs:
 
                 # If the output of the node can be established as an update
@@ -328,49 +332,47 @@ def inplace_elemwise_optimizer_op(OP):
                 # inplace on the input it's meant to update
                 candidate_out_var = node.outputs[candidate_output]
                 sorted_candidate_inputs = candidate_inputs
-                if fgraph.update_mapping:
 
-                    if candidate_out_var in update_outs:
+                if candidate_out_var in update_outs:
 
-                        # The candidate output is an update. Sort the
-                        # variables in candidate_inputs in the following order:
-                        # - Vars corresponding to the actual updated input
-                        #   (best case scenario is for the node that procudes
-                        #   an update to operate inplace on the variable to
-                        #   update)
-                        # - Vars computed inplace on the updates input (second
-                        #   best scenario if for the node to work inplace on
-                        #   a variable obtained by a chain of inplace on the
-                        #   variable to update. In some cases, this will be
-                        #   equivalent to operating inplace on the variable to
-                        #   update)
-                        # - Remaining variables
-                        updated_inputs = []
-                        for i, f_out in enumerate(fgraph.outputs):
-                            if (f_out is candidate_out_var and i in fgraph.update_mapping):
-                                updated_inp_idx = fgraph.update_mapping[i]
-                                updated_inputs.append(fgraph.inputs[updated_inp_idx])
+                    # The candidate output is an update. Sort the
+                    # variables in candidate_inputs in the following order:
+                    # - Vars corresponding to the actual updated input
+                    #   (best case scenario is for the node that procudes
+                    #   an update to operate inplace on the variable to
+                    #   update)
+                    # - Vars computed inplace on the updates input (second
+                    #   best scenario if for the node to work inplace on
+                    #   a variable obtained by a chain of inplace on the
+                    #   variable to update. In some cases, this will be
+                    #   equivalent to operating inplace on the variable to
+                    #   update)
+                    # - Remaining variables
+                    updated_inputs = []
+                    for i, f_out in enumerate(fgraph.outputs):
+                        if (f_out is candidate_out_var and i in fgraph.update_mapping):
+                            updated_inp_idx = fgraph.update_mapping[i]
+                            updated_inputs.append(fgraph.inputs[updated_inp_idx])
 
-                        updated_vars = []
-                        vars_from_inplace = []
-                        other_vars = []
-                        for inp_idx in candidate_inputs:
-                            inp = node.inputs[inp_idx]
-                            if inp in updated_inputs:
-                                updated_vars.append(inp_idx)
-                            elif (hasattr(fgraph, 'destroy_handler') and
-                                  inp.owner and
-                                  any([(up_inp in fgraph.destroy_handler.root_destroyer and
-                                        fgraph.destroy_handler.root_destroyer[up_inp] is inp.owner)
-                                       for up_inp in updated_inputs])):
+                    updated_vars = []
+                    vars_from_inplace = []
+                    other_vars = []
+                    for inp_idx in candidate_inputs:
+                        inp = node.inputs[inp_idx]
+                        if inp in updated_inputs:
+                            updated_vars.append(inp_idx)
+                        elif (hasattr(fgraph, 'destroy_handler') and
+                              inp.owner and
+                              any([(up_inp in fgraph.destroy_handler.root_destroyer and
+                                    fgraph.destroy_handler.root_destroyer[up_inp] is inp.owner)
+                                   for up_inp in updated_inputs])):
 
-                                vars_from_inplace.append(inp_idx)
-                            else:
-                                other_vars.append(inp_idx)
+                            vars_from_inplace.append(inp_idx)
+                        else:
+                            other_vars.append(inp_idx)
 
-                        sorted_candidate_inputs = (updated_vars +
-                                                   vars_from_inplace +
-                                                   other_vars)
+                    sorted_candidate_inputs = (updated_vars +
+                                               vars_from_inplace + other_vars)
 
                 for candidate_input in sorted_candidate_inputs:
                     # remove inputs that don't have the same dtype as the output
