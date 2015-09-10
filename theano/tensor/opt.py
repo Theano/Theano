@@ -345,21 +345,24 @@ def inplace_elemwise_optimizer_op(OP):
                         #   equivalent to operating inplace on the variable to
                         #   update)
                         # - Remaining variables
-                        fgraph_out_idx = fgraph.outputs.index(candidate_out_var)
-                        updated_inp_idx = fgraph.update_mapping[fgraph_out_idx]
-                        updated_inp = fgraph.inputs[updated_inp_idx]
+                        updated_inputs = []
+                        for i, f_out in enumerate(fgraph.outputs):
+                            if (f_out is candidate_out_var and i in fgraph.update_mapping):
+                                updated_inp_idx = fgraph.update_mapping[i]
+                                updated_inputs.append(fgraph.inputs[updated_inp_idx])
 
                         updated_vars = []
                         vars_from_inplace = []
                         other_vars = []
                         for inp_idx in candidate_inputs:
                             inp = node.inputs[inp_idx]
-                            if inp is updated_inp:
+                            if inp in updated_inputs:
                                 updated_vars.append(inp_idx)
                             elif (hasattr(fgraph, 'destroy_handler') and
                                   inp.owner and
-                                  updated_inp in fgraph.destroy_handler.root_destroyer and
-                                  fgraph.destroy_handler.root_destroyer[updated_inp] is inp.owner):
+                                  any([(up_inp in fgraph.destroy_handler.root_destroyer and
+                                        fgraph.destroy_handler.root_destroyer[up_inp] is inp.owner)
+                                       for up_inp in updated_inputs])):
 
                                 vars_from_inplace.append(inp_idx)
                             else:
