@@ -4,10 +4,10 @@ import copy
 import os
 
 import numpy
-import os
 
 import theano
 from theano import tensor, gof, config
+from theano.gof.utils import MethodNotDefined
 from six.moves import StringIO
 from theano.tensor.subtensor import IncSubtensor, Subtensor, get_idx_list
 import theano.tensor.inplace
@@ -674,7 +674,7 @@ if (GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s)) {
         itemsize_y = numpy.dtype(dtype_y).itemsize
         itemsize_ind = numpy.dtype(dtype_ind).itemsize
         itemsize_out = numpy.dtype(dtype_out).itemsize
-        flags=Kernel.get_flags(dtype_x, dtype_y, dtype_ind)
+        flags = Kernel.get_flags(dtype_x, dtype_y, dtype_ind)
         type_x = gpuarray.dtype_to_ctype(dtype_x)
         type_y = gpuarray.dtype_to_ctype(dtype_y)
         type_ind = gpuarray.dtype_to_ctype(dtype_ind)
@@ -765,8 +765,7 @@ __device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
         params = [
             'uintp', 'uintp', 'intp', 'intp', gpuarray.GpuArray, 'uintp',
             'uintp', 'uintp', 'intp', 'intp', gpuarray.GpuArray, 'uintp',
-            'uintp', 'intp', gpuarray.GpuArray, 'uintp', gpuarray.GpuArray
-            ]
+            'uintp', 'intp', gpuarray.GpuArray, 'uintp', gpuarray.GpuArray]
         return [Kernel(code=code, name=kname, params=params,
                        flags=flags, objvar=k_var)]
 
