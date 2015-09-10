@@ -292,6 +292,19 @@ class TestOpSubOptimizer:
         assert str(g) == "[Op1(Op2(x), Op4(y), Op4(z))]"
 
 
+class NoInputOp(Op):
+    __props__ = ('param',)
+
+    def __init__(self, param):
+        self.param = param
+
+    def make_node(self):
+        return Apply(self, [], [MyType()()])
+
+    def perform(self, node, inputs, output_storage):
+        output_storage[0][0] = self.param
+
+
 class TestMergeOptimizer:
 
     def test_straightforward(self):
@@ -484,6 +497,18 @@ class TestMergeOptimizer:
 '''
         print(strg)
         assert strg == strref, (strg, strref)
+
+    def test_merge_noinput(self):
+        # Check that identical Apply nodes without inputs will be merged
+        x = NoInputOp(param=0)()
+        y = NoInputOp(param=0)()
+        z = NoInputOp(param=1)()
+
+        fg = FunctionGraph([], [x, y, z])
+        MergeOptimizer().optimize(fg)
+        no_input_ops = [n for n in fg.apply_nodes
+                        if isinstance(n.op, NoInputOp)]
+        assert len(no_input_ops) == 2, fg.apply_nodes
 
 
 class TestEquilibrium(object):
