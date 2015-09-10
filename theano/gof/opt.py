@@ -2230,7 +2230,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         process_count = {}
         for o in (opt.global_optimizers +
                   list(opt.get_local_optimizers()) +
-                  opt.final_optimizers):
+                  list(opt.final_optimizers)):
             process_count.setdefault(o, 0)
         for count in loop_process_count:
             for o, v in iteritems(count):
@@ -2259,7 +2259,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                     # Skip opt that have 0 times, they probably wasn't even tried.
                     print(blanc + "  ", '  %.3fs - %s' % (t, o), file=stream)
             print(file=stream)
-        gf_opts = [o for o in opt.global_optimizers + opt.final_optimizers
+        gf_opts = [o for o in (opt.global_optimizers +
+                               list(opt.final_optimizers))
                    if o.print_profile.func_code is not
                    Optimizer.print_profile.func_code]
         if not gf_opts:
