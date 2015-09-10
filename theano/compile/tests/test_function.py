@@ -6,6 +6,7 @@ import tempfile
 import numpy
 
 import theano
+from theano.compile.io import In
 
 
 def test_function_dump():
@@ -26,3 +27,11 @@ def test_function_dump():
     fct2 = theano.function(**l)
     x = [1, 2, 3]
     assert numpy.allclose(fct1(x), fct2(x))
+
+
+def test_function_in():
+    # Test that using In wrappers for the inputs of a function works as
+    # expected
+    v = theano.tensor.ivector()
+    f = theano.function([In(v, mutable=True)], v + 1)
+    assert numpy.allclose(f([1, 2, 3]), [2, 3, 4])
