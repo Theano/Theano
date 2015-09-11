@@ -10,7 +10,8 @@ try:
 except ImportError:
     pass
 
-from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel)
+from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel,
+                        infer_context_name)
 from .type import GpuArrayType
 from .kernel_codegen import (nvcc_kernel,
                              inline_softmax,
@@ -23,22 +24,25 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
     Implement CrossentropySoftmaxArgmax1HotWithBias on the gpu.
 
     """
-
     nin = 3
     nout = 3
     __props__ = ()
     _f16_ok = True
 
     def make_node(self, x, b, y_idx):
-        # N.B. won't work when we don't cast y_idx to float anymore
-        x = as_gpuarray_variable(x)
-        b = as_gpuarray_variable(b)
-        y_idx = as_gpuarray_variable(y_idx)
+        ctx_name = infer_context_name(x, b, y_idx)
+        x = as_gpuarray_variable(x, ctx_name)
+        b = as_gpuarray_variable(b, ctx_name)
+        y_idx = as_gpuarray_variable(y_idx, ctx_name)
         nll = GpuArrayType(x.type.dtype,
-                           y_idx.type.broadcastable)()
+                           y_idx.type.broadcastable,
+                           context_name=ctx_name)()
         sm = x.type()
         am = y_idx.type()
         return Apply(self, [x, b, y_idx], [nll, sm, am])
+
+    def get_context(self, node):
+        return node.inputs[0].type.context
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>']
@@ -144,6 +148,8 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
                        flags=flags, objvar=k_var)]
 
     def c_code(self, node, nodename, inp, out, sub):
+        if node.inputs[0].type.context.kind != 'cuda':
+            raise NotImplementedError('cuda only')
         typecode_x = pygpu.gpuarray.dtype_to_typecode(node.inputs[0].dtype)
         typecode_b = pygpu.gpuarray.dtype_to_typecode(node.inputs[1].dtype)
         typecode_y_idx = pygpu.gpuarray.dtype_to_typecode(node.inputs[2].dtype)
@@ -163,6 +169,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
         dtype_am = node.outputs[2].dtype
         classname = self.__class__.__name__
         fail = sub['fail']
+        ctx = sub['context']
         k_var = "k_xent_sm_1hot_bias_%(nodename)s" % locals()
         err_check = """
             if (err != GA_NO_ERROR) {
@@ -214,9 +221,8 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
         {
             Py_XDECREF(%(nll)s);
             %(nll)s = pygpu_empty(1, PyGpuArray_DIMS(%(y_idx)s),
-                                %(typecode_x)s,
-                                GA_C_ORDER,
-                                pygpu_default_context(), Py_None);
+                                %(typecode_x)s, GA_C_ORDER, %(ctx)s,
+                                Py_None);
             if (!%(nll)s) {
                 %(fail)s
             }
@@ -229,9 +235,8 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
         {
             Py_XDECREF(%(sm)s);
             %(sm)s = pygpu_empty(2, PyGpuArray_DIMS(%(x)s),
-                                %(typecode_b)s,
-                                GA_C_ORDER,
-                                pygpu_default_context(), Py_None);
+                                %(typecode_b)s, GA_C_ORDER,
+                                %(ctx)s, Py_None);
             if(!%(sm)s)
             {
                 PyErr_SetString(PyExc_MemoryError,
@@ -246,9 +251,8 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
         {
             Py_XDECREF(%(am)s);
             %(am)s = pygpu_empty(1, PyGpuArray_DIMS(%(y_idx)s),
-                                %(typecode_y_idx)s,
-                                GA_C_ORDER,
-                                pygpu_default_context(), Py_None);
+                                %(typecode_y_idx)s, GA_C_ORDER,
+                                %(ctx)s, Py_None);
             if(!%(am)s)
             {
                 PyErr_SetString(PyExc_MemoryError,
@@ -306,17 +310,20 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuKernelBase, Op):
     Gradient wrt x of the CrossentropySoftmax1Hot Op.
 
     """
-
     nin = 3
     nout = 1
     __props__ = ()
     _f16_ok = True
 
     def make_node(self, dnll, sm, y_idx):
-        dnll = as_gpuarray_variable(dnll)
-        sm = as_gpuarray_variable(sm)
-        y_idx = as_gpuarray_variable(y_idx)
+        ctx_name = infer_context_name(dnll, sm, y_idx)
+        dnll = as_gpuarray_variable(dnll, ctx_name)
+        sm = as_gpuarray_variable(sm, ctx_name)
+        y_idx = as_gpuarray_variable(y_idx, ctx_name)
         return Apply(self, [dnll, sm, y_idx], [sm.type()])
+
+    def get_context(self, node):
+        return node.inputs[0].type.context
 
     def c_code_cache_version(self):
         return (11,)
@@ -325,6 +332,8 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuKernelBase, Op):
         return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def c_code(self, node, nodename, inp, out, sub):
+        if node.inputs[0].type.context.kind != 'cuda':
+            raise NotImplementedError("cuda only")
         typecode_dx = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
         itemsize_dnll = numpy.dtype(node.inputs[0].dtype).itemsize
         itemsize_sm = numpy.dtype(node.inputs[1].dtype).itemsize
@@ -338,6 +347,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuKernelBase, Op):
         dnll, sm, y_idx = inp
         dx, = out
         fail = sub['fail']
+        ctx = sub['context']
         k_var = "kCrossEntropySoftmax1HotWithBiasDx_" + nodename
         err_check = """
             if (err != GA_NO_ERROR) {
@@ -403,9 +413,8 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuKernelBase, Op):
         {
             Py_XDECREF(%(dx)s);
             %(dx)s = pygpu_empty(2, PyGpuArray_DIMS(%(sm)s),
-                                 %(typecode_dx)s,
-                                 GA_C_ORDER,
-                                 pygpu_default_context(), Py_None);
+                                 %(typecode_dx)s, GA_C_ORDER,
+                                 %(ctx)s, Py_None);
             if (!%(dx)s) {
                 %(fail)s
             }
@@ -512,13 +521,15 @@ class GpuSoftmax(GpuKernelBase, Op):
     Implement Softmax on the gpu.
 
     """
-
     __props__ = ()
     _f16_ok = True
 
     def make_node(self, x):
-        x = as_gpuarray_variable(x)
+        x = as_gpuarray_variable(x, infer_context_name(x))
         return Apply(self, [x], [x.type()])
+
+    def get_context(self, node):
+        return node.inputs[0].type.context
 
     def infer_shape(self, node, shape):
         return shape
@@ -530,6 +541,8 @@ class GpuSoftmax(GpuKernelBase, Op):
         return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def c_code(self, node, nodename, inp, out, sub):
+        if node.inputs[0].type.context.kind != 'cuda':
+            raise NotImplementedError("cuda only")
         dtype_x = node.inputs[0].dtype
         work_x = work_dtype(dtype_x)
         dtype_z = node.outputs[0].dtype
@@ -539,6 +552,7 @@ class GpuSoftmax(GpuKernelBase, Op):
         x, = inp
         z, = out
         fail = sub['fail']
+        ctx = sub['context']
         err_check = """
             if (err != GA_NO_ERROR) {
                 PyErr_Format(PyExc_RuntimeError, fmt_str, msg);
@@ -568,9 +582,8 @@ class GpuSoftmax(GpuKernelBase, Op):
         {
             Py_XDECREF(%(z)s);
             %(z)s = pygpu_empty(2, PyGpuArray_DIMS(%(x)s),
-                                %(typecode)s,
-                                GA_C_ORDER,
-                                pygpu_default_context(), Py_None);
+                                %(typecode)s, GA_C_ORDER,
+                                %(ctx)s, Py_None);
             if (!%(z)s) {
                 %(fail)s
             }
@@ -698,21 +711,24 @@ class GpuSoftmax(GpuKernelBase, Op):
 gpu_softmax = GpuSoftmax()
 
 
-class GpuSoftmaxWithBias (GpuKernelBase, Op):
+class GpuSoftmaxWithBias(GpuKernelBase, Op):
     """
     Implement SoftmaxWithBias on the gpu.
 
     """
-
     nin = 2
     nout = 1
     __props__ = ()
     _f16_ok = True
 
     def make_node(self, x, b):
-        x = as_gpuarray_variable(x)
-        b = as_gpuarray_variable(b)
+        ctx_name = infer_context_name(x, b)
+        x = as_gpuarray_variable(x, ctx_name)
+        b = as_gpuarray_variable(b, ctx_name)
         return Apply(self, [x, b], [x.type()])
+
+    def get_context(self, node):
+        return node.inputs[0].type.context
 
     def infer_shape(self, node, shape):
         return [shape[0]]
@@ -724,6 +740,8 @@ class GpuSoftmaxWithBias (GpuKernelBase, Op):
         return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def c_code(self, node, nodename, inp, out, sub):
+        if node.inputs[0].type.context.kind != 'cuda':
+            raise NotImplementedError('cuda only')
         dtype_x = node.inputs[0].dtype
         dtype_b = node.inputs[1].dtype
         dtype_z = node.outputs[0].dtype
@@ -735,6 +753,7 @@ class GpuSoftmaxWithBias (GpuKernelBase, Op):
         x, b = inp
         z, = out
         fail = sub['fail']
+        ctx = sub['context']
         err_check = """
             if (err != GA_NO_ERROR) {
                 PyErr_Format(PyExc_RuntimeError, fmt_str, msg);
@@ -777,9 +796,8 @@ class GpuSoftmaxWithBias (GpuKernelBase, Op):
         {
             Py_XDECREF(%(z)s);
             %(z)s = pygpu_empty(2, PyGpuArray_DIMS(%(x)s),
-                                %(typecode)s,
-                                GA_C_ORDER,
-                                pygpu_default_context(), Py_None);
+                                %(typecode)s, GA_C_ORDER,
+                                %(ctx)s, Py_None);
             if (!%(z)s) {
                 %(fail)s
             }
