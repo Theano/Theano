@@ -1030,7 +1030,7 @@ class ScanInplaceOptimizer(Optimizer):
         op = node.op
 
         info = copy.deepcopy(op.info)
-        if not 'destroy_map' in info:
+        if 'destroy_map' not in info:
             info['destroy_map'] = OrderedDict()
 
         for out_idx in output_indices:
@@ -1064,10 +1064,9 @@ class ScanInplaceOptimizer(Optimizer):
                 remove=[node],
                 reason='scanOp_make_inplace')
             return new_outs[0].owner
-        except InconsistencyError as e:
+        except InconsistencyError:
             # Failed moving output to be computed inplace
             return node
-
 
     def apply(self, fgraph):
 
