@@ -581,7 +581,7 @@ class CLinker(link.Linker):
         self.outputs = fgraph.outputs
 
         self.node_order = self.schedule(fgraph)
-
+        
         # list(fgraph.variables)
         # We need to include the unused inputs in our variables,
         # otherwise we can't pass them to the module.
@@ -637,7 +637,6 @@ class CLinker(link.Linker):
         no_recycling = self.no_recycling
 
         self.consts = []
-
         c_support_code_apply = []
         c_init_code_apply = []
 
@@ -655,10 +654,8 @@ class CLinker(link.Linker):
 
         failure_var = "__failure"
         id = 1
-
         for variable in self.variables:
             sub = dict(failure_var=failure_var)
-
             # it might be possible to inline constant variables as C literals
             # policy = [[what to declare in the struct,
             #            what to do at construction,
@@ -1502,7 +1499,7 @@ class CLinker(link.Linker):
                     # The main of the executable need the hash of the
                     # shared lib.
                     main = re.sub(mod.hash_placeholder, mod.code_hash,
-                              self.c_main())
+                                  self.c_main())
 
                     mod_exec = cmodule.DynamicModule()
                     for header in self.headers():
@@ -1755,7 +1752,11 @@ class CLinker(link.Linker):
                 in utils.uniq(self.inputs)]
         mapping_str = "// Mapping: variable name -> struct internal stogare\n"
         for var, name in zip(utils.uniq(self.inputs), args):
-            mapping_str += "// %(var)s->%(name)s\n" % locals()
+            if isinstance(var, theano.tensor.sharedvar.TensorSharedVariable):
+                mapping_str += "// Shared variable %(var)s->%(name)s\n" \
+                               % locals()
+            else:
+                mapping_str += "// Input %(var)s->%(name)s\n" % locals()
             dtype = var.type.dtype_specs()[2]
             ndim = var.ndim
             shp = range(3, 3+ndim)
@@ -1778,7 +1779,7 @@ class CLinker(link.Linker):
         args = ["storage_%s" % self.r2symbol[variable] for variable
                 in utils.uniq(self.outputs)]
         for var, name in zip(utils.uniq(self.outputs), args):
-            mapping_str += "// %(var)s->%(name)s\n" % locals()
+            mapping_str += "// Output %(var)s->%(name)s\n" % locals()
         if sys.platform != "win32":
             for name in args:
                 out_print += """
