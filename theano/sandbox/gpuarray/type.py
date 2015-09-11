@@ -55,7 +55,7 @@ def get_context(name):
         Name associated with the context we want (usually a string)
 
     """
-    if not name in _context_reg:
+    if name not in _context_reg:
         raise ValueError("context name %s not defined" % (name,))
     return _context_reg[name]
 
@@ -252,7 +252,7 @@ class GpuArrayType(Type):
     @staticmethod
     def may_share_memory(a, b):
         if (not isinstance(a, gpuarray.GpuArray) or
-               not isinstance(b, gpuarray.GpuArray)):
+                not isinstance(b, gpuarray.GpuArray)):
             return False
         return pygpu.gpuarray.may_share_memory(a, b)
 
@@ -270,7 +270,8 @@ class GpuArrayType(Type):
                 self.context_name == other.context_name)
 
     def convert_variable(self, var):
-        if (type(self) == type(var.type) and
+        vt = var.type
+        if (type(self) == type(vt) and
                 self.typecode == var.type.typecode and
                 self.ndim == var.type.ndim and
                 self.context_name == var.type.context_name and
