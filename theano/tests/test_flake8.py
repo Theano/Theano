@@ -30,7 +30,6 @@ whitelist_flake8 = [
     "tests/test_gradient.py",
     "tests/test_config.py",
     "tests/diverse_tests.py",
-    "tests/test_ifelse.py",
     "tests/test_rop.py",
     "tests/test_2nd_order_grads.py",
     "tests/run_tests_in_batch.py",
