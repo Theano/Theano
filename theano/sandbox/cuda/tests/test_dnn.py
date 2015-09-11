@@ -68,6 +68,19 @@ def test_dnn_conv_desc_merge():
         assert d1 == d2
 
 
+def test_dnn_pool_desc_merge():
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+
+    x = theano.tensor.ftensor4('x')
+    y = dnn.dnn_pool(x, (2, 2))
+    z = dnn.dnn_pool(x, (2, 2))
+    f = theano.function([x], [y, z])
+    descs = [n for n in f.maker.fgraph.apply_nodes
+             if isinstance(n.op, dnn.GpuDnnPoolDesc)]
+    assert len(descs) == 1, f.maker.fgraph
+
+
 def test_dnn_conv_merge():
     """This test that we merge correctly multiple dnn_conv.
 
