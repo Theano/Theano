@@ -296,6 +296,12 @@ def inplace_elemwise_optimizer_op(OP):
             # gpuarray GpuElemwise inherit from Elemwise
             if not type(op) == OP:
                 continue
+            # If big graph and the outputs are scalar, do not make it
+            # inplace.
+            if (check_each_change != 1 and
+                all([getattr(o.type, 'ndim', -1) == 0
+                     for o in node.outputs])):
+                continue
 
             baseline = op.inplace_pattern
             protected_inputs = [
