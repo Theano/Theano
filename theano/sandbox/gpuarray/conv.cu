@@ -1465,7 +1465,7 @@ PyGpuArray_Conv(PyGpuArrayObject *img, PyGpuArrayObject * kern,
 
       rval = pygpu_zeros(4, out_dim,
                          img->ga.typecode, GA_C_ORDER,
-                         pygpu_default_context(), Py_None);
+                         img->ctx, Py_None);
       //rval might be null
     }
     if ((rval==NULL)

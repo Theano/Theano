@@ -161,7 +161,6 @@ whitelist_flake8 = [
     "sandbox/gpuarray/elemwise.py",
     "sandbox/gpuarray/type.py",
     "sandbox/gpuarray/__init__.py",
-    "sandbox/gpuarray/conv.py",
     "sandbox/gpuarray/neighbours.py",
     "sandbox/gpuarray/tests/test_subtensor.py",
     "sandbox/gpuarray/tests/test_scan.py",
