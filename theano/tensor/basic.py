@@ -3975,6 +3975,13 @@ def shape_padaxis(t, axis):
     """
     _t = as_tensor_variable(t)
 
+    ndim = _t.ndim + 1
+    if not -ndim <= axis < ndim:
+        msg = 'axis {0} is out of bounds [-{1}, {1})'.format(axis, ndim)
+        raise IndexError(msg)
+    if axis < 0:
+        axis += ndim
+
     pattern = [i for i in xrange(_t.type.ndim)]
     pattern.insert(axis, 'x')
     return DimShuffle(_t.broadcastable, pattern)(_t)
@@ -4027,13 +4034,6 @@ def stack(*tensors, **kwargs):
     if len(tensors) == 0:
         raise Exception('tensors is empty. You should at least provide one'
                         ' tensor to theano.tensor.stack(tensors, axis).')
-
-    ndim = tensors[0].ndim + 1
-    if not -ndim <= axis < ndim:
-        msg = 'axis {0} is out of bounds [-{1}, {1})'.format(axis, ndim)
-        raise IndexError(msg)
-    if axis < 0:
-        axis += ndim
 
     # If all tensors are scalars of the same type, call make_vector.
     # It makes the graph simpler, by not adding DimShuffles and Rebroadcasts
