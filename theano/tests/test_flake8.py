@@ -139,7 +139,6 @@ whitelist_flake8 = [
     "sandbox/cuda/tests/test_blas.py",
     "sandbox/cuda/tests/test_driver.py",
     "sandbox/cuda/tests/test_rng_curand.py",
-    "sandbox/cuda/tests/test_nnet.py",
     "sandbox/cuda/tests/test_basic_ops.py",
     "sandbox/cuda/tests/test_memory.py",
     "sandbox/cuda/tests/test_mlp.py",

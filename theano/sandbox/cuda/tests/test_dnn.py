@@ -15,6 +15,8 @@ import theano.sandbox.cuda.dnn as dnn
 from theano.sandbox.cuda.basic_ops import GpuAllocEmpty, gpu_alloc_empty
 from theano.sandbox.cuda import float32_shared_constructor as shared
 
+from . import test_nnet
+
 # Skip test if cuda_ndarray is not available.
 import theano.sandbox.cuda as cuda
 if not cuda.cuda_available:
@@ -467,43 +469,132 @@ def test_pooling_opt():
                 for n in f.maker.fgraph.toposort()])
 
 
-def test_log_softmax():
-    # This is a test for an optimization that depends on CuDNN v3 or
-    # more recent. Don't test if the CuDNN version is too old.
-    if not cuda.dnn.dnn_available() or cuda.dnn.version() < (3000, 3000):
-        raise SkipTest(cuda.dnn.dnn_available.msg)
+class test_DnnSoftMax(test_nnet.test_SoftMax):
+    gpu_op = dnn.GpuDnnSoftmax
+    gpu_grad_op = dnn.GpuDnnSoftmaxGrad
+    mode = mode_with_gpu
+    do_0 = False
+    topo_idx = -3
 
-    x = T.ftensor4()
-    softmax_out = dnn.GpuDnnSoftmax('bc01', 'accurate', 'channel')(x)
-    log_out = T.log(T.as_tensor_variable(softmax_out))
+    def setUp(self):
+        if not cuda.dnn.dnn_available():
+            raise SkipTest(cuda.dnn.dnn_available.msg)
+        utt.seed_rng()
 
-    f = theano.function([x], log_out, mode=mode_with_gpu)
+    def test_dnn_softmax_grad(self):
+        softmax_op = dnn.GpuDnnSoftmax('bc01', 'accurate', 'channel')
 
-    # Ensure that the optimization has been applied
-    dnn_softmax_nodes = [n for n in f.maker.fgraph.toposort() if
-                         isinstance(n.op, cuda.dnn.GpuDnnSoftmax)]
-    assert len(dnn_softmax_nodes) == 1
-    assert dnn_softmax_nodes[0].op.algo == "log"
+        x_val = numpy.random.normal(0, 1, (3, 4, 2, 5)).astype('float32')
+        x_val2 = numpy.random.normal(0, 1, (3, 4, 1, 1)).astype('float32')
 
-    # Ensure that the output of the function is valid
-    input_shapes = [(3, 4, 5, 6),
-                    (1025, 2, 3, 4),
-                    (2, 1025, 3, 4),
-                    (2, 3, 1025, 4),
-                    (2, 3, 4, 1025),
-                    (66000, 2, 3, 4),
-                    (2, 66000, 3, 4),
-                    (2, 3, 66000, 4),
-                    (2, 3, 4, 66000)]
+        utt.verify_grad(softmax_op, [x_val])
 
-    for inp_shape in input_shapes:
-        input_val = numpy.random.normal(0, 1, inp_shape).astype("float32")
+        # Gradient is broken for (n, c, 1, 1) in v3 rc1
+        if cuda.dnn.version() != (3000, 3000):
+            utt.verify_grad(softmax_op, [x_val2])
 
-        out = f(input_val)
-        expected_out = numpy.log(numpy.exp(input_val) /
-                                 numpy.exp(input_val).sum(1)[:, None, :, :])
+    def test_cudnn_softmax_grad_opt(self):
+        # Verify that the SoftmaxGrad -> GpuDnnSoftmaxGrad optimization is
+        # applied when cudnn is required
+        y = T.fvector('y')
+        f = theano.function(
+            [y],
+            T.grad(T.nnet.softmax(y).mean(), y),
+            mode=mode_with_gpu
+        )
+        sorted_f = f.maker.fgraph.toposort()
+        assert(len([i
+                    for i in sorted_f
+                    if isinstance(
+                        i.op,
+                        theano.sandbox.cuda.dnn.GpuDnnSoftmaxGrad
+                    )]) == 1)
+        assert(len([i
+                    for i in sorted_f
+                    if isinstance(
+                        i.op,
+                        theano.tensor.nnet.SoftmaxGrad
+                    )]) == 0)
 
-        utt.assert_allclose(out, expected_out)
+        # Verify that the SoftmaxGrad -> GpuDnnSoftmaxGrad optimization is not
+        # applied when cudnn is excluded or not available
+        mode_wo_cudnn = mode_with_gpu.excluding("cudnn")
+        y = T.fvector('y')
+        f = theano.function(
+            [y],
+            T.grad(T.nnet.softmax(y).mean(), y),
+            mode=mode_wo_cudnn
+        )
+        sorted_f = f.maker.fgraph.toposort()
+        assert(len([i
+                    for i in sorted_f
+                    if isinstance(
+                        i.op,
+                        theano.sandbox.cuda.dnn.GpuDnnSoftmaxGrad
+                    )]) == 0)
+        assert(len([i
+                    for i in sorted_f
+                    if isinstance(
+                        i.op,
+                        theano.tensor.nnet.SoftmaxGrad
+                    )]) == 1)
+
+        # Verify that the SoftmaxGrad -> GpuDnnSoftmaxGrad do not
+        # crash with manual graph
+        y = T.fvector('y')
+        o = theano.tensor.nnet.SoftmaxGrad()(y, y * 2)
+        f = theano.function([y], o, mode=mode_with_gpu)
+        sorted_f = f.maker.fgraph.toposort()
+        assert(len([i
+                    for i in sorted_f
+                    if isinstance(
+                        i.op,
+                        theano.sandbox.cuda.dnn.GpuDnnSoftmaxGrad
+                    )]) == 1)
+        assert(len([i
+                    for i in sorted_f
+                    if isinstance(
+                        i.op,
+                        theano.tensor.nnet.SoftmaxGrad
+                    )]) == 0)
+
+    def test_log_softmax(self):
+        # This is a test for an optimization that depends on CuDNN v3 or
+        # more recent. Don't test if the CuDNN version is too old.
+        if cuda.dnn.version() < (3000, 3000):
+            raise SkipTest("Log-softmax is only in cudnn v3+")
+
+        x = T.ftensor4()
+        softmax_out = dnn.GpuDnnSoftmax('bc01', 'accurate', 'channel')(x)
+        log_out = T.log(T.as_tensor_variable(softmax_out))
+
+        f = theano.function([x], log_out, mode=mode_with_gpu)
+
+        # Ensure that the optimization has been applied
+        dnn_softmax_nodes = [n for n in f.maker.fgraph.toposort() if
+                             isinstance(n.op, cuda.dnn.GpuDnnSoftmax)]
+        assert len(dnn_softmax_nodes) == 1
+        assert dnn_softmax_nodes[0].op.algo == "log"
+
+        # Ensure that the output of the function is valid
+        input_shapes = [(3, 4, 5, 6),
+                        (1025, 2, 3, 4),
+                        (2, 1025, 3, 4),
+                        (2, 3, 1025, 4),
+                        (2, 3, 4, 1025),
+                        (66000, 2, 3, 4),
+                        (2, 66000, 3, 4),
+                        (2, 3, 66000, 4),
+                        (2, 3, 4, 66000)]
+
+        for inp_shape in input_shapes:
+            input_val = numpy.random.normal(0, 1, inp_shape).astype("float32")
+
+            out = f(input_val)
+            expected_out = numpy.log(numpy.exp(input_val) /
+                                     numpy.exp(input_val).sum(1)[:, None, :, :])
+
+            utt.assert_allclose(out, expected_out)
 
 
 def test_dnn_tag():
