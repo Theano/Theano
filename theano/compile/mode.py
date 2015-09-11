@@ -340,10 +340,13 @@ class Mode(object):
             optimizations.
         """
 
-        link, opt = self.get_linker_optimizer(self.provided_linker,
-                                              self.provided_optimizer)
-        return self.__class__(linker=link,
-                              optimizer=opt.register(*optimizations))
+        m = self.clone()
+
+        new_optimizer = self.provided_optimizer.register(*optimizations)
+        m.provided_optimizer = new_optimizer
+        m._optimizer = new_optimizer
+
+        return m
 
     def excluding(self, *tags):
         link, opt = self.get_linker_optimizer(self.provided_linker,
