@@ -49,18 +49,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         return (10, 1)
 
     def c_headers(self):
-        return ['cuda.h', '<numpy_compat.h>', '<gpuarray/ext_cuda.h>',
-                '<gpuarray/types.h>']
-
-    def c_header_dirs(self):
-        cuda_root = config.cuda.root
-        if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
-        else:
-            return []
-
-    def c_init_code(self):
-        return ['setup_ext_cuda();']
+        return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def gpu_kernels(self, node, nodename):
         dtype_ten4 = node.inputs[0].dtype

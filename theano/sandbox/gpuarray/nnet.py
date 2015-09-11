@@ -45,13 +45,8 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
     def get_context(self, node):
         return node.inputs[0].type.context
 
-    def c_header_dirs(self):
-        cuda_root = config.cuda.root
-        if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
-
     def c_headers(self):
-        return ['cuda.h', '<numpy_compat.h>', '<gpuarray/types.h>']
+        return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def gpu_kernels(self, node, nodename):
         dtype_x = node.inputs[0].dtype
@@ -334,13 +329,8 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuKernelBase, Op):
     def c_code_cache_version(self):
         return (10,)
 
-    def c_header_dirs(self):
-        cuda_root = config.cuda.root
-        if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
-
     def c_headers(self):
-        return ['cuda.h', '<numpy_compat.h>', '<gpuarray/types.h>']
+        return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def c_code(self, node, nodename, inp, out, sub):
         if node.inputs[0].type.context.kind != 'cuda':
@@ -548,13 +538,8 @@ class GpuSoftmax(GpuKernelBase, Op):
     def c_code_cache_version(self):
         return (14,) + inline_softmax.code_version
 
-    def c_header_dirs(self):
-        cuda_root = config.cuda.root
-        if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
-
     def c_headers(self):
-        return ['cuda.h', '<numpy_compat.h>', '<gpuarray/types.h>']
+        return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def c_code(self, node, nodename, inp, out, sub):
         if node.inputs[0].type.context.kind != 'cuda':
@@ -754,15 +739,8 @@ class GpuSoftmaxWithBias(GpuKernelBase, Op):
     def c_code_cache_version(self):
         return (13,) + inline_softmax.code_version
 
-    def c_header_dirs(self):
-        cuda_root = config.cuda.root
-        if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
-        else:
-            return []
-
     def c_headers(self):
-        return ['cuda.h', '<numpy_compat.h>', '<gpuarray/types.h>']
+        return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def c_code(self, node, nodename, inp, out, sub):
         if node.inputs[0].type.context.kind != 'cuda':
