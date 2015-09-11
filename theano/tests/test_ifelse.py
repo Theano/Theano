@@ -11,6 +11,7 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 import unittest
 import numpy
 from nose.plugins.skip import SkipTest
+from six.moves import reduce
 
 import theano
 from theano import tensor
