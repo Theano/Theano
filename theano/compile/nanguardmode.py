@@ -285,7 +285,8 @@ class NanGuardMode(Mode):
                 if config.NanGuardMode.action == 'raise':
                     assert False
                 elif config.NanGuardMode.action == 'pdb':
-                    import pdb;pdb.set_trace()
+                    import pdb
+                    pdb.set_trace()
                 elif config.NanGuardMode.action == 'warn':
                     pass  # already printed
 
