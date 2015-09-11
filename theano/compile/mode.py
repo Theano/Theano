@@ -355,7 +355,7 @@ class Mode(object):
                                               self.provided_optimizer)
         return self.__class__(linker=link, optimizer=opt.requiring(*tags))
 
-    def clone(self, link_kwargs=None, **kwargs):
+    def clone(self, link_kwargs={}, **kwargs):
         """
         Create a new instance of this Mode.
 
