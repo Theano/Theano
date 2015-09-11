@@ -450,23 +450,29 @@ def test_pooling_opt():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
 
-    x = T.ftensor4()
+    x = T.matrix()
 
     f = theano.function(
         [x],
-        max_pool_2d(x, ds=(2, 2), ignore_border=True),
+        max_pool_2d(x, ds=(2, 2), mode='average_inc_pad',
+                ignore_border=True),
         mode=mode_with_gpu)
 
     assert any([isinstance(n.op, cuda.dnn.GpuDnnPool)
                 for n in f.maker.fgraph.toposort()])
 
+    f(numpy.zeros((10, 10), dtype='float32'))
+
     f = theano.function(
         [x],
-        T.grad(max_pool_2d(x, ds=(2, 2), ignore_border=True).sum(), x),
+        T.grad(max_pool_2d(x, ds=(2, 2), mode='average_inc_pad',
+                ignore_border=True).sum(), x),
         mode=mode_with_gpu.including("cudnn"))
 
     assert any([isinstance(n.op, cuda.dnn.GpuDnnPoolGrad)
                 for n in f.maker.fgraph.toposort()])
+
+    f(numpy.zeros((10, 10), dtype='float32'))
 
 
 class test_DnnSoftMax(test_nnet.test_SoftMax):
