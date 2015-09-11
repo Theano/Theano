@@ -20,7 +20,7 @@ __contact__ = "Saizheng Zhang <saizhenglisa..at..gmail.com>"
 # We ignore:
 # - "line too long"
 #    too complex to do with the C code
-# - "closing bracket does not match indentation of opening bracket’s line"
+# - "closing bracket does not match indentation of opening bracket's line"
 #    ignored by default by pep8
 ignore = ('E501', 'E123', 'E133')
 
