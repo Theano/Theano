@@ -306,7 +306,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
         exc_value = exc_type(str(exc_value) + detailed_err_msg +
                              '\n' + '\n'.join(hints))
     except TypeError:
-        print("WARNING: %s error do not allow us to add extra error message" %
+        print("WARNING: %s error does not allow us to add extra error message" %
               str(exc_type))
         # Some exception need extra parameter in inputs. So forget the
         # extra long error message in that case.

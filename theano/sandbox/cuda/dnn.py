@@ -2389,7 +2389,6 @@ if True:
              (node.inputs[1].owner and
                  isinstance(node.inputs[1].owner.op, HostFromGpu)))):
             if not dnn_available():
-                # Softmax grad is broken in v3 rc1 for this case
                 return
             ins = []
             for n in node.inputs:

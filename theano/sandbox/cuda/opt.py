@@ -797,7 +797,7 @@ def local_gpu_careduce(node):
                 replace = True
             # If this is a useless reduce, remove it as
             # local_cut_useless_reduce.  This is needed as the code
-            # bellow do not support when x.ndim == 0.
+            # below do not support when x.ndim == 0.
             if x.type == node.outputs[0].type:
                 return [x]
             elif (all([c != "output" and isinstance(c.op, GpuFromHost)

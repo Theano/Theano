@@ -282,8 +282,8 @@ class NanGuardMode(Mode):
                           " output of a node in this variable:", file=sio)
                     print(theano.printing.debugprint(nd, file='str'), file=sio)
                 else:
-                    print("NanGuardMode found an error in the"
-                          " input %d of this node.", file=sio)
+                    print("NanGuardMode found an error in an"
+                          " input of this node." , file=sio)
                     print('Node:', file=sio)
                     print(nd, file=sio)
                     print("The input variable that cause problem:", file=sio)
@@ -318,7 +318,7 @@ class NanGuardMode(Mode):
                 # If the input is the result of computation, then we
                 # don't need to check it. It is already done after the
                 # computation.
-                if not var.owner:
+                if var.owner is not None:
                     do_check_on(x[0], node, fn, True)
             fn()
             outputs = fn.outputs
