@@ -454,8 +454,7 @@ def test_pooling_opt():
 
     f = theano.function(
         [x],
-        max_pool_2d(x, ds=(2, 2), mode='average_inc_pad',
-                ignore_border=True),
+        max_pool_2d(x, ds=(2, 2), mode='average_inc_pad', ignore_border=True),
         mode=mode_with_gpu)
 
     assert any([isinstance(n.op, cuda.dnn.GpuDnnPool)
@@ -466,7 +465,7 @@ def test_pooling_opt():
     f = theano.function(
         [x],
         T.grad(max_pool_2d(x, ds=(2, 2), mode='average_inc_pad',
-                ignore_border=True).sum(), x),
+                           ignore_border=True).sum(), x),
         mode=mode_with_gpu.including("cudnn"))
 
     assert any([isinstance(n.op, cuda.dnn.GpuDnnPoolGrad)
