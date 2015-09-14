@@ -14,6 +14,8 @@
 *.toc
 *.vrb
 .noseids
+*.DS_Store
+*.bak
 Theano.egg-info
 \#*\#
 build
@@ -26,12 +28,12 @@ doc/indexes/oplist.txt
 doc/indexes/typelist.txt
 html
 pdf
-pull.sh
 setuptools-*.egg
 theano/generated_version.py
 theano/generated_version.py.out
 distribute-*.egg
 distribute-*.tar.gz
 Theano.suo
-*.DS_Store
-*.bak
+.ipynb_checkpoints
+.pydevproject
+

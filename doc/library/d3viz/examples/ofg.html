@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link rel="stylesheet" href="d3viz/css/d3viz.css"/>
+	<link rel="stylesheet" href="d3viz/css/d3-context-menu.css"/>
+	<script type="text/javascript" src="d3viz/js/d3viz.js"></script>
+	<script type="text/javascript" src="d3viz/js/d3.v3.min.js"></script>
+	<script type="text/javascript" src="d3viz/js/dagre-d3.min.js"></script>
+	<script type="text/javascript" src="d3viz/js/graphlib-dot.min.js"></script>
+	<script type="text/javascript" src="d3viz/js/d3-context-menu.js"></script>
+</head>
+<body>
+	<div id='menu' class='menuBar'>
+	    <input name="resetNodes" 
+	           type="button" 
+	           value="Reset nodes"
+	           onclick="resetNodes()"/>
+	    <input name="releaseNodes" 
+	           type="button" 
+	           value="Release nodes"
+	           onclick="releaseNodes()"/>
+	</div>
+
+	<script type="text/javascript">
+		// Backend graph in DOT format
+		var dotGraph = graphlibDot.read("digraph G {	graph [bb=\"0,0,877.01,316\"];	node [label=\"\N\"];	subgraph cluster_n1 {		graph [bb=\"413.01,80,637.01,308\"];		n11		 [apply_op=Elemwise,			fillcolor=\"#FFAABB\",			height=0.5,			label=Elemwise,			node_type=apply,			pos=\"510.01,194\",			shape=ellipse,			style=filled,			type=colored,			width=1.2888];		n15		 [dtype=fscalar,			fillcolor=dodgerblue,			height=0.5,			label=fscalar,			node_type=output,			pos=\"510.01,106\",			shape=box,			style=filled,			width=0.75];		n11 -> n15		 [label=fscalar,			lp=\"529.01,150\",			pos=\"e,510.01,124.08 510.01,175.6 510.01,163.75 510.01,147.82 510.01,134.29\"];		n12		 [dtype=fscalar,			fillcolor=limegreen,			height=0.5,			label=z,			node_type=input,			pos=\"592.01,282\",			shape=box,			style=filled,			width=0.75];		n12 -> n11		 [label=\"0 fscalar\",			lp=\"596.01,238\",			pos=\"e,534.12,209.56 583.05,263.78 577.09,253.31 568.62,240.07 559.01,230 554.11,224.87 548.36,220 542.56,215.61\"];		n13		 [dtype=fscalar,			fillcolor=limegreen,			height=0.5,			label=x,			node_type=input,			pos=\"520.01,282\",			shape=box,			style=filled,			width=0.75];		n13 -> n11		 [label=\"1 fscalar\",			lp=\"535.01,238\",			pos=\"e,509.36,212.08 514.71,263.71 513.23,258.11 511.8,251.84 511.01,246 509.95,238.28 509.51,229.84 509.37,222.09\"];		n14		 [dtype=fscalar,			fillcolor=limegreen,			height=0.5,			label=y,			node_type=input,			pos=\"448.01,282\",			shape=box,			style=filled,			width=0.75];		n14 -> n11		 [label=\"2 fscalar\",			lp=\"482.01,238\",			pos=\"e,481.77,208.39 448.14,263.68 448.97,253.17 451.42,239.92 458.01,230 462.06,223.89 467.58,218.57 473.52,214.05\"];	}	subgraph cluster_n7 {		graph [bb=\"645.01,80,869.01,308\"];		n71		 [apply_op=Elemwise,			fillcolor=\"#FFAABB\",			height=0.5,			label=Elemwise,			node_type=apply,			pos=\"742.01,194\",			shape=ellipse,			style=filled,			type=colored,			width=1.2888];		n75		 [dtype=fscalar,			fillcolor=dodgerblue,			height=0.5,			label=fscalar,			node_type=output,			pos=\"742.01,106\",			shape=box,			style=filled,			width=0.75];		n71 -> n75		 [label=fscalar,			lp=\"761.01,150\",			pos=\"e,742.01,124.08 742.01,175.6 742.01,163.75 742.01,147.82 742.01,134.29\"];		n72		 [dtype=fscalar,			fillcolor=limegreen,			height=0.5,			label=z,			node_type=input,			pos=\"824.01,282\",			shape=box,			style=filled,			width=0.75];		n72 -> n71		 [label=\"0 fscalar\",			lp=\"828.01,238\",			pos=\"e,766.12,209.56 815.05,263.78 809.09,253.31 800.62,240.07 791.01,230 786.11,224.87 780.36,220 774.56,215.61\"];		n73		 [dtype=fscalar,			fillcolor=limegreen,			height=0.5,			label=x,			node_type=input,			pos=\"752.01,282\",			shape=box,			style=filled,			width=0.75];		n73 -> n71		 [label=\"1 fscalar\",			lp=\"767.01,238\",			pos=\"e,741.36,212.08 746.71,263.71 745.23,258.11 743.8,251.84 743.01,246 741.95,238.28 741.51,229.84 741.37,222.09\"];		n74		 [dtype=fscalar,			fillcolor=limegreen,			height=0.5,			label=y,			node_type=input,			pos=\"680.01,282\",			shape=box,			style=filled,			width=0.75];		n74 -> n71		 [label=\"2 fscalar\",			lp=\"714.01,238\",			pos=\"e,713.77,208.39 680.14,263.68 680.97,253.17 683.42,239.92 690.01,230 694.06,223.89 699.58,218.57 705.52,214.05\"];	}	n1	 [apply_op=OpFromGraph,		height=0.5,		label=OpFromGraph,		node_type=apply,		pos=\"217.01,194\",		shape=ellipse,		subg=cluster_n1,		subg_map_inputs=\"[[\'n2\', \'n13\'], [\'n3\', \'n14\'], [\'n4\', \'n12\']]\",		subg_map_outputs=\"[[\'n15\', \'n6\']]\",		width=1.7826];	n6	 [apply_op=Elemwise,		fillcolor=\"#FFAABB\",		height=0.5,		label=Elemwise,		node_type=apply,		pos=\"153.01,106\",		shape=ellipse,		style=filled,		type=colored,		width=1.2888];	n1 -> n6	 [label=\"1 fscalar\",		lp=\"215.01,150\",		pos=\"e,165.19,123.37 204.36,176.01 194.95,163.36 181.96,145.9 171.4,131.71\"];	n2	 [dtype=fscalar,		fillcolor=limegreen,		height=0.5,		label=z,		node_type=input,		pos=\"55.007,282\",		shape=box,		style=filled,		width=0.75];	n2 -> n1	 [label=\"0 fscalar\",		lp=\"175.01,238\",		pos=\"e,188.78,210.26 82.101,266.93 94.312,260.57 108.9,252.94 122.01,246 141.17,235.85 162.43,224.45 179.98,215\"];	n7	 [apply_op=OpFromGraph,		height=0.5,		label=OpFromGraph,		node_type=apply,		pos=\"70.007,194\",		shape=ellipse,		subg=cluster_n7,		subg_map_inputs=\"[[\'n4\', \'n73\'], [\'n3\', \'n74\'], [\'n2\', \'n72\']]\",		subg_map_outputs=\"[[\'n75\', \'n6\']]\",		width=1.7826];	n2 -> n7	 [label=\"2 fscalar\",		lp=\"27.007,238\",		pos=\"e,28.697,207.85 27.721,268.8 10.72,259.37 -6.2971,245.36 3.007,230 7.1667,223.13 13.164,217.55 19.883,213.03\"];	n3	 [dtype=fscalar,		fillcolor=limegreen,		height=0.5,		label=y,		node_type=input,		pos=\"304.01,282\",		shape=box,		style=filled,		width=0.75];	n3 -> n1	 [label=\"1 fscalar\",		lp=\"363.01,238\",		pos=\"e,279.27,198.73 325,263.94 334.94,253.78 343.06,240.79 335.01,230 323.95,215.19 306.9,206.39 289.16,201.24\"];	n3 -> n7	 [label=\"1 fscalar\",		lp=\"304.01,238\",		pos=\"e,116.87,206.31 294.23,263.96 286.68,252.44 275.15,237.94 261.01,230 215.13,204.25 195.68,221.9 144.01,212 138.37,210.92 132.5,209.72 \126.66,208.46\"];	n4	 [dtype=fscalar,		fillcolor=limegreen,		height=0.5,		label=x,		node_type=input,		pos=\"197.01,282\",		shape=box,		style=filled,		width=0.75];	n4 -> n1	 [label=\"2 fscalar\",		lp=\"233.01,238\",		pos=\"e,213.03,212.08 201.05,263.6 203.84,251.63 207.59,235.5 210.75,221.89\"];	n4 -> n7	 [label=\"0 fscalar\",		lp=\"98.007,238\",		pos=\"e,66.731,212.43 169.97,281.61 141.33,280.65 97.14,274.26 74.007,246 68.707,239.52 66.766,230.91 66.43,222.6\"];	n7 -> n6	 [color=red,		label=\"0 fscalar\",		lp=\"143.01,150\",		pos=\"e,137.33,123.24 86.01,176.42 98.606,163.37 116.32,145.01 130.37,130.46\"];	n9	 [dtype=fscalar,		fillcolor=dodgerblue,		height=0.5,		label=fscalar,		node_type=output,		pos=\"153.01,18\",		shape=box,		style=filled,		width=0.75];	n6 -> n9	 [label=fscalar,		lp=\"172.01,62\",		pos=\"e,153.01,36.084 153.01,87.597 153.01,75.746 153.01,59.817 153.01,46.292\"];}");
+		// Frontend graph for visualization
+		var graph = {};
+		
+		var forceLayout;
+		var isProfiled = false; // true if profiling information available
+		var useProfileColors = false;
+		var fixOnInit = true; // fix nodes on initialization
+		var maxProfilePer = 0;
+		var profileColors = ["#fff5f0","#fee0d2","#fcbba1","#fc9272","#fb6a4a","#ef3b2c","#cb181d","#a50f15"];
+		var pad = 10;
+		var isEditNode = false; // true if node is edited
+		var menuItems = [
+			{
+				title: 'Edit',
+				action: function(elm, d, i) { editNode(elm, d); }
+			},
+			{
+				title: 'Release',
+				action: function(elm, d, i) { releaseNode(d); }
+			}
+		];
+
+		// Create main panel
+		d3.select('body').select('svg').remove();
+		var svg = d3.select('body').append('svg')
+			.attr('width', '100%')
+			.attr('height', '95%');
+		var pane = svg.append('g');
+		
+		// Zoom behaviour
+		var zoom = d3.behavior.zoom()
+			.scaleExtent([0.2, 8])
+			.on('zoom', function(d) {
+				var trans = d3.event.translate;
+				trans[0] += 300;
+				trans[1] += 100;
+				pane.attr('transform', 'translate(' + trans + ') scale(' + d3.event.scale + ')');
+			});
+		svg.call(zoom);
+		zoom.event(svg);
+		svg.on("dblclick.zoom", null);
+		
+		// Edges
+		var edgeDiv = d3.select('body').append('div')
+			.attr('class', 'edgeTooltip')
+			.style('opacity', 0.0);
+		
+		// Div for node details	
+		var nodeInfo = d3.select('body').append('div')
+			.attr('class', 'nodeInfo')
+			.style('opacity', 0.0);
+		
+		// Definition head of edges
+		var markerData = [
+			{'id': 'n', 'color': 'black'},
+			{'id': 'r', 'color': 'red'},
+			{'id': 'b', 'color': 'dodgerblue'}];
+		svg.append("defs").selectAll('marker').data(markerData).enter().append("marker")
+		    .attr("id", function(d) { return 'edgeArrow_' + d.id;})
+		    .attr("markerWidth", 4)
+		    .attr("markerHeight", 4)
+		    .attr("refX", 2)
+		    .attr("refY", 2)
+		    .attr("orient", "auto")
+		  	.append("path")
+		    .attr("d", "M0,0 L4,2 L0,4 Z")
+		    .attr('fill', function(d) { return d.color;});
+	
+		// Initialize graph
+		processDotGraph(dotGraph);		
+		graph = frontEndGraph(dotGraph);
+		drawGraph();
+	</script>
+</body>
+</html>
