@@ -3461,10 +3461,18 @@ class T_Join_and_Split(unittest.TestCase):
         self.assertTrue(v3.shape == v4.shape)
         self.assertTrue(numpy.all(v3 == v4))
         # Testing negative axis
-        s = stack([a, b], axis=-2)
-        f = function([a, b], s, mode=self.mode)
         v1 = [[1, 2, 3], [4, 5, 6]]
         v2 = [[7, 8, 9], [10, 11, 12]]
+        s = stack([a, b], axis=-1)
+        f = function([a, b], s, mode=self.mode)
+        v = numpy.zeros((2, 3, 2))
+        v[:,:,0] = v1
+        v[:,:,1] = v2 
+        out = f(v1, v2) 
+        self.assertTrue(v.shape == out.shape)
+        self.assertTrue(numpy.all(v == out))
+        s = stack([a, b], axis=-2)
+        f = function([a, b], s, mode=self.mode)
         v = numpy.zeros((2, 2, 3))
         v[:,0,:] = v1
         v[:,1,:] = v2 
