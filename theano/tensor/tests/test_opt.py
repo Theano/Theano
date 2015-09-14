@@ -3245,8 +3245,10 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
 
     def test_shape_inequality_with_self(self):
         x = T.vector('x', dtype=config.floatX)
-        mode = theano.compile.get_default_mode().including('local_useless_elemwise_comparison')
-
+        mode = theano.compile.get_default_mode().including('local_useless_elemwise_comparison',
+                                                           'local_shape_to_shape_i',
+                                                           'local_track_shape_i',
+                                                           'local_subtensor_make_vector')
         f = theano.function([x], T.lt(x.shape[0], 0), mode=mode)
         self.assert_eqs_const(f, 0)
 
@@ -3275,7 +3277,10 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
 
     def test_shape_add_inequality(self):
         x = T.vector('x', dtype=config.floatX)
-        mode = theano.compile.get_default_mode().including('local_useless_elemwise_comparison')
+        mode = theano.compile.get_default_mode().including('local_useless_elemwise_comparison',
+                                                           'local_shape_to_shape_i',
+                                                           'local_track_shape_i',
+                                                           'local_subtensor_make_vector')
 
         y = T.vector('y', dtype=config.floatX)
 
