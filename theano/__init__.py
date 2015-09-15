@@ -93,11 +93,11 @@ from theano.gradient import Rop, Lop, grad, subgraph_grad
 # needed during that phase.
 
 
-def test(*args):
+def test():
     import theano.tests
     if hasattr(theano.tests, "TheanoNoseTester"):
         test = theano.tests.TheanoNoseTester().test
-        test(*args)
+        return test()
     else:
         raise ImportError("The nose module is not installed.")
 
