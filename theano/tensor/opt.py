@@ -4120,7 +4120,10 @@ def local_sum_prod_mul_by_scalar(node):
             if new_op_input_nb_elements != 1:
                 mul_inputs.append(new_op_output)
 
-            return [T.mul(*mul_inputs)]
+            if len(mul_inputs) == 1:
+                return mul_inputs
+            else:
+                return [T.mul(*mul_inputs)]
 
         if isinstance(node.op, T.Sum) and node_inps.owner and node_inps.owner.op == T.neg:
             return [T.neg(node.op(node_inps.owner.inputs[0]))]
