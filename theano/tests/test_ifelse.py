@@ -64,7 +64,7 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
             # the opt.
             'fusion', 'local_add_canonizer',
             'inplace', 'constant_folding', 'constant_folding')
-        y2 = reduce(lambda x, y: x + y, [y] + range(200))
+        y2 = reduce(lambda x, y: x + y, [y] + list(range(200)))
         f = theano.function([c, x, y], ifelse(c, x, y2), mode=mode)
         # For not inplace ifelse
         self.assertFunctionContains1(f, IfElse(1))
