@@ -4081,28 +4081,29 @@ def local_sum_prod_mul_by_scalar(node):
     """
     # TODO: if the the thing inside the Sum is a division,
     # we should get at the numerator....
-    if isinstance(node.op, T.Sum) or isinstance(node.op, T.elemwise.Prod):
+    if isinstance(node.op, (T.Sum, T.elemwise.Prod)):
         node_inps, = node.inputs
         if node_inps.owner and node_inps.owner.op == T.mul:
             terms = node_inps.owner.inputs
             scalars = [t.dimshuffle() for t in terms if
                        numpy.all(t.type.broadcastable)]
-            non_scalars = [t for t in terms if not numpy.all(t.broadcastable)]
 
             if len(scalars) == 0:
                 # Nothing to optimize here
                 return
+
+            non_scalars = [t for t in terms if not numpy.all(t.broadcastable)]
 
             # Perform the op only on the non-scalar inputs, if applicable
             if len(non_scalars) == 0:
                 new_op_input_nb_elements = 1
                 new_op_output = 1
             elif len(non_scalars) == 1:
-                new_op_input_nb_elements = T.prod(non_scalars[0].shape)
+                new_op_input_nb_elements = non_scalars[0].size
                 new_op_output = node.op(non_scalars[0])
             else:
                 new_op_input = T.mul(*non_scalars)
-                new_op_input_nb_elements = T.prod(new_op_input.shape)
+                new_op_input_nb_elements = new_op_input.size
                 new_op_output = node.op(new_op_input)
 
             # If node.op is a T.elemwise.Prod, then the scalars need to be
