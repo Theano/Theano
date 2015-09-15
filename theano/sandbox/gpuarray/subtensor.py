@@ -615,7 +615,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, GpuAdvancedIncSubtensor1):
     def c_headers(self):
         if pygpu.get_default_context().kind == 'opencl':
             raise MethodNotDefined('cuda only')
-        return ['cuda.h', '<numpy_compat.h>', '<gpuarray/ext_cuda.h>',
+        return ['cuda.h', '<numpy_compat.h>', '<gpuarray_helper.h>',
                 '<gpuarray/types.h>']
 
     def c_header_dirs(self):
@@ -626,11 +626,6 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, GpuAdvancedIncSubtensor1):
         if cuda_root:
             res.append(os.path.join(cuda_root, 'include'))
         return res
-
-    def c_init_code(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        return ['setup_ext_cuda();']
 
     def c_code(self, node, name, inputs, outputs, sub):
         active_device_no = theano.sandbox.cuda.active_device_number()
@@ -748,10 +743,10 @@ __device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
              {
                   for(int j = (threadIdx.x); j < numColsX;j += blockDim.x)
                   {
-                      ssize_t x_row = indices_arr[i * stridesIndices];
+                      ga_ssize x_row = indices_arr[i * stridesIndices];
                       if (x_row < 0)
                           x_row += numRowsX;
-                      ssize_t y_row = i;
+                      ga_ssize y_row = i;
                       if (x_row < numRowsX && x_row >= 0) {
                         atomicAdd(&X[(x_row * stridesX0) + (j * stridesX1)], Y[(y_row * stridesY0) + (j * stridesY1)]);
                       } else {
