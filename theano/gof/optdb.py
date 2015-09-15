@@ -196,6 +196,11 @@ class Query(object):
                 (self.include, self.exclude, self.require, self.subquery,
                  self.position_cutoff, self.extra_optimizations))
 
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        if not hasattr(self, 'extra_optimizations'):
+            self.extra_optimizations = []
+
     # add all opt with this tag
     def including(self, *tags):
         return Query(self.include.union(tags),
