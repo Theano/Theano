@@ -132,25 +132,12 @@ def test_hgemm_swap():
     f = theano.function([v, m], tensor.dot(v, m), mode=mode_with_gpu)
     assert len([node for node in f.maker.fgraph.apply_nodes
                 if isinstance(node.op, GpuGemm)]) == 0
+
     f = theano.function([m32, m], tensor.dot(m32, m), mode=mode_with_gpu)
     assert len([node for node in f.maker.fgraph.apply_nodes
                 if isinstance(node.op, GpuGemm)]) == 0
 
     f = theano.function([m, m2], tensor.dot(m, m2), mode=mode_with_gpu)
-    assert len([node for node in f.maker.fgraph.apply_nodes
-                if isinstance(node.op, GpuGemm)]) == 1
-
-
-def test_hgemm_value():
-    from theano.sandbox.cuda import nvcc_compiler
-    if nvcc_compiler.nvcc_version < '7.5':
-        raise SkipTest("SgemmEx is only avaialble on cuda 7.5+")
-
-    m = tensor.matrix(dtype='float16')
-    m2 = tensor.matrix(dtype='float16')
-
-    f = theano.function([m, m2], tensor.dot(m, m2), mode=mode_with_gpu)
-
     assert len([node for node in f.maker.fgraph.apply_nodes
                 if isinstance(node.op, GpuGemm)]) == 1
 
