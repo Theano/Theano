@@ -148,3 +148,19 @@ def test_hgemm_swap():
     on = numpy.dot(v1, v2)
 
     utt.assert_allclose(of, on)
+
+def test_hgemm_alpha_output_merge():
+    from theano.sandbox.cuda import nvcc_compiler
+    if nvcc_compiler.nvcc_version < '7.5':
+        raise SkipTest("SgemmEx is only avaialble on cuda 7.5+")
+
+    m1 = tensor.matrix(dtype='float16')
+    m2 = tensor.matrix(dtype='float16')
+
+    b = tensor.matrix(dtype='float16')
+
+    hgemm = numpy.asarray(0.05, dtype='float16') * (tensor.dot(m1, m2) + b)
+
+    f = theano.function([m1, m2, b], hgemm, mode=mode_with_gpu)
+    # there should be 3 gpu_from_host, 1 hgemm and 1 host_from_gpu
+    assert len(f.maker.fgraph.apply_nodes) == 5

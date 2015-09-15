@@ -36,7 +36,7 @@ class GpuArrayType(Type):
         return self.__class__(dtype=dtype, broadcastable=broadcastable,
                               name=self.name)
 
-    def __str__(self):
+    def __repr__(self):
         return "GpuArrayType(%s, %s)" % (self.dtype, self.broadcastable)
 
     def filter(self, data, strict=False, allow_downcast=None):

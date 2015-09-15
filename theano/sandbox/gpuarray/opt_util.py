@@ -73,7 +73,8 @@ def alpha_merge(cls, alpha_in, beta_in, nd):
                     lr = grab_cpu_scalar(node.inputs[0], nd=nd)
                 else:
                     lr = grab_cpu_scalar(node.inputs[1], nd=nd)
-                if lr is None or targ is None:
+                if (lr is None or targ is None or
+                        lr.dtype != targ.outputs[0].dtype):
                     return None
                 inputs = list(targ.inputs)
                 try:
@@ -109,6 +110,8 @@ def output_merge(cls, alpha_in, beta_in, out_in, nd):
                     targ = find_node(node.inputs[1], cls)
                     W = node.inputs[0]
                 if targ is None:
+                    return None
+                if W.dtype != targ.outputs[0].dtype:
                     return None
                 if not is_equal(targ.inputs[beta_in], 0.0):
                     # other cases are too complex for now
