@@ -3259,14 +3259,14 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
         assert isinstance(topo[0].op, Shape_i), topo[0].op
-        x_val = numpy.ones(100)
+        x_val = numpy.ones(100, dtype=config.floatX)
         assert f(x_val) == x_val.shape[0]
 
         f = theano.function([x], T.maximum(0, x.shape[0]), mode=mode)
         topo = f.maker.fgraph.toposort()
         assert len(topo) == 1
         assert isinstance(topo[0].op, Shape_i), topo[0].op
-        x_val = numpy.ones(100)
+        x_val = numpy.ones(100, dtype=config.floatX)
         assert f(x_val) == x_val.shape[0]
 
         f = theano.function([x], T.minimum(x.shape[0], 0), mode=mode)
