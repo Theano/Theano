@@ -4251,7 +4251,7 @@ def local_sum_prod_div_dimshuffle(node):
                             optimized_dimshuffle)
                         if len(reordered_incompatible_dims) > 0:
                             rval = T.sum(rval,
-                                        axis=reordered_incompatible_dims)
+                                         axis=reordered_incompatible_dims)
                     elif isinstance(node.op, T.elemwise.Prod):
                         op_on_compatible_dims = T.prod(
                             numerator, axis=compatible_dims)
@@ -4263,7 +4263,7 @@ def local_sum_prod_div_dimshuffle(node):
                                         for ax in compatible_dims])))
                         if len(reordered_incompatible_dims) > 0:
                             rval = T.prod(rval,
-                                         axis=reordered_incompatible_dims)
+                                          axis=reordered_incompatible_dims)
                     return [rval]
 
 
