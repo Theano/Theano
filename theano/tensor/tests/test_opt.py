@@ -3135,6 +3135,201 @@ def test_local_fill_useless():
     assert T.Alloc in ops
     f(m_, x_)
 
+    
+class Test_local_useless_elemwise_comparison(unittest.TestCase):
+    def test_local_useless_elemwise_comparison(self):
+        # TODO: test each case individually.
+        # The following case is what made me discover those cases.
+        X = T.matrix('X')
+        Y = T.vector('Y')
+        X_sum, updates = theano.scan(fn=lambda x: x.sum(),
+                                     outputs_info=None,
+                                     sequences=[X],
+                                     non_sequences=None)
+        Z = X_sum + Y
+        theano.printing.debugprint(Z)
+        # here is the output for the debug print:
+        """
+        Elemwise{add,no_inplace} [@A] ''
+         |for{cpu,scan_fn} [@B] ''
+         | |Subtensor{int64} [@C] ''
+         | | |Shape [@D] ''
+         | | | |Subtensor{int64::} [@E] 'X[0:]'
+         | | |   |X [@F]
+         | | |   |Constant{0} [@G]
+         | | |Constant{0} [@H]
+         | |Subtensor{:int64:} [@I] ''
+         | | |Subtensor{int64::} [@E] 'X[0:]'
+         | | |ScalarFromTensor [@J] ''
+         | |   |Subtensor{int64} [@C] ''
+         | |Subtensor{int64} [@C] ''
+         |Y [@K]
+
+        Inner graphs of the scan ops:
+
+        for{cpu,scan_fn} [@B] ''
+         >Sum{acc_dtype=float64} [@L] ''
+         > |X[t] [@M] -> [@I]
+        """
+        
+        mode = theano.compile.get_default_mode().excluding('fusion')
+        f = theano.function([X, Y], Z, mode=mode)
+        theano.printing.debugprint(f, print_type=True)
+        # here is the output for the debug print:
+        """
+        Elemwise{Add}[(0, 0)] [@A] <TensorType(float64, vector)> ''   7
+         |for{cpu,scan_fn} [@B] <TensorType(float64, vector)> ''   6
+         | |Shape_i{0} [@C] <TensorType(int64, scalar)> ''   0
+         | | |X [@D] <TensorType(float64, matrix)>
+         | |Subtensor{int64:int64:int8} [@E] <TensorType(float64, matrix)> ''   5
+         | | |X [@D] <TensorType(float64, matrix)>
+         | | |ScalarFromTensor [@F] <int64> ''   4
+         | | | |Elemwise{switch,no_inplace} [@G] <TensorType(int64, scalar)> ''   3
+         | | |   |Elemwise{le,no_inplace} [@H] <TensorType(int8, scalar)> ''   2
+         | | |   | |Shape_i{0} [@C] <TensorType(int64, scalar)> ''   0
+         | | |   | |TensorConstant{0} [@I] <TensorType(int8, scalar)>
+         | | |   |TensorConstant{0} [@I] <TensorType(int8, scalar)>
+         | | |   |TensorConstant{0} [@J] <TensorType(int64, scalar)>
+         | | |ScalarFromTensor [@K] <int64> ''   1
+         | | | |Shape_i{0} [@C] <TensorType(int64, scalar)> ''   0
+         | | |Constant{1} [@L] <int8>
+         | |Shape_i{0} [@C] <TensorType(int64, scalar)> ''   0
+         |Y [@M] <TensorType(float64, vector)>
+
+        Inner graphs of the scan ops:
+
+        for{cpu,scan_fn} [@B] <TensorType(float64, vector)> ''
+         >Sum{acc_dtype=float64} [@N] <TensorType(float64, scalar)> ''
+         > |X[t] [@O] <TensorType(float64, vector)> -> [@E]
+        """
+
+    def assert_eqs_const(self, f, val):
+        topo = f.maker.fgraph.toposort()
+        elem = topo[0]
+        assert len(topo) == 1, topo
+        assert elem.op == deep_copy_op, elem.op
+        assert len(elem.inputs) == 1, elem.inputs
+        assert isinstance(elem.inputs[0], T.TensorConstant), elem
+        assert T.extract_constant(elem.inputs[0]) == val, val
+    
+    def assert_identity(self, f):
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert topo[0].op == deep_copy_op
+        x_val = 10
+        assert f(x_val) == x_val
+
+    #def assert_returns
+
+    def test_inequality_with_self(self):
+        x = T.scalar('x', dtype=config.floatX)
+        mode = theano.compile.get_default_mode().including('local_useless_elemwise_comparison')
+        
+        f = theano.function([x], T.lt(x, x), mode=mode)
+        self.assert_eqs_const(f, 0)
+        
+        f = theano.function([x], T.le(x, x), mode=mode)
+        self.assert_eqs_const(f, 1)
+
+        f = theano.function([x], T.gt(x, x), mode=mode)
+        self.assert_eqs_const(f, 0)
+
+        f = theano.function([x], T.ge(x, x), mode=mode)
+        self.assert_eqs_const(f, 1)
+
+        f = theano.function([x], T.minimum(x, x), mode=mode)
+        self.assert_identity(f)
+
+        f = theano.function([x], T.maximum(x, x), mode=mode)
+        self.assert_identity(f)
+
+    def test_shape_inequality_with_self(self):
+        x = T.vector('x', dtype=config.floatX)
+        mode = theano.compile.get_default_mode().including('local_useless_elemwise_comparison',
+                                                           'local_shape_to_shape_i',
+                                                           'local_track_shape_i',
+                                                           'local_subtensor_make_vector')
+        f = theano.function([x], T.lt(x.shape[0], 0), mode=mode)
+        self.assert_eqs_const(f, 0)
+
+        f = theano.function([x], T.ge(x.shape[0], 0), mode=mode)
+        self.assert_eqs_const(f, 1)
+
+        f = theano.function([x], T.maximum(x.shape[0], 0), mode=mode)
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert isinstance(topo[0].op, Shape_i), topo[0].op
+        x_val = numpy.ones(100, dtype=config.floatX)
+        assert f(x_val) == x_val.shape[0]
+
+        f = theano.function([x], T.maximum(0, x.shape[0]), mode=mode)
+        topo = f.maker.fgraph.toposort()
+        assert len(topo) == 1
+        assert isinstance(topo[0].op, Shape_i), topo[0].op
+        x_val = numpy.ones(100, dtype=config.floatX)
+        assert f(x_val) == x_val.shape[0]
+
+        f = theano.function([x], T.minimum(x.shape[0], 0), mode=mode)
+        self.assert_eqs_const(f, 0)
+
+        f = theano.function([x], T.minimum(0, x.shape[0]), mode=mode)
+        self.assert_eqs_const(f, 0)
+
+    def test_shape_add_inequality(self):
+        x = T.vector('x', dtype=config.floatX)
+        mode = theano.compile.get_default_mode().including('local_useless_elemwise_comparison',
+                                                           'local_shape_to_shape_i',
+                                                           'local_track_shape_i',
+                                                           'local_subtensor_make_vector')
+
+        y = T.vector('y', dtype=config.floatX)
+
+        f = theano.function([x, y], T.lt(x.shape[0]+y.shape[0], 0), mode=mode)
+        self.assert_eqs_const(f, 0)
+
+        f = theano.function([x, y], T.ge(x.shape[0]+y.shape[0], 0), mode=mode)
+        self.assert_eqs_const(f, 1)
+        
+    def test_and(self):
+        mode = theano.compile.get_default_mode().including('canonicalize')
+        
+        x = T.scalar('x', dtype='int8')
+
+        f = theano.function([x], T.and_(x, 0), mode=mode)
+        self.assert_eqs_const(f, 0)
+
+        f = theano.function([x], T.and_(0, x), mode=mode)
+        self.assert_eqs_const(f, 0)
+
+        f = theano.function([x], T.and_(x, 1), mode=mode)
+        self.assert_identity(f)
+
+        f = theano.function([x], T.and_(1, x), mode=mode)
+        self.assert_identity(f)
+
+    def test_or(self):
+        mode = theano.compile.get_default_mode().including('canonicalize')
+        x = T.scalar('x', dtype='int8')
+
+        f = theano.function([x], T.or_(x, 1), mode=mode)
+        self.assert_eqs_const(f, 1)
+
+        f = theano.function([x], T.or_(1, x), mode=mode)
+        self.assert_eqs_const(f, 1)
+
+        f = theano.function([x], T.or_(x, 0), mode=mode)
+        self.assert_identity(f)
+
+        f = theano.function([x], T.or_(0, x), mode=mode)
+        self.assert_identity(f)
+
+    def test_xor(self):
+        mode = theano.compile.get_default_mode().including('canonicalize')
+        x = T.scalar('x', dtype='int8')
+
+        f = theano.function([x], T.xor(x, x), mode=mode)
+        self.assert_eqs_const(f, 0)
+
 
 class Test_local_useless_alloc(unittest.TestCase):
     def setUp(self):
@@ -4445,6 +4640,53 @@ class test_local_remove_switch_const_cond(unittest.TestCase):
                 vx = numpy.array([[1, 2, 3], [4, 5, 6]], dtype=dtype1)
                 vy = numpy.array([[7, 8, 9], [10, 11, 12]], dtype=dtype2)
                 assert numpy.all(f(vx, vy) == vx)
+
+    def test_left_is_right(self):
+
+        for dtype1 in ['int32', 'int64']:
+            x = theano.tensor.matrix('x', dtype=dtype1)
+            varc = theano.tensor.matrix('varc', dtype=dtype1)
+            z1 = theano.tensor.switch(1, x, x)
+            z0 = theano.tensor.switch(0, x, x)
+            z2 = theano.tensor.switch(varc, x, x)
+            f1 = theano.function([x], z1, mode=self.mode)
+            f0 = theano.function([x], z0, mode=self.mode)
+            f2 = theano.function([x,varc], z2, mode=self.mode)
+
+            topo = f1.maker.fgraph.toposort()
+            assert len(topo) == 1
+            assert topo[0].op == deep_copy_op
+
+            topo = f0.maker.fgraph.toposort()
+            assert len(topo) == 1
+            assert topo[0].op == deep_copy_op
+
+            topo = f2.maker.fgraph.toposort()
+            assert len(topo) == 1
+            assert topo[0].op == deep_copy_op
+
+            vx = numpy.array([[1, 2, 3], [4, 5, 6]], dtype=dtype1)
+            vc = numpy.array([[1, 2, 3], [4, 5, 6]], dtype=dtype1)
+            assert numpy.all(f1(vx) == vx)
+            assert numpy.all(f0(vx) == vx)
+            assert numpy.all(f2(vx,vc) == vx)
+
+    def test_shape_le_0(self):
+
+        for dtype1 in ['float32', 'float64']:
+            x = theano.tensor.matrix('x', dtype=dtype1)
+            z0 = theano.tensor.switch(theano.tensor.le(x.shape[0], 0), 0, x.shape[0])
+            f0 = theano.function([x], z0, mode=self.mode)
+            assert isinstance(f0.maker.fgraph.toposort()[0].op, Shape_i)
+
+            z1 = theano.tensor.switch(theano.tensor.le(x.shape[1], 0), 0, x.shape[1])
+            f1 = theano.function([x], z1, mode=self.mode)
+            assert isinstance(f1.maker.fgraph.toposort()[0].op, Shape_i)
+
+            vx = numpy.random.randn(0,5).astype(dtype1)
+            assert f0(vx) == 0
+            assert f1(vx) == 5
+
 
     def test_broadcast1(self):
         # test switch(cst, matrix, row)

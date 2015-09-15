@@ -1554,9 +1554,24 @@ def local_useless_elemwise(node):
     mul(x) -> x
     add(x) -> x
     identity(x) -> x
+    and(x,1) -> x
+    and(x,0) -> zeros_like(x)
+    or(x,0) -> x
+    or(x,1) -> ones_like(x)
+    xor(x,x) -> zeros_like(x)
 
     """
     if isinstance(node.op, T.Elemwise):
+        def zeros_like(node, in_idx):
+            # it is the same var in the graph. That will always be true
+            return [T.fill(node.inputs[in_idx],
+                           T.constant(0.0, dtype=node.outputs[0].type.dtype))]
+
+        def ones_like(node, in_idx):
+            # it is the same var in the graph. That will always be true
+            return [T.fill(node.inputs[in_idx],
+                           T.constant(1.0, dtype=node.outputs[0].type.dtype))]
+
         if node.op.scalar_op == theano.scalar.eq and len(node.inputs) == 2:
             if node.inputs[0] == node.inputs[1]:
                 # it is the same var in the graph. That will always be true
@@ -1581,13 +1596,56 @@ def local_useless_elemwise(node):
         elif node.op.scalar_op == theano.scalar.mul and len(node.inputs) == 1:
             # No need to copy over any stack trace
             return [node.inputs[0]]
+
         elif node.op.scalar_op == theano.scalar.add and len(node.inputs) == 1:
             # No need to copy over any stack trace
             return [node.inputs[0]]
         elif (node.op.scalar_op == theano.scalar.identity and
               len(node.inputs) == 1):
-            # No need to copy over any stack trace
             return [node.inputs[0]]
+
+        elif (isinstance(node.op.scalar_op, scalar.AND) and
+              len(node.inputs) == 2):
+
+            if isinstance(node.inputs[0], T.TensorConstant):
+                const_val = T.extract_constant(node.inputs[0])
+                if not isinstance(const_val, Variable):
+                    if const_val == 0:
+                        return zeros_like(node, 1)
+                    else:
+                        return [node.inputs[1]]
+
+            if isinstance(node.inputs[1], T.TensorConstant):
+                const_val = T.extract_constant(node.inputs[1])
+                if not isinstance(const_val, Variable):
+                    if const_val == 0:
+                        return zeros_like(node, 0)
+                    else:
+                        return [node.inputs[0]]
+
+        elif (isinstance(node.op.scalar_op, scalar.OR) and
+              len(node.inputs) == 2):
+
+            if isinstance(node.inputs[0], T.TensorConstant):
+                const_val = T.extract_constant(node.inputs[0])
+                if not isinstance(const_val, Variable):
+                    if const_val == 0:
+                        return [node.inputs[1]]
+                    else:
+                        return ones_like(node, 1)
+
+            if isinstance(node.inputs[1], T.TensorConstant):
+                const_val = T.extract_constant(node.inputs[1])
+                if not isinstance(const_val, Variable):
+                    if const_val == 0:
+                        return [node.inputs[0]]
+                    else:
+                        return ones_like(node, 0)
+
+        elif (isinstance(node.op.scalar_op, scalar.XOR) and
+              len(node.inputs) == 2):
+            if node.inputs[0] is node.inputs[1]:
+                return zeros_like(node, 0)
 
 
 @register_specialize
@@ -2389,7 +2447,7 @@ def merge_two_slices(slice1, len1, slice2, len2):
     """
     list_opt = [local_abs_merge, local_mul_switch_sink,
                 local_upcast_elemwise_constant_inputs,
-                local_remove_switch_const_cond, constant_folding]
+                local_useless_switch, constant_folding]
 
     if type(slice1) is not slice:
         raise ValueError(('First provided slice should actually be of type'
@@ -2767,10 +2825,11 @@ def local_inplace_setsubtensor(node):
 
     """
     if isinstance(node.op, IncSubtensor) and not node.op.inplace:
+        dta = node.op.destroyhandler_tolerate_aliased
         new_op = node.op.__class__(
             node.op.idx_list, inplace=True,
             set_instead_of_inc=node.op.set_instead_of_inc,
-            destroyhandler_tolerate_aliased=node.op.destroyhandler_tolerate_aliased)
+            destroyhandler_tolerate_aliased=dta)
         new_node = new_op(*node.inputs)
         return [new_node]
     return False
@@ -3206,15 +3265,18 @@ def local_join_make_vector(node):
 # Switch opts #
 ###############
 
-@register_canonicalize
+@register_canonicalize('fast_compile', 'local_remove_switch_const_cond')
+@register_specialize
 @gof.local_optimizer([T.Elemwise])
-def local_remove_switch_const_cond(node):
+def local_useless_switch(node):
     """
     This optimization makes the following changes in the graph:
         T.switch(cond,left,right) -->
                if cond is constant and cond == 0: right
                if cond is constant and cond != 0: left
+               if left is right -> left
 
+        T.switch(le(shape_i{id}(X), 0), 0, shape_i{id}(X)) -> shape_i{id}(X)
     """
     if (isinstance(node.op, T.Elemwise) and
             isinstance(node.op.scalar_op, scalar.basic.Switch)):
@@ -3235,7 +3297,25 @@ def local_remove_switch_const_cond(node):
                 out = T.alloc(out, *[node.outputs[0].shape[i] for i
                                      in xrange(out.ndim)])
             return [out]
+        # if left is right -> left
+        if node.inputs[1] is node.inputs[2]:
+            return [node.inputs[1]]
 
+        # This case happens with scan.
+        # Elemwise{switch}(le(shape_i{id}(X), 0), 0, shape_i{id}(X)) -> shape_i{id}(X)
+        left = node.inputs[1]
+        right = node.inputs[2]
+        cond_var = node.inputs[0]
+        if cond_var.owner and \
+           isinstance(cond_var.owner.op, T.Elemwise) and \
+           isinstance(cond_var.owner.op.scalar_op, scalar.LE) and \
+           cond_var.owner.inputs[0].owner and \
+           isinstance(cond_var.owner.inputs[0].owner.op, Shape_i) and \
+           T.extract_constant(cond_var.owner.inputs[1]) == 0 and \
+           T.extract_constant(left) == 0 and \
+           right is cond_var.owner.inputs[0]:
+            assert right.type == node.outputs[0].type
+            return [right]
         return False
     return False
 
@@ -4134,6 +4214,110 @@ def local_elemwise_sub_zeros(node):
             node.op.scalar_op == scalar.sub and
             node.inputs[0] == node.inputs[1]):
         return [T.zeros_like(node.inputs[0])]
+
+
+@register_specialize
+@register_stabilize
+@register_canonicalize
+@gof.local_optimizer([T.Elemwise])
+def local_useless_elemwise_comparison(node):
+    """...
+
+    :note: These cases appear in the graph generated by scan.
+           These optimizations will make the graph easier to read.
+    # Comparing to itself is constant
+    Elemwise[{LT,GT}](X, X) -> Elemwise[zeros](X)
+    Elemwise[{LE,GE}](X, X) -> Elemwise[ones](X)
+    Elemwise[{minimum,maximum}](X, X) -> X
+
+    # Comparing shape to 0 can be constant
+    Elemwise[LT](X.shape[i], 0) -> Elemwise[zeros](X)
+    Elemwise[GE](X.shape[i], 0) -> Elemwise[ones](X)
+    Elemwise[maximum](X.shape[i], 0) -> X.shape[i]
+    Elemwise[maximum](0, X.shape[i]) -> X.shape[i]
+    Elemwise[minimum](X.shape[i], 0) -> 0
+    Elemwise[minimum](0, X.shape[i]) -> 0
+
+    # The shape can be replaced with sum of shapes
+    Elemwise[LT](add([anything that is shapes]), 0) -> Elemwise[zeros](X)
+    Elemwise[GE](add([anything that is shapes]), 0) -> Elemwise[ones](X)
+
+    """
+    if not isinstance(node.op, T.Elemwise):
+        return
+    if node.op.scalar_op.nin != 2:
+        return
+    # Elemwise[{LT,GT}](X, X) -> Elemwise[zeros](X)
+    if isinstance(node.op.scalar_op, (scalar.LT, scalar.GT)) and \
+       node.inputs[0] is node.inputs[1]:
+        return [T.zeros_like(node.inputs[0], dtype=node.outputs[0].dtype)]
+    # Elemwise[{LE,GE}](X, X) -> Elemwise[ones](X)
+    if isinstance(node.op.scalar_op, (scalar.LE, scalar.GE)) and \
+       node.inputs[0] is node.inputs[1]:
+        return [T.ones_like(node.inputs[0], dtype=node.outputs[0].dtype)]
+    # Elemwise[{minimum,maximum}](X, X) -> X
+    if isinstance(node.op.scalar_op, (scalar.Minimum, scalar.Maximum)) and \
+       node.inputs[0] is node.inputs[1]:
+        return [node.inputs[0]]
+
+    # Elemwise[LT](X.shape[i], 0) -> Elemwise[zeros](X)
+    if isinstance(node.op.scalar_op, scalar.LT) and \
+       node.inputs[0].owner and \
+       isinstance(node.inputs[0].owner.op, Shape_i) and \
+       T.extract_constant(node.inputs[1]) == 0:
+        return [T.zeros_like(node.inputs[0], dtype=node.outputs[0].dtype)]
+    # Elemwise[GE](X.shape[i], 0) -> Elemwise[ones](X)
+    if isinstance(node.op.scalar_op, scalar.GE) and \
+       node.inputs[0].owner and \
+       isinstance(node.inputs[0].owner.op, Shape_i) and \
+       T.extract_constant(node.inputs[1]) == 0:
+        return [T.ones_like(node.inputs[0], dtype=node.outputs[0].dtype)]
+    # Elemwise[maximum](X.shape[i], 0) -> X.shape[i]
+    if isinstance(node.op.scalar_op, scalar.Maximum) and \
+       node.inputs[0].owner and \
+       isinstance(node.inputs[0].owner.op, Shape_i) and \
+       T.extract_constant(node.inputs[1]) == 0:
+        return [node.inputs[0]]
+    # Elemwise[maximum](0, X.shape[i]) -> X.shape[i]
+    if isinstance(node.op.scalar_op, scalar.Maximum) and \
+       T.extract_constant(node.inputs[0]) == 0 and \
+       node.inputs[1].owner and \
+       isinstance(node.inputs[1].owner.op, Shape_i):
+        return [node.inputs[1]]
+    # Elemwise[minimum](X.shape[i], 0) -> 0
+    if isinstance(node.op.scalar_op, scalar.Minimum) and \
+       node.inputs[0].owner and \
+       isinstance(node.inputs[0].owner.op, Shape_i) and \
+       T.extract_constant(node.inputs[1]) == 0:
+        return [T.zeros_like(node.inputs[0], dtype=node.outputs[0].dtype)]
+    # Elemwise[minimum](0, X.shape[i]) -> 0
+    if isinstance(node.op.scalar_op, scalar.Minimum) and \
+       T.extract_constant(node.inputs[0]) == 0 and \
+       node.inputs[1].owner and \
+       isinstance(node.inputs[1].owner.op, Shape_i):
+        return [T.zeros_like(node.inputs[1], dtype=node.outputs[0].dtype)]
+
+    # Elemwise[LT](add([anything that is shapes]), 0) -> Elemwise[zeros](X)
+    if isinstance(node.op.scalar_op, scalar.LT) and \
+       node.inputs[0].owner and \
+       isinstance(node.inputs[0].owner.op, Elemwise) and \
+       isinstance(node.inputs[0].owner.op.scalar_op, scalar.Add) and \
+       all([isinstance(var.owner and var.owner.op, Shape_i)
+            for var in node.inputs[0].owner.inputs]) and \
+       T.extract_constant(node.inputs[1]) == 0:
+
+        return [T.zeros_like(node.inputs[0], dtype=node.outputs[0].dtype)]
+    # Elemwise[GE](add([anything that is shapes]), 0) -> Elemwise[ones](X)
+    if isinstance(node.op.scalar_op, scalar.GE) and \
+       node.inputs[0].owner and \
+       isinstance(node.inputs[0].owner.op, Elemwise) and \
+       isinstance(node.inputs[0].owner.op.scalar_op, scalar.Add) and \
+       all([isinstance(var.owner and var.owner.op, Shape_i)
+            for var in node.inputs[0].owner.inputs]) and \
+       T.extract_constant(node.inputs[1]) == 0:
+        return [T.ones_like(node.inputs[0], dtype=node.outputs[0].dtype)]
+
+    return
 
 
 @register_canonicalize
