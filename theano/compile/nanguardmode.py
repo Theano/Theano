@@ -283,7 +283,7 @@ class NanGuardMode(Mode):
                     print(theano.printing.debugprint(nd, file='str'), file=sio)
                 else:
                     print("NanGuardMode found an error in an"
-                          " input of this node." , file=sio)
+                          " input of this node.", file=sio)
                     print('Node:', file=sio)
                     print(nd, file=sio)
                     print("The input variable that cause problem:", file=sio)
