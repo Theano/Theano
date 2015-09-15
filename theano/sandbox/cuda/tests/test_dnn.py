@@ -450,7 +450,7 @@ def test_pooling_opt():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
 
-    x = T.matrix()
+    x = T.fmatrix()
 
     f = theano.function(
         [x],
