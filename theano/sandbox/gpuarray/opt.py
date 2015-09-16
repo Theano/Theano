@@ -1,6 +1,6 @@
 import copy
-import theano
 import numpy
+import logging
 from six.moves import xrange
 
 try:
@@ -8,6 +8,7 @@ try:
 except ImportError:
     pass
 
+import theano
 from theano import tensor, scalar, gof
 from theano.compile import optdb
 from theano.compile.ops import shape_i
@@ -40,6 +41,8 @@ from .subtensor import (GpuIncSubtensor, GpuSubtensor,
                         GpuAdvancedIncSubtensor1,
                         GpuAdvancedIncSubtensor1_dev20)
 from .opt_util import alpha_merge, output_merge
+
+_logger = logging.getLogger("theano.sandbox.gpuarray.opt")
 
 gpu_optimizer = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
@@ -611,7 +614,9 @@ def local_gpua_gemm(node):
 def local_gpua_hgemm(node):
     from theano.sandbox.cuda import nvcc_compiler
     if nvcc_compiler.nvcc_version < '7.5':
-        log.warning("Not performing dot of float16 on the GPU since cuda 7.5 is not available.  Updating could speed up your code.")
+        _logger.warning("Not performing dot of float16 on the GPU since "
+                        "cuda 7.5 is not available. Updating could speed up "
+                        "your code.")
         return
     A = node.inputs[0]
     B = node.inputs[1]
