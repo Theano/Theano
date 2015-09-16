@@ -159,7 +159,7 @@ class GpuArrayType(Type):
 
     def filter_variable(self, other, allow_convert=True):
         if hasattr(other, '_as_GpuArrayVariable'):
-            other = other._as_GpuArrayVariable()
+            other = other._as_GpuArrayVariable(self.context_name)
 
         if not isinstance(other, Variable):
             other = self.Constant(type=self, data=other)
@@ -396,8 +396,12 @@ class _operators(_tensor_py_operators):
         from .basic_ops import host_from_gpu
         return host_from_gpu(self)
 
-    def _as_GpuArrayVariable(self):
-        return self
+    def _as_GpuArrayVariable(self, context_name):
+        if self.type.context_name == context_name:
+            return self
+        else:
+            from .basic_ops import GpuToGpu
+            return GpuToGpu(context_name)(self)
 
 
 class GpuArrayVariable(_operators, Variable):
