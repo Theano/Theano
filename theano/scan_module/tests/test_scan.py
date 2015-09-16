@@ -751,7 +751,7 @@ class T_Scan(unittest.TestCase):
 
         def inner_fct(mitsot_m2, sitsot):
             total = mitsot_m2 + sitsot
-            output = total ** 1.05
+            output = total ** 1.02
             return output, output
 
         def get_sum_of_grad(input0, input1):
