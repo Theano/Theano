@@ -1763,9 +1763,10 @@ def local_avg_pool_dnn_grad_stride(node):
     mode = node.op.mode
 
     desc = GpuDnnPoolDesc(ws=ds, stride=st, mode=mode, pad=pad)()
+    contiguous_inp_grad = gpu_contiguous(inp_grad)
     return GpuDnnPoolGrad()(gpu_contiguous(inp),
-                            gpu_contiguous(numpy.empty((1, 1, 1, 1), dtype=numpy.float32)),
-                            gpu_contiguous(inp_grad),
+                            contiguous_inp_grad,
+                            contiguous_inp_grad,
                             desc)
 
 
