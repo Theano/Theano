@@ -1,13 +1,14 @@
 import os.path
 
-from theano import Op, Apply, config
+from theano import Apply, config
 
 from theano.compile import optdb
 from theano.gof import local_optimizer, LocalOptGroup
+from theano.tensor.basic import as_tensor_variable
 from theano.tensor.blas import Dot22, Gemv, Gemm, Ger
 from theano.tensor.opt import in2out
 
-from .basic_ops import HideC, as_gpuarray_variable
+from .basic_ops import HideC, as_gpuarray_variable, GpuAllocEmpty
 
 try:
     import pygpu
@@ -51,7 +52,7 @@ PyGpuArrayObject *gpublas_try_copy(PyGpuArrayObject *out,
 
 class GpuGemv(BlasOp, Gemv):
     def make_node(self, y, alpha, A, x, beta):
-        res = Gemv.make_node(self, y, alpha, A, x, beta)
+        Gemv.make_node(self, y, alpha, A, x, beta)
         A = as_gpuarray_variable(A)
         x = as_gpuarray_variable(x)
         y = as_gpuarray_variable(y)
@@ -112,8 +113,11 @@ gpugemv_inplace = GpuGemv(inplace=True)
 
 
 class GpuGemm(BlasOp, Gemm):
+    _f16_ok = True
+
     def make_node(self, C, alpha, A, B, beta):
-        res = Gemm.make_node(self, C, alpha, A, B, beta)
+        alpha = as_tensor_variable(alpha)
+        beta = as_tensor_variable(beta)
         A = as_gpuarray_variable(A)
         B = as_gpuarray_variable(B)
         C = as_gpuarray_variable(C)
@@ -176,7 +180,7 @@ gpugemm_inplace = GpuGemm(inplace=True)
 
 class GpuGer(BlasOp, Ger):
     def make_node(self, A, alpha, x, y):
-        res = Ger.make_node(self, A, alpha, x, y)
+        Ger.make_node(self, A, alpha, x, y)
         A = as_gpuarray_variable(A)
         x = as_gpuarray_variable(x)
         y = as_gpuarray_variable(y)
@@ -236,7 +240,7 @@ gpuger_inplace = GpuGer(destructive=True)
 
 class GpuDot22(BlasOp, Dot22):
     def make_node(self, x, y):
-        res = Dot22.make_node(self, x, y)
+        Dot22.make_node(self, x, y)
         x = as_gpuarray_variable(x)
         y = as_gpuarray_variable(y)
         assert x.dtype == y.dtype
@@ -287,6 +291,7 @@ class GpuDot22(BlasOp, Dot22):
 
 gpu_dot22 = GpuDot22()
 
+
 @local_optimizer([gpugemv_no_inplace], inplace=True)
 def local_inplace_gpuagemv(node):
     if node.op == gpugemv_no_inplace:
@@ -296,7 +301,12 @@ def local_inplace_gpuagemv(node):
 @local_optimizer([gpugemm_no_inplace], inplace=True)
 def local_inplace_gpuagemm(node):
     if node.op == gpugemm_no_inplace:
-        return [gpugemm_inplace(*node.inputs)]
+        inputs = list(node.inputs)
+        C = inputs[0]
+        if (C.owner and isinstance(C.owner.op, GpuAllocEmpty) and
+                len(C.clients) > 1):
+            inputs[0] = C.owner.op(*C.owner.inputs)
+        return [gpugemm_inplace(*inputs)]
 
 
 @local_optimizer([gpuger_no_inplace], inplace=True)
@@ -304,9 +314,11 @@ def local_inplace_gpuager(node):
     if node.op == gpuger_no_inplace:
         return [gpuger_inplace(*node.inputs)]
 
-gpuablas_opt_inplace = in2out(LocalOptGroup(
-        local_inplace_gpuagemv, local_inplace_gpuagemm, local_inplace_gpuager),
+gpuablas_opt_inplace = in2out(LocalOptGroup(local_inplace_gpuagemv,
+                                            local_inplace_gpuagemm,
+                                            local_inplace_gpuager),
                               name='gpuablas_opt_inplace')
+
 optdb.register('InplaceGpuaBlasOpt',
                gpuablas_opt_inplace,
                70.0, 'fast_run', 'inplace', 'gpuarray')
