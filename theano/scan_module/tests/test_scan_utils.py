@@ -106,7 +106,7 @@ class TestMapVariables(object):
                            outputs_info=[numpy.array(0.)])
         try:
             s2, = map_variables(self.replacer, [s])
-        except NotImplementedError, e:
+        except NotImplementedError as e:
             e = sys.exc_info()[1]
             assert("introduces shared variable" in str(e))
             return
@@ -137,7 +137,7 @@ class TestMapVariables(object):
                            outputs_info=[numpy.array(0.)])
         try:
             s2, = map_variables(self.replacer, [s])
-        except NotImplementedError, e:
+        except NotImplementedError as e:
             e = sys.exc_info()[1]
             assert("introduces shared variable" in str(e))
             return

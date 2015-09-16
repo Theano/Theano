@@ -417,7 +417,7 @@ def _map_variables_inner(replacer, inner_inputs, outer_inputs, inner_outputs):
         # `fg` can take ownership of
         for input_ in constants:
             new_input = input_.clone()
-            new_input.name = "%s_copiedd" % new_input.name
+            new_input.name = "%s_copied" % new_input.name
             replacements.append((input_, new_input))
 
         for outer_input in foreign_inputs:
