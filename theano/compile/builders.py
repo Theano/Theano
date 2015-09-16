@@ -78,8 +78,8 @@ class OpFromGraph(gof.Op):
             if not isinstance(i, gof.Variable):
                 raise TypeError(
                     'inputs and outputs must be Variable instances', i)
-        if 'updates' in kwargs:
-            raise TypeError('updates are not allowed in kwargs')
+        if 'updates' in kwargs or 'givens' in kwargs:
+            raise TypeError('updates and givens are not allowed in kwargs')
 
         # To support correctly shared variables the inner fct should
         # not see them. Otherwise their is problem with the gradient.

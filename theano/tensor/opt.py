@@ -296,6 +296,12 @@ def inplace_elemwise_optimizer_op(OP):
             # gpuarray GpuElemwise inherit from Elemwise
             if not type(op) == OP:
                 continue
+            # If big graph and the outputs are scalar, do not make it
+            # inplace.
+            if (check_each_change != 1 and
+                all([getattr(o.type, 'ndim', -1) == 0
+                     for o in node.outputs])):
+                continue
 
             baseline = op.inplace_pattern
             protected_inputs = [
@@ -4188,28 +4194,29 @@ def local_sum_prod_mul_by_scalar(node):
     """
     # TODO: if the the thing inside the Sum is a division,
     # we should get at the numerator....
-    if isinstance(node.op, T.Sum) or isinstance(node.op, T.elemwise.Prod):
+    if isinstance(node.op, (T.Sum, T.elemwise.Prod)):
         node_inps, = node.inputs
         if node_inps.owner and node_inps.owner.op == T.mul:
             terms = node_inps.owner.inputs
             scalars = [t.dimshuffle() for t in terms if
                        numpy.all(t.type.broadcastable)]
-            non_scalars = [t for t in terms if not numpy.all(t.broadcastable)]
 
             if len(scalars) == 0:
                 # Nothing to optimize here
                 return
+
+            non_scalars = [t for t in terms if not numpy.all(t.broadcastable)]
 
             # Perform the op only on the non-scalar inputs, if applicable
             if len(non_scalars) == 0:
                 new_op_input_nb_elements = 1
                 new_op_output = 1
             elif len(non_scalars) == 1:
-                new_op_input_nb_elements = T.prod(non_scalars[0].shape)
+                new_op_input_nb_elements = non_scalars[0].size
                 new_op_output = node.op(non_scalars[0])
             else:
                 new_op_input = T.mul(*non_scalars)
-                new_op_input_nb_elements = T.prod(new_op_input.shape)
+                new_op_input_nb_elements = new_op_input.size
                 new_op_output = node.op(new_op_input)
 
             # If node.op is a T.elemwise.Prod, then the scalars need to be
@@ -4226,7 +4233,10 @@ def local_sum_prod_mul_by_scalar(node):
             if new_op_input_nb_elements != 1:
                 mul_inputs.append(new_op_output)
 
-            return [T.mul(*mul_inputs)]
+            if len(mul_inputs) == 1:
+                return mul_inputs
+            else:
+                return [T.mul(*mul_inputs)]
 
         if isinstance(node.op, T.Sum) and node_inps.owner and node_inps.owner.op == T.neg:
             return [T.neg(node.op(node_inps.owner.inputs[0]))]
@@ -4453,25 +4463,25 @@ def local_sum_prod_div_dimshuffle(node):
                     if isinstance(node.op, T.Sum):
                         op_on_compatible_dims = T.sum(
                             numerator, axis=compatible_dims)
-                        div_op = T.true_div(
+                        rval = T.true_div(
                             op_on_compatible_dims,
                             optimized_dimshuffle)
-                        op_on_incompatible_dims = T.sum(
-                            div_op,
-                            axis=reordered_incompatible_dims)
+                        if len(reordered_incompatible_dims) > 0:
+                            rval = T.sum(rval,
+                                         axis=reordered_incompatible_dims)
                     elif isinstance(node.op, T.elemwise.Prod):
                         op_on_compatible_dims = T.prod(
                             numerator, axis=compatible_dims)
                         dtype = numerator.dtype
-                        div_op = T.true_div(
+                        rval = T.true_div(
                             op_on_compatible_dims,
                             (optimized_dimshuffle **
                                 T.prod([numerator.shape[ax].astype(dtype)
                                         for ax in compatible_dims])))
-                        op_on_incompatible_dims = T.prod(
-                            div_op,
-                            axis=reordered_incompatible_dims)
-                    return [op_on_incompatible_dims]
+                        if len(reordered_incompatible_dims) > 0:
+                            rval = T.prod(rval,
+                                          axis=reordered_incompatible_dims)
+                    return [rval]
 
 
 @register_canonicalize

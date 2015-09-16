@@ -4810,7 +4810,7 @@ class T_local_sum_prod(unittest.TestCase):
 
         # Case 2
         test_reduction_opt([vect, scalar1], [v_val, s1_val], T.elemwise.Prod,
-                           (s1_val * v_val).prod(), 2)
+                           (s1_val * v_val).prod(), 1)
 
         # Case 3
         test_reduction_opt([vect, mat, scalar1], [v_val, m_val, s1_val],
@@ -4823,7 +4823,7 @@ class T_local_sum_prod(unittest.TestCase):
         # Case 5
         test_reduction_opt([vect, scalar1, scalar2], [v_val, s1_val, s2_val],
                            T.elemwise.Prod, (s1_val * s2_val * v_val).prod(),
-                           2)
+                           1)
 
         # Case 6
         test_reduction_opt([vect, mat, scalar1, scalar2],

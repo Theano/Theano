@@ -19,6 +19,7 @@ Blas Op
 
 .. automodule:: theano.sandbox.cuda.blas
     :members:
+.. autofunction:: theano.sandbox.cuda.blas.batched_dot
 
 Nnet Op
 =======
