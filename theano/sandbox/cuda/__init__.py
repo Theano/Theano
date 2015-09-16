@@ -404,7 +404,11 @@ def use(device,
             pycuda_init_dev = theano.misc.pycuda_init.pycuda_available
 
         try:
-            if (device != 'gpu') and not pycuda_init_dev:
+            if pycuda_init_dev:
+                use.device_number = active_device_number()
+                # This is needed to initialize the cublas handle.
+                gpu_init(use.device_number, config.lib.cnmem)
+            elif(device != 'gpu'):
                 assert isinstance(device, int)
                 gpu_init(device, config.lib.cnmem)
                 use.device_number = device
