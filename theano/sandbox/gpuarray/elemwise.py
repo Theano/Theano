@@ -173,7 +173,8 @@ class GpuElemwise(GpuKernelBase, HideC, Elemwise):
                         ("npy_float64", "ga_double"),
                         ]:
             kop = kop.replace(npy, ga)
-        return ElemwiseKernel(None, inps + outs, kop, preamble=support_code)
+        return ElemwiseKernel(self.get_context(node), inps + outs, kop,
+                              preamble=support_code)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>']
@@ -269,7 +270,7 @@ class GpuElemwise(GpuKernelBase, HideC, Elemwise):
         if (%(nd)s != PyGpuArray_NDIM(%(iname)s))
         {
             PyErr_Format(PyExc_TypeError,
-                         "need %(nd)s dims, not %%i",
+                         "need %(nd)s dims, not %%u",
                          PyGpuArray_NDIM(%(iname)s));
             %(fail)s;
         }
@@ -282,11 +283,11 @@ class GpuElemwise(GpuKernelBase, HideC, Elemwise):
             {
                 PyErr_Format(PyExc_ValueError,
                              "GpuElemwise. Input dimension mis-match. Input"
-                             " %(idx)d (indices start at 0) has shape[%%i] == %%i"
-                             ", but the output's size on that axis is %%i.",
+                             " %(idx)d (indices start at 0) has shape[%%d] == %%llu"
+                             ", but the output's size on that axis is %%llu.",
                              i,
-                             PyGpuArray_DIMS(%(iname)s)[i],
-                             dims[i]
+                             (unsigned long long)PyGpuArray_DIMS(%(iname)s)[i],
+                             (unsigned long long)dims[i]
                             );
                 %(fail)s;
             }
@@ -333,11 +334,11 @@ class GpuElemwise(GpuKernelBase, HideC, Elemwise):
                 PyErr_Format(PyExc_ValueError,
                              "GpuElemwise. Output dimension mis-match. Output"
                              " %(idx)d (indices start at 0), working inplace"
-                             " on input %(input_idx)s, has shape[%%i] == %%i"
-                             ", but the output's size on that axis is %%i.",
+                             " on input %(input_idx)s, has shape[%%i] == %%llu"
+                             ", but the output's size on that axis is %%llu.",
                              i,
-                             PyGpuArray_DIMS(%(oname)s)[i],
-                             dims[i]
+                             (unsigned long long)PyGpuArray_DIMS(%(oname)s)[i],
+                             (unsigned long long)dims[i]
                             );
                 Py_DECREF(%(oname)s);
                 %(oname)s = NULL;
@@ -446,10 +447,12 @@ class GpuDimShuffle(HideC, DimShuffle):
     _f16_ok = True
 
     def make_node(self, input):
+        ctx_name = infer_context_name(input)
         res = DimShuffle.make_node(self, input)
         otype = GpuArrayType(dtype=res.outputs[0].type.dtype,
-                             broadcastable=res.outputs[0].type.broadcastable)
-        input = as_gpuarray_variable(input)
+                             broadcastable=res.outputs[0].type.broadcastable,
+                             context_name=ctx_name)
+        input = as_gpuarray_variable(input, ctx_name)
         return Apply(self, [input], [otype()])
 
     def __str__(self):
@@ -650,7 +653,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
     def get_context(self, node):
         return node.inputs[0].type.context
 
-    def perform(self, node, inp, out):
+    def perform(self, node, inp, out, ctx):
         raise MethodNotDefined("")
 
     def supports_c_code(self, inputs):
@@ -680,7 +683,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         inp = ['fake_input_name_%d' % i for i in xrange(len(inputs))]
         out = ['fake_output_name_%d' % i for i in xrange(len(node.outputs))]
 
-        sub = {'fail': 'fake failure code'}
+        sub = {'fail': 'fake failure code', 'context': 'fake context'}
 
         try:
             self.c_code(node, name, inp, out, sub)
@@ -715,7 +718,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         if (PyGpuArray_NDIM(%(x)s) != %(nd_in)s)
         {
             PyErr_Format(PyExc_TypeError,
-                         "required nd=%(nd_in)s, got nd=%%i", PyGpuArray_NDIM(%(x)s));
+                         "required nd=%(nd_in)s, got nd=%%u", PyGpuArray_NDIM(%(x)s));
             %(fail)s;
         }
         """ % locals(), file=sio)
@@ -1320,8 +1323,8 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
                                      (void *)%(z)s->ga.data,
                                      (void *)&%(z)s->ga.offset};
             if (verbose) printf("running kernel_reduce_ccontig_%(name)s"
-                                " n_threads=%%lu, size=%%lu, ndim=%%d\\n",
-                                n_threads,numEls,
+                                " n_threads=%%llu, size=%%llu, ndim=%%u\\n",
+                                n_threads, numEls,
                                 PyGpuArray_NDIM(%(x)s));
             size_t n_shared = sizeof(%(acc_dtype)s) * n_threads;
             int err = GpuKernel_call(&%(k_var)s, 1, &n_threads, &n_blocks, n_shared, kernel_params);
@@ -1503,9 +1506,9 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             size_t n_blocks[3] = {1, std::min(PyGpuArray_DIMS(%(x)s)[1], (size_t) 4096), 1};
             if (verbose) {
               fprintf(stderr,
-                "running kernel_reduce_10_%(name)s n_blocks=(%%i,%%i)\\n",
-                n_blocks[0],
-                n_blocks[1]);
+                "running kernel_reduce_10_%(name)s n_blocks=(%%llu,%%llu)\\n",
+                (unsigned long long)n_blocks[0],
+                (unsigned long long)n_blocks[1]);
             }
             assert(PyGpuArray_DIMS(%(x)s)[1] == PyGpuArray_DIMS(%(z)s)[0]);
             size_t n_shared = sizeof(%(acc_dtype)s) * n_threads[0];

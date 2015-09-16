@@ -181,7 +181,7 @@ class GpuKernelBase(object):
                 dict(cname=k.codevar, code=code))
 
     def _generate_kernel_vars(self, k):
-        return """static GpuKernel %(kname)s;""" % dict(kname=k.objvar)
+        return """GpuKernel %(kname)s;""" % dict(kname=k.objvar)
 
     def c_support_code(self):
         return """
@@ -215,11 +215,11 @@ class GpuKernelBase(object):
   if (GpuKernel_init(&%(ovar)s, %(ctx)s->ops, %(ctx)s->ctx, 1, &bcode, &sz,
                      "%(kname)s", %(numargs)u, types, GA_USE_BINARY, NULL)
       != GA_NO_ERROR) {
-    if ((%(err)s = GpuKernel_init(&%(ovar)s, %(ctx)s->ops, %(ctx)s->ctx, 1,
-                                  &%(cname)s, NULL, "%(kname)s", %(numargs)u,
-                                  types, %(flags)s, NULL)) != GA_NO_ERROR) {
+    if ((err = GpuKernel_init(&%(ovar)s, %(ctx)s->ops, %(ctx)s->ctx, 1,
+                              &%(cname)s, NULL, "%(kname)s", %(numargs)u,
+                              types, %(flags)s, NULL)) != GA_NO_ERROR) {
       PyErr_Format(PyExc_RuntimeError, "GpuKernel_init error %%d: %%s",
-                   %(err)s, Gpu_error(%(ctx)s->ops, %(ctx)s->ctx, %(err)s));
+                   err, Gpu_error(%(ctx)s->ops, %(ctx)s->ctx, err));
       %(fail)s
     }
   }
@@ -371,7 +371,7 @@ class GpuFromHost(Op):
 
     def c_code(self, node, name, inputs, outputs, sub):
         return """
-        PyGpuArrayObject *%(name)s_tmp;
+        PyArrayObject *%(name)s_tmp;
         %(name)s_tmp = PyArray_GETCONTIGUOUS(%(inp)s);
         if (%(name)s_tmp == NULL)
           %(fail)s
@@ -551,9 +551,9 @@ class GpuAlloc(HideC, Alloc):
                 if (err != GA_NO_ERROR)
                 {
                     PyErr_Format(PyExc_MemoryError,
-                                 "GpuAlloc: Error memsetting %%d"
+                                 "GpuAlloc: Error memsetting %%llu"
                                  " element of device memory to 0.",
-                                 PyGpuArray_SIZE(%(zz)s));
+                                 (unsigned long long)PyGpuArray_SIZE(%(zz)s));
                     %(fail)s;
                 }
             }

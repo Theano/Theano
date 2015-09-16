@@ -215,7 +215,7 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
         iadd_node = gop(xview, y).owner
         self.iadd_node = iadd_node
 
-    def perform(self, node, inputs, out_):
+    def perform(self, node, inputs, out_, ctx):
         out, = out_
         x, y = inputs[:2]
         indices = list(reversed(inputs[2:]))
@@ -326,7 +326,7 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
                                   %(view_ndim)s,
                                   dims,
                                   xview_strides,
-                                  %(x)s->ctx,
+                                  %(x)s->context,
                                   1,
                                   (PyObject *)%(x)s,
                                   (PyObject *)&PyGpuArrayType);
@@ -360,10 +360,10 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
         """
         return """GpuArray_setarray(&%(view)s->ga, &%(source)s->ga)""" % locals()
 
-    def c_support_code_apply(self, node, nodename):
+    def c_support_code_struct(self, node, nodename):
         gop = self.iadd_node.op
         sub_name = nodename + "_add_to_zview"
-        ret = gop.c_support_code_apply(self.iadd_node, sub_name)
+        ret = gop.c_support_code_struct(self.iadd_node, sub_name)
         ret += """
         PyGpuArrayObject* inc_sub_iadd_%(nodename)s(PyGpuArrayObject* dst,
                                                     PyGpuArrayObject* src){
@@ -371,10 +371,11 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
         """ % locals()
         inputs = ["dst", "src"]
         outputs = ["ret"]
-        sub = {"fail": "return NULL;", "context": "dst->ctx"}
+        sub = {"fail": "return NULL;", "context": "dst->context"}
         ret += gop.c_code(self.iadd_node, sub_name, inputs, outputs, sub)
         ret += """
             return ret;
+
         }
         """
         return ret
@@ -608,7 +609,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, GpuAdvancedIncSubtensor1):
         return gof.Apply(self, [x_, y_, ilist_], [x_.type()])
 
     def get_context(self, node):
-        return self.node.outputs[0].type.context
+        return node.outputs[0].type.context
 
     def c_code_cache_version(self):
         return (6,)
@@ -616,6 +617,9 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, GpuAdvancedIncSubtensor1):
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray_helper.h>',
                 '<gpuarray/types.h>']
+
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__)]
 
     def c_code(self, node, name, inputs, outputs, sub):
         ctx = self.get_context(node)
@@ -754,7 +758,7 @@ __device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
         return [Kernel(code=code, name=kname, params=params,
                        flags=flags, objvar=k_var)]
 
-    def c_support_code_apply(self, node, nodename):
+    def c_support_code_struct(self, node, nodename):
         dtype_x = node.inputs[0].dtype
         dtype_y = node.inputs[1].dtype
         dtype_ind = node.inputs[2].dtype
@@ -765,7 +769,7 @@ __device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
         itemsize_out = numpy.dtype(dtype_out).itemsize
         k_var = "k_vector_add_fast_" + nodename
 
-        return super(GpuAdvancedIncSubtensor1_dev20, self).c_support_code_apply(node, nodename) + """
+        return super(GpuAdvancedIncSubtensor1_dev20, self).c_support_code_struct(node, nodename) + """
         int GpuArray_vector_add_fast(PyGpuArrayObject* py_self,
                                      PyGpuArrayObject* py_other,
                                      PyGpuArrayObject *indices_arr)
