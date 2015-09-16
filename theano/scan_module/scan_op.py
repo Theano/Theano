@@ -1331,8 +1331,8 @@ class Scan(PureOp):
             offset_out = len(output_storage) - 1
             if getattr(fn, 'need_update_inputs', True):
                 # Update the inputs that have an update function
-                for inp, storage in zip(self.fn.maker.expanded_inputs,
-                                        self.fn.input_storage)[::-1]:
+                for inp, storage in zip(self.fn.maker.expanded_inputs[::-1],
+                                        self.fn.input_storage[::-1]):
                     if inp.update is not None:
                         storage.data = output_storage[offset_out].data
                         offset_out -= 1
