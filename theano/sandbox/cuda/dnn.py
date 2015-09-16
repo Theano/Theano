@@ -1306,7 +1306,8 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
 
 class GpuDnnPoolDesc(GpuOp):
     """
-    This Op builds a pooling descriptor for use in the other pooling operations.
+    This Op builds a pooling descriptor for use in the other pooling
+    operations.
 
     Parameters
     ----------
@@ -1320,10 +1321,12 @@ class GpuDnnPoolDesc(GpuOp):
         (padX, padY) padding information.
         padX is the size of the left and right borders,
         padY is the size of the top and bottom borders.
-
+    ndim
+        The number of dim to pool over (2 or 3).
+        If ws, stride, pad allow us to find it, no need to specify it.
     """
 
-    __props__ = ('ws', 'stride', 'mode', 'pad')
+    __props__ = ('mode', 'ndim')
 
     def c_headers(self):
         return ['cudnn.h', 'cudnn_helper.h']
@@ -1340,41 +1343,95 @@ class GpuDnnPoolDesc(GpuOp):
     def do_constant_folding(self, node):
         return False
 
-    def __init__(self, ws=(1, 1), stride=(1, 1), mode='max', pad=(0, 0)):
+    def __init__(self, ws=(1, 1), stride=(1, 1), mode='max',
+                 pad=(0, 0), ndim=None):
+        nd = None
+        if isinstance(ws, (tuple, list)):
+            nd = len(ws)
+        elif isinstance(stride, (tuple, list)):
+            nd = len(stride)
+        elif isinstance(pad, (tuple, list)):
+            nd = len(pad)
+        if ndim is None:
+            if nd is None:
+                raise RuntimeError(
+                    "Not able to detect if we do 2d or 3d pooling")
+            else:
+                ndim = nd
+        elif nd is not None:
+            assert ndim == nd
         if mode == 'average':
             mode = 'average_inc_pad'
         assert mode in ('max', 'average_inc_pad', 'average_exc_pad')
         self.mode = mode
+        assert ndim in [2, 3]
+        self.ndim = ndim
 
-        assert len(ws) == len(stride) and len(stride) == len(pad)
-        assert len(ws) in (2, 3)
-        self.ws = ws
-        self.stride = stride
-        self.pad = pad
-
-        if (pad[0] != 0 or pad[1] != 0) and version() == -1:
-            raise RuntimeError("CuDNN pooling with padding requires CuDNN v2")
         if self.get_ndim() == 3 and version() < (3000, 3000):
             raise RuntimeError("CuDNN 3d pooling requires CuDNN v3")
 
     def get_ndim(self):
-        return len(self.ws)
+        return self.ndim
+
+    def get_ws(self, node):
+        if hasattr(self, "ws"):
+            return self.ws
+        else:
+            return [node.inputs[0][i] for i in range(self.ndim)]
+
+    def get_stride(self, node):
+        if hasattr(self, "stride"):
+            return self.stride
+        else:
+            return [node.inputs[1][i] for i in range(self.ndim)]
+
+    def get_pad(self, node):
+        if hasattr(self, "pad"):
+            return self.pad
+        else:
+            return [node.inputs[2][i] for i in range(self.ndim)]
 
     def __setstate__(self, d):
         self.__dict__.update(d)
-        if not hasattr(self, 'pad'):
+        if not hasattr(self, 'pad') and hasattr(self, 'ws'):
             self.pad = (0, 0)
 
-    def make_node(self):
-        if self.pad != (0, 0) and version() == -1:
-            raise RuntimeError("CuDNN pooling with padding requires CuDNN v2")
-
-        return Apply(self, [],
+    def make_node(self, ws, stride, pad):
+        ws = tensor.as_tensor_variable(ws)
+        stride = tensor.as_tensor_variable(stride)
+        pad = tensor.as_tensor_variable(pad)
+        assert ws.ndim == stride.ndim == pad.ndim == 1
+        ws = ws.astype(theano.scalar.upcast("int32", ws.dtype))
+        stride = stride.astype(theano.scalar.upcast("int32", stride.dtype))
+        pad = pad.astype(theano.scalar.upcast("int32", pad.dtype))
+        # TODO how to detect that int are int64 or int32?
+        return Apply(self, [ws, stride, pad],
                      [CDataType("cudnnPoolingDescriptor_t",
                                 freefunc="cudnnDestroyPoolingDescriptor")()])
 
     def c_code(self, node, name, inputs, outputs, sub):
         desc, = outputs
+        if len(inputs) == 3:
+            ws, stride, pad = inputs
+            ws_dtype = node.inputs[0].dtype
+            stride_dtype = node.inputs[1].dtype
+            pad_dtype = node.inputs[2].dtype
+            ws_init = ', '.join("*((npy_%s*)PyArray_GETPTR1(%s, %d))" % (
+                ws_dtype, ws, i)
+                                for i in range(self.ndim))
+            pad_init = ', '.join("*((npy_%s*)PyArray_GETPTR1(%s, %d))" % (
+                pad_dtype, pad, i)
+                                 for i in range(self.ndim))
+            str_init = ', '.join("*((npy_%s*)PyArray_GETPTR1(%s, %d))" % (
+                stride_dtype, stride, i)
+                                 for i in range(self.ndim))
+        else:
+            ws = self.ws
+            pad = self.pad
+            stride = self.stride
+            ws_init = ', '.join(str(w) for w in self.ws)
+            pad_init = ', '.join(str(p) for p in self.pad)
+            str_init = ', '.join(str(s) for s in self.stride)
 
         if self.mode == 'max':
             mode_flag = 'CUDNN_POOLING_MAX'
@@ -1382,11 +1439,8 @@ class GpuDnnPoolDesc(GpuOp):
             mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING'
         elif self.mode == "average_exc_pad":
             mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING'
-            if version() == -1:
-                raise Exception("cudnn v1 do not support average_exc_pad")
         else:
             raise NotImplementedError("Unsupported pooling model.")
-
         return """
 {
   cudnnStatus_t err;
@@ -1396,13 +1450,19 @@ class GpuDnnPoolDesc(GpuOp):
                  "descriptor: %%s", cudnnGetErrorString(err));
     %(fail)s
   }
+  if (PyArray_SIZE(%(ws)s) != PyArray_SIZE(%(stride)s) ||
+      PyArray_SIZE(%(ws)s) != PyArray_SIZE(%(pad)s)){
+    PyErr_Format(PyExc_ValueError,
+                 "the size of ws, stride and pad must be the same");
+    %(fail)s
+  }
   {
-    int win[%(nd)d] = {%(win)s};
-    int pad[%(nd)d] = {%(pad)s};
-    int str[%(nd)d] = {%(str)s};
+    int ws[%(nd)d] = {%(ws_init)s};
+    int pad[%(nd)d] = {%(pad_init)s};
+    int str[%(nd)d] = {%(str_init)s};
     err = cudnnSetPoolingNdDescriptor(
       %(desc)s, %(mode_flag)s, %(nd)d,
-      win, pad, str);
+      ws, pad, str);
   }
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError, "could not set op descriptor: %%s",
@@ -1411,12 +1471,12 @@ class GpuDnnPoolDesc(GpuOp):
   }
 }
 """ % dict(name=name, desc=desc, mode_flag=mode_flag, fail=sub['fail'],
-           nd=self.get_ndim(), win=', '.join(str(w) for w in self.ws),
-           pad=', '.join(str(p) for p in self.pad),
-           str=', '.join(str(s) for s in self.stride))
+           nd=self.get_ndim(), ws=ws, stride=stride, pad=pad,
+           ws_init=ws_init, str_init=str_init, pad_init=pad_init)
 
     def c_code_cache_version(self):
-        return (3, version())
+#        return
+        return (4, version())
 
 
 class GpuDnnPool(DnnBase):
@@ -1451,9 +1511,9 @@ class GpuDnnPool(DnnBase):
     def infer_shape(self, node, shape):
         desc = node.inputs[1].owner.op
         nd = desc.get_ndim()
-        w = desc.ws
-        s = desc.stride
-        p = desc.pad
+        w = desc.get_ws(node.inputs[1].owner)
+        s = desc.get_stride(node.inputs[1].owner)
+        p = desc.get_pad(node.inputs[1].owner)
         ret = [shape[0][0], shape[0][1],
                (shape[0][2] + 2 * p[0] - w[0]) // s[0] + 1,
                (shape[0][3] + 2 * p[1] - w[1]) // s[1] + 1]
@@ -1764,7 +1824,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
         return [shape[0]]
 
 
-def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
+def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0), ndim=None):
     """
     GPU pooling using cuDNN from NVIDIA.
 
@@ -1784,9 +1844,9 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
         (padX, padY) padding information.
         padX is the size of the left and right borders,
         padY is the size of the top and bottom borders.
-    :param nd: dimensions of pooling, can be 2 or 3 for 2d or 3d pooling
-        If set to 3 all other params (except mode) must have an extra
-        dimension to match. 3 is only available for cudnn v3
+    ndim None, 2 or 3
+        Dimensions of pooling, can be 2 or 3 for 2d or 3d pooling
+        If None, one of ws, stride or pad must be a tuple/list to detect it.
 
     .. warning:: The cuDNN library only works with GPU that have a compute
       capability of 3.0 or higer.  This means that older GPU will not
@@ -1798,7 +1858,8 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
 
     """
     img = gpu_contiguous(img)
-    desc = GpuDnnPoolDesc(ws=ws, stride=stride, mode=mode, pad=pad)()
+    desc = GpuDnnPoolDesc(mode=mode, ws=ws, stride=stride, pad=pad, ndim=ndim)(
+        ws=ws, stride=stride, pad=pad)
     return GpuDnnPool()(img, desc)
 
 
@@ -2272,7 +2333,8 @@ if True:
             inp, out, inp_grad = node.inputs
             ds = node.op.ds
 
-            desc = GpuDnnPoolDesc(ws=ds, stride=ds, mode="max")()
+            desc = GpuDnnPoolDesc(ws=ds, stride=ds, mode="max")(
+                ws=ds, stride=ds, pad=(0, 0))
             return [GpuDnnPoolGrad()(gpu_contiguous(inp),
                                      gpu_contiguous(out),
                                      gpu_contiguous(inp_grad),
@@ -2296,7 +2358,8 @@ if True:
                 (out.owner and isinstance(out.owner.op, HostFromGpu)) or
                 (inp_grad.owner and isinstance(inp_grad.owner.op,
                                                HostFromGpu))):
-                desc = GpuDnnPoolDesc(ws=ds, stride=st, mode=mode, pad=pad)()
+                desc = GpuDnnPoolDesc(mode=mode, ws=ds, stride=st, pad=pad)(
+                    ws=ds, stride=st, pad=pad)
                 ret = GpuDnnPoolGrad()(gpu_contiguous(inp),
                                        gpu_contiguous(out),
                                        gpu_contiguous(inp_grad),
@@ -2320,7 +2383,8 @@ if True:
             if ((inp.owner and isinstance(inp.owner.op, HostFromGpu)) or
                 (inp_grad.owner and isinstance(inp_grad.owner.op,
                                                HostFromGpu))):
-                desc = GpuDnnPoolDesc(ws=ds, stride=st, mode=mode, pad=pad)()
+                desc = GpuDnnPoolDesc(ws=ds, stride=st, mode=mode, pad=pad)(
+                    ws=ds, stride=st, pad=pad)
                 ret = GpuDnnPoolGrad()(gpu_contiguous(inp),
                                        gpu_contiguous(numpy.empty((1,1,1,1),
                                            dtype=numpy.float32)),
