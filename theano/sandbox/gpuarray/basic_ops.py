@@ -309,22 +309,27 @@ class GpuFromHost(Op):
 
     def c_code(self, node, name, inputs, outputs, sub):
         return """
+        PyGpuArrayObject *%(name)s_tmp;
+        %(name)s_tmp = PyArray_GETCONTIGUOUS(%(inp)s);
+        if (%(name)s_tmp == NULL)
+          %(fail)s
         Py_XDECREF(%(out)s);
-        %(out)s = pygpu_fromhostdata(PyArray_DATA(%(inp)s),
-                                     get_typecode((PyObject *)PyArray_DESCR(%(inp)s)),
-                                     PyArray_NDIM(%(inp)s),
-                                     (size_t *)PyArray_DIMS(%(inp)s),
-                                     (ssize_t *)PyArray_STRIDES(%(inp)s),
+        %(out)s = pygpu_fromhostdata(PyArray_DATA(%(name)s_tmp),
+                                     get_typecode((PyObject *)PyArray_DESCR(%(name)s_tmp)),
+                                     PyArray_NDIM(%(name)s_tmp),
+                                     (size_t *)PyArray_DIMS(%(name)s_tmp),
+                                     (ssize_t *)PyArray_STRIDES(%(name)s_tmp),
                                      pygpu_default_context(),
                                      Py_None);
-        if (%(out)s == NULL) {
-            %(fail)s
-        }
+
+        Py_DECREF(%(name)s_tmp);
+        if (%(out)s == NULL)
+          %(fail)s
         """ % {'name': name, 'inp': inputs[0],
                'out': outputs[0], 'fail': sub['fail']}
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
 gpu_from_host = GpuFromHost()
 
