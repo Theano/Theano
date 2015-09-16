@@ -27,17 +27,28 @@ from .fp16_help import write_w
 
 
 def as_gpuarray_variable(x, context_name):
-    # This is a pre-optimization to reduce the number of useless
-    # transfers in the graph and reduce optimization time.
-    if getattr(x, 'owner', None):
-        if (isinstance(x.owner.op, HostFromGpu) and
-                x.owner.inputs[0].type.context_name == context_name):
-            return x.owner.inputs[0]
-        elif (isinstance(x.owner.op, GpuFromHost) and
-              x.owner.inputs[0].owner and
-              isinstance(x.owner.inputs[0].owner.op, HostFromGpu) and
-              x.owner.inputs[0].owner.inputs[0].type.context_name == context_name):
-            return x.owner.inputs[0].owner.inputs[0]
+    # If this is already some form of variable, try to avoid an extra transfer
+    if isinstance(x, Variable):
+        while True:
+            # If we are already a GpuArrayVariable in the right context
+            # then there is nothing to do.
+            if (isinstance(x.type, GpuArrayType) and
+                    x.type.context_name == context_name):
+                return x
+
+            # If x is the result of a transfer, try to dig through.
+            if getattr(x, 'owner', None):
+                if isinstance(x.owner.op, HostFromGpu):
+                    x = x.owner.inputs[0]
+                    continue
+                if isinstance(x.owner.op, GpuFromHost):
+                    x = x.owner.inputs[0]
+                    continue
+
+            # If none of the conditions where met, then continue with
+            # the rest of the body
+            break
+
 
     if hasattr(x, '_as_GpuArrayVariable'):
         return x._as_GpuArrayVariable(context_name)
@@ -378,6 +389,56 @@ class GpuFromHost(Op):
 
     def c_code_cache_version(self):
         return (4.1,)
+
+
+class GpuToGpu(Op):
+    __props__ = ('context_name',)
+    _f16_ok = True
+    context_type = gpu_context_type
+
+    def __init__(self, context_name):
+        self.context_name = context_name
+
+    def __str__(self):
+        return 'GpuToGpu<%s>' % (self.context_name,)
+
+    def make_node(self, x):
+        if not isinstance(x.type, GpuArrayType):
+            raise TypeError(x)
+        return Apply(self, [x], [GpuArrayType(broadcastable=x.broadcastable,
+                                              context_name=self.context_name,
+                                              dtype=x.dtype)()])
+
+    def get_context(self, node):
+        return get_context(self.context_name)
+
+    def perform(self, node, inp, out, ctx):
+        x, = inp
+        z, = out
+        z[0] = x.transfer(ctx)
+
+    def grad(self, inputs, grads):
+        gz, = grads
+        return [GpuToGpu(inputs[0].type.context_name)(gz)]
+
+    def R_op(self, inputs, eval_points):
+        return self.grad(inputs, eval_points)
+
+    def infer_shape(self, node, xshp):
+        return xshp
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        return """
+        Py_XDECREF(%(out)s);
+        %(out)s = pygpu_transfer(%(inp)s, %(ctx)s, 0);
+        if (%(out)s == NULL) {
+            %(fail)s
+        }
+        """ % {'inp': inputs[0], 'ctx': sub['context'],
+               'out': outputs[0], 'fail': sub['fail']}
+
+    def c_code_cache_version(self):
+        return (0,)
 
 
 class GpuAlloc(HideC, Alloc):
