@@ -1,10 +1,13 @@
 from __future__ import print_function
+
 import copy
-import numpy
 import os
 
+import numpy
+
 import theano
-from theano import tensor, gof, Op, config
+from theano import tensor, gof, config
+from theano.gof.utils import MethodNotDefined
 from six.moves import StringIO
 from theano.tensor.subtensor import IncSubtensor, Subtensor, get_idx_list
 import theano.tensor.inplace
@@ -18,7 +21,6 @@ except ImportError:
 from .type import GpuArrayType
 from .basic_ops import (as_gpuarray_variable, HideC, GpuKernelBase, Kernel)
 from .elemwise import GpuElemwise
-from .comp import NVCC_compiler
 
 
 class GpuSubtensor(HideC, Subtensor):
@@ -165,7 +167,7 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
     Implement IncSubtensor on the gpu.
 
     Notes
-    ----- 
+    -----
     The optimization to make this inplace is in tensor/opt.
     The same optimization handles IncSubtensor and GpuIncSubtensor.
     This Op has c_code too; it inherits tensor.IncSubtensor's c_code.
@@ -243,16 +245,16 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
         if sub_x.shape:
             # we've sliced out an N-D tensor with N > 0
             if not self.set_instead_of_inc:
-                #sub_x += y
-                pygpu.elemwise.ielemwise2(sub_x, '+', y,  broadcast=False)
+                # sub_x += y
+                pygpu.elemwise.ielemwise2(sub_x, '+', y, broadcast=False)
             else:
-                #sub_x += -sub_x + y
+                # sub_x += -sub_x + y
                 x.__setitem__(cdata, y)
         else:
             # scalar case
             if not self.set_instead_of_inc:
-                #x.__setitem__(cdata, sub_x + y)
-                tmp = pygpu.elemwise.elemwise2(sub_x, '+', y,  sub_x,
+                # x.__setitem__(cdata, sub_x + y)
+                tmp = pygpu.elemwise.elemwise2(sub_x, '+', y, sub_x,
                                                broadcast=False)
                 x.__setitem__(cdata, tmp)
             else:
@@ -261,9 +263,9 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
 
     def __setstate__(self, d):
         self.__dict__.update(d)
-        owner = getattr(self.__dict__, "owner", None)
+        owner = getattr(self, "owner", None)
         if owner:
-            op.create_iadd_node(owner)
+            self.create_iadd_node(owner)
 
     def __getstate__(self):
         d = copy.copy(self.__dict__)
@@ -308,7 +310,7 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
     def make_view_array(self, x, view_ndim):
         """
         //TODO
-        
+
         Parameters
         ----------
         x
@@ -405,6 +407,77 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
         return parent_version + elemwise_version + (2,)
 
 
+class GpuAdvancedSubtensor1(HideC, tensor.AdvancedSubtensor1):
+    def make_node(self, x, ilist):
+        x_ = as_gpuarray_variable(x)
+
+        ilist__ = tensor.as_tensor_variable(ilist)
+        if ilist__.type.dtype[:3] not in ('int', 'uin'):
+            raise TypeError('index must be integers')
+        if ilist__.type.dtype != 'int64':
+            ilist__ = tensor.cast(ilist__, 'int64')
+
+        ilist_ = as_gpuarray_variable(ilist__)
+
+        if ilist_.type.dtype != 'int64':
+            raise TypeError('index must be int64')
+        if ilist_.type.ndim != 1:
+            raise TypeError('index must be a vector')
+        if x_.type.ndim == 0:
+            raise TypeError('cannot index into a scalar')
+
+        bcast = ilist_.broadcastable + x_.broadcastable[1:]
+        return gof.Apply(self, [x_, ilist_],
+                         [GpuArrayType(dtype=x.dtype,
+                                       broadcastable=bcast)()])
+
+    def perform(self, node, inp, out_):
+        raise NotImplementedError()
+
+    def c_support_code(self):
+        return """
+int take1_match_dims(GpuArray *a, GpuArray *v) {
+  if (a->nd != v->nd) return 0;
+  for (unsigned int i = 1; i < v->nd; i++) {
+    if (a->dimensions[i] != v->dimensions[i]) return 0;
+  }
+  return 1;
+}
+"""
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        return """
+int err;
+if (%(out)s == NULL || !GpuArray_IS_C_CONTIGUOUS(&%(out)s->ga) ||
+    %(out)s->ga.dimensions[0] != %(idx)s->ga.dimensions[0] ||
+    !take1_match_dims(&%(out)s->ga, &%(v)s->ga)) {
+  size_t tmp;
+  Py_XDECREF(%(out)s);
+
+  /* This is a dirty hack to avoid an extra alloc */
+  tmp = %(v)s->ga.dimensions[0];
+  %(v)s->ga.dimensions[0] = %(idx)s->ga.dimensions[0];
+  %(out)s = pygpu_empty(%(v)s->ga.nd, %(v)s->ga.dimensions, %(v)s->ga.typecode,
+                        GA_C_ORDER, %(v)s->context, Py_None);
+  %(v)s->ga.dimensions[0] = tmp; // Don't remove this line
+}
+
+err = GpuArray_take1(&%(out)s->ga, &%(v)s->ga, &%(idx)s->ga, 1);
+if (err != GA_NO_ERROR) {
+  if (err == GA_VALUE_ERROR) {
+    PyErr_SetString(PyExc_IndexError, "Index out of bounds.");
+  } else {
+    PyErr_SetString(PyExc_RuntimeError, Gpu_error(%(v)s->context->ops,
+                                                  %(v)s->context->ctx, err));
+  }
+  %(fail)s
+}
+""" % dict(out=outputs[0], v=inputs[0], idx=inputs[1], fail=sub['fail'])
+
+    def c_code_cache_version(self):
+        return (0,)
+
+
 class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
     """
     Implement AdvancedIncSubtensor1 on the gpu.
@@ -487,7 +560,7 @@ class GpuAdvancedIncSubtensor1(HideC, tensor.AdvancedIncSubtensor1):
                 reshaped_y = y.reshape(y.shape[1:])
             else:
                 nb_dims_to_add = (x.ndim - 1) - y.ndim
-                reshaped_y = y.reshape((1,)*nb_dims_to_add + y.shape)
+                reshaped_y = y.reshape((1,) * nb_dims_to_add + y.shape)
 
             if self.set_instead_of_inc:
                 for i in idx:
@@ -537,34 +610,31 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, GpuAdvancedIncSubtensor1):
         return gof.Apply(self, [x_, y_, ilist_], [x_.type()])
 
     def c_code_cache_version(self):
-        return (5,)
+        return (6,)
 
     def c_headers(self):
         if pygpu.get_default_context().kind == 'opencl':
             raise MethodNotDefined('cuda only')
-        return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
-                '<gpuarray/ext_cuda.h>', '<gpuarray/types.h>']
+        return ['cuda.h', '<numpy_compat.h>', '<gpuarray_helper.h>',
+                '<gpuarray/types.h>']
 
     def c_header_dirs(self):
         if pygpu.get_default_context().kind == 'opencl':
             raise MethodNotDefined('cuda only')
         cuda_root = config.cuda.root
+        res = [os.path.dirname(__file__)]
         if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
-
-    def c_init_code(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        return ['setup_ext_cuda();']
+            res.append(os.path.join(cuda_root, 'include'))
+        return res
 
     def c_code(self, node, name, inputs, outputs, sub):
         active_device_no = theano.sandbox.cuda.active_device_number()
         device_properties = theano.sandbox.cuda.device_properties
         compute_capability = device_properties(active_device_no)['major']
         if ((self.set_instead_of_inc) or
-            (node.inputs[0].ndim != node.inputs[1].ndim) or
-            (node.inputs[0].ndim != 2) or
-            (compute_capability < 2)):
+                (node.inputs[0].ndim != node.inputs[1].ndim) or
+                (node.inputs[0].ndim != 2) or
+                (compute_capability < 2)):
             raise NotImplementedError("This case does not have C code yet.")
 
         x = inputs[0]
@@ -574,19 +644,20 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, GpuAdvancedIncSubtensor1):
         fail = sub['fail']
         inplace = int(self.inplace)
         return """
-        Py_XDECREF(%(out)s);
-        if (!%(inplace)s) {
-            %(out)s = (PyGpuArrayObject*)pygpu_copy(%(x)s, GA_C_ORDER);
-        } else {
-            %(out)s = %(x)s;
-            Py_XINCREF(%(out)s);
-        }
-
-        GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s);
-
-        if (!%(out)s) {
-            %(fail)s
-        }
+int err;
+if (%(inplace)s) {
+  Py_XDECREF(%(out)s);
+  %(out)s = %(x)s;
+  Py_INCREF(%(out)s);
+} else {
+  %(out)s = theano_try_copy(%(out)s, %(x)s);
+}
+if (!%(out)s) {
+  %(fail)s
+}
+if (GpuArray_vector_add_fast(%(out)s, %(y)s, %(ind)s)) {
+  %(fail)s
+}
         """ % locals()
 
     def gpu_kernels(self, node, nodename):
@@ -598,7 +669,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, GpuAdvancedIncSubtensor1):
         itemsize_y = numpy.dtype(dtype_y).itemsize
         itemsize_ind = numpy.dtype(dtype_ind).itemsize
         itemsize_out = numpy.dtype(dtype_out).itemsize
-        flags=Kernel.get_flags(dtype_x, dtype_y, dtype_ind)
+        flags = Kernel.get_flags(dtype_x, dtype_y, dtype_ind)
         type_x = gpuarray.dtype_to_ctype(dtype_x)
         type_y = gpuarray.dtype_to_ctype(dtype_y)
         type_ind = gpuarray.dtype_to_ctype(dtype_ind)
@@ -606,6 +677,22 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, GpuAdvancedIncSubtensor1):
         kname = "k_vector_add_fast"
         k_var = "k_vector_add_fast_" + nodename
         code = """
+/*
+ * This is an atomicAdd that works for doubles since that is not provided
+ * natively by cuda.
+ */
+__device__ double atomicAdd(ga_double* address, ga_double val) {
+    unsigned long long int* address_as_ull =
+                                          (unsigned long long int*)address;
+    unsigned long long int old = *address_as_ull, assumed;
+    do {
+        assumed = old;
+        old = atomicCAS(address_as_ull, assumed,
+                        __double_as_longlong(val +
+                        __longlong_as_double(assumed)));
+    } while (assumed != old);
+    return __longlong_as_double(old);
+}
 
 /*
  * This is a version of atomicAdd that works for half-floats.  It may
@@ -646,7 +733,8 @@ __device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
                                       const ga_size numIndices,
                                       const ga_ssize stridesIndices,
                                       %(type_ind)s *indices_arr,
-                                      const ga_size offset_indices_arr)
+                                      const ga_size offset_indices_arr,
+                                      ga_int *err)
         {
              X = (%(type_x)s *)(((char *)X)+offset_X);
              Y = (%(type_y)s *)(((char *)Y)+offset_Y);
@@ -655,11 +743,15 @@ __device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
              {
                   for(int j = (threadIdx.x); j < numColsX;j += blockDim.x)
                   {
-                      int x_row = indices_arr[i * stridesIndices];
-                      if(x_row < 0)
+                      ga_ssize x_row = indices_arr[i * stridesIndices];
+                      if (x_row < 0)
                           x_row += numRowsX;
-                      int y_row = i;
-                      atomicAdd(&X[(x_row * stridesX0) + (j * stridesX1)], Y[(y_row * stridesY0) + (j * stridesY1)]);
+                      ga_ssize y_row = i;
+                      if (x_row < numRowsX && x_row >= 0) {
+                        atomicAdd(&X[(x_row * stridesX0) + (j * stridesX1)], Y[(y_row * stridesY0) + (j * stridesY1)]);
+                      } else {
+                        *err = 1;
+                      }
                   }
              }
              return;
@@ -668,8 +760,7 @@ __device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
         params = [
             'uintp', 'uintp', 'intp', 'intp', gpuarray.GpuArray, 'uintp',
             'uintp', 'uintp', 'intp', 'intp', gpuarray.GpuArray, 'uintp',
-            'uintp', 'intp', gpuarray.GpuArray, 'uintp'
-            ]
+            'uintp', 'intp', gpuarray.GpuArray, 'uintp', gpuarray.GpuArray]
         return [Kernel(code=code, name=kname, params=params,
                        flags=flags, objvar=k_var)]
 
@@ -683,52 +774,66 @@ __device__ ga_half atomicAdd(ga_half *addr, ga_half val) {
         itemsize_ind = numpy.dtype(dtype_ind).itemsize
         itemsize_out = numpy.dtype(dtype_out).itemsize
         k_var = "k_vector_add_fast_" + nodename
-        err_check = """
-            if (err != GA_NO_ERROR) {
-                PyErr_Format(PyExc_RuntimeError,
-                             "gpuarray error: %(k_var)s: %%s.",
-                             GpuKernel_error(&%(k_var)s, err));
-            }
-        """ % locals()
-        sync = ""
-        if config.gpuarray.sync:
-            sync = """
-            err = GpuArray_sync(&%(z)s->ga);
-            %(err_check)s
-            """ % locals()
+
         return super(GpuAdvancedIncSubtensor1_dev20, self).c_support_code_apply(node, nodename) + """
-        void GpuArray_vector_add_fast(PyGpuArrayObject* py_self,
-                                      PyGpuArrayObject* py_other,
-                                      PyGpuArrayObject *indices_arr)
+        int GpuArray_vector_add_fast(PyGpuArrayObject* py_self,
+                                     PyGpuArrayObject* py_other,
+                                     PyGpuArrayObject *indices_arr)
         {
             size_t threads_per_block[3] = {std::min(PyGpuArray_DIMS(py_self)[1], (size_t)256), 1, 1};
             size_t n_blocks[3] = {std::min(PyGpuArray_SIZE(indices_arr), (size_t)4096), 1, 1};
-            if (threads_per_block[0] > 0 && n_blocks[0] > 0) {
-                ssize_t stride_X0 = PyGpuArray_STRIDES(py_self)[0] / %(itemsize_x)s;
-                ssize_t stride_X1 = PyGpuArray_STRIDES(py_self)[1] / %(itemsize_x)s;
-                ssize_t stride_Y0 = PyGpuArray_DIMS(py_other)[0] == 1 ? 0 : PyGpuArray_STRIDES(py_other)[0] / %(itemsize_y)s;
-                ssize_t stride_Y1 = PyGpuArray_DIMS(py_other)[1] == 1 ? 0 : PyGpuArray_STRIDES(py_other)[1] / %(itemsize_y)s;
-                ssize_t stride_ind = PyGpuArray_STRIDES(indices_arr)[0] / %(itemsize_ind)s;
-                void *kernel_params[] = {(void *)&PyGpuArray_DIMS(py_self)[0],
-                                         (void *)&PyGpuArray_DIMS(py_self)[1],
-                                         (void *)&stride_X0,
-                                         (void *)&stride_X1,
-                                         (void *)py_self->ga.data,
-                                         (void *)&py_self->ga.offset,
-                                         (void *)&PyGpuArray_DIMS(py_other)[0],
-                                         (void *)&PyGpuArray_DIMS(py_other)[1],
-                                         (void *)&stride_Y0,
-                                         (void *)&stride_Y1,
-                                         (void *)py_other->ga.data,
-                                         (void *)&py_other->ga.offset,
-                                         (void *)&PyGpuArray_DIMS(indices_arr)[0],
-                                         (void *)&stride_ind,
-                                         (void *)indices_arr->ga.data,
-                                         (void *)&indices_arr->ga.offset};
-                int err = GpuKernel_call(&%(k_var)s, 3, threads_per_block, n_blocks, 0, kernel_params);
-                %(err_check)s
-                %(sync)s
-            }
-        }
+            gpudata *errbuf;
+            int err, kerr = 0;
 
+            if (threads_per_block[0] > 0 && n_blocks[0] > 0) {
+              err = py_self->ga.ops->property(NULL, py_self->ga.data, NULL,
+                                              GA_CTX_PROP_ERRBUF, &errbuf);
+              if (err != GA_NO_ERROR) {
+                PyErr_SetString(PyExc_RuntimeError, "Can't fetch error buffer");
+                return 1;
+              }
+
+              ssize_t stride_X0 = PyGpuArray_STRIDES(py_self)[0] / %(itemsize_x)s;
+              ssize_t stride_X1 = PyGpuArray_STRIDES(py_self)[1] / %(itemsize_x)s;
+              ssize_t stride_Y0 = PyGpuArray_DIMS(py_other)[0] == 1 ? 0 : PyGpuArray_STRIDES(py_other)[0] / %(itemsize_y)s;
+              ssize_t stride_Y1 = PyGpuArray_DIMS(py_other)[1] == 1 ? 0 : PyGpuArray_STRIDES(py_other)[1] / %(itemsize_y)s;
+              ssize_t stride_ind = PyGpuArray_STRIDES(indices_arr)[0] / %(itemsize_ind)s;
+              void *kernel_params[] = {(void *)&PyGpuArray_DIMS(py_self)[0],
+                                       (void *)&PyGpuArray_DIMS(py_self)[1],
+                                       (void *)&stride_X0,
+                                       (void *)&stride_X1,
+                                       (void *)py_self->ga.data,
+                                       (void *)&py_self->ga.offset,
+                                       (void *)&PyGpuArray_DIMS(py_other)[0],
+                                       (void *)&PyGpuArray_DIMS(py_other)[1],
+                                       (void *)&stride_Y0,
+                                       (void *)&stride_Y1,
+                                       (void *)py_other->ga.data,
+                                       (void *)&py_other->ga.offset,
+                                       (void *)&PyGpuArray_DIMS(indices_arr)[0],
+                                       (void *)&stride_ind,
+                                       (void *)indices_arr->ga.data,
+                                       (void *)&indices_arr->ga.offset,
+                                       (void *)errbuf};
+              err = GpuKernel_call(&%(k_var)s, 3, threads_per_block, n_blocks, 0, kernel_params);
+              if (err != GA_NO_ERROR) {
+                PyErr_Format(PyExc_RuntimeError,
+                             "gpuarray error: %(k_var)s: %%s.",
+                             GpuKernel_error(&%(k_var)s, err));
+                return 1;
+              }
+              err = py_self->ga.ops->buffer_read(&kerr, errbuf, 0, sizeof(int));
+              if (err != GA_NO_ERROR) {
+                PyErr_SetString(PyExc_RuntimeError, "Can't read error buffer");
+                return 1;
+              }
+              if (kerr != 0) {
+                PyErr_SetString(PyExc_IndexError, "Index out of bounds");
+                kerr = 0;
+                py_self->ga.ops->buffer_write(errbuf, 0, &kerr, sizeof(int));
+                return 1;
+              }
+            }
+          return 0;
+        }
         """ % locals()
