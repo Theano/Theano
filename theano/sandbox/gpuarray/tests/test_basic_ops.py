@@ -169,9 +169,9 @@ def test_transfer_cpu_gpu():
     g = GpuArrayType(dtype='float32', broadcastable=(False, False))('g')
 
     av = numpy.asarray(rng.rand(5, 4), dtype='float32')
-    gv = gpuarray.array(av)
+    gv = gpuarray.array(av, context=get_context(test_ctx_name))
 
-    f = theano.function([a], GpuFromHost(None)(a))
+    f = theano.function([a], GpuFromHost(test_ctx_name)(a))
     fv = f(av)
     assert GpuArrayType.values_eq(fv, gv)
 
@@ -188,12 +188,12 @@ def test_transfer_strided():
     g = GpuArrayType(dtype='float32', broadcastable=(False, False))('g')
 
     av = numpy.asarray(rng.rand(5, 8), dtype='float32')
-    gv = gpuarray.array(av)
+    gv = gpuarray.array(av, context=get_context(test_ctx_name))
 
     av = av[:, ::2]
     gv = gv[:, ::2]
 
-    f = theano.function([a], GpuFromHost(None)(a))
+    f = theano.function([a], GpuFromHost(test_ctx_name)(a))
     fv = f(av)
     assert GpuArrayType.values_eq(fv, gv)
 
@@ -230,19 +230,19 @@ class TestAlloc(test_basic.TestAlloc):
     dtype = "float32"
     mode = mode_with_gpu
     shared = staticmethod(gpuarray_shared_constructor)
-    allocs = [GpuAlloc(), GpuAlloc(), T.Alloc()]
+    allocs = [GpuAlloc(test_ctx_name), GpuAlloc(test_ctx_name), T.Alloc()]
 
 
 def test_alloc_empty():
     for dt in ['float32', 'int8']:
-        f = theano.function([], GpuAllocEmpty(dt)(2, 3))
+        f = theano.function([], GpuAllocEmpty(dt, context_name=test_ctx_name)(2, 3))
         assert len(f.maker.fgraph.apply_nodes) == 1
         out = f()
         assert out.shape == (2, 3)
         assert out.dtype == dt
 
-    f = theano.function([], [GpuAllocEmpty('uint64')(3, 2),
-                             GpuAllocEmpty('uint64')(3, 2)])
+    f = theano.function([], [GpuAllocEmpty('uint64', test_ctx_name)(3, 2),
+                             GpuAllocEmpty('uint64', test_ctx_name)(3, 2)])
     out = f()
     assert out[0].shape == (3, 2)
     assert out[0].dtype == 'uint64'
@@ -254,7 +254,7 @@ def test_alloc_empty():
 
 def test_shape():
     x = GpuArrayType(dtype='float32', broadcastable=[False, False, False])()
-    v = gpuarray.zeros((3, 4, 5), dtype='float32')
+    v = gpuarray.zeros((3, 4, 5), dtype='float32', context=get_context(test_ctx_name))
     f = theano.function([x], x.shape)
     topo = f.maker.fgraph.toposort()
     assert numpy.all(f(v) == (3, 4, 5))
@@ -406,12 +406,13 @@ def test_hostfromgpu_shape_i():
     ca = theano.sandbox.gpuarray.type.GpuArrayType('float32', (False, False))()
     av = numpy.asarray(numpy.random.rand(5, 4), dtype='float32')
     cv = gpuarray.asarray(numpy.random.rand(5, 4),
-                          dtype='float32')
+                          dtype='float32',
+                          context=get_context(test_ctx_name))
 
-    f = theano.function([a], GpuFromHost(None)(a), mode=m)
-    assert any([isinstance(x.op, GpuFromHost)
-                for x in f.maker.fgraph.toposort()])
-    f = theano.function([a], GpuFromHost(None)(a).shape, mode=m)
+    f = theano.function([a], GpuFromHost(test_ctx_name)(a), mode=m)
+    assert any(isinstance(x.op, GpuFromHost)
+               for x in f.maker.fgraph.toposort())
+    f = theano.function([a], GpuFromHost(test_ctx_name)(a).shape, mode=m)
     topo = f.maker.fgraph.toposort()
     assert isinstance(topo[0].op, T.opt.Shape_i)
     assert isinstance(topo[1].op, T.opt.Shape_i)
