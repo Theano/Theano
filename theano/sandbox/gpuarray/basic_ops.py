@@ -183,7 +183,7 @@ class GpuKernelBase(object):
                 dict(cname=k.codevar, code=code))
 
     def _generate_kernel_vars(self, k):
-        return """static GpuKernel %(kname)s;""" % dict(kname=k.objvar)
+        return """GpuKernel %(kname)s;""" % dict(kname=k.objvar)
 
     def c_support_code(self):
         return """
@@ -221,7 +221,7 @@ class GpuKernelBase(object):
                               &%(cname)s, NULL, "%(kname)s", %(numargs)u,
                               types, %(flags)s, NULL)) != GA_NO_ERROR) {
       PyErr_Format(PyExc_RuntimeError, "GpuKernel_init error %%d: %%s",
-                   err, Gpu_error(%(ctx)s->ops, %(ctx)s->ctx, %(err)s));
+                   err, Gpu_error(%(ctx)s->ops, %(ctx)s->ctx, err));
       %(fail)s
     }
   }
@@ -246,7 +246,7 @@ class GpuKernelBase(object):
         return cleanups
 
     def _GpuKernelBase_version(self):
-        return (2.1,)
+        return (3,)
 
     GpuKernelBase_version = property(_GpuKernelBase_version)
 
@@ -373,7 +373,7 @@ class GpuFromHost(Op):
 
     def c_code(self, node, name, inputs, outputs, sub):
         return """
-        PyGpuArrayObject *%(name)s_tmp;
+        PyArrayObject *%(name)s_tmp;
         %(name)s_tmp = PyArray_GETCONTIGUOUS(%(inp)s);
         if (%(name)s_tmp == NULL)
           %(fail)s
@@ -553,9 +553,9 @@ class GpuAlloc(HideC, Alloc):
                 if (err != GA_NO_ERROR)
                 {
                     PyErr_Format(PyExc_MemoryError,
-                                 "GpuAlloc: Error memsetting %%d"
+                                 "GpuAlloc: Error memsetting %%llu"
                                  " element of device memory to 0.",
-                                 PyGpuArray_SIZE(%(zz)s));
+                                 (unsigned long long)PyGpuArray_SIZE(%(zz)s));
                     %(fail)s;
                 }
             }
@@ -574,7 +574,7 @@ class GpuAlloc(HideC, Alloc):
         return code
 
     def c_code_cache_version(self):
-        return (2.1,)
+        return (3,)
 
     def do_constant_folding(self, node):
         for client in node.outputs[0].clients:
@@ -667,7 +667,7 @@ if (theano_prep_output(&%(zz)s, %(ndim)s, shape, %(type)s, GA_C_ORDER,
         return ''.join(code)
 
     def c_code_cache_version(self):
-        return (0.1,)
+        return (1,)
 
     def do_constant_folding(self, node):
         return False
@@ -1047,4 +1047,4 @@ KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
         return s
 
     def c_code_cache_version(self):
-        return (4.1, self.GpuKernelBase_version)
+        return (5, self.GpuKernelBase_version)

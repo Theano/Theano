@@ -61,7 +61,7 @@ if pygpu:
 
         from .basic_ops import (GpuAlloc, GpuContiguous, GpuEye, GpuFromHost,
                                 GpuJoin, GpuReshape, GpuSplit, HostFromGpu)
-        from .basic_ops import host_from_gpu, gpu_from_host
+        from .basic_ops import host_from_gpu, GpuFromHost
         from .elemwise import GpuElemwise
         from .subtensor import (GpuSubtensor, GpuIncSubtensor,
                                 GpuAdvancedIncSubtensor1)
