@@ -340,13 +340,8 @@ class Mode(object):
             optimizations.
         """
 
-        m = self.clone()
-
         new_optimizer = self.provided_optimizer.register(*optimizations)
-        m.provided_optimizer = new_optimizer
-        m._optimizer = new_optimizer
-
-        return m
+        return self.clone(optimizer=new_optimizer)
 
     def excluding(self, *tags):
         link, opt = self.get_linker_optimizer(self.provided_linker,
@@ -358,7 +353,7 @@ class Mode(object):
                                               self.provided_optimizer)
         return self.__class__(linker=link, optimizer=opt.requiring(*tags))
 
-    def clone(self, link_kwargs={}, **kwargs):
+    def clone(self, link_kwargs={}, optimizer=None **kwargs):
         """
         Create a new instance of this Mode.
 
@@ -368,7 +363,10 @@ class Mode(object):
 
         """
         new_linker = self.linker.clone(**link_kwargs)
-        new_optimizer = self.provided_optimizer
+        if optimizer:
+            new_optimizer = optimizer
+        else:
+            new_optimizer = self.provided_optimizer
         new_mode = type(self)(linker=new_linker,
                               optimizer=new_optimizer)
         return new_mode
