@@ -23,6 +23,7 @@ from theano.tensor import basic as tensor
 from theano.tensor import subtensor
 from theano.tensor import elemwise
 from theano.tensor import opt
+from theano.tensor.opt import copy_stack_trace
 from theano.compile import optdb
 from theano.gof import Apply
 
@@ -30,6 +31,7 @@ from theano.tensor.nnet.sigm import sigmoid, softplus
 from theano.gradient import DisconnectedType
 from theano.gradient import grad_not_implemented
 from theano.tensor.type import values_eq_approx_remove_nan
+
 
 ############
 #
@@ -591,7 +593,7 @@ def softmax_graph(c):
 def softmax(c):
     return softmax_op(c)
 
-
+# seems like need to change softmax_with_bias
 @opt.register_specialize('fast_compile_gpu')
 @gof.local_optimizer([softmax_op])
 def local_softmax_with_bias(node):
@@ -636,14 +638,17 @@ def local_softmax_with_bias(node):
                     vector_sum = tensor.add(*vectors)
                 else:
                     vector_sum = vectors[0]
+                copy_stack_trace(x_in, vector_sum)
 
                 if len(non_vectors) > 1:
                     non_vector_sum = tensor.add(*non_vectors)
                 else:
                     non_vector_sum = non_vectors[0]
+                copy_stack_trace(x_in, non_vector_sum)
 
                 try:
                     sm_bias = softmax_with_bias(non_vector_sum, vector_sum)
+                    copy_stack_trace(x_in, non_vector_sum)
                 except Exception:
                     # if our arguments have the wrong types, then
                     # forget about it
@@ -692,6 +697,7 @@ def softmax_simplifier(numerators, denominators):
     return numerators, denominators
 opt.local_mul_canonizer.add_simplifier(softmax_simplifier, 'softmax_simplifier')
 
+# another commit that removes
 if 0:
     @opt.register_specialize
     @gof.local_optimizer([tensor.add])
@@ -1457,6 +1463,7 @@ def local_softmax_grad_to_crossentropy_with_softmax_grad(node):
             g_nll, coding_dist, true_one_of_n = g_coding_dist.owner.inputs
             dx = crossentropy_softmax_1hot_with_bias_dx(g_nll, coding_dist,
                                                         true_one_of_n)
+            copy_stack_trace(node.outputs[0], dx)
             return [dx]
 
 
@@ -1485,13 +1492,18 @@ def local_argmax_pushdown(node):
         if x.owner and x.owner.op in (softmax_op, softplus, tensor.exp,
                                       tensor.log, tensor.tanh, sigmoid):
             pre_x, = x.owner.inputs
-            return tensor._max_and_argmax(pre_x, axis)
+            ret = tensor._max_and_argmax(pre_x, axis)
+            copy_stack_trace(pre_x, ret)
+            return ret
         if x.owner and x.owner.op == softmax_with_bias:
             pre_x, pre_bias = x.owner.inputs
-            return tensor._max_and_argmax(pre_x +
-                                          tensor.DimShuffle(
-                                              pre_bias.broadcastable,
-                                              ('x', 0))(pre_bias), axis)
+            ret = tensor._max_and_argmax(pre_x +
+                                         tensor.DimShuffle(
+                                             pre_bias.broadcastable,
+                                             ('x', 0))(pre_bias), axis)
+            # copy both stack traces
+            copy_stack_trace([pre_x, pre_bias],  ret)
+            return ret
 
 # Utility function used by the two next optimizations
 
@@ -1585,9 +1597,11 @@ def local_advanced_indexing_crossentropy_onehot(node):
         # Check that rows == arange(labels.shape[0])
         if _check_rows_is_arange_len_labels(rows, labels):
             if labels.ndim == 1 and x_var.ndim == 2:
-                return [-crossentropy_softmax_argmax_1hot_with_bias(x_var,
-                                                                    b_var,
-                                                                    labels)[0]]
+                ret = -crossentropy_softmax_argmax_1hot_with_bias(x_var,
+                                                                  b_var,
+                                                                  labels)[0]
+                copy_stack_trace([x_var, b_var, labels], ret)
+                return [ret]
 
 
 @opt.register_specialize('fast_compile_gpu')
@@ -1809,10 +1823,13 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
 
     # Dimension check before substitution
     if labels.ndim == 1 and x_var.ndim == 2:
-        return [crossentropy_softmax_1hot_with_bias_dx(out_grad, sm, labels)]
+        ret = crossentropy_softmax_1hot_with_bias_dx(out_grad, sm, labels)
+        # The stack trace of output_grad, sm and labels are not added
+        # but may need to be added at a future point
+        copy_stack_trace(node.outputs[0], ret)
+        return [ret]
     else:
         return
-
 
 @opt.register_specialize('fast_compile_gpu')
 @gof.local_optimizer([softmax_with_bias])
@@ -1825,6 +1842,7 @@ def graph_merge_softmax_with_crossentropy_softmax(node):
                 if big_client in [b_client[0] for b_client in b.clients]:
                     xx, bb, ll = big_client.inputs
                     mergeable_client = big_client.op(x, b, ll)
+                    copy_stack_trace(node.ouputs[0], mergeable_client[1])
                     return [mergeable_client[1]]
 
 
@@ -1885,7 +1903,10 @@ def local_useless_crossentropy_softmax_1hot_with_bias_dx_alloc(node):
                 msg = '`sm` and `dy` do not have the same shape.'
                 dz = opt.Assert(msg)(dz, cond)
 
-            return [node.op(dz, sm, y_idx)]
+            ret = node.op(dz, sm, y_idx)
+            # copy node.outputs[0] to ret according to Pascal
+            copy_stack_trace(node.outputs[0], ret)
+            return [ret]
 
 
 def binary_crossentropy(output, target):
