@@ -817,7 +817,8 @@ class MergeOptimizer(Optimizer):
                         clients = pairs[0][0].clients + pairs[0][1].clients
                         if sum([i in utils.flatten(c.op.destroy_map.values())
                                 for c, i in clients
-                                if hasattr(c.op, 'destroy_map')]) > 1:
+                                if c != 'output' and
+                                hasattr(c.op, 'destroy_map')]) > 1:
                             continue
 
                 try:
