@@ -2157,7 +2157,7 @@ def h_softmax(x, batch_size, n_outputs, W1, b1, W2, b2,
         target_classes = target // n_outputs_per_class
 
         # Outputs to which belong each target inside a class
-        target_outputs_in_class = target % n_classes
+        target_outputs_in_class = target % n_outputs_per_class
 
         # Second softmax that computes the output probabilities
         activations = sparse_block_dot(
