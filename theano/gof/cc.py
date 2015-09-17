@@ -1499,7 +1499,7 @@ class CLinker(link.Linker):
                     # The main of the executable need the hash of the
                     # shared lib.
                     main = re.sub(mod.hash_placeholder, mod.code_hash,
-                                  self.c_main())
+                                  self.c_main(location))
 
                     mod_exec = cmodule.DynamicModule()
                     for header in self.headers():
@@ -1741,7 +1741,7 @@ class CLinker(link.Linker):
         print("  return thunk; }", file=code)
         return code.getvalue()
 
-    def c_main(self):
+    def c_main(self, location):
         """This function create an example main function that call the
         shared lib of this thunk/function.
 
@@ -1755,6 +1755,8 @@ class CLinker(link.Linker):
             if isinstance(var, theano.tensor.sharedvar.TensorSharedVariable):
                 mapping_str += "// Shared variable %(var)s->%(name)s\n" \
                                % locals()
+                # Saving shared variable value
+                numpy.save(os.path.join(location, name), var.get_value())
             else:
                 mapping_str += "// Input %(var)s->%(name)s\n" % locals()
             dtype = var.type.dtype_specs()[2]
