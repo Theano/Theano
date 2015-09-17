@@ -360,13 +360,16 @@ def inplace_elemwise_optimizer_op(OP):
                     for inp_idx in candidate_inputs:
                         inp = node.inputs[inp_idx]
                         if inp in updated_inputs:
+                            # the candidate input is the actual updated input
                             updated_vars.append(inp_idx)
                         elif (hasattr(fgraph, 'destroy_handler') and
                               inp.owner and
-                              any([(up_inp in fgraph.destroy_handler.root_destroyer and
-                                    fgraph.destroy_handler.root_destroyer[up_inp] is inp.owner)
+                              any([fgraph.destroy_handler.root_destroyer.get(up_inp, None) is inp.owner
                                    for up_inp in updated_inputs])):
 
+                            # the candidate input is a variable computed
+                            # inplace on the updated input via a sequence of
+                            # one or more inplace operations
                             vars_from_inplace.append(inp_idx)
                         else:
                             other_vars.append(inp_idx)
