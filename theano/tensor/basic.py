@@ -1205,7 +1205,6 @@ class MaxAndArgmax(Op):
 
     def make_node(self, x, axis=None):
         x = _as_tensor_variable(x)
-
         if isinstance(axis, (tuple, list, numpy.ndarray)):
             # List of axes: make them non-negative, and sort them
             axis = [int(a) for a in axis]
@@ -1228,9 +1227,11 @@ class MaxAndArgmax(Op):
             else:
                 assert (axis.dtype.startswith("int") or
                         axis.dtype.startswith("uint"))
-                if isinstance(axis.data, (int, numpy.integer)):
+                if isinstance(axis.data, (int, numpy.integer)) or \
+                   (isinstance(axis.data, numpy.ndarray) and axis.data.ndim == 0):
                     axis = [int(axis.data)]
                 elif isinstance(axis.data, (list, numpy.ndarray)):
+                    print axis.data
                     axis = [int(i) for i in axis.data]
                 
         # Make axis entries non-negative, and sort them
@@ -1252,39 +1253,43 @@ class MaxAndArgmax(Op):
         else:
             all_axes = list(range(x.ndim))
             
-        if axis is None:
+        if axis is None or axis == list(range(x.type.ndim)):
             axis = NoneConst.clone()
         else:
             axis = _as_tensor_variable(axis)
             #assert axis.ndim == 0
         inputs = [x, axis]
-       
         # We keep the original broadcastable flags for dimensions on which
         # we do not perform the max / argmax.
         broadcastable = [b for i, b in enumerate(x.type.broadcastable)
                          if i not in all_axes]
         outputs = [tensor(x.type.dtype, broadcastable, name='max'),
                    tensor('int64', broadcastable, name='argmax')]
-        print 'end_make_node'
         return Apply(self, inputs, outputs)
 
     def perform(self, node, inp, outs):
-        x, axis = inp
+        x, axes = inp
         max, max_idx = outs
-        max[0] = theano._asarray(numpy.max(x, tuple(axis)),
+        max[0] = theano._asarray(numpy.max(x, tuple(axes)),
                                  dtype=node.outputs[0].dtype)
-        max_idx[0] = theano._asarray(numpy.argmax(x, tuple(axis)), dtype='int64')
+        # Numpy does not support multiple axes for argmax
+        # Work around, 
+        keep_axes = numpy.array([i for i in range(x.ndim) if i not in axes])
+        # Not reduced axes in front
+        transposed_x = numpy.transpose(x, numpy.concatenate((keep_axes, axes)))
+        reshaped_x = x.reshape(transposed_x.shape[:len(keep_axes)] + (-1,))
+        max_idx[0] = theano._asarray(numpy.argmax(reshaped_x, -1), dtype='int64')
 
     def c_code(self, node, name, inp, out, sub):
         x, axis = inp
         max, argmax = out
         fail = sub["fail"]
-
         if NoneConst.equals(node.inputs[1]):
             axis_code = "axis = NPY_MAXDIMS;"
         else:
             assert node.inputs[1].ndim == 1
-            if len(axis) > 1: raise NotImplementedError()
+            # Fall back to perform() if there are multiple axes
+            if len(node.inputs[1].data) > 1: raise NotImplementedError()
             axis_code = """
             axis = ((dtype_%(axis)s*)PyArray_DATA(%(axis)s))[0];
             if(axis > PyArray_NDIM(%(x)s)-1 || axis < -PyArray_NDIM(%(x)s)){
@@ -1517,10 +1522,10 @@ def max(x, axis=None, keepdims=False):
     # We thus prefer to use MaxAndArgmax, if possible. It does not
     # support all axis arguments, so we may need to fall back to CAReduce.
 
-    #try:
-    out = max_and_argmax(x, axis)[0]
-    #except Exception:
-    #    out = CAReduce(scal.maximum, axis)(x)
+    try:
+        out = max_and_argmax(x, axis)[0]
+    except Exception:
+        out = CAReduce(scal.maximum, axis)(x)
 
     if keepdims:
         out = makeKeepDims(x, out, axis)
