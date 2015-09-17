@@ -120,6 +120,22 @@ A contributor made rpm package for Mandriva_ 2010.2 of Theano 0.3.1.
 
 .. _linux_basic:
 
+Docker images
+~~~~~~~~~~~~~
+
+Builds of Theano are available as `Docker <https://www.docker.com/whatisdocker>`_ images: `Theano Docker (CPU)
+<https://hub.docker.com/r/kaixhin/theano/>`_ or `Theano Docker (CUDA)<https://hub.docker.com/r/kaixhin/cuda-theano/>`_.
+These are updated on a weekly basis with bleeding-edge builds of Theano. Examples of running bash in a Docker container
+are as follows:
+
+.. code-block:: bash
+
+    sudo docker run -it kaixhin/theano
+    sudo docker run -it --device /dev/nvidiactl --device /dev/nvidia-uvm --device /dev/nvidia0 kaixhin/cuda-theano:7.0
+
+For a guide to Docker, see the `official docs<https://docs.docker.com/userguide/>`_. For more details on how to use the
+Theano Docker images, including requirements for CUDA support, consult the `source project<https://github.com/Kaixhin/dockerfiles>`_.
+
 Basic user install instructions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
