@@ -1,10 +1,10 @@
 """
-Optimizations addressing the ops in sandbox root directory
+Optimizations addressing the ops in nnet root directory
 """
 
 from theano import compile  # to register the optimizer built by this file
 from theano import gof
-from theano.sandbox.blocksparse import (
+from theano.tensor.nnet.blocksparse import (
     SparseBlockGemv,
     SparseBlockOuter,
     sparse_block_gemv_inplace,

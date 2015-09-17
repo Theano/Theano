@@ -4,7 +4,7 @@ from nose.plugins.skip import SkipTest
 import theano
 from theano import tensor
 import theano.tests.unittest_tools as utt
-import theano.sandbox.tests.test_blocksparse
+import theano.tensor.nnet.tests.test_blocksparse
 
 import theano.sandbox.cuda as cuda_ndarray
 from theano.sandbox.cuda.blocksparse import (GpuSparseBlockOuter,

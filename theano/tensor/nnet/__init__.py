@@ -1,4 +1,5 @@
 from .nnet import *
+from . import opt
 from .conv import conv2d, ConvOp
 from .Conv3D import *
 from .ConvGrad3D import *

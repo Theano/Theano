@@ -29,7 +29,7 @@ from theano.gof import Apply
 from theano.tensor.nnet.sigm import sigmoid, softplus
 from theano.gradient import DisconnectedType
 from theano.gradient import grad_not_implemented
-from theano.sandbox.blocksparse import sparse_block_dot
+from theano.tensor.nnet.blocksparse import sparse_block_dot
 from theano.tensor.type import values_eq_approx_remove_nan
 
 
