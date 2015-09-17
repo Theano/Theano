@@ -805,13 +805,14 @@ class Scan(PureOp):
 
             # Add an optimization to the compilation mode to attach a feature
             # to the function graph just before the inplace optimizations are
-            # applied. This feature will prevent mitsot, sitsot and nitsot
-            # outputs from being computed inplace (to allow their
-            # preallocation).
+            # applied (inplace optimizations start at position 50 so the
+            # optimization to attach the feature is registered at position 49.9
+            # so that it runs before them). This feature will prevent mitsot,
+            # sitsot and nitsot outputs from being computed inplace (to allow
+            # their preallocation).
             mitsot_start = self.n_mit_mot_outs - len(preallocated_mitmot_outs)
             nitsot_end = (mitsot_start + self.n_mit_sot + self.n_sit_sot +
                           self.n_nit_sot)
-
             feature = NoOutputFromInplace(mitsot_start, nitsot_end)
             opt = AddFeatureOptimizer(feature)
             compilation_mode = self.mode_instance.register((opt, 49.9))
