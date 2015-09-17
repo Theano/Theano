@@ -382,7 +382,7 @@ def perform(
             else:
                 old_input_data[idx] = None
 
-        # 5.0.1 compute outputs
+        # 5.1 compute outputs
         t0_fn = time.time()
 
         try:
@@ -403,7 +403,7 @@ def perform(
             pdx = offset + n_shared_outs
             cond = output_storage[pdx].storage[0] == 0
 
-        # 5.0.2. By calling fn() directly instead of calling the theano
+        # 5.2. By calling fn() directly instead of calling the theano
         # function, it is possible that the updates have not been
         # performed. Perform the updates if needed.
         offset_out = len(output_storage) - 1
@@ -415,7 +415,7 @@ def perform(
                     storage.data = output_storage[offset_out].data
                     offset_out -= 1
 
-        # 5.0.3. Check which of the pre-allocated outputs (if applicable)
+        # 5.3. Check which of the pre-allocated outputs (if applicable)
         # have been reused by the inner function
         for idx in range(len_output_storage):
             # If the storage map does not contain the same object, then
@@ -438,7 +438,7 @@ def perform(
             else:
                 output_reused[idx] = False
 
-        # 5.0.4. Check which of the input storage have been modified by the
+        # 5.4. Check which of the input storage have been modified by the
         # inner function
         for idx in xrange(len(input_storage)):
             # If the storage map does not contain the same object, then
@@ -461,9 +461,8 @@ def perform(
             else:
                 input_reused[idx] = False
 
-
         offset_out = 0
-        # 5.1 Copy over the values for mit_mot outputs
+        # 5.5 Copy over the values for mit_mot outputs
         mitmot_inp_offset = self.n_seqs
         mitmot_out_idx = 0
         for j in xrange(self.n_mit_mot):
@@ -490,7 +489,7 @@ def perform(
 
             mitmot_inp_offset += len(self.tap_array[j])
 
-        # 5.2 Copy over the values for mit_sot/sit_sot outputs
+        # 5.6 Copy over the values for mit_sot/sit_sot outputs
         begin = n_mit_mot
         end   = n_outs
         offset_out -= n_mit_mot
@@ -501,7 +500,7 @@ def perform(
 
                 outs[j][0][pos[j]] = output_storage[<unsigned int>(offset_out+j)].storage[0]
 
-        # 5.3 Copy over the values for nit_sot outputs
+        # 5.7 Copy over the values for nit_sot outputs
         begin  = end
         end   += n_nit_sot
         for j in range(begin,end):
@@ -523,8 +522,7 @@ def perform(
                   not output_reused[<unsigned int>(offset_out+j)]):
                 outs[j][0][pos[j]] = output_storage[j+offset_out].storage[0]
 
-
-        # 5.4 Copy over the values for outputs corresponding to shared
+        # 5.8 Copy over the values for outputs corresponding to shared
         # variables
         begin  = end
         end   += n_shared_outs
@@ -535,8 +533,6 @@ def perform(
         for idx in range(lenpos):
             pos[idx] = (pos[idx]+1)%store_steps[idx]
         i = i + 1
-
-
 
     # 6. Check if you need to re-order output buffers
     begin = n_mit_mot

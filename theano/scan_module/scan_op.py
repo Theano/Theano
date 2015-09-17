@@ -1297,7 +1297,7 @@ class Scan(PureOp):
                 else:
                     old_input_data[idx] = None
 
-            # 5.0.1 compute outputs
+            # 5.1 compute outputs
             t0_fn = time.time()
 
             try:
@@ -1326,7 +1326,7 @@ class Scan(PureOp):
                 pdx = offset + self.n_shared_outs
                 cond = output_storage[pdx].storage[0] == 0
 
-            # 5.0.2. By calling fn() directly instead of calling the theano
+            # 5.2. By calling fn() directly instead of calling the theano
             # function, it is possible that the updates have not been
             # performed. Perform the updates if needed.
             offset_out = len(output_storage) - 1
@@ -1338,7 +1338,7 @@ class Scan(PureOp):
                         storage.data = output_storage[offset_out].data
                         offset_out -= 1
 
-            # 5.0.3. Check which of the pre-allocated outputs (if applicable)
+            # 5.3. Check which of the pre-allocated outputs (if applicable)
             # have been reused by the inner function
             for idx in xrange(len(output_storage)):
                 # If the storage map does not contain the same object, then
@@ -1361,7 +1361,7 @@ class Scan(PureOp):
                 else:
                     output_reused[idx] = False
 
-            # 5.0.4 Check which of the input storage have been modified by the
+            # 5.4 Check which of the input storage have been modified by the
             # inner function
             for idx in xrange(len(input_storage)):
                 # If the storage map does not contain the same object, then
@@ -1388,7 +1388,7 @@ class Scan(PureOp):
             t_fn += dt_fn
             offset_out = 0
 
-            # 5.1 Copy over the values for mit_mot outputs
+            # 5.5 Copy over the values for mit_mot outputs
             mitmot_inp_offset = self.n_seqs
             mitmot_out_idx = 0
             for j in xrange(self.n_mit_mot):
@@ -1415,7 +1415,7 @@ class Scan(PureOp):
 
                 mitmot_inp_offset += len(self.tap_array[j])
 
-            # 5.2 Copy over the values for mit_sot/sit_sot outputs
+            # 5.6 Copy over the values for mit_sot/sit_sot outputs
             begin = self.n_mit_mot
             end = self.n_outs
             offset_out -= self.n_mit_mot
@@ -1426,7 +1426,7 @@ class Scan(PureOp):
                     outs[j][0][pos[j]] = \
                             output_storage[offset_out + j].storage[0]
 
-            # 5.3 Copy over the values for nit_sot outputs
+            # 5.7 Copy over the values for nit_sot outputs
             begin = end
             end += self.n_nit_sot
             for j in xrange(begin, end):
@@ -1450,7 +1450,7 @@ class Scan(PureOp):
                     outs[j][0][pos[j]] = \
                             output_storage[j + offset_out].storage[0]
 
-            # 5.4 Copy over the values for outputs corresponding to shared
+            # 5.8 Copy over the values for outputs corresponding to shared
             # variables
             begin = end
             end += self.n_shared_outs
