@@ -85,13 +85,9 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
     gout = classify_gpu(yy, b_values, dot_value)
 
     assert len(out) == len(gout) == 3
-    assert numpy.allclose(out[0], gout[0])
-    assert numpy.allclose(out[2], gout[2], atol=3e-6), numpy.absolute(
-        gout[2] - out[2]).max()
-    assert numpy.allclose(out[1], gout[1]), [(id, out[1][id], gout[1][id], val)
-                                             for id, val in enumerate(out[1] -
-                                                                      gout[1])
-                                             if val != 0]
+    utt.assert_allclose(out[0], gout[0])
+    utt.assert_allclose(out[2], gout[2], atol=3e-6)
+    utt.assert_allclose(out[1], gout[1])
 
 
 def test_GpuCrossentropySoftmax1HotWithBiasDx():
@@ -211,7 +207,7 @@ def softmax_with_bias_unittest_template(dtypeInput, dtypeBias):
 
         out = f(data)
         gout = f_gpu(data)
-        assert numpy.allclose(out, gout), numpy.absolute(out - gout)
+        utt.assert_allclose(out, gout)
 
     cmp(2, 5)
     # we need to test n>32*1024 to check that we make the block loop.
@@ -262,7 +258,7 @@ def softmax_unittest_template(dtypeInput):
 
         out = f(data)
         gout = f_gpu(data)
-        assert numpy.allclose(out, gout), numpy.absolute(out - gout)
+        utt.assert_allclose(out, gout)
 
     # we need to test n>32*1024 to check that we make the block loop.
     cmp(2, 5)
@@ -337,7 +333,7 @@ class test_SoftMax(unittest.TestCase):
         data = numpy.arange(n * m, dtype='float32').reshape(n, m)
         out = f(data)
         gout = f_gpu(data)
-        assert numpy.allclose(out, gout), numpy.absolute(out - gout)
+        utt.assert_allclose(out, gout)
 
     def _check_types(self, graph, graph_gpu, f_type, f_gpu_type):
         assert isinstance(graph.maker.fgraph.toposort()[-1].op, f_type)
