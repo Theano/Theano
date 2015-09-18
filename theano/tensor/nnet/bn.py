@@ -23,7 +23,6 @@ class BNComposite(Composite):
         dmean = -(top*gamma) / var
         dvar = -(top * gamma * (x - mean)) / (var*var)
         dgamma = top*(x - mean) / var
-        #dbeta = top
         return [dx, dmean, dvar, dgamma, top]
 
 
