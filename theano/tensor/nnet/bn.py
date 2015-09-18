@@ -33,6 +33,7 @@ def batch_normalization(inputs, gamma, beta, mean, std):
     back-propagation, this implementation lower the memory usage, however,
     it is 5-10% slower than a naive theano implementation, as it redo
     some foward computations for the backprop.
+    Work also on GPU
 
     Parameters
     ----------
