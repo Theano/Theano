@@ -4,8 +4,10 @@ from theano.scalar import add, sub, true_div, mul
 
 
 class BNComposite(Composite):
+    __props__ = ('dtype',)
 
     def __init__(self, dtype):
+        self.dtype = dtype
         x = theano.scalar.Scalar(dtype=dtype).make_variable()
         mean = theano.scalar.Scalar(dtype=dtype).make_variable()
         std = theano.scalar.Scalar(dtype=dtype).make_variable()
