@@ -1750,6 +1750,7 @@ class CLinker(link.Linker):
         out_print = ""
         args = ["storage_%s" % self.r2symbol[variable] for variable
                 in utils.uniq(self.inputs)]
+        shared_variables = []
         mapping_str = "// Mapping: variable name -> struct internal stogare\n"
         for var, name in zip(utils.uniq(self.inputs), args):
             if isinstance(var, theano.tensor.sharedvar.TensorSharedVariable):
@@ -1757,17 +1758,18 @@ class CLinker(link.Linker):
                                % locals()
                 # Saving shared variable value
                 numpy.save(os.path.join(location, name), var.get_value())
+                shared_variables.append(name)
             else:
                 mapping_str += "// Input %(var)s->%(name)s\n" % locals()
-            dtype = var.type.dtype_specs()[2]
-            ndim = var.ndim
-            shp = range(3, 3+ndim)
-            for idx in range(var.ndim):
-                if var.type.broadcastable[idx]:
-                    shp[idx] = 1
-            tot = numpy.prod(shp)
-            shp_str = ",".join([str(s) for s in shp])
-            in_init += """
+                dtype = var.type.dtype_specs()[2]
+                ndim = var.ndim
+                shp = range(3, 3+ndim)
+                for idx in range(var.ndim):
+                    if var.type.broadcastable[idx]:
+                        shp[idx] = 1
+                tot = numpy.prod(shp)
+                shp_str = ",".join([str(s) for s in shp])
+                in_init += """
    PyObject* %(name)s_data = PyArray_Arange(0., %(tot)s, 1.,%(dtype)s);
    npy_intp %(name)s_dims[%(ndim)s] = {%(shp_str)s};
    PyArray_Dims %(name)s_newshape;
@@ -1777,7 +1779,27 @@ class CLinker(link.Linker):
    (PyArrayObject*) %(name)s_data,&%(name)s_newshape,NPY_CORDER);
    PyList_SetItem(struct_ptr->%(name)s, 0, %(name)s_value);
    %(name)s_value = NULL;
+                """ % locals()
+        shared_load = ""
+        if len(shared_variables) > 0:
+            shared_load += """
+   PyObject *load = PyObject_GetAttrString(numpy, "load");
+            """
+        for name in shared_variables:
+            file_name = name+".npy"
+            shared_load += """
+   PyObject * %(name)s_value=PyObject_CallFunction(load, "s", "%(file_name)s");
+   if(!%(name)s_value)
+    {
+      PyErr_Print();
+      return 2;
+    }
+   PyList_SetItem(struct_ptr->%(name)s, 0, %(name)s_value);      
             """ % locals()
+        if len(shared_variables) > 0:
+            shared_load += """
+   Py_XDECREF(load);
+            """
         args = ["storage_%s" % self.r2symbol[variable] for variable
                 in utils.uniq(self.outputs)]
         for var, name in zip(utils.uniq(self.outputs), args):
@@ -1821,6 +1843,7 @@ int main(int argc, char *argv[]) {
  %(struct_name)s *struct_ptr = cinit();
  int run_ret = 0;
  if(struct_ptr){
+   %(shared_load)s
    %(in_init)s
    printf("after cinit()\\n");
    //Function execution
