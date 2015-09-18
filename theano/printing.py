@@ -132,14 +132,8 @@ def debugprint(obj, depth=-1, print_type=False,
                             obj)
 
     scan_ops = []
-    for r, p in zip(results_to_print, profile_list):
-        # Add the parent scan op to the list as well
-        if (hasattr(r.owner, 'op') and
-                isinstance(r.owner.op, theano.scan_module.scan_op.Scan)):
-                    scan_ops.append(r)
-
-        if p is not None:
-            print("""
+    if any([p for p in profile_list if p is not None and p.fct_callcount > 0]):
+        print("""
 Timing Info
 -----------
 --> <time> <% time> - <total time> <% total time>'
@@ -156,6 +150,12 @@ N.B.:
   loose upper bound. Their intended use is to help rule out potential nodes
   to remove when optimizing a graph because their <total time> is very low.
 """, file=_file)
+
+    for r, p in zip(results_to_print, profile_list):
+        # Add the parent scan op to the list as well
+        if (hasattr(r.owner, 'op') and
+                isinstance(r.owner.op, theano.scan_module.scan_op.Scan)):
+                    scan_ops.append(r)
 
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
                              file=_file, order=order, ids=ids,

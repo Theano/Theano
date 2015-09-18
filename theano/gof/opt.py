@@ -810,6 +810,17 @@ class MergeOptimizer(Optimizer):
                     # No need to compare the op again, as it don't change.
                     if not inputs_match:
                         continue
+
+                    if hasattr(pairs[0][0].fgraph, 'destroy_handler'):
+                        # If both nodes have clients that destroy
+                        # them, we can't merge them.
+                        clients = pairs[0][0].clients + pairs[0][1].clients
+                        if sum([i in utils.flatten(c.op.destroy_map.values())
+                                for c, i in clients
+                                if c != 'output' and
+                                hasattr(c.op, 'destroy_map')]) > 1:
+                            continue
+
                 try:
                     fgraph.replace_all_validate(pairs, 'MergeOptimizer')
                 except InconsistencyError:
