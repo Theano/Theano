@@ -309,15 +309,7 @@ def str_diagnostic(expected, value, rtol, atol):
         print(ssio.getvalue(), file=sio)
     except Exception:
         pass
-    # Use the same formula as in _allclose to find the tolerance used
-    narrow = 'float32', 'complex64'
-    if ((str(expected.dtype) in narrow) or
-        (str(value.dtype) in narrow)):
-        atol_ = T.basic.float32_atol
-        rtol_ = T.basic.float32_rtol
-    else:
-        atol_ = T.basic.float64_atol
-        rtol_ = T.basic.float64_rtol
+    atol_, rtol_ = T.basic._get_atol_rtol(expected, value)
     if rtol is not None:
         rtol_ = rtol
     if atol is not None:
