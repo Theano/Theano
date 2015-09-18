@@ -8,8 +8,8 @@ from theano.tensor.nnet.bn import batch_normalization
 def test_bn():
 
     def bn_ref(x, G, B, M, V):
-        n = (x-M)/V
-        return n*G+B
+        n = (x - M) / V
+        return n * G + B
 
     numpy.random.seed(1234)
     X = 1 + numpy.random.random([10, 20]).astype('float32')
@@ -26,28 +26,28 @@ def test_bn():
 
     bn_op = batch_normalization(x, g, b, m, v)
     bn_ref_op = bn_ref(x, g, b, m, v)
-    f = theano.function([x, b, g, m ,v], [bn_op])
-    f_ref = theano.function([x, b, g, m ,v], [bn_ref_op])
+    f = theano.function([x, b, g, m, v], [bn_op])
+    f_ref = theano.function([x, b, g, m, v], [bn_ref_op])
     res = f(X, G, B, M, V)
     res_ref = f_ref(X, G, B, M, V)
     utt.assert_allclose(res_ref, res)
     utt.verify_grad(batch_normalization, [X, G, B, M, V])
 
-    bn_op = batch_normalization(x, g, b, x.mean(axis=0, keepdims=True), x.var(axis=0, keepdims=True))
+    bn_op = batch_normalization(x, g, b, x.mean(axis=0, keepdims=True), x.std(axis=0, keepdims=True))
     bn_ref_op = bn_ref(x, g, b, x.mean(axis=0, keepdims=True), x.var(axis=0, keepdims=True))
     f = theano.function([x, b, g], [bn_op])
     f_ref = theano.function([x, b, g], [bn_ref_op])
     res = f(X, G, B)
     res_ref = f_ref(X, G, B)
     utt.assert_allclose(res_ref, res)
-    utt.verify_grad(batch_normalization, [X, G, B, X.mean(axis=0, keepdims=True), X.var(axis=0, keepdims=True)])
+    utt.verify_grad(batch_normalization, [X, G, B, X.mean(axis=0, keepdims=True), X.std(axis=0, keepdims=True)])
 
 
 def test_bn_feature_maps():
 
     def bn_ref(x, G, B, M, V):
-        n = (x-M)/V
-        return n*G+B
+        n = (x - M) / V
+        return n * G + B
 
     numpy.random.seed(1234)
     X = 1 + numpy.random.random([10, 20, 4, 4]).astype('float32')
@@ -62,7 +62,6 @@ def test_bn_feature_maps():
     m = theano.tensor.vector('m')
     v = theano.tensor.vector('v')
 
-    ### Provide mean/var
     bn_op = batch_normalization(x,
                                 g.dimshuffle('x', 0, 'x', 'x'),
                                 b.dimshuffle('x', 0, 'x', 'x'),
@@ -73,8 +72,8 @@ def test_bn_feature_maps():
                        b.dimshuffle('x', 0, 'x', 'x'),
                        m.dimshuffle('x', 0, 'x', 'x'),
                        v.dimshuffle('x', 0, 'x', 'x'))
-    f = theano.function([x, b, g, m ,v], [bn_op])
-    f_ref = theano.function([x, b, g, m ,v], [bn_ref_op])
+    f = theano.function([x, b, g, m, v], [bn_op])
+    f_ref = theano.function([x, b, g, m, v], [bn_ref_op])
     res = f(X, G, B, M, V)
     res_ref = f_ref(X, G, B, M, V)
     utt.assert_allclose(res_ref, res)
@@ -87,4 +86,3 @@ def test_bn_feature_maps():
                                    variance.dimshuffle('x', 0, 'x', 'x'),
                                    axis=1)
     utt.verify_grad(conv_bn, [X, G, B, M, V])
-

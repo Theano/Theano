@@ -8,49 +8,49 @@ class BNComposite(Composite):
     def __init__(self, dtype):
         x = theano.scalar.Scalar(dtype=dtype).make_variable()
         mean = theano.scalar.Scalar(dtype=dtype).make_variable()
-        var = theano.scalar.Scalar(dtype=dtype).make_variable()
+        std = theano.scalar.Scalar(dtype=dtype).make_variable()
         gamma = theano.scalar.Scalar(dtype=dtype).make_variable()
         beta = theano.scalar.Scalar(dtype=dtype).make_variable()
-        o = add(mul(true_div(sub(x, mean),  var), gamma), beta)
-        inputs = [x, mean, var, gamma, beta]
-        outputs= [o]
+        o = add(mul(true_div(sub(x, mean), std), gamma), beta)
+        inputs = [x, mean, std, gamma, beta]
+        outputs = [o]
         super(BNComposite, self).__init__(inputs, outputs)
 
     def grad(self, inps, grads):
-        x, mean, var, gamma, beta = inps
+        x, mean, std, gamma, beta = inps
         top, = grads
-        dx = (top*gamma) / var
-        dmean = -(top*gamma) / var
-        dvar = -(top * gamma * (x - mean)) / (var*var)
-        dgamma = top*(x - mean) / var
-        return [dx, dmean, dvar, dgamma, top]
+        dx = (top * gamma) / std
+        dmean = -(top * gamma) / std
+        dstd = -(top * gamma * (x - mean)) / (std * std)
+        dgamma = top * (x - mean) / std
+        return [dx, dmean, dstd, dgamma, top]
 
 
-def batch_normalization(inputs, gamma, beta, mean, variance, axis=0):
+def batch_normalization(inputs, gamma, beta, mean, std):
     """
     This function will build the symbolic graph for applying batch normalization
-    to a set of activations.
+    to a set of activations. As no intermediate representations are stored for the
+    back-propagation, this implementation lower the memory usage, however,
+    it is 5-10% slower than a naive theano implementation, as it redo
+    some foward computations for the backprop.
 
     Parameters
     ----------
     inputs : symbolic tensor
-        Mini-batch of examples
-    gamma: symbolic vector
-        BN scale parameter, must be of same dimension that
-        the number of inputs channel
-    beta: symbolic vector
-        BN shift parameter, must be of same dimension that
-        the number of inputs channel
+        Mini-batch of activations
+    gamma: symbolic tensor
+        BN scale parameter, must be of same dimensionality as
+        inputs and broadcastable against it
+    beta: symbolic tensor
+        BN shift parameter, must be of same dimensionality as
+        inputs and broadcastable against it
     mean: symbolic tensor
-        inputs means
-    variance: symbolic tensor
-        inputs variance
-    axis: int
-        channel axis
+        inputs means, must be of same dimensionality as
+        inputs and broadcastable against it
+    std: symbolic tensor
+        inputs standard deviation, must be of same dimensionality as
+        inputs and broadcastable against it
     """
     elm_bn = theano.tensor.elemwise.Elemwise(scalar_op=BNComposite(dtype=inputs.dtype))
-    rval = elm_bn(inputs, mean, variance, gamma, beta)
+    rval = elm_bn(inputs, mean, std, gamma, beta)
     return rval
-
-
-
