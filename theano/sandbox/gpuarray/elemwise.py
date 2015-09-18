@@ -38,7 +38,7 @@ def make_argument(v, name):
         return ArrayArg(numpy.dtype(v.type.dtype), name)
 
 
-def ensure_allocated(storage, shape, dtype):
+def ensure_allocated(storage, shape, dtype, ctx):
     odat = storage[0]
     if odat is not None:
         if odat.shape != shape:
@@ -46,7 +46,7 @@ def ensure_allocated(storage, shape, dtype):
             # we have to allocate output storage.
             odat = None
     if odat is None:
-        odat = pygpu.empty(shape, dtype=dtype)
+        odat = pygpu.empty(shape, dtype=dtype, context=ctx)
     storage[0] = odat
     return odat
 
@@ -402,7 +402,7 @@ class GpuElemwise(GpuKernelBase, HideC, Elemwise):
             """ % locals()
         return str(code)
 
-    def perform(self, node, inputs, output_storage):
+    def perform(self, node, inputs, output_storage, ctx):
         # Try to reuse the kernel from a previous call to hopefully
         # avoid recompiling
         if not hasattr(node, '_cache_elemwise_k'):
@@ -423,7 +423,7 @@ class GpuElemwise(GpuKernelBase, HideC, Elemwise):
             if n in self.inplace_pattern:
                 stor[0] = inputs[self.inplace_pattern[n]]
             else:
-                args.append(ensure_allocated(stor, out_shape, out.type.dtype))
+                args.append(ensure_allocated(stor, out_shape, out.type.dtype, ctx))
 
         node._cache_elemwise_k(*args, broadcast=True)
         if config.gpuarray.sync:
@@ -2633,7 +2633,6 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
     Too slow for now as it only have a python interface.
 
     """
-
     def __init__(self, scalar_op, axis=None, dtype=None, acc_dtype=None):
         if not hasattr(scalar_op, 'identity'):
             raise ValueError("No identity on scalar op")
@@ -2647,10 +2646,12 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
         return "GpuReduce{%s}%s" % (self.scalar_op, ax)
 
     def make_node(self, input):
+        ctx_name = infer_context_name(input)
         res = CAReduceDtype.make_node(self, input)
-        input = as_gpuarray_variable(input)
+        input = as_gpuarray_variable(input, ctx_name)
         otype = GpuArrayType(dtype=res.outputs[0].dtype,
-                             broadcastable=res.outputs[0].broadcastable)
+                             broadcastable=res.outputs[0].broadcastable,
+                             context_name=ctx_name)
 
         if res.op.axis is not None:
             redux = []
@@ -2661,6 +2662,9 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
             res.op.redux = redux
 
         return Apply(res.op, [input], [otype()])
+
+    def get_context(self, node):
+        return node.outputs[0].type.context
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         # cache the kernel object
@@ -2887,7 +2891,7 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
                                arguments=[make_argument(node.inputs[0], 'a')],
                                init_nd=node.inputs[0].ndim)
 
-    def perform(self, node, inp, out):
+    def perform(self, node, inp, out, ctx):
         input, = inp
         output, = out
 
@@ -2901,6 +2905,7 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
                 copy=False, dtype=node.outputs[0].type.dtype)
         else:
             output[0] = pygpu.gpuarray.array(input, copy=True,
-                                             dtype=node.outputs[0].type.dtype)
+                                             dtype=node.outputs[0].type.dtype,
+                                             context=ctx)
 # To allow reloading old pickled files
 GpuCAReduce = GpuCAReduceCPY
