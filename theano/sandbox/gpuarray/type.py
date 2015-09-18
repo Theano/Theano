@@ -158,6 +158,8 @@ class GpuArrayType(Type):
         return data
 
     def filter_variable(self, other, allow_convert=True):
+        from theano.sandbox.gpuarray import GpuFromHost
+
         if hasattr(other, '_as_GpuArrayVariable'):
             other = other._as_GpuArrayVariable(self.context_name)
 
@@ -188,7 +190,7 @@ class GpuArrayType(Type):
                                  str(self.broadcastable)))
             other = other2
 
-        return theano.sandbox.gpuarray.basic_ops.gpu_from_host(other)
+        return GpuFromHost(self.context_name)(other)
 
     @staticmethod
     def values_eq(a, b):
