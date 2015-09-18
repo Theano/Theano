@@ -357,7 +357,7 @@ def inplace_elemwise_optimizer_op(OP):
                             fgraph.validate()
                             chk = fgraph.checkpoint()
                             nb_change_no_validate = 0
-                    except (ValueError, TypeError, InconsistencyError) as e:
+                    except (ValueError, InconsistencyError) as e:
                         if check_each_change != 1 and not raised_warning:
                             print(("Some inplace optimization was not "
                                    "performed due to unexpected error:"),
