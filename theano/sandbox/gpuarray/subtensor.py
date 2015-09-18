@@ -407,7 +407,7 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
 
 class GpuAdvancedSubtensor1(HideC, tensor.AdvancedSubtensor1):
     def make_node(self, x, ilist):
-        ctx_name = infer_context(x, ilist)
+        ctx_name = infer_context_name(x, ilist)
         x_ = as_gpuarray_variable(x, ctx_name)
 
         ilist__ = tensor.as_tensor_variable(ilist)
@@ -612,6 +612,9 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, GpuAdvancedIncSubtensor1):
 
     def get_context(self, node):
         return node.outputs[0].type.context
+
+    def perform(self, node, inp, out, ctx):
+        return super(GpuAdvancedIncSubtensor1_dev20, self).perform(node, inp, out)
 
     def c_code_cache_version(self):
         return (6,)
