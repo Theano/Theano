@@ -611,6 +611,9 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, GpuAdvancedIncSubtensor1):
     def get_context(self, node):
         return node.outputs[0].type.context
 
+    def perform(self, node, inp, out, ctx):
+        return super(GpuAdvancedIncSubtensor1_dev20, self).perform(node, inp, out)
+
     def c_code_cache_version(self):
         return (6,)
 
