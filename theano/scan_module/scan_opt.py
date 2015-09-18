@@ -210,23 +210,27 @@ def remove_constants_and_unused_inputs_scan(node):
         return False
 
 def retrieve_clients_fromnodes(nodes):
+    """
+    A function that returns all the available clients of a node in the
+    computational graph.
+    """
     clients = []
+
     if isinstance(nodes, set):
         nodes = list(nodes)
     elif not isinstance(nodes, list):
         nodes = [nodes]
 
+    filter_clients = lambda l: map(lambda x: x[0], filter(lambda y: y[0] != \
+            "output", l.clients))
+
     for node in nodes:
         if isinstance(node, theano.Apply):
             node_outs = node.outputs
             for node_out in node_outs:
-                for ncli in node_out.clients:
-                    if ncli[0] != "output":
-                        clients.append(ncli[0])
+                clients.extend(filter_clients(node_out))
         else:
-            for ncli in node.clients:
-                if ncli[0] != "output":
-                    clients.append(ncli[0])
+            clients.extend(filter_clients(node))
 
     return clients
 
@@ -255,6 +259,7 @@ class PushOutNonSeqScan(gof.Optimizer):
         IMPORTANT NOTE: This function uses set and dictionary data structures.
         By default they are not ordered for efficiency reasons. Take care
         and make sure of changing them with their Ordered counterparts if you
+        M
         need to iterate over these variables.
 
         """
@@ -269,7 +274,6 @@ class PushOutNonSeqScan(gof.Optimizer):
         local_fgraph_topo = local_fgraph.toposort()
         local_fgraph_inps = set(local_fgraph.inputs)
         local_fgraph_bookkeeper = deque(retrieve_clients_fromnodes(local_fgraph_inps))
-
         local_fgraph_outs_set = set(local_fgraph.outputs)
         local_fgraph_outs_map = dict([(v, k) for k, v in \
                 enumerate(local_fgraph.outputs)])
@@ -627,7 +631,7 @@ class PushOutSeqScan(gof.Optimizer):
         clean_replace_with_out = []
 
         existent_nodes = [nd for nd in local_fgraph_topo
-                        if nd not in to_remove_set]
+                          if nd not in to_remove_set]
         existent_nodes_set = set(existent_nodes)
 
         to_keep_set = set([])
@@ -636,10 +640,10 @@ class PushOutSeqScan(gof.Optimizer):
 
         for out, idx in to_replace_map.items():
             if (out in to_keep_set
-            and out.owner not in existent_nodes_set
-            # If types are different, conversion Op will be inserted,
-            # and it may trigger an infinite loop.
-            and replace_with_in[idx].type == out.type):
+                and out.owner not in existent_nodes_set
+                # If types are different, conversion Op will be inserted,
+                # and it may trigger an infinite loop.
+                and replace_with_in[idx].type == out.type):
 
                 clean_to_replace.append(out)
                 clean_replace_with_in.append(replace_with_in[idx])
@@ -651,8 +655,8 @@ class PushOutSeqScan(gof.Optimizer):
             nw_outer = []
             nw_inner = []
             for to_repl, repl_in, repl_out in zip(clean_to_replace,
-                                                clean_replace_with_in,
-                                                clean_replace_with_out):
+                                                  clean_replace_with_in,
+                                                  clean_replace_with_out):
                 if isinstance(repl_out, theano.Constant):
                     repl_in = repl_out.clone()
                 else:
@@ -671,16 +675,17 @@ class PushOutSeqScan(gof.Optimizer):
             nwScan = scan_op.Scan(op_ins, op_outs, nw_info)
             # Do not call make_node for test_value
             nw_node = nwScan(*(node.inputs[:1] + nw_outer + node.inputs[1:]),
-                            **dict(return_list=True))[0].owner
+                             **dict(return_list=True))[0].owner
 
             fgraph.replace_all_validate_remove(
                 list(zip(node.outputs, nw_node.outputs)),
                 remove=[node],
                 reason='scanOp_pushout_seqs_ops')
             return True
+
         elif (not to_keep_set and
-            not op.as_while and
-            not op.outer_mitmot(node)):
+              not op.as_while and
+              not op.outer_mitmot(node)):
             # Nothing in the inner graph should be kept
             replace_with = OrderedDict()
             for out, idx in to_replace_map.items():
