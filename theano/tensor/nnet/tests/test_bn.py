@@ -40,7 +40,8 @@ def test_bn():
     res = f(X, G, B)
     res_ref = f_ref(X, G, B)
     utt.assert_allclose(res_ref, res)
-    utt.verify_grad(batch_normalization, [X, G, B, X.mean(axis=0, keepdims=True), X.std(axis=0, keepdims=True)])
+    utt.verify_grad(batch_normalization, [X, G, B,
+                                          X.mean(axis=0)[numpy.newaxis], X.std(axis=0)[numpy.newaxis]])
 
 
 def test_bn_feature_maps():
