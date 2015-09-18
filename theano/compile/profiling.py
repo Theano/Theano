@@ -697,7 +697,7 @@ class ProfileStats(object):
         print('Time in all call to theano.grad() %es' %
               theano.gradient.grad_time, file=file)
         total_time = time.time() - theano_imported_time
-        print('Time since theano import %.3fs' % (total_time))
+        print('Time since theano import %.3fs' % (total_time), file=file)
 
     def summary_memory(self, file, N=None):
         fct_memory = {}  # fgraph->dict(node->[outputs size])
