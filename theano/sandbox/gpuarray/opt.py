@@ -464,6 +464,7 @@ def local_gpu_pdbbreakpoint_op(node):
 
             input_is_from_gpu = (inp.owner and
                                  isinstance(inp.owner.op, HostFromGpu))
+            output_goes_to_gpu = False
             for c in out.clients:
                 if c == 'output':
                     continue
