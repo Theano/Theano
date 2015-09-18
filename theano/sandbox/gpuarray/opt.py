@@ -837,8 +837,7 @@ def local_gpu_conv(node, context_name):
         return
     out = gpu_conv(GpuFromHost(context_name)(img),
                    GpuFromHost(context_name)(kern))
-    # op_lifter want the output on the GPU.
-    out = GpuFromHost(context_name)(out)
+    assert isinstance(out.type, GpuArrayType)
     out.values_eq_approx = values_eq_approx
     return [out]
 

@@ -164,7 +164,7 @@ class GpuConv(GpuKernelBase, gof.Op):
         node_ = copy.copy(node)
         assert node.op is node_.op
         if node_.op.max_threads_dim0 is None:
-            node_.op.max_threads_dim0 = node._inputs[0].type.context.maxlsize
+            node_.op.max_threads_dim0 = node_.inputs[0].type.context.maxlsize
         return super(GpuConv, node_.op).make_thunk(node_, storage_map,
                                                    compute_map, no_recycling)
 
@@ -179,7 +179,7 @@ class GpuConv(GpuKernelBase, gof.Op):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 22)
+        return (0, 23)
 
     def c_code(self, node, nodename, inp, out_, sub):
         if node.inputs[0].type.context.kind != "cuda":
@@ -251,7 +251,6 @@ class GpuConv(GpuKernelBase, gof.Op):
         """ % locals()
         code += "\n".join([open(os.path.join(os.path.split(__file__)[0], f)).read()
                            for f in ["conv_kernel.cu", "conv_full_kernel.cu"]])
-        kname = "conv_full_load_everything"
         gk = gpuarray.GpuKernel(code, k.name, k.params, **k.flags)
         bin = gk._binary
         bcode = ','.join(hex(ord(c)) for c in bin)
@@ -262,9 +261,12 @@ class GpuConv(GpuKernelBase, gof.Op):
         static const char conv_bcode[] = {%(bcode)s};
         static const char *conv_code = "%(code)s";
         """ % locals()
-        for k in kernels:
-            mod += "static GpuKernel " + k.name + '_' + name + ";\n"
-        mod += open(os.path.join(os.path.split(__file__)[0], "conv.cu")).read()
+        return mod
+
+    def c_support_code_struct(self, node, name):
+        mod = GpuKernelBase.c_support_code_struct(self, node, name)
+        with open(os.path.join(os.path.split(__file__)[0], "conv.cu")) as f:
+            mod += f.read()
         return mod
 
     @utils.memoize
