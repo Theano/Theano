@@ -65,6 +65,7 @@ import copy
 from sys import maxsize
 import numpy
 from collections import deque
+from itertools import chain
 
 import theano
 from theano import tensor
@@ -310,10 +311,9 @@ class PushOutNonSeqScan(gof.Optimizer):
             nd = local_fgraph_bookkeeper.pop()
             if (# we haven't already looked at this node
                 nd not in to_remove_set and
-                all([((x in inner_non_seqs_set) or
+                all(map(lambda x: (x in inner_non_seqs_set) or
                     (x.owner in to_remove_set) or
-                    isinstance(x, tensor.Constant))
-                    for x in nd.inputs]) and
+                    isinstance(x, tensor.Constant), nd.inputs)) and
                 # we can do this because the assumption is that a
                 # viewOp or deepCopyOp will be just at the end of the
                 # function and not somewhere in the middle ..
@@ -369,13 +369,13 @@ class PushOutNonSeqScan(gof.Optimizer):
         clean_to_replace = []
         clean_replace_with_in = []
         clean_replace_with_out = []
-        existent_nodes = [nd for nd in local_fgraph_topo
-                          if nd not in to_remove_set]
+        #existent_nodes = [nd for nd in local_fgraph_topo
+        #                  if nd not in to_remove_set]
+        existent_nodes = filter(lambda n: n not in to_remove_set, local_fgraph_topo)
         existent_nodes_set = set(existent_nodes)
 
         to_keep_set = set([])
-        for nd in existent_nodes:
-            to_keep_set.update(nd.inputs)
+        to_keep_set.union(chain.from_iterable(map(lambda n: n.inputs, existent_nodes)))
 
         for out, idx in to_replace_map.items():
             if (# If types are different, conversion Op will be inserted,
@@ -464,6 +464,7 @@ class PushOutSeqScan(gof.Optimizer):
         for node in nodelist:
             self.process_node(fgraph, node)
 
+    @profile
     def process_node(self, fgraph, node):
         """
         IMPORTANT NOTE: This function uses set and dictionary data structure.
@@ -520,10 +521,10 @@ class PushOutSeqScan(gof.Optimizer):
             nd = local_fgraph_bookkeeper.pop()
 
             if (nd not in to_remove_set and
-                all([(x in inner_non_seqs_set) or
-                     (x.owner in to_remove_set) or
-                     isinstance(x, tensor.Constant) or
-                     (x in inner_seqs_set) for x in nd.inputs]) and
+                all(map(lambda x: (x in inner_non_seqs_set) or
+                    (x.owner in to_remove_set) or
+                    isinstance(x, tensor.Constant) or
+                    (x in inner_seqs_set), nd.inputs)) and
                 isinstance(nd.op, theano.tensor.Elemwise)):
 
                 outside_ins = []
@@ -630,13 +631,13 @@ class PushOutSeqScan(gof.Optimizer):
         clean_replace_with_in = []
         clean_replace_with_out = []
 
-        existent_nodes = [nd for nd in local_fgraph_topo
-                          if nd not in to_remove_set]
+        # existent_nodes = [nd for nd in local_fgraph_topo
+        #                  if nd not in to_remove_set]
+        existent_nodes = filter(lambda n: n not in to_remove_set, local_fgraph_topo)
         existent_nodes_set = set(existent_nodes)
 
         to_keep_set = set([])
-        for nd in existent_nodes:
-            to_keep_set.update(nd.inputs)
+        to_keep_set.union(chain.from_iterable(map(lambda n: n.inputs, existent_nodes)))
 
         for out, idx in to_replace_map.items():
             if (out in to_keep_set
