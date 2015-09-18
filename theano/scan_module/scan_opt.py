@@ -369,8 +369,7 @@ class PushOutNonSeqScan(gof.Optimizer):
         clean_to_replace = []
         clean_replace_with_in = []
         clean_replace_with_out = []
-        #existent_nodes = [nd for nd in local_fgraph_topo
-        #                  if nd not in to_remove_set]
+
         existent_nodes = filter(lambda n: n not in to_remove_set, local_fgraph_topo)
         existent_nodes_set = set(existent_nodes)
 
@@ -464,7 +463,6 @@ class PushOutSeqScan(gof.Optimizer):
         for node in nodelist:
             self.process_node(fgraph, node)
 
-    @profile
     def process_node(self, fgraph, node):
         """
         IMPORTANT NOTE: This function uses set and dictionary data structure.
@@ -515,7 +513,6 @@ class PushOutSeqScan(gof.Optimizer):
         outer_seqs = op.outer_seqs(node.inputs)
         assert len(inner_non_seqs) == len(outer_non_seqs)
         assert len(inner_seqs) == len(outer_seqs)
-
 
         while local_fgraph_bookkeeper:
             nd = local_fgraph_bookkeeper.pop()
@@ -631,8 +628,6 @@ class PushOutSeqScan(gof.Optimizer):
         clean_replace_with_in = []
         clean_replace_with_out = []
 
-        # existent_nodes = [nd for nd in local_fgraph_topo
-        #                  if nd not in to_remove_set]
         existent_nodes = filter(lambda n: n not in to_remove_set, local_fgraph_topo)
         existent_nodes_set = set(existent_nodes)
 
@@ -670,14 +665,15 @@ class PushOutSeqScan(gof.Optimizer):
                                         replace=givens)
             _op_ins = nw_inner + clean_inputs
             op_ins, op_outs = scan_utils.reconstruct_graph(_op_ins, _op_outs)
+
             # Reconstruct node
             nw_info = op.info.copy()
             nw_info['n_seqs'] += len(nw_inner)
             nwScan = scan_op.Scan(op_ins, op_outs, nw_info)
+
             # Do not call make_node for test_value
             nw_node = nwScan(*(node.inputs[:1] + nw_outer + node.inputs[1:]),
                              **dict(return_list=True))[0].owner
-
             fgraph.replace_all_validate_remove(
                 list(zip(node.outputs, nw_node.outputs)),
                 remove=[node],
@@ -868,7 +864,7 @@ class PushOutScanOutput(gof.Optimizer):
                                                     sitsot_idx])
 
                     dot_in_idx = 1 - sitsot_in_idx  # 0 if sitsot_in_idx==1,
-                                                   # 1 if sitsot_in_idx==0
+                                                    # 1 if sitsot_in_idx==0
                     dot_input = nd.inputs[dot_in_idx]
 
                     if (dot_input.owner is not None and
