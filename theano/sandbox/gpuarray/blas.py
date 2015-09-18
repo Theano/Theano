@@ -249,7 +249,7 @@ class GpuDot22(BlasOp, Dot22):
         dims[1] = PyGpuArray_DIMS(%(B)s)[1];
 
         if (theano_prep_output(&%(out)s, 2, dims, %(typecode)s, GA_C_ORDER,
-                              %(A)s->ctx)) {
+                               %(A)s->context)) {
             %(fail)s
         }
 
