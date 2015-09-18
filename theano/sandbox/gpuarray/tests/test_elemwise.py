@@ -4,20 +4,19 @@ import theano
 from theano import scalar, gof
 from theano.tests.unittest_tools import SkipTest, assert_allclose
 
-from theano.tensor.tests.test_elemwise import (test_Broadcast, test_DimShuffle,
-                                               test_CAReduce, T_reduce_dtype)
+from theano.tensor.tests import test_elemwise
 
-from .config import mode_with_gpu
+from .config import mode_with_gpu, test_ctx_name
 from .test_basic_ops import rand_gpuarray
 from ..elemwise import (GpuElemwise, GpuDimShuffle,
                         GpuCAReduceCuda, GpuCAReduceCPY)
-from ..type import GpuArrayType
+from ..type import GpuArrayType, get_context
 
 from pygpu import ndgpuarray as gpuarray
 
 
 # This is acutally a test for GpuElemwise
-class test_gpu_Broadcast(test_Broadcast):
+class test_gpu_Broadcast(test_elemwise.test_Broadcast):
     op = GpuElemwise
     type = GpuArrayType
     cop = GpuElemwise
@@ -26,8 +25,7 @@ class test_gpu_Broadcast(test_Broadcast):
     linkers = [gof.PerformLinker, gof.CLinker]
 
     def setUp(self):
-        dev = theano.sandbox.gpuarray.init_dev.device
-        if not dev.startswith('cuda'):
+        if get_context(test_ctx_name).kind != 'cuda':
             self.linkers = [gof.PerformLinker]
 
     def rand_val(self, shp):
@@ -37,14 +35,12 @@ class test_gpu_Broadcast(test_Broadcast):
         return rand_gpuarray(*shp, **dict(cls=gpuarray))
 
     def test_c(self):
-        dev = theano.sandbox.gpuarray.init_dev.device
-        if not dev.startswith('cuda'):
+        if get_context(test_ctx_name).kind != 'cuda':
             raise SkipTest("Cuda specific tests")
         super(test_gpu_Broadcast, self).test_c()
 
     def test_c_inplace(self):
-        dev = theano.sandbox.gpuarray.init_dev.device
-        if not dev.startswith('cuda'):
+        if get_context(test_ctx_name).kind != 'cuda':
             raise SkipTest("Cuda specific tests")
         super(test_gpu_Broadcast, self).test_c_inplace()
 
@@ -52,8 +48,7 @@ class test_gpu_Broadcast(test_Broadcast):
 def test_elemwise_pow():
     # Test that GpuElemwise(pow) can compile with any combination of integer
     # or float input dtype.
-    dev = theano.sandbox.gpuarray.init_dev.device
-    if not dev.startswith('cuda'):
+    if get_context(test_ctx_name).kind != 'cuda':
         raise SkipTest("Cuda specific tests")
 
     dtypes = ["uint8", "uint16", "uint32", "uint64",
@@ -78,11 +73,11 @@ def test_elemwise_pow():
             assert_allclose(out, expected_out)
 
 
-class test_GpuDimShuffle(test_DimShuffle):
+class test_GpuDimShuffle(test_elemwise.test_DimShuffle):
     op = GpuDimShuffle
 
 
-class test_GpuCAReduceCPY(test_CAReduce):
+class test_GpuCAReduceCPY(test_elemwise.test_CAReduce):
     dtypes = ["float32"]
     bin_dtypes = ["uint8", "int8"]
     op = GpuCAReduceCPY
@@ -210,12 +205,11 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
 
     def setUp(self):
         super(test_GpuCAReduceCuda, self).setUp()
-        dev = theano.sandbox.gpuarray.init_dev.device
-        if not dev.startswith('cuda'):
+        if get_context(test_ctx_name).kind != 'cuda':
             raise SkipTest("Cuda specific tests")
 
 
-class T_gpureduce_dtype(T_reduce_dtype):
+class T_gpureduce_dtype(test_elemwise.T_reduce_dtype):
     mode = mode_with_gpu.excluding('local_cut_useless_reduce')
     op = GpuCAReduceCuda
     # Currently we don't support reduction on 0 axis
@@ -226,8 +220,7 @@ class T_gpureduce_dtype(T_reduce_dtype):
               'float32', 'float64']
 
     def setUp(self):
-        dev = theano.sandbox.gpuarray.init_dev.device
-        if not dev.startswith('cuda'):
+        if get_context(test_ctx_name).kind != 'cuda':
             raise SkipTest("Cuda specific tests")
 
 
