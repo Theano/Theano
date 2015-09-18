@@ -2414,7 +2414,8 @@ def local_useless_subtensor(node):
     return [node.inputs[0]]
 
 
-@register_canonicalize
+# fast_compile to allow opt subtensor(cast{float32}(make_vector))
+@register_canonicalize('fast_compile')
 @gof.local_optimizer([Subtensor])
 def local_subtensor_lift(node):
     """
