@@ -378,8 +378,8 @@ class PushOutNonSeqScan(gof.Optimizer):
         existent_nodes = filter(lambda n: n not in to_remove_set, local_fgraph_topo)
         existent_nodes_set = set(existent_nodes)
 
-        to_keep_set = set([])
-        to_keep_set.union(chain.from_iterable(map(lambda n: n.inputs, existent_nodes)))
+        to_keep_set = set(chain.from_iterable(map(lambda n: n.inputs,
+                                                  existent_nodes)))
 
         for out, idx in to_replace_map.items():
             if (# If types are different, conversion Op will be inserted,
@@ -635,8 +635,8 @@ class PushOutSeqScan(gof.Optimizer):
         existent_nodes = filter(lambda n: n not in to_remove_set, local_fgraph_topo)
         existent_nodes_set = set(existent_nodes)
 
-        to_keep_set = set([])
-        to_keep_set.union(chain.from_iterable(map(lambda n: n.inputs, existent_nodes)))
+        to_keep_set = set(chain.from_iterable(map(lambda n: n.inputs,
+                                                  existent_nodes)))
 
         for out, idx in to_replace_map.items():
             if (out in to_keep_set
@@ -748,7 +748,6 @@ class PushOutScanOutput(gof.Optimizer):
     def process_node(self, fgraph, node):
 
         op = node.op
-
         # Use scan_args to parse the inputs and outputs of scan for ease of
         # use
         args = scan_args(node.inputs, node.outputs,
