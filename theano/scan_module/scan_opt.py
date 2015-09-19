@@ -220,10 +220,10 @@ def retrieve_clients_fromnodes(nodes):
     """
     clients = []
 
-    if isinstance(nodes, OrderedSet):
-        nodes = list(nodes)
-    elif not isinstance(nodes, list):
-        nodes = [nodes]
+    if isinstance(nodes, list):
+        nodes = OrderedSet(nodes)
+    elif not (isinstance(nodes, list) or isinstance(nodes, OrderedSet)):
+        nodes = OrderedSet([nodes])
 
     filter_clients = lambda l: map(lambda x: x[0], filter(lambda y: y[0] != \
             "output", l.clients))
@@ -236,7 +236,7 @@ def retrieve_clients_fromnodes(nodes):
         else:
             clients.extend(filter_clients(node))
 
-    return clients
+    return OrderedSet(clients)
 
 
 # This is a global opt for historical reason
@@ -277,8 +277,8 @@ class PushOutNonSeqScan(gof.Optimizer):
                                          clone=False)
 
         local_fgraph_topo = local_fgraph.toposort()
-        local_fgraph_inps = OrderedSet(local_fgraph.inputs)
-        local_fgraph_bookkeeper = deque(retrieve_clients_fromnodes(local_fgraph_inps))
+        local_fgraph_inps = local_fgraph.inputs
+        local_fgraph_bookkeeper = retrieve_clients_fromnodes(local_fgraph_inps)
         local_fgraph_outs_set = set(local_fgraph.outputs)
         local_fgraph_outs_map = dict([(v, k) for k, v in \
                                      enumerate(local_fgraph.outputs)])
@@ -483,8 +483,8 @@ class PushOutSeqScan(gof.Optimizer):
         local_fgraph = gof.FunctionGraph(clean_inputs, clean_outputs,
                                          clone=False)
         local_fgraph_topo = local_fgraph.toposort()
-        local_fgraph_inps = OrderedSet(local_fgraph.inputs)
-        local_fgraph_bookkeeper = deque(retrieve_clients_fromnodes(local_fgraph_inps))
+        local_fgraph_inps = local_fgraph.inputs
+        local_fgraph_bookkeeper = retrieve_clients_fromnodes(local_fgraph_inps)
         local_fgraph_outs_set = set(local_fgraph.outputs)
         local_fgraph_outs_map = dict([(v,k) for k,v in \
                                      enumerate(local_fgraph.outputs)])
