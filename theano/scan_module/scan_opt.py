@@ -328,7 +328,7 @@ class PushOutNonSeqScan(gof.Optimizer):
                 # We have a candidate node to removable
                 # Step 1. Reconstruct it on outside
                 to_remove_set.add(nd)
-                node_clients = list(set(retrieve_clients_fromnodes(nd)))
+                node_clients = list(retrieve_clients_fromnodes(nd))
 
                 # Add the nodes only if they are not already
                 # in the bookkeeper's list
@@ -560,7 +560,7 @@ class PushOutSeqScan(gof.Optimizer):
                     # scan.
                     continue
 
-                node_clients = list(set(retrieve_clients_fromnodes(nd)))
+                node_clients = list(retrieve_clients_fromnodes(nd))
 
                 # Add the nodes only if they are not already
                 # in the bookkeeper's list
@@ -587,7 +587,7 @@ class PushOutSeqScan(gof.Optimizer):
                   (nd.inputs[0] in inner_seqs_set or
                   nd.inputs[0].owner in to_remove_set)):
 
-                node_clients = list(set(retrieve_clients_fromnodes(nd)))
+                node_clients = list(retrieve_clients_fromnodes(nd))
 
                 to_remove_set.add(nd)
                 # Add the nodes only if they are not already
