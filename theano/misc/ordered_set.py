@@ -64,7 +64,7 @@ class Link(object):
 
 
 class OrderedSet(MutableSet):
-    'Set the remembers the order elements were added'
+    'Set that remembers the order elements were added'
     # Big-O running times for all methods are the same as for regular sets.
     # The internal self.__map dictionary maps keys to links in a doubly linked list.
     # The circular doubly linked list starts and ends with a sentinel element.
@@ -166,6 +166,22 @@ class OrderedSet(MutableSet):
         self.discard(key)
         return key
 
+    def extendleft(self, key):
+        if isinstance(key, list):
+            for l in reversed(key): self.enqueue(l)
+        else:
+            self.enqueue(key)
+
+    def enqueue(self, key):
+        # Store new key in a new link at the beginning of the linked list
+        if key not in self.__map:
+            self.__map[key] = link = Link()
+            root = self.__root
+            last = root.prev
+            first = root.next
+            link.prev, link.next, link.key = weakref.ref(root), first, key
+            first().prev = root.next = weakref.ref(link)
+
     def __repr__(self):
         if not self:
             return '%s()' % (self.__class__.__name__,)
@@ -188,10 +204,19 @@ class OrderedSet(MutableSet):
         else:
             return NotImplemented
 
+    def __nonzero__(self):
+        "For truth value checking."
+        l = list(self)
+        return l is not None and len(l) > 0
+
 # end of http://code.activestate.com/recipes/576696/ }}}
 
 if __name__ == '__main__':
+    str_ = OrderedSet(['abracadaba'])
+    str_.extendleft(['x'])
+    print(list(str_))
     print(list(OrderedSet('abracadaba')))
+    import ipdb; ipdb.set_trace()
     print(list(OrderedSet('simsalabim')))
     print(OrderedSet('boom') == OrderedSet('moob'))
     print(OrderedSet('boom') == 'moob')

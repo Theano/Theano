@@ -85,6 +85,7 @@ from theano.scan_module import scan_utils
 from theano.scan_module.scan_utils import equal_computations, find_up, \
         scan_args
 
+from theano.misc.ordered_set import OrderedSet
 
 # Logging function for sending warning or info
 _logger = logging.getLogger('theano.scan_module.scan_opt')
@@ -203,12 +204,14 @@ def remove_constants_and_unused_inputs_scan(node):
         op_outs = scan_utils.clone(op_outs, replace=givens)
         nw_info = copy.deepcopy(op.info)
         nw_info['n_seqs'] = nw_n_seqs
+
         # DEBUG CHECK
         nwScan = scan_op.Scan(nw_inner, op_outs, nw_info)
         nw_outs = nwScan(*nw_outer, **dict(return_list=True))
         return nw_outs
     else:
         return False
+
 
 def retrieve_clients_fromnodes(nodes):
     """
@@ -217,7 +220,7 @@ def retrieve_clients_fromnodes(nodes):
     """
     clients = []
 
-    if isinstance(nodes, set):
+    if isinstance(nodes, OrderedSet):
         nodes = list(nodes)
     elif not isinstance(nodes, list):
         nodes = [nodes]
@@ -234,6 +237,7 @@ def retrieve_clients_fromnodes(nodes):
             clients.extend(filter_clients(node))
 
     return clients
+
 
 # This is a global opt for historical reason
 # It should be possible to change it to a local opt.
@@ -273,11 +277,11 @@ class PushOutNonSeqScan(gof.Optimizer):
                                          clone=False)
 
         local_fgraph_topo = local_fgraph.toposort()
-        local_fgraph_inps = set(local_fgraph.inputs)
+        local_fgraph_inps = OrderedSet(local_fgraph.inputs)
         local_fgraph_bookkeeper = deque(retrieve_clients_fromnodes(local_fgraph_inps))
         local_fgraph_outs_set = set(local_fgraph.outputs)
         local_fgraph_outs_map = dict([(v, k) for k, v in \
-                enumerate(local_fgraph.outputs)])
+                                     enumerate(local_fgraph.outputs)])
 
         to_remove_set = set()
         to_replace_set = set()
@@ -294,6 +298,7 @@ class PushOutNonSeqScan(gof.Optimizer):
         replace_with_out = []
 
         op = node.op
+
         # Construct the list of non_sequences to simplify a few things
         inner_non_seqs = op.inner_non_seqs(clean_inputs)
         inner_non_seqs_set = set(inner_non_seqs)
@@ -478,9 +483,8 @@ class PushOutSeqScan(gof.Optimizer):
         local_fgraph = gof.FunctionGraph(clean_inputs, clean_outputs,
                                          clone=False)
         local_fgraph_topo = local_fgraph.toposort()
-        local_fgraph_inps = set(local_fgraph.inputs)
+        local_fgraph_inps = OrderedSet(local_fgraph.inputs)
         local_fgraph_bookkeeper = deque(retrieve_clients_fromnodes(local_fgraph_inps))
-
         local_fgraph_outs_set = set(local_fgraph.outputs)
         local_fgraph_outs_map = dict([(v,k) for k,v in \
                                      enumerate(local_fgraph.outputs)])
