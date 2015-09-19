@@ -91,15 +91,13 @@ from theano.gradient import Rop, Lop, grad, subgraph_grad
 
 # This need to be before the init of GPU, as it add config variable
 # needed during that phase.
-
-
-def test():
-    import theano.tests
-    if hasattr(theano.tests, "TheanoNoseTester"):
-        test = theano.tests.TheanoNoseTester().test
-        return test()
-    else:
-        raise ImportError("The nose module is not installed.")
+import theano.tests
+if hasattr(theano.tests, "TheanoNoseTester"):
+    test = theano.tests.TheanoNoseTester().test
+else:
+    def test():
+        raise ImportError("The nose module is not installed."
+                          " It is needed for Theano tests.")
 
 if config.device.startswith('gpu') or config.init_gpu_device.startswith('gpu'):
     import theano.sandbox.cuda
