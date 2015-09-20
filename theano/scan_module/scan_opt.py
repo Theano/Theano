@@ -64,7 +64,6 @@ import logging
 import copy
 from sys import maxsize
 import numpy
-from collections import deque
 from itertools import chain
 
 import theano
@@ -264,7 +263,6 @@ class PushOutNonSeqScan(gof.Optimizer):
         IMPORTANT NOTE: This function uses set and dictionary data structures.
         By default they are not ordered for efficiency reasons. Take care
         and make sure of changing them with their Ordered counterparts if you
-        M
         need to iterate over these variables.
 
         """
