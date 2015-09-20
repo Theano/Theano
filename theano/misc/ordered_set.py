@@ -167,17 +167,19 @@ class OrderedSet(MutableSet):
         return key
 
     def extendleft(self, key):
+        # Added by CG
         if isinstance(key, list):
-            for l in reversed(key): self.enqueue(l)
+            for l in reversed(key):
+                self.__appendleft(l)
         else:
-            self.enqueue(key)
+            self.__appendleft(key)
 
-    def enqueue(self, key):
+    def __appendleft(self, key):
         # Store new key in a new link at the beginning of the linked list
+        # Added by CG
         if key not in self.__map:
             self.__map[key] = link = Link()
             root = self.__root
-            last = root.prev
             first = root.next
             link.prev, link.next, link.key = weakref.ref(root), first, key
             first().prev = root.next = weakref.ref(link)
@@ -205,18 +207,11 @@ class OrderedSet(MutableSet):
             return NotImplemented
 
     def __nonzero__(self):
-        "For truth value checking."
+        """
+        For checking the truth value of an expression.
+        """
+        # Added by CG
         l = list(self)
         return l is not None and len(l) > 0
 
 # end of http://code.activestate.com/recipes/576696/ }}}
-
-if __name__ == '__main__':
-    str_ = OrderedSet(['abracadaba'])
-    str_.extendleft(['x'])
-    print(list(str_))
-    print(list(OrderedSet('abracadaba')))
-    import ipdb; ipdb.set_trace()
-    print(list(OrderedSet('simsalabim')))
-    print(OrderedSet('boom') == OrderedSet('moob'))
-    print(OrderedSet('boom') == 'moob')
