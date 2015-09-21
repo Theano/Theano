@@ -330,8 +330,8 @@ class PushOutNonSeqScan(gof.Optimizer):
 
                 # Add the nodes only if they are not already
                 # in the bookkeeper's list
-                nd_cli_cleaned = filter(lambda x: x not in local_fgraph_bookkeeper,
-                                        node_clients)
+                nd_cli_cleaned = list(filter(lambda x: x not in local_fgraph_bookkeeper,
+                                        node_clients))
                 local_fgraph_bookkeeper.extendleft(nd_cli_cleaned)
 
                 outside_ins = []
@@ -562,8 +562,8 @@ class PushOutSeqScan(gof.Optimizer):
 
                 # Add the nodes only if they are not already
                 # in the bookkeeper's list
-                nd_cli_cleaned = filter(lambda x: x not in local_fgraph_bookkeeper,
-                                        node_clients)
+                nd_cli_cleaned = list(filter(lambda x: x not in local_fgraph_bookkeeper,
+                                        node_clients))
                 local_fgraph_bookkeeper.extendleft(nd_cli_cleaned)
 
                 # Add the node to remove list
@@ -590,8 +590,8 @@ class PushOutSeqScan(gof.Optimizer):
                 to_remove_set.add(nd)
                 # Add the nodes only if they are not already
                 # in the bookkeeper's list
-                nd_cli_cleaned = filter(lambda x: x not in local_fgraph_bookkeeper,
-                                        node_clients)
+                nd_cli_cleaned = list(filter(lambda x: x not in local_fgraph_bookkeeper,
+                                      node_clients))
                 local_fgraph_bookkeeper.extendleft(nd_cli_cleaned)
 
 
