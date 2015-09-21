@@ -26,13 +26,11 @@ class BNComposite(Composite):
         return [dx, dmean, dstd, dgamma, top]
 
 
-def batch_normalization(inputs, gamma, beta, mean, std):
+def batch_normalization(inputs, gamma, beta, mean, std,
+                        mode='low_mem'):
     """
     This function will build the symbolic graph for applying batch normalization
-    to a set of activations. As no intermediate representations are stored for the
-    back-propagation, this implementation lower the memory usage, however,
-    it is 5-10% slower than a naive theano implementation, as it redo
-    some forward computations for the backprop.
+    to a set of activations.
     Work also on GPU
 
     Parameters
@@ -51,7 +49,20 @@ def batch_normalization(inputs, gamma, beta, mean, std):
     std: symbolic tensor
         inputs standard deviation, must be of same dimensionality as
         inputs and broadcastable against it
+    mode: 'low_mem' or 'high_mem'
+        Specify which batch_normalization implementation that will be
+        used.
+        As no intermediate representations are stored for the
+        back-propagation, 'low_mem' implementation lower the memory usage, however,
+        it is 5-10% slower than 'high_mem' implementation.
     """
-    elm_bn = theano.tensor.elemwise.Elemwise(scalar_op=BNComposite(dtype=inputs.dtype))
-    rval = elm_bn(inputs, mean, std, gamma, beta)
+    if mode == 'low_mem':
+        elm_bn = theano.tensor.elemwise.Elemwise(scalar_op=BNComposite(dtype=inputs.dtype))
+        rval = elm_bn(inputs, mean, std, gamma, beta)
+    elif mode == 'high_mem':
+        rval = (inputs - mean) / std
+        rval = rval * gamma + beta
+    else:
+        raise ValueError(
+            'mode must be either "low_mem", "high_mem"')
     return rval
