@@ -354,7 +354,7 @@ class Mode(object):
                                               self.provided_optimizer)
         return self.clone(optimizer=opt.requiring(*tags))
 
-    def clone(self, link_kwargs={}, optimizer=None, **kwargs):
+    def clone(self, link_kwargs=None, optimizer="", **kwargs):
         """
         Create a new instance of this Mode.
 
@@ -363,13 +363,14 @@ class Mode(object):
         arguments.
 
         """
+        if link_kwargs is None:
+            link_kwargs = {}
         new_linker = self.linker.clone(**link_kwargs)
-        if optimizer:
-            new_optimizer = optimizer
-        else:
-            new_optimizer = self.provided_optimizer
+
+        if optimizer == "":
+            optimizer = self.provided_optimizer
         new_mode = type(self)(linker=new_linker,
-                              optimizer=new_optimizer)
+                              optimizer=optimizer)
         return new_mode
 
 
