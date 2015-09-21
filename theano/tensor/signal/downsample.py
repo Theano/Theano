@@ -23,7 +23,6 @@ def max_pool2D(*args, **kwargs):
     print("DEPRECATION: max_pool2D renamed to max_pool_2d", file=sys.stderr)
     return max_pool_2d(*args, **kwargs)
 
-
 def max_pool_2d_same_size(input, patch_size):
     """
     Takes as input a 4-D tensor. It sets all non maximum values
@@ -43,7 +42,6 @@ def max_pool_2d_same_size(input, patch_size):
     output = DownsampleFactorMax(patch_size, True)(input)
     outs = MaxPoolGrad(patch_size, True)(input, output, output)
     return outs
-
 
 def max_pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
                 mode='max'):
@@ -114,7 +112,6 @@ def max_pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
     # restore to original shape
     outshp = tensor.join(0, input.shape[:-2], output.shape[-2:])
     return tensor.reshape(output, outshp, ndim=input.ndim)
-
 
 class DownsampleFactorMax(Op):
     """
@@ -615,7 +612,6 @@ class PoolGrad(Op):
     def infer_shape(self, node, in_shapes):
         return [in_shapes[0]]
 
-
 class MaxPoolGrad(PoolGrad):
 
     def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='max'):
@@ -781,9 +777,9 @@ class MaxPoolGrad(PoolGrad):
                       for(int n=c_st; n<c_end; n++)
                       {
                         dtype_%(x)s a = ((dtype_%(x)s*)(PyArray_GETPTR4(%(x)s,b,k,m,n)))[0];
-                        dtype_%(gx)s * gx = (
-                          (dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s, b, k, m, n)));
                         if (a == maximum){
+                          dtype_%(gx)s * gx = (
+                            (dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s, b, k, m, n)));
                           gx[0] = gx[0] + gz[0];
                         }
                       }
@@ -881,6 +877,192 @@ class AveragePoolGrad(PoolGrad):
                 DownsampleFactorMax(
                     self.ds, ignore_border=self.ignore_border,
                     st=self.st, padding=self.padding, mode=self.mode)(ggx)]
+
+    def c_code(self, node, name, inp, out, sub):
+        if self.mode == 'average_exc_pad' and self.padding != (0, 0):
+            raise NotImplementedError() #fallback to our perform()
+        x, gz = inp
+        gx, = out
+        fail = sub['fail']        
+        ignore_border = int(self.ignore_border)
+        ds0, ds1 = self.ds #downsample factor (2,2)
+        st0, st1 = self.st #stride size (2,2)
+        pd0, pd1 = self.padding #padding beyond the border
+        inc_pad = int(self.mode == 'average_inc_pad')
+        sum_mode = int(self.mode == 'sum')
+        skip_pad = int((self.mode == 'sum') or (self.mode == 'average_inc_pad'))
+        print(self.ds,self.st,self.padding,self.ignore_border,self.mode,flush=True)
+        ccode = """
+        // sanity checks
+        int x_typenum = PyArray_ObjectType((PyObject*)%(x)s, 0);
+        int gz_typenum = PyArray_ObjectType((PyObject*)%(gz)s, 0);
+        
+        if (x_typenum != gz_typenum)
+        {
+            PyErr_SetString(PyExc_ValueError, "input types must match");
+            %(fail)s;
+        }
+        if(PyArray_NDIM(%(x)s)!=4)
+        {
+            PyErr_SetString(PyExc_ValueError, "x must be a 4d ndarray");
+            %(fail)s;
+        }
+        if(PyArray_NDIM(%(gz)s)!=4)
+        {
+            PyErr_SetString(PyExc_ValueError, "gz must be a 4d ndarray");
+            %(fail)s;
+        }       
+        
+        int r, c; // shape of the padded x input
+        r = PyArray_DIMS(%(x)s)[2];
+        c = PyArray_DIMS(%(x)s)[3];
+        r += %(pd0)s * 2;
+        c += %(pd1)s * 2;
+
+        int z_r, z_c; //shape of the (unsupplied) z input
+        if (%(pd0)s != 0 && %(pd1)s != 0 && !%(ignore_border)s)
+            {
+              PyErr_SetString(PyExc_ValueError,
+                "padding must be (0,0) when ignore border is False");
+              %(fail)s;
+            }
+        if (%(ignore_border)s)
+        {
+            // '/' in C is different from '/' in python
+            if (r - %(ds0)s < 0)
+            {
+              z_r = 0;
+            }
+            else
+            {
+              z_r = (r - %(ds0)s) / %(st0)s + 1;
+            }
+            if (c - %(ds1)s < 0)
+            {
+              z_c = 0;
+            }
+            else
+            {
+              z_c = (c - %(ds1)s) / %(st1)s + 1;
+            }
+        }
+        else
+        {
+            // decide how many rows the output has
+            if (%(st0)s >= %(ds0)s)
+            {
+                z_r = (r - 1) / %(st0)s + 1;
+            }
+            else
+            {
+                z_r = std::max(0, (r - 1 - %(ds0)s) / %(st0)s + 1) + 1;
+            }
+            // decide how many columns the output has
+            if (%(st1)s >= %(ds1)s)
+            {
+                z_c = (c - 1) / %(st1)s + 1;
+            }
+            else
+            {
+                z_c = std::max(0, (c - 1 - %(ds1)s) / %(st1)s + 1) + 1;
+            }
+        }
+        
+        // allocating memory for gx - same  size of x input but no padding
+        if ((!%(gx)s)
+          || !PyArray_ISCONTIGUOUS(%(gx)s)
+          || *PyArray_DIMS(%(gx)s)!=4
+          ||(PyArray_DIMS(%(gx)s)[0] != PyArray_DIMS(%(x)s)[0])
+          ||(PyArray_DIMS(%(gx)s)[1] != PyArray_DIMS(%(x)s)[1])
+          ||(PyArray_DIMS(%(gx)s)[2] != PyArray_DIMS(%(x)s)[2])
+          ||(PyArray_DIMS(%(gx)s)[3] != PyArray_DIMS(%(x)s)[3])
+          )
+        {
+          Py_XDECREF(%(gx)s);
+          %(gx)s = (PyArrayObject*) PyArray_ZEROS(4, PyArray_DIMS(%(x)s), x_typenum,0);
+        }
+        else {
+          PyArray_FILLWBYTE(%(gx)s, 0);
+        }
+        
+        
+        // AIM: To compute gx (same size as 'x', iterating with n and k)
+        // Inputs of x and gz
+        // Padded size of x is is r * c
+        // Unsuplied z input is z_r * z_c (iterating with r and c)
+        
+        
+        
+        int r_st, r_end, c_st, c_end; // used to index into the input img x
+        dtype_%(gx)s val; // temp var for additional value in a region
+        
+        //char buf[100]; 
+        //snprintf( buf, sizeof( buf), "print('Hello %%d %%d %%d %%d %%d %%d!')", z_r, z_c, PyArray_DIMS(%(x)s)[0], PyArray_DIMS(%(x)s)[1], PyArray_DIMS(%(x)s)[2], PyArray_DIMS(%(x)s)[3]);
+        //PyRun_SimpleStringFlags(buf,NULL);
+        
+        if (z_r && z_c)
+        {
+            //PyRun_SimpleStringFlags("print('#')",NULL);
+            for(int b=0; b<PyArray_DIMS(%(x)s)[0]; b++){ // 1
+              for(int k=0; k<PyArray_DIMS(%(x)s)[1]; k++){ // 3
+              
+                for(int i=0; i< z_r; i++){ // 300
+                  r_st = i * %(st0)s;                //stride size
+                  r_end = r_st + %(ds0)s;            //downsample size
+                  if (%(skip_pad)s)
+                  {
+                    // skip the padding
+                    r_st = r_st < %(pd0)s ? %(pd0)s : r_st; // min(r_st,paddingSize)
+                  }
+                  r_end = r_end > (r - %(pd0)s) ? r - %(pd0)s : r_end; // min(r_end,r-paddingSize)
+                  // from padded_img space to img space
+                  r_st -= %(pd0)s;
+                  r_end -= %(pd0)s;
+
+                  for(int j=0; j<z_c; j++){ // 300
+                    c_st = j * %(st1)s;
+                    c_end = c_st + %(ds1)s;
+                    if (%(skip_pad)s)
+                    {
+                      // skip the padding
+                      c_st = c_st < %(pd1)s ? %(pd1)s : c_st;
+                    }
+                    c_end = c_end > (c - %(pd1)s) ? c - %(pd1)s : c_end;
+                    // from padding_img space into img space
+                    c_st -= %(pd1)s;
+                    c_end -= %(pd1)s;
+                    
+                    //snprintf( buf, sizeof( buf), "print('Bye %%d %%d %%d %%d !')", r_st,r_end,c_st,c_end);
+                    //PyRun_SimpleStringFlags(buf,NULL);
+                    
+                    // the gradient corresponding to this value in z
+                    val = ((dtype_%(gz)s*)(PyArray_GETPTR4(%(gz)s, b, k, i, j)))[0];
+                    if (!(%(sum_mode)s))
+                    {
+                      val = val / ((r_end-r_st)*(c_end-c_st));
+                    }
+                    // go through the pooled region in the unpadded input
+                    for(int m=r_st; m<r_end; m++)
+                    {
+                      for(int n=c_st; n<c_end; n++)
+                      {
+                        dtype_%(gx)s * gx = ((dtype_%(gx)s*)(PyArray_GETPTR4(%(gx)s, b, k, m, n)));
+                        gx[0] = gx[0] + val;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+
+        }
+        //snprintf( buf, sizeof( buf), "print('Bye %%d %%d %%d %%d !')", r_st,r_end,c_st,c_end);
+        //PyRun_SimpleStringFlags(buf,NULL);
+        """
+        return ccode % locals()
+
+    def c_code_cache_version(self):
+        return (0, 1, 15)
 
 class DownsampleFactorMaxGradGrad(Op):
     __props__ = ('ds', 'ignore_border', 'st', 'padding', 'mode')
