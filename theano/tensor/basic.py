@@ -4002,7 +4002,7 @@ def stack(*tensors, **kwargs):
     tensors : list or tuple of tensors
         A list of tensors to be stacked.
     axis : int
-        The index of the new axis.
+        The index of the new axis. Default value is 0.
 
     """
     # ---> Remove this when moving to the new interface:
