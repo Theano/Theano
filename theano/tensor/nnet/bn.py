@@ -35,6 +35,8 @@ def batch_normalization(inputs, gamma, beta, mean, std,
     to a set of activations.
     Work also on GPU
 
+    .. versionadded:: 0.7.1
+
     Parameters
     ----------
     inputs : symbolic tensor
