@@ -274,7 +274,7 @@ class PushOutNonSeqScan(gof.Optimizer):
                                          clean_outputs,
                                          clone=False)
 
-        local_fgraph_topo = local_fgraph.toposort()
+        local_fgraph_apply_nds = local_fgraph.apply_nodes
         local_fgraph_inps = local_fgraph.inputs
         local_fgraph_bookkeeper = retrieve_clients_fromnodes(local_fgraph_inps)
         local_fgraph_outs_set = set(local_fgraph.outputs)
@@ -373,7 +373,7 @@ class PushOutNonSeqScan(gof.Optimizer):
         clean_replace_with_in = []
         clean_replace_with_out = []
 
-        existent_nodes = filter(lambda n: n not in to_remove_set, local_fgraph_topo)
+        existent_nodes = filter(lambda n: n not in to_remove_set, local_fgraph_apply_nds)
         existent_nodes_set = set(existent_nodes)
 
         to_keep_set = set(chain.from_iterable(map(lambda n: n.inputs,
@@ -480,7 +480,7 @@ class PushOutSeqScan(gof.Optimizer):
 
         local_fgraph = gof.FunctionGraph(clean_inputs, clean_outputs,
                                          clone=False)
-        local_fgraph_topo = local_fgraph.toposort()
+        local_fgraph_apply_nds = local_fgraph.apply_nodes
         local_fgraph_inps = local_fgraph.inputs
         local_fgraph_bookkeeper = retrieve_clients_fromnodes(local_fgraph_inps)
         local_fgraph_outs_set = set(local_fgraph.outputs)
@@ -630,7 +630,7 @@ class PushOutSeqScan(gof.Optimizer):
         clean_replace_with_in = []
         clean_replace_with_out = []
 
-        existent_nodes = filter(lambda n: n not in to_remove_set, local_fgraph_topo)
+        existent_nodes = filter(lambda n: n not in to_remove_set, local_fgraph_apply_nds)
         existent_nodes_set = set(existent_nodes)
 
         to_keep_set = set(chain.from_iterable(map(lambda n: n.inputs,
