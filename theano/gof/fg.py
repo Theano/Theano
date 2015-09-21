@@ -115,12 +115,18 @@ class FunctionGraph(utils.object2):
         Create an FunctionGraph which operates on the subgraph bound by the
         inputs and outputs sets.
 
-        :param inputs: inputs nodes of the graph, usually declared by the user
-        :param outputs: outputs nodes of the graph.
-        :param clone: If true, we will clone the graph. This is
-        useful to remove the constant cache problem.
-        :param update_mapping: dictionnary describing the mapping between
-        the inputs with updates and the outputs corresponding to their updates
+        Parameters
+        ----------
+        inputs : list of variables
+            Inputs nodes of the graph, usually declared by the user
+        outputs : list of variables
+            Outputs nodes of the graph.
+        clone : boolean
+            If true, we will clone the graph. This is useful to remove the
+            constant cache problem.
+        update_mapping : dictionnary
+            Mapping between the inputs with updates and the outputs
+            corresponding to their updates.
         """
 
         if clone:
