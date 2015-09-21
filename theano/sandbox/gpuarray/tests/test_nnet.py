@@ -190,20 +190,22 @@ def softmax_with_bias_unittest_template(dtypeInput, dtypeBias):
     NOT IMPLEMENTED)
     """
     x = T.matrix('x', dtype=dtypeInput)
+    b = T.vector('b', dtype=dtypeBias)
 
-    z = T.nnet.softmax_with_bias(x, T.zeros_like(x[0, ::]))
+    z = T.nnet.softmax_with_bias(x, b)
 
-    f = theano.function([x], z, mode=mode_without_gpu)
-    f_gpu = theano.function([x], z, mode=mode_with_gpu)
+    f = theano.function([x, b], z, mode=mode_without_gpu)
+    f_gpu = theano.function([x, b], z, mode=mode_with_gpu)
     assert f.maker.fgraph.toposort()[-1].op == T.nnet.softmax_with_bias
     assert isinstance(f_gpu.maker.fgraph.toposort()[-2].op,
                       GpuSoftmaxWithBias)
 
     def cmp(n, m):
         data = numpy.random.uniform(1e-7, 1, (n, m)).astype(dtype=dtypeInput)
+        b_data = numpy.random.uniform(1e-7, 1, (m,)).astype(dtype=dtypeBias)
 
-        out = f(data)
-        gout = f_gpu(data)
+        out = f(data, b_data)
+        gout = f_gpu(data, b_data)
         utt.assert_allclose(out, gout)
 
     cmp(2, 5)
