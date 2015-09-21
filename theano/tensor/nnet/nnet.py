@@ -93,7 +93,9 @@ class SoftmaxWithBias(gof.Op):
         x_plus_b = x + b[None, :]
         e_x = numpy.exp(x_plus_b - x_plus_b.max(axis=1)[:, None])
         e_x *= 1.0 / e_x.sum(axis=1)[:, None]
-        output_storage[0][0] = e_x.astype(x_dtype)
+        # default for copy is True and we don't need a copy if the
+        # data type matches.
+        output_storage[0][0] = e_x.astype(x_dtype, copy=False)
 
     def grad(self, inp, grads):
         x, b = inp
