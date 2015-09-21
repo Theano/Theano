@@ -182,19 +182,16 @@ def test_softmax_with_bias_float64():
 
 def softmax_with_bias_unittest_template(dtypeInput, dtypeBias):
     """
-    This is basic test for GpuSoftmaxWithBias with float64 variables
+    This is a basic test for GpuSoftmaxWithBias.
 
-    We check that we loop when their is too much block
+    We check that we loop when there are too many blocks.
 
-    TODO: check that we loop when their is too much thread.(THIS IS
+    TODO: check that we loop when there are too many threads. (THIS IS
     NOT IMPLEMENTED)
     """
     x = T.matrix('x', dtype=dtypeInput)
 
-    # We can't use zeros_like(x[0,::]) as this don't allow to test with
-    # 0 shape
-    z = T.nnet.softmax_with_bias(x, T.arange(x.shape[1] * 2,
-                                             dtype=dtypeBias)[::2])
+    z = T.nnet.softmax_with_bias(x, T.zeros_like(x[0, ::]))
 
     f = theano.function([x], z, mode=mode_without_gpu)
     f_gpu = theano.function([x], z, mode=mode_with_gpu)
@@ -203,7 +200,7 @@ def softmax_with_bias_unittest_template(dtypeInput, dtypeBias):
                       GpuSoftmaxWithBias)
 
     def cmp(n, m):
-        data = numpy.arange(n * m, dtype=dtypeInput).reshape(n, m)
+        data = numpy.random.uniform(1e-7, 1, (n, m)).astype(dtype=dtypeInput)
 
         out = f(data)
         gout = f_gpu(data)
@@ -213,7 +210,6 @@ def softmax_with_bias_unittest_template(dtypeInput, dtypeBias):
     # we need to test n>32*1024 to check that we make the block loop.
     cmp(2 << 15, 5)
     cmp(4074, 400)
-    cmp(0, 10)
     cmp(784, 784)
     cmp(4, 1000)
     cmp(4, 1024)
@@ -254,7 +250,7 @@ def softmax_unittest_template(dtypeInput):
                       GpuSoftmax)
 
     def cmp(n, m):
-        data = numpy.arange(n * m, dtype=dtypeInput).reshape(n, m)
+        data = numpy.random.uniform(0, 1, (n, m)).astype(dtype=dtypeInput)
 
         out = f(data)
         gout = f_gpu(data)
@@ -264,7 +260,6 @@ def softmax_unittest_template(dtypeInput):
     cmp(2, 5)
     cmp(2 << 15, 5)
     cmp(4074, 400)
-    cmp(0, 10)
     cmp(784, 784)
     cmp(4, 1000)
     cmp(4, 1024)
