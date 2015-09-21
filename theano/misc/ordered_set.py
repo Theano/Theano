@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import collections
 from collections import MutableSet
 import types
 import weakref
@@ -169,6 +170,10 @@ class OrderedSet(MutableSet):
     def extendleft(self, key):
         # Added by CG
         if isinstance(key, list):
+            for l in reversed(key):
+                self.__appendleft(l)
+        elif isinstance(key, collections.Iterable):
+            lkey = list(key)
             for l in reversed(key):
                 self.__appendleft(l)
         else:
