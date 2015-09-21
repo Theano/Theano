@@ -317,7 +317,7 @@ class Mode(object):
                                               self.provided_optimizer)
         # N.B. opt might be a Query instance, not sure what else it might be...
         #     string? Optimizer? OptDB? who knows???
-        return self.__class__(linker=link, optimizer=opt.including(*tags))
+        return self.clone(optimizer=opt.including(*tags))
 
     def register(self, *optimizations):
         """Adds new optimization instances to a mode.
@@ -340,18 +340,19 @@ class Mode(object):
             optimizations.
         """
 
-        new_optimizer = self.provided_optimizer.register(*optimizations)
-        return self.clone(optimizer=new_optimizer)
+        link, opt = self.get_linker_optimizer(self.provided_linker,
+                                              self.provided_optimizer)
+        return self.clone(optimizer=opt.register(*optimizations))
 
     def excluding(self, *tags):
         link, opt = self.get_linker_optimizer(self.provided_linker,
                                               self.provided_optimizer)
-        return self.__class__(linker=link, optimizer=opt.excluding(*tags))
+        return self.clone(optimizer=opt.excluding(*tags))
 
     def requiring(self, *tags):
         link, opt = self.get_linker_optimizer(self.provided_linker,
                                               self.provided_optimizer)
-        return self.__class__(linker=link, optimizer=opt.requiring(*tags))
+        return self.clone(optimizer=opt.requiring(*tags))
 
     def clone(self, link_kwargs={}, optimizer=None, **kwargs):
         """
