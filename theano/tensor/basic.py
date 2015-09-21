@@ -1312,7 +1312,6 @@ class MaxAndArgmax(Op):
                    (isinstance(axis.data, numpy.ndarray) and axis.data.ndim == 0):
                     axis = [int(axis.data)]
                 elif isinstance(axis.data, (list, numpy.ndarray)):
-                    print axis.data
                     axis = [int(i) for i in axis.data]
                 
         # Make axis entries non-negative, and sort them
