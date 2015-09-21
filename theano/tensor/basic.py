@@ -3933,6 +3933,7 @@ def shape_padleft(t, n_ones=1):
 
     See Also
     --------
+    shape_padaxis
     shape_padright
     Dimshuffle
 
@@ -3949,6 +3950,7 @@ def shape_padright(t, n_ones=1):
 
     See Also
     --------
+    shape_padaxis
     shape_padleft
     Dimshuffle
 
@@ -3961,7 +3963,19 @@ def shape_padright(t, n_ones=1):
 
 @constructor
 def shape_padaxis(t, axis):
-    """Reshape `t` by adding 1 at the dimension `axis`.
+    """Reshape `t` by inserting 1 at the dimension `axis`.
+
+    Example
+    -------
+    >>> tensor = theano.tensor.tensor3()
+    >>> theano.tensor.shape_padaxis(tensor, axis=0)
+    DimShuffle{x,0,1,2}.0
+    >>> theano.tensor.shape_padaxis(tensor, axis=1)
+    DimShuffle{0,x,1,2}.0
+    >>> theano.tensor.shape_padaxis(tensor, axis=3)
+    DimShuffle{0,1,2,x}.0
+    >>> theano.tensor.shape_padaxis(tensor, axis=-1)
+    DimShuffle{0,1,2,x}.0
 
     See Also
     --------
