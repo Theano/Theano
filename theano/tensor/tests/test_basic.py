@@ -2963,6 +2963,14 @@ class T_max_and_argmax(unittest.TestCase):
         x = tensor.matrix().dimshuffle('x', 0, 'x', 1, 'x')
         y = x.max(axis=1)
         assert y.type.broadcastable == (True, True, False, True)
+        
+    def test_multiple_axes(self):
+        data = as_tensor_variable(numpy.arange(24).reshape(3, 2, 4))
+        v, i = eval_outputs(max_and_argmax(data, [1, -1]))
+        assert numpy.all(v == numpy.array([7, 15, 23]))
+        assert numpy.all(i == numpy.array([7, 7, 7]))
+        
+        
 
 
 class T_argmin_argmax(unittest.TestCase):
