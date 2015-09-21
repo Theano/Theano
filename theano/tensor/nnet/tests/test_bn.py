@@ -41,7 +41,7 @@ def test_bn():
     f_ref = theano.function([x, b, g], [bn_ref_op])
     res_ref = f_ref(X, G, B)
     for mode in ['low_mem', 'high_mem']:
-        bn_op = batch_normalization(x, g, b, x.mean(axis=0, keepdims=True), x.std(axis=0, keepdims=True))
+        bn_op = batch_normalization(x, g, b, x.mean(axis=0, keepdims=True), x.std(axis=0, keepdims=True), mode=mode)
         f = theano.function([x, b, g], [bn_op])
         res = f(X, G, B)
         utt.assert_allclose(res_ref, res)

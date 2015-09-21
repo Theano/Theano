@@ -52,9 +52,11 @@ def batch_normalization(inputs, gamma, beta, mean, std,
     mode: 'low_mem' or 'high_mem'
         Specify which batch_normalization implementation that will be
         used.
-        As no intermediate representations are stored for the
-        back-propagation, 'low_mem' implementation lower the memory usage, however,
-        it is 5-10% slower than 'high_mem' implementation.
+        As no intermediate representations are stored for the back-propagation,
+        'low_mem' implementation lower the memory usage, however,
+        it is 5-10% slower than 'high_mem' implementation. Note that 5-10% computation
+        time difference compare the batch_normalization operation only, time difference
+        between implementation is likely to be less important on the full model fprop/bprop.
     """
     if mode == 'low_mem':
         elm_bn = theano.tensor.elemwise.Elemwise(scalar_op=BNComposite(dtype=inputs.dtype))
