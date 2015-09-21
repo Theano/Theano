@@ -178,12 +178,15 @@ class Query(object):
     """
 
     def __init__(self, include, require=None, exclude=None,
-                 subquery=None, position_cutoff=None, extra_optimizations=[]):
+                 subquery=None, position_cutoff=None,
+                 extra_optimizations=None):
         self.include = OrderedSet(include)
         self.require = require or OrderedSet()
         self.exclude = exclude or OrderedSet()
         self.subquery = subquery or {}
         self.position_cutoff = position_cutoff
+        if extra_optimizations is None:
+            extra_optimizations = []
         self.extra_optimizations = extra_optimizations
         if isinstance(self.require, (list, tuple)):
             self.require = OrderedSet(self.require)
@@ -337,23 +340,26 @@ class SequenceDB(DB):
             # The Query instance might contain extra optimizations which need
             # to be added the the sequence of optimizations (don't alter the
             # original dictionary)
-            position_dict = position_dict.copy()
-            for extra_opt in tags[0].extra_optimizations:
-                # Give a name to the extra optimization
-                opt, position = extra_opt
-                opt.name = str(opt.__class__)
+            if len(tags[0].extra_optimizations) > 0:
+                position_dict = position_dict.copy()
+                for extra_opt in tags[0].extra_optimizations:
+                    # Give a name to the extra optimization (include both the
+                    # class name for descriptiveness and id to avoid name
+                    # collisions)
+                    opt, position = extra_opt
+                    opt.name = "%s_%i" % (opt.__class__, id(opt))
 
-                # Add the extra optimization to the optimization sequence
-                opts.add(opt)
-                position_dict[opt.name] = position
+                    # Add the extra optimization to the optimization sequence
+                    if position < position_cutoff:
+                        opts.add(opt)
+                        position_dict[opt.name] = position
 
         opts = [o for o in opts if position_dict[o.name] < position_cutoff]
         # We want to sort by position and then if collision by name
         # for deterministic optimization.  Since Python 2.2, sort is
         # stable, so sort by name first, then by position. This give
         # the order we want.
-        opts.sort(key=lambda obj: obj.name)
-        opts.sort(key=lambda obj: position_dict[obj.name])
+        opts.sort(key=lambda obj: (position_dict[obj.name], obj.name))
         kwargs = {}
         if self.failure_callback:
             kwargs["failure_callback"] = self.failure_callback
