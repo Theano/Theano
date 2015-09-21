@@ -172,10 +172,12 @@ class OrderedSet(MutableSet):
         if isinstance(key, list):
             for l in reversed(key):
                 self.__appendleft(l)
-        elif isinstance(key, collections.Iterable):
+        elif isinstance(key, collections.Sequence):
             lkey = list(key)
             for l in reversed(key):
                 self.__appendleft(l)
+        elif isinstance(key, collections.Iterable):
+            raise TypeError("Key should have a deterministic iterable type.")
         else:
             self.__appendleft(key)
 
