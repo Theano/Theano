@@ -1166,6 +1166,8 @@ class DownsampleFactorMaxRop(Op):
     Implements the R-operator for the downsample operation.
     """
 
+    __props__ = ('ds', 'ignore_border', 'st', 'padding', 'mode')
+
     @staticmethod
     def out_shape(imgshape, ds, ignore_border=False):
         """Return the shape of the output from this op, for input of given shape and flags.
@@ -1197,7 +1199,7 @@ class DownsampleFactorMaxRop(Op):
                 rval[-1] += 1
         return rval
 
-    def __init__(self, ds, ignore_border=False):
+    def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='max'):
         """
         :param ds: downsample factor over rows and columns
         :type ds: list or tuple of two ints
@@ -1210,6 +1212,13 @@ class DownsampleFactorMaxRop(Op):
         """
         self.ds = tuple(ds)
         self.ignore_border = ignore_border
+        if st is None:
+            st = ds
+        self.st = tuple(st)
+        self.padding = tuple(padding)
+        self.mode = mode
+        assert self.mode == 'max'
+
 
     def __eq__(self, other):
         return type(self) == type(other) and self.ds == other.ds and self.ignore_border == other.ignore_border
@@ -1226,8 +1235,8 @@ class DownsampleFactorMaxRop(Op):
         if x.type.ndim != 4:
             return TypeError('Expected tensor4')
         # TODO: consider restrucing the dtype?
-        x = as_tensor_variable(x)
-        eval_point = as_tensor_variable(eval_point)
+        x = tensor.as_tensor_variable(x)
+        eval_point = tensor.as_tensor_variable(eval_point)
         return gof.Apply(self, [x, eval_point], [x.type()])
 
     def perform(self, node, inp, out):
