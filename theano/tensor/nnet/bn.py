@@ -4,7 +4,7 @@ from theano.scalar import add, sub, true_div, mul
 
 
 class BNComposite(Composite):
-    __props__ = ('dtype',)
+    init_param = ('dtype',)
 
     def __init__(self, dtype):
         self.dtype = dtype
