@@ -365,7 +365,7 @@ def _infer_ndim_bcast(ndim, shape, *args):
         if len(pre_v_shape) == 0:
             v_shape = tensor.constant([], dtype='int32')
         else:
-            v_shape = tensor.stack(*pre_v_shape)
+            v_shape = tensor.stack(pre_v_shape)
 
     elif shape is None:
         # The number of drawn samples will be determined automatically,

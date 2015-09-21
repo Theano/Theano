@@ -185,7 +185,7 @@ def as_tensor_variable(x, name=None, ndim=None):
     if isinstance(x, (tuple, list)) and python_any(isinstance(xi, Variable)
                                                    for xi in x):
         try:
-            return stack(*x)
+            return stack(x)
         except (TypeError, ValueError):
             pass
 
@@ -1682,7 +1682,7 @@ def smallest(*args):
         a, b = args
         return switch(a < b, a, b)
     else:
-        return min(stack(*args), axis=0)
+        return min(stack(args), axis=0)
 
 
 @constructor
@@ -1697,7 +1697,7 @@ def largest(*args):
         a, b = args
         return switch(a > b, a, b)
     else:
-        return max(stack(*args), axis=0)
+        return max(stack(args), axis=0)
 
 
 ##########################
@@ -3803,8 +3803,8 @@ class Join(Op):
         if 'float' in out_dtype or 'complex' in out_dtype:
             # assume that this is differentiable
             split = Split(len(tensors))
-            split_gz = split(gz, axis, stack(*[shape(x)[axis]
-                                               for x in tensors]))
+            split_gz = split(gz, axis, stack([shape(x)[axis]
+                                              for x in tensors]))
             # If there is only one split, it might not be in a list.
             if not isinstance(split_gz, list):
                 split_gz = [split_gz]
@@ -3960,16 +3960,78 @@ def shape_padright(t, n_ones=1):
 
 
 @constructor
-def stack(*tensors):
-    """Insert the arguments as slices into a tensor of 1 rank greater.
+def shape_padaxis(t, axis):
+    """Reshape `t` by adding 1 at the dimension `axis`.
 
-    The size in dimension 0 of the result will be equal to the number
-    of tensors passed.
+    See Also
+    --------
+    shape_padleft
+    shape_padright
+    Dimshuffle
 
     """
-    if len(tensors) == 0:
-        raise Exception('theano.tensor.stack(*tensors) must have at least'
+    _t = as_tensor_variable(t)
+
+    ndim = _t.ndim + 1
+    if not -ndim <= axis < ndim:
+        msg = 'axis {0} is out of bounds [-{1}, {1})'.format(axis, ndim)
+        raise IndexError(msg)
+    if axis < 0:
+        axis += ndim
+
+    pattern = [i for i in xrange(_t.type.ndim)]
+    pattern.insert(axis, 'x')
+    return DimShuffle(_t.broadcastable, pattern)(_t)
+
+
+@constructor
+def stack(*tensors, **kwargs):
+    """Insert the arguments as slices into a tensor of 1 rank greater.
+
+    The size in dimension `axis` of the result will be equal to the number
+    of tensors passed.
+
+    Note: The interface stack(*tensors) is deprecated, you should use
+    stack(tensors, axis=0) insted.
+
+    Parameters
+    ----------
+    tensors : list or tuple of tensors
+        A list of tensors to be stacked.
+    axis : int
+        The index of the new axis. Default value is 0.
+
+    """
+    # ---> Remove this when moving to the new interface:
+    if not tensors and not kwargs:
+        raise Exception('theano.tensor.stack(tensors, axis) must have at least'
                         ' one parameter')
+
+    if not kwargs and not isinstance(tensors[0], (list, tuple)):
+        warnings.warn('stack(*tensors) interface is deprecated, use'
+                      ' stack(tensors, axis=0) instead.', DeprecationWarning,
+                      stacklevel=3)
+        axis = 0
+    elif 'tensors' in kwargs:
+        tensors = kwargs['tensors']
+        if 'axis' in kwargs:
+            axis = kwargs['axis']
+        else:
+            axis = 0
+    else:
+        if len(tensors) == 2:
+            axis = tensors[1]
+        elif 'axis' in kwargs:
+            axis = kwargs['axis']
+        else:
+            axis = 0
+        tensors = tensors[0]
+    # <--- Until here.
+
+    if len(tensors) == 0:
+        raise Exception('tensors is empty. You should at least provide one'
+                        ' tensor to theano.tensor.stack(tensors, axis).')
+
     # If all tensors are scalars of the same type, call make_vector.
     # It makes the graph simpler, by not adding DimShuffles and Rebroadcasts
 
@@ -3991,7 +4053,7 @@ def stack(*tensors):
         tensors = list(map(as_tensor_variable, tensors))
         dtype = scal.upcast(*[i.dtype for i in tensors])
         return theano.tensor.opt.MakeVector(dtype)(*tensors)
-    return join(0, *[shape_padleft(t, 1) for t in tensors])
+    return join(axis, *[shape_padaxis(t, axis) for t in tensors])
 
 
 @constructor
@@ -5662,7 +5724,7 @@ def stacklists(arg):
 
     """
     if isinstance(arg, (tuple, list)):
-        return stack(*list(map(stacklists, arg)))
+        return stack(list(map(stacklists, arg)))
     else:
         return arg
 

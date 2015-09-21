@@ -3380,7 +3380,7 @@ class T_Join_and_Split(unittest.TestCase):
         a = as_tensor_variable(1)
         b = as_tensor_variable(2.0)
         c = tensor._shared(numpy.asarray(3.0, dtype=self.floatX))
-        s = stack(a, b, c)
+        s = stack([a, b, c])
         want = numpy.array([1, 2, 3])
         out = self.eval_outputs_and_check_vector([s], opt.MakeVector())
         self.assertTrue((out == want).all())
@@ -3389,7 +3389,7 @@ class T_Join_and_Split(unittest.TestCase):
         a = self.shared(numpy.asarray(1., dtype=self.floatX))
         b = as_tensor_variable(2.)
         c = as_tensor_variable(3.)
-        s = stack(a, b, c)
+        s = stack([a, b, c])
 
         want = numpy.array([1, 2, 3])
         out = self.eval_outputs_and_check_vector([s])
@@ -3401,7 +3401,7 @@ class T_Join_and_Split(unittest.TestCase):
         to int64"""
         a = tensor.scalar('a', dtype=self.floatX)
         b = tensor.scalar('b', dtype=self.floatX)
-        s = stack(a, b, a, b)
+        s = stack([a, b, a, b])
         f = function([a, b], s, mode=self.mode)
         val = f(1, 2)
         # print val
@@ -3416,7 +3416,7 @@ class T_Join_and_Split(unittest.TestCase):
         event when the scalar don't have the same dtype.'''
         a = tensor.iscalar('a')
         b = tensor.lscalar('b')
-        s = stack(a, b, a, b)
+        s = stack([a, b, a, b])
         f = function([a, b], s, mode=self.mode)
         val = f(1, 2)
         self.assertTrue(numpy.all(val == [1, 2, 1, 2]))
@@ -3432,7 +3432,7 @@ class T_Join_and_Split(unittest.TestCase):
         b = tensor.lscalar('b')
         # test when the constant is the first element.
         # The first element is used in a special way
-        s = stack(10, a, b, numpy.int8(3))
+        s = stack([10, a, b, numpy.int8(3)])
         f = function([a, b], s, mode=self.mode)
         val = f(1, 2)
         self.assertTrue(numpy.all(val == [10, 1, 2, 3]))
@@ -3441,11 +3441,65 @@ class T_Join_and_Split(unittest.TestCase):
         assert len([n for n in topo if isinstance(n, type(self.join_op))]) == 0
         assert f.maker.fgraph.outputs[0].dtype == 'int64'
 
+    def test_stack_new_interface(self):
+        """Test the new numpy-like interface: stack(tensors, axis=0)."""
+        # Testing against old interface
+        warnings.simplefilter('always', DeprecationWarning)
+        a = tensor.imatrix('a')
+        b = tensor.imatrix('b')
+        s1 = stack(a, b)
+        s2 = stack([a, b])
+        f = function([a, b], [s1, s2], mode=self.mode)
+        v1, v2 = f([[1, 2]], [[3, 4]])
+        self.assertTrue(v1.shape == v2.shape)
+        self.assertTrue(numpy.all(v1 == v2))
+        # Testing axis parameter
+        s3 = stack([a, b], 1)
+        f = function([a, b], s3, mode=self.mode)
+        v3 = f([[1, 2]], [[3, 4]])
+        v4 = numpy.array([[[1, 2], [3, 4]]])
+        self.assertTrue(v3.shape == v4.shape)
+        self.assertTrue(numpy.all(v3 == v4))
+        # Testing negative axis
+        v1 = [[1, 2, 3], [4, 5, 6]]
+        v2 = [[7, 8, 9], [10, 11, 12]]
+        s = stack([a, b], axis=-1)
+        f = function([a, b], s, mode=self.mode)
+        v = numpy.zeros((2, 3, 2))
+        v[:,:,0] = v1
+        v[:,:,1] = v2 
+        out = f(v1, v2) 
+        self.assertTrue(v.shape == out.shape)
+        self.assertTrue(numpy.all(v == out))
+        s = stack([a, b], axis=-2)
+        f = function([a, b], s, mode=self.mode)
+        v = numpy.zeros((2, 2, 3))
+        v[:,0,:] = v1
+        v[:,1,:] = v2 
+        out = f(v1, v2) 
+        self.assertTrue(v.shape == out.shape)
+        self.assertTrue(numpy.all(v == out))
+        # Testing out-of-bounds axis
+        self.assertRaises(IndexError, stack, [a, b], 4)
+        self.assertRaises(IndexError, stack, [a, b], -4)
+        # Testing depreciation warning
+        with warnings.catch_warnings(record=True) as w:
+            s = stack(a, b)
+            assert len(w) == 1
+            assert issubclass(w[-1].category, DeprecationWarning)
+        with warnings.catch_warnings(record=True) as w:
+            s = stack([a, b])
+            s = stack([a, b], 1)
+            s = stack([a, b], axis=1)
+            s = stack(tensors=[a, b])
+            s = stack(tensors=[a, b], axis=1)
+            assert not w
+
     def test_stack_hessian(self):
         # Test the gradient of stack when used in hessian, see gh-1589
         a = tensor.dvector('a')
         b = tensor.dvector('b')
-        A = stack(a, b)
+        A = stack([a, b])
         B = A.T.dot(A)
         Ha, Hb = hessian(B.sum(), [a, b])
 
@@ -3544,7 +3598,7 @@ class T_Join_and_Split(unittest.TestCase):
         a = self.shared(numpy.array([1, 2, 3], dtype=self.floatX))
         b = as_tensor_variable(numpy.array([7, 8, 9], dtype=self.floatX))
 
-        s = stack(a, b)
+        s = stack([a, b])
         want = numpy.array([[1, 2, 3], [7, 8, 9]])
         out = self.eval_outputs_and_check_join([s])
         self.assertTrue((out == want).all())
@@ -5971,7 +6025,7 @@ class test_tensordot(unittest.TestCase):
 def test_smallest_stack():
     sx, sy = dscalar(), dscalar()
 
-    rval = inplace_func([sx, sy], stack(sx, sy))(-4.0, -2.0)
+    rval = inplace_func([sx, sy], stack([sx, sy]))(-4.0, -2.0)
     assert type(rval) == numpy.ndarray
     assert [-4, -2] == list(rval)
 
@@ -6610,13 +6664,13 @@ def test_dimshuffle_duplicate():
 
 class T_get_scalar_constant_value(unittest.TestCase):
     def test_get_scalar_constant_value(self):
-        a = tensor.stack(1, 2, 3)
+        a = tensor.stack([1, 2, 3])
         assert get_scalar_constant_value(a[0]) == 1
         assert get_scalar_constant_value(a[1]) == 2
         assert get_scalar_constant_value(a[2]) == 3
 
         b = tensor.iscalar()
-        a = tensor.stack(b, 2, 3)
+        a = tensor.stack([b, 2, 3])
         self.assertRaises(tensor.basic.NotScalarConstantError, get_scalar_constant_value, a[0])
         assert get_scalar_constant_value(a[1]) == 2
         assert get_scalar_constant_value(a[2]) == 3
@@ -6624,7 +6678,7 @@ class T_get_scalar_constant_value(unittest.TestCase):
         # For now get_scalar_constant_value goes through only MakeVector and Join of
         # scalars.
         v = tensor.ivector()
-        a = tensor.stack(v, [2], [3])
+        a = tensor.stack([v, [2], [3]])
         self.assertRaises(tensor.NotScalarConstantError, get_scalar_constant_value, a[0])
         self.assertRaises(tensor.NotScalarConstantError, get_scalar_constant_value, a[1])
         self.assertRaises(tensor.NotScalarConstantError, get_scalar_constant_value, a[2])

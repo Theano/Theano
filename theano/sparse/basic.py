@@ -3013,8 +3013,8 @@ class HStack(gof.op.Op):
 
         split = tensor.Split(len(inputs))(gz, 1,
                                           tensor.stack(
-                                              *[x.shape[1]
-                                                for x in inputs]))
+                                              [x.shape[1]
+                                               for x in inputs]))
         if not isinstance(split, list):
             split = [split]
 
@@ -3094,8 +3094,8 @@ class VStack(HStack):
 
         split = tensor.Split(len(inputs))(gz, 0,
                                           tensor.stack(
-                                              *[x.shape[0]
-                                                for x in inputs]))
+                                              [x.shape[0]
+                                               for x in inputs]))
         if not isinstance(split, list):
             split = [split]
 

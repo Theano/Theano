@@ -856,7 +856,7 @@ def local_gpu_careduce(node):
                             new_in_shp.append(x_shape[i])
 
                     new_greduce = GpuCAReduce(new_mask, scalar_op)
-                    reshaped_x = x.reshape(tensor.stack(*new_in_shp))
+                    reshaped_x = x.reshape(tensor.stack(new_in_shp))
                     gpu_reshaped_x = as_cuda_ndarray_variable(reshaped_x)
                     reshaped_gpu_inputs = [gpu_reshaped_x]
                     if new_greduce.supports_c_code(reshaped_gpu_inputs):
@@ -865,7 +865,7 @@ def local_gpu_careduce(node):
 
                         if reduce_reshaped_x.ndim != out.ndim:
                             rval = reduce_reshaped_x.reshape(
-                                tensor.stack(*shape_of[out]))
+                                tensor.stack(shape_of[out]))
                         else:
                             rval = reduce_reshaped_x
                     else:
