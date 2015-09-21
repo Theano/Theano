@@ -701,13 +701,13 @@ Creating Tensor
     (of 1 rank greater).
 
     :param tensors: a list or a tuple of one or more tensors of the same rank.
-    :param axis: the axis along which the tensors will be stacked.
+    :param axis: the axis along which the tensors will be stacked. Default value is 0.
     :returns: A tensor such that rval[0] == tensors[0], rval[1] == tensors[1], etc.
 
     >>> x0 = T.scalar()
     >>> x1 = T.scalar()
     >>> x2 = T.scalar()
-    >>> x = T.stack(x0, x1, x2)
+    >>> x = T.stack([x0, x1, x2])
     >>> x.ndim # x is a vector of length 3.
     1
 
