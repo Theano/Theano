@@ -355,10 +355,6 @@ class SequenceDB(DB):
                         position_dict[opt.name] = position
 
         opts = [o for o in opts if position_dict[o.name] < position_cutoff]
-        # We want to sort by position and then if collision by name
-        # for deterministic optimization.  Since Python 2.2, sort is
-        # stable, so sort by name first, then by position. This give
-        # the order we want.
         opts.sort(key=lambda obj: (position_dict[obj.name], obj.name))
         kwargs = {}
         if self.failure_callback:
