@@ -891,7 +891,6 @@ class AveragePoolGrad(PoolGrad):
         inc_pad = int(self.mode == 'average_inc_pad')
         sum_mode = int(self.mode == 'sum')
         skip_pad = int((self.mode == 'sum') or (self.mode == 'average_inc_pad'))
-        print(self.ds,self.st,self.padding,self.ignore_border,self.mode,flush=True)
         ccode = """
         // sanity checks
         int x_typenum = PyArray_ObjectType((PyObject*)%(x)s, 0);
@@ -985,24 +984,16 @@ class AveragePoolGrad(PoolGrad):
           PyArray_FILLWBYTE(%(gx)s, 0);
         }
         
-        
         // AIM: To compute gx (same size as 'x', iterating with n and k)
         // Inputs of x and gz
         // Padded size of x is is r * c
         // Unsuplied z input is z_r * z_c (iterating with r and c)
         
-        
-        
         int r_st, r_end, c_st, c_end; // used to index into the input img x
         dtype_%(gx)s val; // temp var for additional value in a region
         
-        //char buf[100]; 
-        //snprintf( buf, sizeof( buf), "print('Hello %%d %%d %%d %%d %%d %%d!')", z_r, z_c, PyArray_DIMS(%(x)s)[0], PyArray_DIMS(%(x)s)[1], PyArray_DIMS(%(x)s)[2], PyArray_DIMS(%(x)s)[3]);
-        //PyRun_SimpleStringFlags(buf,NULL);
-        
         if (z_r && z_c)
         {
-            //PyRun_SimpleStringFlags("print('#')",NULL);
             for(int b=0; b<PyArray_DIMS(%(x)s)[0]; b++){ // 1
               for(int k=0; k<PyArray_DIMS(%(x)s)[1]; k++){ // 3
               
@@ -1032,9 +1023,6 @@ class AveragePoolGrad(PoolGrad):
                     c_st -= %(pd1)s;
                     c_end -= %(pd1)s;
                     
-                    //snprintf( buf, sizeof( buf), "print('Bye %%d %%d %%d %%d !')", r_st,r_end,c_st,c_end);
-                    //PyRun_SimpleStringFlags(buf,NULL);
-                    
                     // the gradient corresponding to this value in z
                     val = ((dtype_%(gz)s*)(PyArray_GETPTR4(%(gz)s, b, k, i, j)))[0];
                     if (!(%(sum_mode)s))
@@ -1056,8 +1044,6 @@ class AveragePoolGrad(PoolGrad):
             }
 
         }
-        //snprintf( buf, sizeof( buf), "print('Bye %%d %%d %%d %%d !')", r_st,r_end,c_st,c_end);
-        //PyRun_SimpleStringFlags(buf,NULL);
         """
         return ccode % locals()
 
