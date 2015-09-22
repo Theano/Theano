@@ -2951,10 +2951,15 @@ class T_max_and_argmax(unittest.TestCase):
 
         # Test 4d inner dimensions
         data = rand(2, 3, 4, 5)
-
+        
         for i in [0, 1, 2, 3]:
             safe_verify_grad(lambda v: max_and_argmax(v, axis=[i])[0], [data])
             safe_verify_grad(lambda v: max_and_argmax(v, axis=[i])[1], [data])
+        
+        # Test grad with multiple axes
+        for i in [[0, 1], [0, 0]]:
+            safe_verify_grad(lambda v: max_and_argmax(v, axis=i)[0], [data])
+            safe_verify_grad(lambda v: max_and_argmax(v, axis=i)[1], [data])
 
     def test_preserve_broadcastable(self):
         """
@@ -2965,11 +2970,15 @@ class T_max_and_argmax(unittest.TestCase):
         assert y.type.broadcastable == (True, True, False, True)
         
     def test_multiple_axes(self):
-        data = as_tensor_variable(numpy.arange(24).reshape(3, 2, 4))
-        v, i = eval_outputs(max_and_argmax(data, [1, -1]))
+        data = numpy.arange(24).reshape(3, 2, 4)
+        x = as_tensor_variable(data)
+        v, i = eval_outputs(max_and_argmax(x, [1, -1]))
         assert numpy.all(v == numpy.array([7, 15, 23]))
         assert numpy.all(i == numpy.array([7, 7, 7]))
-
+        
+        v = eval_outputs(max_and_argmax(x, [1, -1])[0].shape)
+        assert tuple(v) == numpy.max(data, (1, -1)).shape
+        
 
 class T_argmin_argmax(unittest.TestCase):
     def setUp(self):
