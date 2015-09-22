@@ -3105,7 +3105,9 @@ def std(input, axis=None, keepdims=False):
 
     """
 
-    return sqrt(var(input=input, axis=axis, keepdims=keepdims))
+    ret = sqrt(var(input=input, axis=axis, keepdims=keepdims))
+    ret.name = 'std'
+    return ret
 
 
 class Default(gof.Op):
