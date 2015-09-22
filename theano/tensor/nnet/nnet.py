@@ -81,10 +81,22 @@ class SoftmaxWithBias(gof.Op):
             # sm[i] *= 1.0 / numpy.sum(sm[i])
         # output_storage[0][0] = sm
 
+        if x.size == 0:
+            # Numpy doesn't like the max of a zero-sized object.
+            output_storage[0][0] = numpy.zeros(x.shape, dtype=x.dtype)
+            return
+
+        x_dtype = x.dtype
+        # Perform computations in float32 otherwise the result is too imprecise
+        if x.dtype == 'float16':
+            x = x.astype('float32')
+
         x_plus_b = x + b[None, :]
         e_x = numpy.exp(x_plus_b - x_plus_b.max(axis=1)[:, None])
         e_x *= 1.0 / e_x.sum(axis=1)[:, None]
-        output_storage[0][0] = e_x
+        # default for copy is True and we don't need a copy if the
+        # data type matches.
+        output_storage[0][0] = e_x.astype(x_dtype, copy=False)
 
     def grad(self, inp, grads):
         x, b = inp

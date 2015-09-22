@@ -524,7 +524,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuKernelBase, Op):
 gpu_crossentropy_softmax_1hot_with_bias_dx = GpuCrossentropySoftmax1HotWithBiasDx()
 
 
-class GpuSoftmax (GpuKernelBase, Op):
+class GpuSoftmax(GpuKernelBase, Op):
     """
     Implement Softmax on the gpu.
 
@@ -541,7 +541,7 @@ class GpuSoftmax (GpuKernelBase, Op):
         return shape
 
     def c_code_cache_version(self):
-        return (13,) + inline_softmax.code_version
+        return (14,) + inline_softmax.code_version
 
     def c_header_dirs(self):
         if pygpu.get_default_context().kind == 'opencl':
@@ -656,7 +656,8 @@ class GpuSoftmax (GpuKernelBase, Op):
         work_sm = work_dtype(dtype_sm)
         flags = Kernel.get_flags(dtype_x, dtype_sm)
         type_x = gpuarray.dtype_to_ctype(dtype_x)
-        type_sm = gpuarray.dtype_to_ctype(work_sm)
+        type_sm = gpuarray.dtype_to_ctype(dtype_sm)
+        type_acc = gpuarray.dtype_to_ctype(work_sm)
         params = [
             'uintp', 'uintp',
             gpuarray.GpuArray, 'uintp', 'intp', 'intp',
@@ -672,8 +673,8 @@ class GpuSoftmax (GpuKernelBase, Op):
                     '%s * sm' % type_sm, 'const ga_size offset_sm',
                     'const ga_ssize sm_s0', 'const ga_ssize sm_s1'],
                 body=[
-                    "extern __shared__ %s buf[]" % type_sm,
-                    "%s * buf2 = buf + N" % type_sm,
+                    "extern __shared__ %s buf[]" % type_acc,
+                    "%s * buf2 = buf + N" % type_acc,
                     "x = (const %s *)(((char *)x)+offset_x)" % type_x,
                     "sm = (%s *)(((char *)sm)+offset_sm)" % type_sm,
                     "for (int blockIDX = blockIdx.x; blockIDX < M;"
@@ -683,8 +684,8 @@ class GpuSoftmax (GpuKernelBase, Op):
                         "buf2[tx] = buf[tx]",
                       "}",
                       "__syncthreads()",
-                      inline_softmax('N', 'buf', 'buf2',
-                                     'threadIdx.x', 'blockDim.x', work_sm),
+                      inline_softmax('N', 'buf', 'buf2', 'threadIdx.x',
+                                     'blockDim.x', dtype=work_sm),
                       "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
                         # This set all value correctly
                         "sm[blockIDX * sm_s0 + tx * sm_s1] = %s(buf[tx])" % write_sm,
@@ -703,7 +704,7 @@ class GpuSoftmax (GpuKernelBase, Op):
                     '%s * sm' % type_sm, 'const ga_size offset_sm',
                     'const ga_ssize sm_s0', 'const ga_ssize sm_s1'],
                 body=[
-                    "extern __shared__ %s buf[]" % type_sm,
+                    "extern __shared__ %s buf[]" % type_acc,
                     "x = (const %s *)(((char *)x)+offset_x)" % type_x,
                     "sm = (%s *)(((char *)sm)+offset_sm)" % type_sm,
                     "for (int blockIDX = blockIdx.x; blockIDX < M;"
@@ -745,7 +746,7 @@ class GpuSoftmaxWithBias (GpuKernelBase, Op):
         return  [shape[0]]
 
     def c_code_cache_version(self):
-        return (12,) + inline_softmax.code_version
+        return (13,) + inline_softmax.code_version
 
     def c_header_dirs(self):
         if pygpu.get_default_context().kind == 'opencl':
@@ -880,7 +881,8 @@ class GpuSoftmaxWithBias (GpuKernelBase, Op):
         flags = Kernel.get_flags(dtype_x, dtype_b, dtype_sm)
         type_x = gpuarray.dtype_to_ctype(dtype_x)
         type_b = gpuarray.dtype_to_ctype(dtype_b)
-        type_sm = gpuarray.dtype_to_ctype(work_sm)
+        type_sm = gpuarray.dtype_to_ctype(dtype_sm)
+        type_acc = gpuarray.dtype_to_ctype(work_sm)
         params = [
             'uintp', 'uintp',
             gpuarray.GpuArray, 'uintp', 'intp', 'intp',
@@ -899,8 +901,8 @@ class GpuSoftmaxWithBias (GpuKernelBase, Op):
                         '%s * sm' % type_sm, 'const ga_size offset_sm',
                         'const ga_ssize sm_s0', 'const ga_ssize sm_s1'],
                 body=[
-                    "extern __shared__ %s buf[]" % type_sm,
-                    "%s * buf2 = buf + N" % type_sm,
+                    "extern __shared__ %s buf[]" % type_acc,
+                    "%s * buf2 = buf + N" % type_acc,
                     "x = (const %s *)(((char *)x)+offset_x)" % type_x,
                     "b = (const %s *)(((char *)b)+offset_b)" % type_b,
                     "sm = (%s *)(((char *)sm)+offset_sm)" % type_sm,
@@ -933,7 +935,7 @@ class GpuSoftmaxWithBias (GpuKernelBase, Op):
                         '%s * sm' % type_sm, 'const ga_size offset_sm',
                         'const ga_ssize sm_s0', 'const ga_ssize sm_s1'],
                 body=[
-                    "extern __shared__ %s buf[]" % type_sm,
+                    "extern __shared__ %s buf[]" % type_acc,
                     "x = (const %s *)(((char *)x)+offset_x)" % type_x,
                     "b = (const %s *)(((char *)b)+offset_b)" % type_b,
                     "sm = (%s *)(((char *)sm)+offset_sm)" % type_sm,

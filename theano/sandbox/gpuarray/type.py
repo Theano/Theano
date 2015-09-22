@@ -162,13 +162,7 @@ class GpuArrayType(Type):
                 return tensor.TensorType.values_eq_approx(
                     an, bn, allow_remove_inf=allow_remove_inf,
                     allow_remove_nan=allow_remove_nan, rtol=rtol, atol=atol)
-            narrow = 'float32', 'complex64'
-            if (str(a.dtype) in narrow) or (str(b.dtype) in narrow):
-                atol_ = theano.tensor.basic.float32_atol
-                rtol_ = theano.tensor.basic.float32_rtol
-            else:
-                atol_ = theano.tensor.basic.float64_atol
-                rtol_ = theano.tensor.basic.float64_rtol
+            atol_, rtol_ = theano.tensor.basic._get_atol_rtol(a, b)
             if rtol is not None:
                 rtol_ = rtol
             if atol is not None:
