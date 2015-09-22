@@ -3030,7 +3030,7 @@ def mean(input, axis=None, dtype=None, op=False, keepdims=False,
 
     if dtype == 'float16' or (dtype is None and input.dtype == 'float16'):
         s = cast(s, 'float16')
-
+    s.name = 'mean'
     return s
 
 
@@ -3075,7 +3075,9 @@ def var(input, axis=None, keepdims=False):
     centered_input = input - mean_input
 
     # return the mean sqr
-    return mean((centered_input ** 2), axis, keepdims=keepdims)
+    v = mean((centered_input ** 2), axis, keepdims=keepdims)
+    v.name = 'var'
+    return v
 
 
 @constructor

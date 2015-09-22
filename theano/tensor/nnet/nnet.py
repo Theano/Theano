@@ -2014,6 +2014,8 @@ def relu(x, alpha=0):
     """
     Compute the element-wise rectified linear activation function.
 
+    .. versionadded:: 0.7.1
+
     Parameters
     ----------
     x : symbolic tensor

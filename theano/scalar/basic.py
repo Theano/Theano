@@ -3329,6 +3329,8 @@ class Composite(ScalarOp):
     Composite depends on all the Ops in its graph having C code.
 
     """
+    init_param = ('inputs', 'outputs')
+
     def __str__(self):
         return self.name
 
@@ -3339,7 +3341,8 @@ class Composite(ScalarOp):
         This fct allow fix patch this.
 
         """
-        out = self.__class__(self.inputs, self.outputs)
+        d = dict([(k, getattr(self, k)) for k in self.init_param])
+        out = self.__class__(**d)
         if name:
             out.name = name
         else:

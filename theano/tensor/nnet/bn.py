@@ -4,8 +4,10 @@ from theano.scalar import add, sub, true_div, mul
 
 
 class BNComposite(Composite):
+    init_param = ('dtype',)
 
     def __init__(self, dtype):
+        self.dtype = dtype
         x = theano.scalar.Scalar(dtype=dtype).make_variable()
         mean = theano.scalar.Scalar(dtype=dtype).make_variable()
         std = theano.scalar.Scalar(dtype=dtype).make_variable()
@@ -32,6 +34,8 @@ def batch_normalization(inputs, gamma, beta, mean, std,
     This function will build the symbolic graph for applying batch normalization
     to a set of activations.
     Work also on GPU
+
+    .. versionadded:: 0.7.1
 
     Parameters
     ----------

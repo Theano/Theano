@@ -2146,7 +2146,7 @@ def local_gpualloc(node):
                        i.owner.op in [host_from_gpu, tensor.alloc]
                        for i in c.inputs[1:]])
                   for c, idx in node.outputs[0].clients]):
-            # if the client is a subtensor with input on gpu or alloc
+            # if the client is on gpu or alloc
             replace = True
         if replace and node.inputs[0].dtype != 'float32':
             replace = False

@@ -1612,15 +1612,10 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
 
     # We allow input downcast in function, because numeric_grad works in the
     # most precise dtype used among the inputs, so we may need to cast some.
-    def function(inputs, output):
-        if mode is None:
-            f = compile.function(inputs, output, accept_inplace=True,
-                                 allow_input_downcast=True,
-                                 on_unused_input='ignore')
-        else:
-            f = compile.function(inputs, output, accept_inplace=True,
-                                 allow_input_downcast=True, mode=mode,
-                                 on_unused_input='ignore')
+    def function(inputs, output, name):
+        f = compile.function(inputs, output, accept_inplace=True,
+                             allow_input_downcast=True, mode=mode,
+                             on_unused_input='ignore', name=name)
         return f
 
     tensor_pt = [
@@ -1639,7 +1634,7 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
         # but this doesn't handle the case where not all the outputs are
         # differentiable... so I leave this as TODO for now -JB.
 
-    o_fn = function(tensor_pt, o_output)
+    o_fn = function(tensor_pt, o_output, name='gradient.py fwd')
     o_fn_out = o_fn(*[p.copy() for p in pt])
 
     if isinstance(o_fn_out, tuple) or isinstance(o_fn_out, list):
@@ -1663,12 +1658,13 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
     # This sum() is defined above, it's not the builtin sum.
     cost = theano.tensor.sum(t_r * o_output)
 
-    cost_fn = function(tensor_pt, cost)
+    cost_fn = function(tensor_pt, cost, name='gradient.py cost')
 
     symbolic_grad = grad(cost, tensor_pt,
                          disconnected_inputs='ignore')
 
-    grad_fn = function(tensor_pt, symbolic_grad)
+    grad_fn = function(tensor_pt, symbolic_grad,
+                       name='gradient.py symbolic grad')
 
     for test_num in xrange(n_tests):
         try:

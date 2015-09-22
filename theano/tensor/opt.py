@@ -357,7 +357,7 @@ def inplace_elemwise_optimizer_op(OP):
                             fgraph.validate()
                             chk = fgraph.checkpoint()
                             nb_change_no_validate = 0
-                    except (ValueError, TypeError, InconsistencyError) as e:
+                    except (ValueError, InconsistencyError) as e:
                         if check_each_change != 1 and not raised_warning:
                             print(("Some inplace optimization was not "
                                    "performed due to unexpected error:"),
@@ -2414,7 +2414,8 @@ def local_useless_subtensor(node):
     return [node.inputs[0]]
 
 
-@register_canonicalize
+# fast_compile to allow opt subtensor(cast{float32}(make_vector))
+@register_canonicalize('fast_compile')
 @gof.local_optimizer([Subtensor])
 def local_subtensor_lift(node):
     """
