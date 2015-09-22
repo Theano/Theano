@@ -569,8 +569,8 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
     neib_shape = T.as_tensor_variable(neib_shape)
     original_shape = T.as_tensor_variable(original_shape)
 
-    new_neib_shape = T.stack(original_shape[-1] // neib_shape[1],
-                             neib_shape[1])
+    new_neib_shape = T.stack([original_shape[-1] // neib_shape[1],
+                              neib_shape[1]])
     output_2d = images2neibs(neibs.dimshuffle('x', 'x', 0, 1),
                              new_neib_shape, mode=mode)
 
