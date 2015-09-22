@@ -411,8 +411,8 @@ def convolve(kerns, kshp, nkern, images, imgshp, step=(1, 1), bias=None,
     patches = (sparse.structured_dot(csc, images.T)).T
 
     # compute output of linear classifier
-    pshape = tensor.stack(images.shape[0] * tensor.as_tensor(N.prod(outshp)),\
-                          tensor.as_tensor(imgshp[0] * kern_size))
+    pshape = tensor.stack([images.shape[0] * tensor.as_tensor(N.prod(outshp)),\
+                           tensor.as_tensor(imgshp[0] * kern_size)])
     patch_stack = tensor.reshape(patches, pshape, ndim=2)
 
     # kern is of shape: nkern x ksize*number_of_input_features
@@ -425,9 +425,9 @@ def convolve(kerns, kshp, nkern, images, imgshp, step=(1, 1), bias=None,
 
     # now to have feature maps in raster order ...
     # go from bsize*outshp x nkern to bsize x nkern*outshp
-    newshp = tensor.stack(images.shape[0],\
-                          tensor.as_tensor(N.prod(outshp)),\
-                          tensor.as_tensor(nkern))
+    newshp = tensor.stack([images.shape[0],\
+                           tensor.as_tensor(N.prod(outshp)),\
+                           tensor.as_tensor(nkern)])
     tensout = tensor.reshape(output, newshp, ndim=3)
     output = tensor.DimShuffle((False,) * tensout.ndim, (0, 2, 1))(tensout)
     if flatten:
@@ -477,17 +477,17 @@ def max_pool(images, imgshp, maxpoolshp):
                                     indptr, spmat_shape)
     patches = sparse.structured_dot(csc, images.T).T
 
-    pshape = tensor.stack(images.shape[0] *\
-                              tensor.as_tensor(N.prod(outshp)),
-                          tensor.as_tensor(imgshp[0]),
-                          tensor.as_tensor(poolsize))
+    pshape = tensor.stack([images.shape[0] *\
+                               tensor.as_tensor(N.prod(outshp)),
+                           tensor.as_tensor(imgshp[0]),
+                           tensor.as_tensor(poolsize)])
     patch_stack = tensor.reshape(patches, pshape, ndim=3)
 
     out1 = tensor.max(patch_stack, axis=2)
 
-    pshape = tensor.stack(images.shape[0],
-                          tensor.as_tensor(N.prod(outshp)),
-                          tensor.as_tensor(imgshp[0]))
+    pshape = tensor.stack([images.shape[0],
+                           tensor.as_tensor(N.prod(outshp)),
+                           tensor.as_tensor(imgshp[0])])
     out2 = tensor.reshape(out1, pshape, ndim=3)
 
     out3 = tensor.DimShuffle(out2.broadcastable, (0, 2, 1))(out2)

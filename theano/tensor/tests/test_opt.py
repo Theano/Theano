@@ -5118,7 +5118,7 @@ class T_local_reduce(unittest.TestCase):
         # on 32 bit systems
         A = theano.shared(numpy.array([1, 2, 3, 4, 5], dtype='int64'))
 
-        f = theano.function([], T.sum(T.stack(A, A), axis=0), mode=self.mode)
+        f = theano.function([], T.sum(T.stack([A, A]), axis=0), mode=self.mode)
         assert numpy.allclose(f(), [2, 4, 6, 8, 10])
         topo = f.maker.fgraph.toposort()
         assert isinstance(topo[-1].op, T.Elemwise)
@@ -5127,7 +5127,7 @@ class T_local_reduce(unittest.TestCase):
         try:
             old = theano.config.warn.reduce_join
             theano.config.warn.reduce_join = False
-            f = theano.function([], T.sum(T.stack(A, A), axis=1),
+            f = theano.function([], T.sum(T.stack([A, A]), axis=1),
                                 mode=self.mode)
         finally:
             theano.config.warn.reduce_join = old
@@ -5454,7 +5454,7 @@ class TestMakeVector(utt.InferShapeTester):
 def test_local_join_1():
     # test for vector
     a = tensor.vector('a')
-    s = tensor.stack(a)
+    s = tensor.stack([a])
     f = function([a], s, mode=mode_opt)
     val = f([1])
     assert numpy.all(val == [1])
@@ -5520,7 +5520,7 @@ def test_local_join_empty():
 
     # test for vector, vector, empty to matrix
     # We can't optimize this case.
-    s = tensor.stack(a, a, empty_vec)
+    s = tensor.stack([a, a, empty_vec])
     f = function([a], s, mode=mode_opt)
     val = f([])
     assert numpy.all(val == [1])

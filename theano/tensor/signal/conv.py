@@ -80,10 +80,10 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
     else:
         sym_nkern = 1
 
-    new_input_shape = tensor.join(0, tensor.stack(sym_bsize, 1), input.shape[-2:])
+    new_input_shape = tensor.join(0, tensor.stack([sym_bsize, 1]), input.shape[-2:])
     input4D = tensor.reshape(input, new_input_shape, ndim=4)
 
-    new_filter_shape = tensor.join(0, tensor.stack(sym_nkern, 1), filters.shape[-2:])
+    new_filter_shape = tensor.join(0, tensor.stack([sym_nkern, 1]), filters.shape[-2:])
     filters4D = tensor.reshape(filters, new_filter_shape, ndim=4)
 
     ### perform actual convolution ###
