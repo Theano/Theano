@@ -799,7 +799,14 @@ def use_c_gemv(node):
 @local_optimizer([CGemv(inplace=False)])
 def make_c_gemv_destructive(node):
     if isinstance(node.op, CGemv) and not node.op.inplace:
-        return [cgemv_inplace(*node.inputs)]
+        inputs = list(node.inputs)
+        dest = inputs[0]
+        if (dest.owner and
+                isinstance(dest.owner.op, T.AllocEmpty) and
+                len(dest.clients) > 1):
+            inputs[0] = T.AllocEmpty(dest.dtype)(*dest.owner.inputs)
+
+        return [cgemv_inplace(*inputs)]
 
 
 # ##### ####### #######
