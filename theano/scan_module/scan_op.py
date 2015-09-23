@@ -1802,7 +1802,14 @@ class Scan(PureOp):
                    get_inp_idx(self_inputs.index(x)) in connected_inputs]
             gmp = OrderedDict()
 
-            known_grads = dict([(k*1,v) for (k,v) in known_grads.items()])
+            # Required in case there is a pair of variables X and Y, with X
+            # used to compute Y, for both of which there is an external
+            # gradient signal. Without this, the total gradient signal on X
+            # will be the external gradient  signalknown_grads[X]. With this,
+            # it will be the sum of the external gradient signal and the
+            # gradient obtained by propagating Y's external gradient signal
+            # to X.
+            known_grads = dict([(k.copy(),v) for (k,v) in known_grads.items()])
 
             grads = gradient.grad(
                         cost=None,
