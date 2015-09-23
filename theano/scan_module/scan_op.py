@@ -1809,7 +1809,7 @@ class Scan(PureOp):
             # it will be the sum of the external gradient signal and the
             # gradient obtained by propagating Y's external gradient signal
             # to X.
-            known_grads = dict([(k.copy(),v) for (k,v) in known_grads.items()])
+            known_grads = dict([(k.copy(), v) for (k, v) in known_grads.items()])
 
             grads = gradient.grad(
                         cost=None,
