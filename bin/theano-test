@@ -8,7 +8,7 @@ from __future__ import print_function
 # user a civilized error message in that case.
 
 try:
-    import nose
+    import nose  # noqa
 except ImportError:
     error = """\
 ERROR: The IPython test suite requires nose to run.

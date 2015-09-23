@@ -149,6 +149,11 @@ if not release:
 
 
 def do_setup():
+    scipy = []
+    # Don't install scipy on scrutinizer, it fail as of July 31th, 2015.
+    if os.getenv("SCRUTINIZER") is None:
+        scipy = ['scipy>=0.11']
+
     write_version_py()
     setup(name=NAME,
           version=VERSION,
@@ -161,7 +166,7 @@ def do_setup():
           license=LICENSE,
           platforms=PLATFORMS,
           packages=find_packages(),
-          install_requires=['numpy>=1.6.2', 'scipy>=0.11', 'six>=1.9.0'],
+          install_requires=['numpy>=1.6.2', 'six>=1.9.0'] + scipy,
           package_data={
               '': ['*.txt', '*.rst', '*.cu', '*.cuh', '*.c', '*.sh', '*.pkl',
                    '*.h', '*.cpp', 'ChangeLog'],
