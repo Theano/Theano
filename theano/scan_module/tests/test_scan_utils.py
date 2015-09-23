@@ -40,40 +40,19 @@ class TestMapVariables(unittest.TestCase):
         assert u.owner.inputs == [a, b]
         assert v.owner.inputs == [a, c]
 
-    def test_opfromgraph(self):
-        # as with the scan tests above, insert foreign inputs into the
-        # inner graph.
-        outer = tensor.scalar("outer")
-        shared = theano.shared(1, name="shared")
-        constant = tensor.constant(1, name="constant")
-        z = outer * (shared + constant)
+    def test_leaf_inside_scan(self):
+        x = tensor.vector('x')
+        y = tensor.scalar('y')
+        z = tensor.scalar('z')
 
-        # construct the inner graph
-        a = tensor.scalar()
-        b = tensor.scalar()
-        r = a + b
-        r.tag.replacement = z * (a - b)
+        y.tag.replacement = z
 
-        # construct the outer graph
-        c = tensor.scalar()
-        d = tensor.scalar()
-        u = theano.OpFromGraph([a, b], [r])(c, d)
-        t = z * u
-        v, = map_variables(
-            self.replacer, [u],
-            additional_inputs=[outer, shared])
-        t2 = z * v
+        s, _ = theano.scan(lambda x: x * y, sequences=x)
+        s2, = map_variables(self.replacer, [s])
 
-        f = theano.function([c, d, outer], [t, t2])
-        for m, n in itertools.combinations(range(10), 2):
-            assert f(m, n, outer=0.5) == [m + n, m - n]
-
-        # test that the unsupported case of replacement with a shared
-        # variable with updates crashes
-        shared.update = shared + 1
-        self.assertRaises(NotImplementedError,
-                          map_variables, self.replacer, [u],
-                          additional_inputs=[outer, shared])
+        f = theano.function([x, y, z], [s, s2])
+        rval = f(x=numpy.array([1, 2, 3], dtype=numpy.float32), y=1, z=2)
+        assert numpy.array_equal(rval, [[1, 2, 3], [2, 4, 6]])
 
     def test_scan(self):
         x = tensor.vector('x')
@@ -151,16 +130,37 @@ class TestMapVariables(unittest.TestCase):
         self.assertRaises(NotImplementedError,
                           map_variables, self.replacer, [s])
 
-    def test_leaf_inside_scan(self):
-        x = tensor.vector('x')
-        y = tensor.scalar('y')
-        z = tensor.scalar('z')
+    def test_opfromgraph(self):
+        # as with the scan tests above, insert foreign inputs into the
+        # inner graph.
+        outer = tensor.scalar("outer")
+        shared = theano.shared(1, name="shared")
+        constant = tensor.constant(1, name="constant")
+        z = outer * (shared + constant)
 
-        y.tag.replacement = z
+        # construct the inner graph
+        a = tensor.scalar()
+        b = tensor.scalar()
+        r = a + b
+        r.tag.replacement = z * (a - b)
 
-        s, _ = theano.scan(lambda x: x * y, sequences=x)
-        s2, = map_variables(self.replacer, [s])
+        # construct the outer graph
+        c = tensor.scalar()
+        d = tensor.scalar()
+        u = theano.OpFromGraph([a, b], [r])(c, d)
+        t = z * u
+        v, = map_variables(
+            self.replacer, [u],
+            additional_inputs=[outer, shared])
+        t2 = z * v
 
-        f = theano.function([x, y, z], [s, s2])
-        rval = f(x=numpy.array([1, 2, 3], dtype=numpy.float32), y=1, z=2)
-        assert numpy.array_equal(rval, [[1, 2, 3], [2, 4, 6]])
+        f = theano.function([c, d, outer], [t, t2])
+        for m, n in itertools.combinations(range(10), 2):
+            assert f(m, n, outer=0.5) == [m + n, m - n]
+
+        # test that the unsupported case of replacement with a shared
+        # variable with updates crashes
+        shared.update = shared + 1
+        self.assertRaises(NotImplementedError,
+                          map_variables, self.replacer, [u],
+                          additional_inputs=[outer, shared])
