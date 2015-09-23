@@ -61,7 +61,7 @@ class TestFunctionIn(unittest.TestCase):
         # Ensure that an error is raised if the In wrapped is used to wrap
         # a shared variable
         a = theano.shared(1.0)
-        a_wrapped = In(a, update=a+1)
+        a_wrapped = In(a, update=a + 1)
         self.assertRaises(TypeError, theano.function, [a_wrapped])
 
     def test_in_mutable(self):
