@@ -461,7 +461,8 @@ GpuArrayType.SharedVariable = GpuArraySharedVariable
 
 def gpuarray_shared_constructor(value, name=None, strict=False,
                                 allow_downcast=None, borrow=False,
-                                broadcastable=None):
+                                broadcastable=None,
+                                context_name=None):
     """
     SharedVariable constructor for GpuArrayType.
 
@@ -480,7 +481,7 @@ def gpuarray_shared_constructor(value, name=None, strict=False,
 
     if broadcastable is None:
         broadcastable = (False,) * value.ndim
-    type = GpuArrayType(value.dtype, broadcastable)
+    type = GpuArrayType(value.dtype, broadcastable, context_name=context_name)
     deviceval = pygpu.gpuarray.array(value, copy=(not borrow),
                                      context=type.context)
     return GpuArraySharedVariable(type=type, value=deviceval, name=name,
