@@ -102,7 +102,7 @@ def debugprint(obj, depth=-1, print_type=False,
     results_to_print = []
     profile_list = []
     order = []
-    if isinstance(obj, (list, tuple)):
+    if isinstance(obj, (list, tuple, set)):
         lobj = obj
     else:
         lobj = [obj]
@@ -120,7 +120,8 @@ def debugprint(obj, depth=-1, print_type=False,
             order = obj.maker.fgraph.toposort()
         elif isinstance(obj, gof.FunctionGraph):
             results_to_print.extend(obj.outputs)
-            profile_list.extend([None for item in obj.outputs])
+            profile_list.extend([getattr(obj, 'profile', None)
+                                 for item in obj.outputs])
             order = obj.toposort()
         elif isinstance(obj, (integer_types, float, np.ndarray)):
             print(obj)
