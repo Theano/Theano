@@ -18,7 +18,7 @@ from theano.tensor.nnet.conv import ConvOp
 from theano.tests.breakpoint import PdbBreakpoint
 
 from .type import GpuArrayType, GpuArrayConstant, get_context
-from .basic_ops import (as_gpuarray_variable,
+from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         host_from_gpu, GpuToGpu,
                         HostFromGpu, GpuFromHost,
                         GpuSplit, GpuContiguous,
@@ -961,12 +961,23 @@ def local_scan_to_gpua(node, context_name):
     _cmodule_key = gof.CLinker().cmodule_key_(local_fgraph, [])
     info['gpu_hash'] = hash(_cmodule_key)
 
+    def typebuild(dtype, broadcastable, context_name=context_name):
+        return GpuArrayType(dtype=dtype, broadcastable=broadcastable,
+                            context_name=context_name)
+
     nw_op = scan_op.Scan(scan_ins, scan_outs, info,
-                         typeConstructor=GpuArrayType).make_node(*nw_ins)
+                         typebuild=typebuild).make_node(*nw_ins)
     return nw_op.outputs
 
+def _scan_type_infer(node):
+    context_name = infer_context_name(*node.inputs)
+    def typebuild(dtype, broadcastable, context_name=context_name):
+        return GpuArrayType(dtype=dtype, broadcastable=broadcastable,
+                            context_name=context_name)
+    return typebuild
+
 optdb.register('gpua_scanOp_make_inplace',
-               scan_opt.ScanInplaceOptimizer(typeConstructor=GpuArrayType,
+               scan_opt.ScanInplaceOptimizer(typeInfer=_scan_type_infer,
                                              gpua_flag=True),
                75,
                'gpuarray',
