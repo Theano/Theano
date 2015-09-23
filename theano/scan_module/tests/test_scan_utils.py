@@ -114,7 +114,7 @@ class TestMapVariables(object):
         # test failed
         return 0
 
-    def test_scan_with_shared_update3(self):
+    def test_scan_with_shared_update2(self):
         x = tensor.vector('x')
 
         # counts how many times its value is used
