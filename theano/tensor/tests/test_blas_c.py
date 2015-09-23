@@ -261,7 +261,8 @@ class TestCGemv(TestCase, TestOptimizationMixin):
         y = tensor.dvector('y')
         z = tensor.dvector('z')
         f = theano.function([x, y, z],
-                            [tensor.dot(y, x), tensor.dot(z,x)])
+                            [tensor.dot(y, x), tensor.dot(z,x)],
+                            mode=mode_blas_opt)
         vx = numpy.random.rand(3, 3)
         vy = numpy.random.rand(3)
         vz = numpy.random.rand(3)
