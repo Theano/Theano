@@ -42,8 +42,8 @@ from theano.sandbox.linalg.ops import (cholesky,
                                        )
 
 from theano.sandbox.linalg import eig, eigh, eigvalsh
+from theano.tests.unittest_tools import attr
 from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 from nose.tools import assert_raises
 
 

@@ -3,7 +3,6 @@ import sys
 import unittest
 
 from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 import numpy
 from six import StringIO
 from six.moves import xrange
@@ -34,6 +33,7 @@ from theano.tensor import (as_tensor_variable, _shared,
                            fmatrix, dmatrix, lmatrix, matrix,
                            ctensor3, dtensor4)
 from theano.tensor.tests.test_basic import rand, randint_ranged, inplace_func
+from theano.tests.unittest_tools import attr
 
 if PY3:
     def L(i):

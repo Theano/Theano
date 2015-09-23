@@ -1,5 +1,4 @@
 from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 import sys
 import time
 import unittest
@@ -22,6 +21,7 @@ from theano.sparse.tests.test_basic import random_lil
 from theano.tests import unittest_tools as utt
 from theano.sparse import verify_grad_sparse
 from theano.sparse.tests.test_basic import sparse_random_inputs
+from theano.tests.unittest_tools import attr
 
 
 class TestSP(unittest.TestCase):

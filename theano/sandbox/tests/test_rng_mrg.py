@@ -1,11 +1,15 @@
 from __future__ import print_function
+import copy
 import os
 import sys
 import time
-import copy
+import unittest
 
+from nose.plugins.skip import SkipTest
+from nose.tools import assert_raises
 import numpy
 from six.moves import xrange
+
 import theano
 from theano import tensor, config
 from theano.sandbox import rng_mrg
@@ -15,11 +19,8 @@ from theano.sandbox.cuda import cuda_available
 if cuda_available:
     from theano.sandbox.cuda import float32_shared_constructor
 
-import unittest
 from theano.tests import unittest_tools as utt
-from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
-from nose.tools import assert_raises
+from theano.tests.unittest_tools import attr
 
 # TODO: test gpu
 # Done in test_consistency_GPU_{serial,parallel}
