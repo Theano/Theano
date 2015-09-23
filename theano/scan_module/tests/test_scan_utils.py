@@ -62,7 +62,9 @@ class TestMapVariables(unittest.TestCase):
         # imports them into the inner graph properly, and map_variables()
         # should do this as well.
         outer = tensor.scalar("outer")
-        shared = theano.shared(1, name="shared")
+        shared = theano.shared(
+            numpy.array(1., dtype=theano.config.floatX),
+            name="shared")
         constant = tensor.constant(1, name="constant")
 
         # z will equal 1 so multiplying by it doesn't change any values
@@ -133,8 +135,11 @@ class TestMapVariables(unittest.TestCase):
         # as with the scan tests above, insert foreign inputs into the
         # inner graph.
         outer = tensor.scalar("outer")
-        shared = theano.shared(1, name="shared")
-        constant = tensor.constant(1, name="constant")
+        shared = theano.shared(
+            numpy.array(1., dtype=theano.config.floatX),
+            name="shared")
+        constant = tensor.constant(1., name="constant")
+        print [x.dtype for x in [outer, shared, constant]]
         z = outer * (shared + constant)
 
         # construct the inner graph
