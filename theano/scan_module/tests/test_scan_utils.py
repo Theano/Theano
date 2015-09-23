@@ -149,9 +149,7 @@ class TestMapVariables(unittest.TestCase):
         d = tensor.scalar()
         u = theano.OpFromGraph([a, b], [r])(c, d)
         t = z * u
-        v, = map_variables(
-            self.replacer, [u],
-            additional_inputs=[outer, shared])
+        v, = map_variables(self.replacer, [t])
         t2 = z * v
 
         f = theano.function([c, d, outer], [t, t2])
@@ -162,5 +160,4 @@ class TestMapVariables(unittest.TestCase):
         # variable with updates crashes
         shared.update = shared + 1
         self.assertRaises(NotImplementedError,
-                          map_variables, self.replacer, [u],
-                          additional_inputs=[outer, shared])
+                          map_variables, self.replacer, [t])
