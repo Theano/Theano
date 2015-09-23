@@ -280,8 +280,8 @@ class SeqOptimizer(Optimizer, list):
         print((" time %.3fs for %d/%d nodes"
                " before/after optimization" % (
                    sum(prof), nb_node_before, nb_node_after)), file=stream)
-        print(blanc, "  %.3fs for fgraph.validate()" % (validate_time), file=stream)
         print(blanc, "  %.3fs for callback" % (callback_time), file=stream)
+        print(blanc, "      %.3fs for fgraph.validate()" % (validate_time), file=stream)
         if level == 0:
             print(blanc, "  time      - (name, class, index) - validate time", file=stream)
         ll = []
