@@ -7,6 +7,7 @@ from theano.tests import unittest_tools as utt
 from theano.tensor.nnet.ConvTransp3D import convTransp3D, ConvTransp3D
 from theano.tensor.nnet.ConvGrad3D import convGrad3D, ConvGrad3D
 from theano.tensor.nnet.Conv3D import conv3D, Conv3D
+from theano.tests.unittest_tools import attr
 import numpy as N
 from six.moves import xrange
 import copy
@@ -14,7 +15,6 @@ import theano.sparse
 if theano.sparse.enable_sparse:
     from scipy import sparse
 from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 
 floatX = theano.config.floatX
 

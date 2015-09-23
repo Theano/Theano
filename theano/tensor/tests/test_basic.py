@@ -15,7 +15,6 @@ from six.moves import xrange
 from six.moves.builtins import min as builtin_min
 from nose.tools import assert_raises
 from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 import numpy
 from numpy.testing import dec, assert_array_equal, assert_allclose
 from distutils.version import LooseVersion
@@ -52,6 +51,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         )
 
 from theano.tests import unittest_tools as utt
+from theano.tests.unittest_tools import attr
 
 
 imported_scipy_special = False

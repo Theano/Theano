@@ -11,7 +11,6 @@ import six.moves.cPickle as pickle
 from six.moves import xrange
 import numpy
 from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 from nose.tools import assert_raises
 from nose.tools import raises
 from numpy.testing import dec
@@ -24,6 +23,7 @@ from theano.tests import unittest_tools as utt
 import theano.scalar.sharedvar
 from theano.scan_module.scan_op import Scan
 from theano.compat import PY3, OrderedDict
+from theano.tests.unittest_tools import attr
 
 
 '''

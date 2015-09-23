@@ -6,6 +6,14 @@ from six.moves import StringIO
 import sys
 import unittest
 
+try:
+    from nose.plugins.attrib import attr
+except ImportError:
+    # This is an old version of nose
+    def attr(tag):
+        def func(f):
+            return f
+        return func
 import numpy
 
 import theano

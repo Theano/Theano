@@ -2,7 +2,6 @@ from itertools import product
 import time
 import unittest
 
-from nose.plugins.attrib import attr
 from nose.plugins.skip import SkipTest
 import numpy
 from six.moves import xrange
@@ -19,6 +18,7 @@ from theano import sparse
 from theano import compile, config, gof
 from theano.sparse import enable_sparse
 from theano.tensor.basic import _allclose
+from theano.tests.unittest_tools import attr
 
 if not enable_sparse:
     raise SkipTest('Optional package SciPy not installed')

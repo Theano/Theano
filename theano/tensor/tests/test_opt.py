@@ -12,7 +12,6 @@ import unittest
 import numpy
 from six.moves import xrange
 from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 from nose.tools import assert_raises
 from numpy.testing import dec
 from numpy.testing.noseclasses import KnownFailureTest
@@ -60,6 +59,7 @@ from theano.tensor.elemwise import DimShuffle
 from theano.tests import unittest_tools as utt
 from theano.compile.mode import optdb
 from theano.compile import Mode
+from nose.plugins.attrib import attr
 
 mode_opt = theano.config.mode
 if mode_opt == 'FAST_COMPILE':

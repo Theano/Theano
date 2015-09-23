@@ -12,7 +12,6 @@ from theano.tensor.basic import _allclose
 from theano.tests.test_rop import break_op
 from theano.tests import unittest_tools as utt
 from theano import config
-
 from theano.tensor.slinalg import ( Cholesky,
                                     cholesky,
                                     CholeskyGrad,
@@ -23,9 +22,9 @@ from theano.tensor.slinalg import ( Cholesky,
                                     eigvalsh,
                                     expm,
                                     kron)
+from theano.tests.unittest_tools import attr
 
 from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 from nose.tools import assert_raises
 
 try:
