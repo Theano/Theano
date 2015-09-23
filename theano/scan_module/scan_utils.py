@@ -344,7 +344,8 @@ def map_variables(replacer, graphs, additional_inputs=[]):
                  wrapped_replacer,
                  inner_inputs=node.op.inputs,
                  outer_inputs=node.inputs,
-                 inner_outputs=node.op.outputs)
+                 inner_outputs=node.op.outputs,
+                 containing_op=node.op)
             # reinstantiate the op
             if isinstance(node.op, Scan):
                 new_op = Scan(new_inner_inputs,
@@ -372,7 +373,8 @@ def map_variables(replacer, graphs, additional_inputs=[]):
     return new_graphs
 
 
-def _map_variables_inner(replacer, inner_inputs, outer_inputs, inner_outputs):
+def _map_variables_inner(replacer, inner_inputs, outer_inputs,
+                         inner_outputs, containing_op):
     # the replacements returned by the replacer may involve variables
     # that are already owned by the outer fgraph (`fg` in the caller)
     # and so cannot be added to the inner fgraph (`fg` in the
@@ -427,10 +429,14 @@ def _map_variables_inner(replacer, inner_inputs, outer_inputs, inner_outputs):
                 # to the user.  we need to do the same thing for every new
                 # use of such a variable that is introduced.  it's hard to
                 # do that at this point.
+                # shared variables with updates inside the inner graph of
+                # OpFromGraph are not supported at all, so we don't support
+                # introducing those either.
                 raise NotImplementedError(
                     "Replacement introduces shared variable %s "
-                    "which has an update associated with it. This "
-                    "is not currently supported." % outer_input)
+                    "which has an update associated with it into "
+                    "the inner graph of %s. This is not currently "
+                    "supported." % (outer_input, containing_op))
             # if this foreign input is not already available
             # as an inner input, connect it through a new
             # inner input
