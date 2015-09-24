@@ -312,7 +312,7 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
         return Apply(self, [kern, topgrad, shape], [output])
 
 
-    def perform(self, node, nodename, inp, out_):
+    def perform(self, node, inp, out_):
         raise NotImplementedError('AbstractConv2d_gradWeight theano optimization failed')
 
     def grad(self, inp, grads):
