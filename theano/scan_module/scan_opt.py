@@ -278,7 +278,7 @@ class PushOutNonSeqScan(gof.Optimizer):
         local_fgraph_inps = local_fgraph.inputs
         local_fgraph_bookkeeper = retrieve_clients_fromnodes(local_fgraph_inps)
         local_fgraph_outs_set = set(local_fgraph.outputs)
-        local_fgraph_outs_map = dict([(v, k) for k, v in \
+        local_fgraph_outs_map = dict([(v, k) for k,v in \
                                      enumerate(local_fgraph.outputs)])
 
         to_remove_set = set()
@@ -300,7 +300,7 @@ class PushOutNonSeqScan(gof.Optimizer):
         # Construct the list of non_sequences to simplify a few things
         inner_non_seqs = op.inner_non_seqs(clean_inputs)
         inner_non_seqs_set = set(inner_non_seqs)
-        inner_non_seqs_map = dict([(v,k) for k,v in enumerate(inner_non_seqs)])
+        inner_non_seqs_map = dict([(v, k) for k,v in enumerate(inner_non_seqs)])
 
         outer_non_seqs = op.outer_non_seqs(node.inputs)
 
@@ -373,7 +373,7 @@ class PushOutNonSeqScan(gof.Optimizer):
         clean_replace_with_in = []
         clean_replace_with_out = []
 
-        existent_nodes = filter(lambda n: n not in to_remove_set, local_fgraph_apply_nds)
+        existent_nodes = list(filter(lambda n: n not in to_remove_set, local_fgraph_apply_nds))
         existent_nodes_set = set(existent_nodes)
 
         to_keep_set = set(chain.from_iterable(map(lambda n: n.inputs,
@@ -484,7 +484,7 @@ class PushOutSeqScan(gof.Optimizer):
         local_fgraph_inps = local_fgraph.inputs
         local_fgraph_bookkeeper = retrieve_clients_fromnodes(local_fgraph_inps)
         local_fgraph_outs_set = set(local_fgraph.outputs)
-        local_fgraph_outs_map = dict([(v,k) for k,v in \
+        local_fgraph_outs_map = dict([(v, k) for k,v in \
                                      enumerate(local_fgraph.outputs)])
 
         to_remove_set = set()
@@ -505,12 +505,12 @@ class PushOutSeqScan(gof.Optimizer):
         # Construct the list of non_sequences to simplify a few things
         inner_non_seqs = op.inner_non_seqs(clean_inputs)
         inner_non_seqs_set = set(inner_non_seqs)
-        inner_non_seqs_map = dict([(v,k) for k,v in enumerate(inner_non_seqs)])
+        inner_non_seqs_map = dict([(v, k) for k,v in enumerate(inner_non_seqs)])
 
         outer_non_seqs = op.outer_non_seqs(node.inputs)
         inner_seqs = op.inner_seqs(clean_inputs)
         inner_seqs_set = set(inner_seqs)
-        inner_seqs_map = dict([(v,k) for k,v in enumerate(inner_seqs)])
+        inner_seqs_map = dict([(v, k) for k,v in enumerate(inner_seqs)])
 
         outer_seqs = op.outer_seqs(node.inputs)
         assert len(inner_non_seqs) == len(outer_non_seqs)
@@ -564,6 +564,7 @@ class PushOutSeqScan(gof.Optimizer):
                 # in the bookkeeper's list
                 nd_cli_cleaned = list(filter(lambda x: x not in local_fgraph_bookkeeper,
                                         node_clients))
+
                 local_fgraph_bookkeeper.extendleft(nd_cli_cleaned)
 
                 # Add the node to remove list
@@ -630,7 +631,7 @@ class PushOutSeqScan(gof.Optimizer):
         clean_replace_with_in = []
         clean_replace_with_out = []
 
-        existent_nodes = filter(lambda n: n not in to_remove_set, local_fgraph_apply_nds)
+        existent_nodes = list(filter(lambda n: n not in to_remove_set, local_fgraph_apply_nds))
         existent_nodes_set = set(existent_nodes)
 
         to_keep_set = set(chain.from_iterable(map(lambda n: n.inputs,
