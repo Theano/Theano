@@ -93,6 +93,13 @@ class TestFunctionIn(unittest.TestCase):
         assert f() == 1.0
         assert f() == 2.0
 
+    def test_in_update_wrong_dtype(self):
+        # Ensure that an error is raised if an In-wrapped variables has
+        # an update of a different type
+        a = theano.tensor.dscalar('a')
+        b = theano.tensor.dvector('b')
+        self.assertRaises(TypeError, In, a, update=b)
+
     def test_in_update_shared(self):
         # Test that using both In() with updates and shared variables with
         # updates in the same function behaves as expected
