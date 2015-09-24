@@ -33,12 +33,16 @@ def init_dev(dev, name=None):
                            "Make sure Theano and libgpuarray/pygpu "
                            "are in sync.")
     global pygpu_activated
-    context = pygpu.init(dev)
+    if dev not in init_dev.devmap:
+        init_dev.devmap[dev] = pygpu.init(dev)
+    context = init_dev.devmap[dev]
     reg_context(name, context)
     pygpu_activated = True
     if config.print_active_device:
         print("Mapped name %s to device %s: %s" % (name, dev, context.devname),
               file=sys.stderr)
+
+init_dev.devmap = {}
 
 if pygpu:
     try:
