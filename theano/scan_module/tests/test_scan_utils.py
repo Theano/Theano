@@ -139,7 +139,6 @@ class TestMapVariables(unittest.TestCase):
             numpy.array(1., dtype=theano.config.floatX),
             name="shared")
         constant = tensor.constant(1., name="constant")
-        print [x.dtype for x in [outer, shared, constant]]
         z = outer * (shared + constant)
 
         # construct the inner graph
