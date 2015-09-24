@@ -566,7 +566,7 @@ def local_conv2d_gradweight_cpu(node):
         return
 
     if node.op.border_mode == 'valid' and \
-            (node.op.subsample != (1, 1) or node.op.imshp is None or node.op.kshp is None):
+            (node.op.subsample != (1, 1)):
         # Use the gradient as defined in conv3D, because the implementation
         # by Conv is slow (about 3x slower than conv3D, and probably 10x
         # slower than it could be), nad incorrect when subsample > 2.
@@ -587,17 +587,34 @@ def local_conv2d_gradweight_cpu(node):
         rval = patternbroadcast(rval, node.outputs[0].broadcastable)
         return [rval]
 
-    if node.op.imshp is None or node.op.kshp is None:
+    dx, dy = node.op.subsample
+    if dx not in (1, 2) or dy not in (1, 2):
+        # Not implemented in the gradient of ConvOp
         return None
 
-    ####### Determine gradient on kernels ########
-    assert len(node.op.imshp) == 4 and len(node.op.kshp) == 4
+    if node.op.imshp is None:
+        op_imshp = (None, None, None, None)
+    else:
+        op_imshp = node.op.imshp
 
-    outshp = ConvOp.getOutputShape(node.op.imshp[2:],
-                                   node.op.kshp[2:],  node.op.subsample,
+    if node.op.kshp is None:
+        op_kshp = (None, None, None, None)
+    else:
+        op_kshp = node.op.kshp
+
+    if None in op_imshp or None in op_kshp:
+        if (dx, dy) != (1, 1):
+            # We cannot infer the shapes
+            return None
+
+    ####### Determine gradient on kernels ########
+    assert len(op_imshp) == 4 and len(op_kshp) == 4
+
+    outshp = ConvOp.getOutputShape(op_imshp[2:],
+                                   op_kshp[2:],  node.op.subsample,
                                    node.op.border_mode)
-    fulloutshp = ConvOp.getOutputShape(node.op.imshp[2:],
-                                       node.op.kshp[2:], (1, 1),
+    fulloutshp = ConvOp.getOutputShape(op_imshp[2:],
+                                       op_kshp[2:], (1, 1),
                                        node.op.border_mode)
 
     newimg = img.dimshuffle((1, 0, 2, 3))
@@ -608,25 +625,25 @@ def local_conv2d_gradweight_cpu(node):
         kshp_logical = fulloutshp
         kshp_logical_top_aligned = False
         imshp_logical = None
-        (bsize, nkern) = (node.op.imshp[1], node.op.kshp[0])
-        imshp = (node.op.imshp[0], node.op.imshp[2], node.op.imshp[3])
+        (bsize, nkern) = (op_imshp[1], op_kshp[0])
+        imshp = (op_imshp[0], op_imshp[2], op_imshp[3])
         kshp = outshp
     elif node.op.border_mode == 'full':
         (img, filters) = (newtopgrad, newimg)
         kshp_logical = None
         kshp_logical_top_aligned = True
-        imshp_logical = (node.op.imshp[0],
+        imshp_logical = (op_imshp[0],
                          fulloutshp[0],
                          fulloutshp[1])
-        (bsize, nkern) = (node.op.kshp[0], node.op.imshp[1])
-        imshp = (node.op.imshp[0], outshp[0], outshp[1])
-        kshp = node.op.imshp[2:]
+        (bsize, nkern) = (op_kshp[0], op_imshp[1])
+        imshp = (op_imshp[0], outshp[0], outshp[1])
+        kshp = op_imshp[2:]
     else:
         raise NotImplementedError(
             'Only [full,valid] modes are currently supported.')
 
-    if node.op.filters_flip:
-        filters = filters[:, :, ::-1, ::-1]  # flip them
+    # Flip the kernels
+    filters = filters[:, :, ::-1, ::-1]
 
     dw = ConvOp(imshp, kshp, nkern, bsize, 1, 1, output_mode='valid',
                 unroll_batch=None, unroll_kern=None, unroll_patch=None,
@@ -635,8 +652,10 @@ def local_conv2d_gradweight_cpu(node):
                 kshp_logical_top_aligned=kshp_logical_top_aligned,
                 direction_hint='bprop weights')
     res = dw(img, filters)
-    res = res.dimshuffle((1, 0, 2, 3))
-    res = res[:, :, ::-1, ::-1]
+    if node.op.border_mode == 'valid':
+        res = res.dimshuffle((1, 0, 2, 3))
+        res = res[:, :, ::-1, ::-1]
+
     res = patternbroadcast(res, node.outputs[0].broadcastable)
     return [res]
 register_specialize_device(local_conv2d_gradweight_cpu)
@@ -656,8 +675,7 @@ def local_conv2d_gradinputs_cpu(node):
         return None
 
     ### Conv 3d implementation, needed when subsample > 2
-    if node.op.border_mode == 'valid' and \
-            (node.op.subsample != (1, 1) or node.op.imshp is None or node.op.kshp is None):
+    if node.op.border_mode == 'valid' and node.op.subsample != (1, 1):
         kern = kern[:, :, ::-1, ::-1]
         shuffled_kern = kern.dimshuffle(0, 2, 3, 'x', 1)
         shuffled_topgrad = topgrad.dimshuffle(0, 2, 3, 'x', 1)
@@ -672,27 +690,44 @@ def local_conv2d_gradinputs_cpu(node):
         return [rval]
 
     ### Conv2d Implementation
-    if node.op.imshp is None or node.op.kshp is None:
+    dx, dy = node.op.subsample
+    if dx not in (1, 2) or dy not in (1, 2):
+        # Not implemented in the gradient of ConvOp
         return None
+
+    if node.op.imshp is None:
+        op_imshp = (None, None, None, None)
+    else:
+        op_imshp = node.op.imshp
+
+    if node.op.kshp is None:
+        op_kshp = (None, None, None, None)
+    else:
+        op_kshp = node.op.kshp
+
+    if None in op_imshp or None in op_kshp:
+        if (dx, dy) != (1, 1):
+            return None
+
     mode = 'valid'
     if not node.op.border_mode == 'full':
         mode = 'full'
     filters = kern.dimshuffle((1, 0, 2, 3))
     filters = filters[:, :, ::-1, ::-1]
 
-    outshp = ConvOp.getOutputShape(node.op.imshp[2:],
-                                   node.op.kshp[2:],  node.op.subsample,
+    outshp = ConvOp.getOutputShape(op_imshp[2:],
+                                   op_kshp[2:],  node.op.subsample,
                                    node.op.border_mode)
-    fulloutshp = ConvOp.getOutputShape(node.op.imshp[2:],
-                                       node.op.kshp[2:], (1, 1),
+    fulloutshp = ConvOp.getOutputShape(op_imshp[2:],
+                                       op_kshp[2:], (1, 1),
                                        node.op.border_mode)
-    nkern = node.op.imshp[1]
-    imshp = (node.op.kshp[0], outshp[0], outshp[1])
-    imshp_logical = (node.op.kshp[0], fulloutshp[0], fulloutshp[1])
+    nkern = op_imshp[1]
+    imshp = (op_kshp[0], outshp[0], outshp[1])
+    imshp_logical = (op_kshp[0], fulloutshp[0], fulloutshp[1])
     din = ConvOp(imshp,
-                 node.op.kshp[2:],
+                 op_kshp[2:],
                  nkern,
-                 node.op.imshp[0],
+                 op_imshp[0],
                  1, 1, output_mode=mode,
                  unroll_batch=None, unroll_kern=None,
                  unroll_patch=None,
