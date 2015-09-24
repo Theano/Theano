@@ -256,6 +256,214 @@ def clone(output,
     return outs
 
 
+def map_variables(replacer, graphs, additional_inputs=[]):
+    """Construct new graphs based on 'graphs' with some variables replaced
+    according to 'replacer'.
+
+    :param replacer: function that takes a variable and returns its
+         replacement.
+    :param graphs: an iterable of graphs in which to replace variables
+    :param additional_inputs: an iterable of graph inputs not used in any
+         of 'graphs' but possibly used in the graphs returned by `replacer`
+    :return: the new graphs, in the same order as 'graphs'
+
+    Example:
+
+    .. code-block:: python
+
+        tag = "replaceme"
+
+        a = tensor.scalar("a")
+        b = tensor.scalar("b")
+        c = tensor.scalar("c")
+
+        ab = a + b
+        ab.tag.replacement = a * b
+
+        u = ab + c
+        v, = map_variables(lambda graph:
+            return getattr(graph.tag, "replacement", graph),
+            [u])
+
+        # v is now equal to a * b + c
+    """
+
+    # wrap replacer to avoid replacing things we just put there.
+    graphs_seen = set()
+    def wrapped_replacer(graph):
+        if graph in graphs_seen:
+            return graph
+        else:
+            new_graph = replacer(graph)
+            graphs_seen.add(new_graph)
+            return new_graph
+
+    graphs = list(graphs)
+    inputs_ = list(set(gof.graph.inputs(graphs) + list(additional_inputs)))
+
+    # perform any desired replacement of input variables.  these
+    # aren't replaced by the local optimizer approach because they are
+    # not outputs of any Apply node.
+    new_inputs = list(map(wrapped_replacer, inputs_))
+    replacements = [(input_, new_input)
+                    for input_, new_input
+                    in zip(inputs_, new_inputs)
+                    if new_input is not input_]
+    graphs = clone(graphs, share_inputs=True, replace=replacements)
+    inputs_ = list(set(gof.graph.inputs(graphs) + list(additional_inputs)))
+
+    # clone cached constants or FunctionGraph will complain.  this has
+    # to occur in a separate pass from the replacement above because
+    # both may suggest different replacements for the same variables.
+    # since the replacements introduced above may involve cached
+    # constants, the replacement of said constants has to come after.
+    cached_constants = [x for x in inputs_ if getattr(x, "cached", False)]
+    copied_constants = clone(cached_constants, share_inputs=False)
+    replacements = list(zip(cached_constants, copied_constants))
+    inputs_ = list(set(inputs_) - set(cached_constants)) + list(copied_constants)
+    graphs = clone(graphs, share_inputs=True, replace=replacements)
+
+    fg = gof.fg.FunctionGraph(inputs_, graphs, clone=False)
+
+    nodes_seen = set()
+
+    @gof.opt.local_optimizer(None)
+    def local_transform(node):
+        if node in nodes_seen:
+            return False
+
+        # importing Scan into module scope would be circular
+        from theano.scan_module.scan_op import Scan
+        from theano.compile import OpFromGraph
+
+        if isinstance(node.op, (Scan, OpFromGraph)):
+            # recurse on the inner graph
+            (new_inner_inputs,
+             new_outer_inputs,
+             new_inner_outputs) = _map_variables_inner(
+                 wrapped_replacer,
+                 inner_inputs=node.op.inputs,
+                 outer_inputs=node.inputs,
+                 inner_outputs=node.op.outputs,
+                 containing_op=node.op)
+            # reinstantiate the op
+            if isinstance(node.op, Scan):
+                new_op = Scan(new_inner_inputs,
+                              new_inner_outputs,
+                              node.op.info,
+                              # FIXME: infer this someday?
+                              typeConstructor=None)
+            elif isinstance(node.op, OpFromGraph):
+                new_op = OpFromGraph(new_inner_inputs,
+                                     new_inner_outputs,
+                                     **node.op.kwargs)
+            # make a new node to replace the old one
+            new_node = new_op.make_node(*new_outer_inputs)
+            nodes_seen.add(new_node)
+            return new_node.outputs
+        else:
+            nodes_seen.add(node)
+            return list(map(wrapped_replacer, node.outputs))
+
+    topo_transform = gof.opt.TopoOptimizer(local_transform, 'out_to_in')
+    topo_transform.optimize(fg)
+
+    new_graphs = fg.outputs
+    fg.disown()
+    return new_graphs
+
+
+def _map_variables_inner(replacer, inner_inputs, outer_inputs,
+                         inner_outputs, containing_op):
+    # the replacements returned by the replacer may involve variables
+    # that are already owned by the outer fgraph (`fg` in the caller)
+    # and so cannot be added to the inner fgraph (`fg` in the
+    # recursive call).  wrap the replacer to catch these before they
+    # are added.
+
+    # additionally, some of these may be fgraph inputs or shared
+    # variables, which we cannot directly use inside the inner graph.
+    # we need to create inner inputs to access them through.
+
+    outer_to_inner = dict(zip(outer_inputs, inner_inputs))
+    extra_inner_inputs = []
+    extra_outer_inputs = []
+
+    from theano.scan_module import scan_utils
+    from itertools import chain
+    from theano import gof
+
+    def inner_replacer(graph):
+        new_graph = replacer(graph)
+
+        other_inputs = []
+        constants = []
+        for input_ in gof.graph.inputs([new_graph]):
+            if isinstance(input_, gof.Variable):
+                if isinstance(input_, gof.Constant):
+                    constants.append(input_)
+                else:
+                    other_inputs.append(input_)
+
+        # foreign inputs are fgraph inputs and shared variables that we need
+        # to access through inner inputs
+        foreign_inputs = list(set(other_inputs) - set(outer_to_inner.values()))
+
+        # skip further processing if there is nothing to do
+        if not constants and not foreign_inputs:
+            return new_graph
+
+        replacements = []
+
+        # constants just need to be replaced by copies that the inner
+        # `fg` can take ownership of
+        for input_ in constants:
+            new_input = input_.clone()
+            new_input.name = "%s_copied" % new_input.name
+            replacements.append((input_, new_input))
+
+        for outer_input in foreign_inputs:
+            if getattr(outer_input, "update", False):
+                # when theano.scan() constructs a scan node, it detects
+                # shared variables with updates and returns these updates
+                # to the user.  we need to do the same thing for every new
+                # use of such a variable that is introduced.  it's hard to
+                # do that at this point.
+                # shared variables with updates inside the inner graph of
+                # OpFromGraph are not supported at all, so we don't support
+                # introducing those either.
+                raise NotImplementedError(
+                    "Replacement introduces shared variable %s "
+                    "which has an update associated with it into "
+                    "the inner graph of %s. This is not currently "
+                    "supported." % (outer_input, containing_op))
+            # if this foreign input is not already available
+            # as an inner input, connect it through a new
+            # inner input
+            if outer_input not in outer_to_inner.keys():
+                inner_input = scan_utils.safe_new(outer_input, tag="_copy")
+                outer_to_inner[outer_input] = inner_input
+                extra_inner_inputs.append(inner_input)
+                extra_outer_inputs.append(outer_input)
+                # the inner FunctionGraph wants to know its inputs
+                # beforehand, but we don't always know.  so add them
+                # as we discover them.
+                graph.owner.fgraph.add_input(inner_input)
+
+        replacements.extend(outer_to_inner.items())
+
+        new_graph, = theano.clone([new_graph],
+                                  share_inputs=True,
+                                  replace=replacements)
+        return new_graph
+
+    new_inner_outputs = map_variables(inner_replacer, inner_outputs)
+    new_inner_inputs = list(chain(inner_inputs, extra_inner_inputs))
+    new_outer_inputs = list(chain(outer_inputs, extra_outer_inputs))
+
+    return new_inner_inputs, new_outer_inputs, new_inner_outputs
+
+
 def get_updates_and_outputs(ls):
     """
     This function tries to recognize the updates OrderedDict, the
