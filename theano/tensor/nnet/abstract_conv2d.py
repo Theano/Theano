@@ -245,8 +245,8 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
                                  ' or border_mode == "half"')
 
         shape = as_tensor_variable(shape)
-        broadcastable=[topgrad.broadcastable[0],
-                       img.broadcastable[0],
+        broadcastable=[topgrad.broadcastable[1],
+                       img.broadcastable[1],
                        False, False]
         output = img.type.clone(broadcastable=broadcastable)()
         return Apply(self, [img, topgrad, shape], [output])
@@ -501,8 +501,8 @@ def local_conv2d_gradweight_corrmm(node):
         gpu_contiguous(img), gpu_contiguous(topgrad), shape)
     if node.op.filters_flip:
         rval = rval[:, :, ::-1, ::-1]
-        rval = as_cuda_ndarray_variable(rval)
-    #rval = patternbroadcast(rval, node.outputs[0].broadcastable)
+    rval = patternbroadcast(rval, node.outputs[0].broadcastable)
+    rval = as_cuda_ndarray_variable(rval)
     return [rval]
 register_specialize_device(local_conv2d_gradweight_corrmm, 'conv_gemm')
 
