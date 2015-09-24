@@ -75,7 +75,7 @@ def d3viz(fct, outfile, copy_deps=True, *args, **kwargs):
     # Create DOT graph
     formatter = PyDotFormatter(*args, **kwargs)
     graph = formatter(fct)
-    dot_graph = escape_quotes(graph.create_dot()).replace('\n', '')
+    dot_graph = escape_quotes(graph.create_dot()).replace('\n', '').replace('\r', '')
 
     # Create output directory if not existing
     outdir = os.path.dirname(outfile)
@@ -103,7 +103,7 @@ def d3viz(fct, outfile, copy_deps=True, *args, **kwargs):
     replace = {
         '%% JS_DIR %%': os.path.join(dst_deps, 'js'),
         '%% CSS_DIR %%': os.path.join(dst_deps, 'css'),
-        '%% DOT_GRAPH %%': os.path.basename(dot_graph),
+        '%% DOT_GRAPH %%': dot_graph,
     }
     html = replace_patterns(template, replace)
 
