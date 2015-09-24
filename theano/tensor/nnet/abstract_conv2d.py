@@ -437,55 +437,56 @@ def local_conv2d_corrmm(node):
             not isinstance(kern.type, CudaNdarrayType)):
         return None
 
+    border_mode = node.op.border_mode
+    subsample = node.op.subsample
+    if (border_mode == 'full') and (subsample == (1, 1)):
+        if not node.op.filters_flip:
+            kern = kern[:, :, ::-1, ::-1]
+        # need to dimshuffle the kernel for full convolution
+        kern = kern.dimshuffle(1, 0, 2, 3)
+        # call GpuCorrMM_gradInputs
+        rval = GpuCorrMM_gradInputs('valid', subsample)(
+                gpu_contiguous(kern), gpu_contiguous(img))
+    else:
+        # need to flip the kernel if necessary
+        if node.op.filters_flip:
+            kern = kern[:, :, ::-1, ::-1]
+        # By default use GpuCorrMM
+        rval = GpuCorrMM(border_mode, subsample)(gpu_contiguous(img),
+                                                 gpu_contiguous(kern))
 
-    if node.op.border_mode in ['full', 'valid']:
-        border_mode = node.op.border_mode
-        subsample = node.op.subsample
-        if (border_mode == 'valid') or (subsample != (1,1)):
-            # need to flip the kernel for valid convolution
-            if node.op.filters_flip:
-                kern = kern[:, :, ::-1, ::-1]
-            # By default use GpuCorrMM
-            rval = GpuCorrMM(border_mode, subsample)(gpu_contiguous(img),
-                                                     gpu_contiguous(kern))
+        # call GpuCorrMM_gradWeights if good
+        # (the latter is faster if batchsize * kernelHeight * kernelWidth
+        # is larger than inputChannels * outputHeight * outputWidth.
+        # GpuConv does not always store information on the batchsize and
+        # channels, though, so we only use what information we have.)
+        if ((subsample == (1,1)) and
+            (node.op.imshp is not None) and
+            (None not in node.op.imshp[-2:]) and
+            (node.op.kshp is not None) and
+            (None not in node.op.kshp)):
+            # we know the kernel and output size
+            prod1 = node.op.kshp[0] * node.op.kshp[1]
+            prod2 = ((node.op.imshp[-2] - node.op.kshp[0] + 1) *
+                     (node.op.imshp[-1] - node.op.kshp[1] + 1))
+            if ((node.op.bsize is not None) and
+                    (len(node.op.imshp) == 3) and
+                    (node.op.imshp[0] is not None)):
+                # we also know batchsize and input channels
+                prod1 *= node.op.bsize
+                prod2 *= node.op.imshp[0]
+            # compare to decide
+            if prod1 > prod2:
+                # (we need to wrap the result in as_cuda_ndarray_variable,
+                # because we are not allowed to replace a CudaNdarray with
+                # a DimShuffle instance in a graph optimization)
+                rval = theano.sandbox.cuda.as_cuda_ndarray_variable(
+                    GpuCorrMM_gradWeights(border_mode, subsample)(
+                        gpu_contiguous(img.dimshuffle(1, 0, 2, 3)),
+                        gpu_contiguous(kern.dimshuffle(1, 0, 2, 3))
+                    ).dimshuffle(1, 0, 2, 3))
+    return [rval]
 
-            # call GpuCorrMM_gradWeights if good
-            # (the latter is faster if batchsize * kernelHeight * kernelWidth
-            # is larger than inputChannels * outputHeight * outputWidth.
-            # GpuConv does not always store information on the batchsize and
-            # channels, though, so we only use what information we have.)
-            if ((subsample == (1,1)) and
-                (node.op.imshp is not None) and
-                (None not in node.op.imshp[-2:]) and
-                (node.op.kshp is not None) and
-                (None not in node.op.kshp)):
-                # we know the kernel and output size
-                prod1 = node.op.kshp[0] * node.op.kshp[1]
-                prod2 = ((node.op.imshp[-2] - node.op.kshp[0] + 1) *
-                         (node.op.imshp[-1] - node.op.kshp[1] + 1))
-                if ((node.op.bsize is not None) and
-                        (len(node.op.imshp) == 3) and
-                        (node.op.imshp[0] is not None)):
-                    # we also know batchsize and input channels
-                    prod1 *= node.op.bsize
-                    prod2 *= node.op.imshp[0]
-                # compare to decide
-                if prod1 > prod2:
-                    # (we need to wrap the result in as_cuda_ndarray_variable,
-                    # because we are not allowed to replace a CudaNdarray with
-                    # a DimShuffle instance in a graph optimization)
-                    rval = theano.sandbox.cuda.as_cuda_ndarray_variable(
-                        GpuCorrMM_gradWeights(border_mode, subsample)(
-                            gpu_contiguous(img.dimshuffle(1, 0, 2, 3)),
-                            gpu_contiguous(kern.dimshuffle(1, 0, 2, 3))
-                        ).dimshuffle(1, 0, 2, 3))
-        elif (border_mode == 'full'):
-            # need to dimshuffle the kernel for full convolution
-            kern = kern.dimshuffle(1, 0, 2, 3)
-            # call GpuCorrMM_gradInputs
-            rval = GpuCorrMM_gradInputs('valid', subsample)(
-                    gpu_contiguous(kern), gpu_contiguous(img))
-        return [rval]
 register_specialize_device(local_conv2d_corrmm, 'conv_gemm')
 
 @local_optimizer([AbstractConv2d_gradWeights])
