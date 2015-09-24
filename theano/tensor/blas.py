@@ -1100,7 +1100,7 @@ class Gemm(GemmRelated):
             dims[0] = PyArray_DIMS(%(_z)s)[0];
             dims[1] = PyArray_DIMS(%(_z)s)[1];
             %(_zout)s = (PyArrayObject*)PyArray_SimpleNew(2, dims,
-                                                          PyArray_TYPE((PyArrayObject*) py_%(_z)s));
+                                                          PyArray_TYPE(%(_z)s));
             //fprintf(stderr, "Gemm Allocating %%i %%i\\n", dims[0], dims[1]);
             if(!%(_zout)s) {
                 PyErr_SetString(PyExc_MemoryError,
@@ -1188,7 +1188,7 @@ class Gemm(GemmRelated):
     def c_code_cache_version(self):
         gv = self.build_gemm_version()
         if gv:
-            return (4,) + gv
+            return (5,) + gv
         else:
             return gv
 

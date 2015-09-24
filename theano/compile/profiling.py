@@ -76,6 +76,13 @@ AddConfigVar('profiling.destination',
              StrParam('stderr'),
              in_c_key=False)
 
+AddConfigVar('profiling.debugprint',
+             """
+             Do a debugprint of the profiled functions
+             """,
+             BoolParam(False),
+             in_c_key=False)
+
 
 def _atexit_print_fn():
     """
@@ -1285,6 +1292,9 @@ class ProfileStats(object):
         elif self.fct_callcount > 0:
             print("  No execution time accumulated "
                   "(hint: try config profiling.time_thunks=1)", file=file)
+        if config.profiling.debugprint:
+            fcts = set([n.fgraph for n in self.apply_time.keys()])
+            theano.printing.debugprint(fcts, print_type=True)
         if self.variable_shape or self.variable_strides:
             self.summary_memory(file, n_apply_to_print)
         if self.optimizer_profile:

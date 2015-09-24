@@ -360,6 +360,14 @@ import theano and print the config variable, as in:
     The profiling output can be either directed to stderr
     (default), or stdout or an arbitrary file.
 
+.. attribute:: config.profiling.debugprint
+
+    Bool value: either True or False
+
+    Default False
+
+    Do a debugprint of the profiled functions
+
 .. attribute:: config.lib.amdlibm
 
     Bool value: either True or False
