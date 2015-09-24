@@ -1,6 +1,7 @@
 import unittest
 import numpy
 import copy
+import itertools
 
 import theano
 import theano.tensor as T
@@ -30,12 +31,13 @@ class TestConv2d(unittest.TestCase):
     def setUp(self):
         super(TestConv2d, self).setUp()
 
-        self.inputs_shapes = [(16, 1, 12, 12), (16, 1, 18, 18), (2, 1, 24, 24),
-                              (6, 1, 20, 20), (2, 1, 32, 20), (1, 5, 32, 32)]
-        self.filters_shapes = [(10, 1, 2, 2), (10, 1, 3, 3), (10, 1, 2, 2),
-                               (1, 1, 2, 5), (5, 1, 2, 2), (15, 5, 2, 2)]
+        self.inputs_shapes = [(8, 1, 12, 12), (8, 1, 18, 18), (2, 1, 4, 4),
+                              (6, 1, 10, 11), (2, 1, 6, 5), (1, 5, 9, 9)]
+        self.filters_shapes = [(5, 1, 2, 2), (4, 1, 3, 3), (2, 1, 3, 3),
+                               (1, 1, 2, 5), (4, 1, 2, 2), (4, 5, 2, 2)]
         self.subsamples = [(1, 1), (2, 2), (2, 4)]
         self.border_modes = ["valid", "full", (0, 0), (1, 1), (5, 5), (5, 2)]
+        self.filters_flip = [True, False]
 
 
     def get_output_shape(self, inputs_shape, filters_shape, subsample, border_mode):
