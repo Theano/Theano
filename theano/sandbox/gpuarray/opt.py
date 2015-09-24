@@ -175,8 +175,8 @@ class InputToGpuOptimizer(Optimizer):
                 continue
 
             try:
-                ctx = getattr(input.tag, 'context_name', None)
-                new_input = host_from_gpu(GpuFromHost(ctx)(input))
+                ctx_name = getattr(input.tag, 'context_name', None)
+                new_input = host_from_gpu(GpuFromHost(ctx_name)(input))
                 fgraph.replace_validate(input, new_input,
                                         "InputToGpuOptimizer")
             except TypeError:
@@ -185,7 +185,8 @@ class InputToGpuOptimizer(Optimizer):
             except ValueError:
                 # If there is no context tag and no default context
                 # then it stays on the CPU
-                assert ctx is None
+                if ctx is not None:
+                    raise
                 pass
 
 

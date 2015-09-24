@@ -65,7 +65,9 @@ if pygpu:
         if config.contexts != '':
             for n, d in (c.split('->') for c in config.contexts.split(';')):
                 init_dev(d, n)
-                # TODO: should we enable optimizations here?
+            import theano.compile
+            theano.compile.shared_constructor(gpuarray_shared_constructor)
+            optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile')
 
         from .basic_ops import (GpuAlloc, GpuContiguous, GpuEye, GpuFromHost,
                                 GpuJoin, GpuReshape, GpuSplit, HostFromGpu)

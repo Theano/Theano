@@ -470,6 +470,15 @@ def gpuarray_shared_constructor(value, name=None, strict=False,
     if not isinstance(value, (numpy.ndarray, pygpu.gpuarray.GpuArray)):
         raise TypeError('ndarray or GpuArray required')
 
+    try:
+        get_context(context_name)
+    except ValueError:
+        # Don't make this a hard error if we attempt to make a shared
+        # variable while there is no default context.
+        if context_name is None:
+            raise TypeError('No default context and no context specified')
+        raise
+
     if broadcastable is None:
         broadcastable = (False,) * value.ndim
     type = GpuArrayType(value.dtype, broadcastable, context_name=context_name)
