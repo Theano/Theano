@@ -2771,6 +2771,22 @@ class T_Scan(unittest.TestCase):
         # an exception being raised
         theano.function([x], outputs, updates=updates)
 
+    @theano.configparser.change_flags(on_opt_error='raise')
+    def test_pushout_nonseq(self):
+        # Test case originally reported by Daniel Renshaw. The crashed occured
+        # during the optimization PushOutNonSeqScan when it attempted to
+        # a scan node with two outputs but only providing a replacement for
+        # one of those outputs. This led the optimization to raise an
+        # exception.
+
+        outputs, _ = theano.scan(lambda x: (x * x, x),
+                                 non_sequences=[2], n_steps=2)
+        f = theano.function(inputs=[], outputs=outputs)
+
+        outs = f()
+        expected_outs = [[4, 4], [2, 2]]
+        utt.assert_allclose(outs, expected_outs)
+
     def test_sequence_dict(self):
         # Test that we can specify sequences as a dictionary with
         # only the 'input' key
