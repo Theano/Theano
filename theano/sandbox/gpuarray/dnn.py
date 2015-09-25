@@ -1,5 +1,6 @@
 import os
 import numpy
+import warnings
 
 import theano
 from theano import Op, Apply, tensor, config, Variable
@@ -226,7 +227,7 @@ class GpuDnnConvDesc(COp):
         return False
 
     def __init__(self, border_mode, subsample=(1, 1), conv_mode='conv'):
-        COp.__init__(self, ["conv_desc.c"], "conv_desc")
+        COp.__init__(self, ["conv_desc.c"], "APPLY_SPECIFIC(conv_desc)")
 
         if isinstance(border_mode, int):
             border_mode = (border_mode,) * len(subsample)
@@ -764,6 +765,11 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         work with this Op.
 
     """
+    if workmem is not None:
+        if algo is not None:
+            raise ValueError("You can't use both algo and workmem")
+        warnings.warn("workmem is deprecated, use algo instead", stacklevel=2)
+        algo = workmem
     fgraph = getattr(img, 'fgraph', None) or getattr(kerns, 'fgraph', None)
     if (border_mode == 'valid' and subsample == (1, 1) and
             direction_hint == 'bprop weights'):
@@ -821,18 +827,18 @@ class GpuDnnPoolDesc(Op):
     This Op builds a pooling descriptor for use in the other
     pooling operations.
 
+    `ws`, `stride` and `pad` must have the same length.
+
     Parameters
     ----------
-    ws
-        Windows size.
-    stride
-        (dx, dy).
+    ws : tuple
+        Window size.
+    stride : tuple
+        (dx, dy) or (dx, dy, dz).
     mode : {'max', 'average_inc_pad', 'average_exc_pad'}
         The old deprecated name 'average' corresponds to 'average_inc_pad'.
-    pad
-        (padX, padY) padding information.
-        padX is the size of the left and right borders,
-        padY is the size of the top and bottom borders.
+    pad : tuple
+        (padX, padY) or (padX, padY, padZ)
 
     """
 
@@ -1044,19 +1050,20 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
     The memory layout to use is 'bc01', that is 'batch', 'channel',
     'first dim', 'second dim' in that order.
 
+    `ws`, `stride` and `pad` must have the same length.
+
     Parameters
     ----------
     img
         Images to do the pooling over.
-    ws
+    ws : tuple
         Subsampling window size.
-    stride
+    stride : tuple
         Subsampling stride (default: (1, 1)).
     mode : {'max', 'average_inc_pad', 'average_exc_pad'}
-    pad
-        (padX, padY) padding information.
-        padX is the size of the left and right borders,
-        padY is the size of the top and bottom borders.
+    pad : tuple
+        (padX, padY) or (padX, padY, padZ)
+        default: (0, 0)
 
     .. warning:: The cuDNN library only works with GPU that have a compute
         capability of 3.0 or higer.  This means that older GPU will not

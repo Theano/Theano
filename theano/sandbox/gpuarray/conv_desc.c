@@ -1,7 +1,7 @@
 #section support_code_apply
 
-int conv_desc(PyArrayObject *filt_shp,
-              cudnnConvolutionDescriptor_t *desc) {
+int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp,
+                              cudnnConvolutionDescriptor_t *desc) {
   cudnnStatus_t err;
   int pad[3] = {PAD_0, PAD_1, PAD_2};
   int strides[3] = {SUB_0, SUB_1, SUB_2};
