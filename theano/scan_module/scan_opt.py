@@ -397,10 +397,20 @@ class PushOutNonSeqScan(gof.Optimizer):
             # because the scan op expects for a tensor3, to which an
             # subtensor is applied that takes only the last element
             if replace_with:
-                fgraph.replace_all_validate_remove(
-                    replace_with.items(),
-                    remove=[node],
-                    reason='scanOp_pushout_nonseqs_ops')
+                if len(node.outputs) == len(replace_with):
+                    # Every output of the node has a replacement, the Scan
+                    # node can be removed from the graph
+                    fgraph.replace_all_validate_remove(
+                        replace_with.items(),
+                        remove=[node],
+                        reason='scanOp_pushout_nonseqs_ops')
+                else:
+                    # The node has some outputs for which no replacement has
+                    # been established. The replacements can be performed but
+                    # the Scan node can't be removed at this point.
+                    fgraph.replace_all_validate(
+                        replace_with.items(),
+                        reason='scanOp_pushout_nonseqs_ops')
 
         else:
             return False
