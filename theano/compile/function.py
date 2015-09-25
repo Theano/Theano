@@ -268,7 +268,6 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
                         "input.")
 
     # compute some features of the arguments:
-    uses_In = any([isinstance(i, In) for i in inputs])
     uses_tuple = any([isinstance(i, (list, tuple)) for i in inputs])
     uses_updates = bool(updates)
     uses_givens = bool(givens)
@@ -280,7 +279,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
                                    (hasattr(i, 'mutable') and i.mutable))):
             check_for_aliased_inputs = True
 
-    if uses_In or uses_tuple:
+    if uses_tuple:
         # we must use old semantics in this case.
         if profile:
             raise NotImplementedError("profiling not supported in old-style "

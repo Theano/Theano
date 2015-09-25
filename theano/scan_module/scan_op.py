@@ -56,6 +56,7 @@ __authors__ = ("Razvan Pascanu "
 __copyright__ = "(c) 2010, Universite de Montreal"
 __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
+import copy
 import itertools
 import logging
 import time
@@ -66,10 +67,12 @@ from six.moves import xrange
 
 import theano
 from theano.compat import exc_message
-from theano.compile import function, Param, Out
+from theano.compile import function, In, Param, Out
+from theano.compile.mode import AddFeatureOptimizer
 from theano import compile, config, gradient, gof, tensor
 from theano.gof import PureOp, Apply
 from theano.gof.graph import io_connection_pattern
+from theano.gof.toolbox import NoOutputFromInplace
 from theano.compat import OrderedDict, izip
 from theano.tensor import TensorType
 from theano.tensor.opt import Shape_i
@@ -193,16 +196,6 @@ class Scan(PureOp):
             link_kwargs=dict(allow_gc=self.allow_gc),
             message=message)
 
-        # Now that scan has its mode instance, if memory pre-allocation is
-        # activated for the outputs, we activate the optimization
-        # add_no_output_from_inplace in this mode instance. This will prevent
-        # Scan from producing outputs by means of inplace operations and
-        # therefore allow it to pre-allocate memory storage for the outputs,
-        # avoiding needless copies.
-        if theano.config.scan.allow_output_prealloc:
-            self.mode_instance = self.mode_instance.including(
-                                                "add_no_output_from_inplace")
-
         if not hasattr(self, 'name') or self.name is None:
             self.name = 'scan_fn'
         # to have a fair __eq__ comparison later on, we update the info with
@@ -319,6 +312,12 @@ class Scan(PureOp):
             # Generate the mappings between inner and outer inputs and outputs
             # if they haven't already been generated.
             self.var_mappings = self.get_oinp_iinp_iout_oout_mappings()
+        if (hasattr(self, 'fn') and
+                not hasattr(self, 'thunk_mit_mot_out_slices')):
+            # The thunk has been compiled before mit_mot preallocation feature
+            # was implemented. Mark every mit_mot output tap as not having
+            # been preallocated
+            self.mitmots_preallocated = [False] * self.n_mit_mot_outs
 
         # Ensure that the graph associated with the inner function is valid.
         self.validate_inner_graph()
@@ -746,17 +745,91 @@ class Scan(PureOp):
                   self.n_mit_sot +
                   self.n_sit_sot +
                   self.n_nit_sot)
+
         if theano.config.scan.allow_output_prealloc:
-            wrapped_inputs = [Param(x, borrow=False) for x in
-                              self.inputs]
+
+            # Go through the mitmots. Whenever a mitmot has a tap both as an
+            # input and an output, wrap the input such that the corresponding
+            # output variable becomes an update to be performed on it, possibly
+            # inplace at the end of the functions's execution.
+            wrapped_inputs = [In(x, borrow=False)
+                              for x in self.inputs[:self.n_seqs]]
+            new_outputs = [x for x in self.outputs]
+            preallocated_mitmot_outs = []
+            new_mit_mot_out_slices = copy.deepcopy(self.mit_mot_out_slices)
+
+            input_idx = self.n_seqs
+            for mitmot_idx in range(self.n_mit_mot):
+                for inp_tap in self.tap_array[mitmot_idx]:
+                    if inp_tap in self.mit_mot_out_slices[mitmot_idx]:
+
+                        # Figure out the index of the corresponding output
+                        output_idx = sum([len(m) for m in
+                                          self.mit_mot_out_slices[:mitmot_idx]])
+                        output_idx += self.mit_mot_out_slices[mitmot_idx].index(inp_tap)
+
+                        # Make it so the input is automatically updated to the
+                        # output value, possibly inplace, at the end of the
+                        # function exectution
+                        wrapped_inp = In(variable=self.inputs[input_idx],
+                                         update=self.outputs[output_idx])
+                        wrapped_inputs.append(wrapped_inp)
+                        preallocated_mitmot_outs.append(output_idx)
+                        new_mit_mot_out_slices[mitmot_idx].remove(inp_tap)
+                    else:
+                        # Wrap the corresponding input as usual. Leave the
+                        # output as-is.
+                        wrapped_inputs.append(In(self.inputs[input_idx],
+                                                    borrow=False))
+                    input_idx += 1
+
+            # Wrap the inputs not associated to mitmots and wrap the remaining
+            # outputs
+            wrapped_inputs += [In(x, borrow=False) for x in
+                               self.inputs[input_idx:]]
             wrapped_outputs = [Out(x, borrow=True) for x in
-                               self.outputs[:slices]]
+                               new_outputs[:slices]]
+            wrapped_outputs += new_outputs[slices:]
+
+            # Remove now useless outputs from the output list (start from the
+            # end to avoid altering the indices of the other outputs to be
+            # deleted.
+            preallocated_mitmot_outs.sort()
+            for p in preallocated_mitmot_outs[::-1]:
+                del wrapped_outputs[p]
+
+            # Store the list of mitmot output taps that have been altered
+            # so they can be preallocated
+            self.mitmots_preallocated = [i in preallocated_mitmot_outs
+                                         for i in range(self.n_mit_mot_outs)]
+
+            # Add an optimization to the compilation mode to attach a feature
+            # to the function graph just before the inplace optimizations are
+            # applied (inplace optimizations start at position 50 so the
+            # optimization to attach the feature is registered at position 49.9
+            # so that it runs before them). This feature will prevent mitsot,
+            # sitsot and nitsot outputs from being computed inplace (to allow
+            # their preallocation).
+            mitsot_start = self.n_mit_mot_outs - len(preallocated_mitmot_outs)
+            nitsot_end = (mitsot_start + self.n_mit_sot + self.n_sit_sot +
+                          self.n_nit_sot)
+            feature = NoOutputFromInplace(mitsot_start, nitsot_end)
+            opt = AddFeatureOptimizer(feature)
+            compilation_mode = self.mode_instance.register((opt, 49.9))
+
         else:
+            # Output preallocation is not activated. Mark every mitmot output
+            # tap as not being preallocated
+            self.mitmots_preallocated = [False] * self.n_mit_mot_outs
+
             wrapped_inputs = [Param(x, borrow=True) for x in
                               self.inputs]
             wrapped_outputs = [Out(x, borrow=False) for x in
                                self.outputs[:slices]]
-        wrapped_outputs += self.outputs[slices:]
+            wrapped_outputs += self.outputs[slices:]
+
+            compilation_mode = self.mode_instance
+
         profile = None
         if (theano.config.profile or
             (isinstance(self.profile, (string_types, bool, int))
@@ -772,7 +845,7 @@ class Scan(PureOp):
         if not getattr(self, 'fn', None):
             self.fn = function(wrapped_inputs,
                                wrapped_outputs,
-                               mode=self.mode_instance,
+                               mode=compilation_mode,
                                name=self.name,
                                profile=profile,
                                on_unused_input='ignore')
@@ -810,6 +883,8 @@ class Scan(PureOp):
                                                     dtype='int32')
             cython_vector_outs = numpy.asarray(self.vector_outs,
                                                     dtype='int32')
+            cython_mitmots_preallocated = numpy.asarray(self.mitmots_preallocated,
+                                                        dtype='int32')
 
             if hasattr(self, 'destroy_map'):
                 cython_destroy_map = [x in self.destroy_map
@@ -837,6 +912,7 @@ class Scan(PureOp):
                         cython_vector_outs,
                         cython_mit_mot_out_slices,
                         cython_mit_mot_out_nslices,
+                        cython_mitmots_preallocated,
                         self.fn.fn,
                         self.fn,
                         cython_destroy_map,
@@ -1099,6 +1175,9 @@ class Scan(PureOp):
         offset = self.nit_sot_arg_offset + self.n_nit_sot
         other_args = args[offset:]
         input_storage = self.fn.input_storage
+        old_input_storage = [None] * len(input_storage)
+        old_input_data = [None] * len(input_storage)
+        input_reused = [None] * len(input_storage)
         output_storage = self.fn.output_storage
         old_output_storage = [None] * len(output_storage)
         old_output_data = [None] * len(output_storage)
@@ -1151,11 +1230,13 @@ class Scan(PureOp):
             # 4. collecting slices where the output should be stored
 
             # 4.1. Collect slices for mitmots
+            offset = 0
             for idx in xrange(self.n_mit_mot_outs):
-                output_storage[idx].storage[0] = None
+                if not self.mitmots_preallocated[idx]:
+                    output_storage[offset].storage[0] = None
+                    offset += 1
 
             # 4.2. Collect slices for mitsots, sitsots and nitsots
-            offset = self.n_mit_mot_outs
             if i != 0:
                 for idx in xrange(self.n_outs + self.n_nit_sot -
                                   self.n_mit_mot):
@@ -1199,7 +1280,24 @@ class Scan(PureOp):
                 else:
                     old_output_data[idx] = None
 
-            # 5. compute outputs
+            # 4.6. Keep a reference to the variables (ndarrays, CudaNdarrays,
+            # etc) currently in the input_storage to be able to compare them
+            # with the content of the input_storage after the execution of the
+            # function. Also keep pointers to their data to be able to detect
+            # cases where outputs reused the allocated object but alter the
+            # memory region they refer to.
+            for idx in xrange(len(input_storage)):
+                var = input_storage[idx].storage[0]
+                old_input_storage[idx] = var
+
+                if hasattr(var, 'gpudata'):
+                    old_input_data[idx] = var.gpudata
+                elif hasattr(var, 'data'):
+                    old_input_data[idx] = var.data
+                else:
+                    old_input_data[idx] = None
+
+            # 5.1 compute outputs
             t0_fn = time.time()
 
             try:
@@ -1228,8 +1326,20 @@ class Scan(PureOp):
                 pdx = offset + self.n_shared_outs
                 cond = output_storage[pdx].storage[0] == 0
 
-            # Check which of the pre-allocated outputs (if applicable) have
-            # been reused by the inner function
+            # 5.2. By calling fn() directly instead of calling the theano
+            # function, it is possible that the updates have not been
+            # performed. Perform the updates if needed.
+            offset_out = len(output_storage) - 1
+            if getattr(fn, 'need_update_inputs', True):
+                # Update the inputs that have an update function
+                for inp, storage in zip(self.fn.maker.expanded_inputs[::-1],
+                                        self.fn.input_storage[::-1]):
+                    if inp.update is not None:
+                        storage.data = output_storage[offset_out].data
+                        offset_out -= 1
+
+            # 5.3. Check which of the pre-allocated outputs (if applicable)
+            # have been reused by the inner function
             for idx in xrange(len(output_storage)):
                 # If the storage map does not contain the same object, then
                 # the pre-allocated output has not been reused
@@ -1251,16 +1361,61 @@ class Scan(PureOp):
                 else:
                     output_reused[idx] = False
 
+            # 5.4 Check which of the input storage have been modified by the
+            # inner function
+            for idx in xrange(len(input_storage)):
+                # If the storage map does not contain the same object, then
+                # the pre-allocated output has not been reused
+                new_var = input_storage[idx].storage[0]
+                if old_input_storage[idx] is new_var:
+
+                    # The pre-allocated output is only considered as having
+                    # been reused if it still points to the same data as it
+                    # did before the execution of the inner function
+                    if old_input_data[idx] is None:
+                        input_reused[idx] = False
+                    else:
+                        if hasattr(new_var, 'gpudata'):
+                            input_reused[idx] = (new_var.gpudata ==
+                                                  old_input_data[idx])
+                        elif hasattr(new_var, 'data'):
+                            input_reused[idx] = (new_var.data ==
+                                                  old_input_data[idx])
+                else:
+                    input_reused[idx] = False
+
+
             t_fn += dt_fn
             offset_out = 0
-            # 5.1 Copy over the values for mit_mot outputs
+
+            # 5.5 Copy over the values for mit_mot outputs
+            mitmot_inp_offset = self.n_seqs
+            mitmot_out_idx = 0
             for j in xrange(self.n_mit_mot):
                 for k in self.mit_mot_out_slices[j]:
-                    outs[j][0][k + pos[j]] = \
-                            output_storage[offset_out].storage[0]
-                    offset_out += 1
+                    if self.mitmots_preallocated[mitmot_out_idx]:
+                        # This output tap has been preallocated. If the
+                        # corresponding input storage has been replaced,
+                        # recover the value as usual. Otherwise, the input was
+                        # modified inplace and nothing needs to be done.
+                        inp_idx = (mitmot_inp_offset +
+                                   self.tap_array[j].index(k))
+                        if not input_reused[inp_idx]:
+                            outs[j][0][k + pos[j]] = \
+                                input_storage[inp_idx].storage[0]
 
-            # 5.2 Copy over the values for mit_sot/sit_sot outputs
+                    else:
+                        # This output tap has not been preallocated, recover
+                        # its value as usual
+                        outs[j][0][k + pos[j]] = \
+                                output_storage[offset_out].storage[0]
+                        offset_out += 1
+
+                    mitmot_out_idx += 1
+
+                mitmot_inp_offset += len(self.tap_array[j])
+
+            # 5.6 Copy over the values for mit_sot/sit_sot outputs
             begin = self.n_mit_mot
             end = self.n_outs
             offset_out -= self.n_mit_mot
@@ -1271,7 +1426,7 @@ class Scan(PureOp):
                     outs[j][0][pos[j]] = \
                             output_storage[offset_out + j].storage[0]
 
-            # 5.3 Copy over the values for nit_sot outputs
+            # 5.7 Copy over the values for nit_sot outputs
             begin = end
             end += self.n_nit_sot
             for j in xrange(begin, end):
@@ -1295,7 +1450,7 @@ class Scan(PureOp):
                     outs[j][0][pos[j]] = \
                             output_storage[j + offset_out].storage[0]
 
-            # 5.4 Copy over the values for outputs corresponding to shared
+            # 5.8 Copy over the values for outputs corresponding to shared
             # variables
             begin = end
             end += self.n_shared_outs
@@ -1552,7 +1707,7 @@ class Scan(PureOp):
         return connection_pattern
 
     def get_oinp_iinp_iout_oout_mappings(self):
-        """ 
+        """
         Compute and return dictionary mappings between the inputs and
         outputs of the inner function and the inputs and outputs of the Scan
         node in the outer graph.
@@ -2016,6 +2171,7 @@ class Scan(PureOp):
             undefined_msg = None
             through_shared = False
             disconnected = True
+
             for jdx in xrange(len(self.mit_mot_out_slices[idx])):
                 inner_inp_mitmot.append(dC_dXts[out_pos])
                 mitmot_inp_taps[idx].append(-self.mit_mot_out_slices[idx][jdx])
@@ -2023,7 +2179,13 @@ class Scan(PureOp):
                 out_pos += 1
 
             for jdx in xrange(len(self.tap_array[idx])):
-                inner_inp_mitmot.append(dC_dXtm1s[ins_pos - self.n_seqs])
+                tap = -self.tap_array[idx][jdx]
+
+                # Only create a new inner input if there is not already one
+                # associated with this input tap
+                if tap not in mitmot_inp_taps[idx]:
+                    inner_inp_mitmot.append(dC_dXtm1s[ins_pos - self.n_seqs])
+
                 if isinstance(dC_dinps_t[ins_pos].type, NullType):
                     # We cannot use Null in the inner graph, so we
                     # use a zero tensor of the appropriate shape instead.
@@ -2032,7 +2194,23 @@ class Scan(PureOp):
                                      dtype=theano.config.floatX))
                     undefined_msg = dC_dinps_t[ins_pos].type.why_null
                 else:
-                    inner_out_mitmot.append(dC_dinps_t[ins_pos])
+                    new_inner_out_mitmot = dC_dinps_t[ins_pos]
+
+                    # If there is already an inner input associated with that
+                    # input tap, make sure the computation of the new output
+                    # uses it instead of the input it's currently using
+                    if tap in mitmot_inp_taps[idx]:
+                        to_replace = dC_dXtm1s[ins_pos - self.n_seqs]
+                        replacement_idx = (len(mitmot_inp_taps[idx]) -
+                                           mitmot_inp_taps[idx].index(tap))
+                        replacement = inner_inp_mitmot[-replacement_idx]
+
+                        self.tap_array[idx]
+                        new_inner_out_mitmot = theano.clone(new_inner_out_mitmot,
+                                                            replace=[(to_replace, replacement)])
+
+
+                    inner_out_mitmot.append(new_inner_out_mitmot)
 
                 if not disconnected_dC_dinps_t[ins_pos]:
                     disconnected = False
@@ -2041,11 +2219,14 @@ class Scan(PureOp):
                     if _sh in gof.graph.inputs([dC_dinps_t[ins_pos]]):
                         through_shared = True
 
-                n_mitmot_inps += 1
                 ins_pos += 1
                 n_mitmot_outs += 1
-                mitmot_inp_taps[idx].append(-self.tap_array[idx][jdx])
                 mitmot_out_taps[idx].append(-self.tap_array[idx][jdx])
+
+                # Only add the tap as a new input tap if needed
+                if tap not in mitmot_inp_taps[idx]:
+                    n_mitmot_inps += 1
+                    mitmot_inp_taps[idx].append(-self.tap_array[idx][jdx])
 
             if undefined_msg:
                 type_outs.append(undefined_msg)

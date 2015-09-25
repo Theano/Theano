@@ -161,18 +161,17 @@ class AddDestroyHandler(gof.Optimizer):
         fgraph.attach_feature(gof.DestroyHandler())
 
 
-class AddNoOutputFromInplace(gof.Optimizer):
+class AddFeatureOptimizer(gof.Optimizer):
     """
-    This optimizer adds to the fgraph a feature that will prevent outputs
-    of a fgraph to be created by performing inplace operations on intermediary
-    variables. This is useful when the outputs of the fgraph are preallocated
-    to prevent useless copying of the data. Currently, scan preallocates its
-    outputs
+    This optimizer adds a provided feature to the function graph.
+    """
 
-    """
+    def __init__(self, feature):
+        self.feature = feature
+
     def add_requirements(self, fgraph):
-        super(AddNoOutputFromInplace, self).add_requirements(fgraph)
-        fgraph.attach_feature(gof.NoOutputFromInplace())
+        super(AddFeatureOptimizer, self).add_requirements(fgraph)
+        fgraph.attach_feature(self.feature)
 
 
 class PrintCurrentFunctionGraph(gof.Optimizer):
@@ -228,9 +227,6 @@ optdb.register('specialize_device', gof.EquilibriumDB(),
 # especially constant merge
 optdb.register('merge2', gof.MergeOptimizer(),
                49, 'fast_run', 'merge')
-
-optdb.register('add_no_output_from_inplace', AddNoOutputFromInplace(),
-               49.4)
 
 optdb.register('add_destroy_handler', AddDestroyHandler(),
                49.5, 'fast_run', 'inplace')
@@ -321,19 +317,44 @@ class Mode(object):
                                               self.provided_optimizer)
         # N.B. opt might be a Query instance, not sure what else it might be...
         #     string? Optimizer? OptDB? who knows???
-        return self.__class__(linker=link, optimizer=opt.including(*tags))
+        return self.clone(optimizer=opt.including(*tags))
+
+    def register(self, *optimizations):
+        """Adds new optimization instances to a mode.
+
+        This method adds new optimization instances to a compilation mode. It
+        works like the `including()` method but takes as inputs optimization
+        instances to add instead of tags.
+
+        Parameters
+        ----------
+        optimizations :
+            Every element of `optimizations` is a tuple containing an
+            optimization instance and a floating point value indicating the
+            position at which to insert the optimization in the mode.
+
+        Returns
+        -------
+        Mode
+            Copy of the current Mode which includes the provided
+            optimizations.
+        """
+
+        link, opt = self.get_linker_optimizer(self.provided_linker,
+                                              self.provided_optimizer)
+        return self.clone(optimizer=opt.register(*optimizations))
 
     def excluding(self, *tags):
         link, opt = self.get_linker_optimizer(self.provided_linker,
                                               self.provided_optimizer)
-        return self.__class__(linker=link, optimizer=opt.excluding(*tags))
+        return self.clone(optimizer=opt.excluding(*tags))
 
     def requiring(self, *tags):
         link, opt = self.get_linker_optimizer(self.provided_linker,
                                               self.provided_optimizer)
-        return self.__class__(linker=link, optimizer=opt.requiring(*tags))
+        return self.clone(optimizer=opt.requiring(*tags))
 
-    def clone(self, link_kwargs=None, **kwargs):
+    def clone(self, link_kwargs=None, optimizer="", **kwargs):
         """
         Create a new instance of this Mode.
 
@@ -342,10 +363,14 @@ class Mode(object):
         arguments.
 
         """
+        if link_kwargs is None:
+            link_kwargs = {}
         new_linker = self.linker.clone(**link_kwargs)
-        new_optimizer = self.provided_optimizer
+
+        if optimizer == "":
+            optimizer = self.provided_optimizer
         new_mode = type(self)(linker=new_linker,
-                              optimizer=new_optimizer)
+                              optimizer=optimizer)
         return new_mode
 
 

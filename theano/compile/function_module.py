@@ -159,10 +159,22 @@ def std_fgraph(input_specs, output_specs, accept_inplace=False):
 
     """
     orig_inputs = [spec.variable for spec in input_specs]
-    updates = [spec.update for spec in input_specs if spec.update]
+
+    # Extract the updates and the mapping between update outputs and
+    # the updated inputs.
+    updates = []
+    update_mapping = {}
+    out_idx = len(output_specs)
+    for inp_idx in range(len(input_specs)):
+        if input_specs[inp_idx].update:
+            updates.append(input_specs[inp_idx].update)
+            update_mapping[out_idx] = inp_idx
+            out_idx += 1
+
     orig_outputs = [spec.variable for spec in output_specs] + updates
 
-    fgraph = gof.fg.FunctionGraph(orig_inputs, orig_outputs)
+    fgraph = gof.fg.FunctionGraph(orig_inputs, orig_outputs,
+                                  update_mapping=update_mapping)
 
     for node in fgraph.apply_nodes:
         if getattr(node.op, 'destroy_map', None):

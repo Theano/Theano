@@ -478,7 +478,19 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
                 'theano.clone(f(x), replace={x: g(x)}))`.'
                 % x)
 
-    output_vars = rebuild_collect_shared(outputs,
+    # Extend the outputs with the updates on input variables so they are also
+    # cloned
+    additional_outputs = [i.update for i in inputs if i.update]
+    if outputs is None:
+        out_list = []
+    else:
+        if isinstance(outputs, (list, tuple)):
+            out_list = list(outputs)
+        else:
+            out_list = [outputs]
+    extended_outputs = out_list + additional_outputs
+
+    output_vars = rebuild_collect_shared(extended_outputs,
                                          in_variables,
                                          replace=givens,
                                          updates=updates,
@@ -486,11 +498,24 @@ def pfunc(params, outputs=None, mode=None, updates=None, givens=None,
                                          copy_inputs_over=True,
                                          no_default_updates=no_default_updates)
     # extracting the arguments
-    input_variables, cloned_outputs, other_stuff = output_vars
+    input_variables, cloned_extended_outputs, other_stuff = output_vars
     clone_d, update_d, update_expr, shared_inputs = other_stuff
+
+    # Recover only the clones of the original outputs
+    if outputs is None:
+        cloned_outputs = []
+    else:
+        if isinstance(outputs, (list, tuple)):
+            cloned_outputs = cloned_extended_outputs[:len(outputs)]
+        else:
+            cloned_outputs = cloned_extended_outputs[0]
 
     for i, iv in zip(inputs, input_variables):
         i.variable = iv
+
+        # If needed, replace the input's update by its cloned equivalent
+        if i.update:
+            i.update = clone_d[i.update]
 
     for sv in shared_inputs:
         # pass value of None
@@ -526,6 +551,8 @@ def _pfunc_param_to_in(param, strict=False, allow_downcast=None):
             borrow=param.borrow,
             allow_downcast=param.allow_downcast,
             implicit=param.implicit)
+    elif isinstance(param, In):
+        return param
     raise TypeError('Unknown parameter type: %s' % type(param))
 
 
