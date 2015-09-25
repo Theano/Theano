@@ -33,7 +33,7 @@ class MultinomialFromUniform(Op):
         except AttributeError:
             self.odtype = 'auto'
 
-    def make_node(self, pvals, unis):
+    def make_node(self, pvals, unis, n):
         pvals = T.as_tensor_variable(pvals)
         unis = T.as_tensor_variable(unis)
         if pvals.ndim != 2:
@@ -45,18 +45,18 @@ class MultinomialFromUniform(Op):
         else:
             odtype = self.odtype
         out = T.tensor(dtype=odtype, broadcastable=pvals.type.broadcastable)
-        return Apply(self, [pvals, unis], [out])
+        return Apply(self, [pvals, unis, n], [out])
 
     def grad(self, ins, outgrads):
-        pvals, unis = ins
+        pvals, unis, n = ins
         (gz,) = outgrads
         return [T.zeros_like(x) for x in ins]
 
-    def c_code_cache_version(self):
-        return (6,)
+#    def c_code_cache_version(self):
+#        return (6,)
 
     def c_code(self, node, name, ins, outs, sub):
-        (pvals, unis) = ins
+        (pvals, unis, ns) = ins
         (z,) = outs
         if self.odtype == 'auto':
             t = "PyArray_TYPE(%(pvals)s)" % locals()
@@ -106,29 +106,42 @@ class MultinomialFromUniform(Op):
 
         const int nb_multi = PyArray_DIMS(%(pvals)s)[0];
         const int nb_outcomes = PyArray_DIMS(%(pvals)s)[1];
-
+        const int nb_samples = %(ns)s;
+        
         //
         // For each multinomial, loop over each possible outcome
         //
-        for (int n = 0; n < nb_multi; ++n)
-        {
-            int waiting = 1;
-            dtype_%(pvals)s cummul = 0.;
-            const dtype_%(unis)s* unis_n = (dtype_%(unis)s*)PyArray_GETPTR1(%(unis)s, n);
-            for (int m = 0; m < nb_outcomes; ++m)
+        for (int c = 0; c < nb_samples; ++c){
+            for (int n = 0; n < nb_multi; ++n)
             {
-                dtype_%(z)s* z_nm = (dtype_%(z)s*)PyArray_GETPTR2(%(z)s, n,m);
-                const dtype_%(pvals)s* pvals_nm = (dtype_%(pvals)s*)PyArray_GETPTR2(%(pvals)s, n,m);
-                cummul += *pvals_nm;
-                if (waiting && (cummul > *unis_n))
+                int waiting = 1;
+                dtype_%(pvals)s cummul = 0.;
+                const dtype_%(unis)s* unis_n = (dtype_%(unis)s*)PyArray_GETPTR1(%(unis)s, c*nb_samples + n);
+                for (int m = 0; m < nb_outcomes; ++m)
                 {
-                    *z_nm = 1.;
-                    waiting = 0;
-                }
-                else
-                {
-                    // if we re-used old z pointer, we have to clear it out.
-                    *z_nm = 0.;
+                    dtype_%(z)s* z_nm = (dtype_%(z)s*)PyArray_GETPTR2(%(z)s, n,m);
+                    const dtype_%(pvals)s* pvals_nm = (dtype_%(pvals)s*)PyArray_GETPTR2(%(pvals)s, n,m);
+                    cummul += *pvals_nm;
+                    if (c == 0)
+                    {
+                        if (waiting && (cummul > *unis_n))
+                        {
+                            *z_nm = 1.;
+                            waiting = 0;
+                        }
+                        else
+                        {
+                            // if we re-used old z pointer, we have to clear it out.
+                            *z_nm = 0.;
+                        }
+                    }
+                    else {
+                        if (waiting && (cummul > *unis_n))
+                        {
+                            *z_nm = *z_nm + 1.;
+                            waiting = 0;
+                        }
+                    }
                 }
             }
         }
@@ -136,10 +149,10 @@ class MultinomialFromUniform(Op):
         """ % locals()
 
     def perform(self, node, ins, outs):
-        (pvals, unis) = ins
+        (pvals, unis, n_samples) = ins
         (z,) = outs
 
-        if unis.shape[0] != pvals.shape[0]:
+        if unis.shape[0] * n_samples != pvals.shape[0]:
             raise ValueError("unis.shape[0] != pvals.shape[0]",
                              unis.shape[0], pvals.shape[0])
         if z[0] is None or z[0].shape != pvals.shape:
@@ -346,7 +359,7 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
 @local_optimizer([MultinomialFromUniform])
 def local_gpu_multinomial(node):
     if type(node.op) is MultinomialFromUniform:
-        p, u = node.inputs
+        p, u, n_samples = node.inputs
         m, = node.outputs
         if (p.dtype == u.dtype == m.dtype == 'float32' and
             any([i.owner and isinstance(i.owner.op,
@@ -359,7 +372,7 @@ def local_gpu_multinomial(node):
             node.inputs[0].owner and
             type(node.inputs[0].owner.op) is MultinomialFromUniform):
         multi = node.inputs[0].owner
-        p, u = multi.inputs
+        p, u, n_samples = multi.inputs
         m, = multi.outputs
         if (p.dtype == u.dtype == m.dtype == 'float32'):
             gpu_op = GpuMultinomialFromUniform(multi.op.odtype)
