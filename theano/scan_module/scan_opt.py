@@ -406,8 +406,12 @@ class PushOutNonSeqScan(gof.Optimizer):
                         reason='scanOp_pushout_nonseqs_ops')
                 else:
                     # The node has some outputs for which no replacement has
-                    # been established. The replacements can be performed but
-                    # the Scan node can't be removed at this point.
+                    # been established. This can occur for outputs that are
+                    # not produced by apply nodes (since the optimizations
+                    # only visits apply nodes) such as constants or inputs
+                    # passed directly as outputs. The replacements can be
+                    # performed but the Scan node can't be removed at this
+                    # point.
                     fgraph.replace_all_validate(
                         replace_with.items(),
                         reason='scanOp_pushout_nonseqs_ops')
