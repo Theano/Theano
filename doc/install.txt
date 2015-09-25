@@ -33,7 +33,7 @@ instructions below for detailed installation steps):
         g++ >= 4.2 (for openmp that is currently always used)
         more recent version recommended!
 
-    `NumPy <http://numpy.scipy.org/>`_ >= 1.6.2
+    `NumPy <http://numpy.scipy.org/>`_ >= 1.7.0
         Earlier versions could work, but we don't test it.
 
     `SciPy <http://scipy.org>`_ >= 0.11
