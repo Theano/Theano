@@ -1406,11 +1406,12 @@ class GpuDnnPool(DnnBase):
                 or desc.type.ctype != 'cudnnPoolingDescriptor_t':
             raise TypeError('desc must be cudnnPoolingDescriptor_t')
 
-        dop = desc.owner.op
-        e_ndim = dop.get_ndim() + 2  # 4 or 5
+        if desc.owner is not None:
+            dop = desc.owner.op
+            e_ndim = dop.get_ndim() + 2  # 4 or 5
 
-        if img.type.ndim != e_ndim:
-            raise TypeError('img must be %dD tensor' % e_ndim)
+            if img.type.ndim != e_ndim:
+                raise TypeError('img must be %dD tensor' % e_ndim)
 
         return Apply(self, [img, desc], [img.type()])
 
@@ -1572,19 +1573,21 @@ class GpuDnnPoolGrad(DnnBase):
                 or desc.type.ctype != 'cudnnPoolingDescriptor_t':
             raise TypeError('desc must be cudnnPoolingDescriptor_t')
 
-        nd = desc.owner.op.get_ndim() + 2  # 4 or 5
-
         inp = as_cuda_ndarray_variable(inp)
-        if inp.type.ndim != nd:
-            raise TypeError('inp must be %dD tensor' % (nd,))
-
         inp_grad = as_cuda_ndarray_variable(inp_grad)
-        if inp_grad.type.ndim != nd:
-            raise TypeError('inp_grad must be %dD tensor' % (nd,))
-
         out = as_cuda_ndarray_variable(out)
-        if out.type.ndim != nd:
-            raise TypeError('out must be %dD tensor' % (nd,))
+
+        if desc.owner is not None:
+            nd = desc.owner.op.get_ndim() + 2  # 4 or 5
+
+            if inp.type.ndim != nd:
+                raise TypeError('inp must be %dD tensor' % (nd,))
+
+            if inp_grad.type.ndim != nd:
+                raise TypeError('inp_grad must be %dD tensor' % (nd,))
+
+            if out.type.ndim != nd:
+                raise TypeError('out must be %dD tensor' % (nd,))
 
         return Apply(self, [inp, out, inp_grad, desc],
                      [inp.type()])
