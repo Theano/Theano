@@ -223,6 +223,18 @@ class T_LogSoftmax(utt.InferShapeTester):
         def f(a):
             return logsoftmax_op(a)
 
+    def test_local_softmax_optimization(self):
+        """Test the Logsoftmax substitution
+
+        Check that Log(Softmax(x)) is substituted to Logsoftmax(x). Note that
+        only the forward pass is checked (i.e., doesn't check the gradient)
+        """
+        x, y = tensor.matrices('xy')
+        sm = tensor.nnet.softmax(x)
+        logsm = tensor.log(sm)
+        f = theano.function([x], logsm)
+        assert isinstance(f.maker.fgraph.outputs[0].owner.op,
+                theano.tensor.nnet.nnet.LogSoftmax)
 
 class T_SoftmaxGrad(utt.InferShapeTester):
 
