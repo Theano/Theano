@@ -1512,10 +1512,15 @@ Linear Algebra
 
 .. function:: dot(X, Y)
 
+     For 2-D arrays it is equivalent to matrix multiplication, and for
+     1-D arrays to inner product of vectors (without complex
+     conjugation). For N dimensions it is a sum product over the last
+     axis of a and the second-to-last of b:
+
     :param X: left term
     :param Y: right term
-    :type X: symbolic matrix or vector
-    :type Y: symbolic matrix or vector
+    :type X: symbolic tensor
+    :type Y: symbolic tensor
     :rtype: symbolic matrix or vector
     :return: the inner product of `X` and `Y`.
 
