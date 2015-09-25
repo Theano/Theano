@@ -1778,7 +1778,7 @@ class GpuDnnSoftmaxBase(DnnBase):
     Parameters
     ----------
     tensor_format
-        Whether the data format is 'bc01' or 'b01c'.
+        Always set this to 'bc01'.
     algo
         'fast', 'accurate' or 'log' indicating whether, respectively, computations
 	should be optimized for speed, for accuracy, or if CuDNN should rather
@@ -1793,7 +1793,13 @@ class GpuDnnSoftmaxBase(DnnBase):
     __props__ = ('tensor_format', 'mode', 'algo')
 
     def __init__(self, tensor_format, algo, mode):
-        assert(tensor_format in ('bc01', 'b01c'))
+        if tensor_format != 'bc01':
+            raise ValueError(
+                "It was discovered that since December 2014, the "
+                "tensor_format parameter was ignored and the equivalent of "
+                "'bc01' is always used.  Since your code seems to be using "
+                "another value, this might have affected previous results "
+                "ran with this code.")
         DnnBase.__init__(self)
         self.tensor_format = tensor_format
 
@@ -1935,7 +1941,7 @@ class GpuDnnSoftmax(GpuDnnSoftmaxBase):
     Parameters
     ----------
     tensor_format
-        Whether the data format is 'bc01' or 'b01c'.
+        Always set to 'bc01'.
     algo
         'fast' or 'accurate' indicating whether computations should be
         optimized for speed or accuracy respectively.
@@ -2003,7 +2009,7 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
     Parameters
     ----------
     tensor_format
-        Whether the data format is 'bc01' or 'b01c'.
+        Always set to 'bc01'.
     algo
         'fast' or 'accurate' indicating whether computations should be
         optimized for speed or accuracy respectively.

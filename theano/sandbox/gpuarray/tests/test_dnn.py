@@ -349,7 +349,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         )
         self._compile_and_check(
             [t],
-            [dnn.GpuDnnSoftmax('bc01', 'accurate', 'channel')(t)],
+            [dnn.GpuDnnSoftmax('accurate', 'channel')(t)],
             [rand_tensor],
             dnn.GpuDnnSoftmax
         )
@@ -359,7 +359,6 @@ class TestDnnInferShapes(utt.InferShapeTester):
             [
                 T.grad(
                     dnn.GpuDnnSoftmax(
-                        'bc01',
                         'accurate',
                         'channel'
                     )(t).mean(),
@@ -707,7 +706,6 @@ class test_SoftMax(test_nnet.test_SoftMax):
         x_gpu = T.tensor4('x_gpu', 'float32')
         f_z = T.nnet.softmax_op
         f_gpu = dnn.GpuDnnSoftmax(
-            'bc01',
             'accurate',
             'channel'
         )
@@ -808,7 +806,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
             raise SkipTest("Log-softmax is only in cudnn v3+")
 
         x = T.ftensor4()
-        softmax_out = dnn.GpuDnnSoftmax('bc01', 'accurate', 'channel')(x)
+        softmax_out = dnn.GpuDnnSoftmax('accurate', 'channel')(x)
         log_out = T.log(T.as_tensor_variable(softmax_out))
 
         f = theano.function([x], log_out, mode=mode_with_gpu)

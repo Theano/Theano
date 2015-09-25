@@ -1078,8 +1078,6 @@ class GpuDnnSoftmaxBase(DnnBase):
 
     Parameters
     ----------
-    tensor_format
-       *deprecated* Ignored, will look at the strides of the input(s).
     algo
         'fast' or 'accurate' indicating whether computations should be
         optimized for speed or accuracy respectively.
@@ -1092,7 +1090,7 @@ class GpuDnnSoftmaxBase(DnnBase):
 
     __props__ = ('mode', 'algo')
 
-    def __init__(self, _, algo, mode):
+    def __init__(self, algo, mode):
         DnnBase.__init__(self, [self.file], self.c_func)
 
         assert(algo in ('fast', 'accurate', 'log'))
@@ -1129,8 +1127,6 @@ class GpuDnnSoftmax(GpuDnnSoftmaxBase):
     """
     Op for the cuDNN Softmax.
 
-    tensor_format
-        *deprecated* Ignored, will look at input strides.
     algo
         'fast' or 'accurate' indicating whether computations should be
         optimized for speed or accuracy respectively.
@@ -1154,7 +1150,6 @@ class GpuDnnSoftmax(GpuDnnSoftmaxBase):
         g_sm, = grads
         sm = self.make_node(x).outputs[0]
         return [GpuDnnSoftmaxGrad(
-                None,
                 self.algo,
                 self.mode
                 )(g_sm, sm)]
@@ -1166,8 +1161,6 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
 
     Parameters
     ----------
-    tensor_format
-        *deprecated* Ignored, will look at the input strides.
     algo
         'fast' or 'accurate' indicating whether computations should be
         optimized for speed or accuracy respectively.
@@ -1393,7 +1386,7 @@ def local_softmax_dnn(node):
     if isinstance(node.op, GpuSoftmax):
         ins = node.inputs[0].dimshuffle(0, 1, 'x', 'x')
         ins = gpu_contiguous(ins)
-        out = GpuDnnSoftmax('bc01', 'accurate', 'channel')(ins)
+        out = GpuDnnSoftmax('accurate', 'channel')(ins)
         out = as_gpuarray_variable(out.dimshuffle(0, 1))
         return [out]
 
@@ -1410,7 +1403,7 @@ def local_log_softmax_dnn(node):
             isinstance(node.inputs[0].owner.op, GpuDnnSoftmax) and
             len(node.inputs[0].clients) == 1):
         softmax_node = node.inputs[0].owner
-        new_softmax = GpuDnnSoftmax(None, 'log', softmax_node.op.mode)
+        new_softmax = GpuDnnSoftmax('log', softmax_node.op.mode)
         return [new_softmax(softmax_node.inputs[0])]
 
 
@@ -1444,6 +1437,6 @@ def local_softmax_dnn_grad(node):
             return
         ins.append(n.dimshuffle(0, 1, 'x', 'x'))
 
-    out = GpuDnnSoftmaxGrad('bc01', 'accurate', 'channel')(
+    out = GpuDnnSoftmaxGrad('accurate', 'channel')(
         gpu_contiguous(ins[0]), gpu_contiguous(ins[1]))
     return [out.dimshuffle(0, 1)]
