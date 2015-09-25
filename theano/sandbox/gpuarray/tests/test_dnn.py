@@ -692,7 +692,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
     mode = mode_with_gpu
 
     def test_softmax_shape_0(self):
-        raise SkipTest("Cudnn doesn't suport 0 shapes")
+        raise SkipTest("Cudnn doesn't support 0 shapes")
 
     def test_softmax_grad(self):
         def cmp(n, m, f, f_gpu):
@@ -745,20 +745,18 @@ class test_SoftMax(test_nnet.test_SoftMax):
             mode=mode_with_gpu
         )
         sorted_f = f.maker.fgraph.toposort()
-        # Optimization is disabled for cudnn v3 rc1
-        if dnn.version() == 2000:
-            assert(len([i
-                        for i in sorted_f
-                        if isinstance(
-                            i.op,
-                            self.gpu_grad_op)
-                        ]) == 1)
-            assert(len([i
-                        for i in sorted_f
-                        if isinstance(
-                            i.op,
-                            theano.tensor.nnet.SoftmaxGrad)
-                        ]) == 0)
+        assert(len([i
+                    for i in sorted_f
+                    if isinstance(
+                        i.op,
+                        self.gpu_grad_op)
+                    ]) == 1)
+        assert(len([i
+                    for i in sorted_f
+                    if isinstance(
+                        i.op,
+                        theano.tensor.nnet.SoftmaxGrad)
+                    ]) == 0)
 
         # Verify that the SoftmaxGrad -> Gpu[Dnn]SoftmaxGrad
         # optimization is not applied when cudnn is excluded or not
@@ -790,17 +788,53 @@ class test_SoftMax(test_nnet.test_SoftMax):
         o = theano.tensor.nnet.SoftmaxGrad()(y, y * 2)
         f = theano.function([y], o, mode=mode_with_gpu)
         sorted_f = f.maker.fgraph.toposort()
-        if dnn.version() == 2000:
-            # opt disabled for cudnn v3 rc1
-            assert(len([i
-                        for i in sorted_f
-                        if isinstance(
-                            i.op,
-                            self.gpu_grad_op)
-                        ]) == 1)
-            assert(len([i
-                        for i in sorted_f
-                        if isinstance(
-                            i.op,
-                            theano.tensor.nnet.SoftmaxGrad)
-                        ]) == 0)
+        assert(len([i
+                    for i in sorted_f
+                    if isinstance(
+                        i.op,
+                        self.gpu_grad_op)
+                    ]) == 1)
+        assert(len([i
+                    for i in sorted_f
+                    if isinstance(
+                        i.op,
+                        theano.tensor.nnet.SoftmaxGrad)
+                    ]) == 0)
+
+    def test_log_softmax(self):
+        # This is a test for an optimization that depends on CuDNN v3 or
+        # more recent. Don't test if the CuDNN version is too old.
+        if dnn.version() < 3000:
+            raise SkipTest("Log-softmax is only in cudnn v3+")
+
+        x = T.ftensor4()
+        softmax_out = dnn.GpuDnnSoftmax('bc01', 'accurate', 'channel')(x)
+        log_out = T.log(T.as_tensor_variable(softmax_out))
+
+        f = theano.function([x], log_out, mode=mode_with_gpu)
+
+        # Ensure that the optimization has been applied
+        dnn_softmax_nodes = [n for n in f.maker.fgraph.toposort() if
+                             isinstance(n.op, dnn.GpuDnnSoftmax)]
+        assert len(dnn_softmax_nodes) == 1
+        assert dnn_softmax_nodes[0].op.algo == "log"
+
+        # Ensure that the output of the function is valid
+        input_shapes = [(3, 4, 5, 6),
+                        (1025, 2, 3, 4),
+                        (2, 1025, 3, 4),
+                        (2, 3, 1025, 4),
+                        (2, 3, 4, 1025),
+                        (66000, 2, 3, 4),
+                        (2, 66000, 3, 4),
+                        (2, 3, 66000, 4),
+                        (2, 3, 4, 66000)]
+
+        for inp_shape in input_shapes:
+            input_val = numpy.random.normal(0, 1, inp_shape).astype("float32")
+
+            out = f(input_val)
+            expected_out = numpy.log(numpy.exp(input_val) /
+                                     numpy.exp(input_val).sum(1)[:, None, :, :])
+
+            utt.assert_allclose(out, expected_out)

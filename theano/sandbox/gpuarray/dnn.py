@@ -264,9 +264,9 @@ class GpuDnnConvDesc(COp):
                 pad2 = str(self.border_mode[2])
             bmode = '2'
         elif self.border_mode == "valid":
-            bmode = 1
+            bmode = '1'
         elif self.border_mode == "full":
-            bmode = 0
+            bmode = '0'
         else:
             raise ValueError("Invalid value for border_mode")
 
