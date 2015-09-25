@@ -31,4 +31,5 @@ int conv_desc(PyArrayObject *filt_shp,
 
   err = cudnnSetConvolutionNdDescriptor(*desc, NB_DIMS, pad, strides, upscale,
                                         CONV_MODE);
+  return 0;
 }

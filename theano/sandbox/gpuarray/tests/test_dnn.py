@@ -27,9 +27,9 @@ def test_dnn_conv_desc_merge():
     kern_shp = T.as_tensor_variable(
         numpy.asarray([3, 1, 2, 2]).astype('int64'))
     desc1 = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(2, 2),
-                               conv_mode='conv')(img_shp, kern_shp)
+                               conv_mode='conv')(kern_shp)
     desc2 = dnn.GpuDnnConvDesc(border_mode='full', subsample=(1, 1),
-                               conv_mode='cross')(img_shp, kern_shp)
+                               conv_mode='cross')(kern_shp)
     # CDataType is not DeepCopyable so this will crash if we don't use
     # borrow=True
     f = theano.function([], [theano.Out(desc1, borrow=True),
@@ -51,7 +51,7 @@ def test_dnn_conv_merge():
     kern = T.ftensor4('kern')
     out = T.ftensor4('out')
     desc = dnn.GpuDnnConvDesc(
-        border_mode='valid')(img.shape, kern.shape)
+        border_mode='valid')(kern.shape)
 
     # Test forward op
     o1 = dnn.dnn_conv(img, kern)
@@ -90,9 +90,9 @@ def test_dnn_conv_inplace():
     kern = T.ftensor4('kern')
     out = T.ftensor4('out')
     desc1 = dnn.GpuDnnConvDesc(border_mode='valid', conv_mode='conv')(
-        img.shape, kern.shape)
+        kern.shape)
     desc2 = dnn.GpuDnnConvDesc(
-        border_mode='valid', conv_mode='cross')(img.shape, kern.shape)
+        border_mode='valid', conv_mode='cross')(kern.shape)
 
     # Test forward op
     o1 = dnn.dnn_conv(img, kern, conv_mode='conv')
@@ -399,7 +399,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 border_mode=params[0],
                 subsample=params[1],
                 conv_mode=params[2]
-            )(img.shape, kerns.shape)
+            )(kerns.shape)
             conv = dnn.GpuDnnConv()(img, kerns, out, desc)
             self._compile_and_check(
                 [img, kerns, out],
@@ -443,7 +443,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 border_mode=params[0],
                 subsample=params[1],
                 conv_mode=params[2]
-            )(temp_img.shape, out.shape)
+            )(out.shape)
             conv_grad_w = dnn.GpuDnnConvGradW()(
                 temp_img,
                 temp_kerns,
@@ -487,7 +487,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
                 border_mode=params[0],
                 subsample=params[1],
                 conv_mode=params[2]
-            )(out.shape, kerns.shape)
+            )(kerns.shape)
             conv_grad_i = dnn.GpuDnnConvGradI()(
                 kerns,
                 out,
@@ -660,18 +660,18 @@ def test_dnn_conv_grad():
 
     def dconv(img, kern, out):
         desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
-                                  conv_mode='conv')(img.shape, kern.shape)
+                                  conv_mode='conv')(kern.shape)
         return dnn.GpuDnnConv()(img, kern, out, desc, alpha=0.5, beta=0.75)
 
     def dconvi(img, kern, out):
         desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
-                                  conv_mode='conv')(img.shape, kern.shape)
+                                  conv_mode='conv')(kern.shape)
         return dnn.GpuDnnConvGradI()(kern, out, img, desc, alpha=-1.0,
                                      beta=0.0)
 
     def dconvw(img, kern, out):
         desc = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
-                                  conv_mode='conv')(img.shape, kern.shape)
+                                  conv_mode='conv')(kern.shape)
         return dnn.GpuDnnConvGradW()(img, out, kern, desc, alpha=0.75,
                                      beta=-1.0)
 
