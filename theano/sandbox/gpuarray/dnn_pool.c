@@ -76,7 +76,7 @@ int APPLY_SPECIFIC(dnn_pool)(PyGpuArrayObject *img,
 
     cuda_enter(c->ctx);
     err = cudnnPoolingForward(
-      _handle, desc,
+      APPLY_SPECIFIC(_handle), desc,
       &alpha,
       APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(img),
       &beta,

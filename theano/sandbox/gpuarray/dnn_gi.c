@@ -79,7 +79,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
     cudnnConvolutionBwdDataAlgoPerf_t choice;
 
     err = cudnnFindConvolutionBackwardDataAlgorithm(
-      _handle, APPLY_SPECIFIC(input), APPLY_SPECIFIC(output), desc,
+      APPLY_SPECIFIC(_handle), APPLY_SPECIFIC(input), APPLY_SPECIFIC(output), desc,
       APPLY_SPECIFIC(kerns), 1, &count, &choice);
 
     if (err != CUDNN_STATUS_SUCCESS) {
@@ -102,7 +102,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
     }
 
     err = cudnnGetConvolutionBackwardDataAlgorithm(
-      _handle, APPLY_SPECIFIC(input), APPLY_SPECIFIC(output),
+      APPLY_SPECIFIC(_handle), APPLY_SPECIFIC(input), APPLY_SPECIFIC(output),
       desc, APPLY_SPECIFIC(kerns),
       CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT, free, &algo);
     if (err != CUDNN_STATUS_SUCCESS) {
@@ -157,7 +157,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
   gpudata *workspace;
 
   err = cudnnGetConvolutionBackwardDataWorkspaceSize(
-    _handle, APPLY_SPECIFIC(kerns), APPLY_SPECIFIC(output), desc,
+    APPLY_SPECIFIC(_handle), APPLY_SPECIFIC(kerns), APPLY_SPECIFIC(output), desc,
     APPLY_SPECIFIC(input), algo, &worksize);
 
   if (err != CUDNN_STATUS_SUCCESS) {
@@ -178,7 +178,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
   }
 
   err = cudnnConvolutionBackwardData_v3(
-    _handle,
+    APPLY_SPECIFIC(_handle),
     alpha_p,
     APPLY_SPECIFIC(kerns), PyGpuArray_DEV_DATA(kerns),
     APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(output),

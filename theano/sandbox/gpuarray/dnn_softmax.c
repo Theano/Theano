@@ -55,7 +55,7 @@ int APPLY_SPECIFIC(softmax)(PyGpuArrayObject *x,
 
     cuda_enter(c->ctx);
     err = cudnnSoftmaxForward(
-      _handle,
+      APPLY_SPECIFIC(_handle),
       SOFTMAX_ALGO,
       SOFTMAX_MODE,
       (void *)&alpha,

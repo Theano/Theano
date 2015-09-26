@@ -94,7 +94,7 @@ int APPLY_SPECIFIC(dnn_pool_grad)(PyGpuArrayObject *inp,
 
     cuda_enter(c->ctx);
     err = cudnnPoolingBackward(
-      _handle, desc,
+      APPLY_SPECIFIC(_handle), desc,
       &alpha,
       APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(out),
       APPLY_SPECIFIC(output_grad), PyGpuArray_DEV_DATA(out_grad),
