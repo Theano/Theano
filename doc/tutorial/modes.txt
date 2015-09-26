@@ -121,7 +121,7 @@ as it will be useful later on.
     
      * Insert manual cast in your code or use *[u]int{8,16}*.
      * Insert manual cast around the mean operator (this involves division by length, which is an *int64*).
-     * Notice that a new casting mechanism is being developed.
+     * Note that a new casting mechanism is being developed.
 
 :download:`Solution<modes_solution_1.py>`
 
