@@ -7,7 +7,8 @@ from theano.tests.unittest_tools import SkipTest, assert_allclose
 from theano.tensor.tests.test_elemwise import (test_Broadcast, test_DimShuffle,
                                                test_CAReduce, T_reduce_dtype)
 
-from .test_basic_ops import mode_with_gpu, rand_gpuarray
+from .config import mode_with_gpu
+from .test_basic_ops import rand_gpuarray
 from ..elemwise import (GpuElemwise, GpuDimShuffle,
                         GpuCAReduceCuda, GpuCAReduceCPY)
 from ..type import GpuArrayType

@@ -13,7 +13,6 @@ from theano.tensor.basic import alloc
 from theano.tensor.tests import test_basic
 from theano.tensor.tests.test_basic import rand, safe_make_node
 from theano.tests import unittest_tools as utt
-from theano.tests.unittest_tools import SkipTest
 
 import theano.sandbox.gpuarray
 
@@ -25,40 +24,15 @@ from ..basic_ops import (
     gpu_join, GpuJoin, GpuSplit, GpuEye, gpu_contiguous)
 from ..subtensor import GpuSubtensor
 
-import theano.sandbox.cuda as cuda_ndarray
+from .config import mode_with_gpu, mode_without_gpu
 
 try:
     from pygpu import gpuarray
 except:
     pass
 
-if theano.sandbox.gpuarray.pygpu is None:
-    raise SkipTest("pygpu not installed")
-
-# If you are writing a new test file, don't copy this code, but rather
-# import stuff from this file (like mode_with_gpu) to reuse it.
-if cuda_ndarray.cuda_available and not theano.sandbox.gpuarray.pygpu_activated:
-    if not cuda_ndarray.use.device_number:
-        # We should not enable all the use like the flag device=gpu,
-        # as many tests don't work in that setup.
-        cuda_ndarray.use('gpu',
-                         default_to_move_computation_to_gpu=False,
-                         move_shared_float32_to_gpu=False,
-                         enable_cuda=False)
-    theano.sandbox.gpuarray.init_dev('cuda')
-
-if not theano.sandbox.gpuarray.pygpu_activated:
-    raise SkipTest("pygpu disabled")
-
 utt.seed_rng()
 rng = numpy.random.RandomState(seed=utt.fetch_seed())
-
-if theano.config.mode == 'FAST_COMPILE':
-    mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpuarray').excluding('gpu')
-    mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN').excluding('gpuarray')
-else:
-    mode_with_gpu = theano.compile.mode.get_default_mode().including('gpuarray').excluding('gpu')
-    mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpuarray')
 
 
 def inplace_func(inputs, outputs, mode=None, allow_input_downcast=False,
@@ -114,6 +88,7 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
 
         def test_all(self):
             if skip:
+                from nose.plugins.skip import SkipTest
                 raise SkipTest(skip)
 
             for testname, inputs in iteritems(cases):

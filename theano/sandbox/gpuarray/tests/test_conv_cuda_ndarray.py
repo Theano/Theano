@@ -14,7 +14,7 @@ from theano import tensor
 from theano.tests.unittest_tools import seed_rng
 
 # We let that import do the init of the back-end if needed.
-from .test_basic_ops import mode_with_gpu
+from .config import mode_with_gpu
 from ..type import GpuArrayType
 from ..conv import GpuConv
 from theano.sandbox.gpuarray import dnn

@@ -15,7 +15,7 @@ from theano.tensor.signal.downsample import MaxPoolGrad, AveragePoolGrad
 from .. import dnn
 from ..basic_ops import GpuAllocEmpty
 
-from .test_basic_ops import mode_with_gpu, mode_without_gpu
+from .config import mode_with_gpu, mode_without_gpu
 from . import test_nnet
 
 
