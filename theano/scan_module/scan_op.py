@@ -1938,45 +1938,39 @@ class Scan(PureOp):
                     iidx -= len(taps)
             return oidx + iidx
 
-        def compute_all_gradients(known_grads):
-            y_s = known_grads.keys()
-            g_y_s = known_grads.values()
+        def compute_gradient(y, g_y):
+            if 'int' in str(g_y.dtype):
+                raise TypeError("Gradients may never be integers but g_y "
+                        "has type " + str(g_y.type))
 
-            for g_y in g_y_s:
-                if 'int' in str(g_y.dtype):
-                    raise TypeError("Gradients may never be integers but g_y "
-                            "has type " + str(g_y.type))
-
-            out_indices = [get_out_idx(self_outputs.index(y)) for y in y_s]
-
-            connected_inputs = [i for i in range(len(scan_node.inputs)) if
-                                any([connection_pattern[i][odx] for odx in out_indices])]
-
-            wrt = [x for x in theano.gof.graph.inputs(y_s) if
-                   (x in diff_inputs) and
-                   get_inp_idx(self_inputs.index(x)) in connected_inputs]
+            odx = get_out_idx(self_outputs.index(y))
+            wrt = [x for x in theano.gof.graph.inputs([y])
+                   if (x in diff_inputs) and
+                   (connection_pattern[
+                       get_inp_idx(self_inputs.index(x))][odx])]
             gmp = OrderedDict()
 
-            # Required in case there is a pair of variables X and Y, with X
-            # used to compute Y, for both of which there is an external
-            # gradient signal. Without this, the total gradient signal on X
-            # will be the external gradient  signalknown_grads[X]. With this,
-            # it will be the sum of the external gradient signal and the
-            # gradient obtained by propagating Y's external gradient signal
-            # to X.
-            known_grads = dict([(k.copy(), v) for (k, v) in known_grads.items()])
-
-            grads = gradient.grad(
+            for x in wrt:
+                try:
+                    gmp[x] = gradient.grad(
                         cost=None,
-                        known_grads=known_grads,
-                        wrt=wrt,
+                        known_grads={y: g_y},
+                        wrt=x,
                         consider_constant=wrt,
                         disconnected_inputs='ignore',
-                        return_disconnected='None',
-                        null_gradients='return')
-
-            for i in range(len(wrt)):
-                gmp[wrt[i]] = grads[i]
+                        return_disconnected='None')
+                except gradient.NullTypeGradError as e:
+                    # The gradient wrt that particular input is undefined.
+                    # This is not necessarily an issue, because maybe that
+                    # particular input is not in the path between the
+                    # "cost" and "wrt" of the external, initial call to grad().
+                    # We simply return a Null gradient, forwarding the message.
+                    gmp[x] = NullType((
+                        "This variable is Null because the grad method on the "
+                        "inner graph of the Scan node %s returned Null for "
+                        "the corresponding inner input variable. The original "
+                        "message was: %s"
+                        % (str(self), exc_message(e))))()
 
             rval = [gmp.get(p, None) for p in diff_inputs]
             return rval
@@ -2032,29 +2026,20 @@ class Scan(PureOp):
                     continue
                 dC_dXt = safe_new(dC_douts[idx][0])
             dC_dXts.append(dC_dXt)
-
-
-        known_grads = {}
-        dc_dxts_idx = 0
-        for i in range(len(diff_outputs)):
-            if i < idx_nitsot_start or i >= idx_nitsot_end:
-                if diff_outputs[i] in known_grads:
-                    known_grads[diff_outputs[i]] += dC_dXts[dc_dxts_idx]
-                else:
-                    known_grads[diff_outputs[i]] = dC_dXts[dc_dxts_idx]
-                dc_dxts_idx += 1
-            else:
-                if isinstance(dC_douts[i].type, DisconnectedType):
-                    dc_dxts_idx += 1
-                    continue
-                else:
-                    if diff_outputs[i] in known_grads:
-                        known_grads[diff_outputs[i]] += dC_dXts[dc_dxts_idx]
+            _dC_dinps_t = compute_gradient(Xt, dC_dXt)
+            for jdx in xrange(len(_dC_dinps_t)):
+                if dC_dinps_t[jdx] is None:
+                    dC_dinps_t[jdx] = _dC_dinps_t[jdx]
+                elif isinstance(dC_dinps_t[jdx].type, NullType):
+                    # The accumulated gradient is undefined
+                    pass
+                elif _dC_dinps_t[jdx]:
+                    if isinstance(_dC_dinps_t[jdx].type, NullType):
+                        # The accumulated gradient is defined, but the new
+                        # term is undefined. The whole thing has to be undefined.
+                        dC_dinps_t[jdx] = _dC_dinps_t[jdx]
                     else:
-                        known_grads[diff_outputs[i]] = dC_dXts[dc_dxts_idx]
-                    dc_dxts_idx += 1
-        dC_dinps_t = compute_all_gradients(known_grads)
-
+                        dC_dinps_t[jdx] += _dC_dinps_t[jdx]
 
         # mask inputs that get no gradients
         for dx in xrange(len(dC_dinps_t)):
