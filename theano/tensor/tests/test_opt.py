@@ -4891,6 +4891,17 @@ class T_local_sum_prod(unittest.TestCase):
                 dd = sorted(dd)
                 return data.sum(d).sum(dd[1]).sum(dd[0])
 
+        def my_sum_prod(data, d, dd):
+            # This sum when d or dd is a tuple of 2 dimensions.
+            if not isinstance(d, tuple) and not isinstance(dd, tuple):
+                return data.sum(d).prod(dd)
+            if isinstance(d, tuple):
+                d = sorted(d)
+                return data.sum(d[1]).sum(d[0]).prod(dd)
+            else:
+                dd = sorted(dd)
+                return data.sum(d).prod(dd[1]).prod(dd[0])
+
         try:
             for d, dd in dims:
                 expected = my_sum(input, d, dd)
@@ -4929,6 +4940,25 @@ class T_local_sum_prod(unittest.TestCase):
             assert len(f.maker.fgraph.apply_nodes) == 1
         f = theano.function([a], a.prod(None).prod(), mode=self.mode)
         assert numpy.allclose(f(input), input.prod())
+        assert len(f.maker.fgraph.apply_nodes) == 1
+
+        # test sum prod don't get opt.
+        for d, dd in dims:
+            expected = my_sum_prod(input, d, dd)
+            f = theano.function([a], a.sum(d).prod(dd), mode=self.mode)
+            assert numpy.allclose(f(input), expected)
+            assert len(f.maker.fgraph.apply_nodes) == 2
+        for d, dd in dims[:6]:
+            f = theano.function([a], a.sum(d).prod(dd).
+                                prod(0), mode=self.mode)
+            assert numpy.allclose(f(input), input.sum(d).prod(dd).prod(0))
+            assert len(f.maker.fgraph.apply_nodes) == 2
+        for d in [0, 1, 2]:
+            f = theano.function([a], a.sum(d).prod(None), mode=self.mode)
+            assert numpy.allclose(f(input), input.sum(d).prod())
+            assert len(f.maker.fgraph.apply_nodes) == 2
+        f = theano.function([a], a.sum(None).prod(), mode=self.mode)
+        assert numpy.allclose(f(input), input.sum())
         assert len(f.maker.fgraph.apply_nodes) == 1
 
 

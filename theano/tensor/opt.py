@@ -4577,8 +4577,7 @@ def local_op_of_op(node):
         # doesn't affect other computations.
         if len(node_inps.clients) == 1:
             if (node_inps.owner and
-                    (isinstance(node_inps.owner.op, T.elemwise.Prod) or
-                     isinstance(node_inps.owner.op, T.elemwise.Sum))):
+                    (isinstance(node_inps.owner.op, node.op.__class__))):
 
                 # check to see either the inner or outer prod is doing a
                 # product over all axis, in which case we can remove it
