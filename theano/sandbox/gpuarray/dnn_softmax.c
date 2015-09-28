@@ -50,18 +50,36 @@ int APPLY_SPECIFIC(softmax)(PyGpuArrayObject *x,
     return 1;
 
   {
-    const float alpha = 1.;
-    const float beta = 0.;
+    const float alphaf = 1;
+    const float betaf = 0;
+    const double alphad = 1;
+    const double betad = 0;
+    void *alpha, *beta;
+
+    switch (x->ga.typecode) {
+    case GA_DOUBLE:
+      alpha = (void *)&alphad;
+      beta = (void *)&betad;
+      break;
+    case GA_FLOAT:
+    case GA_HALF:
+      alpha = (void *)&alphaf;
+      beta = (void *)&betaf;
+      break;
+    default:
+      PyErr_SetString(PyExc_TypeError, "Unsupported type in pooling");
+      return 1;
+    }
 
     cuda_enter(c->ctx);
     err = cudnnSoftmaxForward(
       APPLY_SPECIFIC(_handle),
       SOFTMAX_ALGO,
       SOFTMAX_MODE,
-      (void *)&alpha,
+      alpha,
       APPLY_SPECIFIC(input),
       PyGpuArray_DEV_DATA(x),
-      (void *)&beta,
+      beta,
       APPLY_SPECIFIC(output),
       PyGpuArray_DEV_DATA(*out)
     );

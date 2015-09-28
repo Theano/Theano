@@ -71,15 +71,33 @@ int APPLY_SPECIFIC(dnn_pool)(PyGpuArrayObject *img,
     return 1;
 
   {
-    const float alpha = 1;
-    const float beta = 0;
+    const float alphaf = 1;
+    const float betaf = 0;
+    const double alphad = 1;
+    const double betad = 0;
+    void *alpha, *beta;
+
+    switch (img->ga.typecode) {
+    case GA_DOUBLE:
+      alpha = (void *)&alphad;
+      beta = (void *)&betad;
+      break;
+    case GA_FLOAT:
+    case GA_HALF:
+      alpha = (void *)&alphaf;
+      beta = (void *)&betaf;
+      break;
+    default:
+      PyErr_SetString(PyExc_TypeError, "Unsupported type in pooling");
+      return 1;
+    }
 
     cuda_enter(c->ctx);
     err = cudnnPoolingForward(
       APPLY_SPECIFIC(_handle), desc,
-      &alpha,
+      alpha,
       APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(img),
-      &beta,
+      beta,
       APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(*out));
     cuda_exit(c->ctx);
   }

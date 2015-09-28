@@ -63,7 +63,7 @@ int APPLY_SPECIFIC(dnn_pool_grad)(PyGpuArrayObject *inp,
   }
 
   if (!GpuArray_IS_C_CONTIGUOUS(&out_grad->ga)) {
-    PyErr_SetString(PyExc_ValueError, "Only contiguous input gradients are supported.");
+    PyErr_SetString(PyExc_ValueError, "Only contiguous output gradients are supported.");
     return 1;
   }
 
@@ -80,7 +80,7 @@ int APPLY_SPECIFIC(dnn_pool_grad)(PyGpuArrayObject *inp,
     return 1;
 
   if (theano_prep_output(inp_grad, PyGpuArray_NDIM(inp),
-                         PyGpuArray_DIMS(inp), out->ga.typecode,
+                         PyGpuArray_DIMS(inp), inp->ga.typecode,
                          GA_C_ORDER, pygpu_default_context()) != 0) {
     return 1;
   }
@@ -89,17 +89,35 @@ int APPLY_SPECIFIC(dnn_pool_grad)(PyGpuArrayObject *inp,
     return 1;
 
   {
-    const float alpha = 1;
-    const float beta = 0;
+    const float alphaf = 1;
+    const float betaf = 0;
+    const double alphad = 1;
+    const double betad = 0;
+    void *alpha, *beta;
+
+    switch (inp->ga.typecode) {
+    case GA_DOUBLE:
+      alpha = (void *)&alphad;
+      beta = (void *)&betad;
+      break;
+    case GA_FLOAT:
+    case GA_HALF:
+      alpha = (void *)&alphaf;
+      beta = (void *)&betaf;
+      break;
+    default:
+      PyErr_SetString(PyExc_TypeError, "Unsupported type in pooling");
+      return 1;
+    }
 
     cuda_enter(c->ctx);
     err = cudnnPoolingBackward(
       APPLY_SPECIFIC(_handle), desc,
-      &alpha,
+      alpha,
       APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(out),
       APPLY_SPECIFIC(output_grad), PyGpuArray_DEV_DATA(out_grad),
       APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(inp),
-      &beta,
+      beta,
       APPLY_SPECIFIC(input_grad), PyGpuArray_DEV_DATA(*inp_grad)
       );
     cuda_exit(c->ctx);
