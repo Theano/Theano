@@ -233,6 +233,9 @@ class GpuDot22(GpuOp):
         return hash(type(self))
 
     def make_node(self, x, y):
+        x = as_cuda_ndarray_variable(x)
+        y = as_cuda_ndarray_variable(y)
+
         if x.type.ndim != 2:
             raise TypeError(x)
         if y.type.ndim != 2:
@@ -319,6 +322,8 @@ class GpuDot22Scalar(GpuOp):
         return hash(type(self))
 
     def make_node(self, x, y, a):
+        x = as_cuda_ndarray_variable(x)
+        y = as_cuda_ndarray_variable(y)
         if x.type.ndim != 2:
             raise TypeError(x)
         if y.type.ndim != 2:
@@ -426,6 +431,9 @@ class GpuGemm(GpuOp):
         return dict(inplace=self.inplace)
 
     def make_node(self, z, a, x, y, b):
+        z = as_cuda_ndarray_variable(z)
+        x = as_cuda_ndarray_variable(x)
+        y = as_cuda_ndarray_variable(y)
         # the more complicated error checking performed by tensor.gemm
         # is assumed to already have been done
         return Apply(self, [z, a, x, y, b], [z.type()])
@@ -543,6 +551,9 @@ class GpuGemv(GpuOp):
         return dict(inplace=self.inplace)
 
     def make_node(self, z, a, x, y, b):
+        z = as_cuda_ndarray_variable(z)
+        x = as_cuda_ndarray_variable(x)
+        y = as_cuda_ndarray_variable(y)
         # the more complicated error checking performed by tensor.gemv
         # is assumed to already have been done
         return Apply(self, [z, a, x, y, b], [z.type()])
@@ -640,6 +651,9 @@ class GpuGer(GpuOp):
         return dict(inplace=self.inplace)
 
     def make_node(self, z, a, x, y):
+        z = as_cuda_ndarray_variable(z)
+        x = as_cuda_ndarray_variable(x)
+        y = as_cuda_ndarray_variable(y)
         # the more complicated error checking performed by tensor.ger is
         # assumed to already have been done
         return Apply(self, [z, a, x, y], [z.type()])
@@ -1906,6 +1920,8 @@ class GpuConv(GpuOp):
             str(self.kshp))
 
     def make_node(self, img, kern):
+        img = as_cuda_ndarray_variable(img)
+        kern = as_cuda_ndarray_variable(kern)
         if img.type.ndim != 4:
             raise TypeError('img must be 4D tensor')
         if kern.type.ndim != 4:
