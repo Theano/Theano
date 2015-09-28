@@ -9,7 +9,7 @@ import theano.sandbox.rng_mrg
 from ..basic_ops import GpuFromHost, HostFromGpu
 from ..elemwise import GpuElemwise
 
-from .test_basic_ops import mode_with_gpu, test_ctx_name
+from .config import mode_with_gpu, test_ctx_name
 
 
 class T_Scan(TestCase):

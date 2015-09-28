@@ -13,8 +13,9 @@ from ..type import GpuArrayType, gpuarray_shared_constructor, get_context
 from ..basic_ops import GpuAlloc, GpuReshape, GpuFromHost, host_from_gpu
 from ..elemwise import GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise
 from ..subtensor import GpuSubtensor
-from .test_basic_ops import (rand_gpuarray, mode_with_gpu, mode_without_gpu,
-                             test_ctx_name)
+
+from .config import mode_with_gpu, mode_without_gpu, test_ctx_name
+from .test_basic_ops import rand_gpuarray
 
 
 def test_local_assert():
