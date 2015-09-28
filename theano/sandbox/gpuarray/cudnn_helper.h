@@ -67,7 +67,6 @@ typedef int cudnnConvolutionBwdFilterAlgo_t;
 #define CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0 0
 #define CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1 1
 #define CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT 2
-#define CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT 3
 
 static cudnnStatus_t cudnnGetConvolutionBackwardFilterWorkspaceSize(
   cudnnHandle_t handle,
