@@ -423,7 +423,7 @@ class DownsampleFactorMax(Op):
         }
         // memory allocation of z if necessary
         if ((!%(z)s)
-          || *PyArray_DIMS(%(z)s)!=4
+          || PyArray_NDIM(%(z)s)!=4
           ||(PyArray_DIMS(%(z)s)[0] != PyArray_DIMS(%(x)s)[0])
           ||(PyArray_DIMS(%(z)s)[1] != PyArray_DIMS(%(x)s)[1])
           ||(PyArray_DIMS(%(z)s)[2] != z_r)
@@ -530,7 +530,7 @@ class DownsampleFactorMax(Op):
         return ccode % locals()
 
     def c_code_cache_version(self):
-        return (0, 6, 8, 3)
+        return (0, 6, 8, 4)
 
 class PoolGrad(Op):
     __props__ = ('ds', 'ignore_border', 'st', 'padding', 'mode')
@@ -744,7 +744,7 @@ class MaxPoolGrad(PoolGrad):
         // allocating memory for gx
         if ((!%(gx)s)
           || !PyArray_ISCONTIGUOUS(%(gx)s)
-          || *PyArray_DIMS(%(gx)s)!=4
+          || PyArray_NDIM(%(gx)s)!=4
           ||(PyArray_DIMS(%(gx)s)[0] != PyArray_DIMS(%(x)s)[0])
           ||(PyArray_DIMS(%(gx)s)[1] != PyArray_DIMS(%(x)s)[1])
           ||(PyArray_DIMS(%(gx)s)[2] != PyArray_DIMS(%(x)s)[2])
@@ -810,7 +810,7 @@ class MaxPoolGrad(PoolGrad):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 7)
+        return (0, 8)
 
 DownsampleFactorMaxGrad = MaxPoolGrad
 
@@ -1083,7 +1083,7 @@ class DownsampleFactorMaxGradGrad(Op):
         // allocating memory for output
         if ((!%(z)s)
           || !PyArray_ISCONTIGUOUS(%(z)s)
-          || *PyArray_DIMS(%(z)s)!=4
+          || PyArray_NDIM(%(z)s)!=4
           ||(PyArray_DIMS(%(z)s)[0] != PyArray_DIMS(%(maxout)s)[0])
           ||(PyArray_DIMS(%(z)s)[1] != PyArray_DIMS(%(maxout)s)[1])
           ||(PyArray_DIMS(%(z)s)[2] != PyArray_DIMS(%(maxout)s)[2])
@@ -1143,7 +1143,7 @@ class DownsampleFactorMaxGradGrad(Op):
         """%locals()
 
     def c_code_cache_version(self):
-        return (0,1)
+        return (0,2)
 
 @register_canonicalize('fast_compile')
 @gof.local_optimizer([MaxPoolGrad])
