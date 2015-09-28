@@ -2044,8 +2044,7 @@ class GpuDownsampleFactorMax(GpuOp):
                               self.ignore_border)
 
     def make_node(self, x):
-        if not isinstance(x.type, CudaNdarrayType):
-            raise TypeError()
+        x = as_cuda_ndarray_variable(x)
         if not x.type.ndim == 4:
             raise TypeError()
         return Apply(self, [x], [x.type()])
@@ -2236,10 +2235,8 @@ class GpuDownsampleFactorMaxRop(GpuOp):
                               self.ignore_border)
 
     def make_node(self, x, ex):
-        if not isinstance(x.type, CudaNdarrayType):
-            raise TypeError()
-        if not isinstance(ex.type, CudaNdarrayType):
-            raise TypeError()
+        x = as_cuda_ndarray_variable(x)
+        ex = as_cuda_ndarray_variable(ex)
         if not x.type.ndim == 4:
             raise TypeError()
         return Apply(self, [x, ex], [x.type()])
@@ -2436,6 +2433,9 @@ class GpuDownsampleFactorMaxGrad(GpuOp):
                               self.ignore_border)
 
     def make_node(self, x, z, gz):
+        x = as_cuda_ndarray_variable(x)
+        z = as_cuda_ndarray_variable(z)
+        gz = as_cuda_ndarray_variable(gz)
         return Apply(self, [x, z, gz], [x.type()])
 
     def c_code_cache_version(self):
