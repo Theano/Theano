@@ -1218,6 +1218,10 @@ class DownsampleFactorMaxRop(Op):
         self.padding = tuple(padding)
         self.mode = mode
         assert self.mode == 'max'
+        if padding != (0, 0):
+            raise NotImplementedError("DownsampleFactorMaxRop do not currently implement pad")
+        if st != ds:
+            raise NotImplementedError("DownsampleFactorMaxRop do not currently implement strides")
 
 
     def __eq__(self, other):
