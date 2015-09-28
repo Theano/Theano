@@ -1257,22 +1257,23 @@ class DownsampleFactorMaxRop(Op):
         fake_zz -= numpy.inf
         ds0, ds1 = self.ds
         if self.ignore_border:
-            x_usable2 = (x.shape[2] / ds0 * ds0)
+            x_usable2 = (x.shape[2] // ds0 * ds0)
         else: x_usable2 = x.shape[2]
         if self.ignore_border:
-            x_usable3 = (x.shape[3] / ds1 * ds1)
+            x_usable3 = (x.shape[3] // ds1 * ds1)
         else: x_usable3 = x.shape[3]
         for n in xrange(x.shape[0]):
             for k in xrange(x.shape[1]):
                 for i in xrange(x_usable2):
-                    zi = i / ds0
+                    zi = i // ds0
                     for j in xrange(x_usable3):
-                        zj = j / ds1
+                        zj = j // ds1
                         if fake_zz[n, k, zi, zj] < x[n, k, i, j]:
                             fake_zz[n, k, zi, zj] = x[n, k, i, j]
                             zz[n, k, zi, zj] = ex[n, k, i, j]
 
     def c_code(self, node, name, inp, out, sub):
+        raise NotImplementedError("c_code exists but needs debugging")
         x, ex = inp
         z, = out
         fail = sub['fail']
