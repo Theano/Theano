@@ -2641,7 +2641,7 @@ def _approx_eq(a, b, eps=1.0e-4):
         if _approx_eq.debug:
             print(a, b)
         return False
-    return  True
+    return True
 _approx_eq.debug = 0
 
 
@@ -2799,10 +2799,10 @@ class T_max_and_argmax(unittest.TestCase):
     def test2(self):
         data = rand(2, 3)
         n = as_tensor_variable(data)
-        for (axis, np_axis)  in [(-1, -1), (0, 0), (1, 1), (None, None),
-                                 ([0, 1], None), ([1, 0], None),
-                                 (NoneConst.clone(), None),
-                                 (constant(0), 0)]:
+        for (axis, np_axis) in [(-1, -1), (0, 0), (1, 1), (None, None),
+                                ([0, 1], None), ([1, 0], None),
+                                (NoneConst.clone(), None),
+                                (constant(0), 0)]:
             v, i = eval_outputs(max_and_argmax(n, axis))
             assert i.dtype == 'int64'
             self.assertTrue(numpy.all(v == numpy.max(data, np_axis)))
@@ -2860,8 +2860,8 @@ class T_max_and_argmax(unittest.TestCase):
     def test3(self):
         data = rand(2, 3, 4)
         n = as_tensor_variable(data)
-        for (axis, np_axis)  in [(-1, -1), (0, 0), (1, 1), (None, None),
-                                 ([0, 1, 2], None), ([1, 2, 0], None)]:
+        for (axis, np_axis) in [(-1, -1), (0, 0), (1, 1), (None, None),
+                                ([0, 1, 2], None), ([1, 2, 0], None)]:
             v, i = eval_outputs(max_and_argmax(n, axis))
             assert i.dtype == 'int64'
             self.assertTrue(numpy.all(v == numpy.max(data, np_axis)))
@@ -2922,8 +2922,8 @@ class T_max_and_argmax(unittest.TestCase):
                 z[argmax] += 1
             else:
                 for id, v in enumerate(argmax):
-                    z[v * numpy.prod(data.shape[data.ndim - 1:axis:-1])
-                      + id] += 1
+                    z[v * numpy.prod(data.shape[data.ndim - 1:axis:-1]) +
+                      id] += 1
 
             z = z.reshape(data.shape)
             assert numpy.all(max_grad_data == z)
@@ -2931,11 +2931,11 @@ class T_max_and_argmax(unittest.TestCase):
         for axis in (-1, 0, 1, None):
             for j in xrange(2):
                 safe_verify_grad(lambda v: max_and_argmax(v, axis=axis)[j],
-                                [data])
+                                 [data])
                 if axis != 1:
                     safe_verify_grad(lambda v: max_and_argmax(v.flatten(),
-                                                             axis=axis)[j],
-                                    [data])
+                                                              axis=axis)[j],
+                                     [data])
             if axis in (0, None):
                 check_grad_max(data, eval_outputs(grad(
                     max_and_argmax(n, axis=axis)[0].sum(), n)), axis=axis)
@@ -2951,11 +2951,11 @@ class T_max_and_argmax(unittest.TestCase):
 
         # Test 4d inner dimensions
         data = rand(2, 3, 4, 5)
-        
+
         for i in [0, 1, 2, 3]:
             safe_verify_grad(lambda v: max_and_argmax(v, axis=[i])[0], [data])
             safe_verify_grad(lambda v: max_and_argmax(v, axis=[i])[1], [data])
-        
+
         # Test grad with multiple axes
         for i in [[0, 1], [0, 0]]:
             safe_verify_grad(lambda v: max_and_argmax(v, axis=i)[0], [data])
@@ -2968,17 +2968,17 @@ class T_max_and_argmax(unittest.TestCase):
         x = tensor.matrix().dimshuffle('x', 0, 'x', 1, 'x')
         y = x.max(axis=1)
         assert y.type.broadcastable == (True, True, False, True)
-        
+
     def test_multiple_axes(self):
         data = numpy.arange(24).reshape(3, 2, 4)
         x = as_tensor_variable(data)
         v, i = eval_outputs(max_and_argmax(x, [1, -1]))
         assert numpy.all(v == numpy.array([7, 15, 23]))
         assert numpy.all(i == numpy.array([7, 7, 7]))
-        
+
         v = eval_outputs(max_and_argmax(x, [1, -1])[0].shape)
         assert tuple(v) == numpy.max(data, (1, -1)).shape
-        
+
 
 class T_argmin_argmax(unittest.TestCase):
     def setUp(self):

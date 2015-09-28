@@ -109,7 +109,8 @@ if 0:
     # - JB 20100226
     def as_cuda_or_tensor_variable(x, name=None, ndim=None):
         """
-        Do the same as_tensor_variable, but do not transfer the value on the gpu.
+        Do the same as_tensor_variable,
+        but do not transfer the value on the gpu.
         """
         if hasattr(x, '_as_CudaNdarrayVariable'):
             # TODO: pass name and ndim arguments
@@ -516,7 +517,8 @@ def _allclose(a, b, rtol=None, atol=None):
     if atol is not None:
         atol_ = atol
 
-    # Work around bug in Numpy, see http://projects.scipy.org/numpy/ticket/1684
+    # Work around bug in Numpy, see
+    # http://projects.scipy.org/numpy/ticket/1684
     if str(b.dtype) in int_dtypes and (numpy.absolute(b) < 0).any():
         b = theano._asarray(b, dtype='float64')
 
@@ -1289,18 +1291,12 @@ class MaxAndArgmax(Op):
         if isinstance(axis, (tuple, list, numpy.ndarray)):
             # List of axes: make them non-negative, and sort them
             axis = [int(a) for a in axis]
-            
-            #if axis == list(range(-x.type.ndim, 0, 1)):
-                #axis = list(range(x.type.ndim))
-            #assert axis == list(range(x.type.ndim)), (
-                #"MaxAndArgmax does not support multiple"
-                #" axes. the max fct supports it. Got %s" % axis)
             if axis == list(range(x.type.ndim)):
                 axis = None
         elif isinstance(axis, (int, numpy.integer)):
             axis = [int(axis)]
         elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
-            axis = [int(axis)]    
+            axis = [int(axis)]
         elif isinstance(axis, Variable):
             if NoneConst.equals(axis):
                 axis = None
@@ -1311,18 +1307,19 @@ class MaxAndArgmax(Op):
                 assert (axis.dtype.startswith("int") or
                         axis.dtype.startswith("uint"))
                 if isinstance(axis.data, (int, numpy.integer)) or \
-                   (isinstance(axis.data, numpy.ndarray) and axis.data.ndim == 0):
+                   (isinstance(axis.data, numpy.ndarray) and
+                        axis.data.ndim == 0):
                     axis = [int(axis.data)]
                 elif isinstance(axis.data, (list, numpy.ndarray)):
                     axis = [int(i) for i in axis.data]
-                
+
         # Make axis entries non-negative, and sort them
         if isinstance(axis, list):
             for idx in xrange(len(axis)):
                 if axis[idx] < 0:
                     axis[idx] += x.type.ndim
             axis.sort()
-   
+
         # Verify that axes are valid
         all_axes = []
         if isinstance(axis, list):
@@ -1335,7 +1332,7 @@ class MaxAndArgmax(Op):
                     all_axes.append(ax)
         else:
             all_axes = list(range(x.ndim))
-  
+
         if axis is None or axis == list(range(x.type.ndim)):
             axis = NoneConst.clone()
         else:
@@ -1355,8 +1352,8 @@ class MaxAndArgmax(Op):
         x, axes = inp
         max, max_idx = outs
         if axes is None:
-            axes = tuple(range(x.ndim)) 
-        else:    
+            axes = tuple(range(x.ndim))
+        else:
             axes = tuple(axes)
         max[0] = theano._asarray(numpy.max(x, axes),
                                  dtype=node.outputs[0].dtype)
@@ -1365,10 +1362,12 @@ class MaxAndArgmax(Op):
         keep_axes = numpy.array([i for i in range(x.ndim) if i not in axes])
         # Not-reduced axes in front
         transposed_x = numpy.transpose(x, numpy.concatenate((keep_axes, axes)))
-        reshaped_x = transposed_x.reshape(transposed_x.shape[:len(keep_axes)] + (-1,))
-        
-        max_idx[0] = theano._asarray(numpy.argmax(reshaped_x, axis=-1), dtype='int64')
-        
+        reshaped_x = transposed_x.reshape(
+                        transposed_x.shape[:len(keep_axes)] + (-1,))
+
+        max_idx[0] = theano._asarray(numpy.argmax(reshaped_x, axis=-1),
+                                     dtype='int64')
+
     def c_code(self, node, name, inp, out, sub):
         x, axis = inp
         max, argmax = out
@@ -1378,11 +1377,13 @@ class MaxAndArgmax(Op):
         else:
             assert node.inputs[1].ndim == 1
             # Fall back to perform() if there are multiple axes
-            if len(node.inputs[1].data) > 1: raise NotImplementedError()
+            if len(node.inputs[1].data) > 1:
+                raise NotImplementedError()
             axis_code = """
             axis = ((dtype_%(axis)s*)PyArray_DATA(%(axis)s))[0];
             if(axis > PyArray_NDIM(%(x)s)-1 || axis < -PyArray_NDIM(%(x)s)){
-                PyErr_SetString(PyExc_ValueError, "MaxAndArgmax, bad axis argument");
+                PyErr_SetString(PyExc_ValueError,
+                "MaxAndArgmax, bad axis argument");
                 %(fail)s
             }
             """ % locals()
@@ -1439,7 +1440,7 @@ class MaxAndArgmax(Op):
         rval = tuple([ishape[i] for (i, b) in enumerate(
             node.inputs[0].type.broadcastable) if i not in axis.data])
         return [rval, rval]
-        
+
     def R_op(self, inputs, eval_points):
         if eval_points[0] is None:
             return [None, None]
