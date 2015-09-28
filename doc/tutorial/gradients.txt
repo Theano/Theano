@@ -238,6 +238,7 @@ array([[ 0.,  0.],
     as the input parameter, while the result of the *R-operator* has a shape similar
     to that of the output.
 
+   :ref:`List of op with r op support <R_op_list>`.
 
 Hessian times a Vector
 ======================
