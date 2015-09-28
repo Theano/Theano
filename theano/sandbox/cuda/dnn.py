@@ -1457,6 +1457,8 @@ class GpuDnnPool(DnnBase):
         return Apply(self, [img, desc], [img.type()])
 
     def infer_shape(self, node, shape):
+        if not node.inputs[1].owner:
+            raise theano.tensor.ShapeError()
         desc = node.inputs[1].owner.op
         nd = desc.get_ndim()
         w = desc.ws
