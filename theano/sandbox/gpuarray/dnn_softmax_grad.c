@@ -2,13 +2,13 @@
 
 cudnnTensorDescriptor_t APPLY_SPECIFIC(dy);
 cudnnTensorDescriptor_t APPLY_SPECIFIC(sm);
-cudnnTensorDescriptor_t APPLY_SPECIFIC(out);
+cudnnTensorDescriptor_t APPLY_SPECIFIC(dx);
 
 #section init_code_struct
 
 APPLY_SPECIFIC(dy) = NULL;
 APPLY_SPECIFIC(sm) = NULL;
-APPLY_SPECIFIC(out) = NULL;
+APPLY_SPECIFIC(dx) = NULL;
 
 {
   cudnnStatus_t err;
@@ -24,7 +24,7 @@ APPLY_SPECIFIC(out) = NULL;
                  cudnnGetErrorString(err));
     FAIL;
   }
-  err = cudnnCreateTensorDescriptor(&APPLY_SPECIFIC(out));
+  err = cudnnCreateTensorDescriptor(&APPLY_SPECIFIC(dx));
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_MemoryError, "could not allocate tensor descriptor: %s",
                  cudnnGetErrorString(err));
@@ -38,14 +38,14 @@ if (APPLY_SPECIFIC(dy) != NULL)
   cudnnDestroyTensorDescriptor(APPLY_SPECIFIC(dy));
 if (APPLY_SPECIFIC(sm) != NULL)
   cudnnDestroyTensorDescriptor(APPLY_SPECIFIC(sm));
-if (APPLY_SPECIFIC(out) != NULL)
-  cudnnDestroyTensorDescriptor(APPLY_SPECIFIC(out));
+if (APPLY_SPECIFIC(dx) != NULL)
+  cudnnDestroyTensorDescriptor(APPLY_SPECIFIC(dx));
 
 #section support_code_struct
 
 int APPLY_SPECIFIC(softmax_grad)(PyGpuArrayObject *dy,
                                  PyGpuArrayObject *sm,
-                                 PyGpuArrayObject **out) {
+                                 PyGpuArrayObject **dx) {
   cudnnStatus_t err;
   PyGpuContextObject *c = pygpu_default_context();
 
@@ -54,12 +54,12 @@ int APPLY_SPECIFIC(softmax_grad)(PyGpuArrayObject *dy,
   if (c_set_tensorNd(sm, APPLY_SPECIFIC(sm)) != 0)
     return 1;
 
-  if (theano_prep_output(out, PyGpuArray_NDIM(dy),
+  if (theano_prep_output(dx, PyGpuArray_NDIM(dy),
                          PyGpuArray_DIMS(dy), dy->ga.typecode,
                          GA_C_ORDER, c) != 0)
     return 1;
 
-  if (c_set_tensorNd(*out, APPLY_SPECIFIC(out)) != 0)
+  if (c_set_tensorNd(*dx, APPLY_SPECIFIC(dx)) != 0)
     return 1;
 
   {
@@ -95,8 +95,8 @@ int APPLY_SPECIFIC(softmax_grad)(PyGpuArrayObject *dy,
       APPLY_SPECIFIC(dy),
       PyGpuArray_DEV_DATA(dy),
       beta,
-      APPLY_SPECIFIC(out),
-      PyGpuArray_DEV_DATA(*out)
+      APPLY_SPECIFIC(dx),
+      PyGpuArray_DEV_DATA(*dx)
       );
     cuda_exit(c->ctx);
   }
