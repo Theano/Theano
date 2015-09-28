@@ -1277,7 +1277,6 @@ class DownsampleFactorMaxRop(Op):
                             zz[n, k, zi, zj] = ex[n, k, i, j]
 
     def c_code(self, node, name, inp, out, sub):
-        raise NotImplementedError("c_code exists but needs debugging")
         x, ex = inp
         z, = out
         fail = sub['fail']
@@ -1288,13 +1287,13 @@ class DownsampleFactorMaxRop(Op):
         int x_shp0_usable;
         int x_shp1_usable;
         int z_shp0, z_shp1;
-        if(%(x)s->nd!=4)
+        if(PyArray_NDIM(%(x)s)!=4)
         {
             PyErr_SetString(PyExc_ValueError, "x must be a 4d ndarray");
             %(fail)s;
         }
-        z_shp0 = %(x)s->dimensions[2] / %(ds0)s;
-        z_shp1 = %(x)s->dimensions[3] / %(ds1)s;
+        z_shp0 = PyArray_DIMS(%(x)s)[2] / %(ds0)s;
+        z_shp1 = PyArray_DIMS(%(x)s)[3] / %(ds1)s;
         if (%(ignore_border)s)
         {
             x_shp0_usable = z_shp0 * %(ds0)s;
@@ -1302,24 +1301,24 @@ class DownsampleFactorMaxRop(Op):
         }
         else
         {
-            z_shp0 += (%(x)s->dimensions[2] %% %(ds0)s) ? 1 : 0;
-            z_shp1 += (%(x)s->dimensions[3] %% %(ds1)s) ? 1 : 0;
-            x_shp0_usable = %(x)s->dimensions[2];
-            x_shp1_usable = %(x)s->dimensions[3];
+            z_shp0 += (PyArray_DIMS(%(x)s)[2] %% %(ds0)s) ? 1 : 0;
+            z_shp1 += (PyArray_DIMS(%(x)s)[3] %% %(ds1)s) ? 1 : 0;
+            x_shp0_usable = PyArray_DIMS(%(x)s)[2];
+            x_shp1_usable = PyArray_DIMS(%(x)s)[3];
         }
         if ((!%(z)s)
-          || *PyArray_DIMS(%(z)s)!=4
-          ||(%(z)s->dimensions[0] != %(x)s->dimensions[0])
-          ||(%(z)s->dimensions[1] != %(x)s->dimensions[1])
-          ||(%(z)s->dimensions[2] != z_shp0)
-          ||(%(z)s->dimensions[3] != z_shp1)
+          || PyArray_NDIM(%(z)s)!=4
+          ||(PyArray_DIMS(%(z)s)[0] != PyArray_DIMS(%(x)s)[0])
+          ||(PyArray_DIMS(%(z)s)[1] != PyArray_DIMS(%(x)s)[1])
+          ||(PyArray_DIMS(%(z)s)[2] != z_shp0)
+          ||(PyArray_DIMS(%(z)s)[3] != z_shp1)
           )
         {
           if (%(z)s) Py_XDECREF(%(z)s);
 
           npy_intp dims[4] = {0,0,0,0};
-          dims[0]=%(x)s->dimensions[0];
-          dims[1]=%(x)s->dimensions[1];
+          dims[0]=PyArray_DIMS(%(x)s)[0];
+          dims[1]=PyArray_DIMS(%(x)s)[1];
           dims[2]=z_shp0;
           dims[3]=z_shp1;
           %(z)s = (PyArrayObject*) PyArray_ZEROS(4, dims, typenum,0); //TODO: zeros not necessary
@@ -1329,13 +1328,13 @@ class DownsampleFactorMaxRop(Op):
         if (z_shp0 && z_shp1)
         {
             npy_intp fake_dims[4] = {0,0,0,0};
-            fake_dims[0]=%(x)s->dimensions[0];
-            fake_dims[1]=%(x)s->dimensions[1];
+            fake_dims[0]=PyArray_DIMS(%(x)s)[0];
+            fake_dims[1]=PyArray_DIMS(%(x)s)[1];
             fake_dims[2]=z_shp0;
             fake_dims[3]=z_shp1;
             PyArrayObject * fake_z = (PyArrayObject*) PyArray_ZEROS(4, fake_dims, typenum, 0);
-            for(int b=0;b<%(x)s->dimensions[0];b++){
-              for(int k=0;k<%(x)s->dimensions[1];k++){
+            for(int b=0;b<PyArray_DIMS(%(x)s)[0];b++){
+              for(int k=0;k<PyArray_DIMS(%(x)s)[1];k++){
                 int mini_i = 0;
                 int zi = 0;
                 for(int i=0;i< x_shp0_usable; i++){
@@ -1365,4 +1364,4 @@ class DownsampleFactorMaxRop(Op):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 1)
+        return (0, 2)
