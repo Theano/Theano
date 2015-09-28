@@ -80,7 +80,7 @@ int APPLY_SPECIFIC(softmax_grad)(PyGpuArrayObject *dy,
       beta = (void *)&betaf;
       break;
     default:
-      PyErr_SetString(PyExc_TypeError, "Unsupported type in pooling");
+      PyErr_SetString(PyExc_TypeError, "Unsupported type in softmax gradient");
       return 1;
     }
 

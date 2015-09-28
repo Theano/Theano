@@ -106,7 +106,7 @@ int APPLY_SPECIFIC(dnn_pool_grad)(PyGpuArrayObject *inp,
       beta = (void *)&betaf;
       break;
     default:
-      PyErr_SetString(PyExc_TypeError, "Unsupported type in pooling");
+      PyErr_SetString(PyExc_TypeError, "Unsupported type in pooling gradient");
       return 1;
     }
 

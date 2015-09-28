@@ -67,7 +67,7 @@ int APPLY_SPECIFIC(softmax)(PyGpuArrayObject *x,
       beta = (void *)&betaf;
       break;
     default:
-      PyErr_SetString(PyExc_TypeError, "Unsupported type in pooling");
+      PyErr_SetString(PyExc_TypeError, "Unsupported type in softmax");
       return 1;
     }
 
