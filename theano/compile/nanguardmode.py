@@ -263,13 +263,13 @@ class NanGuardMode(Mode):
                     error = True
             if big_is_error:
                 err = False
-                if var.size == 0:
+                if isinstance(var, theano.gof.type.CDataType._cdata_type):
                     err = False
                 elif cuda.cuda_available and isinstance(var, cuda.CudaNdarray):
                     err = (f_gpuabsmax(var.reshape(var.size)) > 1e10)
-                elif isinstance(var, theano.gof.type.CDataType._cdata_type):
-                    err = False
                 elif isinstance(var, np.random.mtrand.RandomState):
+                    err = False
+                elif var.size == 0:
                     err = False
                 else:
                     err = (np.abs(var).max() > 1e10)
