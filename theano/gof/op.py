@@ -1171,7 +1171,7 @@ def apply_meth(tag):
             code = self.code_sections[tag]
 
             define_macros, undef_macros = self.get_c_macros(node, name)
-            return os.linesep.join([define_macros, code,
+            return os.linesep.join(['', define_macros, code,
                                     undef_macros])
         else:
             raise utils.MethodNotDefined(
@@ -1428,7 +1428,7 @@ class COp(Op):
             def_macros, undef_macros = self.get_c_macros(node, name)
             def_sub, undef_sub = self.get_sub_macros(sub)
 
-            return os.linesep.join([def_macros, def_sub,
+            return os.linesep.join(['', def_macros, def_sub,
                                     op_code,
                                     undef_sub, undef_macros])
         else:
@@ -1442,17 +1442,21 @@ class COp(Op):
             define_macros, undef_macros = self.get_c_macros(node, name,
                                                             check_input=False)
 
+            ctx = ""
+            if 'context' in sub:
+                ctx = ", %s" % (sub['context'],)
+
             # Generate the C code
             return """
                 %(define_macros)s
                 {
-                  if (%(func_name)s(%(func_args)s) != 0) {
+                  if (%(func_name)s(%(func_args)s%(ctx)s) != 0) {
                     %(fail)s
                   }
                 }
                 %(undef_macros)s
                 """ % dict(func_name=self.func_name,
-                           fail=sub['fail'],
+                           fail=sub['fail'], ctx=ctx,
                            func_args=self.format_c_function_args(inp, out),
                            define_macros=define_macros,
                            undef_macros=undef_macros)
