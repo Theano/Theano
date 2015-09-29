@@ -1145,11 +1145,10 @@ def _populate_grad_dict(var_to_app_to_idx,
             # not disconnected and the corresponding input is connected
             # to at least one output whose gradient is NullType then the input
             # grad should be NullType.
-            op_conn_pattern = _node_to_pattern(node)
             for inp_idx in range(len(input_grads)):
                 for out_idx in range(len(ograd_is_nan)):
                     if (ograd_is_nan[out_idx] and
-                            op_conn_pattern[inp_idx][out_idx] and
+                            connection_pattern[inp_idx][out_idx] and
                             not isinstance(input_grads[inp_idx].type,
                                            DisconnectedType)):
                         input_grads[inp_idx] = output_grads[out_idx]
