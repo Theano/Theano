@@ -1363,8 +1363,8 @@ class MaxAndArgmax(Op):
         keep_axes = numpy.array([i for i in range(x.ndim) if i not in axes])
         # Not-reduced axes in front
         transposed_x = numpy.transpose(x, numpy.concatenate((keep_axes, axes)))
-        reshaped_x = transposed_x.reshape(
-                        transposed_x.shape[:len(keep_axes)] + (-1,))
+        reshaped_x = transposed_x.reshape(transposed_x.shape[:len(keep_axes)] +
+                                          (-1,))
 
         max_idx[0] = theano._asarray(numpy.argmax(reshaped_x, axis=-1),
                                      dtype='int64')
