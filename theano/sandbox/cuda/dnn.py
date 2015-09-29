@@ -27,8 +27,6 @@ from theano.sandbox.cuda import gpu_seqopt, register_opt
 
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
-import theano.sandbox.dnn_flags
-
 
 def dnn_available():
     if dnn_available.avail is None:
