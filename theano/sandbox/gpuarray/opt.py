@@ -695,7 +695,7 @@ def local_gpua_gemm(node, context_name):
 
 @register_opt('fast_compile')
 @op_lifter([tensor.basic.Dot])
-def local_gpua_hgemm(node):
+def local_gpua_hgemm(node, context_name):
     from theano.sandbox.cuda import nvcc_compiler
     if nvcc_compiler.nvcc_version < '7.5':
         _logger.warning("Not performing dot of float16 on the GPU since "
@@ -707,8 +707,9 @@ def local_gpua_hgemm(node):
     if (A.ndim == 2 and B.ndim == 2 and
             A.dtype == 'float16' and B.dtype == 'float16'):
         fgraph = node.inputs[0].fgraph
-        C = GpuAllocEmpty(dtype='float16')(shape_i(A, 0, fgraph),
-                                           shape_i(B, 1, fgraph))
+        C = GpuAllocEmpty(dtype='float16', context_name)(
+            shape_i(A, 0, fgraph),
+            shape_i(B, 1, fgraph))
         return gpugemm_no_inplace(C, 1.0, A, B, 0.0)
 
 
@@ -739,7 +740,7 @@ def local_gpua_dot22(node, context_name):
 @register_opt('fast_compile')
 @op_lifter([tensor.basic.Eye])
 def local_gpua_eye(node, context_name):
-    return GpuEye(dtype=node.op.dtype)
+    return GpuEye(dtype=node.op.dtype, context_name)
 
 
 @register_opt('fast_compile')
