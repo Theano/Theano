@@ -28,8 +28,6 @@ from .nnet import GpuSoftmax
 from .opt import gpu_seqopt, register_opt, conv_groupopt, op_lifter
 from .opt_util import alpha_merge, output_merge
 
-# We need to import this to define the flags.
-from theano.sandbox import dnn_flags  # noqa
 
 
 def dnn_available():
