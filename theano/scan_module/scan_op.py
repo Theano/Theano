@@ -1945,7 +1945,7 @@ class Scan(PureOp):
             for g_y in g_y_s:
                 if 'int' in str(g_y.dtype):
                     raise TypeError("Gradients may never be integers but g_y "
-                            "has type " + str(g_y.type))
+                                    "has type " + str(g_y.type))
 
             out_indices = [get_out_idx(self_outputs.index(y)) for y in y_s]
 
