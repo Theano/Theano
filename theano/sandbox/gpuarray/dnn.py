@@ -33,7 +33,6 @@ from .opt_util import alpha_merge, output_merge
 def _dnn_check_compile():
     preambule = """
 #include <stdio.h>
-#include <cuda.h>
 #include <cudnn.h>
 #include <cudnn_helper.h>
 """
@@ -48,15 +47,18 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
   return 1;
 }
 """
+
+    params = ["-l", "cudnn", "-I" + os.path.dirname(__file__)]
+    if config.dnn.include_path:
+        params.append("-I" + config.dnn.include_path)
+    if config.dnn.library_path:
+        params.append("-L" + config.dnn.library_path)
     # Do not run here the test program. It would run on the
     # default gpu, not the one selected by the user. If mixed
     # GPU are installed or if the GPUs are configured in
     # exclusive mode, this cause bad detection.
     avail, out, err = GCC_compiler.try_flags(
-        ["-l", "cudnn", "-I" + os.path.dirname(__file__),
-         "-I" + config.dnn.include_path,
-         "-L" + config.dnn.library_path],
-        preambule=preambule, body=body,
+        params, preambule=preambule, body=body,
         try_run=False, output=True)
 
     if not avail:
