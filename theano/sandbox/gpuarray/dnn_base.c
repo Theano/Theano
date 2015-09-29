@@ -1,8 +1,7 @@
 #section support_code
-static cudnnHandle_t _handle = NULL;
 
 static int
-c_set_tensor4d(PyGpuArrayObject *var, cudnnTensorDescriptor_t desc) {
+c_set_tensorNd(PyGpuArrayObject *var, cudnnTensorDescriptor_t desc) {
   cudnnDataType_t dt;
   size_t ds;
   switch (var->ga.typecode) {
@@ -12,26 +11,37 @@ c_set_tensor4d(PyGpuArrayObject *var, cudnnTensorDescriptor_t desc) {
   case GA_DOUBLE:
     dt = CUDNN_DATA_DOUBLE;
     break;
+#if CUDNN_VERSION > 3000
+  case GA_HALF:
+    dt = CUDNN_DATA_HALF;
+    break;
+#endif
   default:
-    PyErr_SetString(PyExc_TypeError, "Non-float datatype in c_set_tensor4d");
+    PyErr_SetString(PyExc_TypeError, "Non-float datatype in c_set_tensorNd");
     return -1;
   }
   ds = gpuarray_get_elsize(var->ga.typecode);
 
-  int str0, str1, str2, str3;
-  // cudnn do not like 0s in strides
-  str3 = PyGpuArray_STRIDES(var)[3]?PyGpuArray_STRIDES(var)[3]/ds:1;
-  str2 = PyGpuArray_STRIDES(var)[2]?PyGpuArray_STRIDES(var)[2]/ds:PyGpuArray_DIMS(var)[3];
-  str1 = PyGpuArray_STRIDES(var)[1]?PyGpuArray_STRIDES(var)[1]/ds:PyGpuArray_DIMS(var)[2]*PyGpuArray_DIMS(var)[3];
-  str0 = PyGpuArray_STRIDES(var)[0]?PyGpuArray_STRIDES(var)[0]/ds:PyGpuArray_DIMS(var)[2]*PyGpuArray_DIMS(var)[3]*PyGpuArray_DIMS(var)[1];
-  cudnnStatus_t err = cudnnSetTensor4dDescriptorEx(
-    desc, dt,
-    PyGpuArray_DIM(var, 0), PyGpuArray_DIM(var, 1),
-    PyGpuArray_DIM(var, 2), PyGpuArray_DIM(var, 3),
-    str0, str1, str2, str3);
+  int strs[5], dims[5], default_stride = 1;
+  unsigned int nd = PyGpuArray_NDIM(var);
+
+  if (nd > 5) {
+    PyErr_SetString(PyExc_TypeError, "Tensor of more than 5d");
+    return -1;
+  }
+
+  for (unsigned int _i = nd; _i > 0; _i--) {
+    unsigned int i = _i - 1;
+    strs[i] = PyGpuArray_STRIDE(var, i) ?
+      PyGpuArray_STRIDE(var, i)/ds : default_stride;
+    default_stride *= PyGpuArray_DIM(var, i);
+    dims[i] = PyGpuArray_DIM(var, i);
+  }
+
+  cudnnStatus_t err = cudnnSetTensorNdDescriptor(desc, dt, nd, dims, strs);
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError,
-		 "Could not set tensor4d descriptor: %s",
+		 "Could not set tensorNd descriptor: %s",
 		 cudnnGetErrorString(err));
     return -1;
   }
@@ -53,14 +63,30 @@ c_set_filter(PyGpuArrayObject *var, cudnnFilterDescriptor_t desc) {
   case GA_DOUBLE:
     dt = CUDNN_DATA_DOUBLE;
     break;
+#if CUDNN_VERSION > 3000
+  case GA_HALF:
+    dt = CUDNN_DATA_HALF;
+    break;
+#endif
   default:
     PyErr_SetString(PyExc_TypeError, "Non-float datatype in c_set_filter");
     return -1;
   }
-  cudnnStatus_t err = cudnnSetFilter4dDescriptor(
-    desc, dt,
-    PyGpuArray_DIMS(var)[0], PyGpuArray_DIMS(var)[1],
-    PyGpuArray_DIMS(var)[2], PyGpuArray_DIMS(var)[3]);
+
+  int dims[5];
+  unsigned int nd = PyGpuArray_NDIM(var);
+
+  if (nd > 5) {
+    PyErr_SetString(PyExc_TypeError, "Tensor of more than 5d");
+    return -1;
+  }
+
+  for (unsigned int _i = nd; _i > 0; _i--) {
+    unsigned int i = _i - 1;
+    dims[i] = PyGpuArray_DIM(var, i);
+  }
+
+  cudnnStatus_t err = cudnnSetFilterNdDescriptor(desc, dt, nd, dims);
   if (err != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError,
 		 "Could not set filter descriptor: %s.",
@@ -72,15 +98,23 @@ c_set_filter(PyGpuArrayObject *var, cudnnFilterDescriptor_t desc) {
 
 #section init_code
 
+setup_ext_cuda();
+
+#section support_code_struct
+
+cudnnHandle_t APPLY_SPECIFIC(_handle);
+
+#section init_code_struct
+
 {
+  cuda_enter(pygpu_default_context()->ctx);
   cudnnStatus_t err;
-  if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
+  APPLY_SPECIFIC(_handle) = NULL;
+  if ((err = cudnnCreate(&APPLY_SPECIFIC(_handle))) != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError, "could not create cuDNN handle: %s",
-		 cudnnGetErrorString(err));
-#if PY_MAJOR_VERSION >= 3
-    return NULL;
-#else
-    return;
-#endif
+                 cudnnGetErrorString(err));
+    cuda_exit(pygpu_default_context()->ctx);
+    FAIL;
   }
+  cuda_exit(pygpu_default_context()->ctx);
 }
