@@ -16,7 +16,8 @@ from theano.tensor.signal.downsample import (
     DownsampleFactorMax, MaxPoolGrad, AveragePoolGrad)
 
 from . import pygpu, init_dev
-from .basic_ops import (as_gpuarray_variable,
+from .type import get_context, gpu_context_type
+from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         gpu_contiguous, HostFromGpu,
                         GpuAllocEmpty, empty_like)
 from .elemwise import GpuElemwise
@@ -28,29 +29,14 @@ from .nnet import GpuSoftmax
 from .opt import gpu_seqopt, register_opt, conv_groupopt, op_lifter
 from .opt_util import alpha_merge, output_merge, inplace_allocempty
 
-
-def dnn_available():
-    if dnn_available.avail is not None:
-        return dnn_available.avail
-    if pygpu is None:
-        dnn_available.msg = "PyGPU not available"
-        dnn_available.avail = False
-        return False
-    if not init_dev.device.startswith('cuda'):
-        dnn_available.msg = "Not on a CUDA device. Got %s." % init_dev.device
-        dnn_available.avail = False
-        return False
-    # This is a hack because bin_id is in the from of
-    # "sm_<major><minor>" for cuda devices.
-    if pygpu.get_default_context().bin_id[:-2] < '30':
-        dnn_available.msg = "Device not supported by cuDNN"
-        dnn_available.avail = False
+def _dnn_check_compile():
     preambule = """
 #include <stdio.h>
 #include <cudnn.h>
 #include <cudnn_helper.h>
 """
 
+    # No need for the context in here since we won't execute that code
     body = """
 cudnnHandle_t _handle = NULL;
 cudnnStatus_t err;
@@ -70,33 +56,64 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
     # default gpu, not the one selected by the user. If mixed
     # GPU are installed or if the GPUs are configured in
     # exclusive mode, this cause bad detection.
-    comp, out, err = GCC_compiler.try_flags(
+    avail, out, err = GCC_compiler.try_flags(
         params, preambule=preambule, body=body,
         try_run=False, output=True)
 
-    dnn_available.avail = comp
-    if not dnn_available.avail:
-        dnn_available.msg = (
-            "Theano cannot compile with cuDNN. We got this error:\n" +
-            str(err))
-    else:
-        # If we can compile, check that we can import and run.
-        v = version()
-        if v < 2000:
-            dnn_available.avail = False
-            dnn_available.msg = (
-                "You have an old release of CuDNN (or a release candidate) "
-                "that isn't supported.  Please update to at least v2 final "
-                "version.")
-            raise RuntimeError(dnn_available.msg)
-        if v >= 3000 and v < 3007:
-            dnn_available.avail = False
-            dnn_available.msg = (
-                "You have installed a release candidate of CuDNN v3. This "
-                "isn't supported. Please update to v3 final version.")
-            raise RuntimeError(dnn_available.msg)
+    if not avail:
+        return False, ("Theano cannot compile with cuDNN. "
+                       "We got this error:\n" + str(err))
+    return True, None
 
-    return dnn_available.avail
+
+def _dnn_check_version():
+    v = version()
+    if v < 2000:
+        return False, (
+            "You have an old release of CuDNN (or a release candidate) "
+            "that isn't supported.  Please update to at least v2 final "
+            "version.")
+    if v >= 3000 and v < 3007:
+        return False, (
+            "You have installed a release candidate of CuDNN v3. This "
+            "isn't supported. Please update to v3 final version.")
+
+    return True, None
+
+
+def dnn_available(context_name):
+    if dnn_available.avail is False:
+        return False
+
+    if pygpu is None:
+        dnn_available.msg = "PyGPU not available"
+        dnn_available.avail = False
+        return False
+
+    # If we haven't checked yet, check if we can compile.
+    if dnn_available.avail is None:
+        dnn_available.avail, dnn_available.msg = _dnn_check_compile()
+        if dnn_available.avail:
+            dnn_available.avail, dnn_available.msg = _dnn_check_version()
+            if not dnn_available.avail:
+                raise RuntimeError(dnn_available.msg)
+        if not dnn_available.avail:
+            return False
+
+    # Don't cache these checks since they depend on the context
+    ctx = get_context(context_name)
+
+    if not ctx.kind == 'cuda':
+        dnn_available.msg = "Not on a CUDA device."
+        return False
+
+    # This is a hack because bin_id is in the from of
+    # "<something>_<major><minor>" for cuda devices.
+    if ctx.bin_id[:-2] < '30':
+        dnn_available.msg = "Device not supported by cuDNN"
+        return False
+
+    return True
 
 dnn_available.avail = None
 dnn_available.msg = None
@@ -110,6 +127,10 @@ class DnnBase(COp):
     # dnn does not know about broadcasting, so we do not need to assert
     # the input broadcasting pattern.
     check_broadcast = False
+    context_type = gpu_context_type
+
+    def get_context(self, node):
+        return node.outputs[0].type.context
 
     def __init__(self, files=None, c_func=None):
         if files is None:
@@ -181,7 +202,9 @@ def version():
 
     This also does a check that the header version matches the runtime version.
     """
-    if not dnn_available():
+    if dnn_available.avail is None:
+        raise RuntimeError("called version() before dnn_available()")
+    if not dnn_available.avail:
         raise Exception(
             "We can't determine the cudnn version as it is not available",
             dnn_available.msg)
@@ -390,9 +413,10 @@ class GpuDnnConv(DnnBase):
         return defs
 
     def make_node(self, img, kern, output, desc, alpha=None, beta=None):
-        img = as_gpuarray_variable(img)
-        kern = as_gpuarray_variable(kern)
-        output = as_gpuarray_variable(output)
+        ctx_name = infer_context_name(img, kern, output)
+        img = as_gpuarray_variable(img, ctx_name)
+        kern = as_gpuarray_variable(kern, ctx_name)
+        output = as_gpuarray_variable(output, ctx_name)
         if img.type.ndim not in (4, 5):
             raise TypeError('img must be 4D or 5D tensor')
         if kern.type.ndim not in (4, 5):
@@ -574,9 +598,10 @@ class GpuDnnConvGradW(DnnBase):
         return defs
 
     def make_node(self, img, topgrad, output, desc, alpha=None, beta=None):
-        img = as_gpuarray_variable(img)
-        topgrad = as_gpuarray_variable(topgrad)
-        output = as_gpuarray_variable(output)
+        ctx_name = infer_context_name(img, topgrad, output)
+        img = as_gpuarray_variable(img, ctx_name)
+        topgrad = as_gpuarray_variable(topgrad, ctx_name)
+        output = as_gpuarray_variable(output, ctx_name)
         if img.type.ndim not in (4, 5):
             raise TypeError('img must be 4D or 5D tensor')
         if topgrad.type.ndim not in (4, 5):
@@ -689,9 +714,10 @@ class GpuDnnConvGradI(DnnBase):
         return defs
 
     def make_node(self, kern, topgrad, output, desc, alpha=None, beta=None):
-        kern = as_gpuarray_variable(kern)
-        topgrad = as_gpuarray_variable(topgrad)
-        output = as_gpuarray_variable(output)
+        ctx_name = infer_context_name(kern, topgrad, output)
+        kern = as_gpuarray_variable(kern, ctx_name)
+        topgrad = as_gpuarray_variable(topgrad, ctx_name)
+        output = as_gpuarray_variable(output, ctx_name)
         if kern.type.ndim not in (4, 5):
             raise TypeError('kern must be 4D or 5D tensor')
         if topgrad.type.ndim not in (4, 5):
@@ -770,6 +796,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         warnings.warn("workmem is deprecated, use algo instead", stacklevel=2)
         algo = workmem
     fgraph = getattr(img, 'fgraph', None) or getattr(kerns, 'fgraph', None)
+    ctx_name = infer_context_name(img, kerns)
     if (border_mode == 'valid' and subsample == (1, 1) and
             direction_hint == 'bprop weights'):
         # Special case: We are asked to use GpuDnnConvGradW. We need to set
@@ -782,12 +809,13 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         kerns = gpu_contiguous(kerns.dimshuffle(1, 0, 2, 3))
         shape2 = shape_i(img, 2, fgraph) - shape_i(kerns, 2, fgraph) + 1
         shape3 = shape_i(img, 3, fgraph) - shape_i(kerns, 3, fgraph) + 1
-        out = GpuAllocEmpty(img.dtype)(shape_i(kerns, 1, fgraph),
-                                       shape_i(img, 1, fgraph), shape2, shape3)
+        out = GpuAllocEmpty(img.dtype, ctx_name)(
+            shape_i(kerns, 1, fgraph),
+            shape_i(img, 1, fgraph), shape2, shape3)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                               conv_mode='cross')(out.shape)
         conv = GpuDnnConvGradW()(img, kerns, out, desc)
-        return as_gpuarray_variable(conv.dimshuffle(1, 0, 2, 3))
+        return as_gpuarray_variable(conv.dimshuffle(1, 0, 2, 3), ctx_name)
 
     elif (border_mode == 'full' and subsample == (1, 1) and
           direction_hint != 'forward!'):
@@ -799,9 +827,9 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         conv_mode = 'cross' if conv_mode == 'conv' else 'conv'
         shape2 = shape_i(img, 2, fgraph) + shape_i(kerns, 2, fgraph) - 1
         shape3 = shape_i(img, 3, fgraph) + shape_i(kerns, 3, fgraph) - 1
-        out = GpuAllocEmpty(img.dtype)(shape_i(img, 0, fgraph),
-                                       shape_i(kerns, 1, fgraph),
-                                       shape2, shape3)
+        out = GpuAllocEmpty(img.dtype, ctx_name)(shape_i(img, 0, fgraph),
+                                                 shape_i(kerns, 1, fgraph),
+                                                 shape2, shape3)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
                               conv_mode=conv_mode)(kerns.shape)
         return GpuDnnConvGradI()(kerns, img, out, desc)
@@ -817,7 +845,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     out_shp = GpuDnnConv.get_out_shape(img.shape, kerns.shape,
                                        desc_op.border_mode,
                                        desc_op.subsample)
-    out = GpuAllocEmpty(img.dtype)(*out_shp)
+    out = GpuAllocEmpty(img.dtype, ctx_name)(*out_shp)
     return GpuDnnConv(algo=algo)(img, kerns, out, desc)
 
 
@@ -948,7 +976,7 @@ class GpuDnnPool(DnnBase):
         DnnBase.__init__(self, ["dnn_pool.c"], "APPLY_SPECIFIC(dnn_pool)")
 
     def make_node(self, img, desc):
-        img = as_gpuarray_variable(img)
+        img = as_gpuarray_variable(img, infer_context_name(img))
 
         if desc.owner is not None:
             e_ndim = desc.owner.op.get_ndim() + 2
@@ -1002,7 +1030,7 @@ class GpuDnnPoolGrad(DnnBase):
         The input of the pooling.
     out
         The output of the pooling in the forward.
-    inp_grad
+    out_grad
         Same size as out, but is the corresponding gradient information.
     desc
         The pooling descriptor.
@@ -1016,9 +1044,10 @@ class GpuDnnPoolGrad(DnnBase):
                          "APPLY_SPECIFIC(dnn_pool_grad)")
 
     def make_node(self, inp, out, out_grad, desc):
-        inp = as_gpuarray_variable(inp)
-        out_grad = as_gpuarray_variable(out_grad)
-        out = as_gpuarray_variable(out)
+        ctx_name = infer_context_name(inp, out, out_grad)
+        inp = as_gpuarray_variable(inp, ctx_name)
+        out_grad = as_gpuarray_variable(out_grad, ctx_name)
+        out = as_gpuarray_variable(out, ctx_name)
 
         if desc.owner is not None:
             nd = desc.owner.op.get_ndim() + 2
@@ -1147,7 +1176,7 @@ class GpuDnnSoftmax(GpuDnnSoftmaxBase):
     c_func = "APPLY_SPECIFIC(softmax)"
 
     def make_node(self, x):
-        x = as_gpuarray_variable(x)
+        x = as_gpuarray_variable(x, infer_context_name(x))
         assert x.ndim == 4
         return Apply(self, [x], [x.type()])
 
@@ -1181,8 +1210,9 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
     c_func = "APPLY_SPECIFIC(softmax_grad)"
 
     def make_node(self, dy, sm):
-        dy = as_gpuarray_variable(dy)
-        sm = as_gpuarray_variable(sm)
+        ctx_name = infer_context_name(dy, sm)
+        dy = as_gpuarray_variable(dy, ctx_name)
+        sm = as_gpuarray_variable(sm, ctx_name)
         assert dy.ndim == 4
         assert sm.ndim == 4
         return Apply(self, [dy, sm], [sm.type()])
@@ -1191,9 +1221,9 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
 # @register_opt('cudnn')  # this optimizer is registered in opt.py instead.
 @local_optimizer([GpuConv])
 def local_conv_dnn(node):
-    if not dnn_available():
-        return
     if isinstance(node.op, GpuConv):
+        if not dnn_available(node.outputs[0].type.context_name):
+            return
         if node.op.border_mode not in ['full', 'valid']:
             return
         img, kern = node.inputs
@@ -1211,9 +1241,9 @@ def local_conv_dnn(node):
 # because for some input/kernel shape configurations, this is faster.
 @local_optimizer([GpuConv])
 def local_conv_dnn_alternative(node):
-    if not dnn_available():
-        return
     if isinstance(node.op, GpuConv):
+        if not dnn_available(node.outputs[0].type.context_name):
+            return
         border_mode = node.op.border_mode
         subsample = node.op.subsample
         if border_mode not in ['full', 'valid'] or subsample != (1, 1):
@@ -1304,8 +1334,8 @@ def local_dnn_convi_output_merge(node, *inputs):
 
 @register_opt('cudnn')
 @op_lifter([DownsampleFactorMax])
-def local_pool_dnn_alternative(node):
-    if not dnn_available():
+def local_pool_dnn_alternative(node, ctx_name):
+    if not dnn_available(ctx_name):
         return
     if not node.op.ignore_border:
         return
@@ -1320,8 +1350,8 @@ def local_pool_dnn_alternative(node):
 
 @register_opt('cudnn')
 @op_lifter([MaxPoolGrad])
-def local_pool_dnn_grad_stride(node):
-    if not dnn_available():
+def local_pool_dnn_grad_stride(node, ctx_name):
+    if not dnn_available(ctx_name):
         return
     if not node.op.ignore_border:
         return
@@ -1340,8 +1370,8 @@ def local_pool_dnn_grad_stride(node):
 
 @register_opt('cudnn')
 @op_lifter([AveragePoolGrad])
-def local_avg_pool_dnn_grad_stride(node):
-    if not dnn_available():
+def local_avg_pool_dnn_grad_stride(node, ctx_name):
+    if not dnn_available(ctx_name):
         return
     if not node.op.ignore_border:
         return
@@ -1363,20 +1393,21 @@ def local_avg_pool_dnn_grad_stride(node):
 @register_opt('cudnn')
 @local_optimizer([GpuSoftmax])
 def local_softmax_dnn(node):
-    if not dnn_available():
-        return
     if isinstance(node.op, GpuSoftmax):
+        if not dnn_available(node.outputs[0].type.context_name):
+            return
         ins = node.inputs[0].dimshuffle(0, 1, 'x', 'x')
         ins = gpu_contiguous(ins)
         out = GpuDnnSoftmax('accurate', 'channel')(ins)
-        out = as_gpuarray_variable(out.dimshuffle(0, 1))
+        out = as_gpuarray_variable(out.dimshuffle(0, 1), out.type.context_name)
         return [out]
 
 
 @register_opt('cudnn')
 @local_optimizer([GpuElemwise])
 def local_log_softmax_dnn(node):
-    if not dnn_available() or version() < 3000:
+    # This looks for GpuDnnSoftmax so we know that we have cudnn.
+    if version() < 3000:
         # No log-softmax before cudnn v3
         return
     if (isinstance(node.op, GpuElemwise) and
@@ -1395,7 +1426,14 @@ class NoCuDNNRaise(Optimizer):
         Raise a RuntimeError if cudnn can't be used.
 
         """
-        if not dnn_available():
+        try:
+            dnn_available(None)
+        except ValueError:
+            # This is most likely due to get_context()
+            pass
+
+        # This means we will have a problem no matter what context.
+        if not dnn_available.avail:
             # Make an assert error as we want Theano to fail, not
             # just skip this optimization.
             raise AssertionError(
@@ -1408,8 +1446,8 @@ gpu_seqopt.register("NoCuDNNRaise", NoCuDNNRaise(), 0, 'cudnn')
 
 @register_opt('cudnn')
 @op_lifter([SoftmaxGrad])
-def local_softmax_dnn_grad(node):
-    if not dnn_available():
+def local_softmax_dnn_grad(node, ctx_name):
+    if not dnn_available(ctx_name):
         return
     ins = []
     for n in node.inputs:

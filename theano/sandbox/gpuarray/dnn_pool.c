@@ -29,10 +29,10 @@ if (APPLY_SPECIFIC(output) != NULL) { cudnnDestroyTensorDescriptor(APPLY_SPECIFI
 
 int APPLY_SPECIFIC(dnn_pool)(PyGpuArrayObject *img,
                              cudnnPoolingDescriptor_t desc,
-                             PyGpuArrayObject **out) {
+                             PyGpuArrayObject **out,
+                             PyGpuContextObject *c) {
   cudnnStatus_t err;
   size_t dims[5];
-  PyGpuContextObject *c = pygpu_default_context();
 
   if (!GpuArray_IS_C_CONTIGUOUS(&img->ga)) {
     PyErr_SetString(PyExc_ValueError, "Only contiguous inputs are supported.");
