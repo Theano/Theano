@@ -1339,33 +1339,10 @@ class Scan(PureOp):
                         storage.data = output_storage[offset_out].data
                         offset_out -= 1
 
-            # 5.3. Check which of the pre-allocated outputs (if applicable)
-            # have been reused by the inner function
-            for idx in xrange(len(output_storage)):
-                # If the storage map does not contain the same object, then
-                # the pre-allocated output has not been reused
-                new_var = output_storage[idx].storage[0]
-                if old_output_storage[idx] is new_var:
-
-                    # The pre-allocated output is only considered as having
-                    # been reused if it still points to the same data as it
-                    # did before the execution of the inner function
-                    if old_output_data[idx] is None:
-                        output_reused[idx] = False
-                    else:
-                        if hasattr(new_var, 'gpudata'):
-                            output_reused[idx] = (new_var.gpudata ==
-                                                  old_output_data[idx])
-                        elif hasattr(new_var, 'data'):
-                            output_reused[idx] = (new_var.data ==
-                                                  old_output_data[idx])
-                else:
-                    output_reused[idx] = False
-
             t_fn += dt_fn
             offset_out = 0
 
-            # 5.4 Copy over the values for mit_mot outputs
+            # 5.3 Copy over the values for mit_mot outputs
             mitmot_inp_offset = 0
             mitmot_out_idx = 0
             for j in xrange(self.n_mit_mot):
@@ -1407,21 +1384,54 @@ class Scan(PureOp):
 
                 mitmot_inp_offset += len(self.tap_array[j])
 
-            # 5.5 Copy over the values for mit_sot/sit_sot outputs
+            # 5.4 Copy over the values for mit_sot/sit_sot outputs
             begin = self.n_mit_mot
             end = self.n_outs
             offset_out -= self.n_mit_mot
 
             for j in xrange(begin, end):
+
+                # Check whether the initialization of the output storage map
+                # for this output has been reused.
+                old_var = old_output_storage[offset_out + j]
+                old_data = old_output_data[offset_out + j]
+                new_var = output_storage[offset_out + j].storage[0]
+                if old_var is new_var:
+                    if old_data is None:
+                        output_reused = False
+                    elif hasattr(new_var, 'gpudata'):
+                        output_reused = (new_var.gpudata == old_data)
+                    elif hasattr(new_var, 'data'):
+                        output_reused = (new_var.data == old_data)
+                else:
+                    output_reused = False
+
+                # Copy the output value to `outs`, if necessary
                 if (store_steps[j] == 1 or self.vector_outs[j] or
-                    not output_reused[offset_out + j]):
+                    not output_reused):
                     outs[j][0][pos[j]] = \
                             output_storage[offset_out + j].storage[0]
 
-            # 5.6 Copy over the values for nit_sot outputs
+            # 5.5 Copy over the values for nit_sot outputs
             begin = end
             end += self.n_nit_sot
             for j in xrange(begin, end):
+
+                # Check whether the initialization of the output storage map
+                # for this output has been reused.
+                old_var = old_output_storage[offset_out + j]
+                old_data = old_output_data[offset_out + j]
+                new_var = output_storage[offset_out + j].storage[0]
+                if old_var is new_var:
+                    if old_data is None:
+                        output_reused = False
+                    elif hasattr(new_var, 'gpudata'):
+                        output_reused = (new_var.gpudata == old_data)
+                    elif hasattr(new_var, 'data'):
+                        output_reused = (new_var.data == old_data)
+                else:
+                    output_reused = False
+
                 if i == 0:
                     jout = j + offset_out
                     shape = (store_steps[j],) + \
@@ -1438,11 +1448,11 @@ class Scan(PureOp):
                         outs[j][0] = outs[j][0][:store_steps[j]]
                     outs[j][0][pos[j]] = output_storage[jout].storage[0]
                 elif (store_steps[j] == 1 or self.vector_outs[j] or
-                      not output_reused[offset_out + j]):
+                      not output_reused):
                     outs[j][0][pos[j]] = \
                             output_storage[j + offset_out].storage[0]
 
-            # 5.7 Copy over the values for outputs corresponding to shared
+            # 5.6 Copy over the values for outputs corresponding to shared
             # variables
             begin = end
             end += self.n_shared_outs
