@@ -4794,6 +4794,12 @@ def arange(start, stop=None, step=1, dtype=None):
     # If dtype is not provided, infer it from the other arguments
     if dtype is None:
         dtype = scal.upcast(start.type.dtype, stop.type.dtype, step.type.dtype)
+        # don't try to be stingy and byte-optimize, this leads to
+        # overflow problems.
+        if dtype.startswith('int'):
+            dtype = 'int64'
+        if dtype.startswith('uint'):
+            dtype = 'uint64'
         if config.cast_policy in ('numpy', 'numpy+floatX'):
             # We enforce numpy semantics, except in the special case where
             # `config.cast_policy` is 'numpy+floatX' and we want to use float32
