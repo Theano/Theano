@@ -4024,9 +4024,10 @@ def shape_padaxis(t, axis):
 
 @constructor
 def stack(*tensors, **kwargs):
-    """Insert the arguments as slices into a tensor of 1 rank greater.
+    """Stack tensors in sequence on given axis (default is 0).
 
-    The size in dimension `axis` of the result will be equal to the number
+    Take a sequence of tensors and stack them on given axis to make a single
+    tensor. The size in dimension `axis` of the result will be equal to the number
     of tensors passed.
 
     Note: The interface stack(*tensors) is deprecated, you should use
@@ -4039,6 +4040,35 @@ def stack(*tensors, **kwargs):
     axis : int
         The index of the new axis. Default value is 0.
 
+    Examples
+    --------
+    >>> a = theano.tensor.scalar()
+    >>> b = theano.tensor.scalar()
+    >>> c = theano.tensor.scalar()
+    >>> x = theano.tensor.stack([a, b, c])
+    >>> x.ndim # x is a vector of length 3.
+    1
+    >>> a = theano.tensor.tensor4d()
+    >>> b = theano.tensor.tensor4d()
+    >>> c = theano.tensor.tensor4d()
+    >>> x = theano.tensor.stack([a, b, c])
+    >>> x.ndim # x is a 5d tensor.
+    5
+    >>> rval = x.eval(dict((t, np.zeros((2, 2, 2, 2))) for t in [a, b, c]))
+    >>> rval.shape # 3 tensors are stacked on axis 0
+    (3, 2, 2, 2, 2)
+    >>> x = theano.tensor.stack([a, b, c], axis=3)
+    >>> x.ndim
+    5
+    >>> rval = x.eval(dict((t, np.zeros((2, 2, 2, 2))) for t in [a, b, c]))
+    >>> rval.shape # 3 tensors are stacked on axis 3
+    (2, 2, 2, 3, 2)
+    >>> x = theano.tensor.stack([a, b, c], axis=-2)
+    >>> x.ndim
+    5
+    >>> rval = x.eval(dict((t, np.zeros((2, 2, 2, 2))) for t in [a, b, c]))
+    >>> rval.shape # 3 tensors are stacked on axis -2
+    (2, 2, 2, 3, 2)
     """
     # ---> Remove this when moving to the new interface:
     if not tensors and not kwargs:

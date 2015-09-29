@@ -703,30 +703,60 @@ Creating Tensor
               except for the main diagonal, whose values are equal to one. The output
               will have same dtype as `x`.
 
-
 .. function:: stack(tensors, axis=0)
 
-    Warning: The interface stack(*tensors) is deprecated!
+    Stack tensors in sequence on given axis (default is 0). 
 
-    Return a Tensor representing for the arguments all stacked up into a single Tensor.
-    (of 1 rank greater).
+    Take a sequence of tensors and stack them on given axis to make a single
+    tensor. The size in dimension `axis` of the result will be equal to the number
+    of tensors passed.
 
     :param tensors: a list or a tuple of one or more tensors of the same rank.
     :param axis: the axis along which the tensors will be stacked. Default value is 0.
     :returns: A tensor such that rval[0] == tensors[0], rval[1] == tensors[1], etc.
 
-    >>> x0 = T.scalar()
-    >>> x1 = T.scalar()
-    >>> x2 = T.scalar()
-    >>> x = T.stack([x0, x1, x2])
+    Examples:
+
+    >>> a = theano.tensor.scalar()
+    >>> b = theano.tensor.scalar()
+    >>> c = theano.tensor.scalar()
+    >>> x = theano.tensor.stack([a, b, c])
     >>> x.ndim # x is a vector of length 3.
     1
+    >>> a = theano.tensor.tensor4d()
+    >>> b = theano.tensor.tensor4d()
+    >>> c = theano.tensor.tensor4d()
+    >>> x = theano.tensor.stack([a, b, c])
+    >>> x.ndim # x is a 5d tensor.
+    5
+    >>> rval = x.eval(dict((t, np.zeros((2, 2, 2, 2))) for t in [a, b, c]))
+    >>> rval.shape # 3 tensors are stacked on axis 0
+    (3, 2, 2, 2, 2)
 
+    We can also specify different axis than default value 0
+
+    >>> x = theano.tensor.stack([a, b, c], axis=3)
+    >>> x.ndim
+    5
+    >>> rval = x.eval(dict((t, np.zeros((2, 2, 2, 2))) for t in [a, b, c]))
+    >>> rval.shape # 3 tensors are stacked on axis 3
+    (2, 2, 2, 3, 2)
+    >>> x = theano.tensor.stack([a, b, c], axis=-2)
+    >>> x.ndim
+    5
+    >>> rval = x.eval(dict((t, np.zeros((2, 2, 2, 2))) for t in [a, b, c]))
+    >>> rval.shape # 3 tensors are stacked on axis -2
+    (2, 2, 2, 3, 2)
 
 .. function:: stack(*tensors)
 
-    Return a Tensor representing for the arguments all stacked up into a single Tensor.
-    (of 1 rank greater).
+    .. warning:: The interface stack(*tensors) is deprecated! 
+             Use stack(tensors, axis=0) instead.
+
+    Stack tensors in sequence vertically (row wise).
+
+    Take a sequence of tensors and stack them vertically to make a single
+    tensor.
 
     :param tensors: one or more tensors of the same rank
     :returns: A tensor such that rval[0] == tensors[0], rval[1] == tensors[1], etc.
