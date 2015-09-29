@@ -7,7 +7,7 @@ from theano.gof import local_optimizer
 from theano.tensor import (DimShuffle, get_scalar_constant_value,
                            NotScalarConstantError)
 
-from .basic_ops import GpuFromHost, HostFromGpu
+from .basic_ops import GpuFromHost, HostFromGpu, GpuAllocEmpty
 from .elemwise import GpuDimShuffle, GpuElemwise
 
 _one = scal.constant(numpy.asarray(1.0, dtype='float64'))
@@ -124,5 +124,24 @@ def output_merge(cls, alpha_in, beta_in, out_in, nd):
                 inputs[out_in] = W
                 inputs[beta_in] = _one.clone()
                 return maker(targ, *inputs)
+        return opt
+    return wrapper
+
+
+def inplace_allocempty(op, idx):
+    def wrapper(maker):
+        @local_optimizer([op], inplace=True)
+        @wraps(maker)
+        def opt(node):
+            if type(node.op) != op or node.op.inplace:
+                return
+            inputs = list(node.inputs)
+            alloc = inputs[idx]
+            if (alloc.owner and
+                    isinstance(alloc.owner.op, GpuAllocEmpty) and
+                    len(alloc.clients) > 1):
+                alloc_op = GpuAllocEmpty(alloc.owner.op.dtype)
+                inputs[idx] = alloc_op(*alloc.owner.inputs)
+            return maker(node, inputs)
         return opt
     return wrapper
