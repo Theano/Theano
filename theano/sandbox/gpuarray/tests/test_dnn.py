@@ -22,8 +22,6 @@ from . import test_nnet
 def test_dnn_conv_desc_merge():
     if not dnn.dnn_available():
         raise SkipTest(dnn.dnn_available.msg)
-    img_shp = T.as_tensor_variable(
-        numpy.asarray([2, 1, 8, 8]).astype('int64'))
     kern_shp = T.as_tensor_variable(
         numpy.asarray([3, 1, 2, 2]).astype('int64'))
     desc1 = dnn.GpuDnnConvDesc(border_mode='valid', subsample=(2, 2),
