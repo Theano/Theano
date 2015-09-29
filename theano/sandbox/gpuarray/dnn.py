@@ -27,7 +27,7 @@ from .conv import GpuConv
 # GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad
 from .nnet import GpuSoftmax
 from .opt import gpu_seqopt, register_opt, conv_groupopt, op_lifter
-from .opt_util import alpha_merge, output_merge
+from .opt_util import alpha_merge, output_merge, inplace_allocempty
 
 
 def _dnn_check_compile():
@@ -1272,49 +1272,25 @@ conv_groupopt.register('local_conv_dnn', local_conv_dnn, 20,
                        'conv_dnn', 'fast_compile', 'fast_run', 'cudnn')
 
 
-@local_optimizer([GpuDnnConv], inplace=True)
-def local_dnn_conv_inplace(node):
-    if type(node.op) != GpuDnnConv or node.op.inplace:
-        return
-    inputs = list(node.inputs)
-    dest = inputs[2]
-    if (dest.owner and
-            isinstance(dest.owner.op, GpuAllocEmpty) and
-            len(dest.clients) > 1):
-        inputs[2] = GpuAllocEmpty(dest.owner.op.dtype)(*dest.owner.inputs)
+@inplace_allocempty(GpuDnnConv, 2)
+def local_dnn_conv_inplace(node, inputs):
     return [GpuDnnConv(algo=node.op.algo, inplace=True)(*inputs)]
 
 
-@local_optimizer([GpuDnnConvGradW], inplace=True)
-def local_dnn_convgw_inplace(node):
-    if type(node.op) != GpuDnnConvGradW or node.op.inplace:
-        return
-    inputs = list(node.inputs)
-    dest = inputs[2]
-    if (dest.owner and
-            isinstance(dest.owner.op, GpuAllocEmpty) and
-            len(dest.clients) > 1):
-        inputs[2] = GpuAllocEmpty(dest.owner.op.dtype)(*dest.owner.inputs)
+@inplace_allocempty(GpuDnnConvGradW, 2)
+def local_dnn_convgw_inplace(node, inputs):
     return [GpuDnnConvGradW(algo=node.op.algo, inplace=True)(*inputs)]
 
 
-@local_optimizer([GpuDnnConvGradI], inplace=True)
-def local_dnn_convgi_inplace(node):
-    if type(node.op) != GpuDnnConvGradI or node.op.inplace:
-        return
-    inputs = list(node.inputs)
-    dest = inputs[2]
-    if (dest.owner and
-            isinstance(dest.owner.op, GpuAllocEmpty) and
-            len(dest.clients) > 1):
-        inputs[2] = GpuAllocEmpty(dest.owner.op.dtype)(*dest.owner.inputs)
+@inplace_allocempty(GpuDnnConvGradI, 2)
+def local_dnn_convgi_inplace(node, inputs):
     return [GpuDnnConvGradI(algo=node.op.algo, inplace=True)(*inputs)]
 
 optdb.register('local_dnna_conv_inplace',
                tensor.opt.in2out(local_dnn_conv_inplace,
                                  local_dnn_convgw_inplace,
                                  local_dnn_convgi_inplace,
-                                 name="local_dnn_conv_inplace"),
+                                 name="local_dnna_conv_inplace"),
                70.0, 'fast_run', 'inplace', 'gpuarray', 'cudnn')
 
 
