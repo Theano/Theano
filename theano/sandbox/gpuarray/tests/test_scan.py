@@ -216,7 +216,7 @@ class T_Scan(TestCase):
                                 dtype='float32')
         vsample = theano.shared(v_vsample)
         trng = theano.sandbox.rng_mrg.MRG_RandomStreams(
-                                utt.fetch_seed())
+            utt.fetch_seed())
 
         def f(vsample_tm1):
             return trng.binomial(vsample_tm1.shape, n=1, p=0.3,
@@ -238,4 +238,4 @@ class T_Scan(TestCase):
 
         # I leave this to tested by debugmode, this test was anyway
         # more of does the graph compile kind of test
-        t_result = my_f()
+        my_f()

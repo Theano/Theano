@@ -116,7 +116,7 @@ class test_GpuCAReduceCPY(test_elemwise.test_CAReduce):
 
     def test_infer_shape(self):
         for dtype in self.dtypes:
-            test_CAReduce.test_infer_shape(self, dtype)
+            super(test_GpuCAReduceCPY, self).test_infer_shape(self, dtype)
 
 
 class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
@@ -129,15 +129,15 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
              ((5, 6), (1, )),
              ((5, 6), (-1, )),
              ((5, 6), (-2, )),
-             #((5, 6), ()),  #reduce on no axis(copy) isn't implemented
-             #((2, 3, 4, 5), (0, 1, 3)), mask 1101 isn't implemented
-             #((2, 3, 4, 5), (-2, -3)), mask 0110 isn't implemented
+             # ((5, 6), ()),  #reduce on no axis(copy) isn't implemented
+             # ((2, 3, 4, 5), (0, 1, 3)), mask 1101 isn't implemented
+             # ((2, 3, 4, 5), (-2, -3)), mask 0110 isn't implemented
              ((5, 0), None),
              ((5, 0), (0, )),
              ((5, 0), (1, )),
-             #((5, 0), ()), reduce on no axis isn't implemented
-             #((), None), reduce on no axis isn't implemented
-             #((), ()) reduce on no axis isn't implemented
+             # ((5, 0), ()), reduce on no axis isn't implemented
+             # ((), None), reduce on no axis isn't implemented
+             # ((), ()) reduce on no axis isn't implemented
 
              # Test all GPU cases implemented
              ((1, 0), (1,)),
@@ -154,7 +154,7 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
              ((0, 0, 0, 0), [0, 1, 2, 3]),
              ((5, 4, 3, 20), [2, 3]), ((5, 4, 3, 2), [0, 1, 2, 3]), ((5, 4, 3, 2), [0, 2, 3]), ((5, 4, 3, 2), [1, 2, 3]),
 
-                               # test shape bigger then 4096 on each dimension to make sure that we work correctly when we don't have enough thread/block in each dimensions
+             # test shape bigger then 4096 on each dimension to make sure that we work correctly when we don't have enough thread/block in each dimensions
              ((4100, 3), [0]), ((3, 4101), [0]),  # 10
              ((1024, 33), [0]), ((33, 1024), [0]),  # 10
              ((1025, 33), [0]), ((33, 1025), [0]),  # 10
@@ -172,7 +172,7 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
              ((4100, 4, 3), [2]), ((5, 4100, 3), [2]), ((5, 4, 4100), [2]),  # 001
              ((4100, 4, 3), [0, 1]), ((5, 4100, 3), [0, 1]), ((5, 4, 4100), [0, 1]),  # 110
              ((4100, 4, 3), [1, 2]), ((5, 4100, 3), [1, 2]), ((5, 4, 4100), [1, 2]),  # 011
-             #((4100,4,3),[0,2]),((5,4100,3),[0,2]),((5,4,4100),[0,2]),#101 ##not implemented
+             # ((4100,4,3),[0,2]),((5,4100,3),[0,2]),((5,4,4100),[0,2]),#101 ##not implemented
              ((4100, 4, 3), [0, 1, 2]), ((5, 4100, 3), [0, 1, 2]), ((5, 4, 4100), [0, 1, 2]),  # 111
              ((65, 4, 3), [0, 1, 2]), ((5, 65, 3), [0, 1, 2]), ((5, 4, 65), [0, 1, 2]),  # 111
 
@@ -185,13 +185,13 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
 
              # test pattern implemented by reshape
              # Skip them as this test the op directly, not the optimization with reshape
-#             ((4100,4,3,2),[0]),((4,4100,3,2),[0]),((4,3,4100,2),[0]),((4,3,2,4100),[0]),#1000
-#             ((4100,4,3,2),[1]),((4,4100,3,2),[1]),((4,3,4100,2),[1]),((4,3,2,4100),[1]),#0100
-#             ((4100,4,3,2),[2]),((4,4100,3,2),[2]),((4,3,4100,2),[2]),((4,3,2,4100),[2]),#0010
-#             ((4100,4,3,2),[3]),((4,4100,3,2),[3]),((4,3,4100,2),[3]),((4,3,2,4100),[3]),#0001
-#             ((1100,2,3,4,5),[0,1,2,3,4]),((2,1100,3,4,5),[0,1,2,3,4]),((2,3,1100,4,5),[0,1,2,3,4]),((2,3,4,1100,5),[0,1,2,3,4]),((2,3,4,5,1100),[0,1,2,3,4]),#11111
-#             ((5,4,3,10,11),[1,2]),
-    ]
+             # ((4100,4,3,2),[0]),((4,4100,3,2),[0]),((4,3,4100,2),[0]),((4,3,2,4100),[0]),#1000
+             # ((4100,4,3,2),[1]),((4,4100,3,2),[1]),((4,3,4100,2),[1]),((4,3,2,4100),[1]),#0100
+             # ((4100,4,3,2),[2]),((4,4100,3,2),[2]),((4,3,4100,2),[2]),((4,3,2,4100),[2]),#0010
+             # ((4100,4,3,2),[3]),((4,4100,3,2),[3]),((4,3,4100,2),[3]),((4,3,2,4100),[3]),#0001
+             # ((1100,2,3,4,5),[0,1,2,3,4]),((2,1100,3,4,5),[0,1,2,3,4]),((2,3,1100,4,5),[0,1,2,3,4]),((2,3,4,1100,5),[0,1,2,3,4]),((2,3,4,5,1100),[0,1,2,3,4]),#11111
+             # ((5,4,3,10,11),[1,2]),
+             ]
     op = GpuCAReduceCuda
     reds = [scalar.add, scalar.mul,
             scalar.maximum, scalar.minimum]

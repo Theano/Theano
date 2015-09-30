@@ -4,7 +4,6 @@ import theano
 from theano import tensor
 from theano.tests.breakpoint import PdbBreakpoint
 from theano.tests import unittest_tools as utt
-from theano.tests.unittest_tools import SkipTest
 from theano.tensor.tests import test_basic
 
 import theano.sandbox.gpuarray
@@ -14,8 +13,7 @@ from ..basic_ops import GpuAlloc, GpuReshape, GpuFromHost, host_from_gpu
 from ..elemwise import GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise
 from ..subtensor import GpuSubtensor
 
-from .config import mode_with_gpu, mode_without_gpu, test_ctx_name
-from .test_basic_ops import rand_gpuarray
+from .config import mode_with_gpu, test_ctx_name
 
 
 def test_local_assert():
@@ -209,7 +207,7 @@ def test_pdbbreakpoint_op():
 
 def test_local_gpu_elemwise_careduce():
     x = theano.tensor.matrix()
-    o = (x*x).sum()
+    o = (x * x).sum()
     f = theano.function([x], o, mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
     assert len(topo) == 3
@@ -235,7 +233,7 @@ def test_local_gpu_subtensor():
     # Test multiple use of the input
     # We want the subtensor to be on the GPU to prevent multiple transfer.
     t = tensor.fmatrix()
-    f = theano.function([t], [t[3:4], t+1], mode=mode_with_gpu)
+    f = theano.function([t], [t[3:4], t + 1], mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
     assert not any([type(node.op) is tensor.Subtensor for node in topo])
     assert any([isinstance(node.op, GpuSubtensor) for node in topo])
@@ -243,7 +241,7 @@ def test_local_gpu_subtensor():
     # Test multiple use of the input + input as output
     # We want the subtensor to be on the GPU to prevent multiple transfer.
     t = tensor.fmatrix()
-    f = theano.function([t], [t[3:4], t+1, t], mode=mode_with_gpu)
+    f = theano.function([t], [t[3:4], t + 1, t], mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
     assert not any([type(node.op) is tensor.Subtensor for node in topo])
     assert any([isinstance(node.op, GpuSubtensor) for node in topo])
@@ -251,7 +249,7 @@ def test_local_gpu_subtensor():
     # Test shared forced on CPU end we do computation on the output of
     # the subtensor.
     t = tensor._shared(numpy.zeros(20, "float32"))
-    f = theano.function([], t[3:4]+1, mode=mode_with_gpu)
+    f = theano.function([], t[3:4] + 1, mode=mode_with_gpu)
     topo = f.maker.fgraph.toposort()
     assert any([type(node.op) is tensor.Subtensor for node in topo])
     assert not any([isinstance(node.op, GpuSubtensor) for node in topo])
@@ -320,7 +318,7 @@ def test_local_gpu_elemwise():
     utt.assert_allclose(out[1], a_v * c_v)
 
     # Test non-contiguous input
-    c = cuda.shared_constructor(numpy.asarray(c_v, dtype='float32'))
+    c = gpuarray_shared_constructor(numpy.asarray(c_v, dtype='float32'))
     f = theano.function([a, b], outs_op(a[::2], b[::2], c[::2]),
                         mode=mode_with_gpu)
     out = f(a_v, b_v)
