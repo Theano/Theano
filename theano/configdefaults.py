@@ -73,19 +73,19 @@ class DeviceParam(ConfigParam):
         self.default = default
 
         def filter(val):
-            if val.startswith('cpu') or val.startswith('gpu') \
+            if val == self.default or val.startswith('gpu') \
                     or val.startswith('opencl') or val.startswith('cuda'):
                 return val
             else:
                 raise ValueError(('Invalid value ("%s") for configuration '
                                   'variable "%s". Valid options start with '
-                                  'one of "cpu", "gpu", "opencl", "cuda"'
+                                  'one of "gpu", "opencl", "cuda"'
                                   % (val, self.fullname)))
         over = kwargs.get("allow_override", True)
         super(DeviceParam, self).__init__(default, filter, over)
 
     def __str__(self):
-        return '%s (cpu, gpu*, opencl*, cuda*) ' % (self.fullname,)
+        return '%s (gpu*, opencl*, cuda*) ' % (self.fullname, self.default)
 
 AddConfigVar(
     'device',
@@ -94,15 +94,7 @@ AddConfigVar(
      "on it. Do not use upper case letters, only lower case even if "
      "NVIDIA use capital letters."),
     DeviceParam('cpu', allow_override=False),
-    in_c_key=False,)
-
-AddConfigVar('gpuarray.init_device',
-             """
-             Device to initialize for gpuarray use without moving
-             computations automatically.
-             """,
-             StrParam(''),
-             in_c_key=False)
+    in_c_key=False)
 
 AddConfigVar(
     'init_gpu_device',
@@ -110,12 +102,7 @@ AddConfigVar(
      "Unlike 'device', setting this option will NOT move computations, "
      "nor shared variables, to the specified GPU. "
      "It can be used to run GPU-specific tests on a particular GPU."),
-    EnumStr('', 'gpu',
-            'gpu0', 'gpu1', 'gpu2', 'gpu3',
-            'gpu4', 'gpu5', 'gpu6', 'gpu7',
-            'gpu8', 'gpu9', 'gpu10', 'gpu11',
-            'gpu12', 'gpu13', 'gpu14', 'gpu15',
-            allow_override=False),
+    DeviceParam('', allow_override=False),
     in_c_key=False)
 
 AddConfigVar(
