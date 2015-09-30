@@ -170,6 +170,11 @@ class T_LogSoftmax(utt.InferShapeTester):
             return logsoftmax_op(a)[:, 3]
         utt.verify_grad(f, [numpy.random.rand(3, 4)])
 
+    def test_matrix(self):
+        def f(a):
+            return logsoftmax_op(a)
+        utt.verify_grad(f, [numpy.random.rand(3, 4)])
+
     def test_vector(self):
         x = T.vector()
         f = theano.function([x], logsoftmax_op(x))
@@ -180,7 +185,7 @@ class T_LogSoftmax(utt.InferShapeTester):
 
     def test_vector_grad(self):
         def f(a):
-            return softmax_op(a)
+            return logsoftmax_op(a)
         utt.verify_grad(f, [numpy.random.rand(4)])
 
     def test_allclose(self):
@@ -226,7 +231,7 @@ class T_LogSoftmax(utt.InferShapeTester):
     def test_local_softmax_optimization(self):
         """Test the Logsoftmax substitution
 
-        Check that Log(Softmax(x)) is substituted to Logsoftmax(x). Note that
+        Check that Log(Softmax(x)) is substituted with Logsoftmax(x). Note that
         only the forward pass is checked (i.e., doesn't check the gradient)
         """
         x, y = tensor.matrices('xy')
@@ -234,7 +239,26 @@ class T_LogSoftmax(utt.InferShapeTester):
         logsm = tensor.log(sm)
         f = theano.function([x], logsm)
         assert isinstance(f.maker.fgraph.outputs[0].owner.op,
-                theano.tensor.nnet.nnet.LogSoftmax)
+                          theano.tensor.nnet.nnet.LogSoftmax)
+
+    def test_local_softmax_grad_optimization_and_big_input(self):
+        """Test the Logsoftmax's grad substitution.
+
+        Check that Log(Softmax(x))'s grad is substituted with Logsoftmax(x)'s
+        grad and that the new operation does not explode for big inputs.
+        Note that only the grad is checked.
+        """
+        # some inputs that are large to make the gradient explode in the non
+        # optimized case
+        a = numpy.exp(10*numpy.random.rand(5, 10).astype(theano.config.floatX))
+
+        def myfunc(x):
+            sm = tensor.nnet.softmax(x)
+            logsm = tensor.log(sm)
+            return logsm
+        # We set step to 0.1 because for big values we need a big epsilon
+        utt.verify_grad(myfunc, [a], eps=0.1)
+
 
 class T_SoftmaxGrad(utt.InferShapeTester):
 
