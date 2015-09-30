@@ -62,7 +62,7 @@ import copy
 
 
 def get_version():
-    return 0.288
+    return 0.289
 
 @cython.boundscheck(False)
 def perform(
@@ -445,7 +445,7 @@ def perform(
                     # modified inplace and nothing needs to be done.
                     if not same_data:
                         outs[j][0][<unsigned int>(k + pos[j])] = \
-                            input_storage[<unsigned int>inp_idx].storage[0]
+                            input_storage[<unsigned int>(n_seqs + inp_idx)].storage[0]
 
                 else:
                     # This output tap has not been preallocated, recover
@@ -465,44 +465,34 @@ def perform(
 
         for j in range(begin, end):
 
-            # Check whether the initialization of the output storage map
-            # for this output has been reused.
-            old_var = old_output_storage[offset_out + j]
-            old_data = old_output_data[offset_out + j]
-            new_var = output_storage[offset_out + j].storage[0]
-            if old_var is new_var:
-                if old_data is None:
-                    output_reused = False
-                elif hasattr(new_var, 'gpudata'):
-                    output_reused = (new_var.gpudata == old_data)
-                elif hasattr(new_var, 'data'):
-                    output_reused = (new_var.data == old_data)
-            else:
-                output_reused = False
-
             # Copy the output value to `outs`, if necessary
-            if store_steps[j] == 1 or vector_outs[j] == 1 or not output_reused:
+            if store_steps[j] == 1 or vector_outs[j] == 1:
                 outs[j][0][pos[j]] = output_storage[<unsigned int>(offset_out+j)].storage[0]
+            else:
+                # Check whether the initialization of the output storage map
+                # for this output has been reused.
+                old_var = old_output_storage[offset_out + j]
+                old_data = old_output_data[offset_out + j]
+                new_var = output_storage[offset_out + j].storage[0]
+                if old_var is new_var:
+                    if old_data is None:
+                        output_reused = False
+                    elif hasattr(new_var, 'gpudata'):
+                        output_reused = (new_var.gpudata == old_data)
+                    elif hasattr(new_var, 'data'):
+                        output_reused = (new_var.data == old_data)
+                else:
+                    output_reused = False
+
+                if not output_reused:
+                    outs[j][0][pos[j]] = \
+                        output_storage[<unsigned int>(offset_out+j)].storage[0]
+
 
         # 5.5 Copy over the values for nit_sot outputs
         begin  = end
         end   += n_nit_sot
         for j in range(begin,end):
-
-            # Check whether the initialization of the output storage map
-            # for this output has been reused.
-            old_var = old_output_storage[offset_out + j]
-            old_data = old_output_data[offset_out + j]
-            new_var = output_storage[offset_out + j].storage[0]
-            if old_var is new_var:
-                if old_data is None:
-                    output_reused = False
-                elif hasattr(new_var, 'gpudata'):
-                    output_reused = (new_var.gpudata == old_data)
-                elif hasattr(new_var, 'data'):
-                    output_reused = (new_var.data == old_data)
-            else:
-                output_reused = False
 
             if i == 0:
                 jout = j+offset_out
@@ -518,9 +508,26 @@ def perform(
                 elif outs[j][0].shape[0] != store_steps[j]:
                     outs[j][0] = outs[j][0][:store_steps[j]]
                 outs[j][0][pos[j]] = output_storage[jout].storage[0]
-            elif (store_steps[j] == 1 or vector_outs[j] == 1 or
-                  not output_reused):
+            elif store_steps[j] == 1 or vector_outs[j] == 1:
                 outs[j][0][pos[j]] = output_storage[j+offset_out].storage[0]
+            else:
+                # Check whether the initialization of the output storage map
+                # for this output has been reused.
+                old_var = old_output_storage[offset_out + j]
+                old_data = old_output_data[offset_out + j]
+                new_var = output_storage[offset_out + j].storage[0]
+                if old_var is new_var:
+                    if old_data is None:
+                        output_reused = False
+                    elif hasattr(new_var, 'gpudata'):
+                        output_reused = (new_var.gpudata == old_data)
+                    elif hasattr(new_var, 'data'):
+                        output_reused = (new_var.data == old_data)
+                else:
+                    output_reused = False
+
+                if not output_reused:
+                    outs[j][0][pos[j]] = output_storage[j+offset_out].storage[0]
 
         # 5.6 Copy over the values for outputs corresponding to shared
         # variables
