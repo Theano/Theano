@@ -2,11 +2,9 @@ import os
 
 import numpy
 
-import theano
-from theano import Op, Apply
-from theano import tensor, scalar, config
+from theano import Op, Apply, Type, Variable
+from theano import tensor, config
 from theano.gradient import grad_undefined
-from theano.scalar import Scalar
 from theano.tensor.basic import Alloc, Join, Split
 
 from theano.gof import HideC
@@ -17,7 +15,7 @@ from six.moves import xrange
 
 try:
     import pygpu
-    from pygpu import gpuarray, elemwise
+    from pygpu import gpuarray
 except ImportError:
     pass
 
@@ -293,7 +291,6 @@ class GpuFromHost(Op):
     def perform(self, node, inp, out):
         x, = inp
         z, = out
-        type = node.outputs[0].type
         z[0] = gpuarray.array(x)
 
     def grad(self, inputs, grads):
@@ -342,7 +339,7 @@ class GpuAlloc(HideC, Alloc):
         value is always 0, so the c code call memset as it is faster.
 
     """
- 
+
     __props__ = ('memset_0',)
     _f16_ok = True
 
@@ -362,7 +359,7 @@ class GpuAlloc(HideC, Alloc):
         sh, bcast = self.validate_shape(shape)
         if value.ndim > len(sh):
             TypeError("The GpuAlloc value to use has more dimensions "
-                      "than the specified shape", v.ndim, len(sh))
+                      "than the specified shape", value.ndim, len(sh))
         otype = value.type.clone(broadcastable=bcast)
         return Apply(self, [value] + sh, [otype()])
 
@@ -456,29 +453,28 @@ class GpuAlloc(HideC, Alloc):
         return (2,)
 
     def do_constant_folding(self, node):
+        from . import subtensor, blas
         for client in node.outputs[0].clients:
             if client[0] == 'output':
                 # If the output is a constant, it will have to be deepcopied
                 # each time the function is called.  So we do not fold.
                 return False
-            elif (  # The following ops work inplace of their input id 0.
-                  client[1] == 0 and
-                  isinstance(client[0].op, (
-                    # Ops that will work inplace on the Alloc. So if they
-                    # get constant_folded, they would copy the
-                    # constant and this is less efficients.
+            # The following ops work inplace of their input id 0.
+            elif (client[1] == 0 and
+                  # Ops that will work inplace on the Alloc. So if they
+                  # get constant_folded, they would copy the
+                  # constant and this is less efficients.
 
-                    # Not doing the constant folding could also lower
-                    # the peak memory usage, as we the "constant" won't
-                    # always exists.
-                      # theano.tensor.subtensor.AdvancedIncSubtensor,
-                      theano.sandbox.gpuarray.subtensor.GpuIncSubtensor,
-                      theano.sandbox.gpuarray.subtensor.GpuAdvancedIncSubtensor1,
-                      theano.sandbox.gpuarray.subtensor.GpuAdvancedIncSubtensor1_dev20,
-                      theano.sandbox.gpuarray.blas.GpuGemm,
-                      theano.sandbox.gpuarray.blas.GpuGemv,
-                      theano.sandbox.gpuarray.blas.GpuGer,
-                  ))):
+                  # Not doing the constant folding could also lower
+                  # the peak memory usage, as we the "constant" won't
+                  # always exists.
+                  isinstance(client[0].op,
+                             (subtensor.GpuIncSubtensor,
+                              subtensor.GpuAdvancedIncSubtensor1,
+                              subtensor.GpuAdvancedIncSubtensor1_dev20,
+                              blas.GpuGemm, blas.GpuGemv,
+                              blas.GpuGer)
+                             )):
                 return False
             # If the clients is a transfer, we don't want to fold. We
             # let the moving opt finish before deciding what to do.
@@ -565,7 +561,7 @@ class GpuContiguous(Op):
     """
     Always return a c contiguous output. Copy the input only if it is
     not already c contiguous.
- 
+
     """
 
     __props__ = ()
@@ -750,7 +746,7 @@ class GpuJoin(HideC, Join):
         node = Join.make_node(self, axis, *tensors)
 
         return Apply(self, [node.inputs[0]] + list(map(as_gpuarray_variable,
-                                                  tensors)),
+                                                       tensors)),
                      [GpuArrayType(broadcastable=node.outputs[0].broadcastable,
                                    dtype=node.outputs[0].dtype)()])
 
@@ -859,8 +855,7 @@ KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
                 code=code, name="k",
                 params=[gpuarray.GpuArray, gpuarray.SIZE, gpuarray.SIZE],
                 flags=Kernel.get_flags(self.dtype),
-                objvar='k_eye_'+name,
-                )]
+                objvar='k_eye_' + name)]
 
     def c_code(self, node, name, inp, out, sub):
         n, m = inp
