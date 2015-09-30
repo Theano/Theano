@@ -1,20 +1,18 @@
 import copy
 import os
 
-import theano
-from theano import config, gof
+from theano import gof
 
 try:
-    import pygpu
     from pygpu import gpuarray
 except ImportError:
     pass
 
-from six.moves import reduce
-from .comp import NVCC_compiler
 from .type import GpuArrayType
-from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel)
+from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel,
+                        infer_context_name)
 from theano.gof import utils
+
 
 class GpuConv(GpuKernelBase, gof.Op):
     """
@@ -60,6 +58,9 @@ class GpuConv(GpuKernelBase, gof.Op):
         them.
 
     """
+    __props__ = ('border_mode', 'subsample', 'logical_img_hw',
+                 'logical_kern_hw', 'logical_kern_align_top', 'version',
+                 'verbose', 'kshp', 'imshp', 'max_threads_dim0')
 
     @staticmethod
     def logical_output_shape_2d(imshp, kshp, mode):
@@ -69,20 +70,13 @@ class GpuConv(GpuKernelBase, gof.Op):
             return imshp[0] + kshp[0] - 1, imshp[1] + kshp[1] - 1
         raise ValueError(mode)
 
-    def __init__(self, border_mode,
-            subsample=(1, 1),
-            logical_img_hw=None,
-            logical_kern_hw=None,
-            logical_kern_align_top=True,
-            version=-1,
-            direction_hint=None,
-            verbose=0,
-            kshp=None,
-            imshp=None,
-            max_threads_dim0=None,
-            nkern=None,
-            bsize=None,
-            fft_opt=True):
+    def __init__(self, border_mode, subsample=(1, 1),
+                 logical_img_hw=None, logical_kern_hw=None,
+                 logical_kern_align_top=True,
+                 version=-1, direction_hint=None,
+                 verbose=0, kshp=None, imshp=None,
+                 max_threads_dim0=None,
+                 nkern=None, bsize=None, fft_opt=True):
         self.border_mode = border_mode
         self.subsample = subsample
         if logical_img_hw is not None:
@@ -110,19 +104,6 @@ class GpuConv(GpuKernelBase, gof.Op):
         self.bsize = bsize
         self.fft_opt = fft_opt
 
-    def __eq__(self, other):
-        return type(self) == type(other) \
-            and self.border_mode == other.border_mode \
-            and self.subsample == other.subsample \
-            and self.logical_img_hw == other.logical_img_hw \
-            and self.logical_kern_hw == other.logical_kern_hw \
-            and self.logical_kern_align_top == other.logical_kern_align_top \
-            and self.version == other.version \
-            and self.verbose == other.verbose \
-            and self.kshp == other.kshp\
-            and self.imshp == other.imshp\
-            and self.max_threads_dim0 == other.max_threads_dim0
-
     def __setstate__(self, d):
         self.__dict__.update(d)
         if not hasattr(self, "imshp"):
@@ -138,32 +119,6 @@ class GpuConv(GpuKernelBase, gof.Op):
         if not hasattr(self, "fft_opt"):
             self.fft_opt = True
 
-    def __hash__(self):
-        # don't use hash(self.version) as hash(-1)==-2 and
-        # hash(-2)==-2 in python!
-        return hash(type(self)) \
-            ^ hash(self.border_mode) \
-            ^ hash(self.subsample) \
-            ^ hash(self.logical_img_hw) \
-            ^ hash(self.logical_kern_hw) \
-            ^ hash(self.logical_kern_align_top) \
-            ^ self.version \
-            ^ hash(self.verbose) \
-            ^ hash(self.kshp)\
-            ^ hash(self.imshp)\
-            ^ hash(self.max_threads_dim0)
-
-    def __str__(self):
-        return '%s{%s, %s, %s, %s, %s, %s, %s}' % (
-            self.__class__.__name__,
-            self.border_mode,
-            str(self.subsample),
-            str(self.logical_img_hw),
-            str(self.logical_kern_hw),
-            str(self.logical_kern_align_top),
-            str(self.imshp),
-            str(self.kshp))
-
     def make_node(self, img, kern):
         if img.dtype != "float32" or kern.dtype != "float32":
             raise NotImplementedError("GpuConv currently only work"
@@ -172,17 +127,21 @@ class GpuConv(GpuKernelBase, gof.Op):
             raise TypeError('img must be 4D tensor')
         if kern.type.ndim != 4:
             raise TypeError('kern must be 4D tensor')
-        img = as_gpuarray_variable(img)
-        kern = as_gpuarray_variable(kern)
+        ctx_name = infer_context_name(img, kern)
+        img = as_gpuarray_variable(img, ctx_name)
+        kern = as_gpuarray_variable(kern, ctx_name)
         broadcastable = [img.type.broadcastable[0], kern.type.broadcastable[0],
                          False, False]
-        out = GpuArrayType(img.dtype, broadcastable)()
+        out = GpuArrayType(img.dtype, broadcastable, context_name=ctx_name)()
         return gof.Apply(self, [img, kern], [out])
+
+    def get_context(self, node):
+        return node.inputs[0].type.context
 
     def flops(self, inputs, outputs):
         """
         Useful with the hack in profilemode to print the MFlops.
-        
+
         """
         images, kerns = inputs
         out, = outputs
@@ -204,22 +163,8 @@ class GpuConv(GpuKernelBase, gof.Op):
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         node_ = copy.copy(node)
         assert node.op is node_.op
-        if config.gpuarray.sync:
-            raise NotImplementedError("GpuConv do not implement gpuarray.sync Theano flag")
         if node_.op.max_threads_dim0 is None:
-            cuda = theano.sandbox.cuda
-            device_id = cuda.use.device_number
-            if device_id is None:
-                cuda.use("gpu",
-                         force=False,
-                         default_to_move_computation_to_gpu=False,
-                         move_shared_float32_to_gpu=False,
-                         enable_cuda=False,
-                         test_driver=True)
-                device_id = cuda.use.device_number
-            cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
-            prop = cuda_ndarray.device_properties(device_id)
-            node_.op.max_threads_dim0 = prop['maxThreadsDim0']
+            node_.op.max_threads_dim0 = node_.inputs[0].type.context.maxlsize
         return super(GpuConv, node_.op).make_thunk(node_, storage_map,
                                                    compute_map, no_recycling)
 
@@ -227,34 +172,18 @@ class GpuConv(GpuKernelBase, gof.Op):
         nb = 0
         if self.kshp is not None:
             nb = self.kshp[1]
-        return ['-DTHEANO_KERN_WID=' + str(nb)]  # ,'-g','-G']
+        return ['-DTHEANO_KERN_WID=' + str(nb)]
 
     def c_headers(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        return ['<stdint.h>', '<stdio.h>', 'cuda.h',
-                '<gpuarray/extension.h>', '<numpy_compat.h>',
-                '<gpuarray/ext_cuda.h>', '<gpuarray/types.h>']
-
-    def c_header_dirs(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        cuda_root = config.cuda.root
-        if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
-        else:
-            return []
+        return ['<stdio.h>', '<numpy_compat.h>', '<gpuarray/types.h>']
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 21)
-
-    def c_init_code(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        return ['setup_ext_cuda();']
+        return (0, 22)
 
     def c_code(self, node, nodename, inp, out_, sub):
+        if node.inputs[0].type.context.kind != "cuda":
+            raise NotImplementedError("GpuConv only works for cuda devices")
         img, kern = inp
         out, = out_
         dx = self.subsample[0]
@@ -322,7 +251,6 @@ class GpuConv(GpuKernelBase, gof.Op):
         """ % locals()
         code += "\n".join([open(os.path.join(os.path.split(__file__)[0], f)).read()
                            for f in ["conv_kernel.cu", "conv_full_kernel.cu"]])
-        kname = "conv_full_load_everything"
         gk = gpuarray.GpuKernel(code, k.name, k.params, **k.flags)
         bin = gk._binary
         bcode = ','.join(hex(ord(c)) for c in bin)
@@ -333,9 +261,12 @@ class GpuConv(GpuKernelBase, gof.Op):
         static const char conv_bcode[] = {%(bcode)s};
         static const char *conv_code = "%(code)s";
         """ % locals()
-        for k in kernels:
-            mod += "static GpuKernel " + k.name + '_' + name + ";\n"
-        mod += open(os.path.join(os.path.split(__file__)[0], "conv.cu")).read()
+        return mod
+
+    def c_support_code_struct(self, node, name):
+        mod = GpuKernelBase.c_support_code_struct(self, node, name)
+        with open(os.path.join(os.path.split(__file__)[0], "conv.cu")) as f:
+            mod += f.read()
         return mod
 
     @utils.memoize

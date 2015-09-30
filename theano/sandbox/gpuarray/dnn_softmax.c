@@ -34,9 +34,9 @@ if (APPLY_SPECIFIC(output) != NULL)
 #section support_code_struct
 
 int APPLY_SPECIFIC(softmax)(PyGpuArrayObject *x,
-                            PyGpuArrayObject **out) {
+                            PyGpuArrayObject **out,
+                            PyGpuContextObject *c) {
   cudnnStatus_t err;
-  PyGpuContextObject *c = pygpu_default_context();
 
   if (c_set_tensorNd(x, APPLY_SPECIFIC(input)) != 0)
     return 1;

@@ -11,8 +11,7 @@ from ..subtensor import (GpuIncSubtensor, GpuSubtensor,
                          GpuAdvancedIncSubtensor1)
 from ..type import gpuarray_shared_constructor
 
-from .test_basic_ops import mode_with_gpu
-
+from .config import mode_with_gpu
 
 
 class G_subtensor(test_subtensor.T_subtensor):

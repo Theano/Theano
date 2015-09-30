@@ -1,5 +1,3 @@
-import operator
-
 import numpy
 
 import theano
@@ -25,7 +23,6 @@ def test_deep_copy():
 
 def test_values_eq_approx():
     a = rand_gpuarray(20, dtype='float32')
-    g = GpuArrayType(dtype='float32', broadcastable=(False,))('g')
     assert GpuArrayType.values_eq_approx(a, a)
     b = a.copy()
     b[0] = numpy.asarray(b[0]) + 1.
