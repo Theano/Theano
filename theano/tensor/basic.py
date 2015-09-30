@@ -4048,9 +4048,9 @@ def stack(*tensors, **kwargs):
     >>> x = theano.tensor.stack([a, b, c])
     >>> x.ndim # x is a vector of length 3.
     1
-    >>> a = theano.tensor.tensor4d()
-    >>> b = theano.tensor.tensor4d()
-    >>> c = theano.tensor.tensor4d()
+    >>> a = theano.tensor.tensor4()
+    >>> b = theano.tensor.tensor4()
+    >>> c = theano.tensor.tensor4()
     >>> x = theano.tensor.stack([a, b, c])
     >>> x.ndim # x is a 5d tensor.
     5
