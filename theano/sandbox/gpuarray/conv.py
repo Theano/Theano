@@ -3,6 +3,7 @@ import os
 
 import theano
 from theano import config, gof
+from theano.gof.util import MethodNotDefined
 
 try:
     import pygpu
@@ -10,11 +11,10 @@ try:
 except ImportError:
     pass
 
-from six.moves import reduce
-from .comp import NVCC_compiler
 from .type import GpuArrayType
-from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel)
+from .basic_ops import as_gpuarray_variable, GpuKernelBase, Kernel
 from theano.gof import utils
+
 
 class GpuConv(GpuKernelBase, gof.Op):
     """
@@ -70,19 +70,19 @@ class GpuConv(GpuKernelBase, gof.Op):
         raise ValueError(mode)
 
     def __init__(self, border_mode,
-            subsample=(1, 1),
-            logical_img_hw=None,
-            logical_kern_hw=None,
-            logical_kern_align_top=True,
-            version=-1,
-            direction_hint=None,
-            verbose=0,
-            kshp=None,
-            imshp=None,
-            max_threads_dim0=None,
-            nkern=None,
-            bsize=None,
-            fft_opt=True):
+                 subsample=(1, 1),
+                 logical_img_hw=None,
+                 logical_kern_hw=None,
+                 logical_kern_align_top=True,
+                 version=-1,
+                 direction_hint=None,
+                 verbose=0,
+                 kshp=None,
+                 imshp=None,
+                 max_threads_dim0=None,
+                 nkern=None,
+                 bsize=None,
+                 fft_opt=True):
         self.border_mode = border_mode
         self.subsample = subsample
         if logical_img_hw is not None:
@@ -182,7 +182,7 @@ class GpuConv(GpuKernelBase, gof.Op):
     def flops(self, inputs, outputs):
         """
         Useful with the hack in profilemode to print the MFlops.
-        
+
         """
         images, kerns = inputs
         out, = outputs
