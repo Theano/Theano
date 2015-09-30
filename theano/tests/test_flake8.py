@@ -157,7 +157,6 @@ whitelist_flake8 = [
     "sandbox/linalg/ops.py",
     "sandbox/linalg/__init__.py",
     "sandbox/linalg/tests/test_linalg.py",
-    "sandbox/gpuarray/type.py",
     "sandbox/gpuarray/__init__.py",
     "sandbox/gpuarray/kernel_codegen.py",
     "sandbox/gpuarray/conv.py",

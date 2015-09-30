@@ -184,7 +184,7 @@ class GpuArrayType(Type):
     @staticmethod
     def may_share_memory(a, b):
         if (not isinstance(a, gpuarray.GpuArray) or
-               not isinstance(b, gpuarray.GpuArray)):
+                not isinstance(b, gpuarray.GpuArray)):
             return False
         return pygpu.gpuarray.may_share_memory(a, b)
 
@@ -200,7 +200,8 @@ class GpuArrayType(Type):
                 self.broadcastable == other.broadcastable)
 
     def convert_variable(self, var):
-        if (type(self) == type(var.type) and
+        vt = var.type
+        if (type(self) == type(vt) and
                 self.typecode == var.type.typecode and
                 self.ndim == var.type.ndim and
                 all(sb == ob or ob for sb, ob in zip(self.broadcastable,
