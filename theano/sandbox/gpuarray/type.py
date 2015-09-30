@@ -55,7 +55,7 @@ def get_context(name):
         Name associated with the context we want (usually a string)
 
     """
-    if not name in _context_reg:
+    if name not in _context_reg:
         raise ValueError("context name %s not defined" % (name,))
     return _context_reg[name]
 
