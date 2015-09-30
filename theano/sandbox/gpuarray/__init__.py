@@ -51,6 +51,12 @@ if pygpu:
         elif (config.init_gpu_device.startswith('cuda') or
               config.init_gpu_device.startswith('opencl')):
             init_dev(config.init_gpu_device)
+        if config.contexts != '':
+            for n, d in (c.split('->') for c in config.contexts.split(';')):
+                init_dev(d, n)
+            import theano.compile
+            theano.compile.shared_constructor(gpuarray_shared_constructor)
+            optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile')
 
         from .basic_ops import (GpuAlloc, GpuContiguous, GpuEye, GpuFromHost,
                                 GpuJoin, GpuReshape, GpuSplit, HostFromGpu)
@@ -65,5 +71,6 @@ else:
     if (config.init_gpu_device.startswith('cuda') or
             config.init_gpu_device.startswith('opencl') or
             config.device.startswith('opencl') or
-            config.device.startswith('cuda')):
+            config.device.startswith('cuda') or
+            config.contexts != ''):
         error("pygpu was configured but could not be imported", exc_info=True)

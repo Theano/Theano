@@ -111,6 +111,29 @@ AddConfigVar(
     BoolParam(False, allow_override=False),
     in_c_key=False)
 
+
+class ContextsParam(ConfigParam):
+    def __init__(self):
+        def filter(val):
+            if val == '':
+                return val
+            for v in val.split(';'):
+                s = v.split('->')
+                if len(s) != 2:
+                    raise ValueError("Malformed context map: %s" % (v,))
+            return val
+        ConfigParam.__init__(self, '', filter, False)
+
+AddConfigVar(
+    'contexts',
+    """
+    Context map for multi-gpu operation. Format is a
+    semicolon-separated list of names and device names in the
+    'name->dev_name' format. An example that would map name 'test' to
+    device 'cuda0' and name 'test2' to device 'opencl0:0' follows:
+    "test->cuda0;test2->opencl0:0".
+    """, ContextsParam(), in_c_key=False)
+
 AddConfigVar(
     'print_active_device',
     "Print active device at when the GPU device is initialized.",
