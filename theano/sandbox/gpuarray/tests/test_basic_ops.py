@@ -42,8 +42,7 @@ from ..basic_ops import (
     host_from_gpu, gpu_from_host,
     gpu_alloc, GpuAlloc,
     GpuAllocEmpty,
-    gpu_from_cuda,
-    cuda_from_gpu, HostFromGpu,
+    HostFromGpu,
     GpuContiguous,
     GpuFromHost, GpuReshape,
     gpu_join, GpuJoin, GpuSplit, GpuEye, gpu_contiguous)
@@ -248,36 +247,6 @@ def test_transfer_strided():
     f = theano.function([g], host_from_gpu(g))
     fv = f(gv)
     assert numpy.all(fv == av)
-
-
-@may_fail("Op fails if both contexts are not the same and it's rare "
-          "that the tests will be run this way", ValueError)
-def test_transfer_cuda_gpu():
-    import theano.sandbox.cuda as cuda_ndarray
-    if cuda_ndarray.cuda_available is False:
-        raise SkipTest("Can't test interaction with cuda if cuda not present")
-    g = GpuArrayType(dtype='float32', broadcastable=(False, False))('g')
-    c = cuda_ndarray.CudaNdarrayType((False, False))('c')
-
-    av = theano._asarray(rng.rand(5, 4), dtype='float32')
-    gv = gpuarray.array(av)
-    cv = cuda_ndarray.CudaNdarray(av)
-    gvs = gv[:, ::-2]
-    cvs = cv[:, ::-2]
-
-    f = theano.function([c], gpu_from_cuda(c))
-    fv = f(cv)
-    assert GpuArrayType.values_eq_approx(fv, gv)
-
-    fvs = f(cvs)
-    assert GpuArrayType.values_eq_approx(fvs, gvs)
-
-    f = theano.function([g], cuda_from_gpu(g))
-    fv = f(gv)
-    assert cuda_ndarray.CudaNdarrayType.values_eq_approx(fv, cv)
-
-    fvs = f(gvs)
-    assert cuda_ndarray.CudaNdarrayType.values_eq_approx(fvs, cvs)
 
 
 def gpu_alloc_expected(x, *shp):
