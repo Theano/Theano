@@ -232,7 +232,7 @@ class GpuConv(GpuKernelBase, gof.Op):
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 21)
+        return (0, 22)
 
     def c_code(self, node, nodename, inp, out_, sub):
         img, kern = inp

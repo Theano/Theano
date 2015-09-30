@@ -29,7 +29,6 @@ from .opt import gpu_seqopt, register_opt, conv_groupopt, op_lifter
 from .opt_util import alpha_merge, output_merge, inplace_allocempty
 
 
-
 def dnn_available():
     if dnn_available.avail is not None:
         return dnn_available.avail

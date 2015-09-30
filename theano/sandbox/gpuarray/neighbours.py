@@ -40,7 +40,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                    dtype=ten4.type.dtype)()])
 
     def c_code_cache_version(self):
-        return (10, 1)
+        return (11,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>']

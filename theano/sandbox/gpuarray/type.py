@@ -202,10 +202,10 @@ class GpuArrayType(Type):
     def convert_variable(self, var):
         vt = var.type
         if (type(self) == type(vt) and
-                self.typecode == var.type.typecode and
-                self.ndim == var.type.ndim and
+                self.typecode == vt.typecode and
+                self.ndim == vt.ndim and
                 all(sb == ob or ob for sb, ob in zip(self.broadcastable,
-                                                     var.type.broadcastable))):
+                                                     vt.broadcastable))):
             return theano.tensor.patternbroadcast(var, self.broadcastable)
 
     def __hash__(self):

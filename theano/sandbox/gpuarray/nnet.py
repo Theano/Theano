@@ -293,7 +293,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
         return sio.getvalue()
 
     def c_code_cache_version(self):
-        return (7,)
+        return (8,)
 
 
 gpu_crossentropy_softmax_argmax_1hot_with_bias = GpuCrossentropySoftmaxArgmax1HotWithBias()
@@ -319,7 +319,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuKernelBase, Op):
         return Apply(self, [dnll, sm, y_idx], [sm.type()])
 
     def c_code_cache_version(self):
-        return (10,)
+        return (11,)
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>']
@@ -524,7 +524,7 @@ class GpuSoftmax(GpuKernelBase, Op):
         return shape
 
     def c_code_cache_version(self):
-        return (14,) + inline_softmax.code_version
+        return (15,) + inline_softmax.code_version
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>']
@@ -718,7 +718,7 @@ class GpuSoftmaxWithBias (GpuKernelBase, Op):
         return [shape[0]]
 
     def c_code_cache_version(self):
-        return (13,) + inline_softmax.code_version
+        return (14,) + inline_softmax.code_version
 
     def c_headers(self):
         return ['<numpy_compat.h>', '<gpuarray/types.h>']

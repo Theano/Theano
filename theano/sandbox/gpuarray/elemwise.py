@@ -437,7 +437,7 @@ class GpuElemwise(GpuKernelBase, HideC, Elemwise):
     def c_code_cache_version(self):
         ver = self.scalar_op.c_code_cache_version()
         if ver:
-            return (3, ver)
+            return (4, ver)
         else:
             return ver
 
@@ -542,7 +542,7 @@ class GpuDimShuffle(HideC, DimShuffle):
         return process
 
     def c_code_cache_version(self):
-        return (4,)
+        return (5,)
 
 
 class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
@@ -791,7 +791,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             Py_XDECREF(%(z)s);
             %(z)s = pygpu_empty(%(nd_out)s, new_dims,
                                 %(out_typecode)s, GA_C_ORDER,
-                                %(ctx)s, Py_None);
+                                pygpu_default_context(), Py_None);
             if (NULL == %(z)s)
             {
                 PyErr_Format(PyExc_RuntimeError, "Failed to allocate output");
@@ -1911,7 +1911,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         """ % locals(), file=sio)
 
     def c_code_cache_version_apply(self, node):
-        version = [16]  # the version corresponding to the c code in this Op
+        version = [17]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         version.extend(self.scalar_op.c_code_cache_version())
@@ -2884,7 +2884,7 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
         return code
 
     def c_code_cache_version(self):
-        return (1, self.GpuKernelBase_version)
+        return (2, self.GpuKernelBase_version)
 
     def generate_kernel(self, node, odtype, redux):
         if isinstance(self.scalar_op, scalar.basic.Add):

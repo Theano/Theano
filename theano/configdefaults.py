@@ -79,13 +79,13 @@ class DeviceParam(ConfigParam):
             else:
                 raise ValueError(('Invalid value ("%s") for configuration '
                                   'variable "%s". Valid options start with '
-                                  'one of "gpu", "opencl", "cuda"'
-                                  % (val, self.fullname)))
+                                  'one of "%s", "gpu", "opencl", "cuda"'
+                                  % (self.default, val, self.fullname)))
         over = kwargs.get("allow_override", True)
         super(DeviceParam, self).__init__(default, filter, over)
 
     def __str__(self):
-        return '%s (gpu*, opencl*, cuda*) ' % (self.fullname, self.default)
+        return '%s (%s, gpu*, opencl*, cuda*) ' % (self.fullname, self.default)
 
 AddConfigVar(
     'device',
@@ -207,6 +207,7 @@ AddConfigVar('dnn.conv.algo_bwd',
                      'guess_on_shape_change', 'time_once',
                      'time_on_shape_change'),
              in_c_key=False)
+
 
 def default_dnn_path(suffix):
     def f(suffix=suffix):

@@ -536,6 +536,9 @@ def handle_shared_float32(tf):
 if config.device.startswith('gpu'):
     use(device=config.device, force=config.force_device, test_driver=False)
 elif config.init_gpu_device.startswith('gpu'):
+    assert config.device == "cpu", (
+        "We can use the Theano flag init_gpu_device"
+        " only when the Theano flag device=='cpu'")
     _logger.warning(("GPU device %s will be initialized, and used if a GPU is "
           "needed. "
           "However, no computation, nor shared variables, will be implicitly "

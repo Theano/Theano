@@ -394,7 +394,7 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
         elemwise_version = self.iadd_node.c_code_cache_version()
         if not parent_version or not elemwise_version:
             return
-        return parent_version + elemwise_version + (2,)
+        return parent_version + elemwise_version + (3,)
 
 
 class GpuAdvancedSubtensor1(HideC, tensor.AdvancedSubtensor1):
