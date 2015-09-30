@@ -2003,6 +2003,18 @@ class Cast(UnaryScalarOp):
     def __str__(self):
         return '%s{%s}' % (self.__class__.__name__, self.o_type.dtype)
 
+    def make_new_inplace(self, output_types_preference=None, name=None):
+        """
+        This op.__init__ fct don't have the same parameter as other scalar op.
+        This breaks the insert_inplace_optimizer optimization.
+        This function is a fix to patch this, by ignoring the
+        output_types_preference passed by the optimization, and replacing it
+        by the current output type. This should only be triggered when
+        both input and output have the same dtype anyway.
+
+        """
+        return self.__class__(self.o_type, name)
+
     def impl(self, input):
         return self.ctor(input)
 
