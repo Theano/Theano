@@ -24,7 +24,9 @@ from theano.sandbox.cuda.basic_ops import (
     gpu_eye, gpu_contiguous,
     gpu_from_host, host_from_gpu, GpuFromHost, HostFromGpu,
     GpuContiguous,
-    GpuElemwise, GpuDimShuffle, GpuReshape, GpuCAReduce, GpuFlatten,
+    GpuElemwise, GpuDimShuffle, GpuReshape, GpuCAReduce,
+    # GpuFlatten,
+    gpu_flatten, 
     GpuSubtensor, GpuAdvancedSubtensor1,
     GpuAdvancedIncSubtensor1, GpuAdvancedIncSubtensor1_dev20,
     GpuIncSubtensor, gpu_alloc, GpuAlloc, gpu_shape, GpuSplit, GpuAllocEmpty)
@@ -152,7 +154,7 @@ cpu_ops_moved_to_gpu = [
     tensor.elemwise.All, tensor.elemwise.Any,
     tensor.elemwise.CAReduceDtype, tensor.elemwise.Sum,
     tensor.elemwise.Prod, tensor.elemwise.ProdWithoutZeros,
-    tensor.Reshape, tensor.Flatten, tensor.Subtensor,
+    tensor.Reshape, tensor.flatten, tensor.Subtensor,
     tensor.AdvancedSubtensor1, tensor.AdvancedIncSubtensor1,
     tensor.IncSubtensor, tensor.Shape, tensor.Join,
     tensor.Alloc, tensor.Eye]
@@ -972,23 +974,23 @@ def local_gpu_reshape(node):
     return False
 
 
-@register_opt()
-@local_optimizer([gpu_from_host, tensor.Flatten])
-def local_gpu_flatten(node):
-    if isinstance(node.op, GpuFromHost):
-        host_input = node.inputs[0]
-        if host_input.owner and \
-           isinstance(host_input.owner.op, tensor.Flatten):
-            outdim = host_input.owner.op.outdim
-            return [GpuFlatten(outdim)(
-                as_cuda_ndarray_variable(host_input.owner.inputs[0]))]
-    if isinstance(node.op, tensor.Flatten):
-        x, = node.inputs
-        outdim = node.op.outdim
-        if x.owner and isinstance(x.owner.op, HostFromGpu):
-            gpu_x, = x.owner.inputs
-            return [host_from_gpu(GpuFlatten(outdim)(gpu_x))]
-    return False
+#@register_opt()
+#@local_optimizer([gpu_from_host, tensor.Reshape])
+#def local_gpu_flatten(node):
+#    if isinstance(node.op, GpuFromHost):
+#        host_input = node.inputs[0]
+#        if host_input.owner and \
+#           isinstance(host_input.owner.op, tensor.Reshape):
+#            outdim = host_input.owner.op.outdim
+#            return [GpuFlatten(outdim)(
+#                as_cuda_ndarray_variable(host_input.owner.inputs[0]))]
+#    if isinstance(node.op, tensor.Reshape):
+#        x, shp= node.inputs
+#        outdim = node.op.outdim
+#        if x.owner and isinstance(x.owner.op, HostFromGpu):
+#            gpu_x, = x.owner.inputs
+#            return [host_from_gpu(GpuFlatten(outdim)(gpu_x))]
+#    return False
 
 
 @register_opt()

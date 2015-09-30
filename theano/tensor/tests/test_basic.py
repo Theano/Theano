@@ -32,7 +32,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         alloc, as_tensor_variable, tensor_from_scalar, ARange, autocast_float,
         clip, constant, default, dot,
         dmatrix, dscalar, dvector, eq, eye, fill, flatten, inverse_permutation,
-        tensor4, permute_row_elements, Flatten, fmatrix, fscalars, grad,
+        tensor4, permute_row_elements, fmatrix, fscalars, grad,
         inplace, iscalar, matrix, minimum, matrices, maximum, mul, neq,
         Reshape, row, scalar, scalars, second, smallest, stack, sub, Tensor,
         tensor_copy, tensordot, TensorType, Tri, tri, tril, triu, unbroadcast,
@@ -5147,11 +5147,6 @@ def test_make_column_matrix_broadcastable():
 
 
 def test_flatten_outdimNone():
-    """Flatten always returns a copy of the array. There is no danger
-    with in-place operations and thus no need to test it.
-
-    """
-
     a = dmatrix()
     c = flatten(a)
     f = inplace_func([a], c)
@@ -5161,7 +5156,7 @@ def test_flatten_outdimNone():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val) == c_val)
 
-    utt.verify_grad(Flatten(), [a_val])
+    utt.verify_grad(flatten, [a_val])
 
 
 def test_flatten_scalar():
@@ -5174,7 +5169,7 @@ def test_flatten_scalar():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val) == c_val)
 
-    # utt.verify_grad(Flatten(), [a_val]) #TODO: fix verify_grd to work on scalars
+    # utt.verify_grad(flatten, [a_val]) #TODO: fix verify_grd to work on scalars
 
 
 def test_flatten_outdim1():
@@ -5187,7 +5182,7 @@ def test_flatten_outdim1():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val) == c_val)
 
-    utt.verify_grad(Flatten(1), [a_val])
+    utt.verify_grad(flatten, [a_val])
 
 
 def test_flatten_outdim2():
@@ -5199,7 +5194,7 @@ def test_flatten_outdim2():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val) == a_val)
 
-    utt.verify_grad(Flatten(2), [a_val])
+    utt.verify_grad(flatten, [a_val])
 
 
 def test_flatten_outdim2_of_3():
@@ -5213,7 +5208,7 @@ def test_flatten_outdim2_of_3():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val) == c_val)
 
-    utt.verify_grad(Flatten(2), [a_val])
+    utt.verify_grad(flatten, [a_val])
 
 
 def test_flatten_broadcastable():
@@ -7128,24 +7123,27 @@ class TestInferShape(utt.InferShapeTester):
         # Flatten
         atens3 = tensor3()
         atens3_val = rand(4, 5, 3)
-        for outdim in (3, 2, 1):
-            self._compile_and_check([atens3],
-                                    [Flatten(outdim)(atens3)],
-                                    [atens3_val], Flatten)
+        self._compile_and_check([atens3],
+                                [flatten(atens3, 1)],
+                                [atens3_val], Reshape)
+        #for outdim in (3, 2, 1):
+        #    self._compile_and_check([atens3],
+        #                            [flatten(atens3, outdim)],
+        #                            [atens3_val], Reshape)
 
-        amat = matrix()
-        amat_val = rand(4, 5)
-        for outdim in (2, 1):
-            self._compile_and_check([amat],
-                                    [Flatten(outdim)(amat)],
-                                    [amat_val], Flatten)
+        #amat = matrix()
+        #amat_val = rand(4, 5)
+        #for outdim in (2, 1):
+        #    self._compile_and_check([amat],
+        #                            [flatten(amat, outdim)],
+        #                            [amat_val], Reshape)
 
-        avec = vector()
-        avec_val = rand(4)
-        outdim = 1
-        self._compile_and_check([avec],
-                                [Flatten(outdim)(avec)],
-                                [avec_val], Flatten)
+        #avec = vector()
+        #avec_val = rand(4)
+        #outdim = 1
+        #self._compile_and_check([avec],
+        #                        [flatten(avec, outdim)],
+        #                        [avec_val], Reshape)
 
         # Eye
         aiscal = iscalar()

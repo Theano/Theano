@@ -3322,18 +3322,33 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
         return ()
 
 
-class GpuFlatten(gof.HideC, tensor.Flatten, GpuOp):
-    """
-    Implement Flatten on the gpu.
+#class GpuFlatten(gof.HideC, tensor.Reshape, GpuOp):
+#    """
+#    Implement Flatten on the gpu.
+#
+#    """
+#
+#    def make_node(self, x):
+#        warnings.warn(
+#            "GpuFlatten class is deprecated, "
+#            "please use gpu_flatten method instead.",
+#            DeprecationWarning,
+#            stacklevel=4)
+#        assert isinstance(x.type, CudaNdarrayType)
+#        rval = tensor.Reshape.make_node(self, x, [tensor.prod(x.shape)])
+#        host_out_broadcastable = rval.outputs[0].type.broadcastable
+#        out_type = CudaNdarrayType(broadcastable=host_out_broadcastable)
+#        return Apply(self, [x], [out_type()])
 
-    """
 
-    def make_node(self, x):
-        assert isinstance(x.type, CudaNdarrayType)
-        rval = tensor.Flatten.make_node(self, x)
-        host_out_broadcastable = rval.outputs[0].type.broadcastable
-        out_type = CudaNdarrayType(broadcastable=host_out_broadcastable)
-        return Apply(self, [x], [out_type()])
+
+def gpu_flatten(x, outdim=1):
+    x = as_cuda_ndarray_variable(x)
+    if outdim > 1:
+        dims = tuple(x.shape[:outdim-1])+(theano.tensor.prod(x.shape[outdim-1:]),)
+    else:
+        dims = (-1,)
+    return  GpuReshape(outdim)(x, dims)
 
 
 class GpuShape(tensor.Shape, GpuOp):

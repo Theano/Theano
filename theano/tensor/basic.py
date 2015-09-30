@@ -4499,160 +4499,183 @@ def reshape(x, newshape, ndim=None, name=None):
     return rval
 
 
-class Flatten(Op):
-    """
-    Flatten a tensor.
+#class Flatten(Op):
+#    """
+#    Flatten a tensor.
+#
+#    Flattens a tensor to `outdim` dimensions by preserving the leading
+#    outdim - 1 shape components.
+#
+#    """
+#    view_map = {0: [0]}
+#
+#    check_input = False
+#    __props__ = ("outdim",)
+#
+#    def __init__(self, outdim=1):
+#        warnings.warn(
+#            "Flatten class is deprecated, "
+#            "please use flatten method instead.",
+#            DeprecationWarning,
+#            stacklevel=4)
+#        self.outdim = int(outdim)
+#
+#    def __str__(self):
+#        return '%s{%s}' % (self.__class__.__name__, self.outdim)
+#
+#    def make_node(self, x):
+#        t_x = as_tensor_variable(x)
+#        if self.outdim < 1 or (x.ndim and self.outdim > x.ndim):
+#            raise ValueError('invalid output ndimensions (%i) for tensor of '
+#                             'rank %i' % (self.outdim, t_x.ndim))
+#
+#        # Infer the broadcastable pattern of the output. For every dimension
+#        # unaffected by the flatten, the broadcast flag should be unchanged.
+#        # For the dimension resulting from the collapse of other dimensions,
+#        # it should be broadcastable iff all the collapsed dimensions were
+#        # broadcastable.
+#        bcast_kept_dims = x.broadcastable[:self.outdim - 1]
+#        bcast_new_dim = python_all(x.broadcastable[self.outdim - 1:])
+#        broadcastable = bcast_kept_dims + (bcast_new_dim,)
+#
+#        return gof.Apply(self, [t_x], [tensor(x.type.dtype,
+#                                              broadcastable)])
+#
+#    def perform(self, node, inp, out_):
+#        x, = inp
+#        out, = out_
+#        outdim = self.outdim
+#        if outdim == 1:
+#            try:
+#                out[0] = x.reshape(x.size)
+#            except AttributeError:
+#                out[0] = x.reshape((numpy.prod(x.shape),))
+#        elif outdim == len(x.shape):
+#            out[0] = x
+#        else:
+#            newshape = (x.shape[:outdim - 1] +
+#                        (numpy.prod(x.shape[outdim - 1:]),))
+#            out[0] = x.reshape(newshape)
+#
+#    def infer_shape(self, node, in_shapes):
+#        in_shp, = in_shapes
+#        part1 = in_shp[:self.outdim - 1]
+#        part2 = in_shp[self.outdim - 1:]
+#
+#        if len(part2) > 1:
+#            part2 = (prod(part2, dtype='int64'),)
+#        elif len(part2) == 1:
+#            # We do not want to force an upcast of part2 if its length is 1
+#            pass
+#        else:
+#            if len(in_shp) == 0 and self.outdim == 1:
+#                part2 = (1,)
+#            else:
+#                raise ValueError('invalid output ndimensions (%i) for tensor '
+#                                 'of rank %i' % (self.outdim, len(in_shp)))
+#
+#        out_shape = (part1 + part2)
+#        return [out_shape]
+#
+#    def grad(self, inp, grads):
+#        x, = inp
+#        g_out, = grads
+#        return [reshape(g_out, shape(x), x.ndim)]
+#
+#    def R_op(self, inputs, eval_points):
+#        if None in eval_points:
+#            return [None]
+#        return self.make_node(*eval_points).outputs
+#
+#    def c_code_cache_version(self):
+#        return (1, 1)
+#
+#    def c_code(self, node, name, inputs, outputs, sub):
+#        x, = inputs
+#        out, = outputs
+#        outdim = self.outdim
+#        fail = sub['fail']
+#        return """
+#        if (%(outdim)s == PyArray_NDIM(%(x)s))
+#        {
+#            Py_XDECREF(%(out)s);
+#            Py_XINCREF(%(x)s);
+#            %(out)s = %(x)s;
+#        }
+#        else
+#        {
+#            Py_XDECREF(%(out)s);
+#
+#            if (%(outdim)s == 1)
+#            {
+#                npy_intp size = PyArray_SIZE(%(x)s);
+#                PyArray_Dims newshape;
+#                newshape.ptr = &size;
+#                newshape.len = 1;
+#                %(out)s = (PyArrayObject*)PyArray_Newshape(%(x)s,
+#                                                           &newshape,
+#                                                           NPY_CORDER);
+#            }
+#            else
+#            {
+#                npy_intp *oldshape = PyArray_DIMS(%(x)s);
+#                npy_intp newshape_dims[%(outdim)s];
+#
+#                int i;
+#                for (i = 0; i < %(outdim)s - 1; ++i)
+#                    newshape_dims[i] = oldshape[i];
+#
+#                newshape_dims[i] = 1;
+#
+#                for (int j = %(outdim)s - 1; j < PyArray_NDIM(%(x)s); ++j)
+#                    newshape_dims[i] *= oldshape[j];
+#
+#                PyArray_Dims newshape;
+#                newshape.ptr = newshape_dims;
+#                newshape.len = %(outdim)s;
+#                %(out)s = (PyArrayObject*)PyArray_Newshape(%(x)s,
+#                                                           &newshape,
+#                                                           NPY_CORDER);
+#            }
+#        }
+#        if (!%(out)s)
+#        {
+#            //The error message should have been set by
+#            // PyArray_Newshape
+#            %(fail)s;
+#        }
+#        if (!PyArray_ISALIGNED(%(out)s)) {
+#            PyErr_Format(
+#                PyExc_RuntimeError,
+#                "PyArray_Newshape returned an object that isn't"
+#                " aligned! NumPy versions 1.6.2, 1.7.0 and 1.7.1 have"
+#                " this problem for some input shape/new shape"
+#                " combinations. Use another NumPy version.");
+#            %(fail)s;
+#        }
+#        """ % locals()
 
-    Flattens a tensor to `outdim` dimensions by preserving the leading
-    outdim - 1 shape components.
-
-    """
-    view_map = {0: [0]}
-
-    check_input = False
-    __props__ = ("outdim",)
-
-    def __init__(self, outdim=1):
-        self.outdim = int(outdim)
-
-    def __str__(self):
-        return '%s{%s}' % (self.__class__.__name__, self.outdim)
-
-    def make_node(self, x):
-        t_x = as_tensor_variable(x)
-        if self.outdim < 1 or (x.ndim and self.outdim > x.ndim):
-            raise ValueError('invalid output ndimensions (%i) for tensor of '
-                             'rank %i' % (self.outdim, t_x.ndim))
-
-        # Infer the broadcastable pattern of the output. For every dimension
-        # unaffected by the flatten, the broadcast flag should be unchanged.
-        # For the dimension resulting from the collapse of other dimensions,
-        # it should be broadcastable iff all the collapsed dimensions were
-        # broadcastable.
-        bcast_kept_dims = x.broadcastable[:self.outdim - 1]
-        bcast_new_dim = python_all(x.broadcastable[self.outdim - 1:])
-        broadcastable = bcast_kept_dims + (bcast_new_dim,)
-
-        return gof.Apply(self, [t_x], [tensor(x.type.dtype,
-                                              broadcastable)])
-
-    def perform(self, node, inp, out_):
-        x, = inp
-        out, = out_
-        outdim = self.outdim
-        if outdim == 1:
-            try:
-                out[0] = x.reshape(x.size)
-            except AttributeError:
-                out[0] = x.reshape((numpy.prod(x.shape),))
-        elif outdim == len(x.shape):
-            out[0] = x
-        else:
-            newshape = (x.shape[:outdim - 1] +
-                        (numpy.prod(x.shape[outdim - 1:]),))
-            out[0] = x.reshape(newshape)
-
-    def infer_shape(self, node, in_shapes):
-        in_shp, = in_shapes
-        part1 = in_shp[:self.outdim - 1]
-        part2 = in_shp[self.outdim - 1:]
-
-        if len(part2) > 1:
-            part2 = (prod(part2, dtype='int64'),)
-        elif len(part2) == 1:
-            # We do not want to force an upcast of part2 if its length is 1
-            pass
-        else:
-            if len(in_shp) == 0 and self.outdim == 1:
-                part2 = (1,)
-            else:
-                raise ValueError('invalid output ndimensions (%i) for tensor '
-                                 'of rank %i' % (self.outdim, len(in_shp)))
-
-        out_shape = (part1 + part2)
-        return [out_shape]
-
-    def grad(self, inp, grads):
-        x, = inp
-        g_out, = grads
-        return [reshape(g_out, shape(x), x.ndim)]
-
-    def R_op(self, inputs, eval_points):
-        if None in eval_points:
-            return [None]
-        return self.make_node(*eval_points).outputs
-
-    def c_code_cache_version(self):
-        return (1, 1)
-
-    def c_code(self, node, name, inputs, outputs, sub):
-        x, = inputs
-        out, = outputs
-        outdim = self.outdim
-        fail = sub['fail']
-        return """
-        if (%(outdim)s == PyArray_NDIM(%(x)s))
-        {
-            Py_XDECREF(%(out)s);
-            Py_XINCREF(%(x)s);
-            %(out)s = %(x)s;
-        }
-        else
-        {
-            Py_XDECREF(%(out)s);
-
-            if (%(outdim)s == 1)
-            {
-                npy_intp size = PyArray_SIZE(%(x)s);
-                PyArray_Dims newshape;
-                newshape.ptr = &size;
-                newshape.len = 1;
-                %(out)s = (PyArrayObject*)PyArray_Newshape(%(x)s,
-                                                           &newshape,
-                                                           NPY_CORDER);
-            }
-            else
-            {
-                npy_intp *oldshape = PyArray_DIMS(%(x)s);
-                npy_intp newshape_dims[%(outdim)s];
-
-                int i;
-                for (i = 0; i < %(outdim)s - 1; ++i)
-                    newshape_dims[i] = oldshape[i];
-
-                newshape_dims[i] = 1;
-
-                for (int j = %(outdim)s - 1; j < PyArray_NDIM(%(x)s); ++j)
-                    newshape_dims[i] *= oldshape[j];
-
-                PyArray_Dims newshape;
-                newshape.ptr = newshape_dims;
-                newshape.len = %(outdim)s;
-                %(out)s = (PyArrayObject*)PyArray_Newshape(%(x)s,
-                                                           &newshape,
-                                                           NPY_CORDER);
-            }
-        }
-        if (!%(out)s)
-        {
-            //The error message should have been set by
-            // PyArray_Newshape
-            %(fail)s;
-        }
-        if (!PyArray_ISALIGNED(%(out)s)) {
-            PyErr_Format(
-                PyExc_RuntimeError,
-                "PyArray_Newshape returned an object that isn't"
-                " aligned! NumPy versions 1.6.2, 1.7.0 and 1.7.1 have"
-                " this problem for some input shape/new shape"
-                " combinations. Use another NumPy version.");
-            %(fail)s;
-        }
-        """ % locals()
-
+def is_flatten(node, outdim=1):
+    return isinstance(node.op, theano.tensor.Reshape) and node.inputs[1].ndim == outdim
 
 def flatten(x, outdim=1):
-    return Flatten(outdim)(x)
+    outdim = int(outdim)
+    if outdim < 1 or outdim > x.ndim:
+        raise ValueError('outdim of flatten must an int in the range [1, %s], recieved %s' %(x.ndim, outdim))
+
+    if outdim > 1:
+        dims = tuple(x.shape[:outdim-1])+(theano.tensor.prod(x.shape[outdim-1:]),)
+    else:
+        dims = (-1,)
+    x_reshaped = x.reshape(dims)
+    bcast_kept_dims = x.broadcastable[:outdim - 1]
+    bcast_new_dim = python_all(x.broadcastable[outdim - 1:])
+    broadcastable = bcast_kept_dims + (bcast_new_dim,)
+    broadcast_int = tuple([numpy.int(bc) for bc in broadcastable])
+    for dim, br in enumerate(broadcast_int):
+        if br:
+            x_reshaped = theano.tensor.addbroadcast(x_reshaped, dim)
+    return x_reshaped
 
 
 # class TileGrad(Op):

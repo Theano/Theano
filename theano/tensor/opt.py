@@ -3877,24 +3877,24 @@ def local_useless_split(node):
 ################
 # Flatten Opts #
 ################
-@register_canonicalize
-@register_stabilize
-@gof.local_optimizer([T.Flatten])
-def local_flatten_lift(node):
-    """
-    Flatten(UnaryElemwise(x)) -> UnaryElemwise(Flatten(x))
-
-    This optimization is needed by optimization
-    nnet/sigm.py:log1msigm_to_softplus to get applied when there is a flatten.
-
-    """
-    if (isinstance(node.op, T.Flatten) and
-            node.inputs[0].owner and
-            isinstance(node.inputs[0].owner.op, T.Elemwise) and
-            len(node.inputs[0].owner.inputs) == 1):
-        f = node.op(node.inputs[0].owner.inputs[0])
-        e = node.inputs[0].owner.op(f)
-        return [e]
+#@register_canonicalize
+#@register_stabilize
+#@gof.local_optimizer([T.Flatten])
+#def local_flatten_lift(node):
+#    ""
+#    Flatten(UnaryElemwise(x)) -> UnaryElemwise(Flatten(x))
+#
+#    This optimization is needed by optimization
+#    nnet/sigm.py:log1msigm_to_softplus to get applied when there is a flatten.
+#
+#    ""
+#    if (isinstance(node.op, T.Flatten) and
+#            node.inputs[0].owner and
+#            isinstance(node.inputs[0].owner.op, T.Elemwise) and
+#            len(node.inputs[0].owner.inputs) == 1):
+#        f = node.op(node.inputs[0].owner.inputs[0])
+#        e = node.inputs[0].owner.op(f)
+#        return [e]
 
 ##################
 # Reshape opts   #
