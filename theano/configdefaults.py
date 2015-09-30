@@ -200,6 +200,13 @@ AddConfigVar('nvcc.fastmath',
              # if theano.sandbox.cuda is loaded or not.
              in_c_key=False)
 
+AddConfigVar('gpuarray.sync',
+             """If True, every op will make sure its work is done before
+                returning.  Setting this to True will slow down execution,
+                but give much more accurate results in profiling.""",
+             BoolParam(False),
+             in_c_key=True)
+
 AddConfigVar('dnn.conv.workmem',
              "This flag is deprecated; use dnn.conv.algo_fwd.",
              EnumStr(''),

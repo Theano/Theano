@@ -19,13 +19,6 @@ try:
 except ImportError:
     pygpu = None
 
-AddConfigVar('gpuarray.sync',
-             """If True, every op will make sure its work is done before
-                returning.  Setting this to True will slow down execution,
-                but give much more accurate results in profiling.""",
-             BoolParam(False),
-             in_c_key=True)
-
 # This is for documentation not to depend on the availability of pygpu
 from .type import (GpuArrayType, GpuArrayVariable, GpuArrayConstant,
                    GpuArraySharedVariable, gpuarray_shared_constructor,
