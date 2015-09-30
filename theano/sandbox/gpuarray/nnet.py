@@ -1,11 +1,8 @@
 from __future__ import print_function
 import numpy
-import os
 
 from theano import Op, Apply, config
 from six import StringIO
-
-from theano.gof.util import MethodNotDefined
 
 try:
     import pygpu
@@ -43,16 +40,8 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
         am = y_idx.type()
         return Apply(self, [x, b, y_idx], [nll, sm, am])
 
-    def c_header_dirs(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        cuda_root = config.cuda.root
-        if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
-
     def c_headers(self):
-        return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
-                '<gpuarray/types.h>']
+        return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def gpu_kernels(self, node, nodename):
         dtype_x = node.inputs[0].dtype
@@ -332,16 +321,8 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuKernelBase, Op):
     def c_code_cache_version(self):
         return (10,)
 
-    def c_header_dirs(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        cuda_root = config.cuda.root
-        if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
-
     def c_headers(self):
-        return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
-                '<gpuarray/types.h>']
+        return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def c_code(self, node, nodename, inp, out, sub):
         typecode_dx = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
@@ -545,19 +526,8 @@ class GpuSoftmax(GpuKernelBase, Op):
     def c_code_cache_version(self):
         return (14,) + inline_softmax.code_version
 
-    def c_header_dirs(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        cuda_root = config.cuda.root
-        if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
-
     def c_headers(self):
-        return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
-                '<gpuarray/ext_cuda.h>', '<gpuarray/types.h>']
-
-    def c_init_code(self):
-        return ['setup_ext_cuda();']
+        return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def c_code(self, node, nodename, inp, out, sub):
         dtype_x = node.inputs[0].dtype
@@ -750,21 +720,8 @@ class GpuSoftmaxWithBias (GpuKernelBase, Op):
     def c_code_cache_version(self):
         return (13,) + inline_softmax.code_version
 
-    def c_header_dirs(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        cuda_root = config.cuda.root
-        if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
-        else:
-            return []
-
     def c_headers(self):
-        return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
-                '<gpuarray/ext_cuda.h>', '<gpuarray/types.h>']
-
-    def c_init_code(self):
-        return ['setup_ext_cuda();']
+        return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def c_code(self, node, nodename, inp, out, sub):
         dtype_x = node.inputs[0].dtype

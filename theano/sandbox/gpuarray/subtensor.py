@@ -180,18 +180,8 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
     def _f16_ok(self):
         return self.iadd_node.op._f16_ok
 
-    def c_header_dirs(self):
-        cuda_root = config.cuda.root
-        if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
-        else:
-            return []
-
     def c_headers(self):
         return self.iadd_node.op.c_headers()
-
-    def c_compiler(self):
-        return self.iadd_node.op.c_compiler()
 
     def c_init_code(self):
         return self.iadd_node.op.c_init_code()

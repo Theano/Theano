@@ -1,8 +1,6 @@
-import os
 import numpy
 
 from theano import Op, Apply, config
-from theano.gof.util import MethodNotDefined
 from theano.tensor.nnet.neighbours import Images2Neibs
 import theano.tensor as T
 
@@ -45,24 +43,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         return (10, 1)
 
     def c_headers(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
-                '<gpuarray/ext_cuda.h>', '<gpuarray/types.h>']
-
-    def c_header_dirs(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        cuda_root = config.cuda.root
-        if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
-        else:
-            return []
-
-    def c_init_code(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        return ['setup_ext_cuda();']
+        return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def gpu_kernels(self, node, nodename):
         dtype_ten4 = node.inputs[0].dtype

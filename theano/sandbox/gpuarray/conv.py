@@ -3,10 +3,8 @@ import os
 
 import theano
 from theano import config, gof
-from theano.gof.util import MethodNotDefined
 
 try:
-    import pygpu
     from pygpu import gpuarray
 except ImportError:
     pass
@@ -227,32 +225,14 @@ class GpuConv(GpuKernelBase, gof.Op):
         nb = 0
         if self.kshp is not None:
             nb = self.kshp[1]
-        return ['-DTHEANO_KERN_WID=' + str(nb)]  # ,'-g','-G']
+        return ['-DTHEANO_KERN_WID=' + str(nb)]
 
     def c_headers(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        return ['<stdint.h>', '<stdio.h>', 'cuda.h',
-                '<gpuarray/extension.h>', '<numpy_compat.h>',
-                '<gpuarray/ext_cuda.h>', '<gpuarray/types.h>']
-
-    def c_header_dirs(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        cuda_root = config.cuda.root
-        if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
-        else:
-            return []
+        return ['<stdio.h>', '<numpy_compat.h>', '<gpuarray/types.h>']
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
         return (0, 21)
-
-    def c_init_code(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        return ['setup_ext_cuda();']
 
     def c_code(self, node, nodename, inp, out_, sub):
         img, kern = inp

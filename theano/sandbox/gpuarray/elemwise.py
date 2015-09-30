@@ -1,6 +1,5 @@
 from __future__ import print_function
 import copy
-import os
 from theano.compat import izip
 import numpy
 
@@ -8,7 +7,6 @@ from theano import Apply, scalar, config
 from theano import scalar as scal
 from six.moves import StringIO, xrange
 from theano.gof.utils import MethodNotDefined
-from theano.gof.cmodule import GCC_compiler
 from theano.scalar import Scalar
 from theano.tensor.elemwise import (Elemwise, DimShuffle, CAReduceDtype)
 
@@ -172,23 +170,8 @@ class GpuElemwise(GpuKernelBase, HideC, Elemwise):
             kop = kop.replace(npy, ga)
         return ElemwiseKernel(None, inps + outs, kop, preamble=support_code)
 
-    def c_header_dirs(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        cuda_root = config.cuda.root
-        if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
-        else:
-            return []
-
-    def c_compiler(self):
-        return GCC_compiler
-
     def c_headers(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
-                '<gpuarray/ext_cuda.h>', '<gpuarray/types.h>']
+        return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def c_support_code(self):
         return self.scalar_op.c_support_code()
@@ -229,11 +212,6 @@ class GpuElemwise(GpuKernelBase, HideC, Elemwise):
                                               acc_dtype,
                                               node.outputs[0].type.dtype),
                        objvar='elem_%d_%s' % (nd, nodename))]
-
-    def c_init_code(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        return ['setup_ext_cuda();']
 
     def c_code(self, node, name, inputs, outputs, sub):
         if pygpu.get_default_context().kind == 'opencl':
@@ -729,17 +707,8 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             return False
         return True
 
-    def c_header_dirs(self):
-        cuda_root = config.cuda.root
-        if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
-
     def c_headers(self):
-        return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
-                '<gpuarray/ext_cuda.h>', '<gpuarray/types.h>']
-
-    def c_init_code(self):
-        return ['setup_ext_cuda();']
+        return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def c_code(self, node, name, inp, out, sub):
         x, = inp
@@ -757,6 +726,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
 
         sio = StringIO()
         fail = sub['fail']
+        ctx = sub['context']
 
         # check input
         print("""
@@ -821,8 +791,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             Py_XDECREF(%(z)s);
             %(z)s = pygpu_empty(%(nd_out)s, new_dims,
                                 %(out_typecode)s, GA_C_ORDER,
-                                pygpu_default_context(),
-                                Py_None);
+                                %(ctx)s, Py_None);
             if (NULL == %(z)s)
             {
                 PyErr_Format(PyExc_RuntimeError, "Failed to allocate output");
