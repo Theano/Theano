@@ -2,22 +2,19 @@ import os
 import numpy
 
 from theano import Op, Apply, config
-from theano.gof import local_optimizer
+from theano.gof.util import MethodNotDefined
 from theano.tensor.nnet.neighbours import Images2Neibs
 import theano.tensor as T
 
 try:
     import pygpu
-    from pygpu import gpuarray, elemwise
+    from pygpu import gpuarray
 except ImportError:
     pass
 
-from .basic_ops import (as_gpuarray_variable,
-                        host_from_gpu, gpu_from_host,
-                        GpuKernelBase, Kernel)
+from .basic_ops import as_gpuarray_variable, GpuKernelBase, Kernel
 from .opt import register_opt as register_gpu_opt, op_lifter
 from .type import GpuArrayType
-from .comp import NVCC_compiler
 
 
 class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
@@ -45,7 +42,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                    dtype=ten4.type.dtype)()])
 
     def c_code_cache_version(self):
-        return (10,1)
+        return (10, 1)
 
     def c_headers(self):
         if pygpu.get_default_context().kind == 'opencl':
