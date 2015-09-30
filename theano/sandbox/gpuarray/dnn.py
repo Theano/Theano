@@ -15,7 +15,7 @@ from theano.tensor.nnet import SoftmaxGrad
 from theano.tensor.signal.downsample import (
     DownsampleFactorMax, MaxPoolGrad, AveragePoolGrad)
 
-from . import pygpu, init_dev
+from . import pygpu
 from .type import get_context, gpu_context_type
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         gpu_contiguous, HostFromGpu,
@@ -28,6 +28,7 @@ from .conv import GpuConv
 from .nnet import GpuSoftmax
 from .opt import gpu_seqopt, register_opt, conv_groupopt, op_lifter
 from .opt_util import alpha_merge, output_merge, inplace_allocempty
+
 
 def _dnn_check_compile():
     preambule = """
