@@ -113,7 +113,7 @@ class FailureWatch:
     def __init__(self):
         self.failures = 0
 
-    def __call__(self, exc, nav, pairs, lopt):
+    def __call__(self, exc, nav, pairs, lopt, node):
         assert isinstance(exc, InconsistencyError)
         self.failures += 1
 
