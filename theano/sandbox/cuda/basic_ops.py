@@ -3622,7 +3622,7 @@ class GpuAllocEmpty(GpuOp):
                 const_shp = tensor.get_scalar_constant_value(s)
             except tensor.NotScalarConstantError:
                 const_shp = None
-            bcast.append(numpy.all(1 == const_shp))
+            bcast.append(1 == const_shp)
         otype = CudaNdarrayType(dtype='float32', broadcastable=bcast)
         output = otype()
         return sh, output

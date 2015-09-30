@@ -2673,7 +2673,7 @@ class Alloc(gof.Op):
                 const_shp = get_scalar_constant_value(s)
             except NotScalarConstantError:
                 const_shp = None
-            bcast.append(numpy.all(1 == const_shp))
+            bcast.append(1 == const_shp)
         return sh, bcast
 
     def make_node(self, value, *shape):
@@ -6037,7 +6037,7 @@ class AllocEmpty(gof.Op):
                 const_shp = get_scalar_constant_value(s)
             except NotScalarConstantError:
                 const_shp = None
-            bcast.append(numpy.all(1 == const_shp))
+            bcast.append(1 == const_shp)
         otype = TensorType(dtype=self.dtype, broadcastable=bcast)
         output = otype()
         return sh, output
