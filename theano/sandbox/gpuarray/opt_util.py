@@ -31,8 +31,8 @@ def grab_cpu_scalar(v, nd):
     """
     if v.owner is not None:
         n = v.owner
-        elif (isinstance(n.op, (GpuDimShuffle, DimShuffle)) and
-              n.op.new_order == ('x',) * nd):
+        if (isinstance(n.op, (GpuDimShuffle, DimShuffle)) and
+                n.op.new_order == ('x',) * nd):
             return grab_cpu_scalar(n.inputs[0], n.inputs[0].ndim)
         elif isinstance(n.op, (GpuFromHost, HostFromGpu)):
             return grab_cpu_scalar(n.inputs[0], nd)
