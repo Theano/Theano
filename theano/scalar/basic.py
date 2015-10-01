@@ -201,24 +201,24 @@ class Scalar(Type):
     def values_eq_approx(self, a, b, tolerance=1e-4):
         return abs(a - b) <= ((abs(a) + abs(b)) * tolerance)
 
-    def c_headers(self):
+    def c_headers(self, c_compiler):
         l = ['<math.h>']
         # These includes are needed by Scalar and TensorType,
         # we declare them here and they will be re-used by TensorType
         l.append('<numpy/arrayobject.h>')
         l.append('<numpy/arrayscalars.h>')
-        if config.lib.amdlibm:
+        if config.lib.amdlibm and c_compiler.supports_amdlibm:
             l += ['<amdlibm.h>']
         return l
 
-    def c_libraries(self):
+    def c_libraries(self, c_compiler):
         l = []
-        if config.lib.amdlibm:
+        if config.lib.amdlibm and c_compiler.supports_amdlibm:
             l += ['amdlibm']
         return l
 
-    def c_compile_args(self):
-        if config.lib.amdlibm:
+    def c_compile_args(self, c_compiler):
+        if config.lib.amdlibm and c_compiler.supports_amdlibm:
             return ['-DREPLACE_WITH_AMDLIBM']
         else:
             return []

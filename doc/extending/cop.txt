@@ -57,38 +57,62 @@ There are less methods to define for an Op than for a Type:
 
        *Default:* The default behavior is to do nothing.
 
-    .. method:: c_headers()
+    .. method:: c_headers([c_compiler])
 
        Returns a list of headers to include in the file. 'Python.h' is
        included by default so you don't need to specify it.  Also all
-       of the header required by the Types involved (inputs and
+       of the headers required by the Types involved (inputs and
        outputs) will also be included.
 
-    .. method:: c_header_dirs()
+       The `c_compiler` [#2v]_ parameter is the C compiler that will
+       be used to compile the code for the node. You may get multiple
+       calls with different C compilers.
+
+    .. method:: c_header_dirs([c_compiler])
 
        Returns a list of directories to search for headers (arguments
        to -I).
 
-    .. method:: c_libraries()
+       The `c_compiler` [#2v]_ parameter is the C compiler that will
+       be used to compile the code for the node. You may get multiple
+       calls with different C compilers.
+
+    .. method:: c_libraries([c_compiler])
 
        Returns a list of library names that your op needs to link to.
        All ops are automatically linked with 'python' and the
        libraries their types require. (arguments to -l)
 
-    .. method:: c_lib_dirs()
+       The `c_compiler` [#2v]_ parameter is the C compiler that will
+       be used to compile the code for the node. You may get multiple
+       calls with different C compilers.
+
+    .. method:: c_lib_dirs([c_compiler])
 
        Returns a list of directory to search for libraries (arguments
        to -L).
 
-    .. method:: c_compile_args()
+       The `c_compiler` [#2v]_ parameter is the C compiler that will
+       be used to compile the code for the node. You may get multiple
+       calls with different C compilers.
 
-       Allows to specify additional arbitrary arguments to g++.  This
-       is not usually required.
+    .. method:: c_compile_args([c_compiler])
 
-    .. method:: c_no_compile_args()
+       Allows to specify additional arbitrary arguments to the C
+       compiler.  This is not usually required.
 
-       Returns a list of g++ arguments that are forbidden when
+       The `c_compiler` [#2v]_ parameter is the C compiler that will
+       be used to compile the code for the node. You may get multiple
+       calls with different C compilers.
+
+    .. method:: c_no_compile_args([c_compiler])
+
+       Returns a list of C compiler arguments that are forbidden when
        compiling this Op.
+
+       The `c_compiler` [#2v]_ parameter is the C compiler that will
+       be used to compile the code for the node. You may get multiple
+       calls with different C compilers.
 
     .. method:: c_init_code()
 
@@ -244,6 +268,18 @@ double``, then ``input_names[0]`` is the ``name`` argument passed to
 In a nutshell, ``input_names`` and ``output_names`` parameterize the
 names of the inputs your operation needs to use and the outputs it
 needs to put variables into. But this will be clear with the examples.
+
+.. rubric:: Footnotes
+
+.. [#2v] There are actually two versions of this method one with a
+         `c_compiler` parameter and one without. The calling code will
+         try the version with c_compiler and try the version without
+         if it does not work.  Defining both versions is pointless
+         since the one without `c_compiler` will never get called.
+
+         Note that these methods are not specific to a single apply
+         node so they may get called more than once on the same object
+         with different values for c_compiler.
 
 
 Defining the methods
