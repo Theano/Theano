@@ -1294,7 +1294,6 @@ class MaxAndArgmax(Op):
         elif isinstance(axis, numpy.ndarray) and axis.ndim == 0:
             axis = [int(axis)]
         elif isinstance(axis, (tuple, list, numpy.ndarray)):
-            # List of axes: make them non-negative, and sort them
             axis = [int(a) for a in axis]
             if axis == list(range(x.type.ndim)):
                 axis = None
