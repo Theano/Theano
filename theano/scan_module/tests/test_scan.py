@@ -250,16 +250,10 @@ class T_Scan(unittest.TestCase):
             tmpdir = mkdtemp()
             os.chdir(tmpdir)
 
-            f_out = open('tmp_scan_test_pickle.pkl', 'wb')
-            try:
+            with open('tmp_scan_test_pickle.pkl', 'wb') as f_out:
                 pickle.dump(_my_f, f_out, protocol=-1)
-            finally:
-                f_out.close()
-            f_in = open('tmp_scan_test_pickle.pkl', 'rb')
-            try:
+            with open('tmp_scan_test_pickle.pkl', 'rb') as f_in:
                 my_f = pickle.load(f_in)
-            finally:
-                f_in.close()
         finally:
             # Get back to the original dir, and delete the temporary one.
             os.chdir(origdir)

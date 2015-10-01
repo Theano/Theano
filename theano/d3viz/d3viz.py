@@ -84,9 +84,8 @@ def d3viz(fct, outfile, copy_deps=True, *args, **kwargs):
 
     # Read template HTML file
     template_file = os.path.join(__path__, 'html', 'template.html')
-    f = open(template_file)
-    template = f.read()
-    f.close()
+    with open(template_file) as f:
+        template = f.read()
 
     # Copy dependencies to output directory
     src_deps = __path__

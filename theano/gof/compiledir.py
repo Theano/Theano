@@ -349,35 +349,27 @@ def print_compiledir_content():
     total_key_sizes = 0
     nb_keys = {}
     for dir in os.listdir(compiledir):
-        file = None
-        try:
-            try:
-                filename = os.path.join(compiledir, dir, "key.pkl")
-                file = open(filename, 'rb')
-                keydata = pickle.load(file)
-                ops = list(set([x for x in flatten(keydata.keys)
-                                if isinstance(x, theano.gof.Op)]))
-                if len(ops) == 0:
-                    zeros_op += 1
-                elif len(ops) > 1:
-                    more_than_one_ops += 1
-                else:
-                    types = list(set([x for x in flatten(keydata.keys)
-                                      if isinstance(x, theano.gof.Type)]))
-                    table.append((dir, ops[0], types))
+        filename = os.path.join(compiledir, dir, "key.pkl")
+        with open(filename, 'rb') as file:
+            keydata = pickle.load(file)
+            ops = list(set([x for x in flatten(keydata.keys)
+                            if isinstance(x, theano.gof.Op)]))
+            if len(ops) == 0:
+                zeros_op += 1
+            elif len(ops) > 1:
+                more_than_one_ops += 1
+            else:
+                types = list(set([x for x in flatten(keydata.keys)
+                                  if isinstance(x, theano.gof.Type)]))
+                table.append((dir, ops[0], types))
 
-                size = os.path.getsize(filename)
-                total_key_sizes += size
-                if size > max_key_file_size:
-                    big_key_files.append((dir, size, ops))
+            size = os.path.getsize(filename)
+            total_key_sizes += size
+            if size > max_key_file_size:
+                big_key_files.append((dir, size, ops))
 
-                nb_keys.setdefault(len(keydata.keys), 0)
-                nb_keys[len(keydata.keys)] += 1
-            except IOError:
-                pass
-        finally:
-            if file is not None:
-                file.close()
+            nb_keys.setdefault(len(keydata.keys), 0)
+            nb_keys[len(keydata.keys)] += 1
 
     print("List of %d compiled individual ops in this theano cache %s:" % (
         len(table), compiledir))

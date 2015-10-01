@@ -339,9 +339,8 @@ def refresh_lock(lock_file):
         ''.join([str(random.randint(0, 9)) for i in range(10)]),
         hostname)
     try:
-        lock_write = open(lock_file, 'w')
-        lock_write.write(unique_id + '\n')
-        lock_write.close()
+        with open(lock_file, 'w') as lock_write:
+            lock_write.write(unique_id + '\n')
     except Exception:
         # In some strange case, this happen.  To prevent all tests
         # from failing, we release the lock, but as there is a

@@ -145,31 +145,27 @@ def get_file_contents(filename, revision="tip"):
 
 def save_commit_message(filename):
     commit_message = run_mercurial_command("tip --template '{desc}'")
-    save_file = open(filename, "w")
-    save_file.write(commit_message)
-    save_file.close()
+    with open(filename, "w") as save_file:
+        save_file.write(commit_message)
 
 
 def save_diffs(diffs, filename):
     diff = "\n\n".join(diffs)
-    diff_file = open(filename, "w")
-    diff_file.write(diff)
-    diff_file.close()
+    with open(filename, "w") as diff_file:
+        diff_file.write(diff)
 
 
 def should_skip_commit():
     if not os.path.exists(SKIP_WHITESPACE_CHECK_FILENAME):
         return False
-    whitespace_check_file = open(SKIP_WHITESPACE_CHECK_FILENAME, "r")
-    whitespace_check_changeset = whitespace_check_file.read()
-    whitespace_check_file.close()
+    with open(SKIP_WHITESPACE_CHECK_FILENAME, "r") as whitespace_check_file:
+        whitespace_check_changeset = whitespace_check_file.read()
     return whitespace_check_changeset == parent_commit()
 
 
 def save_skip_next_commit():
-    whitespace_check_file = open(SKIP_WHITESPACE_CHECK_FILENAME, "w")
-    whitespace_check_file.write(parent_commit())
-    whitespace_check_file.close()
+    with open(SKIP_WHITESPACE_CHECK_FILENAME, "w") as whitespace_check_file:
+        whitespace_check_file.write(parent_commit())
 
 
 def main(argv=None):
