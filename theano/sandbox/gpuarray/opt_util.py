@@ -160,9 +160,11 @@ def alpha_merge(cls, alpha_in, beta_in):
                     targ = find_node(node.inputs[1], cls)
                     if targ is None:
                         return
-                    lr = grab_cpu_scalar(node.inputs[0], nd=targ.ndim)
+                    lr = grab_cpu_scalar(node.inputs[0],
+                                         nd=targ.outputs[0].ndim)
                 else:
-                    lr = grab_cpu_scalar(node.inputs[1], nd=targ.ndim)
+                    lr = grab_cpu_scalar(node.inputs[1],
+                                         nd=targ.outputs[0].ndim)
                 if lr is None or lr.dtype != targ.outputs[0].dtype:
                     return None
                 inputs = list(targ.inputs)
