@@ -275,17 +275,16 @@ def check_all_files(dir_path=theano.__path__[0], pattern='*.py'):
     the "whitelist_flake8" in this file.
     """
 
-    f_txt = open('theano_filelist.txt', 'a')
-    for (dir, _, files) in os.walk(dir_path):
-        for f in files:
-            if fnmatch(f, pattern):
-                error_num = flake8.main.check_file(os.path.join(dir, f),
-                                                   ignore=ignore)
-                if error_num > 0:
-                    path = os.path.relpath(os.path.join(dir, f),
-                                           theano.__path__[0])
-                    f_txt.write('"' + path + '",\n')
-    f_txt.close()
+    with open('theano_filelist.txt', 'a') as f_txt:
+        for (dir, _, files) in os.walk(dir_path):
+            for f in files:
+                if fnmatch(f, pattern):
+                    error_num = flake8.main.check_file(os.path.join(dir, f),
+                                                       ignore=ignore)
+                    if error_num > 0:
+                        path = os.path.relpath(os.path.join(dir, f),
+                                               theano.__path__[0])
+                        f_txt.write('"' + path + '",\n')
 
 
 if __name__ == "__main__":
