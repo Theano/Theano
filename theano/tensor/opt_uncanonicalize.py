@@ -63,7 +63,7 @@ def local_max_and_argmax(node):
                     axis = get_scalar_constant_value(node.inputs[1])
                 except NotScalarConstantError:
                     axis = node.inputs[1]
-                    if not isinstance(axis, TensorConstant):
+                    if not isinstance(axis, T.TensorConstant):
                         return False
                     axis = axis.data
 
