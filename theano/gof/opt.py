@@ -1634,13 +1634,14 @@ class NavigatorOptimizer(Optimizer):
 
     """
     @staticmethod
-    def warn(exc, nav, repl_pairs, local_opt):
+    def warn(exc, nav, repl_pairs, local_opt, node):
         """
         Failure_callback for NavigatorOptimizer: print traceback.
 
         """
         if config.on_opt_error != 'ignore':
             _logger.error("Optimization failure due to: %s" % str(local_opt))
+            _logger.error("node: %s" % str(node))
             _logger.error("TRACEBACK:")
             _logger.error(traceback.format_exc())
         if config.on_opt_error == 'pdb':
@@ -1651,19 +1652,21 @@ class NavigatorOptimizer(Optimizer):
             raise exc
 
     @staticmethod
-    def warn_inplace(exc, nav, repl_pairs, local_opt):
+    def warn_inplace(exc, nav, repl_pairs, local_opt, node):
         """
         Failure_callback for NavigatorOptimizer.
 
         Ignore InconsistencyErrors, print traceback.
 
+        If error during replacement repl_pairs is set. Otherwise None.
+
         """
         if isinstance(exc, InconsistencyError):
             return
-        return NavigatorOptimizer.warn(exc, nav, repl_pairs, local_opt)
+        return NavigatorOptimizer.warn(exc, nav, repl_pairs, local_opt, node)
 
     @staticmethod
-    def warn_ignore(exc, nav, repl_pairs, local_opt):
+    def warn_ignore(exc, nav, repl_pairs, local_opt, node):
         """
         Failure_callback for NavigatorOptimizer: ignore all errors.
 
@@ -1764,7 +1767,7 @@ class NavigatorOptimizer(Optimizer):
             if self.failure_callback is not None:
                 self.failure_callback(e, self,
                                       [(x, None) for x in node.outputs],
-                                      lopt)
+                                      lopt, node)
                 return False
             else:
                 raise
@@ -1802,7 +1805,7 @@ class NavigatorOptimizer(Optimizer):
             # This is not supposed to happen.  The default failure_callback
             # will print a traceback as a warning.
             if self.failure_callback is not None:
-                self.failure_callback(e, self, repl_pairs, lopt)
+                self.failure_callback(e, self, repl_pairs, lopt, node)
                 return False
             else:
                 raise
