@@ -486,10 +486,10 @@ else:
     float32_rtol = 1e-5
 
     # defaults in numpy.allclose
+    # Don't be more strict then numpy rtol
+    # It cause useless error.
     float64_rtol = 1.0000000000000001e-05
     float64_atol = 1e-8
-    # more strict. Atleast float32 precision.
-    float64_rtol = 1.0000000000000001e-06
 
 
 def _get_atol_rtol(a, b):

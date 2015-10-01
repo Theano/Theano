@@ -3288,6 +3288,11 @@ class T_min_max(unittest.TestCase):
         # axis=1)[0], n)),axis=1)
 
 
+def test_basic_allclose():
+    # This was raised by a user in https://github.com/Theano/Theano/issues/2975
+    assert tensor.basic._allclose(-0.311023883434, -0.311022856884)
+
+
 class T_outer(unittest.TestCase):
     def test_outer(self):
         for m in range(4):
