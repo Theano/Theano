@@ -5516,7 +5516,7 @@ def constant_folding(node):
     return rval
 
 
-topo_constant_folding = in2out(constant_folding, ignore_newtrees=False,
+topo_constant_folding = in2out(constant_folding, ignore_newtrees=True,
                                name="topo_constant_folding")
 register_canonicalize(topo_constant_folding, 'fast_compile', final_opt=True)
 register_stabilize(topo_constant_folding, 'fast_compile', final_opt=True)
