@@ -3855,15 +3855,15 @@ class T_Tile(unittest.TestCase):
         # But it isn't supported for now, so assert that we raise an
         # error.
 
-        self.assertRaises(ValueError, T.tile, v, (1,)*(v.ndim+1))
+        #self.assertRaises(ValueError, T.tile, v, (1,)*(v.ndim+1))
         # If the repeat parameter is shorter then m.ndim, it should
         # pad tot he left the repeat patter with 1. It is not supported for now.
-        #f = theano.function([var], T.tile(v, (1,)*(v.ndim+1)))
-        #topo = f.maker.fgraph.toposort()
+        f = theano.function([var], T.tile(v, (1,)*(v.ndim+1)))
+        topo = f.maker.fgraph.toposort()
         #assert len(topo) == 1
         #assert isinstance(topo[0].op, DimShuffe)
 
-        self.assertRaises(ValueError, T.tile, m, (1,)*(m.ndim-1))
+        #self.assertRaises(ValueError, T.tile, m, (1,)*(m.ndim-1))
         #f = theano.function([var], T.tile(m, (1,)*(m.ndim-1)))
         #topo = f.maker.fgraph.toposort()
         #assert len(topo) == 1
