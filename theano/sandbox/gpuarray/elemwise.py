@@ -776,7 +776,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             Py_XDECREF(%(z)s);
             %(z)s = pygpu_empty(%(nd_out)s, new_dims,
                                 %(out_typecode)s, GA_C_ORDER,
-                                pygpu_default_context(), Py_None);
+                                %(ctx)s, Py_None);
             if (NULL == %(z)s)
             {
                 PyErr_Format(PyExc_RuntimeError, "Failed to allocate output");
@@ -1896,7 +1896,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         """ % locals(), file=sio)
 
     def c_code_cache_version_apply(self, node):
-        version = [17]  # the version corresponding to the c code in this Op
+        version = [18]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(
@@ -1906,6 +1906,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         version.extend(self.scalar_op.c_code_cache_version_apply(scalar_node))
         for i in node.inputs + node.outputs:
             version.extend(Scalar(dtype=i.type.dtype).c_code_cache_version())
+        version.extend(self.kernel_version(node))
         if all(version):
             return tuple(version)
         else:

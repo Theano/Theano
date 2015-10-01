@@ -116,7 +116,7 @@ class test_GpuCAReduceCPY(test_elemwise.test_CAReduce):
 
     def test_infer_shape(self):
         for dtype in self.dtypes:
-            super(test_GpuCAReduceCPY, self).test_infer_shape(self, dtype)
+            super(test_GpuCAReduceCPY, self).test_infer_shape(dtype)
 
 
 class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
@@ -195,7 +195,7 @@ class test_GpuCAReduceCuda(test_GpuCAReduceCPY):
     op = GpuCAReduceCuda
     reds = [scalar.add, scalar.mul,
             scalar.maximum, scalar.minimum]
-    pre_scalar_op = scalar.sqr
+    pre_scalar_op = None
 
     def test_perform(self):
         return

@@ -969,7 +969,7 @@ def local_scan_to_gpua(node, context_name):
                             context_name=context_name)
 
     nw_op = scan_op.Scan(scan_ins, scan_outs, info,
-                         typebuild=typebuild).make_node(*nw_ins)
+                         typeConstructor=typebuild).make_node(*nw_ins)
     return nw_op.outputs
 
 

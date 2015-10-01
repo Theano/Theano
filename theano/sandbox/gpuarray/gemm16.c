@@ -14,7 +14,8 @@ PyGpuArrayObject *rand_buf;
 
 int gemm16(PyGpuArrayObject *C, float alpha,
            PyGpuArrayObject *A, PyGpuArrayObject *B,
-           float beta, PyGpuArrayObject **out) {
+           float beta, PyGpuArrayObject **out,
+           PyGpuContextObject *c) {
   PyGpuArrayObject *_A = NULL;
   PyGpuArrayObject *_B = NULL;
   GpuKernel *gk;

@@ -243,10 +243,13 @@ class GpuKernelBase(object):
         cleanups = '\n'.join(self._generate_kernel_cleanup(k) for k in kernels)
         return cleanups
 
-    def _GpuKernelBase_version(self):
-        return (3,)
+    # This is a shorthand for if your op only has a fixed version
+    # You can reimplement it, but make sure to call kernel_version()
+    def c_code_cache_version_apply(self, node):
+        return (self.c_code_cache_version(), self.kernel_version(node))
 
-    GpuKernelBase_version = property(_GpuKernelBase_version)
+    def kernel_version(self, node):
+        return (3, node.get_context().bin_id)
 
 
 class HostFromGpu(Op):
@@ -1044,4 +1047,4 @@ KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
         return s
 
     def c_code_cache_version(self):
-        return (5, self.GpuKernelBase_version)
+        return (5,)

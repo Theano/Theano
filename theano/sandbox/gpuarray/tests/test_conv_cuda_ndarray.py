@@ -14,8 +14,8 @@ from theano import tensor
 from theano.tests.unittest_tools import seed_rng
 
 # We let that import do the init of the back-end if needed.
-from .config import mode_with_gpu
-from ..type import GpuArrayType
+from .config import mode_with_gpu, test_ctx_name
+from ..type import GpuArrayType, get_context
 from ..conv import GpuConv
 from theano.sandbox.gpuarray import dnn
 
@@ -28,7 +28,7 @@ try:
 except ImportError:
     pass
 
-gftensor4 = GpuArrayType('float32', [False] * 4)
+gftensor4 = GpuArrayType('float32', [False] * 4, context_name=test_ctx_name)
 
 
 def py_conv_valid_numpy(img, kern):
@@ -135,8 +135,8 @@ def _params_allgood(ishape, kshape, mode, subsample=(1, 1), img_stride=(1, 1),
             numpy.prod(ishape)).reshape(ishape), dtype='float32') + 1
         npy_kern = -(theano._asarray(numpy.arange(
             numpy.prod(kshape)).reshape(kshape), dtype='float32') + 1)
-    img = pygpu.array(npy_img)
-    kern = pygpu.array(npy_kern)
+    img = pygpu.array(npy_img, context=get_context(test_ctx_name))
+    kern = pygpu.array(npy_kern, context=get_context(test_ctx_name))
 
     # we take the stride after the transfert as we make c_contiguous
     # data on the GPU.
