@@ -1463,8 +1463,9 @@ def local_fill_sink(node):
             replacements.update(r)
         else:
             all_clients_replaced = False
-    if all_clients_replaced:
-        replacements.pop(node.outputs[0], None)
+# Why this was added? I don't see why and I don't see it causing test failure.
+#    if all_clients_replaced:
+#        replacements.pop(node.outputs[0], None)
     return replacements
 
 register_canonicalize(local_fill_sink)
@@ -1472,7 +1473,7 @@ register_canonicalize(local_fill_sink)
 
 @register_specialize
 @register_stabilize
-@register_canonicalize
+# @register_canonicalize  # We make full pass after the canonizer phase.
 @gof.local_optimizer([T.fill])
 def local_fill_to_alloc(node):
     """fill(s,v) -> alloc(v, shape(s))
@@ -1512,7 +1513,12 @@ def local_fill_to_alloc(node):
             node,)  # theano.printing.debugprint(node.outputs[0], file='str'))
         return rval
 
+compile.optdb['canonicalize'].register('local_fill_to_alloc',
+                                       in2out(local_fill_to_alloc),
+                                       1.1, 'fast_compile')
 
+
+@register_canonicalize("fast_compile")
 @gof.local_optimizer([T.fill])
 def local_useless_fill(node):
     """fill(s,v) -> v
@@ -1528,9 +1534,6 @@ def local_useless_fill(node):
             # this is a useless fill, erase it.
             # also, we don't need to copy over any stack traces here
             return [v]
-compile.optdb['canonicalize'].register('local_useless_fill',
-                                       in2out(local_useless_fill),
-                                       1.1, 'fast_compile')
 
 
 @register_specialize
