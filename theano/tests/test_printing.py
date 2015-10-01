@@ -366,7 +366,7 @@ def test_scan_debugprint2():
      > |coefficients[t] [@Y] -> [@S]
      > |Elemwise{pow,no_inplace} [@Z] ''
      >   |x_copy [@BA] -> [@W]
-     >   |<TensorType(int16, scalar)> [@BB] -> [@U]"""
+     >   |<TensorType(int64, scalar)> [@BB] -> [@U]"""
 
     for truth, out in zip(expected_output.split("\n"), lines):
         assert truth.strip() == out.strip()
@@ -479,7 +479,7 @@ def test_scan_debugprint3():
      >   | | |Constant{1} [@BX]
      >   | |Constant{-1} [@BY]
      >   |DimShuffle{x} [@BZ] ''
-     >     |<TensorType(int8, scalar)> [@CA] -> [@U]
+     >     |<TensorType(int64, scalar)> [@CA] -> [@U]
 
     for{cpu,scan_fn} [@BE] ''
      >Elemwise{mul,no_inplace} [@CB] ''
