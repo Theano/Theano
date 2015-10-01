@@ -5523,8 +5523,8 @@ def constant_folding(node):
     return rval
 
 
-topo_constant_folding=in2out(constant_folding, ignore_newtrees=False,
-                             name="topo_constant_folding")
+topo_constant_folding = in2out(constant_folding, ignore_newtrees=False,
+                               name="topo_constant_folding")
 register_canonicalize(topo_constant_folding, 'fast_compile', final_opt=True)
 register_stabilize(topo_constant_folding, 'fast_compile', final_opt=True)
 register_specialize(topo_constant_folding, 'fast_compile', final_opt=True)
@@ -5769,7 +5769,7 @@ def local_log_erfc(node):
 #                            sqrt(pi)*-x/(1-1/(2*x**2)+3/(4*x**4)-15/(8*x**6)))
 # for float64: threshold=26.63 see at the end of the fct for the explaination
 # for float32: threshold=9.3 see at the end of the fct for the explaination
-# TODO: remove the contraint that there are only 2 inputs to mul and exp(x**2)
+# TODO: remove the contraint that there are only 2 inputs to exp(x**2)
 #      is the second.
 # TODO: at the test point 10 in float32, there is instability in the original
 #      value. The original gives -30.0, the stab -20.1 and in float64 -18.1.
@@ -5796,14 +5796,17 @@ def local_grad_log_erfc_neg(node):
         exp = node.inputs[0]
     else:
         mul = node.inputs[0]
-        if mul.owner.inputs[0].owner or len(mul.owner.inputs) != 2:
-            return False
-        y = mul.owner.inputs[0]
-        if (not mul.owner.inputs[1].owner or
-                mul.owner.inputs[1].owner.op != T.exp):
-            return False
-        exp = mul.owner.inputs[1]
-
+        exp = None
+        for idx, inp in enumerate(mul.owner.inputs):
+            if inp.owner and inp.owner.op == T.exp:
+                exp = inp
+                break
+        if len(mul.owner.inputs) == 2:
+            y = [mul.owner.inputs[1-idx]]
+        else:
+            y = mul.owner.inputs[:]
+            del y[idx]
+    del mul
     if not exp.owner.inputs[0].owner:
         return False
 
@@ -5905,9 +5908,10 @@ def local_grad_log_erfc_neg(node):
         # threshold = 10.1
     elif x.dtype == 'float64':
         threshold = 26.641747557
-    ret = T.switch(x < threshold, true_div_no_mul, stab_value) * y
+    ret = T.switch(x < threshold, true_div_no_mul, stab_value)
+    if y != 1:
+        ret = T.mul(ret, *y)
     ret.values_eq_approx = values_eq_approx_remove_inf_nan
-
     return [ret]
     """
 The libm used for the test is amdlibm
