@@ -452,8 +452,9 @@ def register_canonicalize(lopt, *tags, **kwargs):
             return register_canonicalize(inner_lopt, lopt, *tags, **kwargs)
         return register
     else:
-        name = (kwargs and kwargs.pop('name')) or lopt.__name__
-        compile.optdb['canonicalize'].register(name, lopt, 'fast_run', *tags)
+        name = kwargs.pop('name', None) or lopt.__name__
+        compile.optdb['canonicalize'].register(name, lopt, 'fast_run',
+                                               *tags, **kwargs)
         return lopt
 
 
@@ -463,8 +464,9 @@ def register_stabilize(lopt, *tags, **kwargs):
             return register_stabilize(inner_lopt, lopt, *tags, **kwargs)
         return register
     else:
-        name = (kwargs and kwargs.pop('name')) or lopt.__name__
-        compile.optdb['stabilize'].register(name, lopt, 'fast_run', *tags)
+        name = kwargs.pop('name', None) or lopt.__name__
+        compile.optdb['stabilize'].register(name, lopt, 'fast_run',
+                                            *tags, **kwargs)
         return lopt
 
 
@@ -474,9 +476,9 @@ def register_specialize(lopt, *tags, **kwargs):
             return register_specialize(inner_lopt, lopt, *tags, **kwargs)
         return register
     else:
-        name = (kwargs and kwargs.pop('name')) or lopt.__name__
+        name = kwargs.pop('name', None) or lopt.__name__
         compile.optdb['specialize'].register(name, lopt, 'fast_run',
-                                             *tags)
+                                             *tags, **kwargs)
         return lopt
 
 
@@ -4018,7 +4020,9 @@ class Canonizer(gof.LocalOptimizer):
         """
         if isinstance(v, Variable):
             try:
-                return get_scalar_constant_value(v)
+                # As the constant folding is in the canonicalize phase,
+                # We don't need to check all the graph each time.
+                return get_scalar_constant_value(v, only_process_constants=True)
             except NotScalarConstantError:
                 return None
         else:
@@ -5467,9 +5471,6 @@ def local_greedy_distributor(node):
     return [rval]
 
 
-@register_canonicalize('fast_compile')
-@register_stabilize('fast_compile')
-@register_specialize('fast_compile')
 @gof.local_optimizer(None)
 def constant_folding(node):
     for input in node.inputs:
@@ -5517,6 +5518,13 @@ def constant_folding(node):
 
         rval.append(v)
     return rval
+
+
+topo_constant_folding=in2out(constant_folding, ignore_newtrees=False,
+                             name="topo_constant_folding")
+register_canonicalize(topo_constant_folding, 'fast_compile', final_opt=True)
+register_stabilize(topo_constant_folding, 'fast_compile', final_opt=True)
+register_specialize(topo_constant_folding, 'fast_compile', final_opt=True)
 
 
 def _is_1(expr):
