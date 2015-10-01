@@ -1445,7 +1445,6 @@ def local_fill_sink(node):
     # The newly created node c doesn't has 'clients',
     # so this iteration is took place with node.outputs[0]
     replacements = {node.outputs[0]: c}
-    all_clients_replaced = True
     for client, cl_idx in node.outputs[0].clients:
         if (hasattr(client, 'op') and
                 isinstance(client.op, T.Elemwise) and
@@ -1458,14 +1457,8 @@ def local_fill_sink(node):
             new_client.owner.outputs[0].clients = client.outputs[0].clients
             r = local_fill_sink.transform(new_client.owner)
             if not r:
-                all_clients_replaced = False
                 continue
             replacements.update(r)
-        else:
-            all_clients_replaced = False
-# Why this was added? I don't see why and I don't see it causing test failure.
-#    if all_clients_replaced:
-#        replacements.pop(node.outputs[0], None)
     return replacements
 
 register_canonicalize(local_fill_sink)
@@ -5802,7 +5795,7 @@ def local_grad_log_erfc_neg(node):
                 exp = inp
                 break
         if len(mul.owner.inputs) == 2:
-            y = [mul.owner.inputs[1-idx]]
+            y = [mul.owner.inputs[1 - idx]]
         else:
             y = mul.owner.inputs[:]
             del y[idx]
