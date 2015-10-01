@@ -317,7 +317,7 @@ class ConfigParam(object):
                     val_str = self.default()
                 else:
                     val_str = self.default
-            self.__set__(None, val_str)
+            self.__set__(cls, val_str)
         # print "RVAL", self.val
         return self.val
 
