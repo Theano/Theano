@@ -4,10 +4,10 @@ Helper routines for generating gpu kernels for nvcc.
 """
 
 try:
-    import pygpu
     from pygpu import gpuarray
 except ImportError:
     pass
+
 
 def nvcc_kernel(name, params, body):
     """
@@ -174,16 +174,15 @@ def inline_softmax(N, buf, buf2, threadPos, threadCount, dtype="float32"):
 
     """
     ctype = gpuarray.dtype_to_ctype(dtype)
-    return [
-            # get max of buf (trashing all but buf[0])
-            inline_reduce_max(N, buf, threadPos, threadCount),
+    # get max of buf (trashing all but buf[0])
+    return [inline_reduce_max(N, buf, threadPos, threadCount),
             '__syncthreads()',
             ('%s row_max = ' + buf + '[0]') % ctype,
             '__syncthreads()',
             'for(int __i=' + threadPos + '; __i<' + N +
-                  '; __i+=' + threadCount + '){',
-                buf + '[__i] = exp(' + buf2 + '[__i] - row_max)',
-                buf2 + '[__i] = ' + buf + '[__i]',
+            '; __i+=' + threadCount + '){',
+            buf + '[__i] = exp(' + buf2 + '[__i] - row_max)',
+            buf2 + '[__i] = ' + buf + '[__i]',
             '}',
             '__syncthreads()',
             inline_reduce_sum(N, buf, threadPos, threadCount),
@@ -192,8 +191,8 @@ def inline_softmax(N, buf, buf2, threadPos, threadCount, dtype="float32"):
             '__syncthreads()',
             # divide each exp() result by the sum to complete the job.
             'for(int __i=' + threadPos + '; __i<' + N +
-                  '; __i+=' + threadCount + '){',
-                buf + '[__i] = ' + buf2 + '[__i] / row_sum',
+            '; __i+=' + threadCount + '){',
+            buf + '[__i] = ' + buf2 + '[__i] / row_sum',
             '}',
             '__syncthreads()',
             ]
@@ -232,7 +231,7 @@ def inline_reduce_fixed_shared(N, buf, x, stride_x, load_x, pos, count,
         Optional, the dtype of the output.
     manner_fn
         A function that accepts strings of arguments a and b, and returns c code
-        for their reduction. 
+        for their reduction.
         Example: return "%(a)s + %(b)s" for a sum reduction.
     manner_init
         A function that accepts strings of arguments a and return c code for its
@@ -259,7 +258,7 @@ def inline_reduce_fixed_shared(N, buf, x, stride_x, load_x, pos, count,
         loop_line = manner_fn("red", manner_init("%(load_x)s(%(x)s[i * %(stride_x)s])" %
                                                  locals()))
     loop_line2 = manner_fn("%s[%s]" % (buf, pos),
-                          "%s[i]" % buf)
+                           "%s[i]" % buf)
     r_16 = manner_fn("%s[%s]" % (buf, pos), "%s[%s+16]" % (buf, pos))
     r_8 = manner_fn("%s[%s]" % (buf, pos), "%s[%s+8]" % (buf, pos))
     r_4 = manner_fn("%s[%s]" % (buf, pos), "%s[%s+4]" % (buf, pos))
@@ -324,7 +323,7 @@ def inline_softmax_fixed_shared(N, buf, x, stride_x, load_x,
 
     Parameters
     ----------
-    N 
+    N
         Length of the buffer, atleast waprSize(32).
     buf
         A shared memory buffer of size warpSize * sizeof(dtype).

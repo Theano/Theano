@@ -26,10 +26,7 @@ from .conv import GpuConv
 # GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad
 from .nnet import GpuSoftmax
 from .opt import gpu_seqopt, register_opt, conv_groupopt, op_lifter
-from .opt_util import alpha_merge, output_merge
-
-# We need to import this to define the flags.
-from theano.sandbox import dnn_flags  # noqa
+from .opt_util import alpha_merge, output_merge, inplace_allocempty
 
 
 def dnn_available():
@@ -50,7 +47,6 @@ def dnn_available():
         dnn_available.avail = False
     preambule = """
 #include <stdio.h>
-#include <cuda.h>
 #include <cudnn.h>
 #include <cudnn_helper.h>
 """
@@ -64,15 +60,18 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
   return 1;
 }
 """
+
+    params = ["-l", "cudnn", "-I" + os.path.dirname(__file__)]
+    if config.dnn.include_path:
+        params.append("-I" + config.dnn.include_path)
+    if config.dnn.library_path:
+        params.append("-L" + config.dnn.library_path)
     # Do not run here the test program. It would run on the
     # default gpu, not the one selected by the user. If mixed
     # GPU are installed or if the GPUs are configured in
     # exclusive mode, this cause bad detection.
     comp, out, err = GCC_compiler.try_flags(
-        ["-l", "cudnn", "-I" + os.path.dirname(__file__),
-         "-I" + config.dnn.include_path,
-         "-L" + config.dnn.library_path],
-        preambule=preambule, body=body,
+        params, preambule=preambule, body=body,
         try_run=False, output=True)
 
     dnn_available.avail = comp
@@ -1242,86 +1241,62 @@ conv_groupopt.register('local_conv_dnn', local_conv_dnn, 20,
                        'conv_dnn', 'fast_compile', 'fast_run', 'cudnn')
 
 
-@local_optimizer([GpuDnnConv], inplace=True)
-def local_dnn_conv_inplace(node):
-    if type(node.op) != GpuDnnConv or node.op.inplace:
-        return
-    inputs = list(node.inputs)
-    dest = inputs[2]
-    if (dest.owner and
-            isinstance(dest.owner.op, GpuAllocEmpty) and
-            len(dest.clients) > 1):
-        inputs[2] = GpuAllocEmpty(dest.owner.op.dtype)(*dest.owner.inputs)
+@inplace_allocempty(GpuDnnConv, 2)
+def local_dnn_conv_inplace(node, inputs):
     return [GpuDnnConv(algo=node.op.algo, inplace=True)(*inputs)]
 
 
-@local_optimizer([GpuDnnConvGradW], inplace=True)
-def local_dnn_convgw_inplace(node):
-    if type(node.op) != GpuDnnConvGradW or node.op.inplace:
-        return
-    inputs = list(node.inputs)
-    dest = inputs[2]
-    if (dest.owner and
-            isinstance(dest.owner.op, GpuAllocEmpty) and
-            len(dest.clients) > 1):
-        inputs[2] = GpuAllocEmpty(dest.owner.op.dtype)(*dest.owner.inputs)
+@inplace_allocempty(GpuDnnConvGradW, 2)
+def local_dnn_convgw_inplace(node, inputs):
     return [GpuDnnConvGradW(algo=node.op.algo, inplace=True)(*inputs)]
 
 
-@local_optimizer([GpuDnnConvGradI], inplace=True)
-def local_dnn_convgi_inplace(node):
-    if type(node.op) != GpuDnnConvGradI or node.op.inplace:
-        return
-    inputs = list(node.inputs)
-    dest = inputs[2]
-    if (dest.owner and
-            isinstance(dest.owner.op, GpuAllocEmpty) and
-            len(dest.clients) > 1):
-        inputs[2] = GpuAllocEmpty(dest.owner.op.dtype)(*dest.owner.inputs)
+@inplace_allocempty(GpuDnnConvGradI, 2)
+def local_dnn_convgi_inplace(node, inputs):
     return [GpuDnnConvGradI(algo=node.op.algo, inplace=True)(*inputs)]
 
 optdb.register('local_dnna_conv_inplace',
                tensor.opt.in2out(local_dnn_conv_inplace,
                                  local_dnn_convgw_inplace,
                                  local_dnn_convgi_inplace,
-                                 name="local_dnn_conv_inplace"),
+                                 name="local_dnna_conv_inplace"),
                70.0, 'fast_run', 'inplace', 'gpuarray', 'cudnn')
 
 
 @register_opt('cudnn')
-@alpha_merge(GpuDnnConv, alpha_in=4, beta_in=5, nd=4)
+@alpha_merge(GpuDnnConv, alpha_in=4, beta_in=5)
 def local_dnn_conv_alpha_merge(node, *inputs):
     return [GpuDnnConv(algo=node.op.algo)(*inputs)]
 
 
 @register_opt('cudnn')
-@alpha_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5, nd=4)
+@alpha_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5)
 def local_dnn_convw_alpha_merge(node, *inputs):
     return [GpuDnnConvGradW(algo=node.op.algo)(*inputs)]
 
 
 @register_opt('cudnn')
-@alpha_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5, nd=4)
+@alpha_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5)
 def local_dnn_convi_alpha_merge(node, *inputs):
     return [GpuDnnConvGradI(algo=node.op.algo)(*inputs)]
 
 
 @register_opt('cudnn')
-@output_merge(GpuDnnConv, alpha_in=4, beta_in=5, out_in=2, nd=4)
+@output_merge(GpuDnnConv, alpha_in=4, beta_in=5, out_in=2)
 def local_dnn_conv_output_merge(node, *inputs):
     inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
     return [GpuDnnConv(algo=node.op.algo)(*inputs)]
 
 
 @register_opt('cudnn')
-@output_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5, out_in=2, nd=4)
+@output_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5, out_in=2)
 def local_dnn_convw_output_merge(node, *inputs):
     inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
     return [GpuDnnConvGradW(algo=node.op.algo)(*inputs)]
 
 
 @register_opt('cudnn')
-@output_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5, out_in=2, nd=4)
+@output_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5, out_in=2)
 def local_dnn_convi_output_merge(node, *inputs):
     inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
     return [GpuDnnConvGradI(algo=node.op.algo)(*inputs)]

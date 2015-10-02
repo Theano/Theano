@@ -645,13 +645,13 @@ def local_gpua_hgemm(node):
 
 
 @register_opt()
-@alpha_merge(GpuGemm, alpha_in=1, beta_in=4, nd=2)
+@alpha_merge(GpuGemm, alpha_in=1, beta_in=4)
 def local_gpuagemm_alpha_merge(node, *inputs):
     return [gpugemm_no_inplace(*inputs)]
 
 
 @register_opt()
-@output_merge(GpuGemm, alpha_in=1, beta_in=4, out_in=0, nd=2)
+@output_merge(GpuGemm, alpha_in=1, beta_in=4, out_in=0)
 def local_gpuagemm_output_merge(node, *inputs):
     return [gpugemm_no_inplace(*inputs)]
 

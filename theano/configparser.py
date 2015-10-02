@@ -102,7 +102,7 @@ def change_flags(**kwargs):
                 l = [v for v in theano.configparser._config_var_list
                      if v.fullname == k]
                 assert len(l) == 1
-                old_val[k] = l[0].__get__()
+                old_val[k] = l[0].__get__(True, None)
             try:
                 for k in kwargs:
                     l = [v for v in theano.configparser._config_var_list
@@ -167,7 +167,7 @@ def _config_print(thing, buf):
     for cv in _config_var_list:
         print(cv, file=buf)
         print("    Doc: ", cv.doc, file=buf)
-        print("    Value: ", cv.__get__(), file=buf)
+        print("    Value: ", cv.__get__(True, None), file=buf)
         print("", file=buf)
 
 
@@ -182,7 +182,7 @@ def get_config_md5():
     all_opts = sorted([c for c in _config_var_list if c.in_c_key],
                       key=lambda cv: cv.fullname)
     return theano.gof.utils.hash_from_code('\n'.join(
-        ['%s = %s' % (cv.fullname, cv.__get__()) for cv in all_opts]))
+        ['%s = %s' % (cv.fullname, cv.__get__(True, None)) for cv in all_opts]))
 
 
 class TheanoConfigParser(object):
@@ -270,14 +270,14 @@ def AddConfigVar(name, doc, configparam, root=config, in_c_key=True):
         # Trigger a read of the value from config files and env vars
         # This allow to filter wrong value from the user.
         if not callable(configparam.default):
-            configparam.__get__()
+            configparam.__get__(root, type(root))
         else:
             # We do not want to evaluate now the default value
             # when it is a callable.
             try:
                 fetch_val_for_key(configparam.fullname)
                 # The user provided a value, filter it now.
-                configparam.__get__()
+                configparam.__get__(root, type(root))
             except KeyError:
                 pass
         setattr(root.__class__, sections[0], configparam)
@@ -294,6 +294,7 @@ class ConfigParam(object):
         self.default = default
         self.filter = filter
         self.allow_override = allow_override
+        self.is_default = True
         # N.B. --
         # self.fullname  # set by AddConfigVar
         # self.doc       # set by AddConfigVar
@@ -304,16 +305,19 @@ class ConfigParam(object):
         # Calling `filter` here may actually be harmful if the default value is
         # invalid and causes a crash or has unwanted side effects.
 
-    def __get__(self, *args):
+    def __get__(self, cls, type_):
+        if cls is None:
+            return self
         if not hasattr(self, 'val'):
             try:
                 val_str = fetch_val_for_key(self.fullname)
+                self.is_default = False
             except KeyError:
                 if callable(self.default):
                     val_str = self.default()
                 else:
                     val_str = self.default
-            self.__set__(None, val_str)
+            self.__set__(cls, val_str)
         # print "RVAL", self.val
         return self.val
 

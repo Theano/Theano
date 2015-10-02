@@ -27,8 +27,6 @@ from theano.sandbox.cuda import gpu_seqopt, register_opt
 
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
-import theano.sandbox.dnn_flags
-
 
 def dnn_available():
     if dnn_available.avail is None:
@@ -57,15 +55,17 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
   return 1;
 }
 """
+            params = ["-l", "cudnn", "-I" + os.path.dirname(__file__)]
+            if config.dnn.include_path:
+                params.append("-I" + config.dnn.include_path)
+            if config.dnn.library_path:
+                params.append("-L" + config.dnn.library_path)
             # Do not run here the test program. It would run on the
             # default gpu, not the one selected by the user. If mixed
             # GPU are installed or if the GPUs are configured in
             # exclusive mode, this cause bad detection.
             comp, out, err = NVCC_compiler.try_flags(
-                ["-l", "cudnn", "-I" + os.path.dirname(__file__),
-                 "-I" + config.dnn.include_path,
-                 "-L" + config.dnn.library_path],
-                preambule=preambule, body=body,
+                params=params, preambule=preambule, body=body,
                 try_run=False, output=True)
 
             dnn_available.avail = comp

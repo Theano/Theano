@@ -73,19 +73,19 @@ class DeviceParam(ConfigParam):
         self.default = default
 
         def filter(val):
-            if val.startswith('cpu') or val.startswith('gpu') \
+            if val == self.default or val.startswith('gpu') \
                     or val.startswith('opencl') or val.startswith('cuda'):
                 return val
             else:
                 raise ValueError(('Invalid value ("%s") for configuration '
                                   'variable "%s". Valid options start with '
-                                  'one of "cpu", "gpu", "opencl", "cuda"'
-                                  % (val, self.fullname)))
+                                  'one of "%s", "gpu", "opencl", "cuda"'
+                                  % (self.default, val, self.fullname)))
         over = kwargs.get("allow_override", True)
         super(DeviceParam, self).__init__(default, filter, over)
 
     def __str__(self):
-        return '%s (cpu, gpu*, opencl*, cuda*) ' % (self.fullname,)
+        return '%s (%s, gpu*, opencl*, cuda*) ' % (self.fullname, self.default)
 
 AddConfigVar(
     'device',
@@ -94,15 +94,7 @@ AddConfigVar(
      "on it. Do not use upper case letters, only lower case even if "
      "NVIDIA use capital letters."),
     DeviceParam('cpu', allow_override=False),
-    in_c_key=False,)
-
-AddConfigVar('gpuarray.init_device',
-             """
-             Device to initialize for gpuarray use without moving
-             computations automatically.
-             """,
-             StrParam(''),
-             in_c_key=False)
+    in_c_key=False)
 
 AddConfigVar(
     'init_gpu_device',
@@ -110,12 +102,7 @@ AddConfigVar(
      "Unlike 'device', setting this option will NOT move computations, "
      "nor shared variables, to the specified GPU. "
      "It can be used to run GPU-specific tests on a particular GPU."),
-    EnumStr('', 'gpu',
-            'gpu0', 'gpu1', 'gpu2', 'gpu3',
-            'gpu4', 'gpu5', 'gpu6', 'gpu7',
-            'gpu8', 'gpu9', 'gpu10', 'gpu11',
-            'gpu12', 'gpu13', 'gpu14', 'gpu15',
-            allow_override=False),
+    DeviceParam('', allow_override=False),
     in_c_key=False)
 
 AddConfigVar(
@@ -130,6 +117,112 @@ AddConfigVar(
     BoolParam(True, allow_override=False),
     in_c_key=False)
 
+
+def default_cuda_root():
+    v = os.getenv('CUDA_ROOT', "")
+    if v:
+        return v
+    s = os.getenv("PATH")
+    if not s:
+        return ''
+    for dir in s.split(os.path.pathsep):
+        if os.path.exists(os.path.join(dir, "nvcc")):
+            return os.path.split(dir)[0]
+    return ''
+
+AddConfigVar(
+    'cuda.root',
+    """directory with bin/, lib/, include/ for cuda utilities.
+       This directory is included via -L and -rpath when linking
+       dynamically compiled modules.  If AUTO and nvcc is in the
+       path, it will use one of nvcc parent directory.  Otherwise
+       /usr/local/cuda will be used.  Leave empty to prevent extra
+       linker directives.  Default: environment variable "CUDA_ROOT"
+       or else "AUTO".
+       """,
+    StrParam(default_cuda_root),
+    in_c_key=False)
+
+
+def filter_nvcc_flags(s):
+    assert isinstance(s, str)
+    flags = [flag for flag in s.split(' ') if flag]
+    if any([f for f in flags if not f.startswith("-")]):
+        raise ValueError(
+            "Theano nvcc.flags support only parameter/value pairs without"
+            " space between them. e.g.: '--machine 64' is not supported,"
+            " but '--machine=64' is supported. Please add the '=' symbol."
+            " nvcc.flags value is '%s'" % s)
+    return ' '.join(flags)
+
+AddConfigVar('nvcc.flags',
+             "Extra compiler flags for nvcc",
+             ConfigParam("", filter_nvcc_flags),
+             # Not needed in c key as it is already added.
+             # We remove it as we don't make the md5 of config to change
+             # if theano.sandbox.cuda is loaded or not.
+             in_c_key=False)
+
+AddConfigVar('nvcc.compiler_bindir',
+             "If defined, nvcc compiler driver will seek g++ and gcc"
+             " in this directory",
+             StrParam(""),
+             in_c_key=False)
+
+AddConfigVar('nvcc.fastmath',
+             "",
+             BoolParam(False),
+             # Not needed in c key as it is already added.
+             # We remove it as we don't make the md5 of config to change
+             # if theano.sandbox.cuda is loaded or not.
+             in_c_key=False)
+
+AddConfigVar('gpuarray.sync',
+             """If True, every op will make sure its work is done before
+                returning.  Setting this to True will slow down execution,
+                but give much more accurate results in profiling.""",
+             BoolParam(False),
+             in_c_key=True)
+
+AddConfigVar('dnn.conv.workmem',
+             "This flag is deprecated; use dnn.conv.algo_fwd.",
+             EnumStr(''),
+             in_c_key=False)
+
+AddConfigVar('dnn.conv.workmem_bwd',
+             "This flag is deprecated; use dnn.conv.algo_bwd.",
+             EnumStr(''),
+             in_c_key=False)
+
+AddConfigVar('dnn.conv.algo_fwd',
+             "Default implementation to use for CuDNN forward convolution.",
+             EnumStr('small', 'none', 'large', 'fft', 'guess_once',
+                     'guess_on_shape_change', 'time_once',
+                     'time_on_shape_change'),
+             in_c_key=False)
+
+AddConfigVar('dnn.conv.algo_bwd',
+             "Default implementation to use for CuDNN backward convolution.",
+             EnumStr('none', 'deterministic', 'fft', 'guess_once',
+                     'guess_on_shape_change', 'time_once',
+                     'time_on_shape_change'),
+             in_c_key=False)
+
+
+def default_dnn_path(suffix):
+    def f(suffix=suffix):
+        if config.cuda.root == '':
+            return ''
+        return os.path.join(config.cuda.root, suffix)
+    return f
+
+AddConfigVar('dnn.include_path',
+             "Location of the cudnn header (defaults to the cuda root)",
+             StrParam(default_dnn_path('include')))
+
+AddConfigVar('dnn.library_path',
+             "Location of the cudnn header (defaults to the cuda root)",
+             StrParam(default_dnn_path('lib64')))
 
 # This flag determines whether or not to raise error/warning message if
 # there is a CPU Op in the computational graph.

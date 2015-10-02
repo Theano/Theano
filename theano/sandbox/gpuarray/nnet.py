@@ -1,21 +1,20 @@
 from __future__ import print_function
 import numpy
-import os
 
 from theano import Op, Apply, config
 from six import StringIO
 
 try:
     import pygpu
-    from pygpu import gpuarray, elemwise
+    from pygpu import gpuarray
 except ImportError:
     pass
 
 from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel)
 from .type import GpuArrayType
 from .kernel_codegen import (nvcc_kernel,
-                            inline_softmax,
-                            inline_softmax_fixed_shared)
+                             inline_softmax,
+                             inline_softmax_fixed_shared)
 from .fp16_help import work_dtype, load_w, write_w
 
 
@@ -41,16 +40,8 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
         am = y_idx.type()
         return Apply(self, [x, b, y_idx], [nll, sm, am])
 
-    def c_header_dirs(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        cuda_root = config.cuda.root
-        if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
-
     def c_headers(self):
-        return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
-                '<gpuarray/types.h>']
+        return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def gpu_kernels(self, node, nodename):
         dtype_x = node.inputs[0].dtype
@@ -302,7 +293,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
         return sio.getvalue()
 
     def c_code_cache_version(self):
-        return (7,)
+        return (8,)
 
 
 gpu_crossentropy_softmax_argmax_1hot_with_bias = GpuCrossentropySoftmaxArgmax1HotWithBias()
@@ -328,18 +319,10 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuKernelBase, Op):
         return Apply(self, [dnll, sm, y_idx], [sm.type()])
 
     def c_code_cache_version(self):
-        return (10,)
-
-    def c_header_dirs(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        cuda_root = config.cuda.root
-        if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
+        return (11,)
 
     def c_headers(self):
-        return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
-                '<gpuarray/types.h>']
+        return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def c_code(self, node, nodename, inp, out, sub):
         typecode_dx = pygpu.gpuarray.dtype_to_typecode(node.outputs[0].dtype)
@@ -541,21 +524,10 @@ class GpuSoftmax(GpuKernelBase, Op):
         return shape
 
     def c_code_cache_version(self):
-        return (14,) + inline_softmax.code_version
-
-    def c_header_dirs(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        cuda_root = config.cuda.root
-        if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
+        return (15,) + inline_softmax.code_version
 
     def c_headers(self):
-        return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
-                '<gpuarray/ext_cuda.h>', '<gpuarray/types.h>']
-
-    def c_init_code(self):
-        return ['setup_ext_cuda();']
+        return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def c_code(self, node, nodename, inp, out, sub):
         dtype_x = node.inputs[0].dtype
@@ -665,60 +637,60 @@ class GpuSoftmax(GpuKernelBase, Op):
             ]
         kernels = []
         kname = "kSoftmax"
-        k_var= "kSoftmax_" + nodename
-        code = nvcc_kernel(kname,
-                params=['const ga_size M', 'const ga_size N',
+        k_var = "kSoftmax_" + nodename
+        code = nvcc_kernel(
+            kname,
+            params=['const ga_size M', 'const ga_size N',
                     'const %s * x' % type_x, 'const ga_size offset_x',
                     'const ga_ssize sx0', 'const ga_ssize sx1',
                     '%s * sm' % type_sm, 'const ga_size offset_sm',
                     'const ga_ssize sm_s0', 'const ga_ssize sm_s1'],
-                body=[
-                    "extern __shared__ %s buf[]" % type_acc,
-                    "%s * buf2 = buf + N" % type_acc,
-                    "x = (const %s *)(((char *)x)+offset_x)" % type_x,
-                    "sm = (%s *)(((char *)sm)+offset_sm)" % type_sm,
-                    "for (int blockIDX = blockIdx.x; blockIDX < M;"
-                    "     blockIDX += gridDim.x){",
-                      "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
-                        "buf[tx] = %s(x[blockIDX * sx0 + tx * sx1])" % load_x,
-                        "buf2[tx] = buf[tx]",
-                      "}",
-                      "__syncthreads()",
-                      inline_softmax('N', 'buf', 'buf2', 'threadIdx.x',
-                                     'blockDim.x', dtype=work_sm),
-                      "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
-                        # This set all value correctly
-                        "sm[blockIDX * sm_s0 + tx * sm_s1] = %s(buf[tx])" % write_sm,
-                      "}",
-                      "__syncthreads()",
-                    "}",
-                ])
+            body=["extern __shared__ %s buf[]" % type_acc,
+                  "%s * buf2 = buf + N" % type_acc,
+                  "x = (const %s *)(((char *)x)+offset_x)" % type_x,
+                  "sm = (%s *)(((char *)sm)+offset_sm)" % type_sm,
+                  "for (int blockIDX = blockIdx.x; blockIDX < M;"
+                  "     blockIDX += gridDim.x){",
+                  "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
+                  "buf[tx] = %s(x[blockIDX * sx0 + tx * sx1])" % load_x,
+                  "buf2[tx] = buf[tx]",
+                  "}",
+                  "__syncthreads()",
+                  inline_softmax('N', 'buf', 'buf2', 'threadIdx.x',
+                                 'blockDim.x', dtype=work_sm),
+                  "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
+                  # This set all value correctly
+                  "sm[blockIDX * sm_s0 + tx * sm_s1] = %s(buf[tx])" % write_sm,
+                  "}",
+                  "__syncthreads()",
+                  "}",
+                  ])
         kernels.append(Kernel(code=code, name=kname, params=params,
                               flags=flags, objvar=k_var))
         kname = "kSoftmax_fixed_shared"
-        k_var= "kSoftmax_fixed_shared" + nodename
-        code = nvcc_kernel(kname,
-                params=['const ga_size M', 'const ga_size N',
+        k_var = "kSoftmax_fixed_shared" + nodename
+        code = nvcc_kernel(
+            kname,
+            params=['const ga_size M', 'const ga_size N',
                     'const %s * x' % type_x, 'const ga_size offset_x',
                     'const ga_ssize sx0', 'const ga_ssize sx1',
                     '%s * sm' % type_sm, 'const ga_size offset_sm',
                     'const ga_ssize sm_s0', 'const ga_ssize sm_s1'],
-                body=[
-                    "extern __shared__ %s buf[]" % type_acc,
-                    "x = (const %s *)(((char *)x)+offset_x)" % type_x,
-                    "sm = (%s *)(((char *)sm)+offset_sm)" % type_sm,
-                    "for (int blockIDX = blockIdx.x; blockIDX < M;"
-                    "     blockIDX += gridDim.x){",
-                      "const %s *x_ptr = &x[blockIDX * sx0]" % type_x,
-                      "%s *sm_ptr = &sm[blockIDX * sm_s0]" % type_sm,
-                      inline_softmax_fixed_shared('N', 'buf', 'x_ptr', 'sx1',
-                                                  load_x,
-                                                  'sm_ptr', 'sm_s1', write_sm,
-                                                  'threadIdx.x', 'blockDim.x',
-                                                  dtype=work_sm),
-                      "__syncthreads()",
-                    "}",
-                    ])
+            body=["extern __shared__ %s buf[]" % type_acc,
+                  "x = (const %s *)(((char *)x)+offset_x)" % type_x,
+                  "sm = (%s *)(((char *)sm)+offset_sm)" % type_sm,
+                  "for (int blockIDX = blockIdx.x; blockIDX < M;"
+                  "     blockIDX += gridDim.x){",
+                  "const %s *x_ptr = &x[blockIDX * sx0]" % type_x,
+                  "%s *sm_ptr = &sm[blockIDX * sm_s0]" % type_sm,
+                  inline_softmax_fixed_shared('N', 'buf', 'x_ptr', 'sx1',
+                                              load_x,
+                                              'sm_ptr', 'sm_s1', write_sm,
+                                              'threadIdx.x', 'blockDim.x',
+                                              dtype=work_sm),
+                  "__syncthreads()",
+                  "}",
+                  ])
         kernels.append(Kernel(code=code, name=kname, params=params,
                               flags=flags, objvar=k_var))
         return kernels
@@ -743,26 +715,13 @@ class GpuSoftmaxWithBias (GpuKernelBase, Op):
         return Apply(self, [x, b], [x.type()])
 
     def infer_shape(self, node, shape):
-        return  [shape[0]]
+        return [shape[0]]
 
     def c_code_cache_version(self):
-        return (13,) + inline_softmax.code_version
-
-    def c_header_dirs(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        cuda_root = config.cuda.root
-        if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
-        else:
-            return []
+        return (14,) + inline_softmax.code_version
 
     def c_headers(self):
-        return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
-                '<gpuarray/ext_cuda.h>', '<gpuarray/types.h>']
-
-    def c_init_code(self):
-        return ['setup_ext_cuda();']
+        return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def c_code(self, node, nodename, inp, out, sub):
         dtype_x = node.inputs[0].dtype
@@ -892,65 +851,65 @@ class GpuSoftmaxWithBias (GpuKernelBase, Op):
         kernels = []
         kname = "kSoftmaxWithBias"
         k_var = "kSoftmaxWithBias_" + nodename
-        code = nvcc_kernel(kname,
-                params=['const ga_size M', 'const ga_size N',
-                        'const %s * x' % type_x, 'const ga_size offset_x',
-                        'const ga_ssize sx0', 'const ga_ssize sx1',
-                        'const %s * b' % type_b, 'const ga_size offset_b',
-                        'const ga_ssize sb0',
-                        '%s * sm' % type_sm, 'const ga_size offset_sm',
-                        'const ga_ssize sm_s0', 'const ga_ssize sm_s1'],
-                body=[
-                    "extern __shared__ %s buf[]" % type_acc,
-                    "%s * buf2 = buf + N" % type_acc,
-                    "x = (const %s *)(((char *)x)+offset_x)" % type_x,
-                    "b = (const %s *)(((char *)b)+offset_b)" % type_b,
-                    "sm = (%s *)(((char *)sm)+offset_sm)" % type_sm,
-                    "for (int blockIDX = blockIdx.x; blockIDX < M;"
-                    "     blockIDX += gridDim.x){",
-                      "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
-                         "buf[tx] = %s(x[blockIDX * sx0 + tx * sx1])" % load_x,
-                         "buf[tx] += %s(b[tx * sb0])" % load_b,
-                         "buf2[tx] = buf[tx]",
-                      "}",
-                       "__syncthreads()",
-                       inline_softmax('N', 'buf', 'buf2',
-                                      'threadIdx.x', 'blockDim.x', work_sm),
-                      "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
-                         "sm[blockIDX * sm_s0 + tx * sm_s1] = %s(buf[tx])" % write_sm,
-                      "}",
-                      "__syncthreads()",
-                    "}",
-                    ])
+        code = nvcc_kernel(
+            kname,
+            params=['const ga_size M', 'const ga_size N',
+                    'const %s * x' % type_x, 'const ga_size offset_x',
+                    'const ga_ssize sx0', 'const ga_ssize sx1',
+                    'const %s * b' % type_b, 'const ga_size offset_b',
+                    'const ga_ssize sb0',
+                    '%s * sm' % type_sm, 'const ga_size offset_sm',
+                    'const ga_ssize sm_s0', 'const ga_ssize sm_s1'],
+            body=["extern __shared__ %s buf[]" % type_acc,
+                  "%s * buf2 = buf + N" % type_acc,
+                  "x = (const %s *)(((char *)x)+offset_x)" % type_x,
+                  "b = (const %s *)(((char *)b)+offset_b)" % type_b,
+                  "sm = (%s *)(((char *)sm)+offset_sm)" % type_sm,
+                  "for (int blockIDX = blockIdx.x; blockIDX < M;"
+                  "     blockIDX += gridDim.x){",
+                  "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
+                  "buf[tx] = %s(x[blockIDX * sx0 + tx * sx1])" % load_x,
+                  "buf[tx] += %s(b[tx * sb0])" % load_b,
+                  "buf2[tx] = buf[tx]",
+                  "}",
+                  "__syncthreads()",
+                  inline_softmax('N', 'buf', 'buf2',
+                                 'threadIdx.x', 'blockDim.x', work_sm),
+                  "for (int tx = threadIdx.x; tx< N; tx += blockDim.x){",
+                  "sm[blockIDX * sm_s0 + tx * sm_s1] = %s(buf[tx])" % write_sm,
+                  "}",
+                  "__syncthreads()",
+                  "}",
+                  ])
         kernels.append(Kernel(code=code, name=kname, params=params,
                               flags=flags, objvar=k_var))
         kname = "kSoftmaxWithBias_fixed_shared"
         k_var = "kSoftmaxWithBias_fixed_shared" + nodename
-        code = nvcc_kernel(kname,
-                params=['const ga_size M', 'const ga_size N',
-                        'const %s * x' % type_x, 'const ga_size offset_x',
-                        'const ga_ssize sx0', 'const ga_ssize sx1',
-                        'const %s * b' % type_b, 'const ga_size offset_b',
-                        'const ga_ssize sb0',
-                        '%s * sm' % type_sm, 'const ga_size offset_sm',
-                        'const ga_ssize sm_s0', 'const ga_ssize sm_s1'],
-                body=[
-                    "extern __shared__ %s buf[]" % type_acc,
-                    "x = (const %s *)(((char *)x)+offset_x)" % type_x,
-                    "b = (const %s *)(((char *)b)+offset_b)" % type_b,
-                    "sm = (%s *)(((char *)sm)+offset_sm)" % type_sm,
-                    "for (int blockIDX = blockIdx.x; blockIDX < M;"
-                    "     blockIDX += gridDim.x){",
-                    "const %s *x_ptr = &x[blockIDX * sx0]" % type_x,
-                    "%s *sm_ptr = &sm[blockIDX * sm_s0]" % type_sm,
-                    inline_softmax_fixed_shared('N', 'buf', 'x_ptr', 'sx1',
-                                                load_x,
-                                                'sm_ptr', 'sm_s1', write_sm,
-                                                'threadIdx.x', 'blockDim.x',
-                                                'b', 'sb0', load_b, work_sm),
-                    "__syncthreads()",
-                    "}",
-                    ])
+        code = nvcc_kernel(
+            kname,
+            params=['const ga_size M', 'const ga_size N',
+                    'const %s * x' % type_x, 'const ga_size offset_x',
+                    'const ga_ssize sx0', 'const ga_ssize sx1',
+                    'const %s * b' % type_b, 'const ga_size offset_b',
+                    'const ga_ssize sb0',
+                    '%s * sm' % type_sm, 'const ga_size offset_sm',
+                    'const ga_ssize sm_s0', 'const ga_ssize sm_s1'],
+            body=["extern __shared__ %s buf[]" % type_acc,
+                  "x = (const %s *)(((char *)x)+offset_x)" % type_x,
+                  "b = (const %s *)(((char *)b)+offset_b)" % type_b,
+                  "sm = (%s *)(((char *)sm)+offset_sm)" % type_sm,
+                  "for (int blockIDX = blockIdx.x; blockIDX < M;"
+                  "     blockIDX += gridDim.x){",
+                  "const %s *x_ptr = &x[blockIDX * sx0]" % type_x,
+                  "%s *sm_ptr = &sm[blockIDX * sm_s0]" % type_sm,
+                  inline_softmax_fixed_shared('N', 'buf', 'x_ptr', 'sx1',
+                                              load_x,
+                                              'sm_ptr', 'sm_s1', write_sm,
+                                              'threadIdx.x', 'blockDim.x',
+                                              'b', 'sb0', load_b, work_sm),
+                  "__syncthreads()",
+                  "}",
+                  ])
         kernels.append(Kernel(code=code, name=kname, params=params,
                               flags=flags, objvar=k_var))
         return kernels

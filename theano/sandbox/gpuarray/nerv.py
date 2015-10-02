@@ -176,13 +176,13 @@ def local_dot_to_gemm16(node):
 
 
 @opt.register_opt()
-@alpha_merge(Gemm16, alpha_in=1, beta_in=4, nd=2)
+@alpha_merge(Gemm16, alpha_in=1, beta_in=4)
 def local_gemm16_alpha_merge(node, *inputs):
     return [Gemm16(relu=node.op.relu)(*inputs)]
 
 
 @opt.register_opt()
-@output_merge(Gemm16, alpha_in=1, beta_in=4, out_in=0, nd=2)
+@output_merge(Gemm16, alpha_in=1, beta_in=4, out_in=0)
 def local_gemm16_output_merge(node, *inputs):
     return [Gemm16(relu=node.op.relu)(*inputs)]
 

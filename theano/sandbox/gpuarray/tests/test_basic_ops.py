@@ -1,6 +1,5 @@
 import unittest
 from theano.compat import izip
-from copy import copy, deepcopy
 
 from six import iteritems
 
@@ -13,16 +12,31 @@ from theano.tensor.basic import alloc
 # Don't import test classes otherwise they get tested as part of the file
 from theano.tensor.tests import test_basic
 from theano.tensor.tests.test_basic import rand, safe_make_node
+from theano.tests import unittest_tools as utt
 from theano.tests.unittest_tools import SkipTest
 
 import theano.sandbox.gpuarray
+
+from ..type import (GpuArrayType,
+                    gpuarray_shared_constructor)
+from ..basic_ops import (
+    host_from_gpu, gpu_from_host, HostFromGpu, GpuFromHost, GpuReshape,
+    gpu_alloc, GpuAlloc, GpuAllocEmpty, GpuContiguous,
+    gpu_join, GpuJoin, GpuSplit, GpuEye, gpu_contiguous)
+from ..subtensor import GpuSubtensor
+
+import theano.sandbox.cuda as cuda_ndarray
+
+try:
+    from pygpu import gpuarray
+except:
+    pass
 
 if theano.sandbox.gpuarray.pygpu is None:
     raise SkipTest("pygpu not installed")
 
 # If you are writing a new test file, don't copy this code, but rather
 # import stuff from this file (like mode_with_gpu) to reuse it.
-import theano.sandbox.cuda as cuda_ndarray
 if cuda_ndarray.cuda_available and not theano.sandbox.gpuarray.pygpu_activated:
     if not cuda_ndarray.use.device_number:
         # We should not enable all the use like the flag device=gpu,
@@ -36,24 +50,8 @@ if cuda_ndarray.cuda_available and not theano.sandbox.gpuarray.pygpu_activated:
 if not theano.sandbox.gpuarray.pygpu_activated:
     raise SkipTest("pygpu disabled")
 
-from ..type import (GpuArrayType,
-                    gpuarray_shared_constructor)
-from ..basic_ops import (
-    host_from_gpu, gpu_from_host,
-    gpu_alloc, GpuAlloc,
-    GpuAllocEmpty,
-    gpu_from_cuda,
-    cuda_from_gpu, HostFromGpu,
-    GpuContiguous,
-    GpuFromHost, GpuReshape,
-    gpu_join, GpuJoin, GpuSplit, GpuEye, gpu_contiguous)
-from ..subtensor import GpuSubtensor
-
-from theano.tests import unittest_tools as utt
 utt.seed_rng()
 rng = numpy.random.RandomState(seed=utt.fetch_seed())
-
-from pygpu import gpuarray
 
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpuarray').excluding('gpu')
@@ -61,22 +59,6 @@ if theano.config.mode == 'FAST_COMPILE':
 else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpuarray').excluding('gpu')
     mode_without_gpu = theano.compile.mode.get_default_mode().excluding('gpuarray')
-
-
-def may_fail(msg, EClass):
-    """Mark a test that requires very specific conditions to work to
-       mask a specific exception class."""
-    def test_decorator(f):
-        def wrapper():
-            try:
-                f()
-            except Exception as e:
-                if isinstance(e, EClass):
-                    raise SkipTest(msg, e)
-                raise
-        wrapper.__name__ = f.__name__
-        return wrapper
-    return test_decorator
 
 
 def inplace_func(inputs, outputs, mode=None, allow_input_downcast=False,
@@ -183,9 +165,9 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
                     else:
                         err_msg = ("Test %s::%s: exception raised during test "
                                    "call was not the same as the reference "
-                                   "call (got: %s, expected %s)") % \
+                                   "call (got: %s, expected %s)" %
                                    (self.gpu_op, testname, type(exc),
-                                    type(ref_e))
+                                    type(ref_e)))
                         exc.args += (err_msg,)
                         raise
 
@@ -197,9 +179,9 @@ def makeTester(name, op, gpu_op, cases, checks=None, mode_gpu=mode_with_gpu,
                                                         expected):
                     self.fail(("Test %s::%s: Output %s gave the wrong "
                                "value. With inputs %s, expected %s "
-                               "(dtype %s), got %s (dtype %s).") % (
-                            self.op, testname, i, inputs, expected,
-                            expected.dtype, variable, variable.dtype))
+                               "(dtype %s), got %s (dtype %s)." %
+                               (self.op, testname, i, inputs, expected,
+                                expected.dtype, variable, variable.dtype)))
 
             for description, check in iteritems(self.checks):
                 if not check(inputs, variables):
@@ -250,36 +232,6 @@ def test_transfer_strided():
     assert numpy.all(fv == av)
 
 
-@may_fail("Op fails if both contexts are not the same and it's rare "
-          "that the tests will be run this way", ValueError)
-def test_transfer_cuda_gpu():
-    import theano.sandbox.cuda as cuda_ndarray
-    if cuda_ndarray.cuda_available is False:
-        raise SkipTest("Can't test interaction with cuda if cuda not present")
-    g = GpuArrayType(dtype='float32', broadcastable=(False, False))('g')
-    c = cuda_ndarray.CudaNdarrayType((False, False))('c')
-
-    av = theano._asarray(rng.rand(5, 4), dtype='float32')
-    gv = gpuarray.array(av)
-    cv = cuda_ndarray.CudaNdarray(av)
-    gvs = gv[:, ::-2]
-    cvs = cv[:, ::-2]
-
-    f = theano.function([c], gpu_from_cuda(c))
-    fv = f(cv)
-    assert GpuArrayType.values_eq_approx(fv, gv)
-
-    fvs = f(cvs)
-    assert GpuArrayType.values_eq_approx(fvs, gvs)
-
-    f = theano.function([g], cuda_from_gpu(g))
-    fv = f(gv)
-    assert cuda_ndarray.CudaNdarrayType.values_eq_approx(fv, cv)
-
-    fvs = f(gvs)
-    assert cuda_ndarray.CudaNdarrayType.values_eq_approx(fvs, cvs)
-
-
 def gpu_alloc_expected(x, *shp):
     g = gpuarray.empty(shp, dtype=x.dtype)
     g[:] = x
@@ -291,8 +243,8 @@ GpuAllocTester = makeTester(
     gpu_op=gpu_alloc,
     cases=dict(
         correct01=(rand(), numpy.int32(7)),
-# just gives a DeepCopyOp with possibly wrong results on the CPU
-#        correct01_bcast=(rand(1), numpy.int32(7)),
+        # just gives a DeepCopyOp with possibly wrong results on the CPU
+        # correct01_bcast=(rand(1), numpy.int32(7)),
         correct02=(rand(), numpy.int32(4), numpy.int32(7)),
         correct12=(rand(7), numpy.int32(4), numpy.int32(7)),
         correct13=(rand(7), numpy.int32(2), numpy.int32(4),
@@ -486,8 +438,6 @@ def test_hostfromgpu_shape_i():
     cv = gpuarray.asarray(numpy.random.rand(5, 4),
                           dtype='float32')
 
-    gpu_from_host = theano.sandbox.gpuarray.basic_ops.gpu_from_host
-    host_from_gpu = theano.sandbox.gpuarray.basic_ops.host_from_gpu
     f = theano.function([a], gpu_from_host(a), mode=m)
     assert gpu_from_host in [x.op
                              for x in f.maker.fgraph.toposort()]

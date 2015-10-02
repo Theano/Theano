@@ -19,13 +19,6 @@ try:
 except ImportError:
     pygpu = None
 
-AddConfigVar('gpuarray.sync',
-             """If True, every op will make sure its work is done before
-                returning.  Setting this to True will slow down execution,
-                but give much more accurate results in profiling.""",
-             BoolParam(False),
-             in_c_key=True)
-
 # This is for documentation not to depend on the availability of pygpu
 from .type import (GpuArrayType, GpuArrayVariable, GpuArrayConstant,
                   GpuArraySharedVariable, gpuarray_shared_constructor)
@@ -57,8 +50,9 @@ if pygpu:
             import theano.compile
             theano.compile.shared_constructor(gpuarray_shared_constructor)
             optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile')
-        elif config.gpuarray.init_device != '':
-            init_dev(config.gpuarray.init_device)
+        elif (config.init_gpu_device.startswith('cuda') or
+              config.init_gpu_device.startswith('opencl')):
+            init_dev(config.init_gpu_device)
 
         from .basic_ops import (GpuAlloc, GpuContiguous, GpuEye, GpuFromHost,
                                 GpuJoin, GpuReshape, GpuSplit, HostFromGpu)
@@ -70,7 +64,8 @@ if pygpu:
     except Exception:
         error("Could not initialize pygpu, support disabled", exc_info=True)
 else:
-    if (config.gpuarray.init_device != '' or
-        config.device.startswith('opencl') or
-        config.device.startswith('cuda')):
+    if (config.init_gpu_device.startswith('cuda') or
+            config.init_gpu_device.startswith('opencl') or
+            config.device.startswith('opencl') or
+            config.device.startswith('cuda')):
         error("pygpu was configured but could not be imported", exc_info=True)

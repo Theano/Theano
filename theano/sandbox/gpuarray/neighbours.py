@@ -1,23 +1,18 @@
-import os
 import numpy
 
 from theano import Op, Apply, config
-from theano.gof import local_optimizer
 from theano.tensor.nnet.neighbours import Images2Neibs
 import theano.tensor as T
 
 try:
     import pygpu
-    from pygpu import gpuarray, elemwise
+    from pygpu import gpuarray
 except ImportError:
     pass
 
-from .basic_ops import (as_gpuarray_variable,
-                        host_from_gpu, gpu_from_host,
-                        GpuKernelBase, Kernel)
+from .basic_ops import as_gpuarray_variable, GpuKernelBase, Kernel
 from .opt import register_opt as register_gpu_opt, op_lifter
 from .type import GpuArrayType
-from .comp import NVCC_compiler
 
 
 class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
@@ -45,27 +40,10 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                    dtype=ten4.type.dtype)()])
 
     def c_code_cache_version(self):
-        return (10,1)
+        return (11,)
 
     def c_headers(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        return ['cuda.h', '<gpuarray/extension.h>', '<numpy_compat.h>',
-                '<gpuarray/ext_cuda.h>', '<gpuarray/types.h>']
-
-    def c_header_dirs(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        cuda_root = config.cuda.root
-        if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
-        else:
-            return []
-
-    def c_init_code(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        return ['setup_ext_cuda();']
+        return ['<numpy_compat.h>', '<gpuarray/types.h>']
 
     def gpu_kernels(self, node, nodename):
         dtype_ten4 = node.inputs[0].dtype

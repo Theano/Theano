@@ -5,16 +5,14 @@ import theano
 from theano import config, gof
 
 try:
-    import pygpu
     from pygpu import gpuarray
 except ImportError:
     pass
 
-from six.moves import reduce
-from .comp import NVCC_compiler
 from .type import GpuArrayType
-from .basic_ops import (as_gpuarray_variable, GpuKernelBase, Kernel)
+from .basic_ops import as_gpuarray_variable, GpuKernelBase, Kernel
 from theano.gof import utils
+
 
 class GpuConv(GpuKernelBase, gof.Op):
     """
@@ -70,19 +68,19 @@ class GpuConv(GpuKernelBase, gof.Op):
         raise ValueError(mode)
 
     def __init__(self, border_mode,
-            subsample=(1, 1),
-            logical_img_hw=None,
-            logical_kern_hw=None,
-            logical_kern_align_top=True,
-            version=-1,
-            direction_hint=None,
-            verbose=0,
-            kshp=None,
-            imshp=None,
-            max_threads_dim0=None,
-            nkern=None,
-            bsize=None,
-            fft_opt=True):
+                 subsample=(1, 1),
+                 logical_img_hw=None,
+                 logical_kern_hw=None,
+                 logical_kern_align_top=True,
+                 version=-1,
+                 direction_hint=None,
+                 verbose=0,
+                 kshp=None,
+                 imshp=None,
+                 max_threads_dim0=None,
+                 nkern=None,
+                 bsize=None,
+                 fft_opt=True):
         self.border_mode = border_mode
         self.subsample = subsample
         if logical_img_hw is not None:
@@ -182,7 +180,7 @@ class GpuConv(GpuKernelBase, gof.Op):
     def flops(self, inputs, outputs):
         """
         Useful with the hack in profilemode to print the MFlops.
-        
+
         """
         images, kerns = inputs
         out, = outputs
@@ -227,32 +225,14 @@ class GpuConv(GpuKernelBase, gof.Op):
         nb = 0
         if self.kshp is not None:
             nb = self.kshp[1]
-        return ['-DTHEANO_KERN_WID=' + str(nb)]  # ,'-g','-G']
+        return ['-DTHEANO_KERN_WID=' + str(nb)]
 
     def c_headers(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        return ['<stdint.h>', '<stdio.h>', 'cuda.h',
-                '<gpuarray/extension.h>', '<numpy_compat.h>',
-                '<gpuarray/ext_cuda.h>', '<gpuarray/types.h>']
-
-    def c_header_dirs(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        cuda_root = config.cuda.root
-        if cuda_root:
-            return [os.path.join(cuda_root, 'include')]
-        else:
-            return []
+        return ['<stdio.h>', '<numpy_compat.h>', '<gpuarray/types.h>']
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (0, 21)
-
-    def c_init_code(self):
-        if pygpu.get_default_context().kind == 'opencl':
-            raise MethodNotDefined('cuda only')
-        return ['setup_ext_cuda();']
+        return (0, 22)
 
     def c_code(self, node, nodename, inp, out_, sub):
         img, kern = inp
