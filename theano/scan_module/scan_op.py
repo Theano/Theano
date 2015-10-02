@@ -2052,7 +2052,6 @@ class Scan(PureOp):
                 dc_dxts_idx += 1
             else:
                 if isinstance(dC_douts[i].type, DisconnectedType):
-                    dc_dxts_idx += 1
                     continue
                 else:
                     if diff_outputs[i] in known_grads:
