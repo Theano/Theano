@@ -1672,13 +1672,15 @@ def local_fill_to_alloc(node):
             node,)  # theano.printing.debugprint(node.outputs[0], file='str'))
         return rval
 
-compile.optdb['canonicalize'].register('local_fill_to_alloc',
-                                       in2out(local_fill_to_alloc),
-                                       1.1, 'fast_run')
+# Register this after stabilize at 1.5 to make sure stabilize don't
+# get affected by less canonicalized graph due to alloc.
+compile.optdb.register('local_fill_to_alloc',
+                       in2out(local_fill_to_alloc),
+                       1.51, 'fast_run')#, 'canonicalize')
 # Needed to clean some extra alloc added by local_fill_to_alloc
-compile.optdb['canonicalize'].register('local_elemwise_alloc',
-                                       in2out(local_elemwise_alloc),
-                                       1.11, 'fast_run')
+compile.optdb.register('local_elemwise_alloc',
+                       in2out(local_elemwise_alloc),
+                       1.52, 'fast_run')#, 'canonicalize')
 
 
 @register_canonicalize("fast_compile")

@@ -481,7 +481,7 @@ class test_canonize(unittest.TestCase):
         mode = compile.mode.get_default_mode()
 
         opt = gof.Query(["canonicalize"])
-        opt = opt.including('ShapeOpt')
+        opt = opt.including('ShapeOpt', 'local_fill_to_alloc')
         opt = opt.excluding(
             'local_elemwise_fusion')
         mode = mode.__class__(linker=mode.linker, optimizer=opt)
