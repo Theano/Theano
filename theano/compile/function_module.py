@@ -711,7 +711,10 @@ class Function(object):
                                 mode=maker.mode, profile=profile,
                                 on_unused_input=maker.on_unused_input,
                                 function_builder=maker.function_builder,
-                                accept_inplace=maker.accept_inplace
+                                # As this is an optimized graph, it
+                                # can contain inplace. DebugMode check
+                                # that.
+                                accept_inplace=True,
                                 ).create(input_storage,
                                          storage_map=new_storage_map)
 
