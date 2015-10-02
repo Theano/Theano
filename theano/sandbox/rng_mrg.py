@@ -1355,19 +1355,11 @@ class MRG_RandomStreams(object):
                              "MRG_RandomStreams.multinomial, which does not use "
                              "the ndim argument.")
         if pvals.ndim == 2:
-            if n == 1:
                 size = pvals[:,0].shape
                 unis = self.uniform(size=size, ndim=1, nstreams=nstreams)
                 op = multinomial.MultinomialFromUniform(dtype)
-                n_samples = constant(n)
+                n_samples = as_tensor_variable(n)
                 return op(pvals, unis, n_samples)
-            elif n > 1:
-                # size = pvals[:,0].shape * n
-                # unis = self.uniform(size=size, ndim=1, nstreams=nstreams)
-                raise NotImplementedError('under construction!')
-            else:
-                raise NotImplementedError(("MRG_RandomStreams.multinomial only"
-                                           " implemented for n > 0"))
         else:
             raise NotImplementedError(("MRG_RandomStreams.multinomial only"
                                        " implemented for pvals.ndim = 2"))

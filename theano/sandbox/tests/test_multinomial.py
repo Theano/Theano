@@ -8,6 +8,7 @@ from theano.sandbox import multinomial
 from theano.compile.mode import get_default_mode, predefined_linkers
 import theano.sandbox.cuda as cuda
 import theano.tests.unittest_tools as utt
+from theano.scalar import constant
 
 
 def get_mode(gpu):
@@ -29,18 +30,34 @@ def run_with_c(f, gpu=False):
     f(mode, gpu)
 
 
+def test_n_samples():
+    p = tensor.fmatrix()
+    u = tensor.fvector()
+    n = tensor.scalar()
+    m = multinomial.MultinomialFromUniform('auto')(p, u, n)
+    
+    f = function([p, u, n], m, allow_input_downcast=True)
+
+    for uni in [.1, .2, .4, .5, .7, .9]:
+        for i in [1, 5, 10, 15, 100]:
+            res = f([[1, 0], [0, 1]], [.4, .4]*i, i)
+            utt.assert_allclose(res,
+                                [[i, 0], [0, i]])
+
 def test_multinomial_0():
     # This tests the MultinomialFromUniform Op directly, not going through the
     # multinomial() call in GPU random generation.
 
     p = tensor.fmatrix()
     u = tensor.fvector()
-
-    m = multinomial.MultinomialFromUniform('auto')(p, u)
+    n = constant(1)
+    
+    m = multinomial.MultinomialFromUniform('auto')(p, u, n)
 
     def body(mode, gpu):
         # the m*2 allows the multinomial to reuse output
         f = function([p, u], m*2, allow_input_downcast=True, mode=mode)
+
         if gpu:
             assert any([type(node.op) is multinomial.GpuMultinomialFromUniform
                         for node in f.maker.fgraph.toposort()])
@@ -74,7 +91,8 @@ def test_multinomial_large():
     def body(mode, gpu):
         p = tensor.fmatrix()
         u = tensor.fvector()
-        m = multinomial.MultinomialFromUniform('auto')(p, u)
+        n = constant(1)
+        m = multinomial.MultinomialFromUniform('auto')(p, u, n)
         f = function([p, u], m*2, allow_input_downcast=True, mode=mode)
         if gpu:
             assert any([type(node.op) is multinomial.GpuMultinomialFromUniform
@@ -105,17 +123,20 @@ def test_multinomial_large():
 def test_multinomial_dtypes():
     p = tensor.dmatrix()
     u = tensor.dvector()
-    m = multinomial.MultinomialFromUniform('auto')(p, u)
+    n = constant(1)
+    m = multinomial.MultinomialFromUniform('auto')(p, u, n)
     assert m.dtype == 'float64', m.dtype
 
     p = tensor.fmatrix()
     u = tensor.fvector()
-    m = multinomial.MultinomialFromUniform('auto')(p, u)
+    n = constant(1)
+    m = multinomial.MultinomialFromUniform('auto')(p, u, n)
     assert m.dtype == 'float32', m.dtype
 
     p = tensor.fmatrix()
     u = tensor.fvector()
-    m = multinomial.MultinomialFromUniform('float64')(p, u)
+    n = constant(1)
+    m = multinomial.MultinomialFromUniform('float64')(p, u, n)
     assert m.dtype == 'float64', m.dtype
 
 
@@ -129,7 +150,8 @@ def test_gpu_opt():
     # is moved to the gpu.
     p = tensor.fmatrix()
     u = tensor.fvector()
-    m = multinomial.MultinomialFromUniform('auto')(p, u)
+    n = constant(1)
+    m = multinomial.MultinomialFromUniform('auto')(p, u, n)
     assert m.dtype == 'float32', m.dtype
     m_gpu = cuda.gpu_from_host(m)
 
@@ -143,7 +165,7 @@ def test_gpu_opt():
 
     # Test with a row, it was failing in the past.
     r = tensor.frow()
-    m = multinomial.MultinomialFromUniform('auto')(r, u)
+    m = multinomial.MultinomialFromUniform('auto')(r, u, n)
     assert m.dtype == 'float32', m.dtype
     m_gpu = cuda.gpu_from_host(m)
 
