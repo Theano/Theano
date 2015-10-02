@@ -4532,8 +4532,7 @@ class T_local_erfc(unittest.TestCase):
         mode_fusion.check_isfinite = False
 
         f = theano.function([x], T.grad(T.log(T.erfc(x)).sum(), x), mode=mode)
-        # The useless alloc in the graph will get removed by later optimization
-        assert len(f.maker.fgraph.apply_nodes) == 25, len(f.maker.fgraph.apply_nodes)
+        assert len(f.maker.fgraph.apply_nodes) == 23, len(f.maker.fgraph.apply_nodes)
         assert all(numpy.isfinite(f(val)))
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
 
@@ -4566,8 +4565,7 @@ class T_local_erfc(unittest.TestCase):
         # test that it work correctly if x is x*2 in the graph.
         f = theano.function([x], T.grad(T.log(T.erfc(2 * x)).sum(),
              x), mode=mode)
-        # The useless alloc in the graph will get removed by later optimization
-        assert len(f.maker.fgraph.apply_nodes) == 25, len(f.maker.fgraph.apply_nodes)
+        assert len(f.maker.fgraph.apply_nodes) == 23, len(f.maker.fgraph.apply_nodes)
         assert numpy.isfinite(f(val)).all()
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
 
