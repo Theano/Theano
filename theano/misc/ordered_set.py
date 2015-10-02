@@ -218,7 +218,5 @@ class OrderedSet(MutableSet):
         For checking the truth value of an expression.
         """
         # Added by CG
-        l = list(self)
-        return l is not None and len(l) > 0
-
+        return (self.__map is not None and len(self.__map) > 0)
 # end of http://code.activestate.com/recipes/576696/ }}}
