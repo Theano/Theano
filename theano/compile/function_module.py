@@ -1497,7 +1497,7 @@ class FunctionMaker(object):
         self.mode = mode
         self.accept_inplace = accept_inplace
         self.function_builder = function_builder
-        self.on_unused_input = on_unused_input  # Used only for the pickling
+        self.on_unused_input = on_unused_input  # Used for the pickling/copy
         self.output_keys = output_keys
 
         self.required = [(i.value is None) for i in self.inputs]
