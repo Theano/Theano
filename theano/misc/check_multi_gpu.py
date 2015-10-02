@@ -9,11 +9,11 @@ import time
 
 import numpy
 
-import pygpu
 import theano
 from theano.sandbox.gpuarray import init_dev
 from theano.sandbox.gpuarray.type import gpuarray_shared_constructor as shared
 from theano.sandbox.gpuarray.blas import gpu_dot22
+
 
 def main(dev1, dev2):
     init_dev(dev1, 'ctx1')
