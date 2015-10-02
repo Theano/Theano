@@ -65,7 +65,7 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
             # GPU are installed or if the GPUs are configured in
             # exclusive mode, this cause bad detection.
             comp, out, err = NVCC_compiler.try_flags(
-                params=params, preambule=preambule, body=body,
+                flag_list=params, preambule=preambule, body=body,
                 try_run=False, output=True)
 
             dnn_available.avail = comp
