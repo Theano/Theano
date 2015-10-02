@@ -4057,6 +4057,26 @@ class T_Scan(unittest.TestCase):
         # scan could not detect the connection between `m2` and `x`
         tensor.grad(m2.sum(), m)
 
+    def test_disconnected_gradient3(self):
+        # This tests for a crash that would occur sometimes when taking the
+        # gradient through a scan with a non-recurrent output which would
+        # receive a disconnected gradient
+
+        v = tensor.dvector('v')
+
+        def step(seq):
+            out1 = seq + 1
+            out2 = out1 + 1
+            return out1, out2
+
+        [out1, out2], _ = theano.scan(step, sequences=v)
+        gv = tensor.grad(out2.sum(), [v])
+        f = theano.function([v], gv)
+
+        # Ensure the output of the function is valid
+        output = f(numpy.random.random(5))
+        utt.assert_allclose(output, numpy.ones(5))
+
     def test_dot_optimization(self):
         A = tensor.matrix('A')
         B = tensor.matrix('B')
