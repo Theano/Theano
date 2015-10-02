@@ -5783,7 +5783,7 @@ def local_grad_log_erfc_neg(node):
     # The mul is optional.
     if node.inputs[0].owner.op != T.mul:
         mul = None
-        y = 1
+        y = []
         if not node.inputs[0].owner or node.inputs[0].owner.op != T.exp:
             return False
         exp = node.inputs[0]
@@ -5902,7 +5902,7 @@ def local_grad_log_erfc_neg(node):
     elif x.dtype == 'float64':
         threshold = 26.641747557
     ret = T.switch(x < threshold, true_div_no_mul, stab_value)
-    if y != 1:
+    if y:
         ret = T.mul(ret, *y)
     ret.values_eq_approx = values_eq_approx_remove_inf_nan
     return [ret]
