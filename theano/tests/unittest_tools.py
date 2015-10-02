@@ -1,4 +1,5 @@
 from __future__ import print_function
+import ipdb; ipdb.set_trace()
 from copy import copy, deepcopy
 from functools import wraps
 import logging
@@ -19,6 +20,13 @@ import numpy
 import theano
 import theano.tensor as T
 from theano.configparser import config, AddConfigVar, StrParam
+try:
+    from nose.plugins.skip import SkipTest
+except ImportError:
+    class SkipTest(Exception):
+        """
+        Skip this test
+        """
 _logger = logging.getLogger("theano.tests.unittest_tools")
 
 
@@ -130,13 +138,6 @@ class TestOptimizationMixin(object):
         return self.assertFunctionContainsClass(f, op, min=N, max=N)
 
     def SkipTest(self, msg='Skip this test'):
-        try:
-            from nose.plugins.skip import SkipTest
-        except ImportError:
-            class SkipTest(Exception):
-                """
-                Skip this test
-                """
         raise SkipTest(msg)
 
 
