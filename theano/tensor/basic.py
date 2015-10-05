@@ -4656,7 +4656,7 @@ class Flatten(Op):
         }
         """ % locals()
 
-def is_flatten(node, outdim=1):
+def is_flat(node, outdim=1):
     """
     Checks whether node's op is an instance of Reshape
     and verifies the dimensionality of variable is correct.
@@ -4665,7 +4665,7 @@ def is_flatten(node, outdim=1):
         node.inputs[1].ndim == outdim
 
 
-def flat(x, outdim=1):
+def flatten(x, outdim=1):
     """
     Reshapes the variable x by keeping
     the first outdim-1 dimension(s) of x the same
