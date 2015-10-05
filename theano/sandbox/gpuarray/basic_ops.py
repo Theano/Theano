@@ -333,10 +333,7 @@ class HostFromGpu(Op):
 
     def R_op(self, inputs, eval_points):
         ev, = eval_points
-        if isinstance(ev, tensor.TensorType):
-            return [GpuFromHost(inputs[0].type.context_name)(ev)]
-        else:
-            return [ev]
+        return self(ev)
 
     def infer_shape(self, node, xshp):
         return xshp
@@ -377,10 +374,7 @@ class GpuFromHost(Op):
 
     def R_op(self, inputs, eval_points):
         ev, = eval_points
-        if isinstance(ev, GpuArrayType):
-            return [host_from_gpu(ev)]
-        else:
-            return [ev]
+        return self(ev)
 
     def infer_shape(self, node, xshp):
         return xshp
@@ -441,7 +435,7 @@ class GpuToGpu(Op):
         return [GpuToGpu(inputs[0].type.context_name)(gz)]
 
     def R_op(self, inputs, eval_points):
-        return self.grad(inputs, eval_points)
+        return self(eval_points[0])
 
     def infer_shape(self, node, xshp):
         return xshp
