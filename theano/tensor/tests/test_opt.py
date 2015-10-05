@@ -60,7 +60,6 @@ from theano.tests import unittest_tools as utt
 from theano.compile.mode import optdb
 from theano.compile import Mode
 from nose.plugins.attrib import attr
-from theano.tensor.basic import flatten, is_flatten
 
 mode_opt = theano.config.mode
 if mode_opt == 'FAST_COMPILE':
@@ -5891,7 +5890,7 @@ def test_local_flatten_lift():
         topo = f.maker.fgraph.toposort()
         shape_out_np = tuple(x_np.shape[:i-1])+(numpy.prod(x_np.shape[i-1:]),)
         assert shape_out_np == out_np.shape
-        tensor.is_flatten(topo[0], outdim=i)
+        assert tensor.is_flat(topo[0], outdim=i)
         assert isinstance(topo[-1].op, tensor.Elemwise)
 
 

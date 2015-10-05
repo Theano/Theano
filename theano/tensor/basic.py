@@ -4506,6 +4506,7 @@ class Flatten(Op):
     Flattens a tensor to `outdim` dimensions by preserving the leading
     outdim - 1 shape components.
 
+    Note: The interface Flatten(Op) is deprecated, you should use flatten
     """
     view_map = {0: [0]}
 
@@ -4656,30 +4657,37 @@ class Flatten(Op):
         """ % locals()
 
 def is_flatten(node, outdim=1):
+    """
+    Checks whether node's op is an instance of Reshape
+    and verifies the dimensionality of variable is correct.
+    """
     return isinstance(node.op, theano.tensor.Reshape) and\
         node.inputs[1].ndim == outdim
 
 
-def flatten(x, outdim=1):
+def flat(x, outdim=1):
+    """
+    Reshapes the variable x by keeping
+    the first outdim-1 dimension(s) of x the same
+    and making the last dimension of x equal to
+    the multiplication of its remaining dimensions.
+    """
     outdim = int(outdim)
-    # an error is raised if outdim is not positive or
-    # of outdim is greater than one and also greater than x dimensionality.
     # Any input variable can be flattened to have outdim of 1,
-    # even if it's a scalar.
+    # even if it's a scalar. Otherwise, outdim must be positive
+    # and smaller than x.ndim.
     if outdim < 1 or (outdim > 1 and outdim > x.ndim):
         raise ValueError('outdim %s out of bound [1, %d)' % (outdim, x.ndim+1))
 
     if outdim > 1:
-        dims = tuple(x.shape[:outdim-1]) +\
-            (theano.tensor.prod(x.shape[outdim-1:]),)
+        dims = tuple(x.shape[:outdim-1]) + (-1,)
     else:
         dims = (-1,)
     x_reshaped = x.reshape(dims)
     bcast_kept_dims = x.broadcastable[:outdim - 1]
     bcast_new_dim = python_all(x.broadcastable[outdim - 1:])
     broadcastable = bcast_kept_dims + (bcast_new_dim,)
-    broadcast_int = tuple([numpy.int(bc) for bc in broadcastable])
-    for dim, br in enumerate(broadcast_int):
+    for dim, br in enumerate(broadcastable):
         if br:
             x_reshaped = theano.tensor.addbroadcast(x_reshaped, dim)
     return x_reshaped

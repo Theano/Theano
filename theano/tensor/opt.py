@@ -3881,13 +3881,13 @@ def local_useless_split(node):
 @register_stabilize
 @gof.local_optimizer([T.Flatten])
 def local_flatten_lift(node):
-    ""
+    """
     Flatten(UnaryElemwise(x)) -> UnaryElemwise(Flatten(x))
 
     This optimization is needed by optimization
     nnet/sigm.py:log1msigm_to_softplus to get applied when there is a flatten.
 
-    ""
+    """
     if (isinstance(node.op, T.Flatten) and
             node.inputs[0].owner and
             isinstance(node.inputs[0].owner.op, T.Elemwise) and

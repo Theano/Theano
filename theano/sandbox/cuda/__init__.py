@@ -323,6 +323,11 @@ if cuda_available:
             ftensor3, ftensor4,
             scalar, vector, matrix, row, col,
             tensor3, tensor4)
+    warnings.warn(
+        "GpuFlatten class is deprecated, "
+        "please use gpu_flatten method instead.",
+        DeprecationWarning,
+        stacklevel=4)
     from .basic_ops import (host_from_gpu, gpu_from_host,
             as_cuda_array, as_cuda_ndarray_variable)
     import cuda_ndarray

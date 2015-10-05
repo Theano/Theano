@@ -31,7 +31,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         fscalar, zeros_like, sum, tensor3, vector, add, addbroadcast,
         alloc, as_tensor_variable, tensor_from_scalar, ARange, autocast_float,
         clip, constant, default, dot,
-        dmatrix, dscalar, dvector, eq, eye, fill, flatten, inverse_permutation,
+        dmatrix, dscalar, dvector, eq, eye, fill, flatten, inverse_permutation, Flatten,
         tensor4, permute_row_elements, fmatrix, fscalars, grad,
         inplace, iscalar, matrix, minimum, matrices, maximum, mul, neq,
         Reshape, row, scalar, scalars, second, smallest, stack, sub, Tensor,
@@ -5194,7 +5194,9 @@ def test_flatten_outdim2():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val) == a_val)
 
-    utt.verify_grad(flatten, [a_val])
+    from functools import partial
+    flatten_2 = partial(flatten, outdim=2)
+    utt.verify_grad(flatten_2, [a_val])
 
 
 def test_flatten_outdim2_of_3():
@@ -5208,7 +5210,9 @@ def test_flatten_outdim2_of_3():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val) == c_val)
 
-    utt.verify_grad(flatten, [a_val])
+    from functools import partial
+    flatten_2 = partial(flatten, outdim=2)
+    utt.verify_grad(flatten_2, [a_val])
 
 
 def test_flatten_broadcastable():
@@ -7126,6 +7130,11 @@ class TestInferShape(utt.InferShapeTester):
         self._compile_and_check([atens3],
                                 [flatten(atens3, 1)],
                                 [atens3_val], Reshape)
+
+        # Reshape.infershape is badly written and therefore all Reshapes are
+        # not removed from atens3.shape after compiling.
+        # The following lines should be uncommented afte fixing issue #3420
+
         #for outdim in (3, 2, 1):
         #    self._compile_and_check([atens3],
         #                            [flatten(atens3, outdim)],
