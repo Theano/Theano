@@ -1676,11 +1676,11 @@ def local_fill_to_alloc(node):
 # get affected by less canonicalized graph due to alloc.
 compile.optdb.register('local_fill_to_alloc',
                        in2out(local_fill_to_alloc),
-                       1.51, 'fast_run')#, 'canonicalize')
+                       1.51, 'fast_run')
 # Needed to clean some extra alloc added by local_fill_to_alloc
 compile.optdb.register('local_elemwise_alloc',
                        in2out(local_elemwise_alloc),
-                       1.52, 'fast_run')#, 'canonicalize')
+                       1.52, 'fast_run')
 
 
 @register_canonicalize("fast_compile")
