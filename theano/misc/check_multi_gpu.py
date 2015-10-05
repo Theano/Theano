@@ -47,7 +47,7 @@ def main(dev1, dev2):
     t2 = time.time()
     r = None
 
-    print "one ctx", t2 - t
+    print("one ctx %f" % (t2 - t,))
 
     r = f2()
     r[0].sync(), r[1].sync()
@@ -58,7 +58,7 @@ def main(dev1, dev2):
     t2 = time.time()
     r = None
 
-    print "two ctx", t2 - t
+    print("two ctx %f" % (t2 - t,))
 
 if __name__ == '__main__':
     import sys
