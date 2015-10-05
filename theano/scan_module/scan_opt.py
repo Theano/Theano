@@ -1110,22 +1110,15 @@ class ScanInplaceOptimizer(Optimizer):
 
                     # Get the indices of this client's inputs on which it
                     # operates inplace
-                    inplace_inp_indices = []
-                    if hasattr(client.op, 'view_map'):
-                        inplace_inp_indices = sum(client.op.view_map.values(),
-                                                  inplace_inp_indices)
                     if hasattr(client.op, 'destroy_map'):
-                        inplace_inp_indices = sum(client.op.destroy_map.values(),
-                                                  inplace_inp_indices)
+                        # This flattens the content of destroy_map.values()
+                        # which is a list of lists
+                        inplace_inp_indices = sum(client.op.destroy_map.values(), [])
 
-                    for inplace_inp_idx in inplace_inp_indices:
-                        inplace_inp = client.inputs[inplace_inp_idx]
-                        if inplace_inp is original_node.inputs[inp_idx]:
+                        inplace_inps = [client.inputs[i] for i in inplace_inp_indices]
+                        if original_node.inputs[inp_idx] in inplace_inps:
                             input_used_inplace = True
                             break
-
-                    if input_used_inplace:
-                        break
 
                 if not input_used_inplace:
                     out_indices.append(out_idx)
