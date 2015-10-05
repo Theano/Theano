@@ -5,7 +5,7 @@ import numpy
 from theano import Op, Apply, Type, Variable
 from theano import tensor, config
 from theano.gradient import grad_undefined
-from theano.tensor.basic import Alloc, Join, Split, as_tensor_variable
+from theano.tensor.basic import Alloc, Join, Split
 
 from theano.gof import HideC
 from theano.gof.utils import MethodNotDefined
@@ -21,7 +21,7 @@ try:
 except ImportError:
     pass
 
-from .type import GpuArrayType, gpu_context_type, get_context
+from .type import GpuArrayType, GpuArrayConstant, gpu_context_type, get_context
 from .fp16_help import write_w
 
 
