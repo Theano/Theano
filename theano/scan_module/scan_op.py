@@ -772,8 +772,9 @@ class Scan(PureOp):
                         # Make it so the input is automatically updated to the
                         # output value, possibly inplace, at the end of the
                         # function exectution. Also, since an update is
-                        # defined, a default value must also be. Use an array
-                        # of size 0 but the right ndim and dtype.
+                        # defined, a default value must also be (this is
+                        # verified by DebugMode). Use an array of size 0 but
+                        # the right ndim and dtype.
                         default_val = numpy.zeros([0] * inp.ndim,
                                                   dtype=inp.dtype)
                         wrapped_inp = In(variable=inp, value=default_val,
