@@ -2053,7 +2053,7 @@ def relu(x, alpha=0):
 
 
 def h_softmax(x, batch_size, n_outputs, W1, b1, W2, b2,
-              n_classes=None, n_outputs_per_class=None, target=None):
+              n_classes, n_outputs_per_class, target=None):
     """ Two-level hierarchical softmax.
 
     Outputs are grouped in sqrt(n_outputs) classes.
@@ -2081,15 +2081,12 @@ def h_softmax(x, batch_size, n_outputs, W1, b1, W2, b2,
         the number of outputs.
 
     n_classes: int
-        (optional, default None)
         the number of classes of the two-layer hierarchical softmax. It
-        corresponds to the number of outputs of the first softmax. It can be
-        set to None, see the note at the end of the docstring.
+        corresponds to the number of outputs of the first softmax. See note at
+        the end.
 
     n_outputs_per_class: int
-        (optional, default None)
-        the number of outputs per class. It can be set to None, see the note
-        at the end of the docstring.
+        the number of outputs per class. See note at the end.
 
     W1: tensor of shape (number of features of the input x, number of classes)
         the weight matrix of the first softmax, which maps the input x to the
@@ -2115,24 +2112,14 @@ def h_softmax(x, batch_size, n_outputs, W1, b1, W2, b2,
 
     Notes
     -----
-    n_outputs_per_class and n_classes do not need to be defined. If
-    both are not defined, then they are set to the square root of the
-    number of outputs, which is the most computational efficient
-    configuration. If only one is defined, the other is inferred so that
-    their product equals the number of outputs n_outputs (more precisely it is
-    the smallest integer such that their product is greater or equal to
-    n_outputs).
-
+    The product of n_outputs_per_class and n_classes has to be greater or equal
+    to n_outputs. If it is strictly greater, then the irrelevant outputs will
+    be ignored.
+    n_outputs_per_class and n_classes have to be the same as the corresponding
+    dimensions of the tensors of W1, b1, W2 and b2.
+    The most computational efficient configuration is when n_outputs_per_class
+    and n_classes are equal to the square root of n_outputs.
     """
-
-    # In case one or both of n_outputs_per_class and n_classes are not defined
-    if not n_outputs_per_class and not n_classes:
-        n_outputs_per_class = numpy.ceil(numpy.sqrt(n_outputs))
-        n_classes = numpy.ceil(n_outputs / n_outputs_per_class)
-    elif n_outputs_per_class and not n_classes:
-        n_classes = numpy.ceil(n_outputs / n_outputs_per_class)
-    elif n_classes and not n_outputs_per_class:
-        n_outputs_per_class = numpy.ceil(n_outputs / n_classes)
 
     # First softmax that computes the probabilities of belonging to each class
     class_probs = theano.tensor.nnet.softmax(tensor.dot(x, W1) + b1)
