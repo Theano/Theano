@@ -762,6 +762,7 @@ class Scan(PureOp):
             for mitmot_idx in range(self.n_mit_mot):
                 for inp_tap in self.tap_array[mitmot_idx]:
                     if inp_tap in self.mit_mot_out_slices[mitmot_idx]:
+                        inp = self.inputs[input_idx]
 
                         # Figure out the index of the corresponding output
                         output_idx = sum([len(m) for m in
@@ -770,8 +771,12 @@ class Scan(PureOp):
 
                         # Make it so the input is automatically updated to the
                         # output value, possibly inplace, at the end of the
-                        # function exectution
-                        wrapped_inp = In(variable=self.inputs[input_idx],
+                        # function exectution. Also, since an update is
+                        # defined, a default value must also be. Use an array
+                        # of size 0 but the right ndim and dtype.
+                        default_val = numpy.zeros([0] * inp.ndim,
+                                                  dtype=inp.dtype)
+                        wrapped_inp = In(variable=inp, value=default_val,
                                          update=self.outputs[output_idx])
                         wrapped_inputs.append(wrapped_inp)
                         preallocated_mitmot_outs.append(output_idx)
