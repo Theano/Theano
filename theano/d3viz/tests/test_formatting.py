@@ -29,9 +29,16 @@ class TestPyDotFormatter(unittest.TestCase):
         f = th.function(m.inputs, m.outputs)
         pdf = PyDotFormatter()
         graph = pdf(f)
-        self.assertEqual(len(graph.get_nodes()), 11)
+        expected = 11
+        if th.config.mode == "FAST_COMPILE":
+            expected = 12
+        self.assertEqual(len(graph.get_nodes()), 12)
         nc = self.node_counts(graph)
-        assert nc['apply'] == 5
+
+        if th.config.mode == "FAST_COMPILE":
+            assert nc['apply'] == 6
+        else:
+            assert nc['apply'] == 5
         assert nc['output'] == 1
 
     def test_ofg(self):
@@ -43,7 +50,10 @@ class TestPyDotFormatter(unittest.TestCase):
         sub_graphs = graph.get_subgraph_list()
         assert len(sub_graphs) == 2
         ofg1, ofg2 = sub_graphs
-        assert len(ofg1.get_nodes()) == 5
+        if th.config.mode == "FAST_COMPILE":
+            assert len(ofg1.get_nodes()) == 9
+        else:
+            assert len(ofg1.get_nodes()) == 5
         assert len(ofg1.get_nodes()) == len(ofg2.get_nodes())
 
     def test_ofg_nested(self):

@@ -2403,13 +2403,15 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
 
     """
 
-    def __init__(self, inputs, outputs, optimizer, mode,
+    def __init__(self, inputs, outputs, mode,
                  accept_inplace=False,
                  function_builder=Function,
                  profile=None,
                  on_unused_input=None,
+                 fgraph=None,  # If present the optimized graph. we ignore it.
                  output_keys=None):
         self.profile = profile
+        optimizer = mode.optimizer
         # Handle the case where inputs and/or outputs is a single
         # Variable (not in a list)
         unpack_single = False
@@ -2523,6 +2525,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
         self.accept_inplace = accept_inplace
         self.function_builder = function_builder
         self.mode = mode
+        self.on_unused_input = on_unused_input  # Used for the pickling/copy
         self.output_keys = output_keys
 
     def create(self, defaults=None, trustme=False, storage_map=None):
@@ -2744,7 +2747,7 @@ class DebugMode(Mode):
 
         """
         assert m is self
-        return _Maker(i, o, self.optimizer, self, *args, **kwargs)
+        return _Maker(i, o, self, *args, **kwargs)
 
     def __init__(self,
                  optimizer='fast_run',
