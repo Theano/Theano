@@ -842,6 +842,10 @@ def local_gpu_conv(node, context_name):
                    GpuFromHost(context_name)(kern))
     assert isinstance(out.type, GpuArrayType)
     out.values_eq_approx = values_eq_approx
+    # Make sure to keep the broadcastable pattern of the original
+    # convolution even if we might gain or lose some due to different
+    # information at the node level.
+    out = tensor.patternbroadcast(out, node.outputs[0].broadcastable)
     return [out]
 
 # Register this here so that it goes after 'local_gpu_conv'
