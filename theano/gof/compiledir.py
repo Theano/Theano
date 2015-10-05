@@ -65,7 +65,8 @@ compiledir_format_dict = {
     "theano_version": theano.__version__,
     "numpy_version": numpy.__version__,
     "gxx_version": gcc_version_str.replace(" ", "_"),
-    "hostname": socket.gethostname()}
+    "hostname": socket.gethostname(),
+    "device": config.device}
 
 
 def short_platform(r=None, p=None):
@@ -146,7 +147,7 @@ def short_platform(r=None, p=None):
 compiledir_format_dict['short_platform'] = short_platform()
 compiledir_format_keys = ", ".join(sorted(compiledir_format_dict.keys()))
 default_compiledir_format = ("compiledir_%(short_platform)s-%(processor)s-"
-                             "%(python_version)s-%(python_bitwidth)s")
+                             "%(python_version)s-%(python_bitwidth)s-%(device)s")
 
 AddConfigVar("compiledir_format",
              textwrap.fill(textwrap.dedent("""\
