@@ -2408,7 +2408,7 @@ class _Maker(FunctionMaker):  # inheritance buys a few helper functions
                  function_builder=Function,
                  profile=None,
                  on_unused_input=None,
-                 fgraph=None, # If present the optimized graph. we ignore it.
+                 fgraph=None,  # If present the optimized graph. we ignore it.
                  output_keys=None):
         self.profile = profile
         optimizer = mode.optimizer
