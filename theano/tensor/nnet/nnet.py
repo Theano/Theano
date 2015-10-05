@@ -2113,10 +2113,15 @@ def h_softmax(x, batch_size, n_outputs, W1, b1, W2, b2,
         corresponding target. If target is None, then all the outputs are
         computed for each input.
 
-    :note: n_outputs_per_class and n_classes do not need to be defined. If
-        both are not defined, then they are set to the square root of the
-        number of outputs, which is the most computational efficient
-        configuration. If only one is defined
+    Notes
+    -----
+    n_outputs_per_class and n_classes do not need to be defined. If
+    both are not defined, then they are set to the square root of the
+    number of outputs, which is the most computational efficient
+    configuration. If only one is defined, the other is inferred so that
+    their product equals the number of outputs n_outputs (more precisely it is
+    the smallest integer such that their product is greater or equal to
+    n_outputs).
 
     """
 
@@ -2147,6 +2152,9 @@ def h_softmax(x, batch_size, n_outputs, W1, b1, W2, b2,
         output_probs = output_probs.reshape((batch_size, n_classes, -1))
         output_probs = class_probs[:, :, None] * output_probs
         output_probs = output_probs.reshape((batch_size, -1))
+        # output_probs.shape[1] is n_classes * n_outputs_per_class, which might
+        # be greater than n_outputs, so we ignore the potential irrelevant
+        # outputs with the next line:
         output_probs = output_probs[:, :n_outputs]
 
     else:  # Computes the probabilities of the outputs specified by the targets
