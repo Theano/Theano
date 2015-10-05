@@ -392,13 +392,14 @@ class GpuFromHost(Op):
         if (%(name)s_tmp == NULL)
           %(fail)s
         Py_XDECREF(%(out)s);
-        %(out)s = pygpu_fromhostdata(PyArray_DATA(%(inp)s),
-                                     get_typecode((PyObject *)PyArray_DESCR(%(inp)s)),
-                                     PyArray_NDIM(%(inp)s),
-                                     (size_t *)PyArray_DIMS(%(inp)s),
-                                     (ssize_t *)PyArray_STRIDES(%(inp)s),
+        %(out)s = pygpu_fromhostdata(PyArray_DATA(%(name)s_tmp),
+                                     get_typecode((PyObject *)PyArray_DESCR(%(name)s_tmp)),
+                                     PyArray_NDIM(%(name)s_tmp),
+                                     (size_t *)PyArray_DIMS(%(name)s_tmp),
+                                     (ssize_t *)PyArray_STRIDES(%(name)s_tmp),
                                      %(ctx)s,
                                      Py_None);
+        Py_DECREF(%(name)s_tmp);
         if (%(out)s == NULL) {
             %(fail)s
         }
@@ -406,7 +407,7 @@ class GpuFromHost(Op):
                'out': outputs[0], 'fail': sub['fail']}
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
 
 
 class GpuToGpu(Op):
