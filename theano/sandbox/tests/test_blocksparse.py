@@ -41,14 +41,6 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         outputWindowSize = 3
         batchSize = 2
 
-#        nInputBlock = 2
-#        nOutputBlock = 2
-#        inputSize = 2
-#        outputSize = 2
-#        inputWindowSize = 1
-#        outputWindowSize = 1
-#        batchSize = 1
-
         input = randn(batchSize, inputWindowSize, inputSize).astype('float32')
         permutation = numpy.random.permutation
         inputIndice = numpy.vstack(permutation(nInputBlock)[:inputWindowSize]
@@ -120,30 +112,6 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
             # o[b] += numpy.tensordot(h[b], w, [(0,1),(0,2)])
             o[b] += numpy.einsum('ik,ijkl', h[b], w)
         return o
-
-    @staticmethod
-    def gemv_data2():
-
-        nInputBlock = 100
-        nOutputBlock = 100
-        inputSize = 50
-        outputSize = 50
-        inputWindowSize = 30
-        outputWindowSize = 30
-        batchSize = 1
-
-        input = randn(batchSize, inputWindowSize, inputSize).astype('float32')
-        permutation = numpy.random.permutation
-        inputIndice = numpy.vstack(permutation(nInputBlock)[:inputWindowSize]
-                                   for _ in range(batchSize)).astype('int32')
-        outputIndice = numpy.vstack(
-            permutation(nOutputBlock)[:outputWindowSize]
-            for _ in range(batchSize)).astype('int32')
-        weight = randn(nInputBlock, nOutputBlock,
-                       inputSize, outputSize).astype('float32')
-        bias = randn(nOutputBlock, outputSize).astype('float32')
-
-        return weight, input, inputIndice, bias, outputIndice
 
     @staticmethod
     def outer_numpy(o, x, y, xIdx, yIdx):
@@ -234,12 +202,6 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
 
         W_val, h_val, iIdx_val, b_val, oIdx_val = \
             BlockSparse_Gemv_and_Outer.gemv_data()
-
-        h_val = randn(1, 1, 1).astype('float32')
-        iIdx_val = numpy.random.permutation(1)[:1][None, :]
-        oIdx_val = numpy.random.permutation(1)[:1][None, :]
-        W_val = randn(1, 1, 1, 1).astype('float32')
-        b_val = randn(1, 1).astype('float32')
 
         iIdx = theano.tensor.constant(iIdx_val)
         oIdx = theano.tensor.constant(oIdx_val)
