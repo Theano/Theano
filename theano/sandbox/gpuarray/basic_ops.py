@@ -459,7 +459,7 @@ class GpuAlloc(HideC, Alloc):
 
     Parameters
     ----------
-    context : context name
+    context_name : str
         The name of the context in which to allocate memory
     memset_0 : bool
         It's only an optimized version. True, it means the
@@ -484,8 +484,7 @@ class GpuAlloc(HideC, Alloc):
             m = "{memset_0=True}"
         else:
             m = ""
-        return "%s<%s>{memset_0=%s}" % (self.__class__.__name__,
-                                        self.context_name, m)
+        return "%s<%s>%s" % (self.__class__.__name__, self.context_name, m)
 
     def make_node(self, value, *shape):
         value = as_gpuarray_variable(value, context_name=self.context_name)
