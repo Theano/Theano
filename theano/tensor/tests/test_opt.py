@@ -4021,7 +4021,8 @@ class T_Rebroadcast(unittest.TestCase):
 
 class T_useless_elemwise(unittest.TestCase):
     def setUp(self):
-        self.mode = theano.compile.get_default_mode().including('canonicalize')
+        self.mode = theano.compile.get_default_mode().including(
+            'canonicalize', 'local_fill_to_alloc')
 
     def test_eq(self):
         x = T.dmatrix()

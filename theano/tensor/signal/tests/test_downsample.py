@@ -802,7 +802,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                                             MaxPoolGrad,
                                             warn=False)
         # checking with broadcastable input
-        image = tensor.tensor(dtype=theano.config.floatX,
+        image = tensor.tensor(dtype='float64',
                               broadcastable=(False, False, True, True))
         image_val = rng.rand(4, 6, 1, 1)
         self._compile_and_check(
