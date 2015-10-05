@@ -36,12 +36,14 @@ def init_dev(dev, name=None):
     if dev not in init_dev.devmap:
         init_dev.devmap[dev] = pygpu.init(dev)
     context = init_dev.devmap[dev]
+    # This will map the context name to the real context object.
     reg_context(name, context)
     pygpu_activated = True
     if config.print_active_device:
         print("Mapped name %s to device %s: %s" % (name, dev, context.devname),
               file=sys.stderr)
 
+# This maps things like 'cuda0' to the context object on that device.
 init_dev.devmap = {}
 
 if pygpu:
@@ -54,10 +56,14 @@ if pygpu:
             optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile')
         elif (config.init_gpu_device.startswith('cuda') or
               config.init_gpu_device.startswith('opencl')):
+            if config.device != 'gpu':
+                raise ValueError('you must set device=gpu to use init_gpu_device.')
+            if config.contexts != '':
+                print("Using contexts will make init_gpu_device act like device and move all computations by default, which might not be what you want.")
             init_dev(config.init_gpu_device)
         if config.contexts != '':
             for n, d in (c.split('->') for c in config.contexts.split(';')):
-                init_dev(d, n)
+                init_dev(d.strip(), n.strip())
             import theano.compile
             theano.compile.shared_constructor(gpuarray_shared_constructor)
             optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile')
