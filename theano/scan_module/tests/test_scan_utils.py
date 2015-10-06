@@ -26,6 +26,24 @@ class TestMapVariables(unittest.TestCase):
     def replacer(graph):
         return getattr(graph.tag, "replacement", graph)
 
+    def test_introduce_cached_constant(self):
+        # the bug happens only when replacing composite graphs
+        # (i.e. graphs that are not input variables), so negate
+        # the inputs to make these composite.
+        a, b, c = [-tensor.scalar(s) for s in "abc"]
+        c = tensor.constant(1.0, name="c", dtype=theano.config.floatX)
+
+        u = a + b
+        b.tag.replacement = c
+        # compare by tag because cloning may happen
+        a.tag.identity = id(a)
+        c.tag.identity = id(c)
+        v, = map_variables(self.replacer, [u])
+
+        assert u.owner.inputs == [a, b]
+        assert v.owner.inputs[0].tag.identity == a.tag.identity
+        assert v.owner.inputs[1].tag.identity == c.tag.identity
+
     def test_leaf(self):
         a = tensor.scalar("a")
         b = tensor.scalar("b")
