@@ -3,12 +3,13 @@ import os.path
 from theano import Apply, config
 
 from theano.compile import optdb
-from theano.gof import local_optimizer, LocalOptGroup
+from theano.gof import LocalOptGroup
 from theano.tensor.basic import as_tensor_variable
 from theano.tensor.opt import in2out
 
-from .basic_ops import (HideC, as_gpuarray_variable, GpuAllocEmpty,
-                        infer_context_name)
+from .basic_ops import HideC, as_gpuarray_variable, infer_context_name
+
+from .opt_util import inplace_allocempty
 
 try:
     import pygpu
@@ -295,37 +296,19 @@ class GpuDot22(BlasOp):
 gpu_dot22 = GpuDot22()
 
 
-@local_optimizer([gpugemv_no_inplace], inplace=True)
-def local_inplace_gpuagemv(node):
-    if node.op == gpugemv_no_inplace:
-        inputs = list(node.inputs)
-        y = inputs[0]
-        if (y.owner and isinstance(y.owner.op, GpuAllocEmpty) and
-                len(y.clients) > 1):
-            inputs[0] = y.owner.op(*y.owner.inputs)
-        return [gpugemv_inplace(*inputs)]
+@inplace_allocempty(GpuGemv, 0)
+def local_inplace_gpuagemv(node, inputs):
+    return [gpugemv_inplace(*inputs)]
 
 
-@local_optimizer([gpugemm_no_inplace], inplace=True)
-def local_inplace_gpuagemm(node):
-    if node.op == gpugemm_no_inplace:
-        inputs = list(node.inputs)
-        C = inputs[0]
-        if (C.owner and isinstance(C.owner.op, GpuAllocEmpty) and
-                len(C.clients) > 1):
-            inputs[0] = C.owner.op(*C.owner.inputs)
-        return [gpugemm_inplace(*inputs)]
+@inplace_allocempty(GpuGemm, 0)
+def local_inplace_gpuagemm(node, inputs):
+    return [gpugemm_inplace(*inputs)]
 
 
-@local_optimizer([gpuger_no_inplace], inplace=True)
-def local_inplace_gpuager(node):
-    if node.op == gpuger_no_inplace:
-        inputs = list(node.inputs)
-        A = inputs[0]
-        if (A.owner and isinstance(A.owner.op, GpuAllocEmpty) and
-                len(A.clients) > 1):
-            inputs[0] = A.owner.op(*A.owner.inputs)
-        return [gpuger_inplace(*inputs)]
+@inplace_allocempty(GpuGer, 0)
+def local_inplace_gpuager(node, inputs):
+    return [gpuger_inplace(*inputs)]
 
 gpuablas_opt_inplace = in2out(LocalOptGroup(local_inplace_gpuagemv,
                                             local_inplace_gpuagemm,

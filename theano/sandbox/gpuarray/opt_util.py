@@ -294,7 +294,7 @@ def inplace_allocempty(op, idx):
     function can be as simple as:
 
         def maker(node, inputs):
-            return node.op.__class__(inplace=True)(*inputs)
+            return [node.op.__class__(inplace=True)(*inputs)]
 
     Parameters
     ----------
