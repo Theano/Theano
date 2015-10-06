@@ -92,10 +92,7 @@ class HostFromGpu(GpuOp):
 
     def R_op(self, inputs, eval_points):
         ev, = eval_points
-        if isinstance(ev, tensor.TensorType):
-            return [gpu_from_host(ev)]
-        else:
-            return [ev]
+        return self(ev)
 
     def infer_shape(self, node, xshp):
         return xshp
@@ -155,10 +152,7 @@ class GpuFromHost(GpuOp):
 
     def R_op(self, inputs, eval_points):
         ev, = eval_points
-        if isinstance(ev, CudaNdarrayType):
-            return [host_from_gpu(ev)]
-        else:
-            return [ev]
+        self(ev)
 
     def infer_shape(self, node, xshp):
         return xshp
