@@ -60,6 +60,10 @@ def get_context(name):
     return _context_reg[name]
 
 
+def list_contexts():
+    return _context_reg.values()
+
+
 # Private method
 def _name_for_ctx(ctx):
     for k, v in _context_reg:
