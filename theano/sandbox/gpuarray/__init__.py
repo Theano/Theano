@@ -56,8 +56,8 @@ if pygpu:
             optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile')
         elif (config.init_gpu_device.startswith('cuda') or
               config.init_gpu_device.startswith('opencl')):
-            if config.device != 'gpu':
-                raise ValueError('you must set device=gpu to use init_gpu_device.')
+            if config.device != 'cpu':
+                raise ValueError('you must set device=cpu to use init_gpu_device.')
             if config.contexts != '':
                 print("Using contexts will make init_gpu_device act like device and move all computations by default, which might not be what you want.")
             init_dev(config.init_gpu_device)
