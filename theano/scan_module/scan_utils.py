@@ -317,8 +317,6 @@ def map_variables(replacer, graphs):
         new_graph = replacer(graph)
         # deal with cached constants and new inputs in the replacement
         if new_graph is not graph:
-            # FIXME: all this cloning breaks the graphs_seen cache,
-            # leading to exponentially many replacements
             [new_graph] = without_cached_constants([new_graph])
             for input_ in gof.graph.inputs([new_graph]):
                 # if the input is already owned by one of the outer
@@ -465,14 +463,23 @@ def _map_variables_inner(replacer, inner_inputs, outer_inputs,
     return new_inner_inputs, new_outer_inputs, new_inner_outputs
 
 
+_without_cached_constant_cache = dict()
 def without_cached_constants(graphs):
-    inputs_ = list(set(gof.graph.inputs(graphs)))
-    cached_constants = [x for x in inputs_ if getattr(x, "cached", False)]
-    if not cached_constants:
-        return graphs
-    copied_constants = clone(cached_constants, share_inputs=False)
-    return clone(graphs, share_inputs=True,
-                 replace=list(zip(cached_constants, copied_constants)))
+    try:
+        # cache results of cloning for performance and to preserve
+        # object identity
+        return list(_without_cached_constant_cache[tuple(graphs)])
+    except KeyError:
+        inputs_ = list(set(gof.graph.inputs(graphs)))
+        cached_constants = [x for x in inputs_ if getattr(x, "cached", False)]
+        if not cached_constants:
+            return graphs
+        copied_constants = clone(cached_constants, share_inputs=False)
+        new_graphs = clone(
+            graphs, share_inputs=True,
+            replace=list(zip(cached_constants, copied_constants)))
+        _without_cached_constant_cache[tuple(graphs)] = tuple(new_graphs)
+        return list(new_graphs)
 
 
 def get_updates_and_outputs(ls):
