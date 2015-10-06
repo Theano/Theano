@@ -128,3 +128,18 @@ The output file is available at pics/logreg_pydotprint_train.png
 
 .. image:: ./pics/logreg_pydotprint_train.png
    :width: 1500 px
+
+
+Interactive Graph Visualization
+===============================
+
+The new :mod:`d3viz` module complements :func:`theano.printing.pydotprint` to
+visualize complex graph structures. Instead of creating a static image, it
+generates an HTML file, which allows to dynamically inspect graph structures in
+a web browser. Features include zooming, drag-and-drop, editing node labels, or
+coloring nodes by their compute time.
+
+=> :mod:`d3viz` <=
+
+.. image:: ./pics/d3viz.png
+   :width: 350 px
