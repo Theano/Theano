@@ -89,8 +89,7 @@ def rebuild_collect_shared(outputs,
                     clone_v_get_shared_updates(i, copy_inputs_over)
 
                 clone_d[owner] = owner.clone_with_new_inputs(
-                                            [clone_d[i] for i in owner.inputs],
-                                            strict=rebuild_strict)
+                    [clone_d[i] for i in owner.inputs], strict=rebuild_strict)
                 for old_o, new_o in zip(owner.outputs, clone_d[owner].outputs):
                     clone_d.setdefault(old_o, new_o)
 
