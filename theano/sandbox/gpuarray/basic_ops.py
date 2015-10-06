@@ -309,7 +309,7 @@ class GpuFromHost(Op):
 
     def c_code(self, node, name, inputs, outputs, sub):
         return """
-        PyGpuArrayObject *%(name)s_tmp;
+        PyArrayObject *%(name)s_tmp;
         %(name)s_tmp = PyArray_GETCONTIGUOUS(%(inp)s);
         if (%(name)s_tmp == NULL)
           %(fail)s
