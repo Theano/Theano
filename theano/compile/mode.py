@@ -198,7 +198,7 @@ optdb.register('merge1', gof.MergeOptimizer(),
                0, 'fast_run', 'fast_compile', 'merge')
 
 # rearranges elemwise expressions
-optdb.register('canonicalize', gof.EquilibriumDB(),
+optdb.register('canonicalize', gof.EquilibriumDB(ignore_newtrees=False),
                1, 'fast_run', 'fast_compile')
 
 optdb.register('merge1.2', gof.MergeOptimizer(),
