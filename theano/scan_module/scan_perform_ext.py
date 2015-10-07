@@ -132,5 +132,10 @@ except ImportError:
         # Release lock on compilation directory.
         release_lock()
 
-from scan_perform.scan_perform import *
+# This is caused as cython use the old NumPy C-API but we use the new one.
+# To fix it completly, we would need to modify Cython to use the new API.
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore",
+                            message="numpy.ndarray size changed")
+    from scan_perform.scan_perform import *
 assert version == get_version()
