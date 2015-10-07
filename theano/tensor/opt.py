@@ -4903,9 +4903,10 @@ register_canonicalize(local_inv_canon)
 @gof.local_optimizer([T.pow])
 def local_pow_canonicalize(node):
     if node.op == T.pow:
-        if local_mul_canonizer.get_constant(node.inputs[1]) == 0:
+        cst = local_mul_canonizer.get_constant(node.inputs[1])
+        if cst == 0:
             return [broadcast_like(1, node.outputs[0], node.fgraph)]
-        if local_mul_canonizer.get_constant(node.inputs[1]) == 1:
+        if cst == 1:
             return [broadcast_like(node.inputs[0], node.outputs[0], node.fgraph)]
     else:
         return False
