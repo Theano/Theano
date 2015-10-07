@@ -1105,8 +1105,11 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     kerns
         Convolution filters.
     border_mode
-        One of 'valid', 'full'; additionally, the padding size could be directly
-        specified by an integer or a pair of integers.
+        One of 'valid', 'full'; additionally, the padding size can be
+        directly specified by an integer or a pair of integers (as a tuple),
+        specifying the amount of zero padding added to _both_ the top and
+        bottom (first entry) and left and right (second entry) sides of
+        the image.
     subsample
         Perform subsampling of the output (default: (1, 1)).
     conv_mode
@@ -1201,8 +1204,11 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
 
     :param img: images to do the convolution over
     :param kerns: convolution filters
-    :param border_mode: one of 'valid', 'full'; additionally, the padding size
-        could be directly specified by an integer or a pair of integers
+    :param border_mode: One of 'valid', 'full'; additionally, the padding
+    	size can be directly specified by an integer or a pair of integers
+    	(as a tuple), specifying the amount of zero padding added to _both_
+    	the top and bottom (first entry) and left and right (second entry)
+    	sides of the image.
     :param subsample: perform subsampling of the output (default: (1, 1, 1))
     :param conv_mode: perform convolution (kernels flipped) or
         cross-correlation. One of 'conv', 'cross'. (default: 'conv')
@@ -1283,9 +1289,11 @@ class GpuDnnPoolDesc(GpuOp):
     mode : {'max', 'average_inc_pad', 'average_exc_pad'}
         The old deprecated name 'average' correspond to 'average_inc_pad'.
     pad
-        (padX, padY) padding information.
-        padX is the size of the left and right borders,
-        padY is the size of the top and bottom borders.
+        (pad_h, pad_w) padding information.
+        pad_h is the number of zero-valued pixels added to each of the top and
+        bottom borders.
+        pad_w is the number of zero-valued pixels added to each of the left and
+        right borders.
 
     """
 
@@ -1752,10 +1760,13 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
         Subsampling stride (default: (1, 1)).
     mode : {'max', 'average_inc_pad', 'average_exc_pad}
     pad
-        (padX, padY) padding information.
-        padX is the size of the left and right borders,
-        padY is the size of the top and bottom borders.
-    :param nd: dimensions of pooling, can be 2 or 3 for 2d or 3d pooling
+    	(pad_h, pad_w) padding information.
+        pad_h is the number of zero-valued pixels added to each of the top and
+        bottom borders.
+        pad_w is the number of zero-valued pixels added to each of the left
+        and right borders.
+    nd
+    	Number of dimensions of pooling, can be 2 or 3 for 2d or 3d pooling
         If set to 3 all other params (except mode) must have an extra
         dimension to match. 3 is only available for cudnn v3
 
