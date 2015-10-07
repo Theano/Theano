@@ -18,7 +18,7 @@ class SparseBlockGemv(Op):
 
     where b, h, W, o iIdx, oIdx are defined in the docstring of make_node.
 
-    .. image:: ../../images/blocksparse.png
+    .. image:: ../../../images/blocksparse.png
         :scale: 50 %
 
     """
