@@ -1290,8 +1290,10 @@ class GpuDnnPoolDesc(GpuOp):
         The old deprecated name 'average' correspond to 'average_inc_pad'.
     pad
         (pad_h, pad_w) padding information.
-        pad_h is the number of zero-valued pixels added to the top and bottom borders.
-        pad_w is the number of zero-valued pixels added to the left and right borders.
+        pad_h is the number of zero-valued pixels added to each of the top and
+        bottom borders.
+        pad_w is the number of zero-valued pixels added to each of the left and
+        right borders.
 
     """
 
