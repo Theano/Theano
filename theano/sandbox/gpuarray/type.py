@@ -61,7 +61,10 @@ def get_context(name):
 
 
 def list_contexts():
-    return _context_reg.values()
+    """
+    Return an iterable of all the registered context names.
+    """
+    return _context_reg.keys()
 
 
 # Private method

@@ -105,6 +105,7 @@ dnn_present.msg = None
 
 def dnn_available(context_name):
     if not dnn_present():
+        dnn_available.msg = dnn_present.msg
         return False
 
     ctx = get_context(context_name)
@@ -120,6 +121,8 @@ def dnn_available(context_name):
         return False
 
     return True
+
+dnn_available.msg = None
 
 
 class DnnBase(COp):
@@ -1424,7 +1427,7 @@ def local_log_softmax_dnn(node):
 class NoCuDNNRaise(Optimizer):
     def apply(self, fgraph):
         """
-        Raise a RuntimeError if cudnn can't be used.
+        Raise a error if cudnn can't be used.
 
         """
         for c in list_contexts():
@@ -1432,8 +1435,8 @@ class NoCuDNNRaise(Optimizer):
                 # Make an assert error as we want Theano to fail, not
                 # just skip this optimization.
                 raise AssertionError(
-                    "cuDNN optimization was enabled, but Theano was not able"
-                    " to use it. We got this error: \n" +
+                    "cuDNN optimization was enabled, but Theano was not able "
+                    "to use it for context " + c + ". We got this error: \n" +
                     dnn_available.msg)
 
 gpu_seqopt.register("NoCuDNNRaise", NoCuDNNRaise(), 0, 'cudnn')
