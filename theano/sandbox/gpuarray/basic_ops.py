@@ -51,9 +51,15 @@ def as_gpuarray_variable(x, context_name):
             # the rest of the body
             break
 
+        # If we couldn't deal with transfers, then maybe it's a tensor
+        if isinstance(x.type, tensor.TensorType):
+            return GpuFromHost(context_name)(x)
+
+    # Try _as_GpuArrayVariable if possible
     if hasattr(x, '_as_GpuArrayVariable'):
         return x._as_GpuArrayVariable(context_name)
 
+    # If it didn't work try for a constant
     ctx = get_context(context_name)
 
     if isinstance(x, gpuarray.GpuArray):
