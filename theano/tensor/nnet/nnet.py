@@ -2052,11 +2052,10 @@ def relu(x, alpha=0):
         return f1 * x + f2 * abs(x)
 
 
-def h_softmax(x, batch_size, n_outputs, W1, b1, W2, b2,
-              n_classes, n_outputs_per_class, target=None):
+def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
+              W1, b1, W2, b2, target=None):
     """ Two-level hierarchical softmax.
 
-    Outputs are grouped in sqrt(n_outputs) classes.
     The architecture is composed of two softmax layers: the first predicts the
     class of the input x while the second predicts the output of the input x in
     the predicted class.
