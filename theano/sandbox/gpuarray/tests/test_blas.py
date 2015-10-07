@@ -100,7 +100,7 @@ class TestGpuGer_OpContract(TestCase, utt.T_OpContractMixin):
         self.ops = [gpuger_no_inplace, gpuger_inplace]
 
     def clone(self, op):
-        return GpuGer(destructive=op.destructive)
+        return GpuGer(inplace=op.inplace)
 
 
 GpuDot22Tester = makeTester(

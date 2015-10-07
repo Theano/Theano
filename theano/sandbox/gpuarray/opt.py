@@ -728,7 +728,7 @@ def local_gpuagemm_output_merge(node, *inputs):
 @register_opt('fast_compile')
 @op_lifter([tensor.blas.Ger, tensor.blas_c.CGer, tensor.blas_scipy.ScipyGer])
 def local_gpua_ger(node, context_name):
-    return GpuGer(destructive=node.op.destructive)
+    return GpuGer(inplace=node.op.destructive)
 
 
 @register_opt('fast_compile')

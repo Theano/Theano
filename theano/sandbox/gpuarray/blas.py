@@ -31,6 +31,11 @@ class BlasOp(HideC):
 
 
 class GpuGemv(BlasOp):
+    def __init__(self, inplace=False):
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+
     def make_node(self, y, alpha, A, x, beta):
         ctx_name = infer_context_name(y, A, x)
         A = as_gpuarray_variable(A, ctx_name)
@@ -104,6 +109,11 @@ gpugemv_inplace = GpuGemv(inplace=True)
 class GpuGemm(BlasOp):
     _f16_ok = True
 
+    def __init__(self, inplace=False):
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+
     def make_node(self, C, alpha, A, B, beta):
         ctx_name = infer_context_name(C, A, B)
         A = as_gpuarray_variable(A, ctx_name)
@@ -175,6 +185,11 @@ gpugemm_inplace = GpuGemm(inplace=True)
 
 
 class GpuGer(BlasOp):
+    def __init__(self, inplace=False):
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+
     def make_node(self, A, alpha, x, y):
         ctx_name = infer_context_name(A, x, y)
         A = as_gpuarray_variable(A, ctx_name)
@@ -236,8 +251,8 @@ class GpuGer(BlasOp):
         return (3,)
 
 
-gpuger_no_inplace = GpuGer(destructive=False)
-gpuger_inplace = GpuGer(destructive=True)
+gpuger_no_inplace = GpuGer(inplace=False)
+gpuger_inplace = GpuGer(inplace=True)
 
 
 class GpuDot22(BlasOp):
