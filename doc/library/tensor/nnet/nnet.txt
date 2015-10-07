@@ -21,6 +21,7 @@
    - :func:`relu() <theano.tensor.nnet.relu>`
    - :func:`binary_crossentropy`
    - :func:`.categorical_crossentropy`
+   - :func:`h_softmax() <theano.tensor.nnet.h_softmax>`
 
 .. function:: sigmoid(x)
 
@@ -204,3 +205,6 @@
        y = T.nnet.softmax(T.dot(W, x) + b)
        cost = T.nnet.categorical_crossentropy(y, o)
        # o is either the above-mentioned 1-of-N vector or 2D tensor
+
+
+.. autofunction:: theano.tensor.nnet.h_softmax

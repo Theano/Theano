@@ -2068,7 +2068,9 @@ def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
 
     The outputs are grouped in the same order as they are initially defined.
 
-    Arguments:
+    .. versionadded:: 0.7.1
+
+    Parameters
     ----------
     x: tensor of shape (batch_size, number of features)
         the minibatch input of the two-layer hierarchical softmax.
@@ -2087,19 +2089,18 @@ def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
     n_outputs_per_class: int
         the number of outputs per class. See note at the end.
 
-    W1: tensor of shape (number of features of the input x, number of classes)
+    W1: tensor of shape (number of features of the input x, n_classes)
         the weight matrix of the first softmax, which maps the input x to the
         probabilities of the classes.
 
-    b1: tensor of shape (number of classes,)
+    b1: tensor of shape (n_classes,)
         the bias vector of the first softmax layer.
 
-    W2: tensor of shape (number of classes, number of features of the input x,
-        number of outputs per class)
+    W2: tensor of shape (n_classes, number of features of the input x, n_outputs_per_class)
         the weight matrix of the second softmax, which maps the input x to
         the probabilities of the outputs.
 
-    b2: tensor of shape (number of classes, number of outputs per class)
+    b2: tensor of shape (n_classes, n_outputs_per_class)
         the bias vector of the second softmax layer.
 
     target: tensor of shape either (batch_size,) or (batch_size, 1)
@@ -2109,7 +2110,16 @@ def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
         corresponding target. If target is None, then all the outputs are
         computed for each input.
 
-    Notes
+    Returns
+    -------
+    tensor of shape (batch_size, n_outputs) or (batch_size, 1)
+        Output of the two-layer hierarchical softmax for input x. If target is
+        not specified (None), then all the outputs are computed and the
+        returned tensor has shape (batch_size, n_outputs). Otherwise, when
+        target is specified, only the corresponding outputs are computed and
+        the returned tensor has thus shape (batch_size, 1).
+
+    Notes:
     -----
     The product of n_outputs_per_class and n_classes has to be greater or equal
     to n_outputs. If it is strictly greater, then the irrelevant outputs will

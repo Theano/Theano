@@ -46,7 +46,7 @@ from theano.sandbox.cuda.blas import (
     GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad,
     GpuDownsampleFactorMaxGradGrad)
 
-from theano.sandbox.blocksparse import SparseBlockGemv, SparseBlockOuter
+from theano.tensor.nnet.blocksparse import SparseBlockGemv, SparseBlockOuter
 from theano.sandbox.cuda.blocksparse import (
     GpuSparseBlockGemv,
     GpuSparseBlockOuter,

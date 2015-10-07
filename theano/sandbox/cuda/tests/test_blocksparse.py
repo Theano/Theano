@@ -22,7 +22,7 @@ else:
 
 
 class BlockSparse_Gemv_and_Outer(
-        theano.sandbox.tests.test_blocksparse.BlockSparse_Gemv_and_Outer):
+        theano.tensor.nnet.tests.test_blocksparse.BlockSparse_Gemv_and_Outer):
     def setUp(self):
         utt.seed_rng()
         self.mode = mode_with_gpu.excluding('constant_folding')
