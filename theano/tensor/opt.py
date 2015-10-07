@@ -3468,7 +3468,6 @@ def local_mul_switch_sink(node):
         return False
     for idx, i in enumerate(node.inputs):
         if i.owner and i.owner.op == T.switch:
-            # import ipdb;ipdb.set_trace()
             switch = i.owner
             try:
                 if (get_scalar_constant_value(
