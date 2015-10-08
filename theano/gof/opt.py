@@ -1773,6 +1773,8 @@ class NavigatorOptimizer(Optimizer):
                 raise
         if replacements is False or replacements is None:
             return False
+        if replacements is True:
+            return True
         old_vars = node.outputs
         if isinstance(replacements, dict):
             old_vars = list(replacements.keys())

@@ -504,9 +504,22 @@ def register_specialize_device(lopt, *tags, **kwargs):
         return lopt
 
 
-# Register merge_optimizer as a global opt during canonicalize
-compile.optdb['canonicalize'].register('canon_merge', merge_optimizer,
-                                       'fast_run', final_opt=True)
+# Register in the canonizer Equilibrium as a local opt the merge opt.
+# Without this, as the equilibrium have ignore_newtrees=False, we
+# won't merge all nodes if it is set as a global optimizer with
+# final_opt=True.
+#
+# This work due to those properties:
+# 1) the EQ will execute first the optimizer that trac all nodes.
+# 2) after an local optimization being applied, if the
+#    current node is still in the graph, it will continue to the next
+#    local optimizer. So this won't trigger more iteration.
+@register_canonicalize('fast_compile', 'merge')
+@gof.local_optimizer(None)
+def local_merge_optimizer(node):
+    if node.fgraph.merge_feature.scheduled:
+        ret = merge_optimizer(node.fgraph)
+        return ret[5] > 0
 
 
 #####################
