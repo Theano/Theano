@@ -514,8 +514,13 @@ def register_specialize_device(lopt, *tags, **kwargs):
 # 2) after an local optimization being applied, if the
 #    current node is still in the graph, it will continue to the next
 #    local optimizer. So this won't trigger more iteration.
+def add_merge_feature(fgraph):
+    if not hasattr(fgraph, 'merge_feature'):
+        fgraph.attach_feature(theano.gof.opt.MergeFeature())
+
+
 @register_canonicalize('fast_compile', 'merge')
-@gof.local_optimizer(None)
+@gof.local_optimizer(None, requirements=[add_merge_feature])
 def local_merge_optimizer(node):
     if node.fgraph.merge_feature.scheduled:
         ret = merge_optimizer(node.fgraph)

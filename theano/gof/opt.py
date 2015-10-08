@@ -1165,7 +1165,7 @@ class FromFunctionLocalOptimizer(LocalOptimizer):
             id(self)), file=stream)
 
 
-def local_optimizer(tracks, inplace=False):
+def local_optimizer(tracks, inplace=False, requirements=()):
     def decorator(f):
         """
         WRITEME
@@ -1177,12 +1177,13 @@ def local_optimizer(tracks, inplace=False):
             for t in tracks:
                 if not (isinstance(t, op.Op) or issubclass(t, op.PureOp)):
                     raise ValueError("Tracks are op classes or instances", f.__module__, f.__name__)
-        requirements = ()
+        req = requirements
         if inplace:
             dh_handler = dh.DestroyHandler
-            requirements = (lambda fgraph:
-                            fgraph.attach_feature(dh_handler()),)
-        rval = FromFunctionLocalOptimizer(f, tracks, requirements)
+            req = tuple(requirements) + (
+                lambda fgraph:
+                fgraph.attach_feature(dh_handler()),)
+        rval = FromFunctionLocalOptimizer(f, tracks, req)
         rval.__name__ = f.__name__
         return rval
     return decorator
