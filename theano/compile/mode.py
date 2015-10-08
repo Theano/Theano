@@ -91,6 +91,8 @@ exclude = []
 if not theano.config.cxx:
     exclude = ['cxx_only']
 OPT_NONE = gof.Query(include=[], exclude=exclude)
+# Even if multiple merge optimizer call will be there, this shouldn't
+# impact performance.
 OPT_MERGE = gof.Query(include=['merge'], exclude=exclude)
 OPT_FAST_RUN = gof.Query(include=['fast_run'], exclude=exclude)
 OPT_FAST_RUN_STABLE = OPT_FAST_RUN.requiring('stable')
@@ -113,7 +115,7 @@ OPT_STABILIZE.name = 'OPT_STABILIZE'
 predefined_optimizers = {
     None: OPT_NONE,
     'None': OPT_NONE,
-    'merge': gof.MergeOptimizer(),
+    'merge': OPT_MERGE,
     'fast_run': OPT_FAST_RUN,
     'fast_run_stable': OPT_FAST_RUN_STABLE,
     'fast_compile': OPT_FAST_COMPILE,
