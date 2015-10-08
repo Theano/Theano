@@ -722,3 +722,24 @@ def test_scan_debugprint5():
 
     for truth, out in zip(expected_output.split("\n"), lines):
         assert truth.strip() == out.strip()
+
+
+def test_printing_scan():
+    def f_pow2(x_tm1):
+        return 2 * x_tm1
+
+    state = theano.tensor.scalar('state')
+    n_steps = theano.tensor.iscalar('nsteps')
+    output, updates = theano.scan(f_pow2,
+                                  [],
+                                  state,
+                                  [],
+                                  n_steps=n_steps,
+                                  truncate_gradient=-1,
+                                  go_backwards=False)
+    f = theano.function([state, n_steps],
+                        output,
+                        updates=updates,
+                        allow_input_downcast=True)
+    theano.printing.pydotprint(output, scan_graphs=True)
+    theano.printing.pydotprint(f, scan_graphs=True)

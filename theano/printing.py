@@ -1018,7 +1018,11 @@ def pydotprint(fct, outfile=None,
             else:
                 new_name = basename + '_' + str(idx)
             new_name = os.path.join(path, new_name + ext)
-            pydotprint(scan_op.op.fn, new_name, compact, format, with_ids,
+            if hasattr(scan_op.op, 'fn'):
+                to_print = scan_op.op.fn
+            else:
+                to_print = scan_op.op.outputs
+            pydotprint(to_print, new_name, compact, format, with_ids,
                        high_contrast, cond_highlight, colorCodes,
                        max_label_size, scan_graphs)
 
