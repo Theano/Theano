@@ -580,7 +580,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                print_view_map=False, order=None, ids='CHAR',
                stop_on_name=False, prefix_child=None,
                scan_ops=None, profile=None,
-               scan_inner_to_outer_inputs=None):
+               scan_inner_to_outer_inputs=None, smap=None):
     """
     Print the graph leading to `r` to given depth.
 
@@ -691,21 +691,19 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
 
         if profile is None or a not in profile.apply_time:
             if len(a.outputs) == 1:
-                print('%s%s %s%s \'%s\' %s %s %s' % (prefix, a.op,
-                                                     id_str,
-                                                     type_str,
-                                                     r_name,
-                                                     destroy_map_str,
-                                                     view_map_str,
-                                                     o), file=file)
+                idx = ""
             else:
-                print('%s%s.%i %s%s \'%s\' %s %s %s' % (prefix, a.op,
-                                                        a.outputs.index(r),
-                                                        id_str, type_str,
-                                                        r_name,
-                                                        destroy_map_str,
-                                                        view_map_str,
-                                                        o), file=file)
+                idx = ".%i" % a.outputs.index(r)
+            data = ""
+            if smap:
+                data = " " + str(smap[a.outputs[0]])
+            print('%s%s%s %s%s \'%s\' %s %s %s%s' % (prefix, a.op,
+                                                      idx,
+                                                      id_str, type_str,
+                                                      r_name,
+                                                      destroy_map_str,
+                                                      view_map_str,
+                                                      o, data), file=file)
         else:
             op_time = profile.apply_time[a]
             op_time_percent = (op_time / profile.fct_call_time) * 100
@@ -714,31 +712,21 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
             tot_time_percent = (tot_time_dict[a] / profile.fct_call_time) * 100
 
             if len(a.outputs) == 1:
-                print("%s%s %s%s '%s' %s %s %s --> "
-                      "%8.2es %4.1f%% %8.2es %4.1f%%"
-                      % (prefix, a.op,
-                         id_str,
-                         type_str,
-                         r_name,
-                         destroy_map_str,
-                         view_map_str,
-                         o, op_time,
-                         op_time_percent,
-                         tot_time,
-                         tot_time_percent), file=file)
+                idx = ""
             else:
-                print("%s%s.%i %s%s '%s' %s %s %s --> "
-                      "%8.2es %4.1f%% %8.2es %4.1f%%"
-                      % (prefix, a.op,
-                         a.outputs.index(r),
-                         id_str, type_str,
-                         r_name,
-                         destroy_map_str,
-                         view_map_str,
-                         o, op_time,
-                         op_time_percent,
-                         tot_time,
-                         tot_time_percent), file=file)
+                idx = ".%i" % a.outputs.index(r)
+            print("%s%s%s %s%s '%s' %s %s %s --> "
+                  "%8.2es %4.1f%% %8.2es %4.1f%%"
+                  % (prefix, a.op,
+                     idx,
+                     id_str, type_str,
+                     r_name,
+                     destroy_map_str,
+                     view_map_str,
+                     o, op_time,
+                     op_time_percent,
+                     tot_time,
+                     tot_time_percent), file=file)
 
         if not already_printed:
             if (not stop_on_name or
@@ -761,7 +749,8 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                         ids=ids, stop_on_name=stop_on_name,
                         prefix_child=new_prefix_child, scan_ops=scan_ops,
                         profile=profile,
-                        scan_inner_to_outer_inputs=scan_inner_to_outer_inputs)
+                        scan_inner_to_outer_inputs=scan_inner_to_outer_inputs,
+                        smap=smap)
     else:
         if scan_inner_to_outer_inputs is not None and\
            r in scan_inner_to_outer_inputs:
@@ -777,8 +766,13 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                                        outer_id_str), file=file)
         else:
             # this is an input variable
+            data = ""
+            if smap:
+                data = " " + str(smap[r])
             id_str = get_id_str(r)
-            print('%s%s %s%s' % (prefix, r, id_str, type_str), file=file)
+            print('%s%s %s%s%s' % (prefix, r, id_str,
+                                    type_str, data),
+                  file=file)
 
     return file
 

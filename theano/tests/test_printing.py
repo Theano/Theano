@@ -164,6 +164,8 @@ def test_debugprint():
 
     F = D + E
     G = C + F
+    mode = theano.compile.get_default_mode().including('fusion')
+    g = theano.function([A, B, D, E], G, mode=mode)
 
     # just test that it work
     debugprint(G)
@@ -242,6 +244,24 @@ def test_debugprint():
         " |Elemwise{add,no_inplace}  ''   ",
         "   |D ",
         "   |E ",
+    ]) + '\n'
+    if s != reference:
+        print('--' + s + '--')
+        print('--' + reference + '--')
+
+    assert s == reference
+
+    # test print_storage=True
+    s = StringIO()
+    debugprint(g, file=s, ids='', print_storage=True)
+    s = s.getvalue()
+    # The additional white space are needed!
+    reference = '\n'.join([
+        "Elemwise{add,no_inplace}  ''   0 [None]",
+        " |A  [None]",
+        " |B  [None]",
+        " |D  [None]",
+        " |E  [None]",
     ]) + '\n'
     if s != reference:
         print('--' + s + '--')

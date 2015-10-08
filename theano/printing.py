@@ -48,7 +48,7 @@ VALID_ASSOC = set(['left', 'right', 'either'])
 
 def debugprint(obj, depth=-1, print_type=False,
                file=None, ids='CHAR', stop_on_name=False,
-               done=None):
+               done=None, print_storage=False):
     """Print a computation graph as text to stdout or a file.
 
     :type obj: Variable, Apply, or Function instance
@@ -70,6 +70,10 @@ def debugprint(obj, depth=-1, print_type=False,
     :type done: None or dict
     :param done: A dict where we store the ids of printed node.
         Useful to have multiple call to debugprint share the same ids.
+    :type print_storage: bool
+    :param print_storage: If True, this will print the storage map
+        for Theano functions. Combined with allow_gc=False, after the
+        execution of a Theano function, we see the intermediate result.
 
     :returns: string if `file` == 'str', else file arg
 
@@ -101,7 +105,8 @@ def debugprint(obj, depth=-1, print_type=False,
         done = dict()
     results_to_print = []
     profile_list = []
-    order = []
+    order = []  # Toposort
+    smap = []  # storage_map
     if isinstance(obj, (list, tuple, set)):
         lobj = obj
     else:
@@ -110,24 +115,41 @@ def debugprint(obj, depth=-1, print_type=False,
         if isinstance(obj, gof.Variable):
             results_to_print.append(obj)
             profile_list.append(None)
+            smap.append(None)
+            order.append(None)
         elif isinstance(obj, gof.Apply):
             results_to_print.extend(obj.outputs)
             profile_list.extend([None for item in obj.outputs])
+            smap.extend([None for item in obj.outputs])
+            order.extend([None for item in obj.outputs])
         elif isinstance(obj, Function):
             results_to_print.extend(obj.maker.fgraph.outputs)
             profile_list.extend(
                 [obj.profile for item in obj.maker.fgraph.outputs])
-            order = obj.maker.fgraph.toposort()
+            if print_storage:
+                smap.extend(
+                    [obj.fn.storage_map for item in obj.maker.fgraph.outputs])
+            else:
+                smap.extend(
+                    [None for item in obj.maker.fgraph.outputs])
+            topo = obj.maker.fgraph.toposort()
+            order.extend(
+                [topo for item in obj.maker.fgraph.outputs])
         elif isinstance(obj, gof.FunctionGraph):
             results_to_print.extend(obj.outputs)
             profile_list.extend([getattr(obj, 'profile', None)
                                  for item in obj.outputs])
-            order = obj.toposort()
+            smap.extend([getattr(obj, 'storage_map', None)
+                         for item in obj.outputs])
+            topo = obj.toposort()
+            order.extend([topo for item in obj.outputs])
         elif isinstance(obj, (integer_types, float, np.ndarray)):
             print(obj)
         elif isinstance(obj, (theano.In, theano.Out)):
             results_to_print.append(obj.variable)
             profile_list.append(None)
+            smap.append(None)
+            order.append(None)
         else:
             raise TypeError("debugprint cannot print an object of this type",
                             obj)
@@ -152,16 +174,16 @@ N.B.:
   to remove when optimizing a graph because their <total time> is very low.
 """, file=_file)
 
-    for r, p in zip(results_to_print, profile_list):
+    for r, p, s, o in zip(results_to_print, profile_list, smap, order):
         # Add the parent scan op to the list as well
         if (hasattr(r.owner, 'op') and
                 isinstance(r.owner.op, theano.scan_module.scan_op.Scan)):
                     scan_ops.append(r)
 
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
-                             file=_file, order=order, ids=ids,
+                             file=_file, order=o, ids=ids,
                              scan_ops=scan_ops, stop_on_name=stop_on_name,
-                             profile=p)
+                             profile=p, smap=s)
 
     if len(scan_ops) > 0:
         print("", file=_file)
