@@ -14,10 +14,7 @@ from theano.tensor import (as_tensor_variable, blas, get_scalar_constant_value,
 from theano.tensor import TensorType
 from theano.gof import Apply, Op
 from theano.gof import local_optimizer
-
 from theano.tensor.opt import register_specialize_device
-from theano.sandbox.cuda.type import CudaNdarrayType
-
 
 ## Cpu implementation
 from theano.tensor.nnet import conv2d as cpu_conv2d, ConvOp
@@ -327,8 +324,8 @@ def local_conv2d_cpu(node):
         return None
 
     img, kern = node.inputs
-    if isinstance(img.type, CudaNdarrayType) or \
-            isinstance(kern.type, CudaNdarrayType):
+    if (not isinstance(img.type, TensorType) or
+        not isinstance(kern.type, TensorType)):
         return None
     if node.op.border_mode not in ['full', 'valid']:
         return None
@@ -349,8 +346,8 @@ def local_conv2d_gradweight_cpu(node):
 
     img, topgrad, shape = node.inputs
 
-    if isinstance(img.type, CudaNdarrayType) or \
-            isinstance(topgrad.type, CudaNdarrayType):
+    if (not isinstance(img.type, TensorType) or
+        not isinstance(topgrad.type, TensorType)):
         return None
     if node.op.border_mode not in ['full', 'valid']:
         return None
@@ -458,8 +455,8 @@ register_specialize_device(local_conv2d_gradweight_cpu)
 def local_conv2d_gradinputs_cpu(node):
     kern, topgrad, shape = node.inputs
 
-    if  isinstance(kern.type, CudaNdarrayType) or \
-            isinstance(topgrad.type, CudaNdarrayType):
+    if  (not isinstance(kern.type, TensorType) or
+         not isinstance(topgrad.type, TensorType)):
         return None
     if node.op.border_mode not in ['full', 'valid']:
         return None

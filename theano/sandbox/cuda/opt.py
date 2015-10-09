@@ -2686,8 +2686,9 @@ register_opt()(local_conv2d_gpu_conv)
 
 ### Corrmm opt
 @local_optimizer([AbstractConv2d])
-def local_conv2d_corrmm(node):
-
+def local_abstractconv_gemm(node):
+    if not isinstance(node.op, AbstractConv2d):
+        return None
     img, kern = node.inputs
     if (not isinstance(img.type, CudaNdarrayType) or
             not isinstance(kern.type, CudaNdarrayType)):
@@ -2743,16 +2744,15 @@ def local_conv2d_corrmm(node):
                     ).dimshuffle(1, 0, 2, 3))
     return [rval]
 
-register_specialize_device(local_conv2d_corrmm, 'conv_gemm')
-
 @local_optimizer([AbstractConv2d_gradWeights])
-def local_conv2d_gradweight_corrmm(node):
-
+def local_abstractconv_gradweight_gemm(node):
+    if not isinstance(node.op, AbstractConv2d_gradWeights):
+        return None
     img, topgrad, shape = node.inputs
-
     if not isinstance(img.type, CudaNdarrayType) or \
             not isinstance(topgrad.type, CudaNdarrayType):
         return None
+
     rval = GpuCorrMM_gradWeights(border_mode=node.op.border_mode,
                                  subsample=node.op.subsample)(
         gpu_contiguous(img), gpu_contiguous(topgrad), shape)
@@ -2761,12 +2761,12 @@ def local_conv2d_gradweight_corrmm(node):
     rval = tensor.patternbroadcast(rval, node.outputs[0].broadcastable)
     rval = as_cuda_ndarray_variable(rval)
     return [rval]
-register_specialize_device(local_conv2d_gradweight_corrmm, 'conv_gemm')
 
 @local_optimizer([AbstractConv2d_gradInputs])
-def local_conv2d_gradinputs_corrmm(node):
+def local_abstractconv_gradinputs_gemm(node):
+    if not isinstance(node.op, AbstractConv2d_gradInputs):
+        return None
     kern, topgrad, shape = node.inputs
-
     if not isinstance(kern.type, CudaNdarrayType) or \
             not isinstance(topgrad.type, CudaNdarrayType):
         return None
@@ -2778,4 +2778,28 @@ def local_conv2d_gradinputs_corrmm(node):
     subsample=node.op.subsample)(
         gpu_contiguous(kern), gpu_contiguous(topgrad), shape)
     return [rval]
-register_specialize_device(local_conv2d_gradinputs_corrmm, 'conv_gemm')
+
+# Register GPU convolution implementation
+# They are tried in a specific order so we can control
+# which ones take precedence over others.
+abstractconv_groupopt = theano.gof.optdb.LocalGroupDB()
+abstractconv_groupopt.__name__ = "gpu_abstractconv_opts"
+register_opt()(abstractconv_groupopt)
+
+# cuDNN is first, but only registered if cuDNN is available.
+conv_groupopt.register('local_abstractconv_dnn', dnn.local_abstractconv_cudnn, 20,
+                       'conv_dnn',
+                       'fast_compile', 'fast_run', 'cudnn')
+# The GEMM-based convolution comes last to catch all remaining cases.
+# It can be disabled by excluding 'conv_gemm'.
+conv_groupopt.register('local_abstractconv_gemm', local_abstractconv_gemm, 30,
+                       'conv_gemm',
+                       'fast_compile', 'fast_run')
+conv_groupopt.register('local_abstractconv_gradweight_gemm',
+                       local_abstractconv_gradweight_gemm, 30,
+                       #'conv_gemm',
+                       'fast_compile', 'fast_run')
+conv_groupopt.register('local_abstractconv_gradinputs_gemm',
+                       local_abstractconv_gradinputs_gemm, 30,
+                       #'conv_gemm',
+                       'fast_compile', 'fast_run')

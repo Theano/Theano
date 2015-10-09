@@ -2451,8 +2451,7 @@ if True:
 
 ### AbstractConv Optimizations
 @local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights, AbstractConv2d_gradInputs])
-def local_conv2d_cudnn(node):
-
+def local_abstractconv_cudnn(node):
     inp1 = node.inputs[0]
     inp2 = node.inputs[1]
 
@@ -2487,5 +2486,4 @@ def local_conv2d_cudnn(node):
                              subsample=node.op.subsample,
                              conv_mode = conv_mode)
         return [rval]
-register_specialize_device(local_conv2d_cudnn, 'cudnn')
 
