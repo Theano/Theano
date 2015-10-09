@@ -23,7 +23,7 @@ import theano.compile.mode
 from theano.tensor.tests.test_blas import BaseGemv, TestBlasStrides, TestGer
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace, gpu_gemv_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace, gpu_ger_no_inplace
-from theano.sandbox.cuda.blas import batched_dot
+from theano.sandbox.cuda.blas import batched_dot, BatchedDotOp
 
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
@@ -113,6 +113,19 @@ class TestBatchedDot(TestCase):
             [numpy.random.randn(5,7,2).astype(numpy.float32),
              numpy.random.randn(5,2,6).astype(numpy.float32)],
             mode=mode_with_gpu)
+
+
+class TestBatchedDotInferShape(unittest_tools.InferShapeTester):
+    def test_infer_shape(self):
+        # only matrix/matrix is supported
+        admat = tensor.ftensor3()
+        bdmat = tensor.ftensor3()
+        admat_val = my_rand(7, 4, 5)
+        bdmat_val = my_rand(7, 5, 3)
+        self._compile_and_check([admat, bdmat],
+                                [BatchedDotOp()(admat, bdmat)],
+                                [admat_val, bdmat_val],
+                                (BatchedDotOp))
 
 
 def test_dot22():
