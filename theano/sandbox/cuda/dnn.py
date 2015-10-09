@@ -1760,7 +1760,7 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
         Subsampling stride (default: (1, 1)).
     mode : {'max', 'average_inc_pad', 'average_exc_pad}
     pad
-    	(pad_h, pad_w) padding information.
+        (pad_h, pad_w) padding information.
         pad_h is the number of zero-valued pixels added to each of the top and
         bottom borders.
         pad_w is the number of zero-valued pixels added to each of the left
