@@ -6,17 +6,14 @@ __docformat__ = "restructuredtext en"
 
 import logging
 
-import numpy
-
 import theano
-from theano.tensor import (as_tensor_variable, blas, get_scalar_constant_value,
-                           patternbroadcast, NotScalarConstantError)
+from theano.tensor import (as_tensor_variable, patternbroadcast)
 from theano.tensor import TensorType
 from theano.gof import Apply, Op
 from theano.gof import local_optimizer
 from theano.tensor.opt import register_specialize_device
 
-## Cpu implementation
+# Cpu implementation
 from theano.tensor.nnet import conv2d as cpu_conv2d, ConvOp
 from theano.tensor.nnet.ConvGrad3D import convGrad3D
 from theano.tensor.nnet.ConvTransp3D import convTransp3D
@@ -90,21 +87,18 @@ def conv2d(inputs,
         of shape (batch size, output channels, output rows, output columns)
     """
 
-    ### FIXME input shape/kernel shape
     conv_op = AbstractConv2d(imshp=inputs_shape,
                              kshp=filters_shape,
                              bsize=batch_size,
                              border_mode=border_mode,
                              subsample=subsample,
-                             filters_flip = filters_flip)
+                             filters_flip=filters_flip)
     return conv_op(inputs, filters)
 
 
-
 class BaseAbstractConv2d(Op):
-    """Base class for ConvInferace
-
-    FIXME
+    """
+    Base class for ConvInferace
     """
     check_broadcast = False
     __props__ = ('border_mode', 'subsample', 'filters_flip', 'imshp', 'kshp', 'bsize')
@@ -151,11 +145,8 @@ class BaseAbstractConv2d(Op):
         return flops
 
 
-
 class AbstractConv2d(BaseAbstractConv2d):
-    """
-    FIXME
-    """
+
     def __init__(self,
                  imshp=None,
                  kshp=None,
@@ -172,12 +163,10 @@ class AbstractConv2d(BaseAbstractConv2d):
         if kern.type.ndim != 4:
             raise TypeError('kern must be 4D tensor')
 
-        broadcastable=[img.broadcastable[0],
-                       kern.broadcastable[0],
-                       False, False]
-        #output = img.type.__class__(dtype=img.type.dtype,
-        #                            broadcastable=broadcastable)()
-        output = img.type.clone( broadcastable=broadcastable)()
+        broadcastable = [img.broadcastable[0],
+                         kern.broadcastable[0],
+                         False, False]
+        output = img.type.clone(broadcastable=broadcastable)()
         return Apply(self, [img, kern], [output])
 
     def perform(self, node, inp, out_):
@@ -219,7 +208,7 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
         super(AbstractConv2d_gradWeights, self).__init__(imshp, kshp, bsize,
                                                          border_mode, subsample, filters_flip)
 
-    ## Update shape/height_width
+    # Update shape/height_width
     def make_node(self, img, topgrad, shape):
         if img.type.ndim != 4:
             raise TypeError('img must be 4D tensor')
@@ -231,9 +220,9 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
                                  ' or border_mode == "half"')
 
         shape = as_tensor_variable(shape)
-        broadcastable=[topgrad.broadcastable[1],
-                       img.broadcastable[1],
-                       False, False]
+        broadcastable = [topgrad.broadcastable[1],
+                         img.broadcastable[1],
+                         False, False]
         output = img.type.clone(broadcastable=broadcastable)()
         return Apply(self, [img, topgrad, shape], [output])
 
@@ -280,7 +269,7 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
         super(AbstractConv2d_gradInputs, self).__init__(imshp, kshp, bsize,
                                                         border_mode, subsample, filters_flip)
 
-    ## Update shape/height_width
+    # Update shape/height_width
     def make_node(self, kern, topgrad, shape):
         if kern.type.ndim != 4:
             raise TypeError('kern must be 4D tensor')
@@ -289,14 +278,12 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
         if self.subsample != (1, 1) and shape is None:
             raise ValueError('shape must be given if subsample != (1, 1)')
 
-
         shape = as_tensor_variable(shape)
         broadcastable = [topgrad.type.broadcastable[0],
                          kern.type.broadcastable[1],
                          False, False]
         output = kern.type.clone(broadcastable=broadcastable)()
         return Apply(self, [kern, topgrad, shape], [output])
-
 
     def perform(self, node, inp, out_):
         raise NotImplementedError('AbstractConv2d_gradWeight theano optimization failed')
@@ -316,7 +303,8 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
     def connection_pattern(self, node):
         return [[1], [1], [0]]  # no connection to height, width
 
-### Cpu Optmization
+
+# Cpu Optmization
 @local_optimizer([AbstractConv2d])
 def local_conv2d_cpu(node):
 
@@ -324,8 +312,8 @@ def local_conv2d_cpu(node):
         return None
 
     img, kern = node.inputs
-    if (not isinstance(img.type, TensorType) or
-        not isinstance(kern.type, TensorType)):
+    if ((not isinstance(img.type, TensorType) or
+         not isinstance(kern.type, TensorType))):
         return None
     if node.op.border_mode not in ['full', 'valid']:
         return None
@@ -346,8 +334,8 @@ def local_conv2d_gradweight_cpu(node):
 
     img, topgrad, shape = node.inputs
 
-    if (not isinstance(img.type, TensorType) or
-        not isinstance(topgrad.type, TensorType)):
+    if ((not isinstance(img.type, TensorType) or
+         not isinstance(topgrad.type, TensorType))):
         return None
     if node.op.border_mode not in ['full', 'valid']:
         return None
@@ -397,11 +385,11 @@ def local_conv2d_gradweight_cpu(node):
             # We cannot infer the shapes
             return None
 
-    ####### Determine gradient on kernels ########
+    # Determine gradient on kernels
     assert len(op_imshp) == 4 and len(op_kshp) == 4
 
     outshp = ConvOp.getOutputShape(op_imshp[2:],
-                                   op_kshp[2:],  node.op.subsample,
+                                   op_kshp[2:], node.op.subsample,
                                    node.op.border_mode)
     fulloutshp = ConvOp.getOutputShape(op_imshp[2:],
                                        op_kshp[2:], (1, 1),
@@ -455,8 +443,8 @@ register_specialize_device(local_conv2d_gradweight_cpu)
 def local_conv2d_gradinputs_cpu(node):
     kern, topgrad, shape = node.inputs
 
-    if  (not isinstance(kern.type, TensorType) or
-         not isinstance(topgrad.type, TensorType)):
+    if ((not isinstance(kern.type, TensorType) or
+         not isinstance(topgrad.type, TensorType))):
         return None
     if node.op.border_mode not in ['full', 'valid']:
         return None
@@ -464,7 +452,7 @@ def local_conv2d_gradinputs_cpu(node):
         # Not tested yet
         return None
 
-    ### Conv 3d implementation, needed when subsample > 2
+    # Conv 3d implementation, needed when subsample > 2
     if node.op.border_mode == 'valid' and node.op.subsample != (1, 1):
         kern = kern[:, :, ::-1, ::-1]
         shuffled_kern = kern.dimshuffle(0, 2, 3, 'x', 1)
@@ -479,7 +467,7 @@ def local_conv2d_gradinputs_cpu(node):
         rval = patternbroadcast(rval, node.outputs[0].broadcastable)
         return [rval]
 
-    ### Conv2d Implementation
+    # Conv2d Implementation
     dx, dy = node.op.subsample
     if dx not in (1, 2) or dy not in (1, 2):
         # Not implemented in the gradient of ConvOp
@@ -506,7 +494,7 @@ def local_conv2d_gradinputs_cpu(node):
     filters = filters[:, :, ::-1, ::-1]
 
     outshp = ConvOp.getOutputShape(op_imshp[2:],
-                                   op_kshp[2:],  node.op.subsample,
+                                   op_kshp[2:], node.op.subsample,
                                    node.op.border_mode)
     fulloutshp = ConvOp.getOutputShape(op_imshp[2:],
                                        op_kshp[2:], (1, 1),

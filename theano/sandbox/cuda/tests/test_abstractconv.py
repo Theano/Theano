@@ -1,22 +1,13 @@
 import unittest
 import numpy
-import copy
 import itertools
 
 import theano
-import theano.tensor as T
 from theano.tests import unittest_tools as utt
-
-from nose.plugins.skip import SkipTest
-import theano.tensor.nnet.conv as conv_ref
 import theano.tensor.nnet.abstract_conv2d as conv
-
 from theano.sandbox.cuda import float32_shared_constructor as gpu_shared
 from theano.compile import shared as cpu_shared
-
-from theano.sandbox.cuda.tests.test_conv_cuda_ndarray import py_conv
 from theano.sandbox.cuda.dnn import dnn_available, dnn_conv, dnn_gradweight, dnn_gradinput
-
 
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
@@ -29,8 +20,8 @@ else:
 class TestConv2d(unittest.TestCase):
 
     def setUp(self):
-        super(TestConv2d, self).setUp()
 
+        super(TestConv2d, self).setUp()
         self.inputs_shapes = [(8, 1, 12, 12), (8, 1, 18, 18), (2, 1, 4, 4),
                               (6, 1, 10, 11), (2, 1, 6, 5), (1, 5, 9, 9)]
         self.filters_shapes = [(5, 1, 2, 2), (4, 1, 3, 3), (2, 1, 3, 3),
@@ -39,8 +30,8 @@ class TestConv2d(unittest.TestCase):
         self.border_modes = ["valid", "full", (0, 0), (1, 1), (5, 5), (5, 2)]
         self.filters_flip = [True, False]
 
-
     def get_output_shape(self, inputs_shape, filters_shape, subsample, border_mode):
+
         if border_mode == "valid":
             border_mode = (0, 0)
         if border_mode == "full":
@@ -49,7 +40,7 @@ class TestConv2d(unittest.TestCase):
         num_filters = filters_shape[0]
         return (batch_size, num_filters,) \
             + tuple(None if i is None or k is None
-                    else ((i + 2*pad - k) // d + 1)
+                    else ((i + 2 * pad - k) // d + 1)
                     for i, k, d, pad in zip(inputs_shape[2:], filters_shape[2:],
                                             subsample, border_mode))
 
@@ -79,7 +70,7 @@ class TestConv2d(unittest.TestCase):
         c_ref = ref(inputs, filters,
                     border_mode=border_mode,
                     subsample=subsample,
-                    conv_mode = conv_mode)
+                    conv_mode=conv_mode)
         c = conv.conv2d(inputs, filters,
                         border_mode=border_mode,
                         subsample=subsample,
@@ -123,7 +114,7 @@ class TestConv2d(unittest.TestCase):
         c = conv.AbstractConv2d_gradWeights(border_mode=border_mode,
                                             filters_flip=filters_flip,
                                             subsample=subsample,
-                                            imshp = imshp, kshp = kshp)
+                                            imshp=imshp, kshp=kshp)
         c = c(inputs, output, filters_shape[-2:])
         c_ref = ref(inputs, output,
                     filters_shape,
@@ -144,11 +135,9 @@ class TestConv2d(unittest.TestCase):
             utt.verify_grad(abstract_conv2d_gradweight, [inputs_val, output_val],
                             mode=mode, eps=1)
 
-
     def run_gradinput(self, inputs_shape, filters_shape, output_shape, ref=dnn_gradinput,
                       subsample=(1, 1), filters_flip=True, verify_grad=True, mode=mode_without_gpu,
                       border_mode='valid', device='cpu', provide_shape = False):
-
 
         output_val = numpy.random.random(output_shape).astype('float32')
         filters_val = numpy.random.random(filters_shape).astype('float32')
@@ -189,11 +178,10 @@ class TestConv2d(unittest.TestCase):
             utt.verify_grad(abstract_conv2d_gradinputs, [filters_val, output_val],
                             mode=mode, eps=1)
 
-
     def test_dnn_conv(self):
         if not dnn_available():
             return
-        mode=mode_with_gpu
+        mode = mode_with_gpu
         # provide_shape is not used by the CuDNN impementation
         provide_shape = False
 
