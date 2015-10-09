@@ -725,6 +725,10 @@ def test_scan_debugprint5():
 
 
 def test_printing_scan():
+    # Skip test if pydot is not available.
+    if not theano.printing.pydot_imported:
+        raise SkipTest('pydot not available')
+
     def f_pow2(x_tm1):
         return 2 * x_tm1
 
