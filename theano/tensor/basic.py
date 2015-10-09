@@ -2666,7 +2666,7 @@ class Alloc(gof.Op):
                 raise TypeError(
                     'Each shape dimensions to Alloc must be scalars, '
                     'but dimensions %s is not for apply node: %s' %
-                                (i, s_as_str))
+                    (i, s_as_str))
 
             # if s is constant 1, then we're broadcastable in that dim
             try:

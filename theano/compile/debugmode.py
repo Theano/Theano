@@ -698,12 +698,12 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
             if smap:
                 data = " " + str(smap[a.outputs[0]])
             print('%s%s%s %s%s \'%s\' %s %s %s%s' % (prefix, a.op,
-                                                      idx,
-                                                      id_str, type_str,
-                                                      r_name,
-                                                      destroy_map_str,
-                                                      view_map_str,
-                                                      o, data), file=file)
+                                                     idx,
+                                                     id_str, type_str,
+                                                     r_name,
+                                                     destroy_map_str,
+                                                     view_map_str,
+                                                     o, data), file=file)
         else:
             op_time = profile.apply_time[a]
             op_time_percent = (op_time / profile.fct_call_time) * 100
@@ -771,7 +771,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                 data = " " + str(smap[r])
             id_str = get_id_str(r)
             print('%s%s %s%s%s' % (prefix, r, id_str,
-                                    type_str, data),
+                                   type_str, data),
                   file=file)
 
     return file
