@@ -279,8 +279,7 @@ def test_pooling():
                     a = f1(data).__array__()
 
                     b = f2(data).__array__()
-                    assert numpy.allclose(a, b,
-                                          atol=numpy.finfo(numpy.float32).eps)
+                    utt.assert_allclose(a, b)
 
         # Test the grad
         for shp in [(1, 1, 2, 2),
@@ -338,7 +337,7 @@ def test_pooling():
                 assert any([isinstance(node.op, AveragePoolGrad)
                             for node in fc.maker.fgraph.toposort()])
             c_out = fc(data)
-            assert numpy.allclose(c_out, g_out)
+            utt.assert_allclose(c_out, g_out)
 
 
 def test_pooling3d():
@@ -443,7 +442,7 @@ def test_pooling3d():
             fc = theano.function([x], theano.grad(out.sum(), x),
                                  mode=mode_without_gpu)
             c_out = fc(data)
-            assert numpy.allclose(c_out, g_out)
+            utt.assert_allclose(c_out, g_out)
 
 
 def test_pooling_opt():
