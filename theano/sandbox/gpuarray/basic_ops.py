@@ -71,7 +71,8 @@ def as_gpuarray_variable(x, context_name):
     bcast = [(s == 1) for s in x.shape]
     return GpuArrayConstant(GpuArrayType(dtype=x.dtype,
                                          broadcastable=bcast,
-                                         context_name=context_name))
+                                         context_name=context_name),
+                            x)
 
 
 def infer_context_name(*vars):

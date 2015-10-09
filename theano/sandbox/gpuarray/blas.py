@@ -50,8 +50,6 @@ class GpuGemv(BlasOp):
         assert A.ndim == 2
         assert x.ndim == 1
         assert y.ndim == 1
-        assert alpha.dtype in ['float32', 'float64']
-        assert beta.dtype in ['float32', 'float64']
         assert A.dtype == x.dtype == y.dtype
         return Apply(self, [y, alpha, A, x, beta], [y.type()])
 
@@ -129,8 +127,6 @@ class GpuGemm(BlasOp):
         assert A.ndim == 2
         assert B.ndim == 2
         assert C.ndim == 2
-        assert alpha.dtype in ['float32', 'float64']
-        assert beta.dtype in ['float32', 'float64']
         assert A.dtype == B.dtype == C.dtype
         return Apply(self, [C, alpha, A, B, beta], [C.type()])
 
@@ -205,13 +201,12 @@ class GpuGer(BlasOp):
         assert A.ndim == 2
         assert x.ndim == 1
         assert y.ndim == 1
-        assert alpha.dtype in ['float32', 'float64']
         assert A.dtype == x.dtype == y.dtype
         return Apply(self, [A, alpha, x, y], [A.type()])
 
     def perform(self, node, inp, out):
         A, alpha, x, y = inp
-        inplace = self.destructive
+        inplace = self.inplace
         if inplace and not A.flags.forc:
             inplace = False
         out[0][0] = blas.ger(alpha, x, y, A,
@@ -220,7 +215,7 @@ class GpuGer(BlasOp):
     def c_code(self, node, name, inp, out, sub):
         vars = dict(out=out[0], A=inp[0], alpha=inp[1], x=inp[2], y=inp[3],
                     fail=sub['fail'], name=name)
-        if self.destructive:
+        if self.inplace:
             code = """
                    if (!GpuArray_ISONESEGMENT(&%(A)s->ga)) {
                      %(out)s = theano_try_copy(%(out)s, %(A)s);
