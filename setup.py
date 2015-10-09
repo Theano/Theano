@@ -160,7 +160,6 @@ def do_setup():
           url=URL,
           license=LICENSE,
           platforms=PLATFORMS,
-          use_2to3=True,
           packages=find_packages(),
           # 1.7.0 give too much warning related to numpy.diagonal.
           install_requires=['numpy>=1.7.1', 'scipy>=0.11', 'six>=1.9.0'],
