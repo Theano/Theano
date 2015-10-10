@@ -117,7 +117,7 @@ class MultinomialFromUniform(Op):
             {
                 int waiting = 1;
                 dtype_%(pvals)s cummul = 0.;
-                const dtype_%(unis)s* unis_n = (dtype_%(unis)s*)PyArray_GETPTR1(%(unis)s, c*n_samples + n);
+                const dtype_%(unis)s* unis_n = (dtype_%(unis)s*)PyArray_GETPTR1(%(unis)s, c*nb_multi + n);
                 for (int m = 0; m < nb_outcomes; ++m)
                 {
                     dtype_%(z)s* z_nm = (dtype_%(z)s*)PyArray_GETPTR2(%(z)s, n,m);
@@ -150,8 +150,6 @@ class MultinomialFromUniform(Op):
         """ % locals()
 
     def perform(self, node, ins, outs):
-        # import pdb; pdb.set_trace()
-
         (pvals, unis, n_samples) = ins
         (z,) = outs
 
