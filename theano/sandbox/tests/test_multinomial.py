@@ -30,7 +30,7 @@ def run_with_c(f, gpu=False):
     f(mode, gpu)
 
 
-def test_n_samples():
+def test_n_samples_1():
     p = tensor.fmatrix()
     u = tensor.fvector()
     n = tensor.scalar()
@@ -38,11 +38,35 @@ def test_n_samples():
     
     f = function([p, u, n], m, allow_input_downcast=True)
 
-    for uni in [.1, .2, .4, .5, .7, .9]:
-        for i in [1, 5, 10, 15, 100]:
-            res = f([[1, 0], [0, 1]], [.4, .4]*i, i)
-            utt.assert_allclose(res,
-                                [[i, 0], [0, i]])
+    numpy.random.seed(12345)
+    for i in [1, 5, 10, 100, 1000, 10000]:
+        uni = numpy.random.rand(2*i).astype(config.floatX)
+        res = f([[1.0, 0.0], [0.0, 1.0]], uni, i)
+        utt.assert_allclose(res, [[i*1.0, 0.0], [0.0, i*1.0]])
+
+
+def test_n_samples_2():
+    p = tensor.fmatrix()
+    u = tensor.fvector()
+    n = tensor.scalar()
+    m = multinomial.MultinomialFromUniform('auto')(p, u, n)
+    
+    f = function([p, u, n], m, allow_input_downcast=True)
+
+    numpy.random.seed(12345)
+    for i in [1, 5, 10, 100, 1000]:
+        uni = numpy.random.rand(i).astype(config.floatX)
+        pvals = numpy.random.randint(1,1000,(1,1000)).astype(config.floatX)
+        pvals /= pvals.sum(1)
+        res = f(pvals, uni, i)
+        assert res.sum() == i
+
+    for i in [1, 5, 10, 100, 1000]:
+        uni = numpy.random.rand(i).astype(config.floatX)
+        pvals = numpy.random.randint(1,1000000,(1,1000000)).astype(config.floatX)
+        pvals /= pvals.sum(1)
+        res = f(pvals, uni, i)
+        assert res.sum() == i
 
 def test_multinomial_0():
     # This tests the MultinomialFromUniform Op directly, not going through the
