@@ -7,9 +7,7 @@ import theano
 import theano.tensor as T
 import theano.tests.unittest_tools as utt
 
-# We let that import do the init of the back-end if needed.
-from .test_basic_ops import (mode_with_gpu,
-                             mode_without_gpu)
+from .config import mode_with_gpu, mode_without_gpu
 from ..nnet import (
     GpuCrossentropySoftmaxArgmax1HotWithBias,
     GpuCrossentropySoftmax1HotWithBiasDx,

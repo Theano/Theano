@@ -4874,6 +4874,12 @@ class T_Scan_Gpuarray(unittest.TestCase, ScanGpuTests):
     def __init__(self, *args, **kwargs):
         from theano.sandbox import gpuarray
         self.gpu_backend = gpuarray
+
+        # This is unfortunate, but required
+        def gpu_from_host(v):
+            return gpuarray.GpuFromHost(None)(v)
+        self.gpu_backend.gpu_from_host = gpu_from_host
+
         self.mode_with_gpu = mode_with_opt.including('gpuarray', 'scan')
         self.mode_with_gpu_nodebug = mode_nodebug.including('gpuarray', 'scan')
         super(T_Scan_Gpuarray, self).__init__(*args, **kwargs)

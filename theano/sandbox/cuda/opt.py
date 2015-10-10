@@ -2478,8 +2478,11 @@ def local_gpu_allocempty(node):
     return False
 
 
+def typeInfer(node):
+    return typeConstructor
+
 optdb.register('gpu_scanOp_make_inplace',
-               scan_opt.ScanInplaceOptimizer(typeConstructor=typeConstructor,
+               scan_opt.ScanInplaceOptimizer(typeInfer=typeInfer,
                                              gpu_flag=True),
                75,
                'gpu',

@@ -107,14 +107,14 @@ cudnnHandle_t APPLY_SPECIFIC(_handle);
 #section init_code_struct
 
 {
-  cuda_enter(pygpu_default_context()->ctx);
+  cuda_enter(CONTEXT->ctx);
   cudnnStatus_t err;
   APPLY_SPECIFIC(_handle) = NULL;
   if ((err = cudnnCreate(&APPLY_SPECIFIC(_handle))) != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError, "could not create cuDNN handle: %s",
                  cudnnGetErrorString(err));
-    cuda_exit(pygpu_default_context()->ctx);
+    cuda_exit(CONTEXT->ctx);
     FAIL;
   }
-  cuda_exit(pygpu_default_context()->ctx);
+  cuda_exit(CONTEXT->ctx);
 }

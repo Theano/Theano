@@ -11,8 +11,7 @@ from ..subtensor import (GpuIncSubtensor, GpuSubtensor,
                          GpuAdvancedIncSubtensor1)
 from ..type import gpuarray_shared_constructor
 
-from .test_basic_ops import mode_with_gpu
-
+from .config import mode_with_gpu
 
 
 class G_subtensor(test_subtensor.T_subtensor):
@@ -46,8 +45,8 @@ def test_advinc_subtensor1():
         yval[:] = 10
         x = shared(xval, name='x')
         y = tensor.tensor(dtype='float32',
-                     broadcastable=(False,) * len(shp),
-                     name='y')
+                          broadcastable=(False,) * len(shp),
+                          name='y')
         expr = tensor.advanced_inc_subtensor1(x, y, [0, 2])
         f = theano.function([y], expr, mode=mode_with_gpu)
         assert sum([isinstance(node.op, GpuAdvancedIncSubtensor1)

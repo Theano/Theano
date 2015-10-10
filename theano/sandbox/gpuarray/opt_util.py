@@ -294,7 +294,7 @@ def inplace_allocempty(op, idx):
     function can be as simple as:
 
         def maker(node, inputs):
-            return node.op.__class__(inplace=True)(*inputs)
+            return [node.op.__class__(inplace=True)(*inputs)]
 
     Parameters
     ----------
@@ -320,7 +320,8 @@ def inplace_allocempty(op, idx):
             if (alloc.owner and
                     isinstance(alloc.owner.op, GpuAllocEmpty) and
                     len(alloc.clients) > 1):
-                alloc_op = GpuAllocEmpty(alloc.owner.op.dtype)
+                alloc_op = GpuAllocEmpty(alloc.owner.op.dtype,
+                                         alloc.owner.op.context_name)
                 inputs[idx] = alloc_op(*alloc.owner.inputs)
             return maker(node, inputs)
         return opt

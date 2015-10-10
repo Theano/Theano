@@ -1014,9 +1014,9 @@ class ScanInplaceOptimizer(Optimizer):
 
     """
 
-    def __init__(self, typeConstructor=None, gpu_flag=False, gpua_flag=False):
+    def __init__(self, typeInfer=None, gpu_flag=False, gpua_flag=False):
         Optimizer.__init__(self)
-        self.typeConstructor = typeConstructor
+        self.typeInfer = typeInfer
         self.gpu_flag = gpu_flag
         self.gpua_flag = gpua_flag
 
@@ -1062,10 +1062,15 @@ class ScanInplaceOptimizer(Optimizer):
                 ls[idx] = deep_copy_op(ls[idx])
 
         inputs = ls_begin + ls + ls_end
+        if self.typeInfer is None:
+            typeConstructor = None
+        else:
+            typeConstructor = self.typeInfer(node)
+
         new_op = scan_op.Scan(op.inputs,
                               op.outputs,
                               info,
-                              typeConstructor=self.typeConstructor)
+                              typeConstructor=typeConstructor)
 
         # Do not call make_node for test_value
         new_outs = new_op(*inputs, **dict(return_list=True))
@@ -2325,7 +2330,7 @@ scan_eqopt2 = theano.gof.EquilibriumDB()
 optdb.register('scan_eqopt1', scan_eqopt1, .1, 'fast_run', 'scan')
 optdb.register('scan_eqopt2', scan_eqopt2, 1.6, 'fast_run', 'scan')
 optdb.register('scanOp_make_inplace',
-               ScanInplaceOptimizer(typeConstructor=None,
+               ScanInplaceOptimizer(typeInfer=None,
                                     gpu_flag=False),
                75,
                'fast_run',

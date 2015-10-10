@@ -53,9 +53,9 @@ int APPLY_SPECIFIC(dnn_pool_grad)(PyGpuArrayObject *inp,
                                   PyGpuArrayObject *out,
                                   PyGpuArrayObject *out_grad,
                                   cudnnPoolingDescriptor_t desc,
-                                  PyGpuArrayObject **inp_grad) {
+                                  PyGpuArrayObject **inp_grad,
+                                  PyGpuContextObject *c) {
   cudnnStatus_t err;
-  PyGpuContextObject *c = pygpu_default_context();
 
   if (!GpuArray_IS_C_CONTIGUOUS(&inp->ga)) {
     PyErr_SetString(PyExc_ValueError, "Only contiguous inputs are supported.");
@@ -81,7 +81,7 @@ int APPLY_SPECIFIC(dnn_pool_grad)(PyGpuArrayObject *inp,
 
   if (theano_prep_output(inp_grad, PyGpuArray_NDIM(inp),
                          PyGpuArray_DIMS(inp), inp->ga.typecode,
-                         GA_C_ORDER, pygpu_default_context()) != 0) {
+                         GA_C_ORDER, c) != 0) {
     return 1;
   }
 

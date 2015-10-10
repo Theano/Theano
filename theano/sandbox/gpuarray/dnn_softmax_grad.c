@@ -45,9 +45,9 @@ if (APPLY_SPECIFIC(dx) != NULL)
 
 int APPLY_SPECIFIC(softmax_grad)(PyGpuArrayObject *dy,
                                  PyGpuArrayObject *sm,
-                                 PyGpuArrayObject **dx) {
+                                 PyGpuArrayObject **dx,
+                                 PyGpuContextObject *c) {
   cudnnStatus_t err;
-  PyGpuContextObject *c = pygpu_default_context();
 
   if (c_set_tensorNd(dy, APPLY_SPECIFIC(dy)) != 0)
     return 1;
