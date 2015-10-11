@@ -6,6 +6,7 @@ import os
 import shutil
 import stat
 import sys
+import warnings
 
 import theano
 from theano.compat import get_unbound_function
