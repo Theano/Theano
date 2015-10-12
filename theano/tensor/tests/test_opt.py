@@ -5719,7 +5719,7 @@ class Test_Reshape(unittest.TestCase):
 def test_local_useless_reshape(self):
     mode = theano.compile.get_default_mode().including(
             'local_useless_reshape')
-    i = T.iscalar('x')
+    i = T.iscalar('i')
     m=theano.tensor.mgrid[0:i,]
     f = theano.function([i], m, mode=mode)
     topo = f.maker.fgraph.toposort()
