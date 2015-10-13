@@ -17,6 +17,10 @@ except ImportError:
 _context_reg = {}
 
 
+class ContextNotDefined(ValueError):
+    pass
+
+
 def reg_context(name, ctx):
     """
     Register a context by mapping it to a name.
@@ -56,7 +60,7 @@ def get_context(name):
 
     """
     if name not in _context_reg:
-        raise ValueError("context name %s not defined" % (name,))
+        raise ContextNotDefined("context name %s not defined" % (name,))
     return _context_reg[name]
 
 
@@ -72,7 +76,7 @@ def _name_for_ctx(ctx):
     for k, v in _context_reg:
         if v == ctx:
             return k
-        raise ValueError('context is not registered')
+        raise ContextNotDefined('context is not registered')
 
 
 # This is a private method for use by the tests only
@@ -479,7 +483,7 @@ def gpuarray_shared_constructor(value, name=None, strict=False,
 
     try:
         get_context(context_name)
-    except ValueError:
+    except ContextNotDefined:
         # Don't make this a hard error if we attempt to make a shared
         # variable while there is no default context.
         if context_name is None:

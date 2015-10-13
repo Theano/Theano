@@ -17,7 +17,8 @@ from theano.scan_module import scan_utils, scan_op, scan_opt
 from theano.tensor.nnet.conv import ConvOp
 from theano.tests.breakpoint import PdbBreakpoint
 
-from .type import GpuArrayType, GpuArrayConstant, get_context
+from .type import (GpuArrayType, GpuArrayConstant, get_context,
+                   ContextNotDefined)
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         host_from_gpu, GpuToGpu,
                         HostFromGpu, GpuFromHost,
@@ -177,7 +178,7 @@ class InputToGpuOptimizer(Optimizer):
             except TypeError:
                 # This could fail if the inputs are not TensorTypes
                 pass
-            except ValueError:
+            except ContextNotDefined:
                 # If there is no context tag and no default context
                 # then it stays on the CPU
                 if not hasattr(input.tag, 'context_name'):
@@ -255,7 +256,7 @@ def local_gpuaalloc2(node):
     """
     try:
         get_context(None)
-    except ValueError:
+    except ContextNotDefined:
         # If there is no default context then we do not perform the move here.
         return
     if (isinstance(node.op, tensor.Alloc) and
