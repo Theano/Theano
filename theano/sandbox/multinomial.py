@@ -13,6 +13,7 @@ if cuda_available:
     from theano.sandbox.cuda.basic_ops import host_from_gpu, gpu_from_host
     from theano.sandbox.cuda.opt import register_opt
 
+
 class MultinomialFromUniform(Op):
     """
     Converts samples from a uniform into sample from a multinomial.
@@ -92,7 +93,7 @@ class MultinomialFromUniform(Op):
         )
         {
             Py_XDECREF(%(z)s);
-            %(z)s = (PyArrayObject*) PyArray_ZEROS(2,
+            %(z)s = (PyArrayObject*) PyArray_EMPTY(2,
                 PyArray_DIMS(%(pvals)s),
                 %(t)s,
                 0);
@@ -108,7 +109,7 @@ class MultinomialFromUniform(Op):
         const int nb_multi = PyArray_DIMS(%(pvals)s)[0];
         const int nb_outcomes = PyArray_DIMS(%(pvals)s)[1];
         const int n_samples = %(n)s;
-        
+
         //
         // For each multinomial, loop over each possible outcome
         //
@@ -168,7 +169,7 @@ class MultinomialFromUniform(Op):
                 waiting = True
                 cummul = 0
                 unis_n = unis[n]
-                
+
                 for m in range(nb_outcomes):
                     cummul += pvals[n, m]
                     if c == 0:
