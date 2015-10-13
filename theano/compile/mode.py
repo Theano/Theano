@@ -200,6 +200,12 @@ optdb.register('merge1', gof.MergeOptimizer(),
 # rearranges elemwise expressions
 optdb.register('canonicalize', gof.EquilibriumDB(ignore_newtrees=False),
                1, 'fast_run', 'fast_compile')
+# Register in the canonizer Equilibrium as a local opt the merge opt.
+# Without this, as the equilibrium have ignore_newtrees=False, we
+# won't merge all nodes if it is set as a global optimizer with
+# final_opt=True.
+optdb['canonicalize'].register("merge", gof.opt.merge_optimizer, 'fast_run',
+                               "fast_compile", cleanup=True)
 
 optdb.register('merge1.2', gof.MergeOptimizer(),
                1.2, 'fast_run', 'fast_compile', 'merge')

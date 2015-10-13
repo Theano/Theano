@@ -47,7 +47,6 @@ from theano.tensor.type import (values_eq_approx_remove_inf,
 
 from theano.gof.opt import (Optimizer, pre_constant_merge,
                             pre_greedy_local_optimizer)
-from theano.gof.opt import merge_optimizer
 from theano.gof import toolbox
 from theano.tensor.basic import get_scalar_constant_value, ShapeError, NotScalarConstantError
 from six import StringIO
@@ -502,29 +501,6 @@ def register_specialize_device(lopt, *tags, **kwargs):
         name = (kwargs and kwargs.pop('name')) or lopt.__name__
         compile.optdb['specialize_device'].register(name, lopt, 'fast_run', *tags)
         return lopt
-
-
-# Register in the canonizer Equilibrium as a local opt the merge opt.
-# Without this, as the equilibrium have ignore_newtrees=False, we
-# won't merge all nodes if it is set as a global optimizer with
-# final_opt=True.
-#
-# This work due to those properties:
-# 1) the EQ will execute first the optimizer that trac all nodes.
-# 2) after an local optimization being applied, if the
-#    current node is still in the graph, it will continue to the next
-#    local optimizer. So this won't trigger more iteration.
-def add_merge_feature(fgraph):
-    if not hasattr(fgraph, 'merge_feature'):
-        fgraph.attach_feature(theano.gof.opt.MergeFeature())
-
-
-@register_canonicalize('fast_compile', 'merge')
-@gof.local_optimizer(None, requirements=[add_merge_feature])
-def local_merge_optimizer(node):
-    if node.fgraph.merge_feature.scheduled:
-        ret = merge_optimizer(node.fgraph)
-        return ret[5] > 0
 
 
 #####################
