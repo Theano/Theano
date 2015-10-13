@@ -105,7 +105,7 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
                         " information are constant values. We got"
                         " %s for the image_shape parameter" %
                         image_shape[i])
-                assert str(image_shape[i].dtype).startswith('int')
+                assert "int" in str(image_shape[i].dtype)
                 image_shape[i] = int(image_shape[i])
     if filter_shape is not None:
         filter_shape = list(filter_shape)
@@ -120,7 +120,7 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
                         " information are constant values. We got"
                         " %s for the filter_shape "
                         "parameter" % filter_shape[i])
-                assert str(filter_shape[i].dtype).startswith('int')
+                assert "int" in str(filter_shape[i].dtype)
                 filter_shape[i] = int(filter_shape[i])
 
     if image_shape and filter_shape:
