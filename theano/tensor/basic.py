@@ -2664,9 +2664,9 @@ class Alloc(gof.Op):
                                 (i, s_as_str))
             if s.ndim != 0:
                 raise TypeError(
-                    'Each shape dimensions to Alloc must be scalars, '
-                    'but dimensions %s is not for apply node: %s' %
-                    (i, s_as_str))
+                    "Each shape dimension to Alloc must be a scalar, ",
+                    'but dimension %s is not for apply node: %s' %
+                    (i, s_as_str, s.ndim))
 
             # if s is constant 1, then we're broadcastable in that dim
             try:

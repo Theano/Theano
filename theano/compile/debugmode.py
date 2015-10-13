@@ -620,7 +620,8 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
     scan_inner_to_outer_inputs
         A dictionary mapping a scan ops inner function inputs to the scan op
         inputs (outer inputs) for printing purposes.
-
+    smap
+        None or the storage_map when printing an Theano function.
     """
     if depth == 0:
         return
@@ -689,14 +690,14 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
         already_printed = a in done  # get_id_str put it in the dict
         id_str = get_id_str(a)
 
+        if len(a.outputs) == 1:
+            idx = ""
+        else:
+            idx = ".%i" % a.outputs.index(r)
+        data = ""
+        if smap:
+            data = " " + str(smap.get(a.outputs[0], ''))
         if profile is None or a not in profile.apply_time:
-            if len(a.outputs) == 1:
-                idx = ""
-            else:
-                idx = ".%i" % a.outputs.index(r)
-            data = ""
-            if smap:
-                data = " " + str(smap[a.outputs[0]])
             print('%s%s%s %s%s \'%s\' %s %s %s%s' % (prefix, a.op,
                                                      idx,
                                                      id_str, type_str,
@@ -715,7 +716,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                 idx = ""
             else:
                 idx = ".%i" % a.outputs.index(r)
-            print("%s%s%s %s%s '%s' %s %s %s --> "
+            print("%s%s%s %s%s '%s' %s %s %s%s --> "
                   "%8.2es %4.1f%% %8.2es %4.1f%%"
                   % (prefix, a.op,
                      idx,
@@ -723,7 +724,8 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                      r_name,
                      destroy_map_str,
                      view_map_str,
-                     o, op_time,
+                     o, data,
+                     op_time,
                      op_time_percent,
                      tot_time,
                      tot_time_percent), file=file)
@@ -768,7 +770,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
             # this is an input variable
             data = ""
             if smap:
-                data = " " + str(smap[r])
+                data = " " + str(smap.get(r, ''))
             id_str = get_id_str(r)
             print('%s%s %s%s%s' % (prefix, r, id_str,
                                    type_str, data),
