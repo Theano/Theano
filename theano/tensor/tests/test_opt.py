@@ -5716,7 +5716,7 @@ class Test_Reshape(unittest.TestCase):
         assert sum(isinstance(node.op, self.op) for node in topo) == 1
 
 
-def test_local_useless_reshape(self):
+def test_local_useless_reshape():
     mode = theano.compile.get_default_mode().including(
             'local_useless_reshape')
     i = T.iscalar('i')
