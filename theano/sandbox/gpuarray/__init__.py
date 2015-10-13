@@ -24,8 +24,8 @@ except ImportError:
 # This is for documentation not to depend on the availability of pygpu
 from .type import (GpuArrayType, GpuArrayVariable, GpuArrayConstant,
                    GpuArraySharedVariable, gpuarray_shared_constructor,
-                   reg_context)
-from .basic import as_gpuarray_variable
+                   reg_context, get_context, ContextNotDefined)
+from .basic_ops import as_gpuarray_variable
 from . import opt, nerv
 
 def transfer(x, target):

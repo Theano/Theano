@@ -159,7 +159,8 @@ CudaNdarrayType.SharedVariable = CudaNdarraySharedVariable
 
 
 def cuda_shared_constructor(value, name=None, strict=False,
-        allow_downcast=None, borrow=False, broadcastable=None):
+                            allow_downcast=None, borrow=False,
+                            broadcastable=None):
     """
     SharedVariable Constructor for CudaNdarrayType.
 
@@ -193,12 +194,15 @@ def cuda_shared_constructor(value, name=None, strict=False,
 
 
 def float32_shared_constructor(value, name=None, strict=False,
-        allow_downcast=None, borrow=False, broadcastable=None):
+                               allow_downcast=None, borrow=False,
+                               broadcastable=None, target='gpu'):
     """
     SharedVariable Constructor for CudaNdarrayType from numpy.ndarray or
     CudaNdarray.
 
     """
+    if target != 'gpu':
+        raise TypeError('not for gpu')
     if theano.sandbox.cuda.use.device_number is None:
         theano.sandbox.cuda.use("gpu",
                                 force=True,

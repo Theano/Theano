@@ -472,27 +472,29 @@ GpuArrayType.SharedVariable = GpuArraySharedVariable
 
 def gpuarray_shared_constructor(value, name=None, strict=False,
                                 allow_downcast=None, borrow=False,
-                                broadcastable=None,
-                                context_name=None):
+                                broadcastable=None, target=None):
     """
     SharedVariable constructor for GpuArrayType.
 
     """
+    if target == 'gpu' or target == 'cpu':
+        raise TypeError('not for me')
+
     if not isinstance(value, (numpy.ndarray, pygpu.gpuarray.GpuArray)):
         raise TypeError('ndarray or GpuArray required')
 
     try:
-        get_context(context_name)
+        get_context(target)
     except ContextNotDefined:
         # Don't make this a hard error if we attempt to make a shared
         # variable while there is no default context.
-        if context_name is None:
+        if target is None:
             raise TypeError('No default context and no context specified')
         raise
 
     if broadcastable is None:
         broadcastable = (False,) * value.ndim
-    type = GpuArrayType(value.dtype, broadcastable, context_name=context_name)
+    type = GpuArrayType(value.dtype, broadcastable, context_name=target)
     deviceval = pygpu.gpuarray.array(value, copy=(not borrow),
                                      context=type.context)
     return GpuArraySharedVariable(type=type, value=deviceval, name=name,
