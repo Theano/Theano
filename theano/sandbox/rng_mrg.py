@@ -19,7 +19,6 @@ from theano.tensor import (raw_random, TensorType, as_tensor_variable,
 from theano.tensor import sqrt, log, sin, cos, join, prod
 from theano.compile import optdb
 from theano.gof import local_optimizer
-from theano.scalar import constant
 from . import multinomial
 
 from theano.sandbox.cuda import cuda_available, cuda_enabled, GpuOp
@@ -1318,12 +1317,11 @@ class MRG_RandomStreams(object):
     def multinomial(self, size=None, n=1, pvals=None, ndim=None, dtype='int64',
                     nstreams=None):
         """
-        Sample `n` (currently `n` needs to be > 1) times from a multinomial
+        Sample `n` (`n` needs to be >= 1) times from a multinomial
         distribution defined by probabilities pvals.
 
-        TODO: MODIFY_ME
-        Example : pvals = [[.98, .01, .01], [.01, .98, .01]] will
-        probably result in [[1,0,0],[0,1,0]].
+        Example : pvals = [[.98, .01, .01], [.01, .49, .50]] and n=2 will
+        probably result in [[2,0,0],[0,1,1]].
 
         Notes
         -----
@@ -1355,11 +1353,11 @@ class MRG_RandomStreams(object):
                              "MRG_RandomStreams.multinomial, which does not use "
                              "the ndim argument.")
         if pvals.ndim == 2:
-                size = pvals[:,0].shape
-                unis = self.uniform(size=size, ndim=1, nstreams=nstreams)
-                op = multinomial.MultinomialFromUniform(dtype)
-                n_samples = as_tensor_variable(n)
-                return op(pvals, unis, n_samples)
+            size = pvals[:,0].shape * n
+            unis = self.uniform(size=size, ndim=1, nstreams=nstreams)
+            op = multinomial.MultinomialFromUniform(dtype)
+            n_samples = as_tensor_variable(n)
+            return op(pvals, unis, n_samples)
         else:
             raise NotImplementedError(("MRG_RandomStreams.multinomial only"
                                        " implemented for pvals.ndim = 2"))
