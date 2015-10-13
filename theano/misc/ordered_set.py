@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import collections
 from collections import MutableSet
 import types
 import weakref
@@ -69,7 +70,7 @@ class Link(object):
 
 
 class OrderedSet(MutableSet):
-    'Set the remembers the order elements were added'
+    'Set that remembers the order elements were added'
     # Big-O running times for all methods are the same as for regular sets.
     # The internal self.__map dictionary maps keys to links in a doubly linked list.
     # The circular doubly linked list starts and ends with a sentinel element.
@@ -171,6 +172,30 @@ class OrderedSet(MutableSet):
         self.discard(key)
         return key
 
+    def extendleft(self, key):
+        # Added by CG
+        if isinstance(key, list):
+            for l in reversed(key):
+                self.__appendleft(l)
+        elif isinstance(key, collections.Sequence):
+            lkey = list(key)
+            for l in reversed(lkey):
+                self.__appendleft(l)
+        elif isinstance(key, collections.Iterable):
+            raise TypeError("Key should have a deterministic iterable type.")
+        else:
+            self.__appendleft(key)
+
+    def __appendleft(self, key):
+        # Store new key in a new link at the beginning of the linked list
+        # Added by CG
+        if key not in self.__map:
+            self.__map[key] = link = Link()
+            root = self.__root
+            first = root.next
+            link.prev, link.next, link.key = weakref.ref(root), first, key
+            first().prev = root.next = weakref.ref(link)
+
     def __repr__(self):
         if not self:
             return '%s()' % (self.__class__.__name__,)
@@ -193,10 +218,10 @@ class OrderedSet(MutableSet):
         else:
             return NotImplemented
 
+    def __nonzero__(self):
+        """
+        For checking the truth value of an expression.
+        """
+        # Added by CG
+        return (self.__map is not None and len(self.__map) > 0)
 # end of http://code.activestate.com/recipes/576696/ }}}
-
-if __name__ == '__main__':
-    print(list(OrderedSet('abracadaba')))
-    print(list(OrderedSet('simsalabim')))
-    print(OrderedSet('boom') == OrderedSet('moob'))
-    print(OrderedSet('boom') == 'moob')
