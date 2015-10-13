@@ -560,29 +560,34 @@ class Function(object):
         Copy this function. Copied function will have separated maker and
         fgraph with original function. User can choose whether to separate
         storage by changing the share_memory arguments.
-        ---------------------
-        Params:
-            share_memory -- { boolean } Default is False. When True, two
-            function share intermediate storages(storages except input and
-            output storages). Otherwise two functions will only share partial
-            storages and same maker. If two functions share memory and
-            allow_gc=False, this will increase executing speed and save memory.
 
-            swap -- { dict } Dictionary that map old SharedVariables to new
-            SharedVariables. Default is None.
-            NOTE: The shared variable swap in only done in the new returned
-            function, not in the user graph.
+        Parameters
+        ----------
+            share_memory : boolean
+                When True, two function share intermediate storages(storages except input and
+                output storages). Otherwise two functions will only share partial
+                storages and same maker. If two functions share memory and
+                allow_gc=False, this will increase executing speed and save memory.
 
-            delete_updates -- { boolean } Default is False. If True, Copied
-            function will not have update.
+            swap : dict
+                Dictionary that map old SharedVariables to new
+                SharedVariables. Default is None.
+                NOTE: The shared variable swap in only done in the new returned
+                function, not in the user graph.
 
-            name -- { string } If provided, will be the name of the new
-            Function. Otherwise, it will be old + " copy"
+            delete_updates : boolean
+              If True, Copied function will not have updates.
 
-            profile -- as theano.function profile parameter
-        ---------------------
-        Returns:
-            func -- Copied theano.Function
+            name : string
+                If provided, will be the name of the new
+                Function. Otherwise, it will be old + " copy"
+
+            profile :
+                as theano.function profile parameter
+
+        Returns
+        -------
+        Copied theano.Function
         """
         # helper function
         def checkSV(sv_ori, sv_rpl):
