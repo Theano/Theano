@@ -2844,10 +2844,45 @@ class Alloc(gof.Op):
                 return False
         return True
 
-
 alloc = Alloc()
 pprint.assign(alloc, printing.FunctionPrinter('alloc'))
 
+
+def transfer(var, target):
+    """
+    Return a version of `var` transferred to `target`.
+
+    `cpu` mean a TensorType (on the CPU).  Other types may define
+    additional targets.
+
+    Parameters
+    ----------
+    var : variable
+        A theano variable
+    target : str
+        The target of the transfer
+    """
+    if target == 'cpu':
+        return as_tensor_variable(var)
+    else:
+        for trans in transfer._others:
+            res = trans(var, target)
+            if res is not None:
+                return res
+    raise ValueError("Can't transfer to target %s" % (target,))
+
+transfer._others = []
+
+
+def register_transfer(fn):
+    """
+    Register a transfer function for alternative targets.
+
+    Parameters
+    ----------
+    fn : callable
+    """
+    transfer._others.append(fn)
 
 """Create a duplicate of `a` (with duplicated storage)"""
 tensor_copy = elemwise.Elemwise(scal.identity)
