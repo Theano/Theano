@@ -121,6 +121,9 @@ class ContextsParam(ConfigParam):
                 s = v.split('->')
                 if len(s) != 2:
                     raise ValueError("Malformed context map: %s" % (v,))
+                if (s[0] == 'cpu' or s[0].startswith('cuda') or
+                        s[0].startswith('opencl')):
+                    raise ValueError("Cannot use %s as context name" % (s[0],))
             return val
         ConfigParam.__init__(self, '', filter, False)
 
