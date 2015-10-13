@@ -32,7 +32,7 @@ def run_with_c(f, gpu=False):
 def test_n_samples_1():
     p = tensor.fmatrix()
     u = tensor.fvector()
-    n = tensor.scalar()
+    n = tensor.iscalar()
     m = multinomial.MultinomialFromUniform('auto')(p, u, n)
     
     f = function([p, u, n], m, allow_input_downcast=True)
@@ -47,7 +47,7 @@ def test_n_samples_1():
 def test_n_samples_2():
     p = tensor.fmatrix()
     u = tensor.fvector()
-    n = tensor.scalar()
+    n = tensor.iscalar()
     m = multinomial.MultinomialFromUniform('auto')(p, u, n)
     
     f = function([p, u, n], m, allow_input_downcast=True)
