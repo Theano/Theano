@@ -20,11 +20,11 @@ instructions below for detailed installation steps):
         We develop mainly on 64-bit Linux machines. other architectures are
         not well-tested.
 
-    Python_ >= 2.6
+    Python_ 2 >= 2.6 or Python_ 3 >= 3.3
         The development package (``python-dev`` or ``python-devel``
         on most Linux distributions) is recommended (see just below).
         Python 2.4 was supported up to and including the release 0.6.
-        Python 3 is supported via 2to3 only, starting from 3.3.
+        Python 3 is supported past the 3.3 release.
 
     ``g++``, ``python-dev``
         Not technically required but *highly* recommended, in order to compile
@@ -147,7 +147,13 @@ by typing
 
     pip install Theano
 
-You may need to add ``sudo``  before this command to install into your
+This should work under Python 2 or Python 3. To test, run
+
+.. code-block:: bash
+
+    nosetests theano
+
+You may need to add ``sudo``  before the ``pip`` command to install into your
 system's ``site-packages`` directory. If you do not have administrator access
 to your machine, you can install Theano locally (to ~/.local) using
 
@@ -226,7 +232,7 @@ Bleeding-edge install instructions
 If you are a developer of Theano, then check out the :ref:`dev_start_guide`.
 
 If you want the bleeding-edge without developing the code you can use pip for
-this with the command line below. Note that it will also try to install Theano's dependencies 
+this with the command line below. Note that it will also try to install Theano's dependencies
 (like NumPy and SciPy), but not upgrade them. If you wish to upgrade them,
 remove the ``--no-deps`` switch to it, but go see a previous warning before doing this.
 
@@ -254,11 +260,6 @@ From here, the easiest way to get started is (this requires setuptools_ or distr
 
     cd Theano
     python setup.py develop
-
-.. note::
-
-   "python setup.py develop ..." does not work on Python 3 as it does not call
-   the converter from Python 2 code to Python 3 code.
 
 This will install a ``.pth`` file in your ``site-packages`` directory that
 tells Python where to look for your Theano installation (i.e. in the
