@@ -8,7 +8,6 @@ from theano.sandbox import multinomial
 from theano.compile.mode import get_default_mode, predefined_linkers
 import theano.sandbox.cuda as cuda
 import theano.tests.unittest_tools as utt
-from theano.scalar import constant
 
 
 def get_mode(gpu):
@@ -74,9 +73,8 @@ def test_multinomial_0():
 
     p = tensor.fmatrix()
     u = tensor.fvector()
-    n = constant(1)
     
-    m = multinomial.MultinomialFromUniform('auto')(p, u, n)
+    m = multinomial.MultinomialFromUniform('auto')(p, u, 1)
 
     def body(mode, gpu):
         # the m*2 allows the multinomial to reuse output
@@ -115,8 +113,7 @@ def test_multinomial_large():
     def body(mode, gpu):
         p = tensor.fmatrix()
         u = tensor.fvector()
-        n = constant(1)
-        m = multinomial.MultinomialFromUniform('auto')(p, u, n)
+        m = multinomial.MultinomialFromUniform('auto')(p, u, 1)
         f = function([p, u], m*2, allow_input_downcast=True, mode=mode)
         if gpu:
             assert any([type(node.op) is multinomial.GpuMultinomialFromUniform
@@ -147,20 +144,17 @@ def test_multinomial_large():
 def test_multinomial_dtypes():
     p = tensor.dmatrix()
     u = tensor.dvector()
-    n = constant(1)
-    m = multinomial.MultinomialFromUniform('auto')(p, u, n)
+    m = multinomial.MultinomialFromUniform('auto')(p, u, 1)
     assert m.dtype == 'float64', m.dtype
 
     p = tensor.fmatrix()
     u = tensor.fvector()
-    n = constant(1)
-    m = multinomial.MultinomialFromUniform('auto')(p, u, n)
+    m = multinomial.MultinomialFromUniform('auto')(p, u, 1)
     assert m.dtype == 'float32', m.dtype
 
     p = tensor.fmatrix()
     u = tensor.fvector()
-    n = constant(1)
-    m = multinomial.MultinomialFromUniform('float64')(p, u, n)
+    m = multinomial.MultinomialFromUniform('float64')(p, u, 1)
     assert m.dtype == 'float64', m.dtype
 
 
@@ -174,8 +168,7 @@ def test_gpu_opt():
     # is moved to the gpu.
     p = tensor.fmatrix()
     u = tensor.fvector()
-    n = constant(1)
-    m = multinomial.MultinomialFromUniform('auto')(p, u, n)
+    m = multinomial.MultinomialFromUniform('auto')(p, u, 1)
     assert m.dtype == 'float32', m.dtype
     m_gpu = cuda.gpu_from_host(m)
 
