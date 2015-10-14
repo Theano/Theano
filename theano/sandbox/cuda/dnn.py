@@ -1476,16 +1476,13 @@ class GpuDnnPool(DnnBase):
             if img.type.ndim != e_ndim:
                 raise TypeError('img must be %dD tensor' % e_ndim)
 
-        return Apply(self, [img, desc], [img.type()])
+        return Apply(self, [img, ws, stride, node, pad], [img.type()])
 
     def infer_shape(self, node, shape):
-        if not node.inputs[1].owner:
-            raise theano.tensor.ShapeError()
-        desc = node.inputs[1].owner.op
-        nd = desc.get_ndim()
-        w = desc.ws
-        s = desc.stride
-        p = desc.pad
+        nd = 
+        w = node.inputs[1]
+        s = node.inputs[2]
+        p = node.inputs[3]
         ret = [shape[0][0], shape[0][1],
                (shape[0][2] + 2 * p[0] - w[0]) // s[0] + 1,
                (shape[0][3] + 2 * p[1] - w[1]) // s[1] + 1]
