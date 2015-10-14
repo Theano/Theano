@@ -361,11 +361,9 @@ class PushOutNonSeqScan(gof.Optimizer):
                     nw_outer.append(repl_out)
                 givens[to_repl] = repl_in
 
-            _op_outs = scan_utils.clone(clean_outputs,
-                                        replace=givens)
+            op_outs = scan_utils.clone(clean_outputs, replace=givens)
+            op_ins = clean_inputs + nw_inner
 
-            _op_ins = clean_inputs + nw_inner
-            op_ins, op_outs = scan_utils.reconstruct_graph(_op_ins, _op_outs)
             # Reconstruct node
             nwScan = scan_op.Scan(op_ins, op_outs, op.info)
 
@@ -610,10 +608,9 @@ class PushOutSeqScan(gof.Optimizer):
 
                 givens[to_repl] = repl_in
 
-            _op_outs = scan_utils.clone(clean_outputs,
-                                        replace=givens)
-            _op_ins = nw_inner + clean_inputs
-            op_ins, op_outs = scan_utils.reconstruct_graph(_op_ins, _op_outs)
+            op_outs = scan_utils.clone(clean_outputs, replace=givens)
+            op_ins = nw_inner + clean_inputs
+
             # Reconstruct node
             nw_info = op.info.copy()
             nw_info['n_seqs'] += len(nw_inner)
