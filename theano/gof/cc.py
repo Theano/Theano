@@ -1284,10 +1284,10 @@ class CLinker(link.Linker):
                                  c_compiler=self.c_compiler(),
                                  )
 
-    def cmodule_key_fgraph(self, inputs, outputs, no_recycling,
-                           compile_args=None, libraries=None,
-                           header_dirs=None, insert_config_md5=True,
-                           c_compiler=None):
+    def cmodule_key_variables(self, inputs, outputs, no_recycling,
+                              compile_args=None, libraries=None,
+                              header_dirs=None, insert_config_md5=True,
+                              c_compiler=None):
 
         # Assemble a dummy fgraph using the provided inputs and outputs. It is
         # only used to compute the cmodule key so it only need to expose an
