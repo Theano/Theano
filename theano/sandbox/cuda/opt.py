@@ -2784,22 +2784,22 @@ def local_abstractconv_gradinputs_gemm(node):
 # which ones take precedence over others.
 abstractconv_groupopt = theano.gof.optdb.LocalGroupDB()
 abstractconv_groupopt.__name__ = "gpu_abstractconv_opts"
-register_opt()(abstractconv_groupopt)
+register_specialize_device()(abstractconv_groupopt)
 
 # cuDNN is first, but only registered if cuDNN is available.
 conv_groupopt.register('local_abstractconv_dnn', dnn.local_abstractconv_cudnn, 20,
                        'conv_dnn',
-                       'fast_compile', 'fast_run', 'cudnn')
+                       'gpu_opt', 'cudnn')
 # The GEMM-based convolution comes last to catch all remaining cases.
 # It can be disabled by excluding 'conv_gemm'.
 conv_groupopt.register('local_abstractconv_gemm', local_abstractconv_gemm, 30,
                        'conv_gemm',
-                       'fast_compile', 'fast_run')
+                       'gpu_opt')
 conv_groupopt.register('local_abstractconv_gradweight_gemm',
                        local_abstractconv_gradweight_gemm, 30,
-                       #'conv_gemm',
+                       'conv_gemm',
                        'fast_compile', 'fast_run')
 conv_groupopt.register('local_abstractconv_gradinputs_gemm',
                        local_abstractconv_gradinputs_gemm, 30,
-                       #'conv_gemm',
-                       'fast_compile', 'fast_run')
+                       'conv_gemm',
+                       'gpu_opt')
