@@ -221,7 +221,10 @@ class Scan(PureOp):
             tmp_in, tmp_out = scan_utils.reconstruct_graph(self.inputs,
                                                            self.outputs)
             local_fgraph = gof.FunctionGraph(tmp_in, tmp_out, clone=False)
-            self._cmodule_key = gof.CLinker().cmodule_key_(local_fgraph, [])
+            self._cmodule_key = gof.CLinker().cmodule_key_fgraph(self.inputs,
+                                                                 self.outputs,
+                                                                 [])
+            #self._cmodule_key = gof.CLinker().cmodule_key_(local_fgraph, [])
             self._hash_inner_graph = hash(self._cmodule_key)
 
         # Compute mappings between outer inputs, outer outputs, inner
