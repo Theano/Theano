@@ -1097,11 +1097,8 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     kerns
         Convolution filters.
     border_mode
-        One of 'valid', 'full'; additionally, the padding size can be
-        directly specified by an integer or a pair of integers (as a tuple),
-        specifying the amount of zero padding added to _both_ the top and
-        bottom (first entry) and left and right (second entry) sides of
-        the image.
+        One of 'valid', 'full'; additionally, the padding size could be directly
+        specified by an integer or a pair of integers.
     subsample
         Perform subsampling of the output (default: (1, 1)).
     conv_mode
@@ -1360,11 +1357,9 @@ class GpuDnnPoolDesc(GpuOp):
     mode : {'max', 'average_inc_pad', 'average_exc_pad'}
         The old deprecated name 'average' correspond to 'average_inc_pad'.
     pad
-        (pad_h, pad_w) padding information.
-        pad_h is the number of zero-valued pixels added to each of the top and
-        bottom borders.
-        pad_w is the number of zero-valued pixels added to each of the left and
-        right borders.
+        (padX, padY) padding information.
+        padX is the size of the left and right borders,
+        padY is the size of the top and bottom borders.
 
     """
 
@@ -1476,14 +1471,21 @@ class GpuDnnPool(DnnBase):
     ----------
     img
         The image 4d or 5d tensor.
-    desc
-        The pooling descriptor.
-
+    ws
+        Windows size.
+    stride
+        (dx, dy).
+    mode : {'max', 'average_inc_pad', 'average_exc_pad'}
+        The old deprecated name 'average' correspond to 'average_inc_pad'.
+    pad
+        (padX, padY) padding information.
+        padX is the size of the left and right borders,
+        padY is the size of the top and bottom borders.
     """
 
     __props__ = ()
 
-    def make_node(self, img, desc):
+    def make_node(self, img, ws, stride, node, pad):
         img = as_cuda_ndarray_variable(img)
         if not isinstance(desc.type, CDataType) \
                 or desc.type.ctype != 'cudnnPoolingDescriptor_t':
@@ -1834,7 +1836,7 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
     stride
         Subsampling stride (default: (1, 1)).
     mode : {'max', 'average_inc_pad', 'average_exc_pad}
-    pad
+    pad : 
         (pad_h, pad_w) padding information.
         pad_h is the number of zero-valued pixels added to each of the top and
         bottom borders.
