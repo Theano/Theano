@@ -224,7 +224,6 @@ class Scan(PureOp):
             self._cmodule_key = gof.CLinker().cmodule_key_variables(self.inputs,
                                                                     self.outputs,
                                                                     [])
-            #self._cmodule_key = gof.CLinker().cmodule_key_(local_fgraph, [])
             self._hash_inner_graph = hash(self._cmodule_key)
 
         # Compute mappings between outer inputs, outer outputs, inner
