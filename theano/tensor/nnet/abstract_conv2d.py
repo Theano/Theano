@@ -516,4 +516,4 @@ def local_conv2d_gradinputs_cpu(node):
     din = din(topgrad, filters)
     din = patternbroadcast(din, node.outputs[0].broadcastable)
     return [din]
-register_specialize_device(local_conv2d_gradinputs_cpu)
+register_specialize_device(local_conv2d_gradinputs_cpu, 'fast_compile')
