@@ -891,6 +891,7 @@ class MergeOptimizer(Optimizer):
         return (nb_fail, replace_time, validate_time,
                 callback_time, callbacks_time, nb_merged, nb_constant)
 
+
 def is_same_graph_with_merge(var1, var2, givens=None):
     """
     Merge-based implementation of `theano.gof.graph.is_same_graph`.
@@ -913,7 +914,7 @@ def is_same_graph_with_merge(var1, var2, givens=None):
     for to_replace, replace_by in iteritems(givens):
         fgraph.replace(to_replace, replace_by)
     # Perform merge optimization.
-    MergeOptimzier().optimize(fgraph)
+    MergeOptimizer().optimize(fgraph)
     # When two variables perform the same computations, they will have the same
     # owner in the optimized graph.
     # We need to be careful with the special case where the owner is None,
@@ -2001,6 +2002,7 @@ def merge_dict(d1, d2):
             d[k] = v
     return d
 
+
 class EquilibriumOptimizer(NavigatorOptimizer):
     """
     Apply optimizations until equilibrium point.
@@ -2209,7 +2211,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         global_process_count[lopt] += 1
                         changed = True
                         node_created[lopt] += change_tracker.nb_imported - nb
-                        changed = changed orapplyc_leanup(iter_cleanup_sub_profs)
+                        changed = changed or apply_cleanup(iter_cleanup_sub_profs)
                         if global_process_count[lopt] > max_use:
                             max_use_abort = True
                             opt_name = (getattr(lopt, "name", None) or
