@@ -1506,7 +1506,7 @@ class ScanSaveMem(gof.Optimizer):
                                                              tmp_idx)
                             tmp = pre_constant_merge([tmp])[0]
 
-                            nw_input = scan_utils.expand(_nw_input, tmp)
+                            nw_input = scan_utils.expand_empty(_nw_input, tmp)
                         else:
                             tmp = tensor.as_tensor_variable(val)
                             initl = tensor.as_tensor_variable(init_l[i])
@@ -1557,8 +1557,8 @@ class ScanSaveMem(gof.Optimizer):
                                      nw_inputs[in_idx].owner.op.idx_list[0],
                                      slice))):
                                 _nw_input = nw_inputs[in_idx].owner.inputs[1]
-                                nw_input = scan_utils.expand(_nw_input,
-                                                             nw_steps)
+                                nw_input = scan_utils.expand_empty(_nw_input,
+                                                                   nw_steps)
                                 nw_inputs[in_idx] = nw_input
                             else:
                                 nw_input = nw_inputs[in_idx][:(initl+nw_steps)]
