@@ -164,6 +164,8 @@ def test_debugprint():
 
     F = D + E
     G = C + F
+    mode = theano.compile.get_default_mode().including('fusion')
+    g = theano.function([A, B, D, E], G, mode=mode)
 
     # just test that it work
     debugprint(G)
@@ -242,6 +244,24 @@ def test_debugprint():
         " |Elemwise{add,no_inplace}  ''   ",
         "   |D ",
         "   |E ",
+    ]) + '\n'
+    if s != reference:
+        print('--' + s + '--')
+        print('--' + reference + '--')
+
+    assert s == reference
+
+    # test print_storage=True
+    s = StringIO()
+    debugprint(g, file=s, ids='', print_storage=True)
+    s = s.getvalue()
+    # The additional white space are needed!
+    reference = '\n'.join([
+        "Elemwise{add,no_inplace}  ''   0 [None]",
+        " |A  [None]",
+        " |B  [None]",
+        " |D  [None]",
+        " |E  [None]",
     ]) + '\n'
     if s != reference:
         print('--' + s + '--')
@@ -702,3 +722,28 @@ def test_scan_debugprint5():
 
     for truth, out in zip(expected_output.split("\n"), lines):
         assert truth.strip() == out.strip()
+
+
+def test_printing_scan():
+    # Skip test if pydot is not available.
+    if not theano.printing.pydot_imported:
+        raise SkipTest('pydot not available')
+
+    def f_pow2(x_tm1):
+        return 2 * x_tm1
+
+    state = theano.tensor.scalar('state')
+    n_steps = theano.tensor.iscalar('nsteps')
+    output, updates = theano.scan(f_pow2,
+                                  [],
+                                  state,
+                                  [],
+                                  n_steps=n_steps,
+                                  truncate_gradient=-1,
+                                  go_backwards=False)
+    f = theano.function([state, n_steps],
+                        output,
+                        updates=updates,
+                        allow_input_downcast=True)
+    theano.printing.pydotprint(output, scan_graphs=True)
+    theano.printing.pydotprint(f, scan_graphs=True)

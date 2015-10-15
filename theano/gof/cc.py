@@ -547,9 +547,7 @@ class CLinker(link.Linker):
         if no_recycling is None:
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
-            return type(self)().accept(fgraph, no_recycling)
-            # raise Exception("Cannot accept from a Linker that is already"
-            #                " tied to another FunctionGraph.")
+            return type(self)(self.schedule).accept(fgraph, no_recycling)
         self.fgraph = fgraph
         self.fetch_variables()
         self.no_recycling = no_recycling
@@ -1755,7 +1753,8 @@ class OpWiseCLinker(link.LocalLinker):
             return type(self)(
                 fallback_on_perform=self.fallback_on_perform,
                 allow_gc=self.allow_gc,
-                nice_errors=self.nice_errors
+                nice_errors=self.nice_errors,
+                schedule=self.schedule,
             ).accept(fgraph, no_recycling)
             # raise Exception("Cannot accept from a Linker that is
             # already tied to another FunctionGraph.")
@@ -1908,7 +1907,8 @@ class DualLinker(link.Linker):
         if no_recycling is None:
             no_recycling = []
         if self.fgraph is not None and self.fgraph is not fgraph:
-            return type(self)(self.checker).accept(fgraph, no_recycling)
+            return type(self)(self.checker, self.schedule).accept(
+                fgraph, no_recycling)
         self.fgraph = fgraph
         self.no_recycling = no_recycling
         return self
