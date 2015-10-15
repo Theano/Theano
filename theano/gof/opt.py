@@ -1981,13 +1981,22 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
     Parameters
     ----------
-    optimizers
-        List or set of local or global optimizations to apply until equilibrium.
-    max_use_ratio
+    optimizers : list or set
+        Local or global optimizations to apply until equilibrium.
+        The global optimizer will be run at the start of each iteration before
+        the local optimizer.
+    max_use_ratio : int or float
         Each optimizer can be applied at most (size of graph * this number)
         times.
     ignore_newtrees
         See EquilibriumDB ignore_newtrees parameter definition.
+    final_optimizers
+        Global optimizers that will be run after each iteration.
+    cleanup_optimizers
+        Global optimizers that apply a list of pre determined optimization.
+        They must not traverse the graph as they are called very frequently.
+        The MergeOptimizer is one example of optimization that respect this.
+        They are applied after all global optimizer, then when one local optimizer is applied, then after all final optimizer.
 
     """
 
