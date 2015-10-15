@@ -67,18 +67,20 @@ class Images2Neibs(Op):
         Returns
         -------
         matrix
-            A 2D matrix, written using the following pattern
-            idx = 0
-            for i in xrange(list 1 dim)
-                for j in xrange(list 2 dim)
-                    for k in <image column coordinates>
-                        for l in <image row coordinates>
-                            output[idx,:]
-                                 = flattened version of ten4[i,j,l:l+r,k:k+c]
-                            idx += 1
+            A 2D matrix, written using the following pattern::
+
+                idx = 0
+                for i in xrange(list 1 dim)
+                    for j in xrange(list 2 dim)
+                        for k in <image column coordinates>
+                            for l in <image row coordinates>
+                                output[idx,:]
+                                     = flattened version of ten4[i,j,l:l+r,k:k+c]
+                                idx += 1
+
             .. note:: The op isn't necessarily implemented internally with these
-            for loops, they're just the easiest way to describe the output
-            pattern.
+                for loops, they're just the easiest way to describe the output
+                pattern.
 
         """
         ten4 = T.as_tensor_variable(ten4)
@@ -456,15 +458,15 @@ def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
         .. note:: Currently the step size should be chosen in the way that the
             corresponding dimension :math:`i` (width or height) is equal to
             :math:`n * step\_size_i + neib\_shape_i` for some :math:`n`
-    mode : {'valid', 'ignore_borders', 'wrap_centered}
+    mode : {'valid', 'ignore_borders', 'wrap_centered'}
         ``valid``
-        Requires an input that is a multiple of the
-        pooling factor (in each direction).
+            Requires an input that is a multiple of the
+            pooling factor (in each direction).
         ``ignore_borders``
-        Same as valid, but will ignore the borders if the shape(s) of
-        the input is not a multiple of the pooling factor(s).
+            Same as valid, but will ignore the borders if the shape(s) of
+            the input is not a multiple of the pooling factor(s).
         ``wrap_centered``
-        ?? TODO comment
+            ?? TODO comment
 
     Returns
     -------
