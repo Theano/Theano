@@ -2171,21 +2171,21 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         t_opt = time.time()
                         lopt_change = self.process_node(fgraph, node, lopt)
                         time_opts[lopt] += time.time() - t_opt
-                        # TODO: if not ...: continue
-                        if lopt_change:
-                            process_count.setdefault(lopt, 0)
-                            process_count[lopt] += 1
-                            global_process_count[lopt] += 1
-                            changed = True
-                            node_created[lopt] += change_tracker.nb_imported - nb
-                            apply_cleanup(iter_cleanup_sub_profs)
-                            if global_process_count[lopt] > max_use:
-                                max_use_abort = True
-                                opt_name = (getattr(lopt, "name", None) or
-                                            getattr(lopt, "__name__", ""))
-                            if node not in fgraph.apply_nodes:
-                                # go to next node
-                                break
+                        if not lopt_change:
+                            continue
+                        process_count.setdefault(lopt, 0)
+                        process_count[lopt] += 1
+                        global_process_count[lopt] += 1
+                        changed = True
+                        node_created[lopt] += change_tracker.nb_imported - nb
+                        apply_cleanup(iter_cleanup_sub_profs)
+                        if global_process_count[lopt] > max_use:
+                            max_use_abort = True
+                            opt_name = (getattr(lopt, "name", None) or
+                                        getattr(lopt, "__name__", ""))
+                        if node not in fgraph.apply_nodes:
+                            # go to next node
+                            break
             finally:
                 self.detach_updater(fgraph, u)
 
