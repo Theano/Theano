@@ -913,7 +913,7 @@ def is_same_graph_with_merge(var1, var2, givens=None):
     for to_replace, replace_by in iteritems(givens):
         fgraph.replace(to_replace, replace_by)
     # Perform merge optimization.
-    merge_optimizer.optimize(fgraph)
+    MergeOptimzier().optimize(fgraph)
     # When two variables perform the same computations, they will have the same
     # owner in the optimized graph.
     # We need to be careful with the special case where the owner is None,
