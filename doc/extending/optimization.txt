@@ -212,11 +212,11 @@ optimization you wrote. For example, consider the following:
 Nothing happened here. The reason is: ``add(y, z) != add(y,
 z)``. That is the case for efficiency reasons. To fix this problem we
 first need to merge the parts of the graph that represent the same
-computation, using the ``merge_optimizer`` defined in
+computation, using the ``MergeOptimizer`` defined in
 ``theano.gof.opt``.
 
->>> from theano.gof.opt import merge_optimizer
->>> merge_optimizer.optimize(e)  # doctest: +ELLIPSIS
+>>> from theano.gof.opt import MergeOptimizer
+>>> MergeOptimizer().optimize(e)  # doctest: +ELLIPSIS
 (0, ..., None, None, {}, 1, 0)
 >>> e
 [true_div(mul(*1 -> add(y, z), x), *1)]

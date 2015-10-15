@@ -104,7 +104,7 @@ optdb.register('gpu_after_fusion',
                'gpu')
 
 # Register merge_optimizer as a global opt
-gpu_optimizer.register('gpu_merge', theano.gof.opt.merge_optimizer,
+gpu_optimizer.register('gpu_merge', theano.gof.opt.MergeOptimizer(),
                        'fast_run', 'fast_compile', final_opt=True)
 
 
