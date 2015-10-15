@@ -2091,6 +2091,21 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             time_opts.setdefault(opt, 0)
             node_created.setdefault(opt, 0)
 
+        def apply_cleanup(iter_cleanup_sub_profs):
+            for copt in self.cleanup_optimizers:
+                change_tracker.reset()
+                nb = change_tracker.nb_imported
+                t_opt = time.time()
+                sub_prof = copt.apply(fgraph)
+                time_opts[copt] += time.time() - t_opt
+                iter_cleanup_sub_profs[copt].append(sub_prof)
+                if change_tracker.changed:
+                    process_count.setdefault(copt, 0)
+                    process_count[copt] += 1
+                    global_process_count[copt] += 1
+                    changed = True
+                    node_created[copt] += change_tracker.nb_imported - nb
+
         while changed and not max_use_abort:
             process_count = {}
             t0 = time.time()
@@ -2121,14 +2136,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
             # apply clean up as global opt can have done changes that
             # request that
-            for copt in self.cleanup_optimizers:
-                change_tracker.reset()
-                t_opt = time.time()
-                sub_prof = copt.apply(fgraph)
-                time_opts[copt] += time.time() - t_opt
-                iter_cleanup_sub_profs[copt] = [sub_prof]
-                if change_tracker.changed:
-                    changed = True
+            apply_cleanup(iter_cleanup_sub_profs)
 
             # apply local optimizer
             topo_t0 = time.time()
@@ -2170,11 +2178,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                             global_process_count[lopt] += 1
                             changed = True
                             node_created[lopt] += change_tracker.nb_imported - nb
-                            for copt in self.cleanup_optimizers:
-                                t_opt = time.time()
-                                sub_prof = copt.apply(fgraph)
-                                time_opts[copt] += time.time() - t_opt
-                                iter_cleanup_sub_profs[copt].append(sub_prof)
+                            apply_cleanup(iter_cleanup_sub_profs)
                             if global_process_count[lopt] > max_use:
                                 max_use_abort = True
                                 opt_name = (getattr(lopt, "name", None) or
@@ -2210,12 +2214,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             global_opt_timing[-1] += time.time() - t_before_final_opt
             # apply clean up as final opt can have done changes that
             # request that
-            for copt in self.cleanup_optimizers:
-                t_opt = time.time()
-                sub_prof = copt.apply(fgraph)
-                time_opts[copt] += time.time() - t_opt
-                iter_cleanup_sub_profs[copt] = [sub_prof]
-
+            apply_cleanup(iter_cleanup_sub_profs)
             # merge clean up profiles during that iteration.
             c_sub_profs = []
             for copt, sub_profs in iteritems(iter_cleanup_sub_profs):
@@ -2223,8 +2222,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 for s_p in sub_profs[1:]:
                     sub_prof = copt.merge_profile(sub_prof, s_p)
                 c_sub_profs.append(sub_prof)
-
             cleanup_sub_profs.append(c_sub_profs)
+
             loop_process_count.append(process_count)
             loop_timing.append(float(time.time() - t0))
 
