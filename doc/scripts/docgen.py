@@ -131,7 +131,7 @@ if __name__ == '__main__':
         inopt = [docpath, workdir]
         if files is not None:
             inopt.extend(files)
-        sphinx.main(['', '-b', builder] + extraopts + inopt)
+        sphinx.build_main(['', '-b', builder] + extraopts + inopt)
 
     if options['--all'] or options['--rst']:
         mkdir("doc")
