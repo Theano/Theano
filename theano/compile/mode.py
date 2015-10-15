@@ -204,7 +204,10 @@ optdb.register('canonicalize', gof.EquilibriumDB(ignore_newtrees=False),
 # Without this, as the equilibrium have ignore_newtrees=False, we
 # won't merge all nodes if it is set as a global optimizer with
 # final_opt=True.
-optdb['canonicalize'].register("merge", gof.opt.merge_optimizer, 'fast_run',
+
+# We need a new instance of MergeOptimizer to don't have its name
+# changed by other usage of it.
+optdb['canonicalize'].register("merge", gof.opt.MergeOptimizer(), 'fast_run',
                                "fast_compile", cleanup=True)
 
 optdb.register('merge1.2', gof.MergeOptimizer(),

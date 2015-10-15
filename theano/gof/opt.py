@@ -873,9 +873,17 @@ class MergeOptimizer(Optimizer):
                 if i[1] > 0:
                     print(i)
 
-
-merge_optimizer = MergeOptimizer()
-
+    @staticmethod
+    def merge_profile(prof1, prof2):
+        nb_fail = prof1[0] + prof2[0]
+        replace_time = prof1[1] + prof2[1]
+        validate_time = prof1[2] + prof2[2]
+        callback_time = prof1[3] + prof2[3]
+        callbacks_time = merge_dict(prof1[4], prof2[4])
+        nb_merged = prof1[5] + prof2[5]
+        nb_constant = prof1[6] + prof2[6]
+        return (nb_fail, replace_time, validate_time,
+                callback_time, callbacks_time, nb_merged, nb_constant)
 
 def is_same_graph_with_merge(var1, var2, givens=None):
     """
@@ -1975,6 +1983,18 @@ class ChangeTracker:
         fgraph.change_tracker = self
 
 
+def merge_dict(d1, d2):
+    """
+    merge 2 dicts by adding the values.
+    """
+    d = d1.copy()
+    for k, v in iteritems(d2):
+        if k in d:
+            d[k] += v
+        else:
+            d[k] = v
+    return d
+
 class EquilibriumOptimizer(NavigatorOptimizer):
     """
     Apply optimizations until equilibrium point.
@@ -2091,14 +2111,14 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             time_opts.setdefault(opt, 0)
             node_created.setdefault(opt, 0)
 
-        def apply_cleanup(iter_cleanup_sub_profs):
+        def apply_cleanup(profs_dict):
             for copt in self.cleanup_optimizers:
                 change_tracker.reset()
                 nb = change_tracker.nb_imported
                 t_opt = time.time()
                 sub_prof = copt.apply(fgraph)
                 time_opts[copt] += time.time() - t_opt
-                iter_cleanup_sub_profs[copt].append(sub_prof)
+                profs_dict[copt].append(sub_prof)
                 if change_tracker.changed:
                     process_count.setdefault(copt, 0)
                     process_count[copt] += 1
@@ -2111,6 +2131,9 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             t0 = time.time()
             changed = False
             iter_cleanup_sub_profs = {}
+            for copt in self.cleanup_optimizers:
+                iter_cleanup_sub_profs[copt] = []
+
             # apply global optimizers
             sub_profs = []
             for gopt in self.global_optimizers:
@@ -2386,15 +2409,6 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 else:
                     l.append(nb)
             return l
-
-        def merge_dict(d1, d2):
-            d = d1.copy()
-            for k, v in iteritems(d2):
-                if k in d:
-                    d[k] += v
-                else:
-                    d[k] = v
-            return d
 
         loop_timing = merge_list(prof1[1], prof2[1])
 
