@@ -624,6 +624,22 @@ def expand(tensor_var, size):
     return tensor.set_subtensor(empty[:shapes[0]], tensor_var)
 
 
+def expand_empty(tensor_var, size):
+    """
+    Transforms the shape of a tensor from (d1, d2 ... ) to ( d1+size, d2, ..)
+    by adding uninitialized memory at the end of the tensor.
+
+    """
+
+    if size == 0:
+        return tensor_var
+    shapes = [tensor_var.shape[x] for x in xrange(tensor_var.ndim)]
+    new_shape = [size + shapes[0]] + shapes[1:]
+    empty = tensor.AllocEmpty(tensor_var.dtype)(*new_shape)
+
+    return tensor.set_subtensor(empty[:shapes[0]], tensor_var)
+
+
 def equal_computations(xs, ys, in_xs=None, in_ys=None):
     """Checks if Theano graphs represent the same computations.
 
