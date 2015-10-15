@@ -121,7 +121,7 @@ class until(object):
     of code to fail).
 
     """
- 
+
     def __init__(self, condition):
         self.condition = tensor.as_tensor_variable(condition)
         assert self.condition.ndim == 0
@@ -131,7 +131,7 @@ def traverse(out, x, x_copy, d, visited=None):
     """
     Function used by scan to parse the tree and figure out which nodes
     it needs to replace.
-    
+
     There are two options :
         1) x and x_copy or on host, then you would replace x with x_copy
         2) x is on gpu, x_copy on host, then you need to replace
@@ -201,7 +201,7 @@ def clone(output,
           copy_inputs=DEPRECATED_ARG):
     """
     Function that allows replacing subgraphs of a computational graph.
-    
+
     It returns a copy of the initial subgraph with the corresponding
     substitutions.
 
@@ -1308,7 +1308,7 @@ def forced_replace(out, x, y):
     Check all internal values of the graph that compute the variable ``out``
     for occurrences of values identical with ``x``. If such occurrences are
     encountered then they are replaced with variable ``y``.
-    
+
     Parameters
     ----------
     out : Theano Variable
