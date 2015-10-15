@@ -875,10 +875,16 @@ class MergeOptimizer(Optimizer):
 
     @staticmethod
     def merge_profile(prof1, prof2):
+        def merge_none_number(v1, v2):
+            if v1 is None:
+                return v2
+            if v2 is None:
+                return v1
+            return v1 + v2
         nb_fail = prof1[0] + prof2[0]
         replace_time = prof1[1] + prof2[1]
-        validate_time = prof1[2] + prof2[2]
-        callback_time = prof1[3] + prof2[3]
+        validate_time = merge_none_number(prof1[2], prof2[2])
+        callback_time = merge_none_number(prof1[3], prof2[3])
         callbacks_time = merge_dict(prof1[4], prof2[4])
         nb_merged = prof1[5] + prof2[5]
         nb_constant = prof1[6] + prof2[6]
