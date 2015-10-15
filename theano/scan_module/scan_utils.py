@@ -607,23 +607,6 @@ def isNaN_or_Inf_or_None(x):
     return isNone or isNaN or isInf or isStr
 
 
-def expand(tensor_var, size):
-    """
-    Transoforms the shape of a tensor from (d1, d2 ... ) to ( d1+size, d2, ..)
-    by adding 0s at the end of the tensor.
-
-    """
-    # Corner case that I might use in an optimization
-    if size == 0:
-        return tensor_var
-    shapes = [tensor_var.shape[x] for x in xrange(tensor_var.ndim)]
-    zeros_shape = [size + shapes[0]] + shapes[1:]
-    empty = tensor.zeros(zeros_shape,
-                         dtype=tensor_var.dtype)
-
-    return tensor.set_subtensor(empty[:shapes[0]], tensor_var)
-
-
 def expand_empty(tensor_var, size):
     """
     Transforms the shape of a tensor from (d1, d2 ... ) to ( d1+size, d2, ..)
