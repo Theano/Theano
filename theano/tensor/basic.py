@@ -1,5 +1,5 @@
 """A `Type` and `Op` classes to work with numpy.ndarrays symbolically."""
-import __builtin__
+from six.moves import builtins
 import sys
 import warnings
 
@@ -4743,36 +4743,36 @@ def tile(x, reps, ndim=None):
                 raise ValueError("if reps is tensor.vector, you should specify "
                                  "the ndim")
             else:
-                offset = ndim-reps.shape[0]
+                offset = ndim - reps.shape[0]
 
                 # assert that reps.shape[0] does not exceed ndim
                 offset = theano.tensor.opt.assert_(offset, ge(offset, 0))
 
                 # if reps.ndim is less than x.ndim, we pad the reps with
                 # "1" so that reps will have the same ndim as x.
-                reps_ = [switch(i<offset, 1, reps[i-offset]) for i in range(ndim)]
+                reps_ = [switch(i < offset, 1, reps[i - offset]) for i in range(ndim)]
                 reps = reps_
 
-        #other raise error
+        # other raise error
         else:
             raise ValueError("the dimension of reps should not exceed 1")
     else:
-       if ndim is not None and len(reps) > ndim:
-           raise ValueError("len(reps) should be equal or less than ndim")
-       if not numpy.all([isinstance(r, (int, long)) or
-           (isinstance(r, TensorVariable) and
-            r.dtype in theano.tensor.discrete_dtypes) for r in reps]):
+        if ndim is not None and len(reps) > ndim:
+            raise ValueError("len(reps) should be equal or less than ndim")
+        if not numpy.all([isinstance(r, (int, long)) or
+                          (isinstance(r, TensorVariable) and
+                           r.dtype in theano.tensor.discrete_dtypes) for r in reps]):
             raise ValueError("elements of reps must be scalars of integer dtype")
-       
+
     # if reps.ndim is less than x.ndim, we pad the reps with
     # "1" so that reps will have the same ndim as x.
     reps = list(reps)
     if ndim is None:
-        ndim = __builtin__.max(len(reps), x.ndim) 
+        ndim = builtins.max(len(reps), x.ndim)
     if len(reps) < ndim:
-        reps = [1]*(ndim-len(reps)) + reps
+        reps = [1] * (ndim - len(reps)) + reps
 
-    shape = [1]*(ndim-x.ndim) + [x.shape[i] for i in xrange(x.ndim)]
+    shape = [1] * (ndim - x.ndim) + [x.shape[i] for i in xrange(x.ndim)]
     alloc_shape = reps + shape
     y = alloc(x, *alloc_shape)
     shuffle_ind = numpy.arange(ndim * 2).reshape(2, ndim)
