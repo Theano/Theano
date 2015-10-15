@@ -627,7 +627,7 @@ def scan(fn,
             # the initial state over. We do this using the expand function
             # defined in scan utils
             sit_sot_scan_inputs.append(
-                scan_utils.expand(
+                scan_utils.expand_empty(
                     tensor.unbroadcast(
                         tensor.shape_padleft(actual_arg), 0),
                     actual_n_steps
@@ -653,8 +653,8 @@ def scan(fn,
             idx_offset = abs(numpy.min(init_out['taps']))
             # Sequence
             mit_sot_scan_inputs.append(
-                scan_utils.expand(init_out['initial'][:mintap],
-                                 actual_n_steps))
+                scan_utils.expand_empty(init_out['initial'][:mintap],
+                                        actual_n_steps))
 
             if i in return_steps:
                 mit_sot_return_steps[n_mit_sot] = return_steps[i]
@@ -866,7 +866,7 @@ def scan(fn,
             if isinstance(new_var.type, ops.expandable_types):
                 sit_sot_inner_inputs.append(new_var)
                 sit_sot_scan_inputs.append(
-                    scan_utils.expand(
+                    scan_utils.expand_empty(
                         tensor.unbroadcast(
                             tensor.shape_padleft(input.variable), 0),
                         actual_n_steps))
