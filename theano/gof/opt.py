@@ -2169,7 +2169,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
 
             # apply clean up as global opt can have done changes that
             # request that
-            changed = changed or apply_cleanup(iter_cleanup_sub_profs)
+            changed |= apply_cleanup(iter_cleanup_sub_profs)
 
             # apply local optimizer
             topo_t0 = time.time()
@@ -2211,7 +2211,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         global_process_count[lopt] += 1
                         changed = True
                         node_created[lopt] += change_tracker.nb_imported - nb
-                        changed = changed or apply_cleanup(iter_cleanup_sub_profs)
+                        changed |= apply_cleanup(iter_cleanup_sub_profs)
                         if global_process_count[lopt] > max_use:
                             max_use_abort = True
                             opt_name = (getattr(lopt, "name", None) or
@@ -2247,7 +2247,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             global_opt_timing[-1] += time.time() - t_before_final_opt
             # apply clean up as final opt can have done changes that
             # request that
-            changed = changed or apply_cleanup(iter_cleanup_sub_profs)
+            changed |= apply_cleanup(iter_cleanup_sub_profs)
             # merge clean up profiles during that iteration.
             c_sub_profs = []
             for copt, sub_profs in iteritems(iter_cleanup_sub_profs):
