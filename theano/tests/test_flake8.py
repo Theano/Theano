@@ -164,7 +164,6 @@ whitelist_flake8 = [
     "scan_module/scan_op.py",
     "scan_module/scan_perform_ext.py",
     "scan_module/__init__.py",
-    "scan_module/scan_opt.py",
     "scan_module/tests/test_scan.py",
     "scan_module/tests/test_scan_opt.py",
     "misc/tests/test_may_share_memory.py",
