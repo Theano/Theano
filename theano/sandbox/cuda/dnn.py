@@ -1462,20 +1462,32 @@ class GpuDnnPool(DnnBase):
     """
 
     __props__ = ()
+    
+    def __init__(self, mode='max'):
+        if mode == 'average':
+            mode = 'average_inc_pad'
+        assert mode in ('max', 'average_inc_pad', 'average_exc_pad')
+        self.mode = mode
 
-    def make_node(self, img, ws, stride, mode, pad):
+    def make_node(self, img, ws, stride, pad):
         img = as_cuda_ndarray_variable(img)
         
-        return Apply(self, [img, ws, stride, mode, pad], [img.type()])
+        ws = tensor.as_tensor_variable(ws)
+        stride = tensor.as_tensor_variable(stride)
+        pad = tensor.as_tensor_variable(pad)
+        assert ws.type.ndim == stride.type.ndim and ws.type.ndim == pad.type.ndim
+        
+        return Apply(self, [img, ws, stride, pad], [img.type()])
 
     def infer_shape(self, node, shape):
         w = node.inputs[1]
         s = node.inputs[2]
-        p = node.inputs[4]
+        p = node.inputs[3]
+
         ret = [shape[0][0], shape[0][1],
                (shape[0][2] + 2 * p[0] - w[0]) // s[0] + 1,
                (shape[0][3] + 2 * p[1] - w[1]) // s[1] + 1]
-        if w.ndim == 3:
+        if w.type.ndim == 3:
             ret.append((shape[0][4] + 2 * p[2] - w[2]) // s[2] + 1)
         return [ret]
 
@@ -1520,11 +1532,10 @@ if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
     def c_code(self, node, name, inputs, outputs, sub):
         ws = node.inputs[1]
         stride = node.inputs[2]
-        mode = node.inputs[3]
-        pad = node.inputs[4]
+        pad = node.inputs[3]
         out, = outputs
         
-        if mode == 'max':
+        if self.mode == 'max':
             self.mode_flag = 'CUDNN_POOLING_MAX'
         elif self.mode == "average_inc_pad":
             self.mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING'
@@ -1606,7 +1617,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
 """ % dict(out=out, fail=sub['fail'],
            name=name, input=inputs[0],
            ws=ws, pad=pad, str=stride,
-           nd=ws.ndim, input_desc="input"+name,
+           nd=ws.type.ndim, input_desc="input"+name,
            output_desc="output"+name)
 
     def grad(self, inp, grads):
@@ -1846,8 +1857,7 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
 
     """
     img = gpu_contiguous(img)
-    desc = GpuDnnPoolDesc(ws=ws, stride=stride, mode=mode, pad=pad)()
-    return GpuDnnPool()(img, desc)
+    return GpuDnnPool(mode=mode)(img, ws, stride, pad)
 
 
 class GpuDnnSoftmaxBase(DnnBase):
