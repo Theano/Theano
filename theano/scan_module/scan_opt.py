@@ -1042,6 +1042,14 @@ class ScanInplaceOptimizer(Optimizer):
         ls_end += op.outer_nitsot(node.inputs)
         ls_end += op.outer_non_seqs(node.inputs)
 
+        # In `ls`, duplicate any input which has more then one client and is
+        # an Alloc or an AllocEmpty
+        for i in range(len(ls)):
+            inp = ls[i]
+            if len(inp.clients) > 1:
+                if inp.owner and isinstance(inp.owner.op, (Alloc, AllocEmpty)):
+                    ls[i] = inp.owner.op(*inp.owner.inputs)
+
         n_outs = len(ls)
         for idx in xrange(n_outs):
             if ls[idx] in ls[:idx]:
@@ -1094,7 +1102,18 @@ class ScanInplaceOptimizer(Optimizer):
             out_indices = []
             for out_idx in range(n_outs):
                 inp_idx = 1 + op.n_seqs + out_idx
+                inp = original_node.inputs[inp_idx]
 
+                # If the input is an Alloc or an AllocEmpty, attempt to be
+                # inplace on it, even if other nodes are modifying it
+                # inplace.
+                if inp.owner and isinstance(inp.owner.op, (Alloc, AllocEmpty)):
+                    out_indices.append(out_idx)
+                    continue
+
+                # If the input is neither an Alloc or an AllocEmpty, only
+                # attempt to be inplace on it if nothing else is currently
+                # inplace on it.
                 input_used_inplace = False
                 for c in original_node.inputs[inp_idx].clients:
                     client = c[0]
