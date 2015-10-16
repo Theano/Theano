@@ -621,6 +621,7 @@ def local_gpua_careduce(node, context_name):
             node.op.scalar_op, axis=node.op.axis,
             dtype=getattr(node.op, 'dtype', None),
             acc_dtype=getattr(node.op, 'acc_dtype', None))
+        x.tag.context_name = context_name
         gvar = greduce(x)
         # We need to have the make node called, otherwise the mask can
         # be None
