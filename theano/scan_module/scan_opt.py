@@ -1046,9 +1046,9 @@ class ScanInplaceOptimizer(Optimizer):
         # an Alloc or an AllocEmpty
         for i in range(len(ls)):
             inp = ls[i]
-            if len(inp.clients) > 1:
-                if inp.owner and isinstance(inp.owner.op, (Alloc, AllocEmpty)):
-                    ls[i] = inp.owner.op(*inp.owner.inputs)
+            if (len(inp.clients) > 1 and inp.owner and
+                    isinstance(inp.owner.op, (Alloc, AllocEmpty))):
+                ls[i] = inp.owner.op(*inp.owner.inputs)
 
         n_outs = len(ls)
         for idx in xrange(n_outs):
