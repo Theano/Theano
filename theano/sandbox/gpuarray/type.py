@@ -92,6 +92,8 @@ class GpuArrayType(Type):
         self.ndim = len(self.broadcastable)
         self.name = name
         self.context_name = context_name
+        # This will check that the passed context name is valid and registered.
+        get_context(self.context_name)
         try:
             self.typecode = gpuarray.dtype_to_typecode(self.dtype)
         except gpuarray.GpuArrayException:
