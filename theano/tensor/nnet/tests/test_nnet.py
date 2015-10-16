@@ -1510,6 +1510,3 @@ def test_h_softmax():
     
     assert(fun_output_tg(x_mat, y_mat).shape == (batch_size,))
     assert(fun_output(x_mat).shape == (batch_size, output_size))
-
-if __name__ == '__main__':
-    unittest.main()

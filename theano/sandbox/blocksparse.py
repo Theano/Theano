@@ -1,6 +1,12 @@
-from __future__ import print_function
-import sys
-from theano.tensor.nnet.blocksparse import *
+import warnings
+from theano.tensor.nnet.blocksparse import (
+    SparseBlockGemv, SparseBlockOuter, sparse_block_dot, sparse_block_gemv,
+    sparse_block_gemv_inplace, sparse_block_outer, sparse_block_outer_inplace)
 
-print("DEPRECATION: theano.sandbox.blocksparse does not exist anymore,"
-      "it has been moved to theano.tensor.nnet.blocksparse.", file=sys.stderr)
+__all__ = [SparseBlockGemv, SparseBlockOuter, sparse_block_dot,
+           sparse_block_gemv, sparse_block_gemv_inplace, sparse_block_outer,
+           sparse_block_outer_inplace]
+
+warnings.warn("DEPRECATION: theano.sandbox.blocksparse does not exist anymore,"
+              "it has been moved to theano.tensor.nnet.blocksparse.",
+              category=DeprecationWarning)

@@ -2059,8 +2059,7 @@ def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
     The architecture is composed of two softmax layers: the first predicts the
     class of the input x while the second predicts the output of the input x in
     the predicted class.
-    More explanations can be found in the original paper:
-    http://arxiv.org/abs/cs/0108006.
+    More explanations can be found in the original paper [1]_.
 
     If target is specified, it will only compute the outputs of the
     corresponding targets. Otherwise, if target is None, it will compute all
@@ -2074,35 +2073,26 @@ def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
     ----------
     x: tensor of shape (batch_size, number of features)
         the minibatch input of the two-layer hierarchical softmax.
-
     batch_size: int
         the size of the minibatch input x.
-
     n_outputs: int
         the number of outputs.
-
     n_classes: int
         the number of classes of the two-layer hierarchical softmax. It
         corresponds to the number of outputs of the first softmax. See note at
         the end.
-
     n_outputs_per_class: int
         the number of outputs per class. See note at the end.
-
     W1: tensor of shape (number of features of the input x, n_classes)
         the weight matrix of the first softmax, which maps the input x to the
         probabilities of the classes.
-
     b1: tensor of shape (n_classes,)
         the bias vector of the first softmax layer.
-
     W2: tensor of shape (n_classes, number of features of the input x, n_outputs_per_class)
         the weight matrix of the second softmax, which maps the input x to
         the probabilities of the outputs.
-
     b2: tensor of shape (n_classes, n_outputs_per_class)
         the bias vector of the second softmax layer.
-
     target: tensor of shape either (batch_size,) or (batch_size, 1)
         (optional, default None)
         contains the indices of the targets for the minibatch
@@ -2112,14 +2102,14 @@ def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
 
     Returns
     -------
-    tensor of shape (batch_size, n_outputs) or (batch_size, 1)
+    output_probs: tensor of shape (batch_size, n_outputs) or (batch_size, 1)
         Output of the two-layer hierarchical softmax for input x. If target is
         not specified (None), then all the outputs are computed and the
         returned tensor has shape (batch_size, n_outputs). Otherwise, when
         target is specified, only the corresponding outputs are computed and
         the returned tensor has thus shape (batch_size, 1).
 
-    Notes:
+    Notes
     -----
     The product of n_outputs_per_class and n_classes has to be greater or equal
     to n_outputs. If it is strictly greater, then the irrelevant outputs will
@@ -2128,6 +2118,11 @@ def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
     dimensions of the tensors of W1, b1, W2 and b2.
     The most computational efficient configuration is when n_outputs_per_class
     and n_classes are equal to the square root of n_outputs.
+
+    References
+    ----------
+    .. [1] J. Goodman, "Classes for Fast Maximum Entropy Training,"
+        ICASSP, 2001, <http://arxiv.org/abs/cs/0108006>`.
     """
 
     # First softmax that computes the probabilities of belonging to each class
