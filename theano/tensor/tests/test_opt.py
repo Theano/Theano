@@ -1622,6 +1622,11 @@ def test_local_useless_slice():
     subtens = apply_node.op
     assert not any(isinstance(idx, slice) for idx in subtens.idx_list), "Slice should be gone"
 
+    # Now test that the stack trace is copied over properly,
+    # before before and after optimization.
+    assert hasattr(f_unopt.outputs[0].variable.tag, 'trace')
+    assert hasattr(f_opt.outputs[0].variable.tag, 'trace')
+
     # test a 4d tensor
     z = tensor.tensor4('z')
     o2 = z[1, :, :, 1]
@@ -1638,6 +1643,10 @@ def test_local_useless_slice():
     subtens = apply_node.op
     assert not any(isinstance(idx, slice) for idx in subtens.idx_list)
 
+    # Finally, test that the stack trace is copied over properly,
+    # before before and after optimization.
+    assert hasattr(f_opt_check.outputs[0].variable.tag, 'trace')
+    assert hasattr(f_opt_check_apply.outputs[0].variable.tag, 'trace')
 
 def test_local_useless_inc_subtensor():
     x = tensor.matrix('x')
@@ -1851,17 +1860,23 @@ class test_local_subtensor_make_vector(unittest.TestCase):
     def test_stacktrace(self):
         x, y, z = tensor.lscalars('xyz')
         v = make_vector(x, y, z)
-        #mode = theano.compile.mode.get_default_mode().including("local_subtensor_make_vector")
+
+        # Compile function using only the 'local_subtensor_make_vector' optimization,
+        # which requires us to add the 'canonicalize' phase.
+        mode = theano.compile.mode.Mode(optimizer=None).including('canonicalize_db').including("local_subtensor_make_vector")
+        f = function([x, y, z], v[0], mode=mode)
+        # Check stacktrace was copied over correctly after opt was applied
+        self.assertTrue(hasattr(f.outputs[0].variable.tag, 'trace'))
+        #import ipdb; ipdb.set_trace()
+        
+        
+        # Compile function using all optimizations in fast_compile mode, 
+        # including the 'local_subtensor_make_vector' optimization
         mode = theano.compile.mode.get_mode('FAST_COMPILE').including("local_subtensor_make_vector")
         f = function([x, y, z], v[0], mode=mode)
-        # TODO Pascal is there some way I can disable ALL optimizations except the 'local_subtensor_make_vector' opt?
-        # Right now there is some other optimization removing the stack trace
-        print ('Before optimization')
-        print (v[0].tag)
-        print ('After optimization')
-        print (f.outputs[0].tag)
         # Check stacktrace was copied over correctly after opt was applied
-        #self.assertTrue(hasattr(f.outputs[0].tag, 'trace'))
+        self.assertTrue(hasattr(f.outputs[0].variable.tag, 'trace'))
+        
 
 class test_local_subtensor_lift(unittest.TestCase):
     def _verify_stack_trace(self, f):
@@ -2661,6 +2676,32 @@ class test_local_adv_sub1_adv_inc_sub1(unittest.TestCase):
             self.assertRaises((AssertionError, ValueError),
                               f, dx, dy, [1])
 
+    def test_stacktrace(self):
+        x = tensor.matrix("x")
+        y = tensor.matrix("y")
+        idx = tensor.ivector()
+
+        dx = numpy.random.rand(4, 5).astype(config.floatX)
+        dy = numpy.random.rand(2, 5).astype(config.floatX)
+        didx = numpy.asarray([1, 3], "int32")
+
+        # set_subtensor
+        inc = tensor.set_subtensor(x[idx], y)
+        o = inc[idx]
+        # Compile function using only the 'local_subtensor_make_vector' optimization,
+        # which requires us to add the 'canonicalize' phase.
+        mode = theano.compile.mode.Mode(optimizer=None).including('canonicalize').including("local_adv_sub1_adv_inc_sub1")
+        f = theano.function([x, y, idx], o, self.mode)
+        # Check stacktrace was copied over correctly after opt was applied
+        self.assertTrue(hasattr(f.outputs[0].variable.tag, 'trace'))
+
+        # Compile function using all optimizations in fast_compile mode, 
+        # including the 'local_subtensor_make_vector' optimization
+        mode = theano.compile.mode.get_mode('FAST_COMPILE').including("local_adv_sub1_adv_inc_sub1")
+        f = theano.function([x, y, idx], o, self.mode)
+        # Check stacktrace was copied over correctly after opt was applied
+        self.assertTrue(hasattr(f.outputs[0].variable.tag, 'trace'))
+
 
 class Test_alloc_zero(unittest.TestCase):
     def setUp(self):
@@ -2861,7 +2902,11 @@ def test_local_IncSubtensor_serialize():
                                     tensor.AdvancedIncSubtensor1))
                         for inp in a.inputs])
 
-
+    # Now test that the stack trace is copied over properly,
+    # if we return the gradients. We need to use same mode as before.
+    f = theano.function([i, j, t], dW, mode=mode)
+    assert hasattr(f.outputs[0].variable.tag, 'trace')
+        
 def test_local_set_to_inc_subtensor():
     v = theano.tensor.fmatrix()
     s = v[[2, 1]]
@@ -2890,7 +2935,12 @@ def test_local_set_to_inc_subtensor():
 
     utt.assert_allclose(r1, r2)
 
-
+    # Finally, test that the stack trace is copied over properly,
+    # before before and after optimization.
+    assert hasattr(f1.outputs[0].variable.tag, 'trace')
+    assert hasattr(f2.outputs[0].variable.tag, 'trace')
+    
+    
 def test_local_subtensor_of_dot():
     m1 = theano.tensor.matrix()
     m2 = theano.tensor.matrix()
@@ -2922,9 +2972,15 @@ def test_local_subtensor_of_dot():
 
     f = theano.function([m1, m2, idx], theano.dot(m1, m2)[idx, 1:4, :, idx:], mode=mode)
     assert test_equality(f(d1, d2, 1), numpy.dot(d1, d2)[1, 1:4, :, 1:])
+    # if we return the gradients. We need to use same mode as before.
+    assert hasattr(f.outputs[0].variable.tag, 'trace')
 
     f = theano.function([m1, m2, idx], theano.dot(m1, m2)[1:4, :, idx:, idx], mode=mode)
     assert test_equality(f(d1, d2, 1), numpy.dot(d1, d2)[1:4, :, 1:, 1])
+
+    # Now test that the stack trace is copied over properly,
+    # if we return the gradients. We need to use same mode as before.
+    assert hasattr(f.outputs[0].variable.tag, 'trace')
 
 
 class Test_local_elemwise_alloc(unittest.TestCase):
@@ -3428,6 +3484,11 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
 
 
 class Test_local_useless_alloc(unittest.TestCase):
+    def _verify_stack_trace(self, f):
+        for output in f.outputs:
+            # Check stacktrace was copied over correctly after opt was applied
+            self.assertTrue(hasattr(output.variable.tag, 'trace'))
+
     def setUp(self):
         self.rng = numpy.random.RandomState(utt.fetch_seed())
 
@@ -3448,6 +3509,8 @@ class Test_local_useless_alloc(unittest.TestCase):
         if isinstance(mode_opt, compile.DebugMode):
             self.assertRaises(ValueError, f)
 
+        self._verify_stack_trace(f)
+
     def test1(self):
         # Test that alloc never gets instantiated during optimization
         mode = mode_opt.excluding('local_useless_alloc')
@@ -3460,6 +3523,8 @@ class Test_local_useless_alloc(unittest.TestCase):
         f = function([x], [xx], mode=mode)
         op_classes = [node.op.__class__ for node in f.maker.fgraph.toposort()]
         assert tensor.Alloc not in op_classes
+
+        self._verify_stack_trace(f)
 
     def test2(self):
         # Test that alloc never gets instantiated during optimization
@@ -3479,9 +3544,16 @@ class Test_local_useless_alloc(unittest.TestCase):
         # in op_classes and we have to change the assert.
         assert tensor.Alloc in op_classes
 
+        self._verify_stack_trace(f)
+
 
 class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
     opt_name = 'local_useless_inc_subtensor_alloc'
+
+    def _verify_stack_trace(self, f):
+        for output in f.outputs:
+            # Check stacktrace was copied over correctly after opt was applied
+            self.assertTrue(hasattr(output.variable.tag, 'trace'))
 
     def setUp(self):
         # The optimization requires the shape feature so we need to compile in
@@ -3519,6 +3591,10 @@ class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
         r2 = f2(x_value, i_value, y_value)
 
         utt.assert_allclose(r1, r2)
+        
+        self._verify_stack_trace(f1)
+        self._verify_stack_trace(f2)
+        
 
     def test_advanced_inc_subtensor1(self):
         if tensor.inplace_increment is None:
@@ -3548,6 +3624,9 @@ class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
         r2 = f2(x_value, i_value, y_value)
 
         utt.assert_allclose(r1, r2)
+        
+        self._verify_stack_trace(f1)
+        self._verify_stack_trace(f2)
 
     def test_incsubtensor(self):
         x = tensor.vector('x')
@@ -3574,6 +3653,9 @@ class Test_local_useless_inc_subtensor_alloc(unittest.TestCase):
         r2 = f2(x_value, i_value, y_value)
 
         utt.assert_allclose(r1, r2)
+        
+        self._verify_stack_trace(f1)
+        self._verify_stack_trace(f2)
 
 
 class test_shapeoptimizer(unittest.TestCase):
@@ -4081,6 +4163,8 @@ class T_Rebroadcast(unittest.TestCase):
         f([1, 2], [3, 4, 5])
         e = f.maker.fgraph.toposort()
         assert len([n for n in e if isinstance(n.op, T.Rebroadcast)]) == 0
+
+        assert hasattr(f.outputs[0].variable.tag, 'trace')
 
     def test_rebroadcast_rebroadcast(self):
         mode = theano.compile.get_default_mode().including('canonicalize')

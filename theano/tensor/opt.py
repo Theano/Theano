@@ -1841,7 +1841,7 @@ def local_subtensor_make_vector(node):
     elif isinstance(idx, Variable):
         if idx.ndim == 0:
             # if it is a constant we can do something with it
-            try:
+            try:               
                 v = get_scalar_constant_value(idx)
                 if isinstance(v, numpy.integer):
                     # Python 2.4 wants to index only with Python integers
@@ -1851,6 +1851,8 @@ def local_subtensor_make_vector(node):
                     ret = [x.owner.inputs[v]]
                 except IndexError:
                     raise NotScalarConstantError("Bad user graph!")
+
+                # Copy over stack trace from previous output to new output
                 return ret
             except NotScalarConstantError:
                 pass
@@ -2960,8 +2962,20 @@ def local_subtensor_of_dot(node):
 
     a_sub = a.__getitem__(tuple(a_indices))
     b_sub = b.__getitem__(tuple(b_indices)) if b_indices else b
+    
+    # Copy over previous output stacktrace to a_sub and b_sub,
+    # because an error in the subtensor operation (e.g. an index error) 
+    # on either a or b must correspond to an error in the 
+    # subtensor operation on their dot product.
+    copy_stack_trace(node.outputs[0], [a_sub, b_sub])
+    
+    # Copy over previous output stacktrace and previous dot product stacktrace,
+    # because an error here may correspond to an either in either the original
+    # dot product, or in the dot product after the subtensor operation.
+    r = T.dot(a_sub, b_sub)
+    copy_stack_trace([node.outputs[0], node.inputs[0]], r)
 
-    return [T.dot(a_sub, b_sub)]
+    return [r]
 
 
 @register_canonicalize
@@ -3016,6 +3030,11 @@ def local_IncSubtensor_serialize(node):
             new_inputs = ([i for i in node.inputs if not movable(i)] +
                           [mi.owner.inputs[0] for mi in movable_inputs])
             new_add = T.add(*new_inputs)
+            
+            # Copy over stacktrace from original output, as an error 
+            # (e.g. an index error) in this add operation should 
+            # correspond to an error in the original add operation.
+            copy_stack_trace(node.outputs[0], new_add)
 
             # stack up the new incsubtensors
             tip = new_add
@@ -3023,6 +3042,11 @@ def local_IncSubtensor_serialize(node):
                 assert tip.type == o_type
                 assert tip.type == mi.owner.inputs[0].type
                 tip = mi.owner.op(tip, *mi.owner.inputs[1:])
+                # Copy over stacktrace from outputs of the original 
+                # "movable" operation to the new operation. 
+                # Julian: Do we want to also include the stacktace of the output (node.outputs[0])?
+                copy_stack_trace(mi.owner.outputs, tip)
+                
             return [tip]
 
         # print incsub_inputs, [id(i.owner.inputs[0]) for i in incsub_inputs]
@@ -3052,6 +3076,11 @@ def local_inplace_setsubtensor(node):
             set_instead_of_inc=node.op.set_instead_of_inc,
             destroyhandler_tolerate_aliased=dta)
         new_node = new_op(*node.inputs)
+        # Copy stacktrace from original outputs to new outputs.
+        # This should be sensible, because the new operation is the 
+        # same as the old one, but now with different attributes?
+        # Julian: Pascal, is this correct?
+        copy_stack_trace(node.outputs, new_node)
         return [new_node]
     return False
 compile.optdb.register('local_inplace_setsubtensor',
@@ -3070,6 +3099,12 @@ def local_inplace_incsubtensor1(node):
     if isinstance(node.op, AdvancedIncSubtensor1) and not node.op.inplace:
         new_op = node.op.clone_inplace()
         new_node = new_op(*node.inputs)
+
+        # Copy stacktrace from original outputs to new outputs.
+        # This should be sensible, because the new operation is the 
+        # same as the old one, but now with different attributes?
+        # Julian: same as above, is this correct?
+        copy_stack_trace(node.outputs, new_node)
         return [new_node]
     return False
 compile.optdb.register('local_inplace_incsubtensor1',
@@ -3104,6 +3139,8 @@ def local_incsubtensor_of_zeros(node):
             pass
 
         if replace:
+            # No need to copy over the stacktrace,
+            # because x should already have a stacktrace
             return [x]
         else:
             return False
@@ -3138,6 +3175,9 @@ def local_setsubtensor_of_constants(node):
         if (replace_x is not None and
                 replace_y is not None and
                 replace_x == replace_y):
+
+            # No need to copy over the stacktrace,
+            # because x should already have a stacktrace
             return [x]
         else:
             return False
@@ -3184,7 +3224,13 @@ def local_adv_sub1_adv_inc_sub1(node):
         return [y]
     # It is possible that y is upcast or downcast to x.dtype.
     # In all case, as we set or add with 0, we can just cast y.
-    return [T.cast(y, node.outputs[0].dtype)]
+    r = T.cast(y, node.outputs[0].dtype)
+
+    # Copy over stacktrace from before casting, since
+    # we don't expect problems in the casting operation,
+    # and any problems in the indexing would have been spotted above.
+    copy_stack_trace(y, r)
+    return [r]
 
 
 @register_specialize
@@ -3287,7 +3333,14 @@ def local_useless_inc_subtensor_alloc(node):
                 msg = '`x[i]` and `y` do not have the same shape.'
                 z = Assert(msg)(z, *cond)
 
-            return [node.op(x, z, *i)]
+            r = node.op(x, z, *i)
+            # Copy over stacktrace from previous output, since
+            # we don't expect problems when removing the intermediate 
+            # alloc operation and so we still want to point at the line
+            # of the inc_subtensor operation.
+            copy_stack_trace(node.outputs, r)
+
+            return [r]
 
 
 ####################
@@ -3306,6 +3359,8 @@ def local_useless_rebroadcast(node):
         x = node.inputs[0]
         if numpy.all(x.broadcastable == node.outputs[0].broadcastable):
             # No broadcastable flag was modified
+            # No need to copy over stack trace, 
+            # because x should already have a stack trace.
             return [x]
         else:
             # Keep the flags that modify something
@@ -3317,7 +3372,10 @@ def local_useless_rebroadcast(node):
                 # All flags are useful
                 return
             else:
-                return [T.Rebroadcast(*list(new_axis.items()))(x)]
+                r = T.Rebroadcast(*list(new_axis.items()))(x)
+                # Copy over stacktrace from previous output
+                copy_stack_trace(node.outputs, r)
+                return [r]
 
 
 @register_canonicalize
