@@ -104,6 +104,7 @@ whitelist_flake8 = [
     "sandbox/theano_object.py",
     "sandbox/scan.py",
     "sandbox/symbolic_module.py",
+    "sandbox/blocksparse.py",
     "sandbox/conv.py",
     "sandbox/debug.py",
     "sandbox/tests/test_theano_object.py",
