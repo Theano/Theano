@@ -18,6 +18,10 @@ class Test_DB(TestCase):
 
         db.register('c', Opt(), 'z', 'asdf')
 
+        self.assertIn('a', db)
+        self.assertIn('b', db)
+        self.assertIn('c', db)
+
         try:
             db.register('c', Opt())  # name taken
             self.fail()
