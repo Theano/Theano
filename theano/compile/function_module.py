@@ -1459,6 +1459,10 @@ class FunctionMaker(object):
                     if theano.config.profile_optimizer:
                         profile.optimizer_profile = (optimizer,
                                                      optimizer_profile)
+                elif theano.config.profile_optimizer:
+                    warnings.warn((
+                        "config.profile_optimizer requires config.profile to "
+                        " be set to True as well"), stacklevel=3)
                 _logger.debug('Optimizing took %f seconds', opt_time)
 
                 # Add deep copy to respect the memory interface

@@ -657,7 +657,8 @@ Detailed profiling of Theano optimizer
 
 You can get more detailed profiling information about the Theano
 optimizer phase by setting to `True` the Theano flags
-:attr:`config.profile_optimizer`.
+:attr:`config.profile_optimizer` (this require `config.profile` to be `True`
+as well).
 
 This will output something like this:
 
