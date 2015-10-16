@@ -235,52 +235,19 @@ def test_pooling2():
         raise SkipTest(cuda.dnn.dnn_available.msg)
 
     x = T.ftensor4()
-    for mode, pad in product(('max', 'average_inc_pad', 'average_exc_pad'),
-                             ((0, 0), (1, 0), (1, 0), (2, 3), (3, 2))):
-        if mode == 'max':
-            func = T.max
-        else:
-            func = T.mean
-        if pad != (0, 0) and cuda.dnn.version() == -1:
-            continue
+    ws = T.imatrix()
+    stride = T.imatrix()
+    pad = T.imatrix()
+    
+    pooled_x = cuda.dnn.dnn_pool(x, ws, stride=stride, pad=pad)
+    
+    f = theano.function([x, ws, stride, pad], pooled_x)
+    x_ = numpy.arange(500).reshape(1, 5, 10, 10).astype('float32')
+    ws_ = numpy.array([2, 2])
+    stride_ = numpy.array([1, 1])
+    pad_ = numpy.array([0, 0])
 
-        if pad != (0, 0) and func is T.mean:
-            continue
-
-        for ws in (4, 2, 5):
-            for stride in (2, 3):
-                if stride > ws:
-                    continue
-                if pad[0] > stride or pad[1] > stride:
-                    # Not implemented
-                    continue
-                # We will check that the opt introduced it.
-                out1 = max_pool_2d(x, (ws, ws),
-                                   st=(stride, stride),
-                                   ignore_border=True,
-                                   padding=pad, mode=mode)
-                out2 = pool_2d_i2n(x, ds=(ws, ws), strides=(stride, stride),
-                                   pad=pad,
-                                   pool_function=func)
-                mode_without_gpu2 = mode_without_gpu.including()
-                mode_without_gpu2.check_isfinite = False
-                f1 = theano.function([x], out1, mode=mode_with_gpu)
-                assert any([isinstance(node.op, cuda.dnn.GpuDnnPool)
-                            for node in f1.maker.fgraph.apply_nodes])
-                f2 = theano.function([x], out2, mode=mode_without_gpu2)
-                assert not any([isinstance(node.op, cuda.dnn.GpuDnnPool)
-                                for node in f2.maker.fgraph.apply_nodes])
-                for shp in [(1, 10, 100, 100),
-                            (1, 3, 99, 99),
-                            (32, 1, 147, 197),
-                            ]:
-                    data = numpy.random.normal(0, 1, shp).astype("float32")
-                    a = f1(data).__array__()
-
-                    b = f2(data).__array__()
-                    assert numpy.allclose(a, b,
-                                          atol=numpy.finfo(numpy.float32).eps)
-
+    print f(x_, ws_, stride_, pad_)
        
 
 def test_pooling():
