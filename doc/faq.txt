@@ -5,10 +5,15 @@
 ==========================
 Frequently Asked Questions
 ==========================
+
+Does Theano support Python 3?
+------------------------------
+We support both Python 2 >= 2.6 and Python 3 >= 3.3.
+
 TypeError: object of type 'TensorVariable' has no len()
 -------------------------------------------------------
 
-If you receive the following error, it is because the Python function *__len__* cannot 
+If you receive the following error, it is because the Python function *__len__* cannot
 be implemented on Theano variables:
 
 .. code-block:: python
@@ -17,7 +22,7 @@ be implemented on Theano variables:
 
 Python requires that *__len__* returns an integer, yet it cannot be done as Theano's variables are symbolic. However, `var.shape[0]` can be used as a workaround.
 
-This error message cannot be made more explicit because the relevant aspects of Python's 
+This error message cannot be made more explicit because the relevant aspects of Python's
 internals cannot be modified.
 
 
@@ -64,10 +69,10 @@ compilation but it will also use more memory because
 in a trade off between speed of compilation and memory usage.
 
 Theano flag `reoptimize_unpickled_function` controls if an unpickled theano function
-should reoptimize its graph or not. Theano users can use the standard python pickle 
-tools to save a compiled theano function. When pickling, both graph before and 
-after the optimization are saved, including shared variables. When set to True, 
-the graph is reoptimized when being unpickled. Otherwise, skip the graph optimization 
+should reoptimize its graph or not. Theano users can use the standard python pickle
+tools to save a compiled theano function. When pickling, both graph before and
+after the optimization are saved, including shared variables. When set to True,
+the graph is reoptimized when being unpickled. Otherwise, skip the graph optimization
 and use directly the optimized graph from the pickled file. After Theano 0.7,
 the default changed to False.
 
@@ -197,7 +202,7 @@ We try to list in this `wiki page <https://github.com/Theano/Theano/wiki/Related
 --------------------------------
 
 Theano offers a good amount of flexibility, but has some limitations too.
-You must answer for yourself the following question: How can my algorithm be cleverly written 
+You must answer for yourself the following question: How can my algorithm be cleverly written
 so as to make the most of what Theano can do?
 
 Here is a list of some of the known limitations:

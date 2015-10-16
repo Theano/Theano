@@ -4,12 +4,12 @@ int
 APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
                         PyGpuArrayObject *km,
                         cudnnConvolutionDescriptor_t desc,
-                        double alpha, double beta, PyGpuArrayObject **kerns) {
+                        double alpha, double beta, PyGpuArrayObject **kerns,
+                        PyGpuContextObject *c) {
   cudnnStatus_t err = CUDNN_STATUS_SUCCESS;
   float af = alpha, bf = beta;
   void *alpha_p;
   void *beta_p;
-  PyGpuContextObject *c = pygpu_default_context();
 
   if (PyGpuArray_DIMS(input)[1] != PyGpuArray_DIMS(km)[1]) {
     PyErr_SetString(PyExc_ValueError,

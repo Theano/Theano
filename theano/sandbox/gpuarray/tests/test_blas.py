@@ -10,8 +10,8 @@ from theano.tensor.blas import gemv_inplace, gemm_inplace, _dot22
 from theano.tensor.tests.test_blas import TestGer, BaseGemv
 
 from .. import gpuarray_shared_constructor
-from .test_basic_ops import (makeTester, rand,
-                             mode_with_gpu)
+from .config import mode_with_gpu
+from .test_basic_ops import makeTester, rand
 
 from ..blas import (gpugemv_inplace, gpugemv_no_inplace,
                     gpugemm_inplace,
@@ -100,7 +100,7 @@ class TestGpuGer_OpContract(TestCase, utt.T_OpContractMixin):
         self.ops = [gpuger_no_inplace, gpuger_inplace]
 
     def clone(self, op):
-        return GpuGer(destructive=op.destructive)
+        return GpuGer(inplace=op.inplace)
 
 
 GpuDot22Tester = makeTester(

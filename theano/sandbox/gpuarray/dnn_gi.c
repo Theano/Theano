@@ -4,12 +4,12 @@ int
 APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
                         PyGpuArrayObject *im,
                         cudnnConvolutionDescriptor_t desc,
-                        double alpha, double beta, PyGpuArrayObject **input) {
+                        double alpha, double beta, PyGpuArrayObject **input,
+                        PyGpuContextObject *c) {
   cudnnStatus_t err = CUDNN_STATUS_SUCCESS;
   float af = alpha, bf = beta;
   void *alpha_p;
   void *beta_p;
-  PyGpuContextObject *c = pygpu_default_context();
 
   if (PyGpuArray_DIMS(im)[1] != PyGpuArray_DIMS(kerns)[1]) {
     PyErr_SetString(PyExc_ValueError, "images and kernel must have the same "

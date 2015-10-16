@@ -17,6 +17,7 @@ import tempfile
 import time
 import platform
 import distutils.sysconfig
+import warnings
 
 import numpy.distutils  # TODO: TensorType should handle this
 
@@ -324,7 +325,10 @@ def dlimport(fullpath, suffix=None):
             if hasattr(importlib, "invalidate_caches"):
                 importlib.invalidate_caches()
         t0 = time.time()
-        rval = __import__(module_name, {}, {}, [module_name])
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore",
+                                    message="numpy.ndarray size changed")
+            rval = __import__(module_name, {}, {}, [module_name])
         t1 = time.time()
         import_time += t1 - t0
         if not rval:

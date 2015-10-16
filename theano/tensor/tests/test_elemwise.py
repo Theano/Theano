@@ -159,7 +159,7 @@ class test_Broadcast(unittest.TestCase):
     cop = Elemwise
 
     openmp_minsize = 2*config.openmp_elemwise_minsize
-    openmp_minsize_sqrt = math.ceil(math.sqrt(openmp_minsize))
+    openmp_minsize_sqrt = int(math.ceil(math.sqrt(openmp_minsize)))
 
     # The order is important if you change them.
     linkers = [gof.PerformLinker, gof.CLinker]

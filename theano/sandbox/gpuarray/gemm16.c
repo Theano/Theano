@@ -2,7 +2,7 @@
 
 /* Why do we need this? */
 size_t dim = 2048 * 32;
-rand_buf = pygpu_empty(1, &dim, GA_UINT, GA_C_ORDER, pygpu_default_context(),
+rand_buf = pygpu_empty(1, &dim, GA_UINT, GA_C_ORDER, CONTEXT,
                        Py_None);
 if (rand_buf == NULL) {
   FAIL;
@@ -14,7 +14,8 @@ PyGpuArrayObject *rand_buf;
 
 int gemm16(PyGpuArrayObject *C, float alpha,
            PyGpuArrayObject *A, PyGpuArrayObject *B,
-           float beta, PyGpuArrayObject **out) {
+           float beta, PyGpuArrayObject **out,
+           PyGpuContextObject *c) {
   PyGpuArrayObject *_A = NULL;
   PyGpuArrayObject *_B = NULL;
   GpuKernel *gk;

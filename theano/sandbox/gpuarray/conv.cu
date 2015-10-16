@@ -134,7 +134,7 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
     const int out_size_byte = out_size*sizeof(float);
     if (!((THEANO_KERN_WID == PyGpuArray_DIMS(kern)[3]) || (THEANO_KERN_WID==0))){
      PyErr_Format(PyExc_ValueError, "ERROR: This GpuConv code was compiled for"
-                   " %d kernel columns, but the kernel we received had %llud columns!",
+                   " %d kernel columns, but the kernel we received had %llu columns!",
                    THEANO_KERN_WID, (unsigned long long)PyGpuArray_DIMS(kern)[3]);
       return -1;
     }
@@ -219,13 +219,6 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
         {
             if (verbose)
               fprintf(stderr,
-                      "threads_per_block[0]=%i, threads_per_block[1]=%i,"
-                      " n_blocks[0]=%i, n_blocks[1]=%i,"
-                      " shmem_sz=%i, nb_threads=%i, nb_split=%i\n",
-                      threads_per_block[0], threads_per_block[1], n_blocks[0], n_blocks[1],
-                      shmem_sz, threads_per_block[0] * threads_per_block[1], nb_split);
-            if (verbose)
-              fprintf(stderr,
                       "INFO: impl 'conv_patch' failed (%s),"
                       " trying next implementation\n",
                       GpuKernel_error(k, err));
@@ -307,21 +300,6 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
 
         if (err == GA_NO_ERROR)
         {
-            if (verbose>1)
-              fprintf(stderr,
-                      "threads_per_block[0]=%i, threads_per_block[1]=%i, n_blocks[0]=%i, n_blocks[1]=%i,"
-                      " shmem_sz=%i, nb_threads=%i,"
-                      " kern_flipped=true, accumulate=false, kern_width=%i,"
-                      " img_c_contiguous_2d=%i,"
-                      " kern_c_contiguous_2d=%i, nb_split=%i,"
-                      " preload_full_kernel=%i,"
-                      " subsample_rows=%llu, subsample_cols=%llu\n",
-                      threads_per_block[0], threads_per_block[1], n_blocks[0], n_blocks[1],
-                      shmem_sz, threads_per_block[0] * threads_per_block[1],
-                      THEANO_KERN_WID, img_contiguous_2d, kern_contiguous_2d,
-                      nb_split, preload_full_kernel,
-                      (unsigned long long)subsample_rows,
-                      (unsigned long long)subsample_cols);
             if (verbose)
               fprintf(stderr,
                       "INFO: used 'conv_patch_stack' version with nb_split=%i"
@@ -334,21 +312,6 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
         }
         else
         {
-            if (verbose)
-              fprintf(stderr,
-                      "threads_per_block[0]=%i, threads_per_block[1]=%i, n_blocks[0]=%i, n_blocks[1]=%i,"
-                      " shmem_sz=%i, nb_threads=%i,"
-                      " kern_flipped=true, accumulate=false,"
-                      " kern_width=%i, img_c_contiguous_2d=%i,"
-                      " kern_c_contiguous_2d=%i, nb_split=%i,"
-                      " preload_full_kernel=%i,"
-                      " subsample_rows=%llu, subsample_cols=%llu\n",
-                      threads_per_block[0], threads_per_block[1], n_blocks[0], n_blocks[1],
-                      shmem_sz, threads_per_block[0] * threads_per_block[1],
-                      THEANO_KERN_WID, img_contiguous_2d, kern_contiguous_2d,
-                      nb_split, preload_full_kernel,
-                      (unsigned long long)subsample_rows,
-                      (unsigned long long)subsample_cols);
             if (verbose)
               fprintf(stderr,
                       "INFO: impl 'conv_patch_stack' failed (%s),"
@@ -396,12 +359,6 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
         {
             if (verbose)
               fprintf(stderr,
-                      "threads_per_block[0]=%i, threads_per_block[1]=%i, n_blocks[0]=%i, n_blocks[1]=%i,"
-                      " shmem_sz=%i, nb_threads=%i\n",
-                      threads_per_block[0], threads_per_block[1], n_blocks[0], n_blocks[1],
-                      shmem_sz, threads_per_block[0] * threads_per_block[1]);
-            if (verbose)
-              fprintf(stderr,
                       "INFO: impl 'conv_rows' failed (%s),"
                       " trying next implementation\n",
                       GpuKernel_error(k, err));
@@ -428,19 +385,10 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
 
         size_t shmem_sz =((kern_len+nb_row-1)*img_wid + kern_size)*sizeof(float);
 
-        if (0)
-          fprintf(stderr,
-                  "IMG CONTIG %i KERN_CONTIG %i (%i %i %i) (%i %i %i)\n",
-                  img_contiguous_2d, kern_contiguous_2d,
-                  threads_per_block[0], threads_per_block[1], threads_per_block[2],
-                  n_blocks[0], n_blocks[1], n_blocks[2]);
-
         GpuKernel *k = NULL;
         if(!img_contiguous_2d || !kern_contiguous_2d) {
-            //fprintf(stderr, "using false version\n");
             k=&conv_rows_stack_0_node_<<<<HASH_PLACEHOLDER>>>>_0;
         } else {
-            //fprintf(stderr, "using true version\n");
             k=&conv_rows_stack_1_node_<<<<HASH_PLACEHOLDER>>>>_0;
         }
 
@@ -460,23 +408,11 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
         if (err == GA_NO_ERROR)
         {
             work_complete = true;
-            if (verbose>1)
-              fprintf(stderr,
-                      "threads_per_block[0]=%i, threads_per_block[1]=%i, n_blocks[0]=%i, n_blocks[1]=%i,"
-                      " shmem_sz=%i, nb_threads=%i\n",
-                      threads_per_block[0], threads_per_block[1], n_blocks[0], n_blocks[1],
-                      shmem_sz, threads_per_block[0] * threads_per_block[1]);
             if (verbose)
               fprintf(stderr, "INFO: used 'conv_rows_stack' version\n");
         }
         else
         {
-            if (verbose)
-              fprintf(stderr,
-                      "threads_per_block[0]=%i, threads_per_block[1]=%i, n_blocks[0]=%i, n_blocks[1]=%i,"
-                      " shmem_sz=%i, nb_threads=%i\n",
-                      threads_per_block[0], threads_per_block[1], n_blocks[0], n_blocks[1],
-                      shmem_sz, threads_per_block[0] * threads_per_block[1]);
             if (verbose)
               fprintf(stderr,
                       "INFO: impl 'conv_rows_stack' failed (%s),"
@@ -543,12 +479,6 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
         if (err == GA_NO_ERROR)
         {
             work_complete = true;
-            if (verbose>1)
-              fprintf(stderr,
-                      "threads_per_block[0]=%i, threads_per_block[1]=%i, n_blocks[0]=%i, n_blocks[1]=%i,"
-                      " shmem_sz=%i, nb_threads=%i\n",
-                      threads_per_block[0], threads_per_block[1], n_blocks[0], n_blocks[1],
-                      shmem_sz, threads_per_block[0] * threads_per_block[1]);
             if (verbose)
               fprintf(stderr,
                       "INFO: used 'conv_rows_stack2' version %s with"
@@ -558,12 +488,6 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
         }
         else
         {
-            if (verbose)
-              fprintf(stderr,
-                      "threads_per_block[0]=%i, threads_per_block[1]=%i, n_blocks[0]=%i, n_blocks[1]=%i,"
-                      " shmem_sz=%i, nb_threads=%i version=%d\n",
-                      threads_per_block[0], threads_per_block[1], n_blocks[0], n_blocks[1],
-                      shmem_sz, threads_per_block[0] * threads_per_block[1],(version==9?2:3));
             if (verbose)
               fprintf(stderr,
                       "INFO: impl 'conv_rows_stack2' failed (%s),"
@@ -680,13 +604,6 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
 
             if (err == GA_NO_ERROR)
             {
-                if (verbose>1)
-                    fprintf(stderr,
-                            "threads_per_block[0]=%i, threads_per_block[1]=%i, threads_per_block[2]=%i, "
-                            "n_blocks[0]=%i, n_blocks[1]=%i, shmem_sz=%i,"
-                            " nb_threads=%i\n",
-                            threads_per_block[0], threads_per_block[1], threads_per_block[2], n_blocks[0], n_blocks[1],
-                            shmem_sz, threads_per_block[0] * threads_per_block[1] * threads_per_block[2]);
                 if (verbose)
                     fprintf(stderr,
                             "INFO: used 'conv_patch_stack_reduce' version"
@@ -699,14 +616,6 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
             {
                 if (verbose)
                   fprintf(stderr,
-                          "threads_per_block[0]=%i, threads_per_block[1]=%i, threads_per_block[2]=%i,"
-                          " n_blocks[0]=%i, n_blocks[1]=%i,shmem_sz=%i,"
-                          " nb_threads=%i\n",
-                          threads_per_block[0], threads_per_block[1], threads_per_block[2],
-                          n_blocks[0], n_blocks[1], shmem_sz,
-                          threads_per_block[0] * threads_per_block[1] * threads_per_block[2]);
-                if (verbose)
-                  fprintf(stderr,
                           "INFO: impl 'conv_patch_stack_reduce' failed (%s),"
                           " trying next implementation\n",
                           GpuKernel_error(k, err));
@@ -714,7 +623,7 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
         } // else no good nb_splits was found
     }
 
-    if (1 && (version==6||version==-1) &&
+    if ((version==6||version==-1) &&
         kern_len<=320 &&
         !work_complete) //conv_valid_row_reduce
     {
@@ -784,12 +693,6 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
         {
             if (verbose)
               fprintf(stderr,
-                      "threads_per_block[0]=%i, threads_per_block[1]=%i, n_blocks[0]=%i,"
-                      " shmem_sz=%i, nb_threads=%i\n",
-                      threads_per_block[0], threads_per_block[1], n_blocks[0],
-                      n_reduce_buf, threads_per_block[0] * threads_per_block[1]);
-            if (verbose)
-              fprintf(stderr,
                       "INFO: impl 'conv_valid_row_reduce' failed (%s),"
                       " trying next implementation\n",
                       GpuKernel_error(k, err));
@@ -805,43 +708,8 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
                                         (size_t)256),
                                (size_t)1, (size_t)1};
 
-        if (1)
-        {
-            if (verbose)
-              fprintf(stderr, "INFO: launching conv_reference_valid\n");
-            if (verbose>1)
-              fprintf(stderr, "      img : %i %llu %i %i %p  "
-                      "%lld %lld %lld %lld\n",
-                      nbatch, (unsigned long long)stack_len, img_len, img_wid,
-                      (void *)(cuda_get_ptr(img->ga.data) + img->ga.offset),
-                      (long long)img_stride_batch,
-                      (long long)img_stride_stack,
-                      (long long)img_stride_row,
-                      (long long)img_stride_col);
-            if (verbose>1)
-              fprintf(stderr, "      kern: %i %i %i %i %p  "
-                      "%lld %lld %lld %lld\n",
-                      nkern, nstack, kern_len, kern_wid,
-                      (void *)(cuda_get_ptr(kern->ga.data) + kern->ga.offset),
-                      (long long)kern_stride_nkern,
-                      (long long)kern_stride_stack,
-                      (long long)kern_stride_row,
-                      (long long)kern_stride_col);
-            if (verbose>1)
-                fprintf(stderr, "      out : %llu %llu %i %i %p  "
-                        "%lld %lld %lld %lld\n",
-                      (unsigned long long)PyGpuArray_DIMS(out)[0],
-                      (unsigned long long)PyGpuArray_DIMS(out)[1],
-                      out_len, out_wid,
-                      (void *)(cuda_get_ptr(out->ga.data) + out->ga.offset),
-                      (long long)out_stride_batch,
-                      (long long)out_stride_nkern,
-                      (long long)out_stride_row,
-                      (long long)out_stride_col);
-            if (verbose>1)
-              fprintf(stderr, "   launch params: %i %i %i\n",
-                      outsize, n_blocks[0], threads_per_block[0]);
-        }
+        if (verbose)
+            fprintf(stderr, "INFO: launching conv_reference_valid\n");
 
         void *kernel_params[] = {
             (void *)&nbatch, (void *)&nkern, (void *)&stack_len,
@@ -1113,15 +981,6 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
 
         if (err == GA_NO_ERROR)
         {
-          if (verbose>1)
-            fprintf(stderr,
-                    "threads_per_block[0]=%i, threads_per_block[1]=%i, threads_per_block[2]=%i,"
-                    " n_blocks[0]=%i, n_blocks[1]=%i, shmem_sz=%i, nb_threads=%i,"
-                    " out_len=%i, nb_split=%i, version=%i\n",
-                    threads_per_block[0], threads_per_block[1], threads_per_block[2],
-                    n_blocks[0], n_blocks[1], shmem_sz,
-                    threads_per_block[0] * threads_per_block[1] * threads_per_block[2],
-                    out_len, nb_split, version);
             if (verbose)
               fprintf(stderr,
                       "INFO: used 'conv_full_patch_stack_padded'"
@@ -1131,15 +990,6 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
         }
         else
         {
-          if (verbose)
-            fprintf(stderr,
-                    "threads_per_block[0]=%i, threads_per_block[1]=%i, threads_per_block[2]=%i,"
-                    " n_blocks[0]=%i, n_blocks[1]=%i,shmem_sz=%i, nb_threads=%i,"
-                    " out_len=%i, nb_split=%i, version=%i\n",
-                    threads_per_block[0], threads_per_block[1], threads_per_block[2],
-                    n_blocks[0], n_blocks[1], shmem_sz,
-                    threads_per_block[0] * threads_per_block[1] * threads_per_block[2],
-                    out_len, nb_split, version);
           if (verbose)
             fprintf(stderr,
                     "INFO: impl 'conv_full_patch_stack_padded' %s %s"
@@ -1181,12 +1031,6 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
         {
             if (verbose)
               fprintf(stderr,
-                      "threads_per_block[0]=%i, threads_per_block[1]=%i, n_blocks[0]=%i, n_blocks[1]=%i,"
-                      " shmem_sz=%i, nb_threads=%i\n",
-                      threads_per_block[0], threads_per_block[1], n_blocks[0], n_blocks[1], shmem_sz,
-                      threads_per_block[0] * threads_per_block[1]);
-            if (verbose)
-              fprintf(stderr,
                       "INFO: impl 'conv_full_patch' failed (%s),"
                       " trying next implementation\n",
                       GpuKernel_error(&conv_full_patch_node_<<<<HASH_PLACEHOLDER>>>>_0, err));
@@ -1225,12 +1069,6 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
         }
         else
         {
-            if (verbose)
-              fprintf(stderr,
-                      "threads_per_block[0]=%i, threads_per_block[1]=%i, n_blocks[0]=%i, n_blocks[1]=%i,"
-                      " shmem_sz=%i, nb_threads=%i\n",
-                      threads_per_block[0], threads_per_block[1], n_blocks[0], n_blocks[1], shmem_sz,
-                      threads_per_block[0] * threads_per_block[1]);
             if (verbose)
               fprintf(stderr, "INFO: impl 'conv_full_load_everything'"
                       " failed (%s), trying next implementation\n",
@@ -1277,12 +1115,6 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
         else
         {
             if (verbose)
-              fprintf(stderr,
-                      "threads_per_block[0]=%i, threads_per_block[1]=%i, n_blocks[0]=%i, n_blocks[1]=%i,"
-                      " shmem_sz=%i, nb_threads=%i\n",
-                      threads_per_block[0], threads_per_block[1], n_blocks[0], n_blocks[1],
-                      shmem_sz, threads_per_block[0] * threads_per_block[1]);
-            if (verbose)
               fprintf(stderr, "INFO: impl 'conv_full_patch_stack' failed (%s), trying next implementation\n",
                       GpuKernel_error(k, err));
         }                         
@@ -1297,55 +1129,6 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
         size_t threads_per_block[3] = {std::min(ceil_intdiv(outsize, n_blocks[0]),
                                         (size_t)256),
                                (size_t)1, (size_t)1};
-
-        if (0)
-        {
-            if (verbose)
-              fprintf(stderr, "INFO: launching conv_reference_valid\n");
-            if (verbose)
-              fprintf(stderr, "      img : %llu %llu %llu %llu %p  "
-                      "%lld %lld %lld %lld\n",
-                      (unsigned long long)nbatch,
-                      (unsigned long long)stack_len,
-                      (unsigned long long)img_len,
-                      (unsigned long long)img_wid,
-                      (void *)(cuda_get_ptr(img->ga.data) + img->ga.offset),
-                      (long long)img_stride_batch,
-                      (long long)img_stride_stack,
-                      (long long)img_stride_row,
-                      (long long)img_stride_col);
-            if (verbose)
-              fprintf(stderr, "      kern: %llu %llu %llu %llu %p  "
-                      "%lld %lld %lld %lld\n",
-                      (unsigned long long)nkern,
-                      (unsigned long long)nstack,
-                      (unsigned long long)kern_len,
-                      (unsigned long long)kern_wid,
-                      (void *)(cuda_get_ptr(kern->ga.data) + kern->ga.offset),
-                      (long long)kern_stride_nkern,
-                      (long long)kern_stride_stack,
-                      (long long)kern_stride_row,
-                      (long long)kern_stride_col);
-            if (verbose)
-                fprintf(stderr, "      out : %llu %llu %llu %llu %p  "
-                        "%lld %lld %lld %lld\n",
-                      (unsigned long long)PyGpuArray_DIMS(out)[0],
-                      (unsigned long long)PyGpuArray_DIMS(out)[1],
-                      (unsigned long long)out_len,
-                      (unsigned long long)out_wid,
-                      (void *)(cuda_get_ptr(out->ga.data) + out->ga.offset),
-                      (long long)out_stride_batch,
-                      (long long)out_stride_nkern,
-                      (long long)out_stride_row,
-                      (long long)out_stride_col);
-            if (verbose)
-              fprintf(stderr, "   launch params: %i %i %i\n",
-                      outsize, n_blocks[0], threads_per_block[0]);
-            if (verbose)
-                fprintf(stderr, "   subsample params: %llu %llu\n",
-                        (unsigned long long)subsample_rows,
-                        (unsigned long long)subsample_cols);
-        }
 
         void *kernel_params[] = {
             (void *)&nbatch, (void *)&nkern, (void *)&stack_len,
@@ -1377,11 +1160,6 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
         }
         else
         {
-          if (verbose)
-            fprintf(stderr, "threads_per_block[0]=%i, threads_per_block[1]=%i,"
-                    " n_blocks[0]=%i, n_blocks[1]=%i,"
-                    " shmem_sz=%i, nb_threads=%i\n",
-                    threads_per_block[0], 1, n_blocks[0], 1, 0, threads_per_block[0]);
           if (verbose)
             fprintf(stderr, "INFO: impl 'conv_reference_full' failed (%s),"
                     " trying next implementation\n",
@@ -1465,7 +1243,7 @@ PyGpuArray_Conv(PyGpuArrayObject *img, PyGpuArrayObject * kern,
 
       rval = pygpu_zeros(4, out_dim,
                          img->ga.typecode, GA_C_ORDER,
-                         pygpu_default_context(), Py_None);
+                         img->context, Py_None);
       //rval might be null
     }
     if ((rval==NULL)
@@ -1488,14 +1266,3 @@ PyGpuArray_Conv(PyGpuArrayObject *img, PyGpuArrayObject * kern,
     }
     return (PyObject*)rval;
 }
-
-/*
-  Local Variables:
-  mode:c++
-  c-basic-offset:4
-  c-file-style:"stroustrup"
-  indent-tabs-mode:nil
-  fill-column:79
-  End:
-*/
-// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=8:softtabstop=4:textwidth=79 :

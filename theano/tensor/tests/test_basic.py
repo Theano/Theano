@@ -2026,6 +2026,7 @@ AllocTester = makeBroadcastTester(
                     bad_shape12=(rand(7), numpy.int32(7), numpy.int32(5)),
                     ),
         bad_build=dict(
+                    vec=(rand(1), [numpy.int32(2)]),
                     too_big32=(rand(6, 2, 4), numpy.
                         int32(6), numpy.int32(2)),
                     too_big32b=(rand(6, 2, 4), numpy.

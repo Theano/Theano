@@ -1765,10 +1765,6 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
         bottom borders.
         pad_w is the number of zero-valued pixels added to each of the left
         and right borders.
-    nd
-    	Number of dimensions of pooling, can be 2 or 3 for 2d or 3d pooling
-        If set to 3 all other params (except mode) must have an extra
-        dimension to match. 3 is only available for cudnn v3
 
     .. warning:: The cuDNN library only works with GPU that have a compute
       capability of 3.0 or higer.  This means that older GPU will not
