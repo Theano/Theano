@@ -21,7 +21,8 @@ try:
 except ImportError:
     pass
 
-from .type import GpuArrayType, GpuArrayConstant, gpu_context_type, get_context
+from .type import (GpuArrayType, GpuArrayConstant, gpu_context_type,
+                   get_context, ContextNotDefined)
 from .fp16_help import write_w
 
 
@@ -96,8 +97,12 @@ def infer_context_name(*vars):
                 return v.owner.inputs[0].type.context_name
             if len(v.owner.inputs) == 1:
                 todo.extendleft(v.owner.inputs)
-    # If we can't find a context we infer None, which is the default
-    return None
+    # If we can't find a context try None if it exists
+    try:
+        get_context(None)
+        return None
+    except ContextNotDefined:
+        raise ValueError("Could not infer context from inputs")
 
 
 class Kernel(object):
