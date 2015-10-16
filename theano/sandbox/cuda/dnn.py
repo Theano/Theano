@@ -1485,30 +1485,19 @@ class GpuDnnPool(DnnBase):
 
     __props__ = ()
 
-    def make_node(self, img, ws, stride, node, pad):
+    def make_node(self, img, ws, stride, mode, pad):
         img = as_cuda_ndarray_variable(img)
-        if not isinstance(desc.type, CDataType) \
-                or desc.type.ctype != 'cudnnPoolingDescriptor_t':
-            raise TypeError('desc must be cudnnPoolingDescriptor_t')
-
-        if desc.owner is not None:
-            dop = desc.owner.op
-            e_ndim = dop.get_ndim() + 2  # 4 or 5
-
-            if img.type.ndim != e_ndim:
-                raise TypeError('img must be %dD tensor' % e_ndim)
-
-        return Apply(self, [img, ws, stride, node, pad], [img.type()])
+        
+        return Apply(self, [img, ws, stride, mode, pad], [img.type()])
 
     def infer_shape(self, node, shape):
-        nd = 
         w = node.inputs[1]
         s = node.inputs[2]
-        p = node.inputs[3]
+        p = node.inputs[4]
         ret = [shape[0][0], shape[0][1],
                (shape[0][2] + 2 * p[0] - w[0]) // s[0] + 1,
                (shape[0][3] + 2 * p[1] - w[1]) // s[1] + 1]
-        if nd == 3:
+        if w.ndim == 3:
             ret.append((shape[0][4] + 2 * p[2] - w[2]) // s[2] + 1)
         return [ret]
 
@@ -1516,6 +1505,7 @@ class GpuDnnPool(DnnBase):
         return """
 cudnnTensorDescriptor_t input%(name)s;
 cudnnTensorDescriptor_t output%(name)s;
+cudnnPoolingDescriptor_t pool%(name)s;
 """ % dict(name=name)
 
     def c_init_code_struct(self, node, name, sub):
@@ -1523,6 +1513,7 @@ cudnnTensorDescriptor_t output%(name)s;
 cudnnStatus_t err%(name)s;
 input%(name)s = NULL;
 output%(name)s = NULL;
+pool%(name)s = NULL;
 if ((err%(name)s = cudnnCreateTensorDescriptor(&input%(name)s)) != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_MemoryError, "could not allocate tensor descriptor "
                "(inp): %%s", cudnnGetErrorString(err%(name)s));
@@ -1533,18 +1524,39 @@ if ((err%(name)s = cudnnCreateTensorDescriptor(&output%(name)s)) != CUDNN_STATUS
                "(out): %%s", cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
+
+if ((err%(name)s = cudnnCreatePoolingDescriptor(&pool%(name)s)) != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_MemoryError, "could not allocate pooling "
+                "descriptor: %%s", cudnnGetErrorString(err));
+  %(fail)s
+}
 """ % dict(name=name, fail=sub['fail'])
 
     def c_cleanup_code_struct(self, node, name):
         return """
 if (input%(name)s != NULL) { cudnnDestroyTensorDescriptor(input%(name)s); }
 if (output%(name)s != NULL) { cudnnDestroyTensorDescriptor(output%(name)s); }
+if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
 """ % dict(name=name)
 
     def c_code(self, node, name, inputs, outputs, sub):
-        desc = inputs[1]
+        ws = node.inputs[1]
+        stride = node.inputs[2]
+        mode = node.inputs[3]
+        pad = node.inputs[4]
         out, = outputs
-
+        
+        if mode == 'max':
+            self.mode_flag = 'CUDNN_POOLING_MAX'
+        elif self.mode == "average_inc_pad":
+            self.mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING'
+        elif self.mode == "average_exc_pad":
+            self.mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING'
+            if version() == -1:
+                raise Exception("cudnn v1 do not support average_exc_pad")
+        else:
+            raise NotImplementedError("Unsupported pooling model.")
+        
         return """
 cudnnStatus_t err%(name)s;
 
@@ -1558,21 +1570,26 @@ if (!CudaNdarray_is_c_contiguous(%(input)s)) {
 if (c_set_tensorNd(%(input)s, %(input_desc)s) != 0)
   %(fail)s
 
-cudnnPoolingMode_t mode;
-int win[3];
-int pad[3];
-int str[3];
-int ndims;
-err%(name)s = cudnnGetPoolingNdDescriptor(
-        %(desc)s, 3,
-        &mode, &ndims,
-        win, pad, str);
+int win[%(nd)d]; = {%(win)s};
+int pad[%(nd)d]; = {%(pad)s};
+int str[%(nd)d]; = {%(str)s};
+for(int i = 0; i < %(nd)d; i++) {
+   win[i] = *((npy_intp*)PyArray_GETPTR1(%(win)s, i));
+}
+for(int i = 0; i < %(nd)d; i++) {
+   pad[i] = *((npy_intp*)PyArray_GETPTR1(%(pad)s, i));
+}
+for(int i = 0; i < %(nd)d; i++) {
+   str[i] = *((npy_intp*)PyArray_GETPTR1(%(str)s, i));
+}
+err = cudnnSetPoolingNdDescriptor(
+    &pool%(name)s, %(mode_flag)s, %(nd)d,
+    win, pad, str);
 
-if (err%(name)s != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_RuntimeError,
-               "GpuDnnPool: error doing cudnnGetPoolingNdDescriptor operation: %%s",
-               cudnnGetErrorString(err%(name)s));
-  %(fail)s
+if (err != CUDNN_STATUS_SUCCESS) {
+PyErr_Format(PyExc_RuntimeError, "could not set op descriptor: %%s",
+                cudnnGetErrorString(err));
+%(fail)s
 }
 
 %(out)s_dims[0] = CudaNdarray_HOST_DIMS(%(input)s)[0];
@@ -1595,7 +1612,7 @@ const float alpha = 1;
 const float beta = 0;
 err%(name)s = cudnnPoolingForward(
 _handle,
-%(desc)s,
+pool%(name)s,
 &alpha,
 %(input_desc)s, CudaNdarray_DEV_DATA(%(input)s),
 &beta,
@@ -1608,10 +1625,11 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
                cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
-""" % dict(out=out, desc=desc, fail=sub['fail'],
+""" % dict(out=out, fail=sub['fail'],
            name=name, input=inputs[0],
-           input_desc="input" + name,
-           output_desc="output" + name)
+           ws=ws, pad=pad, str=stride,
+           nd=ws.ndim, input_desc="input"+name,
+           output_desc="output"+name)
 
     def grad(self, inp, grads):
         img, desc = inp
@@ -1627,7 +1645,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
 
     def connection_pattern(self, node):
         # not connected to desc
-        return [[1], [0]]
+        return [[1], [0], [0], [0], [0]]
 
     def c_code_cache_version(self):
         return (7, version())
