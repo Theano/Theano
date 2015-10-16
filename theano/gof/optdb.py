@@ -160,6 +160,9 @@ multiple time in a DB. Tryed to register "%s" again under the new name "%s".
         for variable in variables:
             return variable
 
+    def __contains__(self, name):
+        return name in self.__db__
+
     def print_summary(self, stream=sys.stdout):
         print("%s (id %i)" % (self.__class__.__name__, id(self)), file=stream)
         print("  names", self._names, file=stream)
