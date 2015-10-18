@@ -4464,6 +4464,10 @@ class T_mean(unittest.TestCase):
         data = rand(50)
         assert numpy.allclose(f(data), numpy.mean(data))
 
+    def test_list(self):
+        ll = [theano.shared(0.), theano.shared(2.)]
+        tensor.mean(ll).eval() == 1
+
 
 class test_matinv(unittest.TestCase):
 
@@ -6090,11 +6094,16 @@ def test_var():
     assert numpy.allclose(numpy.var(a_val, axis=2), f(a_val))
 
 
-def test_sum_overflow():
-    """Ensure that overflow errors are a little bit harder to get"""
-    a = Tensor(dtype='int8', broadcastable=[False])()
-    f = function([a], sum(a))
-    assert f([1] * 300) == 300
+class T_sum(unittest.TestCase):
+    def test_sum_overflow(self):
+        """Ensure that overflow errors are a little bit harder to get"""
+        a = Tensor(dtype='int8', broadcastable=[False])()
+        f = function([a], sum(a))
+        assert f([1] * 300) == 300
+
+    def test_list(self):
+        ll = [theano.shared(0.), theano.shared(2.)]
+        tensor.sum(ll).eval() == 2
 
 
 @dec.skipif(
