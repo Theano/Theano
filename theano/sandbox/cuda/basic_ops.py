@@ -743,7 +743,6 @@ class GpuCAReduce(GpuOp):
             %(z)s = (CudaNdarray*) CudaNdarray_NewDims(%(nd_out)s, new_dims);
             if (NULL == %(z)s)
             {
-                PyErr_Format(PyExc_RuntimeError, "Failed to allocate output");
                 %(fail)s;
             }
         }
@@ -1832,7 +1831,7 @@ class GpuCAReduce(GpuOp):
         """ % locals(), file=sio)
 
     def c_code_cache_version_apply(self, node):
-        version = [13]  # the version corresponding to the c code in this Op
+        version = [14]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
