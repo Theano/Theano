@@ -225,3 +225,42 @@ preferable not to use those dtypes together.
 
 To help you find where float64 are created, see the
 :attr:`warn_float64` Theano flag.
+
+Theano memory/speed trade-off
+-----------------------------
+
+There is a few things you can easily do to change the trade-off
+between speed and memory usage. It nothing is said, this affect the
+CPU and GPU memory usage.
+
+Could speed up and lower memory usage:
+
+- :ref:`CuDNN <libdoc_cuda_dnn>` default CuDNN convolution use less
+   memory then Theano version. But some flags allow it to use more
+   memory. GPU only.
+- Shortly avail, multi-GPU.
+
+Could raise memory usage but speed up computation:
+
+- :attr:`config.lib.cnmem` =1  # Do not raise much memory usage, but if you are at the limit of GPU memory available. GPU only.
+- :attr:`config.allow_gc` =False
+- :attr:`config.optimizer_excluding` =low_memory , GPU only for now.
+
+Could lower the memory usage, but raise computation time:
+
+- :attr:`config.scan.allow_gc` =True # Probably not significant slowdown if config.lib.cnmem is used.
+- :attr:`config.scan.allow_output_prealloc` =False
+- Use :func:`batch_normalization()
+  <theano.tensor.nnet.bn.batch_normalization>`. It use less memory
+  then building a corresponding Theano graph.
+- Disable one or scan more optimizations:
+    - ``optimizer_excluding=scanOp_pushout_seqs_ops``
+    - ``optimizer_excluding=scan_pushout_dot1``
+    - ``optimizer_excluding=scanOp_pushout_output``
+- Disable all optimization tagged as raising memory usage:
+  ``optimizer_excluding=more_mem`` (currently only the 3 scan optimizations above)
+- `float16 <https://github.com/Theano/Theano/issues/2908>`_.
+
+If you want to analyze the memory usage during computation, the
+simplest is to let the memory error happen during Theano execution and
+use the Theano flags :attr:`exception_verbosity=high`.
