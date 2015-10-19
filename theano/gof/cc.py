@@ -276,7 +276,18 @@ def struct_gen(args, struct_builders, blocks, sub):
         %(storage_decl)s
         %(struct_decl)s
 
-        %(name)s() {}
+        %(name)s() {
+            // This is only somewhat safe because we:
+            //  1) Are not a virtual class
+            //  2) Do not use any virtual classes in the members
+            //  3) Deal with mostly POD and pointers
+
+            // If this changes, we would have to revise this, but for
+            // now I am tired of chasing segfaults because
+            // initialization code had an error and some pointer has
+            // a junk value.
+            memset(this, 0, sizeof(*this));
+        }
         ~%(name)s(void) {
             cleanup();
         }
