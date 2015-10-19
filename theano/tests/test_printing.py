@@ -512,7 +512,7 @@ def test_scan_debugprint4():
      | |for{cpu,scan_fn}.0 [@C] ''
      | | |TensorConstant{5} [@D]
      | | |IncSubtensor{Set;:int64:} [@E] ''
-     | | | |AllocEmpty [@F] ''
+     | | | |AllocEmpty{dtype='int64'} [@F] ''
      | | | | |Elemwise{add,no_inplace} [@G] ''
      | | | |   |TensorConstant{5} [@D]
      | | | |   |Subtensor{int64} [@H] ''
@@ -521,11 +521,11 @@ def test_scan_debugprint4():
      | | | |     |   |<TensorType(int64, vector)> [@K]
      | | | |     |   |Constant{2} [@L]
      | | | |     |Constant{0} [@M]
-     | | | |Subtensor{:int64:} [@K] ''
+     | | | |Subtensor{:int64:} [@J] ''
      | | | |ScalarFromTensor [@N] ''
      | | |   |Subtensor{int64} [@H] ''
      | | |IncSubtensor{Set;:int64:} [@O] ''
-     | |   |AllocEmpty [@P] ''
+     | |   |AllocEmpty{dtype='int64'} [@P] ''
      | |   | |Elemwise{add,no_inplace} [@Q] ''
      | |   |   |TensorConstant{5} [@D]
      | |   |   |Subtensor{int64} [@R] ''
@@ -548,9 +548,9 @@ def test_scan_debugprint4():
      >Elemwise{add,no_inplace} [@BB] ''
      > |<TensorType(int64, scalar)> [@BC] -> [@E]
      > |<TensorType(int64, scalar)> [@BD] -> [@E]
-     >Elemwise{add,no_inplace} [@BF] ''
-     > |<TensorType(int64, scalar)> [@BF] -> [@P]
-     > |<TensorType(int64, scalar)> [@BG] -> [@P]
+     >Elemwise{add,no_inplace} [@BE] ''
+     > |<TensorType(int64, scalar)> [@BF] -> [@O]
+     > |<TensorType(int64, scalar)> [@BG] -> [@O]
 
     for{cpu,scan_fn}.1 [@C] ''
      >Elemwise{add,no_inplace} [@BB] ''
