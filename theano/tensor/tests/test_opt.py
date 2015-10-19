@@ -5890,7 +5890,7 @@ def test_local_flatten_lift():
         topo = f.maker.fgraph.toposort()
         shape_out_np = tuple(x_np.shape[:i-1])+(numpy.prod(x_np.shape[i-1:]),)
         assert shape_out_np == out_np.shape
-        assert tensor.is_flat(topo[-2], outdim=i)
+        assert tensor.is_flat(topo[-2].outputs[0], outdim=i)
         assert isinstance(topo[-1].op, tensor.Elemwise)
 
 

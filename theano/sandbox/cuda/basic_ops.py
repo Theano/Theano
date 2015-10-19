@@ -3341,6 +3341,14 @@ class GpuFlatten(gof.HideC, tensor.Reshape, GpuOp):
 def gpu_flatten(x, outdim=1):
     """
     Implement flatten on the gpu.
+
+    :param x: the variable that should be reshaped.
+    :type x: theano.tensor.var.TensorVariable
+
+    :param outdim: the number of dimensions of the returned variable
+    :type outdim: int
+
+    :returns: the flattend variable with dimensionality of outdim
     """
     x = as_cuda_ndarray_variable(x)
     if outdim > 1:

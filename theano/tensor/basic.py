@@ -4659,32 +4659,34 @@ class Flatten(Op):
 
 def is_flat(node, outdim=1):
     """
-    Checks whether node's op is an instance of Reshape
-    and verifies the dimensionality of variable is correct.
+    verifies the dimensionality of variable is correct.
+
+    :param node: the theano node on which the dimensionality is checked.
+    :type node: theano.tensor.var.TensorVariable
+
+    :param outdim: the expected dimensionality of node.
+    :type outdim: int
+
+    :returns: the comparison result of node's dim
+              and the expected outdim.
     """
-    if not isinstance(node.op, theano.tensor.Reshape):
-        return False
-
-    new_shape = node.inputs[1]
-
-    # If new shape is defined by `MakeVector`, then number of inputs to
-    # `MakeVector` must be equal to `outdim`.
-    if new_shape.owner and \
-       isinstance(new_shape.owner.op, theano.tensor.opt.MakeVector):
-        return new_shape.ndim == 1 and len(new_shape.owner.inputs) == outdim
-    # `TensorConstant`
-    elif isinstance(new_shape, theano.tensor.TensorConstant):
-        return new_shape.ndim == 1 and new_shape.data.shape[0] == outdim
-    else:
-        raise NotImplemented()
+    return node.ndim == outdim
 
 
 def flatten(x, outdim=1):
     """
     Reshapes the variable x by keeping
-    the first outdim-1 dimension(s) of x the same
+    the first outdim-1 dimension(s) of x the same,
     and making the last dimension of x equal to
     the multiplication of its remaining dimensions.
+
+    :param x: the theano variable that should be reshaped.
+    :type x: theano.tensor.var.TensorVariable
+
+    :param outdim: the number of dimensions of the returned variable
+    :type outdim: int
+
+    :returns: the flattend variable with dimensionality of outdim
     """
     outdim = int(outdim)
     # Any input variable can be flattened to have outdim of 1,
