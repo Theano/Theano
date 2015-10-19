@@ -26,7 +26,6 @@ def conv2d(inputs,
            filters,
            inputs_shape=None,
            filters_shape=None,
-           batch_size=None,
            border_mode='valid',
            subsample=(1, 1),
            filters_flip=True):
@@ -89,7 +88,6 @@ def conv2d(inputs,
 
     conv_op = AbstractConv2d(imshp=inputs_shape,
                              kshp=filters_shape,
-                             bsize=batch_size,
                              border_mode=border_mode,
                              subsample=subsample,
                              filters_flip=filters_flip)
@@ -98,13 +96,53 @@ def conv2d(inputs,
 
 class BaseAbstractConv2d(Op):
     """
-    Base class for ConvInferace
+    Base class for AbstractConv
+    Define an abstract convolution op that will be replaced with the appropriate implementation
+
+    :type imshp: None, tuple/list of len 4 of int or Constant variable
+    :param imshp: The shape of the input parameter.
+        Optional, possibly used to choose an optimal implementation.
+        You can give ``None`` for any element of the list to specify that this
+        element is not known at compile time.
+        imshp is defined w.r.t the forward conv.
+
+    :type kshp: None, tuple/list of len 4 of int or Constant variable
+    :param kshp: The shape of the filters parameter.
+        Optional, possibly used to choose an optimal implementation.
+        You can give ``None`` for any element of the list to specify that this
+        element is not known at compile time.
+        kshp is defined w.r.t the forward conv.
+
+    :type border_mode: str, int or tuple of two int
+    :param border_mode: Either of the following:
+        * ``'valid'``: apply filter wherever it completely overlaps with the
+          input. Generates output of shape: input shape - filter shape + 1
+        * ``'full'``: apply filter wherever it partly overlaps with the input.
+          Generates output of shape: input shape + filter shape - 1
+        * ``'half'``: pad input with a symmetric border of ``filter rows // 2``
+          rows and ``filter columns // 2`` columns, then perform a valid
+          convolution. For filters with an odd number of rows and columns, this
+          leads to the output shape being equal to the input shape.
+        * ``int``: pad input with a symmetric border of zeros of the given
+          width, then perform a valid convolution.
+        * ``(int1, int2)``: pad input with a symmetric border of ``int1`` rows
+          and ``int2`` columns, then perform a valid convolution.
+
+    :type subsample: tuple of len 2
+    :param subsample: factor by which to subsample the output.
+        Also called strides elsewhere.
+
+    :type filters_flip: bool
+    :param filters_flip: If ``True``, will flip the filter rows and columns
+        before sliding them over the input. This operation is normally referred
+        to as a convolution, and this is the default. If ``False``, the filters
+        are not flipped and the operation is referred to as a cross-correlation.
     """
     check_broadcast = False
-    __props__ = ('border_mode', 'subsample', 'filters_flip', 'imshp', 'kshp', 'bsize')
+    __props__ = ('border_mode', 'subsample', 'filters_flip', 'imshp', 'kshp')
 
     def __init__(self,
-                 imshp=None, kshp=None, bsize=None,
+                 imshp=None, kshp=None,
                  border_mode="valid", subsample=(1, 1),
                  filters_flip = True):
         if isinstance(border_mode, int):
@@ -121,7 +159,6 @@ class BaseAbstractConv2d(Op):
 
         self.imshp = imshp
         self.kshp = kshp
-        self.bsize = bsize
         self.border_mode = border_mode
         self.filters_flip = filters_flip
 
@@ -146,15 +183,17 @@ class BaseAbstractConv2d(Op):
 
 
 class AbstractConv2d(BaseAbstractConv2d):
+    """
+    Abstract Op for the forward convolution.
+    """
 
     def __init__(self,
                  imshp=None,
                  kshp=None,
-                 bsize=None,
                  border_mode="valid",
                  subsample=(1, 1),
                  filters_flip = True):
-        super(AbstractConv2d, self).__init__(imshp, kshp, bsize,
+        super(AbstractConv2d, self).__init__(imshp, kshp,
                                              border_mode, subsample, filters_flip)
 
     def make_node(self, img, kern):
@@ -176,13 +215,11 @@ class AbstractConv2d(BaseAbstractConv2d):
         bottom, weights = inp
         top, = grads
         d_bottom = AbstractConv2d_gradInputs(self.imshp, self.kshp,
-                                             self.bsize,
                                              self.border_mode,
                                              self.subsample,
                                              self.filters_flip)(
             weights, top, bottom.shape[-2:])
         d_weights = AbstractConv2d_gradWeights(self.imshp, self.kshp,
-                                               self.bsize,
                                                self.border_mode,
                                                self.subsample,
                                                self.filters_flip)(
@@ -201,11 +238,10 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
     def __init__(self,
                  imshp=None,
                  kshp=None,
-                 bsize=None,
                  border_mode="valid",
                  subsample=(1, 1),
                  filters_flip=True):
-        super(AbstractConv2d_gradWeights, self).__init__(imshp, kshp, bsize,
+        super(AbstractConv2d_gradWeights, self).__init__(imshp, kshp,
                                                          border_mode, subsample, filters_flip)
 
     # Update shape/height_width
@@ -214,10 +250,6 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
             raise TypeError('img must be 4D tensor')
         if topgrad.type.ndim != 4:
             raise TypeError('topgrad must be 4D tensor')
-        if self.subsample != (1, 1) or self.border_mode == "half":
-            if shape is None:
-                raise ValueError('shape must be given if subsample != (1, 1)'
-                                 ' or border_mode == "half"')
 
         shape = as_tensor_variable(shape)
         broadcastable = [topgrad.broadcastable[1],
@@ -233,13 +265,11 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
         bottom, top = inp[:2]
         weights, = grads
         d_bottom = AbstractConv2d_gradInputs(self.imshp, self.kshp,
-                                             self.bsize,
                                              self.border_mode,
                                              self.subsample,
                                              self.filters_flip)(weights, top, bottom.shape[-2:])
         d_top = AbstractConv2d(self.imshp,
                                self.kshp,
-                               self.bsize,
                                self.border_mode,
                                self.subsample,
                                self.filters_flip)(bottom, weights)
@@ -262,11 +292,10 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
     def __init__(self,
                  imshp=None,
                  kshp=None,
-                 bsize=None,
                  border_mode="valid",
                  subsample=(1, 1),
                  filters_flip=True):
-        super(AbstractConv2d_gradInputs, self).__init__(imshp, kshp, bsize,
+        super(AbstractConv2d_gradInputs, self).__init__(imshp, kshp,
                                                         border_mode, subsample, filters_flip)
 
     # Update shape/height_width
@@ -275,8 +304,6 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
             raise TypeError('kern must be 4D tensor')
         if topgrad.type.ndim != 4:
             raise TypeError('topgrad must be 4D tensor')
-        if self.subsample != (1, 1) and shape is None:
-            raise ValueError('shape must be given if subsample != (1, 1)')
 
         shape = as_tensor_variable(shape)
         broadcastable = [topgrad.type.broadcastable[0],
@@ -292,10 +319,9 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
         weights, top = inp[:2]
         bottom, = grads
         d_weights = AbstractConv2d_gradWeights(self.imshp, self.kshp,
-                                               self.bsize,
                                                self.border_mode,
                                                self.subsample)(bottom, top, weights.shape[-2:])
-        d_top = AbstractConv2d(self.imshp, self.kshp, self.bsize,
+        d_top = AbstractConv2d(self.imshp, self.kshp,
                                self.border_mode, self.subsample)(bottom, weights)
         d_height_width = (theano.gradient.DisconnectedType()(),)
         return (d_weights, d_top) + d_height_width

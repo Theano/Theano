@@ -8,6 +8,12 @@ import theano.tensor.nnet.abstract_conv2d as conv
 from theano.sandbox.cuda import float32_shared_constructor as gpu_shared
 from theano.compile import shared as cpu_shared
 from theano.sandbox.cuda.dnn import dnn_available, dnn_conv, dnn_gradweight, dnn_gradinput
+from nose.plugins.skip import SkipTest
+
+import theano.sandbox.cuda as cuda
+if not cuda.cuda_available:
+    raise SkipTest('Optional package cuda disabled')
+
 
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
@@ -84,7 +90,7 @@ class TestConv2d(unittest.TestCase):
         utt.assert_allclose(res_ref, res)
         if verify_grad:
             utt.verify_grad(conv.AbstractConv2d(border_mode="valid", imshp=imshp, kshp=kshp,
-                                                bsize=inputs_shape[0], subsample=subsample),
+                                                subsample=subsample),
                             [inputs_val, filters_val],
                             mode=mode)
 
@@ -180,7 +186,7 @@ class TestConv2d(unittest.TestCase):
 
     def test_dnn_conv(self):
         if not dnn_available():
-            return
+            raise SkipTest(cuda.dnn.dnn_available.msg)
         mode = mode_with_gpu
         # provide_shape is not used by the CuDNN impementation
         provide_shape = False
@@ -207,8 +213,10 @@ class TestConv2d(unittest.TestCase):
                                filters_flip=flip)
 
     def test_cormm_conv(self):
-        mode = mode_with_gpu.excluding('cudnn')
+        if not dnn_available():
+            raise SkipTest(cuda.dnn.dnn_available.msg)
 
+        mode = mode_with_gpu.excluding('cudnn')
         for (i, f), s, b, flip, provide_shape in itertools.product(
                 zip(self.inputs_shapes, self.filters_shapes),
                 self.subsamples,
@@ -233,8 +241,10 @@ class TestConv2d(unittest.TestCase):
                                filters_flip=flip)
 
     def test_cpu_conv(self):
-        mode = mode_without_gpu
+        if not dnn_available():
+            raise SkipTest(cuda.dnn.dnn_available.msg)
 
+        mode = mode_without_gpu
         for (i, f), s, b, flip, provide_shape in itertools.product(
                 zip(self.inputs_shapes, self.filters_shapes),
                 self.subsamples,
