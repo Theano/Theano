@@ -473,9 +473,8 @@ class Variable(Node):
         the scenes. Subsequent calls to :func:`eval` on that same variable
         will be fast, because the variable caches the compiled function.
 
-        This way of computing have more overhead then a normal Theano
-        function, so don't use it too much in real script. But is
-        useful for interactive session and quick experiments.
+        This way of computing has more overhead than a normal Theano
+        function, so don't use it too much in real scripts.
         """
 
         if inputs_to_values is None:

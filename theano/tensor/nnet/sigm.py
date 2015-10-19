@@ -316,7 +316,7 @@ theano.compile.optdb['uncanonicalize'].register("local_hard_sigmoid",
 
 class ScalarSoftplus(scalar.UnaryScalarOp):
     """
-    This help numerical stability.
+    This helps numerical stability.
     """
     @staticmethod
     def static_impl(x):

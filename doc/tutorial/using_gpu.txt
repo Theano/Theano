@@ -786,6 +786,6 @@ Note
 * See :ref:`example_other_random` to know how to handle random numbers
   on the GPU.
 
-* The mode `FAST_COMPILE` disable c code, so also disable the GPU. You
+* The mode `FAST_COMPILE` disables C code, so also disables the GPU. You
   can use the Theano flag optimizer='fast_compile' to speed up
-  compilatino and keeping the GPU.
+  compilation and keep the GPU.
