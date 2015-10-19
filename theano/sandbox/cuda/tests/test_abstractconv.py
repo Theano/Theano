@@ -14,7 +14,6 @@ import theano.sandbox.cuda as cuda
 if not cuda.cuda_available:
     raise SkipTest('Optional package cuda disabled')
 
-
 if theano.config.mode == 'FAST_COMPILE':
     mode_with_gpu = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
     mode_without_gpu = theano.compile.mode.get_mode('FAST_RUN').excluding('gpu')
@@ -37,7 +36,6 @@ class TestConv2d(unittest.TestCase):
         self.filter_flip = [True, False]
 
     def get_output_shape(self, inputs_shape, filters_shape, subsample, border_mode):
-
         if border_mode == "valid":
             border_mode = (0, 0)
         if border_mode == "full":

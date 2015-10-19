@@ -1,14 +1,20 @@
 """
 Define abstract conv2d interface
 """
+
+__docformat__ = "restructuredtext en"
+
 import logging
 
 import theano
-from theano.tensor import as_tensor_variable
+from theano.tensor import (as_tensor_variable, patternbroadcast)
+from theano.tensor import TensorType
 from theano.gof import Apply, Op
+from theano.gof import local_optimizer
+from theano.tensor.opt import register_specialize_device
 
 
-__docformat__ = "restructuredtext en"
+
 
 _logger = logging.getLogger("theano.tensor.nnet.conv2d")
 
@@ -168,6 +174,7 @@ def conv2d(input,
     return conv_op(input, filters)
 
 
+
 class BaseAbstractConv2d(Op):
     """
     Base class for AbstractConv
@@ -186,6 +193,7 @@ class BaseAbstractConv2d(Op):
         You can give ``None`` for any element of the list to specify that this
         element is not known at compile time.
         kshp is defined w.r.t the forward conv.
+
 
     :type border_mode: str, int or tuple of two int
     :param border_mode: Either of the following:
@@ -219,6 +227,7 @@ class BaseAbstractConv2d(Op):
                  imshp=None, kshp=None,
                  border_mode="valid", subsample=(1, 1),
                  filter_flip=True):
+
         if isinstance(border_mode, int):
             border_mode = (border_mode, border_mode)
         if isinstance(border_mode, tuple):
@@ -297,6 +306,7 @@ class AbstractConv2d(BaseAbstractConv2d):
                                                self.border_mode,
                                                self.subsample,
                                                self.filter_flip)(
+
             bottom, top, weights.shape[-2:])
         return d_bottom, d_weights
 
