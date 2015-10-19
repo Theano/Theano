@@ -873,8 +873,23 @@ class MergeOptimizer(Optimizer):
                 if i[1] > 0:
                     print(i)
 
-
-merge_optimizer = MergeOptimizer()
+    @staticmethod
+    def merge_profile(prof1, prof2):
+        def merge_none_number(v1, v2):
+            if v1 is None:
+                return v2
+            if v2 is None:
+                return v1
+            return v1 + v2
+        nb_fail = prof1[0] + prof2[0]
+        replace_time = prof1[1] + prof2[1]
+        validate_time = merge_none_number(prof1[2], prof2[2])
+        callback_time = merge_none_number(prof1[3], prof2[3])
+        callbacks_time = merge_dict(prof1[4], prof2[4])
+        nb_merged = prof1[5] + prof2[5]
+        nb_constant = prof1[6] + prof2[6]
+        return (nb_fail, replace_time, validate_time,
+                callback_time, callbacks_time, nb_merged, nb_constant)
 
 
 def is_same_graph_with_merge(var1, var2, givens=None):
@@ -899,7 +914,7 @@ def is_same_graph_with_merge(var1, var2, givens=None):
     for to_replace, replace_by in iteritems(givens):
         fgraph.replace(to_replace, replace_by)
     # Perform merge optimization.
-    merge_optimizer.optimize(fgraph)
+    MergeOptimizer().optimize(fgraph)
     # When two variables perform the same computations, they will have the same
     # owner in the optimized graph.
     # We need to be careful with the special case where the owner is None,
@@ -1165,7 +1180,7 @@ class FromFunctionLocalOptimizer(LocalOptimizer):
             id(self)), file=stream)
 
 
-def local_optimizer(tracks, inplace=False):
+def local_optimizer(tracks, inplace=False, requirements=()):
     def decorator(f):
         """
         WRITEME
@@ -1177,12 +1192,13 @@ def local_optimizer(tracks, inplace=False):
             for t in tracks:
                 if not (isinstance(t, op.Op) or issubclass(t, op.PureOp)):
                     raise ValueError("Tracks are op classes or instances", f.__module__, f.__name__)
-        requirements = ()
+        req = requirements
         if inplace:
             dh_handler = dh.DestroyHandler
-            requirements = (lambda fgraph:
-                            fgraph.attach_feature(dh_handler()),)
-        rval = FromFunctionLocalOptimizer(f, tracks, requirements)
+            req = tuple(requirements) + (
+                lambda fgraph:
+                fgraph.attach_feature(dh_handler()),)
+        rval = FromFunctionLocalOptimizer(f, tracks, req)
         rval.__name__ = f.__name__
         return rval
     return decorator
@@ -1974,19 +1990,41 @@ class ChangeTracker:
         fgraph.change_tracker = self
 
 
+def merge_dict(d1, d2):
+    """
+    merge 2 dicts by adding the values.
+    """
+    d = d1.copy()
+    for k, v in iteritems(d2):
+        if k in d:
+            d[k] += v
+        else:
+            d[k] = v
+    return d
+
+
 class EquilibriumOptimizer(NavigatorOptimizer):
     """
     Apply optimizations until equilibrium point.
 
     Parameters
     ----------
-    optimizers
-        List or set of local or global optimizations to apply until equilibrium.
-    max_use_ratio
+    optimizers : list or set
+        Local or global optimizations to apply until equilibrium.
+        The global optimizer will be run at the start of each iteration before
+        the local optimizer.
+    max_use_ratio : int or float
         Each optimizer can be applied at most (size of graph * this number)
         times.
     ignore_newtrees
         See EquilibriumDB ignore_newtrees parameter definition.
+    final_optimizers
+        Global optimizers that will be run after each iteration.
+    cleanup_optimizers
+        Global optimizers that apply a list of pre determined optimization.
+        They must not traverse the graph as they are called very frequently.
+        The MergeOptimizer is one example of optimization that respect this.
+        They are applied after all global optimizer, then when one local optimizer is applied, then after all final optimizer.
 
     """
 
@@ -1995,7 +2033,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                  failure_callback=None,
                  ignore_newtrees=True,
                  max_use_ratio=None,
-                 final_optimizers=None):
+                 final_optimizers=None,
+                 cleanup_optimizers=None):
         super(EquilibriumOptimizer, self).__init__(
             None,
             ignore_newtrees=ignore_newtrees,
@@ -2004,6 +2043,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         self.local_optimizers_all = []
         self.global_optimizers = []
         self.final_optimizers = []
+        self.cleanup_optimizers = []
 
         for opt in optimizers:
             if isinstance(opt, LocalOptimizer):
@@ -2016,6 +2056,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 self.global_optimizers.append(opt)
         if final_optimizers:
             self.final_optimizers = final_optimizers
+        if cleanup_optimizers:
+            self.cleanup_optimizers = cleanup_optimizers
         self.max_use_ratio = max_use_ratio
         assert self.max_use_ratio is not None, (
             'max_use_ratio has to be a number')
@@ -2038,6 +2080,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         for opt in self.global_optimizers:
             opt.add_requirements(fgraph)
         for opt in self.final_optimizers:
+            opt.add_requirements(fgraph)
+        for opt in self.cleanup_optimizers:
             opt.add_requirements(fgraph)
 
     def apply(self, fgraph, start_from=None):
@@ -2066,17 +2110,39 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         node_created = {}
         global_sub_profs = []
         final_sub_profs = []
+        cleanup_sub_profs = []
         for opt in (self.global_optimizers +
                     list(self.get_local_optimizers()) +
-                    self.final_optimizers):
+                    self.final_optimizers +
+                    self.cleanup_optimizers):
             global_process_count.setdefault(opt, 0)
             time_opts.setdefault(opt, 0)
             node_created.setdefault(opt, 0)
+
+        def apply_cleanup(profs_dict):
+            changed = False
+            for copt in self.cleanup_optimizers:
+                change_tracker.reset()
+                nb = change_tracker.nb_imported
+                t_opt = time.time()
+                sub_prof = copt.apply(fgraph)
+                time_opts[copt] += time.time() - t_opt
+                profs_dict[copt].append(sub_prof)
+                if change_tracker.changed:
+                    process_count.setdefault(copt, 0)
+                    process_count[copt] += 1
+                    global_process_count[copt] += 1
+                    changed = True
+                    node_created[copt] += change_tracker.nb_imported - nb
+            return changed
 
         while changed and not max_use_abort:
             process_count = {}
             t0 = time.time()
             changed = False
+            iter_cleanup_sub_profs = {}
+            for copt in self.cleanup_optimizers:
+                iter_cleanup_sub_profs[copt] = []
 
             # apply global optimizers
             sub_profs = []
@@ -2100,6 +2166,10 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             global_sub_profs.append(sub_profs)
 
             global_opt_timing.append(float(time.time() - t0))
+
+            # apply clean up as global opt can have done changes that
+            # request that
+            changed |= apply_cleanup(iter_cleanup_sub_profs)
 
             # apply local optimizer
             topo_t0 = time.time()
@@ -2134,19 +2204,21 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                         t_opt = time.time()
                         lopt_change = self.process_node(fgraph, node, lopt)
                         time_opts[lopt] += time.time() - t_opt
-                        if lopt_change:
-                            process_count.setdefault(lopt, 0)
-                            process_count[lopt] += 1
-                            global_process_count[lopt] += 1
-                            changed = True
-                            node_created[lopt] += change_tracker.nb_imported - nb
-                            if global_process_count[lopt] > max_use:
-                                max_use_abort = True
-                                opt_name = (getattr(lopt, "name", None) or
-                                            getattr(lopt, "__name__", ""))
-                            if node not in fgraph.apply_nodes:
-                                # go to next node
-                                break
+                        if not lopt_change:
+                            continue
+                        process_count.setdefault(lopt, 0)
+                        process_count[lopt] += 1
+                        global_process_count[lopt] += 1
+                        changed = True
+                        node_created[lopt] += change_tracker.nb_imported - nb
+                        changed |= apply_cleanup(iter_cleanup_sub_profs)
+                        if global_process_count[lopt] > max_use:
+                            max_use_abort = True
+                            opt_name = (getattr(lopt, "name", None) or
+                                        getattr(lopt, "__name__", ""))
+                        if node not in fgraph.apply_nodes:
+                            # go to next node
+                            break
             finally:
                 self.detach_updater(fgraph, u)
 
@@ -2173,6 +2245,17 @@ class EquilibriumOptimizer(NavigatorOptimizer):
             final_sub_profs.append(sub_profs)
 
             global_opt_timing[-1] += time.time() - t_before_final_opt
+            # apply clean up as final opt can have done changes that
+            # request that
+            changed |= apply_cleanup(iter_cleanup_sub_profs)
+            # merge clean up profiles during that iteration.
+            c_sub_profs = []
+            for copt, sub_profs in iteritems(iter_cleanup_sub_profs):
+                sub_prof = sub_profs[0]
+                for s_p in sub_profs[1:]:
+                    sub_prof = copt.merge_profile(sub_prof, s_p)
+                c_sub_profs.append(sub_prof)
+            cleanup_sub_profs.append(c_sub_profs)
 
             loop_process_count.append(process_count)
             loop_timing.append(float(time.time() - t0))
@@ -2188,7 +2271,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         return (self, loop_timing, loop_process_count,
                 (start_nb_nodes, end_nb_nodes, max_nb_nodes),
                 global_opt_timing, nb_nodes, time_opts, io_toposort_timing,
-                node_created, global_sub_profs, final_sub_profs)
+                node_created, global_sub_profs, final_sub_profs, cleanup_sub_profs)
 
     def print_summary(self, stream=sys.stdout, level=0, depth=-1):
         name = getattr(self, 'name', None)
@@ -2204,7 +2287,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         (opt, loop_timing, loop_process_count,
          (start_nb_nodes, end_nb_nodes, max_nb_nodes),
          global_opt_timing, nb_nodes, time_opts, io_toposort_timing,
-         node_created, global_sub_profs, final_sub_profs) = prof
+         node_created, global_sub_profs, final_sub_profs,
+         cleanup_sub_profs) = prof
 
         blanc = ('    ' * level)
         print(blanc, "EquilibriumOptimizer", end=' ', file=stream)
@@ -2222,6 +2306,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         print(blanc, "  time in global optimizers %.3fs" % s, file=stream)
         s = sum([time_opts[o] for o in opt.final_optimizers])
         print(blanc, "  time in final optimizers %.3fs" % s, file=stream)
+        s = sum([time_opts[o] for o in opt.cleanup_optimizers])
+        print(blanc, "  time in cleanup optimizers %.3fs" % s, file=stream)
         for i in range(len(loop_timing)):
             lopt = ""
             if loop_process_count[i]:
@@ -2245,7 +2331,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         process_count = {}
         for o in (opt.global_optimizers +
                   list(opt.get_local_optimizers()) +
-                  list(opt.final_optimizers)):
+                  list(opt.final_optimizers) +
+                  list(opt.cleanup_optimizers)):
             process_count.setdefault(o, 0)
         for count in loop_process_count:
             for o, v in iteritems(count):
@@ -2275,12 +2362,13 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                     print(blanc + "  ", '  %.3fs - %s' % (t, o), file=stream)
             print(file=stream)
         gf_opts = [o for o in (opt.global_optimizers +
-                               list(opt.final_optimizers))
+                               list(opt.final_optimizers) +
+                               list(opt.cleanup_optimizers))
                    if o.print_profile.func_code is not
                    Optimizer.print_profile.func_code]
         if not gf_opts:
             return
-        print(blanc, "Global and final optimizer", file=stream)
+        print(blanc, "Global, final and clean up optimizers", file=stream)
         for i in range(len(loop_timing)):
             print(blanc, "Iter %d" % i, file=stream)
             for o, prof in zip(opt.global_optimizers, global_sub_profs[i]):
@@ -2289,6 +2377,11 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 except NotImplementedError:
                     print(blanc, "merge not implemented for ", o)
             for o, prof in zip(opt.final_optimizers, final_sub_profs[i]):
+                try:
+                    o.print_profile(stream, prof, level + 2)
+                except NotImplementedError:
+                    print(blanc, "merge not implemented for ", o)
+            for o, prof in zip(opt.cleanup_optimizers, cleanup_sub_profs[i]):
                 try:
                     o.print_profile(stream, prof, level + 2)
                 except NotImplementedError:
@@ -2307,10 +2400,16 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 prof2[0].final_optimizers)
         else:
             final_optimizers = None
+        if len(prof1[0].cleanup_optimizers) > 0 or len(prof2[0].cleanup_optimizers) > 0:
+            cleanup_optimizers = OrderedSet(prof1[0].cleanup_optimizers).union(
+                prof2[0].cleanup_optimizers)
+        else:
+            cleanup_optimizers = None
         new_opt = EquilibriumOptimizer(
             local_optimizers.union(global_optimizers),
             max_use_ratio=1,
-            final_optimizers=final_optimizers)
+            final_optimizers=final_optimizers,
+            cleanup_optimizers=cleanup_optimizers)
 
         def merge_list(l1, l2):
             l = copy.copy(l1)
@@ -2320,15 +2419,6 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 else:
                     l.append(nb)
             return l
-
-        def merge_dict(d1, d2):
-            d = d1.copy()
-            for k, v in iteritems(d2):
-                if k in d:
-                    d[k] += v
-                else:
-                    d[k] = v
-            return d
 
         loop_timing = merge_list(prof1[1], prof2[1])
 
@@ -2358,6 +2448,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         node_created = merge_dict(prof1[8], prof2[8])
         global_sub_profs = merge_list(prof1[9], prof2[9])
         final_sub_profs = merge_list(prof1[10], prof2[10])
+        cleanup_sub_profs = merge_list(prof1[10], prof2[10])
         return (new_opt,
                 loop_timing,
                 loop_process_count,
@@ -2368,7 +2459,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                 io_toposort_timing,
                 node_created,
                 global_sub_profs,
-                final_sub_profs)
+                final_sub_profs,
+                cleanup_sub_profs)
 
 #################
 #   Utilities   #

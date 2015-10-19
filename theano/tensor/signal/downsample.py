@@ -256,7 +256,10 @@ class DownsampleFactorMax(Op):
             raise TypeError()
         # TODO: consider restricting the dtype?
         x = tensor.as_tensor_variable(x)
-        return gof.Apply(self, [x], [x.type()])
+        # If the input shape are broadcastable we can have 0 in the output shape
+        broad = x.broadcastable[:2] + (False, False)
+        out = tensor.TensorType(x.dtype, broad)
+        return gof.Apply(self, [x], [out()])
 
     def perform(self, node, inp, out):
         x, = inp

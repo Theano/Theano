@@ -481,7 +481,7 @@ class test_canonize(unittest.TestCase):
         mode = compile.mode.get_default_mode()
 
         opt = gof.Query(["canonicalize"])
-        opt = opt.including('ShapeOpt')
+        opt = opt.including('ShapeOpt', 'local_fill_to_alloc')
         opt = opt.excluding(
             'local_elemwise_fusion')
         mode = mode.__class__(linker=mode.linker, optimizer=opt)
@@ -4021,7 +4021,8 @@ class T_Rebroadcast(unittest.TestCase):
 
 class T_useless_elemwise(unittest.TestCase):
     def setUp(self):
-        self.mode = theano.compile.get_default_mode().including('canonicalize')
+        self.mode = theano.compile.get_default_mode().including(
+            'canonicalize', 'local_fill_to_alloc')
 
     def test_eq(self):
         x = T.dmatrix()
@@ -4545,7 +4546,7 @@ class T_local_erfc(unittest.TestCase):
 
         # test that we work without the mul
         f = theano.function([x], T.exp(T.neg(T.sqr(x))) / T.erfc(x), mode=mode)
-        assert len(f.maker.fgraph.apply_nodes) == 23, len(f.maker.fgraph.apply_nodes)
+        assert len(f.maker.fgraph.apply_nodes) == 22, len(f.maker.fgraph.apply_nodes)
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
         assert all(numpy.isfinite(f(val)))
 
@@ -4558,7 +4559,7 @@ class T_local_erfc(unittest.TestCase):
 
         # test that we work without the sqr and neg
         f = theano.function([x], T.exp(T.mul(-1, x, x)) / T.erfc(x), mode=mode)
-        assert len(f.maker.fgraph.apply_nodes) == 22, len(f.maker.fgraph.apply_nodes)
+        assert len(f.maker.fgraph.apply_nodes) == 21, len(f.maker.fgraph.apply_nodes)
         assert f.maker.fgraph.outputs[0].dtype == theano.config.floatX
         assert all(numpy.isfinite(f(val)))
 

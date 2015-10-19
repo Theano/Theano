@@ -48,7 +48,7 @@ cudnnSetTensorNdDescriptor(
   int nbDims,
   const int dimA[],
   const int strideA[]) {
-  if (ndDims != 4) return CUDNN_STATUS_NOT_SUPPORTED;
+  if (nbDims != 4) return CUDNN_STATUS_NOT_SUPPORTED;
   return cudnnSetTensor4dDescriptorEx(
     tensorDesc, dataType,
     dimA[0], dimA[1], dimA[2], dimA[3],
@@ -204,7 +204,7 @@ cudnnSetPoolingNdDescriptor(
   int nbDims,
   const int windowDimA[],
   const int paddingA[],
-  const in strideA[]) {
+  const int strideA[]) {
   if (nbDims != 2) return CUDNN_STATUS_NOT_SUPPORTED;
   if (paddingA[0] != 0 || paddingA[1] != 0) return CUDNN_STATUS_NOT_SUPPORTED;
   return cudnnSetPoolingDescriptor(poolingDesc, mode,
@@ -223,7 +223,7 @@ cudnnGetPoolingNdDescriptor(
   int strideA[]) {
   int win0, win1, str0, str1;
   cudnnStatus_t err;
-  if (ndDimsRequested < 2) return CUDNN_STATUS_NOT_SUPPORTED;
+  if (nbDimsRequested < 2) return CUDNN_STATUS_NOT_SUPPORTED;
   err = cudnnGetPoolingDescriptor(poolingDesc, mode, &win0, &win1,
                                   &str0, &str1);
   if (err != CUDNN_STATUS_SUCCESS) return err;

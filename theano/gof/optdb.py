@@ -268,28 +268,35 @@ class EquilibriumDB(DB):
         super(EquilibriumDB, self).__init__()
         self.ignore_newtrees = ignore_newtrees
         self.__final__ = {}
+        self.__cleanup__ = {}
 
     def register(self, name, obj, *tags, **kwtags):
-        if 'final_opt' in kwtags:
-            final_opt = kwtags['final_opt']
-            kwtags.pop('final_opt', None)
-        else:
-            final_opt = False
+        final_opt = kwtags.pop('final_opt', False)
+        cleanup = kwtags.pop('cleanup', False)
+        # An opt should not be final and clean up
+        assert not (final_opt and cleanup)
         super(EquilibriumDB, self).register(name, obj, *tags, **kwtags)
         self.__final__[name] = final_opt
+        self.__cleanup__[name] = cleanup
 
     def query(self, *tags, **kwtags):
         _opts = super(EquilibriumDB, self).query(*tags, **kwtags)
         final_opts = [o for o in _opts if self.__final__.get(o.name, False)]
-        opts = [o for o in _opts if o not in final_opts]
+        cleanup_opts = [o for o in _opts if self.__cleanup__.get(o.name,
+                                                                 False)]
+        opts = [o for o in _opts
+                if o not in final_opts and o not in cleanup_opts]
         if len(final_opts) == 0:
             final_opts = None
+        if len(cleanup_opts) == 0:
+            cleanup_opts = None
         return opt.EquilibriumOptimizer(
             opts,
             max_use_ratio=config.optdb.max_use_ratio,
             ignore_newtrees=self.ignore_newtrees,
             failure_callback=opt.NavigatorOptimizer.warn_inplace,
-            final_optimizers=final_opts)
+            final_optimizers=final_opts,
+            cleanup_optimizers=cleanup_opts)
 
 
 class SequenceDB(DB):
