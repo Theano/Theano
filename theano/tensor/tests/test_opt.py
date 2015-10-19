@@ -4228,7 +4228,9 @@ def test_constant_get_stabilized():
     """
     x2 = T.scalar()
     y2 = T.log(1 + T.exp(x2))
-    f2 = theano.function([x2], y2)
+    mode = theano.compile.get_default_mode()
+    mode.check_isfinite = False
+    f2 = theano.function([x2], y2, mode=mode)
     try:
         assert len(f2.maker.fgraph.toposort()) == 1
         assert f2.maker.fgraph.toposort()[0].op == \
@@ -4237,14 +4239,14 @@ def test_constant_get_stabilized():
 
         x = T.as_tensor_variable(800)
         y = T.log(1 + T.exp(x))
-        f = theano.function([], y)
+        f = theano.function([], y, mode=mode)
         assert len(f.maker.fgraph.toposort()) == 0
         assert numpy.isinf(f())
 
         # When this error is fixed, the following line should be ok.
         assert f() == 800, f()
 
-    except (AssertionError, theano.compile.debugmode.InvalidValueError):
+    except AssertionError:
         raise SkipTest('Theano optimizes constant before stabilization. '
                        'This breaks stabilization optimization in some '
                        'cases. See #504.')
