@@ -68,8 +68,9 @@ if pygpu:
             theano.compile.shared_constructor(gpuarray_shared_constructor)
             optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile')
 
-        from .basic_ops import (GpuAlloc, GpuContiguous, GpuEye, GpuFromHost,
-                                GpuJoin, GpuReshape, GpuSplit, HostFromGpu)
+        from .basic_ops import (GpuAlloc, GpuAllocEmpty, GpuContiguous, GpuEye,
+                                GpuFromHost, GpuJoin, GpuReshape, GpuSplit,
+                                HostFromGpu)
         from .basic_ops import host_from_gpu, GpuFromHost
         from .elemwise import GpuElemwise
         from .subtensor import (GpuSubtensor, GpuIncSubtensor,
