@@ -2992,7 +2992,7 @@ def mean(input, axis=None, dtype=None, op=False, keepdims=False,
     For gpu, if you specify dtype=float32, everything will be done on the gpu.
 
     """
-
+    input = as_tensor_variable(input)
     if op:
         if dtype not in (None, 'float64'):
             raise NotImplementedError(

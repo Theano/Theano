@@ -208,7 +208,7 @@ import theano and print the config variable, as in:
     significant speed up on functions with many ops that are fast to
     execute, but this increases Theano's memory usage.
 
-.. attribute:: scan.allow_output_prealloc
+.. attribute:: config.scan.allow_output_prealloc
 
     Bool value, either ``True`` or ``False``
 
@@ -218,6 +218,18 @@ import theano and print the config variable, as in:
     pre-allocate memory for its outputs. Enabling the optimization can
     give a significant speed up with Scan at the cost of slightly increased
     memory usage.
+
+.. attribute:: config.scan.allow_gc
+
+    Bool value, either ``True`` or ``False``
+
+    Default: ``False``
+
+    Allow/disallow gc inside of Scan.
+
+     If config.allow_gc is ``True``, but config.scan.allow_gc is
+    ``False``, then we will gc the inner of scan after all
+    iterations. This is the default.
 
 .. attribute:: openmp
 
@@ -612,7 +624,7 @@ import theano and print the config variable, as in:
     cost of precision.  This also disables support for denormal
     numbers.
 
-.. attribute:: optimizer_excluding
+.. attribute:: config.optimizer_excluding
 
     Default: ""
 

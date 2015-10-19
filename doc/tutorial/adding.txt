@@ -117,7 +117,8 @@ then be used like a normal Python function.
 .. note::
 
     As a shortcut, you can skip step 3, and just use a variable's
-    :func:`eval` method. The :func:`eval` method is not as flexible
+    :func:`eval <theano.gof.graph.Variable.eval>` method.
+    The :func:`eval` method is not as flexible
     as :func:`function` but it can do everything we've covered in
     the tutorial so far. It has the added benefit of not requiring
     you to import :func:`function` . Here is how :func:`eval` works:

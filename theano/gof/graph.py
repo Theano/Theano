@@ -451,6 +451,30 @@ class Variable(Node):
         inputs_to_values
             A dictionary mapping theano Variables to values.
 
+        Examples
+        --------
+
+        >>> import theano.tensor as T
+        >>> x = T.dscalar('x')
+        >>> y = T.dscalar('y')
+        >>> z = x + y
+        >>> z.eval({x : 16.3, y : 12.1})
+        array(28.4)
+
+        We passed :func:`eval` a dictionary mapping symbolic theano
+        variables to the values to substitute for them, and it returned
+        the numerical value of the expression.
+
+        Notes
+        -----
+
+        `eval` will be slow the first time you call it on a variable --
+        it needs to call :func:`function` to compile the expression behind
+        the scenes. Subsequent calls to :func:`eval` on that same variable
+        will be fast, because the variable caches the compiled function.
+
+        This way of computing has more overhead than a normal Theano
+        function, so don't use it too much in real scripts.
         """
 
         if inputs_to_values is None:

@@ -2233,11 +2233,14 @@ def local_gpu_eye(node):
         if (host_input.owner and
             isinstance(host_input.owner.op, tensor.Eye) and
             host_input.owner.op.dtype == "float32"):
-
+            if tensor.extract_constant(host_input.owner.inputs[2]) != 0:
+                return
             return [gpu_eye(*host_input.owner.inputs)]
     if isinstance(node.op, tensor.Eye) and node.op.dtype == "float32":
         if any([(i.owner and isinstance(i.owner.op, HostFromGpu))
                 for i in node.inputs]):
+            if tensor.extract_constant(node.inputs[2]) != 0:
+                return
             return [host_from_gpu(gpu_eye(*node.inputs))]
     return False
 

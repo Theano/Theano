@@ -412,10 +412,10 @@ class TestConv3D(utt.InferShapeTester):
         H_shape = self.H_shape_func()
 
         # make index maps
-        h = N.zeros(H_shape[1:])
-        r = N.zeros(H_shape[1:])
-        c = N.zeros(H_shape[1:])
-        t = N.zeros(H_shape[1:])
+        h = N.zeros(H_shape[1:], dtype='int32')
+        r = N.zeros(H_shape[1:], dtype='int32')
+        c = N.zeros(H_shape[1:], dtype='int32')
+        t = N.zeros(H_shape[1:], dtype='int32')
 
         for qi in xrange(0, H_shape[4]):
             h[:, :, :, qi] = qi

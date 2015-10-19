@@ -783,5 +783,9 @@ Modify and execute to support *stride* (i.e. to avoid constraining the input to 
 Note
 ----
 
-See :ref:`example_other_random` to know how to handle random numbers
-on the GPU.
+* See :ref:`example_other_random` to know how to handle random numbers
+  on the GPU.
+
+* The mode `FAST_COMPILE` disables C code, so also disables the GPU. You
+  can use the Theano flag optimizer='fast_compile' to speed up
+  compilation and keep the GPU.

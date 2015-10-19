@@ -4,7 +4,7 @@
 :mod:`type` -- Interface for types of variables
 ================================================
 
-.. module:: fgraph
+.. module:: type
    :platform: Unix, Windows
    :synopsis: Interface for types of symbolic variables
 .. moduleauthor:: LISA

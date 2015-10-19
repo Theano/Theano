@@ -1423,9 +1423,11 @@ class PatternSub(LocalOptimizer):
     def __init__(self, in_pattern, out_pattern,
                  allow_multiple_clients=False,
                  skip_identities_fn=None, name=None, pdb=False,
-                 tracks=(), get_nodes=None):
+                 tracks=(), get_nodes=None,
+                 values_eq_approx=None):
         self.in_pattern = in_pattern
         self.out_pattern = out_pattern
+        self.values_eq_approx = values_eq_approx
         if isinstance(in_pattern, (list, tuple)):
             self.op = self.in_pattern[0]
         elif isinstance(in_pattern, dict):
@@ -1467,6 +1469,8 @@ class PatternSub(LocalOptimizer):
                 ret = self.transform(real_node, get_nodes=False)
                 if ret is not False and ret is not None:
                     assert len(real_node.outputs) == len(ret)
+                    if self.values_eq_approx:
+                        ret.tag.values_eq_approx = self.values_eq_approx
                     return dict(izip(real_node.outputs, ret))
 
         if node.op != self.op:
@@ -1550,8 +1554,10 @@ class PatternSub(LocalOptimizer):
                 else:
                     return pattern.clone()
             p = self.out_pattern
-            new = build(p, u)
-            return [new]
+            ret = build(p, u)
+            if self.values_eq_approx:
+                ret.tag.values_eq_approx = self.values_eq_approx
+            return [ret]
         else:
             return False
 
