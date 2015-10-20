@@ -248,7 +248,7 @@ class GpuDnnConvDesc(GpuOp):
 
     """
 
-    __props__ = ('border_mode', 'subsample', 'conv_mode')
+    __props__ = ('border_mode', 'subsample', 'conv_mode', 'precision')
 
     def c_headers(self):
         return ['cudnn.h', 'cudnn_helper.h']
@@ -265,7 +265,8 @@ class GpuDnnConvDesc(GpuOp):
     def do_constant_folding(self, node):
         return False
 
-    def __init__(self, border_mode, subsample=(1, 1), conv_mode='conv'):
+    def __init__(self, border_mode, subsample=(1, 1), conv_mode='conv',
+                 precision=None):
         if isinstance(border_mode, int):
             border_mode = (border_mode,) * len(subsample)
         if isinstance(border_mode, tuple):
@@ -282,6 +283,13 @@ class GpuDnnConvDesc(GpuOp):
         self.subsample = subsample
         assert conv_mode in ('conv', 'cross')
         self.conv_mode = conv_mode
+
+        if precision is None:
+            precision = theano.config.dnn.conv.precision
+        if precision == 'floatX':
+            precision = theano.config.floatX
+        assert precision in ['float16', 'float32', 'float64']
+        self.precision = precision
 
     def make_node(self, img_shape, kern_shape):
         if img_shape.type.ndim != 1 or img_shape.type.dtype != 'int64':
@@ -321,6 +329,14 @@ class GpuDnnConvDesc(GpuOp):
         subsample_str = ", ".join([str(s) for s in self.subsample])
         upscale_str = ", ".join(["1"] * nb_dim)
 
+        if self.precision == 'float16':
+            precision = 'CUDNN_DATA_HALF'
+        elif self.precision == 'float32':
+            precision = 'CUDNN_DATA_FLOAT'
+        else:
+            assert self.precision == 'float64'
+            precision = 'CUDNN_DATA_DOUBLE'
+
         return """
 {
   cudnnStatus_t err;
@@ -350,7 +366,7 @@ class GpuDnnConvDesc(GpuOp):
   %(desc)s,
   %(nb_dim)d,
   pad, subsample, upscale,
-  %(conv_flag)s
+  %(conv_flag)s, %(precision)s
   );
 #else
   PyErr_Format(PyExc_RuntimeError, "could not set op descriptor: CUDNN_VERSION must be >= 30");
@@ -364,10 +380,10 @@ class GpuDnnConvDesc(GpuOp):
 """ % dict(name=name, img_shape=img_shape, kern_shape=kern_shape, desc=desc,
            bmode=bmode, conv_flag=conv_flag, fail=sub['fail'],
            pad_str=pad_str, subsample_str=subsample_str,
-           upscale_str=upscale_str, nb_dim=nb_dim)
+           upscale_str=upscale_str, nb_dim=nb_dim, precision=precision)
 
     def c_code_cache_version(self):
-        return (2, version())
+        return (3, version())
 
 # scalar constants
 _zero = constant(numpy.asarray(0.0, dtype='float32'))
