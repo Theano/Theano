@@ -259,6 +259,12 @@ AddConfigVar('dnn.conv.algo_bwd_filter',
                      'time_on_shape_change'),
              in_c_key=False)
 
+AddConfigVar('dnn.conv.precision',
+             "Default data precision to use for the computation in CuDNN "
+             "convolutions (defaults to the floatX).",
+             EnumStr('floatX', 'float16', 'float32', 'float64'),
+             in_c_key=False)
+
 
 def default_dnn_path(suffix):
     def f(suffix=suffix):
