@@ -477,8 +477,15 @@ class GpuDnnConv(DnnBase, COp):
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM'
             elif self.algo == 'large':
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_GEMM'
+            elif self.algo == 'direct':
+                # need v2
+                alg = 'CUDNN_CONVOLUTION_FWD_ALGO_DIRECT'
             elif self.algo == 'fft':
+                # need v3
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_FFT'
+            elif self.algo == 'fft_tiliing':
+                # need v4
+                alg = 'CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING'
             elif self.algo in ['guess_once', 'guess_on_shape_change']:
                 # The convolution implementation should be choosen according
                 # to a heuristic
@@ -724,11 +731,15 @@ class GpuDnnConvGradW(DnnBase, COp):
             alg = "0"
         else:
             if self.algo == 'none':
+                # non-deterministic
                 alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0'
             elif self.algo == 'deterministic':
                 alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1'
             elif self.algo == 'fft':
                 alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT'
+            elif self.algo == 'none2':
+                # need v3, non-deterministic, small workspace
+                alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3'
             elif self.algo in ['guess_once', 'guess_on_shape_change']:
                 # The convolution implementation should be chosen according
                 # to a heuristic
@@ -936,7 +947,11 @@ class GpuDnnConvGradI(DnnBase, COp):
             elif self.algo == 'deterministic':
                 alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_1'
             elif self.algo == 'fft':
+                # need v3, big workspace
                 alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT'
+            elif self.algo == 'fft':
+                # need v4, big workspace, but less then fft
+                alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING'
             elif self.algo in ['guess_once', 'guess_on_shape_change']:
                 # The convolution implementation should be chosen according
                 # to a heuristic
