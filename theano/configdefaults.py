@@ -444,7 +444,7 @@ AddConfigVar(
 AddConfigVar(
     'traceback.limit',
     "The number of stack to trace. -1 mean all.",
-    # We default to 6 to be able to know where v1 + v2 is created in the
+    # We default to a number to be able to know where v1 + v2 is created in the
     # user script. The bigger this number is, the more run time it takes.
     # We need to default to 8 to support theano.tensor.tensor(...).
     # import theano, numpy
