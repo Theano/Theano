@@ -229,16 +229,32 @@ AddConfigVar('dnn.conv.workmem_bwd',
              EnumStr(''),
              in_c_key=False)
 
+AddConfigVar('dnn.conv.algo_bwd',
+             "This flag is deprecated; use dnn.conv.algo_bwd_data and "
+             "dnn.conv.algo_bwd_filter.",
+             EnumStr(''),
+             in_c_key=False)
+
 AddConfigVar('dnn.conv.algo_fwd',
              "Default implementation to use for CuDNN forward convolution.",
-             EnumStr('small', 'none', 'large', 'fft', 'guess_once',
-                     'guess_on_shape_change', 'time_once',
+             EnumStr('small', 'none', 'large', 'fft', 'fft_tiling',
+                     'guess_once', 'guess_on_shape_change',
+                     'time_once', 'time_on_shape_change'),
+             in_c_key=False)
+
+AddConfigVar('dnn.conv.algo_bwd_data',
+             "Default implementation to use for CuDNN backward convolution to "
+             "get the gradients of the convolution with regard to the inputs.",
+             EnumStr('none', 'deterministic', 'fft', 'fft_tiling',
+                     'guess_once', 'guess_on_shape_change', 'time_once',
                      'time_on_shape_change'),
              in_c_key=False)
 
-AddConfigVar('dnn.conv.algo_bwd',
-             "Default implementation to use for CuDNN backward convolution.",
-             EnumStr('none', 'deterministic', 'fft', 'guess_once',
+AddConfigVar('dnn.conv.algo_bwd_filter',
+             "Default implementation to use for CuDNN backward convolution to "
+             "get the gradients of the convolution with regard to the "
+             "filters.",
+             EnumStr('none', 'deterministic', 'fft', 'small', 'guess_once',
                      'guess_on_shape_change', 'time_once',
                      'time_on_shape_change'),
              in_c_key=False)
