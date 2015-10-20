@@ -380,8 +380,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
         tensor.verify_grad(oplike, [x_val], rng=numpy.random)
 
-        # see issue gh-788
-    def est_infer_shape(self):
+    def test_infer_shape(self):
         admat = matrix()
         alvec = lvector()
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -535,8 +534,6 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         # for node in fgraph.toposort():
         #    print node.op, node.inputs
 
-        # the function has 9 ops because the dimshuffle and lemwise{second}
-        # aren't getting cleaned up as well as we'd like.
         has_cx1hot = False
         has_cx1hotdx = False
         has_softmax = False
@@ -550,9 +547,9 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 has_softmax = True
             if node.op == softmax_grad:
                 has_softmaxdx = True
-        assert has_cx1hot
+        assert not has_cx1hot
         assert has_cx1hotdx
-        assert not has_softmax
+        assert has_softmax
         assert not has_softmaxdx
 
     def test_softmax_grad_optimizations_vector(self):
@@ -577,8 +574,6 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         # for node in fgraph.toposort():
         #    print node.op, node.inputs
 
-        # the function has 9 ops because the dimshuffle and elemwise{second}
-        # aren't getting cleaned up as well as we'd like.
         has_cx1hot = False
         has_cx1hotdx = False
         has_softmax = False
@@ -592,9 +587,9 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 has_softmax = True
             if node.op == softmax_grad:
                 has_softmaxdx = True
-        assert has_cx1hot
+        assert not has_cx1hot
         assert has_cx1hotdx
-        assert not has_softmax
+        assert has_softmax
         assert not has_softmaxdx
 
     def test_get_rid_of_advanced_indexing_version_of_xent(self):
