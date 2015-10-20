@@ -6099,3 +6099,12 @@ class AllocEmpty(gof.Op):
 
     def do_constant_folding(self, node):
         return False
+
+    def connection_pattern(self, node):
+        return [[False] for i in node.inputs]
+
+    def grad(self, inputs, grads):
+        return [DisconnectedType()() for i in inputs]
+
+    def R_op(self, inputs, eval_points):
+        return [zeros(inputs, self.dtype)]
