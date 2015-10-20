@@ -66,8 +66,7 @@ def batch_normalization(inputs, gamma, beta, mean, std,
         elm_bn = theano.tensor.elemwise.Elemwise(scalar_op=BNComposite(dtype=inputs.dtype))
         rval = elm_bn(inputs, mean, std, gamma, beta)
     elif mode == 'high_mem':
-        rval = (inputs - mean) / std
-        rval = rval * gamma + beta
+        rval = (inputs - mean) * (gamma / std) + beta
     else:
         raise ValueError(
             'mode must be either "low_mem", "high_mem"')
