@@ -166,7 +166,7 @@ def cuda_shared_constructor(value, name=None, strict=False,
 
     """
     if target != 'gpu':
-        rause TypeError('not for gpu')
+        raise TypeError('not for gpu')
 
     # THIS CONSTRUCTOR TRIES TO CAST VALUE TO A FLOAT32, WHICH THEN GOES ONTO THE CARD
     # SO INT shared vars, float64 shared vars, etc. all end up on the card.
