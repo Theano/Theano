@@ -1085,7 +1085,8 @@ class GpuDnnConv3dGradI(GpuDnnConvGradI):
 
 
 def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
-             conv_mode='conv', direction_hint=None, workmem=None, algo=None):
+             conv_mode='conv', direction_hint=None, workmem=None, algo=None,
+             precision=None):
     """
     GPU convolution using cuDNN from NVIDIA.
 
@@ -1120,10 +1121,14 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         removed at any time without a deprecation period. You have been warned.
     workmem
         *deprecated*, use parameter algo instead.
-        algo : {'none', 'small', 'large', 'fft', 'guess_once', 'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
+    algo : {'none', 'small', 'large', 'fft', 'guess_once', 'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Convolution implementation to use. Some of its  values may require certain
         versions of CuDNN to be installed. Default is the value of
         :attr:`config.dnn.conv.algo_fwd`.
+    precision : {'float16', 'float32', 'float64', 'floatX'}
+        Description of the dtype in which the computation of the convolution
+        should be done. Default is the value of
+        :attr:`config.dnn.conv.precision`.
 
     """
 
@@ -1153,7 +1158,8 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         out = gpu_alloc_empty(shape_i(kerns, 1, fgraph),
                               shape_i(img, 1, fgraph), shape2, shape3)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
-                              conv_mode='cross')(img.shape, out.shape)
+                              conv_mode='cross', precision=precision)(img.shape,
+                                                                      out.shape)
         conv = GpuDnnConvGradW()(img, kerns, out, desc)
         return as_cuda_ndarray_variable(conv.dimshuffle(1, 0, 2, 3))
 
@@ -1169,7 +1175,8 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         out = gpu_alloc_empty(shape_i(img, 0, fgraph),
                               shape_i(kerns, 1, fgraph), shape2, shape3)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1),
-                              conv_mode=conv_mode)(out.shape, kerns.shape)
+                              conv_mode=conv_mode, precision=precision)(out.shape,
+                                                                        kerns.shape)
         return GpuDnnConvGradI()(kerns, img, out, desc)
 
     # Standard case: We use GpuDnnConv with suitable padding.
@@ -1178,7 +1185,8 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     img = gpu_contiguous(img)
     kerns = gpu_contiguous(kerns)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
-                          conv_mode=conv_mode)(img.shape, kerns.shape)
+                          conv_mode=conv_mode, precision=precision)(img.shape,
+                                                                    kerns.shape)
     desc_op = desc.owner.op
     out_shp = GpuDnnConv.get_out_shape(img.shape, kerns.shape,
                                        desc_op.border_mode,
@@ -1189,7 +1197,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
 
 def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
                conv_mode='conv', direction_hint=None, workmem=None,
-               algo='none'):
+               algo='none', precision=None):
     """
     GPU convolution using cuDNN from NVIDIA.
 
@@ -1216,6 +1224,9 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
     :param algo: convolution implementation to use. Only 'none' is implemented
         for the conv3d. Default is the value of
         :attr:`config.dnn.conv.algo_fwd`.
+    :param precision : dtype in which the computation of the convolution
+        should be done. Possible values are 'float16', 'float32', 'float64' and
+        'floatX'. Default is the value of :attr:`config.dnn.conv.precision`.
 
     :warning: The cuDNN library only works with GPU that have a compute
       capability of 3.0 or higer.  This means that older GPU will not
@@ -1251,7 +1262,8 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
         out = gpu_alloc_empty(shape_i(kerns, 1, fgraph),
                               shape_i(img, 1, fgraph), shape2, shape3, shape4)
         desc = GpuDnnConvDesc(border_mode='valid', subsample=(1, 1, 1),
-                              conv_mode='cross')(img.shape, out.shape)
+                              conv_mode='cross', precision=precision)(img.shape,
+                                                                      out.shape)
         conv = GpuDnnConv3dGradW()(img, kerns, out, desc)
         return as_cuda_ndarray_variable(conv.dimshuffle(1, 0, 2, 3, 4))
 
@@ -1261,7 +1273,8 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
     img = gpu_contiguous(img)
     kerns = gpu_contiguous(kerns)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
-                          conv_mode=conv_mode)(img.shape, kerns.shape)
+                          conv_mode=conv_mode, precision=precision)(img.shape,
+                                                                    kerns.shape)
     desc_op = desc.owner.op
     out_shp = GpuDnnConv3d.get_out_shape(img.shape, kerns.shape,
                                          desc_op.border_mode,
