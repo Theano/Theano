@@ -135,6 +135,8 @@ AddConfigVar(
     'name->dev_name' format. An example that would map name 'test' to
     device 'cuda0' and name 'test2' to device 'opencl0:0' follows:
     "test->cuda0;test2->opencl0:0".
+
+    Invalid context names are 'cpu', 'cuda*' and 'opencl*'
     """, ContextsParam(), in_c_key=False)
 
 AddConfigVar(
