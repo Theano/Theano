@@ -446,8 +446,12 @@ AddConfigVar(
     "The number of stack to trace. -1 mean all.",
     # We default to 6 to be able to know where v1 + v2 is created in the
     # user script. The bigger this number is, the more run time it takes.
-    # We need to default to 7 to support theano.tensor.tensor(...).
-    IntParam(7),
+    # We need to default to 8 to support theano.tensor.tensor(...).
+    # import theano, numpy
+    # X = theano.tensor.matrix()
+    # y = X.reshape((5,3,1))
+    # assert y.tag.trace
+    IntParam(8),
     in_c_key=False)
 
 AddConfigVar('experimental.mrg',
