@@ -483,7 +483,7 @@ class GpuDnnConv(DnnBase, COp):
             elif self.algo == 'fft':
                 # need v3
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_FFT'
-            elif self.algo == 'fft_tiliing':
+            elif self.algo == 'fft_tiling':
                 # need v4
                 alg = 'CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING'
             elif self.algo in ['guess_once', 'guess_on_shape_change']:
@@ -949,7 +949,7 @@ class GpuDnnConvGradI(DnnBase, COp):
             elif self.algo == 'fft':
                 # need v3, big workspace
                 alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT'
-            elif self.algo == 'fft':
+            elif self.algo == 'fft_tiling':
                 # need v4, big workspace, but less then fft
                 alg = 'CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING'
             elif self.algo in ['guess_once', 'guess_on_shape_change']:
