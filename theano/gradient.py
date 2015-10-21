@@ -431,7 +431,8 @@ def grad(cost, wrt, consider_constant=None,
         from theano import tensor
 
     if cost is None:
-        assert known_grads is not None
+        if known_grads is None:
+            raise AssertionError("cost and known_grads can't both be None.")
 
     if cost is not None and isinstance(cost.type, NullType):
         raise ValueError("Can't differentiate a NaN cost."
