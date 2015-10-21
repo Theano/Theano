@@ -76,7 +76,7 @@ def conv2d(input,
         Also called strides elsewhere.
 
     :type filter_flip: bool
-    :param filters_flip: If ``True``, will flip the filter rows and columns
+    :param filter_flip: If ``True``, will flip the filter rows and columns
         before sliding them over the input. This operation is normally referred
         to as a convolution, and this is the default. If ``False``, the filters
         are not flipped and the operation is referred to as a cross-correlation.
@@ -132,19 +132,19 @@ class BaseAbstractConv2d(Op):
     :param subsample: factor by which to subsample the output.
         Also called strides elsewhere.
 
-    :type filters_flip: bool
-    :param filters_flip: If ``True``, will flip the filter rows and columns
+    :type filter_flip: bool
+    :param filter_flip: If ``True``, will flip the filter rows and columns
         before sliding them over the input. This operation is normally referred
         to as a convolution, and this is the default. If ``False``, the filters
         are not flipped and the operation is referred to as a cross-correlation.
     """
     check_broadcast = False
-    __props__ = ('border_mode', 'subsample', 'filters_flip', 'imshp', 'kshp')
+    __props__ = ('border_mode', 'subsample', 'filter_flip', 'imshp', 'kshp')
 
     def __init__(self,
                  imshp=None, kshp=None,
                  border_mode="valid", subsample=(1, 1),
-                 filters_flip = True):
+                 filter_flip = True):
         if isinstance(border_mode, int):
             border_mode = (border_mode, border_mode)
         if isinstance(border_mode, tuple):
@@ -160,7 +160,7 @@ class BaseAbstractConv2d(Op):
         self.imshp = imshp
         self.kshp = kshp
         self.border_mode = border_mode
-        self.filters_flip = filters_flip
+        self.filter_flip = filter_flip
 
         if len(subsample) != 2:
             raise ValueError("subsample must have two elements")
@@ -192,9 +192,9 @@ class AbstractConv2d(BaseAbstractConv2d):
                  kshp=None,
                  border_mode="valid",
                  subsample=(1, 1),
-                 filters_flip = True):
+                 filter_flip = True):
         super(AbstractConv2d, self).__init__(imshp, kshp,
-                                             border_mode, subsample, filters_flip)
+                                             border_mode, subsample, filter_flip)
 
     def make_node(self, img, kern):
         if img.type.ndim != 4:
@@ -217,12 +217,12 @@ class AbstractConv2d(BaseAbstractConv2d):
         d_bottom = AbstractConv2d_gradInputs(self.imshp, self.kshp,
                                              self.border_mode,
                                              self.subsample,
-                                             self.filters_flip)(
+                                             self.filter_flip)(
             weights, top, bottom.shape[-2:])
         d_weights = AbstractConv2d_gradWeights(self.imshp, self.kshp,
                                                self.border_mode,
                                                self.subsample,
-                                               self.filters_flip)(
+                                               self.filter_flip)(
             bottom, top, weights.shape[-2:])
         return d_bottom, d_weights
 
@@ -240,9 +240,9 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
                  kshp=None,
                  border_mode="valid",
                  subsample=(1, 1),
-                 filters_flip=True):
+                 filter_flip=True):
         super(AbstractConv2d_gradWeights, self).__init__(imshp, kshp,
-                                                         border_mode, subsample, filters_flip)
+                                                         border_mode, subsample, filter_flip)
 
     # Update shape/height_width
     def make_node(self, img, topgrad, shape):
@@ -267,12 +267,12 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
         d_bottom = AbstractConv2d_gradInputs(self.imshp, self.kshp,
                                              self.border_mode,
                                              self.subsample,
-                                             self.filters_flip)(weights, top, bottom.shape[-2:])
+                                             self.filter_flip)(weights, top, bottom.shape[-2:])
         d_top = AbstractConv2d(self.imshp,
                                self.kshp,
                                self.border_mode,
                                self.subsample,
-                               self.filters_flip)(bottom, weights)
+                               self.filter_flip)(bottom, weights)
         d_height_width = (theano.gradient.DisconnectedType()(),)
         return (d_bottom, d_top) + d_height_width
 
@@ -294,9 +294,9 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
                  kshp=None,
                  border_mode="valid",
                  subsample=(1, 1),
-                 filters_flip=True):
+                 filter_flip=True):
         super(AbstractConv2d_gradInputs, self).__init__(imshp, kshp,
-                                                        border_mode, subsample, filters_flip)
+                                                        border_mode, subsample, filter_flip)
 
     # Update shape/height_width
     def make_node(self, kern, topgrad, shape):
@@ -343,7 +343,7 @@ def local_conv2d_cpu(node):
         return None
     if node.op.border_mode not in ['full', 'valid']:
         return None
-    if not node.op.filters_flip:
+    if not node.op.filter_flip:
         # Not tested yet
         return None
 
@@ -365,7 +365,7 @@ def local_conv2d_gradweight_cpu(node):
         return None
     if node.op.border_mode not in ['full', 'valid']:
         return None
-    if not node.op.filters_flip:
+    if not node.op.filter_flip:
         # Not tested yet
         return
 
@@ -474,7 +474,7 @@ def local_conv2d_gradinputs_cpu(node):
         return None
     if node.op.border_mode not in ['full', 'valid']:
         return None
-    if not node.op.filters_flip:
+    if not node.op.filter_flip:
         # Not tested yet
         return None
 

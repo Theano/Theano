@@ -2697,7 +2697,7 @@ def local_abstractconv_gemm(node):
     border_mode = node.op.border_mode
     subsample = node.op.subsample
     if (border_mode == 'full') and (subsample == (1, 1)):
-        if not node.op.filters_flip:
+        if not node.op.filter_flip:
             kern = kern[:, :, ::-1, ::-1]
         # need to dimshuffle the kernel for full convolution
         kern = kern.dimshuffle(1, 0, 2, 3)
@@ -2706,7 +2706,7 @@ def local_abstractconv_gemm(node):
                 gpu_contiguous(kern), gpu_contiguous(img))
     else:
         # need to flip the kernel if necessary
-        if node.op.filters_flip:
+        if node.op.filter_flip:
             kern = kern[:, :, ::-1, ::-1]
         # By default use GpuCorrMM
         rval = GpuCorrMM(border_mode, subsample)(gpu_contiguous(img),
@@ -2754,7 +2754,7 @@ def local_abstractconv_gradweight_gemm(node):
     rval = GpuCorrMM_gradWeights(border_mode=node.op.border_mode,
                                  subsample=node.op.subsample)(
         gpu_contiguous(img), gpu_contiguous(topgrad), shape)
-    if node.op.filters_flip:
+    if node.op.filter_flip:
         rval = rval[:, :, ::-1, ::-1]
     rval = tensor.patternbroadcast(rval, node.outputs[0].broadcastable)
     rval = as_cuda_ndarray_variable(rval)
@@ -2769,7 +2769,7 @@ def local_abstractconv_gradinputs_gemm(node):
             not isinstance(topgrad.type, CudaNdarrayType):
         return None
 
-    if node.op.filters_flip:
+    if node.op.filter_flip:
         kern = kern[:, :, ::-1, ::-1]
 
     rval =  GpuCorrMM_gradInputs(border_mode=node.op.border_mode,
