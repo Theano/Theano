@@ -22,19 +22,19 @@ from theano.tensor.nnet.ConvTransp3D import convTransp3D
 _logger = logging.getLogger("theano.tensor.nnet.conv2d")
 
 
-def conv2d(inputs,
+def conv2d(input,
            filters,
-           inputs_shape=None,
-           filters_shape=None,
+           input_shape=None,
+           filter_shape=None,
            border_mode='valid',
            subsample=(1, 1),
-           filters_flip=True):
+           filter_flip=True):
     """
     This function will build the symbolic graph for convolving a mini-batch of a
     stack of 2D inputs with a set of 2D filters. The implementation is modelled
     after Convolutional Neural Networks (CNN).
 
-    :type inputs: symbolic 4D tensor
+    :type input: symbolic 4D tensor
     :param input: mini-batch of feature map stacks, of shape
         (batch size, input channels, input rows, input columns).
         See the optional parameter ``input_shape``.
@@ -44,13 +44,13 @@ def conv2d(inputs,
         (output channels, input channels, filter rows, filter columns).
         See the optional parameter ``filter_shape``.
 
-    :type inputs_shape: None, tuple/list of len 4 of int or Constant variable
+    :type input_shape: None, tuple/list of len 4 of int or Constant variable
     :param input_shape: The shape of the input parameter.
         Optional, possibly used to choose an optimal implementation.
         You can give ``None`` for any element of the list to specify that this
         element is not known at compile time.
 
-    :type filters_shape: None, tuple/list of len 4 of int or Constant variable
+    :type filter_shape: None, tuple/list of len 4 of int or Constant variable
     :param filter_shape: The shape of the filters parameter.
         Optional, possibly used to choose an optimal implementation.
         You can give ``None`` for any element of the list to specify that this
@@ -75,7 +75,7 @@ def conv2d(inputs,
     :param subsample: factor by which to subsample the output.
         Also called strides elsewhere.
 
-    :type filters_flip: bool
+    :type filter_flip: bool
     :param filters_flip: If ``True``, will flip the filter rows and columns
         before sliding them over the input. This operation is normally referred
         to as a convolution, and this is the default. If ``False``, the filters
@@ -86,12 +86,12 @@ def conv2d(inputs,
         of shape (batch size, output channels, output rows, output columns)
     """
 
-    conv_op = AbstractConv2d(imshp=inputs_shape,
-                             kshp=filters_shape,
+    conv_op = AbstractConv2d(imshp=input_shape,
+                             kshp=filter_shape,
                              border_mode=border_mode,
                              subsample=subsample,
-                             filters_flip=filters_flip)
-    return conv_op(inputs, filters)
+                             filter_flip=filter_flip)
+    return conv_op(input, filters)
 
 
 class BaseAbstractConv2d(Op):
@@ -352,7 +352,7 @@ def local_conv2d_cpu(node):
                       border_mode=node.op.border_mode,
                       subsample=node.op.subsample)
     return [rval]
-register_specialize_device(local_conv2d_cpu)
+register_specialize_device(local_conv2d_cpu, 'fast_compile')
 
 
 @local_optimizer([AbstractConv2d_gradWeights])
@@ -462,7 +462,7 @@ def local_conv2d_gradweight_cpu(node):
 
     res = patternbroadcast(res, node.outputs[0].broadcastable)
     return [res]
-register_specialize_device(local_conv2d_gradweight_cpu)
+register_specialize_device(local_conv2d_gradweight_cpu, 'fast_compile')
 
 
 @local_optimizer([AbstractConv2d_gradInputs])

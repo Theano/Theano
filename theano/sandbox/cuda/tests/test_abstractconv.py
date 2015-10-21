@@ -80,9 +80,9 @@ class TestConv2d(unittest.TestCase):
         c = conv.conv2d(inputs, filters,
                         border_mode=border_mode,
                         subsample=subsample,
-                        filters_flip=filters_flip,
-                        inputs_shape=imshp,
-                        filters_shape=kshp)
+                        filter_flip=filters_flip,
+                        input_shape=imshp,
+                        filter_shape=kshp)
         f_ref = theano.function([], c_ref, mode=mode)
         f = theano.function([], c, mode)
         res_ref = numpy.array(f_ref())
