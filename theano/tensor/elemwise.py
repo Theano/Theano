@@ -503,6 +503,8 @@ class Elemwise(OpenMPOp):
 
         self.ufunc = None
         self.nfunc = None
+        if nfunc_spec is None:
+            nfunc_spec = getattr(scalar_op, 'nfunc_spec', None)
         self.nfunc_spec = nfunc_spec
         if nfunc_spec:
             self.nfunc = getattr(numpy, nfunc_spec[0])
