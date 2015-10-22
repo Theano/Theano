@@ -164,12 +164,15 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
 #if defined(CUDNN_VERSION) && CUDNN_VERSION >= 3000
     // The FFT implementation (only in V3 and onward) does not support strides,
     // 1x1 filters or inputs with a spatial dimension larger than 1024.
-    // If the chosen implementation is FFT, validate that it can be used
-    // on the current data and default on a safe implementation if it
+    // The tiled-FFT implementation (only in V4 onward) does not support
+    // strides.
+    // If the chosen implementation is FFT or tiled-FFT, validate that it can
+    // be used on the current data and default on a safe implementation if it
     // can't.
-    // Following code is 2d-specific, but it is fine as ftt is defined only for
-    // 2d-filters
-    if (chosen_algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT && nb_dim == 4)
+    // Following code is 2d-specific, but it is fine as FFT and tiled-FFT are
+    // defined only for 2d-filters
+    if ((chosen_algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT ||
+         chosen_algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING) && nb_dim == 4)
     {
 
       // Extract the properties of the convolution descriptor
@@ -197,10 +200,21 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
 
       // Ensure that the selected implementation supports the requested
       // convolution. Fall back to a safe implementation otherwise.
-      if (stride_v != 1 || stride_h != 1 || input_h > 1024 ||
-          input_w > 1024 || (filter_h == 1 && filter_w == 1))
+      if (chosen_algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT)
       {
-        chosen_algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+        if (stride_v != 1 || stride_h != 1 || input_h > 1024 ||
+            input_w > 1024 || (filter_h == 1 && filter_w == 1))
+        {
+          chosen_algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+        }
+      }
+      else
+      {
+        // chosen_algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING
+        if (stride_v != 1 || stride_h != 1)
+        {
+          chosen_algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+        }
       }
     }
 #endif
