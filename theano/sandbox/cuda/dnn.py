@@ -362,7 +362,7 @@ class GpuDnnConvDesc(GpuOp):
     }
   }
 
-  err = cudnnSetConvolutionNdDescriptor(
+  err = cudnnSetConvolutionNdDescriptor_v3(
   %(desc)s,
   %(nb_dim)d,
   pad, subsample, upscale,
