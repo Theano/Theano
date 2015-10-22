@@ -159,12 +159,17 @@ APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
         chosen_algo = CONV_ALGO;
     }
 
-    // The FFT implementation (only in v3 and onward) does not support strides,
+    // The FFT implementation (only in V3 and onward) does not support strides,
     // 1x1 filters or inputs with a spatial dimension larger than 1024.
-    // If the chosen implementation is FFT, validate that it can be used
-    // on the current data and default on a safe implementation if it
+    // The tiled-FFT implementation (only in V4 onward) does not support
+    // strides.
+    // If the chosen implementation is FFT or tiled-FFT, validate that it can
+    // be used on the current data and default on a safe implementation if it
     // can't.
-    if (chosen_algo == CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT && nb_dim == 4)
+    // Following code is 2d-specific, but it is fine as FFT and tiled-FFT are
+    // defined only for 2d-filters
+    if ((chosen_algo == CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING  ||
+         chosen_algo == CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT) && nb_dim == 4)
     {
 
       // Extract the properties of the convolution descriptor
@@ -192,10 +197,21 @@ APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
 
       // Ensure that the selected implementation supports the requested
       // convolution. Fall back to a safe implementation otherwise.
-      if (stride_v != 1 || stride_h != 1 || input_h > 1024 ||
-          input_w > 1024 || (filter_h == 1 && filter_w == 1))
+      if (chosen_algo == CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT)
       {
-        chosen_algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
+        if (stride_v != 1 || stride_h != 1 || input_h > 1024 ||
+            input_w > 1024 || (filter_h == 1 && filter_w == 1))
+        {
+          chosen_algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
+        }
+      }
+      else
+      {
+        // chosen_algo == CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING
+        if (stride_v != 1 || stride_h != 1)
+        {
+          chosen_algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
+        }
       }
     }
 
