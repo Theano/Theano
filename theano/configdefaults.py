@@ -155,7 +155,7 @@ def default_cuda_root():
         return ''
     for dir in s.split(os.path.pathsep):
         if os.path.exists(os.path.join(dir, "nvcc")):
-            return os.path.split(dir)[0]
+            return os.path.dirname(os.path.abspath(dir))
     return ''
 
 AddConfigVar(
