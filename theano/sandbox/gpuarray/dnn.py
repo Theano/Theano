@@ -367,7 +367,8 @@ class GpuDnnConv(DnnBase):
     kernel
     descr
         The convolution descriptor.
-    algo : {'small', 'none', 'large', 'fft', 'guess_once', 'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
+    algo : {'small', 'none', 'large', 'fft', 'fft_tiling', 'guess_once',
+            'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_fwd`.
 
     """
@@ -396,9 +397,15 @@ class GpuDnnConv(DnnBase):
             elif self.algo in ['time_once', 'time_on_shape_change']:
                 raise RuntimeError("CuDNN convolution timing requires CuDNN v3")
 
-        assert self.algo in ['none', 'small', 'large', 'fft', 'guess_once',
-                             'guess_on_shape_change', 'time_once',
-                             'time_on_shape_change']
+        # The fft_tiling implementation is only available from CuDNN V4 onward
+        if version() < 4000:
+            if self.algo == 'fft_tiling':
+                raise RuntimeError("CuDNN tiled-FFT convolution requires "
+                                   "CuDNN v4 or more recent")
+
+        assert self.algo in ['none', 'small', 'large', 'fft', 'fft_tiling',
+                             'guess_once', 'guess_on_shape_change',
+                             'time_once', 'time_on_shape_change']
 
     def __setstate__(self, d):
         self.__dict__.update(d)
@@ -422,8 +429,13 @@ class GpuDnnConv(DnnBase):
             alg = 'CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM'
         elif self.algo == 'large':
             alg = 'CUDNN_CONVOLUTION_FWD_ALGO_GEMM'
+        elif self.algo == 'direct':
+            alg = 'CUDNN_CONVOLUTION_FWD_ALGO_DIRECT'
         elif self.algo == 'fft':
             alg = 'CUDNN_CONVOLUTION_FWD_ALGO_FFT'
+        elif self.algo == 'fft_tiling':
+            # need v4
+            alg = 'CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING'
         defs.append(('CONV_ALGO', alg))
 
         if self.algo in ['guess_once', 'guess_on_shape_change',
@@ -453,9 +465,10 @@ class GpuDnnConv(DnnBase):
             raise TypeError("The number of dimensions of "
                             "img, kern and output must match")
 
-        if img.type.ndim == 5 and self.algo == 'fft':
-            raise ValueError("convolution algo fft can't be used for "
-                             "3d convolutions")
+        if (img.type.ndim == 5 and
+                self.algo in ['small', 'large', 'fft', 'fft_tiling']):
+            raise ValueError("convolution algo %s can't be used for "
+                             "3d convolutions", (self.algo,))
 
         if (not isinstance(desc.type, CDataType) or
                 desc.type.ctype != 'cudnnConvolutionDescriptor_t'):
