@@ -132,6 +132,16 @@ class Apply(Node):
             return self.op.get_context(self)
         return NoContext
 
+    def __getstate__(self):
+        d = self.__dict__
+        # ufunc don't pickle/unpickle well
+        if hasattr(self.tag, 'ufunc'):
+            d = copy(self.__dict__)
+            t = d["tag"]
+            del t.ufunc
+            d["tag"] = t
+        return d
+
     def default_output(self):
         """
         Returns the default output for this node.

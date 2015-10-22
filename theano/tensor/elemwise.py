@@ -798,9 +798,9 @@ class Elemwise(OpenMPOp):
         # NumPy ufunc support only up to 31 inputs.
         # But our c code support more.
         if (len(node.inputs) < 32 and
-            (self.nfunc is None or
-             self.scalar_op.nin != len(node.inputs)) and
-            self.ufunc is None):
+                (self.nfunc is None or
+                 self.scalar_op.nin != len(node.inputs)) and
+                self.ufunc is None):
 
             ufunc = numpy.frompyfunc(self.scalar_op.impl,
                                      len(node.inputs),
@@ -813,7 +813,6 @@ class Elemwise(OpenMPOp):
 
         return super(Elemwise, node_.op).make_thunk(node_, storage_map,
                                                     compute_map, no_recycling)
-
 
     def perform(self, node, inputs, output_storage):
         if len(node.inputs) >= 32:
