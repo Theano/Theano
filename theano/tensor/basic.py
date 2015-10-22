@@ -4759,7 +4759,7 @@ def tile(x, reps, ndim=None):
     else:
         if ndim is not None and len(reps) > ndim:
             raise ValueError("len(reps) should be equal or less than ndim")
-        if not numpy.all([isinstance(r, (int, long)) or
+        if not numpy.all([isinstance(r, integer_types) or
                           (isinstance(r, TensorVariable) and
                            r.dtype in theano.tensor.discrete_dtypes) for r in reps]):
             raise ValueError("elements of reps must be scalars of integer dtype")
