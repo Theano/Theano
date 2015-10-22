@@ -107,6 +107,23 @@ static cudnnStatus_t cudnnConvolutionBackwardFilter_v3(
     gradData);
 }
 
+// Starting in V3, the cudnnSetConvolutionNdDescriptor has an additional
+// parameter that determines the data type in which to do the computation.
+// For versions older than V3, we need to define an alias for that function
+// that will take the additional parameter as input but ignore it.
+static inline cudnnStatus_t cudnnSetConvolutionNdDescriptor_v3(
+                                        cudnnConvolutionDescriptor_t convDesc,
+                                        int arrayLength,
+                                        int padA[],
+                                        int filterStrideA[]
+                                        int upscaleA[],
+                                        cudnnConvolutionMode_t mode,
+                                        cudnn_dataType_t dataType)
+
+  return cudnnSetConvolutionNdDescriptor(convDesc, arrayLength, padA,
+                                         filterStrideA, upscaleA, mode);
+
 #endif
+
 
 #endif
