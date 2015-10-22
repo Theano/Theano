@@ -22,7 +22,7 @@ static int theano_prep_output(PyGpuArrayObject **out, unsigned int nd,
   }
 
   Py_XDECREF(*out);
-  *out = pygpu_empty(nd, dims, typecode, ord, c, Py_None);
+  *out = pygpu_empty(nd, dims, typecode, ord, c, (PyTypeObject *)Py_None);
   return (*out == NULL) ? 1 : 0;
 }
 

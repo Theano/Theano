@@ -457,7 +457,7 @@ if (%(out)s == NULL || !GpuArray_IS_C_CONTIGUOUS(&%(out)s->ga) ||
   tmp = %(v)s->ga.dimensions[0];
   %(v)s->ga.dimensions[0] = %(idx)s->ga.dimensions[0];
   %(out)s = pygpu_empty(%(v)s->ga.nd, %(v)s->ga.dimensions, %(v)s->ga.typecode,
-                        GA_C_ORDER, %(v)s->context, Py_None);
+                        GA_C_ORDER, %(v)s->context, (PyTypeObject *)Py_None);
   %(v)s->ga.dimensions[0] = tmp; // Don't remove this line
 }
 

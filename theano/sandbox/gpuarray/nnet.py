@@ -222,7 +222,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
             Py_XDECREF(%(nll)s);
             %(nll)s = pygpu_empty(1, PyGpuArray_DIMS(%(y_idx)s),
                                 %(typecode_x)s, GA_C_ORDER, %(ctx)s,
-                                Py_None);
+                                (PyTypeObject *)Py_None);
             if (!%(nll)s) {
                 %(fail)s
             }
@@ -236,7 +236,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
             Py_XDECREF(%(sm)s);
             %(sm)s = pygpu_empty(2, PyGpuArray_DIMS(%(x)s),
                                 %(typecode_b)s, GA_C_ORDER,
-                                %(ctx)s, Py_None);
+                                %(ctx)s, (PyTypeObject *)Py_None);
             if(!%(sm)s)
             {
                 PyErr_SetString(PyExc_MemoryError,
@@ -252,7 +252,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
             Py_XDECREF(%(am)s);
             %(am)s = pygpu_empty(1, PyGpuArray_DIMS(%(y_idx)s),
                                 %(typecode_y_idx)s, GA_C_ORDER,
-                                %(ctx)s, Py_None);
+                                %(ctx)s, (PyTypeObject *)Py_None);
             if(!%(am)s)
             {
                 PyErr_SetString(PyExc_MemoryError,
@@ -414,7 +414,7 @@ class GpuCrossentropySoftmax1HotWithBiasDx(GpuKernelBase, Op):
             Py_XDECREF(%(dx)s);
             %(dx)s = pygpu_empty(2, PyGpuArray_DIMS(%(sm)s),
                                  %(typecode_dx)s, GA_C_ORDER,
-                                 %(ctx)s, Py_None);
+                                 %(ctx)s, (PyTypeObject *)Py_None);
             if (!%(dx)s) {
                 %(fail)s
             }
@@ -583,7 +583,7 @@ class GpuSoftmax(GpuKernelBase, Op):
             Py_XDECREF(%(z)s);
             %(z)s = pygpu_empty(2, PyGpuArray_DIMS(%(x)s),
                                 %(typecode)s, GA_C_ORDER,
-                                %(ctx)s, Py_None);
+                                %(ctx)s, (PyTypeObject *)Py_None);
             if (!%(z)s) {
                 %(fail)s
             }
@@ -797,7 +797,7 @@ class GpuSoftmaxWithBias(GpuKernelBase, Op):
             Py_XDECREF(%(z)s);
             %(z)s = pygpu_empty(2, PyGpuArray_DIMS(%(x)s),
                                 %(typecode)s, GA_C_ORDER,
-                                %(ctx)s, Py_None);
+                                %(ctx)s, (PyTypeObject *)Py_None);
             if (!%(z)s) {
                 %(fail)s
             }

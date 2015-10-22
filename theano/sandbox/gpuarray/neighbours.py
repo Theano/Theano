@@ -377,7 +377,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                 dims[0] = z_dim0;
                 dims[1] = z_dim1;
                 %(z)s = pygpu_empty(2, dims, %(typecode_z)s,
-                                    GA_C_ORDER, %(ctx)s, Py_None);
+                                    GA_C_ORDER, %(ctx)s, (PyTypeObject *)Py_None);
                 if (!%(z)s)
                 {
                     PyErr_SetString(PyExc_MemoryError, "GpuImages2Neibs:"
