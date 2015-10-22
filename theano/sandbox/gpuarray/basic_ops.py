@@ -391,29 +391,49 @@ class GpuFromHost(Op):
     def infer_shape(self, node, xshp):
         return xshp
 
+    def c_headers(self):
+        return ["gpuarray_helper.h"]
+
+    def c_header_dirs(self):
+        return [os.path.dirname(__file__)]
+
     def c_code(self, node, name, inputs, outputs, sub):
         return """
         PyArrayObject *%(name)s_tmp;
         %(name)s_tmp = PyArray_GETCONTIGUOUS(%(inp)s);
         if (%(name)s_tmp == NULL)
           %(fail)s
-        Py_XDECREF(%(out)s);
-        %(out)s = pygpu_fromhostdata(PyArray_DATA(%(name)s_tmp),
-                                     get_typecode((PyObject *)PyArray_DESCR(%(name)s_tmp)),
-                                     PyArray_NDIM(%(name)s_tmp),
-                                     (size_t *)PyArray_DIMS(%(name)s_tmp),
-                                     (ssize_t *)PyArray_STRIDES(%(name)s_tmp),
-                                     %(ctx)s,
-                                     Py_None);
-        Py_DECREF(%(name)s_tmp);
-        if (%(out)s == NULL) {
-            %(fail)s
+
+        if (%(out)s != NULL && GpuArray_IS_C_CONTIGUOUS(&%(out)s->ga) &&
+            theano_size_check(%(out)s, PyArray_NDIM(%(name)s_tmp),
+                              (size_t *)PyArray_DIMS(%(name)s_tmp),
+                              get_typecode((PyObject *)PyArray_DESCR(%(name)s_tmp)))) {
+          int err = GpuArray_write(&%(out)s->ga, PyArray_DATA(%(name)s_tmp),
+                                   PyArray_NBYTES(%(name)s_tmp));
+          Py_DECREF(%(name)s_tmp);
+          if (err != GA_NO_ERROR) {
+            PyErr_Format(PyExc_RuntimeError, "Could not write data to gpu");
+            %(fail)s;
+          }
+        } else {
+          Py_XDECREF(%(out)s);
+          %(out)s = pygpu_fromhostdata(PyArray_DATA(%(name)s_tmp),
+                                       get_typecode((PyObject *)PyArray_DESCR(%(name)s_tmp)),
+                                       PyArray_NDIM(%(name)s_tmp),
+                                       (size_t *)PyArray_DIMS(%(name)s_tmp),
+                                       (ssize_t *)PyArray_STRIDES(%(name)s_tmp),
+                                       %(ctx)s,
+                                       Py_None);
+          Py_DECREF(%(name)s_tmp);
+          if (%(out)s == NULL) {
+              %(fail)s
+          }
         }
         """ % {'name': name, 'inp': inputs[0], 'ctx': sub['context'],
                'out': outputs[0], 'fail': sub['fail']}
 
     def c_code_cache_version(self):
-        return (7,)
+        return (8,)
 
 
 class GpuToGpu(Op):
