@@ -130,8 +130,17 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
 
 #endif
 
+<<<<<<< HEAD
 #if CUDNN_VERSION > 3000
-  if (algo == CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT) {
+  // The FFT implementation does not support strides, 1x1 filters or inputs
+  // with a spatial dimension larger than 1024.
+  // If the chosen implementation is FFT, validate that it can
+  // be used on the current data and default to a safe implementation if it
+  // can't.
+  // The following code is 2d-specific but it is fine as FFT and tiled-FFT are
+  // defined only for 2d filters
+  if (algo == CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT &&
+      PyGpuArray_NDIM(input) == 4) {
     int nd;
     int pad[2];
     int stride[2];
