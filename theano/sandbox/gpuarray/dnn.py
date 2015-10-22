@@ -538,18 +538,25 @@ class GpuDnnConvGradW(DnnBase):
         if self.inplace:
             self.destroy_map = {0: [2]}
         if algo is None:
-            algo = config.dnn.conv.algo_bwd
+            algo = config.dnn.conv.algo_bwd_filter
         self.algo = algo
-        assert self.algo in ['none', 'deterministic', 'fft', 'guess_once',
-                             'guess_on_shape_change', 'time_once',
-                             'time_on_shape_change']
+
+        # The small-workspace implementation is only available from CuDNN V4
+        # onward.
+        if version() < 4000 and self.algo == 'small':
+            raise RuntimeError("CuDNN's small workspace GradW convolution "
+                               "requires CuDNN v4 or more recent.")
+
+        assert self.algo in ['none', 'deterministic', 'fft', 'small',
+                             'guess_once', 'guess_on_shape_change',
+                             'time_once', 'time_on_shape_change']
 
     def __setstate__(self, d):
         self.__dict__.update(d)
         if not hasattr(self, 'inplace'):
             self.inplace = False
         if not hasattr(self, 'algo'):
-            self.algo = config.dnn.conv.algo_bwd
+            self.algo = config.dnn.conv.algo_bwd_filter
 
     def grad(self, inp, grads):
         img, top, output, desc, alpha, beta = inp
@@ -584,7 +591,9 @@ class GpuDnnConvGradW(DnnBase):
                 alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1'
             if self.algo == 'fft':
                 alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT'
-
+            if self.algo == 'small':
+                # non-deterministic, small workspace
+                alg = 'CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3'
             if self.algo in ['guess_once', 'guess_on_shape_change',
                              'time_once', 'time_on_shape_change']:
                 defs.append(('CHOOSE_ALGO', ''))
@@ -614,7 +623,8 @@ class GpuDnnConvGradW(DnnBase):
             raise TypeError("The number of dimensions of "
                             "img, topgrad and output must match")
 
-        if img.type.ndim == 5 and self.algo in ['fft', 'deterministic']:
+        if (img.type.ndim == 5 and
+                self.algo in ['fft', 'deterministic', 'small']):
             raise ValueError("convolution algo %s can't be used for "
                              "3d convolutions", (self.algo,))
 
