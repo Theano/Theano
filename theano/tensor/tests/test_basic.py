@@ -5292,6 +5292,104 @@ def test_tile():
         assert numpy.all(run_tile(x, x_, (2, 3, 4, 6), use_symbolic_reps) ==
             numpy.tile(x_, (2, 3, 4, 6)))
 
+    # Test when reps is integer, tensor.scalar or tensor.vector.
+    # Test 1,2,3,4-dimensional cases.
+    # Test input x has the shape [2], [2, 4], [2, 4, 3], [2, 4, 3, 5].
+    test_shape = [2, 4, 3, 5]
+    k = 0 
+    for xtype in [vector(), matrix(), tensor3(), tensor4()]:
+        x = xtype
+        k = k+1
+        x_ = rng.randn(*test_shape[0:k]).astype(config.floatX)
+
+        # integer:
+        reps_ = 2
+        f = function([x], tile(x, reps_))
+        assert numpy.all( f(x_) == numpy.tile(x_, reps_))
+
+        # tensor.scalar:
+        reps = iscalar()
+        reps_ = 2
+        f = function([x, reps], tile(x, reps))
+        assert numpy.all( f(x_, reps_) == numpy.tile(x_, reps_))
+
+        # tensor.vector:
+        reps = ivector()
+        reps_ = [2] if k == 1 or k == 2 else [2, 3]
+        ndim_ = k
+        f = function([x, reps], tile(x, reps, ndim_))
+        assert numpy.all( f(x_, reps_) == numpy.tile(x_, reps_))
+
+        # list of integers:
+        reps_ = [2, 3, 4]
+        f = function([x], tile(x, reps_))
+        assert numpy.all( f(x_) == numpy.tile(x_, reps_))
+
+        # list of integers and tensor.scalars:
+        d = iscalar()
+        reps = [2, d, 4]
+        f = function([x, d], tile(x, reps))
+        reps_ = [2, 3, 4]
+        assert numpy.all( f(x_, 3) == numpy.tile(x_, reps_))
+
+        # reps is list, len(reps) > x.ndim, 3 cases below:
+        r = [2, 3, 4, 5, 6]
+        reps_ = r[:k+1] # len(reps_) = x.ndim+1
+        # (1) ndim = None.
+        f = function([x], tile(x, reps_))
+        assert numpy.all( f(x_) == numpy.tile(x_, reps_))
+        # (2) ndim = len(reps).
+        ndim_ = len(reps_)
+        f = function([x], tile(x, reps_, ndim_))
+        assert numpy.all( f(x_) == numpy.tile(x_, reps_))
+        # (3) ndim > len(reps)
+        ndim_ = len(reps_) + 1
+        f = function([x], tile(x, reps_, ndim_))
+        assert numpy.all( f(x_) == numpy.tile(x_, [1] + reps_))
+
+        # reps is list, ndim > x.ndim > len(reps):
+        r = [2, 3, 4, 5]
+        if k > 1:
+            ndim_ = k+1
+            reps_ = r[:k-1]
+            f = function([x], tile(x, reps_, ndim_))
+            assert numpy.all( f(x_) == numpy.tile(x_, [1, 1] + reps_))
+           
+        # error raising test: ndim not specified when reps is vector
+        reps = ivector()
+        numpy.testing.assert_raises(ValueError, tile, x, reps)
+
+        # error raising test: not a integer
+        for reps in [2.5, fscalar(), fvector()]:
+            numpy.testing.assert_raises(ValueError, tile, x, reps)
+        
+        # error raising test: the dimension of reps exceeds 1
+        reps = imatrix()
+        numpy.testing.assert_raises(ValueError, tile, x, reps)
+
+        # error raising test: ndim is not None, ndim < x.ndim
+        # 3 cases below (reps is list/tensor.scalar/tensor.vector):
+        for reps in [[2,3,4], iscalar(), ivector()]:
+            if k > 1:
+                ndim = k-1
+                numpy.testing.assert_raises(ValueError, tile, x, reps, ndim)
+        
+        # error raising test: reps is list, len(reps) > ndim
+        r = [2, 3, 4, 5, 6]
+        reps = r[:k+1]
+        ndim = k
+        numpy.testing.assert_raises(ValueError, tile, x, reps, ndim)
+
+        # error raising test: 
+        # reps is tensor.vector and len(reps_value) > ndim,
+        # reps_value is the real value when excuting the function.
+        reps = ivector()
+        r = [2, 3, 4, 5, 6, 7]
+        reps_ = r[:k+2]
+        ndim_ = k+1
+        f = function([x, reps], tile(x, reps, ndim_))
+        numpy.testing.assert_raises(AssertionError, f, x_, reps_)
+
 def test_tile_grad():
 
     def grad_tile(x, reps, np_x):

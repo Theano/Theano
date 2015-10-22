@@ -3850,25 +3850,6 @@ class T_Tile(unittest.TestCase):
                 assert isinstance(topo[0].op, compile.DeepCopyOp)
                 f(data)
 
-        # If the repeat parameter is longer then v.ndim, we must
-        # replace it with a DimShuffle to add the extra parameter.
-        # But it isn't supported for now, so assert that we raise an
-        # error.
-
-        self.assertRaises(ValueError, T.tile, v, (1,)*(v.ndim+1))
-        # If the repeat parameter is shorter then m.ndim, it should
-        # pad tot he left the repeat patter with 1. It is not supported for now.
-        #f = theano.function([var], T.tile(v, (1,)*(v.ndim+1)))
-        #topo = f.maker.fgraph.toposort()
-        #assert len(topo) == 1
-        #assert isinstance(topo[0].op, DimShuffe)
-
-        self.assertRaises(ValueError, T.tile, m, (1,)*(m.ndim-1))
-        #f = theano.function([var], T.tile(m, (1,)*(m.ndim-1)))
-        #topo = f.maker.fgraph.toposort()
-        #assert len(topo) == 1
-        #assert isinstance(topo[0].op, compile.DeepCopyOp)
-
 
 def speed_local_pow_specialize_range():
     val = numpy.random.rand(1e7)
