@@ -508,12 +508,6 @@ class Elemwise(OpenMPOp):
         self.nfunc_spec = nfunc_spec
         if nfunc_spec:
             self.nfunc = getattr(numpy, nfunc_spec[0])
-        elif scalar_op.nin > 0 and scalar_op.nin < 32:
-            # NumPy ufunc support only up to 31 inputs.
-            # But our c code support more.
-            # when nin == -1, we will build the ufunc in the make_thunk.
-            self.ufunc = numpy.frompyfunc(scalar_op.impl, scalar_op.nin,
-                                          scalar_op.nout)
 
         # precompute the hash of this node
         self._rehash()
@@ -800,13 +794,22 @@ class Elemwise(OpenMPOp):
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
         node_ = node
-        if self.ufunc is None and self.scalar_op.nin == -1:
-            node_ = copy(node)
-            assert node.op is node_.op
+        # Postpone the ufunc building to the last minutes
+        # NumPy ufunc support only up to 31 inputs.
+        # But our c code support more.
+        if (len(node.inputs) < 32 and
+            (self.nfunc is None or
+             self.scalar_op.nin != len(node.inputs)) and
+            self.ufunc is None):
+
             ufunc = numpy.frompyfunc(self.scalar_op.impl,
                                      len(node.inputs),
                                      self.scalar_op.nout)
-            node_.op.ufunc = ufunc
+            if self.scalar_op.nin > 0:
+                # We can reuse it for many nodes
+                self.ufunc = ufunc
+            else:
+                node.tag.ufunc = ufunc
 
         return super(Elemwise, node_.op).make_thunk(node_, storage_map,
                                                     compute_map, no_recycling)
@@ -882,6 +885,13 @@ class Elemwise(OpenMPOp):
             if self.ufunc:
                 ufunc = self.ufunc
             else:
+                if not hasattr(node.tag, 'ufunc'):
+                    # It happen that make_thunk isn't called, like in
+                    # get_scalar_constant_value
+                    node.tag.ufunc = numpy.frompyfunc(self.scalar_op.impl,
+                                                      len(node.inputs),
+                                                      self.scalar_op.nout)
+
                 ufunc = node.tag.ufunc
 
             nout = ufunc.nout
