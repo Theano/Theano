@@ -1,0 +1,17 @@
+.. _libdoc_gpuarray_extra:
+
+=================
+Utility functions
+=================
+
+Optimisation
+------------
+
+.. automodule:: theano.sandbox.gpuarray.opt_util
+   :members:
+
+Kernel generation
+-----------------
+
+.. automodule:: theano.sandbox.gpuarray.kernel_codegen
+   :members:
