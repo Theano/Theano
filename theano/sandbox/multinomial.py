@@ -35,7 +35,7 @@ class MultinomialFromUniform(Op):
         except AttributeError:
             self.odtype = 'auto'
 
-    def make_node(self, pvals, unis, n):
+    def make_node(self, pvals, unis, n=1):
         pvals = T.as_tensor_variable(pvals)
         unis = T.as_tensor_variable(unis)
         if pvals.ndim != 2:
@@ -151,7 +151,12 @@ class MultinomialFromUniform(Op):
         """ % locals()
 
     def perform(self, node, ins, outs):
-        (pvals, unis, n_samples) = ins
+        # support old pickled graphs
+        if len(ins) == 2:
+            (pvals, unis) = ins
+            n_samples = 1
+        else:
+            (pvals, unis, n_samples) = ins
         (z,) = outs
 
         if unis.shape[0] != pvals.shape[0] * n_samples:
@@ -264,7 +269,13 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
         """ % locals()
 
     def c_code(self, node, name, ins, outs, sub):
-        (pvals, unis) = ins
+        # support old pickled graphs
+        if len(ins) == 2:
+            (pvals, unis) = ins
+            n_samples = 1
+        else:
+            (pvals, unis, n_samples) = ins
+
         (z,) = outs
 
         fail = sub['fail']
