@@ -156,7 +156,7 @@ cpu_ops_moved_to_gpu = [
     tensor.Reshape, tensor.flatten, tensor.Subtensor,
     tensor.AdvancedSubtensor1, tensor.AdvancedIncSubtensor1,
     tensor.IncSubtensor, tensor.Shape, tensor.Join,
-    tensor.Alloc, tensor.Eye]
+    tensor.Alloc, tensor.Eye, tensor.BatchedDot]
 
 
 class InputToGpuOptimizer(Optimizer):
@@ -610,6 +610,31 @@ def local_gpu_dot22(node):
             x, y = node.inputs
             return [host_from_gpu(gpu_dot22(as_cuda_ndarray_variable(x),
                                             as_cuda_ndarray_variable(y)))]
+    return False
+
+
+@register_opt()
+@local_optimizer([gpu_from_host, tensor.BatchedDot])
+def local_gpu_batched_dot(node):
+    """
+    gpu_from_host(batched_dot) -> gpu_batched_dot(gpu_from_host)
+
+    batched_dot(host_from_gpu) -> host_from_gpu(batched_dot)
+
+    """
+    if isinstance(node.op, GpuFromHost):
+        host_input = node.inputs[0]
+        if host_input.owner and isinstance(host_input.owner.op,
+                                           tensor.BatchedDot):
+            x, y = host_input.owner.inputs
+            return [batched_dot(as_cuda_ndarray_variable(x),
+                                as_cuda_ndarray_variable(y))]
+    if isinstance(node.op, tensor.BatchedDot):
+        if any([(i.owner and isinstance(i.owner.op, HostFromGpu))
+                for i in node.inputs]):
+            x, y = node.inputs
+            return [host_from_gpu(batched_dot(as_cuda_ndarray_variable(x),
+                                              as_cuda_ndarray_variable(y)))]
     return False
 
 
