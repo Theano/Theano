@@ -308,6 +308,7 @@ def test_flatten():
     f = theano.function([x], x.flatten(), mode=mode_with_gpu)
     assert any([node for node in f.maker.fgraph.toposort()
                 if isinstance(node.op, B.GpuReshape)])
+    assert theano.tensor.is_flat(x.flatten())
     assert len(f([[0., 0.], [0., 0.]]).shape) == 1
 
 

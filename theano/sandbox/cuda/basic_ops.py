@@ -3322,16 +3322,22 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
         return ()
 
 
-class GpuFlatten(gof.HideC, tensor.Reshape, GpuOp):
+class GpuFlatten(gof.HideC, tensor.Flatten, GpuOp):
     """
     Implement Flatten on the gpu.
 
-    Note: The interface GpuFlatten is deprecated, you should use gpu_flatten
+    .. note:: The interface GpuFlatten is deprecated, you should use gpu_flatten.
     """
+    def __init__(self):
+        warnings.warn(
+            "GpuFlatten class is deprecated, "
+            "please use gpu_flatten method instead.",
+            DeprecationWarning,
+            stacklevel=4)
 
     def make_node(self, x):
         assert isinstance(x.type, CudaNdarrayType)
-        rval = flatten(x)
+        rval = tensor.Flatten.make_node(self, x)
         host_out_broadcastable = rval.outputs[0].type.broadcastable
         out_type = CudaNdarrayType(broadcastable=host_out_broadcastable)
         return Apply(self, [x], [out_type()])
@@ -3341,14 +3347,23 @@ class GpuFlatten(gof.HideC, tensor.Reshape, GpuOp):
 def gpu_flatten(x, outdim=1):
     """
     Implement flatten on the gpu.
+    Reshapes the variable x by keeping
+    the first outdim-1 dimension size(s) of x the same,
+    and making the last dimension size of x equal to
+    the multiplication of its remaining dimension size(s).
 
-    :param x: the variable that should be reshaped.
-    :type x: theano.tensor.var.TensorVariable
+    Parameters
+    ----------
+        x : theano.tensor.var.TensorVariable
+            the variable that should be reshaped.
 
-    :param outdim: the number of dimensions of the returned variable
-    :type outdim: int
+        outdim : int
+            the number of dimensions of the returned variable
 
-    :returns: the flattend variable with dimensionality of outdim
+    Returns
+    -------
+    theano.tensor.var.TensorVariable
+        the flattend variable with dimensionality of outdim
     """
     x = as_cuda_ndarray_variable(x)
     if outdim > 1:

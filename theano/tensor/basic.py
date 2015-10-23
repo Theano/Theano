@@ -4506,7 +4506,7 @@ class Flatten(Op):
     Flattens a tensor to `outdim` dimensions by preserving the leading
     outdim - 1 shape components.
 
-    Note: The interface Flatten(Op) is deprecated, you should use flatten
+    .. note:: The interface Flatten(Op) is deprecated, you should use flatten.
     """
     view_map = {0: [0]}
 
@@ -4659,16 +4659,26 @@ class Flatten(Op):
 
 def is_flat(node, outdim=1):
     """
-    verifies the dimensionality of variable is correct.
+    Verifies the dimensionality of the node's variable is equal to
+    outdim. This method is usually called after flatten method on a
+    variable, where the first outdim-1 dimension size(s) of the variable
+    is kept intact, and the last dimension size of the variable is made
+    equal to the multiplication of its remaining dimension size(s), such that
+    the variable would end up with as many dimension as outdim.
 
-    :param node: the theano node on which the dimensionality is checked.
-    :type node: theano.tensor.var.TensorVariable
+    Parameters
+    ----------
+        node : theano.tensor.var.TensorVariable
+            the theano node on which the dimensionality is checked.
 
-    :param outdim: the expected dimensionality of node.
-    :type outdim: int
+        outdim : int
+            the expected dimensionality of node.
 
-    :returns: the comparison result of node's dim
-              and the expected outdim.
+    Returns
+    -------
+    bool
+        the comparison result of node's dim
+        and the expected outdim.
     """
     return node.ndim == outdim
 
@@ -4676,19 +4686,23 @@ def is_flat(node, outdim=1):
 def flatten(x, outdim=1):
     """
     Reshapes the variable x by keeping
-    the first outdim-1 dimension(s) of x the same,
-    and making the last dimension of x equal to
-    the multiplication of its remaining dimensions.
+    the first outdim-1 dimension size(s) of x the same,
+    and making the last dimension size of x equal to
+    the multiplication of its remaining dimension size(s).
 
-    :param x: the theano variable that should be reshaped.
-    :type x: theano.tensor.var.TensorVariable
+    Parameters
+    ----------
+        x : theano.tensor.var.TensorVariable
+            the variable that should be reshaped.
 
-    :param outdim: the number of dimensions of the returned variable
-    :type outdim: int
+        outdim : int
+            the number of dimensions of the returned variable
 
-    :returns: the flattend variable with dimensionality of outdim
+    Returns
+    -------
+    theano.tensor.var.TensorVariable
+        the flattend variable with dimensionality of outdim
     """
-    outdim = int(outdim)
     # Any input variable can be flattened to have outdim of 1,
     # even if it's a scalar. Otherwise, outdim must be positive
     # and smaller than x.ndim.

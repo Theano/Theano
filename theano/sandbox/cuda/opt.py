@@ -981,14 +981,14 @@ def local_gpu_flatten(node):
         if host_input.owner and \
            isinstance(host_input.owner.op, tensor.Flatten):
             outdim = host_input.owner.op.outdim
-            return [gpu_flatten(outdim)(
+            return [gpu_flatten(host_input.owner.inputs[0], outdim)(
                 as_cuda_ndarray_variable(host_input.owner.inputs[0]))]
     if isinstance(node.op, tensor.Flatten):
         x, shp= node.inputs
         outdim = node.op.outdim
         if x.owner and isinstance(x.owner.op, HostFromGpu):
             gpu_x, = x.owner.inputs
-            return [host_from_gpu(gpu_flatten(outdim)(gpu_x))]
+            return [host_from_gpu(gpu_flatten(host_input.owner.inputs[0], outdim)(gpu_x))]
     return False
 
 

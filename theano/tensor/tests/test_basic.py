@@ -18,6 +18,7 @@ from nose.plugins.skip import SkipTest
 import numpy
 from numpy.testing import dec, assert_array_equal, assert_allclose
 from distutils.version import LooseVersion
+from functools import partial
 
 import theano
 from theano.compat import PY3, exc_message, operator_div
@@ -5194,7 +5195,6 @@ def test_flatten_outdim2():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val) == a_val)
 
-    from functools import partial
     flatten_2 = partial(flatten, outdim=2)
     utt.verify_grad(flatten_2, [a_val])
 
@@ -5210,7 +5210,6 @@ def test_flatten_outdim2_of_3():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val) == c_val)
 
-    from functools import partial
     flatten_2 = partial(flatten, outdim=2)
     utt.verify_grad(flatten_2, [a_val])
 
