@@ -1934,8 +1934,9 @@ DotTester = makeTester(name='DotTester',
 BatchedDotTester = makeTester(
     name='BatchedDotTester',
     op=batched_dot,
-    expected=lambda xs, ys: numpy.asarray(list(
-        numpy.dot(x, y) for x, y in zip(xs, ys))),
+    expected=lambda xs, ys: numpy.asarray(
+        list(numpy.dot(x, y) for x, y in zip(xs, ys)),
+        dtype=theano.scalar.upcast(xs.dtype, ys.dtype)),
     checks={},
     grad=dict(correct1=(rand(3, 5, 7), rand(3, 7, 5)),
               correct2=(rand(3, 5, 7), rand(3, 7, 9)),
