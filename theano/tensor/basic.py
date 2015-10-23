@@ -3869,6 +3869,11 @@ class Join(Op):
             assert shp is not None
             assert len(shp) == n_dim
 
+        # The joining dimension could be negative, but we need it to be
+        # in [0, n_dim) in the loop below.
+        join_dim = switch(ge(node.inputs[0], 0),
+                          node.inputs[0],
+                          node.inputs[0] + n_dim)
         out_shapes = []
         for dim in xrange(n_dim):
             # we have to deal with 2 possible cases in here :
@@ -3886,7 +3891,7 @@ class Join(Op):
             for shp in ishapes[2:]:
                 t_side = t_side + shp[dim]
             # return the dimensions found
-            out_shapes.append(switch(eq(dim, node.inputs[0]),
+            out_shapes.append(switch(eq(dim, join_dim),
                               t_side, f_side))
 
         return [tuple(out_shapes)]
