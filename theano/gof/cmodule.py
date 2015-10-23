@@ -2013,7 +2013,7 @@ class GCC_compiler(Compiler):
         # ARM (32-bit and 64-bit) architectures in order to make
         # Theano compatible with the Raspberry Pi, Raspberry Pi 2, or 
         # other systems with ARM processors.
-        if (not any(['arm' in flag for flag in cxxflags]) and \
+        if (not any(['arm' in flag for flag in cxxflags])) and \
            (not any(arch in platform.machine() for arch in ['arm', 'aarch'])):
             n_bits = local_bitwidth()
             cxxflags.append('-m%d' % n_bits)
