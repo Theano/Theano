@@ -3449,12 +3449,12 @@ class BatchedDot(Op):
             ygrad = x.dimshuffle(0, 1, 'x') * gz.dimshuffle(0, 'x', 1)
 
         # x is matrix, y is vector, grad is vector
-        elif xdim == 2 and ydim == 1:
+        elif xdim == 3 and ydim == 2:
             xgrad = gz.dimshuffle(0, 1, 'x') * y.dimshuffle(0, 'x', 1)
             ygrad = batched_dot(x.dimshuffle(0, 2, 1), gz)
 
         # x is matrix, y is matrix, grad is matrix
-        elif xdim == ydim == 2:
+        elif xdim == ydim == 3:
             xgrad = batched_dot(gz, y.dimshuffle(0, 2, 1))
             ygrad = batched_dot(x.dimshuffle(0, 2, 1), gz)
 

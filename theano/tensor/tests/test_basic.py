@@ -1931,13 +1931,22 @@ DotTester = makeTester(name='DotTester',
                         bad_build=dict(),
                         bad_runtime=dict(bad1=(rand(5, 7), rand(5, 7)),
                                          bad2=(rand(5, 7), rand(8, 3))))
-
 BatchedDotTester = makeTester(
     name='BatchedDotTester',
     op=batched_dot,
     expected=lambda xs, ys: numpy.asarray(list(
         numpy.dot(x, y) for x, y in zip(xs, ys))),
     checks={},
+    grad=dict(correct1=(rand(3, 5, 7), rand(3, 7, 5)),
+              correct2=(rand(3, 5, 7), rand(3, 7, 9)),
+              correct3=(rand(3, 5, 7), rand(3, 7)),
+              correct4=(rand(3, 5), rand(3, 5, 7)),
+              correct5=(rand(3), rand(3, 5, 7)),
+              correct6=(rand(3, 5), rand(3)),
+              mixed1=(rand(3, 5).astype('float32'),
+                      rand(3, 5, 7)),
+              mixed2=(rand(3, 5).astype('float64'),
+                      rand(3, 5, 7))),
     good=dict(correct1=(rand(3, 5, 7), rand(3, 7, 5)),
               correct2=(rand(3, 5, 7), rand(3, 7, 9)),
               correct3=(rand(3, 5, 7), rand(3, 7)),
