@@ -41,6 +41,9 @@ def ensure_float(val, name):
 
 
 class Gemm16(COp):
+    """
+    Gemm for float16 using the nervena kernels.
+    """
     __props__ = ('relu', 'inplace')
     _f16_ok = True
     params_type = gpu_context_type

@@ -13,4 +13,5 @@
 .. toctree::
     :maxdepth: 1
 
+    op
     type
