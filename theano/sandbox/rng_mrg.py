@@ -1317,11 +1317,12 @@ class MRG_RandomStreams(object):
     def multinomial(self, size=None, n=1, pvals=None, ndim=None, dtype='int64',
                     nstreams=None):
         """
-        Sample `n` (`n` needs to be >= 1) times from a multinomial
+        Sample `n` (`n` needs to be >= 1, default 1) times from a multinomial
         distribution defined by probabilities pvals.
 
-        Example : pvals = [[.98, .01, .01], [.01, .49, .50]] and n=2 will
-        probably result in [[2,0,0],[0,1,1]].
+        Example : pvals = [[.98, .01, .01], [.01, .49, .50]] and n=1 will
+        probably result in [[1,0,0],[0,0,1]]. When setting n=2, this
+        will probably result in [[2,0,0],[0,1,1]].
 
         Notes
         -----

@@ -74,7 +74,7 @@ def test_multinomial_0():
     p = tensor.fmatrix()
     u = tensor.fvector()
     
-    m = multinomial.MultinomialFromUniform('auto')(p, u, 1)
+    m = multinomial.MultinomialFromUniform('auto')(p, u)
 
     def body(mode, gpu):
         # the m*2 allows the multinomial to reuse output
@@ -113,7 +113,7 @@ def test_multinomial_large():
     def body(mode, gpu):
         p = tensor.fmatrix()
         u = tensor.fvector()
-        m = multinomial.MultinomialFromUniform('auto')(p, u, 1)
+        m = multinomial.MultinomialFromUniform('auto')(p, u)
         f = function([p, u], m*2, allow_input_downcast=True, mode=mode)
         if gpu:
             assert any([type(node.op) is multinomial.GpuMultinomialFromUniform
@@ -144,17 +144,17 @@ def test_multinomial_large():
 def test_multinomial_dtypes():
     p = tensor.dmatrix()
     u = tensor.dvector()
-    m = multinomial.MultinomialFromUniform('auto')(p, u, 1)
+    m = multinomial.MultinomialFromUniform('auto')(p, u)
     assert m.dtype == 'float64', m.dtype
 
     p = tensor.fmatrix()
     u = tensor.fvector()
-    m = multinomial.MultinomialFromUniform('auto')(p, u, 1)
+    m = multinomial.MultinomialFromUniform('auto')(p, u)
     assert m.dtype == 'float32', m.dtype
 
     p = tensor.fmatrix()
     u = tensor.fvector()
-    m = multinomial.MultinomialFromUniform('float64')(p, u, 1)
+    m = multinomial.MultinomialFromUniform('float64')(p, u)
     assert m.dtype == 'float64', m.dtype
 
 
@@ -168,7 +168,7 @@ def test_gpu_opt():
     # is moved to the gpu.
     p = tensor.fmatrix()
     u = tensor.fvector()
-    m = multinomial.MultinomialFromUniform('auto')(p, u, 1)
+    m = multinomial.MultinomialFromUniform('auto')(p, u)
     assert m.dtype == 'float32', m.dtype
     m_gpu = cuda.gpu_from_host(m)
 
@@ -182,7 +182,7 @@ def test_gpu_opt():
 
     # Test with a row, it was failing in the past.
     r = tensor.frow()
-    m = multinomial.MultinomialFromUniform('auto')(r, u, n)
+    m = multinomial.MultinomialFromUniform('auto')(r, u)
     assert m.dtype == 'float32', m.dtype
     m_gpu = cuda.gpu_from_host(m)
 

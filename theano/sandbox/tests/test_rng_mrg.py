@@ -847,7 +847,6 @@ def test_multinomial():
 
 
 def test_multinomial_n_samples():
-    steps = 100
     mode_ = mode
     if mode == 'FAST_COMPILE':
         mode_ = 'FAST_RUN'
@@ -863,21 +862,16 @@ def test_multinomial_n_samples():
     pvals = numpy.apply_along_axis(lambda row: row / numpy.sum(row), 1, pvals)
     R = MRG_RandomStreams(234, use_cuda=False)
     
-    for n_samples in [5, 10, 100, 1000]:
-        # Note: we specify `nstreams` to avoid a warning.
+    for n_samples, steps in zip([5, 10, 100, 1000], [20, 10, 1, 1]):
         m = R.multinomial(pvals=pvals, n=n_samples, dtype=config.floatX, nstreams=30 * 256)
         f = theano.function([], m, mode=mode_)
         basic_multinomialtest(f, steps, sample_size, pvals, n_samples, prefix='mrg ')
         sys.stdout.flush()
         
         if mode != 'FAST_COMPILE' and cuda_available:
-            # print ''
-            # print 'ON GPU:'
             R = MRG_RandomStreams(234, use_cuda=True)
             pvals = numpy.asarray(pvals, dtype='float32')
-            # We give the number of streams to avoid a warning.
             n = R.multinomial(pvals=pvals, n=n_samples, dtype='float32', nstreams=30 * 256)
-            # well, it's really that this test w GPU doesn't make sense otw
             assert n.dtype == 'float32'
             f = theano.function(
                 [],
