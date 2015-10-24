@@ -962,7 +962,12 @@ class Gemm(GemmRelated):
     E_float = 'gemm requires floating-point dtypes'
 
     def __init__(self, inplace):
-        self.__setstate__({'inplace': inplace})
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+            self.setup_z_Nz_Sz = self.setup_z_Nz_Sz_inplace
+        else:
+            self.setup_z_Nz_Sz = self.setup_z_Nz_Sz_outplace
 
     def __eq__(self, other):
         return (type(self) == type(other) and
@@ -979,16 +984,25 @@ class Gemm(GemmRelated):
         return '%s{%s}' % (self.__class__.__name__, inplace_str)
 
     def __setstate__(self, dct):
-        inplace = dct.get('inplace', True)
-        if inplace:
-            self.destroy_map = {0: [0]}
+        self.__dict__.update(dct)
+        if self.inplace:
             self.setup_z_Nz_Sz = self.setup_z_Nz_Sz_inplace
         else:
             self.setup_z_Nz_Sz = self.setup_z_Nz_Sz_outplace
-        self.inplace = inplace
+
+        # Correctly reload older pickles where _op_use_c_code and
+        # destroy_map were not saved
+        if '_op_use_c_code' not in self.__dict__:
+            self._op_use_c_code = theano.config.cxx
+        if 'destroy_map' not in self.__dict__ and self.inplace:
+            self.destroy_map = {0: [0]}
 
     def __getstate__(self):
-        return dict(inplace=self.inplace)
+        rval = self.__dict__.copy()
+        # Do not serialize the setup code, it will be restored in __setstate__
+        # depending on the value of 'inplace'
+        rval.pop('setup_z_Nz_Sz')
+        return rval
 
     def make_node(self, *inputs):
         inputs = list(map(T.as_tensor_variable, inputs))
