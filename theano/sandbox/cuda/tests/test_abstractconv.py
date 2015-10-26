@@ -97,7 +97,7 @@ class TestConv2d(unittest.TestCase):
     def run_gradweight(self, inputs_shape, filters_shape, output_shape,
                        ref=dnn_gradweight, subsample=(1, 1), filter_flip=True,
                        verify_grad=True, mode=mode_without_gpu, border_mode='valid',
-                       device='cpu', provide_shape = False):
+                       device='cpu', provide_shape=False):
 
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         output_val = numpy.random.random(output_shape).astype('float32')
@@ -143,7 +143,7 @@ class TestConv2d(unittest.TestCase):
 
     def run_gradinput(self, inputs_shape, filters_shape, output_shape, ref=dnn_gradinput,
                       subsample=(1, 1), filter_flip=True, verify_grad=True, mode=mode_without_gpu,
-                      border_mode='valid', device='cpu', provide_shape = False):
+                      border_mode='valid', device='cpu', provide_shape=False):
 
         output_val = numpy.random.random(output_shape).astype('float32')
         filters_val = numpy.random.random(filters_shape).astype('float32')

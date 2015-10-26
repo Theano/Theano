@@ -1,9 +1,6 @@
 """
-FIXME
+Define abstract conv2d interface
 """
-
-__docformat__ = "restructuredtext en"
-
 import logging
 
 import theano
@@ -18,6 +15,7 @@ from theano.tensor.nnet import conv2d as cpu_conv2d, ConvOp
 from theano.tensor.nnet.ConvGrad3D import convGrad3D
 from theano.tensor.nnet.ConvTransp3D import convTransp3D
 
+__docformat__ = "restructuredtext en"
 
 _logger = logging.getLogger("theano.tensor.nnet.conv2d")
 
@@ -144,7 +142,7 @@ class BaseAbstractConv2d(Op):
     def __init__(self,
                  imshp=None, kshp=None,
                  border_mode="valid", subsample=(1, 1),
-                 filter_flip = True):
+                 filter_flip=True):
         if isinstance(border_mode, int):
             border_mode = (border_mode, border_mode)
         if isinstance(border_mode, tuple):
@@ -192,7 +190,7 @@ class AbstractConv2d(BaseAbstractConv2d):
                  kshp=None,
                  border_mode="valid",
                  subsample=(1, 1),
-                 filter_flip = True):
+                 filter_flip=True):
         super(AbstractConv2d, self).__init__(imshp, kshp,
                                              border_mode, subsample, filter_flip)
 
