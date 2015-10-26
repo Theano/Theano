@@ -192,13 +192,13 @@ def deprecated(filename, msg=''):
     """
     Decorator which will print a warning message on the first call.
 
-    Use it like this:
+    Use it like this::
 
       @deprecated('myfile', 'do something different...')
       def fn_name(...)
           ...
 
-    And it will print:
+    And it will print::
 
       WARNING myfile.fn_name deprecated. do something different...
 

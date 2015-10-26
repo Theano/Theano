@@ -1,10 +1,10 @@
 .. _libdoc_d3viz:
 
-============================================================================
+=========================================================================
 :mod:`d3viz` -- d3viz: Interactive visualization of Theano compute graphs
-============================================================================
+=========================================================================
 
-.. module:: d3viz
+.. module:: theano.d3viz
    :platform: Unix, Windows
    :synopsis: Allows to interactively visualize Theano compute graphs
 .. moduleauthor:: Christof Angermueller
@@ -109,7 +109,7 @@ the the :py:mod:`theano.d3viz.d3viz` module, which can be called as before:
     import theano.d3viz as d3v
     d3v.d3viz(predict, 'examples/mlp.html')
 
-`Open visualization! <../../_static/mlp.html>`_
+`Open visualization! <../../_static/mlp.html>`__
 
 When you open the output file ``mlp.html`` in your web-browser, you will
 see an interactive visualization of the compute graph. You can move the
@@ -150,7 +150,7 @@ random data:
 
     d3v.d3viz(predict_profiled, 'examples/mlp2.html')
 
-`Open visualization! <../../_static/mlp2.html>`_
+`Open visualization! <../../_static/mlp2.html>`__
 
 When you open the HTML file in your browser, you will find an additional
 ``Toggle profile colors`` button in the menu bar. By clicking on it,
@@ -213,7 +213,7 @@ defines a nested graph, which will be visualized accordingly by
 
     d3v.d3viz(f, 'examples/ofg.html')
 
-`Open visualization! <../../_static/ofg.html>`_
+`Open visualization! <../../_static/ofg.html>`__
 
 In this example, an operation with three inputs is defined, which is
 used to build a function that calls this operations twice, each time
@@ -243,7 +243,7 @@ the following example.
 
     d3v.d3viz(f, 'examples/ofg2.html')
 
-`Open visualization! <../../_static/ofg2.html>`_
+`Open visualization! <../../_static/ofg2.html>`__
 
 Feedback
 --------
