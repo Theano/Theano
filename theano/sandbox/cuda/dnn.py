@@ -579,9 +579,9 @@ class GpuDnnConv3d(GpuDnnConv):
     :param descr: the convolution descriptor
     :param workmem:
         *deprecated*, use parameter algo instead.
-    :param algo: ['none', 'guess_once', 'guess_on_shape_change',
-                  'time_once', 'time_on_shape_change']
-            Default is the value of :attr:`config.dnn.conv.algo_fwd.
+    :param algo: ['none', 'guess_once', 'guess_on_shape_change', 'time_once', 'time_on_shape_change']
+        Default is the value of :attr:`config.dnn.conv.algo_fwd`.
+
     """
     __props__ = ('algo', 'inplace')
     __input_name__ = ('image', 'kernel', 'output',
@@ -683,11 +683,7 @@ class GpuDnnConvGradW(DnnBase, COp):
         The convolution descriptor.
     workmem
         *deprecated*, use parameter algo instead.
-    algo
-        ['none', 'deterministic', 'fft', 'guess_once',
-         'guess_on_shape_change', 'time_once',
-         'time_on_shape_change']
-
+    algo : {'none', 'deterministic', 'fft', 'guess_once', 'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
         Default is the value of :attr:`config.dnn.conv.algo_bwd`.
 
     """
@@ -822,8 +818,7 @@ class GpuDnnConv3dGradW(GpuDnnConvGradW):
     :param descr: the convolution descriptor
     :param workmem:
         *deprecated*, use parameter algo instead.
-    :param algo: ['none', 'guess_once', 'guess_on_shape_change',
-                  'time_once', 'time_on_shape_change']
+    :param algo: ['none', 'guess_once', 'guess_on_shape_change', 'time_once', 'time_on_shape_change']
         Default is the value of :attr:`config.dnn.conv.algo_bwd`.
 
     """
@@ -1095,8 +1090,8 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     """
     GPU convolution using cuDNN from NVIDIA.
 
-    The memory layout to use is 'bc01', that is 'batch', 'channel', 'first dim',
-    'second dim' in that order.
+    The memory layout to use is 'bc01', that is 'batch', 'channel',
+    'first dim', 'second dim' in that order.
 
     Parameters
     ----------
@@ -1129,7 +1124,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     algo : {'none', 'small', 'large', 'fft', 'guess_once', 'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
 	Convolution implementation to use. Some of its  values may require certain
         versions of CuDNN to be installed. Default is the value of
-        :attr:`config.dnn.conv.algo_fwd.
+        :attr:`config.dnn.conv.algo_fwd`.
 
     """
 
@@ -1221,7 +1216,7 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
     :param workmem: *deprecated*, use param algo instead
     :param algo: convolution implementation to use. Only 'none' is implemented
         for the conv3d. Default is the value of
-        :attr:`config.dnn.conv.algo_fwd.
+        :attr:`config.dnn.conv.algo_fwd`.
 
     :warning: The cuDNN library only works with GPU that have a compute
       capability of 3.0 or higer.  This means that older GPU will not
