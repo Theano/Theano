@@ -181,7 +181,7 @@ of error can thus be identified with much more precision and much earlier in
 the compilation pipeline. For example, running the above code yields the
 following error message, which properly identifies *line 24* as the culprit.
 
-.. code-block:: node
+.. code-block:: none
 
     Traceback (most recent call last):
       File "test2.py", line 24, in <module>

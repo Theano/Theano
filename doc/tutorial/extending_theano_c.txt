@@ -878,7 +878,7 @@ pre-defined macros.  These section tags have no macros: ``init_code``,
 discussed below.
 
 *      ``APPLY_SPECIFIC(str)`` which will automatically append a name
-       unique to the :ref:`Apply node that applies the Op at the end
+       unique to the :ref:`Apply` node that applies the Op at the end
        of the provided ``str``. The use of this macro is discussed
        futher below.
 
