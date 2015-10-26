@@ -43,7 +43,7 @@ def ensure_float(val, name):
 class Gemm16(COp):
     __props__ = ('relu', 'inplace')
     _f16_ok = True
-    context_type = gpu_context_type
+    params_type = gpu_context_type
     KERN_NAMES = ('nn_128x128', 'nn_128x64', 'nn_128x32',
                   'nn_vec_128x128', 'nn_vec_128x64', 'nn_vec_128x32',
                   'tn_128x128', 'tn_128x64', 'tn_128x32',
@@ -75,7 +75,7 @@ class Gemm16(COp):
 
         return Apply(self, [C, alpha, A, B, beta], [C.type()])
 
-    def get_context(self, node):
+    def get_params(self, node):
         return node.inputs[0].type.context
 
     def c_headers(self):
@@ -128,7 +128,7 @@ if (GpuKernel_init(&k_%(name)s, c->ops, c->ctx, 1, &bcode, &sz,
             codel.append("memset(&k_{0}, 0, sizeof(GpuKernel));".format(name))
         codel.append("const char *bcode;")
         codel.append("size_t sz;")
-        codel.append("PyGpuContextObject *c = %s;" % (sub['context'],))
+        codel.append("PyGpuContextObject *c = %s;" % (sub['params'],))
         codel.append("int types[13] = {GA_BUFFER, GA_BUFFER, GA_BUFFER, "
                      "GA_BUFFER, GA_INT, GA_INT, GA_INT, GA_INT, GA_INT, "
                      "GA_INT, GA_FLOAT, GA_FLOAT, GA_INT};")

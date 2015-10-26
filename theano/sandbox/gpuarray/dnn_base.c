@@ -107,14 +107,14 @@ cudnnHandle_t APPLY_SPECIFIC(_handle);
 #section init_code_struct
 
 {
-  cuda_enter(CONTEXT->ctx);
+  cuda_enter(PARAMS->ctx);
   cudnnStatus_t err;
   APPLY_SPECIFIC(_handle) = NULL;
   if ((err = cudnnCreate(&APPLY_SPECIFIC(_handle))) != CUDNN_STATUS_SUCCESS) {
     PyErr_Format(PyExc_RuntimeError, "could not create cuDNN handle: %s",
                  cudnnGetErrorString(err));
-    cuda_exit(CONTEXT->ctx);
+    cuda_exit(PARAMS->ctx);
     FAIL;
   }
-  cuda_exit(CONTEXT->ctx);
+  cuda_exit(PARAMS->ctx);
 }

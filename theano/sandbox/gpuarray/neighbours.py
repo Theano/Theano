@@ -41,7 +41,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
                                    dtype=ten4.type.dtype,
                                    context_name=ten4.type.context_name)()])
 
-    def get_context(self, node):
+    def get_params(self, node):
         return node.inputs[0].type.context
 
     def c_code_cache_version(self):
@@ -250,7 +250,7 @@ class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
         ten4, neib_shape, neib_step = inp
         z, = out
         fail = sub['fail']
-        ctx = sub['context']
+        ctx = sub['params']
         mode = self.mode
         err_check = """
             if (err != GA_NO_ERROR) {

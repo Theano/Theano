@@ -2,7 +2,7 @@
 
 /* Why do we need this? */
 size_t dim = 2048 * 32;
-rand_buf = pygpu_empty(1, &dim, GA_UINT, GA_C_ORDER, CONTEXT,
+rand_buf = pygpu_empty(1, &dim, GA_UINT, GA_C_ORDER, PARAMS,
                        Py_None);
 if (rand_buf == NULL) {
   FAIL;
