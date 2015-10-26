@@ -75,6 +75,12 @@ from theano.tensor import slinalg
 from theano.tensor.nnet.Conv3D import Conv3D
 from theano.tests.breakpoint import PdbBreakpoint
 
+from theano.tensor.nnet.abstract_conv2d import (BaseAbstractConv2d, AbstractConv2d,
+                                                AbstractConv2d_gradWeights,
+                                                AbstractConv2d_gradInputs)
+from theano.tensor.opt import register_specialize_device
+
+
 try:
     # We need to be able to import this file even if cuda isn't avail.
     from theano.sandbox.cuda import device_properties
@@ -2622,3 +2628,179 @@ optdb.register('local_inplace_gpu_sparse_block_outer',
 
 
 import theano.sandbox.cuda.extra_ops
+
+### Move to Gpu optimization
+@local_optimizer([gpu_from_host,
+                  AbstractConv2d, AbstractConv2d_gradWeights, AbstractConv2d_gradInputs])
+def local_conv2d_gpu_conv(node):
+    """
+    gpu_from_host(AbstractConv) -> AbstractConv(gpu_from_host)
+
+    AbstractConv(host_from_gpu) -> host_from_gpu(AbstractConv)
+    """
+    if isinstance(node.op, GpuFromHost):
+        host_input = node.inputs[0]
+        if host_input.owner and  isinstance(host_input.owner.op, BaseAbstractConv2d):
+
+            conv = host_input.owner.op
+            inps = list(host_input.owner.inputs)
+            inps[0] = as_cuda_ndarray_variable(inps[0])
+            inps[1] = as_cuda_ndarray_variable(inps[1])
+            out = conv(*inps)
+            # out is on the GPU because both inputs are.
+            out = theano.tensor.patternbroadcast(out,
+                                                 node.outputs[0].broadcastable)
+            out.values_eq_approx = values_eq_approx_high_tol
+            return [out]
+
+    if isinstance(node.op, BaseAbstractConv2d):
+        # conv(host_from_gpu) -> host_from_gpu(gpu_conv)
+        inp1 = node.inputs[0]
+        inp2 = node.inputs[1]
+        if ((isinstance(inp1.type, CudaNdarrayType) and
+             isinstance(inp2.type, CudaNdarrayType))):
+            # Both inputs are already directly on the GPU, nothing to do
+            return
+
+        inp1_on_gpu = (isinstance(inp1.type, CudaNdarrayType) or
+                       (inp1.owner and isinstance(inp1.owner.op, HostFromGpu)))
+        inp2_on_gpu = (isinstance(inp2.type, CudaNdarrayType) or
+                       (inp2.owner and isinstance(inp2.owner.op, HostFromGpu)))
+
+        if inp1_on_gpu or inp2_on_gpu:
+            conv = node.op
+            inps = list(node.inputs)
+            inps[0] = as_cuda_ndarray_variable(inps[0])
+            inps[1] = as_cuda_ndarray_variable(inps[1])
+            out = conv(*inps)
+            # out is on the GPU because both inputs are.
+            out = theano.tensor.patternbroadcast(
+                out,
+                node.outputs[0].broadcastable)
+            out.values_eq_approx = values_eq_approx_high_tol
+            # If the original output was on CPU, we have to transfer it
+            if isinstance(node.outputs[0].type, tensor.TensorType):
+                return [tensor.as_tensor_variable(out)]
+            else:
+                return [out]
+register_opt()(local_conv2d_gpu_conv)
+
+
+
+### Corrmm opt
+@local_optimizer([AbstractConv2d])
+def local_abstractconv_gemm(node):
+    if not isinstance(node.op, AbstractConv2d):
+        return None
+    img, kern = node.inputs
+    if (not isinstance(img.type, CudaNdarrayType) or
+            not isinstance(kern.type, CudaNdarrayType)):
+        return None
+
+    border_mode = node.op.border_mode
+    subsample = node.op.subsample
+    if (border_mode == 'full') and (subsample == (1, 1)):
+        if not node.op.filter_flip:
+            kern = kern[:, :, ::-1, ::-1]
+        # need to dimshuffle the kernel for full convolution
+        kern = kern.dimshuffle(1, 0, 2, 3)
+        # call GpuCorrMM_gradInputs
+        rval = GpuCorrMM_gradInputs('valid', subsample)(
+                gpu_contiguous(kern), gpu_contiguous(img))
+    else:
+        # need to flip the kernel if necessary
+        if node.op.filter_flip:
+            kern = kern[:, :, ::-1, ::-1]
+        # By default use GpuCorrMM
+        rval = GpuCorrMM(border_mode, subsample)(gpu_contiguous(img),
+                                                 gpu_contiguous(kern))
+
+        # call GpuCorrMM_gradWeights if good
+        # (the latter is faster if batchsize * kernelHeight * kernelWidth
+        # is larger than inputChannels * outputHeight * outputWidth.
+        # GpuConv does not always store information on the batchsize and
+        # channels, though, so we only use what information we have.)
+        if ((subsample == (1,1)) and
+            (node.op.imshp is not None) and
+            (None not in node.op.imshp[-2:]) and
+            (node.op.kshp is not None) and
+            (None not in node.op.kshp)):
+            # we know the kernel and output size
+            prod1 = node.op.kshp[0] * node.op.kshp[1]
+            prod2 = ((node.op.imshp[-2] - node.op.kshp[0] + 1) *
+                     (node.op.imshp[-1] - node.op.kshp[1] + 1))
+            if (None not in node.op.imshp[:1]):
+                # we also know batchsize and input channels
+                prod1 *= node.op.imshp[0]
+                prod2 *= node.op.imshp[1]
+            # compare to decide
+            if prod1 > prod2:
+                # (we need to wrap the result in as_cuda_ndarray_variable,
+                # because we are not allowed to replace a CudaNdarray with
+                # a DimShuffle instance in a graph optimization)
+                rval = theano.sandbox.cuda.as_cuda_ndarray_variable(
+                    GpuCorrMM_gradWeights(border_mode, subsample)(
+                        gpu_contiguous(img.dimshuffle(1, 0, 2, 3)),
+                        gpu_contiguous(kern.dimshuffle(1, 0, 2, 3))
+                    ).dimshuffle(1, 0, 2, 3))
+    return [rval]
+
+@local_optimizer([AbstractConv2d_gradWeights])
+def local_abstractconv_gradweight_gemm(node):
+    if not isinstance(node.op, AbstractConv2d_gradWeights):
+        return None
+    img, topgrad, shape = node.inputs
+    if not isinstance(img.type, CudaNdarrayType) or \
+            not isinstance(topgrad.type, CudaNdarrayType):
+        return None
+
+    rval = GpuCorrMM_gradWeights(border_mode=node.op.border_mode,
+                                 subsample=node.op.subsample)(
+        gpu_contiguous(img), gpu_contiguous(topgrad), shape)
+    if node.op.filter_flip:
+        rval = rval[:, :, ::-1, ::-1]
+    rval = tensor.patternbroadcast(rval, node.outputs[0].broadcastable)
+    rval = as_cuda_ndarray_variable(rval)
+    return [rval]
+
+@local_optimizer([AbstractConv2d_gradInputs])
+def local_abstractconv_gradinputs_gemm(node):
+    if not isinstance(node.op, AbstractConv2d_gradInputs):
+        return None
+    kern, topgrad, shape = node.inputs
+    if not isinstance(kern.type, CudaNdarrayType) or \
+            not isinstance(topgrad.type, CudaNdarrayType):
+        return None
+
+    if node.op.filter_flip:
+        kern = kern[:, :, ::-1, ::-1]
+
+    rval =  GpuCorrMM_gradInputs(border_mode=node.op.border_mode,
+    subsample=node.op.subsample)(
+        gpu_contiguous(kern), gpu_contiguous(topgrad), shape)
+    return [rval]
+
+# Register GPU convolution implementation
+# They are tried in a specific order so we can control
+# which ones take precedence over others.
+abstractconv_groupopt = theano.gof.optdb.LocalGroupDB()
+abstractconv_groupopt.__name__ = "gpu_abstractconv_opts"
+register_specialize_device(abstractconv_groupopt, 'gpu', 'fast_compile')
+
+# cuDNN is first, but only registered if cuDNN is available.
+conv_groupopt.register('local_abstractconv_dnn', dnn.local_abstractconv_cudnn, 20,
+                       'conv_dnn',
+                       'gpu', 'fast_compile', 'fast_run', 'cudnn')
+# The GEMM-based convolution comes last to catch all remaining cases.
+# It can be disabled by excluding 'conv_gemm'.
+conv_groupopt.register('local_abstractconv_gemm', local_abstractconv_gemm, 30,
+                       'conv_gemm',
+                       'gpu', 'fast_compile', 'fast_run')
+conv_groupopt.register('local_abstractconv_gradweight_gemm',
+                       local_abstractconv_gradweight_gemm, 30,
+                       'conv_gemm',
+                       'gpu', 'fast_compile', 'fast_run')
+conv_groupopt.register('local_abstractconv_gradinputs_gemm',
+                       local_abstractconv_gradinputs_gemm, 30,
+                       'conv_gemm',
+                       'gpu', 'fast_compile', 'fast_run')
