@@ -1533,16 +1533,16 @@ def local_elemwise_alloc_op(ElemwiseOP, AllocOP, DimShuffleOP):
                 # will remove that alloc later
                 assert i.type.ndim == cmp_op.ndim
                 get_shape = node.fgraph.shape_feature.get_shape
-                if (theano.config.experimental.local_alloc_elemwise_assert and
-                        not same_shape(i, cmp_op)):
+                if theano.config.experimental.local_alloc_elemwise_assert:
                     cond = []
                     for idx in xrange(i.type.ndim):
-                        if not i.type.broadcastable[idx]:
-                            # TODO: same_shape(i, cmp_op, dim_x=idx, dim_y=idx)
+                        if (not i.type.broadcastable[idx] and
+                                not same_shape(i, cmp_op, idx, idx)):
                             i_shp = get_shape(i, idx)
                             cmp_shp = get_shape(cmp_op, idx)
                             cond.append(T.eq(i_shp, cmp_shp))
-                    assert_op = assert_(assert_op, *cond)
+                    if cond:
+                        assert_op = assert_(assert_op, *cond)
                 new_i.append(i.owner.inputs[0])
 
             # Remove Alloc in DimShuffle
