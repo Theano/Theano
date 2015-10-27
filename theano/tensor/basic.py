@@ -3968,7 +3968,7 @@ pprint.assign(lambda pstate, r: r.owner and isinstance(r.owner.op, Join),
 
 def roll(x, shift, axis=None):
     """
-    Convenience function to roll `TensorType`s along the given axis.
+    Convenience function to roll TensorTypes along the given axis.
 
     Syntax copies numpy.roll function.
 
@@ -3986,7 +3986,7 @@ def roll(x, shift, axis=None):
     Returns
     -------
     tensor
-        Output tensor, with the same shape as `x`.
+        Output tensor, with the same shape as ``x``.
 
     """
     if axis is None:

@@ -656,6 +656,7 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`.
         `len(reps)` must be equal and, if specified, `ndim` must be
         equal to both.
 
+.. autofunction:: roll
 
 Creating Tensor
 ===============
