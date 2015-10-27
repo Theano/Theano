@@ -460,7 +460,7 @@ def test_full():
     verbose = 0
     random = True
 
-    exec_conv(version, shapes, verbose, random, 'full')
+    exec_conv(version, shapes, verbose, random, 'full', rtol=1.1e-5)
 
 
 def test_subsample():
