@@ -2009,11 +2009,12 @@ class GCC_compiler(Compiler):
         # in the key of the compiled module, avoiding potential conflicts.
 
         # Figure out whether the current Python executable is 32
-        # or 64 bit and compile accordingly. This step is ignored for ARM
-        # architectures in order to make Theano compatible with the Raspberry
-        # Pi, and Raspberry Pi 2.
+        # or 64 bit and compile accordingly. This step is ignored for
+        # ARM (32-bit and 64-bit) architectures in order to make
+        # Theano compatible with the Raspberry Pi, Raspberry Pi 2, or
+        # other systems with ARM processors.
         if (not any(['arm' in flag for flag in cxxflags]) and
-                'arm' not in platform.machine()):
+                not any(arch in platform.machine() for arch in ['arm', 'aarch'])):
             n_bits = local_bitwidth()
             cxxflags.append('-m%d' % n_bits)
             _logger.debug("Compiling for %s bit architecture", n_bits)
