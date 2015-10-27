@@ -8,6 +8,10 @@ The Op params is a facility to pass some runtime parameters to the
 code of an op without modifying it.  It can enable a single instance
 of C code to serve different needs and therefore reduce compilation.
 
+The code enables you to pass a single object, but it can be a struct
+or python object with multiple values if you have more than one value
+to pass.
+
 We will first introduce the parts involved in actually using this
 functionality and then present a simple working example.
 
@@ -15,23 +19,19 @@ The params type
 ----------------
 
 You can either reuse an existing type such as :class:`Generic` or
-:class:`CDataType`, or create your own.
+create your own.
 
 Using a python object for your op parameters (:class:`Generic`) can be
 annoying to access from C code since you would have to go through the
 Python-C API for all accesses.
 
-Conversly, using a C struct (:class:`CDataType`) makes it complicated
-to set values through python code, forcing you to go through ctypes or
-other similar module.
-
 Making a purpose-built class may require more upfront work, but can
-pay off if you reuse the type for a lot of Ops, by making it easier to
-manipulate from python and C.
+pay off if you reuse the type for a lot of Ops, by not having to re-do
+all of the python manipulation.
 
 
 Defining a params type
-~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 
 .. note::
 
@@ -67,16 +67,16 @@ attribute :attr:`params_type` to an instance of your params Type.
 .. note::
 
    If you want to have multiple parameters you have to bundle those
-   inside a single object (or C struct) and use that as the params
-   type.  Multiple types are not supported.
+   inside a single object and use that as the params type.  Multiple
+   types are not supported.
 
-For example if we decide to use a pointer to an int as the params the
-following would be appropriate:
+For example if we decide to use an int as the params the following
+would be appropriate:
 
 .. code-block:: python
 
    class MyOp(Op):
-       params_type = CDataType('int')
+       params_type = Generic()
 
 After that you need to define a :meth:`get_params` method on your
 class with the following signature:
@@ -138,7 +138,7 @@ the params type.
    class MulOp(Op):
        params_type = Generic()
        __props__ = ('mul',)
-   
+
       def __init__(self, mul):
           self.mul = float(mul)
 
@@ -156,6 +156,60 @@ the params type.
       def c_code(self, node, name, inputs, outputs, sub):
           return ("%(z)s = %(x)s * PyFloat_AsDouble(%(p)s);" %
                   dict(z=outputs[0], x=inputs[0], p=sub['params']))
+
+.. testoutput::
+   :hide:
+
+
+A more complex example
+----------------------
+
+This is a more complex example which actually passes multiple values.  It does a linear combination of two values using floating point weights.
+
+.. testcode::
+
+   from theano import Op
+   from theano.gof.type import Generic
+   from theano.scalar import as_scalar
+
+   class ab(object):
+       def __init__(self, alpha, beta):
+           self.alpha = alpha
+           self.beta = beta
+
+
+   class Mix(Op):
+       params_type = Generic()
+       __props__ = ('alpha', 'beta')
+
+       def __init__(self, alpha, beta):
+           self.alpha = alpha
+           self.beta = beta
+
+       def get_params(self, node):
+           return ab(alpha=self.alpha, beta=self.beta)
+
+       def make_node(self, x, y):
+           x = as_scalar(x)
+           y = as_scalar(y)
+           return Apply(self, [x, y], [x.type()]
+
+       def c_code(self, node, name, inputs, outputs, sub):
+           return """
+   PyObject *tmp;
+   double a, b;
+   tmp = PyObject_GetAttrString(%(p)s, "alpha");
+   if (tmp == NULL)
+     %(fail)s
+   a = PyFloat_AsDouble(tmp);
+   Py_DECREF(tmp);
+   tmp = PyObject_GetAttrString(%(p)s, "beta");
+   if (tmp == NULL)
+     %(fail)s
+   b = PyFloat_AsDouble(tmp);
+   Py_DECREF(tmp);
+   %(z)s = a* %(x)s + b * %(y)s;
+       """ % dict(p=sub['params'], z=outputs[0], x=inputs[0], y=inputs[1])
 
 .. testoutput::
    :hide:
