@@ -672,7 +672,7 @@ class GpuDnnConvGradI(DnnBase):
 
         # The small-workspace implementation is only available from CuDNN V4
         # onward.
-        if version() < (4000, 4000) and self.algo == 'fft_tiling':
+        if version() < 4000 and self.algo == 'fft_tiling':
             raise RuntimeError("CuDNN's tiled-FFT convolution requires CuDNN "
                                "v4 or more recent")
 
