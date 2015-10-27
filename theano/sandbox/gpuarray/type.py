@@ -129,6 +129,10 @@ class GpuArrayType(Type):
     typecode : int
         The gpuarray typecode for `dtype`
 
+    See Also
+    --------
+    theano.gof.type.PureType
+
     """
     def __init__(self, dtype, broadcastable, context_name=None, name=None):
         # In case this was not provided and no global value is available
@@ -146,21 +150,6 @@ class GpuArrayType(Type):
                             (self.__class__.__name__, self.dtype))
 
     def clone(self, dtype=None, broadcastable=None):
-        """
-        Returns a copy of this type, possibly with some changed attributes.
-
-        The returned type will have all the same attributes as this
-        one with the possible exception of `dtype` and `broadcastable`
-        which will respect the passed-in values if given.
-
-        Parameters
-        ----------
-        dtype : str, optional
-            scalar data type for the returned type.
-        broadcastable : tuple of bools
-            broadcastable pattern for the returned type.
-
-        """
         if dtype is None:
             dtype = self.dtype
         if broadcastable is None:
@@ -183,31 +172,6 @@ class GpuArrayType(Type):
                                              self.broadcastable)
 
     def filter(self, data, strict=False, allow_downcast=None):
-        """
-        Return a GpuArray compatible with this type or raise a TypeError.
-
-        When `strict` is `True` the data must exactly match the
-        specifications of this type and no conversions will be
-        performed.
-
-        If `strict` is `False` the data will be transferred or
-        converted as neede so long as it does not cause a downcast of
-        the values.
-
-        To allow a downcast (which may lose precision),
-        `allow_downcast` should be set to `True`.
-
-        Parameters
-        ----------
-        data
-            Some data to be converted.
-        strict : bool, optional
-            Whether to check in strict mode or not.  (default: False)
-        allow_downcast : bool, optional
-            Allow the downcasting of `data`, which may lose
-            precision.  (default: False)
-
-        """
         if (isinstance(data, gpuarray.GpuArray) and
                 data.typecode == self.typecode):
             # This is just to make this condition not enter the
@@ -261,31 +225,6 @@ class GpuArrayType(Type):
         return data
 
     def filter_variable(self, other, allow_convert=True):
-        """
-        Make a variable of this type out of `other` or raise TypeError.
-
-        Make a series of checks to make sure that the passed-in
-        variable is compatible with this type.
-
-        Will attempt some limited conversions (like from CPU to GPU) as
-        long as no major changes (ndim, dtype, ...) are required.
-
-        If present, a method nameed :meth:`_as_GpuArrayVariable` will
-        be called with the target context name to produce a variable
-        in the appropriate context.  The rest of the checks will
-        proceed with the returned object.
-
-        If passed numerical data it will create a theano `Constant`
-        object out of it assuming that other paramters match.
-
-        Parameters
-        ----------
-        other : object
-            Usually a theano variable, but can be some data also.
-        allow_convert : bool
-            Allows (safe) conversion of broadcastable pattern (default: True)
-
-        """
         from theano.sandbox.gpuarray import GpuFromHost
 
         if hasattr(other, '_as_GpuArrayVariable'):
@@ -322,13 +261,6 @@ class GpuArrayType(Type):
 
     @staticmethod
     def values_eq(a, b):
-        """
-        Returns `True` if `a` and `b` are equal.
-
-        This will only work correctly for values which would pass
-        :meth:`filter` for any instance of this type.
-
-        """
         if a.shape != b.shape:
             return False
         if a.typecode != b.typecode:
@@ -352,35 +284,6 @@ class GpuArrayType(Type):
     def values_eq_approx(a, b,
                          allow_remove_inf=False, allow_remove_nan=False,
                          rtol=None, atol=None):
-        """
-        Return `True` if `a` and `b` are approximately equal.
-
-        Parameters
-        ----------
-        a : object
-        b : object
-        allow_remove_inf : bool
-            If `True` an inf (or -inf) in `a` will be considered equal
-            to any value in `b`.
-        allow_remove_nan : bool
-            If `True` an nan in `a` will be considered equal to any
-            value in `b`.
-        rtol : float
-            Relative tolerance for the comparison (see Notes)
-        atol : float
-            Absolute tolerance for the comparison (see Notes)
-
-        Notes
-        -----
-
-        This is the element-wise operation used to verify approximate
-        equality::
-
-          absolute(a - b) <= (atol + rtol * absolute(b))
-
-        If it returns all Trues, then the result is True.
-
-        """
         if a.shape != b.shape or a.dtype != b.dtype:
             return False
         if 'int' in str(a.dtype):
@@ -417,53 +320,16 @@ class GpuArrayType(Type):
 
     @staticmethod
     def may_share_memory(a, b):
-        """
-        Returns `True` if `a` and `b` might have some memory areas in common.
-
-        Parameters
-        ----------
-        a
-            A value
-        b
-            A value
-
-        Notes
-        -----
-        This is not 100% accurate and may give some false positve, but
-        is still a good indicator.
-
-        """
         if (not isinstance(a, gpuarray.GpuArray) or
                 not isinstance(b, gpuarray.GpuArray)):
             return False
         return pygpu.gpuarray.may_share_memory(a, b)
 
     def value_zeros(self, shape):
-        """
-        Return a value of `shape` filled with zeros.
-
-        The returned value will have the dtype and context of this
-        type.  This does not check that the shape is consistent with
-        :attr:`broadcastable` or :attr:`ndim`.
-
-        Parameters
-        ----------
-        shape : tuple of ints
-            The shape of the return value
-
-        """
         return pygpu.gpuarray.zeros(shape, dtype=self.typecode,
                                     context=self.context)
 
     def make_variable(self, name=None):
-        """
-        Create a variable with this type.
-
-        Parameters
-        ----------
-        name : str, optional
-            The name of the returned variable.
-        """
         return self.Variable(self, name=name)
 
     def __eq__(self, other):
@@ -473,21 +339,6 @@ class GpuArrayType(Type):
                 self.context_name == other.context_name)
 
     def convert_variable(self, var):
-        """
-        Convert a variable to this type if the conditions match.
-
-        This will return a new variable with this type if the
-        following implication holds true for all `val`::
-
-            self.is_valid_valud(val) => var.type.is_valid_value(val)
-
-        If that can't be satisfied, it returns None.
-
-        Parameters
-        ----------
-        var
-            Variable to convert.
-        """
         vt = var.type
         if (type(self) == type(vt) and
                 self.typecode == vt.typecode and
@@ -522,33 +373,17 @@ class GpuArrayType(Type):
                 'int32': (int, 'npy_int32', 'NPY_INT32'),
                 'uint64': (int, 'npy_uint64', 'NPY_UINT64'),
                 'int64': (int, 'npy_int64', 'NPY_INT64'),
-                #'complex128': (complex, 'theano_complex128', 'NPY_COMPLEX128'),
-                #'complex64': (complex, 'theano_complex64', 'NPY_COMPLEX64')
+                # 'complex128': (complex, 'theano_complex128', 'NPY_COMPLEX128'),
+                # 'complex64': (complex, 'theano_complex64', 'NPY_COMPLEX64')
                 }[self.dtype]
         except KeyError:
             raise TypeError("Unsupported dtype for %s: %s" %
                             (self.__class__.__name__, self.dtype))
 
     def get_shape_info(self, obj):
-        """
-        Return the shape of a value for this type.
-
-        Parameters
-        ----------
-        obj : object
-            Something that would pass :meth:`is_valid_value`.
-        """
         return obj.shape
 
     def get_size(self, shape_info):
-        """
-        Return the size (in bytes) of an object of the given shape.
-
-        Parameters
-        ----------
-        shape_info : tuple of ints
-            The shape to get the size for.
-        """
         if shape_info:
             return numpy.prod(shape_info) * numpy.dtype(self.dtype).itemsize
         else:

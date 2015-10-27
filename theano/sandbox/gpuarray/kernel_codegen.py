@@ -332,6 +332,9 @@ def inline_softmax_fixed_shared(N, buf, x, stride_x, load_x,
 
     On entry, `buf` is assumed to be empty.
 
+    On exit, `buf[0]` contains the softmax, `buf2` contains
+    un-normalized softmax.
+
     Parameters
     ----------
     N

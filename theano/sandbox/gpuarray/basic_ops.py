@@ -30,7 +30,7 @@ def as_gpuarray_variable(x, context_name):
     """
     This will attempt to convert `x` into a variable on the GPU.
 
-    It can take either a value of aother variable.  If `x` is already
+    It can take either a value of another variable.  If `x` is already
     suitable, it will be returned as-is.
 
     Parameters
