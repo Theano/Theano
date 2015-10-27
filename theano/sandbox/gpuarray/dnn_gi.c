@@ -139,7 +139,7 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
   // defined only for 2d filters
   if ((algo == CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING ||
        algo == CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT) && PyGpuArray_NDIM(kerns) == 4) {
-       
+
     // Extract the properties of the convolution descriptor
     int pad_h, pad_w, stride_v, stride_h, upscale_x, upscale_y;
     cudnnConvolutionMode_t mode;
