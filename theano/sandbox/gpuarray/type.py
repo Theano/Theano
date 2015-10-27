@@ -17,6 +17,10 @@ except ImportError:
 _context_reg = {}
 
 
+class ContextNotDefined(ValueError):
+    pass
+
+
 def reg_context(name, ctx):
     """
     Register a context by mapping it to a name.
@@ -56,7 +60,7 @@ def get_context(name):
 
     """
     if name not in _context_reg:
-        raise ValueError("context name %s not defined" % (name,))
+        raise ContextNotDefined("context name %s not defined" % (name,))
     return _context_reg[name]
 
 
@@ -72,7 +76,7 @@ def _name_for_ctx(ctx):
     for k, v in _context_reg:
         if v == ctx:
             return k
-        raise ValueError('context is not registered')
+        raise ContextNotDefined('context is not registered')
 
 
 # This is a private method for use by the tests only
@@ -88,6 +92,8 @@ class GpuArrayType(Type):
         self.ndim = len(self.broadcastable)
         self.name = name
         self.context_name = context_name
+        # This will check that the passed context name is valid and registered.
+        get_context(self.context_name)
         try:
             self.typecode = gpuarray.dtype_to_typecode(self.dtype)
         except gpuarray.GpuArrayException:
@@ -468,27 +474,29 @@ GpuArrayType.SharedVariable = GpuArraySharedVariable
 
 def gpuarray_shared_constructor(value, name=None, strict=False,
                                 allow_downcast=None, borrow=False,
-                                broadcastable=None,
-                                context_name=None):
+                                broadcastable=None, target=None):
     """
     SharedVariable constructor for GpuArrayType.
 
     """
+    if target == 'gpu' or target == 'cpu':
+        raise TypeError('not for me')
+
     if not isinstance(value, (numpy.ndarray, pygpu.gpuarray.GpuArray)):
         raise TypeError('ndarray or GpuArray required')
 
     try:
-        get_context(context_name)
-    except ValueError:
+        get_context(target)
+    except ContextNotDefined:
         # Don't make this a hard error if we attempt to make a shared
         # variable while there is no default context.
-        if context_name is None:
+        if target is None:
             raise TypeError('No default context and no context specified')
         raise
 
     if broadcastable is None:
         broadcastable = (False,) * value.ndim
-    type = GpuArrayType(value.dtype, broadcastable, context_name=context_name)
+    type = GpuArrayType(value.dtype, broadcastable, context_name=target)
     deviceval = pygpu.gpuarray.array(value, copy=(not borrow),
                                      context=type.context)
     return GpuArraySharedVariable(type=type, value=deviceval, name=name,

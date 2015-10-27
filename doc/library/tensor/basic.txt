@@ -427,7 +427,8 @@ TensorVariable
     you'll want to call.
 
 
-.. class:: _tensor_py_operators(object)
+.. autoclass:: _tensor_py_operators
+   :members:
 
     This mix-in class adds convenient attributes, methods, and support
     to TensorVariable, TensorConstant and TensorSharedVariable for

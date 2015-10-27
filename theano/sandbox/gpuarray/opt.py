@@ -17,7 +17,8 @@ from theano.scan_module import scan_utils, scan_op, scan_opt
 from theano.tensor.nnet.conv import ConvOp
 from theano.tests.breakpoint import PdbBreakpoint
 
-from .type import GpuArrayType, GpuArrayConstant, get_context
+from .type import (GpuArrayType, GpuArrayConstant, get_context,
+                   ContextNotDefined)
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         host_from_gpu, GpuToGpu,
                         HostFromGpu, GpuFromHost,
@@ -164,9 +165,9 @@ class InputToGpuOptimizer(Optimizer):
             if isinstance(input.type, GpuArrayType):
                 continue
 
-            if (len(input.clients) == 1 and
-                (input.clients[0][0] == 'output' or
-                 isinstance(input.clients[0][0].op, GpuFromHost))):
+            # If all clients are outputs or transfers don't do anything.
+            if (all(cl[0] == 'output' or isinstance(cl[0].op, GpuFromHost)
+                    for cl in input.clients)):
                 continue
 
             ctx_name = getattr(input.tag, 'context_name', None)
@@ -177,11 +178,11 @@ class InputToGpuOptimizer(Optimizer):
             except TypeError:
                 # This could fail if the inputs are not TensorTypes
                 pass
-            except ValueError:
+            except ContextNotDefined:
+                if hasattr(input.tag, 'context_name'):
+                    raise
                 # If there is no context tag and no default context
                 # then it stays on the CPU
-                if not hasattr(input.tag, 'context_name'):
-                    raise
                 pass
 
 
@@ -194,7 +195,7 @@ def local_cut_gpu_transfers(node):
     # gpu[ab] -> host -> gpub
     if (isinstance(node.op, GpuFromHost) and
             node.inputs[0].owner and
-            node.inputs[0].owner.op == host_from_gpu):
+            isinstance(node.inputs[0].owner.op, HostFromGpu)):
         other = node.inputs[0].owner.inputs[0]
         if node.op.context_name == other.type.context_name:
             return [other]
@@ -202,7 +203,7 @@ def local_cut_gpu_transfers(node):
             return [GpuToGpu(node.op.context_name)(other)]
 
     # ? -> gpua -> host
-    elif (node.op == host_from_gpu and
+    elif (isinstance(node.op, HostFromGpu) and
           node.inputs[0].owner):
         n2 = node.inputs[0].owner
 
@@ -255,7 +256,7 @@ def local_gpuaalloc2(node):
     """
     try:
         get_context(None)
-    except ValueError:
+    except ContextNotDefined:
         # If there is no default context then we do not perform the move here.
         return
     if (isinstance(node.op, tensor.Alloc) and
@@ -620,6 +621,7 @@ def local_gpua_careduce(node, context_name):
             node.op.scalar_op, axis=node.op.axis,
             dtype=getattr(node.op, 'dtype', None),
             acc_dtype=getattr(node.op, 'acc_dtype', None))
+        x.tag.context_name = context_name
         gvar = greduce(x)
         # We need to have the make node called, otherwise the mask can
         # be None

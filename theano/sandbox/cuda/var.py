@@ -162,11 +162,15 @@ CudaNdarrayType.SharedVariable = CudaNdarraySharedVariable
 
 
 def cuda_shared_constructor(value, name=None, strict=False,
-        allow_downcast=None, borrow=False, broadcastable=None):
+                            allow_downcast=None, borrow=False,
+                            broadcastable=None, target='gpu'):
     """
     SharedVariable Constructor for CudaNdarrayType.
 
     """
+    if target != 'gpu':
+        raise TypeError('not for gpu')
+
     # THIS CONSTRUCTOR TRIES TO CAST VALUE TO A FLOAT32, WHICH THEN GOES ONTO THE CARD
     # SO INT shared vars, float64 shared vars, etc. all end up on the card.
     # THIS IS NOT THE DEFAULT BEHAVIOUR THAT WE WANT.
@@ -196,12 +200,15 @@ def cuda_shared_constructor(value, name=None, strict=False,
 
 
 def float32_shared_constructor(value, name=None, strict=False,
-        allow_downcast=None, borrow=False, broadcastable=None):
+                               allow_downcast=None, borrow=False,
+                               broadcastable=None, target='gpu'):
     """
     SharedVariable Constructor for CudaNdarrayType from numpy.ndarray or
     CudaNdarray.
 
     """
+    if target != 'gpu':
+        raise TypeError('not for gpu')
     if theano.sandbox.cuda.use.device_number is None:
         theano.sandbox.cuda.use("gpu",
                                 force=True,

@@ -121,6 +121,9 @@ class ContextsParam(ConfigParam):
                 s = v.split('->')
                 if len(s) != 2:
                     raise ValueError("Malformed context map: %s" % (v,))
+                if (s[0] == 'cpu' or s[0].startswith('cuda') or
+                        s[0].startswith('opencl')):
+                    raise ValueError("Cannot use %s as context name" % (s[0],))
             return val
         ConfigParam.__init__(self, '', filter, False)
 
@@ -132,6 +135,8 @@ AddConfigVar(
     'name->dev_name' format. An example that would map name 'test' to
     device 'cuda0' and name 'test2' to device 'opencl0:0' follows:
     "test->cuda0;test2->opencl0:0".
+
+    Invalid context names are 'cpu', 'cuda*' and 'opencl*'
     """, ContextsParam(), in_c_key=False)
 
 AddConfigVar(
@@ -150,7 +155,7 @@ def default_cuda_root():
         return ''
     for dir in s.split(os.path.pathsep):
         if os.path.exists(os.path.join(dir, "nvcc")):
-            return os.path.split(dir)[0]
+            return os.path.dirname(os.path.abspath(dir))
     return ''
 
 AddConfigVar(

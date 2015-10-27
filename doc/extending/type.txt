@@ -167,6 +167,25 @@ overridden.
 For more details you can go see the documentation for :ref:`type`.
 
 
+Additional definitions
+----------------------
+
+For certain mechanisms, you can register functions and other such
+things to plus your type into theano's mechanisms.  These are optional
+but will allow people to use you type with familiar interfaces.
+
+`transfer()`
+~~~~~~~~~~~~
+
+To plug in additional options for the transfer target, define a
+function which takes a theano variable and a target argument and
+returns eitehr a new transferred variable (which can be the same as
+the input if no transfer is nessecary) or returns None if the transfer
+can't be done.
+
+Then register that function by calling :func:`register_transfer()`
+with it as argument.
+
 Defining double
 ===============
 

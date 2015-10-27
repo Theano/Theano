@@ -17,6 +17,8 @@ from theano.configparser import (
     config, AddConfigVar, BoolParam, FloatParam, StrParam)
 from . import nvcc_compiler
 
+from theano.tensor.basic import register_transfer
+
 # ignore_newtrees is to speed the optimization as this is the pattern
 # we use for optimization. Otherwise, we can iterate 100s of time on
 # the graph and apply only a few optimizations each time.
@@ -326,6 +328,12 @@ if cuda_available:
     import cuda_ndarray
     from . import opt, dnn
     from .rng_curand import CURAND_RandomStreams
+
+    def transfer(x, target):
+        if target == 'gpu':
+            return as_cuda_ndarray_variable(x)
+
+    register_transfer(transfer)
 
 
 def use(device,
