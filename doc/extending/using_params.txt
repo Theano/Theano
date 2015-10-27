@@ -8,7 +8,7 @@ The Op params is a facility to pass some runtime parameters to the
 code of an op without modifying it.  It can enable a single instance
 of C code to serve different needs and therefore reduce compilation.
 
-I will first introduce the parts involved in actually using this
+We will first introduce the parts involved in actually using this
 functionality and then present a simple working example.
 
 The params type
@@ -16,6 +16,19 @@ The params type
 
 You can either reuse an existing type such as :class:`Generic` or
 :class:`CDataType`, or create your own.
+
+Using a python object for your op parameters (:class:`Generic`) can be
+annoying to access from C code since you would have to go through the
+Python-C API for all accesses.
+
+Conversly, using a C struct (:class:`CDataType`) makes it complicated
+to set values through python code, forcing you to go through ctypes or
+other similar module.
+
+Making a purpose-built class may require more upfront work, but can
+pay off if you reuse the type for a lot of Ops, by making it easier to
+manipulate from python and C.
+
 
 Defining a params type
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -41,15 +54,21 @@ following methods:
   - :meth:`c_extract <CLinkerType.c_extract>`
   - :meth:`c_cleanup <CLinkerType.c_cleanup>`
 
-You can also define other convinience methods such as
+You can also define other convenience methods such as
 :meth:`c_headers <CLinkerType.c_headers>` if you need any special things.
 
 
 Registering the params with your Op
 -----------------------------------
 
-To declare that your op uses params you have to set the class
+To declare that your Op uses params you have to set the class
 attribute :attr:`params_type` to an instance of your params Type.
+
+.. note::
+
+   If you want to have multiple parameters you have to bundle those
+   inside a single object (or C struct) and use that as the params
+   type.  Multiple types are not supported.
 
 For example if we decide to use a pointer to an int as the params the
 following would be appropriate:
@@ -64,10 +83,9 @@ class with the following signature:
 
 .. code-block:: python
 
-   def get_params(self, node):
-       pass
+   def get_params(self, node)
 
-This methods must return a valid object for your Type (an object that
+This method must return a valid object for your Type (an object that
 passes :meth:`filter`).  The `node` parameter is the Apply node for
 which we want the params.  Therefore the params object can depend on
 the inputs and outputs of the node.
@@ -86,9 +104,9 @@ the inputs and outputs of the node.
 Signature changes from having params
 ------------------------------------
 
-Having declared a params for you Op will affect the expected signature
-of :meth:`perform`.  The new expected signature will have an extra
-parameter at the end which corresponds to the params object.
+Having declared a params for your Op will affect the expected
+signature of :meth:`perform`.  The new expected signature will have an
+extra parameter at the end which corresponds to the params object.
 
 .. warning::
 
@@ -101,12 +119,15 @@ This is true for all methods that recieve a `sub` parameter, so this
 means that you can use your params in the :meth:`c_init_code_struct
 <Op.c_init_code_struct>` method.
 
+
 A simple example
 ----------------
 
 This is a simple example which uses a params object to pass a value.
-The value in this case is a python float, hence the choice of Generic
-as the params type.
+This Op will multiply a scalar input by a fixed floating point value.
+
+Since the value in this case is a python float, we chose Generic as
+the params type.
 
 .. testcode::
 
