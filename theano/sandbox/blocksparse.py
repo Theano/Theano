@@ -10,7 +10,8 @@ from theano.gradient import grad_undefined
 class SparseBlockGemv(Op):
     """
     This op computes the dot product of specified pieces of vectors
-    and matrices, returning pieces of vectors:
+    and matrices, returning pieces of vectors::
+
         for b in range(batch_size):
             for j in range(o.shape[1]):
                 for i in range(h.shape[1]):
@@ -20,6 +21,7 @@ class SparseBlockGemv(Op):
 
     .. image:: ../../images/blocksparse.png
         :scale: 50 %
+
     """
 
     registered_opts = []
@@ -34,29 +36,40 @@ class SparseBlockGemv(Op):
         Compute the dot product of the specified pieces of vectors
         and matrices.
 
+        The parameter types are actually their expected shapes
+        relative to each other.
+
         Parameters
         ----------
-        var: shape, comment
-        o: (batch, oWin, oSize) output vector
-        W: (iBlocks, oBlocks, iSize, oSize), weight matrix
-        h: (batch, iWin, iSize), input from lower layer (sparse)
-        inputIdx: (batch, iWin), indexes of the input blocks
-        outputIdx: (batch, oWin), indexes of the output blocks
-        returns (batch, oWin, oSize), dot(W[i, j], h[i]) + o[j]
+        o : batch, oWin, oSize
+            output vector
+        W : iBlocks, oBlocks, iSize, oSize
+            weight matrix
+        h : batch, iWin, iSize
+            input from lower layer (sparse)
+        inputIdx : batch, iWin
+            indexes of the input blocks
+        outputIdx : batch, oWin
+            indexes of the output blocks
 
-        Notation
-        --------
+        Returns
+        -------
+        (batch, oWin, oSize)
+            dot(W[i, j], h[i]) + o[j]
+
+        Notes
+        -----
         - `batch` is the number of examples in a minibatch (batch size).
         - `iBlocks` is the total number of blocks in the input (from lower
             layer).
         - `iSize` is the size of each of these input blocks.
         - `iWin` is the number of blocks that will be used as inputs. Which
-            blocks
-          will be used is specified in `inputIdx`.
+           blocks will be used is specified in `inputIdx`.
         - `oBlocks` is the number or possible output blocks.
         - `oSize` is the size of each of these output blocks.
         - `oWin` is the number of output blocks that will actually be computed.
-          Which blocks will be computed is specified in `outputIdx`.
+            Which blocks will be computed is specified in `outputIdx`.
+
         """
         o = theano.tensor.as_tensor_variable(o)
         W = theano.tensor.as_tensor_variable(W)
@@ -118,10 +131,13 @@ class SparseBlockGemv(Op):
 class SparseBlockOuter(Op):
     """
     This computes the outer product of two sets of pieces of vectors
-    updating a full matrix with the results:
+    updating a full matrix with the results::
+
         for b in range(batch_size):
             o[xIdx[b, i], yIdx[b, j]] += (alpha * outer(x[b, i], y[b, j]))
+
     This op is involved in the gradient of SparseBlockGemv.
+
     """
 
     registered_opts = []
@@ -136,18 +152,26 @@ class SparseBlockOuter(Op):
         Compute the dot product of the specified pieces of vectors
         and matrices.
 
+        The parameter types are actually their expected shapes
+        relative to each other.
+
         Parameters
         ----------
-        var: shape, comment
-        o: (xBlocks, yBlocks, xSize, ySize)
-        x: (batch, xWin, xSize)
-        y: (batch, yWin, ySize)
-        xIdx: (batch, iWin), indexes of the x blocks
-        yIdx: (batch, oWin), indexes of the y blocks
-        returns (xBlocks, yBlocks, xSize, ySize), outer(x[i], y[j]) + o[i, j]
+        o : xBlocks, yBlocks, xSize, ySize
+        x : batch, xWin, xSize
+        y : batch, yWin, ySize
+        xIdx : batch, iWin
+            indexes of the x blocks
+        yIdx : batch, oWin
+            indexes of the y blocks
 
-        Notation
-        --------
+        Returns
+        -------
+        (xBlocks, yBlocks, xSize, ySize)
+            outer(x[i], y[j]) + o[i, j]
+
+        Notes
+        -----
         - `batch` is the number of examples in a minibatch (batch size).
         - `xBlocks` is the total number of blocks in x.
         - `xSize` is the size of each of these x blocks.
@@ -157,6 +181,7 @@ class SparseBlockOuter(Op):
         - `ySize` is the size of each of these y blocks.
         - `yWin` is the number of y blocks that will actually be computed.
           Which blocks will be computed is specified in `yIdx`.
+
         """
         one = tensor.constant(numpy.asarray(1.0, dtype='float32'))
         o = theano.tensor.as_tensor_variable(o)
@@ -197,27 +222,38 @@ def sparse_block_dot(W, h, inputIdx, b, outputIdx):
     Compute the dot product (plus bias) of the specified pieces of vectors
     and matrices. See SparseBlockGemv to get more information.
 
+    The parameter types are actually their expected shapes relative to
+    each other.
+
     Parameters
     ----------
-    var: shape, comment
-    W: (iBlocks, oBlocks, iSize, oSize), weight matrix
-    h: (batch, iWin, iSize), input from lower layer (sparse)
-    inputIdx: (batch, iWin), indexes of the input blocks
-    b: (oBlocks, oSize), bias vector
-    outputIdx: (batch, oWin), indexes of the output blocks
-    returns (batch, oWin, oSize), dot(W[i, j], h[i]) + b[j]
-         but b[j] is only added once
-    Notation
-    --------
+    W : iBlocks, oBlocks, iSize, oSize
+        weight matrix
+    h : batch, iWin, iSize
+        input from lower layer (sparse)
+    inputIdx : batch, iWin
+        indexes of the input blocks
+    b : oBlocks, oSize
+        bias vector
+    outputIdx : batch, oWin
+        indexes of the output blocks
+
+    Returns
+    -------
+    (batch, oWin, oSize)
+        dot(W[i, j], h[i]) + b[j] but b[j] is only added once
+
+    Notes
+    -----
     - `batch` is the number of examples in a minibatch (batch size).
     - `iBlocks` is the total number of blocks in the input (from lower layer).
     - `iSize` is the size of each of these input blocks.
     - `iWin` is the number of blocks that will be used as inputs. Which blocks
-      will be used is specified in `inputIdx`.
+       will be used is specified in `inputIdx`.
     - `oBlocks` is the number or possible output blocks.
     - `oSize` is the size of each of these output blocks.
     - `oWin` is the number of output blocks that will actually be computed.
-      Which blocks will be computed is specified in `outputIdx`.
+       Which blocks will be computed is specified in `outputIdx`.
 
     """
     assert inputIdx.ndim == h.ndim - 1

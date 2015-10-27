@@ -750,8 +750,10 @@ Creating Tensor
 
 .. function:: stack(*tensors)
 
-    .. warning:: The interface stack(*tensors) is deprecated! 
-             Use stack(tensors, axis=0) instead.
+    .. warning::
+
+        The interface `stack(*tensors)` is deprecated!  Use
+        `stack(tensors, axis=0)` instead.
 
     Stack tensors in sequence vertically (row wise).
 
@@ -1773,6 +1775,7 @@ Gradient / Differentiation
 
 .. automodule:: theano.gradient
     :members: grad
+    :noindex:
 
 See the :ref:`gradient <libdoc_gradient>` page for complete documentation
 of the gradient module.

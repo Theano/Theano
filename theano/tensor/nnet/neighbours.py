@@ -14,22 +14,20 @@ from theano.gradient import grad_undefined
 
 class Images2Neibs(Op):
     """
+    Reshapes the input as a 2D tensor where each row is an pooling
+    example.
 
     Parameters
     ----------
     mode : {'valid', 'ignore_borders', 'wrap_centered'}
-        'valid': Requires an input that is a multiple of the
-            pooling factor (in each direction).
-        'ignore_borders': Same as valid, but will ignore the borders
-            if the shape(s) of the input is not a multiple of the pooling
-            factor(s).
-        'wrap_centered' : ?? TODO comment
-
-    Returns
-    -------
-    object
-        Reshapes the input as a 2D tensor where each row is an
-        pooling example.
+        - 'valid' :
+            Requires an input that is a multiple of the pooling factor
+            (in each direction).
+        - 'ignore_borders' :
+            Same as valid, but will ignore the borders if the shape(s)
+            of the input is not a multiple of the pooling factor(s).
+        - 'wrap_centered' :
+            ?? TODO comment
 
     """
 
@@ -429,7 +427,7 @@ class Images2Neibs(Op):
 
 def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
     """
-    Function :func:`images2neibs <theano.sandbox.neighbours.images2neibs>`
+    Function :func:`images2neibs <theano.tensor.nnet.neighbours.images2neibs>`
     allows to apply a sliding window operation to a tensor containing
     images or other two-dimensional objects.
     The sliding window operation loops over points in input data and stores
@@ -455,9 +453,6 @@ def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
         By default it is equal to `neib_shape` in other words, the patches are
         disjoint. When the step is greater than `neib_shape`, some elements are
         omitted. When None, this is the same as neib_shape (patch are disjoint).
-        .. note:: Currently the step size should be chosen in the way that the
-            corresponding dimension :math:`i` (width or height) is equal to
-            :math:`n * step\_size_i + neib\_shape_i` for some :math:`n`
     mode : {'valid', 'ignore_borders', 'wrap_centered'}
         ``valid``
             Requires an input that is a multiple of the
@@ -488,6 +483,13 @@ def images2neibs(ten4, neib_shape, neib_step=None, mode='valid'):
           .. note:: The operation isn't necessarily implemented internally with
              these for loops, they're just the easiest way to describe the
              output pattern.
+
+    Notes
+    -----
+    .. note::
+        Currently the step size should be chosen in the way that the
+        corresponding dimension :math:`i` (width or height) is equal
+        to :math:`n * step\_size_i + neib\_shape_i` for some :math:`n`.
 
     Examples
     --------
@@ -524,7 +526,7 @@ def neibs2images(neibs, neib_shape, original_shape, mode='valid'):
 
     Parameters
     ----------
-    neibs: matrix
+    neibs : 2d tensor
         Like the one obtained by
         :func:`images2neibs <theano.sandbox.neigbours.neibs2images>`.
     neib_shape

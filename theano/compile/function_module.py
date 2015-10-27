@@ -242,7 +242,7 @@ class Function(object):
 
     A Function instance may be serialized using the `pickle` or
     `cPickle` modules.  This will save all default inputs, the graph,
-    and *** to the pickle file (WRITEME).
+    and WRITEME to the pickle file.
 
     A Function instance have a ``trust_input`` field that default to
     False. When True, we don't do extra check of the input to give

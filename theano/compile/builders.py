@@ -14,7 +14,7 @@ class OpFromGraph(gof.Op):
     This creates an `Op` from inputs and outputs lists of variables.
 
     The signature is similar to theano.function() and the resulting
-    `Op`'s perform will do the same operation as:
+    `Op`'s perform will do the same operation as::
 
         orig_function(inputs, outputs, **kwargs)
 

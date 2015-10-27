@@ -227,7 +227,7 @@ import theano and print the config variable, as in:
 
     Allow/disallow gc inside of Scan.
 
-     If config.allow_gc is ``True``, but config.scan.allow_gc is
+    If config.allow_gc is ``True``, but config.scan.allow_gc is
     ``False``, then we will gc the inner of scan after all
     iterations. This is the default.
 
