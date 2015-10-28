@@ -60,7 +60,17 @@ class StripPickler(Pickler):
         if isinstance(obj, theano.gof.utils.scratchpad):
             if hasattr(obj, 'trace'):
                 del obj.trace
-
+            if hasattr(obj, 'test_value'):
+                del obj.test_value
+            # The next 4 items are from Blocks
+            if hasattr(obj, 'annontations'):
+                del obj.annontations
+            if hasattr(obj, 'replacement_of'):
+                del obj.replacement_of
+            if hasattr(obj, 'aggregation_scheme'):
+                del obj.aggregation_scheme
+            if hasattr(obj, 'rolesc'):
+                del obj.rolesc
         # Remove manually-added docstring of Elemwise ops
         elif (isinstance(obj, theano.tensor.Elemwise)):
             if '__doc__' in obj.__dict__:

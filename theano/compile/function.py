@@ -2,7 +2,6 @@
 Define the `function` function.
 
 """
-import six.moves.cPickle as pickle
 import logging
 
 import traceback as tb
@@ -58,7 +57,9 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
              allow_input_downcast=allow_input_downcast, profile=profile,
              on_unused_input=on_unused_input)
     with open(filename, 'wb') as f:
-        pickle.dump(d, f, -1)
+        import theano.misc.pkl_utils
+        pickler = theano.misc.pkl_utils.StripPickler(f, protocol=-1)
+        pickler.dump(d)
 
 
 def function(inputs, outputs=None, mode=None, updates=None, givens=None,
