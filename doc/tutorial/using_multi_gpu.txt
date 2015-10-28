@@ -22,6 +22,15 @@ models between machines.
    cases observed, but make sure to double-check your results before
    publishing a paper or anything of the sort.
 
+.. warning::
+
+   Due to some implementation issues, models using multiple GPUs will,
+   in most cases not exhibit any speedup over running on a single GPU.
+   These issues are being worked on and should be solved within 2-3
+   weeks.  We do not expect any interface change, so you can still
+   start coding models that take advantage of this and they will get
+   the expected speedup when the fix is merged.
+
 
 Defining the context map
 ------------------------
@@ -52,6 +61,17 @@ gpuarray expects like 'cuda0' or 'opencl0:0'.
    .. code-block:: shell
 
        $ THEANO_FLAGS="contexts=dev0->cuda0"
+
+When you define a context map, if :attr:`config.print_device` is
+`True`, Theano will print the mappings as they are defined.  This will
+look like this:
+
+.. code-block:: bash
+
+   $ THEANO_FLAGS="contexts=dev0->cuda0;dev1->cuda1" python -c 'import theano'
+   Mapped name dev0 to device cuda0: GeForce GTX TITAN X
+   Mapped name dev1 to device cuda1: GeForce GTX TITAN X
+
 
 If you don't have enough GPUs for a certain model, you can assign the
 same device to more than one name. You can also assign extra names
@@ -98,14 +118,6 @@ which perform two dot products on two different GPUs.
 
 This model requires a context map with assignations for 'dev0' and
 'dev1'.  It should run twice as fast when the devices are different.
-
-.. note::
-
-   While the above *should* be true, there are still some implentation
-   problems which may cause the program to exhibit no speedups while
-   running on two devices.  These are being worked on and will be
-   resolved as soon as possible.
-
 
 Explicit transfers of data
 --------------------------
