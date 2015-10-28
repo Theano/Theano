@@ -1461,9 +1461,10 @@ class GpuDnnPool(DnnBase):
         padY is the size of the top and bottom borders.
     """
 
-    __props__ = ()
+    __props__ = ("mode",)
     
     def __init__(self, mode='max'):
+        super(GpuDnnPool, self).__init__()
         if mode == 'average':
             mode = 'average_inc_pad'
         assert mode in ('max', 'average_inc_pad', 'average_exc_pad')
@@ -1476,6 +1477,7 @@ class GpuDnnPool(DnnBase):
         stride = tensor.as_tensor_variable(stride)
         pad = tensor.as_tensor_variable(pad)
         assert ws.type.ndim == stride.type.ndim and ws.type.ndim == pad.type.ndim
+        assert ws.type.ndim == 1
         
         return Apply(self, [img, ws, stride, pad], [img.type()])
 
@@ -1517,7 +1519,7 @@ if ((err%(name)s = cudnnCreateTensorDescriptor(&output%(name)s)) != CUDNN_STATUS
 
 if ((err%(name)s = cudnnCreatePoolingDescriptor(&pool%(name)s)) != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_MemoryError, "could not allocate pooling "
-                "descriptor: %%s", cudnnGetErrorString(err));
+                "descriptor: %%s", cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
 """ % dict(name=name, fail=sub['fail'])
@@ -1530,24 +1532,24 @@ if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
 """ % dict(name=name)
 
     def c_code(self, node, name, inputs, outputs, sub):
-        ws = node.inputs[1]
-        stride = node.inputs[2]
-        pad = node.inputs[3]
+        ws = inputs[1]
+        stride = inputs[2]
+        pad = inputs[3]
         out, = outputs
-        
+        print node.inputs[1].type.ndim
         if self.mode == 'max':
-            self.mode_flag = 'CUDNN_POOLING_MAX'
+            mode_flag = 'CUDNN_POOLING_MAX'
         elif self.mode == "average_inc_pad":
-            self.mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING'
+            mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING'
         elif self.mode == "average_exc_pad":
-            self.mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING'
+            mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING'
             if version() == -1:
                 raise Exception("cudnn v1 do not support average_exc_pad")
         else:
             raise NotImplementedError("Unsupported pooling model.")
         
         return """
-cudnnStatus_t err%(name)s;
+cudnnStatus_t err;
 
 int %(out)s_dims[5];
 
@@ -1559,11 +1561,11 @@ if (!CudaNdarray_is_c_contiguous(%(input)s)) {
 if (c_set_tensorNd(%(input)s, %(input_desc)s) != 0)
   %(fail)s
 
-int win[%(nd)d]; = {%(win)s};
-int pad[%(nd)d]; = {%(pad)s};
-int str[%(nd)d]; = {%(str)s};
+int win[%(nd)d];
+int pad[%(nd)d];
+int str[%(nd)d];
 for(int i = 0; i < %(nd)d; i++) {
-   win[i] = *((npy_intp*)PyArray_GETPTR1(%(win)s, i));
+   win[i] = *((npy_intp*)PyArray_GETPTR1(%(ws)s, i));
 }
 for(int i = 0; i < %(nd)d; i++) {
    pad[i] = *((npy_intp*)PyArray_GETPTR1(%(pad)s, i));
@@ -1572,7 +1574,7 @@ for(int i = 0; i < %(nd)d; i++) {
    str[i] = *((npy_intp*)PyArray_GETPTR1(%(str)s, i));
 }
 err = cudnnSetPoolingNdDescriptor(
-    &pool%(name)s, %(mode_flag)s, %(nd)d,
+    pool%(name)s, %(mode_flag)s, %(nd)d,
     win, pad, str);
 
 if (err != CUDNN_STATUS_SUCCESS) {
@@ -1585,10 +1587,10 @@ PyErr_Format(PyExc_RuntimeError, "could not set op descriptor: %%s",
 %(out)s_dims[1] = CudaNdarray_HOST_DIMS(%(input)s)[1];
 %(out)s_dims[2] = (CudaNdarray_HOST_DIMS(%(input)s)[2] + (pad[0]*2) - win[0]) / str[0] + 1;
 %(out)s_dims[3] = (CudaNdarray_HOST_DIMS(%(input)s)[3] + (pad[1]*2) - win[1]) / str[1] + 1;
-if (ndims == 3)
+if (%(nd)s == 3)
   %(out)s_dims[4] = (CudaNdarray_HOST_DIMS(%(input)s)[4] + (pad[2]*2) - win[2]) / str[2] + 1;
 
-if (CudaNdarray_prep_output(&%(out)s, ndims+2, %(out)s_dims) != 0)
+if (CudaNdarray_prep_output(&%(out)s, %(nd)s+2, %(out)s_dims) != 0)
 {
   %(fail)s
 }
@@ -1599,7 +1601,7 @@ if (c_set_tensorNd(%(out)s, %(output_desc)s) != 0)
 {
 const float alpha = 1;
 const float beta = 0;
-err%(name)s = cudnnPoolingForward(
+err = cudnnPoolingForward(
 _handle,
 pool%(name)s,
 &alpha,
@@ -1608,17 +1610,18 @@ pool%(name)s,
 %(output_desc)s, CudaNdarray_DEV_DATA(%(out)s)
 );
 }
-if (err%(name)s != CUDNN_STATUS_SUCCESS) {
+if (err != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_RuntimeError,
                "GpuDnnPool: error doing cudnnPoolingForward operation: %%s",
-               cudnnGetErrorString(err%(name)s));
+               cudnnGetErrorString(err));
   %(fail)s
 }
 """ % dict(out=out, fail=sub['fail'],
            name=name, input=inputs[0],
            ws=ws, pad=pad, str=stride,
-           nd=ws.type.ndim, input_desc="input"+name,
-           output_desc="output"+name)
+           nd=2, input_desc="input"+name,
+           output_desc="output"+name,
+           mode_flag=mode_flag)
 
     def grad(self, inp, grads):
         img, desc = inp
@@ -1634,10 +1637,10 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
 
     def connection_pattern(self, node):
         # not connected to desc
-        return [[1], [0], [0], [0], [0]]
+        return [[1], [0], [0], [0]]
 
     def c_code_cache_version(self):
-        return (7, version())
+        return (8, version())
 
 
 class GpuDnnPoolGrad(DnnBase):

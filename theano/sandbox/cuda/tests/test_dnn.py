@@ -235,17 +235,17 @@ def test_pooling2():
         raise SkipTest(cuda.dnn.dnn_available.msg)
 
     x = T.ftensor4()
-    ws = T.imatrix()
-    stride = T.imatrix()
-    pad = T.imatrix()
+    ws = T.ivector()
+    stride = T.ivector()
+    pad = T.ivector()
     
     pooled_x = cuda.dnn.dnn_pool(x, ws, stride=stride, pad=pad)
     
     f = theano.function([x, ws, stride, pad], pooled_x)
     x_ = numpy.arange(500).reshape(1, 5, 10, 10).astype('float32')
-    ws_ = numpy.array([2, 2])
-    stride_ = numpy.array([1, 1])
-    pad_ = numpy.array([0, 0])
+    ws_ = numpy.array([1, 1]).astype('int32')
+    stride_ = numpy.array([1, 1]).astype('int32')
+    pad_ = numpy.array([0, 0]).astype('int32')
 
     print f(x_, ws_, stride_, pad_)
        
