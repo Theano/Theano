@@ -969,10 +969,10 @@ class ShapeFeature(object):
                 r.owner.inputs[0] not in var.fgraph.variables):
             assert var.owner
             node = var.owner
-# TODO recur on inputs
-# Need to time this to don't have it too slow.
-# Make sure to handle the case of (shape_i(x)+1)
-# see https://github.com/Theano/Theano/issues/3560
+            # recur on inputs
+            for i in node.inputs:
+                if getattr(i, 'ndim', None) > 0:
+                    self.get_shape(i, 0)
             o_shapes = self.get_node_infer_shape(node)
             assert len(o_shapes) == len(node.outputs)
 
