@@ -148,8 +148,8 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
     }
 
     if (stride[0] != 1 || stride[1] != 1 ||
-        PyGpuArray_DIM(input, 0) > 1024 || PyGpuArray_DIM(input, 1) > 1024 ||
-        (PyGpuArray_DIM(*kerns, 0) == 1 && PyGpuArray_DIM(*kerns, 1) == 1)) {
+        PyGpuArray_DIM(input, 2) > 1024 || PyGpuArray_DIM(input, 3) > 1024 ||
+        (PyGpuArray_DIM(*kerns, 2) == 1 && PyGpuArray_DIM(*kerns, 3) == 1)) {
       algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
     }
   }
