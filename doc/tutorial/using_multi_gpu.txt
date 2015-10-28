@@ -50,7 +50,7 @@ two characters '->' and the device name.  The context name is a simple
 string which does not have any special meaning for Theano.  For
 parsing reasons, the context name cannot contain the sequence '->' or
 ';'.  To avoid confusion context names that begin with 'cuda' or
-'opencl' as disallowed.  The device name is a device in the form that
+'opencl' are disallowed.  The device name is a device in the form that
 gpuarray expects like 'cuda0' or 'opencl0:0'.
 
 .. note::
@@ -62,9 +62,9 @@ gpuarray expects like 'cuda0' or 'opencl0:0'.
 
        $ THEANO_FLAGS="contexts=dev0->cuda0"
 
-When you define a context map, if :attr:`config.print_device` is
-`True`, Theano will print the mappings as they are defined.  This will
-look like this:
+When you define a context map, if :attr:`config.print_active_device`
+is `True` (the default), Theano will print the mappings as they are
+defined.  This will look like this:
 
 .. code-block:: bash
 
