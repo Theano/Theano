@@ -154,8 +154,8 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     }
 
     if (stride[0] != 1 || stride[1] != 1 ||
-        PyGpuArray_DIM(input, 0) > 1024 || PyGpuArray_DIM(input, 1) > 1024 ||
-        (PyGpuArray_DIM(kerns, 0) == 1 && PyGpuArray_DIM(kerns, 1) == 1)) {
+        PyGpuArray_DIM(input, 2) > 1024 || PyGpuArray_DIM(input, 3) > 1024 ||
+        (PyGpuArray_DIM(kerns, 2) == 1 && PyGpuArray_DIM(kerns, 3) == 1)) {
       algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
     }
   }

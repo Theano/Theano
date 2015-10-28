@@ -183,12 +183,12 @@ APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
       }
 
       // Extract the spatial size of the filters
-      int filter_h = CudaNdarray_HOST_DIMS(kerns)[3];
-      int filter_w = CudaNdarray_HOST_DIMS(kerns)[4];
+      int filter_h = CudaNdarray_HOST_DIMS(kerns)[2];
+      int filter_w = CudaNdarray_HOST_DIMS(kerns)[3];
 
       // Extract the spatial size of the input
-      int input_h = CudaNdarray_HOST_DIMS(*input)[3];
-      int input_w = CudaNdarray_HOST_DIMS(*input)[4];
+      int input_h = CudaNdarray_HOST_DIMS(*input)[2];
+      int input_w = CudaNdarray_HOST_DIMS(*input)[3];
 
       // Ensure that the selected implementation supports the requested
       // convolution. Fall back to a safe implementation otherwise.
