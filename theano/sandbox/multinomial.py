@@ -58,7 +58,12 @@ class MultinomialFromUniform(Op):
 #        return (6,)
 
     def c_code(self, node, name, ins, outs, sub):
-        (pvals, unis, n) = ins
+        # support old pickled graphs
+        if len(ins) == 2:
+            (pvals, unis) = ins
+            n = 1
+        else:
+            (pvals, unis, n) = ins
         (z,) = outs
         if self.odtype == 'auto':
             t = "PyArray_TYPE(%(pvals)s)" % locals()
@@ -269,13 +274,7 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
         """ % locals()
 
     def c_code(self, node, name, ins, outs, sub):
-        # support old pickled graphs
-        if len(ins) == 2:
-            (pvals, unis) = ins
-            n_samples = 1
-        else:
-            (pvals, unis, n_samples) = ins
-
+        (pvals, unis) = ins
         (z,) = outs
 
         fail = sub['fail']
