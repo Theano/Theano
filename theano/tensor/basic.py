@@ -3871,6 +3871,9 @@ class Join(Op):
 
         # The joining dimension could be negative, but we need it to be
         # in [0, n_dim) in the loop below.
+        # An axis < -n_dim or >= ndim would be invalid, but this is
+        # not checked here. An Assert op would be a way of addressing that,
+        # but it may disrupt optimizations.
         join_dim = switch(ge(node.inputs[0], 0),
                           node.inputs[0],
                           node.inputs[0] + n_dim)
