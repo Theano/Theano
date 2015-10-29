@@ -8,7 +8,7 @@ from theano.sandbox import multinomial
 from theano.compile.mode import get_default_mode, predefined_linkers
 import theano.sandbox.cuda as cuda
 import theano.tests.unittest_tools as utt
-
+import cPickle
 
 def get_mode(gpu):
     mode = get_default_mode()
@@ -66,6 +66,23 @@ def test_n_samples_2():
         pvals /= pvals.sum(1)
         res = f(pvals, uni, i)
         assert res.sum() == i
+
+def test_n_samples_compatibility():
+    """
+    This test checks if the new change to MultinomialFromUniform is still compatible
+    with old interface. Here I will load a graph created (using the old interface) as follows:
+    RandomStreams = theano.sandbox.rng_mrg.MRG_RandomStreams
+    th_rng = RandomStreams(12345)
+    X = T.matrix('X')
+    pvals = T.exp(X)
+    pvals = pvals / pvals.sum(axis=1, keepdims=True)
+    samples = th_rng.multinomial(pvals=pvals)
+    cPickle.dump([X, samples], open("multinomial_test_graph.pkl", "w"))
+    """
+    X, samples = cPickle.load(open("multinomial_test_graph.pkl"))
+    f = theano.function([X], samples)
+    res = f(numpy.random.randn(20,10))
+    assert numpy.all(res.sum(axis=1) == 1)
 
 def test_multinomial_0():
     # This tests the MultinomialFromUniform Op directly, not going through the
