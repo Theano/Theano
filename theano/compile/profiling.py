@@ -1627,6 +1627,11 @@ class ScanProfileStats(ProfileStats):
         super(ScanProfileStats, self).__init__(atexit_print, **kwargs)
         self.name = name
 
+    def summary_globals(self, file):
+        # Do nothing, we don't want to print extra global summary
+        # here.
+        pass
+
     def summary_function(self, file):
         # RP: everytime we compile a function a ProfileStats is created for
         # that function. This means that everytime a optimization replaces
