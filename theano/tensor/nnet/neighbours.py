@@ -119,7 +119,7 @@ class Images2Neibs(Op):
                 Helper function that adds gradient contribution from a single
                 neighborhood position i,j.
                 pidx = Index of position within neighborhood.
-                pgz  = Gradient of shape (1, batch_size*num_channels*neibs)
+                pgz  = Gradient of shape (batch_size*num_channels*neibs)
                 prior_result  = Shape (batch_size, num_channnels, rows, cols)
                 neib_shape = Number of rows, cols in a neighborhood.
                 neib_step  = Step sizes from image2neibs.
@@ -131,8 +131,8 @@ class Images2Neibs(Op):
                 j = pidx - (i * ncols)
                 # This position does not touch some img pixels in valid mode.
                 result_indices = prior_result[:, :,
-                                              i:rows-nrows+i+1:rstep,
-                                              j:cols-ncols+j+1:cstep]
+                                              i:(rows - nrows + i + 1):rstep,
+                                              j:(cols - ncols + j + 1):cstep]
                 newshape = (batch_size, num_channels) + \
                            ((rows - nrows) // rstep + 1,) + \
                            ((cols - ncols) // cstep + 1,)
