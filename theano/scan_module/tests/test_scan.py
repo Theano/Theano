@@ -3977,7 +3977,8 @@ class T_Scan(unittest.TestCase):
 
         # This fails if Scan's infer_shape() is unable to remove the Scan
         # node from the graph.
-        f_infershape = theano.function([seq], results[1].shape)
+        f_infershape = theano.function([seq], results[1].shape,
+                                       mode='FAST_RUN')
         scan_nodes_infershape = scan_nodes_from_fct(f_infershape)
         assert(len(scan_nodes_infershape) == 0)
 
