@@ -732,9 +732,12 @@ def repeat(x, repeats, axis=None):
     if repeats.ndim > 1:
         raise ValueError('The dimension of repeats should not exceed 1.')
 
-    if repeats.ndim == 1:
-        return RepeatOp(axis=axis)(x, repeats)
+    if repeats.ndim == 1 and not repeats.broadcastable[0]:
+            return RepeatOp(axis=axis)(x, repeats)
     else:
+        if repeats.ndim == 1:
+            repeats = repeats[0]
+
         if axis is None:
             axis = 0
             x = x.flatten()
