@@ -3946,7 +3946,11 @@ class T_Scan(unittest.TestCase):
         assert numpy.all(exp_out == f(inp))
 
     def test_borrow_bug_jeremiah(self):
-        # This test fails if scan uses wrongly the borrow flag
+        # This tests two things. The first is a bug occuring when scan wrongly
+        # used the borrow flag. The second thing it that Scan's infer_shape()
+        # method will be able to remove the Scan node from the graph in this
+        # case.
+
         inp = numpy.arange(10).reshape(-1, 1).astype(theano.config.floatX)
         exp_out = numpy.zeros((10, 1)).astype(theano.config.floatX)
         exp_out[4:] = inp[:-4]
@@ -3967,7 +3971,15 @@ class T_Scan(unittest.TestCase):
         updates = OrderedDict([(sharedvar, results[0][-1:])])
 
         f = theano.function([seq], results[1], updates=updates)
+
+        # This fails if scan uses wrongly the borrow flag
         assert numpy.all(exp_out == f(inp))
+
+        # This fails if Scan's infer_shape() is unable to remove the Scan
+        # node from the graph.
+        f_infershape = theano.function([seq], results[1].shape)
+        scan_nodes_infershape = scan_nodes_from_fct(f_infershape)
+        assert(len(scan_nodes_infershape) == 0)
 
     def test_memory_reuse_with_outputs_as_inputs(self):
         # Test the memory pre-allocation feature in scan for the following
