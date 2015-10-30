@@ -7259,27 +7259,31 @@ class TestInferShape(utt.InferShapeTester):
         aivec = ivector()
         adtens_val = rand(4, 10, 3)
         aivec_val = [2, 5, 3]
-        self._compile_and_check([adtens, aiscal, aivec],
-                                [Split(3)(adtens, aiscal, aivec)[0]],
-                                [adtens_val, 1, aivec_val], (Split))
+        for aiscal_val in [1, -2]:
+            self._compile_and_check(
+                [adtens, aiscal, aivec],
+                [Split(3)(adtens, aiscal, aivec)[0]],
+                [adtens_val, aiscal_val, aivec_val], (Split))
 
         # Join
         cdmat = dmatrix()
         admat_val = rand(1, 3)
         bdmat_val = rand(2, 3)
         cdmat_val = rand(4, 3)
-        aiscal_val = 0
-        self._compile_and_check([aiscal, admat, bdmat, cdmat],
-                                [Join()(aiscal, admat, bdmat, cdmat)],
-                        [aiscal_val, admat_val, bdmat_val, cdmat_val], Join)
+        for aiscal_val in [0, -2]:
+            self._compile_and_check(
+                [aiscal, admat, bdmat, cdmat],
+                [Join()(aiscal, admat, bdmat, cdmat)],
+                [aiscal_val, admat_val, bdmat_val, cdmat_val], Join)
 
         admat_val = rand(4, 1)
         bdmat_val = rand(4, 3)
         cdmat_val = rand(4, 2)
-        aiscal_val = 1
-        self._compile_and_check([aiscal, admat, bdmat, cdmat],
-                                [Join()(aiscal, admat, bdmat, cdmat)],
-                        [aiscal_val, admat_val, bdmat_val, cdmat_val], Join)
+        for aiscal_val in [-1, 1]:
+            self._compile_and_check(
+                [aiscal, admat, bdmat, cdmat],
+                [Join()(aiscal, admat, bdmat, cdmat)],
+                [aiscal_val, admat_val, bdmat_val, cdmat_val], Join)
 
         # PermuteRowElements
         abool = True
