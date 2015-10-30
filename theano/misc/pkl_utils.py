@@ -117,12 +117,38 @@ def load_reduce(self):
 
 if PY3:
     class CompatUnpickler(pickle._Unpickler):
+        """
+        Allow to reload in python 3 some pickled numpy ndarray.
+
+        Examples
+        --------
+
+        with open(fname, 'rb') as fp:
+            if PY3:
+                u = CompatUnpickler(fp, encoding="latin1")
+            else:
+                u = CompatUnpickler(fp)
+            mat = u.load()
+        """
         pass
 
     # Register `load_reduce` defined above in CompatUnpickler
     CompatUnpickler.dispatch[pickle.REDUCE[0]] = load_reduce
 else:
     class CompatUnpickler(pickle.Unpickler):
+        """
+        Allow to reload in python 3 some pickled numpy ndarray.
+
+        Examples
+        --------
+
+        with open(fname, 'rb') as fp:
+            if PY3:
+                u = CompatUnpickler(fp, encoding="latin1")
+            else:
+                u = CompatUnpickler(fp)
+            mat = u.load()
+        """
         pass
 
 
