@@ -147,7 +147,6 @@ def test_misc():
     e = transpose_view(transpose_view(transpose_view(transpose_view(x))))
     g = Env([x, y, z], [e])
     consistent(g)
-    chk = g.checkpoint()
     PatternOptimizer((transpose_view, (transpose_view, 'x')), 'x').optimize(g)
     assert str(g) == "[x]"
     new_e = add(x, y)
