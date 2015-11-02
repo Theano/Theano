@@ -115,8 +115,8 @@ extra parameter at the end which corresponds to the params object.
 Also, for the C code, the `sub` dictionary will contain an extra entry
 `'params'` which will map to the variable name of the params object.
 This is true for all methods that recieve a `sub` parameter, so this
-means that you can use your params in the :meth:`c_init_code_struct
-<Op.c_init_code_struct>` method.
+means that you can use your params in the :meth:`c_code <Op.c_code>`
+and :meth:`c_init_code_struct <Op.c_init_code_struct>` method.
 
 
 A simple example
@@ -163,7 +163,9 @@ the params type.
 A more complex example
 ----------------------
 
-This is a more complex example which actually passes multiple values.  It does a linear combination of two values using floating point weights.
+This is a more complex example which actually passes multiple values.
+It does a linear combination of two values using floating point
+weights.
 
 .. testcode::
 
@@ -193,22 +195,35 @@ This is a more complex example which actually passes multiple values.  It does a
            y = as_scalar(y)
            return Apply(self, [x, y], [x.type()]
 
+       def c_support_code_struct(self, node, name):
+           return """
+           double alpha_%(name)s;
+           double beta_%(name)s;
+           """ % dict(name=name)
+
+       def c_init_code_struct(self, node, name, sub):
+           return """{
+           PyObject *tmp;
+           tmp = PyObject_GetAttrString(%(p)s, "alpha");
+           if (tmp == NULL)
+             %(fail)s
+           alpha_%(name)s = PyFloat_AsDouble(tmp);
+           Py_DECREF(%(tmp)s);
+           if (PyErr_Occurred())
+             %(fail)s
+           tmp = PyObject_GetAttrString(%(p)s, "beta");
+           if (tmp == NULL)
+             %(fail)s
+           beta_%(name)s = PyFloat_AsDouble(tmp);
+           Py_DECREF(tmp);
+           if (PyErr_Occurred())
+             %(fail)s
+           }""" % dict(name=name, p=sub['params'], fail=sub['fail'])
+
        def c_code(self, node, name, inputs, outputs, sub):
            return """
-   PyObject *tmp;
-   double a, b;
-   tmp = PyObject_GetAttrString(%(p)s, "alpha");
-   if (tmp == NULL)
-     %(fail)s
-   a = PyFloat_AsDouble(tmp);
-   Py_DECREF(tmp);
-   tmp = PyObject_GetAttrString(%(p)s, "beta");
-   if (tmp == NULL)
-     %(fail)s
-   b = PyFloat_AsDouble(tmp);
-   Py_DECREF(tmp);
-   %(z)s = a* %(x)s + b * %(y)s;
-       """ % dict(p=sub['params'], z=outputs[0], x=inputs[0], y=inputs[1])
+           %(z)s = alpha_%(name)s * %(x)s + beta_%(name)s * %(y)s;
+           """ % dict(name=name, z=outputs[0], x=inputs[0], y=inputs[1])
 
 .. testoutput::
    :hide:
