@@ -109,6 +109,43 @@ class Images2Neibs(Op):
                 return [neibs2images(gz, neib_shape, x.shape, mode=self.mode),
                         grad_undefined(self, 1, neib_shape),
                         grad_undefined(self, 2, neib_step)]
+
+        if self.mode in ['valid']:
+            # Iterate over neighborhood positions, summing contributions.
+            def pos2map(pidx, pgz, prior_result, neib_shape, neib_step):
+                '''
+                Helper function that adds gradient contribution from a single
+                neighborhood position i,j.
+                pidx = Index of position within neighborhood.
+                pgz  = Gradient of shape (batch_size*num_channels*neibs)
+                prior_result  = Shape (batch_size, num_channnels, rows, cols)
+                neib_shape = Number of rows, cols in a neighborhood.
+                neib_step  = Step sizes from image2neibs.
+                '''
+                nrows, ncols = neib_shape
+                rstep, cstep = neib_step
+                batch_size, num_channels, rows, cols = prior_result.shape
+                i = pidx // ncols
+                j = pidx - (i * ncols)
+                # This position does not touch some img pixels in valid mode.
+                result_indices = prior_result[:, :,
+                                              i:(rows - nrows + i + 1):rstep,
+                                              j:(cols - ncols + j + 1):cstep]
+                newshape = (batch_size, num_channels) + \
+                           ((rows - nrows) // rstep + 1,) + \
+                           ((cols - ncols) // cstep + 1,)
+                return T.inc_subtensor(result_indices, pgz.reshape(newshape))
+            indices = T.arange(neib_shape[0] * neib_shape[1])
+            pgzs = gz.dimshuffle((1, 0))
+            result, _ = theano.scan(fn=pos2map,
+                                    sequences=[indices, pgzs],
+                                    outputs_info=T.zeros(x.shape),
+                                    non_sequences=[neib_shape, neib_step])
+            grad_input = result[-1]
+            return [grad_input,
+                    grad_undefined(self, 1, neib_shape),
+                    grad_undefined(self, 2, neib_step)]
+
         return [grad_not_implemented(self, 0, x),
                 grad_undefined(self, 1, neib_shape),
                 grad_undefined(self, 2, neib_step)]

@@ -287,7 +287,7 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
                           fn, [images_val], mode=self.mode)
 
     def test_grad_valid(self):
-        shape = (2, 3, 4, 4)
+        shape = (2, 3, 6, 6)
         images_val = numpy.random.rand(*shape).astype('float32')
 
         def fn(images):
@@ -296,13 +296,18 @@ class T_Images2Neibs(unittest_tools.InferShapeTester):
         unittest_tools.verify_grad(fn, [images_val], mode=self.mode,
                                    eps=0.1)
 
-        # The grad is not defined when the neib_shape and neib_step
-        # are not the same.
         def fn(images):
-            return images2neibs(images, (2, 2), (1, 1))
-        self.assertRaises(TypeError,
-                          unittest_tools.verify_grad, fn, [images_val],
-                          mode=self.mode)
+            return images2neibs(images, (3, 2), (1, 2))
+
+        unittest_tools.verify_grad(fn, [images_val], mode=self.mode,
+                                   eps=0.1)
+
+        def fn(images):
+            return images2neibs(images, (1, 2), (5, 2))
+
+        unittest_tools.verify_grad(fn, [images_val], mode=self.mode,
+                                   eps=0.1)
+
 
     def test_grad_ignore_border(self):
         shape = (2, 3, 5, 5)
