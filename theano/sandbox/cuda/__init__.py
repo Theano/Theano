@@ -259,7 +259,7 @@ if cuda_available:
         cuda_available = False
         cuda_initialization_error_message = " ".join(e.args)
 else:
-    cuda_initialization_error_message = 'cuda unavilable'
+    cuda_initialization_error_message = 'cuda unavailable'
 
 
 class GpuOp(theano.gof.Op):
