@@ -325,6 +325,8 @@ class ReplaceValidate(History, Validator):
             raise
         if verbose:
             print(reason, r, new_r)
+        # The return is needed by replace_all_validate_remove
+        return chk
 
     def replace_all_validate_remove(self, fgraph, replacements,
                                     remove, reason=None, warn=True):
