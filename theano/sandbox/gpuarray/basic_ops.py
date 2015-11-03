@@ -423,7 +423,7 @@ class GpuFromHost(Op):
                                        (size_t *)PyArray_DIMS(%(name)s_tmp),
                                        (ssize_t *)PyArray_STRIDES(%(name)s_tmp),
                                        %(ctx)s,
-                                       Py_None);
+                                       (PyTypeObject *)Py_None);
           Py_DECREF(%(name)s_tmp);
           if (%(out)s == NULL) {
               %(fail)s
@@ -573,7 +573,7 @@ class GpuAlloc(HideC, Alloc):
             Py_XDECREF(%(zz)s);
             %(zz)s = pygpu_zeros(%(ndim)s, %(name)s_shape,
                                  %(vv)s->ga.typecode, GA_C_ORDER,
-                                 %(ctx)s, Py_None);
+                                 %(ctx)s, (PyTypeObject *)Py_None);
             if (!%(zz)s) {
                 %(fail)s
             }
@@ -582,7 +582,7 @@ class GpuAlloc(HideC, Alloc):
                 Py_XDECREF(%(zz)s);
                 %(zz)s = pygpu_empty(%(ndim)s, %(name)s_shape,
                                      %(vv)s->ga.typecode, GA_C_ORDER,
-                                     %(ctx)s, Py_None);
+                                     %(ctx)s, (PyTypeObject *)Py_None);
                 if (!%(zz)s) {
                     %(fail)s
                 }
@@ -1060,7 +1060,7 @@ KERNEL void k(GLOBAL_MEM %(ctype)s *a, ga_size n, ga_size m) {
         %(z)s = pygpu_zeros(2, dims,
                             %(typecode)s,
                             GA_C_ORDER,
-                            %(ctx)s, Py_None);
+                            %(ctx)s, (PyTypeObject *)Py_None);
         if (%(z)s == NULL) {
             %(fail)s
         }

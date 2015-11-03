@@ -315,7 +315,7 @@ class GpuElemwise(GpuKernelBase, HideC, Elemwise):
         {
             %(oname)s = pygpu_empty(%(nd)d, dims,
                             %(typecode)s, GA_C_ORDER,
-                            %(ctx)s, Py_None);
+                            %(ctx)s, (PyTypeObject *)Py_None);
             if (!%(oname)s) {
                 %(fail)s
             }
@@ -776,7 +776,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             Py_XDECREF(%(z)s);
             %(z)s = pygpu_empty(%(nd_out)s, new_dims,
                                 %(out_typecode)s, GA_C_ORDER,
-                                %(ctx)s, Py_None);
+                                %(ctx)s, (PyTypeObject *)Py_None);
             if (NULL == %(z)s)
             {
                 PyErr_Format(PyExc_RuntimeError, "Failed to allocate output");
@@ -2770,7 +2770,7 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
                     j += 1
             code += """
          if (need_out) {
-             %(output)s = pygpu_empty(%(nd_out)s, out_dims, %(out_type)s, GA_C_ORDER, %(ctx)s, Py_None);
+             %(output)s = pygpu_empty(%(nd_out)s, out_dims, %(out_type)s, GA_C_ORDER, %(ctx)s, (PyTypeObject *)Py_None);
              if (!%(output)s) {
                  %(fail)s
              }
@@ -2783,7 +2783,7 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
         if (%(output)s == NULL || %(output)s->ga.nd != 0) {
             Py_XDECREF(%(output)s);
             %(output)s = pygpu_empty(0, NULL, %(out_type)s, GA_C_ORDER,
-                                     %(ctx)s, Py_None);
+                                     %(ctx)s, (PyTypeObject *)Py_None);
             if (!%(output)s) {
                 %(fail)s
             }
@@ -2794,7 +2794,7 @@ class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
         if acc_dtype != node.outputs[0].type.dtype:
             code += """
         tmp = pygpu_empty(%(output)s->ga.nd, %(output)s->ga.dimensions,
-                          %(acc_type)s, GA_C_ORDER, %(ctx)s, Py_None);
+                          %(acc_type)s, GA_C_ORDER, %(ctx)s, (PyTypeObject *)Py_None);
         if (!tmp) %(fail)s
         """ % dict(output=output, fail=sub['fail'], ctx=sub['context'],
                    acc_type=dtype_to_typecode(acc_dtype))
