@@ -1494,6 +1494,7 @@ class GpuDnnPool(DnnBase):
 
     def make_node(self, img, ws, stride, pad):
         img = as_cuda_ndarray_variable(img)
+        assert (img.ndim in [4, 5])
         
         ws = tensor.as_tensor_variable(ws)
         stride = tensor.as_tensor_variable(stride)
@@ -1511,7 +1512,7 @@ class GpuDnnPool(DnnBase):
         ret = [shape[0][0], shape[0][1],
                (shape[0][2] + 2 * p[0] - w[0]) // s[0] + 1,
                (shape[0][3] + 2 * p[1] - w[1]) // s[1] + 1]
-        if w.type.ndim == 3:
+        if node.inputs[0].ndim == 5:
             ret.append((shape[0][4] + 2 * p[2] - w[2]) // s[2] + 1)
         return [ret]
 
@@ -1641,7 +1642,7 @@ if (err != CUDNN_STATUS_SUCCESS) {
 """ % dict(out=out, fail=sub['fail'],
            name=name, input=inputs[0],
            ws=ws, pad=pad, str=stride,
-           nd=2, input_desc="input"+name,
+           nd=node.inputs[0].ndim-2, input_desc="input"+name,
            output_desc="output"+name,
            mode_flag=mode_flag)
 
