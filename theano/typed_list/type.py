@@ -3,7 +3,7 @@ from theano import gof
 
 class TypedListType(gof.Type):
     """
-   
+
     Parameters
     ----------
     ttype
@@ -15,10 +15,10 @@ class TypedListType(gof.Type):
     """
 
     def __init__(self, ttype, depth=0):
-       
+
         if depth < 0:
             raise ValueError('Please specify a depth superior or'
-                            'equal to 0')
+                             'equal to 0')
         if not isinstance(ttype, gof.Type):
             raise TypeError('Expected a Theano Type')
 
@@ -58,7 +58,7 @@ class TypedListType(gof.Type):
         Two lists are equal if they contain the same type.
 
         """
-        return  type(self) == type(other) and self.ttype == other.ttype
+        return type(self) == type(other) and self.ttype == other.ttype
 
     def __hash__(self):
         return gof.hashtype(self) ^ hash(self.ttype)
