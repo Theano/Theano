@@ -133,9 +133,9 @@ class DnnBase(COp):
     # dnn does not know about broadcasting, so we do not need to assert
     # the input broadcasting pattern.
     check_broadcast = False
-    context_type = gpu_context_type
+    params_type = gpu_context_type
 
-    def get_context(self, node):
+    def get_params(self, node):
         return node.outputs[0].type.context
 
     def __init__(self, files=None, c_func=None):

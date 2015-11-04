@@ -585,22 +585,22 @@ class CLinker(link.Linker):
         self.variables = [var for var in self.inputs if not len(var.clients)]
         self.variables += graph.variables(self.inputs, self.outputs)
 
-        # This adds a hidden input which is the context for each node
+        # This adds a hidden input which is the params for each node
         # that needs it
-        self.contexts = dict()
+        self.node_params = dict()
         for node in self.node_order:
-            ctx = node.run_context()
-            if ctx is not graph.NoContext:
+            params = node.run_params()
+            if params is not graph.NoParams:
                 # try to avoid creating more than one variable for the
-                # same context.
-                if ctx in self.contexts:
-                    var = self.contexts[ctx]
-                    assert var.type == node.context_type
-                    var.clients.append((node, 'context'))
+                # same params.
+                if params in self.node_params:
+                    var = self.node_params[params]
+                    assert var.type == node.params_type
+                    var.clients.append((node, 'params'))
                 else:
-                    var = graph.Constant(node.context_type, ctx)
-                    var.clients = [(node, 'context')]
-                    self.contexts[ctx] = var
+                    var = graph.Constant(node.params_type, params)
+                    var.clients = [(node, 'params')]
+                    self.node_params[params] = var
                     self.variables.append(var)
 
         # The orphans field is listified to ensure a consistent order.
@@ -743,9 +743,9 @@ class CLinker(link.Linker):
 
             sub = dict(failure_var=failure_var)
 
-            ctx = node.run_context()
-            if ctx is not graph.NoContext:
-                context_var = symbol[self.contexts[ctx]]
+            params = node.run_params()
+            if params is not graph.NoParams:
+                params_var = symbol[self.node_params[params]]
 
             # The placeholder will be replaced by a hash of the entire
             # code (module + support code) in DynamicModule.code.
@@ -761,16 +761,16 @@ class CLinker(link.Linker):
             # Make the CodeBlock for c_code
             sub['id'] = id
             sub['fail'] = failure_code(sub)
-            if ctx is not graph.NoContext:
-                sub['context'] = context_var
+            if params is not graph.NoParams:
+                sub['params'] = params_var
 
             sub_struct = dict()
             sub_struct['id'] = id + 1
             sub_struct['fail'] = failure_code_init(sub)
-            if ctx is not graph.NoContext:
-                # Since context inputs are always constants they are
+            if params is not graph.NoParams:
+                # Since params inputs are always constants they are
                 # guaranteed to be available in the struct init code.
-                sub_struct['context'] = context_var
+                sub_struct['params'] = params_var
 
             struct_support = ""
             struct_init = ""

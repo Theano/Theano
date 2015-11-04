@@ -33,6 +33,7 @@ a C implementation.
     other_ops
     ctype
     cop
+    using_params
     optimization
     tips
     unittest

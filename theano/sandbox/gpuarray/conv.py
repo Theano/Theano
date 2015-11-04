@@ -135,7 +135,7 @@ class GpuConv(GpuKernelBase, gof.Op):
         out = GpuArrayType(img.dtype, broadcastable, context_name=ctx_name)()
         return gof.Apply(self, [img, kern], [out])
 
-    def get_context(self, node):
+    def get_params(self, node):
         return node.inputs[0].type.context
 
     def flops(self, inputs, outputs):

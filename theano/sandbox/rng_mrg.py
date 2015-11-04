@@ -771,7 +771,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
     # GpuArray version
     _f16_ok = True
 
-    def get_context(self, node):
+    def get_params(self, node):
         return node.inputs[0].type.context
 
     @classmethod
@@ -1014,7 +1014,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (7, self.GpuKernelBase_version)
+        return (7,)
 
 
 def guess_n_streams(size, warn=False):

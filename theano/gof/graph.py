@@ -22,7 +22,7 @@ __docformat__ = "restructuredtext en"
 is_same_graph_with_merge = None
 equal_computations = None
 
-NoContext = object()
+NoParams = object()
 
 
 class Node(utils.object2):
@@ -123,14 +123,14 @@ class Apply(Node):
             else:
                 raise TypeError("The 'outputs' argument to Apply must contain Variable instances with no owner, not %s" % output)
 
-    def run_context(self):
+    def run_params(self):
         """
-        Returns the context for the node, or NoContext if no context is set.
+        Returns the params for the node, or NoParams if no params is set.
 
         """
-        if hasattr(self.op, 'get_context'):
-            return self.op.get_context(self)
-        return NoContext
+        if hasattr(self.op, 'get_params'):
+            return self.op.get_params(self)
+        return NoParams
 
     def __getstate__(self):
         d = self.__dict__
@@ -263,7 +263,7 @@ class Apply(Node):
     Property: Number of outputs.
 
     """
-    context_type = property(lambda self: self.op.context_type, doc='type to use for the context')
+    params_type = property(lambda self: self.op.params_type, doc='type to use for the params')
 
 
 class Variable(Node):
