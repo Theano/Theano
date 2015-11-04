@@ -4026,6 +4026,10 @@ class T_Tile(unittest.TestCase):
                 assert len(topo) == 1
                 assert isinstance(topo[0].op, compile.DeepCopyOp)
                 f(data)
+                
+                # Check that stacktrace is copied over
+                self.assertTrue(hasattr(f.outputs[0].variable.tag, 'trace'))
+                self.assertTrue(len(f.outputs[0].variable.tag.trace)>0)
 
 
 def speed_local_pow_specialize_range():
@@ -5711,6 +5715,7 @@ def test_local_join_empty():
                 for n in e if isinstance(n.op, Join)])
     assert f.maker.fgraph.outputs[0].dtype == config.floatX
 
+
     # test for matrix join(1,a)
     empty_mat = numpy.asarray([[]], dtype=config.floatX)
     m = tensor.matrix('m')
@@ -5723,7 +5728,6 @@ def test_local_join_empty():
     assert all([not isinstance(n.op, Join) or len(n.inputs) == 4
                 for n in e if isinstance(n.op, Join)])
     assert f.maker.fgraph.outputs[0].dtype == config.floatX
-
     # test for vector, vector, empty to matrix
     # We can't optimize this case.
     s = tensor.stack([a, a, empty_vec])
@@ -5735,7 +5739,6 @@ def test_local_join_empty():
     assert all([not isinstance(n.op, Join) or len(n.inputs) == 4
                 for n in e if isinstance(n.op, Join)])
     assert f.maker.fgraph.outputs[0].dtype == config.floatX
-
     # test for matrix join(0,a)
     # We can't optimize this case.
     s = join(0, m, numpy.asarray([[2.]], dtype=config.floatX), m)
@@ -5747,6 +5750,20 @@ def test_local_join_empty():
     assert all([not isinstance(n.op, Join) or len(n.inputs) == 4
                 for n in e if isinstance(n.op, Join)])
     assert f.maker.fgraph.outputs[0].dtype == config.floatX
+    
+    # Julian: we can enable the following test, once we 
+    # remove default optimizations.
+    # When we set optimizer=None, no optimizations should be applied,
+    # but that's not the case now...
+    
+    # test that optimizations keep stack trace
+    #mode = theano.compile.mode.Mode(optimizer=None).including('canonicalize_db').including("local_join_empty")
+    #empty_mat = numpy.asarray([[]], dtype=config.floatX)
+    #m = tensor.matrix('m')
+    #s = join(1, empty_mat, m, m, m)
+    #f = function([m], s, mode=mode)
+    #assert hasattr(f.outputs[0].variable.tag, 'trace')
+    #assert len(f.outputs[0].variable.tag.trace) > 0
 
 
 def test_local_join_make_vector():
@@ -5763,6 +5780,10 @@ def test_local_join_make_vector():
     assert all([not isinstance(n.op, Join) or len(n.inputs) == 4
                 for n in e if isinstance(n.op, Join)])
     assert f.maker.fgraph.outputs[0].dtype == config.floatX
+
+
+    print(f.outputs[0].variable.tag)
+    print(f.outputs[0].variable.tag.trace)
 
 
 def test_local_add_specialize():
@@ -5863,6 +5884,12 @@ def test_local_useless_split():
     assert isinstance(graph_opt[-1].op, DeepCopyOp)
     assert len(graph_nonopt)==1
     assert isinstance(graph_nonopt[0].op, tensor.Split)
+
+    # Check that stacktraces have been copied over properly
+    assert hasattr(f_opt.outputs[0].variable.tag, 'trace')
+    assert len(f_opt.outputs[0].variable.tag.trace) > 0
+    assert hasattr(f_nonopt.outputs[0].variable.tag, 'trace')
+    assert len(f_nonopt.outputs[0].variable.tag.trace) > 0
 
 
 def test_local_flatten_lift():
