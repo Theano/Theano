@@ -155,8 +155,8 @@ class BaseAbstractConv2d(Op):
                 '"valid", "full", "half", an integer or a pair of'
                 ' integers'.format(border_mode))
 
-        self.imshp = imshp
-        self.kshp = kshp
+        self.imshp = tuple(imshp) if imshp else None
+        self.kshp = tuple(kshp) if kshp else None
         self.border_mode = border_mode
         self.filter_flip = filter_flip
 
