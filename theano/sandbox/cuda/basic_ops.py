@@ -92,7 +92,7 @@ class HostFromGpu(GpuOp):
 
     def R_op(self, inputs, eval_points):
         ev, = eval_points
-        return self(ev)
+        return [self(ev)]
 
     def infer_shape(self, node, xshp):
         return xshp
@@ -152,7 +152,7 @@ class GpuFromHost(GpuOp):
 
     def R_op(self, inputs, eval_points):
         ev, = eval_points
-        self(ev)
+        [self(ev)]
 
     def infer_shape(self, node, xshp):
         return xshp
