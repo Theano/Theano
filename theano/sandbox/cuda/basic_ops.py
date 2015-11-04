@@ -2888,7 +2888,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         out[0] = x
 
     def c_code_cache_version(self):
-        return (5,)
+        return (6,)
 
     def c_code(self, node, name, inputs, outputs, sub):
         if (self.set_instead_of_inc) or \
@@ -2951,7 +2951,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
              } else {
                  y_rowind_obj = PyInt_FromLong(j);
              }
-             row_y = CudaNdarray_Subscript(py_%(y)s, y_rowind_obj);
+             row_y = CudaNdarray_Subscript((PyObject*)%(y)s, y_rowind_obj);
 
              if (row_y == NULL) {
                   Py_XDECREF(row_y);
@@ -3302,7 +3302,7 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
 
         return """
         PyObject * add_result = CudaNdarray_inplace_add((PyObject *) zview,
-                                                        (PyObject *) py_%(x)s);
+                                                        (PyObject *) %(x)s);
 
         if (! add_result )
         {
@@ -3318,7 +3318,7 @@ class GpuIncSubtensor(tensor.IncSubtensor, GpuOp):
     def c_code_cache_version(self):
         parent_version = super(GpuIncSubtensor, self).c_code_cache_version()
         if parent_version:
-            return parent_version + (1,)
+            return parent_version + (2,)
         return ()
 
 
