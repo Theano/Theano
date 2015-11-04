@@ -380,8 +380,7 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
         tensor.verify_grad(oplike, [x_val], rng=numpy.random)
 
-        # see issue gh-788
-    def est_infer_shape(self):
+    def test_infer_shape(self):
         admat = matrix()
         alvec = lvector()
         rng = numpy.random.RandomState(utt.fetch_seed())
@@ -535,8 +534,6 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         # for node in fgraph.toposort():
         #    print node.op, node.inputs
 
-        # the function has 9 ops because the dimshuffle and lemwise{second}
-        # aren't getting cleaned up as well as we'd like.
         has_cx1hot = False
         has_cx1hotdx = False
         has_softmax = False
@@ -550,9 +547,9 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 has_softmax = True
             if node.op == softmax_grad:
                 has_softmaxdx = True
-        assert has_cx1hot
+        assert not has_cx1hot
         assert has_cx1hotdx
-        assert not has_softmax
+        assert has_softmax
         assert not has_softmaxdx
 
     def test_softmax_grad_optimizations_vector(self):
@@ -577,8 +574,6 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
         # for node in fgraph.toposort():
         #    print node.op, node.inputs
 
-        # the function has 9 ops because the dimshuffle and elemwise{second}
-        # aren't getting cleaned up as well as we'd like.
         has_cx1hot = False
         has_cx1hotdx = False
         has_softmax = False
@@ -592,9 +587,9 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
                 has_softmax = True
             if node.op == softmax_grad:
                 has_softmaxdx = True
-        assert has_cx1hot
+        assert not has_cx1hot
         assert has_cx1hotdx
-        assert not has_softmax
+        assert has_softmax
         assert not has_softmaxdx
 
     def test_get_rid_of_advanced_indexing_version_of_xent(self):
@@ -1129,10 +1124,10 @@ class T_CrossentropyCategorical1Hot(utt.InferShapeTester):
 
 def test_argmax_pushdown():
     x = tensor.matrix()
-    for softmax in [softmax_graph, softmax_op]:
+    for sm in [softmax_graph, softmax_op]:
         # test that the max_and_argmax is pushed down if the max is not used
         out = tensor.max_and_argmax(
-                softmax(tensor.exp(tensor.tanh(sigmoid(x)))),
+                sm(tensor.exp(tensor.tanh(sigmoid(x)))),
                 axis=-1)[1]
         fgraph = gof.FunctionGraph(
                 [x],
@@ -1149,7 +1144,7 @@ def test_argmax_pushdown():
         x = tensor.matrix()
         # test that the max_and_argmax is not pushed down if the max is used
         out = tensor.max_and_argmax(
-                softmax(tensor.exp(tensor.tanh(sigmoid(x)))),
+                sm(tensor.exp(tensor.tanh(sigmoid(x)))),
                 axis=-1)[0]
         fgraph = gof.FunctionGraph(
                 [x],
@@ -1425,12 +1420,12 @@ def test_relu():
     X = rng.randn(20, 30).astype(config.floatX)
 
     # test the base case, without custom alpha value
-    y = theano.tensor.nnet.relu(x).eval({x: X})
+    y = relu(x).eval({x: X})
     assert numpy.allclose(y, numpy.maximum(X, 0))
 
     # test for different constant alpha values (also outside of [0, 1])
     for alpha in 0, 0.3, 1, 2, -0.3, -1, -2:
-        y = theano.tensor.nnet.relu(x, alpha).eval({x: X})
+        y = relu(x, alpha).eval({x: X})
         assert numpy.allclose(y, numpy.where(X > 0, X, alpha * X))
 
     # test for variable alpha (scalar, vector and matrix)
@@ -1438,7 +1433,7 @@ def test_relu():
         # create value for alpha (correct ndim and broadcastable against X)
         A = numpy.array(rng.randn(*X.shape[::-1][:alpha.ndim][::-1]),
                         dtype=config.floatX)
-        y = theano.tensor.nnet.relu(x, alpha).eval({x: X, alpha: A})
+        y = relu(x, alpha).eval({x: X, alpha: A})
         assert numpy.allclose(y, numpy.where(X > 0, X, A * X), rtol=3e-5)
 
 
