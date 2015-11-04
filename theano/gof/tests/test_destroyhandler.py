@@ -147,7 +147,6 @@ def test_misc():
     e = transpose_view(transpose_view(transpose_view(transpose_view(x))))
     g = Env([x, y, z], [e])
     consistent(g)
-    chk = g.checkpoint()
     PatternOptimizer((transpose_view, (transpose_view, 'x')), 'x').optimize(g)
     assert str(g) == "[x]"
     new_e = add(x, y)
@@ -156,9 +155,6 @@ def test_misc():
     g.replace(new_e, dot(add_in_place(x, y), transpose_view(x)))
     assert str(g) == "[Dot(AddInPlace(x, y), TransposeView(x))]"
     inconsistent(g)
-    g.revert(chk)
-    consistent(g)
-    assert str(g) == "[TransposeView(TransposeView(TransposeView(TransposeView(x))))]"
 
 
 ######################
@@ -213,7 +209,6 @@ def test_destroyers_loop():
     e1 = add(x, y)
     e2 = add(y, x)
     g = Env([x, y, z], [e1, e2])
-    chk = g.checkpoint()
     consistent(g)
     g.replace_validate(e1, add_in_place(x, y))
     consistent(g)
@@ -223,7 +218,12 @@ def test_destroyers_loop():
     except InconsistencyError:
         pass
     consistent(g)
-    g.revert(chk)
+
+    x, y, z = inputs()
+    e1 = add(x, y)
+    e2 = add(y, x)
+    g = Env([x, y, z], [e1, e2])
+    consistent(g)
     g.replace_validate(e2, add_in_place(y, x))
     consistent(g)
     try:
