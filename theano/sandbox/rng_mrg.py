@@ -445,7 +445,9 @@ class mrg_uniform(mrg_uniform_base):
             }
         }
         Py_XDECREF(%(o_rstate)s);
-        %(o_rstate)s = (PyArrayObject*)PyArray_FromAny(py_%(rstate)s, NULL, 0, 0, %(o_rstate_requirement)s,NULL);
+        %(o_rstate)s = (PyArrayObject*)PyArray_FromAny(
+            (PyObject*)%(rstate)s,
+            NULL, 0, 0, %(o_rstate_requirement)s,NULL);
 
         if (PyArray_NDIM(%(o_rstate)s) != 2)
         {
@@ -526,7 +528,7 @@ class mrg_uniform(mrg_uniform_base):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
 
 class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
@@ -655,7 +657,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         int n_elements = 1;
         int n_streams, n_streams_used_in_this_call;
         int must_alloc_sample = ((NULL == %(o_sample)s)
-                || !CudaNdarray_Check(py_%(o_sample)s)
+                || !CudaNdarray_Check((PyObject*)%(o_sample)s)
                 || !CudaNdarray_is_c_contiguous(%(o_sample)s)
                 || (CudaNdarray_NDIM(%(o_sample)s) != %(ndim)s));
 
@@ -691,7 +693,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
                 %(fail)s;
             }
         }
-        if (!CudaNdarray_Check(py_%(rstate)s))
+        if (!CudaNdarray_Check((PyObject*)%(rstate)s))
         {
             PyErr_Format(PyExc_ValueError, "rstate must be cudandarray");
             %(fail)s;
@@ -764,7 +766,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (9,)
+        return (10,)
 
 
 class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
@@ -913,7 +915,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         unsigned int n_elements = 1;
         unsigned int n_streams;
         int must_alloc_sample = ((NULL == %(o_sample)s)
-                || !pygpu_GpuArray_Check(py_%(o_sample)s)
+                || !pygpu_GpuArray_Check((PyObject*)%(o_sample)s)
                 || !(%(o_sample)s->ga.flags & GA_C_CONTIGUOUS)
                 || (PyGpuArray_NDIM(%(o_sample)s) != %(ndim)s));
 
@@ -950,7 +952,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
                 %(fail)s;
             }
         }
-        if (!pygpu_GpuArray_Check(py_%(rstate)s))
+        if (!pygpu_GpuArray_Check((PyObject*)%(rstate)s))
         {
             PyErr_Format(PyExc_ValueError, "rstate must be gpuarray");
             %(fail)s;
