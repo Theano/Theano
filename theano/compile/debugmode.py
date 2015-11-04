@@ -764,7 +764,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
                 outer_id_str = get_id_str(outer_r.owner)
             else:
                 outer_id_str = get_id_str(outer_r)
-            print('%s%s %s%s -> %s' % (prefix, r, id_str, type_str,
+            print('%s%s %s%s -> %s' % (prefix, r.__str_name__(), id_str, type_str,
                                        outer_id_str), file=file)
         else:
             # this is an input variable
@@ -772,7 +772,7 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
             if smap:
                 data = " " + str(smap.get(r, ''))
             id_str = get_id_str(r)
-            print('%s%s %s%s%s' % (prefix, r, id_str,
+            print('%s%s %s%s%s' % (prefix, r.__str_name__(), id_str,
                                    type_str, data),
                   file=file)
 

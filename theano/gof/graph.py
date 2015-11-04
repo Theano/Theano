@@ -12,6 +12,7 @@ from copy import copy
 from itertools import count
 
 import theano
+from theano import config
 from theano.gof import utils
 from six import string_types, integer_types, iteritems
 from theano.misc.ordered_set import OrderedSet
@@ -395,6 +396,17 @@ class Variable(Node):
         WRITEME
 
         """
+        if config.print_test_value_by_default:
+            if self.__get_test_value__() is not None:
+                return '\n'.join([self.__str_name__(),
+                                 self.__get_test_value__()])
+        return self.__str_name__()
+
+    def __str_name__(self):
+        """
+        WRITEME
+
+        """
         if self.name is not None:
             return self.name
         if self.owner is not None:
@@ -405,6 +417,12 @@ class Variable(Node):
                 return str(self.owner.op) + "." + str(self.index)
         else:
             return "<%s>" % str(self.type)
+
+    def __get_test_value__(self):
+        try:
+            return repr(self.tag.test_value)
+        except AttributeError:
+            return None
 
     def __repr__(self):
         return str(self)

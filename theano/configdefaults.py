@@ -644,6 +644,14 @@ AddConfigVar(
     in_c_key=False)
 
 
+AddConfigVar(
+    'print_test_value_by_default',
+    ("If 'True', Theano will override the '__str__' method of its "
+     "variables to also print the tag.test_value when this is available."),
+    BoolParam(False),
+    in_c_key=False)
+
+
 AddConfigVar('compute_test_value_opt',
              ("For debugging Theano optimization only."
               " Same as compute_test_value, but is used"
