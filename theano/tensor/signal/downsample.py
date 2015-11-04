@@ -1,4 +1,4 @@
-""" 
+"""
 Ops for downsampling images.
 
 Planned:
@@ -87,10 +87,11 @@ def max_pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
                       " ignore_border=False)",
                       stacklevel=2)
         ignore_border = False
+    if st is None:
+        st = ds
     if input.ndim == 4:
-        op = DownsampleFactorMax(ds, ignore_border, st=st, padding=padding,
-                                 mode=mode)
-        output = op(input)
+        op = DownsampleFactorMax(ignore_border, mode=mode)
+        output = op(input, ds, st, padding)
         return output
 
     # extract image dimensions
@@ -107,9 +108,8 @@ def max_pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
     input_4D = tensor.reshape(input, new_shape, ndim=4)
 
     # downsample mini-batch of images
-    op = DownsampleFactorMax(ds, ignore_border, st=st, padding=padding,
-                             mode=mode)
-    output = op(input_4D)
+    op = DownsampleFactorMax(ignore_border, mode=mode)
+    output = op(input_4D, ds, st, padding)
 
     # restore to original shape
     outshp = tensor.join(0, input.shape[:-2], output.shape[-2:])
@@ -226,40 +226,48 @@ class DownsampleFactorMax(Op):
         rval = list(imgshape[:-2]) + [nr, nc]
         return rval
 
-    def __init__(self, ds, ignore_border=False, st=None, padding=(0, 0),
-                 mode='max'):
-        self.ds = tuple(ds)
-        if not all([isinstance(d, int) for d in ds]):
-            raise ValueError(
-                "DownsampleFactorMax downsample parameters must be ints."
-                " Got %s" % str(ds))
-        if st is None:
-            st = ds
-        assert isinstance(st, (tuple, list))
-        self.st = tuple(st)
+    def __init__(self, ignore_border=False, mode='max'):
+
         self.ignore_border = ignore_border
-        self.padding = tuple(padding)
-        if self.padding != (0, 0) and not ignore_border:
-            raise NotImplementedError(
-                'padding works only with ignore_border=True')
-        if self.padding[0] >= self.ds[0] or self.padding[1] >= self.ds[1]:
-            raise NotImplementedError(
-                'padding_h and padding_w must be smaller than strides')
         if mode not in ['max', 'average_inc_pad', 'average_exc_pad', 'sum']:
             raise ValueError(
                 "DownsampleFactorMax mode parameter only support 'max', 'sum',"
                 " 'average_inc_pad' and 'average_exc_pad'. Got %s" % mode)
         self.mode = mode
 
-    def make_node(self, x):
+    def make_node(self, x, ds, st, padding):
+        if st is None:
+            st = ds
+        self.ds = tuple(ds)
+        assert isinstance(st, (tuple, list))
+        self.st = tuple(st)
+        self.padding = tuple(padding)
+
         if x.type.ndim != 4:
             raise TypeError()
         # TODO: consider restricting the dtype?
         x = tensor.as_tensor_variable(x)
+        self.ds = tensor.as_tensor_variable(self.ds)
+        self.ds = self.ds.astype(theano.scalar.upcast("intp", self.ds.dtype))
+        self.st = tensor.as_tensor_variable(self.st)
+        self.st = self.st.astype(theano.scalar.upcast("intp", self.st.dtype))
+        self.padding = tensor.as_tensor_variable(self.padding)
+        self.padding = self.padding.astype(theano.scalar.upcast("intp", self.padding.dtype))
+
+        # TODO: not sure how to check error in symbolic mode
+        # if (self.padding.eval() != (0, 0)).all() and not self.ignore_border:
+        #     raise NotImplementedError(
+        #         'padding works only with ignore_border=True')
+
+        # if self.padding[0].eval() >= self.ds[0].eval() or self.padding[1].eval() >= self.ds[1].eval():
+        # if tensor.gt(1, 0):
+        #     raise NotImplementedError(
+        #         'padding_h and padding_w must be smaller than strides')
+
         # If the input shape are broadcastable we can have 0 in the output shape
         broad = x.broadcastable[:2] + (False, False)
         out = tensor.TensorType(x.dtype, broad)
-        return gof.Apply(self, [x], [out()])
+        return gof.Apply(self, [x, self.ds, self.st, self.padding], [out()])
 
     def perform(self, node, inp, out):
         x, = inp
@@ -893,7 +901,7 @@ class DownsampleFactorMaxGradGrad(Op):
         """
         Return the shape of the output from this op, for input of given
         shape and flags.
-        
+
         Parameters
         ----------
         imgshape : tuple, list, or similar of integer or scalar Theano variable
