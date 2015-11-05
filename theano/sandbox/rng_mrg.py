@@ -904,6 +904,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         ndim = self.output_type.ndim
         o_type_num = numpy.asarray(0, dtype=self.output_type.dtype).dtype.num
         fail = sub['fail']
+        ctx = sub['params']
         kname = self.gpu_kernels(node, nodename)[0].objvar
         otypecode = str(self.output_type.typecode)
 
@@ -943,7 +944,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         {
             Py_XDECREF(%(o_sample)s);
             %(o_sample)s = pygpu_empty(%(ndim)s, odims, %(otypecode)s, GA_C_ORDER,
-                                       pygpu_default_context(), Py_None);
+                                       %(ctx)s, Py_None);
             if(!%(o_sample)s)
             {
                 %(fail)s;
@@ -1014,7 +1015,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (7,)
+        return (8,)
 
 
 def guess_n_streams(size, warn=False):
