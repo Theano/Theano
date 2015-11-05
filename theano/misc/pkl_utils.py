@@ -63,7 +63,7 @@ class StripPickler(Pickler):
             if hasattr(obj, 'test_value'):
                 del obj.test_value
             # The next 4 items are from Blocks
-            if hasattr(obj, 'annontations'):
+            if hasattr(obj, 'annotations'):
                 del obj.annontations
             if hasattr(obj, 'replacement_of'):
                 del obj.replacement_of
