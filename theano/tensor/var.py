@@ -375,8 +375,8 @@ class _tensor_py_operators(object):
         If `target` is `'cpu'` this will transfer to a TensorType (if
         not already one).  Other types may define additional targets.
 
-        Paramters
-        ---------
+        Parameters
+        ----------
         target : str
             The desired location of the output variable
         """

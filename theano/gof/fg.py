@@ -289,17 +289,16 @@ class FunctionGraph(utils.object2):
 
         Parameters
         ----------
-        r
-            Variable.
-        clients_to_remove
+        r : Variable
+            The clients of r will be removed.
+        clients_to_remove : List of (op, i) pairs
             List of (op, i) pairs such that node.inputs[i] is not r anymore.
-        prune
+        prune : bool
             If prune is True, it remove r from this fgraph if it don't
             have clients left.
 
         Returns
         -------
-
         True if r is still in the fgraph and need to be pruned
         later. This can happen only when prune is False. A second call
         to this method with an empty list for clients_to_remove and
@@ -491,7 +490,6 @@ class FunctionGraph(utils.object2):
             assert node.fgraph is self
             self.execute_callbacks('on_import', node, reason)
 
-
     # change input #
     def change_input(self, node, i, new_r, reason=None):
         """
@@ -536,7 +534,7 @@ class FunctionGraph(utils.object2):
         # transaction will be reverted later.
         self.execute_callbacks('on_change_input', node, i,
                                r, new_r, reason=reason)
-        prune = self.__remove_clients__(r, [], True)
+        self.__remove_clients__(r, [], True)
 
     # replace #
     def replace(self, r, new_r, reason=None, verbose=None):
