@@ -534,7 +534,8 @@ class FunctionGraph(utils.object2):
         # transaction will be reverted later.
         self.execute_callbacks('on_change_input', node, i,
                                r, new_r, reason=reason)
-        self.__remove_clients__(r, [], True)
+        if prune:
+            self.__remove_clients__(r, [], True)
 
     # replace #
     def replace(self, r, new_r, reason=None, verbose=None):
