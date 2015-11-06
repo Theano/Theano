@@ -2,7 +2,6 @@ from __future__ import print_function
 import time
 
 from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 import numpy
 
 import theano
@@ -10,6 +9,7 @@ import theano.tensor as T
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import conv
 from theano.tensor.basic import _allclose, NotScalarConstantError
+from theano.tests.unittest_tools import attr
 
 
 class TestConv2D(utt.InferShapeTester):

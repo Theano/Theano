@@ -25,8 +25,9 @@ process.
 Creating a ProfileMode Instance
 -------------------------------
 
-First create a ProfileMode instance. 
+First create a ProfileMode instance.
 
+>>> import theano
 >>> from theano import ProfileMode
 >>> profmode = theano.ProfileMode(optimizer='fast_run', linker=theano.gof.OpWiseCLinker())
 
@@ -62,6 +63,12 @@ Compiling your Graph with ProfileMode
 Once the ProfileMode instance is created, simply compile your graph as you
 would normally, by specifying the mode parameter.
 
+.. testsetup::
+
+   import theano
+   input1, input2 = theano.tensor.scalars(2)
+   output1 = input1+input2
+
 >>> # with functions
 >>> f = theano.function([input1,input2],[output1], mode=profmode)
 
@@ -76,13 +83,13 @@ of its time.
 This is best shown through an example.
 Lets use the example of logistic
 regression.  (Code for this example is in the file
-``benchmark/regression/regression.py``.) 
+``benchmark/regression/regression.py``.)
 
 Compiling the module with ProfileMode and calling ``profmode.print_summary()``
 generates the following output:
 
 .. code-block:: python
-    
+
     """
     ProfileMode.print_summary()
     ---------------------------
@@ -141,7 +148,7 @@ generates the following output:
     The Apply-wise summary print the timing information for the worst
     offending Apply nodes. This corresponds to individual Op applications
     within your graph which take the longest to execute (so if you use dot
-    twice, you will see two entries there). 
+    twice, you will see two entries there).
 
     The Op-wise summary print the execution time of all Apply nodes
     executing the same Op are grouped together and the total execution
@@ -186,7 +193,7 @@ Reference
 
         Print three summaries to stdout that show where cpu time is spent during theano function executions (for all functions using this object instance).
 
-        :param n_apply_to_print: the number of apply nodes to print. 
+        :param n_apply_to_print: the number of apply nodes to print.
            The default 15, but can be configured via ``ProfileMode.n_ops_to_print`` in :envvar:`THEANO_FLAGS`.
 
         :param n_ops_to_print: the number of ops to print.
@@ -198,10 +205,10 @@ Reference
         """ As print_summary, but print the difference on two different profile mode.
         TODO: Also we don't print the Apply-wise summary as it don't work for now.
         TODO: make comparaison with gpu code.
-        
+
         :param other: the other instance of ProfileMode that we want to be compared to.
-        
-        :param n_apply_to_print: the number of apply nodes to print. 
+
+        :param n_apply_to_print: the number of apply nodes to print.
            The default 15, but can be configured via ``ProfileMode.n_ops_to_print`` in :envvar:`THEANO_FLAGS`.
 
         :param n_ops_to_print: the number of ops to print.

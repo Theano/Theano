@@ -23,17 +23,19 @@ Here is the code to compute this gradient:
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_examples.test_examples_4
 
->>> from theano import pp
+>>> import theano
+>>> import theano.tensor as T
+>>> from theano import pp 
 >>> x = T.dscalar('x')
 >>> y = x ** 2
 >>> gy = T.grad(y, x)
 >>> pp(gy)  # print out the gradient prior to optimization
-'((fill((x ** 2), 1.0) * 2) * (x ** (2 - 1)))'
->>> f = function([x], gy)
+'((fill((x ** TensorConstant{2}), TensorConstant{1.0}) * TensorConstant{2}) * (x ** (TensorConstant{2} - TensorConstant{1})))'
+>>> f = theano.function([x], gy)
 >>> f(4)
 array(8.0)
 >>> f(94.2)
-array(188.40000000000001)
+array(188.4)
 
 In this example, we can see from ``pp(gy)`` that we are computing
 the correct symbolic gradient.
@@ -44,7 +46,7 @@ the correct symbolic gradient.
     The optimizer simplifies the symbolic gradient expression.  You can see
     this by digging inside the internal properties of the compiled function.
 
-    .. code-block:: python
+    .. testcode::
 
         pp(f.maker.fgraph.outputs[0])
         '(2.0 * x)'
@@ -68,7 +70,7 @@ logistic is: :math:`ds(x)/dx = s(x) \cdot (1 - s(x))`.
 >>> x = T.dmatrix('x')
 >>> s = T.sum(1 / (1 + T.exp(-x)))
 >>> gs = T.grad(s, x)
->>> dlogistic = function([x], gs)
+>>> dlogistic = theano.function([x], gs)
 >>> dlogistic([[0, 1], [-1, -2]])
 array([[ 0.25      ,  0.19661193],
        [ 0.19661193,  0.10499359]])
@@ -117,10 +119,12 @@ do is to loop over the entries in *y* and compute the gradient of
     effort is being done for improving the performance of ``scan``. We 
     shall return to :ref:`scan<tutloop>` later in this tutorial.
 
+>>> import theano
+>>> import theano.tensor as T
 >>> x = T.dvector('x')
 >>> y = x ** 2
 >>> J, updates = theano.scan(lambda i, y,x : T.grad(y[i], x), sequences=T.arange(y.shape[0]), non_sequences=[y,x])
->>> f = function([x], J, updates=updates)
+>>> f = theano.function([x], J, updates=updates)
 >>> f([4, 4])
 array([[ 8.,  0.],
        [ 0.,  8.]])
@@ -154,13 +158,12 @@ difference is that now, instead of computing the Jacobian of some expression
 *y*, we compute the Jacobian of ``T.grad(cost,x)``, where *cost* is some
 scalar. 
 
-
 >>> x = T.dvector('x')
 >>> y = x ** 2
 >>> cost = y.sum()
 >>> gy = T.grad(cost, x)
 >>> H, updates = theano.scan(lambda i, gy,x : T.grad(gy[i], x), sequences=T.arange(gy.shape[0]), non_sequences=[gy, x])
->>> f = function([x], H, updates=updates)
+>>> f = theano.function([x], H, updates=updates)
 >>> f([4, 4])
 array([[ 2.,  0.],
        [ 0.,  2.]])
@@ -195,7 +198,6 @@ expressions in terms of weight matrices, Theano supports this more generic
 form of the operation. In order to evaluate the *R-operation* of
 expression *y*, with respect to *x*, multiplying the Jacobian with *v*
 you need to do something similar to this:
-
 
 >>> W = T.dmatrix('W')
 >>> V = T.dmatrix('V')
@@ -236,6 +238,7 @@ array([[ 0.,  0.],
     as the input parameter, while the result of the *R-operator* has a shape similar
     to that of the output.
 
+   :ref:`List of op with r op support <R_op_list>`.
 
 Hessian times a Vector
 ======================
@@ -246,7 +249,6 @@ the exact Hessian and then performing the product. Due to the symmetry of the
 Hessian matrix, you have two options that will
 give you the same result, though these options might exhibit differing performances. 
 Hence, we suggest profiling the methods before using either one of the two:
-
 
 >>> x = T.dvector('x')
 >>> v = T.dvector('v')

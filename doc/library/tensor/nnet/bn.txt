@@ -1,0 +1,13 @@
+.. _libdoc_tensor_nnet_bn:
+
+================================
+:mod:`bn` -- Batch Normalization
+================================
+
+.. module:: tensor.nnet.bn
+   :platform: Unix, Windows
+   :synopsis: Batch Normalization
+.. moduleauthor:: LISA
+
+
+.. autofunction:: theano.tensor.nnet.bn.batch_normalization

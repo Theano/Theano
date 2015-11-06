@@ -1,15 +1,12 @@
 import copy
-import theano
 import numpy
+import logging
 from six.moves import xrange
 
-try:
-    import pygpu
-except ImportError:
-    pass
-
+import theano
 from theano import tensor, scalar, gof
 from theano.compile import optdb
+from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB,
                         SequenceDB, Optimizer, toolbox)
 from theano.gof.optdb import LocalGroupDB
@@ -20,14 +17,16 @@ from theano.scan_module import scan_utils, scan_op, scan_opt
 from theano.tensor.nnet.conv import ConvOp
 from theano.tests.breakpoint import PdbBreakpoint
 
-from .type import GpuArrayType, GpuArrayConstant
-from .basic_ops import (as_gpuarray_variable,
-                        host_from_gpu, gpu_from_host,
+from .type import (GpuArrayType, GpuArrayConstant, get_context,
+                   ContextNotDefined)
+from .basic_ops import (as_gpuarray_variable, infer_context_name,
+                        host_from_gpu, GpuToGpu,
                         HostFromGpu, GpuFromHost,
                         GpuSplit, GpuContiguous,
-                        gpu_alloc, GpuAlloc, GpuReshape,
+                        GpuAlloc, GpuAllocEmpty, GpuReshape,
                         GpuEye, gpu_join, GpuJoin)
-from .blas import gpu_dot22, GpuGemv, GpuGemm, GpuGer
+from .blas import (gpu_dot22, GpuGemv, GpuGemm, GpuGer,
+                   gpugemm_no_inplace)
 from .conv import GpuConv
 from .nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
                    GpuCrossentropySoftmax1HotWithBiasDx,
@@ -35,8 +34,12 @@ from .nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
 from .elemwise import (GpuElemwise, GpuDimShuffle, GpuCAReduceCuda,
                        GpuCAReduceCPY)
 from .subtensor import (GpuIncSubtensor, GpuSubtensor,
+                        GpuAdvancedSubtensor1,
                         GpuAdvancedIncSubtensor1,
                         GpuAdvancedIncSubtensor1_dev20)
+from .opt_util import alpha_merge, output_merge
+
+_logger = logging.getLogger("theano.sandbox.gpuarray.opt")
 
 gpu_optimizer = EquilibriumDB()
 gpu_cut_copies = EquilibriumDB()
@@ -72,9 +75,9 @@ gpu_optimizer.register('local_remove_all_assert',
                        'unsafe')
 
 
-def safe_to_gpu(x):
+def safe_to_gpu(x, ctx_name):
     if isinstance(x.type, tensor.TensorType):
-        return gpu_from_host(x)
+        return GpuFromHost(ctx_name)(x)
     else:
         return x
 
@@ -95,28 +98,53 @@ def op_lifter(OP, cuda_only=False):
     """
     def f(maker):
         def local_opt(node):
-            dev = theano.sandbox.gpuarray.init_dev.device
-            if cuda_only and not dev.startswith('cuda'):
-                return
-
             if type(node.op) in OP:
-
                 # Either one of our inputs is on the gpu or
-                # all of our client are on the gpu
-                if (any([i.owner and i.owner.op == host_from_gpu
-                         for i in node.inputs]) or
-                    all([c != 'output' and c.op == gpu_from_host
-                         for c, idx in node.outputs[0].clients])):
-                    new_op = maker(node)
-                    # This is needed as sometimes new_op inherit from OP.
-                    if new_op and new_op != node.op:
-                        if isinstance(new_op, theano.Op):
-                            return [safe_to_cpu(o) for o in
-                                    new_op(*node.inputs, return_list=True)]
-                        elif isinstance(new_op, (tuple, list)):
-                            return [safe_to_cpu(o) for o in new_op]
-                        else:  # suppose it is a variable on the GPU
-                            return [host_from_gpu(new_op)]
+                # all of our clients are on the gpu
+                replace = False
+                # TODO: Maybe set context_name with infer_context_name()?
+                context_name = None
+                # We replace if any input is a host_from_gpu
+                for i in node.inputs:
+                    if i.owner and i.owner.op == host_from_gpu:
+                        context_name = i.owner.inputs[0].type.context_name
+                        replace = True
+                        break
+                if not replace:
+                    # We replace if *all* clients are on the GPU
+                    clients = [c for o in node.outputs for c in o.clients]
+                    replace = len(clients) != 0
+                    for c, idx in clients:
+                        if (c == 'output' or
+                                not isinstance(c.op, GpuFromHost)):
+                            replace = False
+                    # TODO: check that the clients want the same context?
+                    if replace:
+                        # All clients are GpuFromHost and we have at least one
+                        context_name = clients[0][0].op.context_name
+
+                # Check if we should replace
+                if (not replace or
+                    (cuda_only and
+                     get_context(context_name).kind != 'cuda')):
+                    return False
+
+                new_op = maker(node, context_name)
+                # This is needed as sometimes new_op inherits from OP.
+                if new_op and new_op != node.op:
+                    if isinstance(new_op, theano.Op):
+                        # tag the inputs with the context in case
+                        # the context was derived from the outputs
+                        def tag(i, ctx):
+                            i.tag.context_name = ctx
+                            return i
+                        inputs = [tag(i, context_name) for i in node.inputs]
+                        return [safe_to_cpu(o) for o in
+                                new_op(*inputs, return_list=True)]
+                    elif isinstance(new_op, (tuple, list)):
+                        return [safe_to_cpu(o) for o in new_op]
+                    else:  # suppose it is a variable on the GPU
+                        return [host_from_gpu(new_op)]
             return False
         local_opt.__name__ = maker.__name__
         return local_optimizer(OP)(local_opt)
@@ -137,37 +165,83 @@ class InputToGpuOptimizer(Optimizer):
             if isinstance(input.type, GpuArrayType):
                 continue
 
-            if (len(input.clients) == 1 and
-                (input.clients[0][0] == 'output' or
-                 input.clients[0][0].op == gpu_from_host)):
+            # If all clients are outputs or transfers don't do anything.
+            if (all(cl[0] == 'output' or isinstance(cl[0].op, GpuFromHost)
+                    for cl in input.clients)):
                 continue
 
+            ctx_name = getattr(input.tag, 'context_name', None)
             try:
-                new_input = host_from_gpu(gpu_from_host(input))
+                new_input = host_from_gpu(GpuFromHost(ctx_name)(input))
                 fgraph.replace_validate(input, new_input,
                                         "InputToGpuOptimizer")
             except TypeError:
                 # This could fail if the inputs are not TensorTypes
                 pass
+            except ContextNotDefined:
+                if hasattr(input.tag, 'context_name'):
+                    raise
+                # If there is no context tag and no default context
+                # then it stays on the CPU
+                pass
+
 
 gpu_seqopt.register('InputToGpuArrayOptimizer', InputToGpuOptimizer(),
                     0, 'fast_run', 'fast_compile', 'merge')
 
 
-@local_optimizer([gpu_from_host, host_from_gpu])
-def local_cut_gpu_host_gpu(node):
-    if tensor.opt.opt.check_chain(node, gpu_from_host, host_from_gpu):
-        return [node.inputs[0].owner.inputs[0]]
-    if tensor.opt.opt.check_chain(node, host_from_gpu, gpu_from_host):
-        return [node.inputs[0].owner.inputs[0]]
-    return False
-gpu_cut_copies.register('cut_gpua_host_transfers', local_cut_gpu_host_gpu,
+@local_optimizer([GpuFromHost, GpuToGpu, host_from_gpu])
+def local_cut_gpu_transfers(node):
+    # gpu[ab] -> host -> gpub
+    if (isinstance(node.op, GpuFromHost) and
+            node.inputs[0].owner and
+            isinstance(node.inputs[0].owner.op, HostFromGpu)):
+        other = node.inputs[0].owner.inputs[0]
+        if node.op.context_name == other.type.context_name:
+            return [other]
+        else:
+            return [GpuToGpu(node.op.context_name)(other)]
+
+    # ? -> gpua -> host
+    elif (isinstance(node.op, HostFromGpu) and
+          node.inputs[0].owner):
+        n2 = node.inputs[0].owner
+
+        # host ->
+        if isinstance(n2.op, GpuFromHost):
+            return [n2.inputs[0]]
+
+        # gpub ->
+        if isinstance(n2.op, GpuToGpu):
+            return [host_from_gpu(n2.inputs[0])]
+
+    # ? -> gpua -> gpub
+    elif isinstance(node.op, GpuToGpu):
+        # Transfer within same context
+        if node.inputs[0].type.context_name == node.op.context_name:
+            return [node.inputs[0]]
+
+        if node.inputs[0].owner:
+            n2 = node.inputs[0].owner
+
+            # host ->
+            if isinstance(n2.op, GpuFromHost):
+                return [GpuFromHost(node.op.context_name)(n2.inputs[0])]
+
+            # gpuc ->
+            if isinstance(n2.op, GpuToGpu):
+                if node.op.context_name == n2.inputs[0].type.context_name:
+                    return [n2.inputs[0]]
+                else:
+                    return [node.op(n2.inputs[0])]
+
+gpu_cut_copies.register('cut_gpua_host_transfers', local_cut_gpu_transfers,
                         'fast_compile', 'fast_run', 'inplace', 'gpuarray')
 gpu_cut_copies.register('cut_gpua_constant_transfers',
                         tensor.opt.constant_folding,
                         'fast_compile', 'fast_run', 'gpuarray')
 optdb['canonicalize'].register('local_cut_gpua_host_gpua',
-                               local_cut_gpu_host_gpu,
+                               local_cut_gpu_transfers,
                                'fast_compile', 'fast_run', 'gpuarray')
 
 
@@ -180,6 +254,11 @@ def local_gpuaalloc2(node):
     Moves an alloc that is an input to join to the gpu.
 
     """
+    try:
+        get_context(None)
+    except ContextNotDefined:
+        # If there is no default context then we do not perform the move here.
+        return
     if (isinstance(node.op, tensor.Alloc) and
         all(c != 'output' and
             c.op == tensor.join and
@@ -187,23 +266,13 @@ def local_gpuaalloc2(node):
                 i.owner.op in [host_from_gpu, tensor.alloc]
                 for i in c.inputs[1:])
             for c, idx in node.outputs[0].clients)):
-        return [host_from_gpu(gpu_alloc(*node.inputs))]
+        return [host_from_gpu(GpuAlloc(None)(*node.inputs))]
 
 
 @register_opt('fast_compile')
 @op_lifter([tensor.Alloc])
-def local_gpuaalloc(node):
-    new_out = gpu_alloc(*node.inputs)
-    # We need to hide new broadcastable dimensions because
-    # ReplaceValidate doesn't like when they change.
-    if new_out.broadcastable != node.outputs[0].broadcastable:
-        # but if a dim is suddenly not broadcastable anymore then that's a bug
-        for b_old, b_new in zip(node.outputs[0].broadcastable,
-                                new_out.broadcastable):
-            assert b_new or (not b_old)
-        new_out = tensor.patternbroadcast(new_out,
-                                          node.outputs[0].broadcastable)
-    return (new_out,)
+def local_gpuaalloc(node, context_name):
+    return GpuAlloc(context_name)(*node.inputs)
 
 
 @register_opt()
@@ -214,8 +283,8 @@ def local_gpualloc_memset_0(node):
         if (isinstance(inp, GpuArrayConstant) and
                 inp.data.size == 1 and
                 (numpy.asarray(inp.data) == 0).all()):
-            new_out = GpuAlloc(memset_0=True)(*node.inputs)
-            return [new_out]
+            new_op = GpuAlloc(node.op.context_name, memset_0=True)
+            return [new_op(*node.inputs)]
 
 
 @register_opt()
@@ -233,7 +302,7 @@ def local_gpu_contiguous_gpu_contiguous(node):
 
 @register_opt('fast_compile')
 @op_lifter([tensor.Reshape])
-def local_gpureshape(node):
+def local_gpureshape(node, context_name):
     op = node.op
     name = op.name
     if name:
@@ -244,14 +313,14 @@ def local_gpureshape(node):
 
 @register_opt('fast_compile')
 @op_lifter([tensor.Rebroadcast])
-def local_gpu_rebroadcast(node):
+def local_gpu_rebroadcast(node, context_name):
     if isinstance(node.inputs[0].owner.op, HostFromGpu):
         return node.op(node.inputs[0].owner.inputs[0])
 
 
 @register_opt('fast_compile')
 @op_lifter([tensor.Flatten])
-def local_gpuflatten(node):
+def local_gpuflatten(node, context_name):
     op = node.op
     shp = []
     if op.outdim != 1:
@@ -264,7 +333,7 @@ def local_gpuflatten(node):
 
 @register_opt('fast_compile')
 @op_lifter([tensor.Elemwise])
-def local_gpu_elemwise(node):
+def local_gpu_elemwise(node, context_name):
     op = node.op
     scal_op = op.scalar_op
     name = op.name
@@ -337,28 +406,28 @@ optdb.register('gpua_inplace_opt', inplace_gpu_elemwise_opt, 75,
 
 @register_opt('fast_compile')
 @op_lifter([tensor.DimShuffle])
-def local_gpua_dimshuffle(node):
+def local_gpua_dimshuffle(node, context_name):
     return GpuDimShuffle(node.op.input_broadcastable,
                          node.op.new_order)
 
 
 @register_opt('fast_compile')
 @op_lifter([tensor.SpecifyShape])
-def local_gpua_specifyShape(node):
+def local_gpua_specifyShape(node, context_name):
     if isinstance(node.inputs[0].type, GpuArrayType):
         return
-    inp = [gpu_from_host(node.inputs[0])] + node.inputs[1:]
+    inp = [GpuFromHost(context_name)(node.inputs[0])] + node.inputs[1:]
     return tensor.specify_shape(*inp)
 
 
 @register_opt('fast_compile')
 @op_lifter([theano.compile.ops.Shape])
-def local_gpua_shape(node):
+def local_gpua_shape(node, context_name):
     # op_lifter will call this opt too frequently as the output is
     # always on the CPU.
     if isinstance(node.inputs[0].type, GpuArrayType):
         return
-    return [gpu_from_host(node.inputs[0]).shape]
+    return [GpuFromHost(context_name)(node.inputs[0]).shape]
 
 
 def gpu_print_wrapper(op, cnda):
@@ -367,7 +436,7 @@ def gpu_print_wrapper(op, cnda):
 
 @register_opt('fast_compile')
 @op_lifter([tensor.printing.Print])
-def local_gpu_print_op(node):
+def local_gpu_print_op(node, context_name):
     x, = node.inputs
     gpu_x, = x.owner.inputs
     new_op = node.op.__class__(global_fn=gpu_print_wrapper)
@@ -397,9 +466,14 @@ def local_gpu_pdbbreakpoint_op(node):
 
             input_is_from_gpu = (inp.owner and
                                  isinstance(inp.owner.op, HostFromGpu))
-            output_goes_to_gpu = any([c[0] != "output" and
-                                      isinstance(c[0].op, GpuFromHost)
-                                      for c in out.clients])
+            output_goes_to_gpu = False
+            for c in out.clients:
+                if c == 'output':
+                    continue
+                if isinstance(c[0].op, GpuFromHost):
+                    output_goes_to_gpu = True
+                    context_name = c[0].op.context_name
+                    break
 
             if input_is_from_gpu:
                 # The op should be applied on the GPU version of the input
@@ -408,7 +482,7 @@ def local_gpu_pdbbreakpoint_op(node):
 
             elif output_goes_to_gpu:
                 # The input should be transfered to the gpu
-                new_inputs.append(gpu_from_host(inp))
+                new_inputs.append(GpuFromHost(context_name)(inp))
                 input_transfered.append(True)
 
             else:
@@ -440,7 +514,7 @@ def local_gpu_pdbbreakpoint_op(node):
 
 @register_opt('fast_compile')
 @op_lifter([tensor.Join])
-def local_gpua_join(node):
+def local_gpua_join(node, context_name):
     return gpu_join
 
 
@@ -455,13 +529,13 @@ def local_gpuajoin_1(node):
 
 @register_opt('fast_compile')
 @op_lifter([tensor.Split])
-def local_gpua_split(node):
+def local_gpua_split(node, context_name):
     return GpuSplit(node.op.len_splits)
 
 
 @register_opt('fast_compile')
 @op_lifter([tensor.Subtensor])
-def local_gpua_subtensor(node):
+def local_gpua_subtensor(node, context_name):
     x = node.inputs[0]
     if (x.owner and isinstance(x.owner.op, HostFromGpu)):
         gpu_x = x.owner.inputs[0]
@@ -475,28 +549,43 @@ def local_gpua_subtensor(node):
                         for n, _ in node.outputs[0].clients]):
                     return
                 else:
-                    return [host_from_gpu(gpu_from_host(node.outputs[0]))]
+                    return [host_from_gpu(gpu_x.owner.op(node.outputs[0]))]
 
     return GpuSubtensor(node.op.idx_list)
 
 
 @register_opt('fast_compile')
 @op_lifter([tensor.IncSubtensor])
-def local_gpua_incsubtensor(node):
+def local_gpua_incsubtensor(node, context_name):
     return GpuIncSubtensor(node.op.idx_list, node.op.inplace,
                            node.op.set_instead_of_inc,
                            node.op.destroyhandler_tolerate_aliased)
 
 
 @register_opt('fast_compile')
-@op_lifter([tensor.AdvancedIncSubtensor1])
-def local_gpua_advanced_incsubtensor(node):
+@op_lifter([tensor.AdvancedSubtensor1])
+def local_gpua_advanced_subtensor(node, context_name):
+    return GpuAdvancedSubtensor1()
 
-    # This optimization is disabled if cuda is not active
-    if pygpu.get_default_context().kind != "cuda":
+
+@register_opt('fast_compile')
+@op_lifter([tensor.AdvancedIncSubtensor1])
+def local_gpua_advanced_incsubtensor(node, context_name):
+
+    # This is disabled on non-cuda contexts
+    if get_context(context_name).kind != 'cuda':
         return None
 
-    x, y = node.inputs[0:2]
+    x, y, ilist = node.inputs
+
+    # Gpu Ops needs both inputs to have the same dtype
+    if (x.type.dtype != y.type.dtype):
+        dtype = scalar.upcast(x.type.dtype, y.type.dtype)
+        if x.type.dtype != dtype:
+            x = tensor.cast(x, dtype)
+        if y.type.dtype != dtype:
+            y = tensor.cast(y, dtype)
+
     set_instead_of_inc = node.op.set_instead_of_inc
     active_device_no = theano.sandbox.cuda.active_device_number()
     device_properties = theano.sandbox.cuda.device_properties
@@ -504,37 +593,40 @@ def local_gpua_advanced_incsubtensor(node):
     compute_capability = device_properties(active_device_no)['major']
 
     if (compute_capability < 2 or x.ndim != 2 or y.ndim != 2):
-        return GpuAdvancedIncSubtensor1(
-            set_instead_of_inc=set_instead_of_inc)
+        return [GpuAdvancedIncSubtensor1(
+                set_instead_of_inc=set_instead_of_inc)(x, y, ilist)]
     else:
-        return GpuAdvancedIncSubtensor1_dev20(
-            set_instead_of_inc=set_instead_of_inc)
+        return [GpuAdvancedIncSubtensor1_dev20(
+                set_instead_of_inc=set_instead_of_inc)(x, y, ilist)]
 
 
 @register_opt('fast_compile')
 @op_lifter([tensor.CAReduce, tensor.Sum, tensor.elemwise.Prod])
-def local_gpua_careduce(node):
+def local_gpua_careduce(node, context_name):
     if isinstance(node.op.scalar_op, (scalar.Add, scalar.Mul,
                                       scalar.Maximum, scalar.Minimum)):
-        dev = theano.sandbox.gpuarray.init_dev.device
-        if dev.startswith('opencl'):
+        ctx = get_context(context_name)
+        if ctx.kind == 'opencl':
             op = GpuCAReduceCPY
             if node.op.scalar_op not in [scalar.add, scalar.mul]:
                 # We don't support yet all reduction with cpy code.
                 return
-        else:
+        elif ctx.kind == 'cuda':
             op = GpuCAReduceCuda
+        else:
+            return False
         x, = node.inputs
 
         greduce = op(
             node.op.scalar_op, axis=node.op.axis,
             dtype=getattr(node.op, 'dtype', None),
             acc_dtype=getattr(node.op, 'acc_dtype', None))
+        x.tag.context_name = context_name
         gvar = greduce(x)
         # We need to have the make node called, otherwise the mask can
         # be None
         if (op is GpuCAReduceCPY or
-                gvar.owner.op.supports_c_code([gpu_from_host(x)])):
+                gvar.owner.op.supports_c_code([GpuFromHost(context_name)(x)])):
             return greduce
         else:
             # Try to make a simpler pattern based on reshaping
@@ -573,8 +665,8 @@ def local_gpua_careduce(node):
                 dtype=getattr(node.op, 'dtype', None),
                 acc_dtype=getattr(node.op, 'acc_dtype', None))
 
-            reshaped_x = x.reshape(tensor.stack(*new_in_shp))
-            gpu_reshaped_x = gpu_from_host(reshaped_x)
+            reshaped_x = x.reshape(tensor.stack(new_in_shp))
+            gpu_reshaped_x = GpuFromHost(context_name)(reshaped_x)
             gvar = greduce(gpu_reshaped_x)
             # We need to have the make node called, otherwise the mask can
             # be None
@@ -585,7 +677,7 @@ def local_gpua_careduce(node):
 
                 if reduce_reshaped_x.ndim != node.outputs[0].ndim:
                     unreshaped_reduce = reduce_reshaped_x.reshape(
-                        tensor.stack(*shape_of[node.outputs[0]]))
+                        tensor.stack(shape_of[node.outputs[0]]))
                 else:
                     unreshaped_reduce = reduce_reshaped_x
                 return [unreshaped_reduce]
@@ -593,61 +685,93 @@ def local_gpua_careduce(node):
 
 @register_opt('fast_compile')
 @op_lifter([tensor.blas.Gemv, tensor.blas_c.CGemv])
-def local_gpua_gemv(node):
+def local_gpua_gemv(node, context_name):
     return GpuGemv(inplace=node.op.inplace)
 
 
 @register_opt('fast_compile')
 @op_lifter([tensor.blas.Gemm])
-def local_gpua_gemm(node):
+def local_gpua_gemm(node, context_name):
     return GpuGemm(inplace=node.op.inplace)
 
 
 @register_opt('fast_compile')
+@op_lifter([tensor.basic.Dot])
+def local_gpua_hgemm(node, context_name):
+    from theano.sandbox.cuda import nvcc_compiler
+    if nvcc_compiler.nvcc_version < '7.5':
+        _logger.warning("Not performing dot of float16 on the GPU since "
+                        "cuda 7.5 is not available. Updating could speed up "
+                        "your code.")
+        return
+    A = node.inputs[0]
+    B = node.inputs[1]
+    if (A.ndim == 2 and B.ndim == 2 and
+            A.dtype == 'float16' and B.dtype == 'float16'):
+        fgraph = node.inputs[0].fgraph
+        C = GpuAllocEmpty(dtype='float16', context_name=context_name)(
+            shape_i(A, 0, fgraph),
+            shape_i(B, 1, fgraph))
+        return gpugemm_no_inplace(C, 1.0, A, B, 0.0)
+
+
+@register_opt()
+@alpha_merge(GpuGemm, alpha_in=1, beta_in=4)
+def local_gpuagemm_alpha_merge(node, *inputs):
+    return [gpugemm_no_inplace(*inputs)]
+
+
+@register_opt()
+@output_merge(GpuGemm, alpha_in=1, beta_in=4, out_in=0)
+def local_gpuagemm_output_merge(node, *inputs):
+    return [gpugemm_no_inplace(*inputs)]
+
+
+@register_opt('fast_compile')
 @op_lifter([tensor.blas.Ger, tensor.blas_c.CGer, tensor.blas_scipy.ScipyGer])
-def local_gpua_ger(node):
-    return GpuGer(destructive=node.op.destructive)
+def local_gpua_ger(node, context_name):
+    return GpuGer(inplace=node.op.destructive)
 
 
 @register_opt('fast_compile')
 @op_lifter([tensor.blas.Dot22])
-def local_gpua_dot22(node):
+def local_gpua_dot22(node, context_name):
     return gpu_dot22
 
 
 @register_opt('fast_compile')
 @op_lifter([tensor.basic.Eye])
-def local_gpua_eye(node):
-    return GpuEye(dtype=node.op.dtype)
+def local_gpua_eye(node, context_name):
+    return GpuEye(dtype=node.op.dtype, context_name=context_name)
 
 
 @register_opt('fast_compile')
 @op_lifter([tensor.nnet.CrossentropySoftmaxArgmax1HotWithBias], cuda_only=True)
-def local_gpua_crossentropysoftmaxargmax1hotwithbias(node):
+def local_gpua_crossentropysoftmaxargmax1hotwithbias(node, context_name):
     return GpuCrossentropySoftmaxArgmax1HotWithBias()
 
 
 @register_opt('fast_compile')
 @op_lifter([tensor.nnet.CrossentropySoftmax1HotWithBiasDx], cuda_only=True)
-def local_gpua_crossentropysoftmax1hotwithbiasdx(node):
+def local_gpua_crossentropysoftmax1hotwithbiasdx(node, context_name):
     return GpuCrossentropySoftmax1HotWithBiasDx()
 
 
 @register_opt('fast_compile')
 @op_lifter([tensor.nnet.Softmax], cuda_only=True)
-def local_gpua_softmax(node):
+def local_gpua_softmax(node, context_name):
     return GpuSoftmax()
 
 
 @register_opt('fast_compile')
 @op_lifter([tensor.nnet.SoftmaxWithBias], cuda_only=True)
-def local_gpua_softmaxwithbias(node):
+def local_gpua_softmaxwithbias(node, context_name):
     return GpuSoftmaxWithBias()
 
 
 @register_opt('fast_compile')
 @op_lifter([theano.tensor.opt.Assert])
-def local_assert(node):
+def local_assert(node, context_name):
     if (node.inputs[0].owner and
             isinstance(node.inputs[0].owner.op, HostFromGpu)):
         return [host_from_gpu(node.op(node.inputs[0].owner.inputs[0],
@@ -655,21 +779,14 @@ def local_assert(node):
 
 
 @register_opt('fast_compile')
-@op_lifter([gpu_from_host, ConvOp])
-def local_gpu_conv(node):
-    """
-    gpu_from_host(conv) -> gpu_conv(gpu_from_host)
-
-    conv(host_from_gpu) -> host_from_gpu(gpu_conv)
-
-    """
+@op_lifter([ConvOp])
+def local_gpu_conv(node, context_name):
     def GpuConvOp_from_ConvOp(op):
         logical_img_hw = None
 
         if op.kshp_logical is not None and op.kshp_logical != op.kshp:
             return None
-        # print op.kshp, op.imshp[1:3]
-        # print op.kshp_logical, logical_img_hw
+
         ret = GpuConv(border_mode=op.out_mode,
                       subsample=(op.dx, op.dy),
                       logical_img_hw=logical_img_hw,
@@ -682,13 +799,10 @@ def local_gpu_conv(node):
                       imshp=op.imshp,
                       nkern=op.nkern,
                       bsize=op.bsize,
-                      fft_opt=op.fft_opt
-                      )
+                      fft_opt=op.fft_opt)
         if op.imshp_logical is not None:
             logical_img_hw = op.imshp_logical[1:3]
             if logical_img_hw != op.imshp[1:3]:
-                # this case is not implemented
-                # return None
                 rstride = int(numpy.ceil(op.imshp_logical[1] /
                                          float(op.imshp[1])))
                 cstride = int(numpy.ceil(op.imshp_logical[2] /
@@ -699,7 +813,7 @@ def local_gpu_conv(node):
                                        img.shape[0], *op.imshp_logical)
                     img = tensor.set_subtensor(buf[:, :, ::rstride, ::cstride],
                                                img)
-                    img = gpu_from_host(img)
+                    img = GpuFromHost(context_name)(img)
                     return ret(img, kern)
 
                 return make_graph
@@ -726,15 +840,13 @@ def local_gpu_conv(node):
     gpu_conv = GpuConvOp_from_ConvOp(node.op)
     if gpu_conv is None:
         return
-    out = gpu_conv(gpu_from_host(img),
-                   gpu_from_host(kern))
-    # in some case the ConvOp broadcast the last 2 dimensions
-    # differently then the gpu ConvOp
-    out = tensor.patternbroadcast(
-        host_from_gpu(out),
-        node.outputs[0].broadcastable)
-    # op_lifter want the output on the GPU.
-    out = gpu_from_host(out)
+    out = gpu_conv(GpuFromHost(context_name)(img),
+                   GpuFromHost(context_name)(kern))
+    assert isinstance(out.type, GpuArrayType)
+    # Make sure to keep the broadcastable pattern of the original
+    # convolution even if we might gain or lose some due to different
+    # information at the node level.
+    out = tensor.patternbroadcast(out, node.outputs[0].broadcastable)
     out.values_eq_approx = values_eq_approx
     return [out]
 
@@ -765,9 +877,10 @@ def local_gpu_elemwise_careduce(node):
                                 pre_scalar_op=scalar.basic.sqr)(inp)]
 
 
-def tensor_to_gpu(x):
+def tensor_to_gpu(x, context_name):
     if isinstance(x.type, tensor.TensorType):
         y = GpuArrayType(broadcastable=x.type.broadcastable,
+                         context_name=context_name,
                          dtype=x.type.dtype)()
         if x.name:
             y.name = x.name + '[Gpua]'
@@ -789,6 +902,7 @@ def gpu_safe_new(x, tag=''):
         nw_name = x.name + tag
     else:
         nw_name = None
+
     if isinstance(x, theano.Constant):
         return x.clone()
 
@@ -817,7 +931,7 @@ def gpu_reconstruct_graph(inputs, outputs, tag=None):
 
 @register_opt('scan', 'fast_compile')
 @op_lifter([scan_op.Scan])
-def local_scan_to_gpua(node):
+def local_scan_to_gpua(node, context_name):
     info = copy.deepcopy(node.op.info)
     if info.get('gpua', False):
         return
@@ -829,20 +943,20 @@ def local_scan_to_gpua(node):
          node.op.n_mit_sot +
          node.op.n_sit_sot +
          node.op.n_shared_outs)
-    nw_ins += [safe_to_gpu(x) for x in node.inputs[1:e]]
+    nw_ins += [safe_to_gpu(x, context_name) for x in node.inputs[1:e]]
     b = e
     e = e + node.op.n_nit_sot
     nw_ins += node.inputs[b:e]
-    nw_ins += [safe_to_gpu(x) for x in node.inputs[e:]]
-    scan_ins = [tensor_to_gpu(x) for x in node.op.inputs]
+    nw_ins += [safe_to_gpu(x, context_name) for x in node.inputs[e:]]
+    scan_ins = [tensor_to_gpu(x, context_name) for x in node.op.inputs]
 
     # The inner output corresponding to the looping condition should not be
     # moved to the gpu
     if node.op.info['as_while']:
-        scan_outs = [safe_to_gpu(x) for x in node.op.outputs[:-1]]
+        scan_outs = [safe_to_gpu(x, context_name) for x in node.op.outputs[:-1]]
         scan_outs += [node.op.outputs[-1]]
     else:
-        scan_outs = [safe_to_gpu(x) for x in node.op.outputs]
+        scan_outs = [safe_to_gpu(x, context_name) for x in node.op.outputs]
     scan_outs = scan_utils.clone(
         scan_outs,
         replace=list(zip(node.op.inputs,
@@ -856,12 +970,25 @@ def local_scan_to_gpua(node):
     _cmodule_key = gof.CLinker().cmodule_key_(local_fgraph, [])
     info['gpu_hash'] = hash(_cmodule_key)
 
+    def typebuild(dtype, broadcastable, context_name=context_name):
+        return GpuArrayType(dtype=dtype, broadcastable=broadcastable,
+                            context_name=context_name)
+
     nw_op = scan_op.Scan(scan_ins, scan_outs, info,
-                         typeConstructor=GpuArrayType).make_node(*nw_ins)
+                         typeConstructor=typebuild).make_node(*nw_ins)
     return nw_op.outputs
 
+
+def _scan_type_infer(node):
+    context_name = infer_context_name(*node.inputs)
+
+    def typebuild(dtype, broadcastable, context_name=context_name):
+        return GpuArrayType(dtype=dtype, broadcastable=broadcastable,
+                            context_name=context_name)
+    return typebuild
+
 optdb.register('gpua_scanOp_make_inplace',
-               scan_opt.ScanInplaceOptimizer(typeConstructor=GpuArrayType,
+               scan_opt.ScanInplaceOptimizer(typeInfer=_scan_type_infer,
                                              gpua_flag=True),
                75,
                'gpuarray',

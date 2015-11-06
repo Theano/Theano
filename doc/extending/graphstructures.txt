@@ -18,11 +18,13 @@ should help you understand how these pieces fit together:
 
 **Code**
 
-.. code-block:: python
+.. testcode::
 
-    x = dmatrix('x')
-    y = dmatrix('y')
-    z = x + y
+   import theano.tensor as T
+    
+   x = T.dmatrix('x')
+   y = T.dmatrix('y')
+   z = x + y
 
 **Diagram**
 
@@ -69,73 +71,67 @@ without any shortcuts, that will make the graph construction very explicit.
 
 This is what you would normally type:
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_graphstructures.test_graphstructures_1
+.. testcode::
 
-.. code-block:: python
+   # create 3 Variables with owner = None
+   x = T.matrix('x')
+   y = T.matrix('y')
+   z = T.matrix('z')
 
-    # create 3 Variables with owner = None
-    x = T.matrix('x')
-    y = T.matrix('y')
-    z = T.matrix('z')
-
-    # create 2 Variables (one for 'e', one intermediate for y*z)
-    # create 2 Apply instances (one for '+', one for '*')
-    e = x + y * z
+   # create 2 Variables (one for 'e', one intermediate for y*z)
+   # create 2 Apply instances (one for '+', one for '*')
+   e = x + y * z
 
 
 **Long example**
 
 This is what you would type to build the graph explicitly:
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_graphstructures.test_graphstructures_1
+.. testcode::
 
-.. code-block:: python
+   from theano.tensor import add, mul, Apply, Variable, Constant, TensorType
 
-    from theano.tensor import add, mul, Apply, Variable, TensorType
-
-    # Instantiate a type that represents a matrix of doubles
-    float64_matrix = TensorType(dtype = 'float64',              # double
-                                broadcastable = (False, False)) # matrix
+   # Instantiate a type that represents a matrix of doubles
+   float64_matrix = TensorType(dtype='float64',              # double
+                               broadcastable=(False, False)) # matrix
 
     # We make the Variable instances we need.
-    x = Variable(type = float64_matrix, name = 'x')
-    y = Variable(type = float64_matrix, name = 'y')
-    z = Variable(type = float64_matrix, name = 'z')
+   x = Variable(type=float64_matrix, name='x')
+   y = Variable(type=float64_matrix, name='y')
+   z = Variable(type=float64_matrix, name='z')
 
-    # This is the Variable that we want to symbolically represents y*z
-    mul_variable = Variable(type = float64_matrix)
-    assert mul_variable.owner is None
+   # This is the Variable that we want to symbolically represents y*z
+   mul_variable = Variable(type=float64_matrix)
+   assert mul_variable.owner is None
 
-    # Instantiate a symbolic multiplication
-    node_mul = Apply(op = mul,
-                     inputs = [y, z],
-                     outputs = [mul_variable])
-    # Fields 'owner' and 'index' are set by Apply
-    assert mul_variable.owner is node_mul
-    # 'index' is the position of mul_variable in mode_mul's outputs
-    assert mul_variable.index == 0
+   # Instantiate a symbolic multiplication
+   node_mul = Apply(op=mul,
+                    inputs=[y, z],
+                    outputs=[mul_variable])
+   # Fields 'owner' and 'index' are set by Apply
+   assert mul_variable.owner is node_mul
+   # 'index' is the position of mul_variable in mode_mul's outputs
+   assert mul_variable.index == 0
 
-    # This is the Variable that we want to symbolically represents x+(y*z)
-    add_variable = Variable(type = float64_matrix)
-    assert add_variable.owner is None
+   # This is the Variable that we want to symbolically represents x+(y*z)
+   add_variable = Variable(type=float64_matrix)
+   assert add_variable.owner is None
 
-    # Instantiate a symbolic addition
-    node_add = Apply(op = add,
-                     inputs = [x, mul_variable],
-                     outputs = [add_variable])
-    # Fields 'owner' and 'index' are set by Apply
-    assert add_variable.owner is node_add
-    assert add_variable.index == 0
+   # Instantiate a symbolic addition
+   node_add = Apply(op=add,
+                    inputs=[x, mul_variable],
+                    outputs=[add_variable])
+   # Fields 'owner' and 'index' are set by Apply
+   assert add_variable.owner is node_add
+   assert add_variable.index == 0
 
-    e = add_variable
+   e = add_variable
 
-    # We have access to x, y and z through pointers
-    assert e.owner.inputs[0] is x
-    assert e.owner.inputs[1] is mul_variable
-    assert e.owner.inputs[1].owner.inputs[0] is y
-    assert e.owner.inputs[1].owner.inputs[1] is z
+   # We have access to x, y and z through pointers
+   assert e.owner.inputs[0] is x
+   assert e.owner.inputs[1] is mul_variable
+   assert e.owner.inputs[1].owner.inputs[0] is y
+   assert e.owner.inputs[1].owner.inputs[1] is z
 
 
 Note how the call to ``Apply`` modifies the ``owner`` and ``index``
@@ -153,20 +149,19 @@ All nodes in the graph must be instances of ``Apply`` or ``Result``, but
 constraints. For example, the :func:`tensor.add`
 Op instance is written so that:
 
-.. code-block:: python
+.. testcode::
 
-    e = dscalar('x') + 1
+    e = T.dscalar('x') + 1
 
 builds the following graph:
 
-.. code-block:: python
+.. testcode::
 
-    node = Apply(op = add,
-                 inputs = [Variable(type = dscalar, name = 'x'),
-                           Constant(type = lscalar, data = 1)],
-                 outputs = [Variable(type = dscalar)])
-    e = node.outputs[0]
-
+   node = Apply(op=add,
+                inputs=[Variable(type=T.dscalar, name='x'),
+                        Constant(type=T.lscalar, data=1)],
+                outputs=[Variable(type=T.dscalar)])
+   e = node.outputs[0]
 
 
 Graph Structures
@@ -311,6 +306,7 @@ Theano. The symbolic inputs that you operate on are Variables and what
 you get from applying various Ops to these inputs are also
 Variables. For example, when I type
 
+>>> import theano
 >>> x = theano.tensor.ivector()
 >>> y = -x
 
@@ -399,31 +395,34 @@ In both types of pairs, the second element of the tuple is an index,
 such that: ``var.clients[*][0].inputs[index]`` or
 ``fgraph.outputs[index]`` is that variable.
 
-.. code-block:: python
 
-    import theano
-    v = theano.tensor.vector()
-    f = theano.function([v], (v+1).sum())
-    theano.printing.debugprint(f)
-    # Sorted list of all nodes in the compiled graph.
-    topo = f.maker.fgraph.toposort()
-    topo[0].outputs[0].clients
-    # [(Sum(Elemwise{add,no_inplace}.0), 0)]
-    topo[1].outputs[0].clients
-    # [('output', 0)]
+>>> import theano
+>>> v = theano.tensor.vector()
+>>> f = theano.function([v], (v+1).sum())
+>>> theano.printing.debugprint(f)
+Sum{acc_dtype=float64} [@A] ''   1
+ |Elemwise{add,no_inplace} [@B] ''   0
+   |TensorConstant{(1,) of 1.0} [@C]
+   |<TensorType(float64, vector)> [@D]
+>>> # Sorted list of all nodes in the compiled graph.
+>>> topo = f.maker.fgraph.toposort()
+>>> topo[0].outputs[0].clients
+[(Sum{acc_dtype=float64}(Elemwise{add,no_inplace}.0), 0)]
+>>> topo[1].outputs[0].clients
+[('output', 0)]
 
-    # An internal variable
-    var = topo[0].outputs[0]
-    client = var.clients[0]
-    client
-    # (Sum(Elemwise{add,no_inplace}.0), 0)
-    type(client[0])
-    # <class 'theano.gof.graph.Apply'>
-    assert client[0].inputs[client[1]] is var
+>>> # An internal variable
+>>> var = topo[0].outputs[0]
+>>> client = var.clients[0]
+>>> client
+(Sum{acc_dtype=float64}(Elemwise{add,no_inplace}.0), 0)
+>>> type(client[0])
+<class 'theano.gof.graph.Apply'>
+>>> assert client[0].inputs[client[1]] is var
 
-    # An output of the graph
-    var = topo[1].outputs[0]
-    client = var.clients[0]
-    client
-    # ('output', 0)
-    assert f.maker.fgraph.outputs[client[1]] is var
+>>> # An output of the graph
+>>> var = topo[1].outputs[0]
+>>> client = var.clients[0]
+>>> client
+('output', 0)
+>>> assert f.maker.fgraph.outputs[client[1]] is var

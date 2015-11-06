@@ -74,25 +74,7 @@ class MonitorMode(Mode):
         if self.post_func is not None:
             self.post_func(i, node, fn)
 
-    def including(self, *tags):
-        ret = super(MonitorMode, self).including(*tags)
-        ret.pre_func = self.pre_func
-        ret.post_func = self.post_func
-        return ret
-
-    def excluding(self, *tags):
-        ret = super(MonitorMode, self).excluding(*tags)
-        ret.pre_func = self.pre_func
-        ret.post_func = self.post_func
-        return ret
-
-    def requiring(self, *tags):
-        ret = super(MonitorMode, self).requiring(*tags)
-        ret.pre_func = self.pre_func
-        ret.post_func = self.post_func
-        return ret
-
-    def clone(self, link_kwargs=None, **kwargs):
+    def clone(self, link_kwargs=None, optimizer="", **kwargs):
         """
         Create a new instance of this Mode.
 
@@ -100,10 +82,12 @@ class MonitorMode(Mode):
         ignored, because ProfileMode needs to use its own linker.
 
         """
+        if optimizer == "":
+            optimizer = self.provided_optimizer
         new_mode = type(self)(pre_func=self.pre_func,
                               post_func=self.post_func,
                               linker=None,
-                              optimizer=self.provided_optimizer)
+                              optimizer=optimizer)
         return new_mode
 
 

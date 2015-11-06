@@ -37,12 +37,11 @@ Theano doesn't use your grandfather's python.
   * functions (function objects) can have attributes too. This technique
     is often used to define a function's error messages.
 
-    .. code-block:: python
-
-        def f(): return f.a
-        f.a = 5
-        f() # returns 5
-
+     >>> def f(): return f.a
+     >>> f.a = 5
+     >>> f()
+     5
+        
   * Warning about mutual imports:
 
     * script a.py file defined a class A.

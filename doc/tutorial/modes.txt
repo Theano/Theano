@@ -43,7 +43,7 @@ Exercise
 
 Consider the logistic regression:
 
-.. code-block:: python
+.. testcode::
     
     import numpy
     import theano
@@ -63,8 +63,6 @@ Consider the logistic regression:
     b = theano.shared(numpy.asarray(0., dtype=theano.config.floatX), name="b")
     x.tag.test_value = D[0]
     y.tag.test_value = D[1]
-    #print "Initial model:"
-    #print w.get_value(), b.get_value()
 
     # Construct Theano expression graph
     p_1 = 1 / (1 + T.exp(-T.dot(x, w)-b)) # Probability of having a one
@@ -77,33 +75,40 @@ Consider the logistic regression:
     train = theano.function(
                 inputs=[x,y],
                 outputs=[prediction, xent],
-                updates={w:w-0.01*gw, b:b-0.01*gb},
+                updates=[(w, w-0.01*gw), (b, b-0.01*gb)],
                 name = "train")
     predict = theano.function(inputs=[x], outputs=prediction,
                 name = "predict")
 
     if any([x.op.__class__.__name__ in ['Gemv', 'CGemv', 'Gemm', 'CGemm'] for x in
             train.maker.fgraph.toposort()]):
-        print 'Used the cpu'
+        print('Used the cpu')
     elif any([x.op.__class__.__name__ in ['GpuGemm', 'GpuGemv'] for x in
               train.maker.fgraph.toposort()]):
-        print 'Used the gpu'
+        print('Used the gpu')
     else:
-        print 'ERROR, not able to tell if theano used the cpu or the gpu'
-        print train.maker.fgraph.toposort()
+        print('ERROR, not able to tell if theano used the cpu or the gpu')
+        print(train.maker.fgraph.toposort())
 
     for i in range(training_steps):
         pred, err = train(D[0], D[1])
-    #print "Final model:"
-    #print w.get_value(), b.get_value()
 
-    print "target values for D"
-    print D[1]
+    print("target values for D")
+    print(D[1])
 
-    print "prediction on D"
-    print predict(D[0])
+    print("prediction on D")
+    print(predict(D[0]))
 
-   
+.. testoutput::
+   :hide:
+   :options: +ELLIPSIS
+ 
+   Used the cpu
+   target values for D
+   ...
+   prediction on D
+   ...
+
 Modify and execute this example to run on CPU (the default) with floatX=float32 and 
 time the execution using the command line ``time python file.py``.  Save your code 
 as it will be useful later on. 
@@ -116,7 +121,7 @@ as it will be useful later on.
     
      * Insert manual cast in your code or use *[u]int{8,16}*.
      * Insert manual cast around the mean operator (this involves division by length, which is an *int64*).
-     * Notice that a new casting mechanism is being developed.
+     * Note that a new casting mechanism is being developed.
 
 :download:`Solution<modes_solution_1.py>`
 
@@ -132,7 +137,7 @@ is controlled by the value of the ``mode`` parameter.
 
 Theano defines the following modes by name:
 
-- ``'FAST_COMPILE'``: Apply just a few graph optimizations and only use Python implementations.
+- ``'FAST_COMPILE'``: Apply just a few graph optimizations and only use Python implementations. So GPU is disabled.
 - ``'FAST_RUN'``: Apply all optimizations and use C implementations where possible.
 - ``'DebugMode``: Verify the correctness of all optimizations, and compare C and Python 
     implementations. This mode can take much longer than the other modes, but can identify
@@ -215,7 +220,7 @@ cluster!).
 
 DebugMode is used as follows:
 
-.. code-block:: python
+.. testcode::
 
     x = T.dvector('x')
 
@@ -296,8 +301,9 @@ Compiling your Graph with ProfileMode
 Once the ProfileMode instance is created, simply compile your graph as you
 would normally, by specifying the mode parameter.
 
->>> # with functions
->>> f = theano.function([input1,input2],[output1], mode=profmode)
+>>> v1, v2 = T.vectors(2)
+>>> o = v1 + v2
+>>> f = theano.function([v1,v2],[o], mode=profmode)
 
 Retrieving Timing Information
 -----------------------------

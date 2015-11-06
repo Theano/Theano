@@ -1,5 +1,5 @@
 from __future__ import print_function
-from nose.plugins.skip import SkipTest
+
 import numpy
 import unittest
 
@@ -7,11 +7,7 @@ import theano
 import theano.tensor as T
 import theano.tests.unittest_tools as utt
 
-from theano.sandbox import gpuarray
-
-# We let that import do the init of the back-end if needed.
-from .test_basic_ops import (mode_with_gpu,
-                             mode_without_gpu)
+from .config import mode_with_gpu, mode_without_gpu
 from ..nnet import (
     GpuCrossentropySoftmaxArgmax1HotWithBias,
     GpuCrossentropySoftmax1HotWithBiasDx,
@@ -36,15 +32,13 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
         n_in = 4098
         n_out = 4099
 
-    x = T.fmatrix('x')
     y = T.lvector('y')
 
     b = T.fvector('b')
-    #W = T.fmatrix('W')
 
     # we precompute the dot with big shape before to allow the test of
     # GpuCrossentropySoftmax1HotWithBiasDx to don't fail with the error
-    #(the launch timed out and was terminated) on GPU card not
+    # (the launch timed out and was terminated) on GPU card not
     # powerful enough. We need the big shape to check for corner
     # case.
     dot_result = T.fmatrix('dot_result')
@@ -54,7 +48,6 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
 
     xx = numpy.asarray(numpy.random.rand(batch_size, n_in),
                        dtype=numpy.float32)
-    #?????yy = numpy.ones((batch_size,),dtype='float32')
     yy = numpy.ones((batch_size,), dtype='int32')
     b_values = numpy.zeros((n_out,), dtype='float32')
     W_values = numpy.asarray(numpy.random.rand(n_in, n_out), dtype='float32')
@@ -71,8 +64,6 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
     classify_gpu = theano.function(inputs=[y, b, dot_result],
                                    outputs=[loss, y_pred, dW],
                                    mode=mode_with_gpu)
-    # theano.printing.debugprint(classify)
-    # theano.printing.debugprint(classify_gpu)
 
     assert any([isinstance(node.op,
                            T.nnet.CrossentropySoftmaxArgmax1HotWithBias)
@@ -85,13 +76,9 @@ def test_GpuCrossentropySoftmaxArgmax1HotWithBias():
     gout = classify_gpu(yy, b_values, dot_value)
 
     assert len(out) == len(gout) == 3
-    assert numpy.allclose(out[0], gout[0])
-    assert numpy.allclose(out[2], gout[2], atol=3e-6), numpy.absolute(
-        gout[2] - out[2]).max()
-    assert numpy.allclose(out[1], gout[1]), [(id, out[1][id], gout[1][id], val)
-                                             for id, val in enumerate(out[1] -
-                                                                      gout[1])
-                                             if val != 0]
+    utt.assert_allclose(out[0], gout[0])
+    utt.assert_allclose(out[2], gout[2], atol=3e-6)
+    utt.assert_allclose(out[1], gout[1])
 
 
 def test_GpuCrossentropySoftmax1HotWithBiasDx():
@@ -101,12 +88,10 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
     We check that we loop when their is too much threads
 
     """
-    n_in = 1000
     batch_size = 4097
     n_out = 1250
 
     if not isinstance(mode_with_gpu, theano.compile.DebugMode):
-        n_in = 4098
         n_out = 4099
 
     # Seed numpy.random with config.unittests.rseed
@@ -141,25 +126,16 @@ def test_GpuCrossentropySoftmax1HotWithBiasDx():
 
     rtol = 1e-5
     atol = 1e-6
-    if not numpy.allclose(cpu_out, gpu_out, rtol=rtol, atol=atol):
-        abs_err, rel_err = T.numeric_grad.abs_rel_err(cpu_out, gpu_out)
-        scaled_err = numpy.minimum(abs_err / atol, rel_err / rtol)
-        max_i = scaled_err.argmax()
+    utt.assert_allclose(cpu_out, gpu_out, rtol=rtol, atol=atol)
 
-        print('max err index:', max_i, max_i / batch_size, end=' ')
-        print(max_i % batch_size, max_i / n_out, max_i & n_out)
-        print('At that index:')
-        print('err:', scaled_err.flatten()[max_i])
-        print('absolute error:', abs_err.flatten()[max_i])
-        print('relative error:', rel_err.flatten()[max_i])
-        print('cpu_out:', cpu_out.flatten()[max_i])
-        print('gpu_out:', gpu_out.flatten()[max_i])
-        print('softmax_output_value:', softmax_output_value.flatten()[max_i])
-        print('dnll_value:', dnll_value[max_i / n_out])
-        print('y_idx_value:', y_idx_value[max_i / n_out])
 
-        assert False, "numpy.allclose(cpu_out, gpu_out, rtol=%s, atol=%s)" % (
-            rtol, atol)
+def test_softmax_with_bias_float16():
+    softmax_with_bias_unittest_template(dtypeInput='float16',
+                                        dtypeBias='float32')
+    softmax_with_bias_unittest_template(dtypeInput='float16',
+                                        dtypeBias='float16')
+    softmax_with_bias_unittest_template(dtypeInput='float32',
+                                        dtypeBias='float16')
 
 
 def test_softmax_with_bias_float32():
@@ -178,52 +154,37 @@ def test_softmax_with_bias_float64():
 
 def softmax_with_bias_unittest_template(dtypeInput, dtypeBias):
     """
-    This is basic test for GpuSoftmaxWithBias with float64 variables
+    This is a basic test for GpuSoftmaxWithBias.
 
-    We check that we loop when their is too much block
+    We check that we loop when there are too many blocks.
 
-    TODO: check that we loop when their is too much thread.(THIS IS
+    TODO: check that we loop when there are too many threads. (THIS IS
     NOT IMPLEMENTED)
+
     """
-    assert dtypeInput in ['float32', 'float64']
-    assert dtypeBias in ['float32', 'float64']
+    x = T.matrix('x', dtype=dtypeInput)
+    b = T.vector('b', dtype=dtypeBias)
 
-    if dtypeInput == 'float32':
-        x = T.fmatrix('x')
-    elif dtypeInput == 'float64':
-        x = T.dmatrix('x')
+    z = T.nnet.softmax_with_bias(x, b)
 
-    # We can't use zeros_like(x[0,::]) as this don't allow to test with
-    # 0 shape
-    if dtypeBias == 'float32':
-        z = T.nnet.softmax_with_bias(x, T.arange(x.shape[1] * 2,
-                                                 dtype='float32')[::2])
-    elif dtypeBias == 'float64':
-        z = T.nnet.softmax_with_bias(x, T.arange(x.shape[1] * 2,
-                                                 dtype='float64')[::2])
-
-    f = theano.function([x], z, mode=mode_without_gpu)
-    f_gpu = theano.function([x], z, mode=mode_with_gpu)
+    f = theano.function([x, b], z, mode=mode_without_gpu)
+    f_gpu = theano.function([x, b], z, mode=mode_with_gpu)
     assert f.maker.fgraph.toposort()[-1].op == T.nnet.softmax_with_bias
     assert isinstance(f_gpu.maker.fgraph.toposort()[-2].op,
                       GpuSoftmaxWithBias)
 
     def cmp(n, m):
-        # print "test_softmax",n,m
-        if dtypeInput == 'float32':
-            data = numpy.arange(n * m, dtype='float32').reshape(n, m)
-        elif dtypeInput == 'float64':
-            data = numpy.arange(n * m, dtype='float64').reshape(n, m)
+        data = numpy.random.uniform(1e-7, 1, (n, m)).astype(dtype=dtypeInput)
+        b_data = numpy.random.uniform(1e-7, 1, (m,)).astype(dtype=dtypeBias)
 
-        out = f(data)
-        gout = f_gpu(data)
-        assert numpy.allclose(out, gout), numpy.absolute(out - gout)
+        out = f(data, b_data)
+        gout = f_gpu(data, b_data)
+        utt.assert_allclose(out, gout)
 
     cmp(2, 5)
     # we need to test n>32*1024 to check that we make the block loop.
     cmp(2 << 15, 5)
     cmp(4074, 400)
-    cmp(0, 10)
     cmp(784, 784)
     cmp(4, 1000)
     cmp(4, 1024)
@@ -237,6 +198,10 @@ def softmax_with_bias_unittest_template(dtypeInput, dtypeBias):
     cmp(128, 64 * 1024)
 
 
+def test_softmax_float16():
+    softmax_unittest_template('float16')
+
+
 def test_softmax_float32():
     softmax_unittest_template('float32')
 
@@ -247,41 +212,31 @@ def test_softmax_float64():
 
 def softmax_unittest_template(dtypeInput):
     """
-    This is basic test for GpuSoftmax with float64 variables
+    This is basic test for GpuSoftmax.
 
     We check that we loop when their is too much block
     We use slower code when there isn't enough shared memory
     """
-    assert dtypeInput in ['float32', 'float64']
-
-    if dtypeInput == 'float32':
-        x = T.fmatrix('x')
-    elif dtypeInput == 'float64':
-        x = T.dmatrix('x')
+    x = T.matrix('x', dtype=dtypeInput)
 
     z = T.nnet.softmax(x)
-    mode = mode_with_gpu.excluding('cudnn')
     f = theano.function([x], z, mode=mode_without_gpu)
-    f_gpu = theano.function([x], z, mode=mode)
+    f_gpu = theano.function([x], z, mode=mode_wo_cudnn)
     assert f.maker.fgraph.toposort()[-1].op == T.nnet.softmax_op
     assert isinstance(f_gpu.maker.fgraph.toposort()[-2].op,
                       GpuSoftmax)
 
     def cmp(n, m):
-        if dtypeInput == 'float32':
-            data = numpy.arange(n * m, dtype='float32').reshape(n, m)
-        elif dtypeInput == 'float64':
-            data = numpy.arange(n * m, dtype='float64').reshape(n, m)
+        data = numpy.random.uniform(0, 1, (n, m)).astype(dtype=dtypeInput)
 
         out = f(data)
         gout = f_gpu(data)
-        assert numpy.allclose(out, gout), numpy.absolute(out - gout)
+        utt.assert_allclose(out, gout)
 
     # we need to test n>32*1024 to check that we make the block loop.
     cmp(2, 5)
     cmp(2 << 15, 5)
     cmp(4074, 400)
-    cmp(0, 10)
     cmp(784, 784)
     cmp(4, 1000)
     cmp(4, 1024)
@@ -346,11 +301,10 @@ class test_SoftMax(unittest.TestCase):
         return f, f_gpu
 
     def _cmp(self, n, m, f, f_gpu):
-        # print "test_softmax",n,m
         data = numpy.arange(n * m, dtype='float32').reshape(n, m)
         out = f(data)
         gout = f_gpu(data)
-        assert numpy.allclose(out, gout), numpy.absolute(out - gout)
+        utt.assert_allclose(out, gout)
 
     def _check_types(self, graph, graph_gpu, f_type, f_gpu_type):
         assert isinstance(graph.maker.fgraph.toposort()[-1].op, f_type)
@@ -369,8 +323,6 @@ class test_SoftMax(unittest.TestCase):
             self._cmp
         )
 
-        # cuDNN R1 cannot handle these test cases but the Theano softmax can so
-        # we test them only for the Theano softmax.
         self._cmp(2 << 15, 5, f, f_gpu)
 
     def test_softmax_shape_0(self):

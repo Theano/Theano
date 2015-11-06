@@ -629,7 +629,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         x_vec = tensor.vector('x')
         z = tensor.dot(x_vec.dimshuffle(0, 'x'),
                        x_vec.dimshuffle('x', 0))
-        y = max_pool_2d(input=z, ds=(2, 2))
+        y = max_pool_2d(input=z, ds=(2, 2), ignore_border=True)
         C = tensor.exp(tensor.sum(y))
 
         grad_hess = tensor.hessian(cost=C, wrt=x_vec)
@@ -801,6 +801,16 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                                             [image_val, maxout_val, gz_val],
                                             MaxPoolGrad,
                                             warn=False)
+        # checking with broadcastable input
+        image = tensor.tensor(dtype='float64',
+                              broadcastable=(False, False, True, True))
+        image_val = rng.rand(4, 6, 1, 1)
+        self._compile_and_check(
+            [image],
+            [DownsampleFactorMax((2, 2),
+                                 ignore_border=True,
+                                 padding=(0, 0))(image)],
+            [image_val], DownsampleFactorMax)
 
     def test_opt_max_to_average(self):
         im = theano.tensor.tensor4()

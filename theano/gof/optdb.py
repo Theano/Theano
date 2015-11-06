@@ -1,4 +1,5 @@
 from __future__ import print_function
+import copy
 import sys
 
 import numpy
@@ -117,12 +118,16 @@ multiple time in a DB. Tryed to register "%s" again under the new name "%s".
         add = OrderedSet()
         for obj in variables:
             if isinstance(obj, DB):
-                sq = q.subquery.get(obj.name, q)
-                if sq:
-                    replacement = obj.query(sq)
-                    replacement.name = obj.name
-                    remove.add(obj)
-                    add.add(replacement)
+                def_sub_query = q
+                if q.extra_optimizations:
+                    def_sub_query = copy.copy(q)
+                    def_sub_query.extra_optimizations = []
+                sq = q.subquery.get(obj.name, def_sub_query)
+
+                replacement = obj.query(sq)
+                replacement.name = obj.name
+                remove.add(obj)
+                add.add(replacement)
         variables.difference_update(remove)
         variables.update(add)
         return variables
@@ -155,6 +160,9 @@ multiple time in a DB. Tryed to register "%s" again under the new name "%s".
         for variable in variables:
             return variable
 
+    def __contains__(self, name):
+        return name in self.__db__
+
     def print_summary(self, stream=sys.stdout):
         print("%s (id %i)" % (self.__class__.__name__, id(self)), file=stream)
         print("  names", self._names, file=stream)
@@ -173,12 +181,16 @@ class Query(object):
     """
 
     def __init__(self, include, require=None, exclude=None,
-                 subquery=None, position_cutoff=None):
+                 subquery=None, position_cutoff=None,
+                 extra_optimizations=None):
         self.include = OrderedSet(include)
         self.require = require or OrderedSet()
         self.exclude = exclude or OrderedSet()
         self.subquery = subquery or {}
         self.position_cutoff = position_cutoff
+        if extra_optimizations is None:
+            extra_optimizations = []
+        self.extra_optimizations = extra_optimizations
         if isinstance(self.require, (list, tuple)):
             self.require = OrderedSet(self.require)
         if isinstance(self.exclude, (list, tuple)):
@@ -186,9 +198,14 @@ class Query(object):
 
     def __str__(self):
         return ("Query{inc=%s,ex=%s,require=%s,subquery=%s,"
-                "position_cutoff=%d}" %
+                "position_cutoff=%d,extra_opts=%s}" %
                 (self.include, self.exclude, self.require, self.subquery,
-                 self.position_cutoff))
+                 self.position_cutoff, self.extra_optimizations))
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        if not hasattr(self, 'extra_optimizations'):
+            self.extra_optimizations = []
 
     # add all opt with this tag
     def including(self, *tags):
@@ -196,7 +213,8 @@ class Query(object):
                      self.require,
                      self.exclude,
                      self.subquery,
-                     self.position_cutoff)
+                     self.position_cutoff,
+                     self.extra_optimizations)
 
     # remove all opt with this tag
     def excluding(self, *tags):
@@ -204,7 +222,8 @@ class Query(object):
                      self.require,
                      self.exclude.union(tags),
                      self.subquery,
-                     self.position_cutoff)
+                     self.position_cutoff,
+                     self.extra_optimizations)
 
     # keep only opt with this tag.
     def requiring(self, *tags):
@@ -212,7 +231,16 @@ class Query(object):
                      self.require.union(tags),
                      self.exclude,
                      self.subquery,
-                     self.position_cutoff)
+                     self.position_cutoff,
+                     self.extra_optimizations)
+
+    def register(self, *optimizations):
+        return Query(self.include,
+                     self.require,
+                     self.exclude,
+                     self.subquery,
+                     self.position_cutoff,
+                     self.extra_optimizations + list(optimizations))
 
 
 class EquilibriumDB(DB):
@@ -240,30 +268,35 @@ class EquilibriumDB(DB):
         super(EquilibriumDB, self).__init__()
         self.ignore_newtrees = ignore_newtrees
         self.__final__ = {}
+        self.__cleanup__ = {}
 
     def register(self, name, obj, *tags, **kwtags):
-        # if name == 'cut_gpua_constant_transfers':
-        #     import ipdb;ipdb.set_trace()
-        if 'final_opt' in kwtags:
-            final_opt = kwtags['final_opt']
-            kwtags.pop('final_opt', None)
-        else:
-            final_opt = False
+        final_opt = kwtags.pop('final_opt', False)
+        cleanup = kwtags.pop('cleanup', False)
+        # An opt should not be final and clean up
+        assert not (final_opt and cleanup)
         super(EquilibriumDB, self).register(name, obj, *tags, **kwtags)
         self.__final__[name] = final_opt
+        self.__cleanup__[name] = cleanup
 
     def query(self, *tags, **kwtags):
         _opts = super(EquilibriumDB, self).query(*tags, **kwtags)
         final_opts = [o for o in _opts if self.__final__.get(o.name, False)]
-        opts = [o for o in _opts if o not in final_opts]
+        cleanup_opts = [o for o in _opts if self.__cleanup__.get(o.name,
+                                                                 False)]
+        opts = [o for o in _opts
+                if o not in final_opts and o not in cleanup_opts]
         if len(final_opts) == 0:
             final_opts = None
+        if len(cleanup_opts) == 0:
+            cleanup_opts = None
         return opt.EquilibriumOptimizer(
             opts,
             max_use_ratio=config.optdb.max_use_ratio,
             ignore_newtrees=self.ignore_newtrees,
             failure_callback=opt.NavigatorOptimizer.warn_inplace,
-            final_optimizers=final_opts)
+            final_optimizers=final_opts,
+            cleanup_optimizers=cleanup_opts)
 
 
 class SequenceDB(DB):
@@ -306,19 +339,33 @@ class SequenceDB(DB):
 
         position_cutoff = kwtags.pop('position_cutoff',
                                      config.optdb.position_cutoff)
+        position_dict = self.__position__
+
         if len(tags) >= 1 and isinstance(tags[0], Query):
             # the call to super should have raise an error with a good message
             assert len(tags) == 1
             if getattr(tags[0], 'position_cutoff', None):
                 position_cutoff = tags[0].position_cutoff
 
-        opts = [o for o in opts if self.__position__[o.name] < position_cutoff]
-        # We want to sort by position and then if collision by name
-        # for deterministic optimization.  Since Python 2.2, sort is
-        # stable, so sort by name first, then by position. This give
-        # the order we want.
-        opts.sort(key=lambda obj: obj.name)
-        opts.sort(key=lambda obj: self.__position__[obj.name])
+            # The Query instance might contain extra optimizations which need
+            # to be added the the sequence of optimizations (don't alter the
+            # original dictionary)
+            if len(tags[0].extra_optimizations) > 0:
+                position_dict = position_dict.copy()
+                for extra_opt in tags[0].extra_optimizations:
+                    # Give a name to the extra optimization (include both the
+                    # class name for descriptiveness and id to avoid name
+                    # collisions)
+                    opt, position = extra_opt
+                    opt.name = "%s_%i" % (opt.__class__, id(opt))
+
+                    # Add the extra optimization to the optimization sequence
+                    if position < position_cutoff:
+                        opts.add(opt)
+                        position_dict[opt.name] = position
+
+        opts = [o for o in opts if position_dict[o.name] < position_cutoff]
+        opts.sort(key=lambda obj: (position_dict[obj.name], obj.name))
         kwargs = {}
         if self.failure_callback:
             kwargs["failure_callback"] = self.failure_callback

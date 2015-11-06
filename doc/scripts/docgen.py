@@ -63,12 +63,13 @@ if __name__ == '__main__':
         os.path.join(sys.path[0], os.pardir, os.pardir))
 
     options = defaultdict(bool)
-    options.update(dict([x, y or True] for x, y in
-        getopt.getopt(sys.argv[1:],
-                      'o:',
-                      ['epydoc', 'rst', 'help', 'nopdf', 'cache', 'test'])[0]))
+    opts, args = getopt.getopt(
+        sys.argv[1:],
+        'o:f:',
+        ['epydoc', 'rst', 'help', 'nopdf', 'cache', 'test'])
+    options.update(dict([x, y or True] for x, y in opts))
     if options['--help']:
-        print('Usage: %s [OPTIONS]' % sys.argv[0])
+        print('Usage: %s [OPTIONS] [files...]' % sys.argv[0])
         print('  -o <dir>: output the html files in the specified dir')
         print('  --cache: use the doctree cache')
         print('  --rst: only compile the doc (requires sphinx)')
@@ -77,6 +78,9 @@ if __name__ == '__main__':
         print('(requires epydoc)')
         print('  --test: run all the code samples in the documentaton')
         print('  --help: this help')
+        print('If one or more files are specified after the options then only '
+              'those files will be built. Otherwise the whole tree is '
+              'processed. Specifying files will implies --cache.')
         sys.exit(0)
 
     if not (options['--epydoc'] or options['--rst'] or options['--test']):
@@ -90,6 +94,9 @@ if __name__ == '__main__':
             pass
 
     outdir = options['-o'] or (throot + '/html')
+    files = None
+    if len(args) != 0:
+        files = [os.path.abspath(f) for f in args]
     mkdir(outdir)
     os.chdir(outdir)
 
@@ -100,7 +107,6 @@ if __name__ == '__main__':
 
     if options['--all'] or options['--epydoc']:
         mkdir("api")
-        sys.path[0:0] = [throot]
 
         #Generate HTML doc
 
@@ -119,10 +125,13 @@ if __name__ == '__main__':
         import sphinx
         if extraopts is None:
             extraopts = []
-        if not options['--cache']:
+        if not options['--cache'] and files is None:
             extraopts.append('-E')
-        sphinx.main(['', '-b', builder] + extraopts +
-                    [os.path.join(throot, 'doc'), workdir])
+        docpath = os.path.join(throot, 'doc')
+        inopt = [docpath, workdir]
+        if files is not None:
+            inopt.extend(files)
+        sphinx.build_main(['', '-b', builder] + extraopts + inopt)
 
     if options['--all'] or options['--rst']:
         mkdir("doc")

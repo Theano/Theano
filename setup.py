@@ -161,7 +161,8 @@ def do_setup():
           license=LICENSE,
           platforms=PLATFORMS,
           packages=find_packages(),
-          install_requires=['numpy>=1.6.2', 'scipy>=0.11', 'six>=1.9.0'],
+          # 1.7.0 give too much warning related to numpy.diagonal.
+          install_requires=['numpy>=1.7.1', 'scipy>=0.11', 'six>=1.9.0'],
           package_data={
               '': ['*.txt', '*.rst', '*.cu', '*.cuh', '*.c', '*.sh', '*.pkl',
                    '*.h', '*.cpp', 'ChangeLog'],

@@ -38,9 +38,9 @@ from theano.tensor.nlinalg import ( MatrixInverse,
                                     norm,
                                     svd
                                     )
+from nose.plugins.attrib import attr
 
 from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 from nose.tools import assert_raises
 
 

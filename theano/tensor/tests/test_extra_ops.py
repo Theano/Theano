@@ -1,7 +1,7 @@
-from nose.plugins.attrib import attr
+import unittest
+
 import numpy as np
 import numpy
-import unittest
 
 import theano
 from theano.tests import unittest_tools as utt
@@ -14,7 +14,7 @@ from theano.tensor.extra_ops import (CumsumOp, cumsum, CumprodOp, cumprod,
                                      to_one_hot, Unique)
 from theano import tensor as T
 from theano import config, tensor, function
-
+from theano.tests.unittest_tools import attr
 
 numpy_ver = [int(n) for n in numpy.__version__.split('.')[:2]]
 numpy_16 = bool(numpy_ver >= [1, 6])
@@ -445,6 +445,26 @@ class TestRepeatOp(utt.InferShapeTester):
                         assert np.allclose(np.repeat(a, r, axis=axis),
                                            f(a, r))
 
+                        #check when r is a list of single integer, e.g. [3].
+                        r = np.random.random_integers(10, size=()).astype(dtype) + 2
+                        f = theano.function([x],
+                                            repeat(x, [r], axis=axis))
+                        assert np.allclose(np.repeat(a, r, axis=axis),
+                                           f(a))
+                        assert not np.any([isinstance(n.op, RepeatOp) 
+                                           for n in f.maker.fgraph.toposort()])
+                           
+                        # check when r is  theano tensortype that broadcastable is (True,)
+                        r_var = theano.tensor.TensorType(broadcastable=(True,),
+                                                         dtype=dtype)()
+                        r = np.random.random_integers(5, size=(1,)).astype(dtype)
+                        f = theano.function([x, r_var],
+                                            repeat(x, r_var, axis=axis))
+                        assert np.allclose(np.repeat(a, r[0], axis=axis),
+                                           f(a, r))
+                        assert not np.any([isinstance(n.op, RepeatOp) 
+                                           for n in f.maker.fgraph.toposort()])
+ 
     @attr('slow')
     def test_infer_shape(self):
         for ndim in range(4):

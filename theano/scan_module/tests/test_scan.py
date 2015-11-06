@@ -11,7 +11,6 @@ import six.moves.cPickle as pickle
 from six.moves import xrange
 import numpy
 from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 from nose.tools import assert_raises
 from nose.tools import raises
 from numpy.testing import dec
@@ -24,6 +23,7 @@ from theano.tests import unittest_tools as utt
 import theano.scalar.sharedvar
 from theano.scan_module.scan_op import Scan
 from theano.compat import PY3, OrderedDict
+from theano.tests.unittest_tools import attr
 
 
 '''
@@ -711,7 +711,7 @@ class T_Scan(unittest.TestCase):
 
         def inner_fct(mitsot_m2, mitsot_m1, sitsot):
             total = mitsot_m2 + mitsot_m1 + sitsot
-            output = total ** 2
+            output = total ** 1.05
             return output, output
 
         inputs = [tensor.matrix(), tensor.vector()]
@@ -728,6 +728,52 @@ class T_Scan(unittest.TestCase):
         # Take the gradient of the sum of gradients wrt the inputs
         sum_of_grads = sum([g.sum() for g in gradients])
         second_gradients = theano.grad(sum_of_grads, inputs[0])
+
+    def test_verify_second_grad_sitsot(self):
+
+        def get_sum_of_grad(inp):
+
+            scan_outputs, updates = theano.scan(fn=lambda x: x * 2,
+                                                outputs_info=[inp],
+                                                n_steps=5)
+
+            # Take the gradient of each output wrt its corresponding initial
+            # state
+            return theano.grad(scan_outputs.sum(), inp).sum()
+
+        # Call verify_grad to ensure the correctness of the second gradients
+        floatX = theano.config.floatX
+        inputs_test_values = [numpy.random.random((3)).astype(floatX)]
+        theano.tests.unittest_tools.verify_grad(get_sum_of_grad,
+                                                inputs_test_values)
+
+    def test_verify_second_grad_mitsot1(self):
+
+        def inner_fct(mitsot_m2, sitsot):
+            total = mitsot_m2 + sitsot
+            output = total ** 1.02
+            return output, output
+
+        def get_sum_of_grad(input0, input1):
+            outputs_info = [dict(initial=input0, taps=[-2]), input1]
+
+            scan_outputs, updates = theano.scan(fn=inner_fct,
+                                                outputs_info=outputs_info,
+                                                n_steps=3)
+
+            # Take the gradient of each output wrt its corresponding initial
+            # state
+            gradients = [theano.grad(scan_outputs[0].sum(), input0),
+                         theano.grad(scan_outputs[1].sum(), input1)]
+
+            return gradients[0].sum() + gradients[1].sum()
+
+        # Call verify_grad to ensure the correctness of the second gradients
+        floatX = theano.config.floatX
+        inputs_test_values = [numpy.random.random((2, 3)).astype(floatX),
+                              numpy.random.random((3)).astype(floatX)]
+        theano.tests.unittest_tools.verify_grad(get_sum_of_grad,
+                                                inputs_test_values)
 
     def test_grad_two_scans(self):
 
@@ -2725,6 +2771,22 @@ class T_Scan(unittest.TestCase):
         # an exception being raised
         theano.function([x], outputs, updates=updates)
 
+    @theano.configparser.change_flags(on_opt_error='raise')
+    def test_pushout_nonseq(self):
+        # Test case originally reported by Daniel Renshaw. The crashed occured
+        # during the optimization PushOutNonSeqScan when it attempted to
+        # a scan node with two outputs but only providing a replacement for
+        # one of those outputs. This led the optimization to raise an
+        # exception.
+
+        outputs, _ = theano.scan(lambda x: (x * x, x),
+                                 non_sequences=[2], n_steps=2)
+        f = theano.function(inputs=[], outputs=outputs)
+
+        outs = f()
+        expected_outs = [[4, 4], [2, 2]]
+        utt.assert_allclose(outs, expected_outs)
+
     def test_sequence_dict(self):
         # Test that we can specify sequences as a dictionary with
         # only the 'input' key
@@ -3995,6 +4057,26 @@ class T_Scan(unittest.TestCase):
         # scan could not detect the connection between `m2` and `x`
         tensor.grad(m2.sum(), m)
 
+    def test_disconnected_gradient3(self):
+        # This tests for a crash that would occur sometimes when taking the
+        # gradient through a scan with a non-recurrent output which would
+        # receive a disconnected gradient
+
+        v = tensor.dvector('v')
+
+        def step(seq):
+            out1 = seq + 1
+            out2 = out1 + 1
+            return out1, out2
+
+        [out1, out2], _ = theano.scan(step, sequences=v)
+        gv = tensor.grad(out2.sum(), [v])
+        f = theano.function([v], gv)
+
+        # Ensure the output of the function is valid
+        output = f(numpy.random.random(5))
+        utt.assert_allclose(output, numpy.ones(5))
+
     def test_dot_optimization(self):
         A = tensor.matrix('A')
         B = tensor.matrix('B')
@@ -4792,6 +4874,12 @@ class T_Scan_Gpuarray(unittest.TestCase, ScanGpuTests):
     def __init__(self, *args, **kwargs):
         from theano.sandbox import gpuarray
         self.gpu_backend = gpuarray
+
+        # This is unfortunate, but required
+        def gpu_from_host(v):
+            return gpuarray.GpuFromHost(None)(v)
+        self.gpu_backend.gpu_from_host = gpu_from_host
+
         self.mode_with_gpu = mode_with_opt.including('gpuarray', 'scan')
         self.mode_with_gpu_nodebug = mode_nodebug.including('gpuarray', 'scan')
         super(T_Scan_Gpuarray, self).__init__(*args, **kwargs)

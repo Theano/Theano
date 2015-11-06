@@ -83,7 +83,7 @@ class Fourier(gof.Op):
                          list(shape_a[axis.data + 1:]))
         else:
             l = len(shape_a)
-            shape_a = tensor.stack(*shape_a)
+            shape_a = tensor.stack(shape_a)
             out_shape = tensor.concatenate((shape_a[0: axis], [n],
                                             shape_a[axis + 1:]))
             n_splits = [1] * l

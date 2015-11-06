@@ -29,7 +29,7 @@ class AsTensorError(TypeError):
     pass
 
 
-class _tensor_py_operators:
+class _tensor_py_operators(object):
     # UNARY
     def __abs__(self):
         return theano.tensor.basic.abs_(self)
@@ -280,7 +280,8 @@ class _tensor_py_operators:
 
     shape = property(lambda self: theano.tensor.basic.shape(self))
 
-    size = property(lambda self: theano.tensor.basic.prod(self.shape))
+    size = property(lambda self: self.shape[0] if self.ndim == 1 else
+                    theano.tensor.basic.prod(self.shape))
 
     # We can't implement __len__ to provide a better error message.
     def any(self, axis=None, keepdims=False):
@@ -367,6 +368,19 @@ class _tensor_py_operators:
 
     def diagonal(self, offset=0, axis1=0, axis2=1):
         return theano.tensor.basic.diagonal(self, offset, axis1, axis2)
+
+    # Transfer the data to another device
+    def transfer(self, target):
+        """
+        If `target` is `'cpu'` this will transfer to a TensorType (if
+        not already one).  Other types may define additional targets.
+
+        Paramters
+        ---------
+        target : str
+            The desired location of the output variable
+        """
+        return theano.tensor.transfer(self, target)
 
     # Elemwise
     def arccos(self):
@@ -520,8 +534,11 @@ class _tensor_py_operators:
         return theano.tensor.subtensor.take(self, indices, axis, mode)
 
     # COPYING
-    def copy(self):
-        return theano.tensor.basic.tensor_copy(self)
+    def copy(self, name=None):
+        """Copy a variable and optionally assign a name."""
+        copied_variable = theano.tensor.basic.tensor_copy(self)
+        copied_variable.name = name
+        return copied_variable
 
     def __iter__(self):
         try:

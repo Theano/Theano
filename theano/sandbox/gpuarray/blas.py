@@ -1,13 +1,15 @@
 import os.path
 
-from theano import Op, Apply, config
+from theano import Apply, config, Op
 
 from theano.compile import optdb
-from theano.gof import local_optimizer, LocalOptGroup
-from theano.tensor.blas import Dot22, Gemv, Gemm, Ger
+from theano.gof import LocalOptGroup
+from theano.tensor.basic import as_tensor_variable
 from theano.tensor.opt import in2out
 
-from .basic_ops import HideC, as_gpuarray_variable
+from .basic_ops import as_gpuarray_variable, infer_context_name
+
+from .opt_util import inplace_allocempty
 
 try:
     import pygpu
@@ -17,7 +19,7 @@ except ImportError as e:
     pass
 
 
-class BlasOp(HideC):
+class BlasOp(Op):
     def c_headers(self):
         return ['<blas_api.h>', '<numpy_compat.h>', '<gpuarray_helper.h>']
 
@@ -27,34 +29,27 @@ class BlasOp(HideC):
     def c_init_code(self):
         return ['import_pygpu__blas();']
 
-    def c_support_code(self):
-        return """
-PyGpuArrayObject *gpublas_try_copy(PyGpuArrayObject *out,
-                                   PyGpuArrayObject *y) {
-  if (out &&
-      GpuArray_CHKFLAGS(&out->ga, GA_CARRAY) &&
-      theano_size_check(out, PyGpuArray_NDIM(y),
-                        PyGpuArray_DIMS(y),
-                        y->ga.typecode)) {
-    if (pygpu_move(out, y)) {
-      Py_XDECREF(out);
-      return NULL;
-    }
-  } else {
-    Py_XDECREF(out);
-    out = pygpu_copy(y, GA_ANY_ORDER);
-  }
-  return out;
-}
-"""
 
+class GpuGemv(BlasOp):
+    __props__ = ('inplace',)
 
-class GpuGemv(BlasOp, Gemv):
+    def __init__(self, inplace=False):
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+
     def make_node(self, y, alpha, A, x, beta):
-        res = Gemv.make_node(self, y, alpha, A, x, beta)
-        A = as_gpuarray_variable(A)
-        x = as_gpuarray_variable(x)
-        y = as_gpuarray_variable(y)
+        ctx_name = infer_context_name(y, A, x)
+        A = as_gpuarray_variable(A, ctx_name)
+        x = as_gpuarray_variable(x, ctx_name)
+        y = as_gpuarray_variable(y, ctx_name)
+        alpha = as_tensor_variable(alpha)
+        beta = as_tensor_variable(beta)
+        assert alpha.ndim == 0
+        assert beta.ndim == 0
+        assert A.ndim == 2
+        assert x.ndim == 1
+        assert y.ndim == 1
         assert A.dtype == x.dtype == y.dtype
         return Apply(self, [y, alpha, A, x, beta], [y.type()])
 
@@ -72,7 +67,7 @@ class GpuGemv(BlasOp, Gemv):
         if self.inplace:
             code = """
                    if (%(y)s->ga.strides[0] <= 0) {
-                     %(out)s = gpublas_try_copy(%(out)s, %(y)s);
+                     %(out)s = theano_try_copy(%(out)s, %(y)s);
                      if (%(out)s == NULL) {
                        %(fail)s
                      }
@@ -84,7 +79,7 @@ class GpuGemv(BlasOp, Gemv):
                    """ % vars
         else:
             code = """
-                   %(out)s = gpublas_try_copy(%(out)s, %(y)s);
+                   %(out)s = theano_try_copy(%(out)s, %(y)s);
                    if (%(out)s == NULL) {
                        %(fail)s
                    }
@@ -105,18 +100,33 @@ class GpuGemv(BlasOp, Gemv):
         return code
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
 gpugemv_no_inplace = GpuGemv(inplace=False)
 gpugemv_inplace = GpuGemv(inplace=True)
 
 
-class GpuGemm(BlasOp, Gemm):
+class GpuGemm(BlasOp):
+    __props__ = ('inplace',)
+    _f16_ok = True
+
+    def __init__(self, inplace=False):
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+
     def make_node(self, C, alpha, A, B, beta):
-        res = Gemm.make_node(self, C, alpha, A, B, beta)
-        A = as_gpuarray_variable(A)
-        B = as_gpuarray_variable(B)
-        C = as_gpuarray_variable(C)
+        ctx_name = infer_context_name(C, A, B)
+        A = as_gpuarray_variable(A, ctx_name)
+        B = as_gpuarray_variable(B, ctx_name)
+        C = as_gpuarray_variable(C, ctx_name)
+        alpha = as_tensor_variable(alpha)
+        beta = as_tensor_variable(beta)
+        assert alpha.ndim == 0
+        assert beta.ndim == 0
+        assert A.ndim == 2
+        assert B.ndim == 2
+        assert C.ndim == 2
         assert A.dtype == B.dtype == C.dtype
         return Apply(self, [C, alpha, A, B, beta], [C.type()])
 
@@ -134,7 +144,7 @@ class GpuGemm(BlasOp, Gemm):
         if self.inplace:
             code = """
                    if (!GpuArray_ISONESEGMENT(&%(C)s->ga)) {
-                     %(out)s = gpublas_try_copy(%(out)s, %(C)s);
+                     %(out)s = theano_try_copy(%(out)s, %(C)s);
                      if (%(out)s == NULL) {
                        %(fail)s
                      }
@@ -146,7 +156,7 @@ class GpuGemm(BlasOp, Gemm):
                    """ % vars
         else:
             code = """
-                   %(out)s = gpublas_try_copy(%(out)s, %(C)s);
+                   %(out)s = theano_try_copy(%(out)s, %(C)s);
                    if (%(out)s == NULL) {
                        %(fail)s
                    }
@@ -167,25 +177,36 @@ class GpuGemm(BlasOp, Gemm):
         return code
 
     def c_code_cache_version(self):
-        return (4,)
-
+        return (5,)
 
 gpugemm_no_inplace = GpuGemm(inplace=False)
 gpugemm_inplace = GpuGemm(inplace=True)
 
 
-class GpuGer(BlasOp, Ger):
+class GpuGer(BlasOp):
+    __props__ = ('inplace',)
+
+    def __init__(self, inplace=False):
+        self.inplace = inplace
+        if self.inplace:
+            self.destroy_map = {0: [0]}
+
     def make_node(self, A, alpha, x, y):
-        res = Ger.make_node(self, A, alpha, x, y)
-        A = as_gpuarray_variable(A)
-        x = as_gpuarray_variable(x)
-        y = as_gpuarray_variable(y)
+        ctx_name = infer_context_name(A, x, y)
+        A = as_gpuarray_variable(A, ctx_name)
+        x = as_gpuarray_variable(x, ctx_name)
+        y = as_gpuarray_variable(y, ctx_name)
+        alpha = as_tensor_variable(alpha)
+        assert alpha.ndim == 0
+        assert A.ndim == 2
+        assert x.ndim == 1
+        assert y.ndim == 1
         assert A.dtype == x.dtype == y.dtype
         return Apply(self, [A, alpha, x, y], [A.type()])
 
     def perform(self, node, inp, out):
         A, alpha, x, y = inp
-        inplace = self.destructive
+        inplace = self.inplace
         if inplace and not A.flags.forc:
             inplace = False
         out[0][0] = blas.ger(alpha, x, y, A,
@@ -194,10 +215,10 @@ class GpuGer(BlasOp, Ger):
     def c_code(self, node, name, inp, out, sub):
         vars = dict(out=out[0], A=inp[0], alpha=inp[1], x=inp[2], y=inp[3],
                     fail=sub['fail'], name=name)
-        if self.destructive:
+        if self.inplace:
             code = """
                    if (!GpuArray_ISONESEGMENT(&%(A)s->ga)) {
-                     %(out)s = gpublas_try_copy(%(out)s, %(A)s);
+                     %(out)s = theano_try_copy(%(out)s, %(A)s);
                      if (%(out)s == NULL) {
                        %(fail)s
                      }
@@ -209,7 +230,7 @@ class GpuGer(BlasOp, Ger):
                    """ % vars
         else:
             code = """
-                   %(out)s = gpublas_try_copy(%(out)s, %(A)s);
+                   %(out)s = theano_try_copy(%(out)s, %(A)s);
                    if (%(out)s == NULL) {
                        %(fail)s
                    }
@@ -227,18 +248,22 @@ class GpuGer(BlasOp, Ger):
         return code
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
 
-gpuger_no_inplace = GpuGer(destructive=False)
-gpuger_inplace = GpuGer(destructive=True)
+gpuger_no_inplace = GpuGer(inplace=False)
+gpuger_inplace = GpuGer(inplace=True)
 
 
-class GpuDot22(BlasOp, Dot22):
+class GpuDot22(BlasOp):
+    __props__ = ()
+
     def make_node(self, x, y):
-        res = Dot22.make_node(self, x, y)
-        x = as_gpuarray_variable(x)
-        y = as_gpuarray_variable(y)
+        ctx_name = infer_context_name(x, y)
+        x = as_gpuarray_variable(x, ctx_name)
+        y = as_gpuarray_variable(y, ctx_name)
+        assert x.ndim == 2
+        assert y.ndim == 2
         assert x.dtype == y.dtype
         return Apply(self, [x, y], [x.type()])
 
@@ -264,7 +289,7 @@ class GpuDot22(BlasOp, Dot22):
         dims[1] = PyGpuArray_DIMS(%(B)s)[1];
 
         if (theano_prep_output(&%(out)s, 2, dims, %(typecode)s, GA_C_ORDER,
-                              pygpu_default_context())) {
+                               %(A)s->context)) {
             %(fail)s
         }
 
@@ -283,30 +308,30 @@ class GpuDot22(BlasOp, Dot22):
         return code
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
 gpu_dot22 = GpuDot22()
 
-@local_optimizer([gpugemv_no_inplace], inplace=True)
-def local_inplace_gpuagemv(node):
-    if node.op == gpugemv_no_inplace:
-        return [gpugemv_inplace(*node.inputs)]
+
+@inplace_allocempty(GpuGemv, 0)
+def local_inplace_gpuagemv(node, inputs):
+    return [gpugemv_inplace(*inputs)]
 
 
-@local_optimizer([gpugemm_no_inplace], inplace=True)
-def local_inplace_gpuagemm(node):
-    if node.op == gpugemm_no_inplace:
-        return [gpugemm_inplace(*node.inputs)]
+@inplace_allocempty(GpuGemm, 0)
+def local_inplace_gpuagemm(node, inputs):
+    return [gpugemm_inplace(*inputs)]
 
 
-@local_optimizer([gpuger_no_inplace], inplace=True)
-def local_inplace_gpuager(node):
-    if node.op == gpuger_no_inplace:
-        return [gpuger_inplace(*node.inputs)]
+@inplace_allocempty(GpuGer, 0)
+def local_inplace_gpuager(node, inputs):
+    return [gpuger_inplace(*inputs)]
 
-gpuablas_opt_inplace = in2out(LocalOptGroup(
-        local_inplace_gpuagemv, local_inplace_gpuagemm, local_inplace_gpuager),
+gpuablas_opt_inplace = in2out(LocalOptGroup(local_inplace_gpuagemv,
+                                            local_inplace_gpuagemm,
+                                            local_inplace_gpuager),
                               name='gpuablas_opt_inplace')
+
 optdb.register('InplaceGpuaBlasOpt',
                gpuablas_opt_inplace,
                70.0, 'fast_run', 'inplace', 'gpuarray')

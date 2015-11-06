@@ -10,12 +10,12 @@ APPLY_SPECIFIC(input) = NULL;
 APPLY_SPECIFIC(output) = NULL;
 APPLY_SPECIFIC(kerns) = NULL;
 if ((APPLY_SPECIFIC(err) = cudnnCreateTensorDescriptor(&APPLY_SPECIFIC(input))) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
+  PyErr_Format(PyExc_MemoryError, "could not allocate tensor descriptor "
 	       "(inp): %s", cudnnGetErrorString(APPLY_SPECIFIC(err)));
   FAIL;
 }
 if ((APPLY_SPECIFIC(err) = cudnnCreateTensorDescriptor(&APPLY_SPECIFIC(output))) != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_MemoryError, "could not allocate tensor4d descriptor "
+  PyErr_Format(PyExc_MemoryError, "could not allocate tensor descriptor "
                "(out): %s", cudnnGetErrorString(APPLY_SPECIFIC(err)));
   FAIL;
 }

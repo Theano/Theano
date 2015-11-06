@@ -92,10 +92,7 @@ class HostFromGpu(GpuOp):
 
     def R_op(self, inputs, eval_points):
         ev, = eval_points
-        if isinstance(ev, tensor.TensorType):
-            return [gpu_from_host(ev)]
-        else:
-            return [ev]
+        return [self(ev)]
 
     def infer_shape(self, node, xshp):
         return xshp
@@ -155,10 +152,7 @@ class GpuFromHost(GpuOp):
 
     def R_op(self, inputs, eval_points):
         ev, = eval_points
-        if isinstance(ev, CudaNdarrayType):
-            return [host_from_gpu(ev)]
-        else:
-            return [ev]
+        [self(ev)]
 
     def infer_shape(self, node, xshp):
         return xshp
@@ -749,7 +743,6 @@ class GpuCAReduce(GpuOp):
             %(z)s = (CudaNdarray*) CudaNdarray_NewDims(%(nd_out)s, new_dims);
             if (NULL == %(z)s)
             {
-                PyErr_Format(PyExc_RuntimeError, "Failed to allocate output");
                 %(fail)s;
             }
         }
@@ -1838,7 +1831,7 @@ class GpuCAReduce(GpuOp):
         """ % locals(), file=sio)
 
     def c_code_cache_version_apply(self, node):
-        version = [13]  # the version corresponding to the c code in this Op
+        version = [14]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(self.scalar_op,
@@ -2445,6 +2438,8 @@ class GpuReshape(tensor.Reshape, GpuOp):
 
     # __hash__, __eq__, __str__ come from tensor.Subtensor
     def make_node(self, x, shp):
+        x = as_cuda_ndarray_variable(x)
+        shp = tensor.as_tensor_variable(shp)
         host_reshaped = host_from_gpu(x).reshape(shp, ndim=self.ndim)
         return Apply(self, [x, shp],
                      [CudaNdarrayType(host_reshaped.broadcastable)()])
@@ -3626,7 +3621,7 @@ class GpuAllocEmpty(GpuOp):
                 const_shp = tensor.get_scalar_constant_value(s)
             except tensor.NotScalarConstantError:
                 const_shp = None
-            bcast.append(numpy.all(1 == const_shp))
+            bcast.append(1 == const_shp)
         otype = CudaNdarrayType(dtype='float32', broadcastable=bcast)
         output = otype()
         return sh, output

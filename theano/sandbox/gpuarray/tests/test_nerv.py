@@ -6,7 +6,7 @@ from theano import function
 from theano.tests import unittest_tools as utt
 from theano.tensor import vector, matrix, dot
 
-from .test_basic_ops import mode_with_gpu
+from .config import mode_with_gpu
 from ..nerv import Gemm16, nerv
 
 

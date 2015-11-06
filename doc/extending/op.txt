@@ -3,6 +3,39 @@
 Making arithmetic Ops on double
 ===============================
 
+.. testsetup:: *
+
+   from theano import gof
+
+   class Double(gof.Type):
+
+       def filter(self, x, strict=False, allow_downcast=None):
+           if strict:
+               if isinstance(x, float):
+                   return x
+               else:
+                   raise TypeError('Expected a float!')
+           elif allow_downcast:
+               return float(x)
+           else:   # Covers both the False and None cases.
+               x_float = float(x)
+               if x_float == x:
+                   return x_float
+               else:
+                    raise TypeError('The double type cannot accurately represent '
+                                    'value %s (of type %s): you must explicitly '
+                                    'allow downcasting if you want to do this.'
+                                    % (x, type(x)))
+
+       def values_eq_approx(self, x, y, tolerance=1e-4):
+           return abs(x - y) / (abs(x) + abs(y)) < tolerance
+
+       def __str__(self):
+           return "double"
+
+   double = Double()
+
+
 Now that we have a ``double`` type, we have yet to use it to perform
 computations. We'll start by defining multiplication.
 
@@ -500,6 +533,8 @@ These are the function required to work with gradient.grad().
    the outputs) back to their corresponding shapes and return them as the 
    output of the :func:`R_op` method.
 
+   :ref:`List of op with r op support <R_op_list>`.
+
 Defining an Op: ``mul``
 =======================
 
@@ -508,10 +543,7 @@ multiplication Op could take an arbitrary number of arguments.
 
 First, we'll instantiate a ``mul`` Op:
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_1
-
-.. code-block:: python
+.. testcode:: mul
 
    from theano import gof
    mul = gof.Op()
@@ -525,10 +557,7 @@ two.  This function ensures that both inputs have the ``double`` type.
 Since multiplying two doubles yields a double, this function makes an
 Apply node with an output Variable of type ``double``.
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_1
-
-.. code-block:: python
+.. testcode:: mul
 
    def make_node(x, y):
        if x.type != double or y.type != double:
@@ -561,9 +590,7 @@ built-in type ``float`` because this is the type that ``double.filter()``
 will always return, per our own definition. ``output_storage`` will
 contain a single storage cell for the multiplication's variable.
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_1
-.. code-block:: python
+.. testcode:: mul
 
    def perform(node, inputs, output_storage):
        x, y = inputs[0], inputs[1]
@@ -593,30 +620,32 @@ Here, ``z`` is a list of one element. By default, ``z == [None]``.
 Trying out our new Op
 =====================
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_1
-
 In the following code, we use our new Op:
 
->>> x, y = double('x'), double('y')
->>> z = mul(x, y)
->>> f = theano.function([x, y], z)
->>> f(5, 6)
-30.0
->>> f(5.6, 6.7)
-37.519999999999996
+.. doctest:: mul
+
+   >>> import theano
+   >>> x, y = double('x'), double('y')
+   >>> z = mul(x, y)
+   >>> f = theano.function([x, y], z)
+   >>> f(5, 6)
+   30.0
+   >>> f(5.6, 6.7)
+   37.519999999999996
 
 Note that there is an implicit call to
 ``double.filter()`` on each argument, so if we give integers as inputs
 they are magically cast to the right type. Now, what if we try this?
 
->>> x = double('x')
->>> z = mul(x, 2)
-Traceback (most recent call last):
-  File "<stdin>", line 1, in <module>
-  File "/u/breuleuo/hg/theano/theano/gof/op.py", line 207, in __call__
-  File "<stdin>", line 2, in make_node
-AttributeError: 'int' object has no attribute 'type'
+.. doctest:: mul
+
+   >>> x = double('x')
+   >>> z = mul(x, 2)
+   Traceback (most recent call last):
+     File "<stdin>", line 1, in <module>
+     File "/u/breuleuo/hg/theano/theano/gof/op.py", line 207, in __call__
+     File "<stdin>", line 2, in make_node
+   AttributeError: 'int' object has no attribute 'type'
 
 Automatic Constant Wrapping
 ---------------------------
@@ -625,9 +654,7 @@ Well, OK. We'd like our Op to be a bit more flexible. This can be done
 by modifying ``make_node`` to accept Python ``int`` or ``float`` as
 ``x`` and/or ``y``:
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_1
-.. code-block:: python
+.. testcode:: mul
 
    def make_node(x, y):
        if isinstance(x, (int, float)):
@@ -643,16 +670,15 @@ Whenever we pass a Python int or float instead of a Variable as ``x`` or
 ``y``, ``make_node`` will convert it to :ref:`constant` for us. ``gof.Constant``
 is a :ref:`variable` we statically know the value of.
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_op.test_op_1
+.. doctest:: mul
 
->>> x = double('x')
->>> z = mul(x, 2)
->>> f = theano.function([x], z)
->>> f(10)
-20.0
->>> f(3.4)
-6.7999999999999998
+   >>> x = double('x')
+   >>> z = mul(x, 2)
+   >>> f = theano.function([x], z)
+   >>> f(10)
+   20.0
+   >>> f(3.4)
+   6.8
 
 Now the code works the way we want it to.
 
@@ -673,10 +699,7 @@ operations ``add``, ``sub`` and ``div``, code for ``make_node`` can be
 shared between these Ops. Here is revised implementation of these four
 arithmetic operators:
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_1
-
-.. code-block:: python
+.. testcode::
 
    from theano import gof
 

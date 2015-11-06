@@ -3,7 +3,6 @@ import sys
 import unittest
 
 from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 import numpy
 from six import StringIO
 from six.moves import xrange
@@ -34,6 +33,7 @@ from theano.tensor import (as_tensor_variable, _shared,
                            fmatrix, dmatrix, lmatrix, matrix,
                            ctensor3, dtensor4)
 from theano.tensor.tests.test_basic import rand, randint_ranged, inplace_func
+from theano.tests.unittest_tools import attr
 
 if PY3:
     def L(i):
@@ -515,8 +515,8 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
             self.assertRaises(IndexError, g, shp)
 
     def test_adv_sub1_broadcast(self):
-        ones = numpy.ones((1, 3), dtype=self.dtype)
-        n = self.shared(ones * 5, broadcastable=(True, False))
+        v = numpy.arange(3, dtype=self.dtype).reshape((1, 3))
+        n = self.shared(v*5, broadcastable=(True, False))
         idx = tensor.lvector()
         t = n[idx]
         self.assertTrue(isinstance(t.owner.op, tensor.AdvancedSubtensor1))
@@ -529,10 +529,10 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
         self.assertTrue(isinstance(topo_[0].op, self.adv_sub1))
         f_0 = f([0])
         self.assertTrue(f_0.shape == (1, 3))
-        self.assertTrue(numpy.allclose(f_0, ones[0] * 5))
+        self.assertTrue(numpy.allclose(f_0, v*5))
         f_00 = f([0, 0])
         self.assertTrue(f_00.shape == (2, 3))
-        self.assertTrue(numpy.allclose(f_00, 5))
+        self.assertTrue(numpy.allclose(f_00, v*5))
         self.assertRaises(IndexError, f, [0, 1])
 
         # Test the gradient

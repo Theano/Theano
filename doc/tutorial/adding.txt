@@ -11,9 +11,6 @@ To get us started with Theano and get a feel of what we're working with,
 let's make a simple function: add two numbers together. Here is how you do
 it:
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_adding.test_adding_1
-
 >>> import theano.tensor as T
 >>> from theano import function
 >>> x = T.dscalar('x')
@@ -72,7 +69,7 @@ are, however, assigned the theano Type ``dscalar`` in their ``type``
 field, as you can see here:
 
 >>> type(x)
-<class 'theano.tensor.basic.TensorVariable'>
+<class 'theano.tensor.var.TensorVariable'>
 >>> x.type
 TensorType(float64, scalar)
 >>> T.dscalar
@@ -120,7 +117,8 @@ then be used like a normal Python function.
 .. note::
 
     As a shortcut, you can skip step 3, and just use a variable's
-    :func:`eval` method. The :func:`eval` method is not as flexible
+    :func:`eval <theano.gof.graph.Variable.eval>` method.
+    The :func:`eval` method is not as flexible
     as :func:`function` but it can do everything we've covered in
     the tutorial so far. It has the added benefit of not requiring
     you to import :func:`function` . Here is how :func:`eval` works:
@@ -149,9 +147,6 @@ Adding two Matrices
 You might already have guessed how to do this. Indeed, the only change
 from the previous example is that you need to instantiate *x* and
 *y* using the matrix Types:
-
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_adding.test_adding_2
 
 >>> x = T.dmatrix('x')
 >>> y = T.dmatrix('y')
@@ -201,14 +196,19 @@ with NumPy arrays may be found here: :ref:`tensor creation<libdoc_tensor_creatio
 Exercise
 ========
 
-.. code-block:: python
+.. testcode::
 
-  import theano
-  a = theano.tensor.vector() # declare variable
-  out = a + a ** 10               # build symbolic expression
-  f = theano.function([a], out)   # compile function
-  print f([0, 1, 2])  # prints `array([0, 2, 1026])`
-  
+   import theano
+   a = theano.tensor.vector() # declare variable
+   out = a + a ** 10               # build symbolic expression
+   f = theano.function([a], out)   # compile function
+   print(f([0, 1, 2]))
+
+.. testoutput::
+
+   [    0.     2.  1026.]
+
+
 Modify and execute this code to compute this expression: a ** 2 + b ** 2 + 2 * a * b.
 
 

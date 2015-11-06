@@ -23,7 +23,7 @@ Interpreting Error Messages
 Even in its default configuration, Theano tries to display useful error
 messages. Consider the following faulty code.
 
-.. code-block:: python
+.. testcode::
 
     import numpy as np
     import theano
@@ -38,24 +38,20 @@ messages. Consider the following faulty code.
 
 Running the code above we see:
 
-.. code-block:: bash
+.. testoutput::
+   :options: +ELLIPSIS
 
-    Traceback (most recent call last):
-      File "test0.py", line 10, in <module>
-        f(np.ones((2,)), np.ones((3,)))
-      File "/PATH_TO_THEANO/theano/compile/function_module.py", line 605, in __call__
-        self.fn.thunks[self.fn.position_of_error])
-      File "/PATH_TO_THEANO/theano/compile/function_module.py", line 595, in __call__
-        outputs = self.fn()
-    ValueError: Input dimension mis-match. (input[0].shape[0] = 3, input[1].shape[0] = 2)
-    Apply node that caused the error: Elemwise{add,no_inplace}(<TensorType(float64, vector)>, <TensorType(float64, vector)>, <TensorType(float64, vector)>)
-    Inputs types: [TensorType(float64, vector), TensorType(float64, vector), TensorType(float64, vector)]
-    Inputs shapes: [(3,), (2,), (2,)]
-    Inputs strides: [(8,), (8,), (8,)]
-    Inputs scalar values: ['not scalar', 'not scalar', 'not scalar']
+   Traceback (most recent call last):
+     ...
+   ValueError: Input dimension mis-match. (input[0].shape[0] = 3, input[1].shape[0] = 2)
+   Apply node that caused the error: Elemwise{add,no_inplace}(<TensorType(float64, vector)>, <TensorType(float64, vector)>, <TensorType(float64, vector)>)
+   Inputs types: [TensorType(float64, vector), TensorType(float64, vector), TensorType(float64, vector)]
+   Inputs shapes: [(3,), (2,), (2,)]
+   Inputs strides: [(8,), (8,), (8,)]
+   Inputs scalar values: ['not scalar', 'not scalar', 'not scalar']
 
-    HINT: Re-running with most Theano optimization disabled could give you a back-traces when this node was created. This can be done with by setting the Theano flags 'optimizer=fast_compile'. If that does not work, Theano optimization can be disabled with 'optimizer=None'.
-    HINT: Use the Theano flag 'exception_verbosity=high' for a debugprint of this apply node.
+   HINT: Re-running with most Theano optimization disabled could give you a back-traces when this node was created. This can be done with by setting the Theano flags 'optimizer=fast_compile'. If that does not work, Theano optimization can be disabled with 'optimizer=None'.
+   HINT: Use the Theano flag 'exception_verbosity=high' for a debugprint of this apply node.
 
 Arguably the most useful information is approximately half-way through
 the error message, where the kind of error is displayed along with its
@@ -71,7 +67,7 @@ the faulty line, while ``exception_verbosity=high`` will display a
 debugprint of the apply node. Using these hints, the end of the error
 message becomes :
 
-.. code-block:: bash
+.. code-block:: none
 
     Backtrace when the node is created:
       File "test0.py", line 8, in <module>
@@ -101,7 +97,7 @@ following example. Here, we use ``exception_verbosity=high`` and
 ``optimizer=None`` would and it could therefore be used instead of test values.
 
 
-.. code-block:: python
+.. testcode:: testvalue
 
     import numpy
     import theano
@@ -137,7 +133,7 @@ following example. Here, we use ``exception_verbosity=high`` and
 
 Running the above code generates the following error message:
 
-.. code-block:: bash
+.. testoutput:: testvalue
 
     Traceback (most recent call last):
       File "test1.py", line 31, in <module>
@@ -185,7 +181,7 @@ of error can thus be identified with much more precision and much earlier in
 the compilation pipeline. For example, running the above code yields the
 following error message, which properly identifies *line 24* as the culprit.
 
-.. code-block:: bash
+.. code-block:: none
 
     Traceback (most recent call last):
       File "test2.py", line 24, in <module>
@@ -228,7 +224,10 @@ The ``compute_test_value`` mechanism works as follows:
 
 Theano provides a 'Print' op to do this.
 
-.. code-block:: python
+.. testcode::
+
+    import numpy
+    import theano
 
     x = theano.tensor.dvector('x')
 
@@ -243,6 +242,9 @@ Theano provides a 'Print' op to do this.
     #this runs the graph with the message, and value printed
     assert numpy.all( f_with_print([1, 2, 3]) == [5, 10, 15])
 
+.. testoutput::
+
+    this is a very important value __str__ = [ 1.  2.  3.]
 
 Since Theano runs your program in a topological order, you won't have precise
 control over the order in which multiple ``Print()`` ops are evaluted.  For a more
@@ -324,7 +326,7 @@ You can use ``MonitorMode`` to inspect the inputs and outputs of each
 node being executed when the function is called. The code snipped below
 shows how to print all inputs and outputs:
 
-.. code-block:: python
+.. testcode::
 
     import theano
 
@@ -341,8 +343,9 @@ shows how to print all inputs and outputs:
                             post_func=inspect_outputs))
     f(3)
 
-    # The code will print the following:
-    #   0 Elemwise{mul,no_inplace}(TensorConstant{5.0}, x) input(s) value(s): [array(5.0), array(3.0)] output(s) value(s): [array(15.0)]
+.. testoutput::
+
+    0 Elemwise{mul,no_inplace}(TensorConstant{5.0}, x) input(s) value(s): [array(5.0), array(3.0)] output(s) value(s): [array(15.0)]
 
 When using these ``inspect_inputs`` and ``inspect_outputs`` functions
 with ``MonitorMode``, you should see [potentially a lot of] printed output.
@@ -357,7 +360,7 @@ position, or only if a particular value showed up in one of the inputs or output
 A typical example is to detect when NaN values are added into computations, which
 can be achieved as follows:
 
-.. code-block:: python
+.. testcode:: compiled
 
     import numpy
 
@@ -385,12 +388,14 @@ can be achieved as follows:
                             post_func=detect_nan))
     f(0)  # log(0) * 0 = -inf * 0 = NaN
 
-    # The code above will print:
-    #   *** NaN detected ***
-    #   Elemwise{Composite{[mul(log(i0), i0)]}} [@A] ''
-    #    |x [@B]
-    #   Inputs : [array(0.0)]
-    #   Outputs: [array(nan)]
+.. testoutput:: compiled
+   :options: +NORMALIZE_WHITESPACE
+
+   *** NaN detected ***
+   Elemwise{Composite{(log(i0) * i0)}} [@A] ''
+    |x [@B]
+   Inputs : [array(0.0)]
+   Outputs: [array(nan)]
 
 To help understand what is happening in your graph, you can
 disable the ``local_elemwise_fusion`` and all ``inplace``
@@ -402,12 +407,12 @@ will not be able to see the input that was overwriten in the ``post_func``
 function. To disable those optimizations (with a Theano version after
 0.6rc3), define the MonitorMode like this:
 
-.. code-block:: python
+.. testcode:: compiled
 
    mode = theano.compile.MonitorMode(post_func=detect_nan).excluding(
-       'local_elemwise_fusion', 'inplace)
-    f = theano.function([x], [theano.tensor.log(x) * x],
-                        mode=mode)
+       'local_elemwise_fusion', 'inplace')
+   f = theano.function([x], [theano.tensor.log(x) * x],
+                       mode=mode)
 
 .. note::
 
@@ -422,10 +427,9 @@ the execution of the node can garbage collect its inputs that aren't
 needed anymore by the Theano function. This can be done with the Theano
 flag:
 
-.. code-block:: cfg
+.. code-block:: python
 
    allow_gc=False
-
 
 
 .. TODO: documentation for link.WrapLinkerMany
@@ -443,28 +447,49 @@ functions.
 
 Consider this example script ("ex.py"):
 
-.. code-block:: python
+.. testcode::
 
-        import theano
-        import numpy
-        import theano.tensor as T
+   import theano
+   import numpy
+   import theano.tensor as T
 
-        a = T.dmatrix('a')
-        b = T.dmatrix('b')
+   a = T.dmatrix('a')
+   b = T.dmatrix('b')
 
-        f = theano.function([a, b], [a * b])
+   f = theano.function([a, b], [a * b])
 
-        # matrices chosen so dimensions are unsuitable for multiplication
-        mat1 = numpy.arange(12).reshape((3, 4))
-        mat2 = numpy.arange(25).reshape((5, 5))
+   # matrices chosen so dimensions are unsuitable for multiplication
+   mat1 = numpy.arange(12).reshape((3, 4))
+   mat2 = numpy.arange(25).reshape((5, 5))
 
-        f(mat1, mat2)
+   f(mat1, mat2)
+
+.. testoutput::
+   :hide:
+   :options: +ELLIPSIS
+
+   Traceback (most recent call last):
+     ...
+   ValueError: Input dimension mis-match. (input[0].shape[0] = 3, input[1].shape[0] = 5)
+   Apply node that caused the error: Elemwise{mul,no_inplace}(a, b)
+   Toposort index: 0
+   Inputs types: [TensorType(float64, matrix), TensorType(float64, matrix)]
+   Inputs shapes: [(3, 4), (5, 5)]
+   Inputs strides: [(32, 8), (40, 8)]
+   Inputs values: ['not shown', 'not shown']
+   Outputs clients: [['output']]
+
+   Backtrace when the node is created:
+     File "<doctest default[0]>", line 8, in <module>
+       f = theano.function([a, b], [a * b])
+
+   HINT: Use the Theano flag 'exception_verbosity=high' for a debugprint and storage map footprint of this apply node.
 
 This is actually so simple the debugging could be done easily, but it's for
 illustrative purposes. As the matrices can't be multiplied element-wise
 (unsuitable shapes), we get the following exception:
 
-.. code-block:: text
+.. code-block:: none
 
     File "ex.py", line 14, in <module>
       f(mat1, mat2)

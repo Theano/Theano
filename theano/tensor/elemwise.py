@@ -7,6 +7,7 @@ import numpy
 import theano
 from theano import gof
 from theano.compat import izip
+from theano.compat import get_unbound_function
 from six import iteritems
 from six.moves import xrange
 from theano.gof import Apply, Op, OpenMPOp
@@ -502,12 +503,11 @@ class Elemwise(OpenMPOp):
 
         self.ufunc = None
         self.nfunc = None
+        if nfunc_spec is None:
+            nfunc_spec = getattr(scalar_op, 'nfunc_spec', None)
         self.nfunc_spec = nfunc_spec
         if nfunc_spec:
             self.nfunc = getattr(numpy, nfunc_spec[0])
-        elif scalar_op.nin > 0:
-            self.ufunc = numpy.frompyfunc(scalar_op.impl, scalar_op.nin,
-                                          scalar_op.nout)
 
         # precompute the hash of this node
         self._rehash()
@@ -527,7 +527,7 @@ class Elemwise(OpenMPOp):
         self.nfunc = None
         if getattr(self, 'nfunc_spec', None):
             self.nfunc = getattr(numpy, self.nfunc_spec[0])
-        elif self.scalar_op.nin > 0:
+        elif self.scalar_op.nin > 0 and self.scalar_op.nin < 32:
             self.ufunc = numpy.frompyfunc(self.scalar_op.impl,
                                           self.scalar_op.nin,
                                           self.scalar_op.nout)
@@ -792,6 +792,28 @@ class Elemwise(OpenMPOp):
 
         return ret
 
+    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+        node_ = node
+        # Postpone the ufunc building to the last minutes
+        # NumPy ufunc support only up to 31 inputs.
+        # But our c code support more.
+        if (len(node.inputs) < 32 and
+                (self.nfunc is None or
+                 self.scalar_op.nin != len(node.inputs)) and
+                self.ufunc is None):
+
+            ufunc = numpy.frompyfunc(self.scalar_op.impl,
+                                     len(node.inputs),
+                                     self.scalar_op.nout)
+            if self.scalar_op.nin > 0:
+                # We can reuse it for many nodes
+                self.ufunc = ufunc
+            else:
+                node.tag.ufunc = ufunc
+
+        return super(Elemwise, node_.op).make_thunk(node_, storage_map,
+                                                    compute_map, no_recycling)
+
     def perform(self, node, inputs, output_storage):
         if len(node.inputs) >= 32:
             # Some versions of NumPy will segfault, other will raise a
@@ -859,9 +881,18 @@ class Elemwise(OpenMPOp):
         else:
             # the second calling form is used because in certain versions of
             # numpy the first (faster) version leads to segfaults
-            ufunc = (self.ufunc or
-                     numpy.frompyfunc(self.scalar_op.impl, len(inputs),
-                                      self.scalar_op.nout))
+            if self.ufunc:
+                ufunc = self.ufunc
+            else:
+                if not hasattr(node.tag, 'ufunc'):
+                    # It happen that make_thunk isn't called, like in
+                    # get_scalar_constant_value
+                    node.tag.ufunc = numpy.frompyfunc(self.scalar_op.impl,
+                                                      len(node.inputs),
+                                                      self.scalar_op.nout)
+
+                ufunc = node.tag.ufunc
+
             nout = ufunc.nout
 
         variables = ufunc(*ufunc_args, **ufunc_kwargs)
@@ -1233,6 +1264,9 @@ class Elemwise(OpenMPOp):
         when doing constant folding of this node.
         """
         return node.outputs[0].ndim == 0
+
+theano.compile.debugmode.default_make_thunk.append(
+    get_unbound_function(Elemwise.make_thunk))
 
 # def elemwise_to_scal(fgraph):
 # TODO: why is this commented out? should it be removed?

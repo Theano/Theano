@@ -857,9 +857,9 @@ class Op(utils.object2, PureOp, CLinkerOp):
 
         p = node.op.perform
 
-        ctx = node.run_context()
+        params = node.run_params()
 
-        if ctx is graph.NoContext:
+        if params is graph.NoParams:
             # default arguments are stored in the closure of `rval`
             def rval(p=p, i=node_input_storage, o=node_output_storage, n=node):
                 r = p(n, [x[0] for x in i], o)
@@ -867,11 +867,11 @@ class Op(utils.object2, PureOp, CLinkerOp):
                     compute_map[o][0] = True
                 return r
         else:
-            ctx_val = node.context_type.filter(ctx)
+            params_val = node.params_type.filter(params)
 
             def rval(p=p, i=node_input_storage, o=node_output_storage, n=node,
-                     ctx=ctx_val):
-                r = p(n, [x[0] for x in i], o, ctx)
+                     params=params_val):
+                r = p(n, [x[0] for x in i], o, params)
                 for o in node.outputs:
                     compute_map[o][0] = True
                 return r
@@ -1171,7 +1171,7 @@ def apply_meth(tag):
             code = self.code_sections[tag]
 
             define_macros, undef_macros = self.get_c_macros(node, name)
-            return os.linesep.join([define_macros, code,
+            return os.linesep.join(['', define_macros, code,
                                     undef_macros])
         else:
             raise utils.MethodNotDefined(
@@ -1403,9 +1403,9 @@ class COp(Op):
         define_macros.append("#define FAIL %s" % (
                              self._lquote_macro(sub['fail']),))
         undef_macros.append("#undef FAIL")
-        if 'context' in sub:
-            define_macros.append("#define CONTEXT %s" % (sub['context'],))
-            undef_macros.append("#undef CONTEXT")
+        if 'params' in sub:
+            define_macros.append("#define PARAMS %s" % (sub['params'],))
+            undef_macros.append("#undef PARAMS")
 
         return os.linesep.join(define_macros), os.linesep.join(undef_macros)
 
@@ -1428,7 +1428,7 @@ class COp(Op):
             def_macros, undef_macros = self.get_c_macros(node, name)
             def_sub, undef_sub = self.get_sub_macros(sub)
 
-            return os.linesep.join([def_macros, def_sub,
+            return os.linesep.join(['', def_macros, def_sub,
                                     op_code,
                                     undef_sub, undef_macros])
         else:
@@ -1442,17 +1442,21 @@ class COp(Op):
             define_macros, undef_macros = self.get_c_macros(node, name,
                                                             check_input=False)
 
+            params = ""
+            if 'params' in sub:
+                params = ", %s" % (sub['params'],)
+
             # Generate the C code
             return """
                 %(define_macros)s
                 {
-                  if (%(func_name)s(%(func_args)s) != 0) {
+                  if (%(func_name)s(%(func_args)s%(params)s) != 0) {
                     %(fail)s
                   }
                 }
                 %(undef_macros)s
                 """ % dict(func_name=self.func_name,
-                           fail=sub['fail'],
+                           fail=sub['fail'], params=params,
                            func_args=self.format_c_function_args(inp, out),
                            define_macros=define_macros,
                            undef_macros=undef_macros)

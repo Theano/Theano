@@ -15,7 +15,6 @@ from six.moves import xrange
 from six.moves.builtins import min as builtin_min
 from nose.tools import assert_raises
 from nose.plugins.skip import SkipTest
-from nose.plugins.attrib import attr
 import numpy
 from numpy.testing import dec, assert_array_equal, assert_allclose
 from distutils.version import LooseVersion
@@ -52,6 +51,7 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         )
 
 from theano.tests import unittest_tools as utt
+from theano.tests.unittest_tools import attr
 
 
 imported_scipy_special = False
@@ -2026,6 +2026,7 @@ AllocTester = makeBroadcastTester(
                     bad_shape12=(rand(7), numpy.int32(7), numpy.int32(5)),
                     ),
         bad_build=dict(
+                    vec=(rand(1), [numpy.int32(2)]),
                     too_big32=(rand(6, 2, 4), numpy.
                         int32(6), numpy.int32(2)),
                     too_big32b=(rand(6, 2, 4), numpy.
@@ -2641,7 +2642,7 @@ def _approx_eq(a, b, eps=1.0e-4):
         if _approx_eq.debug:
             print(a, b)
         return False
-    return  True
+    return True
 _approx_eq.debug = 0
 
 
@@ -2799,10 +2800,10 @@ class T_max_and_argmax(unittest.TestCase):
     def test2(self):
         data = rand(2, 3)
         n = as_tensor_variable(data)
-        for (axis, np_axis)  in [(-1, -1), (0, 0), (1, 1), (None, None),
-                                 ([0, 1], None), ([1, 0], None),
-                                 (NoneConst.clone(), None),
-                                 (constant(0), 0)]:
+        for (axis, np_axis) in [(-1, -1), (0, 0), (1, 1), (None, None),
+                                ([0, 1], None), ([1, 0], None),
+                                (NoneConst.clone(), None),
+                                (constant(0), 0)]:
             v, i = eval_outputs(max_and_argmax(n, axis))
             assert i.dtype == 'int64'
             self.assertTrue(numpy.all(v == numpy.max(data, np_axis)))
@@ -2860,8 +2861,8 @@ class T_max_and_argmax(unittest.TestCase):
     def test3(self):
         data = rand(2, 3, 4)
         n = as_tensor_variable(data)
-        for (axis, np_axis)  in [(-1, -1), (0, 0), (1, 1), (None, None),
-                                 ([0, 1, 2], None), ([1, 2, 0], None)]:
+        for (axis, np_axis) in [(-1, -1), (0, 0), (1, 1), (None, None),
+                                ([0, 1, 2], None), ([1, 2, 0], None)]:
             v, i = eval_outputs(max_and_argmax(n, axis))
             assert i.dtype == 'int64'
             self.assertTrue(numpy.all(v == numpy.max(data, np_axis)))
@@ -2922,8 +2923,8 @@ class T_max_and_argmax(unittest.TestCase):
                 z[argmax] += 1
             else:
                 for id, v in enumerate(argmax):
-                    z[v * numpy.prod(data.shape[data.ndim - 1:axis:-1])
-                      + id] += 1
+                    z[v * numpy.prod(data.shape[data.ndim - 1:axis:-1]) +
+                      id] += 1
 
             z = z.reshape(data.shape)
             assert numpy.all(max_grad_data == z)
@@ -2931,11 +2932,11 @@ class T_max_and_argmax(unittest.TestCase):
         for axis in (-1, 0, 1, None):
             for j in xrange(2):
                 safe_verify_grad(lambda v: max_and_argmax(v, axis=axis)[j],
-                                [data])
+                                 [data])
                 if axis != 1:
                     safe_verify_grad(lambda v: max_and_argmax(v.flatten(),
-                                                             axis=axis)[j],
-                                    [data])
+                                                              axis=axis)[j],
+                                     [data])
             if axis in (0, None):
                 check_grad_max(data, eval_outputs(grad(
                     max_and_argmax(n, axis=axis)[0].sum(), n)), axis=axis)
@@ -2956,6 +2957,11 @@ class T_max_and_argmax(unittest.TestCase):
             safe_verify_grad(lambda v: max_and_argmax(v, axis=[i])[0], [data])
             safe_verify_grad(lambda v: max_and_argmax(v, axis=[i])[1], [data])
 
+        # Test grad with multiple axes
+        for i in [[0, 1], [0, 0]]:
+            safe_verify_grad(lambda v: max_and_argmax(v, axis=i)[0], [data])
+            safe_verify_grad(lambda v: max_and_argmax(v, axis=i)[1], [data])
+
     def test_preserve_broadcastable(self):
         """
         Ensure the original broadcastable flags are preserved by Max/Argmax.
@@ -2963,6 +2969,16 @@ class T_max_and_argmax(unittest.TestCase):
         x = tensor.matrix().dimshuffle('x', 0, 'x', 1, 'x')
         y = x.max(axis=1)
         assert y.type.broadcastable == (True, True, False, True)
+
+    def test_multiple_axes(self):
+        data = numpy.arange(24).reshape(3, 2, 4)
+        x = as_tensor_variable(data)
+        v, i = eval_outputs(max_and_argmax(x, [1, -1]))
+        assert numpy.all(v == numpy.array([7, 15, 23]))
+        assert numpy.all(i == numpy.array([7, 7, 7]))
+
+        v = eval_outputs(max_and_argmax(x, [1, -1])[0].shape)
+        assert tuple(v) == numpy.max(data, (1, -1)).shape
 
 
 class T_argmin_argmax(unittest.TestCase):
@@ -3288,6 +3304,11 @@ class T_min_max(unittest.TestCase):
         # axis=1)[0], n)),axis=1)
 
 
+def test_basic_allclose():
+    # This was raised by a user in https://github.com/Theano/Theano/issues/2975
+    assert tensor.basic._allclose(-0.311023883434, -0.311022856884)
+
+
 class T_outer(unittest.TestCase):
     def test_outer(self):
         for m in range(4):
@@ -3380,7 +3401,7 @@ class T_Join_and_Split(unittest.TestCase):
         a = as_tensor_variable(1)
         b = as_tensor_variable(2.0)
         c = tensor._shared(numpy.asarray(3.0, dtype=self.floatX))
-        s = stack(a, b, c)
+        s = stack([a, b, c])
         want = numpy.array([1, 2, 3])
         out = self.eval_outputs_and_check_vector([s], opt.MakeVector())
         self.assertTrue((out == want).all())
@@ -3389,7 +3410,7 @@ class T_Join_and_Split(unittest.TestCase):
         a = self.shared(numpy.asarray(1., dtype=self.floatX))
         b = as_tensor_variable(2.)
         c = as_tensor_variable(3.)
-        s = stack(a, b, c)
+        s = stack([a, b, c])
 
         want = numpy.array([1, 2, 3])
         out = self.eval_outputs_and_check_vector([s])
@@ -3401,7 +3422,7 @@ class T_Join_and_Split(unittest.TestCase):
         to int64"""
         a = tensor.scalar('a', dtype=self.floatX)
         b = tensor.scalar('b', dtype=self.floatX)
-        s = stack(a, b, a, b)
+        s = stack([a, b, a, b])
         f = function([a, b], s, mode=self.mode)
         val = f(1, 2)
         # print val
@@ -3416,7 +3437,7 @@ class T_Join_and_Split(unittest.TestCase):
         event when the scalar don't have the same dtype.'''
         a = tensor.iscalar('a')
         b = tensor.lscalar('b')
-        s = stack(a, b, a, b)
+        s = stack([a, b, a, b])
         f = function([a, b], s, mode=self.mode)
         val = f(1, 2)
         self.assertTrue(numpy.all(val == [1, 2, 1, 2]))
@@ -3432,7 +3453,7 @@ class T_Join_and_Split(unittest.TestCase):
         b = tensor.lscalar('b')
         # test when the constant is the first element.
         # The first element is used in a special way
-        s = stack(10, a, b, numpy.int8(3))
+        s = stack([10, a, b, numpy.int8(3)])
         f = function([a, b], s, mode=self.mode)
         val = f(1, 2)
         self.assertTrue(numpy.all(val == [10, 1, 2, 3]))
@@ -3441,11 +3462,65 @@ class T_Join_and_Split(unittest.TestCase):
         assert len([n for n in topo if isinstance(n, type(self.join_op))]) == 0
         assert f.maker.fgraph.outputs[0].dtype == 'int64'
 
+    def test_stack_new_interface(self):
+        """Test the new numpy-like interface: stack(tensors, axis=0)."""
+        # Testing against old interface
+        warnings.simplefilter('always', DeprecationWarning)
+        a = tensor.imatrix('a')
+        b = tensor.imatrix('b')
+        s1 = stack(a, b)
+        s2 = stack([a, b])
+        f = function([a, b], [s1, s2], mode=self.mode)
+        v1, v2 = f([[1, 2]], [[3, 4]])
+        self.assertTrue(v1.shape == v2.shape)
+        self.assertTrue(numpy.all(v1 == v2))
+        # Testing axis parameter
+        s3 = stack([a, b], 1)
+        f = function([a, b], s3, mode=self.mode)
+        v3 = f([[1, 2]], [[3, 4]])
+        v4 = numpy.array([[[1, 2], [3, 4]]])
+        self.assertTrue(v3.shape == v4.shape)
+        self.assertTrue(numpy.all(v3 == v4))
+        # Testing negative axis
+        v1 = [[1, 2, 3], [4, 5, 6]]
+        v2 = [[7, 8, 9], [10, 11, 12]]
+        s = stack([a, b], axis=-1)
+        f = function([a, b], s, mode=self.mode)
+        v = numpy.zeros((2, 3, 2))
+        v[:,:,0] = v1
+        v[:,:,1] = v2 
+        out = f(v1, v2) 
+        self.assertTrue(v.shape == out.shape)
+        self.assertTrue(numpy.all(v == out))
+        s = stack([a, b], axis=-2)
+        f = function([a, b], s, mode=self.mode)
+        v = numpy.zeros((2, 2, 3))
+        v[:,0,:] = v1
+        v[:,1,:] = v2 
+        out = f(v1, v2) 
+        self.assertTrue(v.shape == out.shape)
+        self.assertTrue(numpy.all(v == out))
+        # Testing out-of-bounds axis
+        self.assertRaises(IndexError, stack, [a, b], 4)
+        self.assertRaises(IndexError, stack, [a, b], -4)
+        # Testing depreciation warning
+        with warnings.catch_warnings(record=True) as w:
+            s = stack(a, b)
+            assert len(w) == 1
+            assert issubclass(w[-1].category, DeprecationWarning)
+        with warnings.catch_warnings(record=True) as w:
+            s = stack([a, b])
+            s = stack([a, b], 1)
+            s = stack([a, b], axis=1)
+            s = stack(tensors=[a, b])
+            s = stack(tensors=[a, b], axis=1)
+            assert not w
+
     def test_stack_hessian(self):
         # Test the gradient of stack when used in hessian, see gh-1589
         a = tensor.dvector('a')
         b = tensor.dvector('b')
-        A = stack(a, b)
+        A = stack([a, b])
         B = A.T.dot(A)
         Ha, Hb = hessian(B.sum(), [a, b])
 
@@ -3544,7 +3619,7 @@ class T_Join_and_Split(unittest.TestCase):
         a = self.shared(numpy.array([1, 2, 3], dtype=self.floatX))
         b = as_tensor_variable(numpy.array([7, 8, 9], dtype=self.floatX))
 
-        s = stack(a, b)
+        s = stack([a, b])
         want = numpy.array([[1, 2, 3], [7, 8, 9]])
         out = self.eval_outputs_and_check_join([s])
         self.assertTrue((out == want).all())
@@ -4389,6 +4464,10 @@ class T_mean(unittest.TestCase):
         data = rand(50)
         assert numpy.allclose(f(data), numpy.mean(data))
 
+    def test_list(self):
+        ll = [theano.shared(0.), theano.shared(2.)]
+        tensor.mean(ll).eval() == 1
+
 
 class test_matinv(unittest.TestCase):
 
@@ -5213,6 +5292,104 @@ def test_tile():
         assert numpy.all(run_tile(x, x_, (2, 3, 4, 6), use_symbolic_reps) ==
             numpy.tile(x_, (2, 3, 4, 6)))
 
+    # Test when reps is integer, tensor.scalar or tensor.vector.
+    # Test 1,2,3,4-dimensional cases.
+    # Test input x has the shape [2], [2, 4], [2, 4, 3], [2, 4, 3, 5].
+    test_shape = [2, 4, 3, 5]
+    k = 0 
+    for xtype in [vector(), matrix(), tensor3(), tensor4()]:
+        x = xtype
+        k = k+1
+        x_ = rng.randn(*test_shape[0:k]).astype(config.floatX)
+
+        # integer:
+        reps_ = 2
+        f = function([x], tile(x, reps_))
+        assert numpy.all( f(x_) == numpy.tile(x_, reps_))
+
+        # tensor.scalar:
+        reps = iscalar()
+        reps_ = 2
+        f = function([x, reps], tile(x, reps))
+        assert numpy.all( f(x_, reps_) == numpy.tile(x_, reps_))
+
+        # tensor.vector:
+        reps = ivector()
+        reps_ = [2] if k == 1 or k == 2 else [2, 3]
+        ndim_ = k
+        f = function([x, reps], tile(x, reps, ndim_))
+        assert numpy.all( f(x_, reps_) == numpy.tile(x_, reps_))
+
+        # list of integers:
+        reps_ = [2, 3, 4]
+        f = function([x], tile(x, reps_))
+        assert numpy.all( f(x_) == numpy.tile(x_, reps_))
+
+        # list of integers and tensor.scalars:
+        d = iscalar()
+        reps = [2, d, 4]
+        f = function([x, d], tile(x, reps))
+        reps_ = [2, 3, 4]
+        assert numpy.all( f(x_, 3) == numpy.tile(x_, reps_))
+
+        # reps is list, len(reps) > x.ndim, 3 cases below:
+        r = [2, 3, 4, 5, 6]
+        reps_ = r[:k+1] # len(reps_) = x.ndim+1
+        # (1) ndim = None.
+        f = function([x], tile(x, reps_))
+        assert numpy.all( f(x_) == numpy.tile(x_, reps_))
+        # (2) ndim = len(reps).
+        ndim_ = len(reps_)
+        f = function([x], tile(x, reps_, ndim_))
+        assert numpy.all( f(x_) == numpy.tile(x_, reps_))
+        # (3) ndim > len(reps)
+        ndim_ = len(reps_) + 1
+        f = function([x], tile(x, reps_, ndim_))
+        assert numpy.all( f(x_) == numpy.tile(x_, [1] + reps_))
+
+        # reps is list, ndim > x.ndim > len(reps):
+        r = [2, 3, 4, 5]
+        if k > 1:
+            ndim_ = k+1
+            reps_ = r[:k-1]
+            f = function([x], tile(x, reps_, ndim_))
+            assert numpy.all( f(x_) == numpy.tile(x_, [1, 1] + reps_))
+           
+        # error raising test: ndim not specified when reps is vector
+        reps = ivector()
+        numpy.testing.assert_raises(ValueError, tile, x, reps)
+
+        # error raising test: not a integer
+        for reps in [2.5, fscalar(), fvector()]:
+            numpy.testing.assert_raises(ValueError, tile, x, reps)
+        
+        # error raising test: the dimension of reps exceeds 1
+        reps = imatrix()
+        numpy.testing.assert_raises(ValueError, tile, x, reps)
+
+        # error raising test: ndim is not None, ndim < x.ndim
+        # 3 cases below (reps is list/tensor.scalar/tensor.vector):
+        for reps in [[2,3,4], iscalar(), ivector()]:
+            if k > 1:
+                ndim = k-1
+                numpy.testing.assert_raises(ValueError, tile, x, reps, ndim)
+        
+        # error raising test: reps is list, len(reps) > ndim
+        r = [2, 3, 4, 5, 6]
+        reps = r[:k+1]
+        ndim = k
+        numpy.testing.assert_raises(ValueError, tile, x, reps, ndim)
+
+        # error raising test: 
+        # reps is tensor.vector and len(reps_value) > ndim,
+        # reps_value is the real value when excuting the function.
+        reps = ivector()
+        r = [2, 3, 4, 5, 6, 7]
+        reps_ = r[:k+2]
+        ndim_ = k+1
+        f = function([x, reps], tile(x, reps, ndim_))
+        numpy.testing.assert_raises(AssertionError, f, x_, reps_)
+
 def test_tile_grad():
 
     def grad_tile(x, reps, np_x):
@@ -5262,7 +5439,7 @@ class TestARange(unittest.TestCase):
         f = function([start, stop, step], out)
 
         if config.cast_policy == 'custom':
-            assert out.dtype == start.type.dtype
+            assert out.dtype == 'int64'
         elif config.cast_policy in ('numpy', 'numpy+floatX'):
             numpy_dtype = numpy.arange(numpy.array(1, dtype='int32')).dtype
             assert out.dtype == numpy_dtype
@@ -5339,7 +5516,7 @@ class TestARange(unittest.TestCase):
         f = function([start, stop], out)
 
         if config.cast_policy == 'custom':
-            assert out.dtype == start.type.dtype
+            assert out.dtype == 'int64'
         elif config.cast_policy in ('numpy', 'numpy+floatX'):
             assert out.dtype == numpy.arange(numpy.int32(0),
                                              numpy.int32(1)).dtype
@@ -5367,7 +5544,7 @@ class TestARange(unittest.TestCase):
         f = function([stop], out)
 
         if config.cast_policy == 'custom':
-            assert out.dtype == stop.type.dtype
+            assert out.dtype == 'int64'
         elif config.cast_policy in ('numpy', 'numpy+floatX'):
             assert out.dtype == numpy.arange(numpy.int32(1)).dtype
         else:
@@ -5399,7 +5576,7 @@ class TestARange(unittest.TestCase):
     def test_upcast(self):
         """Test that arange computes output type adequately"""
         if config.cast_policy == 'custom':
-            assert arange(iscalar()).dtype == iscalar().dtype
+            assert arange(iscalar()).dtype == 'int64'
             assert arange(fscalar()).dtype == fscalar().dtype
             assert arange(dscalar()).dtype == dscalar().dtype
 
@@ -5493,7 +5670,7 @@ class TestARange(unittest.TestCase):
         assert len(f.maker.fgraph.toposort()) == 9
 
         if config.cast_policy == 'custom':
-            assert out.dtype == start.type.dtype
+            assert out.dtype == 'int64'
         elif config.cast_policy in ('numpy', 'numpy+floatX'):
             numpy_dtype = numpy.arange(numpy.array(0, dtype=start.dtype),
                                        numpy.array(1, dtype=stop.dtype),
@@ -5514,7 +5691,7 @@ class TestARange(unittest.TestCase):
         assert len(f.maker.fgraph.toposort()) == 5
 # 4 [Elemwise{sub,no_inplace}(stop, start), Elemwise{Cast{int64}}(Elemwise{sub,no_inplace}.0), Elemwise{Maximum{output_types_preference=transfer_type{0}}}[(0, 0)](Elemwise{Cast{int64}}.0, 0), MakeVector(Elemwise{Maximum{output_types_preference=transfer_type{0}}}[(0, 0)].0)]
         if config.cast_policy == 'custom':
-            assert out.dtype == start.type.dtype
+            assert out.dtype == 'int64'
         elif config.cast_policy in ('numpy', 'numpy+floatX'):
             assert out.dtype == numpy.arange(
                     numpy.int32(0), numpy.int32(1), numpy.int32(1)).dtype
@@ -5536,7 +5713,7 @@ class TestARange(unittest.TestCase):
         #[Elemwise{Cast{int64}}(stop), MakeVector(Elemwise{Cast{int64}}.0)]
 
         if config.cast_policy == 'custom':
-            assert out.dtype == start.type.dtype
+            assert out.dtype == 'int64'
         elif config.cast_policy in ('numpy', 'numpy+floatX'):
             numpy_dtype = numpy.arange(0,
                                        numpy.array(1, dtype=stop.dtype),
@@ -5971,7 +6148,7 @@ class test_tensordot(unittest.TestCase):
 def test_smallest_stack():
     sx, sy = dscalar(), dscalar()
 
-    rval = inplace_func([sx, sy], stack(sx, sy))(-4.0, -2.0)
+    rval = inplace_func([sx, sy], stack([sx, sy]))(-4.0, -2.0)
     assert type(rval) == numpy.ndarray
     assert [-4, -2] == list(rval)
 
@@ -6015,11 +6192,16 @@ def test_var():
     assert numpy.allclose(numpy.var(a_val, axis=2), f(a_val))
 
 
-def test_sum_overflow():
-    """Ensure that overflow errors are a little bit harder to get"""
-    a = Tensor(dtype='int8', broadcastable=[False])()
-    f = function([a], sum(a))
-    assert f([1] * 300) == 300
+class T_sum(unittest.TestCase):
+    def test_sum_overflow(self):
+        """Ensure that overflow errors are a little bit harder to get"""
+        a = Tensor(dtype='int8', broadcastable=[False])()
+        f = function([a], sum(a))
+        assert f([1] * 300) == 300
+
+    def test_list(self):
+        ll = [theano.shared(0.), theano.shared(2.)]
+        tensor.sum(ll).eval() == 2
 
 
 @dec.skipif(
@@ -6610,13 +6792,13 @@ def test_dimshuffle_duplicate():
 
 class T_get_scalar_constant_value(unittest.TestCase):
     def test_get_scalar_constant_value(self):
-        a = tensor.stack(1, 2, 3)
+        a = tensor.stack([1, 2, 3])
         assert get_scalar_constant_value(a[0]) == 1
         assert get_scalar_constant_value(a[1]) == 2
         assert get_scalar_constant_value(a[2]) == 3
 
         b = tensor.iscalar()
-        a = tensor.stack(b, 2, 3)
+        a = tensor.stack([b, 2, 3])
         self.assertRaises(tensor.basic.NotScalarConstantError, get_scalar_constant_value, a[0])
         assert get_scalar_constant_value(a[1]) == 2
         assert get_scalar_constant_value(a[2]) == 3
@@ -6624,7 +6806,7 @@ class T_get_scalar_constant_value(unittest.TestCase):
         # For now get_scalar_constant_value goes through only MakeVector and Join of
         # scalars.
         v = tensor.ivector()
-        a = tensor.stack(v, [2], [3])
+        a = tensor.stack([v, [2], [3]])
         self.assertRaises(tensor.NotScalarConstantError, get_scalar_constant_value, a[0])
         self.assertRaises(tensor.NotScalarConstantError, get_scalar_constant_value, a[1])
         self.assertRaises(tensor.NotScalarConstantError, get_scalar_constant_value, a[2])
@@ -7077,27 +7259,31 @@ class TestInferShape(utt.InferShapeTester):
         aivec = ivector()
         adtens_val = rand(4, 10, 3)
         aivec_val = [2, 5, 3]
-        self._compile_and_check([adtens, aiscal, aivec],
-                                [Split(3)(adtens, aiscal, aivec)[0]],
-                                [adtens_val, 1, aivec_val], (Split))
+        for aiscal_val in [1, -2]:
+            self._compile_and_check(
+                [adtens, aiscal, aivec],
+                [Split(3)(adtens, aiscal, aivec)[0]],
+                [adtens_val, aiscal_val, aivec_val], (Split))
 
         # Join
         cdmat = dmatrix()
         admat_val = rand(1, 3)
         bdmat_val = rand(2, 3)
         cdmat_val = rand(4, 3)
-        aiscal_val = 0
-        self._compile_and_check([aiscal, admat, bdmat, cdmat],
-                                [Join()(aiscal, admat, bdmat, cdmat)],
-                        [aiscal_val, admat_val, bdmat_val, cdmat_val], Join)
+        for aiscal_val in [0, -2]:
+            self._compile_and_check(
+                [aiscal, admat, bdmat, cdmat],
+                [Join()(aiscal, admat, bdmat, cdmat)],
+                [aiscal_val, admat_val, bdmat_val, cdmat_val], Join)
 
         admat_val = rand(4, 1)
         bdmat_val = rand(4, 3)
         cdmat_val = rand(4, 2)
-        aiscal_val = 1
-        self._compile_and_check([aiscal, admat, bdmat, cdmat],
-                                [Join()(aiscal, admat, bdmat, cdmat)],
-                        [aiscal_val, admat_val, bdmat_val, cdmat_val], Join)
+        for aiscal_val in [-1, 1]:
+            self._compile_and_check(
+                [aiscal, admat, bdmat, cdmat],
+                [Join()(aiscal, admat, bdmat, cdmat)],
+                [aiscal_val, admat_val, bdmat_val, cdmat_val], Join)
 
         # PermuteRowElements
         abool = True

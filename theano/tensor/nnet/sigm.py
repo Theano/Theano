@@ -18,6 +18,7 @@ from theano.configparser import AddConfigVar, BoolParam
 from theano.printing import pprint
 from theano.tensor import basic as tensor
 from theano.tensor import elemwise, opt, NotScalarConstantError
+from theano.tensor.type import values_eq_approx_remove_inf
 
 
 ############
@@ -314,6 +315,9 @@ theano.compile.optdb['uncanonicalize'].register("local_hard_sigmoid",
 
 
 class ScalarSoftplus(scalar.UnaryScalarOp):
+    """
+    This helps numerical stability.
+    """
     @staticmethod
     def static_impl(x):
         if x < -30.0:
@@ -378,6 +382,7 @@ logsigm_to_softplus = gof.PatternSub(
     (tensor.log, (sigmoid, 'x')),
     (tensor.neg, (softplus, (tensor.neg, 'x'))),
     allow_multiple_clients=True,
+    values_eq_approx=values_eq_approx_remove_inf,
     skip_identities_fn=_skip_mul_1)
 
 
@@ -403,12 +408,14 @@ log1msigm_to_softplus = gof.PatternSub(
             (sigmoid, 'x'))),
     (tensor.neg, (softplus, 'x')),
     allow_multiple_clients=True,
+    values_eq_approx=values_eq_approx_remove_inf,
     skip_identities_fn=_skip_mul_1)
 
 log1pexp_to_softplus = gof.PatternSub(
     (tensor.log1p,
      (tensor.exp, 'x')),
     (softplus, 'x'),
+    values_eq_approx=values_eq_approx_remove_inf,
     allow_multiple_clients=True)
 
 opt.register_stabilize(logsigm_to_softplus, name='logsigm_to_softplus')

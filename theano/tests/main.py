@@ -3,12 +3,7 @@ import os
 import unittest
 import sys
 
-from nose.config import Config
-from nose.plugins.manager import PluginManager
-import nose.plugins.builtin
-
 from numpy.testing.nosetester import NoseTester
-from numpy.testing.noseclasses import KnownFailure, NumpyTestProgram
 
 
 # This class contains code adapted from NumPy,
@@ -56,6 +51,7 @@ class TheanoNoseTester(NoseTester):
 
         Takes the same arguments as `test`.
         """
+        import nose.plugins.builtin
         # compile argv
         argv = self._test_argv(verbose, extra_argv)
 
@@ -72,6 +68,7 @@ class TheanoNoseTester(NoseTester):
         # construct list of plugins
         plugins = []
         if knownfailure:
+            from numpy.testing.noseclasses import KnownFailure
             plugins.append(KnownFailure())
         plugins += [p() for p in nose.plugins.builtin.plugins]
 
@@ -107,6 +104,9 @@ class TheanoNoseTester(NoseTester):
         :returns: Returns the result of running the tests as a
                   ``nose.result.TextTestResult`` object.
         """
+        from nose.config import Config
+        from nose.plugins.manager import PluginManager
+        from numpy.testing.noseclasses import NumpyTestProgram
         # Many Theano tests suppose device=cpu, so we need to raise an
         # error if device==gpu.
         if not os.path.exists('theano/__init__.py'):

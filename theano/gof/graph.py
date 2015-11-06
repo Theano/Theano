@@ -22,7 +22,7 @@ __docformat__ = "restructuredtext en"
 is_same_graph_with_merge = None
 equal_computations = None
 
-NoContext = object()
+NoParams = object()
 
 
 class Node(utils.object2):
@@ -123,14 +123,24 @@ class Apply(Node):
             else:
                 raise TypeError("The 'outputs' argument to Apply must contain Variable instances with no owner, not %s" % output)
 
-    def run_context(self):
+    def run_params(self):
         """
-        Returns the context for the node, or NoContext if no context is set.
+        Returns the params for the node, or NoParams if no params is set.
 
         """
-        if hasattr(self.op, 'get_context'):
-            return self.op.get_context(self)
-        return NoContext
+        if hasattr(self.op, 'get_params'):
+            return self.op.get_params(self)
+        return NoParams
+
+    def __getstate__(self):
+        d = self.__dict__
+        # ufunc don't pickle/unpickle well
+        if hasattr(self.tag, 'ufunc'):
+            d = copy(self.__dict__)
+            t = d["tag"]
+            del t.ufunc
+            d["tag"] = t
+        return d
 
     def default_output(self):
         """
@@ -253,7 +263,7 @@ class Apply(Node):
     Property: Number of outputs.
 
     """
-    context_type = property(lambda self: self.op.context_type, doc='type to use for the context')
+    params_type = property(lambda self: self.op.params_type, doc='type to use for the params')
 
 
 class Variable(Node):
@@ -451,6 +461,30 @@ class Variable(Node):
         inputs_to_values
             A dictionary mapping theano Variables to values.
 
+        Examples
+        --------
+
+        >>> import theano.tensor as T
+        >>> x = T.dscalar('x')
+        >>> y = T.dscalar('y')
+        >>> z = x + y
+        >>> z.eval({x : 16.3, y : 12.1})
+        array(28.4)
+
+        We passed :func:`eval` a dictionary mapping symbolic theano
+        variables to the values to substitute for them, and it returned
+        the numerical value of the expression.
+
+        Notes
+        -----
+
+        `eval` will be slow the first time you call it on a variable --
+        it needs to call :func:`function` to compile the expression behind
+        the scenes. Subsequent calls to :func:`eval` on that same variable
+        will be fast, because the variable caches the compiled function.
+
+        This way of computing has more overhead than a normal Theano
+        function, so don't use it too much in real scripts.
         """
 
         if inputs_to_values is None:

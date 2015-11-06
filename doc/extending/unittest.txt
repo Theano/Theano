@@ -39,7 +39,9 @@ A unittest is a subclass of ``unittest.TestCase``, with member
 functions with names that start with the string ``test``.  For
 example:
 
-.. code-block:: python
+.. testcode::
+  
+    import unittest
 
     class MyTestCase(unittest.TestCase):
         def test0(self):
@@ -115,7 +117,7 @@ built-in unittest module uses metaclasses to know about all the
 them all, printing '.' for passed tests, and a stack trace for
 exceptions. The standard footer code in theano's test files is:
 
-.. code-block:: python
+.. testcode::
 
     if __name__ == '__main__':
         unittest.main()
@@ -134,7 +136,7 @@ To run all the tests in one or more ``TestCase`` subclasses:
 
 To run just a single ``MyTestCase`` member test function called ``test0``:
 
-.. code-block:: python
+.. testcode::
 
     MyTestCase('test0').debug()
 
@@ -186,6 +188,7 @@ Example:
 .. code-block:: python
 
     import unittest
+    
     class TestTensorDot(unittest.TestCase):
         def test_validity(self):
             # do stuff
@@ -201,8 +204,10 @@ functionality which is shared amongst all test methods in the test
 case (i.e initializing data, parameters, seeding random number
 generators -- more on this later)
 
-.. code-block:: python
+.. testcode:: writeUnitest
 
+    import unittest
+    
     class TestTensorDot(unittest.TestCase):
         def setUp(self):
             # data which will be used in various test methods
@@ -231,16 +236,16 @@ Example:
         def test_validity(self):
             a = T.dmatrix('a')
             b = T.dmatrix('b')
-            c = T.dot(a,b)
-            f = theano.function([a,b],[c])
-            cmp = f(self.avals,self.bvals) == numpy.dot(self.avals,self.bvals)
+            c = T.dot(a, b)
+            f = theano.function([a, b], [c])
+            cmp = f(self.avals, self.bvals) == numpy.dot(self.avals, self.bvals)
             self.assertTrue(numpy.all(cmp))
 
 Avoid hard-coding variables, as in the following case:
 
 .. code-block:: python
 
-    self.assertTrue(numpy.all(f(self.avals,self.bvals)==numpy.array([[25,25,30,28],[21,18,14,25]])))
+    self.assertTrue(numpy.all(f(self.avals, self.bvals) == numpy.array([[25, 25, 30, 28], [21, 18, 14, 25]])))
 
 This makes the test case less manageable and forces the user to update
 the variables each time the input is changed or possibly when the
@@ -275,6 +280,8 @@ Example:
 
 .. code-block:: python
 
+    import unittest
+    
     class TestTensorDot(unittest.TestCase):
         ...
         def test_3D_dot_fail(self):
@@ -300,7 +307,9 @@ Example:
 
 .. code-block:: python
 
-    f = T.function([a,b],[c],mode='FAST_RUN')
+    from theano import function
+    
+    f = function([a,b],[c],mode='FAST_RUN')
 
 Whenever possible, unit tests should omit this parameter. Leaving
 out the mode will ensure that unit tests use the default mode.
@@ -334,7 +343,7 @@ another (i.e always pass or always fail).
 Instead of using ``numpy.random.seed`` to do this, we encourage users to
 do the following:
 
-.. code-block:: python
+.. testcode::
 
     from theano.tests import unittest_tools
 
@@ -367,8 +376,10 @@ machine) can simply set ``config.unittests.rseed`` to 'random' (see
 
 Similarly, to provide a seed to numpy.random.RandomState, simply use:
 
-.. code-block:: python
+.. testcode::
 
+    import numpy
+    
     rng = numpy.random.RandomState(unittest_tools.fetch_seed())
     # OR providing an explicit seed
     rng = numpy.random.RandomState(unittest_tools.fetch_seed(1231)) #again not recommended
@@ -413,7 +424,9 @@ at point ``x`` is approximated as:
 
 Here is the prototype for the verify_grad function.
 
->>> def verify_grad(fun, pt, n_tests=2, rng=None, eps=1.0e-7, abs_tol=0.0001, rel_tol=0.0001):
+.. code-block:: python
+
+    def verify_grad(fun, pt, n_tests=2, rng=None, eps=1.0e-7, abs_tol=0.0001, rel_tol=0.0001):
 
 ``verify_grad`` raises an Exception if the difference between the analytic gradient and
 numerical gradient (computed through the Finite Difference Method) of a random
@@ -445,7 +458,7 @@ In the general case, you can define ``fun`` as you want, as long as it
 takes as inputs Theano symbolic variables and returns a sinble Theano
 symbolic variable:
 
-.. code-block:: python
+.. testcode::
 
     def test_verify_exprgrad():
         def fun(x,y,z):
@@ -460,7 +473,7 @@ symbolic variable:
 
 Here is an example showing how to use ``verify_grad`` on an Op instance:
 
-.. code-block:: python
+.. testcode::
 
     def test_flatten_outdimNone():
         # Testing gradient w.r.t. all inputs of an op (in this example the op
@@ -474,7 +487,7 @@ an Op's inputs. This is useful in particular when the gradient w.r.t. some of
 the inputs cannot be computed by finite difference (e.g. for discrete inputs),
 which would cause ``verify_grad`` to crash.
 
-.. code-block:: python
+.. testcode::
 
     def test_crossentropy_softmax_grad():
         op = tensor.nnet.crossentropy_softmax_argmax_1hot_with_bias
@@ -511,8 +524,13 @@ this is common, two helper functions exists to make your lives easier:
 Here is an example of ``makeTester`` generating testcases for the Dot
 product op:
 
-.. code-block:: python
+.. testcode::
 
+    from numpy import dot
+    from numpy.random import rand
+
+    from theano.tensor.tests.test_basic import makeTester
+    
     DotTester = makeTester(name = 'DotTester',
                            op = dot,
                            expected = lambda x, y: numpy.dot(x, y),

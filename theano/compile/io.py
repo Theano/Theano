@@ -69,6 +69,13 @@ class SymbolicInput(object):
         if self.name is not None and not isinstance(self.name, string_types):
             raise TypeError("name must be a string! (got: %s)" % self.name)
         self.update = update
+        if update is not None:
+            if not variable.type == update.type:
+                raise TypeError("Variable '%s' has type %s but an update of "
+                                "type %s. The type of the update should be "
+                                "the same as the type of the variable" %
+                                (variable, variable.type, update.type))
+
         if (mutable is not None):
             self.mutable = mutable
         else:

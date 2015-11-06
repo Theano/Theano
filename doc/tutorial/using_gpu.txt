@@ -33,10 +33,7 @@ Testing Theano with GPU
 To see if your GPU is being used, cut and paste the following program into a
 file and run it.
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_using_gpu.test_using_gpu_1
-
-.. code-block:: python
+.. testcode::
 
     from theano import function, config, shared, sandbox
     import theano.tensor as T
@@ -49,17 +46,17 @@ file and run it.
     rng = numpy.random.RandomState(22)
     x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
     f = function([], T.exp(x))
-    print f.maker.fgraph.toposort()
+    print(f.maker.fgraph.toposort())
     t0 = time.time()
     for i in xrange(iters):
         r = f()
     t1 = time.time()
-    print 'Looping %d times took' % iters, t1 - t0, 'seconds'
-    print 'Result is', r
+    print("Looping %d times took %f seconds" % (iters, t1 - t0))
+    print("Result is %s" % (r,))
     if numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()]):
-        print 'Used the cpu'
+        print('Used the cpu')
     else:
-        print 'Used the gpu'
+        print('Used the gpu')
 
 The program just computes the ``exp()`` of a bunch of random numbers.
 Note that we use the ``shared`` function to
@@ -71,7 +68,16 @@ If I run this program (in check1.py) with ``device=cpu``, my computer takes a li
 whereas on the GPU it takes just over 0.64 seconds. The GPU will not always produce the exact
 same floating-point numbers as the CPU. As a benchmark, a loop that calls ``numpy.exp(x.get_value())`` takes about 46 seconds.
 
-.. code-block:: text
+.. testoutput::
+   :hide:
+   :options: +ELLIPSIS
+
+   [Elemwise{exp,no_inplace}(<TensorType(float64, vector)>)]
+   Looping 1000 times took ... seconds
+   Result is ...
+   Used the cpu
+
+.. code-block:: none
 
     $ THEANO_FLAGS=mode=FAST_RUN,device=cpu,floatX=float32 python check1.py
     [Elemwise{exp,no_inplace}(<TensorType(float32, vector)>)]
@@ -102,10 +108,7 @@ the graph to express a computation with a GPU-stored result.  The ``gpu_from_hos
 op means "copy the input from the host to the GPU" and it is optimized away
 after the ``T.exp(x)`` is replaced by a GPU version of ``exp()``.
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_using_gpu.test_using_gpu_2
-
-.. code-block:: python
+.. testcode::
 
     from theano import function, config, shared, sandbox
     import theano.sandbox.cuda.basic_ops
@@ -117,24 +120,35 @@ after the ``T.exp(x)`` is replaced by a GPU version of ``exp()``.
     iters = 1000
 
     rng = numpy.random.RandomState(22)
-    x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
+    x = shared(numpy.asarray(rng.rand(vlen), 'float32'))
     f = function([], sandbox.cuda.basic_ops.gpu_from_host(T.exp(x)))
-    print f.maker.fgraph.toposort()
+    print(f.maker.fgraph.toposort())
     t0 = time.time()
     for i in xrange(iters):
         r = f()
     t1 = time.time()
-    print 'Looping %d times took' % iters, t1 - t0, 'seconds'
-    print 'Result is', r
-    print 'Numpy result is', numpy.asarray(r)
+    print("Looping %d times took %f seconds" % (iters, t1 - t0))
+    print("Result is %s" % (r,))
+    print("Numpy result is %s" % (numpy.asarray(r),))
     if numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()]):
-        print 'Used the cpu'
+        print('Used the cpu')
     else:
-        print 'Used the gpu'
+        print('Used the gpu')
 
 The output from this program is
 
-.. code-block:: text
+.. testoutput::
+   :hide:
+   :options: +ELLIPSIS, +SKIP
+
+   Using gpu device 0: GeForce GTX 580
+   [GpuElemwise{exp,no_inplace}(<CudaNdarrayType(float32, vector)>)]
+   Looping 1000 times took ... seconds
+   Result is <CudaNdarray object at 0x...>
+   Numpy result is ...
+   Used the gpu
+
+.. code-block:: none
 
     $ THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32 python check2.py
     Using gpu device 0: GeForce GTX 580
@@ -253,7 +267,7 @@ Exercise
 
 Consider again the logistic regression:
 
-.. code-block:: python
+.. testcode::
 
     import numpy
     import theano
@@ -273,8 +287,6 @@ Consider again the logistic regression:
     b = theano.shared(numpy.asarray(0., dtype=theano.config.floatX), name="b")
     x.tag.test_value = D[0]
     y.tag.test_value = D[1]
-    #print "Initial model:"
-    #print w.get_value(), b.get_value()
 
     # Construct Theano expression graph
     p_1 = 1 / (1 + T.exp(-T.dot(x, w)-b)) # Probability of having a one
@@ -287,33 +299,39 @@ Consider again the logistic regression:
     train = theano.function(
                 inputs=[x,y],
                 outputs=[prediction, xent],
-                updates={w:w-0.01*gw, b:b-0.01*gb},
+                updates=[(w, w-0.01*gw), (b, b-0.01*gb)],
                 name = "train")
     predict = theano.function(inputs=[x], outputs=prediction,
                 name = "predict")
 
     if any([x.op.__class__.__name__ in ['Gemv', 'CGemv', 'Gemm', 'CGemm'] for x in
             train.maker.fgraph.toposort()]):
-        print 'Used the cpu'
+        print('Used the cpu')
     elif any([x.op.__class__.__name__ in ['GpuGemm', 'GpuGemv'] for x in
               train.maker.fgraph.toposort()]):
-        print 'Used the gpu'
+        print('Used the gpu')
     else:
-        print 'ERROR, not able to tell if theano used the cpu or the gpu'
-        print train.maker.fgraph.toposort()
+        print('ERROR, not able to tell if theano used the cpu or the gpu')
+        print(train.maker.fgraph.toposort())
 
     for i in range(training_steps):
         pred, err = train(D[0], D[1])
-    #print "Final model:"
-    #print w.get_value(), b.get_value()
 
-    print "target values for D"
-    print D[1]
+    print("target values for D")
+    print(D[1])
 
-    print "prediction on D"
-    print predict(D[0])
+    print("prediction on D")
+    print(predict(D[0]))
 
-
+.. testoutput::
+   :hide:
+   :options: + ELLIPSIS
+   
+   Used the cpu
+   target values for D
+   ...
+   prediction on D
+   ...
 
 Modify and execute this example to run on GPU with ``floatX=float32`` and
 time it using the command line ``time python file.py``. (Of course, you may use some of your answer
@@ -373,7 +391,7 @@ Testing Theano with GPU
 To see if your GPU is being used, cut and paste the following program
 into a file and run it.
 
-.. code-block:: python
+.. testcode::
 
   from theano import function, config, shared, tensor, sandbox
   import numpy
@@ -385,25 +403,34 @@ into a file and run it.
   rng = numpy.random.RandomState(22)
   x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
   f = function([], tensor.exp(x))
-  print f.maker.fgraph.toposort()
+  print(f.maker.fgraph.toposort())
   t0 = time.time()
   for i in xrange(iters):
       r = f()
   t1 = time.time()
-  print 'Looping %d times took' % iters, t1 - t0, 'seconds'
-  print 'Result is', r
+  print("Looping %d times took %f seconds" % (iters, t1 - t0))
+  print("Result is %s" % (r,))
   if numpy.any([isinstance(x.op, tensor.Elemwise) and
                 ('Gpu' not in type(x.op).__name__)
                 for x in f.maker.fgraph.toposort()]):
-      print 'Used the cpu'
+      print('Used the cpu')
   else:
-      print 'Used the gpu'
+      print('Used the gpu')
 
 The program just compute ``exp()`` of a bunch of random numbers.  Note
 that we use the :func:`theano.shared` function to make sure that the
 input *x* is stored on the GPU.
 
-.. code-block:: text
+.. testoutput::
+   :hide:
+   :options: +ELLIPSIS
+
+   [Elemwise{exp,no_inplace}(<TensorType(float64, vector)>)]
+   Looping 1000 times took ... seconds
+   Result is ...
+   Used the cpu
+
+.. code-block:: none
 
   $ THEANO_FLAGS=device=cpu python check1.py
   [Elemwise{exp,no_inplace}(<TensorType(float64, vector)>)]
@@ -432,8 +459,7 @@ the value of the ``device`` flag without touching the code.
 If you don't mind a loss of flexibility, you can ask theano to return
 the GPU object directly.  The following code is modifed to do just that.
 
-.. code-block:: python
-  :emphasize-lines: 10,17
+.. testcode::
 
   from theano import function, config, shared, tensor, sandbox
   import numpy
@@ -445,19 +471,19 @@ the GPU object directly.  The following code is modifed to do just that.
   rng = numpy.random.RandomState(22)
   x = shared(numpy.asarray(rng.rand(vlen), config.floatX))
   f = function([], sandbox.gpuarray.basic_ops.gpu_from_host(tensor.exp(x)))
-  print f.maker.fgraph.toposort()
+  print(f.maker.fgraph.toposort())
   t0 = time.time()
   for i in xrange(iters):
       r = f()
   t1 = time.time()
-  print 'Looping %d times took' % iters, t1 - t0, 'seconds'
-  print 'Result is', numpy.asarray(r)
+  print("Looping %d times took %f seconds" % (iters, t1 - t0))
+  print("Result is %s" % (numpy.asarray(r),))
   if numpy.any([isinstance(x.op, tensor.Elemwise) and
                 ('Gpu' not in type(x.op).__name__)
                 for x in f.maker.fgraph.toposort()]):
-      print 'Used the cpu'
+      print('Used the cpu')
   else:
-      print 'Used the gpu'
+      print('Used the gpu')
 
 Here the :func:`theano.sandbox.gpuarray.basic.gpu_from_host` call
 means "copy input to the GPU".  However during the optimization phase,
@@ -466,7 +492,17 @@ used here to tell theano that we want the result on the GPU.
 
 The output is
 
-.. code-block:: text
+.. testoutput::
+   :hide:
+   :options: +ELLIPSIS, +SKIP
+   
+   Using device cuda0: ...
+   [GpuElemwise{exp,no_inplace}(<GpuArray<float64>>)]
+   Looping 1000 times took ... seconds
+   Result is ...
+   Used the gpu
+
+.. code-block:: none
 
   $ THEANO_FLAGS=device=cuda0 python check2.py
   Using device cuda0: GeForce GTX 275
@@ -663,7 +699,7 @@ you feel competent enough, you may try yourself on the corresponding exercises.
           block=(400,1,1), grid=(1,1))
 
   assert numpy.allclose(dest, a*b)
-  print dest
+  print(dest)
 
 
 Exercise
@@ -722,10 +758,10 @@ Modify and execute to work for a matrix of shape (20, 10).
 Use this code to test it:
 
 >>> x = theano.tensor.fmatrix()
->>> f = theano.function([x], PyCUDADoubleOp()(x))
+>>> f = theano.function([x], PyCUDADoubleOp()(x))  # doctest: +SKIP
 >>> xv = numpy.ones((4, 5), dtype="float32")
->>> assert numpy.allclose(f(xv), xv*2)
->>> print numpy.asarray(f(xv))
+>>> assert numpy.allclose(f(xv), xv*2)  # doctest: +SKIP
+>>> print(numpy.asarray(f(xv)))  # doctest: +SKIP
 
 
 Exercise
@@ -747,5 +783,9 @@ Modify and execute to support *stride* (i.e. to avoid constraining the input to 
 Note
 ----
 
-See :ref:`example_other_random` to know how to handle random numbers
-on the GPU.
+* See :ref:`example_other_random` to know how to handle random numbers
+  on the GPU.
+
+* The mode `FAST_COMPILE` disables C code, so also disables the GPU. You
+  can use the Theano flag optimizer='fast_compile' to speed up
+  compilation and keep the GPU.

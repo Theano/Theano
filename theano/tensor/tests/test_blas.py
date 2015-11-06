@@ -8,7 +8,6 @@ from numpy import (arange, array, common_type, complex64, complex128, float32,
                   float64, newaxis, shape, transpose, zeros)
 from numpy.testing import assert_array_almost_equal
 
-from nose.plugins.attrib import attr
 from six.moves import xrange
 
 import theano
@@ -25,6 +24,7 @@ from theano.tests import unittest_tools
 from .test_basic import (as_tensor_variable, inplace_func,
                         compile, inplace)
 import theano.tensor.blas_scipy
+from theano.tests.unittest_tools import attr
 
 
 if config.mode == 'FAST_COMPILE':

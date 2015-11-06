@@ -78,17 +78,31 @@ the most important ones:
         When we are done using the data, clean up whatever we allocated and
         decrease the appropriate reference counts.
 
-    .. method:: c_headers()
-                c_libraries()
-                c_header_dirs()
-                c_lib_dirs()
+    .. method:: c_headers([c_compiler])
+                c_libraries([c_compiler])
+                c_header_dirs([c_compiler])
+                c_lib_dirs([c_compiler])
 
         Allows you to specify headers, libraries and associated directories.
 
-    .. method:: c_compile_args()
-                c_no_compile_args()
+        These methods have two versions, one with a `c_compiler`
+        argument and one without. The version with c_compiler is tried
+        first and if it doesn't work, the one without is.
+
+        The `c_compiler` argument is the C compiler that will be used
+        to compile the C code for the node that uses this type.
+
+    .. method:: c_compile_args([c_compiler])
+                c_no_compile_args([c_compiler])
 
         Allows to specify special compiler arguments to add/exclude.
+
+        These methods have two versions, one with a `c_compiler`
+        argument and one without. The version with c_compiler is tried
+        first and if it doesn't work, the one without is.
+
+        The `c_compiler` argument is the C compiler that will be used
+        to compile the C code for the node that uses this type.
 
     .. method:: c_init_code()
 
@@ -156,12 +170,14 @@ out:
 Defining the methods
 ====================
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_2
+.. testsetup:: 
+
+    import theano
+    double = theano.Type()
 
 **c_declare**
 
-.. code-block:: python
+.. testcode::
 
     def c_declare(name, sub):
         return """
@@ -189,12 +205,9 @@ your Type. If you wish people to develop operations that make use of
 it, it's best to publish it somewhere.
 
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_2
-
 **c_init**
 
-.. code-block:: python
+.. testcode::
 
     def c_init(name, sub):
         return """
@@ -218,12 +231,9 @@ you should only assume that either ``c_init`` or ``c_extract`` has been
 called, without knowing for sure which of the two.
 
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_2
-
 **c_extract**
 
-.. code-block:: python
+.. testcode::
 
     def c_extract(name, sub):
         return """
@@ -257,12 +267,9 @@ using the ``PyFloat_AsDouble`` function (yet again provided by CPython's C
 API) and we put it in our double variable that we declared previously.
 
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_2
-
 **c_sync**
 
-.. code-block:: python
+.. testcode::
 
     def c_sync(name, sub):
         return """
@@ -319,12 +326,9 @@ than sorry.
    do *NOT* decrease its reference count!
 
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_2
-
 **c_cleanup**
 
-.. code-block:: python
+.. testcode::
 
     def c_cleanup(name, sub):
         return ""
@@ -370,14 +374,8 @@ depends on the the relationship between Python and C with respect to
 that Variable. For instance, imagine you define the following function
 and call it:
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_2
-
 .. code-block:: python
    
-   from theano import function
-   from theano.tensor import double
-
    x, y, z = double('x'), double('y'), double('z')
    a = add(x, y)
    b = mul(a, z)
@@ -459,10 +457,7 @@ multiplication block.
 Final version
 =============
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_extending.test_extending_2
-
-.. code-block:: python
+.. testcode::
 
    from theano import gof
 

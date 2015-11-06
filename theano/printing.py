@@ -48,7 +48,7 @@ VALID_ASSOC = set(['left', 'right', 'either'])
 
 def debugprint(obj, depth=-1, print_type=False,
                file=None, ids='CHAR', stop_on_name=False,
-               done=None):
+               done=None, print_storage=False):
     """Print a computation graph as text to stdout or a file.
 
     :type obj: Variable, Apply, or Function instance
@@ -70,6 +70,10 @@ def debugprint(obj, depth=-1, print_type=False,
     :type done: None or dict
     :param done: A dict where we store the ids of printed node.
         Useful to have multiple call to debugprint share the same ids.
+    :type print_storage: bool
+    :param print_storage: If True, this will print the storage map
+        for Theano functions. Combined with allow_gc=False, after the
+        execution of a Theano function, we see the intermediate result.
 
     :returns: string if `file` == 'str', else file arg
 
@@ -101,8 +105,9 @@ def debugprint(obj, depth=-1, print_type=False,
         done = dict()
     results_to_print = []
     profile_list = []
-    order = []
-    if isinstance(obj, (list, tuple)):
+    order = []  # Toposort
+    smap = []  # storage_map
+    if isinstance(obj, (list, tuple, set)):
         lobj = obj
     else:
         lobj = [obj]
@@ -110,36 +115,48 @@ def debugprint(obj, depth=-1, print_type=False,
         if isinstance(obj, gof.Variable):
             results_to_print.append(obj)
             profile_list.append(None)
+            smap.append(None)
+            order.append(None)
         elif isinstance(obj, gof.Apply):
             results_to_print.extend(obj.outputs)
             profile_list.extend([None for item in obj.outputs])
+            smap.extend([None for item in obj.outputs])
+            order.extend([None for item in obj.outputs])
         elif isinstance(obj, Function):
             results_to_print.extend(obj.maker.fgraph.outputs)
             profile_list.extend(
                 [obj.profile for item in obj.maker.fgraph.outputs])
-            order = obj.maker.fgraph.toposort()
+            if print_storage:
+                smap.extend(
+                    [obj.fn.storage_map for item in obj.maker.fgraph.outputs])
+            else:
+                smap.extend(
+                    [None for item in obj.maker.fgraph.outputs])
+            topo = obj.maker.fgraph.toposort()
+            order.extend(
+                [topo for item in obj.maker.fgraph.outputs])
         elif isinstance(obj, gof.FunctionGraph):
             results_to_print.extend(obj.outputs)
-            profile_list.extend([None for item in obj.outputs])
-            order = obj.toposort()
+            profile_list.extend([getattr(obj, 'profile', None)
+                                 for item in obj.outputs])
+            smap.extend([getattr(obj, 'storage_map', None)
+                         for item in obj.outputs])
+            topo = obj.toposort()
+            order.extend([topo for item in obj.outputs])
         elif isinstance(obj, (integer_types, float, np.ndarray)):
             print(obj)
         elif isinstance(obj, (theano.In, theano.Out)):
             results_to_print.append(obj.variable)
             profile_list.append(None)
+            smap.append(None)
+            order.append(None)
         else:
             raise TypeError("debugprint cannot print an object of this type",
                             obj)
 
     scan_ops = []
-    for r, p in zip(results_to_print, profile_list):
-        # Add the parent scan op to the list as well
-        if (hasattr(r.owner, 'op') and
-                isinstance(r.owner.op, theano.scan_module.scan_op.Scan)):
-                    scan_ops.append(r)
-
-        if p is not None:
-            print("""
+    if any([p for p in profile_list if p is not None and p.fct_callcount > 0]):
+        print("""
 Timing Info
 -----------
 --> <time> <% time> - <total time> <% total time>'
@@ -157,10 +174,16 @@ N.B.:
   to remove when optimizing a graph because their <total time> is very low.
 """, file=_file)
 
+    for r, p, s, o in zip(results_to_print, profile_list, smap, order):
+        # Add the parent scan op to the list as well
+        if (hasattr(r.owner, 'op') and
+                isinstance(r.owner.op, theano.scan_module.scan_op.Scan)):
+                    scan_ops.append(r)
+
         debugmode.debugprint(r, depth=depth, done=done, print_type=print_type,
-                             file=_file, order=order, ids=ids,
+                             file=_file, order=o, ids=ids,
                              scan_ops=scan_ops, stop_on_name=stop_on_name,
-                             profile=p)
+                             profile=p, smap=s)
 
     if len(scan_ops) > 0:
         print("", file=_file)
@@ -586,7 +609,8 @@ default_colorCodes = {'GpuFromHost': 'red',
                       'IfElse': 'magenta',
                       'Elemwise': '#FFAABB',  # dark pink
                       'Subtensor': '#FFAAFF',  # purple
-                      'Alloc': '#FFAA22'}  # orange
+                      'Alloc': '#FFAA22',  # orange
+                      'Output': 'blue'}
 
 
 def pydotprint(fct, outfile=None,
@@ -766,11 +790,9 @@ def pydotprint(fct, outfile=None,
             varstr = '%s %s' % (dstr, str(var.type))
         elif (var in input_update and
               input_update[var].name is not None):
-            if var_with_name_simple:
-                varstr = input_update[var].variable.name
-            else:
-                varstr = (input_update[var].variable.name +
-                          str(var.type))
+            varstr = input_update[var].name
+            if not var_with_name_simple:
+                varstr += str(var.type)
         else:
             # a var id is needed as otherwise var with the same type will be
             # merged in the graph.
@@ -889,7 +911,7 @@ def pydotprint(fct, outfile=None,
                 param['label'] = label
             if hasattr(node.op, 'view_map') and idx in reduce(
                     list.__add__, node.op.view_map.values(), []):
-                    param['color'] = 'blue'
+                    param['color'] = colorCodes['Output']
             elif hasattr(node.op, 'destroy_map') and idx in reduce(
                     list.__add__, node.op.destroy_map.values(), []):
                         param['color'] = 'red'
@@ -939,9 +961,9 @@ def pydotprint(fct, outfile=None,
                 if high_contrast:
                     g.add_node(pd.Node(varid, style='filled',
                                        label=varstr,
-                                       fillcolor='blue', shape=var_shape))
+                                       fillcolor=colorCodes['Output'], shape=var_shape))
                 else:
-                    g.add_node(pd.Node(varid, color='blue',
+                    g.add_node(pd.Node(varid, color=colorCodes['Output'],
                                        label=varstr,
                                        shape=var_shape))
             elif len(var.clients) == 0:
@@ -971,7 +993,7 @@ def pydotprint(fct, outfile=None,
     for sha, up in input_update.items():
         _, shaid = var_name(sha)
         _, upid = var_name(up)
-        g.add_edge(pd.Edge(shaid, upid, label="UPDATE", color="blue"))
+        g.add_edge(pd.Edge(shaid, upid, label="UPDATE", color=colorCodes['Output']))
 
     if cond_highlight:
         g.add_subgraph(c1)
@@ -996,7 +1018,11 @@ def pydotprint(fct, outfile=None,
             else:
                 new_name = basename + '_' + str(idx)
             new_name = os.path.join(path, new_name + ext)
-            pydotprint(scan_op.op.fn, new_name, compact, format, with_ids,
+            if hasattr(scan_op.op, 'fn'):
+                to_print = scan_op.op.fn
+            else:
+                to_print = scan_op.op.outputs
+            pydotprint(to_print, new_name, compact, format, with_ids,
                        high_contrast, cond_highlight, colorCodes,
                        max_label_size, scan_graphs)
 
@@ -1135,7 +1161,7 @@ def pydotprint_variables(vars,
                 my_list[nd] = varastr
                 color = None
                 if nd in vars:
-                    color = 'blue'
+                    color = colorCodes['Output']
                 elif nd in orphanes:
                     color = 'gray'
                 if color is None:

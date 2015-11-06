@@ -15,6 +15,7 @@ Types and Ops that you can use to build and compile expression graphs.
    gradient
    config
    printing
+   d3viz/index
    compile/index
    sparse/index
    sparse/sandbox

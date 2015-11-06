@@ -66,7 +66,7 @@ class NaiveAlgo(object):
     def cache_version(self):
         ver = self.scalar_op.c_code_cache_version()
         if ver:
-            return (18, self.verbose, self.sync, ver)
+            return (20, self.verbose, self.sync, ver)
         else:
             return ver
 
@@ -86,7 +86,9 @@ class NaiveAlgo(object):
     def c_src_kernel(self, node, nodename, nd):
         sio = StringIO()
         # print 'C_SRC_KERNEL', sio.getvalue()
-
+        print("// %s" % str(node.op), file=sio)
+        print("// node.op.destroy_map=%s" % str(
+            getattr(node.op, 'destroy_map', None)), file=sio)
         for ipos, i in enumerate(node.inputs):
             print("//    Input  ", ipos, str(i.type), file=sio)
         for ipos, i in enumerate(node.outputs):
@@ -156,7 +158,7 @@ class NaiveAlgo(object):
             sub=dict(fail='return;'))  # TODO: set a failure code somehow!!!
         print("       ", task_code, file=sio)
         for ipos, _ in enumerate(node.outputs):
-            print("o%i_data[i] = o%i_i;" % (ipos, ipos), file=sio)
+            print("ii_o%i_data[0] = o%i_i;" % (ipos, ipos), file=sio)
         print("    }", file=sio)
 
         #indent = " "*(4*d+7)
@@ -202,6 +204,9 @@ class NaiveAlgo(object):
 
         if nd in (4,):
             # print some leading comments to make the code easier to read
+            print("// %s" % str(node.op), file=sio)
+            print("// node.op.destroy_map=%s" % str(
+                getattr(node.op, 'destroy_map', None)), file=sio)
             for ipos, i in enumerate(node.inputs):
                 print("//    Input  ", ipos, str(i.type), file=sio)
             for ipos, i in enumerate(node.outputs):
@@ -307,6 +312,9 @@ class NaiveAlgo(object):
             return sio.getvalue()
 
         # print some leading comments to make the code easier to read
+        print("// %s" % str(node.op), file=sio)
+        print("// node.op.destroy_map=%s" % str(
+            getattr(node.op, 'destroy_map', None)), file=sio)
         for ipos, i in enumerate(node.inputs):
             print("//    Input  ", ipos, str(i.type), file=sio)
         for ipos, i in enumerate(node.outputs):
@@ -456,6 +464,9 @@ class NaiveAlgo(object):
         sio = StringIO()
         # print 'C_SRC_KERNEL', sio.getvalue()
 
+        print("// %s" % str(node.op), file=sio)
+        print("// node.op.destroy_map=%s" % str(
+            getattr(node.op, 'destroy_map', None)), file=sio)
         for ipos, i in enumerate(node.inputs):
             print("//    Input  ", ipos, str(i.type), file=sio)
         for ipos, i in enumerate(node.outputs):

@@ -91,7 +91,7 @@ def ger_c_code(A, a, x, y, Z, destructive, fail):
             || ((PyArray_STRIDES(%(Z)s)[0] != elemsize)
                 && (PyArray_STRIDES(%(Z)s)[1] != elemsize)))
         {
-            if (%(Z)s) Py_XDECREF(%(Z)s);
+            Py_XDECREF(%(Z)s);
             %(Z)s = (PyArrayObject*) PyArray_SimpleNew(2, dims,
                                                        PyArray_TYPE(%(A)s));
             if(!%(Z)s) {
@@ -324,7 +324,7 @@ class CGer(BaseBLAS, Ger):
         return code
 
     def c_code_cache_version(self):
-        return (9, blas_header_version())
+        return (10, blas_header_version())
 cger_inplace = CGer(True)
 cger_no_inplace = CGer(False)
 
@@ -425,9 +425,9 @@ def gemv_c_code(aa, xx, yy, zz, alpha, beta, destructive, fail,
         if ((NULL == %(zz)s)
             || (PyArray_DIMS(%(zz)s)[0] != PyArray_DIMS(%(aa)s)[0]))
         {
-            if (%(zz)s) Py_XDECREF(%(zz)s);
+            Py_XDECREF(%(zz)s);
             %(zz)s = (PyArrayObject*)PyArray_SimpleNew(1,
-                PyArray_DIMS(%(aa)s), PyArray_TYPE((PyArrayObject*) py_%(aa)s));
+                PyArray_DIMS(%(aa)s), PyArray_TYPE(%(aa)s));
             if(!%(zz)s) {
                 PyErr_SetString(PyExc_MemoryError,
                                 "failed to alloc gemv output");
@@ -695,7 +695,7 @@ class CGemv(BaseBLAS, Gemv):
         return code
 
     def c_code_cache_version(self):
-        return (11, blas_header_version())
+        return (12, blas_header_version())
 cgemv_inplace = CGemv(inplace=True)
 cgemv_no_inplace = CGemv(inplace=False)
 
@@ -799,7 +799,14 @@ def use_c_gemv(node):
 @local_optimizer([CGemv(inplace=False)])
 def make_c_gemv_destructive(node):
     if isinstance(node.op, CGemv) and not node.op.inplace:
-        return [cgemv_inplace(*node.inputs)]
+        inputs = list(node.inputs)
+        dest = inputs[0]
+        if (dest.owner and
+                isinstance(dest.owner.op, T.AllocEmpty) and
+                len(dest.clients) > 1):
+            inputs[0] = T.AllocEmpty(dest.dtype)(*dest.owner.inputs)
+
+        return [cgemv_inplace(*inputs)]
 
 
 # ##### ####### #######

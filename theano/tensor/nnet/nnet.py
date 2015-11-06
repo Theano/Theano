@@ -21,8 +21,8 @@ from theano import gof
 from theano import scalar
 from theano.tensor import basic as tensor
 from theano.tensor import subtensor
-from theano.tensor import elemwise
 from theano.tensor import opt
+from theano.tensor.opt import copy_stack_trace
 from theano.compile import optdb
 from theano.gof import Apply
 
@@ -30,6 +30,7 @@ from theano.tensor.nnet.sigm import sigmoid, softplus
 from theano.gradient import DisconnectedType
 from theano.gradient import grad_not_implemented
 from theano.tensor.type import values_eq_approx_remove_nan
+
 
 ############
 #
@@ -80,10 +81,22 @@ class SoftmaxWithBias(gof.Op):
             # sm[i] *= 1.0 / numpy.sum(sm[i])
         # output_storage[0][0] = sm
 
+        if x.size == 0:
+            # Numpy doesn't like the max of a zero-sized object.
+            output_storage[0][0] = numpy.zeros(x.shape, dtype=x.dtype)
+            return
+
+        x_dtype = x.dtype
+        # Perform computations in float32 otherwise the result is too imprecise
+        if x.dtype == 'float16':
+            x = x.astype('float32')
+
         x_plus_b = x + b[None, :]
         e_x = numpy.exp(x_plus_b - x_plus_b.max(axis=1)[:, None])
         e_x *= 1.0 / e_x.sum(axis=1)[:, None]
-        output_storage[0][0] = e_x
+        # default for copy is True and we don't need a copy if the
+        # data type matches.
+        output_storage[0][0] = e_x.astype(x_dtype, copy=False)
 
     def grad(self, inp, grads):
         x, b = inp
@@ -113,7 +126,8 @@ class SoftmaxWithBias(gof.Op):
 
         # TODO: set error messages for failures in this code
 
-        # TODO: use this to accept float32 and int32: node.inputs[0].type.dtype_specs()[1]
+        # TODO: use this to accept float32 and int32:
+        # node.inputs[0].type.dtype_specs()[1]
         init_decl = """
         npy_intp* Nx = PyArray_DIMS(%(x)s);
         npy_intp Sx = 0;
@@ -634,16 +648,19 @@ def local_softmax_with_bias(node):
                 # we're in business...
                 if len(vectors) > 1:
                     vector_sum = tensor.add(*vectors)
+                    copy_stack_trace(x_in, vector_sum)
                 else:
                     vector_sum = vectors[0]
 
                 if len(non_vectors) > 1:
                     non_vector_sum = tensor.add(*non_vectors)
+                    copy_stack_trace(x_in, non_vector_sum)
                 else:
                     non_vector_sum = non_vectors[0]
 
                 try:
                     sm_bias = softmax_with_bias(non_vector_sum, vector_sum)
+                    copy_stack_trace(node.outputs[0], sm_bias)
                 except Exception:
                     # if our arguments have the wrong types, then
                     # forget about it
@@ -691,114 +708,6 @@ def softmax_simplifier(numerators, denominators):
 
     return numerators, denominators
 opt.local_mul_canonizer.add_simplifier(softmax_simplifier, 'softmax_simplifier')
-
-if 0:
-    @opt.register_specialize
-    @gof.local_optimizer([tensor.add])
-    def local_softmax_grad(node):
-        '''dy*sm - DimShuffle{0,'x'}(sum{1}(dy*sm))*sm -> softmax_grad(dy,sm)'''
-        # TODO what if the signs are changed?
-        # TODO and if a scalar is distributed before each of the terms?
-        # TODO 'dy' could also be a product
-        if node.op == tensor.add and node.out.ndim == 2:
-            add_inputs = node.inputs
-            # Trying to locate two nodes in the sum:
-            #   dy * sm, prod_term
-            #   - DimShuffle{0,'x'}(sum{1}(dy*sm))*sm
-            prod_term = None
-            other_terms = []
-            # First, prod_term
-            for add_in in add_inputs:
-                if (add_in.owner and
-                        add_in.owner.op == tensor.mul and
-                        prod_term is None):
-                    mul_inputs = add_in.owner.inputs
-                    if (len(mul_inputs) == 2 and
-                            all([mul_in.ndim == 2 for mul_in in mul_inputs])):
-                        prod_term = add_in
-                    else:
-                        other_terms.append(add_in)
-                else:
-                    other_terms.append(add_in)
-            if prod_term is None:
-                # print 'no prod_term'
-                return
-            assert len(other_terms) == len(add_inputs) - 1
-
-            ds_term = None
-            rest = []
-            for add_in in other_terms:
-                if add_in.owner and add_in.owner.op == tensor.neg:
-                    neg_input = add_in.owner.inputs[0]
-                    if neg_input.owner and neg_input.owner.op == tensor.mul:
-                        mul2_inputs = neg_input.owner.inputs
-                        if len(mul2_inputs) != 2:
-                            rest.append(add_in)
-                            # print 'len(mul2_inputs) =', len(mul2_inputs)
-                            continue
-                        # Try and find DimShuffle(Sum)
-                        maybe_ds = None
-                        for i, mul2_in in enumerate(mul2_inputs):
-                            if mul2_in.owner and isinstance(mul2_in.owner.op,
-                                                            elemwise.DimShuffle):
-                                maybe_ds = mul2_in
-                                maybe_sm = mul2_inputs[1 - i]  # The other one
-                        if (maybe_ds is None or
-                                maybe_ds.ndim != 2 or
-                                maybe_sm.ndim != 2):
-                            rest.append(add_in)
-                            # print 'maybe_ds =', maybe_ds
-                            # if maybe_ds:
-                            # print 'maybe_ds.ndim =', maybe_ds.ndim, ', maybe_sm.ndim =', maybe_sm.ndim
-                            continue
-
-                        if maybe_sm is mul_inputs[0]:
-                            maybe_dy = mul_inputs[1]
-                        elif maybe_sm is mul_inputs[1]:
-                            maybe_dy = mul_inputs[0]
-                        else:
-                            rest.append(add_in)
-                            # print 'maybe_sm, maybe_dy =', maybe_sm, maybe_dy
-                            # print 'mul_inputs =', mul_inputs
-                            continue
-
-                        ds_order = maybe_ds.owner.op.new_order
-                        ds_input = maybe_ds.owner.inputs[0]
-                        axis = None
-                        if ds_input.owner and isinstance(ds_input.owner.op,
-                                                         elemwise.Sum):
-                            axis = ds_input.owner.op.axis
-                            sum_input = ds_input.owner.inputs[0]
-
-                        if ((ds_order != (0, 'x')) or
-                                (axis != (1,)) or
-                                (sum_input is not prod_term)):
-                            rest.append(add_in)
-                            # print 'ds_order =', ds_order
-                            # print 'axis =', axis
-                            # if axis is not None:
-                            #    print 'sum_input =', sum_input, ', prod_term =', prod_term
-                            # else:
-                            #    print 'ds_input.owner =', ds_input.owner
-                            # print 'add_in =', add_in
-                            continue
-
-                        ds_term = add_in
-
-                    else:
-                        # print 'neg_input.owner =', neg_input.owner
-                        rest.append(add_in)
-                else:
-                    # print 'add_in.owner =', add_in.owner
-                    rest.append(add_in)
-
-            if ds_term is None:
-                # print 'no ds_term'
-                return
-            if len(rest) == 0:
-                return [softmax_grad(maybe_dy, maybe_sm)]
-            else:
-                return [tensor.add(softmax_grad(maybe_dy, maybe_sm), *rest)]
 
 
 class CrossentropySoftmaxArgmax1HotWithBias(gof.Op):
@@ -1339,16 +1248,8 @@ class CrossentropyCategorical1Hot(gof.Op):
             y[i] = -numpy.log(coding[i, one_of_n[i]])
         y_out[0] = y
 
-# Enabling this infer_shape method make 2 tests fail:
-# theano/tensor/nnet/tests/test_nnet.py:T_CrossentropyCategorical1Hot.
-#     {test_softmax_grad_optimizations,test_softmax_grad_optimizations_vector}
-# This is caused by the local_fill_to_alloc that call broadcast_like
-# that look into the shape feature and return a Rebroadcast instead of an alloc.
-# I disable this infer_shape until we fix the optimizations or determine that
-# this is not needed anymore and we update the tests.
-        # see issue gh-788
-#    def infer_shape(self, node, in_shapes):
-#        return [(in_shapes[0][0],)]
+    def infer_shape(self, node, in_shapes):
+        return [(in_shapes[0][0],)]
 
     def grad(self, inp, grads):
         coding, one_of_n = inp
@@ -1457,6 +1358,7 @@ def local_softmax_grad_to_crossentropy_with_softmax_grad(node):
             g_nll, coding_dist, true_one_of_n = g_coding_dist.owner.inputs
             dx = crossentropy_softmax_1hot_with_bias_dx(g_nll, coding_dist,
                                                         true_one_of_n)
+            copy_stack_trace(node.outputs[0], dx)
             return [dx]
 
 
@@ -1485,13 +1387,18 @@ def local_argmax_pushdown(node):
         if x.owner and x.owner.op in (softmax_op, softplus, tensor.exp,
                                       tensor.log, tensor.tanh, sigmoid):
             pre_x, = x.owner.inputs
-            return tensor._max_and_argmax(pre_x, axis)
+            ret = tensor._max_and_argmax(pre_x, axis)
+            copy_stack_trace(x_max, ret)
+            return ret
         if x.owner and x.owner.op == softmax_with_bias:
             pre_x, pre_bias = x.owner.inputs
-            return tensor._max_and_argmax(pre_x +
-                                          tensor.DimShuffle(
-                                              pre_bias.broadcastable,
-                                              ('x', 0))(pre_bias), axis)
+            ret = tensor._max_and_argmax(pre_x +
+                                         tensor.DimShuffle(
+                                             pre_bias.broadcastable,
+                                             ('x', 0))(pre_bias), axis)
+            # copy both stack traces
+            copy_stack_trace(x_max, ret)
+            return ret
 
 # Utility function used by the two next optimizations
 
@@ -1585,9 +1492,12 @@ def local_advanced_indexing_crossentropy_onehot(node):
         # Check that rows == arange(labels.shape[0])
         if _check_rows_is_arange_len_labels(rows, labels):
             if labels.ndim == 1 and x_var.ndim == 2:
-                return [-crossentropy_softmax_argmax_1hot_with_bias(x_var,
-                                                                    b_var,
-                                                                    labels)[0]]
+                minus_ret = crossentropy_softmax_argmax_1hot_with_bias(x_var,
+                                                                       b_var,
+                                                                       labels)[0]
+                ret = -minus_ret
+                copy_stack_trace(node.outputs[0], [minus_ret, ret])
+                return [ret]
 
 
 @opt.register_specialize('fast_compile_gpu')
@@ -1809,7 +1719,11 @@ def local_advanced_indexing_crossentropy_onehot_grad(node):
 
     # Dimension check before substitution
     if labels.ndim == 1 and x_var.ndim == 2:
-        return [crossentropy_softmax_1hot_with_bias_dx(out_grad, sm, labels)]
+        ret = crossentropy_softmax_1hot_with_bias_dx(out_grad, sm, labels)
+        # The stack trace is not added to output_grad, sm and labels at
+        # the moment but may need to be added at a future point
+        copy_stack_trace(node.outputs[0], ret)
+        return [ret]
     else:
         return
 
@@ -1825,6 +1739,7 @@ def graph_merge_softmax_with_crossentropy_softmax(node):
                 if big_client in [b_client[0] for b_client in b.clients]:
                     xx, bb, ll = big_client.inputs
                     mergeable_client = big_client.op(x, b, ll)
+                    copy_stack_trace(node.outputs[0], mergeable_client[1])
                     return [mergeable_client[1]]
 
 
@@ -1885,7 +1800,9 @@ def local_useless_crossentropy_softmax_1hot_with_bias_dx_alloc(node):
                 msg = '`sm` and `dy` do not have the same shape.'
                 dz = opt.Assert(msg)(dz, cond)
 
-            return [node.op(dz, sm, y_idx)]
+            ret = node.op(dz, sm, y_idx)
+            copy_stack_trace(node.outputs[0], ret)
+            return [ret]
 
 
 def binary_crossentropy(output, target):
@@ -2088,6 +2005,8 @@ opt.register_specialize(local_log_softmax, 'fast_compile_gpu', name='local_log_s
 def relu(x, alpha=0):
     """
     Compute the element-wise rectified linear activation function.
+
+    .. versionadded:: 0.7.1
 
     Parameters
     ----------

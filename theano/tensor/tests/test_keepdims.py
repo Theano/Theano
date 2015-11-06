@@ -1,10 +1,10 @@
 import unittest
 
-from nose.plugins.attrib import attr
 import numpy
 
 import theano
 from theano import tensor, function
+from theano.tests.unittest_tools import attr
 
 
 # this tests other ops to ensure they keep the dimensions of their

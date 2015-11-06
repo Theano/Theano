@@ -76,6 +76,13 @@ AddConfigVar('profiling.destination',
              StrParam('stderr'),
              in_c_key=False)
 
+AddConfigVar('profiling.debugprint',
+             """
+             Do a debugprint of the profiled functions
+             """,
+             BoolParam(False),
+             in_c_key=False)
+
 
 def _atexit_print_fn():
     """
@@ -697,7 +704,7 @@ class ProfileStats(object):
         print('Time in all call to theano.grad() %es' %
               theano.gradient.grad_time, file=file)
         total_time = time.time() - theano_imported_time
-        print('Time since theano import %.3fs' % (total_time))
+        print('Time since theano import %.3fs' % (total_time), file=file)
 
     def summary_memory(self, file, N=None):
         fct_memory = {}  # fgraph->dict(node->[outputs size])
@@ -1285,6 +1292,9 @@ class ProfileStats(object):
         elif self.fct_callcount > 0:
             print("  No execution time accumulated "
                   "(hint: try config profiling.time_thunks=1)", file=file)
+        if config.profiling.debugprint:
+            fcts = set([n.fgraph for n in self.apply_time.keys()])
+            theano.printing.debugprint(fcts, print_type=True)
         if self.variable_shape or self.variable_strides:
             self.summary_memory(file, n_apply_to_print)
         if self.optimizer_profile:

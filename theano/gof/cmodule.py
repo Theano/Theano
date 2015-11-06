@@ -17,6 +17,7 @@ import tempfile
 import time
 import platform
 import distutils.sysconfig
+import warnings
 
 import numpy.distutils  # TODO: TensorType should handle this
 
@@ -273,7 +274,9 @@ static struct PyModuleDef moduledef = {{
             self.print_init(sio)
 
         rval = sio.getvalue()
-        h = hash_from_code('\n'.join([rval] + self.header_code))
+        # Make sure the hash of the code hasn't changed
+        h = hash_from_code(rval)
+        assert self.code_hash is None or self.code_hash == h
         self.code_hash = h
         rval = re.sub(self.hash_placeholder, self.code_hash, rval)
         # Finalize the Module, so no support code or function
@@ -342,7 +345,10 @@ def dlimport(fullpath, suffix=None):
             if hasattr(importlib, "invalidate_caches"):
                 importlib.invalidate_caches()
         t0 = time.time()
-        rval = __import__(module_name, {}, {}, [module_name])
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore",
+                                    message="numpy.ndarray size changed")
+            rval = __import__(module_name, {}, {}, [module_name])
         t1 = time.time()
         import_time += t1 - t0
         if not rval:
@@ -1789,6 +1795,8 @@ class GCC_compiler(Compiler):
     # The equivalent flags of --march=native used by g++.
     march_flags = None
 
+    supports_amdlibm = True
+
     @staticmethod
     def version_str():
         return theano.config.cxx + " " + gcc_version_str
@@ -2022,10 +2030,12 @@ class GCC_compiler(Compiler):
         # in the key of the compiled module, avoiding potential conflicts.
 
         # Figure out whether the current Python executable is 32
-        # or 64 bit and compile accordingly. This step is ignored for ARM
-        # architectures in order to make Theano compatible with the Raspberry
-        # Pi, and Raspberry Pi 2.
-        if not any(['arm' in flag for flag in cxxflags]) and platform.machine() != 'armv7l':
+        # or 64 bit and compile accordingly. This step is ignored for
+        # ARM (32-bit and 64-bit) architectures in order to make
+        # Theano compatible with the Raspberry Pi, Raspberry Pi 2, or
+        # other systems with ARM processors.
+        if (not any(['arm' in flag for flag in cxxflags]) and
+                not any(arch in platform.machine() for arch in ['arm', 'aarch'])):
             n_bits = local_bitwidth()
             cxxflags.append('-m%d' % n_bits)
             _logger.debug("Compiling for %s bit architecture", n_bits)

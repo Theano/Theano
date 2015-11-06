@@ -15,8 +15,13 @@ def check_deterministic(iterable):
     # So I must use an assert here. In the long term we should fix the rest of
     # theano to use exceptions correctly, so that this can be a TypeError.
     if iterable is not None:
-        assert isinstance(iterable, (
-            list, tuple, OrderedSet, types.GeneratorType, string_types))
+        if not isinstance(iterable, (
+                list, tuple, OrderedSet,
+                types.GeneratorType, string_types)):
+            if len(iterable) > 1:
+                # We need to accept length 1 size to allow unpickle in tests.
+                raise AssertionError(
+                    "Get an not ordered iterable when one was expected")
 
 # Copyright (C) 2009 Raymond Hettinger
 # Permission is hereby granted, free of charge, to any person obtaining a

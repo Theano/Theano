@@ -62,7 +62,10 @@ def local_max_and_argmax(node):
                 try:
                     axis = get_scalar_constant_value(node.inputs[1])
                 except NotScalarConstantError:
-                    return False
+                    axis = node.inputs[1]
+                    if not isinstance(axis, T.TensorConstant):
+                        return False
+                    axis = axis.data
 
             new = CAReduce(scal.maximum, axis)(node.inputs[0])
             return [new, None]

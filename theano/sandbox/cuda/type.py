@@ -81,7 +81,7 @@ class CudaNdarrayType(Type):
             raise TypeError('%s only supports dtype float32 for now. Tried '
                             'using dtype %s for variable %s' %
                             (self.__class__.__name__, dtype, name))
-        self.broadcastable = tuple(broadcastable)
+        self.broadcastable = tuple(bool(b) for b in broadcastable)
         self.name = name
         self.dtype_specs()  # error checking is done there
 

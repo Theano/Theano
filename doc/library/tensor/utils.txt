@@ -2,6 +2,10 @@
 :mod:`tensor.utils` --  Tensor Utils
 ===================================================================
 
+.. testsetup::
+
+   from theano.tensor.utils import *
+
 .. module:: tensor.utils
    :platform: Unix, Windows
    :synopsis: Tensor Utils

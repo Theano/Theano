@@ -1224,7 +1224,7 @@ def test_shared_cudandarray():
 
 
 def test_gpueye():
-    def check(dtype, N, M_=None):
+    def check(dtype, N, M_=None, K=0):
         # Theano does not accept None as a tensor.
         # So we must use a real value.
         M = M_
@@ -1234,22 +1234,24 @@ def test_gpueye():
             M = N
         N_symb = T.iscalar()
         M_symb = T.iscalar()
-        k_symb = numpy.asarray(0)
+        k_symb = numpy.asarray(K)
         out = T.eye(N_symb, M_symb, k_symb, dtype=dtype)
         f = theano.function([N_symb, M_symb],
                             B.as_cuda_ndarray_variable(out),
                             mode=mode_with_gpu)
         result = numpy.asarray(f(N, M))
-        utt.assert_allclose(result, numpy.eye(N, M_, dtype=dtype))
+        utt.assert_allclose(result, numpy.eye(N, M_, K, dtype=dtype))
         assert result.dtype == numpy.dtype(dtype)
-        assert any([isinstance(node.op, B.GpuEye)
-                    for node in f.maker.fgraph.toposort()])
+        if K == 0:
+            assert any([isinstance(node.op, B.GpuEye)
+                        for node in f.maker.fgraph.toposort()])
 
     for dtype in ['float32']:
         yield check, dtype, 3
         # M != N, k = 0
         yield check, dtype, 3, 5
         yield check, dtype, 5, 3
+        yield check, dtype, 5, 3, 1
 
 
 class test_size(unittest.TestCase):

@@ -127,9 +127,12 @@ class GetCheckpoint:
     def __init__(self, history, fgraph):
         self.h = history
         self.fgraph = fgraph
+        self.nb = 0
 
     def __call__(self):
-        return len(self.h.history[self.fgraph])
+        self.h.history[self.fgraph] = []
+        self.nb += 1
+        return self.nb
 
 
 class LambdExtract:
@@ -147,6 +150,13 @@ class LambdExtract:
 
 
 class History(Feature):
+    """Keep an history of changes to an FunctionGraph.
+
+    This history can be reverted up to the last checkpoint.. We can
+    revert to only 1 point in the past. This limit was added to lower
+    the memory usage.
+
+    """
     pickle_rm_attr = ["checkpoint", "revert"]
 
     def __init__(self):
@@ -187,7 +197,8 @@ class History(Feature):
         """
         h = self.history[fgraph]
         self.history[fgraph] = None
-        while len(h) > checkpoint:
+        assert fgraph.checkpoint.nb == checkpoint
+        while h:
             f = h.pop()
             f()
         self.history[fgraph] = h
@@ -314,6 +325,7 @@ class ReplaceValidate(History, Validator):
             raise
         if verbose:
             print(reason, r, new_r)
+        # The return is needed by replace_all_validate_remove
         return chk
 
     def replace_all_validate_remove(self, fgraph, replacements,
@@ -440,10 +452,18 @@ class PreserveNames(Feature):
 
 class NoOutputFromInplace(Feature):
 
+    def __init__(self, first_output_idx=0, last_output_idx=None):
+        self.first_idx = first_output_idx
+        self.last_idx = last_output_idx
+
     def validate(self, fgraph):
         if not hasattr(fgraph, 'destroyers'):
             return True
-        for out in list(fgraph.outputs):
+
+        outputs_to_validate = list(fgraph.outputs)[self.first_idx:
+                                                   self.last_idx]
+
+        for out in outputs_to_validate:
 
             if out.owner is None:
                 continue

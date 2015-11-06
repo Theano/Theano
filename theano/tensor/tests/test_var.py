@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.testing import assert_equal, assert_string_equal
 
 import theano
 import theano.tensor as tt
@@ -19,3 +20,12 @@ def test_numpy_method():
         f = theano.function([x], y)
         utt.assert_allclose(np.nan_to_num(f(data)),
                             np.nan_to_num(fct(data)))
+
+
+def test_copy():
+    x = tt.dmatrix('x')
+    data = np.random.rand(5, 5)
+    y = x.copy(name='y')
+    f = theano.function([x], y)
+    assert_equal(f(data), data)
+    assert_string_equal(y.name, 'y')

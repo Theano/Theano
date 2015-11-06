@@ -142,8 +142,8 @@ void * device_malloc(size_t size, int verbose)
         status = cnmemMalloc(&rval, size, NULL);
         if(status != CNMEM_STATUS_SUCCESS) {
             PyErr_Format(PyExc_MemoryError,
-                         "Error allocating %zd bytes of device memory (%s).",
-                         size, cnmemGetErrorString(status));
+                         "Error allocating %llu bytes of device memory (%s).",
+                         (unsigned long long)size, cnmemGetErrorString(status));
             return NULL;
         }
     }
@@ -168,21 +168,21 @@ void * device_malloc(size_t size, int verbose)
                 }
                 #if COMPUTE_GPU_MEM_USED
                     fprintf(stderr,
-                            "Error allocating %zd bytes of device memory (%s)."
-                            " new total bytes allocated: %d."
-                            " Driver report %zd bytes free and %zd bytes total \n",
-                            size, cudaGetErrorString(err), _allocated_size,
-                            free, total);
+                            "Error allocating %llu bytes of device memory (%s)."
+                            " new total bytes allocated: %llu."
+                            " Driver report %llu bytes free and %llu bytes total \n",
+                            (unsigned long long)size, cudaGetErrorString(err), (unsigned long long)_allocated_size,
+                            (unsigned long long)free, (unsigned long long)total);
                 #else
                     fprintf(stderr,
-                            "Error allocating %zd bytes of device memory (%s)."
-                            " Driver report %zd bytes free and %zd bytes total \n",
-                            size, cudaGetErrorString(err), free, total);
+                            "Error allocating %llu bytes of device memory (%s)."
+                            " Driver report %llu bytes free and %llu bytes total \n",
+                            (unsigned long long)size, cudaGetErrorString(err), (unsigned long long)free, (unsigned long long)total);
                 #endif
             }
             PyErr_Format(PyExc_MemoryError,
-                         "Error allocating %zd bytes of device memory (%s).",
-                         size, cudaGetErrorString(err));
+                         "Error allocating %llu bytes of device memory (%s).",
+                         (unsigned long long)size, cudaGetErrorString(err));
             return NULL;
         }
     }
@@ -310,17 +310,17 @@ int device_free(void *ptr)
                     }
                 assert(i<TABLE_SIZE);
                 fprintf(stderr,
-                        "Error freeing device pointer %p (%s) of size %d. %zd byte already allocated."
-                        " Driver report %zd bytes free and %zd bytes total \n",
+                        "Error freeing device pointer %p (%s) of size %llu. %llu byte already allocated."
+                        " Driver report %llu bytes free and %llu bytes total \n",
                         ptr, cudaGetErrorString(err),
-                        _alloc_size_table[i].size, _allocated_size, free, total);
+                        (unsigned long long)_alloc_size_table[i].size, (unsigned long long)_allocated_size, (unsigned long long)free, (unsigned long long)total);
             }
             #else
                 fprintf(stderr,
                         "Error freeing device pointer %p (%s)."
-                        " Driver report %zd bytes free and %zd bytes total \n",
+                        " Driver report %llu bytes free and %llu bytes total \n",
                         ptr,
-                        cudaGetErrorString(err), free, total);
+                        cudaGetErrorString(err), (unsigned long long)free, (unsigned long long)total);
             #endif
             if (NULL != PyErr_Occurred()){
                 fprintf(stderr,
@@ -2948,22 +2948,32 @@ PyObject *
 CudaNdarray_select_a_gpu(PyObject* _unused, PyObject* dummy)
 {
     void * rval = NULL;
+    cudaError_t err;
+    int num_gpus = 0;
 
-    cudaError_t err = cudaMalloc(&rval, 4);
+    err = cudaGetDeviceCount(&num_gpus);
     if (cudaSuccess != err){
         printf("ERR!\\n");
             PyErr_Format(PyExc_RuntimeError,
-                         "Not able to do basic stuff on the GPU (alloc of 4 bytes) (%s).",
+                         "Not able to get number of GPUs (%s).",
                          cudaGetErrorString(err));
             return NULL;
     }
-    err = cudaFree(rval);
+
+    for (int device = 0; device < num_gpus; device++) {
+        cudaSetDevice(device);
+        err = cudaDeviceSynchronize(); // << CUDA context gets created here.
+        cudaGetLastError(); // reset the error state     
+        if (cudaSuccess == err)
+            break;
+    }
+        
     if (cudaSuccess != err){
-        printf("ERR!\\n");
-            PyErr_Format(PyExc_RuntimeError,
-                         "Not able to do basic stuff on the GPU (cudaFree failed) (%s).",
-                         cudaGetErrorString(err));
-            return NULL;
+            printf("ERR!\\n");
+                PyErr_Format(PyExc_RuntimeError,
+                             "Not able to select available GPU from %d cards (%s).",
+                             num_gpus, cudaGetErrorString(err));
+                return NULL;
     }
 
     Py_INCREF(Py_None);
@@ -3213,9 +3223,10 @@ CudaNdarray_gpu_init(PyObject* _unused, PyObject* args)
         if (cnmem > 1)
             mem = cnmem * 1024 * 1024;
         else{
-            // Clip to 98.5% to let memory for the driver.
-            if (cnmem > .985){
-                cnmem = .985;
+            // Clip to 98% to let memory for the driver.
+            // 98.5% didn't worked in some cases.
+            if (cnmem > .98){
+                cnmem = .98;
             }
             size_t free = 0, total = 0;
             cudaError_t err = cudaMemGetInfo(&free, &total);

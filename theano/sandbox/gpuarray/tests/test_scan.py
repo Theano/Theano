@@ -6,10 +6,10 @@ import theano
 
 from theano.tests import unittest_tools as utt
 import theano.sandbox.rng_mrg
-from ..basic_ops import gpu_from_host, GpuFromHost, HostFromGpu
+from ..basic_ops import GpuFromHost, HostFromGpu
 from ..elemwise import GpuElemwise
 
-from .test_basic_ops import mode_with_gpu
+from .config import mode_with_gpu, test_ctx_name
 
 
 class T_Scan(TestCase):
@@ -35,7 +35,7 @@ class T_Scan(TestCase):
                                       go_backwards=False,
                                       mode=mode)
 
-        output = gpu_from_host(output)
+        output = GpuFromHost(test_ctx_name)(output)
         f2 = theano.function([u, x0, W_in, W],
                              output,
                              updates=updates,
@@ -216,7 +216,7 @@ class T_Scan(TestCase):
                                 dtype='float32')
         vsample = theano.shared(v_vsample)
         trng = theano.sandbox.rng_mrg.MRG_RandomStreams(
-                                utt.fetch_seed())
+            utt.fetch_seed())
 
         def f(vsample_tm1):
             return trng.binomial(vsample_tm1.shape, n=1, p=0.3,
@@ -238,4 +238,4 @@ class T_Scan(TestCase):
 
         # I leave this to tested by debugmode, this test was anyway
         # more of does the graph compile kind of test
-        t_result = my_f()
+        my_f()

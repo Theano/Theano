@@ -2683,10 +2683,10 @@ class __ComparisonOpSD(gof.op.Op):
         x, y = as_sparse_variable(x), tensor.as_tensor_variable(y)
 
         assert y.type.ndim == 2
+        out = tensor.TensorType(dtype='uint8', broadcastable=(False, False))()
         return gof.Apply(self,
                          [x, y],
-                         [SparseType(dtype='uint8',
-                                     format=x.type.format)()])
+                         [out])
 
     def perform(self, node, inputs, outputs):
         (x, y) = inputs
@@ -2694,7 +2694,9 @@ class __ComparisonOpSD(gof.op.Op):
         assert _is_sparse(x)
         assert x.shape == y.shape
         assert _is_dense(y)
-        out[0] = self.comparison(x, y).astype('uint8')
+        o = self.comparison(x, y).astype('uint8')
+        o = numpy.asarray(o)
+        out[0] = o
 
     def infer_shape(self, node, ins_shapes):
         return [ins_shapes[0]]
@@ -3013,8 +3015,8 @@ class HStack(gof.op.Op):
 
         split = tensor.Split(len(inputs))(gz, 1,
                                           tensor.stack(
-                                              *[x.shape[1]
-                                                for x in inputs]))
+                                              [x.shape[1]
+                                               for x in inputs]))
         if not isinstance(split, list):
             split = [split]
 
@@ -3094,8 +3096,8 @@ class VStack(HStack):
 
         split = tensor.Split(len(inputs))(gz, 0,
                                           tensor.stack(
-                                              *[x.shape[0]
-                                                for x in inputs]))
+                                              [x.shape[0]
+                                               for x in inputs]))
         if not isinstance(split, list):
             split = [split]
 

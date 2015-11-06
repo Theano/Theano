@@ -129,7 +129,7 @@ that the data is not only contiguous in memory but also that it is organized
 such that the index of the latest dimension changes the fastest. If the
 following array
 
-.. code-block:: python
+.. testcode::
 
     x = [[1, 2, 3],
          [4, 5, 6]]
@@ -337,7 +337,7 @@ commonly used.
     of C code that you should include in your C code (after ensuring that a
     Python exception is set) if it needs to raise an exception. Ex:
 
-    .. code-block:: python
+    .. code-block:: c
 
         c_code = """
             PyErr_Format(PyExc_ValueError, "X does not have the right value");
@@ -354,7 +354,7 @@ commonly used.
     ``%`` characters in the format characters need to be escaped since the C
     code itself is defined in a string which undergoes string formatting.
 
-    .. code-block:: python
+    .. code-block:: c
 
         c_code = """
             PyErr_Format(PyExc_ValueError,
@@ -440,7 +440,7 @@ need to validate that the output storage has been allocated and has the same
 shape as our vector input. If it is not the case, we allocate a new output
 storage with the right shape and number of dimensions.
 
-.. code-block:: python
+.. testcode:: examples
 
     import numpy
     import theano
@@ -565,7 +565,7 @@ the inputs (because of the upcast in the method ``make_node()``), the typenum
 of the output has to be obtained in the Python code and then included in the
 C code.
 
-.. code-block:: python
+.. testcode:: examples
 
     class VectorTimesVector(gof.Op):
         __props__ = ()
@@ -705,7 +705,7 @@ implemented using the ``COp`` class.
 
 The new op is defined inside a Python file with the following code :
 
-.. code-block:: python
+.. testcode::
 
     import theano
     from theano import gof
@@ -878,7 +878,7 @@ pre-defined macros.  These section tags have no macros: ``init_code``,
 discussed below.
 
 *      ``APPLY_SPECIFIC(str)`` which will automatically append a name
-       unique to the :ref:`Apply node that applies the Op at the end
+       unique to the :ref:`Apply` node that applies the Op at the end
        of the provided ``str``. The use of this macro is discussed
        futher below.
 
@@ -917,15 +917,15 @@ In addition to these macros, the ``init_code_struct``, ``code``, and
       .. code-block:: c
 
         if (error) {
-	  // Set python exception
-	  FAIL
+          // Set python exception
+          FAIL
         }
 
       You can add a semicolon after the macro if it makes your editor
       happy.
 
-*     ``CONTEXT`` : Name of the context variable for this node.  (only
-      for Ops which have a context, which is discussed elsewhere)
+*     ``PARAMS`` : Name of the params variable for this node.  (only
+      for Ops which have params, which is discussed elsewhere)
 
 Finally the tag ``code`` and ``code_cleanup`` have macros to
 pass the inputs and output names.  These are name ``INPUT_{i}`` and

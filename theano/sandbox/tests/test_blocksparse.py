@@ -21,7 +21,10 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
 
     def setUp(self):
         utt.seed_rng()
-        self.mode = theano.compile.get_default_mode().excluding(
+        mode = None
+        if theano.config.mode == "FAST_COMPILE":
+            mode = "FAST_RUN"
+        self.mode = theano.compile.get_mode(mode).excluding(
             'constant_folding'
         )
         self.gemv_op = sparse_block_gemv
@@ -37,14 +40,6 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         inputWindowSize = 4
         outputWindowSize = 3
         batchSize = 2
-
-#        nInputBlock = 2
-#        nOutputBlock = 2
-#        inputSize = 2
-#        outputSize = 2
-#        inputWindowSize = 1
-#        outputWindowSize = 1
-#        batchSize = 1
 
         input = randn(batchSize, inputWindowSize, inputSize).astype('float32')
         permutation = numpy.random.permutation
@@ -117,30 +112,6 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
             # o[b] += numpy.tensordot(h[b], w, [(0,1),(0,2)])
             o[b] += numpy.einsum('ik,ijkl', h[b], w)
         return o
-
-    @staticmethod
-    def gemv_data2():
-
-        nInputBlock = 100
-        nOutputBlock = 100
-        inputSize = 50
-        outputSize = 50
-        inputWindowSize = 30
-        outputWindowSize = 30
-        batchSize = 1
-
-        input = randn(batchSize, inputWindowSize, inputSize).astype('float32')
-        permutation = numpy.random.permutation
-        inputIndice = numpy.vstack(permutation(nInputBlock)[:inputWindowSize]
-                                   for _ in range(batchSize)).astype('int32')
-        outputIndice = numpy.vstack(
-            permutation(nOutputBlock)[:outputWindowSize]
-            for _ in range(batchSize)).astype('int32')
-        weight = randn(nInputBlock, nOutputBlock,
-                       inputSize, outputSize).astype('float32')
-        bias = randn(nOutputBlock, outputSize).astype('float32')
-
-        return weight, input, inputIndice, bias, outputIndice
 
     @staticmethod
     def outer_numpy(o, x, y, xIdx, yIdx):
@@ -232,12 +203,6 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         W_val, h_val, iIdx_val, b_val, oIdx_val = \
             BlockSparse_Gemv_and_Outer.gemv_data()
 
-        h_val = randn(1, 1, 1).astype('float32')
-        iIdx_val = numpy.random.permutation(1)[:1][None, :]
-        oIdx_val = numpy.random.permutation(1)[:1][None, :]
-        W_val = randn(1, 1, 1, 1).astype('float32')
-        b_val = randn(1, 1).astype('float32')
-
         iIdx = theano.tensor.constant(iIdx_val)
         oIdx = theano.tensor.constant(oIdx_val)
 
@@ -247,8 +212,9 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         def op(b, h, W):
             return self.gemv_op(b.take(oIdx, axis=0), W, h, iIdx, oIdx)
 
-        utt.verify_grad(metaop, [b_val, h_val, W_val], mode=self.mode)
-        utt.verify_grad(op, [b_val, h_val, W_val], mode=self.mode)
+        eps = 3e-3
+        utt.verify_grad(metaop, [b_val, h_val, W_val], mode=self.mode, eps=eps)
+        utt.verify_grad(op, [b_val, h_val, W_val], mode=self.mode, eps=eps)
 
     def test_sparseblockgemv_grad_1(self):
         """
@@ -304,7 +270,7 @@ class BlockSparse_Gemv_and_Outer(unittest.TestCase):
         out = self.outer_op(o, x, y, xIdx, yIdx)
 
         f = theano.function([o, x, y, xIdx, yIdx], out,
-                            on_unused_input="warn")
+                            on_unused_input="warn", mode=self.mode)
 
         o_val, x_val, y_val, xIdx_val, yIdx_val = \
             BlockSparse_Gemv_and_Outer.outer_data()

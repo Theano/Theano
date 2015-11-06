@@ -3,20 +3,22 @@
 """
 
 from __future__ import print_function
-__docformat__ = 'restructedtext en'
-__authors__ = ("Razvan Pascanu ")
-__copyright__ = "(c) 2010, Universite de Montreal"
-__contact__ = "Razvan Pascanu <r.pascanu@gmail>"
-
 import unittest
 import numpy
 from nose.plugins.skip import SkipTest
+from six.moves import reduce
 
 import theano
 from theano import tensor
 import theano.ifelse
 from theano.ifelse import IfElse, ifelse
-from theano.tests  import unittest_tools as utt
+from theano.tests import unittest_tools as utt
+
+
+__docformat__ = 'restructedtext en'
+__authors__ = ("Razvan Pascanu ")
+__copyright__ = "(c) 2010, Universite de Montreal"
+__contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 
 
 class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
@@ -51,6 +53,32 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         assert numpy.allclose(vx, f(1, vx, vy))
         assert numpy.allclose(vy, f(0, vx, vy))
 
+    def test_not_lazy_if_inplace(self):
+        # Tests that if the outputs are scalars and the graph is big,
+        # we disable the inplace opt to speed up optimization
+        x = tensor.vector('x', dtype=self.dtype)
+        y = tensor.vector('y', dtype=self.dtype)
+        c = tensor.iscalar('c')
+        mode = theano.compile.get_mode(self.mode).excluding(
+            # Disable many opt to keep the graph big enough to disable
+            # the opt.
+            'fusion', 'local_add_canonizer',
+            'inplace', 'constant_folding', 'constant_folding')
+        y2 = reduce(lambda x, y: x + y, [y] + list(range(200)))
+        f = theano.function([c, x, y], ifelse(c, x, y2), mode=mode)
+        # For not inplace ifelse
+        self.assertFunctionContains1(f, IfElse(1))
+        rng = numpy.random.RandomState(utt.fetch_seed())
+
+        xlen = rng.randint(200)
+        ylen = rng.randint(200)
+
+        vx = numpy.asarray(rng.uniform(size=(xlen,)), self.dtype)
+        vy = numpy.asarray(rng.uniform(size=(ylen,)), self.dtype)
+
+        assert numpy.allclose(vx, f(1, vx, vy))
+        assert numpy.allclose(vy + sum(range(200)), f(0, vx, vy))
+
     def test_mixed_dtype(self):
         x1 = tensor.vector('x1', dtype='int32')
         x2 = tensor.vector('x2', dtype=self.dtype)
@@ -65,9 +93,9 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         xlen = rng.randint(200)
         ylen = rng.randint(200)
 
-        vx1 = numpy.asarray(rng.uniform(size=(xlen,))*3, 'int32')
+        vx1 = numpy.asarray(rng.uniform(size=(xlen,)) * 3, 'int32')
         vx2 = numpy.asarray(rng.uniform(size=(xlen,)), self.dtype)
-        vy1 = numpy.asarray(rng.uniform(size=(ylen,))*3, 'int32')
+        vy1 = numpy.asarray(rng.uniform(size=(ylen,)) * 3, 'int32')
         vy2 = numpy.asarray(rng.uniform(size=(ylen,)), self.dtype)
 
         o1, o2 = f(1, vx1, vx2, vy1, vy2)
@@ -288,8 +316,8 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         z2 = ifelse(c, x + 2, y + 2)
         z = z1 + z2
         f = theano.function([c, x, y], z)
-        assert len([x for x in f.maker.fgraph.toposort()
-                    if isinstance(x.op, IfElse)]) == 1
+        assert len([n for n in f.maker.fgraph.toposort()
+                    if isinstance(n.op, IfElse)]) == 1
 
     def test_remove_useless_inputs1(self):
         raise SkipTest("Optimization temporarily disabled")
@@ -299,8 +327,8 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         z = ifelse(c, (x, x), (y, y))
         f = theano.function([c, x, y], z)
 
-        ifnode = [x for x in f.maker.fgraph.toposort()
-                  if isinstance(x.op, IfElse)][0]
+        ifnode = [n for n in f.maker.fgraph.toposort()
+                  if isinstance(n.op, IfElse)][0]
         assert len(ifnode.inputs) == 3
 
     def test_remove_useless_inputs2(self):
@@ -418,12 +446,12 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         c = tensor.iscalar('c')
 
         out = ifelse(c,
-            ifelse(c, x1, x2) + ifelse(c, y1, y2) + w1,
-            ifelse(c, x1, x2) + ifelse(c, y1, y2) + w2)
+                     ifelse(c, x1, x2) + ifelse(c, y1, y2) + w1,
+                     ifelse(c, x1, x2) + ifelse(c, y1, y2) + w2)
         f = theano.function([x1, x2, y1, y2, w1, w2, c], out,
                             allow_input_downcast=True)
         assert len([x for x in f.maker.fgraph.toposort()
-                if isinstance(x.op, IfElse)]) == 1
+                    if isinstance(x.op, IfElse)]) == 1
 
         rng = numpy.random.RandomState(utt.fetch_seed())
         vx1 = rng.uniform()

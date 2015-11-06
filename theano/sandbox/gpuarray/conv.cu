@@ -10,12 +10,6 @@ PyObject * PyGpuArray_Conv(PyGpuArrayObject *img, PyGpuArrayObject * kern,
                            const size_t subsample_cols,
                            const int version, const int verbose);
 
-template <typename T>
-static T ceil_intdiv(T a, T b)
-{
-    return (a/b) + ((a % b) ? 1: 0);
-}
-
 /*
  * version: -1, autodetect, >=0 a specific version to use.
  *          If it can't be executed, we revert to the reference implementation
@@ -108,6 +102,7 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
     //TODO: make a parameter the number of division
     //TODO: Should we make them in separate grid block instead?
  
+    const int stack_len = PyGpuArray_DIMS(img)[1];
     const int nstack=PyGpuArray_DIMS(kern)[1];
     const int nbatch=PyGpuArray_DIMS(img)[0];
     const int nkern=PyGpuArray_DIMS(kern)[0];
@@ -126,6 +121,10 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
     const int kern_stride_row=PyGpuArray_STRIDES(kern)[2]/4;
     const int kern_stride_stack= PyGpuArray_STRIDES(kern)[1]/4;
     const int kern_stride_nkern=PyGpuArray_STRIDES(kern)[0]/4;
+    const int out_stride_col = PyGpuArray_STRIDES(out)[3]/4;
+    const int out_stride_row = PyGpuArray_STRIDES(out)[2]/4;
+    const int out_stride_nkern = PyGpuArray_STRIDES(out)[1]/4;
+    const int out_stride_batch = PyGpuArray_STRIDES(out)[0]/4;
 
     const int img_size=img_len*img_wid;
     const int kern_size=kern_len*kern_wid;
@@ -135,7 +134,7 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
     const int out_size_byte = out_size*sizeof(float);
     if (!((THEANO_KERN_WID == PyGpuArray_DIMS(kern)[3]) || (THEANO_KERN_WID==0))){
      PyErr_Format(PyExc_ValueError, "ERROR: This GpuConv code was compiled for"
-                   " %d kernel columns, but the kernel we received had %llud columns!",
+                   " %d kernel columns, but the kernel we received had %llu columns!",
                    THEANO_KERN_WID, (unsigned long long)PyGpuArray_DIMS(kern)[3]);
       return -1;
     }
@@ -156,16 +155,10 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
     //we don't need to unflip it, but have the new value when we unflip it.
     bool kern_flipped=true;
     bool kern_contiguous_2d_unflipped = kern_contiguous_2d;
-    const float * kern_data_unflipped = cuda_get_ptr(kern);
-    int kern_stride_col_unflipped=kern_stride_col;
-    int kern_stride_row_unflipped=kern_stride_row;
-    if(kern_stride_col_unflipped==-1 && kern_stride_row_unflipped==-kern_wid){
+    if(kern_stride_col==-1 && kern_stride_row==-kern_wid){
       //the last two dimensions are c_contiguous but flipped!
-      kern_stride_col_unflipped=1;
-      kern_stride_row_unflipped=kern_wid;
       kern_flipped=false;
       kern_contiguous_2d_unflipped = true;
-      kern_data_unflipped=&(cuda_get_ptr(kern)[(kern_wid-1)*kern_stride_col + (kern_len-1)*kern_stride_row]);
     }
 
     //if we remove the restriction
@@ -195,46 +188,40 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
         //we pass by ceil_intdiv in case the out_len is not a multiple of nb_split, we want nb_split the number of iteration.
         while (ceil_intdiv(out_len,nb_split)*out_wid>max_threads_dim0)
             nb_split++;
-        dim3 threads(out_wid, ceil_intdiv(out_len,nb_split));
+        size_t threads_per_block[3] = {(size_t)out_wid,
+                               ceil_intdiv((size_t)out_len,(size_t)nb_split),
+                               (size_t)1};
+        size_t n_blocks[3] = {(size_t)nbatch, (size_t)nkern, (size_t)1};
 
-        dim3 grid(nbatch, nkern);
-        int shared_size=(img_size + kern_size)*sizeof(float);
-        void (*f)(const float*, const float*, float*,
-                  int, int, int, int,
-                  int, int);
+        size_t shmem_sz = (img_size + kern_size)*sizeof(float);
 
-#define CONV_PATCH_SPECIAL(kern_wid) \
-            if(threads.y==out_len) f=conv_patch<true,kern_wid,false>;\
-            else f=conv_patch<true,kern_wid,true>;
+        GpuKernel *k = NULL;
+        if(threads_per_block[1]==out_len) k=&conv_patch_2_node_<<<<HASH_PLACEHOLDER>>>>_0;
+        else k=&conv_patch_3_node_<<<<HASH_PLACEHOLDER>>>>_0;
 
-        CONV_PATCH_SPECIAL(THEANO_KERN_WID);
+        void *kernel_params[] = {(void *)img->ga.data, (void *)&img->ga.offset,
+                                 (void *)kern->ga.data, (void *)&kern->ga.offset,
+                                 (void *)out->ga.data, (void *)&out->ga.offset,
+                                 (void *)&img_len, (void *)&img_wid,
+                                 (void *)&kern_len, (void *)&kern_wid,
+                                 (void *)&nkern, (void *)&nstack};
+        int err = GpuKernel_call(k, 3, threads_per_block, n_blocks, shmem_sz, kernel_params);
 
-         f<<< grid, threads, shared_size>>>
-             (cuda_get_ptr(img), cuda_get_ptr(kern), cuda_get_ptr(out),
-              img_len, img_wid, kern_len, kern_wid, nkern, nstack);
-
-        cudaError_t sts = cudaGetLastError();
-        if (cudaSuccess == sts)
+        if (err == GA_NO_ERROR)
         {
             if (verbose)
               fprintf(stderr,
                       "INFO: used 'conv_patch' version %s nb_split=%d\n",
-                      threads.y==out_len ? "no split": "split", nb_split);
+                      threads_per_block[1]==out_len ? "no split": "split", nb_split);
             work_complete = true;
         }
         else
         {
             if (verbose)
               fprintf(stderr,
-                      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
-                      " shared_size=%i, nb_threads=%i, nb_split=%i\n",
-                      threads.x, threads.y, grid.x, grid.y,
-                      shared_size, threads.x * threads.y, nb_split);
-            if (verbose)
-              fprintf(stderr,
                       "INFO: impl 'conv_patch' failed (%s),"
                       " trying next implementation\n",
-                      cudaGetErrorString(sts));
+                      GpuKernel_error(k, err));
         }
     }
 
@@ -253,81 +240,66 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
         if((version==3||version==12) && out_len>1)nb_split++;//to force the use of split=true when testing.
         //we pass by ceil_intdiv in case the out_len is not a multiple of nb_split, we want nb_split the number of iteration.
         while (ceil_intdiv(out_len,nb_split)*out_wid>max_threads_dim0) nb_split++;
-        dim3 threads(out_wid, ceil_intdiv(out_len,nb_split));
+        size_t threads_per_block[3] = {(size_t)out_wid,
+                               (size_t)ceil_intdiv(out_len,nb_split),
+                               (size_t)1};
 
         bool preload_full_kernel = (img_size_byte + kern_size_byte) <shared_avail;
         if(version==11 || version==12) preload_full_kernel=false;
-        dim3 grid(nbatch,nkern);
-        int shared_size=(img_size + (preload_full_kernel?kern_size:kern_wid))*sizeof(float);
+        size_t n_blocks[3] = {(size_t)nbatch, (size_t)nkern, (size_t)1};
+        size_t shmem_sz = (img_size + (preload_full_kernel?kern_size:kern_wid))*sizeof(float);
 
-        void (*f)(const float*, const float*, float*,
-                  int, int, int, int,
-                  int, int, int, int,
-                  int, int, int, int,
-                  int, int, int, int,
-                  int, int);
+        GpuKernel *k = NULL;
+        if(!preload_full_kernel && nb_split==1 && !img_contiguous_2d && !kern_contiguous_2d && !subsample){ k=&conv_patch_stack_64_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(!preload_full_kernel && nb_split==1 && !img_contiguous_2d && !kern_contiguous_2d && subsample){ k=&conv_patch_stack_65_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(preload_full_kernel && nb_split==1 && !img_contiguous_2d && !kern_contiguous_2d && !subsample){ k=&conv_patch_stack_66_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(preload_full_kernel && nb_split==1 && !img_contiguous_2d && !kern_contiguous_2d && subsample){ k=&conv_patch_stack_67_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(!preload_full_kernel && nb_split!=1 && !img_contiguous_2d && !kern_contiguous_2d && !subsample){ k=&conv_patch_stack_68_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(!preload_full_kernel && nb_split!=1 && !img_contiguous_2d && !kern_contiguous_2d && subsample){ k=&conv_patch_stack_69_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(preload_full_kernel && nb_split!=1 && !img_contiguous_2d && !kern_contiguous_2d && !subsample){ k=&conv_patch_stack_70_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(preload_full_kernel && nb_split!=1 && !img_contiguous_2d && !kern_contiguous_2d && subsample){ k=&conv_patch_stack_71_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(!preload_full_kernel && nb_split==1 && !img_contiguous_2d && kern_contiguous_2d && !subsample){ k=&conv_patch_stack_72_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(!preload_full_kernel && nb_split==1 && !img_contiguous_2d && kern_contiguous_2d && subsample){ k=&conv_patch_stack_73_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(preload_full_kernel && nb_split==1 && !img_contiguous_2d && kern_contiguous_2d && !subsample){ k=&conv_patch_stack_74_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(preload_full_kernel && nb_split==1 && !img_contiguous_2d && kern_contiguous_2d && subsample){ k=&conv_patch_stack_75_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(!preload_full_kernel && nb_split!=1 && !img_contiguous_2d && kern_contiguous_2d && !subsample){ k=&conv_patch_stack_76_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(!preload_full_kernel && nb_split!=1 && !img_contiguous_2d && kern_contiguous_2d && subsample){ k=&conv_patch_stack_77_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(preload_full_kernel && nb_split!=1 && !img_contiguous_2d && kern_contiguous_2d && !subsample){ k=&conv_patch_stack_78_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(preload_full_kernel && nb_split!=1 && !img_contiguous_2d && kern_contiguous_2d && subsample){ k=&conv_patch_stack_79_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(!preload_full_kernel && nb_split==1 && img_contiguous_2d && !kern_contiguous_2d && !subsample){ k=&conv_patch_stack_80_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(!preload_full_kernel && nb_split==1 && img_contiguous_2d && !kern_contiguous_2d && subsample){ k=&conv_patch_stack_81_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(preload_full_kernel && nb_split==1 && img_contiguous_2d && !kern_contiguous_2d && !subsample){ k=&conv_patch_stack_82_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(preload_full_kernel && nb_split==1 && img_contiguous_2d && !kern_contiguous_2d && subsample){ k=&conv_patch_stack_83_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(!preload_full_kernel && nb_split!=1 && img_contiguous_2d && !kern_contiguous_2d && !subsample){ k=&conv_patch_stack_84_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(!preload_full_kernel && nb_split!=1 && img_contiguous_2d && !kern_contiguous_2d && subsample){ k=&conv_patch_stack_85_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(preload_full_kernel && nb_split!=1 && img_contiguous_2d && !kern_contiguous_2d && !subsample){ k=&conv_patch_stack_86_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(preload_full_kernel && nb_split!=1 && img_contiguous_2d && !kern_contiguous_2d && subsample){ k=&conv_patch_stack_87_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(!preload_full_kernel && nb_split==1 && img_contiguous_2d && kern_contiguous_2d && !subsample){ k=&conv_patch_stack_88_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(!preload_full_kernel && nb_split==1 && img_contiguous_2d && kern_contiguous_2d && subsample){ k=&conv_patch_stack_89_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(preload_full_kernel && nb_split==1 && img_contiguous_2d && kern_contiguous_2d && !subsample){ k=&conv_patch_stack_90_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(preload_full_kernel && nb_split==1 && img_contiguous_2d && kern_contiguous_2d && subsample){ k=&conv_patch_stack_91_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(!preload_full_kernel && nb_split!=1 && img_contiguous_2d && kern_contiguous_2d && !subsample){ k=&conv_patch_stack_92_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(!preload_full_kernel && nb_split!=1 && img_contiguous_2d && kern_contiguous_2d && subsample){ k=&conv_patch_stack_93_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(preload_full_kernel && nb_split!=1 && img_contiguous_2d && kern_contiguous_2d && !subsample){ k=&conv_patch_stack_94_node_<<<<HASH_PLACEHOLDER>>>>_0;}
+        else if(preload_full_kernel && nb_split!=1 && img_contiguous_2d && kern_contiguous_2d && subsample){ k=&conv_patch_stack_95_node_<<<<HASH_PLACEHOLDER>>>>_0;}
 
-#define CONV_PATCH_STACK_SPECIAL(kern_wid) \
-        if(preload_full_kernel && nb_split==1 && img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,false,true,true>;} \
-        else if(preload_full_kernel && nb_split==1 && img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,false,true,true>;} \
-        else if(preload_full_kernel && nb_split==1 && !img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,false,true,true>;}\
-        else if(preload_full_kernel && nb_split==1 && !img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,false,true,true>;}\
-        else if(preload_full_kernel && nb_split!=1 && img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,true,true,true>;}\
-        else if(preload_full_kernel && nb_split!=1 && img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,true,true,true>;}\
-        else if(preload_full_kernel && nb_split!=1 && !img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,true,true,true>;}\
-        else if(preload_full_kernel && nb_split!=1 && !img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,true,true,true>;}\
-        else if(!preload_full_kernel && nb_split==1 && img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,false,false,true>;}\
-        else if(!preload_full_kernel && nb_split==1 && img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,false,false,true>;}\
-        else if(!preload_full_kernel && nb_split==1 && !img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,false,false,true>;}\
-        else if(!preload_full_kernel && nb_split==1 && !img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,false,false,true>;}\
-        else if(!preload_full_kernel && nb_split!=1 && img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,true,false,true>;} \
-        else if(!preload_full_kernel && nb_split!=1 && img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,true,false,true>;} \
-        else if(!preload_full_kernel && nb_split!=1 && !img_contiguous_2d && kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,true,false,true>;} \
-        else if(!preload_full_kernel && nb_split!=1 && !img_contiguous_2d && !kern_contiguous_2d && subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,true,false,true>;} \
-        else if(preload_full_kernel && nb_split==1 && img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,false,true,false>;} \
-        else if(preload_full_kernel && nb_split==1 && img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,false,true,false>;} \
-        else if(preload_full_kernel && nb_split==1 && !img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,false,true,false>;}\
-        else if(preload_full_kernel && nb_split==1 && !img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,false,true,false>;}\
-        else if(preload_full_kernel && nb_split!=1 && img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,true,true,false>;}\
-        else if(preload_full_kernel && nb_split!=1 && img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,true,true,false>;}\
-        else if(preload_full_kernel && nb_split!=1 && !img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,true,true,false>;}\
-        else if(preload_full_kernel && nb_split!=1 && !img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,true,true,false>;}\
-        else if(!preload_full_kernel && nb_split==1 && img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,false,false,false>;}\
-        else if(!preload_full_kernel && nb_split==1 && img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,false,false,false>;}\
-        else if(!preload_full_kernel && nb_split==1 && !img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,false,false,false>;}\
-        else if(!preload_full_kernel && nb_split==1 && !img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,false,false,false>;}\
-        else if(!preload_full_kernel && nb_split!=1 && img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,true,true,false,false>;} \
-        else if(!preload_full_kernel && nb_split!=1 && img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,true,false,true,false,false>;} \
-        else if(!preload_full_kernel && nb_split!=1 && !img_contiguous_2d && kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,true,true,false,false>;} \
-        else if(!preload_full_kernel && nb_split!=1 && !img_contiguous_2d && !kern_contiguous_2d && !subsample){ f=conv_patch_stack<true,false,kern_wid,false,false,true,false,false>;}
+        void *kernel_params[] = {(void *)img->ga.data, (void *)&img->ga.offset,
+                                 (void *)kern->ga.data, (void *)&kern->ga.offset,
+                                 (void *)out->ga.data, (void *)&out->ga.offset,
+                                 (void *)&img_len, (void *)&img_wid,
+                                 (void *)&kern_len, (void *)&kern_wid,
+                                 (void *)&out_len, (void *)&out_wid,
+                                 (void *)&nkern, (void *)&nstack,
+                                 (void *)&img_stride_col, (void *)&img_stride_row,
+                                 (void *)&img_stride_stack, (void *)&img_stride_batch,
+                                 (void *)&kern_stride_col, (void *)&kern_stride_row,
+                                 (void *)&kern_stride_stack, (void *)&kern_stride_nkern,
+                                 (void *)&subsample_rows, (void *)&subsample_cols};
 
-        CONV_PATCH_STACK_SPECIAL(THEANO_KERN_WID);
-        f<<< grid, threads, shared_size>>>
-            (cuda_get_ptr(img), cuda_get_ptr(kern), cuda_get_ptr(out),
-              img_len, img_wid, kern_len, kern_wid, 
-              out_len, out_wid, nkern, nstack,
-              img_stride_col, img_stride_row, img_stride_stack,
-              img_stride_batch, kern_stride_col, kern_stride_row,
-              kern_stride_stack, kern_stride_nkern, subsample_rows, subsample_cols);
+        int err = GpuKernel_call(k, 3, threads_per_block, n_blocks, shmem_sz, kernel_params);
 
-        cudaError_t sts = cudaGetLastError();
-        if (cudaSuccess == sts)
+        if (err == GA_NO_ERROR)
         {
-            if (verbose>1)
-              fprintf(stderr,
-                      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
-                      " shared_size=%i, nb_threads=%i,"
-                      " kern_flipped=true, accumulate=false, kern_width=%i,"
-                      " img_c_contiguous_2d=%i,"
-                      " kern_c_contiguous_2d=%i, nb_split=%i,"
-                      " preload_full_kernel=%i,"
-                      " subsample_rows=%llu, subsample_cols=%llu\n",
-                      threads.x, threads.y, grid.x, grid.y,
-                      shared_size, threads.x * threads.y,
-                      THEANO_KERN_WID, img_contiguous_2d, kern_contiguous_2d,
-                      nb_split, preload_full_kernel,
-                      (unsigned long long)subsample_rows,
-                      (unsigned long long)subsample_cols);
             if (verbose)
               fprintf(stderr,
                       "INFO: used 'conv_patch_stack' version with nb_split=%i"
@@ -342,24 +314,9 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
         {
             if (verbose)
               fprintf(stderr,
-                      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
-                      " shared_size=%i, nb_threads=%i,"
-                      " kern_flipped=true, accumulate=false,"
-                      " kern_width=%i, img_c_contiguous_2d=%i,"
-                      " kern_c_contiguous_2d=%i, nb_split=%i,"
-                      " preload_full_kernel=%i,"
-                      " subsample_rows=%llu, subsample_cols=%llu\n",
-                      threads.x, threads.y, grid.x, grid.y,
-                      shared_size, threads.x * threads.y,
-                      THEANO_KERN_WID, img_contiguous_2d, kern_contiguous_2d,
-                      nb_split, preload_full_kernel,
-                      (unsigned long long)subsample_rows,
-                      (unsigned long long)subsample_cols);
-            if (verbose)
-              fprintf(stderr,
                       "INFO: impl 'conv_patch_stack' failed (%s),"
                       " trying next implementation\n",
-                      cudaGetErrorString(sts));
+                      GpuKernel_error(k, err));
         }
     }
 
@@ -371,30 +328,28 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
         !work_complete) //conv_rows
 
     {
-        dim3 threads(out_wid);
-        dim3 grid(out_len, nbatch*nkern);
-        int shared_size=(kern_len*img_wid + kern_size)*sizeof(float);
-        void (*f)(const float*, const float*, float*,
-                  int, int, int, int,
-                  int, int, int, int,
-                  int, int, int, int,
-                  int, int);
+        size_t threads_per_block[3] = {(size_t)out_wid, (size_t)1, (size_t)1};
+        size_t n_blocks[3] = {(size_t)out_len, (size_t)nbatch*nkern, (size_t)1};
+        size_t shmem_sz = (kern_len*img_wid + kern_size)*sizeof(float);
 
-#define CONV_ROWS_SPECIAL(kern_wid) \
-        if(!img_contiguous_2d || !kern_contiguous_2d) f = conv_rows<kern_wid, false>;\
-        else f = conv_rows<kern_wid, true>;\
+        GpuKernel *k = NULL;
+        if(!img_contiguous_2d || !kern_contiguous_2d) k=&conv_rows_0_node_<<<<HASH_PLACEHOLDER>>>>_0;
+        else k=&conv_rows_1_node_<<<<HASH_PLACEHOLDER>>>>_0;
 
-        CONV_ROWS_SPECIAL(THEANO_KERN_WID);
-        f<<< grid, threads, shared_size >>>
-            (cuda_get_ptr(img), cuda_get_ptr(kern), cuda_get_ptr(out),
-           img_len, img_wid, kern_len, kern_wid, nkern, nstack,
-           img_stride_col, img_stride_row,
-           img_stride_stack,img_stride_batch,
-           kern_stride_col, kern_stride_row,
-           kern_stride_stack, kern_stride_nkern);
+        void *kernel_params[] = {
+            (void *)img->ga.data, (void *)&img->ga.offset,
+            (void *)kern->ga.data, (void *)&kern->ga.offset,
+            (void *)out->ga.data, (void *)&out->ga.offset,
+            (void *)&img_len, (void *)&img_wid,
+            (void *)&kern_len, (void *)&kern_wid,
+            (void *)&nkern, (void *)&nstack,
+            (void *)&img_stride_col, (void *)&img_stride_row,
+            (void *)&img_stride_stack, (void *)&img_stride_batch,
+            (void *)&kern_stride_col, (void *)&kern_stride_row,
+            (void *)&kern_stride_stack, (void *)&kern_stride_nkern};
+        int err = GpuKernel_call(k, 3, threads_per_block, n_blocks, shmem_sz, kernel_params);
 
-        cudaError_t sts = cudaGetLastError();
-        if (cudaSuccess == sts)
+        if (err == GA_NO_ERROR)
         {
             work_complete = true;
             if (verbose)
@@ -404,15 +359,9 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
         {
             if (verbose)
               fprintf(stderr,
-                      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
-                      " shared_size=%i, nb_threads=%i\n",
-                      threads.x, threads.y, grid.x, grid.y,
-                      shared_size, threads.x * threads.y);
-            if (verbose)
-              fprintf(stderr,
                       "INFO: impl 'conv_rows' failed (%s),"
                       " trying next implementation\n",
-                      cudaGetErrorString(sts));
+                      GpuKernel_error(k, err));
         }
     }
     if (!subsample && out_contiguous &&
@@ -430,52 +379,35 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
             nb_row=i;
         }
 
-        dim3 threads(out_wid,nb_row);
-        dim3 grid(ceil_intdiv(out_len,nb_row), nbatch*nkern);
+        size_t threads_per_block[3] = {(size_t)out_wid, (size_t)nb_row, (size_t)1};
+        size_t n_blocks[3] = {(size_t)ceil_intdiv(out_len,nb_row),
+                              (size_t)nbatch*nkern, (size_t)1};
 
-        int shared_size=((kern_len+nb_row-1)*img_wid + kern_size)*sizeof(float);
+        size_t shmem_sz =((kern_len+nb_row-1)*img_wid + kern_size)*sizeof(float);
 
-        void (*f)(const float*, const float*, float*,
-                  int, int, int, int,
-                  int, int, int, int,
-                  int, int, int, int,
-                  int, int);
-
-        if (0)
-          fprintf(stderr,
-                  "IMG CONTIG %i KERN_CONTIG %i (%i %i %i) (%i %i %i)\n",
-                  img_contiguous_2d, kern_contiguous_2d,
-                  threads.x, threads.y, threads.z,
-                  grid.x, grid.y, grid.z);
-
+        GpuKernel *k = NULL;
         if(!img_contiguous_2d || !kern_contiguous_2d) {
-            //fprintf(stderr, "using false version\n");
-            f = conv_rows_stack<THEANO_KERN_WID, false>;
+            k=&conv_rows_stack_0_node_<<<<HASH_PLACEHOLDER>>>>_0;
         } else {
-            //fprintf(stderr, "using true version\n");
-            f = conv_rows_stack<THEANO_KERN_WID, true>;
+            k=&conv_rows_stack_1_node_<<<<HASH_PLACEHOLDER>>>>_0;
         }
 
-        f<<< grid, threads, shared_size >>>
-            (cuda_get_ptr(img),
-             cuda_get_ptr(kern),
-             cuda_get_ptr(out),
-           img_len, img_wid, kern_len, kern_wid, nkern, nstack,
-           img_stride_col, img_stride_row,
-           img_stride_stack,img_stride_batch,
-           kern_stride_col, kern_stride_row,
-           kern_stride_stack, kern_stride_nkern);
+        void *kernel_params[] = {
+            (void *)img->ga.data, (void *)&img->ga.offset,
+            (void *)kern->ga.data, (void *)&kern->ga.offset,
+            (void *)out->ga.data, (void *)&out->ga.offset,
+            (void *)&img_len, (void *)&img_wid,
+            (void *)&kern_len, (void *)&kern_wid,
+            (void *)&nkern, (void *)&nstack,
+            (void *)&img_stride_col, (void *)&img_stride_row,
+            (void *)&img_stride_stack, (void *)&img_stride_batch,
+            (void *)&kern_stride_col, (void *)&kern_stride_row,
+            (void *)&kern_stride_stack, (void *)&kern_stride_nkern};
+        int err = GpuKernel_call(k, 3, threads_per_block, n_blocks, shmem_sz, kernel_params);
 
-        cudaError_t sts = cudaGetLastError();
-        if (cudaSuccess == sts)
+        if (err == GA_NO_ERROR)
         {
             work_complete = true;
-            if (verbose>1)
-              fprintf(stderr,
-                      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
-                      " shared_size=%i, nb_threads=%i\n",
-                      threads.x, threads.y, grid.x, grid.y,
-                      shared_size, threads.x * threads.y);
             if (verbose)
               fprintf(stderr, "INFO: used 'conv_rows_stack' version\n");
         }
@@ -483,15 +415,9 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
         {
             if (verbose)
               fprintf(stderr,
-                      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
-                      " shared_size=%i, nb_threads=%i\n",
-                      threads.x, threads.y, grid.x, grid.y,
-                      shared_size, threads.x * threads.y);
-            if (verbose)
-              fprintf(stderr,
                       "INFO: impl 'conv_rows_stack' failed (%s),"
                       " trying next implementation\n",
-                      cudaGetErrorString(sts));
+                      GpuKernel_error(k, err));
         }
     }
 
@@ -524,45 +450,35 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
         //to test the case when we don't have a thread by output pixel.
         if((version_back!=-1)&& nb_row>1) nb_row--;
 
-        dim3 threads(out_wid,nb_row);
-        dim3 grid(ceil_intdiv(out_len,nb_row), nbatch*nkern);
+
+        size_t threads_per_block[3] = {(size_t)out_wid, (size_t)nb_row, (size_t)1};
+        size_t n_blocks[3] = {(size_t)ceil_intdiv(out_len,nb_row),
+                              (size_t)nbatch*nkern, (size_t)1};
           
-        int shared_size=(threads.y*img_wid + k_size)*sizeof(float);
+        size_t shmem_sz =((kern_len+nb_row-1)*img_wid + kern_size)*sizeof(float);
 
-        void (*f)(const float*, const float*, float*,
-                  int, int, int, int,
-                  int, int, int, int,
-                  int, int, int, int,
-                  int, int);
+        GpuKernel *k = NULL;
+        if((!img_contiguous_2d || !kern_contiguous_2d)&&version==9) k=&conv_rows_stack2_1_node_<<<<HASH_PLACEHOLDER>>>>_0;
+        else if(version==9) k=&conv_rows_stack2_3_node_<<<<HASH_PLACEHOLDER>>>>_0;
+        else if(!img_contiguous_2d || !kern_contiguous_2d) k=&conv_rows_stack2_0_node_<<<<HASH_PLACEHOLDER>>>>_0;
+        else k=&conv_rows_stack2_2_node_<<<<HASH_PLACEHOLDER>>>>_0;
 
-#define CONV_ROWS_STACK2_SPECIAL(kern_wid) \
-        if((!img_contiguous_2d || !kern_contiguous_2d)&&version==9) f = conv_rows_stack2<kern_wid, false,true>;\
-        else if(version==9) f = conv_rows_stack2<kern_wid, true,true>;\
-        else if(!img_contiguous_2d || !kern_contiguous_2d) f = conv_rows_stack2<kern_wid, false, false>;\
-        else f = conv_rows_stack2<kern_wid, true, false>;
+        void *kernel_params[] = {
+            (void *)img->ga.data, (void *)&img->ga.offset,
+            (void *)kern->ga.data, (void *)&kern->ga.offset,
+            (void *)out->ga.data, (void *)&out->ga.offset,
+            (void *)&img_len, (void *)&img_wid,
+            (void *)&kern_len, (void *)&kern_wid,
+            (void *)&nkern, (void *)&nstack,
+            (void *)&img_stride_col, (void *)&img_stride_row,
+            (void *)&img_stride_stack, (void *)&img_stride_batch,
+            (void *)&kern_stride_col, (void *)&kern_stride_row,
+            (void *)&kern_stride_stack, (void *)&kern_stride_nkern};
+        int err = GpuKernel_call(k, 3, threads_per_block, n_blocks, shmem_sz, kernel_params);
 
-        CONV_ROWS_STACK2_SPECIAL(THEANO_KERN_WID);
-
-        f<<< grid, threads, shared_size >>>
-            (cuda_get_ptr(img),
-             cuda_get_ptr(kern),
-             cuda_get_ptr(out),
-           img_len, img_wid, kern_len, kern_wid, nkern, nstack,
-           img_stride_col, img_stride_row,
-           img_stride_stack,img_stride_batch,
-           kern_stride_col, kern_stride_row,
-           kern_stride_stack, kern_stride_nkern);
-
-        cudaError_t sts = cudaGetLastError();
-        if (cudaSuccess == sts) 
+        if (err == GA_NO_ERROR)
         {
             work_complete = true;
-            if (verbose>1)
-              fprintf(stderr,
-                      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
-                      " shared_size=%i, nb_threads=%i\n",
-                      threads.x, threads.y, grid.x, grid.y,
-                      shared_size, threads.x * threads.y);
             if (verbose)
               fprintf(stderr,
                       "INFO: used 'conv_rows_stack2' version %s with"
@@ -574,15 +490,9 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
         {
             if (verbose)
               fprintf(stderr,
-                      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
-                      " shared_size=%i, nb_threads=%i version=%d\n",
-                      threads.x, threads.y, grid.x, grid.y,
-                      shared_size, threads.x * threads.y,(version==9?2:3));
-            if (verbose)
-              fprintf(stderr,
                       "INFO: impl 'conv_rows_stack2' failed (%s),"
                       " trying next implementation\n",
-                      cudaGetErrorString(sts));
+                      GpuKernel_error(k, err));
         }
     }
 
@@ -629,18 +539,18 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
             nb_split++;
 
         // tentative estimates (prior to contraint c)
-        int thread_z=ceil_intdiv(kern_len,nb_split);
-        int shared_size = sizeof(float)*(full_kern
-                ? std::max(img_size + kern_size, out_size*thread_z)
-                : std::max(img_size + thread_z*kern_wid, out_size*thread_z));
+        size_t thread_z=ceil_intdiv(kern_len,nb_split);
+        size_t shmem_sz = sizeof(float)*(full_kern
+                ? std::max((size_t)img_size + kern_size, out_size*thread_z)
+                : std::max((size_t)img_size + thread_z*kern_wid, out_size*thread_z));
 
         // constraint (c)
-        while ((shared_size >= shared_avail) && (nb_split <= kern_len)){
+        while ((shmem_sz >= shared_avail) && (nb_split <= kern_len)){
             //if we can't fit the kernel in shared memory, we must split it more.
             nb_split++;
             thread_z=ceil_intdiv(kern_len,nb_split);
-            shared_size = sizeof(float)*(full_kern
-                ? std::max(img_size + kern_size, out_size*thread_z)
+            shmem_sz = sizeof(float)*(full_kern
+                ? std::max((size_t)img_size + kern_size, out_size*thread_z)
                 : std::max(img_size + thread_z*kern_wid, out_size*thread_z));
         }
         if (nb_split <= kern_len)
@@ -648,57 +558,52 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
             assert(thread_z>0);//should not happen, but in case...
             if(!full_kern) assert(thread_z!=kern_len);
 
-            dim3 threads(out_wid, out_len, thread_z);
-            dim3 grid(nbatch,nkern);
+            size_t threads_per_block[3] = {(size_t)out_wid,
+                                   (size_t)out_len,
+                                   (size_t)thread_z};
+            size_t n_blocks[3] = {(size_t)nbatch, (size_t)nkern, (size_t)1};
 
-            void (*f)(const float*, const float*, float*,
-                      int, int, int, int,
-                      int, int, int, int,
-                      int, int,
-                      int, int,
-                      int, int);
+            GpuKernel *k = NULL;
 
             const bool split=thread_z!=kern_len;
             const bool ccontig=img_contiguous_2d && kern_contiguous_2d_unflipped;
 
             //printf("kern_flipped=%d, ccontig=%d, split=%d, full_kern=%d\n",kern_flipped,ccontig,split,full_kern);
             //We will always be split when we don't load the full kernel
-#define CONV_PATCH_STACK_REDUCE_SPECIAL(kern_wid) \
-                if     (kern_flipped  && ccontig  && !split && full_kern) f=conv_patch_stack_reduce<true,kern_wid,true, false, true>;\
-                else if(kern_flipped  && !ccontig && !split && full_kern) f=conv_patch_stack_reduce<true,kern_wid,false, false, true>;\
-                else if(kern_flipped  && ccontig  && split && full_kern) f=conv_patch_stack_reduce<true,kern_wid,true, true, true>;\
-                else if(kern_flipped  && !ccontig && split && full_kern) f=conv_patch_stack_reduce<true,kern_wid,false, true, true>;\
-                else if(!kern_flipped && ccontig  && !split && full_kern) f=conv_patch_stack_reduce<false,kern_wid,true, false, true>;\
-                else if(!kern_flipped && !ccontig && !split && full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, false, true>;\
-                else if(!kern_flipped && ccontig  && split && full_kern) f=conv_patch_stack_reduce<false,kern_wid,true, true, true>;\
-                else if(!kern_flipped && !ccontig  && split && full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, true, true>;\
-                /*else if(kern_flipped  && ccontig  && !split && !full_kern) f=conv_patch_stack_reduce<true,kern_wid,true, false, false>;*/\
-                /*else if(kern_flipped  && !ccontig && !split && !full_kern) f=conv_patch_stack_reduce<true,kern_wid,false, false, false>;*/\
-                else if(kern_flipped  && ccontig  && split && !full_kern) f=conv_patch_stack_reduce<true,kern_wid,true, true, false>;\
-                else if(kern_flipped  && !ccontig && split && !full_kern) f=conv_patch_stack_reduce<true,kern_wid,false, true, false>;\
-                /*else if(!kern_flipped && ccontig  && !split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,true, false, false>;*/\
-                /*else if(!kern_flipped && !ccontig && !split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, false, false>;*/\
-                else if(!kern_flipped && ccontig  && split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,true, true, false>;\
-                else if(!kern_flipped && !ccontig  && split && !full_kern) f=conv_patch_stack_reduce<false,kern_wid,false, true, false>;
-            CONV_PATCH_STACK_REDUCE_SPECIAL(THEANO_KERN_WID);
 
-            f<<< grid, threads, shared_size>>>(cuda_get_ptr(img), kern_data_unflipped, cuda_get_ptr(out),
-                                               img_len, img_wid, kern_len, kern_wid,
-                                               nkern, nstack,
-                                               img_stride_col, img_stride_row, img_stride_stack, img_stride_batch,
-                                               kern_stride_col_unflipped, kern_stride_row_unflipped,
-                                               kern_stride_stack, kern_stride_nkern);
+            /* if(!kern_flipped && !ccontig && !split && !full_kern) k=&conv_patch_stack_reduce_0_node_<<<<HASH_PLACEHOLDER>>>>_0;*/
+            /*else*/ if(!kern_flipped && !ccontig && !split && full_kern) k=&conv_patch_stack_reduce_1_node_<<<<HASH_PLACEHOLDER>>>>_0;
+            else if(!kern_flipped && !ccontig  && split && !full_kern) k=&conv_patch_stack_reduce_2_node_<<<<HASH_PLACEHOLDER>>>>_0;
+            else if(!kern_flipped && !ccontig  && split && full_kern) k=&conv_patch_stack_reduce_3_node_<<<<HASH_PLACEHOLDER>>>>_0;
+            /*else if(!kern_flipped && ccontig  && !split && !full_kern) k=&conv_patch_stack_reduce_4_node_<<<<HASH_PLACEHOLDER>>>>_0;*/
+            else if(!kern_flipped && ccontig  && !split && full_kern) k=&conv_patch_stack_reduce_5_node_<<<<HASH_PLACEHOLDER>>>>_0;
+            else if(!kern_flipped && ccontig  && split && !full_kern) k=&conv_patch_stack_reduce_6_node_<<<<HASH_PLACEHOLDER>>>>_0;
+            else if(!kern_flipped && ccontig  && split && full_kern) k=&conv_patch_stack_reduce_7_node_<<<<HASH_PLACEHOLDER>>>>_0;
+            /*else if(kern_flipped  && !ccontig && !split && !full_kern) k=&conv_patch_stack_reduce_8_node_<<<<HASH_PLACEHOLDER>>>>_0;*/
+            else if(kern_flipped  && !ccontig && !split && full_kern) k=&conv_patch_stack_reduce_9_node_<<<<HASH_PLACEHOLDER>>>>_0;
+            else if(kern_flipped  && !ccontig && split && !full_kern) k=&conv_patch_stack_reduce_10_node_<<<<HASH_PLACEHOLDER>>>>_0;
+            else if(kern_flipped  && !ccontig && split && full_kern) k=&conv_patch_stack_reduce_11_node_<<<<HASH_PLACEHOLDER>>>>_0;
+            /*else if(kern_flipped  && ccontig  && !split && !full_kern) k=&conv_patch_stack_reduce_12_node_<<<<HASH_PLACEHOLDER>>>>_0;*/
+            else if(kern_flipped  && ccontig  && !split && full_kern) k=&conv_patch_stack_reduce_13_node_<<<<HASH_PLACEHOLDER>>>>_0;
+            else if(kern_flipped  && ccontig  && split && !full_kern) k=&conv_patch_stack_reduce_14_node_<<<<HASH_PLACEHOLDER>>>>_0;
+            else if(kern_flipped  && ccontig  && split && full_kern) k=&conv_patch_stack_reduce_15_node_<<<<HASH_PLACEHOLDER>>>>_0;
 
-            cudaError_t sts = cudaGetLastError();
-            if (cudaSuccess == sts)
+            void *kernel_params[] = {
+                (void *)img->ga.data, (void *)&img->ga.offset,
+                (void *)kern->ga.data, (void *)&kern->ga.offset,
+                (void *)out->ga.data, (void *)&out->ga.offset,
+                (void *)&img_len, (void *)&img_wid,
+                (void *)&kern_len, (void *)&kern_wid,
+                (void *)&nkern, (void *)&nstack,
+                (void *)&img_stride_col, (void *)&img_stride_row,
+                (void *)&img_stride_stack, (void *)&img_stride_batch,
+                (void *)&kern_stride_col,
+                (void *)&kern_stride_row,
+                (void *)&kern_stride_stack, (void *)&kern_stride_nkern};
+            int err = GpuKernel_call(k, 3, threads_per_block, n_blocks, shmem_sz, kernel_params);
+
+            if (err == GA_NO_ERROR)
             {
-                if (verbose>1)
-                    fprintf(stderr,
-                            "threads.x=%i, threads.y=%i, threads.z=%i, "
-                            "grid.x=%i, grid.y=%i, shared_size=%i,"
-                            " nb_threads=%i\n",
-                            threads.x, threads.y, threads.z, grid.x, grid.y,
-                            shared_size, threads.x * threads.y * threads.z);
                 if (verbose)
                     fprintf(stderr,
                             "INFO: used 'conv_patch_stack_reduce' version"
@@ -711,27 +616,20 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
             {
                 if (verbose)
                   fprintf(stderr,
-                          "threads.x=%i, threads.y=%i, threads.z=%i,"
-                          " grid.x=%i, grid.y=%i,shared_size=%i,"
-                          " nb_threads=%i\n",
-                          threads.x, threads.y, threads.z,
-                          grid.x, grid.y, shared_size,
-                          threads.x * threads.y * threads.z);
-                if (verbose)
-                  fprintf(stderr,
                           "INFO: impl 'conv_patch_stack_reduce' failed (%s),"
                           " trying next implementation\n",
-                          cudaGetErrorString(sts));
+                          GpuKernel_error(k, err));
             }
         } // else no good nb_splits was found
     }
 
-    if (1 && (version==6||version==-1) &&
+    if ((version==6||version==-1) &&
         kern_len<=320 &&
         !work_complete) //conv_valid_row_reduce
     {
-        int outsize = PyGpuArray_SIZE(out);
-        int n_blocks = std::min(outsize, 4096);
+        size_t outsize = PyGpuArray_SIZE(out);
+        size_t n_blocks[3] = {std::min(outsize, (size_t)4096),
+                              (size_t)1, (size_t)1};
 
         int block_nstack=nstack;
         //Max of 512 threads per blocks.
@@ -739,9 +637,9 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
         //8k registers and the kernel use 23 register
         //TODO: check if we have 8k or 16k of register...
         while(block_nstack*kern_len>320)block_nstack--;
-        dim3 n_threads(block_nstack, kern_len, 1);
+        size_t threads_per_block[3] = {(size_t)block_nstack, (size_t)kern_len, (size_t)1};
 
-        int n_reduce_buf = block_nstack * kern_len * sizeof(float);
+        size_t n_reduce_buf = block_nstack * kern_len * sizeof(float);
         /* initial_reduce_boundary is the greatest power of two less than n_reduce_buf/ sizeof(float)
          *
          * if n_reduce_buf == sizeof(float), then initial_reduce_boundary == 0.
@@ -758,39 +656,34 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
             assert (initial_reduce_boundary < n_reduce_buf/sizeof(float));
         }
 
-
-        void (*f)(int, int, int, int,
-                  int, int, int, int, int,
-                  const float*, int, int, int, int,
-                  const float*, int, int, int, int,
-                  float*, int, int, int, int,
-                  int, int, int);
-
+        GpuKernel *k = NULL;
         //std::cerr << "initial_reduce_boundary " << initial_reduce_boundary << "\n";
         //std::cerr << "kerns " << nstack << " " << kern_len << "\n";
         //std::cerr << "n_reduce_buf/sizeof(float) " << n_reduce_buf / sizeof(float) << "\n";
         if(block_nstack==nstack)
-          f=conv_valid_row_reduce<false>;
+          k=&conv_valid_row_reduce_0_node_<<<<HASH_PLACEHOLDER>>>>_0;
         else
-          f=conv_valid_row_reduce<true>;
-        f<<<n_blocks, n_threads, n_reduce_buf>>>(
-                nbatch, nkern, PyGpuArray_DIMS(img)[1],
-                img_len, img_wid,
-                kern_len, kern_wid,
-                out_len, out_wid,
-                cuda_get_ptr(img),
-                PyGpuArray_STRIDES(img)[0]/4, PyGpuArray_STRIDES(img)[1]/4, 
-                img_stride_row, img_stride_col,
-                cuda_get_ptr(kern),
-                PyGpuArray_STRIDES(kern)[0]/4, PyGpuArray_STRIDES(kern)[1]/4,
-                PyGpuArray_STRIDES(kern)[2]/4, PyGpuArray_STRIDES(kern)[3]/4,
-                cuda_get_ptr(out),
-                PyGpuArray_STRIDES(out)[0]/4, PyGpuArray_STRIDES(out)[1]/4,
-                PyGpuArray_STRIDES(out)[2]/4, PyGpuArray_STRIDES(out)[3]/4,
-                subsample_rows, subsample_cols, initial_reduce_boundary);
+          k=&conv_valid_row_reduce_1_node_<<<<HASH_PLACEHOLDER>>>>_0;
 
-        cudaError_t sts = cudaGetLastError();
-        if (cudaSuccess == sts) 
+        void *kernel_params[] = {
+            (void *)&nbatch, (void *)&nkern, (void *)&stack_len,
+            (void *)&img_len, (void *)&img_wid,
+            (void *)&kern_len, (void *)&kern_wid,
+            (void *)&out_len, (void *)&out_wid,
+            (void *)img->ga.data, (void *)&img->ga.offset,
+            (void *)&img_stride_batch, (void *)&img_stride_stack,
+            (void *)&img_stride_row, (void *)&img_stride_col,
+            (void *)kern->ga.data, (void *)&kern->ga.offset,
+            (void *)&kern_stride_nkern, (void *)&kern_stride_stack,
+            (void *)&kern_stride_row, (void *)&kern_stride_col,
+            (void *)out->ga.data, (void *)&out->ga.offset,
+            (void *)&out_stride_batch, (void *)&out_stride_nkern,
+            (void *)&out_stride_row, (void *)&out_stride_col,
+            (void *)&subsample_rows, (void *)&subsample_cols,
+            (void *)&initial_reduce_boundary};
+        int err = GpuKernel_call(k, 3, threads_per_block, n_blocks, n_reduce_buf, kernel_params);
+
+        if (err == GA_NO_ERROR)
         {
             work_complete = true;
             if (verbose)
@@ -800,86 +693,43 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
         {
             if (verbose)
               fprintf(stderr,
-                      "threads.x=%i, threads.y=%i, grid.x=%i,"
-                      " shared_size=%i, nb_threads=%i\n",
-                      n_threads.x, n_threads.y, n_blocks,
-                      n_reduce_buf, n_threads.x * n_threads.y);
-            if (verbose)
-              fprintf(stderr,
                       "INFO: impl 'conv_valid_row_reduce' failed (%s),"
                       " trying next implementation\n",
-                      cudaGetErrorString(sts));
+                      GpuKernel_error(k, err));
         }
     }
 
     if (1 && !work_complete) //conv_reference_valid
     {
-        int outsize = PyGpuArray_SIZE(out);
-        int n_blocks = std::min(outsize, 4096);
-        int n_threads = std::min(ceil_intdiv(outsize, n_blocks),
-                                 256);
-        if (1)
-        {
-            if (verbose)
-              fprintf(stderr, "INFO: launching conv_reference_valid\n");
-            if (verbose>1)
-              fprintf(stderr, "      img : %i %llu %i %i %p  "
-                      "%lld %lld %lld %lld\n",
-                      nbatch, (unsigned long long)PyGpuArray_DIMS(img)[1],
-                      img_len, img_wid,
-                      cuda_get_ptr(img),
-                      (long long)PyGpuArray_STRIDES(img)[0]/4,
-                      (long long)PyGpuArray_STRIDES(img)[1]/4,
-                      (long long)PyGpuArray_STRIDES(img)[2]/4,
-                      (long long)PyGpuArray_STRIDES(img)[3]/4);
-            if (verbose>1)
-              fprintf(stderr, "      kern: %i %i %i %i %p  "
-                      "%lld %lld %lld %lld\n",
-                      nkern, nstack, kern_len, kern_wid,
-                      cuda_get_ptr(kern),
-                      (long long)PyGpuArray_STRIDES(kern)[0]/4,
-                      (long long)PyGpuArray_STRIDES(kern)[1]/4,
-                      (long long)PyGpuArray_STRIDES(kern)[2]/4,
-                      (long long)PyGpuArray_STRIDES(kern)[3]/4);
-            if (verbose>1)
-                fprintf(stderr, "      out : %llu %llu %i %i %p  "
-                        "%lld %lld %lld %lld\n",
-                      (unsigned long long)PyGpuArray_DIMS(out)[0],
-                      (unsigned long long)PyGpuArray_DIMS(out)[1],
-                      out_len, out_wid,
-                      cuda_get_ptr(out),
-                      (long long)PyGpuArray_STRIDES(out)[0]/4,
-                      (long long)PyGpuArray_STRIDES(out)[1]/4,
-                      (long long)PyGpuArray_STRIDES(out)[2]/4,
-                      (long long)PyGpuArray_STRIDES(out)[3]/4);
-            if (verbose>1)
-              fprintf(stderr, "   launch params: %i %i %i\n",
-                      outsize, n_blocks, n_threads);
-        }
-        conv_reference_valid<<<n_blocks, n_threads>>>(nbatch, nkern,
-                PyGpuArray_DIMS(img)[1],
-                img_len, img_wid,
-                kern_len, kern_wid,
-                out_len, out_wid,
-                cuda_get_ptr(img),
-                PyGpuArray_STRIDES(img)[0]/4,
-                PyGpuArray_STRIDES(img)[1]/4,
-                PyGpuArray_STRIDES(img)[2]/4,
-                PyGpuArray_STRIDES(img)[3]/4,
-                cuda_get_ptr(kern),
-                PyGpuArray_STRIDES(kern)[0]/4,
-                PyGpuArray_STRIDES(kern)[1]/4,
-                PyGpuArray_STRIDES(kern)[2]/4,
-                PyGpuArray_STRIDES(kern)[3]/4,
-                cuda_get_ptr(out),
-                PyGpuArray_STRIDES(out)[0]/4,
-                PyGpuArray_STRIDES(out)[1]/4,
-                PyGpuArray_STRIDES(out)[2]/4,
-                PyGpuArray_STRIDES(out)[3]/4,
-                subsample_rows, subsample_cols);
+        size_t outsize = PyGpuArray_SIZE(out);
+        size_t n_blocks[3] = {std::min(outsize, (size_t)4096),
+                              (size_t)1, (size_t)1};
+        size_t threads_per_block[3] = {std::min(ceil_intdiv(outsize, n_blocks[0]),
+                                        (size_t)256),
+                               (size_t)1, (size_t)1};
 
-        cudaError_t sts = cudaGetLastError();
-        if (cudaSuccess == sts)
+        if (verbose)
+            fprintf(stderr, "INFO: launching conv_reference_valid\n");
+
+        void *kernel_params[] = {
+            (void *)&nbatch, (void *)&nkern, (void *)&stack_len,
+            (void *)&img_len, (void *)&img_wid,
+            (void *)&kern_len, (void *)&kern_wid,
+            (void *)&out_len, (void *)&out_wid,
+            (void *)img->ga.data, (void *)&img->ga.offset,
+            (void *)&img_stride_batch, (void *)&img_stride_stack,
+            (void *)&img_stride_row, (void *)&img_stride_col,
+            (void *)kern->ga.data, (void *)&kern->ga.offset,
+            (void *)&kern_stride_nkern, (void *)&kern_stride_stack,
+            (void *)&kern_stride_row, (void *)&kern_stride_col,
+            (void *)out->ga.data, (void *)&out->ga.offset,
+            (void *)&out_stride_batch, (void *)&out_stride_nkern,
+            (void *)&out_stride_row, (void *)&out_stride_col,
+            (void *)&subsample_rows, (void *)&subsample_cols};
+        int err = GpuKernel_call(&conv_reference_valid_node_<<<<HASH_PLACEHOLDER>>>>_0,
+                                 3, threads_per_block, n_blocks, 0, kernel_params);
+
+        if (err == GA_NO_ERROR)
         {
             work_complete = true;
             if (verbose)
@@ -892,7 +742,7 @@ PyGpuArray_conv_valid(const PyGpuArrayObject *img,
             PyErr_Format(PyExc_RuntimeError,
                          "ERROR: all implementations failed for"
                          " PyGpuArray_conv_valid! (%s)",
-                         cudaGetErrorString(sts));
+                         GpuKernel_error(&conv_reference_valid_node_<<<<HASH_PLACEHOLDER>>>>_0, err));
             return -1;
         }
     }
@@ -941,6 +791,7 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
     assert (PyGpuArray_DIMS(out)[1] == PyGpuArray_DIMS(kern)[0]);
     assert (PyGpuArray_DIMS(img)[1] == PyGpuArray_DIMS(kern)[1]);
 
+    const int stack_len=PyGpuArray_DIMS(img)[1];
     const int nstack=PyGpuArray_DIMS(kern)[1];
     const int nbatch=PyGpuArray_DIMS(img)[0];
     const int nkern=PyGpuArray_DIMS(kern)[0];
@@ -959,6 +810,10 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
     const int kern_stride_row=PyGpuArray_STRIDES(kern)[2]/4;
     const int kern_stride_stack= PyGpuArray_STRIDES(kern)[1]/4;
     const int kern_stride_nkern=PyGpuArray_STRIDES(kern)[0]/4;
+    const int out_stride_col = PyGpuArray_STRIDES(out)[3]/4;
+    const int out_stride_row = PyGpuArray_STRIDES(out)[2]/4;
+    const int out_stride_nkern = PyGpuArray_STRIDES(out)[1]/4;
+    const int out_stride_batch = PyGpuArray_STRIDES(out)[0]/4;
 
     const int img_size=img_len*img_wid;
     const int kern_size=kern_len*kern_wid;
@@ -1001,16 +856,10 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
     //we don't need to unflip it, but have the new value when we unflip it.
     bool kern_flipped=true;
     bool kern_contiguous_2d_unflipped = kern_contiguous_2d;
-    const float * kern_data_unflipped = cuda_get_ptr(kern);
-    int kern_stride_col_unflipped=kern_stride_col;
-    int kern_stride_row_unflipped=kern_stride_row;
-    if(kern_stride_col_unflipped==-1 && kern_stride_row_unflipped==-kern_wid){
+    if(kern_stride_col==-1 && kern_stride_row==-kern_wid){
       //the last two dimensions are c_contiguous but flipped!
-      kern_stride_col_unflipped=1;
-      kern_stride_row_unflipped=kern_wid;
       kern_flipped=false;
       kern_contiguous_2d_unflipped = true;
-      kern_data_unflipped=&(cuda_get_ptr(kern)[(kern_wid-1)*kern_stride_col + (kern_len-1)*kern_stride_row]);
     }
 
     if (verbose>1)
@@ -1019,34 +868,34 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
                " MACRO kern_width=%d with inputs:\n", version, THEANO_KERN_WID);
         printf("INFO:   img  dim: %llu %llu %llu %llu  "
                "img  stride: %lld %lld %lld %lld\n",
-               (unsigned long long)PyGpuArray_DIMS(img)[0],
-               (unsigned long long)PyGpuArray_DIMS(img)[1],
-               (unsigned long long)PyGpuArray_DIMS(img)[2],
-               (unsigned long long)PyGpuArray_DIMS(img)[3],
-               (long long)PyGpuArray_STRIDES(img)[0]/4,
-               (long long)PyGpuArray_STRIDES(img)[1]/4,
-               (long long)PyGpuArray_STRIDES(img)[2]/4,
-               (long long)PyGpuArray_STRIDES(img)[3]/4);
+               (unsigned long long)nbatch,
+               (unsigned long long)stack_len,
+               (unsigned long long)img_len,
+               (unsigned long long)img_wid,
+               (long long)img_stride_batch,
+               (long long)img_stride_stack,
+               (long long)img_stride_row,
+               (long long)img_stride_col);
         printf("INFO:   kern dim: %llu %llu %llu %llu  "
                "kern stride: %lld %lld %lld %lld\n",
-               (unsigned long long)PyGpuArray_DIMS(kern)[0],
-               (unsigned long long)PyGpuArray_DIMS(kern)[1],
-               (unsigned long long)PyGpuArray_DIMS(kern)[2],
-               (unsigned long long)PyGpuArray_DIMS(kern)[3],
-               (long long)PyGpuArray_STRIDES(kern)[0]/4,
-               (long long)PyGpuArray_STRIDES(kern)[1]/4,
-               (long long)PyGpuArray_STRIDES(kern)[2]/4,
-               (long long)PyGpuArray_STRIDES(kern)[3]/4);
+               (unsigned long long)nkern,
+               (unsigned long long)nstack,
+               (unsigned long long)kern_len,
+               (unsigned long long)kern_wid,
+               (long long)kern_stride_nkern,
+               (long long)kern_stride_stack,
+               (long long)kern_stride_row,
+               (long long)kern_stride_col);
         printf("INFO:   out dim: %llu %llu %llu %llu  "
                "out stride: %lld %lld %lld %lld\n",
                (unsigned long long)PyGpuArray_DIMS(out)[0],
                (unsigned long long)PyGpuArray_DIMS(out)[1],
-               (unsigned long long)PyGpuArray_DIMS(out)[2],
-               (unsigned long long)PyGpuArray_DIMS(out)[3],
-               (long long)PyGpuArray_STRIDES(out)[0]/4,
-               (long long)PyGpuArray_STRIDES(out)[1]/4,
-               (long long)PyGpuArray_STRIDES(out)[2]/4,
-               (long long)PyGpuArray_STRIDES(out)[3]/4);
+               (unsigned long long)out_len,
+               (unsigned long long)out_wid,
+               (long long)out_stride_batch,
+               (long long)out_stride_nkern,
+               (long long)out_stride_row,
+               (long long)out_stride_col);
     }
 
     if (!subsample &&
@@ -1093,54 +942,45 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
         assert(version!=5 || kern_len>1);
         assert(version!=-1);
 
-        dim3 threads(out_wid, ceil_intdiv(out_len,nb_split));
-        dim3 grid(nbatch,nkern);
+        size_t threads_per_block[3] = {(size_t)out_wid,
+                               ceil_intdiv((size_t)out_len,(size_t)nb_split),
+                               (size_t)1};
+        size_t n_blocks[3] = {(size_t)nbatch, (size_t)nkern, (size_t)1};
 
-        int shared_size=img_size_padded_byte + kern_size_byte;
+        size_t shmem_sz=img_size_padded_byte + kern_size_byte;
         if(version==5)
-          shared_size=((kern_len+threads.y-1)+2*kern_len-2)*img_wid_padded*sizeof(float) + kern_size_byte;
-        void (*f)(const float*, const float*, float*,
-                  int, int, int, int,
-                  int, int, int, int,
-                  int, int, int, int,
-                  int, int);
+          shmem_sz=((kern_len+threads_per_block[1]-1)+2*kern_len-2)*img_wid_padded*sizeof(float) + kern_size_byte;
 
-#define CONV_FULL_PATCH_STACK_PADDED_SPECIAL(kern_wid) \
-             if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==3 && kern_flipped) f=conv_full_patch_stack_padded<true,kern_wid,true,false,false>;\
-        else if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==4 && kern_flipped) f=conv_full_patch_stack_padded<true,kern_wid,true,true,false>;\
-        else if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==5 && kern_flipped) f=conv_full_patch_stack_padded<true,kern_wid,true,false,true>;\
-        else if(version==3 && kern_flipped) f=conv_full_patch_stack_padded<true,kern_wid,false,false,false>;\
-        else if(version==4 && kern_flipped)f=conv_full_patch_stack_padded<true,kern_wid,false,true,false>;\
-        else if(version==5 && kern_flipped)f=conv_full_patch_stack_padded<true,kern_wid,false,false,true>;\
-        else if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==3) f=conv_full_patch_stack_padded<false,kern_wid,true,false,false>;\
-        else if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==4) f=conv_full_patch_stack_padded<false,kern_wid,true,true,false>;\
-        else if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==5) f=conv_full_patch_stack_padded<false,kern_wid,true,false,true>;\
-        else if(version==3) f=conv_full_patch_stack_padded<false,kern_wid,false,false,false>;\
-        else if(version==4) f=conv_full_patch_stack_padded<false,kern_wid,false,true,false>;\
-        else if(version==5) f=conv_full_patch_stack_padded<false,kern_wid,false,false,true>;\
+        GpuKernel *k = NULL;
+        if(version==3) k=&conv_full_patch_stack_padded_0_node_<<<<HASH_PLACEHOLDER>>>>_0;
+        else if(version==5) k=&conv_full_patch_stack_padded_1_node_<<<<HASH_PLACEHOLDER>>>>_0;
+        else if(version==4) k=&conv_full_patch_stack_padded_2_node_<<<<HASH_PLACEHOLDER>>>>_0;
+        else if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==3) k=&conv_full_patch_stack_padded_4_node_<<<<HASH_PLACEHOLDER>>>>_0;
+        else if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==5) k=&conv_full_patch_stack_padded_5_node_<<<<HASH_PLACEHOLDER>>>>_0;
+        else if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==4) k=&conv_full_patch_stack_padded_6_node_<<<<HASH_PLACEHOLDER>>>>_0;
+        else if(version==3 && kern_flipped) k=&conv_full_patch_stack_padded_8_node_<<<<HASH_PLACEHOLDER>>>>_0;
+        else if(version==5 && kern_flipped)k=&conv_full_patch_stack_padded_9_node_<<<<HASH_PLACEHOLDER>>>>_0;
+        else if(version==4 && kern_flipped)k=&conv_full_patch_stack_padded_10_node_<<<<HASH_PLACEHOLDER>>>>_0;
+        else if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==3 && kern_flipped) k=&conv_full_patch_stack_padded_12_node_<<<<HASH_PLACEHOLDER>>>>_0;
+        else if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==5 && kern_flipped) k=&conv_full_patch_stack_padded_13_node_<<<<HASH_PLACEHOLDER>>>>_0;
+        else if(img_contiguous_2d && kern_contiguous_2d_unflipped && version==4 && kern_flipped) k=&conv_full_patch_stack_padded_14_node_<<<<HASH_PLACEHOLDER>>>>_0;
         else assert(false);
 
-        CONV_FULL_PATCH_STACK_PADDED_SPECIAL(THEANO_KERN_WID);
+        void *kernel_params[] = {
+            (void *)img->ga.data, (void *)&img->ga.offset,
+            (void *)kern->ga.data, (void *)&kern->ga.offset,
+            (void *)out->ga.data, (void *)&out->ga.offset,
+            (void *)&img_len, (void *)&img_wid,
+            (void *)&kern_len, (void *)&kern_wid,
+            (void *)&nkern, (void *)&nstack,
+            (void *)&img_stride_col, (void *)&img_stride_row,
+            (void *)&img_stride_stack, (void *)&img_stride_batch,
+            (void *)&kern_stride_col, (void *)&kern_stride_row,
+            (void *)&kern_stride_stack, (void *)&kern_stride_nkern};
+        int err = GpuKernel_call(k, 3, threads_per_block, n_blocks, shmem_sz, kernel_params);
 
-        f<<< grid, threads, shared_size>>>
-            (cuda_get_ptr(img), kern_data_unflipped, cuda_get_ptr(out),
-              img_len, img_wid, kern_len, kern_wid, nkern, nstack,
-              img_stride_col, img_stride_row, img_stride_stack,
-              img_stride_batch, kern_stride_col_unflipped, kern_stride_row_unflipped,
-              kern_stride_stack, kern_stride_nkern);
-
-        cudaError_t sts = cudaGetLastError();
-        if (cudaSuccess == sts)
+        if (err == GA_NO_ERROR)
         {
-          if (verbose>1)
-            fprintf(stderr,
-                    "threads.x=%i, threads.y=%i, threads.z=%i,"
-                    " grid.x=%i, grid.y=%i, shared_size=%i, nb_threads=%i,"
-                    " out_len=%i, nb_split=%i, version=%i\n",
-                    threads.x, threads.y, threads.z,
-                    grid.x, grid.y, shared_size,
-                    threads.x * threads.y * threads.z,
-                    out_len, nb_split, version);
             if (verbose)
               fprintf(stderr,
                       "INFO: used 'conv_full_patch_stack_padded'"
@@ -1152,20 +992,11 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
         {
           if (verbose)
             fprintf(stderr,
-                    "threads.x=%i, threads.y=%i, threads.z=%i,"
-                    " grid.x=%i, grid.y=%i,shared_size=%i, nb_threads=%i,"
-                    " out_len=%i, nb_split=%i, version=%i\n",
-                    threads.x, threads.y, threads.z,
-                    grid.x, grid.y, shared_size,
-                    threads.x * threads.y * threads.z,
-                    out_len, nb_split, version);
-          if (verbose)
-            fprintf(stderr,
                     "INFO: impl 'conv_full_patch_stack_padded' %s %s"
                     " failed (%s), trying next implementation\n",
                     version==3?"no split": "split",
                     (version==5?"low_mem":"not_low_mem"),
-                    cudaGetErrorString(sts));
+                    GpuKernel_error(k, err));
         }                         
     }
 
@@ -1176,21 +1007,22 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
         img_size_byte+kern_size_byte<shared_avail && //their is only 16k of shared memory
         !work_complete) //conv_full_patch
     {
-        dim3 threads(out_wid, out_len);
-        dim3 grid(nbatch,nkern);
-        int shared_size=(img_size + kern_size)*sizeof(float);
+        size_t threads_per_block[3] = {(size_t)out_wid, (size_t)out_len, (size_t)1};
+        size_t n_blocks[3] = {(size_t)nbatch, (size_t)nkern, (size_t)1};
+        size_t shmem_sz = (img_size + kern_size)*sizeof(float);
         //TODO assert c_continious for img, kern and out in the 2 inner dimensions.
 
-        conv_full_patch<<< grid, threads, shared_size>>>
-            (cuda_get_ptr(img),
-             cuda_get_ptr(kern),
-             cuda_get_ptr(out),
-           img_len, img_wid,
-           kern_len, kern_wid,
-           nkern, nstack);
+        void *kernel_params[] = {
+            (void *)img->ga.data, (void *)&img->ga.offset,
+            (void *)kern->ga.data, (void *)&kern->ga.offset,
+            (void *)out->ga.data, (void *)&out->ga.offset,
+            (void *)&img_len, (void *)&img_wid,
+            (void *)&kern_len, (void *)&kern_wid,
+            (void *)&nkern, (void *)&nstack};
+        int err = GpuKernel_call(&conv_full_patch_node_<<<<HASH_PLACEHOLDER>>>>_0,
+                                 3, threads_per_block, n_blocks, shmem_sz, kernel_params);
 
-        cudaError_t sts = cudaGetLastError();
-        if (cudaSuccess == sts) 
+        if (err == GA_NO_ERROR)
         {
             if (verbose) fprintf(stderr, "INFO: used 'conv_full_patch' version\n");
             work_complete = true;
@@ -1199,15 +1031,9 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
         {
             if (verbose)
               fprintf(stderr,
-                      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
-                      " shared_size=%i, nb_threads=%i\n",
-                      threads.x, threads.y, grid.x, grid.y, shared_size,
-                      threads.x * threads.y);
-            if (verbose)
-              fprintf(stderr,
                       "INFO: impl 'conv_full_patch' failed (%s),"
                       " trying next implementation\n",
-                      cudaGetErrorString(sts));
+                      GpuKernel_error(&conv_full_patch_node_<<<<HASH_PLACEHOLDER>>>>_0, err));
         }                         
     }
     if (false && !subsample && //disabled as test fail for this kernel
@@ -1217,37 +1043,26 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
         nstack*img_size_byte+nstack*kern_size_byte<shared_avail && //there is only 16k of shared memory
         !work_complete) //conv_full_load_everything
     {
-        dim3 threads(out_wid, out_len);
-        dim3 grid(nbatch);
-        int shared_size=(img_size + kern_size)*nstack*sizeof(float);
+        size_t threads_per_block[3] = {(size_t)out_wid, (size_t)out_len, (size_t)1};
+        size_t n_blocks[3] = {(size_t)nbatch, (size_t)1, (size_t)1};
+        size_t shmem_sz = (img_size + kern_size)*nstack*sizeof(float);
         //TODO assert c_continious for img, kern and out in the 2 inner dimensions.
 
-        //typeof(conv_full_load_everything<0>) f = ;
-        void (*f)(const float*, const float*, float*,
-                  int, int, int, int, int, int,
-                  int, int, int, int, int, int, int, int) = conv_full_load_everything<0>;
+        void *kernel_params[] = {
+            (void *)img->ga.data, (void *)&img->ga.offset,
+            (void *)kern->ga.data, (void *)&kern->ga.offset,
+            (void *)out->ga.data, (void *)&out->ga.offset,
+            (void *)&img_len, (void *)&img_wid,
+            (void *)&kern_len, (void *)&kern_wid,
+            (void *)&nkern, (void *)&nstack,
+            (void *)&img_stride_col, (void *)&img_stride_row,
+            (void *)&img_stride_stack, (void *)&img_stride_batch,
+            (void *)&kern_stride_col, (void *)&kern_stride_row,
+            (void *)&kern_stride_stack, (void *)&kern_stride_nkern};
+        int err = GpuKernel_call(&conv_full_load_everything_node_<<<<HASH_PLACEHOLDER>>>>_0,
+                                 3, threads_per_block, n_blocks, shmem_sz, kernel_params);
 
-        f = conv_full_load_everything<THEANO_KERN_WID>;
-
-        f<<< grid, threads, shared_size>>>
-            (cuda_get_ptr(img),
-             cuda_get_ptr(kern),
-             cuda_get_ptr(out),
-           img_len, img_wid, 
-           kern_len, kern_wid,
-           nkern, nstack,
-           PyGpuArray_STRIDES(img)[3]/4,
-           PyGpuArray_STRIDES(img)[2]/4,
-           PyGpuArray_STRIDES(img)[1]/4,
-           PyGpuArray_STRIDES(img)[0]/4,
-           PyGpuArray_STRIDES(kern)[3]/4,
-           PyGpuArray_STRIDES(kern)[2]/4,
-           PyGpuArray_STRIDES(kern)[1]/4,
-           PyGpuArray_STRIDES(kern)[0]/4
-           );
-
-        cudaError_t sts = cudaGetLastError();
-        if (cudaSuccess == sts) 
+        if (err == GA_NO_ERROR)
         {
             if (verbose) fprintf(stderr, "INFO: used 'conv_full_load_everything' version\n");
             work_complete = true;
@@ -1255,15 +1070,9 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
         else
         {
             if (verbose)
-              fprintf(stderr,
-                      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
-                      " shared_size=%i, nb_threads=%i\n",
-                      threads.x, threads.y, grid.x, grid.y, shared_size,
-                      threads.x * threads.y);
-            if (verbose)
               fprintf(stderr, "INFO: impl 'conv_full_load_everything'"
                       " failed (%s), trying next implementation\n",
-                      cudaGetErrorString(sts));
+                      GpuKernel_error(&conv_full_load_everything_node_<<<<HASH_PLACEHOLDER>>>>_0, err));
         }
     }
 
@@ -1275,32 +1084,29 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
         img_size_byte+kern_size_byte<shared_avail && //their is only 16k of shared memory
         !work_complete) //conv_full_patch_stack
     {
-        dim3 threads(out_wid, out_len);
-        dim3 grid(nbatch,nkern);
-        int shared_size=(img_size + kern_size)*sizeof(float);
+        size_t threads_per_block[3] = {(size_t)out_wid, (size_t)out_len, (size_t)1};
+        size_t n_blocks[3] = {(size_t)nbatch, (size_t)nkern, (size_t)1};
+        size_t shmem_sz = (img_size + kern_size)*sizeof(float);
 
-        void (*f)(const float*, const float*, float*,
-                  int, int, int, int,
-                  int, int, int, int,
-                  int, int, int, int);
+        GpuKernel *k = NULL;
+        if(!img_contiguous_2d && !kern_contiguous_2d) k=&conv_full_patch_stack_0_node_<<<<HASH_PLACEHOLDER>>>>_0;
+        else if(!img_contiguous_2d && kern_contiguous_2d) k=&conv_full_patch_stack_1_node_<<<<HASH_PLACEHOLDER>>>>_0;
+        else if(img_contiguous_2d && !kern_contiguous_2d) k=&conv_full_patch_stack_2_node_<<<<HASH_PLACEHOLDER>>>>_0;
+        else if(img_contiguous_2d && kern_contiguous_2d) k=&conv_full_patch_stack_3_node_<<<<HASH_PLACEHOLDER>>>>_0;
 
-        if(img_contiguous_2d && kern_contiguous_2d) f=conv_full_patch_stack<true,true>;\
-        else if(img_contiguous_2d && !kern_contiguous_2d) f=conv_full_patch_stack<true,false>;\
-        else if(!img_contiguous_2d && kern_contiguous_2d) f=conv_full_patch_stack<false,true>;\
-        else if(!img_contiguous_2d && !kern_contiguous_2d) f=conv_full_patch_stack<false,false>;
+        void *kernel_params[] = {
+            (void *)img->ga.data, (void *)&img->ga.offset,
+            (void *)kern->ga.data, (void *)&kern->ga.offset,
+            (void *)out->ga.data, (void *)&out->ga.offset,
+            (void *)&img_len, (void *)&img_wid,
+            (void *)&kern_len, (void *)&kern_wid,
+            (void *)&nkern, (void *)&nstack,
+            (void *)&img_stride_col, (void *)&img_stride_row,
+            (void *)&kern_stride_col, (void *)&kern_stride_row,
+            (void *)&kern_stride_stack, (void *)&kern_stride_nkern};
+        int err = GpuKernel_call(k, 3, threads_per_block, n_blocks, shmem_sz, kernel_params);
 
-        f<<< grid, threads, shared_size>>>(
-                cuda_get_ptr(img),
-                cuda_get_ptr(kern),
-                cuda_get_ptr(out),
-                img_len, img_wid,
-                kern_len, kern_wid,
-                nkern, nstack,img_stride_col, img_stride_row,
-                kern_stride_col, kern_stride_row,
-                kern_stride_stack, kern_stride_nkern);
-
-        cudaError_t sts = cudaGetLastError();
-        if (cudaSuccess == sts) 
+        if (err == GA_NO_ERROR)
         {
             if (verbose)
               fprintf(stderr, "INFO: used 'conv_full_patch_stack' version\n");
@@ -1309,95 +1115,40 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
         else
         {
             if (verbose)
-              fprintf(stderr,
-                      "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
-                      " shared_size=%i, nb_threads=%i\n",
-                      threads.x, threads.y, grid.x, grid.y,
-                      shared_size, threads.x * threads.y);
-            if (verbose)
               fprintf(stderr, "INFO: impl 'conv_full_patch_stack' failed (%s), trying next implementation\n",
-                      cudaGetErrorString(sts));
+                      GpuKernel_error(k, err));
         }                         
     }
     if (1 && !work_complete) //conv_reference_full
     {
         if(verbose>1) fprintf(stderr, "INFO: will start conv_reference_full\n");
 
-        int outsize = PyGpuArray_SIZE(out);
-        int n_blocks = std::min(outsize, 4096);
-        int n_threads = std::min(ceil_intdiv(outsize, n_blocks),
-                                 256);
-        if (0)
-        {
-            if (verbose)
-              fprintf(stderr, "INFO: launching conv_reference_valid\n");
-            if (verbose)
-              fprintf(stderr, "      img : %llu %llu %llu %llu %p  "
-                      "%lld %lld %lld %lld\n",
-                      (unsigned long long)PyGpuArray_DIMS(img)[0],
-                      (unsigned long long)PyGpuArray_DIMS(img)[1],
-                      (unsigned long long)PyGpuArray_DIMS(img)[2],
-                      (unsigned long long)PyGpuArray_DIMS(img)[3],
-                      cuda_get_ptr(img),
-                      (long long)PyGpuArray_STRIDES(img)[0]/4,
-                      (long long)PyGpuArray_STRIDES(img)[1]/4,
-                      (long long)PyGpuArray_STRIDES(img)[2]/4,
-                      (long long)PyGpuArray_STRIDES(img)[3]/4);
-            if (verbose)
-              fprintf(stderr, "      kern: %llu %llu %llu %llu %p  "
-                      "%lld %lld %lld %lld\n",
-                      (unsigned long long)PyGpuArray_DIMS(kern)[0],
-                      (unsigned long long)PyGpuArray_DIMS(kern)[1],
-                      (unsigned long long)PyGpuArray_DIMS(kern)[2],
-                      (unsigned long long)PyGpuArray_DIMS(kern)[3],
-                      cuda_get_ptr(kern),
-                      (long long)PyGpuArray_STRIDES(kern)[0]/4,
-                      (long long)PyGpuArray_STRIDES(kern)[1]/4,
-                      (long long)PyGpuArray_STRIDES(kern)[2]/4,
-                      (long long)PyGpuArray_STRIDES(kern)[3]/4
-                        );
-            if (verbose)
-                fprintf(stderr, "      out : %llu %llu %llu %llu %p  "
-                        "%lld %lld %lld %lld\n",
-                      (unsigned long long)PyGpuArray_DIMS(out)[0],
-                      (unsigned long long)PyGpuArray_DIMS(out)[1],
-                      (unsigned long long)PyGpuArray_DIMS(out)[2],
-                      (unsigned long long)PyGpuArray_DIMS(out)[3],
-                      cuda_get_ptr(out),
-                      (long long)PyGpuArray_STRIDES(out)[0]/4,
-                      (long long)PyGpuArray_STRIDES(out)[1]/4,
-                      (long long)PyGpuArray_STRIDES(out)[2]/4,
-                      (long long)PyGpuArray_STRIDES(out)[3]/4);
-            if (verbose)
-              fprintf(stderr, "   launch params: %i %i %i\n",
-                      outsize, n_blocks, n_threads);
-            if (verbose)
-                fprintf(stderr, "   subsample params: %llu %llu\n",
-                        (unsigned long long)subsample_rows,
-                        (unsigned long long)subsample_cols);
-        }
-        conv_reference_full<<<n_blocks, n_threads>>>(
-                PyGpuArray_DIMS(img)[0], PyGpuArray_DIMS(kern)[0],
-                PyGpuArray_DIMS(img)[1],
-                PyGpuArray_DIMS(img)[2], PyGpuArray_DIMS(img)[3],
-                PyGpuArray_DIMS(kern)[2], PyGpuArray_DIMS(kern)[3],
-                PyGpuArray_DIMS(out)[2], PyGpuArray_DIMS(out)[3],
-                cuda_get_ptr(img), PyGpuArray_STRIDES(img)[0]/4,
-                PyGpuArray_STRIDES(img)[1]/4,
-                PyGpuArray_STRIDES(img)[2]/4,
-                PyGpuArray_STRIDES(img)[3]/4,
-                cuda_get_ptr(kern), PyGpuArray_STRIDES(kern)[0]/4,
-                PyGpuArray_STRIDES(kern)[1]/4,
-                PyGpuArray_STRIDES(kern)[2]/4,
-                PyGpuArray_STRIDES(kern)[3]/4,
-                cuda_get_ptr(out), PyGpuArray_STRIDES(out)[0]/4,
-                PyGpuArray_STRIDES(out)[1]/4,
-                PyGpuArray_STRIDES(out)[2]/4,
-                PyGpuArray_STRIDES(out)[3]/4,
-                subsample_rows, subsample_cols);
+        size_t outsize = PyGpuArray_SIZE(out);
+        size_t n_blocks[3] = {std::min(outsize, (size_t)4096),
+                              (size_t)1, (size_t)1};
+        size_t threads_per_block[3] = {std::min(ceil_intdiv(outsize, n_blocks[0]),
+                                        (size_t)256),
+                               (size_t)1, (size_t)1};
 
-        cudaError_t sts = cudaGetLastError();
-        if (cudaSuccess == sts) 
+        void *kernel_params[] = {
+            (void *)&nbatch, (void *)&nkern, (void *)&stack_len,
+            (void *)&img_len, (void *)&img_wid,
+            (void *)&kern_len, (void *)&kern_wid,
+            (void *)&out_len, (void *)&out_wid,
+            (void *)img->ga.data, (void *)&img->ga.offset,
+            (void *)&img_stride_batch, (void *)&img_stride_stack,
+            (void *)&img_stride_row, (void *)&img_stride_col,
+            (void *)kern->ga.data, (void *)&kern->ga.offset,
+            (void *)&kern_stride_nkern, (void *)&kern_stride_stack,
+            (void *)&kern_stride_row, (void *)&kern_stride_col,
+            (void *)out->ga.data, (void *)&out->ga.offset,
+            (void *)&out_stride_batch, (void *)&out_stride_nkern,
+            (void *)&out_stride_row, (void *)&out_stride_col,
+            (void *)&subsample_rows, (void *)&subsample_cols};
+        int err = GpuKernel_call(&conv_reference_full_node_<<<<HASH_PLACEHOLDER>>>>_0,
+                                 3, threads_per_block, n_blocks, 0, kernel_params);
+
+        if (err == GA_NO_ERROR)
         {
             if (verbose)
               fprintf(stderr, "INFO: used 'conv_reference_full' version"
@@ -1410,17 +1161,13 @@ PyGpuArray_conv_full(const PyGpuArrayObject *img, const PyGpuArrayObject * kern,
         else
         {
           if (verbose)
-            fprintf(stderr, "threads.x=%i, threads.y=%i, grid.x=%i, grid.y=%i,"
-                    " shared_size=%i, nb_threads=%i\n",
-                    n_threads, 1, n_blocks, 1, 0, n_threads);
-          if (verbose)
             fprintf(stderr, "INFO: impl 'conv_reference_full' failed (%s),"
                     " trying next implementation\n",
-                    cudaGetErrorString(sts));
+                    GpuKernel_error(&conv_reference_full_node_<<<<HASH_PLACEHOLDER>>>>_0, err));
           PyErr_Format(PyExc_RuntimeError,
                        "ERROR: all implementations failed for"
                        " CudaNdarray_conv_full! (%s)",
-                       cudaGetErrorString(sts));
+                       GpuKernel_error(&conv_reference_full_node_<<<<HASH_PLACEHOLDER>>>>_0, err));
           return -1;
         }
     }
@@ -1496,7 +1243,7 @@ PyGpuArray_Conv(PyGpuArrayObject *img, PyGpuArrayObject * kern,
 
       rval = pygpu_zeros(4, out_dim,
                          img->ga.typecode, GA_C_ORDER,
-                         pygpu_default_context(), Py_None);
+                         img->context, Py_None);
       //rval might be null
     }
     if ((rval==NULL)
@@ -1519,14 +1266,3 @@ PyGpuArray_Conv(PyGpuArrayObject *img, PyGpuArrayObject * kern,
     }
     return (PyObject*)rval;
 }
-
-/*
-  Local Variables:
-  mode:c++
-  c-basic-offset:4
-  c-file-style:"stroustrup"
-  indent-tabs-mode:nil
-  fill-column:79
-  End:
-*/
-// vim: filetype=cpp:expandtab:shiftwidth=4:tabstop=8:softtabstop=4:textwidth=79 :

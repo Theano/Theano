@@ -208,7 +208,7 @@ import theano and print the config variable, as in:
     significant speed up on functions with many ops that are fast to
     execute, but this increases Theano's memory usage.
 
-.. attribute:: scan.allow_output_prealloc
+.. attribute:: config.scan.allow_output_prealloc
 
     Bool value, either ``True`` or ``False``
 
@@ -218,6 +218,18 @@ import theano and print the config variable, as in:
     pre-allocate memory for its outputs. Enabling the optimization can
     give a significant speed up with Scan at the cost of slightly increased
     memory usage.
+
+.. attribute:: config.scan.allow_gc
+
+    Bool value, either ``True`` or ``False``
+
+    Default: ``False``
+
+    Allow/disallow gc inside of Scan.
+
+    If config.allow_gc is ``True``, but config.scan.allow_gc is
+    ``False``, then we will gc the inner of scan after all
+    iterations. This is the default.
 
 .. attribute:: openmp
 
@@ -359,6 +371,14 @@ import theano and print the config variable, as in:
     Name of the destination file for the profiling output.
     The profiling output can be either directed to stderr
     (default), or stdout or an arbitrary file.
+
+.. attribute:: config.profiling.debugprint
+
+    Bool value: either True or False
+
+    Default False
+
+    Do a debugprint of the profiled functions
 
 .. attribute:: config.lib.amdlibm
 
@@ -541,22 +561,35 @@ import theano and print the config variable, as in:
 
 .. attribute:: config.dnn.conv.workmem
 
-   String value: 'none', 'small', 'large'
+   Deprecated, use dnn.conv.algo_fwd.
 
-   Default: 'small'
 
-   The default value for the amount of working memory that is
-   tolerated in the convolution implementation in cudnn.
+.. attribute:: config.dnn.conv.workmem_bwd
 
-   'none'
-     Don't allow any extra memory.
+   Deprecated, use dnn.conv.algo_bwd.
 
-   'small'
-     Allow extra memory that is much smaller than the input sizes.
+.. attribute:: config.dnn.conv.algo_fwd
 
-   'large'
-     Allow extra memory that is on the order of the input sizes.
+  String value: ``small``, ``none``, ``large``, ``fft``, ``guess_once``,
+                ``guess_on_shape_change``, ``time_once``,
+                ``time_on_shape_change``.
 
+   Default: ``small``
+
+   3d convolution only support ``none``, ``guess_once``,
+   ``guess_on_shape_change``, ``time_once``, ``time_on_shape_change``.
+
+
+.. attribute:: config.dnn.conv.algo_bwd
+
+   String value: ``none``, ``deterministic``, ``fft``, ``guess_once``,
+                 ``guess_on_shape_change``, ``time_once``,
+                 ``time_on_shape_change``.
+
+   Default: ``none``
+
+   3d convolution only support ``none``, ``guess_once``,
+   ``guess_on_shape_change``, ``time_once``, ``time_on_shape_change``.
 
 .. attribute:: config.gcc.cxxflags
 
@@ -591,7 +624,7 @@ import theano and print the config variable, as in:
     cost of precision.  This also disables support for denormal
     numbers.
 
-.. attribute:: optimizer_excluding
+.. attribute:: config.optimizer_excluding
 
     Default: ""
 
@@ -830,7 +863,7 @@ import theano and print the config variable, as in:
 
 .. attribute:: reoptimize_unpickled_function
 
-    Bool value, default: True
+    Bool value, default: False (changed in master after Theano 0.7 release)
 
     Theano users can use the standard python pickle tools to save a compiled
     theano function. When pickling, both graph before and after the optimization

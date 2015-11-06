@@ -18,9 +18,11 @@ the interface for compiling graphs into callable objects.
 
 You've already seen example usage in the basic tutorial... something like this:
 
+>>> import theano
 >>> x = theano.tensor.dscalar()
 >>> f = theano.function([x], 2*x)
->>> print f(4)                    # prints 8.0
+>>> f(4)
+array(8.0)
 
 The idea here is that we've compiled the symbolic graph (``2*x``) into a function that can be called on a number and will do some computations.
 

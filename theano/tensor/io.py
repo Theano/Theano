@@ -83,7 +83,7 @@ def load(path, dtype, broadcastable, mmap_mode=None):
     >>> x = tensor.load(path, 'int64', (False,))
     >>> y = x*2
     >>> fn = function([path], y)
-    >>> fn("stored-array.npy")
+    >>> fn("stored-array.npy")  # doctest: +SKIP
     array([0, 2, 4, 6, 8], dtype=int64)
 
     """

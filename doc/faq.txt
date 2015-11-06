@@ -5,10 +5,15 @@
 ==========================
 Frequently Asked Questions
 ==========================
+
+Does Theano support Python 3?
+------------------------------
+We support both Python 2 >= 2.6 and Python 3 >= 3.3.
+
 TypeError: object of type 'TensorVariable' has no len()
 -------------------------------------------------------
 
-If you receive the following error, it is because the Python function *__len__* cannot 
+If you receive the following error, it is because the Python function *__len__* cannot
 be implemented on Theano variables:
 
 .. code-block:: python
@@ -17,7 +22,7 @@ be implemented on Theano variables:
 
 Python requires that *__len__* returns an integer, yet it cannot be done as Theano's variables are symbolic. However, `var.shape[0]` can be used as a workaround.
 
-This error message cannot be made more explicit because the relevant aspects of Python's 
+This error message cannot be made more explicit because the relevant aspects of Python's
 internals cannot be modified.
 
 
@@ -64,11 +69,12 @@ compilation but it will also use more memory because
 in a trade off between speed of compilation and memory usage.
 
 Theano flag `reoptimize_unpickled_function` controls if an unpickled theano function
-should reoptimize its graph or not. Theano users can use the standard python pickle 
-tools to save a compiled theano function. When pickling, both graph before and 
-after the optimization are saved, including shared variables. When set to True, 
-the graph is reoptimized when being unpickled. Otherwise, skip the graph optimization 
-and use directly the optimized graph from the pickled file.
+should reoptimize its graph or not. Theano users can use the standard python pickle
+tools to save a compiled theano function. When pickling, both graph before and
+after the optimization are saved, including shared variables. When set to True,
+the graph is reoptimized when being unpickled. Otherwise, skip the graph optimization
+and use directly the optimized graph from the pickled file. After Theano 0.7,
+the default changed to False.
 
 Faster Theano function
 ----------------------
@@ -120,7 +126,10 @@ the function was compiled.
 
 For example, replace the following
 
-.. code-block:: python
+.. testcode:: faster
+
+    import theano
+    from theano import function
 
     x = theano.tensor.scalar('x')
     f = function([x], x + 1.)
@@ -128,7 +137,11 @@ For example, replace the following
 
 with
 
-.. code-block:: python
+.. testcode:: faster
+
+    import numpy
+    import theano
+    from theano import function
 
     x = theano.tensor.scalar('x')
     f = function([x], x + 1.)
@@ -189,7 +202,7 @@ We try to list in this `wiki page <https://github.com/Theano/Theano/wiki/Related
 --------------------------------
 
 Theano offers a good amount of flexibility, but has some limitations too.
-You must answer for yourself the following question: How can my algorithm be cleverly written 
+You must answer for yourself the following question: How can my algorithm be cleverly written
 so as to make the most of what Theano can do?
 
 Here is a list of some of the known limitations:
@@ -212,3 +225,42 @@ preferable not to use those dtypes together.
 
 To help you find where float64 are created, see the
 :attr:`warn_float64` Theano flag.
+
+Theano memory/speed trade-off
+-----------------------------
+
+There is a few things you can easily do to change the trade-off
+between speed and memory usage. It nothing is said, this affect the
+CPU and GPU memory usage.
+
+Could speed up and lower memory usage:
+
+- :ref:`CuDNN <libdoc_cuda_dnn>` default CuDNN convolution use less
+   memory then Theano version. But some flags allow it to use more
+   memory. GPU only.
+- Shortly avail, multi-GPU.
+
+Could raise memory usage but speed up computation:
+
+- :attr:`config.lib.cnmem` =1  # Do not raise much memory usage, but if you are at the limit of GPU memory available. GPU only.
+- :attr:`config.allow_gc` =False
+- :attr:`config.optimizer_excluding` =low_memory , GPU only for now.
+
+Could lower the memory usage, but raise computation time:
+
+- :attr:`config.scan.allow_gc` =True # Probably not significant slowdown if config.lib.cnmem is used.
+- :attr:`config.scan.allow_output_prealloc` =False
+- Use :func:`batch_normalization()
+  <theano.tensor.nnet.bn.batch_normalization>`. It use less memory
+  then building a corresponding Theano graph.
+- Disable one or scan more optimizations:
+    - ``optimizer_excluding=scanOp_pushout_seqs_ops``
+    - ``optimizer_excluding=scan_pushout_dot1``
+    - ``optimizer_excluding=scanOp_pushout_output``
+- Disable all optimization tagged as raising memory usage:
+  ``optimizer_excluding=more_mem`` (currently only the 3 scan optimizations above)
+- `float16 <https://github.com/Theano/Theano/issues/2908>`_.
+
+If you want to analyze the memory usage during computation, the
+simplest is to let the memory error happen during Theano execution and
+use the Theano flags :attr:`exception_verbosity=high`.

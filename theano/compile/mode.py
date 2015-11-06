@@ -91,6 +91,8 @@ exclude = []
 if not theano.config.cxx:
     exclude = ['cxx_only']
 OPT_NONE = gof.Query(include=[], exclude=exclude)
+# Even if multiple merge optimizer call will be there, this shouldn't
+# impact performance.
 OPT_MERGE = gof.Query(include=['merge'], exclude=exclude)
 OPT_FAST_RUN = gof.Query(include=['fast_run'], exclude=exclude)
 OPT_FAST_RUN_STABLE = OPT_FAST_RUN.requiring('stable')
@@ -113,7 +115,7 @@ OPT_STABILIZE.name = 'OPT_STABILIZE'
 predefined_optimizers = {
     None: OPT_NONE,
     'None': OPT_NONE,
-    'merge': gof.MergeOptimizer(),
+    'merge': OPT_MERGE,
     'fast_run': OPT_FAST_RUN,
     'fast_run_stable': OPT_FAST_RUN_STABLE,
     'fast_compile': OPT_FAST_COMPILE,
@@ -161,18 +163,17 @@ class AddDestroyHandler(gof.Optimizer):
         fgraph.attach_feature(gof.DestroyHandler())
 
 
-class AddNoOutputFromInplace(gof.Optimizer):
+class AddFeatureOptimizer(gof.Optimizer):
     """
-    This optimizer adds to the fgraph a feature that will prevent outputs
-    of a fgraph to be created by performing inplace operations on intermediary
-    variables. This is useful when the outputs of the fgraph are preallocated
-    to prevent useless copying of the data. Currently, scan preallocates its
-    outputs
+    This optimizer adds a provided feature to the function graph.
+    """
 
-    """
+    def __init__(self, feature):
+        self.feature = feature
+
     def add_requirements(self, fgraph):
-        super(AddNoOutputFromInplace, self).add_requirements(fgraph)
-        fgraph.attach_feature(gof.NoOutputFromInplace())
+        super(AddFeatureOptimizer, self).add_requirements(fgraph)
+        fgraph.attach_feature(self.feature)
 
 
 class PrintCurrentFunctionGraph(gof.Optimizer):
@@ -197,8 +198,17 @@ optdb.register('merge1', gof.MergeOptimizer(),
                0, 'fast_run', 'fast_compile', 'merge')
 
 # rearranges elemwise expressions
-optdb.register('canonicalize', gof.EquilibriumDB(),
+optdb.register('canonicalize', gof.EquilibriumDB(ignore_newtrees=False),
                1, 'fast_run', 'fast_compile')
+# Register in the canonizer Equilibrium as a clean up opt the merge opt.
+# Without this, as the equilibrium have ignore_newtrees=False, we
+# won't merge all nodes if it is set as a global optimizer with
+# final_opt=True.
+
+# We need a new instance of MergeOptimizer to don't have its name
+# changed by other usage of it.
+optdb['canonicalize'].register("merge", gof.opt.MergeOptimizer(), 'fast_run',
+                               "fast_compile", cleanup=True)
 
 optdb.register('merge1.2', gof.MergeOptimizer(),
                1.2, 'fast_run', 'fast_compile', 'merge')
@@ -228,9 +238,6 @@ optdb.register('specialize_device', gof.EquilibriumDB(),
 # especially constant merge
 optdb.register('merge2', gof.MergeOptimizer(),
                49, 'fast_run', 'merge')
-
-optdb.register('add_no_output_from_inplace', AddNoOutputFromInplace(),
-               49.4)
 
 optdb.register('add_destroy_handler', AddDestroyHandler(),
                49.5, 'fast_run', 'inplace')
@@ -321,19 +328,44 @@ class Mode(object):
                                               self.provided_optimizer)
         # N.B. opt might be a Query instance, not sure what else it might be...
         #     string? Optimizer? OptDB? who knows???
-        return self.__class__(linker=link, optimizer=opt.including(*tags))
+        return self.clone(optimizer=opt.including(*tags))
+
+    def register(self, *optimizations):
+        """Adds new optimization instances to a mode.
+
+        This method adds new optimization instances to a compilation mode. It
+        works like the `including()` method but takes as inputs optimization
+        instances to add instead of tags.
+
+        Parameters
+        ----------
+        optimizations :
+            Every element of `optimizations` is a tuple containing an
+            optimization instance and a floating point value indicating the
+            position at which to insert the optimization in the mode.
+
+        Returns
+        -------
+        Mode
+            Copy of the current Mode which includes the provided
+            optimizations.
+        """
+
+        link, opt = self.get_linker_optimizer(self.provided_linker,
+                                              self.provided_optimizer)
+        return self.clone(optimizer=opt.register(*optimizations))
 
     def excluding(self, *tags):
         link, opt = self.get_linker_optimizer(self.provided_linker,
                                               self.provided_optimizer)
-        return self.__class__(linker=link, optimizer=opt.excluding(*tags))
+        return self.clone(optimizer=opt.excluding(*tags))
 
     def requiring(self, *tags):
         link, opt = self.get_linker_optimizer(self.provided_linker,
                                               self.provided_optimizer)
-        return self.__class__(linker=link, optimizer=opt.requiring(*tags))
+        return self.clone(optimizer=opt.requiring(*tags))
 
-    def clone(self, link_kwargs=None, **kwargs):
+    def clone(self, link_kwargs=None, optimizer="", **kwargs):
         """
         Create a new instance of this Mode.
 
@@ -342,10 +374,14 @@ class Mode(object):
         arguments.
 
         """
+        if link_kwargs is None:
+            link_kwargs = {}
         new_linker = self.linker.clone(**link_kwargs)
-        new_optimizer = self.provided_optimizer
+
+        if optimizer == "":
+            optimizer = self.provided_optimizer
         new_mode = type(self)(linker=new_linker,
-                              optimizer=new_optimizer)
+                              optimizer=optimizer)
         return new_mode
 
 

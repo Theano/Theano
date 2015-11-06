@@ -158,9 +158,9 @@ class Conv3D(theano.Op):
         vidDur = V_shape[3]
         filterDur = W_shape[3]
 
-        output_height = T.floor((vidHeight - filterHeight) // dr) + 1
-        output_width = T.floor((vidWidth - filterWidth) // dc) + 1
-        output_dur = T.floor((vidDur - filterDur) // dt) + 1
+        output_height = ((vidHeight - filterHeight) // dr) + 1
+        output_width = ((vidWidth - filterWidth) // dc) + 1
+        output_dur = ((vidDur - filterDur) // dt) + 1
 
         rval = (batch_size, output_height, output_width, output_dur, output_channels)
 
