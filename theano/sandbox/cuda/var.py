@@ -43,6 +43,13 @@ class _operators(tensor.basic._tensor_py_operators):
 
 class CudaNdarrayVariable(_operators, Variable):
     pass
+
+    # override default
+    def __str_test_value__(self):
+        try:
+            return repr(numpy.array(theano.gof.op.get_test_value(self)))
+        except:
+            raise
 CudaNdarrayType.Variable = CudaNdarrayVariable
 
 

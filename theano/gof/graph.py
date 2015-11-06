@@ -391,38 +391,44 @@ class Variable(Node):
         self.name = name
         self.auto_name = 'auto_' + str(next(self.__count__))
 
-    def __str__(self):
-        """
-        WRITEME
+    def __str__(self, firstPass=True):
+        """Return a str representation of the Variable
 
+        Return a printable name or description of the Variable. If
+        config.print_test_value is True it will also print the test_value if
+        any.
         """
-        if config.print_test_value_by_default:
-            if self.__get_test_value__() is not None:
-                return '\n'.join([self.__str_name__(),
-                                 self.__get_test_value__()])
-        return self.__str_name__()
+        to_print = []
+        if config.print_test_value and firstPass:
+            try:
+                to_print.append(self.__str_test_value__())
+            except AttributeError:
+                return self.__str__(False)
 
-    def __str_name__(self):
-        """
-        WRITEME
-
-        """
         if self.name is not None:
-            return self.name
+            return '\n'.join([self.name] + to_print)
         if self.owner is not None:
             op = self.owner.op
             if self.index == op.default_output:
-                return str(self.owner.op) + ".out"
+                return '\n'.join(
+                    [str(self.owner.op) + ".out"] + to_print)
             else:
-                return str(self.owner.op) + "." + str(self.index)
+                return '\n'.join(
+                    [str(self.owner.op) + "." + str(self.index)] + to_print)
         else:
-            return "<%s>" % str(self.type)
+            return '\n'.join(["<%s>" % str(self.type)] + to_print)
 
-    def __get_test_value__(self):
+    def __str_test_value__(self):
+        """Return a repr of the test value
+
+        Return a printable representation of the test value. It can be
+        overridden by classes with non printable test_value to provide a
+        suitable representation of the test_value.
+        """
         try:
-            return repr(self.tag.test_value)
-        except AttributeError:
-            return None
+            return repr(theano.gof.op.get_test_value(self))
+        except:
+            raise
 
     def __repr__(self):
         return str(self)

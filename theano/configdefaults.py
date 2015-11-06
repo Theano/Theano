@@ -645,7 +645,7 @@ AddConfigVar(
 
 
 AddConfigVar(
-    'print_test_value_by_default',
+    'print_test_value',
     ("If 'True', Theano will override the '__str__' method of its "
      "variables to also print the tag.test_value when this is available."),
     BoolParam(False),
