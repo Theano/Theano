@@ -391,47 +391,44 @@ class Variable(Node):
         self.name = name
         self.auto_name = 'auto_' + str(next(self.__count__))
 
-    def __str__(self, firstPass=True):
-        """Return a str representation of the Variable
+    def __str__(self):
+        """Return a str representation of the Variable.
 
-        Return a printable name or description of the Variable. If
-        config.print_test_value is True it will also print the test_value if
-        any.
         """
-        to_print = []
-        if config.print_test_value and firstPass:
-            try:
-                to_print.append(self.__str_test_value__())
-            except AttributeError:
-                return self.__str__(False)
-
         if self.name is not None:
-            return '\n'.join([self.name] + to_print)
+            return self.name
         if self.owner is not None:
             op = self.owner.op
             if self.index == op.default_output:
-                return '\n'.join(
-                    [str(self.owner.op) + ".out"] + to_print)
+                return str(self.owner.op) + ".out"
             else:
-                return '\n'.join(
-                    [str(self.owner.op) + "." + str(self.index)] + to_print)
+                return str(self.owner.op) + "." + str(self.index)
         else:
-            return '\n'.join(["<%s>" % str(self.type)] + to_print)
+            return "<%s>" % str(self.type)
 
-    def __str_test_value__(self):
-        """Return a repr of the test value
+    def __repr_test_value__(self):
+        """Return a repr of the test value.
 
         Return a printable representation of the test value. It can be
         overridden by classes with non printable test_value to provide a
         suitable representation of the test_value.
         """
-        try:
-            return repr(theano.gof.op.get_test_value(self))
-        except:
-            raise
+        return repr(theano.gof.op.get_test_value(self))
 
-    def __repr__(self):
-        return str(self)
+    def __repr__(self, firstPass=True):
+        """Return a repr of the Variable.
+
+        Return a printable name or description of the Variable. If
+        config.print_test_value is True it will also print the test_value if
+        any.
+        """
+        to_print = [str(self)]
+        if config.print_test_value and firstPass:
+            try:
+                to_print.append(self.__repr_test_value__())
+            except AttributeError:
+                pass
+        return '\n'.join(to_print)
 
     def clone(self):
         """

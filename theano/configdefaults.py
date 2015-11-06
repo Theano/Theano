@@ -646,8 +646,10 @@ AddConfigVar(
 
 AddConfigVar(
     'print_test_value',
-    ("If 'True', Theano will override the '__str__' method of its "
-     "variables to also print the tag.test_value when this is available."),
+    ("If 'True', the __eval__ of a Theano variable will return its test_value "
+     "when this is available. This has the practical conseguence that, e.g., "
+     "in debugging `my_var` will print the same as `my_var.tag.test_value` "
+     "when a test value is defined."),
     BoolParam(False),
     in_c_key=False)
 

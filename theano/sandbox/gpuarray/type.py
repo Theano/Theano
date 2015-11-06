@@ -420,6 +420,9 @@ class _operators(_tensor_py_operators):
 
 
 class GpuArrayVariable(_operators, Variable):
+    # override the default
+    def __repr_test_value__(self):
+        return repr(numpy.array(theano.gof.op.get_test_value(self)))
     pass
 
 
