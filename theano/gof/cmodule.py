@@ -276,7 +276,8 @@ static struct PyModuleDef moduledef = {{
         rval = sio.getvalue()
         # Make sure the hash of the code hasn't changed
         h = hash_from_code(rval)
-        assert self.code_hash is None or self.code_hash == h
+        # For c_callable the hash change
+        # assert self.code_hash is None or self.code_hash == h
         self.code_hash = h
         rval = re.sub(self.hash_placeholder, self.code_hash, rval)
         # Finalize the Module, so no support code or function
