@@ -1715,6 +1715,7 @@ cudnnTensorDescriptor_t input%(name)s;
 cudnnTensorDescriptor_t input_grad%(name)s;
 cudnnTensorDescriptor_t output%(name)s;
 cudnnTensorDescriptor_t output_grad%(name)s;
+cudnnPoolingDescriptor_t pool%(name)s;
 """ % dict(name=name)
 
     def c_init_code_struct(self, node, name, sub):
@@ -1724,6 +1725,7 @@ input%(name)s = NULL;
 input_grad%(name)s = NULL;
 output%(name)s = NULL;
 output_grad%(name)s = NULL;
+pool%(name)s = NULL;
 if ((err%(name)s = cudnnCreateTensorDescriptor(&input%(name)s)) != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_MemoryError,
                "GpuDnnPoolGrad: could not allocate tensor4d descriptor "
@@ -1748,6 +1750,12 @@ if ((err%(name)s = cudnnCreateTensorDescriptor(&output_grad%(name)s)) != CUDNN_S
                "(output_grad): %%s", cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
+if ((err%(name)s = cudnnCreatePoolingDescriptor(&pool%(name)s)) != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_MemoryError,
+               "GpuDnnPoolGrad: could not allocate pooling descriptor "
+               "(pool): %%s", cudnnGetErrorString(err%(name)s));
+  %(fail)s
+}
 """ % dict(name=name, fail=sub['fail'])
 
     def c_cleanup_code_struct(self, node, name):
@@ -1756,6 +1764,7 @@ if (input%(name)s != NULL) { cudnnDestroyTensorDescriptor(input%(name)s); }
 if (input_grad%(name)s != NULL) { cudnnDestroyTensorDescriptor(input_grad%(name)s); }
 if (output%(name)s != NULL) { cudnnDestroyTensorDescriptor(output%(name)s); }
 if (output_grad%(name)s != NULL) { cudnnDestroyTensorDescriptor(output_grad%(name)s); }
+if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
 """ % dict(name=name)
 
     def c_code(self, node, name, inputs, outputs, sub):
@@ -1800,9 +1809,33 @@ if (CudaNdarray_prep_output(&%(output_grad)s,
   %(fail)s
 }
 
+
+int win[%(nd)d];
+int pad[%(nd)d];
+int str[%(nd)d];
+for(int i = 0; i < %(nd)d; i++) {
+   win[i] = *((npy_intp*)PyArray_GETPTR1(%(ws)s, i));
+}
+for(int i = 0; i < %(nd)d; i++) {
+   pad[i] = *((npy_intp*)PyArray_GETPTR1(%(pad)s, i));
+}
+for(int i = 0; i < %(nd)d; i++) {
+   str[i] = *((npy_intp*)PyArray_GETPTR1(%(str)s, i));
+}
+err = cudnnSetPoolingNdDescriptor(
+    pool%(name)s, %(mode_flag)s, %(nd)d,
+    win, pad, str);
+
+if (err != CUDNN_STATUS_SUCCESS) {
+PyErr_Format(PyExc_RuntimeError, "could not set op descriptor: %%s",
+                cudnnGetErrorString(err));
+%(fail)s
+}
+
 // Get the pooling_mode to be used. Variable 'tmp' is used because we don't
 // care about the other outputs of the function
 cudnnPoolingMode_t pooling_mode;
+
 int tmp;
 err%(name)s = cudnnGetPoolingNdDescriptor(%(desc)s, 0, &pooling_mode, &tmp,
                                           &tmp, &tmp, &tmp);
@@ -1843,8 +1876,8 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
            output_desc="output" + name,
            output_grad_desc="output_grad" + name)
 
-    def c_code_cache_version(self):
-        return (7, version())
+    #def c_code_cache_version(self):
+        #return (7, version())
 
     def infer_shape(self, node, shape):
         return [shape[0]]
