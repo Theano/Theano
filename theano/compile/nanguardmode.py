@@ -91,12 +91,15 @@ def contains_nan(arr, node=None):
         return False
     elif arr.size == 0:
         return False
+    elif isinstance(node.op, theano.tensor.basic.AllocEmpty):
+        return False
     elif cuda.cuda_available and isinstance(arr, cuda.CudaNdarray):
         if (hasattr(theano.sandbox, 'rng_mrg') and
             isinstance(
                 node.op,
                 # It store ints in float container
-                theano.sandbox.rng_mrg.GPU_mrg_uniform)):
+                (theano.sandbox.rng_mrg.GPU_mrg_uniform,
+                 theano.sandbox.cuda.basic_ops.GpuAllocEmpty)):
             return False
         else:
             compile_gpu_func(True, False, False)
@@ -135,12 +138,15 @@ def contains_inf(arr, node=None):
         return False
     elif arr.size == 0:
         return False
+    elif isinstance(node.op, theano.tensor.basic.AllocEmpty):
+        return False
     elif cuda.cuda_available and isinstance(arr, cuda.CudaNdarray):
         if (hasattr(theano.sandbox, 'rng_mrg') and
             isinstance(
                 node.op,
                 # It store ints in float container
-                theano.sandbox.rng_mrg.GPU_mrg_uniform)):
+                (theano.sandbox.rng_mrg.GPU_mrg_uniform,
+                 theano.sandbox.cuda.basic_ops.GpuAllocEmpty)):
             return False
         else:
             compile_gpu_func(False, True, False)
