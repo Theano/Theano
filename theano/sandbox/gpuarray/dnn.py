@@ -541,12 +541,6 @@ class GpuDnnConvGradW(DnnBase):
             algo = config.dnn.conv.algo_bwd_filter
         self.algo = algo
 
-        # The small-workspace implementation is only available from CuDNN V4
-        # onward.
-        if version() < 4000 and self.algo == 'small':
-            raise RuntimeError("CuDNN's small workspace GradW convolution "
-                               "requires CuDNN v4 or more recent.")
-
         assert self.algo in ['none', 'deterministic', 'fft', 'small',
                              'guess_once', 'guess_on_shape_change',
                              'time_once', 'time_on_shape_change']
