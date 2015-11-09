@@ -10,7 +10,7 @@ from theano.tensor.type_other import SliceType
 from theano.typed_list.type import TypedListType
 from theano.typed_list.basic import (GetItem, Insert,
                                      Append, Extend, Remove, Reverse,
-                                     Index, Count, Length, make_list, MakeList)
+                                     Index, Count, Length, make_list)
 from theano import sparse
 from theano.tests import unittest_tools as utt
 # TODO, handle the case where scipy isn't installed.
@@ -23,8 +23,8 @@ except ImportError:
 
 # took from tensors/tests/test_basic.py
 def rand_ranged_matrix(minimum, maximum, shape):
-    return numpy.asarray(numpy.random.rand(*shape) * (maximum - minimum)
-                         + minimum, dtype=theano.config.floatX)
+    return numpy.asarray(numpy.random.rand(*shape) * (maximum - minimum) +
+                         minimum, dtype=theano.config.floatX)
 
 
 # took from sparse/tests/test_basic.py
@@ -82,7 +82,6 @@ class test_get_item(unittest.TestCase):
                             z)
 
         x = rand_ranged_matrix(-1000, 1000, [100, 101])
-        y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
         self.assertTrue(numpy.array_equal(f([x],
                                             numpy.asarray(0, dtype='int64')),
@@ -555,7 +554,7 @@ class test_length(unittest.TestCase):
         self.assertTrue(f([x, x]) == 2)
 
 
-class T_MakeList(unittest.TestCase):
+class TestMakeList(unittest.TestCase):
 
     def test_wrong_shape(self):
         a = T.vector()
@@ -563,22 +562,22 @@ class T_MakeList(unittest.TestCase):
 
         self.assertRaises(TypeError, make_list, (a, b))
 
-    def correct_answer(self):
+    def test_correct_answer(self):
         a = T.matrix()
         b = T.matrix()
 
         x = T.tensor3()
         y = T.tensor3()
 
-        A = numpy.random.rand(5)
-        B = numpy.random.rand(7)
-        X = numpy.random.rand(5, 6)
-        Y = numpy.random.rand(1, 9)
+        A = numpy.cast[theano.config.floatX](numpy.random.rand(5, 3))
+        B = numpy.cast[theano.config.floatX](numpy.random.rand(7, 2))
+        X = numpy.cast[theano.config.floatX](numpy.random.rand(5, 6, 1))
+        Y = numpy.cast[theano.config.floatX](numpy.random.rand(1, 9, 3))
 
+        make_list((3., 4.))
         c = make_list((a, b))
         z = make_list((x, y))
-        fc = function([a, b], c)
-        fz = function([x, y], z)
-
-        self.assertTrue(f([A, B]) == [A, B])
-        self.assertTrue(f([X, Y]) == [X, Y])
+        fc = theano.function([a, b], c)
+        fz = theano.function([x, y], z)
+        self.assertTrue(fc(A, B) == [A, B])
+        self.assertTrue(fz(X, Y) == [X, Y])
