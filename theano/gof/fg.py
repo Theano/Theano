@@ -299,10 +299,11 @@ class FunctionGraph(utils.object2):
 
         Returns
         -------
-        True if r is still in the fgraph and need to be pruned
-        later. This can happen only when prune is False. A second call
-        to this method with an empty list for clients_to_remove and
-        prune=True will remove r.
+        bool
+            True if r is still in the fgraph and need to be pruned
+            later. This can happen only when prune is False. A second
+            call to this method with an empty list for
+            clients_to_remove and prune=True will remove r.
 
         """
         for entry in clients_to_remove:
