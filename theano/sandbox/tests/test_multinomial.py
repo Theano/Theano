@@ -81,7 +81,7 @@ def test_n_samples_compatibility():
     pickle.dump([X, samples], open("multinomial_test_graph.pkl", "w"))
     """
     folder = os.path.dirname(os.path.abspath(__file__))
-    X, samples = pickle.load(open(os.path.join(folder, "multinomial_test_graph.pkl")))
+    X, samples = pickle.load(open(os.path.join(folder, "multinomial_test_graph.pkl"), 'rb'))
     f = theano.function([X], samples)
     res = f(numpy.random.randn(20,10))
     assert numpy.all(res.sum(axis=1) == 1)
