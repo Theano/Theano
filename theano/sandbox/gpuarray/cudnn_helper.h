@@ -118,10 +118,11 @@ static inline cudnnStatus_t cudnnSetConvolutionNdDescriptor_v3(
                                         int filterStrideA[]
                                         int upscaleA[],
                                         cudnnConvolutionMode_t mode,
-                                        cudnn_dataType_t dataType)
+                                        cudnn_dataType_t dataType) {
 
   return cudnnSetConvolutionNdDescriptor(convDesc, arrayLength, padA,
                                          filterStrideA, upscaleA, mode);
+}
 
 #endif
 
