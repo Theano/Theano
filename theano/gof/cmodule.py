@@ -245,7 +245,7 @@ static struct PyModuleDef moduledef = {{
             print(code, file=f)
         f.close()
 
-    def code(self, executable=False):
+    def code(self, executable=False, c_callable=False):
         sio = StringIO()
         for inc in self.includes:
             if not inc:
@@ -276,8 +276,11 @@ static struct PyModuleDef moduledef = {{
         rval = sio.getvalue()
         # Make sure the hash of the code hasn't changed
         h = hash_from_code(rval)
-        # For c_callable the hash change
-        # assert self.code_hash is None or self.code_hash == h
+ 
+        # Do not test hash code for c_callable funcion
+        # It change during compilation
+        if not c_callable:
+            assert self.code_hash is None or self.code_hash == h
         self.code_hash = h
         rval = re.sub(self.hash_placeholder, self.code_hash, rval)
         # Finalize the Module, so no support code or function

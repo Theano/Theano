@@ -1511,7 +1511,7 @@ class CLinker(link.Linker):
 
     def get_src_code(self):
         mod = self.get_dynamic_module()
-        return mod.code()
+        return mod.code(c_callable=self.c_callable)
 
     def compile_cmodule(self, location=None):
         """
@@ -1532,8 +1532,8 @@ class CLinker(link.Linker):
             # yet computed, but we need to add the include to compute the hash.
             filename_h = os.path.join(location, mod.hash_placeholder + '.h')
             mod.add_include(filename_h)
-            
-        src_code = mod.code()
+
+        src_code = mod.code(c_callable=self.c_callable)
         if self.c_callable:
             filename_h = os.path.join(location, '%s.h' % mod.code_hash)
             mod.gen_header(filename_h)
@@ -1543,7 +1543,7 @@ class CLinker(link.Linker):
             try:
                 module = c_compiler.compile_str(
                     module_name=mod.code_hash,
-                    src_code=mod.code(),
+                    src_code=mod.code(c_callable=self.c_callable),
                     location=location,
                     include_dirs=self.header_dirs(),
                     lib_dirs=self.lib_dirs(),
@@ -1603,7 +1603,8 @@ class CLinker(link.Linker):
                                 out_filename='exec')[2]))
 
                     # compile the dynamic python module.
-                    src_code = mod_exec.code(executable=True)
+                    src_code = mod_exec.code(executable=True,
+                                             c_callable=self.c_callable)
                     c_compiler.compile_str(
                         module_name=mod_exec.code_hash,
                         src_code=src_code,
