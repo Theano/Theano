@@ -97,14 +97,14 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
                     dnn_available.msg = (
                         "CuDNN v1 detected. This version is no longer "
                         "supported by Theano. Update your CuDNN installation "
-                        "to a more recent version")
+                        "to v3 or more recent")
                     raise RuntimeError(dnn_available.msg)
-                if v == (20, 20):
+                if v[0] < 3000:
                     dnn_available.avail = False
                     dnn_available.msg = (
-                        "You have installed a release candidate of CuDNN v2."
-                        " This isn't supported anymore."
-                        " Update to CuDNN v2 final version.")
+                        "The detected CuDNN installation is older than CuDNN"
+                        " v3. This isn't supported by Theano anymore. Update"
+                        " your CuDNN installation to v3 or more recent.")
                     raise RuntimeError(dnn_available.msg)
                 if 3000 <= v[0] < 3007:
                     # 3007 is the final release of cudnn v3
