@@ -569,10 +569,10 @@ class TestMakeList(unittest.TestCase):
         x = T.tensor3()
         y = T.tensor3()
 
-        A = theano.config.floatX(numpy.random.rand(5, 3))
-        B = theano.config.floatX(numpy.random.rand(7, 2))
-        X = theano.config.floatX(numpy.random.rand(5, 6, 1))
-        Y = theano.config.floatX(numpy.random.rand(1, 9, 3))
+        A = numpy.cast[theano.config.floatX](numpy.random.rand(5, 3))
+        B = numpy.cast[theano.config.floatX](numpy.random.rand(7, 2))
+        X = numpy.cast[theano.config.floatX](numpy.random.rand(5, 6, 1))
+        Y = numpy.cast[theano.config.floatX](numpy.random.rand(1, 9, 3))
 
         make_list((3., 4.))
         c = make_list((a, b))
