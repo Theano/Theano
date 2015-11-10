@@ -5720,7 +5720,7 @@ def test_local_useless_reshape():
     mode = theano.compile.get_default_mode().including(
             'local_useless_reshape')
     i = T.iscalar('i')
-    m=theano.tensor.mgrid[0:i,]
+    m = theano.tensor.mgrid[0:i,]
     f = theano.function([i], m, mode=mode)
     topo = f.maker.fgraph.toposort()
     assert not any(isinstance(n.op, tensor.basic.Reshape) for n in topo)
