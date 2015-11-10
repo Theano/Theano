@@ -212,7 +212,7 @@ class TestConv2d(unittest.TestCase):
                                provide_shape=provide_shape, border_mode=b,
                                filter_flip=flip)
 
-    def test_cormm_conv(self):
+    def test_gpucormm_conv(self):
         if not dnn_available():
             raise SkipTest(cuda.dnn.dnn_available.msg)
 
@@ -240,11 +240,39 @@ class TestConv2d(unittest.TestCase):
                                provide_shape=provide_shape, border_mode=b,
                                filter_flip=flip)
 
-    def test_cpu_conv(self):
+    def test_cormm_conv(self):
         if not dnn_available():
             raise SkipTest(cuda.dnn.dnn_available.msg)
 
         mode = mode_without_gpu
+        for (i, f), s, b, flip, provide_shape in itertools.product(
+                zip(self.inputs_shapes, self.filters_shapes),
+                self.subsamples,
+                self.border_modes,
+                self.filter_flip,
+                [False, True]):
+
+            o = self.get_output_shape(i, f, s, b)
+            self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
+                         verify_grad=True, mode=mode, device='cpu',
+                         provide_shape=provide_shape, border_mode=b,
+                         filter_flip=flip)
+            self.run_gradweight(inputs_shape=i, filters_shape=f,
+                                output_shape=o, subsample=s,
+                                verify_grad=True, mode=mode, device='cpu',
+                                provide_shape=provide_shape, border_mode=b,
+                                filter_flip=flip)
+            self.run_gradinput(inputs_shape=i, filters_shape=f,
+                               output_shape=o, subsample=s,
+                               verify_grad=True, mode=mode, device='cpu',
+                               provide_shape=provide_shape, border_mode=b,
+                               filter_flip=flip)
+
+    def test_cpu_conv(self):
+        if not dnn_available():
+            raise SkipTest(cuda.dnn.dnn_available.msg)
+
+        mode = mode_without_gpu.excluding('conv_gemm')
         for (i, f), s, b, flip, provide_shape in itertools.product(
                 zip(self.inputs_shapes, self.filters_shapes),
                 self.subsamples,
