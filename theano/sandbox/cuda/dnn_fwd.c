@@ -176,12 +176,14 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
     {
 
       // Extract the properties of the convolution descriptor
-      int pad_h, pad_w, stride_v, stride_h, upscale_x, upscale_y;
+      int nd;
+      int pad[2];
+      int stride[2];
+      int upscale[2];
       cudnnConvolutionMode_t mode;
-      err = cudnnGetConvolution2dDescriptor(desc, &pad_h, &pad_w,
-                                            &stride_v, &stride_h,
-                                            &upscale_x, &upscale_y,
-                                            &mode);
+      cudnnDataType_t data_type;
+      err = cudnnGetConvolutionNdDescriptor_v3(desc, 2, &nd, pad, stride,
+                                               upscale, &mode, &data_type);
 
       if (err != CUDNN_STATUS_SUCCESS) {
         PyErr_Format(PyExc_RuntimeError,
@@ -202,7 +204,7 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
       // convolution. Fall back to a safe implementation otherwise.
       if (chosen_algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT)
       {
-        if (stride_v != 1 || stride_h != 1 || input_h > 1024 ||
+        if (stride[0] != 1 || stride[1] != 1 || input_h > 1024 ||
             input_w > 1024 || (filter_h == 1 && filter_w == 1))
         {
           chosen_algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
@@ -211,7 +213,7 @@ APPLY_SPECIFIC(conv_fwd)(CudaNdarray *input, CudaNdarray *kerns,
       else
       {
         // chosen_algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING
-        if (stride_v != 1 || stride_h != 1)
+        if (stride[0] != 1 || stride[1] != 1)
         {
           chosen_algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
         }

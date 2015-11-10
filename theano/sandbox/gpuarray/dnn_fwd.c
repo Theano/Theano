@@ -149,12 +149,14 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
        algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING) && PyGpuArray_NDIM(input) == 4) {
 
     // Extract the properties of the convolution descriptor
-    int pad_h, pad_w, stride_v, stride_h, upscale_x, upscale_y;
+    int nd;
+    int pad[2];
+    int stride[2];
+    int upscale[2];
     cudnnConvolutionMode_t mode;
-    err = cudnnGetConvolution2dDescriptor(desc, &pad_h, &pad_w,
-                                          &stride_v, &stride_h,
-                                          &upscale_x, &upscale_y,
-                                          &mode);
+    cudnnDataType_t data_type;
+    err = cudnnGetConvolutionNdDescriptor_v3(desc, 2, &nd, pad, stride,
+                                             upscale, &mode, &data_type);
     if (err != CUDNN_STATUS_SUCCESS) {
       PyErr_Format(PyExc_RuntimeError,
                    "error getting convolution properties: %s",
@@ -165,7 +167,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
 
     if (algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT)
     {
-      if (stride_v != 1 || stride_h != 1 ||
+      if (stride[0] != 1 || stride[1] != 1 ||
           PyGpuArray_DIM(input, 2) > 1024 || PyGpuArray_DIM(input, 3) > 1024 ||
           (PyGpuArray_DIM(kerns, 2) == 1 && PyGpuArray_DIM(kerns, 3) == 1))
       {
@@ -175,7 +177,7 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
     else
     {
       // algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING
-      if (stride_v != 1 || stride_h != 1)
+      if (stride[0] != 1 || stride[1] != 1)
       {
         algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
       }
