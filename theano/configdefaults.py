@@ -219,20 +219,55 @@ AddConfigVar('gpuarray.sync',
              BoolParam(False),
              in_c_key=True)
 
+def safe_no_dnn_workmem(workmem):
+    """
+    Make sure the user is not attempting to use dnn.conv.workmem`.
+    """
+    if workmem:
+        raise RuntimeError(
+            'The option `dnn.conv.workmem` has been removed and should '
+            'not be used anymore. Please use the option '
+            '`dnn.conv.algo_fwd` instead.')
+    return True
+
 AddConfigVar('dnn.conv.workmem',
              "This flag is deprecated; use dnn.conv.algo_fwd.",
-             EnumStr(''),
+             ConfigParam('', allow_override=False, filter=safe_no_dnn_workmem),
              in_c_key=False)
+
+def safe_no_dnn_workmem_bwd(workmem):
+    """
+    Make sure the user is not attempting to use dnn.conv.workmem_bwd`.
+    """
+    if workmem:
+        raise RuntimeError(
+            'The option `dnn.conv.workmem_bwd` has been removed and '
+            'should not be used anymore. Please use the options '
+            '`dnn.conv.algo_bwd_filter` and `dnn.conv.algo_bwd_data` instead.')
+    return True
 
 AddConfigVar('dnn.conv.workmem_bwd',
              "This flag is deprecated; use dnn.conv.algo_bwd.",
-             EnumStr(''),
+             ConfigParam('', allow_override=False,
+                         filter=safe_no_dnn_workmem_bwd),
              in_c_key=False)
+
+def safe_no_dnn_algo_bwd(algo):
+    """
+    Make sure the user is not attempting to use dnn.conv.algo_bwd`.
+    """
+    if algo:
+        raise RuntimeError(
+            'The option `dnn.conv.algo_bwd` has been removed and '
+            'should not be used anymore. Please use the options '
+            '`dnn.conv.algo_bwd_filter` and `dnn.conv.algo_bwd_data` instead.')
+    return True
 
 AddConfigVar('dnn.conv.algo_bwd',
              "This flag is deprecated; use dnn.conv.algo_bwd_data and "
              "dnn.conv.algo_bwd_filter.",
-             EnumStr(''),
+             ConfigParam('', allow_override=False,
+                         filter=safe_no_dnn_algo_bwd),
              in_c_key=False)
 
 AddConfigVar('dnn.conv.algo_fwd',
