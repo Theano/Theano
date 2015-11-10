@@ -3713,7 +3713,9 @@ def local_useless_reshape(node):
 
     """
     if isinstance(node.op, T.Reshape):
-        if node.inputs[0].ndim == 1 and node.outputs[0].ndim == 1:
+        if (node.inputs[0].ndim == 1 and node.outputs[0].ndim == 1 and
+                node.inputs[0].broadcastable == \
+                node.outputs[0].broadcastable):
             return [node.inputs[0]]
 
 
