@@ -266,7 +266,7 @@ class GpuDnnConvDesc(GpuOp):
         return False
 
     def __init__(self, border_mode, subsample=(1, 1), conv_mode='conv',
-                 precision=None):
+                 precision="float32"):
         if isinstance(border_mode, int):
             border_mode = (border_mode,) * len(subsample)
         if isinstance(border_mode, tuple):
@@ -284,10 +284,6 @@ class GpuDnnConvDesc(GpuOp):
         assert conv_mode in ('conv', 'cross')
         self.conv_mode = conv_mode
 
-        if precision is None:
-            precision = theano.config.dnn.conv.precision
-        if precision == 'floatX':
-            precision = theano.config.floatX
         assert precision in ['float16', 'float32', 'float64']
         self.precision = precision
 
@@ -1140,12 +1136,18 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         Convolution implementation to use. Some of its  values may require certain
         versions of CuDNN to be installed. Default is the value of
         :attr:`config.dnn.conv.algo_fwd`.
-    precision : {'float16', 'float32', 'float64', 'floatX'}
+    precision : {'as_input', 'float16', 'float32', 'float64'}
         Description of the dtype in which the computation of the convolution
         should be done. Default is the value of
         :attr:`config.dnn.conv.precision`.
 
     """
+
+    # Establish dtype in which to perform the computation of the convolution
+    if precision is None:
+        precision = theano.config.dnn.conv.precision
+    if precision == 'as_input':
+        precision = theano.scalar.upcast(img.dtype, kerns.dtype)
 
     # Check if deprecated param 'workmem' is used
     if workmem is not None:
@@ -1240,8 +1242,9 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
         for the conv3d. Default is the value of
         :attr:`config.dnn.conv.algo_fwd`.
     :param precision : dtype in which the computation of the convolution
-        should be done. Possible values are 'float16', 'float32', 'float64' and
-        'floatX'. Default is the value of :attr:`config.dnn.conv.precision`.
+        should be done. Possible values are 'as_input', 'float16', 'float32'
+        and 'float64'. Default is the value of
+        :attr:`config.dnn.conv.precision`.
 
     :warning: The cuDNN library only works with GPU that have a compute
       capability of 3.0 or higer.  This means that older GPU will not
@@ -1249,6 +1252,12 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
     :warning: dnn_conv3d only works with cuDNN library 3.0
 
     """
+
+    # Establish dtype in which to perform the computation of the convolution
+    if precision is None:
+        precision = theano.config.dnn.conv.precision
+    if precision == 'as_input':
+        precision = theano.scalar.upcast(img.dtype, kerns.dtype)
 
     # Check if deprecated param 'workmem' is used
     if workmem is not None:
