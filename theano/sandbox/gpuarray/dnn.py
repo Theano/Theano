@@ -256,7 +256,7 @@ class GpuDnnConvDesc(COp):
         return False
 
     def __init__(self, border_mode, subsample=(1, 1), conv_mode='conv',
-                 precision=None):
+                 precision="float32"):
         COp.__init__(self, ["conv_desc.c"], "APPLY_SPECIFIC(conv_desc)")
 
         if isinstance(border_mode, int):
@@ -276,10 +276,6 @@ class GpuDnnConvDesc(COp):
         assert conv_mode in ('conv', 'cross')
         self.conv_mode = conv_mode
 
-        if precision is None:
-            precision = theano.config.dnn.conv.precision
-        if precision == 'floatX':
-            precision = theano.config.floatX
         assert precision in ['float16', 'float32', 'float64']
         self.precision = precision
 
@@ -799,7 +795,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         Convolution implementation to use. Some of its values may
         require certain versions of CuDNN to be installed. Default is
         the value of :attr:`config.dnn.conv.algo_fwd`.
-    precision : {'float16', 'float32', 'float64', 'floatX'}
+    precision : {'as_input', 'float16', 'float32', 'float64'}
         Description of the dtype in which the computation of the convolution
         should be done. Default is the value of
         :attr:`config.dnn.conv.precision`.
@@ -809,6 +805,13 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         work with this Op.
 
     """
+
+    # Establish dtype in which to perform the computation of the convolution
+    if precision is None:
+        precision = theano.config.dnn.conv.precision
+    if precision == 'as_input':
+        precision = theano.scalar.upcast(img.dtype, kerns.dtype)
+
     if workmem is not None:
         if algo is not None:
             raise ValueError("You can't use both algo and workmem")
