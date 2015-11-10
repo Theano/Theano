@@ -4589,7 +4589,7 @@ class T_local_erfc(unittest.TestCase):
         print(t1 - t0, t2 - t1)
 
 
-class test_local_remove_switch_const_cond(unittest.TestCase):
+class test_local_useless_switch(unittest.TestCase):
     def setUp(self):
         self.mode = mode_opt.excluding('constant_folding')
 
@@ -4716,6 +4716,19 @@ class test_local_remove_switch_const_cond(unittest.TestCase):
         vx = numpy.array([4, 5, 6], dtype='int32')
         vy = numpy.array([[7, 8, 9], [10, 11, 12]], dtype='int64')
         assert numpy.all(f(vx, vy) == vy)
+
+    def test_broadcast3(self):
+        # test switch(matrix, same_vector, same_vector)
+
+        x = theano.tensor.matrix('x', dtype='int32')
+        y = theano.tensor.vector('y', dtype='int64')
+        z = theano.tensor.switch(x, y, y)
+        f = theano.function([x, y], z, mode=self.mode)
+        vx = numpy.array([[0, 1], [1, 0]], dtype='int32')
+        vy = numpy.array([7, 8], dtype='int64')
+        utt.assert_allclose(f(vx, vy), numpy.where(vx, vy, vy))
+        assert len([node.op for node in f.maker.fgraph.toposort() if
+                    isinstance(node.op, theano.tensor.Elemwise)]) == 0
 
 
 class T_local_sum_prod(unittest.TestCase):

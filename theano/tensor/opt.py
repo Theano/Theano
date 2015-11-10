@@ -3471,7 +3471,9 @@ def local_useless_switch(node):
             return [out]
         # if left is right -> left
         if node.inputs[1] is node.inputs[2]:
-            return [node.inputs[1]]
+            if cond.type == node.inputs[1].type:
+                return [node.inputs[1]]
+            return [T.fill(cond, node.inputs[1])]
 
         # This case happens with scan.
         # Elemwise{switch}(le(shape_i{id}(X), 0), 0, shape_i{id}(X)) -> shape_i{id}(X)
