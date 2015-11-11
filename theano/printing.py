@@ -865,8 +865,8 @@ def pydotprint(fct, outfile=None,
     # it, we must copy it.
     outputs = list(outputs)
     if isinstance(fct, Function):
-        for i, fg_ii in reversed(zip(fct.maker.expanded_inputs,
-                                     fct.maker.fgraph.inputs)):
+        function_inputs = zip(fct.maker.expanded_inputs, fct.maker.fgraph.inputs)
+        for i, fg_ii in reversed(list(function_inputs)):
             if i.update is not None:
                 k = outputs.pop()
                 # Use the fgaph.inputs as it isn't the same as maker.inputs
