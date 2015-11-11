@@ -2705,7 +2705,7 @@ class T_Scan(unittest.TestCase):
 
                 lb = (inp * t).sum() + beta.sum()
 
-                Mi = tensor.sum(lb) * h[i,D];
+                Mi = tensor.sum(lb) * h[i,D]
                 return Mi
 
             (M), M_updts = theano.scan( predict_mean_i ,
