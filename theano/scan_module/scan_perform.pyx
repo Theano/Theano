@@ -62,7 +62,7 @@ import copy
 
 
 def get_version():
-    return 0.289
+    return 0.290
 
 @cython.boundscheck(False)
 def perform(
@@ -392,7 +392,16 @@ def perform(
                 # this is a new vm-provided function
                 # the C VM needs this because the exception manipulation
                 # done by raise_with_op is not implemented in C.
-                gof.link.raise_with_op(fn.nodes[fn.position_of_error])
+                if hasattr(fn, 'thunks'):
+                    # For the CVM
+                    gof.link.raise_with_op(fn.nodes[fn.position_of_error],
+                                           fn.thunks[fn.position_of_error])
+                else:
+                    # For the c linker
+                    # We don't have access from python to all the
+                    # temps values So for now, we just don't print
+                    # the extra shapes/strides info
+                    gof.vm.raise_with_op(fn.nodes[fn.position_of_error])
             else:
                 # old-style linkers raise their own exceptions
                 raise
