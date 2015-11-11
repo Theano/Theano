@@ -432,7 +432,7 @@ def constant(x, name=None, ndim=None, dtype=None):
         return ret
     sig = ret.signature()
     if (sig not in constant_cache and ret.data.size == 1 and
-        ret.data <= 10 and ret.data >= -10 and
+        (-10) <= ret.data <= 10 and
         (ret.dtype in int_dtypes or ret.dtype in uint_dtypes or
          (ret.dtype in float_dtypes and int(ret.data) == ret.data))):
         constant_cache[sig] = ret

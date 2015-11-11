@@ -117,7 +117,7 @@ def sparse_random_inputs(format, shape, n=1, out_dtype=None, p=0.5, gap=None,
     if out_dtype is None:
         out_dtype = theano.config.floatX
 
-    assert 0 <= p and p <= 1
+    assert 0 <= p <= 1
     assert len(shape) == 2
     assert out_dtype in sparse.all_dtypes
     assert gap is None or isinstance(gap, (tuple, list))

@@ -105,7 +105,7 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
                         " This isn't supported anymore."
                         " Update to CuDNN v2 final version.")
                     raise RuntimeError(dnn_available.msg)
-                if v[0] >= 3000 and v[0] < 3007:
+                if 3000 <= v[0] < 3007:
                     # 3007 is the final release of cudnn v3
                     dnn_available.avail = False
                     dnn_available.msg = (
