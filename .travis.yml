@@ -31,6 +31,13 @@ install:
   - pip install . --no-deps
 
 # command to run tests
+env:
+
+# uncomment it after doc test is done!
+#  - PART="sandbox sparse scalar tensor/nnet scan_module"
+#  - PART="tensor/tests/test_basic.py tensor/signal compile gof misc tests compat"
+  - PART="-e test_basic.py tensor/tests"
+
 matrix:
   fast_finish: true
   include:
@@ -38,11 +45,8 @@ matrix:
       env: PART="." THEANO_FLAGS="mode=FAST_COMPILE"
     - python: "2.6"
       env: PART="." THEANO_FLAGS="mode=FAST_COMPILE,floatX=float32"
-
-env:
-  - PART="sandbox sparse scalar tensor/nnet scan_module"
-  - PART="tensor/tests/test_basic.py tensor/signal compile gof misc tests compat"
-  - PART="-e test_basic.py tensor/tests"
+    - python: 2.6
+      env: PART="." DOC=1
 
 script:
   - export THEANO_FLAGS=$THEANO_FLAGS,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,gcc.cxxflags=-pipe
@@ -56,7 +60,9 @@ script:
   # Move to the path of the installed version
   - cd $(python -c 'import theano; import os; print(os.path.split(theano.__file__)[0])')
   - echo "$PART"
-  - theano-nose -v $PART
+  - cd -; cd Theano
+  - if [ ${DOC} = "1" ]; then python doc/scripts/docgen.py --nopdf; else theano-nose -v $PART; fi
+  - if [ ${DOC} = "1" ]; then python doc/scripts/docgen.py --test; else theano-nose -v $PART; fi
 #  - theano-cache list
 
 #after_script:
