@@ -72,15 +72,11 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
 
 def _dnn_check_version():
     v = version()
-    if v < 3000:
+    if v < 3007:
         return False, (
             "You have an old release of CuDNN (or a release candidate) "
             "that isn't supported.  Please update to at least v3 final "
             "version.")
-    if 3000 <= v < 3007:
-        return False, (
-            "You have installed a release candidate of CuDNN v3. This "
-            "isn't supported. Please update to v3 final version.")
 
     return True, None
 
