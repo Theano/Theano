@@ -647,11 +647,11 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
         if obj in done:
             id_str = done[obj]
         elif ids == "id":
-            id_str = "[@%s]" % str(id(r))
+            id_str = "[#%s]" % str(id(r))
         elif ids == "int":
-            id_str = "[@%s]" % str(len(done))
+            id_str = "[#%s]" % str(len(done))
         elif ids == "CHAR":
-            id_str = "[@%s]" % char_from_number(len(done))
+            id_str = "[#%s]" % char_from_number(len(done))
         elif ids == "":
             id_str = ""
         done[obj] = id_str

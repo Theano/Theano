@@ -392,8 +392,8 @@ can be achieved as follows:
    :options: +NORMALIZE_WHITESPACE
 
    *** NaN detected ***
-   Elemwise{Composite{(log(i0) * i0)}} [@A] ''
-    |x [@B]
+   Elemwise{Composite{(log(i0) * i0)}} [#A] ''
+    |x [#B]
    Inputs : [array(0.0)]
    Outputs: [array(nan)]
 
