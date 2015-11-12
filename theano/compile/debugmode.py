@@ -1939,10 +1939,7 @@ class _Linker(gof.link.LocalLinker):
                                 if r not in fgraph.inputs]
 
         # Precompute some things for storage pre-allocation
-        try:
-            def_val = int(config.unittests.rseed)
-        except ValueError:
-            def_val = 666
+        def_val = int(config.unittests.rseed)
 
         #####
         # This is the function that runs when you evaluate the graph
