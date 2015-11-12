@@ -3,35 +3,11 @@
 
 #include <cudnn.h>
 
-// If needed, define element of the V3 interface in terms of elements of
-// previous versions
-#if defined(CUDNN_VERSION) && CUDNN_VERSION < 3000
-
-// Starting in V3, the cudnnSetConvolutionNdDescriptor has an additional
-// parameter that determines the data type in which to do the computation.
-// For versions older than V3, we need to define an alias for that function
-// that will take the additional parameter as input but ignore it.
-static inline cudnnStatus_t cudnnSetConvolutionNdDescriptor_v3(
-                                        cudnnConvolutionDescriptor_t convDesc,
-                                        int arrayLength,
-                                        int padA[],
-                                        int filterStrideA[]
-                                        int upscaleA[],
-                                        cudnnConvolutionMode_t mode,
-                                        cudnn_dataType_t dataType) {
-
-  return cudnnSetConvolutionNdDescriptor(convDesc, arrayLength, padA,
-                                         filterStrideA, upscaleA, mode);
-}
-
-#endif
-
 // If needed, define element of the V4 interface in terms of elements of
 // previous versions
 #if defined(CUDNN_VERSION) && CUDNN_VERSION < 4000
 
 #define CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING 5
-#define CUDNN_CONVOLUTION_BWD_FILTER_ALGO_3 3
 #define CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING 3
 
 #endif

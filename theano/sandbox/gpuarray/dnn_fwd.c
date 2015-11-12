@@ -136,7 +136,6 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
        algo == CUDNN_CONVOLUTION_FWD_ALGO_GEMM))
     algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
 
-#if CUDNN_VERSION > 3000
   // The FFT implementation does not support strides, 1x1 filters or inputs
   // with a spatial dimension larger than 1024. The tiled-FFT implementation
   // does not support strides.
@@ -183,24 +182,6 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
       }
     }
   }
-#endif
-
-#if CUDNN_VERSION < 3000
-  /* cuDNN before v3 does not support kernels larger than input even
-   * if appropriate padding is selected. */
-  for (unsigned int i = 2; i < PyGpuArray_NDIM(input); i++) {
-    if (PyGpuArray_DIM(kerns, i) > PyGpuArray_DIM(input, i)) {
-      PyErr_SetString(PyExc_RuntimeError, "the current version "
-                      "of CuDNN does not support kernels larger than the "
-                      "inputs in any spatial dimension, even if the inputs "
-                      "are padded such that the padded inputs are larger "
-                      "than the kernels. Update your installation of CuDNN "
-                      "to V3 or more recent to solve the issue.");
-      cuda_exit(c->ctx);
-      return 1;
-    }
-  }
-#endif
 
   {
     size_t worksize;

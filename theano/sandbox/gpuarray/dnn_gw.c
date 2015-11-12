@@ -130,7 +130,6 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
 
 #endif
 
-#if CUDNN_VERSION > 3000
   // The FFT implementation does not support strides, 1x1 filters or inputs
   // with a spatial dimension larger than 1024.
   // If the chosen implementation is FFT, validate that it can
@@ -163,7 +162,6 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
       algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
     }
   }
-#endif
 
   size_t worksize;
   gpudata *workspace;

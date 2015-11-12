@@ -128,7 +128,6 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
 
 #endif
 
-#if CUDNN_VERSION > 3000
   // The FFT implementation does not support strides, 1x1 filters or inputs
   // with a spatial dimension larger than 1024. The tiled-FFT implementation
   // does not support strides.
@@ -175,7 +174,6 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
       }
     }
   }
-#endif
 
   size_t worksize;
   gpudata *workspace;
