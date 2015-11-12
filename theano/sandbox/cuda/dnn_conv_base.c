@@ -15,11 +15,8 @@ int APPLY_SPECIFIC(previous_kerns_shape)[5];
 int APPLY_SPECIFIC(previous_output_shape)[5];
 bool APPLY_SPECIFIC(previous_algo_set);
 cudnnConvolutionFwdAlgo_t APPLY_SPECIFIC(previous_algo);
-
-#if defined(CUDNN_VERSION) && CUDNN_VERSION >= 3000
 cudnnConvolutionBwdFilterAlgo_t APPLY_SPECIFIC(previous_bwd_f_algo);
 cudnnConvolutionBwdDataAlgo_t APPLY_SPECIFIC(previous_bwd_d_algo);
-#endif
 
 #section init_code_struct
 
@@ -55,10 +52,8 @@ APPLY_SPECIFIC(previous_algo_set) = false;
 // Select default implementations for the case where the convolution
 // implementations should be selected based on the size of the data.
 APPLY_SPECIFIC(previous_algo) = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
-#if defined(CUDNN_VERSION) && CUDNN_VERSION >= 3000
 APPLY_SPECIFIC(previous_bwd_f_algo) = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
 APPLY_SPECIFIC(previous_bwd_d_algo) = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
-#endif
 
 #section cleanup_code_struct
 
