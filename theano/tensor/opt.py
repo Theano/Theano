@@ -3706,6 +3706,22 @@ register_canonicalize(local_reshape_chain(T.Reshape),
 @register_canonicalize
 @register_stabilize
 @gof.local_optimizer([T.Reshape])
+def local_useless_reshape(node):
+    """
+    Remove Reshape when both the input and the output have a
+    single dimension.
+
+    """
+    if isinstance(node.op, T.Reshape):
+        if (node.inputs[0].ndim == 1 and node.outputs[0].ndim == 1 and
+                node.inputs[0].broadcastable ==
+                node.outputs[0].broadcastable):
+            return [node.inputs[0]]
+
+
+@register_canonicalize
+@register_stabilize
+@gof.local_optimizer([T.Reshape])
 def local_reshape_lift(node):
     """
     Reshape(UnaryElemwise(x)) -> UnaryElemwise(Reshape(x))
