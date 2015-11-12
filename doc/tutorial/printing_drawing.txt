@@ -67,39 +67,39 @@ Debug Print
 The pre-compilation graph:
 
 >>> theano.printing.debugprint(prediction) # doctest: +NORMALIZE_WHITESPACE
-Elemwise{gt,no_inplace} [@A] ''
- |Elemwise{true_div,no_inplace} [@B] ''
- | |DimShuffle{x} [@C] ''
- | | |TensorConstant{1} [@D]
- | |Elemwise{add,no_inplace} [@E] ''
- |   |DimShuffle{x} [@F] ''
- |   | |TensorConstant{1} [@D]
- |   |Elemwise{exp,no_inplace} [@G] ''
- |     |Elemwise{sub,no_inplace} [@H] ''
- |       |Elemwise{neg,no_inplace} [@I] ''
- |       | |dot [@J] ''
- |       |   |x [@K]
- |       |   |w [@L]
- |       |DimShuffle{x} [@M] ''
- |         |b [@N]
- |DimShuffle{x} [@O] ''
-   |TensorConstant{0.5} [@P]
+Elemwise{gt,no_inplace} [id A] ''
+ |Elemwise{true_div,no_inplace} [id B] ''
+ | |DimShuffle{x} [id C] ''
+ | | |TensorConstant{1} [id D]
+ | |Elemwise{add,no_inplace} [id E] ''
+ |   |DimShuffle{x} [id F] ''
+ |   | |TensorConstant{1} [id D]
+ |   |Elemwise{exp,no_inplace} [id G] ''
+ |     |Elemwise{sub,no_inplace} [id H] ''
+ |       |Elemwise{neg,no_inplace} [id I] ''
+ |       | |dot [id J] ''
+ |       |   |x [id K]
+ |       |   |w [id L]
+ |       |DimShuffle{x} [id M] ''
+ |         |b [id N]
+ |DimShuffle{x} [id O] ''
+   |TensorConstant{0.5} [id P]
 
 The post-compilation graph:
 
 >>> theano.printing.debugprint(predict)  # doctest: +NORMALIZE_WHITESPACE
-Elemwise{Composite{GT(scalar_sigmoid((-((-i0) - i1))), i2)}} [@A] ''   4
- |CGemv{inplace} [@B] ''   3
- | |AllocEmpty{dtype='float64'} [@C] ''   2
- | | |Shape_i{0} [@D] ''   1
- | |   |x [@E]
- | |TensorConstant{1.0} [@F]
- | |x [@E]
- | |w [@G]
- | |TensorConstant{0.0} [@H]
- |InplaceDimShuffle{x} [@I] ''   0
- | |b [@J]
- |TensorConstant{(1,) of 0.5} [@K]
+Elemwise{Composite{GT(scalar_sigmoid((-((-i0) - i1))), i2)}} [id A] ''   4
+ |CGemv{inplace} [id B] ''   3
+ | |AllocEmpty{dtype='float64'} [id C] ''   2
+ | | |Shape_i{0} [id D] ''   1
+ | |   |x [id E]
+ | |TensorConstant{1.0} [id F]
+ | |x [id E]
+ | |w [id G]
+ | |TensorConstant{0.0} [id H]
+ |InplaceDimShuffle{x} [id I] ''   0
+ | |b [id J]
+ |TensorConstant{(1,) of 0.5} [id K]
 
 
 Picture Printing of Graphs

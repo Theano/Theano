@@ -81,19 +81,19 @@ iteration number or other kinds of information in the name.
 2) The second function to print a graph is :func:`theano.printing.debugprint`
 
 >>> theano.printing.debugprint(f.maker.fgraph.outputs[0])  # doctest: +NORMALIZE_WHITESPACE
-Elemwise{mul,no_inplace} [@A] ''
- |TensorConstant{2.0} [@B]
- |x [@C]
+Elemwise{mul,no_inplace} [id A] ''
+ |TensorConstant{2.0} [id B]
+ |x [id C]
 
 Each line printed represents a Variable in the graph.
-The line ``|x [@C`` means the variable named ``x`` with debugprint identifier
-[@C] is an input of the Elemwise.  If you accidentally have two variables called ``x`` in
+The line ``|x [id C]`` means the variable named ``x`` with debugprint identifier
+[id C] is an input of the Elemwise.  If you accidentally have two variables called ``x`` in
 your graph, their different debugprint identifier will be your clue.
 
-The line ``|TensorConstant{2.0} [@B]`` means that there is a constant 2.0
+The line ``|TensorConstant{2.0} [id B]`` means that there is a constant 2.0
 with this debugprint identifier.
 
-The line ``Elemwise{mul,no_inplace} [@A] ''`` is indented less than
+The line ``Elemwise{mul,no_inplace} [id A] ''`` is indented less than
 the other ones, because it means there is a variable computed by multiplying
 the other (more indented) ones together.
 
@@ -106,25 +106,26 @@ printed?  Look for debugprint identifier using the Find feature of your text
 editor.
 
 >>> theano.printing.debugprint(gy)  # doctest: +NORMALIZE_WHITESPACE
-Elemwise{mul} [@A] ''
- |Elemwise{mul} [@B] ''
- | |Elemwise{second,no_inplace} [@C] ''
- | | |Elemwise{pow,no_inplace} [@D] ''
- | | | |x [@E]
- | | | |TensorConstant{2} [@F]
- | | |TensorConstant{1.0} [@G]
- | |TensorConstant{2} [@F]
- |Elemwise{pow} [@H] ''
-   |x [@E]
-   |Elemwise{sub} [@I] ''
-     |TensorConstant{2} [@F]
-     |DimShuffle{} [@J] ''
-       |TensorConstant{1} [@K]
+Elemwise{mul} [id A] ''
+ |Elemwise{mul} [id B] ''
+ | |Elemwise{second,no_inplace} [id C] ''
+ | | |Elemwise{pow,no_inplace} [id D] ''
+ | | | |x [id E]
+ | | | |TensorConstant{2} [id F]
+ | | |TensorConstant{1.0} [id G]
+ | |TensorConstant{2} [id F]
+ |Elemwise{pow} [id H] ''
+   |x [id E]
+   |Elemwise{sub} [id I] ''
+     |TensorConstant{2} [id F]
+     |DimShuffle{} [id J] ''
+       |TensorConstant{1} [id K]
 
 >>> theano.printing.debugprint(gy, depth=2)  # doctest: +NORMALIZE_WHITESPACE
-Elemwise{mul} [@A] ''   
- |Elemwise{mul} [@B] ''   
- |Elemwise{pow} [@C] ''   
+Elemwise{mul} [id A] ''
+ |Elemwise{mul} [id B] ''
+ |Elemwise{pow} [id C] ''
+
 
 If the depth parameter is provided, it limits the number of levels that are
 shown.
