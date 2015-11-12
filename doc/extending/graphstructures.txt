@@ -400,10 +400,10 @@ such that: ``var.clients[*][0].inputs[index]`` or
 >>> v = theano.tensor.vector()
 >>> f = theano.function([v], (v+1).sum())
 >>> theano.printing.debugprint(f)
-Sum{acc_dtype=float64} [@A] ''   1
- |Elemwise{add,no_inplace} [@B] ''   0
-   |TensorConstant{(1,) of 1.0} [@C]
-   |<TensorType(float64, vector)> [@D]
+Sum{acc_dtype=float64} [id A] ''   1
+ |Elemwise{add,no_inplace} [id B] ''   0
+   |TensorConstant{(1,) of 1.0} [id C]
+   |<TensorType(float64, vector)> [id D]
 >>> # Sorted list of all nodes in the compiled graph.
 >>> topo = f.maker.fgraph.toposort()
 >>> topo[0].outputs[0].clients

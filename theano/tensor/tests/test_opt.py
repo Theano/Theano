@@ -3150,26 +3150,26 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
         theano.printing.debugprint(Z)
         # here is the output for the debug print:
         """
-        Elemwise{add,no_inplace} [@A] ''
-         |for{cpu,scan_fn} [@B] ''
-         | |Subtensor{int64} [@C] ''
-         | | |Shape [@D] ''
-         | | | |Subtensor{int64::} [@E] 'X[0:]'
-         | | |   |X [@F]
-         | | |   |Constant{0} [@G]
-         | | |Constant{0} [@H]
-         | |Subtensor{:int64:} [@I] ''
-         | | |Subtensor{int64::} [@E] 'X[0:]'
-         | | |ScalarFromTensor [@J] ''
-         | |   |Subtensor{int64} [@C] ''
-         | |Subtensor{int64} [@C] ''
-         |Y [@K]
+        Elemwise{add,no_inplace} [id A] ''
+         |for{cpu,scan_fn} [id B] ''
+         | |Subtensor{int64} [id C] ''
+         | | |Shape [id D] ''
+         | | | |Subtensor{int64::} [id E] 'X[0:]'
+         | | |   |X [id F]
+         | | |   |Constant{0} [id G]
+         | | |Constant{0} [id H]
+         | |Subtensor{:int64:} [id I] ''
+         | | |Subtensor{int64::} [id E] 'X[0:]'
+         | | |ScalarFromTensor [id J] ''
+         | |   |Subtensor{int64} [id C] ''
+         | |Subtensor{int64} [id C] ''
+         |Y [id K]
 
         Inner graphs of the scan ops:
 
-        for{cpu,scan_fn} [@B] ''
-         >Sum{acc_dtype=float64} [@L] ''
-         > |X[t] [@M] -> [@I]
+        for{cpu,scan_fn} [id B] ''
+         >Sum{acc_dtype=float64} [id L] ''
+         > |X[t] [id M] -> [id I]
         """
         
         mode = theano.compile.get_default_mode().excluding('fusion')
@@ -3177,30 +3177,30 @@ class Test_local_useless_elemwise_comparison(unittest.TestCase):
         theano.printing.debugprint(f, print_type=True)
         # here is the output for the debug print:
         """
-        Elemwise{Add}[(0, 0)] [@A] <TensorType(float64, vector)> ''   7
-         |for{cpu,scan_fn} [@B] <TensorType(float64, vector)> ''   6
-         | |Shape_i{0} [@C] <TensorType(int64, scalar)> ''   0
-         | | |X [@D] <TensorType(float64, matrix)>
-         | |Subtensor{int64:int64:int8} [@E] <TensorType(float64, matrix)> ''   5
-         | | |X [@D] <TensorType(float64, matrix)>
-         | | |ScalarFromTensor [@F] <int64> ''   4
-         | | | |Elemwise{switch,no_inplace} [@G] <TensorType(int64, scalar)> ''   3
-         | | |   |Elemwise{le,no_inplace} [@H] <TensorType(int8, scalar)> ''   2
-         | | |   | |Shape_i{0} [@C] <TensorType(int64, scalar)> ''   0
-         | | |   | |TensorConstant{0} [@I] <TensorType(int8, scalar)>
-         | | |   |TensorConstant{0} [@I] <TensorType(int8, scalar)>
-         | | |   |TensorConstant{0} [@J] <TensorType(int64, scalar)>
-         | | |ScalarFromTensor [@K] <int64> ''   1
-         | | | |Shape_i{0} [@C] <TensorType(int64, scalar)> ''   0
-         | | |Constant{1} [@L] <int8>
-         | |Shape_i{0} [@C] <TensorType(int64, scalar)> ''   0
-         |Y [@M] <TensorType(float64, vector)>
+        Elemwise{Add}[(0, 0)] [id A] <TensorType(float64, vector)> ''   7
+         |for{cpu,scan_fn} [id B] <TensorType(float64, vector)> ''   6
+         | |Shape_i{0} [id C] <TensorType(int64, scalar)> ''   0
+         | | |X [id D] <TensorType(float64, matrix)>
+         | |Subtensor{int64:int64:int8} [id E] <TensorType(float64, matrix)> ''   5
+         | | |X [id D] <TensorType(float64, matrix)>
+         | | |ScalarFromTensor [id F] <int64> ''   4
+         | | | |Elemwise{switch,no_inplace} [id G] <TensorType(int64, scalar)> ''   3
+         | | |   |Elemwise{le,no_inplace} [id H] <TensorType(int8, scalar)> ''   2
+         | | |   | |Shape_i{0} [id C] <TensorType(int64, scalar)> ''   0
+         | | |   | |TensorConstant{0} [id I] <TensorType(int8, scalar)>
+         | | |   |TensorConstant{0} [id I] <TensorType(int8, scalar)>
+         | | |   |TensorConstant{0} [id J] <TensorType(int64, scalar)>
+         | | |ScalarFromTensor [id K] <int64> ''   1
+         | | | |Shape_i{0} [id C] <TensorType(int64, scalar)> ''   0
+         | | |Constant{1} [id L] <int8>
+         | |Shape_i{0} [id C] <TensorType(int64, scalar)> ''   0
+         |Y [id M] <TensorType(float64, vector)>
 
         Inner graphs of the scan ops:
 
-        for{cpu,scan_fn} [@B] <TensorType(float64, vector)> ''
-         >Sum{acc_dtype=float64} [@N] <TensorType(float64, scalar)> ''
-         > |X[t] [@O] <TensorType(float64, vector)> -> [@E]
+        for{cpu,scan_fn} [id B] <TensorType(float64, vector)> ''
+         >Sum{acc_dtype=float64} [id N] <TensorType(float64, scalar)> ''
+         > |X[t] [id O] <TensorType(float64, vector)> -> [id E]
         """
 
     def assert_eqs_const(self, f, val):
