@@ -29,7 +29,7 @@ from theano.sandbox.cuda import basic_ops
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.scalar.basic_scipy import erfinv
 
-from theano.sandbox.blocksparse import sparse_block_dot
+from theano.tensor.nnet.blocksparse import sparse_block_dot
 from theano.sandbox.cuda.blocksparse import GpuSparseBlockGemv, GpuSparseBlockOuter
 
 

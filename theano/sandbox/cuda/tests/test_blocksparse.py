@@ -4,7 +4,7 @@ from nose.plugins.skip import SkipTest
 import theano
 from theano import tensor
 import theano.tests.unittest_tools as utt
-import theano.sandbox.tests.test_blocksparse
+import theano.tensor.nnet.tests.test_blocksparse
 
 import theano.sandbox.cuda as cuda_ndarray
 from theano.sandbox.cuda.blocksparse import (GpuSparseBlockOuter,
@@ -22,7 +22,7 @@ else:
 
 
 class BlockSparse_Gemv_and_Outer(
-        theano.sandbox.tests.test_blocksparse.BlockSparse_Gemv_and_Outer):
+        theano.tensor.nnet.tests.test_blocksparse.BlockSparse_Gemv_and_Outer):
     def setUp(self):
         utt.seed_rng()
         self.mode = mode_with_gpu.excluding('constant_folding')

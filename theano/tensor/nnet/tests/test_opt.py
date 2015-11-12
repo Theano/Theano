@@ -1,6 +1,6 @@
 import theano
 from theano import tensor
-from theano.sandbox.blocksparse import sparse_block_dot
+from theano.tensor.nnet.blocksparse import sparse_block_dot
 
 
 def test_blocksparse_inplace_gemv_opt():
