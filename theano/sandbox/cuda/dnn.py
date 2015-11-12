@@ -1124,7 +1124,8 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         :attr:`config.dnn.conv.algo_fwd`.
     precision : {'as_input', 'float16', 'float32', 'float64'}
         Description of the dtype in which the computation of the convolution
-        should be done. Default is the value of
+        should be done. Possible values are 'as_input', 'float16', 'float32'
+        and 'float64'. Default is the value of
         :attr:`config.dnn.conv.precision`.
 
     """
