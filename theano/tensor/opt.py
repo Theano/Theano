@@ -1852,7 +1852,6 @@ def local_subtensor_make_vector(node):
                 except IndexError:
                     raise NotScalarConstantError("Bad user graph!")
 
-                # Copy over stack trace from previous output to new output
                 return ret
             except NotScalarConstantError:
                 pass
@@ -1998,12 +1997,13 @@ def local_alloc_unary(node):
             x = a.owner.inputs[0]
             shp = a.owner.inputs[1:]
             v = node.op(x)
+            # T.alloc does not preserve the stacktrace of v,
+            # so we need to copy it over from x.
             copy_stack_trace(node.outputs[0], v)
             ret = T.alloc(T.cast(v, node.outputs[0].dtype), *shp)
 
-            # Is it really necessary to copy over stack trace here?
-            # after all, T.alloc and T.cast should preserve the stack trace from x,
-            # but perhaps the trace is lost in "v = node.op(x)"?
+            # T.cast does not preserve the stacktrace of x,
+            # so we need to copy it over to the output.
             copy_stack_trace([node.outputs[0], a], ret)
             return [ret]
 
@@ -2851,7 +2851,6 @@ def local_subtensor_merge(node):
 @register_specialize
 @gof.local_optimizer([Subtensor])
 def local_subtensor_of_alloc(node):
-    #TODO Julian: Document this better!
     """alloc[x:y] -> alloc"""
     if not isinstance(node.op, Subtensor):
         return False
@@ -3044,8 +3043,7 @@ def local_IncSubtensor_serialize(node):
                 tip = mi.owner.op(tip, *mi.owner.inputs[1:])
                 # Copy over stacktrace from outputs of the original 
                 # "movable" operation to the new operation. 
-                # Julian: Do we want to also include the stacktace of the output (node.outputs[0])?
-                copy_stack_trace(mi.owner.outputs, tip)
+                copy_stack_trace(node.outputs + mi.owner.outputs, tip)
                 
             return [tip]
 
@@ -3077,9 +3075,8 @@ def local_inplace_setsubtensor(node):
             destroyhandler_tolerate_aliased=dta)
         new_node = new_op(*node.inputs)
         # Copy stacktrace from original outputs to new outputs.
-        # This should be sensible, because the new operation is the 
-        # same as the old one, but now with different attributes?
-        # Julian: Pascal, is this correct?
+        # This is sensible, because the new operation is the 
+        # same as the old one, but now with different attributes.
         copy_stack_trace(node.outputs, new_node)
         return [new_node]
     return False
@@ -3101,9 +3098,8 @@ def local_inplace_incsubtensor1(node):
         new_node = new_op(*node.inputs)
 
         # Copy stacktrace from original outputs to new outputs.
-        # This should be sensible, because the new operation is the 
-        # same as the old one, but now with different attributes?
-        # Julian: same as above, is this correct?
+        # This is sensible, because the new operation is the 
+        # same as the old one, but now with different attributes.
         copy_stack_trace(node.outputs, new_node)
         return [new_node]
     return False
@@ -3525,14 +3521,19 @@ def local_join_empty(node):
         if ret.dtype != o.dtype:
             # Join can upcast some inputs
             return
+
+        # Copy over stacktrace from previous output (after join op)
+        # to new output, because an error in the new op must be caused
+        # by an error in the old join op.
+        copy_stack_trace(node.outputs, ret)
+
         if ret.type != o.type:
             assert ret.dtype == o.dtype
             assert ret.ndim == o.ndim
             ret = T.patternbroadcast(ret, node.outputs[0].broadcastable)
 
-        # Copy over stacktrace from previous output (after join op)
-        # to new output, because an error in the new op must be caused
-        # by an error in the old join op.
+        # Copy over stacktrace from previous output 
+        # (after patternbroadcast op) for same reasons as before.
         copy_stack_trace(node.outputs, ret)
             
         return [ret]
@@ -3609,21 +3610,28 @@ def local_useless_switch(node):
                 return False
             if correct_out.dtype != node.outputs[0].dtype:
                 out = T.cast(correct_out, node.outputs[0].dtype)
-            if correct_out.type.broadcastable != node.outputs[0].type.broadcastable:
-                # We need to copy data to the new dimensions during execution
-                out = T.alloc(correct_out, *[node.outputs[0].shape[i] for i
-                                     in xrange(correct_out.ndim)])
             else:
                 out = correct_out
+
+            if out.type.broadcastable != node.outputs[0].type.broadcastable:
+                # We need to copy data to the new dimensions during execution
+                out = T.alloc(out, *[node.outputs[0].shape[i] for i
+                                     in xrange(out.ndim)])
+            else:
+                out = out
             
             # Copy over stacktrace from selected output to new output
-            copy_stack_trace(node.outputs+correct_out, out)
+            copy_stack_trace(node.outputs + correct_out, out)
             return [out]
         # if left is right -> left
         if node.inputs[1] is node.inputs[2]:
+            # Note: No need to copy over stacktrace, because the input node
+            # already has its own stacktrace
             if cond.type == node.inputs[1].type:
                 return [node.inputs[1]]
+
             ret = T.fill(cond, node.inputs[1])
+
             # Copy over stacktrace from switch output and correct branch
             copy_stack_trace(node.outputs+node.inputs[1], ret)
             return [ret]

@@ -5750,20 +5750,6 @@ def test_local_join_empty():
     assert all([not isinstance(n.op, Join) or len(n.inputs) == 4
                 for n in e if isinstance(n.op, Join)])
     assert f.maker.fgraph.outputs[0].dtype == config.floatX
-    
-    # Julian: we can enable the following test, once we 
-    # remove default optimizations.
-    # When we set optimizer=None, no optimizations should be applied,
-    # but that's not the case now...
-    
-    # test that optimizations keep stack trace
-    #mode = theano.compile.mode.Mode(optimizer=None).including('canonicalize_db').including("local_join_empty")
-    #empty_mat = numpy.asarray([[]], dtype=config.floatX)
-    #m = tensor.matrix('m')
-    #s = join(1, empty_mat, m, m, m)
-    #f = function([m], s, mode=mode)
-    #assert hasattr(f.outputs[0].variable.tag, 'trace')
-    #assert len(f.outputs[0].variable.tag.trace) > 0
 
 
 def test_local_join_make_vector():
