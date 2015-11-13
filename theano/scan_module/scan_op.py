@@ -767,19 +767,28 @@ class Scan(PureOp):
                   self.n_sit_sot +
                   self.n_nit_sot)
 
+        # Go through the mitmots. Whenever a mitmot has a tap both as an
+        # input and an output, wrap the input such that the corresponding
+        # output variable becomes an update to be performed on it, possibly
+        # inplace at the end of the functions's execution.
+
+        # self.inputs = seqs, mitmots inputs, mitsots inputs, sitsots inputs, nitsots inputs
+
+        # All seqs just as-is.
+        wrapped_inputs = [In(x, borrow=False)
+                          for x in self.inputs[:self.n_seqs]]
+        new_outputs = [x for x in self.outputs]
+        preallocated_mitmot_outs = []
+        output_idxs_inplace = set()
+        new_mit_mot_out_slices = copy.deepcopy(self.mit_mot_out_slices)
+
+        input_idx = self.n_seqs
+        input_idx_mitmot_start = self.n_seqs
+        input_idx_mitsot_start = input_idx_mitmot_start + sum(len(tap) for tap in self.tap_array[:self.n_mit_mot])
+
+        # Now the mitmots.
         if theano.config.scan.allow_output_prealloc:
-
-            # Go through the mitmots. Whenever a mitmot has a tap both as an
-            # input and an output, wrap the input such that the corresponding
-            # output variable becomes an update to be performed on it, possibly
-            # inplace at the end of the functions's execution.
-            wrapped_inputs = [In(x, borrow=False)
-                              for x in self.inputs[:self.n_seqs]]
-            new_outputs = [x for x in self.outputs]
-            preallocated_mitmot_outs = []
-            new_mit_mot_out_slices = copy.deepcopy(self.mit_mot_out_slices)
-
-            input_idx = self.n_seqs
+            input_idx = input_idx_mitmot_start
             for mitmot_idx in range(self.n_mit_mot):
                 for inp_tap in self.tap_array[mitmot_idx]:
                     if inp_tap in self.mit_mot_out_slices[mitmot_idx]:
@@ -807,54 +816,89 @@ class Scan(PureOp):
                         # Wrap the corresponding input as usual. Leave the
                         # output as-is.
                         wrapped_inputs.append(In(self.inputs[input_idx],
-                                                    borrow=False))
+                                                 borrow=False))
+                    input_idx += 1
+            assert input_idx == input_idx_mitsot_start
+
+        else:  # no allow_output_prealloc
+            # Handle the mitmots inputs. No inplace handling here for now.
+            wrapped_inputs += [Param(x, borrow=True) for x in
+                               self.inputs[input_idx:input_idx_mitsot_start]]
+            input_idx = input_idx_mitsot_start
+
+        if theano.config.scan.prefer_inplace:
+            input_idx = input_idx_mitsot_start
+            assert self.n_outs == self.n_mit_mot + self.n_mit_sot + self.n_sit_sot
+            assert len(self.tap_array) == self.n_outs
+            for i, taps in enumerate(self.tap_array[self.n_mit_mot:]):  # mitsots and sitsots
+                for tap in taps:
+                    # We need to get the outer input to get the store_steps (shape[0] of outer input).
+                    outer_input_idx = 1 + self.n_seqs + self.n_mit_mot + i
+                    node_input = node.inputs[outer_input_idx]
+
+                    try:
+                        store_steps = theano.tensor.get_scalar_constant_shape(node_input, 0)
+                        min_store_steps = 1
+                        if theano.config.scan.allow_output_prealloc:
+                            min_store_steps += 1
+                        can_work_inplace = store_steps <= min_store_steps  # TODO correct?
+                    except theano.tensor.NotScalarConstantError as e:
+                        can_work_inplace = False
+                    if can_work_inplace:
+                        wrapped_inputs += [In(self.inputs[input_idx], mutable=True)]
+                        # Figure out the index of the corresponding output
+                        output_idx = sum([len(m) for m in self.mit_mot_out_slices])
+                        output_idx -= len(preallocated_mitmot_outs)
+                        output_idx += input_idx - input_idx_mitsot_start
+                        output_idxs_inplace.add(output_idx)
+                    else:
+                        wrapped_inputs += [In(self.inputs[input_idx], borrow=True)]
+
                     input_idx += 1
 
-            # Wrap the inputs not associated to mitmots and wrap the remaining
-            # outputs
+        # Wrap the remaining inputs (nitsots, shared vars) and wrap the outputs.
+        if theano.config.scan.allow_output_prealloc:
             wrapped_inputs += [In(x, borrow=False) for x in
                                self.inputs[input_idx:]]
             wrapped_outputs = [Out(x, borrow=True) for x in
                                new_outputs[:slices]]
             wrapped_outputs += new_outputs[slices:]
-
-            # Remove now useless outputs from the output list (start from the
-            # end to avoid altering the indices of the other outputs to be
-            # deleted.
-            preallocated_mitmot_outs.sort()
-            for p in preallocated_mitmot_outs[::-1]:
-                del wrapped_outputs[p]
-
-            # Store the list of mitmot output taps that have been altered
-            # so they can be preallocated
-            self.mitmots_preallocated = [i in preallocated_mitmot_outs
-                                         for i in range(self.n_mit_mot_outs)]
-
-            # Add an optimization to the compilation mode to attach a feature
-            # to the function graph just before the inplace optimizations are
-            # applied (inplace optimizations start at position 50 so the
-            # optimization to attach the feature is registered at position 49.9
-            # so that it runs before them). This feature will prevent mitsot,
-            # sitsot and nitsot outputs from being computed inplace (to allow
-            # their preallocation).
-            mitsot_start = self.n_mit_mot_outs - len(preallocated_mitmot_outs)
-            nitsot_end = (mitsot_start + self.n_mit_sot + self.n_sit_sot +
-                          self.n_nit_sot)
-            feature = NoOutputFromInplace(mitsot_start, nitsot_end)
-            opt = AddFeatureOptimizer(feature)
-            compilation_mode = self.mode_instance.register((opt, 49.9))
-
         else:
-            # Output preallocation is not activated. Mark every mitmot output
-            # tap as not being preallocated
-            self.mitmots_preallocated = [False] * self.n_mit_mot_outs
-
             wrapped_inputs = [Param(x, borrow=True) for x in
                               self.inputs]
-            wrapped_outputs = [Out(x, borrow=False) for x in
-                               self.outputs[:slices]]
+            wrapped_outputs = [Out(self.outputs[i], borrow=i in output_idxs_inplace)
+                               for i in range(slices)]
             wrapped_outputs += self.outputs[slices:]
 
+        # Remove now useless outputs from the output list (start from the
+        # end to avoid altering the indices of the other outputs to be
+        # deleted.
+        preallocated_mitmot_outs.sort()
+        for p in preallocated_mitmot_outs[::-1]:
+            del wrapped_outputs[p]
+
+        # Store the list of mitmot output taps that have been altered
+        # so they can be preallocated
+        self.mitmots_preallocated = [i in preallocated_mitmot_outs
+                                     for i in range(self.n_mit_mot_outs)]
+
+        # Add an optimization to the compilation mode to attach a feature
+        # to the function graph just before the inplace optimizations are
+        # applied (inplace optimizations start at position 50 so the
+        # optimization to attach the feature is registered at position 49.9
+        # so that it runs before them). This feature will prevent mitsot,
+        # sitsot and nitsot outputs from being computed inplace (to allow
+        # their preallocation).
+        mitsot_start = self.n_mit_mot_outs - len(preallocated_mitmot_outs)
+        nitsot_end = (mitsot_start + self.n_mit_sot + self.n_sit_sot +
+                      self.n_nit_sot)
+        no_inplace_idx_list = range(mitsot_start, nitsot_end)
+        no_inplace_idx_list = sorted(set(no_inplace_idx_list) - output_idxs_inplace)
+        if no_inplace_idx_list:
+            feature = NoOutputFromInplace(no_inplace_idx_list)
+            opt = AddFeatureOptimizer(feature)
+            compilation_mode = self.mode_instance.register((opt, 49.9))
+        else:
             compilation_mode = self.mode_instance
 
         profile = None
