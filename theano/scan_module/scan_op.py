@@ -1466,14 +1466,14 @@ class Scan(PureOp):
                         # nothing needs to be done. Otherwise, recover the
                         # and store it in `outs` as usual
                         if not same_data:
-                            outs[j][0][k + pos[j]] = \
-                                input_storage[self.n_seqs + inp_idx].storage[0]
+                            _assign_if_needed(outs[j][0], k + pos[j],
+                                              input_storage[self.n_seqs + inp_idx].storage[0])
 
                     else:
                         # This output tap has not been preallocated, recover
                         # its value as usual
-                        outs[j][0][k + pos[j]] = \
-                                output_storage[offset_out].storage[0]
+                        _assign_if_needed(outs[j][0], k + pos[j],
+                                          output_storage[offset_out].storage[0])
                         offset_out += 1
 
                     mitmot_out_idx += 1
@@ -1489,8 +1489,8 @@ class Scan(PureOp):
 
                 # Copy the output value to `outs`, if necessary
                 if store_steps[j] == 1 or self.vector_outs[j]:
-                    outs[j][0][pos[j]] = \
-                            output_storage[offset_out + j].storage[0]
+                    _assign_if_needed(outs[j][0], pos[j],
+                                      output_storage[offset_out + j].storage[0])
                 else:
                     # Check whether the initialization of the output storage
                     # map for this output has been reused.
@@ -1508,8 +1508,8 @@ class Scan(PureOp):
                         output_reused = False
 
                     if not output_reused:
-                        outs[j][0][pos[j]] = \
-                            output_storage[offset_out + j].storage[0]
+                        _assign_if_needed(outs[j][0], pos[j],
+                                          output_storage[offset_out + j].storage[0])
 
             # 5.5 Copy over the values for nit_sot outputs
             begin = end
@@ -1530,10 +1530,10 @@ class Scan(PureOp):
                         outs[j][0] = node.outputs[j].type.value_zeros(shape)
                     elif outs[j][0].shape[0] != store_steps[j]:
                         outs[j][0] = outs[j][0][:store_steps[j]]
-                    outs[j][0][pos[j]] = output_storage[jout].storage[0]
+                    _assign_if_needed(outs[j][0], pos[j], output_storage[jout].storage[0])
                 elif store_steps[j] == 1 or self.vector_outs[j]:
-                    outs[j][0][pos[j]] = \
-                        output_storage[j + offset_out].storage[0]
+                    _assign_if_needed(outs[j][0], pos[j],
+                                      output_storage[j + offset_out].storage[0])
                 else:
                     # Check whether the initialization of the output storage map
                     # for this output has been reused.
@@ -1551,8 +1551,8 @@ class Scan(PureOp):
                         output_reused = False
 
                     if not output_reused:
-                        outs[j][0][pos[j]] = \
-                            output_storage[j + offset_out].storage[0]
+                        _assign_if_needed(outs[j][0], pos[j],
+                                          output_storage[j + offset_out].storage[0])
 
             # 5.6 Copy over the values for outputs corresponding to shared
             # variables
