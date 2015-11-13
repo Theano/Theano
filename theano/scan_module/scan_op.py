@@ -109,6 +109,20 @@ AddConfigVar('scan.prefer_inplace',
              BoolParam(True))
 
 
+def _same_data_and_repr(a, b):
+    if hasattr(a, "gpudata") and hasattr(b, "gpudata"):
+        if a.gpudata != b.gpudata: return False
+    else:
+        if a.__array_interface__["data"] != b.__array_interface__["data"]: return False
+    if a.shape != b.shape: return False
+    if a.strides != b.strides: return False
+    return True
+
+def _assign_if_needed(a, idx, b):
+    if _same_data_and_repr(a[idx], b): return
+    a[idx] = b
+
+
 class Scan(PureOp):
     """
 
