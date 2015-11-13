@@ -1045,7 +1045,7 @@ def insert_deepcopy(fgraph, wrapped_inputs, wrapped_outputs):
     # memory contract
 
     # We don't insert deep copy when the output.borrow is True for all
-    # conserned outputs.
+    # concerned outputs.
 
     assert len(wrapped_inputs) == len(fgraph.inputs)
     assert len(wrapped_outputs) == len(fgraph.outputs)
