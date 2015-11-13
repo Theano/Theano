@@ -23,7 +23,8 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
                   givens=None,
                   no_default_updates=False, accept_inplace=False, name=None,
                   rebuild_strict=True, allow_input_downcast=None, profile=None,
-                  on_unused_input=None):
+                  on_unused_input=None,
+                  extra_tag_to_remove=None):
     """
     This is helpful to make a reproducable case for problem during Theano
     compilation.
@@ -48,6 +49,11 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
     >>> d = cPickle.load(open("func_dump.bin", "rb"))  # doctest: +SKIP
     >>> f = theano.function(**d)  # doctest: +SKIP
 
+    Note:
+      The parameter extra_tag_to_remove, is passed to the StripPickler used.
+      To pickle graph made by Blocks, it must be:
+          ['annotations', 'replacement_of', 'aggregation_scheme', 'rolesc']
+
     """
     assert isinstance(filename, string_types)
     d = dict(inputs=inputs, outputs=outputs, mode=mode, updates=updates,
@@ -58,7 +64,9 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
              on_unused_input=on_unused_input)
     with open(filename, 'wb') as f:
         import theano.misc.pkl_utils
-        pickler = theano.misc.pkl_utils.StripPickler(f, protocol=-1)
+        pickler = theano.misc.pkl_utils.StripPickler(
+            f, protocol=-1,
+            extra_tag_to_remove=extra_tag_to_remove)
         pickler.dump(d)
 
 

@@ -55,22 +55,19 @@ class StripPickler(Pickler):
         strip_pickler.dump(fn_args)
         f.close()
     """
+    def __init__(self, file, protocol=0, extra_tag_to_remove=None):
+        # Can't use super as Pickler isn't a new style class
+        Pickler.__init__(self, file, protocol)
+        self.tag_to_remove = ['trace', 'test_value']
+        if extra_tag_to_remove:
+            self.tag_to_remove.extend(extra_tag_to_remove)
+
     def save(self, obj):
         # Remove the tag.trace attribute from Variable and Apply nodes
         if isinstance(obj, theano.gof.utils.scratchpad):
-            if hasattr(obj, 'trace'):
-                del obj.trace
-            if hasattr(obj, 'test_value'):
-                del obj.test_value
-            # The next 4 items are from Blocks
-            if hasattr(obj, 'annotations'):
-                del obj.annontations
-            if hasattr(obj, 'replacement_of'):
-                del obj.replacement_of
-            if hasattr(obj, 'aggregation_scheme'):
-                del obj.aggregation_scheme
-            if hasattr(obj, 'rolesc'):
-                del obj.rolesc
+            for tag in self.tag_to_remove:
+                if hasattr(obj, tag):
+                    del obj.__dict__[tag]
         # Remove manually-added docstring of Elemwise ops
         elif (isinstance(obj, theano.tensor.Elemwise)):
             if '__doc__' in obj.__dict__:
