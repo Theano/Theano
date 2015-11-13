@@ -973,7 +973,10 @@ class T_subtensor(unittest.TestCase, utt.TestOptimizationMixin):
                         if len(inc_shape) == len(data_shape) and (
                                 len(inc_shapes) == 0 or inc_shape[0] != 1):
                             inc_shape = (n_to_inc,) + inc_shape[1:]
-                        inc_size = numpy.product(inc_shape)
+                        # The param dtype is needed when inc_shape is empty.
+                        # By default, it would return a float and rng.uniform
+                        # with NumPy 1.10 will raise a Deprecation warning.
+                        inc_size = numpy.product(inc_shape, dtype='int')
                         # Corresponding numeric variable.
                         inc_num = rng.uniform(size=inc_size).astype(self.dtype)
                         inc_num = inc_num.reshape(inc_shape)

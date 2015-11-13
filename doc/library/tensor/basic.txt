@@ -8,11 +8,13 @@ Basic Tensor Functionality
 
 .. testsetup::
 
+   import theano
    import theano.tensor as T
    from theano.tensor import scalar, iscalar, TensorType, dmatrix, ivector
    from theano.tensor import set_subtensor, inc_subtensor, batched_dot
    from theano import shared
    import numpy
+   import numpy as np
 
 Theano supports any kind of Python object, but its focus is support for
 symbolic matrix expressions.  When you type,
@@ -656,6 +658,7 @@ dimensions, see :meth:`_tensor_py_operators.dimshuffle`.
         `len(reps)` must be equal and, if specified, `ndim` must be
         equal to both.
 
+.. autofunction:: roll
 
 Creating Tensor
 ===============
@@ -1108,14 +1111,14 @@ Theano indexing with a "mask" (incorrect approach):
    <BLANKLINE>
           [[3, 4, 5],
            [3, 4, 5],
-           [3, 4, 5]]], dtype=int8)
+           [3, 4, 5]]])
 
 Getting a Theano result like NumPy:
 
 .. doctest:: indexing
 
    >>> t[(t > 4).nonzero()].eval()
-   array([5, 6, 7, 8], dtype=int8)
+   array([5, 6, 7, 8])
 
 The gradient of Advanced indexing needs in many cases NumPy
 1.8. It is not released yet as of April 30th, 2013. You can use NumPy
@@ -1742,13 +1745,13 @@ Linear Algebra
            [1, 1, 1],
            [2, 2, 2],
            [3, 3, 3],
-           [4, 4, 4]], dtype=int8)
+           [4, 4, 4]])
     >>> a[1].eval()
     array([[0, 1, 2],
            [0, 1, 2],
            [0, 1, 2],
            [0, 1, 2],
-           [0, 1, 2]], dtype=int8)
+           [0, 1, 2]])
 
 .. function:: ogrid
 
@@ -1766,9 +1769,9 @@ Linear Algebra
            [1],
            [2],
            [3],
-           [4]], dtype=int8)
+           [4]])
     >>> b[1].eval()
-    array([[0, 1, 2]], dtype=int8)
+    array([[0, 1, 2]])
 
       
 Gradient / Differentiation

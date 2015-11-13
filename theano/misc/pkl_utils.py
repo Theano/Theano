@@ -55,12 +55,19 @@ class StripPickler(Pickler):
         strip_pickler.dump(fn_args)
         f.close()
     """
+    def __init__(self, file, protocol=0, extra_tag_to_remove=None):
+        # Can't use super as Pickler isn't a new style class
+        Pickler.__init__(self, file, protocol)
+        self.tag_to_remove = ['trace', 'test_value']
+        if extra_tag_to_remove:
+            self.tag_to_remove.extend(extra_tag_to_remove)
+
     def save(self, obj):
         # Remove the tag.trace attribute from Variable and Apply nodes
         if isinstance(obj, theano.gof.utils.scratchpad):
-            if hasattr(obj, 'trace'):
-                del obj.trace
-
+            for tag in self.tag_to_remove:
+                if hasattr(obj, tag):
+                    del obj.__dict__[tag]
         # Remove manually-added docstring of Elemwise ops
         elif (isinstance(obj, theano.tensor.Elemwise)):
             if '__doc__' in obj.__dict__:
@@ -107,12 +114,38 @@ def load_reduce(self):
 
 if PY3:
     class CompatUnpickler(pickle._Unpickler):
+        """
+        Allow to reload in python 3 some pickled numpy ndarray.
+
+        Examples
+        --------
+
+        with open(fname, 'rb') as fp:
+            if PY3:
+                u = CompatUnpickler(fp, encoding="latin1")
+            else:
+                u = CompatUnpickler(fp)
+            mat = u.load()
+        """
         pass
 
     # Register `load_reduce` defined above in CompatUnpickler
     CompatUnpickler.dispatch[pickle.REDUCE[0]] = load_reduce
 else:
     class CompatUnpickler(pickle.Unpickler):
+        """
+        Allow to reload in python 3 some pickled numpy ndarray.
+
+        Examples
+        --------
+
+        with open(fname, 'rb') as fp:
+            if PY3:
+                u = CompatUnpickler(fp, encoding="latin1")
+            else:
+                u = CompatUnpickler(fp)
+            mat = u.load()
+        """
         pass
 
 

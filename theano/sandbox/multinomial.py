@@ -53,13 +53,13 @@ class MultinomialFromUniform(Op):
         return [T.zeros_like(x) for x in ins]
 
     def c_code_cache_version(self):
-        return (5,)
+        return (6,)
 
     def c_code(self, node, name, ins, outs, sub):
         (pvals, unis) = ins
         (z,) = outs
         if self.odtype == 'auto':
-            t = "PyArray_TYPE((PyArrayObject*) py_%(pvals)s)" % locals()
+            t = "PyArray_TYPE(%(pvals)s)" % locals()
         else:
             t = theano.scalar.Scalar(self.odtype).dtype_specs()[1]
             if t.startswith('theano_complex'):

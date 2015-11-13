@@ -567,3 +567,6 @@ the Ops from Theano and Pylearn2.
     # Where filename is a string to a file that we will write to.
 
 Then send us filename.
+
+
+.. autoclass:: theano.tests.breakpoint.PdbBreakpoint

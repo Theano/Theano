@@ -308,7 +308,18 @@ class ReplaceValidate(History, Validator):
                 msg = str(e)
                 s1 = 'The type of the replacement must be the same'
                 s2 = 'does not belong to this FunctionGraph'
-                if (s1 not in msg and s2 not in msg):
+                s3 = 'maximum recursion depth exceeded'
+                if s3 in msg:
+                    # There is nothing safe we can do to recover from this.
+                    # So don't revert as this raise a different error
+                    # that isn't helpful.
+                    e.args += (
+                        "Please, report this to theano-dev mailing list."
+                        " As a temporary work around, you can raise Python"
+                        " stack limit with:"
+                        " import sys; sys.setrecursionlimit(10000)",)
+                    raise
+                elif (s1 not in msg and s2 not in msg):
                     out = sys.stderr
                     print("<<!! BUG IN FGRAPH.REPLACE OR A LISTENER !!>>",
                           type(e), e, reason, file=out)

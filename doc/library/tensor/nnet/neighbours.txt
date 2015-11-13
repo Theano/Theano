@@ -4,7 +4,7 @@
 :mod:`neighbours` -- Ops for working with images in convolutional nets
 =======================================================================
 
-.. module:: sandbox.neighbours
+.. module:: theano.tensor.nnet.neighbours
    :platform: Unix, Windows
    :synopsis: Ops for working with images in conv nets
 .. moduleauthor:: LISA
