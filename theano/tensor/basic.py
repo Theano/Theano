@@ -4417,7 +4417,7 @@ class Reshape(Op):
                     if ele == -1:
                         requ[i] = missing
             elif crit == 1:  # we reshape to -1
-                requ = [mul(*ishapes[0])] if ishapes[0] else [1]
+                requ = [mul(*ishapes[0])] if ishapes[0] else []
             elif crit > 1:
                 raise ValueError('shape argument to Reshape.perform'
                                  ' must have at most one entry equal to -1')
@@ -4657,9 +4657,9 @@ class Flatten(Op):
         """ % locals()
 
 
-def is_flat(node, outdim=1):
+def is_flat(var, outdim=1):
     """
-    Verifies the dimensionality of the node's variable is equal to
+    Verifies the dimensionality of the var is equal to
     outdim. This method is usually called after flatten method on a
     variable, where the first outdim-1 dimension size(s) of the variable
     is kept intact, and the last dimension size of the variable is made
@@ -4668,19 +4668,19 @@ def is_flat(node, outdim=1):
 
     Parameters
     ----------
-        node : theano.tensor.var.TensorVariable
-            the theano node on which the dimensionality is checked.
+        var : theano.tensor.var.TensorVariable
+            the theano var on which the dimensionality is checked.
 
         outdim : int
-            the expected dimensionality of node.
+            the expected dimensionality of var.
 
     Returns
     -------
     bool
-        the comparison result of node's dim
+        the comparison result of var's dim
         and the expected outdim.
     """
-    return node.ndim == outdim
+    return var.ndim == outdim
 
 
 def flatten(x, outdim=1):
@@ -4718,9 +4718,8 @@ def flatten(x, outdim=1):
     bcast_kept_dims = x.broadcastable[:outdim - 1]
     bcast_new_dim = python_all(x.broadcastable[outdim - 1:])
     broadcastable = bcast_kept_dims + (bcast_new_dim,)
-    for dim, br in enumerate(broadcastable):
-        if br:
-            x_reshaped = theano.tensor.addbroadcast(x_reshaped, dim)
+    x_reshaped = theano.tensor.addbroadcast(
+        x_reshaped, *filter(lambda i: broadcastable[i], range(outdim)))
     return x_reshaped
 
 

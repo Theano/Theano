@@ -5878,19 +5878,27 @@ def test_local_useless_split():
 
 
 def test_local_flatten_lift():
+    """
+    .. note:: The Flatten(Op) is deprecated, and this method
+        should be removed with Flatten.
+    """
     for i in xrange(1, 4):
         x = tensor.tensor4()
         out = tensor.flatten(T.exp(x), i)
         assert out.ndim == i
         mode = compile.mode.get_default_mode()
-        mode = mode.including('local_flatten_lift')
+        mode = mode.including('local_reshape_lift')
         f = theano.function([x], out, mode=mode)
         x_np = numpy.random.rand(5, 4, 3, 2).astype(config.floatX)
         out_np = f(x_np)
         topo = f.maker.fgraph.toposort()
         shape_out_np = tuple(x_np.shape[:i-1])+(numpy.prod(x_np.shape[i-1:]),)
         assert shape_out_np == out_np.shape
-        assert tensor.is_flat(topo[-2].outputs[0], outdim=i)
+
+        reshape_nodes = filter(
+            lambda apply_node: isinstance(apply_node.op, tensor.Reshape), topo)
+        assert (len(reshape_nodes) == 1 and
+            tensor.is_flat(reshape_nodes[0].outputs[0], outdim=i))
         assert isinstance(topo[-1].op, tensor.Elemwise)
 
 
