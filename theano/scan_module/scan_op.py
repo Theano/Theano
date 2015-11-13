@@ -690,7 +690,7 @@ class Scan(PureOp):
                sorted(range(self.n_mit_mot +
                             self.n_mit_sot +
                             self.n_sit_sot))):
-                aux_txt += 'all_inplace,%s,%s}'
+                aux_txt += '{all_inplace,%s,%s}'
             else:
                 aux_txt += '{inplace{'
                 for k in self.destroy_map.keys():
