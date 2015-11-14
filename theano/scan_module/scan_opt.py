@@ -1444,8 +1444,7 @@ class ScanSaveMem(gof.Optimizer):
                         last_sitsot_idx = (node.op.n_mit_mot +
                                            node.op.n_mit_sot +
                                            node.op.n_sit_sot - 1)
-                        preallocable_output = (i >= first_mitsot_idx and
-                                               i <= last_sitsot_idx)
+                        preallocable_output = (first_mitsot_idx <= i <= last_sitsot_idx)
 
                         if (prealloc_outs and preallocable_output):
                             pval = select_max(nw_steps - start + init_l[i],
