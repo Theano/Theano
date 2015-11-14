@@ -91,7 +91,7 @@ def copy_stack_trace(from_var, to_var):
             tr += getattr(v.tag, 'trace', [])
 
     else:
-        # If from_var is not a list, it must be a single tensor variable, 
+        # If from_var is not a list, it must be a single tensor variable,
         # so just store that particular stack trace
         tr = getattr(from_var.tag, 'trace', [])
 
@@ -1841,7 +1841,7 @@ def local_subtensor_make_vector(node):
     elif isinstance(idx, Variable):
         if idx.ndim == 0:
             # if it is a constant we can do something with it
-            try:               
+            try:
                 v = get_scalar_constant_value(idx)
                 if isinstance(v, numpy.integer):
                     # Python 2.4 wants to index only with Python integers
@@ -2390,7 +2390,7 @@ def local_set_to_inc_subtensor(node):
         ret = advanced_inc_subtensor1(node.inputs[0], other, node.inputs[2])
         # Copy over previous output stacktrace
         # Julian: I'm not sure about this at all...
-        copy_stack_trace(node.outputs, ret)        
+        copy_stack_trace(node.outputs, ret)
         return [ret]
 
 
@@ -2565,7 +2565,7 @@ def local_subtensor_lift(node):
             # Copy over previous output stacktrace
             copy_stack_trace(node.outputs, x_idx)
             ret = u.owner.op(x_idx)
-            # Copy over previous output stacktrace 
+            # Copy over previous output stacktrace
             # and stacktrace from previous unary operation
             copy_stack_trace([node.outputs[0], node.inputs[0]], ret)
             return [ret]
@@ -2580,7 +2580,7 @@ def local_subtensor_lift(node):
                 copy_stack_trace(node.outputs[0], new_inputs)
 
                 ret = u.owner.op(*new_inputs)
-                # Copy over previous output stacktrace 
+                # Copy over previous output stacktrace
                 # and stacktrace from previous unary operation
                 copy_stack_trace([node.outputs[0], node.inputs[0]], ret)
                 return [ret]
@@ -2605,7 +2605,7 @@ def local_subtensor_lift(node):
                 copy_stack_trace(node.outputs[0], new_inputs)
 
                 ret = u.owner.op(*new_inputs)
-                # Copy over previous output stacktrace 
+                # Copy over previous output stacktrace
                 # and stacktrace from previous unary operation
                 copy_stack_trace([node.outputs[0], node.inputs[0]], ret)
                 return [ret]
@@ -2638,7 +2638,7 @@ def local_subtensor_lift(node):
             copy_stack_trace(node.outputs[0], subt_x)
 
             rbcast_subt_x = T.Rebroadcast(*new_axis)(subt_x)
-            # Copy over previous output stacktrace 
+            # Copy over previous output stacktrace
             # and stacktrace from previous unary operation
             copy_stack_trace([node.outputs[0], node.inputs[0]], rbcast_subt_x)
 
@@ -2961,13 +2961,13 @@ def local_subtensor_of_dot(node):
 
     a_sub = a.__getitem__(tuple(a_indices))
     b_sub = b.__getitem__(tuple(b_indices)) if b_indices else b
-    
+
     # Copy over previous output stacktrace to a_sub and b_sub,
-    # because an error in the subtensor operation (e.g. an index error) 
-    # on either a or b must correspond to an error in the 
+    # because an error in the subtensor operation (e.g. an index error)
+    # on either a or b must correspond to an error in the
     # subtensor operation on their dot product.
     copy_stack_trace(node.outputs[0], [a_sub, b_sub])
-    
+
     # Copy over previous output stacktrace and previous dot product stacktrace,
     # because an error here may correspond to an either in either the original
     # dot product, or in the dot product after the subtensor operation.
@@ -3029,9 +3029,9 @@ def local_IncSubtensor_serialize(node):
             new_inputs = ([i for i in node.inputs if not movable(i)] +
                           [mi.owner.inputs[0] for mi in movable_inputs])
             new_add = T.add(*new_inputs)
-            
-            # Copy over stacktrace from original output, as an error 
-            # (e.g. an index error) in this add operation should 
+
+            # Copy over stacktrace from original output, as an error
+            # (e.g. an index error) in this add operation should
             # correspond to an error in the original add operation.
             copy_stack_trace(node.outputs[0], new_add)
 
@@ -3041,10 +3041,10 @@ def local_IncSubtensor_serialize(node):
                 assert tip.type == o_type
                 assert tip.type == mi.owner.inputs[0].type
                 tip = mi.owner.op(tip, *mi.owner.inputs[1:])
-                # Copy over stacktrace from outputs of the original 
-                # "movable" operation to the new operation. 
+                # Copy over stacktrace from outputs of the original
+                # "movable" operation to the new operation.
                 copy_stack_trace(node.outputs + mi.owner.outputs, tip)
-                
+
             return [tip]
 
         # print incsub_inputs, [id(i.owner.inputs[0]) for i in incsub_inputs]
@@ -3075,7 +3075,7 @@ def local_inplace_setsubtensor(node):
             destroyhandler_tolerate_aliased=dta)
         new_node = new_op(*node.inputs)
         # Copy stacktrace from original outputs to new outputs.
-        # This is sensible, because the new operation is the 
+        # This is sensible, because the new operation is the
         # same as the old one, but now with different attributes.
         copy_stack_trace(node.outputs, new_node)
         return [new_node]
@@ -3098,7 +3098,7 @@ def local_inplace_incsubtensor1(node):
         new_node = new_op(*node.inputs)
 
         # Copy stacktrace from original outputs to new outputs.
-        # This is sensible, because the new operation is the 
+        # This is sensible, because the new operation is the
         # same as the old one, but now with different attributes.
         copy_stack_trace(node.outputs, new_node)
         return [new_node]
@@ -3331,7 +3331,7 @@ def local_useless_inc_subtensor_alloc(node):
 
             r = node.op(x, z, *i)
             # Copy over stacktrace from previous output, since
-            # we don't expect problems when removing the intermediate 
+            # we don't expect problems when removing the intermediate
             # alloc operation and so we still want to point at the line
             # of the inc_subtensor operation.
             copy_stack_trace(node.outputs, r)
@@ -3355,7 +3355,7 @@ def local_useless_rebroadcast(node):
         x = node.inputs[0]
         if numpy.all(x.broadcastable == node.outputs[0].broadcastable):
             # No broadcastable flag was modified
-            # No need to copy over stack trace, 
+            # No need to copy over stack trace,
             # because x should already have a stack trace.
             return [x]
         else:
@@ -3411,8 +3411,8 @@ def local_rebroadcast_lift(node):
             # and input (after elemwise operation) to new output, because an
             # error in the new graph could have been caused by either of the
             # two ops.
-            copy_stack_trace(node.outputs+node.inputs, rval)
-            
+            copy_stack_trace(node.outputs + node.inputs, rval)
+
             return rval
     if inode and isinstance(inode.op, T.Rebroadcast):
         # the "axis" specification in the outer Rebroadcast overrides
@@ -3427,7 +3427,7 @@ def local_rebroadcast_lift(node):
         # and from previous input (after first rebroadcast op) because an error in
         # the new graph could have been caused by either of the two
         # rebroadcast ops.
-        copy_stack_trace(node.outputs+node.inputs, rval)
+        copy_stack_trace(node.outputs + node.inputs, rval)
         return rval
 
 
@@ -3532,10 +3532,10 @@ def local_join_empty(node):
             assert ret.ndim == o.ndim
             ret = T.patternbroadcast(ret, node.outputs[0].broadcastable)
 
-        # Copy over stacktrace from previous output 
+        # Copy over stacktrace from previous output
         # (after patternbroadcast op) for same reasons as before.
         copy_stack_trace(node.outputs, ret)
-            
+
         return [ret]
 
 
@@ -3562,7 +3562,7 @@ def local_join_make_vector(node):
                 inp.owner.op == new_inputs[-1].owner.op):
             inps = new_inputs[-1].owner.inputs + inp.owner.inputs
             new_inputs[-1] = inp.owner.op(*inps)
-            
+
             # Copy over stacktrace from previous output (after join op)
             # to new intermediate output, because an error in the intermediate
             # op must be caused by an error in the old join op.
@@ -3571,7 +3571,7 @@ def local_join_make_vector(node):
             new_inputs.append(inp)
     if len(new_inputs) < len(node.inputs) - 1:
         ret = T.join(node.inputs[0], *new_inputs)
-        
+
         # Copy over stacktrace from previous output (after join op)
         # to new output, because an error in the new op must be caused
         # by an error in the old join op.
@@ -3619,7 +3619,7 @@ def local_useless_switch(node):
                                      in xrange(out.ndim)])
             else:
                 out = out
-            
+
             # Copy over stacktrace from selected output to new output
             copy_stack_trace(node.outputs + correct_out, out)
             return [out]
@@ -3633,7 +3633,7 @@ def local_useless_switch(node):
             ret = T.fill(cond, node.inputs[1])
 
             # Copy over stacktrace from switch output and correct branch
-            copy_stack_trace(node.outputs+node.inputs[1], ret)
+            copy_stack_trace(node.outputs + node.inputs[1], ret)
             return [ret]
 
         # This case happens with scan.
@@ -3650,7 +3650,7 @@ def local_useless_switch(node):
            T.extract_constant(left) == 0 and \
            right is cond_var.owner.inputs[0]:
             assert right.type == node.outputs[0].type
-            # No need to copy over stacktrace, because the right input node 
+            # No need to copy over stacktrace, because the right input node
             # already has its own stacktrace
             return [right]
         return False
@@ -3696,8 +3696,8 @@ def local_mul_switch_sink(node):
 
                     # Copy over stacktrace for elementwise multiplication op
                     # from previous elementwise multiplication op.
-                    # An error in the multiplication (e.g. errors due to 
-                    # inconsistent shapes), will point to the 
+                    # An error in the multiplication (e.g. errors due to
+                    # inconsistent shapes), will point to the
                     # multiplication op.
                     copy_stack_trace(node.outputs, fmul)
 
@@ -3709,7 +3709,7 @@ def local_mul_switch_sink(node):
                     #  elementwise multiplication op and previous switch op,
                     # because an error in this part can be caused by either
                     # of the two previous ops.
-                    copy_stack_trace(node.outputs+switch.outputs, fct)
+                    copy_stack_trace(node.outputs + switch.outputs, fct)
                     return fct
             except NotScalarConstantError:
                 pass
@@ -3720,11 +3720,11 @@ def local_mul_switch_sink(node):
                     fmul = T.mul(*(listmul + [switch.inputs[1]]))
                     # Copy over stacktrace for elementwise multiplication op
                     # from previous elementwise multiplication op.
-                    # An error in the multiplication (e.g. errors due to 
-                    # inconsistent shapes), will point to the 
+                    # An error in the multiplication (e.g. errors due to
+                    # inconsistent shapes), will point to the
                     # multiplication op.
                     copy_stack_trace(node.outputs, fmul)
-                    
+
                     fct = [T.switch(switch.inputs[0],
                                     fmul, 0)]
                     fct[0].values_eq_approx = values_eq_approx_remove_nan
@@ -3733,7 +3733,7 @@ def local_mul_switch_sink(node):
                     # elementwise multiplication op and previous switch op,
                     # because an error in this part can be caused by either
                     # of the two previous ops.
-                    copy_stack_trace(node.outputs+switch.outputs, fct)
+                    copy_stack_trace(node.outputs + switch.outputs, fct)
                     return fct
             except NotScalarConstantError:
                 pass
@@ -3764,8 +3764,8 @@ def local_div_switch_sink(node):
                 fdiv = op(switch.inputs[2], node.inputs[1])
                 # Copy over stacktrace for elementwise division op
                 # from previous elementwise multiplication op.
-                # An error in the division (e.g. errors due to 
-                # inconsistent shapes or division by zero), 
+                # An error in the division (e.g. errors due to
+                # inconsistent shapes or division by zero),
                 # will point to the new division op.
                 copy_stack_trace(node.outputs, fdiv)
 
@@ -3777,7 +3777,7 @@ def local_div_switch_sink(node):
                 # elementwise division op and previous switch op,
                 # because an error in this part can be caused by either
                 # of the two previous ops.
-                copy_stack_trace(node.outputs+switch.outputs, fct)
+                copy_stack_trace(node.outputs + switch.outputs, fct)
                 return fct
         except NotScalarConstantError:
             pass
@@ -3786,8 +3786,8 @@ def local_div_switch_sink(node):
                 fdiv = op(switch.inputs[1], node.inputs[1])
                 # Copy over stacktrace for elementwise division op
                 # from previous elementwise multiplication op.
-                # An error in the division (e.g. errors due to 
-                # inconsistent shapes or division by zero), 
+                # An error in the division (e.g. errors due to
+                # inconsistent shapes or division by zero),
                 # will point to the new division op.
                 copy_stack_trace(node.outputs, fdiv)
 
@@ -3799,7 +3799,7 @@ def local_div_switch_sink(node):
                 # elementwise division op and previous switch op,
                 # because an error in this part can be caused by either
                 # of the two previous ops.
-                copy_stack_trace(node.outputs+switch.outputs, fct)                
+                copy_stack_trace(node.outputs + switch.outputs, fct)
                 return fct
         except NotScalarConstantError:
             pass
@@ -3843,7 +3843,7 @@ def local_useless_tile(node):
                         ret = node.inputs[0].dimshuffle(broad)
                         # Copy over stacktrace from previous output node,
                         # and from node before tiling operation.
-                        copy_stack_trace(node.outputs+node.inputs[0], ret)
+                        copy_stack_trace(node.outputs + node.inputs[0], ret)
                         return [ret]
                 except ValueError:
                     return
@@ -3868,7 +3868,7 @@ def local_useless_split(node):
             x, axis, splits = node.inputs
             out = assert_op(x, T.eq(splits.shape[0], 1))
             out = assert_op(out, T.eq(x.shape[axis], splits[0]))
-            
+
             # Copy over stacktrace from previous output node.
             copy_stack_trace(node.outputs, out)
             return [out]
