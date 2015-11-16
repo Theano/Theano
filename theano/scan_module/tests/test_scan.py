@@ -2580,7 +2580,8 @@ class T_Scan(unittest.TestCase):
                                                  None],
                                    n_steps=5)
 
-        f = theano.function([seq, sitsot_init, mitsot_init], out[2].shape)
+        f = theano.function([seq, sitsot_init, mitsot_init], out[2].shape,
+                            mode='FAST_RUN')
         assert(len(scan_nodes_from_fct(f)) == 0)
 
         output_shape = f(numpy.arange(5), 5, [1, 2])
