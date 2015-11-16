@@ -5767,9 +5767,8 @@ def test_local_join_make_vector():
                 for n in e if isinstance(n.op, Join)])
     assert f.maker.fgraph.outputs[0].dtype == config.floatX
 
-
-    print(f.outputs[0].variable.tag)
-    print(f.outputs[0].variable.tag.trace)
+    assert hasattr(f.outputs[0].variable, 'tag')
+    assert hasattr(f.outputs[0].variable.tag, 'trace')
 
 
 def test_local_add_specialize():
