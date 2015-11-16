@@ -29,6 +29,7 @@ install:
   - source activate pyenv
   - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then pip install pydot; fi
   - pip install . --no-deps
+  - pip install -U Sphinx
 
 # command to run tests
 env:
@@ -61,8 +62,8 @@ script:
   - cd $(python -c 'import theano; import os; print(os.path.split(theano.__file__)[0])')
   - echo "$PART"
   - cd -; cd Theano
-  - if [ ${DOC} = "1" ]; then python doc/scripts/docgen.py --nopdf; else theano-nose -v $PART; fi
-  - if [ ${DOC} = "1" ]; then python doc/scripts/docgen.py --test; else theano-nose -v $PART; fi
+  - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --nopdf; else theano-nose -v $PART; fi
+  - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --test; else theano-nose -v $PART; fi
 #  - theano-cache list
 
 #after_script:
