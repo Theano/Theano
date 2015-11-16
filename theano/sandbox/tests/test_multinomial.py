@@ -10,6 +10,8 @@ import theano.sandbox.cuda as cuda
 import theano.tests.unittest_tools as utt
 import six.moves.cPickle as pickle
 import os
+from theano.compat import PY3
+from theano.misc.pkl_utils import CompatUnpickler
 
 def get_mode(gpu):
     mode = get_default_mode()
@@ -81,10 +83,15 @@ def test_n_samples_compatibility():
     pickle.dump([X, samples], open("multinomial_test_graph.pkl", "w"))
     """
     folder = os.path.dirname(os.path.abspath(__file__))
-    X, samples = pickle.load(open(os.path.join(folder, "multinomial_test_graph.pkl"), 'rb'))
-    f = theano.function([X], samples)
-    res = f(numpy.random.randn(20,10))
-    assert numpy.all(res.sum(axis=1) == 1)
+    with open(os.path.join(folder, "multinomial_test_graph.pkl")) as pkl_file:
+        if PY3:
+            u = CompatUnpickler(pkl_file, encoding="latin1")
+        else:
+            u = CompatUnpickler(pkl_file)
+        X, samples = u.load()
+        f = theano.function([X], samples)
+        res = f(numpy.random.randn(20,10))
+        assert numpy.all(res.sum(axis=1) == 1)
 
 def test_multinomial_0():
     # This tests the MultinomialFromUniform Op directly, not going through the
