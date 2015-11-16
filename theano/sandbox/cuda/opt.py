@@ -44,7 +44,7 @@ from theano.sandbox.cuda.blas import gpu_ger_inplace
 from theano.sandbox.cuda.blas import gpu_ger_no_inplace
 from theano.sandbox.cuda.blas import (
     GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad,
-    GpuDownsampleFactorMaxGradGrad)
+    GpuDownsampleFactorMaxRop, GpuDownsampleFactorMaxGradGrad)
 
 from theano.tensor.nnet.blocksparse import SparseBlockGemv, SparseBlockOuter
 from theano.sandbox.cuda.blocksparse import (
@@ -1869,9 +1869,27 @@ def local_gpu_downsample_factor_max_grad(node):
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
             gpu_ds_grad = GpuDownsampleFactorMaxGrad(node.op.ds,
                                                      node.op.ignore_border)
-            return [host_from_gpu(gpu_ds_grad(x.owner.inputs[0],
-                                              as_cuda_ndarray_variable(z),
-                                              as_cuda_ndarray_variable(gz)))]
+            return [host_from_gpu(gpu_ds_grad(x.owner.inputs[0], z, gz))]
+
+@register_opt()
+@local_optimizer([downsample.DownsampleFactorMaxRop])
+def local_gpu_downsample_factor_max_rop(node):
+    if (isinstance(node.op, downsample.DownsampleFactorMaxRop) and
+        node.op.ds == node.op.st):
+
+        assert node.op.__props__ == ('ds', 'ignore_border', 'st', 'padding',
+                                     'mode')
+        if (node.op.padding != (0, 0) or
+            node.op.mode != 'max' or
+            node.op.st != node.op.ds):
+
+            return
+
+        x, ex = node.inputs
+        if (x.owner and isinstance(x.owner.op, HostFromGpu)):
+            gpu_ds_grad = GpuDownsampleFactorMaxRop(node.op.ds,
+                                                     node.op.ignore_border)
+            return [host_from_gpu(gpu_ds_grad(x, ex))]
 
 
 @register_opt()
@@ -1886,9 +1904,7 @@ def local_gpu_downsample_factor_max_grad_grad(node):
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
             op = GpuDownsampleFactorMaxGradGrad(node.op.ds,
                                                 node.op.ignore_border)
-            return [host_from_gpu(op(x.owner.inputs[0],
-                                     as_cuda_ndarray_variable(z),
-                                     as_cuda_ndarray_variable(gx)))]
+            return [host_from_gpu(op(x.owner.inputs[0], z, gx))]
 
 
 from theano.sandbox.cuda.basic_ops import gpu_join, GpuJoin
