@@ -23,13 +23,6 @@ before_install:
   - export PATH=/home/travis/miniconda2/bin:$PATH
   - conda update --yes conda
 
-# Install Epydoc
-  - wget -q http://prdownloads.sourceforge.net/epydoc/epydoc-3.0.1.tar.gz
-  - gunzip epydoc-3.0.1.tar.gz
-  - tar -xvf epydoc-3.0.1.tar
-  - cd epydoc-3.0.1/
-  - sudo make install
-
 install:
   - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then conda create --yes -q -n pyenv mkl python=2.6 numpy=1.7.1 scipy=0.11 nose=1.3.0 pyparsing=1.5 pip flake8=2.3 six=1.9.0 pep8=1.6.2 pyflakes=0.8.1; fi
   - if [[ $TRAVIS_PYTHON_VERSION == '3.3' ]]; then conda create --yes -q -n pyenv mkl python=3.3 numpy=1.9.1 scipy=0.14.0 nose=1.3.4 pyparsing=1.5 pip flake8=2.3 six=1.9.0 pep8=1.6.2 pyflakes=0.8.1; fi

@@ -4,56 +4,6 @@ import sys
 import os
 import shutil
 import inspect
-
-from epydoc import docintrospecter
-from epydoc.apidoc import RoutineDoc
-
-
-def Op_to_RoutineDoc(op, routine_doc, module_name=None):
-    routine_doc.specialize_to(RoutineDoc)
-
-    #NB: this code is lifted from epydoc/docintrospecter.py
-
-    # op should be an op instance
-    assert hasattr(op, 'perform')
-
-    # Record the function's docstring.
-    routine_doc.docstring = getattr(op, '__doc__', '')
-
-    # Record the function's signature.
-    func = op.__epydoc_asRoutine
-    if isinstance(func, type(Op_to_RoutineDoc)):
-        (args, vararg, kwarg, defaults) = inspect.getargspec(func)
-
-        # Add the arguments.
-        routine_doc.posargs = args
-        routine_doc.vararg = vararg
-        routine_doc.kwarg = kwarg
-
-        # Set default values for positional arguments.
-        routine_doc.posarg_defaults = [None] * len(args)
-
-        # Set the routine's line number.
-        if hasattr(func, '__code__'):
-            routine_doc.lineno = func.__code__.co_firstlineno
-    else:
-        # [XX] I should probably use UNKNOWN here??
-        # dvarrazzo: if '...' is to be changed, also check that
-        # `docstringparser.process_arg_field()` works correctly.
-        # See SF bug #1556024.
-        routine_doc.posargs = ['...']
-        routine_doc.posarg_defaults = [None]
-        routine_doc.kwarg = None
-        routine_doc.vararg = None
-
-    return routine_doc
-
-docintrospecter.register_introspecter(
-    lambda value: getattr(value, '__epydoc_asRoutine', False),
-    Op_to_RoutineDoc,
-    priority=-1)
-
-
 import getopt
 from collections import defaultdict
 
@@ -66,7 +16,7 @@ if __name__ == '__main__':
     opts, args = getopt.getopt(
         sys.argv[1:],
         'o:f:',
-        ['epydoc', 'rst', 'help', 'nopdf', 'cache', 'test'])
+        ['rst', 'help', 'nopdf', 'cache', 'test'])
     options.update(dict([x, y or True] for x, y in opts))
     if options['--help']:
         print('Usage: %s [OPTIONS] [files...]' % sys.argv[0])
@@ -74,8 +24,6 @@ if __name__ == '__main__':
         print('  --cache: use the doctree cache')
         print('  --rst: only compile the doc (requires sphinx)')
         print('  --nopdf: do not produce a PDF file from the doc, only HTML')
-        print('  --epydoc: only compile the api documentation', end=' ')
-        print('(requires epydoc)')
         print('  --test: run all the code samples in the documentaton')
         print('  --help: this help')
         print('If one or more files are specified after the options then only '
@@ -83,7 +31,7 @@ if __name__ == '__main__':
               'processed. Specifying files will implies --cache.')
         sys.exit(0)
 
-    if not (options['--epydoc'] or options['--rst'] or options['--test']):
+    if options['--rst'] or options['--test']:
         # Default is now rst
         options['--rst'] = True
 
@@ -105,8 +53,8 @@ if __name__ == '__main__':
     pythonpath = os.pathsep.join([throot, pythonpath])
     sys.path[0:0] = [throot]  # We must not use os.environ.
 
-    if options['--all'] or options['--epydoc']:
-        mkdir("api")
+    # if options['--all']:
+    #     mkdir("api")
 
         #Generate HTML doc
 
@@ -116,7 +64,7 @@ if __name__ == '__main__':
         #               '-o', 'api']
         #cli()
         ## So we use this instead
-        os.system("epydoc --config %s/doc/api/epydoc.conf -o api" % throot)
+        #os.system("epydoc --config %s/doc/api/epydoc.conf -o api" % throot)
 
         # Generate PDF doc
         # TODO

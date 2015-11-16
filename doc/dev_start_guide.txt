@@ -21,12 +21,11 @@ To get up to speed, you'll need to
 - Learn some non-basic Python to understand what's going on in some of the
   trickier files (like tensor.py).
 - Go through the `NumPy documentation`_.
-- Learn to write reStructuredText_ for epydoc_ and Sphinx_.
+- Learn to write reStructuredText_ for Sphinx_.
 - Learn about how unittest_ and nose_ work
 
 .. _Sphinx: http://sphinx.pocoo.org/
 .. _reStructuredText: http://docutils.sourceforge.net/rst.html
-.. _epydoc: http://epydoc.sourceforge.net/
 .. _NumPy documentation: http://docs.scipy.org/numpy/
 .. _unittest: http://docs.python.org/library/unittest.html
 .. _nose: http://somethingaboutorange.com/mrl/projects/nose/
