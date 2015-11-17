@@ -116,5 +116,12 @@ cudnnHandle_t APPLY_SPECIFIC(_handle);
     cuda_exit(PARAMS->ctx);
     FAIL;
   }
+  if ((err = cudnnSetStream(APPLY_SPECIFIC(_handle),
+                            cuda_get_stream(PARAMS->ctx))) != CUDNN_STATUS_SUCCESS) {
+    PyErr_Format(PyExc_RuntimeError, "Could not set cudnn stream: %s",
+                 cudnnGetErrorString(err));
+    cuda_exit(PARAMS->ctx);
+    FAIL;
+  }
   cuda_exit(PARAMS->ctx);
 }
