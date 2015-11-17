@@ -31,7 +31,7 @@ class TestSignalConv2D(unittest.TestCase):
         if filter_dim != 3:
             nkern = 1
 
-        ############# THEANO IMPLEMENTATION ############
+        # THEANO IMPLEMENTATION ############
         # we create a symbolic function so that verify_grad can work
         def sym_conv2d(input, filters):
             return conv.conv2d(input, filters)
@@ -44,9 +44,8 @@ class TestSignalConv2D(unittest.TestCase):
         filter_data = numpy.random.random(filter_shape)
         theano_output = theano_conv(image_data, filter_data)
 
-        ############# REFERENCE IMPLEMENTATION ############
-        out_shape2d = numpy.array(image_shape[-2:]) -\
-                      numpy.array(filter_shape[-2:]) + 1
+        # REFERENCE IMPLEMENTATION ############
+        out_shape2d = numpy.array(image_shape[-2:]) - numpy.array(filter_shape[-2:]) + 1
         ref_output = numpy.zeros(tuple(out_shape2d))
 
         # reshape as 3D input tensors to make life easier
@@ -76,7 +75,7 @@ class TestSignalConv2D(unittest.TestCase):
                 self.assertTrue(_allclose(theano_output4d[b, k, :, :],
                                           output2d))
 
-        ############# TEST GRADIENT ############
+        # TEST GRADIENT ############
         if verify_grad:
             utt.verify_grad(sym_conv2d, [image_data, filter_data])
 
@@ -87,8 +86,8 @@ class TestSignalConv2D(unittest.TestCase):
         signal.conv.conv2d can support inputs and filters of type
         matrix or tensor3.
         """
-        if (not theano.tensor.nnet.conv.imported_scipy_signal and
-            theano.config.cxx == ""):
+        if(not theano.tensor.nnet.conv.imported_scipy_signal and
+           theano.config.cxx == ""):
             raise SkipTest("conv2d tests need SciPy or a c++ compiler")
 
         self.validate((1, 4, 5), (2, 2, 3), out_dim=4, verify_grad=True)
