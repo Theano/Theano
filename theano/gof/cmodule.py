@@ -1627,6 +1627,16 @@ def std_lib_dirs_and_libs():
         # Typical include directory: /usr/include/python2.6
         libname = os.path.basename(python_inc)
         std_lib_dirs_and_libs.data = [libname], []
+
+    # sometimes, the linker cannot find -lpython so we need to tell it
+    # explicitly where it is located this returns
+    # somepath/lib/python2.x
+
+    python_lib = distutils.sysconfig.get_python_lib(plat_specific=1,
+                                                    standard_lib=1)
+    python_lib = os.path.dirname(python_lib)
+    if python_lib not in std_lib_dirs_and_libs.data[1]:
+        std_lib_dirs_and_libs.data[1].append(python_lib)
     return std_lib_dirs_and_libs.data
 std_lib_dirs_and_libs.data = None
 
@@ -2106,15 +2116,6 @@ class GCC_compiler(Compiler):
         include_dirs = include_dirs + std_include_dirs()
         libs = std_libs() + libs
         lib_dirs = std_lib_dirs() + lib_dirs
-
-        # sometimes, the linker cannot find -lpython so we need to tell it
-        # explicitly where it is located
-        # this returns somepath/lib/python2.x
-        python_lib = distutils.sysconfig.get_python_lib(plat_specific=1,
-                                                        standard_lib=1)
-        python_lib = os.path.dirname(python_lib)
-        if python_lib not in lib_dirs:
-            lib_dirs.append(python_lib)
 
         cppfilename = os.path.join(location, 'mod.cpp')
         cppfile = open(cppfilename, 'w')
