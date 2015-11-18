@@ -858,6 +858,13 @@ class Scan(PureOp):
                                profile=profile,
                                on_unused_input='ignore')
 
+        # Analyse the compile inner function to determine which inputs and
+        # outputs are on the gpu and speed up some checks during the execution
+        self.inps_on_gpu = [not isinstance(out, theano.tensor.TensorVariable)
+                            for out in self.fn.maker.fgraph.inputs]
+        self.outs_on_gpu = [not isinstance(out, theano.tensor.TensorVariable)
+                            for out in self.fn.maker.fgraph.outputs]
+
         try:
             cython_mintaps = numpy.asarray(self.mintaps, dtype='int32')
             cython_tap_array_len = \
