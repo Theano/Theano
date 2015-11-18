@@ -901,6 +901,9 @@ class Scan(PureOp):
             cython_mitmots_preallocated = numpy.asarray(self.mitmots_preallocated,
                                                         dtype='int32')
 
+            cython_inps_on_gpu = numpy.asarray(self.inps_on_gpu, dtype='int32')
+            cython_outs_on_gpu = numpy.asarray(self.outs_on_gpu, dtype='int32')
+
             if hasattr(self, 'destroy_map'):
                 cython_destroy_map = [x in self.destroy_map
                                   for x in xrange(len(node.outputs))]
@@ -928,6 +931,8 @@ class Scan(PureOp):
                         cython_mit_mot_out_slices,
                         cython_mit_mot_out_nslices,
                         cython_mitmots_preallocated,
+                        cython_inps_on_gpu,
+                        cython_outs_on_gpu,
                         self.fn.fn,
                         self.fn,
                         cython_destroy_map,
