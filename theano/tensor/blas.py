@@ -306,6 +306,13 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
                 [])
             if GCC_compiler.try_flags(ret):
                 return ' '.join(ret)
+            # Try to add the anaconda lib directory to runtime loading of lib.
+            # This fix some case with Anaconda 2.3 on Linux.
+            if "Anaconda" in sys.version and "linux" in sys.platform:
+                lib_path = os.path.join(sys.prefix, 'lib')
+                ret.append('-Wl,-rpath,' + lib_path)
+                if GCC_compiler.try_flags(ret):
+                    return ' '.join(ret)
 
     except KeyError:
         pass
