@@ -262,6 +262,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         output = weight;
         // valid convolution: im2col, then gemm
         // Iterate over batch
+        #pragma omp parallel for schedule(static)
         for (int n = 0; n < batchSize; n++) {
             // First, im2col
             im2col((%(float_type)s*)PyArray_DATA(bottom) + n * bottom_stride, nChannels, bottomHeight,
