@@ -379,10 +379,14 @@ def _infer_ndim_bcast(ndim, shape, *args):
         ndim = template.ndim
     else:
         v_shape = tensor.as_tensor_variable(shape)
-        if ndim is None:
-            ndim = tensor.get_vector_length(v_shape)
-        bcast = [False] * ndim
 
+    if v_shape.ndim != 1:
+        raise TypeError("shape must be a vector or list of scalar, got '%s'" %
+                        v_shape)
+
+    if ndim is None:
+        ndim = tensor.get_vector_length(v_shape)
+        bcast = [False] * ndim
     if (not (v_shape.dtype.startswith('int') or
              v_shape.dtype.startswith('uint'))):
         raise TypeError('shape must be an integer vector or list',
