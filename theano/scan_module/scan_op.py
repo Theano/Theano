@@ -314,12 +314,23 @@ class Scan(PureOp):
             # Generate the mappings between inner and outer inputs and outputs
             # if they haven't already been generated.
             self.var_mappings = self.get_oinp_iinp_iout_oout_mappings()
-        if (hasattr(self, 'fn') and
-                not hasattr(self, 'thunk_mit_mot_out_slices')):
-            # The thunk has been compiled before mit_mot preallocation feature
-            # was implemented. Mark every mit_mot output tap as not having
-            # been preallocated
-            self.mitmots_preallocated = [False] * self.n_mit_mot_outs
+        if hasattr(self, 'fn'):
+            if not hasattr(self, 'thunk_mit_mot_out_slices'):
+                # The thunk has been compiled before mit_mot preallocation
+                # feature was implemented. Mark every mit_mot output tap as
+                # not having been preallocated
+                self.mitmots_preallocated = [False] * self.n_mit_mot_outs
+
+            if not hasattr(self, 'outs_on_gpu'):
+                # The thunk has been compiled before the analysis, at
+                # compilation time, of the location of the inputs and outputs.
+                # Perform this analysis here.
+                self.inps_on_gpu = [not isinstance(out,
+                                                   theano.tensor.TensorVariable)
+                                    for out in self.fn.maker.fgraph.inputs]
+                self.outs_on_gpu = [not isinstance(out,
+                                                   theano.tensor.TensorVariable)
+                                    for out in self.fn.maker.fgraph.outputs]
 
         # Ensure that the graph associated with the inner function is valid.
         self.validate_inner_graph()
