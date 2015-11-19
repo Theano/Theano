@@ -37,7 +37,7 @@ env:
 # uncomment it after doc test is done!
 #  - PART="sandbox sparse scalar tensor/nnet scan_module"
 #  - PART="tensor/tests/test_basic.py tensor/signal compile gof misc tests compat"
-  - PART="-e test_basic.py tensor/tests"
+  - PART="-e test_basic.py theano/tensor/tests"
 
 matrix:
   fast_finish: true
