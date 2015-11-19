@@ -5112,14 +5112,14 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
         r = a.reshape(shapes, ndim=1)
         z = zeros_like(r)
 
-        f = self.function([a, shapes], z.shape)
+        f = self.function([a, shapes], r)
         self.assertRaises(ValueError, f, a_val, [13])
 
         # Test reshape to 2 dim
         r = a.reshape(shapes, ndim=2)
         z = zeros_like(r)
 
-        f = self.function([a, shapes], z.shape)
+        f = self.function([a, shapes], r)
 
         self.assertRaises(ValueError, f, a_val, [-1, 5])
         self.assertRaises(ValueError, f, a_val, [7, -1])
