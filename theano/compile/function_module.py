@@ -137,7 +137,7 @@ class Supervisor:
             return True
         for r in self.protected + list(fgraph.outputs):
             if fgraph.destroyers(r):
-                raise gof.InconsistencyError("Trying to destroy a protected"
+                raise gof.InconsistencyError("Trying to destroy a protected "
                                              "Variable.", r)
 
 
