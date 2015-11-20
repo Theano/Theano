@@ -62,7 +62,7 @@ import copy
 
 
 def get_version():
-    return 0.291
+    return 0.292
 
 @cython.boundscheck(False)
 def perform(
@@ -83,8 +83,8 @@ def perform(
             numpy.ndarray[numpy.int32_t,ndim=2] mit_mot_out_slices,
             numpy.ndarray[numpy.int32_t,ndim=1] mit_mot_out_nslices,
             numpy.ndarray[numpy.int32_t,ndim=1] mitmots_preallocated,
-            numpy.ndarray[numpy.int32_t,ndim=1] inps_on_gpu,
-            numpy.ndarray[numpy.int32_t,ndim=1] outs_on_gpu,
+            numpy.ndarray[numpy.int32_t,ndim=1] inps_is_tensor,
+            numpy.ndarray[numpy.int32_t,ndim=1] outs_is_tensor,
             fn,
             fnct,
             numpy.ndarray[numpy.int32_t,ndim=1] destroy_map,
@@ -138,11 +138,11 @@ def perform(
     mit_mot_out_nslices: int32 ndarray (Can be replaced by a list)
         Same as tap_array_len, but is the number of output taps of the
         mit_mot sequences (i.e. it corresponds to mit_mot_out_slices)
-    inps_on_gpu : int32 ndarray (Can be replaced by a list)
-        Array of boolean indicating, for every input, whether it is on the GPU
+    inps_is_tensor : int32 ndarray (Can be replaced by a list)
+        Array of boolean indicating, for every input, whether it is a tensor
         or not
-    outs_on_gpu : int32 ndarray (Can be replaced by a list)
-        Array of boolean indicating, for every output, whether it is on the GPU
+    outs_is_tensor : int32 ndarray (Can be replaced by a list)
+        Array of boolean indicating, for every output, whether it is a tensor
         or not
     fn: callable
         This is the linker, i.e. the function that will loop over the
@@ -368,10 +368,10 @@ def perform(
 
             if var is None:
                 old_output_data[idx] = None
-            elif outs_on_gpu[idx]:
-                old_output_data[idx] = var.gpudata
-            else:
+            elif outs_is_tensor[idx]:
                 old_output_data[idx] = var.data
+            else:
+                old_output_data[idx] = var.gpudata
 
         # 4.6. Keep a reference to the variables (ndarrays, CudaNdarrays,
         # etc) associated with mitmot inputs currently in the input_storage to
@@ -385,10 +385,10 @@ def perform(
 
             if var is None:
                 old_mitmot_input_data[idx] = None
-            elif inps_on_gpu[idx]:
-                old_mitmot_input_data[idx] = var.gpudata
-            else:
+            elif inps_is_tensor[idx]:
                 old_mitmot_input_data[idx] = var.data
+            else:
+                old_mitmot_input_data[idx] = var.gpudata
 
         # 5.1 compute outputs
         t0_fn = time.time()
@@ -450,10 +450,10 @@ def perform(
                     new_var = input_storage[n_seqs + inp_idx].storage[0]
                     if old_var is new_var:
                         old_data = old_mitmot_input_data[inp_idx]
-                        if inps_on_gpu[n_seqs + inp_idx]:
-                            same_data = (new_var.gpudata == old_data)
-                        else:
+                        if inps_is_tensor[n_seqs + inp_idx]:
                             same_data = (new_var.data == old_data)
+                        else:
+                            same_data = (new_var.gpudata == old_data)
                     else:
                         same_data = False
 
@@ -494,10 +494,10 @@ def perform(
                 if old_var is new_var:
                     if old_data is None:
                         output_reused = False
-                    elif outs_on_gpu[offset_out + j]:
-                        output_reused = (new_var.gpudata == old_data)
-                    else:
+                    elif outs_is_tensor[offset_out + j]:
                         output_reused = (new_var.data == old_data)
+                    else:
+                        output_reused = (new_var.gpudata == old_data)
                 else:
                     output_reused = False
 
@@ -536,10 +536,10 @@ def perform(
                 if old_var is new_var:
                     if old_data is None:
                         output_reused = False
-                    elif outs_on_gpu[offset_out + j]:
-                        output_reused = (new_var.gpudata == old_data)
-                    else:
+                    elif outs_is_tensor[offset_out + j]:
                         output_reused = (new_var.data == old_data)
+                    else:
+                        output_reused = (new_var.gpudata == old_data)
                 else:
                     output_reused = False
 

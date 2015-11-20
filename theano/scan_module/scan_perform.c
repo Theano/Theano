@@ -1191,7 +1191,7 @@ static PyObject *__pyx_builtin_Exception;
 static PyObject *__pyx_builtin_zip;
 static PyObject *__pyx_builtin_RuntimeError;
 static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_get_version(CYTHON_UNUSED PyObject *__pyx_self); /* proto */
-static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_UNUSED PyObject *__pyx_self, unsigned int __pyx_v_n_shared_outs, unsigned int __pyx_v_n_mit_mot_outs, unsigned int __pyx_v_n_seqs, unsigned int __pyx_v_n_mit_mot, unsigned int __pyx_v_n_mit_sot, unsigned int __pyx_v_n_sit_sot, unsigned int __pyx_v_n_nit_sot, int __pyx_v_n_steps, int __pyx_v_as_while, PyArrayObject *__pyx_v_mintaps, PyArrayObject *__pyx_v_tap_array, PyArrayObject *__pyx_v_tap_array_len, PyArrayObject *__pyx_v_vector_seqs, PyArrayObject *__pyx_v_vector_outs, CYTHON_UNUSED PyArrayObject *__pyx_v_mit_mot_out_slices, CYTHON_UNUSED PyArrayObject *__pyx_v_mit_mot_out_nslices, PyArrayObject *__pyx_v_mitmots_preallocated, PyArrayObject *__pyx_v_inps_on_gpu, PyArrayObject *__pyx_v_outs_on_gpu, PyObject *__pyx_v_fn, PyObject *__pyx_v_fnct, PyArrayObject *__pyx_v_destroy_map, PyObject *__pyx_v_args, PyObject *__pyx_v_outs, PyObject *__pyx_v_self, PyObject *__pyx_v_node); /* proto */
+static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_UNUSED PyObject *__pyx_self, unsigned int __pyx_v_n_shared_outs, unsigned int __pyx_v_n_mit_mot_outs, unsigned int __pyx_v_n_seqs, unsigned int __pyx_v_n_mit_mot, unsigned int __pyx_v_n_mit_sot, unsigned int __pyx_v_n_sit_sot, unsigned int __pyx_v_n_nit_sot, int __pyx_v_n_steps, int __pyx_v_as_while, PyArrayObject *__pyx_v_mintaps, PyArrayObject *__pyx_v_tap_array, PyArrayObject *__pyx_v_tap_array_len, PyArrayObject *__pyx_v_vector_seqs, PyArrayObject *__pyx_v_vector_outs, CYTHON_UNUSED PyArrayObject *__pyx_v_mit_mot_out_slices, CYTHON_UNUSED PyArrayObject *__pyx_v_mit_mot_out_nslices, PyArrayObject *__pyx_v_mitmots_preallocated, PyArrayObject *__pyx_v_inps_is_tensor, PyArrayObject *__pyx_v_outs_is_tensor, PyObject *__pyx_v_fn, PyObject *__pyx_v_fnct, PyArrayObject *__pyx_v_destroy_map, PyObject *__pyx_v_args, PyObject *__pyx_v_outs, PyObject *__pyx_v_self, PyObject *__pyx_v_node); /* proto */
 static int __pyx_pf_5numpy_7ndarray___getbuffer__(PyArrayObject *__pyx_v_self, Py_buffer *__pyx_v_info, int __pyx_v_flags); /* proto */
 static void __pyx_pf_5numpy_7ndarray_2__releasebuffer__(PyArrayObject *__pyx_v_self, Py_buffer *__pyx_v_info); /* proto */
 static char __pyx_k_B[] = "B";
@@ -1301,8 +1301,6 @@ static char __pyx_k_offset_out[] = "offset_out";
 static char __pyx_k_other_args[] = "other_args";
 static char __pyx_k_destroy_map[] = "destroy_map";
 static char __pyx_k_get_version[] = "get_version";
-static char __pyx_k_inps_on_gpu[] = "inps_on_gpu";
-static char __pyx_k_outs_on_gpu[] = "outs_on_gpu";
 static char __pyx_k_store_steps[] = "store_steps";
 static char __pyx_k_value_zeros[] = "value_zeros";
 static char __pyx_k_vector_outs[] = "vector_outs";
@@ -1316,9 +1314,11 @@ static char __pyx_k_output_reused[] = "output_reused";
 static char __pyx_k_raise_with_op[] = "raise_with_op";
 static char __pyx_k_tap_array_len[] = "tap_array_len";
 static char __pyx_k_Razvan_Pascanu[] = "Razvan Pascanu";
+static char __pyx_k_inps_is_tensor[] = "inps_is_tensor";
 static char __pyx_k_mitmot_out_idx[] = "mitmot_out_idx";
 static char __pyx_k_n_mit_mot_outs[] = "n_mit_mot_outs";
 static char __pyx_k_output_storage[] = "output_storage";
+static char __pyx_k_outs_is_tensor[] = "outs_is_tensor";
 static char __pyx_k_update_profile[] = "update_profile";
 static char __pyx_k_expanded_inputs[] = "expanded_inputs";
 static char __pyx_k_len_store_steps[] = "len_store_steps";
@@ -1395,7 +1395,7 @@ static PyObject *__pyx_n_s_import;
 static PyObject *__pyx_n_s_index;
 static PyObject *__pyx_n_s_inp;
 static PyObject *__pyx_n_s_inp_idx;
-static PyObject *__pyx_n_s_inps_on_gpu;
+static PyObject *__pyx_n_s_inps_is_tensor;
 static PyObject *__pyx_n_s_input_storage;
 static PyObject *__pyx_n_s_j;
 static PyObject *__pyx_n_s_jout;
@@ -1448,7 +1448,7 @@ static PyObject *__pyx_n_s_output_reused;
 static PyObject *__pyx_n_s_output_storage;
 static PyObject *__pyx_n_s_outputs;
 static PyObject *__pyx_n_s_outs;
-static PyObject *__pyx_n_s_outs_on_gpu;
+static PyObject *__pyx_n_s_outs_is_tensor;
 static PyObject *__pyx_n_s_pdx;
 static PyObject *__pyx_n_s_perform;
 static PyObject *__pyx_n_s_pos;
@@ -1492,7 +1492,7 @@ static PyObject *__pyx_n_s_vm;
 static PyObject *__pyx_n_s_vm_call_time;
 static PyObject *__pyx_n_s_xrange;
 static PyObject *__pyx_n_s_zip;
-static PyObject *__pyx_float_0_291;
+static PyObject *__pyx_float_0_292;
 static PyObject *__pyx_int_0;
 static PyObject *__pyx_int_1;
 static PyObject *__pyx_int_neg_1;
@@ -1524,7 +1524,7 @@ static PyObject *__pyx_codeobj__23;
  *
  *
  * def get_version():             # <<<<<<<<<<<<<<
- *     return 0.291
+ *     return 0.292
  *
  */
 
@@ -1550,20 +1550,20 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_get_version(CYTHO
   /* "theano/scan_module/scan_perform.pyx":65
  *
  * def get_version():
- *     return 0.291             # <<<<<<<<<<<<<<
+ *     return 0.292             # <<<<<<<<<<<<<<
  *
  * @cython.boundscheck(False)
  */
   __Pyx_XDECREF(__pyx_r);
-  __Pyx_INCREF(__pyx_float_0_291);
-  __pyx_r = __pyx_float_0_291;
+  __Pyx_INCREF(__pyx_float_0_292);
+  __pyx_r = __pyx_float_0_292;
   goto __pyx_L0;
 
   /* "theano/scan_module/scan_perform.pyx":64
  *
  *
  * def get_version():             # <<<<<<<<<<<<<<
- *     return 0.291
+ *     return 0.292
  *
  */
 
@@ -1584,7 +1584,7 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_get_version(CYTHO
 
 /* Python wrapper */
 static PyObject *__pyx_pw_6theano_11scan_module_12scan_perform_3perform(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
-static char __pyx_doc_6theano_11scan_module_12scan_perform_2perform[] = "\n    Parameters\n    ----------\n    n_shared_outs: unsigned int\n        Number of arugments that correspond to shared variables with\n        updates\n    n_mit_mot_outs: unsigned int\n        Sum over the number of output taps for each mit_mot sequence\n    n_seqs: unsigned int\n        Number of sequences provided as input\n    n_mit_mot : unsigned int\n        Number of mit_mot arguemnts\n    n_mit_sot: unsigned int\n        Number of mit_sot arguments\n    n_sit_sot: unsigned int\n        Number of sit sot arguemnts\n    n_nit_sot: unsigned int\n        Number of nit_sot arguments\n    n_steps: unsigned int\n        Number of steps to loop over\n    mintaps: int32 ndarray (can also be a simple python list if that is better !)\n        For any of the mit_mot, mit_sot, sit_sot says which is the furtherst\n        away input tap from current position. For example, if the taps where [-2,\n        -5, -9], the mintap would be -9. For sit_sot this is always -1 since\n        is the only allowed tap.\n    tap_array: int32 ndarray( can be replaced by a list of list in python if better)\n        For each of the mit_mot, mit_sot, sit_sot (the first dimension) says\n        which are the corresponding input taps. While this is a matrix, not all\n        values in a row are needed and tap_array_len is there to say up to\n        which entry we are dealing with valid taps ( afterwards there are\n        just 0s to ensure the fix format)\n    tap_array_len: int32 ndarray( can be replaced by a list if better)\n        For each of the mit_mot, mit_sot, sit_sot says how many input taps\n        each has. For sit_sot this will always be 1.\n    vector_seqs: int32 ndarray (can be replaced by a list of bools if better)\n        For each sequence the corresponding entry is either a 1, is the\n        sequence is a vector or 0 if it has more than 1 dimension\n    vector_outs: int32 ndarray( can be replaced by list of bools if better)\n        For each output ( mit_mot, mit_sot, si""t_sot, nit_sot in this order)\n        the entry is 1 if the corresponding argument is a 1 dimensional\n        tensor, 0 otherwise.\n    mit_mot_out_slices : int32 ndarray( can be replaced by list of lists)\n        Same as tap_array, but for the output taps of mit_mot sequences\n    mit_mot_out_nslices: int32 ndarray (Can be replaced by a list)\n        Same as tap_array_len, but is the number of output taps of the\n        mit_mot sequences (i.e. it corresponds to mit_mot_out_slices)\n    inps_on_gpu : int32 ndarray (Can be replaced by a list)\n        Array of boolean indicating, for every input, whether it is on the GPU\n        or not\n    outs_on_gpu : int32 ndarray (Can be replaced by a list)\n        Array of boolean indicating, for every output, whether it is on the GPU\n        or not\n    fn: callable\n        This is the linker, i.e. the function that will loop over the\n        computational graph and call the perform of each operation. For this\n        linker there is a c version in gof/lazy_linker.c that will be the\n        starting point of implementing this funciton in C ( we need to take\n        all the code around the call of this function and put in C inside\n        that code)\n    fnct: python object\n        Only used to attach some timings for the profile mode ( can be\n        skiped if we don't care about Theano's profile mode)\n    destroy_map\n        Array of boolean saying if an output is computed inplace\n    args: list of ndarrays (and random states)\n        The inputs of scan in a given order ( n_steps, sequences, mit_mot,\n        mit_sot, sit_sot, nit_sot, shared_outs, other_args)\n    outs: list of 1 element list ( or storage objects?)\n        This is where we need to copy our outputs ( we don't return the\n        results, though we can change the code such that we return, and\n        figure things out on the outside - python)\n    self: python object\n        The scan op itself. I only use it to attach to it some timing""\n        informations .. but I don;t need to.\n\n    ";
+static char __pyx_doc_6theano_11scan_module_12scan_perform_2perform[] = "\n    Parameters\n    ----------\n    n_shared_outs: unsigned int\n        Number of arugments that correspond to shared variables with\n        updates\n    n_mit_mot_outs: unsigned int\n        Sum over the number of output taps for each mit_mot sequence\n    n_seqs: unsigned int\n        Number of sequences provided as input\n    n_mit_mot : unsigned int\n        Number of mit_mot arguemnts\n    n_mit_sot: unsigned int\n        Number of mit_sot arguments\n    n_sit_sot: unsigned int\n        Number of sit sot arguemnts\n    n_nit_sot: unsigned int\n        Number of nit_sot arguments\n    n_steps: unsigned int\n        Number of steps to loop over\n    mintaps: int32 ndarray (can also be a simple python list if that is better !)\n        For any of the mit_mot, mit_sot, sit_sot says which is the furtherst\n        away input tap from current position. For example, if the taps where [-2,\n        -5, -9], the mintap would be -9. For sit_sot this is always -1 since\n        is the only allowed tap.\n    tap_array: int32 ndarray( can be replaced by a list of list in python if better)\n        For each of the mit_mot, mit_sot, sit_sot (the first dimension) says\n        which are the corresponding input taps. While this is a matrix, not all\n        values in a row are needed and tap_array_len is there to say up to\n        which entry we are dealing with valid taps ( afterwards there are\n        just 0s to ensure the fix format)\n    tap_array_len: int32 ndarray( can be replaced by a list if better)\n        For each of the mit_mot, mit_sot, sit_sot says how many input taps\n        each has. For sit_sot this will always be 1.\n    vector_seqs: int32 ndarray (can be replaced by a list of bools if better)\n        For each sequence the corresponding entry is either a 1, is the\n        sequence is a vector or 0 if it has more than 1 dimension\n    vector_outs: int32 ndarray( can be replaced by list of bools if better)\n        For each output ( mit_mot, mit_sot, si""t_sot, nit_sot in this order)\n        the entry is 1 if the corresponding argument is a 1 dimensional\n        tensor, 0 otherwise.\n    mit_mot_out_slices : int32 ndarray( can be replaced by list of lists)\n        Same as tap_array, but for the output taps of mit_mot sequences\n    mit_mot_out_nslices: int32 ndarray (Can be replaced by a list)\n        Same as tap_array_len, but is the number of output taps of the\n        mit_mot sequences (i.e. it corresponds to mit_mot_out_slices)\n    inps_is_tensor : int32 ndarray (Can be replaced by a list)\n        Array of boolean indicating, for every input, whether it is a tensor\n        or not\n    outs_is_tensor : int32 ndarray (Can be replaced by a list)\n        Array of boolean indicating, for every output, whether it is a tensor\n        or not\n    fn: callable\n        This is the linker, i.e. the function that will loop over the\n        computational graph and call the perform of each operation. For this\n        linker there is a c version in gof/lazy_linker.c that will be the\n        starting point of implementing this funciton in C ( we need to take\n        all the code around the call of this function and put in C inside\n        that code)\n    fnct: python object\n        Only used to attach some timings for the profile mode ( can be\n        skiped if we don't care about Theano's profile mode)\n    destroy_map\n        Array of boolean saying if an output is computed inplace\n    args: list of ndarrays (and random states)\n        The inputs of scan in a given order ( n_steps, sequences, mit_mot,\n        mit_sot, sit_sot, nit_sot, shared_outs, other_args)\n    outs: list of 1 element list ( or storage objects?)\n        This is where we need to copy our outputs ( we don't return the\n        results, though we can change the code such that we return, and\n        figure things out on the outside - python)\n    self: python object\n        The scan op itself. I only use it to attach to it some timing""\n        informations .. but I don;t need to.\n\n    ";
 static PyMethodDef __pyx_mdef_6theano_11scan_module_12scan_perform_3perform = {"perform", (PyCFunction)__pyx_pw_6theano_11scan_module_12scan_perform_3perform, METH_VARARGS|METH_KEYWORDS, __pyx_doc_6theano_11scan_module_12scan_perform_2perform};
 static PyObject *__pyx_pw_6theano_11scan_module_12scan_perform_3perform(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
   unsigned int __pyx_v_n_shared_outs;
@@ -1604,8 +1604,8 @@ static PyObject *__pyx_pw_6theano_11scan_module_12scan_perform_3perform(PyObject
   CYTHON_UNUSED PyArrayObject *__pyx_v_mit_mot_out_slices = 0;
   CYTHON_UNUSED PyArrayObject *__pyx_v_mit_mot_out_nslices = 0;
   PyArrayObject *__pyx_v_mitmots_preallocated = 0;
-  PyArrayObject *__pyx_v_inps_on_gpu = 0;
-  PyArrayObject *__pyx_v_outs_on_gpu = 0;
+  PyArrayObject *__pyx_v_inps_is_tensor = 0;
+  PyArrayObject *__pyx_v_outs_is_tensor = 0;
   PyObject *__pyx_v_fn = 0;
   PyObject *__pyx_v_fnct = 0;
   PyArrayObject *__pyx_v_destroy_map = 0;
@@ -1620,7 +1620,7 @@ static PyObject *__pyx_pw_6theano_11scan_module_12scan_perform_3perform(PyObject
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("perform (wrapper)", 0);
   {
-    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_n_shared_outs,&__pyx_n_s_n_mit_mot_outs,&__pyx_n_s_n_seqs,&__pyx_n_s_n_mit_mot,&__pyx_n_s_n_mit_sot,&__pyx_n_s_n_sit_sot,&__pyx_n_s_n_nit_sot,&__pyx_n_s_n_steps,&__pyx_n_s_as_while,&__pyx_n_s_mintaps,&__pyx_n_s_tap_array,&__pyx_n_s_tap_array_len,&__pyx_n_s_vector_seqs,&__pyx_n_s_vector_outs,&__pyx_n_s_mit_mot_out_slices,&__pyx_n_s_mit_mot_out_nslices,&__pyx_n_s_mitmots_preallocated,&__pyx_n_s_inps_on_gpu,&__pyx_n_s_outs_on_gpu,&__pyx_n_s_fn,&__pyx_n_s_fnct,&__pyx_n_s_destroy_map,&__pyx_n_s_args,&__pyx_n_s_outs,&__pyx_n_s_self,&__pyx_n_s_node,0};
+    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_n_shared_outs,&__pyx_n_s_n_mit_mot_outs,&__pyx_n_s_n_seqs,&__pyx_n_s_n_mit_mot,&__pyx_n_s_n_mit_sot,&__pyx_n_s_n_sit_sot,&__pyx_n_s_n_nit_sot,&__pyx_n_s_n_steps,&__pyx_n_s_as_while,&__pyx_n_s_mintaps,&__pyx_n_s_tap_array,&__pyx_n_s_tap_array_len,&__pyx_n_s_vector_seqs,&__pyx_n_s_vector_outs,&__pyx_n_s_mit_mot_out_slices,&__pyx_n_s_mit_mot_out_nslices,&__pyx_n_s_mitmots_preallocated,&__pyx_n_s_inps_is_tensor,&__pyx_n_s_outs_is_tensor,&__pyx_n_s_fn,&__pyx_n_s_fnct,&__pyx_n_s_destroy_map,&__pyx_n_s_args,&__pyx_n_s_outs,&__pyx_n_s_self,&__pyx_n_s_node,0};
     PyObject* values[26] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
     if (unlikely(__pyx_kwds)) {
       Py_ssize_t kw_args;
@@ -1741,12 +1741,12 @@ static PyObject *__pyx_pw_6theano_11scan_module_12scan_perform_3perform(PyObject
           __Pyx_RaiseArgtupleInvalid("perform", 1, 26, 26, 16); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 68; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
         }
         case 17:
-        if (likely((values[17] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_inps_on_gpu)) != 0)) kw_args--;
+        if (likely((values[17] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_inps_is_tensor)) != 0)) kw_args--;
         else {
           __Pyx_RaiseArgtupleInvalid("perform", 1, 26, 26, 17); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 68; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
         }
         case 18:
-        if (likely((values[18] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_outs_on_gpu)) != 0)) kw_args--;
+        if (likely((values[18] = PyDict_GetItem(__pyx_kwds, __pyx_n_s_outs_is_tensor)) != 0)) kw_args--;
         else {
           __Pyx_RaiseArgtupleInvalid("perform", 1, 26, 26, 18); {__pyx_filename = __pyx_f[0]; __pyx_lineno = 68; __pyx_clineno = __LINE__; goto __pyx_L3_error;}
         }
@@ -1836,8 +1836,8 @@ static PyObject *__pyx_pw_6theano_11scan_module_12scan_perform_3perform(PyObject
     __pyx_v_mit_mot_out_slices = ((PyArrayObject *)values[14]);
     __pyx_v_mit_mot_out_nslices = ((PyArrayObject *)values[15]);
     __pyx_v_mitmots_preallocated = ((PyArrayObject *)values[16]);
-    __pyx_v_inps_on_gpu = ((PyArrayObject *)values[17]);
-    __pyx_v_outs_on_gpu = ((PyArrayObject *)values[18]);
+    __pyx_v_inps_is_tensor = ((PyArrayObject *)values[17]);
+    __pyx_v_outs_is_tensor = ((PyArrayObject *)values[18]);
     __pyx_v_fn = values[19];
     __pyx_v_fnct = values[20];
     __pyx_v_destroy_map = ((PyArrayObject *)values[21]);
@@ -1862,10 +1862,10 @@ static PyObject *__pyx_pw_6theano_11scan_module_12scan_perform_3perform(PyObject
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_mit_mot_out_slices), __pyx_ptype_5numpy_ndarray, 1, "mit_mot_out_slices", 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 83; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_mit_mot_out_nslices), __pyx_ptype_5numpy_ndarray, 1, "mit_mot_out_nslices", 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 84; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_mitmots_preallocated), __pyx_ptype_5numpy_ndarray, 1, "mitmots_preallocated", 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 85; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_inps_on_gpu), __pyx_ptype_5numpy_ndarray, 1, "inps_on_gpu", 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 86; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_outs_on_gpu), __pyx_ptype_5numpy_ndarray, 1, "outs_on_gpu", 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 87; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_inps_is_tensor), __pyx_ptype_5numpy_ndarray, 1, "inps_is_tensor", 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 86; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_outs_is_tensor), __pyx_ptype_5numpy_ndarray, 1, "outs_is_tensor", 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 87; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_destroy_map), __pyx_ptype_5numpy_ndarray, 1, "destroy_map", 0))) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 90; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
-  __pyx_r = __pyx_pf_6theano_11scan_module_12scan_perform_2perform(__pyx_self, __pyx_v_n_shared_outs, __pyx_v_n_mit_mot_outs, __pyx_v_n_seqs, __pyx_v_n_mit_mot, __pyx_v_n_mit_sot, __pyx_v_n_sit_sot, __pyx_v_n_nit_sot, __pyx_v_n_steps, __pyx_v_as_while, __pyx_v_mintaps, __pyx_v_tap_array, __pyx_v_tap_array_len, __pyx_v_vector_seqs, __pyx_v_vector_outs, __pyx_v_mit_mot_out_slices, __pyx_v_mit_mot_out_nslices, __pyx_v_mitmots_preallocated, __pyx_v_inps_on_gpu, __pyx_v_outs_on_gpu, __pyx_v_fn, __pyx_v_fnct, __pyx_v_destroy_map, __pyx_v_args, __pyx_v_outs, __pyx_v_self, __pyx_v_node);
+  __pyx_r = __pyx_pf_6theano_11scan_module_12scan_perform_2perform(__pyx_self, __pyx_v_n_shared_outs, __pyx_v_n_mit_mot_outs, __pyx_v_n_seqs, __pyx_v_n_mit_mot, __pyx_v_n_mit_sot, __pyx_v_n_sit_sot, __pyx_v_n_nit_sot, __pyx_v_n_steps, __pyx_v_as_while, __pyx_v_mintaps, __pyx_v_tap_array, __pyx_v_tap_array_len, __pyx_v_vector_seqs, __pyx_v_vector_outs, __pyx_v_mit_mot_out_slices, __pyx_v_mit_mot_out_nslices, __pyx_v_mitmots_preallocated, __pyx_v_inps_is_tensor, __pyx_v_outs_is_tensor, __pyx_v_fn, __pyx_v_fnct, __pyx_v_destroy_map, __pyx_v_args, __pyx_v_outs, __pyx_v_self, __pyx_v_node);
 
   /* function exit code */
   goto __pyx_L0;
@@ -1876,7 +1876,7 @@ static PyObject *__pyx_pw_6theano_11scan_module_12scan_perform_3perform(PyObject
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_UNUSED PyObject *__pyx_self, unsigned int __pyx_v_n_shared_outs, unsigned int __pyx_v_n_mit_mot_outs, unsigned int __pyx_v_n_seqs, unsigned int __pyx_v_n_mit_mot, unsigned int __pyx_v_n_mit_sot, unsigned int __pyx_v_n_sit_sot, unsigned int __pyx_v_n_nit_sot, int __pyx_v_n_steps, int __pyx_v_as_while, PyArrayObject *__pyx_v_mintaps, PyArrayObject *__pyx_v_tap_array, PyArrayObject *__pyx_v_tap_array_len, PyArrayObject *__pyx_v_vector_seqs, PyArrayObject *__pyx_v_vector_outs, CYTHON_UNUSED PyArrayObject *__pyx_v_mit_mot_out_slices, CYTHON_UNUSED PyArrayObject *__pyx_v_mit_mot_out_nslices, PyArrayObject *__pyx_v_mitmots_preallocated, PyArrayObject *__pyx_v_inps_on_gpu, PyArrayObject *__pyx_v_outs_on_gpu, PyObject *__pyx_v_fn, PyObject *__pyx_v_fnct, PyArrayObject *__pyx_v_destroy_map, PyObject *__pyx_v_args, PyObject *__pyx_v_outs, PyObject *__pyx_v_self, PyObject *__pyx_v_node) {
+static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_UNUSED PyObject *__pyx_self, unsigned int __pyx_v_n_shared_outs, unsigned int __pyx_v_n_mit_mot_outs, unsigned int __pyx_v_n_seqs, unsigned int __pyx_v_n_mit_mot, unsigned int __pyx_v_n_mit_sot, unsigned int __pyx_v_n_sit_sot, unsigned int __pyx_v_n_nit_sot, int __pyx_v_n_steps, int __pyx_v_as_while, PyArrayObject *__pyx_v_mintaps, PyArrayObject *__pyx_v_tap_array, PyArrayObject *__pyx_v_tap_array_len, PyArrayObject *__pyx_v_vector_seqs, PyArrayObject *__pyx_v_vector_outs, CYTHON_UNUSED PyArrayObject *__pyx_v_mit_mot_out_slices, CYTHON_UNUSED PyArrayObject *__pyx_v_mit_mot_out_nslices, PyArrayObject *__pyx_v_mitmots_preallocated, PyArrayObject *__pyx_v_inps_is_tensor, PyArrayObject *__pyx_v_outs_is_tensor, PyObject *__pyx_v_fn, PyObject *__pyx_v_fnct, PyArrayObject *__pyx_v_destroy_map, PyObject *__pyx_v_args, PyObject *__pyx_v_outs, PyObject *__pyx_v_self, PyObject *__pyx_v_node) {
   PyObject *__pyx_v_t0_call = NULL;
   PyObject *__pyx_v_t_fn = NULL;
   unsigned int __pyx_v_n_outs;
@@ -1936,8 +1936,8 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
   PyObject *__pyx_v_profile = NULL;
   __Pyx_LocalBuf_ND __pyx_pybuffernd_destroy_map;
   __Pyx_Buffer __pyx_pybuffer_destroy_map;
-  __Pyx_LocalBuf_ND __pyx_pybuffernd_inps_on_gpu;
-  __Pyx_Buffer __pyx_pybuffer_inps_on_gpu;
+  __Pyx_LocalBuf_ND __pyx_pybuffernd_inps_is_tensor;
+  __Pyx_Buffer __pyx_pybuffer_inps_is_tensor;
   __Pyx_LocalBuf_ND __pyx_pybuffernd_mintaps;
   __Pyx_Buffer __pyx_pybuffer_mintaps;
   __Pyx_LocalBuf_ND __pyx_pybuffernd_mit_mot_out_nslices;
@@ -1946,8 +1946,8 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
   __Pyx_Buffer __pyx_pybuffer_mit_mot_out_slices;
   __Pyx_LocalBuf_ND __pyx_pybuffernd_mitmots_preallocated;
   __Pyx_Buffer __pyx_pybuffer_mitmots_preallocated;
-  __Pyx_LocalBuf_ND __pyx_pybuffernd_outs_on_gpu;
-  __Pyx_Buffer __pyx_pybuffer_outs_on_gpu;
+  __Pyx_LocalBuf_ND __pyx_pybuffernd_outs_is_tensor;
+  __Pyx_Buffer __pyx_pybuffer_outs_is_tensor;
   __Pyx_LocalBuf_ND __pyx_pybuffernd_tap_array;
   __Pyx_Buffer __pyx_pybuffer_tap_array;
   __Pyx_LocalBuf_ND __pyx_pybuffernd_tap_array_len;
@@ -2041,14 +2041,14 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
   __pyx_pybuffer_mitmots_preallocated.refcount = 0;
   __pyx_pybuffernd_mitmots_preallocated.data = NULL;
   __pyx_pybuffernd_mitmots_preallocated.rcbuffer = &__pyx_pybuffer_mitmots_preallocated;
-  __pyx_pybuffer_inps_on_gpu.pybuffer.buf = NULL;
-  __pyx_pybuffer_inps_on_gpu.refcount = 0;
-  __pyx_pybuffernd_inps_on_gpu.data = NULL;
-  __pyx_pybuffernd_inps_on_gpu.rcbuffer = &__pyx_pybuffer_inps_on_gpu;
-  __pyx_pybuffer_outs_on_gpu.pybuffer.buf = NULL;
-  __pyx_pybuffer_outs_on_gpu.refcount = 0;
-  __pyx_pybuffernd_outs_on_gpu.data = NULL;
-  __pyx_pybuffernd_outs_on_gpu.rcbuffer = &__pyx_pybuffer_outs_on_gpu;
+  __pyx_pybuffer_inps_is_tensor.pybuffer.buf = NULL;
+  __pyx_pybuffer_inps_is_tensor.refcount = 0;
+  __pyx_pybuffernd_inps_is_tensor.data = NULL;
+  __pyx_pybuffernd_inps_is_tensor.rcbuffer = &__pyx_pybuffer_inps_is_tensor;
+  __pyx_pybuffer_outs_is_tensor.pybuffer.buf = NULL;
+  __pyx_pybuffer_outs_is_tensor.refcount = 0;
+  __pyx_pybuffernd_outs_is_tensor.data = NULL;
+  __pyx_pybuffernd_outs_is_tensor.rcbuffer = &__pyx_pybuffer_outs_is_tensor;
   __pyx_pybuffer_destroy_map.pybuffer.buf = NULL;
   __pyx_pybuffer_destroy_map.refcount = 0;
   __pyx_pybuffernd_destroy_map.data = NULL;
@@ -2095,14 +2095,14 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
   __pyx_pybuffernd_mitmots_preallocated.diminfo[0].strides = __pyx_pybuffernd_mitmots_preallocated.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_mitmots_preallocated.diminfo[0].shape = __pyx_pybuffernd_mitmots_preallocated.rcbuffer->pybuffer.shape[0];
   {
     __Pyx_BufFmt_StackElem __pyx_stack[1];
-    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_inps_on_gpu.rcbuffer->pybuffer, (PyObject*)__pyx_v_inps_on_gpu, &__Pyx_TypeInfo_nn___pyx_t_5numpy_int32_t, PyBUF_FORMAT| PyBUF_STRIDES, 1, 0, __pyx_stack) == -1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 68; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_inps_is_tensor.rcbuffer->pybuffer, (PyObject*)__pyx_v_inps_is_tensor, &__Pyx_TypeInfo_nn___pyx_t_5numpy_int32_t, PyBUF_FORMAT| PyBUF_STRIDES, 1, 0, __pyx_stack) == -1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 68; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
-  __pyx_pybuffernd_inps_on_gpu.diminfo[0].strides = __pyx_pybuffernd_inps_on_gpu.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_inps_on_gpu.diminfo[0].shape = __pyx_pybuffernd_inps_on_gpu.rcbuffer->pybuffer.shape[0];
+  __pyx_pybuffernd_inps_is_tensor.diminfo[0].strides = __pyx_pybuffernd_inps_is_tensor.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_inps_is_tensor.diminfo[0].shape = __pyx_pybuffernd_inps_is_tensor.rcbuffer->pybuffer.shape[0];
   {
     __Pyx_BufFmt_StackElem __pyx_stack[1];
-    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_outs_on_gpu.rcbuffer->pybuffer, (PyObject*)__pyx_v_outs_on_gpu, &__Pyx_TypeInfo_nn___pyx_t_5numpy_int32_t, PyBUF_FORMAT| PyBUF_STRIDES, 1, 0, __pyx_stack) == -1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 68; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+    if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_outs_is_tensor.rcbuffer->pybuffer, (PyObject*)__pyx_v_outs_is_tensor, &__Pyx_TypeInfo_nn___pyx_t_5numpy_int32_t, PyBUF_FORMAT| PyBUF_STRIDES, 1, 0, __pyx_stack) == -1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 68; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   }
-  __pyx_pybuffernd_outs_on_gpu.diminfo[0].strides = __pyx_pybuffernd_outs_on_gpu.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_outs_on_gpu.diminfo[0].shape = __pyx_pybuffernd_outs_on_gpu.rcbuffer->pybuffer.shape[0];
+  __pyx_pybuffernd_outs_is_tensor.diminfo[0].strides = __pyx_pybuffernd_outs_is_tensor.rcbuffer->pybuffer.strides[0]; __pyx_pybuffernd_outs_is_tensor.diminfo[0].shape = __pyx_pybuffernd_outs_is_tensor.rcbuffer->pybuffer.shape[0];
   {
     __Pyx_BufFmt_StackElem __pyx_stack[1];
     if (unlikely(__Pyx_GetBufferAndValidate(&__pyx_pybuffernd_destroy_map.rcbuffer->pybuffer, (PyObject*)__pyx_v_destroy_map, &__Pyx_TypeInfo_nn___pyx_t_5numpy_int32_t, PyBUF_FORMAT| PyBUF_STRIDES, 1, 0, __pyx_stack) == -1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 68; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -3796,7 +3796,7 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
  *
  *             if var is None:             # <<<<<<<<<<<<<<
  *                 old_output_data[idx] = None
- *             elif outs_on_gpu[idx]:
+ *             elif outs_is_tensor[idx]:
  */
       __pyx_t_4 = (__pyx_v_var == Py_None);
       __pyx_t_14 = (__pyx_t_4 != 0);
@@ -3806,8 +3806,8 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
  *
  *             if var is None:
  *                 old_output_data[idx] = None             # <<<<<<<<<<<<<<
- *             elif outs_on_gpu[idx]:
- *                 old_output_data[idx] = var.gpudata
+ *             elif outs_is_tensor[idx]:
+ *                 old_output_data[idx] = var.data
  */
         if (unlikely(__Pyx_SetItemInt(__pyx_v_old_output_data, __pyx_v_idx, Py_None, unsigned int, 0, __Pyx_PyInt_From_unsigned_int, 1, 0, 0) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 370; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         goto __pyx_L61;
@@ -3816,22 +3816,22 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
       /* "theano/scan_module/scan_perform.pyx":371
  *             if var is None:
  *                 old_output_data[idx] = None
- *             elif outs_on_gpu[idx]:             # <<<<<<<<<<<<<<
- *                 old_output_data[idx] = var.gpudata
+ *             elif outs_is_tensor[idx]:             # <<<<<<<<<<<<<<
+ *                 old_output_data[idx] = var.data
  *             else:
  */
       __pyx_t_29 = __pyx_v_idx;
-      __pyx_t_14 = ((*__Pyx_BufPtrStrided1d(__pyx_t_5numpy_int32_t *, __pyx_pybuffernd_outs_on_gpu.rcbuffer->pybuffer.buf, __pyx_t_29, __pyx_pybuffernd_outs_on_gpu.diminfo[0].strides)) != 0);
+      __pyx_t_14 = ((*__Pyx_BufPtrStrided1d(__pyx_t_5numpy_int32_t *, __pyx_pybuffernd_outs_is_tensor.rcbuffer->pybuffer.buf, __pyx_t_29, __pyx_pybuffernd_outs_is_tensor.diminfo[0].strides)) != 0);
       if (__pyx_t_14) {
 
         /* "theano/scan_module/scan_perform.pyx":372
  *                 old_output_data[idx] = None
- *             elif outs_on_gpu[idx]:
- *                 old_output_data[idx] = var.gpudata             # <<<<<<<<<<<<<<
+ *             elif outs_is_tensor[idx]:
+ *                 old_output_data[idx] = var.data             # <<<<<<<<<<<<<<
  *             else:
- *                 old_output_data[idx] = var.data
+ *                 old_output_data[idx] = var.gpudata
  */
-        __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_var, __pyx_n_s_gpudata); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 372; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_var, __pyx_n_s_data); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 372; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_1);
         if (unlikely(__Pyx_SetItemInt(__pyx_v_old_output_data, __pyx_v_idx, __pyx_t_1, unsigned int, 0, __Pyx_PyInt_From_unsigned_int, 1, 0, 0) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 372; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
@@ -3840,13 +3840,13 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
       /*else*/ {
 
         /* "theano/scan_module/scan_perform.pyx":374
- *                 old_output_data[idx] = var.gpudata
+ *                 old_output_data[idx] = var.data
  *             else:
- *                 old_output_data[idx] = var.data             # <<<<<<<<<<<<<<
+ *                 old_output_data[idx] = var.gpudata             # <<<<<<<<<<<<<<
  *
  *         # 4.6. Keep a reference to the variables (ndarrays, CudaNdarrays,
  */
-        __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_var, __pyx_n_s_data); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 374; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_var, __pyx_n_s_gpudata); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 374; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_1);
         if (unlikely(__Pyx_SetItemInt(__pyx_v_old_output_data, __pyx_v_idx, __pyx_t_1, unsigned int, 0, __Pyx_PyInt_From_unsigned_int, 1, 0, 0) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 374; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
@@ -3898,7 +3898,7 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
  *
  *             if var is None:             # <<<<<<<<<<<<<<
  *                 old_mitmot_input_data[idx] = None
- *             elif inps_on_gpu[idx]:
+ *             elif inps_is_tensor[idx]:
  */
       __pyx_t_14 = (__pyx_v_var == Py_None);
       __pyx_t_4 = (__pyx_t_14 != 0);
@@ -3908,8 +3908,8 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
  *
  *             if var is None:
  *                 old_mitmot_input_data[idx] = None             # <<<<<<<<<<<<<<
- *             elif inps_on_gpu[idx]:
- *                 old_mitmot_input_data[idx] = var.gpudata
+ *             elif inps_is_tensor[idx]:
+ *                 old_mitmot_input_data[idx] = var.data
  */
         if (unlikely(__Pyx_SetItemInt(__pyx_v_old_mitmot_input_data, __pyx_v_idx, Py_None, unsigned int, 0, __Pyx_PyInt_From_unsigned_int, 1, 0, 0) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 387; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         goto __pyx_L64;
@@ -3918,22 +3918,22 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
       /* "theano/scan_module/scan_perform.pyx":388
  *             if var is None:
  *                 old_mitmot_input_data[idx] = None
- *             elif inps_on_gpu[idx]:             # <<<<<<<<<<<<<<
- *                 old_mitmot_input_data[idx] = var.gpudata
+ *             elif inps_is_tensor[idx]:             # <<<<<<<<<<<<<<
+ *                 old_mitmot_input_data[idx] = var.data
  *             else:
  */
       __pyx_t_6 = __pyx_v_idx;
-      __pyx_t_4 = ((*__Pyx_BufPtrStrided1d(__pyx_t_5numpy_int32_t *, __pyx_pybuffernd_inps_on_gpu.rcbuffer->pybuffer.buf, __pyx_t_6, __pyx_pybuffernd_inps_on_gpu.diminfo[0].strides)) != 0);
+      __pyx_t_4 = ((*__Pyx_BufPtrStrided1d(__pyx_t_5numpy_int32_t *, __pyx_pybuffernd_inps_is_tensor.rcbuffer->pybuffer.buf, __pyx_t_6, __pyx_pybuffernd_inps_is_tensor.diminfo[0].strides)) != 0);
       if (__pyx_t_4) {
 
         /* "theano/scan_module/scan_perform.pyx":389
  *                 old_mitmot_input_data[idx] = None
- *             elif inps_on_gpu[idx]:
- *                 old_mitmot_input_data[idx] = var.gpudata             # <<<<<<<<<<<<<<
+ *             elif inps_is_tensor[idx]:
+ *                 old_mitmot_input_data[idx] = var.data             # <<<<<<<<<<<<<<
  *             else:
- *                 old_mitmot_input_data[idx] = var.data
+ *                 old_mitmot_input_data[idx] = var.gpudata
  */
-        __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_var, __pyx_n_s_gpudata); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 389; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_var, __pyx_n_s_data); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 389; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_1);
         if (unlikely(__Pyx_SetItemInt(__pyx_v_old_mitmot_input_data, __pyx_v_idx, __pyx_t_1, unsigned int, 0, __Pyx_PyInt_From_unsigned_int, 1, 0, 0) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 389; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
@@ -3942,13 +3942,13 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
       /*else*/ {
 
         /* "theano/scan_module/scan_perform.pyx":391
- *                 old_mitmot_input_data[idx] = var.gpudata
+ *                 old_mitmot_input_data[idx] = var.data
  *             else:
- *                 old_mitmot_input_data[idx] = var.data             # <<<<<<<<<<<<<<
+ *                 old_mitmot_input_data[idx] = var.gpudata             # <<<<<<<<<<<<<<
  *
  *         # 5.1 compute outputs
  */
-        __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_var, __pyx_n_s_data); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 391; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+        __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_var, __pyx_n_s_gpudata); if (unlikely(!__pyx_t_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 391; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_GOTREF(__pyx_t_1);
         if (unlikely(__Pyx_SetItemInt(__pyx_v_old_mitmot_input_data, __pyx_v_idx, __pyx_t_1, unsigned int, 0, __Pyx_PyInt_From_unsigned_int, 1, 0, 0) < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 391; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
@@ -4764,7 +4764,7 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
  *                     new_var = input_storage[n_seqs + inp_idx].storage[0]
  *                     if old_var is new_var:             # <<<<<<<<<<<<<<
  *                         old_data = old_mitmot_input_data[inp_idx]
- *                         if inps_on_gpu[n_seqs + inp_idx]:
+ *                         if inps_is_tensor[n_seqs + inp_idx]:
  */
           __pyx_t_14 = (__pyx_v_old_var == __pyx_v_new_var);
           __pyx_t_4 = (__pyx_t_14 != 0);
@@ -4774,8 +4774,8 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
  *                     new_var = input_storage[n_seqs + inp_idx].storage[0]
  *                     if old_var is new_var:
  *                         old_data = old_mitmot_input_data[inp_idx]             # <<<<<<<<<<<<<<
- *                         if inps_on_gpu[n_seqs + inp_idx]:
- *                             same_data = (new_var.gpudata == old_data)
+ *                         if inps_is_tensor[n_seqs + inp_idx]:
+ *                             same_data = (new_var.data == old_data)
  */
             __pyx_t_9 = PyObject_GetItem(__pyx_v_old_mitmot_input_data, __pyx_v_inp_idx); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 452; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
             __Pyx_GOTREF(__pyx_t_9);
@@ -4785,8 +4785,8 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
             /* "theano/scan_module/scan_perform.pyx":453
  *                     if old_var is new_var:
  *                         old_data = old_mitmot_input_data[inp_idx]
- *                         if inps_on_gpu[n_seqs + inp_idx]:             # <<<<<<<<<<<<<<
- *                             same_data = (new_var.gpudata == old_data)
+ *                         if inps_is_tensor[n_seqs + inp_idx]:             # <<<<<<<<<<<<<<
+ *                             same_data = (new_var.data == old_data)
  *                         else:
  */
             __pyx_t_9 = __Pyx_PyInt_From_unsigned_int(__pyx_v_n_seqs); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 453; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -4794,7 +4794,7 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
             __pyx_t_2 = PyNumber_Add(__pyx_t_9, __pyx_v_inp_idx); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 453; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_2);
             __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
-            __pyx_t_9 = PyObject_GetItem(((PyObject *)__pyx_v_inps_on_gpu), __pyx_t_2); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 453; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
+            __pyx_t_9 = PyObject_GetItem(((PyObject *)__pyx_v_inps_is_tensor), __pyx_t_2); if (unlikely(__pyx_t_9 == NULL)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 453; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
             __Pyx_GOTREF(__pyx_t_9);
             __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
             __pyx_t_4 = __Pyx_PyObject_IsTrue(__pyx_t_9); if (unlikely(__pyx_t_4 < 0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 453; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -4803,12 +4803,12 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
 
               /* "theano/scan_module/scan_perform.pyx":454
  *                         old_data = old_mitmot_input_data[inp_idx]
- *                         if inps_on_gpu[n_seqs + inp_idx]:
- *                             same_data = (new_var.gpudata == old_data)             # <<<<<<<<<<<<<<
+ *                         if inps_is_tensor[n_seqs + inp_idx]:
+ *                             same_data = (new_var.data == old_data)             # <<<<<<<<<<<<<<
  *                         else:
- *                             same_data = (new_var.data == old_data)
+ *                             same_data = (new_var.gpudata == old_data)
  */
-              __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_v_new_var, __pyx_n_s_gpudata); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 454; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+              __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_v_new_var, __pyx_n_s_data); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 454; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
               __Pyx_GOTREF(__pyx_t_9);
               __pyx_t_2 = PyObject_RichCompare(__pyx_t_9, __pyx_v_old_data, Py_EQ); __Pyx_XGOTREF(__pyx_t_2); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 454; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
               __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
@@ -4819,13 +4819,13 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
             /*else*/ {
 
               /* "theano/scan_module/scan_perform.pyx":456
- *                             same_data = (new_var.gpudata == old_data)
+ *                             same_data = (new_var.data == old_data)
  *                         else:
- *                             same_data = (new_var.data == old_data)             # <<<<<<<<<<<<<<
+ *                             same_data = (new_var.gpudata == old_data)             # <<<<<<<<<<<<<<
  *                     else:
  *                         same_data = False
  */
-              __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_new_var, __pyx_n_s_data); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 456; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+              __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_new_var, __pyx_n_s_gpudata); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 456; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
               __Pyx_GOTREF(__pyx_t_2);
               __pyx_t_9 = PyObject_RichCompare(__pyx_t_2, __pyx_v_old_data, Py_EQ); __Pyx_XGOTREF(__pyx_t_9); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 456; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
               __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
@@ -4838,7 +4838,7 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
           /*else*/ {
 
             /* "theano/scan_module/scan_perform.pyx":458
- *                             same_data = (new_var.data == old_data)
+ *                             same_data = (new_var.gpudata == old_data)
  *                     else:
  *                         same_data = False             # <<<<<<<<<<<<<<
  *
@@ -5141,7 +5141,7 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
  *                 if old_var is new_var:
  *                     if old_data is None:             # <<<<<<<<<<<<<<
  *                         output_reused = False
- *                     elif outs_on_gpu[offset_out + j]:
+ *                     elif outs_is_tensor[offset_out + j]:
  */
           __pyx_t_4 = (__pyx_v_old_data == Py_None);
           __pyx_t_14 = (__pyx_t_4 != 0);
@@ -5151,8 +5151,8 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
  *                 if old_var is new_var:
  *                     if old_data is None:
  *                         output_reused = False             # <<<<<<<<<<<<<<
- *                     elif outs_on_gpu[offset_out + j]:
- *                         output_reused = (new_var.gpudata == old_data)
+ *                     elif outs_is_tensor[offset_out + j]:
+ *                         output_reused = (new_var.data == old_data)
  */
             __Pyx_INCREF(Py_False);
             __Pyx_XDECREF_SET(__pyx_v_output_reused, Py_False);
@@ -5162,22 +5162,22 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
           /* "theano/scan_module/scan_perform.pyx":497
  *                     if old_data is None:
  *                         output_reused = False
- *                     elif outs_on_gpu[offset_out + j]:             # <<<<<<<<<<<<<<
- *                         output_reused = (new_var.gpudata == old_data)
+ *                     elif outs_is_tensor[offset_out + j]:             # <<<<<<<<<<<<<<
+ *                         output_reused = (new_var.data == old_data)
  *                     else:
  */
           __pyx_t_43 = (__pyx_v_offset_out + __pyx_v_j);
-          __pyx_t_14 = ((*__Pyx_BufPtrStrided1d(__pyx_t_5numpy_int32_t *, __pyx_pybuffernd_outs_on_gpu.rcbuffer->pybuffer.buf, __pyx_t_43, __pyx_pybuffernd_outs_on_gpu.diminfo[0].strides)) != 0);
+          __pyx_t_14 = ((*__Pyx_BufPtrStrided1d(__pyx_t_5numpy_int32_t *, __pyx_pybuffernd_outs_is_tensor.rcbuffer->pybuffer.buf, __pyx_t_43, __pyx_pybuffernd_outs_is_tensor.diminfo[0].strides)) != 0);
           if (__pyx_t_14) {
 
             /* "theano/scan_module/scan_perform.pyx":498
  *                         output_reused = False
- *                     elif outs_on_gpu[offset_out + j]:
- *                         output_reused = (new_var.gpudata == old_data)             # <<<<<<<<<<<<<<
+ *                     elif outs_is_tensor[offset_out + j]:
+ *                         output_reused = (new_var.data == old_data)             # <<<<<<<<<<<<<<
  *                     else:
- *                         output_reused = (new_var.data == old_data)
+ *                         output_reused = (new_var.gpudata == old_data)
  */
-            __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_new_var, __pyx_n_s_gpudata); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 498; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_v_new_var, __pyx_n_s_data); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 498; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_3);
             __pyx_t_9 = PyObject_RichCompare(__pyx_t_3, __pyx_v_old_data, Py_EQ); __Pyx_XGOTREF(__pyx_t_9); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 498; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
@@ -5188,13 +5188,13 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
           /*else*/ {
 
             /* "theano/scan_module/scan_perform.pyx":500
- *                         output_reused = (new_var.gpudata == old_data)
+ *                         output_reused = (new_var.data == old_data)
  *                     else:
- *                         output_reused = (new_var.data == old_data)             # <<<<<<<<<<<<<<
+ *                         output_reused = (new_var.gpudata == old_data)             # <<<<<<<<<<<<<<
  *                 else:
  *                     output_reused = False
  */
-            __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_v_new_var, __pyx_n_s_data); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 500; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_9 = __Pyx_PyObject_GetAttrStr(__pyx_v_new_var, __pyx_n_s_gpudata); if (unlikely(!__pyx_t_9)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 500; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_9);
             __pyx_t_3 = PyObject_RichCompare(__pyx_t_9, __pyx_v_old_data, Py_EQ); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 500; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
@@ -5207,7 +5207,7 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
         /*else*/ {
 
           /* "theano/scan_module/scan_perform.pyx":502
- *                         output_reused = (new_var.data == old_data)
+ *                         output_reused = (new_var.gpudata == old_data)
  *                 else:
  *                     output_reused = False             # <<<<<<<<<<<<<<
  *
@@ -5747,7 +5747,7 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
  *                 if old_var is new_var:
  *                     if old_data is None:             # <<<<<<<<<<<<<<
  *                         output_reused = False
- *                     elif outs_on_gpu[offset_out + j]:
+ *                     elif outs_is_tensor[offset_out + j]:
  */
           __pyx_t_13 = (__pyx_v_old_data == Py_None);
           __pyx_t_4 = (__pyx_t_13 != 0);
@@ -5757,8 +5757,8 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
  *                 if old_var is new_var:
  *                     if old_data is None:
  *                         output_reused = False             # <<<<<<<<<<<<<<
- *                     elif outs_on_gpu[offset_out + j]:
- *                         output_reused = (new_var.gpudata == old_data)
+ *                     elif outs_is_tensor[offset_out + j]:
+ *                         output_reused = (new_var.data == old_data)
  */
             __Pyx_INCREF(Py_False);
             __Pyx_XDECREF_SET(__pyx_v_output_reused, Py_False);
@@ -5768,22 +5768,22 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
           /* "theano/scan_module/scan_perform.pyx":539
  *                     if old_data is None:
  *                         output_reused = False
- *                     elif outs_on_gpu[offset_out + j]:             # <<<<<<<<<<<<<<
- *                         output_reused = (new_var.gpudata == old_data)
+ *                     elif outs_is_tensor[offset_out + j]:             # <<<<<<<<<<<<<<
+ *                         output_reused = (new_var.data == old_data)
  *                     else:
  */
           __pyx_t_46 = (__pyx_v_offset_out + __pyx_v_j);
-          __pyx_t_4 = ((*__Pyx_BufPtrStrided1d(__pyx_t_5numpy_int32_t *, __pyx_pybuffernd_outs_on_gpu.rcbuffer->pybuffer.buf, __pyx_t_46, __pyx_pybuffernd_outs_on_gpu.diminfo[0].strides)) != 0);
+          __pyx_t_4 = ((*__Pyx_BufPtrStrided1d(__pyx_t_5numpy_int32_t *, __pyx_pybuffernd_outs_is_tensor.rcbuffer->pybuffer.buf, __pyx_t_46, __pyx_pybuffernd_outs_is_tensor.diminfo[0].strides)) != 0);
           if (__pyx_t_4) {
 
             /* "theano/scan_module/scan_perform.pyx":540
  *                         output_reused = False
- *                     elif outs_on_gpu[offset_out + j]:
- *                         output_reused = (new_var.gpudata == old_data)             # <<<<<<<<<<<<<<
+ *                     elif outs_is_tensor[offset_out + j]:
+ *                         output_reused = (new_var.data == old_data)             # <<<<<<<<<<<<<<
  *                     else:
- *                         output_reused = (new_var.data == old_data)
+ *                         output_reused = (new_var.gpudata == old_data)
  */
-            __pyx_t_35 = __Pyx_PyObject_GetAttrStr(__pyx_v_new_var, __pyx_n_s_gpudata); if (unlikely(!__pyx_t_35)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 540; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_35 = __Pyx_PyObject_GetAttrStr(__pyx_v_new_var, __pyx_n_s_data); if (unlikely(!__pyx_t_35)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 540; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_35);
             __pyx_t_2 = PyObject_RichCompare(__pyx_t_35, __pyx_v_old_data, Py_EQ); __Pyx_XGOTREF(__pyx_t_2); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 540; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_DECREF(__pyx_t_35); __pyx_t_35 = 0;
@@ -5794,13 +5794,13 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
           /*else*/ {
 
             /* "theano/scan_module/scan_perform.pyx":542
- *                         output_reused = (new_var.gpudata == old_data)
+ *                         output_reused = (new_var.data == old_data)
  *                     else:
- *                         output_reused = (new_var.data == old_data)             # <<<<<<<<<<<<<<
+ *                         output_reused = (new_var.gpudata == old_data)             # <<<<<<<<<<<<<<
  *                 else:
  *                     output_reused = False
  */
-            __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_new_var, __pyx_n_s_data); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 542; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+            __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_new_var, __pyx_n_s_gpudata); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 542; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_GOTREF(__pyx_t_2);
             __pyx_t_35 = PyObject_RichCompare(__pyx_t_2, __pyx_v_old_data, Py_EQ); __Pyx_XGOTREF(__pyx_t_35); if (unlikely(!__pyx_t_35)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 542; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
             __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
@@ -5813,7 +5813,7 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
         /*else*/ {
 
           /* "theano/scan_module/scan_perform.pyx":544
- *                         output_reused = (new_var.data == old_data)
+ *                         output_reused = (new_var.gpudata == old_data)
  *                 else:
  *                     output_reused = False             # <<<<<<<<<<<<<<
  *
@@ -6822,12 +6822,12 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
   { PyObject *__pyx_type, *__pyx_value, *__pyx_tb;
     __Pyx_ErrFetch(&__pyx_type, &__pyx_value, &__pyx_tb);
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_destroy_map.rcbuffer->pybuffer);
-    __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_inps_on_gpu.rcbuffer->pybuffer);
+    __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_inps_is_tensor.rcbuffer->pybuffer);
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_mintaps.rcbuffer->pybuffer);
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_mit_mot_out_nslices.rcbuffer->pybuffer);
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_mit_mot_out_slices.rcbuffer->pybuffer);
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_mitmots_preallocated.rcbuffer->pybuffer);
-    __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_outs_on_gpu.rcbuffer->pybuffer);
+    __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_outs_is_tensor.rcbuffer->pybuffer);
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_tap_array.rcbuffer->pybuffer);
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_tap_array_len.rcbuffer->pybuffer);
     __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_vector_outs.rcbuffer->pybuffer);
@@ -6838,12 +6838,12 @@ static PyObject *__pyx_pf_6theano_11scan_module_12scan_perform_2perform(CYTHON_U
   goto __pyx_L2;
   __pyx_L0:;
   __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_destroy_map.rcbuffer->pybuffer);
-  __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_inps_on_gpu.rcbuffer->pybuffer);
+  __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_inps_is_tensor.rcbuffer->pybuffer);
   __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_mintaps.rcbuffer->pybuffer);
   __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_mit_mot_out_nslices.rcbuffer->pybuffer);
   __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_mit_mot_out_slices.rcbuffer->pybuffer);
   __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_mitmots_preallocated.rcbuffer->pybuffer);
-  __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_outs_on_gpu.rcbuffer->pybuffer);
+  __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_outs_is_tensor.rcbuffer->pybuffer);
   __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_tap_array.rcbuffer->pybuffer);
   __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_tap_array_len.rcbuffer->pybuffer);
   __Pyx_SafeReleaseBuffer(&__pyx_pybuffernd_vector_outs.rcbuffer->pybuffer);
@@ -8958,7 +8958,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_index, __pyx_k_index, sizeof(__pyx_k_index), 0, 0, 1, 1},
   {&__pyx_n_s_inp, __pyx_k_inp, sizeof(__pyx_k_inp), 0, 0, 1, 1},
   {&__pyx_n_s_inp_idx, __pyx_k_inp_idx, sizeof(__pyx_k_inp_idx), 0, 0, 1, 1},
-  {&__pyx_n_s_inps_on_gpu, __pyx_k_inps_on_gpu, sizeof(__pyx_k_inps_on_gpu), 0, 0, 1, 1},
+  {&__pyx_n_s_inps_is_tensor, __pyx_k_inps_is_tensor, sizeof(__pyx_k_inps_is_tensor), 0, 0, 1, 1},
   {&__pyx_n_s_input_storage, __pyx_k_input_storage, sizeof(__pyx_k_input_storage), 0, 0, 1, 1},
   {&__pyx_n_s_j, __pyx_k_j, sizeof(__pyx_k_j), 0, 0, 1, 1},
   {&__pyx_n_s_jout, __pyx_k_jout, sizeof(__pyx_k_jout), 0, 0, 1, 1},
@@ -9011,7 +9011,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_output_storage, __pyx_k_output_storage, sizeof(__pyx_k_output_storage), 0, 0, 1, 1},
   {&__pyx_n_s_outputs, __pyx_k_outputs, sizeof(__pyx_k_outputs), 0, 0, 1, 1},
   {&__pyx_n_s_outs, __pyx_k_outs, sizeof(__pyx_k_outs), 0, 0, 1, 1},
-  {&__pyx_n_s_outs_on_gpu, __pyx_k_outs_on_gpu, sizeof(__pyx_k_outs_on_gpu), 0, 0, 1, 1},
+  {&__pyx_n_s_outs_is_tensor, __pyx_k_outs_is_tensor, sizeof(__pyx_k_outs_is_tensor), 0, 0, 1, 1},
   {&__pyx_n_s_pdx, __pyx_k_pdx, sizeof(__pyx_k_pdx), 0, 0, 1, 1},
   {&__pyx_n_s_perform, __pyx_k_perform, sizeof(__pyx_k_perform), 0, 0, 1, 1},
   {&__pyx_n_s_pos, __pyx_k_pos, sizeof(__pyx_k_pos), 0, 0, 1, 1},
@@ -9287,7 +9287,7 @@ static int __Pyx_InitCachedConstants(void) {
  *
  *
  * def get_version():             # <<<<<<<<<<<<<<
- *     return 0.291
+ *     return 0.292
  *
  */
   __pyx_codeobj__21 = (PyObject*)__Pyx_PyCode_New(0, 0, 0, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_u_carriepl_Documents_PYTHON_LIB, __pyx_n_s_get_version, 64, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__21)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 64; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -9299,7 +9299,7 @@ static int __Pyx_InitCachedConstants(void) {
  *             unsigned int n_shared_outs,
  *             unsigned int n_mit_mot_outs,
  */
-  __pyx_tuple__22 = PyTuple_Pack(84, __pyx_n_s_n_shared_outs, __pyx_n_s_n_mit_mot_outs, __pyx_n_s_n_seqs, __pyx_n_s_n_mit_mot, __pyx_n_s_n_mit_sot, __pyx_n_s_n_sit_sot, __pyx_n_s_n_nit_sot, __pyx_n_s_n_steps, __pyx_n_s_as_while, __pyx_n_s_mintaps, __pyx_n_s_tap_array, __pyx_n_s_tap_array_len, __pyx_n_s_vector_seqs, __pyx_n_s_vector_outs, __pyx_n_s_mit_mot_out_slices, __pyx_n_s_mit_mot_out_nslices, __pyx_n_s_mitmots_preallocated, __pyx_n_s_inps_on_gpu, __pyx_n_s_outs_on_gpu, __pyx_n_s_fn, __pyx_n_s_fnct, __pyx_n_s_destroy_map, __pyx_n_s_args, __pyx_n_s_outs, __pyx_n_s_self, __pyx_n_s_node, __pyx_n_s_t0_call, __pyx_n_s_t_fn, __pyx_n_s_n_outs, __pyx_n_s_seqs_arg_offset, __pyx_n_s_shared_arg_offset, __pyx_n_s_nit_sot_arg_offset, __pyx_n_s_offset_out, __pyx_n_s_lenpos, __pyx_n_s_pos, __pyx_n_s_len_store_steps, __pyx_n_s_store_steps, __pyx_n_s_l, __pyx_n_s_offset, __pyx_n_s_tap, __pyx_n_s_idx, __pyx_n_s_a_offset, __pyx_n_s_o_offset, __pyx_n_s_idx_2, __pyx_n_s_i, __pyx_n_s_j, __pyx_n_s_k, __pyx_n_s_kdx, __pyx_n_s_tdx, __pyx_n_s_pdx, __pyx_n_s_jout, __pyx_n_s_begin, __pyx_n_s_end, __pyx_n_s_cond, __pyx_n_s_len_output_storage, __pyx_n_s_other_args, __pyx_n_s_input_storage, __pyx_n_s_nb_mitmot_in, __pyx_n_s_old_mitmot_input_storage, __pyx_n_s_old_mitmot_input_data, __pyx_n_s_output_storage, __pyx_n_s_old_output_storage, __pyx_n_s_old_output_data, __pyx_n_s_var, __pyx_n_s_t0_fn, __pyx_n_s_dt_fn, __pyx_n_s_inp, __pyx_n_s_storage, __pyx_n_s_mitmot_inp_offset, __pyx_n_s_mitmot_out_idx, __pyx_n_s_inp_idx, __pyx_n_s_old_var, __pyx_n_s_new_var, __pyx_n_s_old_data, __pyx_n_s_same_data, __pyx_n_s_output_reused, __pyx_n_s_shape, __pyx_n_s_dtype, __pyx_n_s_tmp, __pyx_n_s_sh0, __pyx_n_s_i_s, __pyx_n_s_o_s, __pyx_n_s_t_call, __pyx_n_s_profile); if (unlikely(!__pyx_tuple__22)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 68; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_tuple__22 = PyTuple_Pack(84, __pyx_n_s_n_shared_outs, __pyx_n_s_n_mit_mot_outs, __pyx_n_s_n_seqs, __pyx_n_s_n_mit_mot, __pyx_n_s_n_mit_sot, __pyx_n_s_n_sit_sot, __pyx_n_s_n_nit_sot, __pyx_n_s_n_steps, __pyx_n_s_as_while, __pyx_n_s_mintaps, __pyx_n_s_tap_array, __pyx_n_s_tap_array_len, __pyx_n_s_vector_seqs, __pyx_n_s_vector_outs, __pyx_n_s_mit_mot_out_slices, __pyx_n_s_mit_mot_out_nslices, __pyx_n_s_mitmots_preallocated, __pyx_n_s_inps_is_tensor, __pyx_n_s_outs_is_tensor, __pyx_n_s_fn, __pyx_n_s_fnct, __pyx_n_s_destroy_map, __pyx_n_s_args, __pyx_n_s_outs, __pyx_n_s_self, __pyx_n_s_node, __pyx_n_s_t0_call, __pyx_n_s_t_fn, __pyx_n_s_n_outs, __pyx_n_s_seqs_arg_offset, __pyx_n_s_shared_arg_offset, __pyx_n_s_nit_sot_arg_offset, __pyx_n_s_offset_out, __pyx_n_s_lenpos, __pyx_n_s_pos, __pyx_n_s_len_store_steps, __pyx_n_s_store_steps, __pyx_n_s_l, __pyx_n_s_offset, __pyx_n_s_tap, __pyx_n_s_idx, __pyx_n_s_a_offset, __pyx_n_s_o_offset, __pyx_n_s_idx_2, __pyx_n_s_i, __pyx_n_s_j, __pyx_n_s_k, __pyx_n_s_kdx, __pyx_n_s_tdx, __pyx_n_s_pdx, __pyx_n_s_jout, __pyx_n_s_begin, __pyx_n_s_end, __pyx_n_s_cond, __pyx_n_s_len_output_storage, __pyx_n_s_other_args, __pyx_n_s_input_storage, __pyx_n_s_nb_mitmot_in, __pyx_n_s_old_mitmot_input_storage, __pyx_n_s_old_mitmot_input_data, __pyx_n_s_output_storage, __pyx_n_s_old_output_storage, __pyx_n_s_old_output_data, __pyx_n_s_var, __pyx_n_s_t0_fn, __pyx_n_s_dt_fn, __pyx_n_s_inp, __pyx_n_s_storage, __pyx_n_s_mitmot_inp_offset, __pyx_n_s_mitmot_out_idx, __pyx_n_s_inp_idx, __pyx_n_s_old_var, __pyx_n_s_new_var, __pyx_n_s_old_data, __pyx_n_s_same_data, __pyx_n_s_output_reused, __pyx_n_s_shape, __pyx_n_s_dtype, __pyx_n_s_tmp, __pyx_n_s_sh0, __pyx_n_s_i_s, __pyx_n_s_o_s, __pyx_n_s_t_call, __pyx_n_s_profile); if (unlikely(!__pyx_tuple__22)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 68; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __Pyx_GOTREF(__pyx_tuple__22);
   __Pyx_GIVEREF(__pyx_tuple__22);
   __pyx_codeobj__23 = (PyObject*)__Pyx_PyCode_New(26, 0, 84, 0, 0, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__22, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_u_carriepl_Documents_PYTHON_LIB, __pyx_n_s_perform, 68, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__23)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 68; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -9312,7 +9312,7 @@ static int __Pyx_InitCachedConstants(void) {
 
 static int __Pyx_InitGlobals(void) {
   if (__Pyx_InitStrings(__pyx_string_tab) < 0) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;};
-  __pyx_float_0_291 = PyFloat_FromDouble(0.291); if (unlikely(!__pyx_float_0_291)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
+  __pyx_float_0_292 = PyFloat_FromDouble(0.292); if (unlikely(!__pyx_float_0_292)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_int_0 = PyInt_FromLong(0); if (unlikely(!__pyx_int_0)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_int_1 = PyInt_FromLong(1); if (unlikely(!__pyx_int_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
   __pyx_int_neg_1 = PyInt_FromLong(-1); if (unlikely(!__pyx_int_neg_1)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 1; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
@@ -9507,7 +9507,7 @@ PyMODINIT_FUNC PyInit_scan_perform(void)
  *
  *
  * def get_version():             # <<<<<<<<<<<<<<
- *     return 0.291
+ *     return 0.292
  *
  */
   __pyx_t_2 = PyCFunction_NewEx(&__pyx_mdef_6theano_11scan_module_12scan_perform_1get_version, NULL, __pyx_n_s_theano_scan_module_scan_perform); if (unlikely(!__pyx_t_2)) {__pyx_filename = __pyx_f[0]; __pyx_lineno = 64; __pyx_clineno = __LINE__; goto __pyx_L1_error;}
