@@ -51,7 +51,7 @@ conv_groupopt = LocalGroupDB()
 conv_groupopt.__name__ = "gpua_conv_opts"
 
 gpu_seqopt.register('gpuarray_local_optimiziations', gpu_optimizer, 1,
-                    'fast_compile', 'fast_run', 'inplace', 'gpuarray')
+                    'fast_compile', 'fast_run', 'gpuarray')
 gpu_seqopt.register('gpuarray_cut_transfers', gpu_cut_copies, 2,
                     'fast_compile', 'fast_run', 'gpuarray')
 

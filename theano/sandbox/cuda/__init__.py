@@ -522,11 +522,10 @@ def unuse():
     cuda_enabled = False
     handle_shared_float32(False)
     optdb.remove_tags('gpu_opt',
-                   'fast_run',
-                   'inplace')
+                      'fast_compile',
+                      'fast_run')
     optdb.remove_tags('gpu_after_fusion',
-                   'fast_run',
-                   'inplace')
+                      'fast_run')
 
 
 def handle_shared_float32(tf):
