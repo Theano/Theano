@@ -62,7 +62,7 @@ import copy
 
 
 def get_version():
-    return 0.290
+    return 0.291
 
 @cython.boundscheck(False)
 def perform(
@@ -83,6 +83,8 @@ def perform(
             numpy.ndarray[numpy.int32_t,ndim=2] mit_mot_out_slices,
             numpy.ndarray[numpy.int32_t,ndim=1] mit_mot_out_nslices,
             numpy.ndarray[numpy.int32_t,ndim=1] mitmots_preallocated,
+            numpy.ndarray[numpy.int32_t,ndim=1] inps_on_gpu,
+            numpy.ndarray[numpy.int32_t,ndim=1] outs_on_gpu,
             fn,
             fnct,
             numpy.ndarray[numpy.int32_t,ndim=1] destroy_map,
@@ -136,6 +138,12 @@ def perform(
     mit_mot_out_nslices: int32 ndarray (Can be replaced by a list)
         Same as tap_array_len, but is the number of output taps of the
         mit_mot sequences (i.e. it corresponds to mit_mot_out_slices)
+    inps_on_gpu : int32 ndarray (Can be replaced by a list)
+        Array of boolean indicating, for every input, whether it is on the GPU
+        or not
+    outs_on_gpu : int32 ndarray (Can be replaced by a list)
+        Array of boolean indicating, for every output, whether it is on the GPU
+        or not
     fn: callable
         This is the linker, i.e. the function that will loop over the
         computational graph and call the perform of each operation. For this
@@ -358,12 +366,12 @@ def perform(
             var = output_storage[idx].storage[0]
             old_output_storage[idx] = var
 
-            if hasattr(var, 'gpudata'):
-                old_output_data[idx] = var.gpudata
-            elif hasattr(var, 'data'):
-                old_output_data[idx] = var.data
-            else:
+            if var is None:
                 old_output_data[idx] = None
+            elif outs_on_gpu[idx]:
+                old_output_data[idx] = var.gpudata
+            else:
+                old_output_data[idx] = var.data
 
         # 4.6. Keep a reference to the variables (ndarrays, CudaNdarrays,
         # etc) associated with mitmot inputs currently in the input_storage to
@@ -375,12 +383,12 @@ def perform(
             var = input_storage[idx + n_seqs].storage[0]
             old_mitmot_input_storage[idx] = var
 
-            if hasattr(var, 'gpudata'):
-                old_mitmot_input_data[idx] = var.gpudata
-            elif hasattr(var, 'data'):
-                old_mitmot_input_data[idx] = var.data
-            else:
+            if var is None:
                 old_mitmot_input_data[idx] = None
+            elif inps_on_gpu[idx]:
+                old_mitmot_input_data[idx] = var.gpudata
+            else:
+                old_mitmot_input_data[idx] = var.data
 
         # 5.1 compute outputs
         t0_fn = time.time()
@@ -442,9 +450,9 @@ def perform(
                     new_var = input_storage[n_seqs + inp_idx].storage[0]
                     if old_var is new_var:
                         old_data = old_mitmot_input_data[inp_idx]
-                        if hasattr(new_var, 'gpudata'):
+                        if inps_on_gpu[n_seqs + inp_idx]:
                             same_data = (new_var.gpudata == old_data)
-                        elif hasattr(new_var, 'data'):
+                        else:
                             same_data = (new_var.data == old_data)
                     else:
                         same_data = False
@@ -486,9 +494,9 @@ def perform(
                 if old_var is new_var:
                     if old_data is None:
                         output_reused = False
-                    elif hasattr(new_var, 'gpudata'):
+                    elif outs_on_gpu[offset_out + j]:
                         output_reused = (new_var.gpudata == old_data)
-                    elif hasattr(new_var, 'data'):
+                    else:
                         output_reused = (new_var.data == old_data)
                 else:
                     output_reused = False
@@ -528,9 +536,9 @@ def perform(
                 if old_var is new_var:
                     if old_data is None:
                         output_reused = False
-                    elif hasattr(new_var, 'gpudata'):
+                    elif outs_on_gpu[offset_out + j]:
                         output_reused = (new_var.gpudata == old_data)
-                    elif hasattr(new_var, 'data'):
+                    else:
                         output_reused = (new_var.data == old_data)
                 else:
                     output_reused = False
