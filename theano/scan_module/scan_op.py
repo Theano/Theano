@@ -321,16 +321,14 @@ class Scan(PureOp):
                 # not having been preallocated
                 self.mitmots_preallocated = [False] * self.n_mit_mot_outs
 
-            if not hasattr(self, 'outs_on_gpu'):
+            if not hasattr(self, 'outs_is_tensor'):
                 # The thunk has been compiled before the analysis, at
                 # compilation time, of the location of the inputs and outputs.
                 # Perform this analysis here.
-                self.inps_on_gpu = [not isinstance(out,
-                                                   theano.tensor.TensorVariable)
-                                    for out in self.fn.maker.fgraph.inputs]
-                self.outs_on_gpu = [not isinstance(out,
-                                                   theano.tensor.TensorVariable)
-                                    for out in self.fn.maker.fgraph.outputs]
+                self.inps_is_tensor = [isinstance(out, theano.tensor.TensorVariable)
+                                       for out in self.fn.maker.fgraph.inputs]
+                self.outs_is_tensor = [isinstance(out, theano.tensor.TensorVariable)
+                                       for out in self.fn.maker.fgraph.outputs]
 
         # Ensure that the graph associated with the inner function is valid.
         self.validate_inner_graph()
@@ -871,10 +869,10 @@ class Scan(PureOp):
 
         # Analyse the compile inner function to determine which inputs and
         # outputs are on the gpu and speed up some checks during the execution
-        self.inps_on_gpu = [not isinstance(out, theano.tensor.TensorVariable)
-                            for out in self.fn.maker.fgraph.inputs]
-        self.outs_on_gpu = [not isinstance(out, theano.tensor.TensorVariable)
-                            for out in self.fn.maker.fgraph.outputs]
+        self.inps_is_tensor = [isinstance(out, theano.tensor.TensorVariable)
+                               for out in self.fn.maker.fgraph.inputs]
+        self.outs_is_tensor = [isinstance(out, theano.tensor.TensorVariable)
+                               for out in self.fn.maker.fgraph.outputs]
 
         try:
             cython_mintaps = numpy.asarray(self.mintaps, dtype='int32')
@@ -912,8 +910,10 @@ class Scan(PureOp):
             cython_mitmots_preallocated = numpy.asarray(self.mitmots_preallocated,
                                                         dtype='int32')
 
-            cython_inps_on_gpu = numpy.asarray(self.inps_on_gpu, dtype='int32')
-            cython_outs_on_gpu = numpy.asarray(self.outs_on_gpu, dtype='int32')
+            cython_inps_is_tensor = numpy.asarray(self.inps_is_tensor,
+                                                  dtype='int32')
+            cython_outs_is_tensor = numpy.asarray(self.outs_is_tensor,
+                                                  dtype='int32')
 
             if hasattr(self, 'destroy_map'):
                 cython_destroy_map = [x in self.destroy_map
@@ -942,8 +942,8 @@ class Scan(PureOp):
                         cython_mit_mot_out_slices,
                         cython_mit_mot_out_nslices,
                         cython_mitmots_preallocated,
-                        cython_inps_on_gpu,
-                        cython_outs_on_gpu,
+                        cython_inps_is_tensor,
+                        cython_outs_is_tensor,
                         self.fn.fn,
                         self.fn,
                         cython_destroy_map,
@@ -1305,10 +1305,10 @@ class Scan(PureOp):
 
                 if var is None:
                     old_output_data[idx] = None
-                elif self.outs_on_gpu[idx]:
-                    old_output_data[idx] = var.gpudata
-                else:
+                elif self.outs_is_tensor[idx]:
                     old_output_data[idx] = var.data
+                else:
+                    old_output_data[idx] = var.gpudata
 
             # 4.6. Keep a reference to the variables (ndarrays, CudaNdarrays,
             # etc) associated with mitmot inputs currently in the
@@ -1323,10 +1323,10 @@ class Scan(PureOp):
 
                 if var is None:
                     old_mitmot_input_data[idx] = None
-                elif self.inps_on_gpu[idx]:
-                    old_mitmot_input_data[idx] = var.gpudata
-                else:
+                elif self.inps_is_tensor[idx]:
                     old_mitmot_input_data[idx] = var.data
+                else:
+                    old_mitmot_input_data[idx] = var.gpudata
 
             # 5.1 compute outputs
             t0_fn = time.time()
@@ -1388,10 +1388,10 @@ class Scan(PureOp):
                         new_var = input_storage[self.n_seqs + inp_idx].storage[0]
                         if old_var is new_var:
                             old_data = old_mitmot_input_data[inp_idx]
-                            if self.inps_on_gpu[self.n_seqs + inp_idx]:
-                                same_data = (new_var.gpudata == old_data)
-                            else:
+                            if self.inps_is_tensor[self.n_seqs + inp_idx]:
                                 same_data = (new_var.data == old_data)
+                            else:
+                                same_data = (new_var.gpudata == old_data)
                         else:
                             same_data = False
 
@@ -1434,10 +1434,10 @@ class Scan(PureOp):
                         old_data = old_output_data[offset_out + j]
                         if old_data is None:
                             output_reused = False
-                        elif self.outs_on_gpu[offset_out + j]:
-                            output_reused = (new_var.gpudata == old_data)
-                        else:
+                        elif self.outs_is_tensor[offset_out + j]:
                             output_reused = (new_var.data == old_data)
+                        else:
+                            output_reused = (new_var.gpudata == old_data)
                     else:
                         output_reused = False
 
@@ -1477,10 +1477,10 @@ class Scan(PureOp):
                     if old_var is new_var:
                         if old_data is None:
                             output_reused = False
-                        elif self.outs_on_gpu[offset_out + j]:
-                            output_reused = (new_var.gpudata == old_data)
-                        else:
+                        elif self.outs_is_tensor[offset_out + j]:
                             output_reused = (new_var.data == old_data)
+                        else:
+                            output_reused = (new_var.gpudata == old_data)
                     else:
                         output_reused = False
 
