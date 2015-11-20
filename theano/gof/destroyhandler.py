@@ -55,6 +55,29 @@ def _contains_cycle(fgraph, orderings):
         True if the graph contains a cycle, False otherwise.
 
     """
+    if False:
+        import pdb;pdb.set_trace()
+        for n in fgraph.apply_nodes:
+            dm = getattr(n.op, 'destroy_map', None)
+            if not dm:
+                continue
+            inputs = sum(dm.values())
+            for inp_idx in inputs:
+                inp = n.inputs[inp_idx]
+                while inp.owner:
+                    if len(inp.clients() > 1):
+                        return True
+                    n2 = inp.owner
+                    inp_idx2 = n2.outputs.index(inp)
+                    d = getattr(n2, 'destroy_map', {}).get(inp_idx2, [])
+                    d += getattr(n2, 'view_map', {}).get(inp_idx2, [])
+                    assert len(d) <= 1
+                    if len(d) == 0:
+                        continue
+                    inp_idx3 = d[0]
+                    inp = n2.inputs[above]
+
+        return False
     # These are lists of Variable instances
     outputs = fgraph.outputs
 
@@ -777,6 +800,36 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
         delattr(self.fgraph, 'destroy_handler')
         self.fgraph = None
 
+    def fast_destroy(self, app):
+        """
+        Do the check for only 1 level.
+
+        For now:
+        - Destroyed variables can have only 1 clients.
+        - Allow sequence of destroy variables.
+        - Allow view to have multiple clients.
+        - Allow sequence of view.
+        - But don't allow to destroy view
+        """
+        return
+        dm = getattr(app.op, 'destroy_map', None)
+        if not dm:
+            return
+        inputs = sum(dm.values())  # list of app's destroyed inputs
+        for inp_idx in inputs:
+            inp = app.inputs[inp_idx]
+            if inp.owner:
+                if len(inp.clients() > 1):
+                    raise InconsistencyError()
+                app2 = inp.owner
+                inp_idx2 = app2.outputs.index(inp)
+                d = getattr(app2, 'destroy_map', {}).get(inp_idx2, [])
+                v = getattr(app2, 'view_map', {}).get(inp_idx2, [])
+                dv = d+v
+                assert len(dv) <= 1
+                if len(v) > 0:
+                    raise InconsistencyError()
+
     def on_import(self, fgraph, app, reason):
         """
         Add Apply instance to set which must be computed.
@@ -790,7 +843,9 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
 
         # If it's a destructive op, add it to our watch list
         if getattr(app.op, 'destroy_map', {}):
+            # TODO: check here only one level of fast destroy_map.
             self.destroyers.add(app)
+            self.fast_destroy(app)
 
         # add this symbol to the forward and backward maps
         for o_idx, i_idx_list in iteritems(getattr(app.op, 'view_map', {})):
@@ -891,6 +946,8 @@ class DestroyHandler(toolbox.Bookkeeper):  # noqa
 
                     self.view_o.setdefault(new_r, OrderedSet()).add(output)
 
+            # TODO: check here only one level of fast destroy_map.
+            self.fast_destroy(app)
         self.stale_droot = True
 
     def validate(self, fgraph):
