@@ -92,7 +92,7 @@ except ImportError:
 
 gpu_cut_copies = EquilibriumDB()
 gpu_seqopt.register('gpu_local_optimizations', gpu_optimizer, 1,
-                    'fast_run', 'fast_compile', 'inplace', 'gpu')
+                    'fast_run', 'fast_compile', 'gpu')
 gpu_seqopt.register('gpu_cut_transfers', gpu_cut_copies, 2,
                     'fast_run', 'fast_compile', 'gpu')
 # DO NOT PUT fast_run or fast_compile in gpu_opt! This will ALWAYS
