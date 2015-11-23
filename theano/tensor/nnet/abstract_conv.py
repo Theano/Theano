@@ -164,6 +164,9 @@ def conv2d(input,
         GPU. Otherwise, it is the *CorrMM* convolution that will be used
         "caffe style convolution".
 
+    :note: This is only supported in Theano 0.8 or the development
+        version until it is released.
+
     """
 
     conv_op = AbstractConv2d(imshp=input_shape,
