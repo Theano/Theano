@@ -9,7 +9,7 @@ from theano.tensor.extra_ops import CumsumOp
 if cuda_available:
     from theano.sandbox.cuda import CudaNdarrayType
     from theano.sandbox.cuda.basic_ops import host_from_gpu, gpu_from_host, HostFromGpu
-    from theano.sandbox.cuda.opt import register_opt as register_gpu_opt
+    from theano.sandbox.cuda import register_opt as register_gpu_opt
 
 
 class GpuCumsum(CumsumOp, GpuOp):

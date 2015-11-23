@@ -13,7 +13,6 @@ from theano.compile.ops import shape_i
 from theano.tensor.nnet import SoftmaxGrad
 from theano.tensor.signal.downsample import (
     DownsampleFactorMax, MaxPoolGrad, AveragePoolGrad)
-from theano.tensor.opt import register_specialize_device
 from theano.sandbox.cuda.type import CudaNdarrayType
 
 from theano.sandbox.cuda import GpuOp
@@ -33,8 +32,6 @@ from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 from theano.tensor.nnet.abstract_conv2d import (AbstractConv2d,
                                                 AbstractConv2d_gradWeights,
                                                 AbstractConv2d_gradInputs)
-from theano.tensor.opt import register_specialize_device
-
 
 
 def dnn_available():
@@ -2453,8 +2450,8 @@ def local_abstractconv_cudnn(node):
                                  AbstractConv2d_gradInputs))):
         return None
 
-    if not isinstance(inp1.type, CudaNdarrayType) or \
-            not isinstance(inp2.type, CudaNdarrayType):
+    if (not isinstance(inp1.type, CudaNdarrayType) or
+            not isinstance(inp2.type, CudaNdarrayType)):
         return None
     if not dnn_available():
         return None
