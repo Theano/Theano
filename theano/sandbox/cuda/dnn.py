@@ -2443,13 +2443,13 @@ if True:
 @local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights,
                   AbstractConv2d_gradInputs])
 def local_abstractconv_cudnn(node):
-    inp1 = node.inputs[0]
-    inp2 = node.inputs[1]
-
     if (not isinstance(node.op, (AbstractConv2d,
                                  AbstractConv2d_gradWeights,
                                  AbstractConv2d_gradInputs))):
         return None
+
+    inp1 = node.inputs[0]
+    inp2 = node.inputs[1]
 
     if (not isinstance(inp1.type, CudaNdarrayType) or
             not isinstance(inp2.type, CudaNdarrayType)):
