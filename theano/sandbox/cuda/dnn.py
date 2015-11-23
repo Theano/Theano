@@ -13,7 +13,6 @@ from theano.compile.ops import shape_i
 from theano.tensor.nnet import SoftmaxGrad
 from theano.tensor.signal.downsample import (
     DownsampleFactorMax, MaxPoolGrad, AveragePoolGrad)
-from theano.tensor.opt import register_specialize_device
 from theano.sandbox.cuda.type import CudaNdarrayType
 
 from theano.sandbox.cuda import GpuOp
@@ -33,8 +32,6 @@ from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 from theano.tensor.nnet.abstract_conv2d import (AbstractConv2d,
                                                 AbstractConv2d_gradWeights,
                                                 AbstractConv2d_gradInputs)
-from theano.tensor.opt import register_specialize_device
-
 
 
 def dnn_available():
@@ -2440,24 +2437,26 @@ if True:
             )
             return [out.dimshuffle(0, 1)]
 
-### AbstractConv Optimizations
-@local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights, AbstractConv2d_gradInputs])
+
+# AbstractConv Optimizations
+@local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights,
+                  AbstractConv2d_gradInputs])
 def local_abstractconv_cudnn(node):
     inp1 = node.inputs[0]
     inp2 = node.inputs[1]
 
-    if ((not isinstance(node.op, AbstractConv2d) or
-         not isinstance(node.op, AbstractConv2d_gradWeights) or
-         not isinstance(node.op, AbstractConv2d_gradInputs))):
+    if (not isinstance(node.op, (AbstractConv2d,
+                                 AbstractConv2d_gradWeights,
+                                 AbstractConv2d_gradInputs))):
         return None
 
-    if not isinstance(inp1.type, CudaNdarrayType) or \
-            not isinstance(inp2.type, CudaNdarrayType):
+    if (not isinstance(inp1.type, CudaNdarrayType) or
+            not isinstance(inp2.type, CudaNdarrayType)):
         return None
     if not dnn_available():
         return None
 
-    if node.op.filters_flip:
+    if node.op.filter_flip:
         conv_mode = 'conv'
     else:
         conv_mode = 'cross'
@@ -2466,20 +2465,21 @@ def local_abstractconv_cudnn(node):
                         border_mode=node.op.border_mode,
                         subsample=node.op.subsample,
                         direction_hint='forward',
-                        conv_mode = conv_mode)
+                        conv_mode=conv_mode)
         return [rval]
     if (isinstance(node.op, AbstractConv2d_gradWeights)):
-        shape = (inp2.shape[1], inp1.shape[1], node.inputs[2][0], node.inputs[2][1])
+        shape = (inp2.shape[1], inp1.shape[1],
+                 node.inputs[2][0], node.inputs[2][1])
         rval = dnn_gradweight(inp1, inp2, shape,
                               border_mode=node.op.border_mode,
                               subsample=node.op.subsample,
-                              conv_mode = conv_mode)
+                              conv_mode=conv_mode)
         return [rval]
     if (isinstance(node.op, AbstractConv2d_gradInputs)):
-        shape = (inp2.shape[0], inp1.shape[1], node.inputs[2][0], node.inputs[2][1])
+        shape = (inp2.shape[0], inp1.shape[1],
+                 node.inputs[2][0], node.inputs[2][1])
         rval = dnn_gradinput(inp1, inp2, shape,
                              border_mode=node.op.border_mode,
                              subsample=node.op.subsample,
-                             conv_mode = conv_mode)
+                             conv_mode=conv_mode)
         return [rval]
-
