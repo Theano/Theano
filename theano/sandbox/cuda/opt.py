@@ -2788,7 +2788,8 @@ abstractconv_groupopt.__name__ = "gpu_abstractconv_opts"
 register_specialize_device(abstractconv_groupopt, 'gpu', 'fast_compile')
 
 # cuDNN is first, but only registered if cuDNN is available.
-conv_groupopt.register('local_abstractconv_dnn', dnn.local_abstractconv_cudnn, 20,
+conv_groupopt.register('local_abstractconv_dnn',
+                       dnn.local_abstractconv_cudnn, 20,
                        'conv_dnn',
                        'gpu', 'fast_compile', 'fast_run', 'cudnn')
 # The GEMM-based convolution comes last to catch all remaining cases.

@@ -2440,8 +2440,10 @@ if True:
             )
             return [out.dimshuffle(0, 1)]
 
-### AbstractConv Optimizations
-@local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights, AbstractConv2d_gradInputs])
+
+# AbstractConv Optimizations
+@local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights,
+                  AbstractConv2d_gradInputs])
 def local_abstractconv_cudnn(node):
     inp1 = node.inputs[0]
     inp2 = node.inputs[1]
@@ -2466,20 +2468,21 @@ def local_abstractconv_cudnn(node):
                         border_mode=node.op.border_mode,
                         subsample=node.op.subsample,
                         direction_hint='forward',
-                        conv_mode = conv_mode)
+                        conv_mode=conv_mode)
         return [rval]
     if (isinstance(node.op, AbstractConv2d_gradWeights)):
-        shape = (inp2.shape[1], inp1.shape[1], node.inputs[2][0], node.inputs[2][1])
+        shape = (inp2.shape[1], inp1.shape[1],
+                 node.inputs[2][0], node.inputs[2][1])
         rval = dnn_gradweight(inp1, inp2, shape,
                               border_mode=node.op.border_mode,
                               subsample=node.op.subsample,
-                              conv_mode = conv_mode)
+                              conv_mode=conv_mode)
         return [rval]
     if (isinstance(node.op, AbstractConv2d_gradInputs)):
-        shape = (inp2.shape[0], inp1.shape[1], node.inputs[2][0], node.inputs[2][1])
+        shape = (inp2.shape[0], inp1.shape[1],
+                 node.inputs[2][0], node.inputs[2][1])
         rval = dnn_gradinput(inp1, inp2, shape,
                              border_mode=node.op.border_mode,
                              subsample=node.op.subsample,
-                             conv_mode = conv_mode)
+                             conv_mode=conv_mode)
         return [rval]
-
