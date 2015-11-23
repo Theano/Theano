@@ -2448,9 +2448,9 @@ def local_abstractconv_cudnn(node):
     inp1 = node.inputs[0]
     inp2 = node.inputs[1]
 
-    if ((not isinstance(node.op, AbstractConv2d) or
-         not isinstance(node.op, AbstractConv2d_gradWeights) or
-         not isinstance(node.op, AbstractConv2d_gradInputs))):
+    if (not isinstance(node.op, (AbstractConv2d,
+                                 AbstractConv2d_gradWeights,
+                                 AbstractConv2d_gradInputs))):
         return None
 
     if not isinstance(inp1.type, CudaNdarrayType) or \
@@ -2459,7 +2459,7 @@ def local_abstractconv_cudnn(node):
     if not dnn_available():
         return None
 
-    if node.op.filters_flip:
+    if node.op.filter_flip:
         conv_mode = 'conv'
     else:
         conv_mode = 'cross'
