@@ -15,6 +15,10 @@ from theano.scalar.basic import Scalar, Pow, Cast
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
 from theano.tensor.nnet.conv import ConvOp
+from theano.tensor.nnet.abstract_conv2d import (BaseAbstractConv2d,
+                                                AbstractConv2d,
+                                                AbstractConv2d_gradWeights,
+                                                AbstractConv2d_gradInputs)
 from theano.tests.breakpoint import PdbBreakpoint
 
 from .type import (GpuArrayType, GpuArrayConstant, get_context,
@@ -852,6 +856,25 @@ def local_gpu_conv(node, context_name):
 
 # Register this here so that it goes after 'local_gpu_conv'
 register_opt()(conv_groupopt)
+
+
+@register_opt()
+@op_lifter([AbstractConv2d])
+def local_lift_abstractconv2d(node, context_name):
+    return [node.op(as_gpuarray_variable(node.inputs[0],
+                                         context_name=context_name),
+                    as_gpuarray_variable(node.inputs[0],
+                                         context_name=context_name))]
+
+@register_opt()
+@op_lifter([AbstractConv2d_gradWeights,
+            AbstractConv2d_gradInputs])
+def local_lift_abstractconv2dgrad(node, context_name):
+    return [node.op(as_gpuarray_variable(node.inputs[0],
+                                         context_name=context_name),
+                    as_gpuarray_variable(node.inputs[0],
+                                         context_name=context_name),
+                    node.inputs[2])]
 
 
 @register_opt("low_memory")

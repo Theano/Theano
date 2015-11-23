@@ -5,6 +5,7 @@ import warnings
 import theano
 from theano import Op, Apply, tensor, config, Variable
 from theano.scalar import as_scalar, constant, Log
+from theano.tensor import as_tensor_variable
 from theano.gradient import DisconnectedType, grad_not_implemented
 from theano.gof import Optimizer, local_optimizer, COp
 from theano.gof.cmodule import GCC_compiler
@@ -12,9 +13,12 @@ from theano.gof.type import CDataType, Generic
 from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.tensor.nnet import SoftmaxGrad
-from theano.tensor.nnet.abstract_conv2d import get_conv_output_shape
-from theano.tensor.signal.downsample import (
-    DownsampleFactorMax, MaxPoolGrad, AveragePoolGrad)
+from theano.tensor.nnet.abstract_conv2d import (AbstractConv2d,
+                                                AbstractConv2d_gradWeights,
+                                                AbstractConv2d_gradInputs,
+                                                get_conv_output_shape)
+from theano.tensor.signal.downsample import (DownsampleFactorMax,
+                                             MaxPoolGrad, AveragePoolGrad)
 
 from . import pygpu
 from .type import get_context, gpu_context_type, list_contexts
@@ -819,6 +823,30 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     return GpuDnnConv(algo=algo)(img, kerns, out, desc)
 
 
+def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
+                   subsample=(1, 1), conv_mode='conv'):
+    ctx_name = infer_context_name(img, topgrad)
+    img = gpu_contiguous(img)
+    topgrad = gpu_contiguous(topgrad)
+    kerns_shp = as_tensor_variable(kerns_shp)
+    desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
+                          conv_mode=conv_mode)(img.shape, kerns_shp)
+    out = GpuAllocEmpty(img.dtype, ctx_name)(*kerns_shp)
+    return GpuDnnConvGradW()(img, topgrad, out, desc)
+
+
+def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
+                   subsample=(1, 1), conv_mode='conv'):
+    ctx_name = infer_context_name(img, topgrad)
+    kerns = gpu_contiguous(kerns)
+    topgrad = gpu_contiguous(topgrad)
+    img_shp = as_tensor_variable(img_shp)
+    desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
+                          conv_mode=conv_mode)(img_shp, kerns.shape)
+    out = GpuAllocEmpty(kerns.dtype, ctx_name)(*img_shp)
+    return GpuDnnConvGradI()(kerns, topgrad, out, desc)
+
+
 class GpuDnnPoolDesc(Op):
     """
     This Op builds a pooling descriptor for use in the other
@@ -1239,6 +1267,49 @@ def local_conv_dnn_alternative(node):
 
 conv_groupopt.register('local_conv_dnn', local_conv_dnn, 20,
                        'conv_dnn', 'fast_compile', 'fast_run', 'cudnn')
+
+@local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights,
+                  AbstractConv2d_gradInputs])
+def local_abstractconv_cudnn(node):
+    if (not isinstance(node.op, (AbstractConv2d, AbstractConv2d_gradWeights,
+                                 AbstractConv2d_gradInputs))):
+        return None
+    inp1 = node.inputs[0]
+    inp2 = node.inputs[1]
+
+    if (not isinstance(inp1.type, GpuArrayType) or
+            not isinstance(inp2.type, GpuArrayType)):
+        return None
+
+    if not dnn_available():
+        return None
+
+    if node.op.filter_flip:
+        conv_mode = 'conv'
+    else:
+        conv_mode = 'cross'
+
+    if isinstance(node.op, AbstractConv2d):
+        rval = dnn_conv(inp1, inp2,
+                        border_mode=node.op.border_mode,
+                        subsample=node.op.subsample,
+                        direction_hint='forward!',
+                        conv_mode=conv_mode)
+    if isinstance(node.op, AbstractConv2d_gradWeights):
+        shape = (inp2.shape[1], inp1.shape[1],
+                 node.inputs[2][0], node.inputs[2][1])
+        rval = dnn_gradweight(inp1, inp2, shape,
+                              border_mode=node.op.border_mode,
+                              subsample=node.op.subsample,
+                              conv_mode=conv_mode)
+    if isinstance(node.op, AbstractConv2d_gradInputs):
+        shape = (inp2.shape[0], inp1.shape[1],
+                 node.inputs[2][0], node.inputs[2][1])
+        rval = dnn_gradinput(inp1, inp2, shape,
+                             border_mode=node.op.border_mode,
+                             subsample=node.op.subsample,
+                             conv_mode=conv_mode)
+    return [rval]
 
 
 @inplace_allocempty(GpuDnnConv, 2)
