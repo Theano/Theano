@@ -53,22 +53,6 @@ if __name__ == '__main__':
     pythonpath = os.pathsep.join([throot, pythonpath])
     sys.path[0:0] = [throot]  # We must not use os.environ.
 
-    # if options['--all']:
-    #     mkdir("api")
-
-        #Generate HTML doc
-
-        ## This causes problems with the subsequent generation of sphinx doc
-        #from epydoc.cli import cli
-        #sys.argv[:] = ['', '--config', '%s/doc/api/epydoc.conf' % throot,
-        #               '-o', 'api']
-        #cli()
-        ## So we use this instead
-        #os.system("epydoc --config %s/doc/api/epydoc.conf -o api" % throot)
-
-        # Generate PDF doc
-        # TODO
-
     def call_sphinx(builder, workdir, extraopts=None):
         import sphinx
         if extraopts is None:
