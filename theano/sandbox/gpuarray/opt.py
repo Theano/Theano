@@ -858,6 +858,7 @@ def local_gpu_conv(node, context_name):
 register_opt()(conv_groupopt)
 
 
+# These two deal with any abstract convs that have a transfer somewhere
 @register_opt()
 @op_lifter([AbstractConv2d])
 def local_lift_abstractconv2d(node, context_name):
@@ -875,6 +876,24 @@ def local_lift_abstractconv2dgrad(node, context_name):
                     as_gpuarray_variable(node.inputs[0],
                                          context_name=context_name),
                     node.inputs[2])]
+
+
+# This will deal with ops that don't have an explicit transfer but
+# have one of their inputs on the GPU already and the other not on the
+# GPU (to avoid endlessly replacing things).
+@register_opt()
+@local_optimizer()([AbstractConv2d])
+def local_gpu_abstractconv2d(node):
+    if isinstance(node.op, BaseAbstractConv2d):
+        if ((isinstance(node.inputs[0].type, GpuArrayType) or
+             isinstance(node.inputs[1].type, GpuArrayType)) and
+            not (isinstance(node.inputs[0].type, GpuArrayType) or
+                 isinstance(node.inputs[1].type, GpuArrayType))):
+            inps = list(node.inputs)
+            ctx_name = infer_context_name(inps[0], inps[1])
+            inps[0] = as_gpuarray_variable(inps[0], context_name=ctx_name)
+            inps[1] = as_gpuarray_variable(inps[1], context_name=ctx_name)
+            return as_tensor_variable(node.op(*inps))
 
 
 @register_opt("low_memory")
