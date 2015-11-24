@@ -1692,24 +1692,24 @@ class CLinker(link.Linker):
         # We add all the support code, compile args, headers and libs we need.
                 for support_code in self.support_code() + self.c_support_code_apply:
                     mod.add_support_code(support_code)
-                    if not self.c_callable:
-                        mod.add_support_code("""
-                                             #ifdef _WIN32
-                                             #define DllExport __declspec(dllexport)
-                                             #else
-                                             #define DllExport
-                                             #endif
-                                             """)
-                        mod.add_support_code(self.struct_code)
-                    else:
-                        mod.add_header_code("""
-                                            #ifdef _WIN32
-                                            #define DllExport __declspec(dllexport)
-                                            #else
-                                            #define DllExport
-                                            #endif
-                                            """)
-                        mod.add_header_code(self.struct_code)
+                if not self.c_callable:
+                    mod.add_support_code("""
+                                         #ifdef _WIN32
+                                         #define DllExport __declspec(dllexport)
+                                         #else
+                                         #define DllExport
+                                         #endif
+                                         """)
+                    mod.add_support_code(self.struct_code)
+                else:
+                    mod.add_header_code("""
+                                        #ifdef _WIN32
+                                        #define DllExport __declspec(dllexport)
+                                        #else
+                                        #define DllExport
+                                        #endif
+                                        """)
+                    mod.add_header_code(self.struct_code)
                 mod.add_support_code(self.run_code)
                 mod.add_support_code(static)
                 mod.add_function(instantiate)
