@@ -12,6 +12,7 @@ from theano.gof.type import CDataType, Generic
 from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.tensor.nnet import SoftmaxGrad
+from theano.tensor.nnet.abstract_conv2d import get_conv_output_shape
 from theano.tensor.signal.downsample import (
     DownsampleFactorMax, MaxPoolGrad, AveragePoolGrad)
 
@@ -473,48 +474,11 @@ class GpuDnnConv(DnnBase):
         or scalar.
 
         """
-        b = ishape[0]  # Number of inputs
-        h = ishape[2]  # Height of input feature maps
-        w = ishape[3]  # Width of input feature maps
-        nb = kshape[0]  # Number of output feature maps
-        kh = kshape[2]  # Height of each filter
-        kw = kshape[3]  # Width of each filter
-
-        nd = len(subsample)
-
-        if nd > 2:
-            d = ishape[4]
-            kd = ishape[4]
-
-        sh = subsample[0]
-        sw = subsample[1]
-        if nd > 2:
-            sd = subsample[2]
-
-        if border_mode == 'full':
-            padh = kh - 1
-            padw = kw - 1
-            if nd > 4:
-                padd = kd - 1
-        elif isinstance(border_mode, tuple):
-            padh = border_mode[0]
-            padw = border_mode[1]
-            if nd > 2:
-                padd = border_mode[2]
-        else:
-            assert border_mode == 'valid'
-            padh = 0
-            padw = 0
-            padd = 0
-
-        res = [b, nb,
-               (h + 2 * padh - kh) // sh + 1,
-               (w + 2 * padw - kw) // sw + 1]
-
-        if nd > 2:
-            res.append(d + 2 * padd - kd // sd + 1)
-
-        return res
+        return get_conv_output_shape(
+            ishape,
+            kshape,
+            border_mode,
+            subsample)
 
     def infer_shape(self, node, shape):
         return [shape[2]]
