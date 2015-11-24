@@ -137,14 +137,14 @@ register_opt(name='local_gpu_reshape_chain')(
 # This is a partial list of CPU ops that can be in some circonstance
 # moved to the GPU. This list is used by an optimization.
 # Hopefully, we can keep this list up to date.
-import theano.tensor.signal.downsample
+import theano.tensor.signal.pool
 import theano.tensor.nnet.neighbours
 cpu_ops_moved_to_gpu = [
     tensor.blas.Dot22, tensor.blas.Dot22Scalar, tensor.blas.Gemm,
     tensor.blas.Gemv, tensor.blas.Ger, tensor.nnet.conv.ConvOp,
-    tensor.signal.downsample.DownsampleFactorMax,
-    tensor.signal.downsample.MaxPoolGrad,
-    tensor.signal.downsample.AveragePoolGrad,
+    tensor.signal.pool.Pool,
+    tensor.signal.pool.MaxPoolGrad,
+    tensor.signal.pool.AveragePoolGrad,
     theano.tensor.nnet.neighbours.Images2Neibs,
     tensor.nnet.CrossentropySoftmaxArgmax1HotWithBias,
     tensor.nnet.CrossentropySoftmax1HotWithBiasDx,
@@ -1848,13 +1848,13 @@ gpu_optimizer.register("convtransp3d_gemm", local_convtransp3d_gemm)
 
 
 # Pooling
-import theano.tensor.signal.downsample as downsample
+import theano.tensor.signal.pool as pool
 
 
 @register_opt()
-@local_optimizer([downsample.DownsampleFactorMax])
+@local_optimizer([pool.Pool])
 def local_gpu_downsample_factor_max(node):
-    if (isinstance(node.op, downsample.DownsampleFactorMax)
+    if (isinstance(node.op, pool.Pool)
         and node.op.ds == node.op.st):
 
         assert node.op.__props__ == ('ds', 'ignore_border', 'st', 'padding',
@@ -1868,9 +1868,9 @@ def local_gpu_downsample_factor_max(node):
 
 
 @register_opt()
-@local_optimizer([downsample.MaxPoolGrad])
+@local_optimizer([pool.MaxPoolGrad])
 def local_gpu_downsample_factor_max_grad(node):
-    if (isinstance(node.op, downsample.MaxPoolGrad) and
+    if (isinstance(node.op, pool.MaxPoolGrad) and
         node.op.ds == node.op.st):
 
         assert node.op.__props__ == ('ds', 'ignore_border', 'st', 'padding',
@@ -1890,9 +1890,9 @@ def local_gpu_downsample_factor_max_grad(node):
 
 
 @register_opt()
-@local_optimizer([downsample.DownsampleFactorMaxGradGrad])
+@local_optimizer([pool.DownsampleFactorMaxGradGrad])
 def local_gpu_downsample_factor_max_grad_grad(node):
-    if isinstance(node.op, downsample.DownsampleFactorMaxGradGrad):
+    if isinstance(node.op, pool.DownsampleFactorMaxGradGrad):
         assert node.op.__props__ == ('ds', 'ignore_border', 'st',
                                      'padding', 'mode')
         if node.op.padding != (0, 0) or node.op.mode != 'max':

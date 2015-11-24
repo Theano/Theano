@@ -9,8 +9,8 @@ from six import StringIO
 import theano.tensor as T
 import theano.tests.unittest_tools as utt
 from theano.sandbox.neighbours import images2neibs
-from theano.tensor.signal.downsample import max_pool_2d
-from theano.tensor.signal.downsample import MaxPoolGrad, AveragePoolGrad
+from theano.tensor.signal.pool import pool_2d
+from theano.tensor.signal.pool import MaxPoolGrad, AveragePoolGrad
 import theano.sandbox.cuda.dnn as dnn
 from theano.sandbox.cuda.basic_ops import GpuAllocEmpty, gpu_alloc_empty
 from theano.sandbox.cuda import float32_shared_constructor as shared
@@ -256,10 +256,10 @@ def test_pooling():
                     # Not implemented
                     continue
                 # We will check that the opt introduced it.
-                out1 = max_pool_2d(x, (ws, ws),
-                                   st=(stride, stride),
-                                   ignore_border=True,
-                                   padding=pad, mode=mode)
+                out1 = pool_2d(x, (ws, ws),
+                               st=(stride, stride),
+                               ignore_border=True,
+                               padding=pad, mode=mode)
                 out2 = pool_2d_i2n(x, ds=(ws, ws), strides=(stride, stride),
                                    pad=pad,
                                    pool_function=func)
@@ -294,8 +294,8 @@ def test_pooling():
 
             # This test the CPU grad + opt + GPU implemtentation
             def fn(x):
-                return max_pool_2d(x, (ws, ws), ignore_border=True,
-                                   padding=pad, mode=mode)
+                return pool_2d(x, (ws, ws), ignore_border=True,
+                               padding=pad, mode=mode)
             theano.tests.unittest_tools.verify_grad(fn, [data],
                                                     cast_to_output_type=False,
                                                     mode=mode_with_gpu)
@@ -325,9 +325,9 @@ def test_pooling():
             g_out = fg(data)
 
             # Compare again the CPU result
-            out = max_pool_2d(x, (ws, ws),
-                              padding=pad,
-                              ignore_border=True, mode=mode)
+            out = pool_2d(x, (ws, ws),
+                          padding=pad,
+                          ignore_border=True, mode=mode)
             fc = theano.function([x], theano.grad(out.sum(), x),
                                  mode=mode_without_gpu)
             if mode == 'max':
@@ -453,7 +453,7 @@ def test_pooling_opt():
 
     f = theano.function(
         [x],
-        max_pool_2d(x, ds=(2, 2), mode='average_inc_pad', ignore_border=True),
+        pool_2d(x, ds=(2, 2), mode='average_inc_pad', ignore_border=True),
         mode=mode_with_gpu)
 
     assert any([isinstance(n.op, cuda.dnn.GpuDnnPool)
@@ -463,8 +463,8 @@ def test_pooling_opt():
 
     f = theano.function(
         [x],
-        T.grad(max_pool_2d(x, ds=(2, 2), mode='average_inc_pad',
-                           ignore_border=True).sum(), x),
+        T.grad(pool_2d(x, ds=(2, 2), mode='average_inc_pad',
+                       ignore_border=True).sum(), x),
         mode=mode_with_gpu.including("cudnn"))
 
     assert any([isinstance(n.op, cuda.dnn.GpuDnnPoolGrad)
@@ -618,7 +618,7 @@ def test_dnn_tag():
     try:
         f = theano.function(
             [x],
-            max_pool_2d(x, ds=(2, 2), ignore_border=True),
+            pool_2d(x, ds=(2, 2), ignore_border=True),
             mode=mode_with_gpu.including("cudnn"))
     except (AssertionError, RuntimeError):
         assert not cuda.dnn.dnn_available()

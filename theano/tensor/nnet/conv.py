@@ -3,7 +3,7 @@ Contains an Op for convolving input images with a set of filters. This was
 developed especially for Convolutional Neural Networks.
 
 For related ops, including downsampling and subsampling, see
-tensor.signal and tensor.signal.downsample.
+tensor.signal and tensor.signal.pool.
 
 See especially conv2d().
 """

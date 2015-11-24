@@ -17,9 +17,8 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv2d_gradWeights,
                                               AbstractConv2d_gradInputs,
                                               get_conv_output_shape)
-from theano.tensor.signal.downsample import (DownsampleFactorMax,
-                                             MaxPoolGrad, AveragePoolGrad)
-
+from theano.tensor.signal.pool import (
+    Pool, MaxPoolGrad, AveragePoolGrad)
 from . import pygpu
 from .type import get_context, gpu_context_type, list_contexts, GpuArrayType
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
@@ -1383,7 +1382,7 @@ def local_dnn_convi_output_merge(node, *inputs):
 
 
 @register_opt('cudnn')
-@op_lifter([DownsampleFactorMax])
+@op_lifter([Pool])
 def local_pool_dnn_alternative(node, ctx_name):
     if not dnn_available(ctx_name):
         return

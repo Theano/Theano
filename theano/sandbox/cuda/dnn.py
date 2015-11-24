@@ -12,8 +12,8 @@ from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.tensor.nnet import SoftmaxGrad
 from theano.tensor.nnet.abstract_conv import get_conv_output_shape
-from theano.tensor.signal.downsample import (
-    DownsampleFactorMax, MaxPoolGrad, AveragePoolGrad)
+from theano.tensor.signal.pool import (
+    Pool, MaxPoolGrad, AveragePoolGrad)
 from theano.sandbox.cuda.type import CudaNdarrayType
 
 from theano.sandbox.cuda import GpuOp
@@ -2299,11 +2299,11 @@ if True:
             return [dnn_pool(gpu_contiguous(img), ds, ds)]
 
     @register_opt('cudnn')
-    @local_optimizer([DownsampleFactorMax])
+    @local_optimizer([Pool])
     def local_pool_dnn_alternative(node):
         if not dnn_available():
             return
-        if isinstance(node.op, DownsampleFactorMax):
+        if isinstance(node.op, Pool):
             if not node.op.ignore_border:
                 return
             img, = node.inputs

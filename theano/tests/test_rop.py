@@ -21,7 +21,7 @@ import numpy
 from theano.gof import Op, Apply
 from theano.gradient import grad_undefined
 from theano.tests.unittest_tools import SkipTest
-from theano.tensor.signal.downsample import DownsampleFactorMax
+from theano.tensor.signal.pool import Pool
 from theano.tensor.nnet import conv
 
 '''
