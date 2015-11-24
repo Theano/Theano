@@ -879,7 +879,7 @@ def local_lift_abstractconv2dgrad(node, context_name):
 # have one of their inputs on the GPU already and the other not on the
 # GPU (to avoid endlessly replacing things).
 @register_opt()
-@local_optimizer()([AbstractConv2d])
+@local_optimizer([AbstractConv2d])
 def local_gpu_abstractconv2d(node):
     if isinstance(node.op, BaseAbstractConv2d):
         if ((isinstance(node.inputs[0].type, GpuArrayType) or
