@@ -33,7 +33,6 @@ from theano.tensor.nnet.abstract_conv2d import (AbstractConv2d,
                                                 AbstractConv2d_gradWeights,
                                                 AbstractConv2d_gradInputs)
 
-
 def dnn_available():
     if dnn_available.avail is None:
         if not theano.sandbox.cuda.cuda_available:
@@ -2232,43 +2231,43 @@ if True:
                    70.0, 'fast_run', 'inplace', 'gpu', 'cudnn')
 
     @register_opt('cudnn')
-    @alpha_merge(GpuDnnConv, alpha_in=4, beta_in=5, nd=4)
+    @alpha_merge(GpuDnnConv, alpha_in=4, beta_in=5)
     def local_dnn_conv_alpha_merge(node, *inputs):
         if not dnn_available() or version() == -1:
             return None
-        return [GpuDnnConv(algo=node.op.algo)(*inputs)]
+        return [node.op(*inputs)]
 
     @register_opt('cudnn')
-    @alpha_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5, nd=4)
+    @alpha_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5)
     def local_dnn_convw_alpha_merge(node, *inputs):
         if not dnn_available() or version() == -1:
             return None
-        return [GpuDnnConvGradW()(*inputs)]
+        return [node.op(*inputs)]
 
     @register_opt('cudnn')
-    @alpha_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5, nd=4)
+    @alpha_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5)
     def local_dnn_convi_alpha_merge(node, *inputs):
         if not dnn_available() or version() == -1:
             return None
-        return [GpuDnnConvGradI()(*inputs)]
+        return [node.op(*inputs)]
 
     @register_opt('cudnn')
-    @output_merge(GpuDnnConv, alpha_in=4, beta_in=5, out_in=2, nd=4)
+    @output_merge(GpuDnnConv, alpha_in=4, beta_in=5, out_in=2)
     def local_dnn_conv_output_merge(node, *inputs):
         inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
-        return [GpuDnnConv(algo=node.op.algo)(*inputs)]
+        return [node.op(*inputs)]
 
     @register_opt('cudnn')
-    @output_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5, out_in=2, nd=4)
+    @output_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5, out_in=2)
     def local_dnn_convw_output_merge(node, *inputs):
         inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
-        return [GpuDnnConvGradW()(*inputs)]
+        return [node.op(*inputs)]
 
     @register_opt('cudnn')
-    @output_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5, out_in=2, nd=4)
+    @output_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5, out_in=2)
     def local_dnn_convi_output_merge(node, *inputs):
         inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
-        return [GpuDnnConvGradI()(*inputs)]
+        return [node.op(*inputs)]
 
     @register_opt('cudnn')
     @local_optimizer([GpuDownsampleFactorMax])
