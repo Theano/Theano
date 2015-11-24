@@ -344,7 +344,7 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
     res = GCC_compiler.try_compile_tmp(
         test_code, tmp_prefix='try_blas_',
         flags=flags, try_run=True)
-    if res[0] and res[1]:
+    if res and res[0] and res[1]:
         return "-lblas"
     else:
         return ""

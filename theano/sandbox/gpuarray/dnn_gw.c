@@ -130,7 +130,7 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
 
 #endif
 
-#ifdef CUDNN_VERSION > 3000
+#if CUDNN_VERSION > 3000
   if (algo == CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT) {
     int nd;
     int pad[2];
