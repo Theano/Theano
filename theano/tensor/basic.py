@@ -4230,7 +4230,8 @@ def get_vector_length(v):
     """
     v = as_tensor_variable(v)
     if v.ndim != 1:
-        raise TypeError('argument must be symbolic vector')
+        raise TypeError("argument must be symbolic vector, got '%s'" %
+                        v)
     if v.type.broadcastable[0]:
         return 1
     if isinstance(v, gof.Constant) and v.type.ndim == 1:
@@ -4479,6 +4480,11 @@ class Reshape(Op):
 
 def reshape(x, newshape, ndim=None, name=None):
     if ndim is None:
+        newshape = as_tensor_variable(newshape)
+        if newshape.ndim != 1:
+            raise TypeError(
+                "New shape in reshape must be a vector or a list/tuple of"
+                " scalar. Got %s after conversion to a vector." % newshape)
         try:
             ndim = get_vector_length(newshape)
         except ValueError:
