@@ -21,7 +21,7 @@ from theano.tensor.signal.downsample import (DownsampleFactorMax,
                                              MaxPoolGrad, AveragePoolGrad)
 
 from . import pygpu
-from .type import get_context, gpu_context_type, list_contexts
+from .type import get_context, gpu_context_type, list_contexts, GpuArrayType
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         gpu_contiguous, HostFromGpu,
                         GpuAllocEmpty, empty_like)
@@ -836,8 +836,8 @@ def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
 
 
 def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
-                   subsample=(1, 1), conv_mode='conv'):
-    ctx_name = infer_context_name(img, topgrad)
+                  subsample=(1, 1), conv_mode='conv'):
+    ctx_name = infer_context_name(kerns, topgrad)
     kerns = gpu_contiguous(kerns)
     topgrad = gpu_contiguous(topgrad)
     img_shp = as_tensor_variable(img_shp)
@@ -1267,6 +1267,7 @@ def local_conv_dnn_alternative(node):
 
 conv_groupopt.register('local_conv_dnn', local_conv_dnn, 20,
                        'conv_dnn', 'fast_compile', 'fast_run', 'cudnn')
+
 
 @local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights,
                   AbstractConv2d_gradInputs])
