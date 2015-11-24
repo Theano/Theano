@@ -14,6 +14,7 @@ from theano.gof.optdb import LocalGroupDB
 from theano.scalar.basic import Scalar, Pow, Cast
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
+from theano.tensor import as_tensor_variable
 from theano.tensor.nnet.conv import ConvOp
 from theano.tensor.nnet.abstract_conv2d import (BaseAbstractConv2d,
                                                 AbstractConv2d,
@@ -863,6 +864,7 @@ def local_lift_abstractconv2d(node, context_name):
                                          context_name=context_name),
                     as_gpuarray_variable(node.inputs[0],
                                          context_name=context_name))]
+
 
 @register_opt()
 @op_lifter([AbstractConv2d_gradWeights,
