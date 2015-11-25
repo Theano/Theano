@@ -210,7 +210,7 @@ class DimShuffle(Op):
                 ob.append(ib[value])
 
         output = TensorType(dtype=input.type.dtype,
-                            broadcastable=ob).make_variable()
+                            broadcastable=ob)()
 
         return Apply(self, [input], [output])
 
