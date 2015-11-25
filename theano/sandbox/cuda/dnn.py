@@ -11,6 +11,7 @@ from theano.gof.type import CDataType, Generic
 from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.tensor.nnet import SoftmaxGrad
+from theano.tensor.nnet.abstract_conv2d import get_conv_output_shape
 from theano.tensor.signal.downsample import (
     DownsampleFactorMax, MaxPoolGrad, AveragePoolGrad)
 from theano.sandbox.cuda.type import CudaNdarrayType
@@ -549,29 +550,11 @@ class GpuDnnConv(DnnBase, COp):
         or scalar.
 
         """
-        b = ishape[0]  # Number of inputs
-        h = ishape[2]  # Height of input feature maps
-        w = ishape[3]  # Width of input feature maps
-        nb = kshape[0]  # Number of output feature maps
-        kh = kshape[2]  # Height of each filter
-        kw = kshape[3]  # Width of each filter
-
-        sh, sw = subsample
-        if border_mode == 'full':
-            padh = kh - 1
-            padw = kw - 1
-        elif isinstance(border_mode, tuple):
-            padh, padw = border_mode
-        else:
-            assert border_mode == 'valid'
-            padh = 0
-            padw = 0
-
-        return (
-            b, nb,
-            (h + 2*padh - kh)//sh + 1,
-            (w + 2*padw - kw)//sw + 1
-        )
+        return get_conv_output_shape(
+            ishape,
+            kshape,
+            border_mode,
+            subsample)
 
     def infer_shape(self, node, shape):
         return [shape[2]]
@@ -648,34 +631,11 @@ class GpuDnnConv3d(GpuDnnConv):
         the specified parameters.  `ishape` and `kshape` can be symbolic
         or scalar.
         """
-        b = ishape[0]  # Number of inputs
-        d = ishape[2]  # Depth of input feature maps
-        h = ishape[3]  # Height of input feature maps
-        w = ishape[4]  # Width of input feature maps
-        nb = kshape[0]  # Number of output feature maps
-        kd = kshape[2]  # Depth of each filter
-        kh = kshape[3]  # Height of each filter
-        kw = kshape[4]  # Width of each filter
-
-        sd, sh, sw = subsample
-        if border_mode == 'full':
-            padd = kd - 1
-            padh = kh - 1
-            padw = kw - 1
-        elif isinstance(border_mode, tuple):
-            padd, padh, padw = border_mode
-        else:
-            assert border_mode == 'valid'
-            padd = 0
-            padh = 0
-            padw = 0
-
-        return (
-            b, nb,
-            (d + 2*padd - kd)//sd + 1,
-            (h + 2*padh - kh)//sh + 1,
-            (w + 2*padw - kw)//sw + 1
-        )
+        return get_conv_output_shape(
+            ishape,
+            kshape,
+            border_mode,
+            subsample)
 
 
 class GpuDnnConvGradW(DnnBase, COp):
