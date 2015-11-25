@@ -431,6 +431,26 @@ class Variable(Node):
         cp.tag = copy(self.tag)
         return cp
 
+    def clone_with_new_type(self, type):
+        """
+        Clone a variable with a new type.
+
+        This returns a new variable just like :meth:`clone` but with
+        the specified type instead of the one from `self`.  This does
+        not differ much from just creating a new variable for plain
+        ones, but does have more impact for Constants and
+        SharedVariables.
+
+        Parameters
+        ----------
+        type : Type
+            A theano type
+
+        """
+        cp = self.__class__(type, None, None, self.name)
+        cp.tag = copy(self.tag)
+        return cp
+
     def __lt__(self, other):
         raise NotImplementedError('Subclasses of Variable must provide __lt__',
                                   self.__class__.__name__)
@@ -556,6 +576,11 @@ class Constant(Variable):
 
         """
         cp = self.__class__(self.type, self.data, self.name)
+        cp.tag = copy(self.tag)
+        return cp
+
+    def clone_with_new_type(self, type):
+        cp = self.__class__(type, self.data, self.name)
         cp.tag = copy(self.tag)
         return cp
 

@@ -154,6 +154,15 @@ class SharedVariable(Variable):
         cp.tag = copy.copy(self.tag)
         return cp
 
+    def clone_with_new_type(self, type):
+        cp = self.__class__(
+            name=self.name,
+            type=type,
+            value=self.get_value(borrow=True, return_internal_type=True),
+            strict=False)
+        cp.tag = copy.copy(self.tag)
+        return cp
+
     def __getitem__(self, *args):
         # __getitem__ is not available for generic SharedVariable objects.
         # We raise a TypeError like Python would do if __getitem__ was not
