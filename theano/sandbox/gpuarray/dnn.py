@@ -501,6 +501,14 @@ class GpuDnnConv(DnnBase):
         or scalar.
 
         """
+
+        # if ishape and/or kshape are not tuples or list, but rather symbolic
+        # vectors, turn them into lists of symbolic scalars.
+        if not isinstance(ishape, (list, tuple)):
+            ishape = [ishape[i] for i in range(len(subsample) + 2)]
+        if not isinstance(kshape, (list, tuple)):
+            kshape = [kshape[i] for i in range(len(subsample) + 2)]
+
         return get_conv_output_shape(
             ishape,
             kshape,
