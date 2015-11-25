@@ -3563,7 +3563,11 @@ def batched_dot(a, b):
     """
     a, b = as_tensor_variable(a), as_tensor_variable(b)
 
-    if a.ndim == 1:
+    if a.ndim == 0:
+        raise TypeError("a must have at least one (batch) axis")
+    elif b.ndim == 0:
+        raise TypeError("b must have at least one (batch) axis")
+    elif a.ndim == 1:
         return a.dimshuffle(*([0] + ["x"] * (b.ndim - 1))) * b
     elif b.ndim == 1:
         return a * b.dimshuffle(*([0] + ["x"] * (a.ndim - 1)))
