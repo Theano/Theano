@@ -203,6 +203,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         output = top;
         // valid correlation: im2col, then gemm
         // Iterate over batch
+        #pragma omp parallel for schedule(static)
         for (int n = 0; n < batchSize; n++) {
             // First, im2col
             im2col((%(float_type)s*)PyArray_DATA(bottom) + n * bottom_stride, nChannels, bottomHeight,
@@ -303,6 +304,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         PyArray_FILLWBYTE(bottom, 0);
         // full convolution: gemm, then col2im
         // Iterate over batch
+        #pragma omp parallel for schedule(static)
         for (int n = 0; n < batchSize; n++) {
             // gemm into columns
             %(gemm)s(&NTrans, &Trans,
