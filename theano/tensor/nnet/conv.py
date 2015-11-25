@@ -21,7 +21,8 @@ from theano import OpenMPOp
 from theano.tensor import (as_tensor_variable, blas, get_scalar_constant_value,
                            patternbroadcast, NotScalarConstantError)
 from theano.gof import Apply
-from theano.tensor.nnet.abstract_conv2d import get_conv_output_shape
+from theano.tensor.nnet.abstract_conv2d import (get_conv_output_shape,
+                                                get_conv_shape_1axis)
 
 try:
     # TODO: move these back out to global scope when they no longer
@@ -367,11 +368,8 @@ class ConvOp(OpenMPOp):
         # To support symbolic shapes, we express this with integer arithmetics.
         warnings.warn("The method `getOutputShape` is deprecated use"
                       "`get_conv_output_shape` instead.")
-        return get_conv_output_shape(
-            image_shape=(None, None, inshp[0], inshp[1]),
-            kernel_shape=(None, None, kshp[0], kshp[1]),
-            border_mode=mode,
-            subsample=stride)
+        return tuple(get_conv_shape_1axis(i, k, mode, d)
+                     for i, k, d in zip(inshp, kshp, stride))
 
     def __init__(self, imshp=None, kshp=None, nkern=None, bsize=None,
                  dx=1, dy=1,
