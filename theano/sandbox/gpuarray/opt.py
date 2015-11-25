@@ -361,9 +361,9 @@ def local_gpu_elemwise(node, context_name):
         for inp in node.inputs:
             if inp.dtype != out_dtype:
                 gpu_cast_op = GpuElemwise(Cast(Scalar(out_dtype)))
-                new_inputs.append(gpu_cast_op(as_gpuarray_variable(inp)))
+                new_inputs.append(gpu_cast_op(as_gpuarray_variable(inp, context_name)))
             else:
-                new_inputs.append(as_gpuarray_variable(inp))
+                new_inputs.append(as_gpuarray_variable(inp, context_name))
 
         # Perform the exponent on the gpu and transfer the output back to the
         # cpu.
