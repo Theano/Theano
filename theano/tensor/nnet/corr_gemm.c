@@ -172,18 +172,19 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     }
 
     // Create temporary columns
-    npy_intp col_dim[2];
-    col_dim[0] = (npy_intp)(nChannels * kW * kH);
-    col_dim[1] = (npy_intp)(topHeight * topWidth);
-    PyArrayObject* col = (PyArrayObject*)PyArray_EMPTY(2,
+    npy_intp col_dim[3];
+    col_dim[0] = (npy_intp)(batchSize);
+    col_dim[1] = (npy_intp)(nChannels * kW * kH);
+    col_dim[2] = (npy_intp)(topHeight * topWidth);
+    PyArrayObject* col = (PyArrayObject*)PyArray_EMPTY(3,
 		                           col_dim,
                                            PyArray_TYPE(top),
 					   0);
     if (NULL == col)
     {
         PyErr_Format(PyExc_RuntimeError,
-                "CorrMM failed to allocate working memory of %%d x %%d\n",
-                col_dim[0], col_dim[1]);
+                "CorrMM failed to allocate working memory of %%d x %%d x %%d\n",
+                col_dim[0], col_dim[1], col_dim[2]);
         return NULL;
     }
 
@@ -207,12 +208,12 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         for (int n = 0; n < batchSize; n++) {
             // First, im2col
             im2col((%(float_type)s*)PyArray_DATA(bottom) + n * bottom_stride, nChannels, bottomHeight,
-                    bottomWidth, kH, kW, padH, padW, dH, dW, (%(float_type)s*)PyArray_DATA(col));
+                    bottomWidth, kH, kW, padH, padW, dH, dW, (%(float_type)s*)PyArray_GETPTR3(col, n, 0, 0));
             // Second, gemm
             %(gemm)s(&NTrans, &NTrans,
                    &N_, &M_, &K_,
                    &one,
-                   (%(float_type)s*)PyArray_DATA(col), &N_,
+                   (%(float_type)s*)PyArray_GETPTR3(col, n, 0, 0), &N_,
                    (%(float_type)s*)PyArray_DATA(weight), &K_,
                    &zero,
                    (%(float_type)s*)PyArray_DATA(top) + n * top_stride, &N_);
@@ -313,9 +314,9 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                    (%(float_type)s*)PyArray_DATA(top) + n * top_stride, &N_,
                    (%(float_type)s*)PyArray_DATA(weight), &K_,
                    &zero,
-                   (%(float_type)s*)PyArray_DATA(col), &N_);
+                   (%(float_type)s*)PyArray_GETPTR3(col, n, 0, 0), &N_);
             // col2im back to the data
-            col2im((%(float_type)s*)PyArray_DATA(col), nChannels, bottomHeight, bottomWidth,
+            col2im((%(float_type)s*)PyArray_GETPTR3(col, n, 0, 0), nChannels, bottomHeight, bottomWidth,
                     kH, kW, padH, padW, dH, dW, (%(float_type)s*)PyArray_DATA(bottom) + n * bottom_stride);
         }
         /*
