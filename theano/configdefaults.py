@@ -219,6 +219,7 @@ AddConfigVar('gpuarray.sync',
              BoolParam(False),
              in_c_key=True)
 
+
 def safe_no_dnn_workmem(workmem):
     """
     Make sure the user is not attempting to use dnn.conv.workmem`.
@@ -234,6 +235,7 @@ AddConfigVar('dnn.conv.workmem',
              "This flag is deprecated; use dnn.conv.algo_fwd.",
              ConfigParam('', allow_override=False, filter=safe_no_dnn_workmem),
              in_c_key=False)
+
 
 def safe_no_dnn_workmem_bwd(workmem):
     """
@@ -251,6 +253,7 @@ AddConfigVar('dnn.conv.workmem_bwd',
              ConfigParam('', allow_override=False,
                          filter=safe_no_dnn_workmem_bwd),
              in_c_key=False)
+
 
 def safe_no_dnn_algo_bwd(algo):
     """
