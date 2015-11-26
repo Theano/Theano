@@ -33,8 +33,8 @@ install:
 
 # command to run tests
 env:
-  - PART="sandbox sparse scalar tensor/nnet scan_module"
-  - PART="tensor/tests/test_basic.py tensor/signal compile gof misc tests compat"
+  - PART="theano/sandbox theano/sparse theano/scalar theano/tensor/nnet theano/scan_module"
+  - PART="theano/tensor/tests/test_basic.py theano/tensor/signal theano/compile theano/gof theano/misc theano/tests theano/compat"
   - PART="-e test_basic.py theano/tensor/tests"
 
 matrix:
