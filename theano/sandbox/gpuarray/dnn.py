@@ -1258,6 +1258,8 @@ def local_abstractconv_cudnn(node):
                              conv_mode=conv_mode)
     return [rval]
 
+conv_groupopt.register(local_abstactconv_cudnn)
+
 
 @inplace_allocempty(GpuDnnConv, 2)
 def local_dnn_conv_inplace(node, inputs):
