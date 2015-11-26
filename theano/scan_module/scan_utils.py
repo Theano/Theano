@@ -156,7 +156,7 @@ def traverse(out, x, x_copy, d, visited=None):
             d[out] = cuda.gpu_from_host(x_copy)
         else:
             assert isinstance(x.type, gpuarray.GpuArrayType)
-            d[out] = gpuarray.gpu_from_host(x_copy)
+            d[out] = gpuarray.GpuFromHost(x.type.context_name)(x_copy)
         return d
     elif out.owner is None:
         return d
