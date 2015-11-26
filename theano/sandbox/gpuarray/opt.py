@@ -32,7 +32,6 @@ from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         GpuEye, gpu_join, GpuJoin)
 from .blas import (gpu_dot22, GpuGemv, GpuGemm, GpuGer,
                    gpugemm_no_inplace)
-from .conv import GpuConv
 from .nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
                    GpuCrossentropySoftmax1HotWithBiasDx,
                    GpuSoftmaxWithBias, GpuSoftmax)
@@ -778,82 +777,6 @@ def local_assert(node, context_name):
             isinstance(node.inputs[0].owner.op, HostFromGpu)):
         return [host_from_gpu(node.op(node.inputs[0].owner.inputs[0],
                                       *node.inputs[1:]))]
-
-
-@register_opt('fast_compile')
-@op_lifter([ConvOp])
-def local_gpu_conv(node, context_name):
-    def GpuConvOp_from_ConvOp(op):
-        logical_img_hw = None
-
-        if op.kshp_logical is not None and op.kshp_logical != op.kshp:
-            return None
-
-        ret = GpuConv(border_mode=op.out_mode,
-                      subsample=(op.dx, op.dy),
-                      logical_img_hw=logical_img_hw,
-                      logical_kern_hw=op.kshp_logical,
-                      logical_kern_align_top=op.kshp_logical_top_aligned,
-                      kshp=op.kshp,
-                      version=op.version,
-                      direction_hint=op.direction_hint,
-                      verbose=op.verbose,
-                      imshp=op.imshp,
-                      nkern=op.nkern,
-                      bsize=op.bsize,
-                      fft_opt=op.fft_opt)
-        if op.imshp_logical is not None:
-            logical_img_hw = op.imshp_logical[1:3]
-            if logical_img_hw != op.imshp[1:3]:
-                rstride = int(numpy.ceil(op.imshp_logical[1] /
-                                         float(op.imshp[1])))
-                cstride = int(numpy.ceil(op.imshp_logical[2] /
-                                         float(op.imshp[2])))
-
-                def make_graph(img, kern):
-                    buf = tensor.alloc(numpy.asarray(0, dtype=img.dtype),
-                                       img.shape[0], *op.imshp_logical)
-                    img = tensor.set_subtensor(buf[:, :, ::rstride, ::cstride],
-                                               img)
-                    img = GpuFromHost(context_name)(img)
-                    return ret(img, kern)
-
-                return make_graph
-        return ret
-
-    def values_eq_approx(a, b):
-        """
-        This fct is needed to don't have DebugMode raise useless
-        error due to ronding error.
-
-        This happen as We reduce on the two last dimensions, so this
-        can raise the absolute error if the number of element we
-        reduce on is significant.
-
-        """
-        assert a.ndim == 4
-        atol = None
-        if a.shape[-1] * a.shape[-2] > 100:
-            # For float32 the default atol is 1e-5
-            atol = 3e-5
-        return GpuArrayType.values_eq_approx(a, b, atol=atol)
-
-    img, kern = node.inputs
-    gpu_conv = GpuConvOp_from_ConvOp(node.op)
-    if gpu_conv is None:
-        return
-    out = gpu_conv(GpuFromHost(context_name)(img),
-                   GpuFromHost(context_name)(kern))
-    assert isinstance(out.type, GpuArrayType)
-    # Make sure to keep the broadcastable pattern of the original
-    # convolution even if we might gain or lose some due to different
-    # information at the node level.
-    out = tensor.patternbroadcast(out, node.outputs[0].broadcastable)
-    out.values_eq_approx = values_eq_approx
-    return [out]
-
-# Register this here so that it goes after 'local_gpu_conv'
-register_opt()(conv_groupopt)
 
 
 # These two deal with any abstract convs that have a transfer somewhere
