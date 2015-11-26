@@ -20,6 +20,7 @@ from theano.tensor.nnet.abstract_conv2d import (BaseAbstractConv2d,
                                                 AbstractConv2d,
                                                 AbstractConv2d_gradWeights,
                                                 AbstractConv2d_gradInputs)
+
 from theano.tests.breakpoint import PdbBreakpoint
 
 from .type import (GpuArrayType, GpuArrayConstant, get_context,
@@ -798,6 +799,10 @@ def local_lift_abstractconv2dgrad(node, context_name):
                     as_gpuarray_variable(node.inputs[0],
                                          context_name=context_name),
                     node.inputs[2])]
+
+
+# Register this here so that it goes after the abstract lifting
+register_opt()(conv_groupopt)
 
 
 # This will deal with ops that don't have an explicit transfer but
