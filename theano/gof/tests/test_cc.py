@@ -103,7 +103,7 @@ class MyOp(Op):
         out[0] = self.impl(*inputs)
 
     def c_code_cache_version(self):
-        return ()
+        return (1,)
 
 
 # class Unary(MyOp):
