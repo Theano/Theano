@@ -61,6 +61,7 @@ script:
   - echo "$PART"
   - cd -; cd Theano
   - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --nopdf; else theano-nose -v $PART; fi
+  - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --test; fi
 #  - theano-cache list
 
 #after_script:
