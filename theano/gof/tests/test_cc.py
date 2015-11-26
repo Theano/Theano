@@ -19,7 +19,7 @@ def as_variable(x):
 
 
 class TDouble(Type):
-    def filter(self, data):
+    def filter(self, data, strict=False, allow_downcast=False):
         return float(data)
 
     def c_declare(self, name, sub, check_input=True):
