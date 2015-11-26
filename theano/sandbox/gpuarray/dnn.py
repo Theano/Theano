@@ -26,7 +26,6 @@ from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         gpu_contiguous, HostFromGpu,
                         GpuAllocEmpty, empty_like)
 from .elemwise import GpuElemwise
-from .conv import GpuConv
 
 # These don't exist in gpuarray
 # GpuDownsampleFactorMax, GpuDownsampleFactorMaxGrad
@@ -1214,59 +1213,6 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
         assert dy.ndim == 4
         assert sm.ndim == 4
         return Apply(self, [dy, sm], [sm.type()])
-
-
-# @register_opt('cudnn')  # this optimizer is registered in opt.py instead.
-@local_optimizer([GpuConv])
-def local_conv_dnn(node):
-    if isinstance(node.op, GpuConv):
-        if not dnn_available(node.outputs[0].type.context_name):
-            return
-        if node.op.border_mode not in ['full', 'valid']:
-            return
-        img, kern = node.inputs
-        border_mode = node.op.border_mode
-        subsample = node.op.subsample
-        direction_hint = node.op.direction_hint
-        rval = dnn_conv(img, kern,
-                        border_mode=border_mode, subsample=subsample,
-                        direction_hint=direction_hint)
-        return [rval]
-
-
-# This optimizer is registered in opt.py as part of the meta-optimizer.
-# It tries exactly the opposite code path of what local_conv_dnn() uses,
-# because for some input/kernel shape configurations, this is faster.
-@local_optimizer([GpuConv])
-def local_conv_dnn_alternative(node):
-    if isinstance(node.op, GpuConv):
-        if not dnn_available(node.outputs[0].type.context_name):
-            return
-        border_mode = node.op.border_mode
-        subsample = node.op.subsample
-        if border_mode not in ['full', 'valid'] or subsample != (1, 1):
-            return
-        img, kern = node.inputs
-        direction_hint = node.op.direction_hint
-        if border_mode == 'full':
-            # for a full convolution, try using the forward pass instead
-            # of the backward pass wrt. inputs
-            direction_hint = 'forward!'
-        elif border_mode == 'valid':
-            # for a valid convolution, try using the backward pass wrt.
-            # weights instead of the forward pass and vice versa
-            if direction_hint == 'bprop weights':
-                direction_hint = 'forward'
-            else:
-                direction_hint = 'bprop weights'
-        rval = dnn_conv(img, kern,
-                        border_mode=border_mode, subsample=subsample,
-                        direction_hint=direction_hint)
-        return [rval]
-
-
-conv_groupopt.register('local_conv_dnn', local_conv_dnn, 20,
-                       'conv_dnn', 'fast_compile', 'fast_run', 'cudnn')
 
 
 @local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights,
