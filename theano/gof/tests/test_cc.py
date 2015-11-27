@@ -219,7 +219,7 @@ def test_clinker_literal_cache():
     orientationi = numpy.array([59.36276866, 1.06116353, 0.93797339],
                                dtype=theano.config.floatX)
 
-    for out1 in [A - input1[0]*numpy.identity(3),
+    for out1 in [A - input1[0] * numpy.identity(3),
                  input1[0] * numpy.identity(3)]:
         benchmark = theano.function(
             inputs=[A, input1],
