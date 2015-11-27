@@ -21,19 +21,14 @@ def main(dev1, dev2):
     init_dev(dev2, 'ctx2')
 
     size = 1024 * 16
-    val1a = shared(numpy.random.randn(size, size).astype('float32'),
-                   target='ctx1')
-    val1b = shared(numpy.random.randn(size, size).astype('float32'),
-                   target='ctx1')
-    val1c = shared(numpy.random.randn(size, size).astype('float32'),
-                   target='ctx1')
-    val1d = shared(numpy.random.randn(size, size).astype('float32'),
-                   target='ctx1')
+    data = numpy.random.randn(size, size).astype('float32')
+    val1a = shared(data, target='ctx1')
+    val1b = shared(data, target='ctx1')
+    val1c = shared(data, target='ctx1')
+    val1d = shared(data, target='ctx1')
 
-    val2a = shared(numpy.random.randn(size, size).astype('float32'),
-                   target='ctx2')
-    val2b = shared(numpy.random.randn(size, size).astype('float32'),
-                   target='ctx2')
+    val2a = shared(data, target='ctx2')
+    val2b = shared(data, target='ctx2')
 
     f1 = theano.function([], [gpu_dot22(val1a, val1b),
                               gpu_dot22(val1c, val1d)])
