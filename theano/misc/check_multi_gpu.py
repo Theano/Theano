@@ -5,6 +5,7 @@ and two GPU to measure the speedup.
 
 This should be 2x if the GPUs are equivalent.
 """
+import threading
 import time
 
 import numpy
@@ -19,46 +20,124 @@ def main(dev1, dev2):
     init_dev(dev1, 'ctx1')
     init_dev(dev2, 'ctx2')
 
-    val1a = shared(numpy.random.randn(1024, 1024).astype('float32'),
-                   context_name='ctx1')
-    val1b = shared(numpy.random.randn(1024, 1024).astype('float32'),
-                   context_name='ctx1')
-    val1c = shared(numpy.random.randn(1024, 1024).astype('float32'),
-                   context_name='ctx1')
-    val1d = shared(numpy.random.randn(1024, 1024).astype('float32'),
-                   context_name='ctx1')
+    size = 1024 * 16
+    val1a = shared(numpy.random.randn(size, size).astype('float32'),
+                   target='ctx1')
+    val1b = shared(numpy.random.randn(size, size).astype('float32'),
+                   target='ctx1')
+    val1c = shared(numpy.random.randn(size, size).astype('float32'),
+                   target='ctx1')
+    val1d = shared(numpy.random.randn(size, size).astype('float32'),
+                   target='ctx1')
 
-    val2a = shared(numpy.random.randn(1024, 1024).astype('float32'),
-                   context_name='ctx2')
-    val2b = shared(numpy.random.randn(1024, 1024).astype('float32'),
-                   context_name='ctx2')
+    val2a = shared(numpy.random.randn(size, size).astype('float32'),
+                   target='ctx2')
+    val2b = shared(numpy.random.randn(size, size).astype('float32'),
+                   target='ctx2')
 
     f1 = theano.function([], [gpu_dot22(val1a, val1b),
                               gpu_dot22(val1c, val1d)])
     f2 = theano.function([], [gpu_dot22(val1a, val1b),
                               gpu_dot22(val2a, val2b)])
+    f3 = theano.function([], [gpu_dot22(val1a, val1b)])
+    f4 = theano.function([], [gpu_dot22(val2a, val2b)])
+    f5 = theano.function([], [gpu_dot22(val1a, val1b).transfer('cpu')])
+    f6 = theano.function([], [gpu_dot22(val2a, val2b).transfer('cpu')])
 
-    r = f1()
+    r = f1.fn()
     r[0].sync(), r[1].sync()
     r = None
     t = time.time()
-    r = f1()
+    r = f1.fn()
     r[0].sync(), r[1].sync()
     t2 = time.time()
     r = None
 
-    print("one ctx %f" % (t2 - t,))
+    print("one ctx async %f" % (t2 - t,))
 
-    r = f2()
+    r = f2.fn()
     r[0].sync(), r[1].sync()
     r = None
     t = time.time()
-    r = f2()
+    r = f2.fn()
     r[0].sync(), r[1].sync()
     t2 = time.time()
     r = None
 
-    print("two ctx %f" % (t2 - t,))
+    print("two ctx async %f" % (t2 - t,))
+
+    r = f3.fn()
+    r[0].sync()
+    r = f4.fn()
+    r[0].sync()
+    r = None
+    t = time.time()
+    r = f3.fn()
+    r2 = f4.fn()
+    r[0].sync()
+    r2[0].sync()
+    t2 = time.time()
+    r = None
+
+    print("two ctx, 2 fct async, 1 thread %f" % (t2 - t,))
+
+    r = f5.fn()
+    r = f6.fn()
+    r = None
+    t = time.time()
+    r = f5.fn()
+    r2 = f6.fn()
+    t2 = time.time()
+    r = None
+    print("two ctx, 2 fct with transfer, 1 thread %f" % (t2 - t,))
+
+    r = f5()
+    r = None
+    t = time.time()
+    r = f5()
+    t2 = time.time()
+    r = None
+
+    print("one ctx, 1 fct with transfer, 1 thread %f" % (t2 - t,))
+
+    # Multi-thread version
+    class myThread (threading.Thread):
+        def __init__(self, name, f, sync):
+            threading.Thread.__init__(self)
+            self.f = f
+            self.name = name
+            self.sync = sync
+
+        def run(self):
+            # print "Starting " + self.name
+            # r = self.f.fn(n_calls=10)
+            r = self.f()
+            if self.sync:
+                r[0].sync()
+            # print "Exiting " + self.name
+
+    thread1 = myThread("Thread-1", f3, True)
+    thread2 = myThread("Thread-2", f4, True)
+    t = time.time()
+    thread1.start()
+    thread2.start()
+    thread1.join()
+    thread2.join()
+    t2 = time.time()
+
+    print("two ctx, 2 fct async, 2 threads %f" % (t2 - t,))
+
+    thread1 = myThread("Thread-3", f5, False)
+    thread2 = myThread("Thread-4", f6, False)
+    t = time.time()
+    thread1.start()
+    thread2.start()
+    thread1.join()
+    thread2.join()
+    t2 = time.time()
+    r = None
+
+    print("two ctx, 2 fct with transfer, 2 threads %f" % (t2 - t,))
 
 if __name__ == '__main__':
     import sys
