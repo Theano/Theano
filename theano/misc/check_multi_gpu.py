@@ -36,12 +36,22 @@ def main(dev1, dev2):
                               gpu_dot22(val2a, val2b)])
     f3 = theano.function([], [gpu_dot22(val1a, val1b)])
     f4 = theano.function([], [gpu_dot22(val2a, val2b)])
-    f5 = theano.function([], [gpu_dot22(val1a, val1b).transfer('cpu')])
-    f6 = theano.function([], [gpu_dot22(val2a, val2b).transfer('cpu')])
+    f5 = theano.function([], [gpu_dot22(val1a, val1b)[0, 0].transfer('cpu')])
+    f6 = theano.function([], [gpu_dot22(val2a, val2b)[0, 0].transfer('cpu')])
 
+    # pre-execute to load code to GPU.
     r = f1.fn()
     r[0].sync(), r[1].sync()
+    r = f2.fn()
+    r[0].sync(), r[1].sync()
+    r = f3.fn()
+    r[0].sync()
+    r = f4.fn()
+    r[0].sync()
+    r = f5.fn()
+    r = f6.fn()
     r = None
+
     t = time.time()
     r = f1.fn()
     r[0].sync(), r[1].sync()
@@ -50,9 +60,6 @@ def main(dev1, dev2):
 
     print("one ctx async %f" % (t2 - t,))
 
-    r = f2.fn()
-    r[0].sync(), r[1].sync()
-    r = None
     t = time.time()
     r = f2.fn()
     r[0].sync(), r[1].sync()
@@ -61,11 +68,6 @@ def main(dev1, dev2):
 
     print("two ctx async %f" % (t2 - t,))
 
-    r = f3.fn()
-    r[0].sync()
-    r = f4.fn()
-    r[0].sync()
-    r = None
     t = time.time()
     r = f3.fn()
     r2 = f4.fn()
@@ -76,9 +78,6 @@ def main(dev1, dev2):
 
     print("two ctx, 2 fct async, 1 thread %f" % (t2 - t,))
 
-    r = f5.fn()
-    r = f6.fn()
-    r = None
     t = time.time()
     r = f5.fn()
     r2 = f6.fn()
@@ -86,8 +85,6 @@ def main(dev1, dev2):
     r = None
     print("two ctx, 2 fct with transfer, 1 thread %f" % (t2 - t,))
 
-    r = f5()
-    r = None
     t = time.time()
     r = f5()
     t2 = time.time()
@@ -130,7 +127,6 @@ def main(dev1, dev2):
     thread1.join()
     thread2.join()
     t2 = time.time()
-    r = None
 
     print("two ctx, 2 fct with transfer, 2 threads %f" % (t2 - t,))
 
