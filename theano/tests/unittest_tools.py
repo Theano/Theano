@@ -18,7 +18,7 @@ import numpy
 
 import theano
 import theano.tensor as T
-from theano.configparser import config, AddConfigVar, StrParam
+from theano.configparser import config
 try:
     from nose.plugins.skip import SkipTest
 except ImportError:
@@ -27,22 +27,6 @@ except ImportError:
         Skip this test
         """
 _logger = logging.getLogger("theano.tests.unittest_tools")
-
-
-def good_seed_param(seed):
-    if seed == "random":
-        return True
-    try:
-        int(seed)
-    except Exception:
-        return False
-    return True
-
-AddConfigVar('unittests.rseed',
-             "Seed to use for randomized unit tests. "
-             "Special value 'random' means using a seed of None.",
-             StrParam(666, is_valid=good_seed_param),
-             in_c_key=False)
 
 
 def fetch_seed(pseed=None):

@@ -91,7 +91,7 @@ not found by your shell, you will need to add ``Theano/bin`` to your
 
 Running all unit tests ::
 
-    cd Theano/theano
+    cd Theano/
     theano-nose
 
 Running unit tests with standard out ::

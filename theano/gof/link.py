@@ -168,7 +168,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
 
     # Print node backtraces
     tr = getattr(node.outputs[0].tag, 'trace', [])
-    if len(tr) > 0:
+    if type(tr) is list and len(tr) > 0:
         detailed_err_msg += "\nBacktrace when the node is created:\n"
 
         # Print separate message for each element in the list of batcktraces

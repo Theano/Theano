@@ -63,8 +63,9 @@ The following libraries and software are optional:
     `Git <http://git-scm.com>`_
         To download bleeding-edge versions of Theano.
 
-    `pydot <https://code.google.com/p/pydot/>`_
+    `pydot-ng <https://github.com/pydot/pydot-ng>`_ or `pydot <https://code.google.com/p/pydot/>`_
         To be able to make picture of Theano computation graph.
+	pydot-ng is a pydot compatible replacement that support newer Python.
 
     `NVIDIA CUDA drivers and SDK`_
         Required for GPU code generation/execution on NVIDIA gpus
@@ -483,7 +484,7 @@ Using the GPU
 
 The first thing you'll need for Theano to use your GPU is Nvidia's
 GPU-programming toolchain. You should install at least the CUDA driver and the CUDA Toolkit, as
-`described here <http://www.nvidia.com/object/cuda_get.html>`_.  The CUDA
+`described here <https://developer.nvidia.com/cuda-toolkit>`_.  The CUDA
 Toolkit installs a folder on your computer with subfolders *bin*, *lib*,
 *include*, and some more too.  (Sanity check: The *bin* subfolder should contain an *nvcc*
 program which is the compiler for GPU code.)  This folder is called the *cuda

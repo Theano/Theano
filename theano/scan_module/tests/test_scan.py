@@ -2549,6 +2549,44 @@ class T_Scan(unittest.TestCase):
             output, g_output = fct(i)
             assert len(output) == g_output
 
+    def test_infer_shape2(self):
+        # Ensure that the shape inference can remove the Scan node in the
+        # case of a complicated inner graph involving sequences and recurrent
+        # states
+
+        seq = tensor.lvector()
+        sitsot_init = tensor.lscalar()
+        mitsot_init = tensor.lvector()
+
+        def step(seq1, sitsot_m1, mitsot_m2, mitsot_m1):
+            # Every iteration, the sitsot state decreases and the mitsot state
+            # increases such that their total value remains identical. This
+            # is because this value will be used as the shape of a nitsot
+            # output and the outputs of every iteration need to have the same
+            # shape
+            diff = mitsot_m1 + seq1
+            next_mitsot_val = mitsot_m2 + diff
+            next_sitsot_val = sitsot_m1 - diff
+            nitsot_out = tensor.AllocEmpty('float32')(next_mitsot_val +
+                                                      next_sitsot_val)
+            return next_sitsot_val, next_mitsot_val, nitsot_out
+
+
+        out, updates = theano.scan(fn=step,
+                                   sequences=seq,
+                                   outputs_info=[sitsot_init,
+                                                 {'initial' : mitsot_init,
+                                                  'taps' : [-2, -1]},
+                                                 None],
+                                   n_steps=5)
+
+        f = theano.function([seq, sitsot_init, mitsot_init], out[2].shape,
+                            mode='FAST_RUN')
+        assert(len(scan_nodes_from_fct(f)) == 0)
+
+        output_shape = f(numpy.arange(5), 5, [1, 2])
+        assert(all(output_shape == (5,6)))
+
     # The following test will fail in DebugMode if there are
     # some problems in Scan.infer_shape
     def test_remove_stuff(self):
@@ -2705,7 +2743,7 @@ class T_Scan(unittest.TestCase):
 
                 lb = (inp * t).sum() + beta.sum()
 
-                Mi = tensor.sum(lb) * h[i,D];
+                Mi = tensor.sum(lb) * h[i,D]
                 return Mi
 
             (M), M_updts = theano.scan( predict_mean_i ,
@@ -3946,7 +3984,11 @@ class T_Scan(unittest.TestCase):
         assert numpy.all(exp_out == f(inp))
 
     def test_borrow_bug_jeremiah(self):
-        # This test fails if scan uses wrongly the borrow flag
+        # This tests two things. The first is a bug occuring when scan wrongly
+        # used the borrow flag. The second thing it that Scan's infer_shape()
+        # method will be able to remove the Scan node from the graph in this
+        # case.
+
         inp = numpy.arange(10).reshape(-1, 1).astype(theano.config.floatX)
         exp_out = numpy.zeros((10, 1)).astype(theano.config.floatX)
         exp_out[4:] = inp[:-4]
@@ -3967,7 +4009,16 @@ class T_Scan(unittest.TestCase):
         updates = OrderedDict([(sharedvar, results[0][-1:])])
 
         f = theano.function([seq], results[1], updates=updates)
+
+        # This fails if scan uses wrongly the borrow flag
         assert numpy.all(exp_out == f(inp))
+
+        # This fails if Scan's infer_shape() is unable to remove the Scan
+        # node from the graph.
+        f_infershape = theano.function([seq], results[1].shape,
+                                       mode='FAST_RUN')
+        scan_nodes_infershape = scan_nodes_from_fct(f_infershape)
+        assert(len(scan_nodes_infershape) == 0)
 
     def test_memory_reuse_with_outputs_as_inputs(self):
         # Test the memory pre-allocation feature in scan for the following

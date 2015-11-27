@@ -77,6 +77,7 @@ def add_tag_trace(thing, user_line=1):
     if limit == -1:
         limit = None
     tr = simple_extract_stack(limit=limit)[:-1]
+
     # Different python version use different sementic for
     # limit. python 2.7 include the call to extrack_stack. The -1 get
     # rid of it.
@@ -93,7 +94,11 @@ def add_tag_trace(thing, user_line=1):
                   "theano/sparse/", "theano\\sparse\\",
                   "theano/typed_list/", "theano\\typed_list\\",
                   ]:
-            if p in file_path:
+            # Julian: I added the 'tests' exception together with Arnaud.
+            # Otherwise, we'd lose the stack trace during in our test cases
+            # (e.g. in test_opt.py). We're not sure this is the right way to
+            # do it though.
+            if p in file_path and 'tests' not in file_path:
                 tr = tr[:-1]
                 rm = True
                 break

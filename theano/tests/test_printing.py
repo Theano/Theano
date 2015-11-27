@@ -176,13 +176,13 @@ def test_debugprint():
     s = s.getvalue()
     # The additional white space are needed!
     reference = '\n'.join([
-        "Elemwise{add,no_inplace} [@0] ''   ",
-        " |Elemwise{add,no_inplace} [@1] 'C'   ",
-        " | |A [@2]",
-        " | |B [@3]",
-        " |Elemwise{add,no_inplace} [@4] ''   ",
-        "   |D [@5]",
-        "   |E [@6]",
+        "Elemwise{add,no_inplace} [id 0] ''   ",
+        " |Elemwise{add,no_inplace} [id 1] 'C'   ",
+        " | |A [id 2]",
+        " | |B [id 3]",
+        " |Elemwise{add,no_inplace} [id 4] ''   ",
+        "   |D [id 5]",
+        "   |E [id 6]",
     ]) + '\n'
 
     if s != reference:
@@ -197,13 +197,13 @@ def test_debugprint():
     s = s.getvalue()
     # The additional white space are needed!
     reference = "\n".join([
-        "Elemwise{add,no_inplace} [@A] ''   ",
-        " |Elemwise{add,no_inplace} [@B] 'C'   ",
-        " | |A [@C]",
-        " | |B [@D]",
-        " |Elemwise{add,no_inplace} [@E] ''   ",
-        "   |D [@F]",
-        "   |E [@G]",
+        "Elemwise{add,no_inplace} [id A] ''   ",
+        " |Elemwise{add,no_inplace} [id B] 'C'   ",
+        " | |A [id C]",
+        " | |B [id D]",
+        " |Elemwise{add,no_inplace} [id E] ''   ",
+        "   |D [id F]",
+        "   |E [id G]",
     ]) + '\n'
 
     if s != reference:
@@ -218,11 +218,11 @@ def test_debugprint():
     s = s.getvalue()
     # The additional white space are needed!
     reference = '\n'.join([
-        "Elemwise{add,no_inplace} [@A] ''   ",
-        " |Elemwise{add,no_inplace} [@B] 'C'   ",
-        " |Elemwise{add,no_inplace} [@C] ''   ",
-        "   |D [@D]",
-        "   |E [@E]",
+        "Elemwise{add,no_inplace} [id A] ''   ",
+        " |Elemwise{add,no_inplace} [id B] 'C'   ",
+        " |Elemwise{add,no_inplace} [id C] ''   ",
+        "   |D [id D]",
+        "   |E [id E]",
     ]) + '\n'
 
     if s != reference:
@@ -286,40 +286,40 @@ def test_scan_debugprint1():
     for line in output_str.split('\n'):
         lines += [line]
 
-    expected_output = """Subtensor{int64} [@A] ''
-     |Subtensor{int64::} [@B] ''
-     | |for{cpu,scan_fn} [@C] ''
-     | | |k [@D]
-     | | |IncSubtensor{Set;:int64:} [@E] ''
-     | | | |AllocEmpty{dtype='float64'} [@F] ''
-     | | | | |Elemwise{add,no_inplace} [@G] ''
-     | | | | | |k [@D]
-     | | | | | |Subtensor{int64} [@H] ''
-     | | | | |   |Shape [@I] ''
-     | | | | |   | |Rebroadcast{0} [@J] ''
-     | | | | |   |   |DimShuffle{x,0} [@K] ''
-     | | | | |   |     |Elemwise{second,no_inplace} [@L] ''
-     | | | | |   |       |A [@M]
-     | | | | |   |       |DimShuffle{x} [@N] ''
-     | | | | |   |         |TensorConstant{1.0} [@O]
-     | | | | |   |Constant{0} [@P]
-     | | | | |Subtensor{int64} [@Q] ''
-     | | | |   |Shape [@R] ''
-     | | | |   | |Rebroadcast{0} [@J] ''
-     | | | |   |Constant{1} [@S]
-     | | | |Rebroadcast{0} [@J] ''
-     | | | |ScalarFromTensor [@T] ''
-     | | |   |Subtensor{int64} [@H] ''
-     | | |A [@M]
-     | |Constant{1} [@U]
-     |Constant{-1} [@V]
+    expected_output = """Subtensor{int64} [id A] ''
+     |Subtensor{int64::} [id B] ''
+     | |for{cpu,scan_fn} [id C] ''
+     | | |k [id D]
+     | | |IncSubtensor{Set;:int64:} [id E] ''
+     | | | |AllocEmpty{dtype='float64'} [id F] ''
+     | | | | |Elemwise{add,no_inplace} [id G] ''
+     | | | | | |k [id D]
+     | | | | | |Subtensor{int64} [id H] ''
+     | | | | |   |Shape [id I] ''
+     | | | | |   | |Rebroadcast{0} [id J] ''
+     | | | | |   |   |DimShuffle{x,0} [id K] ''
+     | | | | |   |     |Elemwise{second,no_inplace} [id L] ''
+     | | | | |   |       |A [id M]
+     | | | | |   |       |DimShuffle{x} [id N] ''
+     | | | | |   |         |TensorConstant{1.0} [id O]
+     | | | | |   |Constant{0} [id P]
+     | | | | |Subtensor{int64} [id Q] ''
+     | | | |   |Shape [id R] ''
+     | | | |   | |Rebroadcast{0} [id J] ''
+     | | | |   |Constant{1} [id S]
+     | | | |Rebroadcast{0} [id J] ''
+     | | | |ScalarFromTensor [id T] ''
+     | | |   |Subtensor{int64} [id H] ''
+     | | |A [id M]
+     | |Constant{1} [id U]
+     |Constant{-1} [id V]
 
     Inner graphs of the scan ops:
 
-    for{cpu,scan_fn} [@C] ''
-     >Elemwise{mul,no_inplace} [@W] ''
-     > |<TensorType(float64, vector)> [@X] -> [@E]
-     > |A_copy [@Y] -> [@M]"""
+    for{cpu,scan_fn} [id C] ''
+     >Elemwise{mul,no_inplace} [id W] ''
+     > |<TensorType(float64, vector)> [id X] -> [id E]
+     > |A_copy [id Y] -> [id M]"""
 
     for truth, out in zip(expected_output.split("\n"), lines):
         assert truth.strip() == out.strip()
@@ -349,43 +349,43 @@ def test_scan_debugprint2():
     for line in output_str.split('\n'):
         lines += [line]
 
-    expected_output = """Sum{acc_dtype=float64} [@A] ''
-     |for{cpu,scan_fn} [@B] ''
-       |Elemwise{minimum,no_inplace} [@C] ''
-       | |Subtensor{int64} [@D] ''
-       | | |Shape [@E] ''
-       | | | |Subtensor{int64::} [@F] 'coefficients[0:]'
-       | | |   |coefficients [@G]
-       | | |   |Constant{0} [@H]
-       | | |Constant{0} [@I]
-       | |Subtensor{int64} [@J] ''
-       |   |Shape [@K] ''
-       |   | |Subtensor{int64::} [@L] ''
-       |   |   |ARange{dtype='int64'} [@M] ''
-       |   |   | |TensorConstant{0} [@N]
-       |   |   | |TensorConstant{10000} [@O]
-       |   |   | |TensorConstant{1} [@P]
-       |   |   |Constant{0} [@Q]
-       |   |Constant{0} [@R]
-       |Subtensor{:int64:} [@S] ''
-       | |Subtensor{int64::} [@F] 'coefficients[0:]'
-       | |ScalarFromTensor [@T] ''
-       |   |Elemwise{minimum,no_inplace} [@C] ''
-       |Subtensor{:int64:} [@U] ''
-       | |Subtensor{int64::} [@L] ''
-       | |ScalarFromTensor [@V] ''
-       |   |Elemwise{minimum,no_inplace} [@C] ''
-       |Elemwise{minimum,no_inplace} [@C] ''
-       |x [@W]
+    expected_output = """Sum{acc_dtype=float64} [id A] ''
+     |for{cpu,scan_fn} [id B] ''
+       |Elemwise{minimum,no_inplace} [id C] ''
+       | |Subtensor{int64} [id D] ''
+       | | |Shape [id E] ''
+       | | | |Subtensor{int64::} [id F] 'coefficients[0:]'
+       | | |   |coefficients [id G]
+       | | |   |Constant{0} [id H]
+       | | |Constant{0} [id I]
+       | |Subtensor{int64} [id J] ''
+       |   |Shape [id K] ''
+       |   | |Subtensor{int64::} [id L] ''
+       |   |   |ARange{dtype='int64'} [id M] ''
+       |   |   | |TensorConstant{0} [id N]
+       |   |   | |TensorConstant{10000} [id O]
+       |   |   | |TensorConstant{1} [id P]
+       |   |   |Constant{0} [id Q]
+       |   |Constant{0} [id R]
+       |Subtensor{:int64:} [id S] ''
+       | |Subtensor{int64::} [id F] 'coefficients[0:]'
+       | |ScalarFromTensor [id T] ''
+       |   |Elemwise{minimum,no_inplace} [id C] ''
+       |Subtensor{:int64:} [id U] ''
+       | |Subtensor{int64::} [id L] ''
+       | |ScalarFromTensor [id V] ''
+       |   |Elemwise{minimum,no_inplace} [id C] ''
+       |Elemwise{minimum,no_inplace} [id C] ''
+       |x [id W]
 
     Inner graphs of the scan ops:
 
-    for{cpu,scan_fn} [@B] ''
-     >Elemwise{mul,no_inplace} [@X] ''
-     > |coefficients[t] [@Y] -> [@S]
-     > |Elemwise{pow,no_inplace} [@Z] ''
-     >   |x_copy [@BA] -> [@W]
-     >   |<TensorType(int64, scalar)> [@BB] -> [@U]"""
+    for{cpu,scan_fn} [id B] ''
+     >Elemwise{mul,no_inplace} [id X] ''
+     > |coefficients[t] [id Y] -> [id S]
+     > |Elemwise{pow,no_inplace} [id Z] ''
+     >   |x_copy [id BA] -> [id W]
+     >   |<TensorType(int64, scalar)> [id BB] -> [id U]"""
 
     for truth, out in zip(expected_output.split("\n"), lines):
         assert truth.strip() == out.strip()
@@ -432,77 +432,77 @@ def test_scan_debugprint3():
     for line in output_str.split('\n'):
         lines += [line]
 
-    expected_output = """Sum{acc_dtype=float64} [@A] ''
-     |for{cpu,scan_fn} [@B] ''
-       |Elemwise{minimum,no_inplace} [@C] ''
-       | |Subtensor{int64} [@D] ''
-       | | |Shape [@E] ''
-       | | | |Subtensor{int64::} [@F] 'coefficients[0:]'
-       | | |   |coefficients [@G]
-       | | |   |Constant{0} [@H]
-       | | |Constant{0} [@I]
-       | |Subtensor{int64} [@J] ''
-       |   |Shape [@K] ''
-       |   | |Subtensor{int64::} [@L] ''
-       |   |   |ARange{dtype='int64'} [@M] ''
-       |   |   | |TensorConstant{0} [@N]
-       |   |   | |TensorConstant{10} [@O]
-       |   |   | |TensorConstant{1} [@P]
-       |   |   |Constant{0} [@Q]
-       |   |Constant{0} [@R]
-       |Subtensor{:int64:} [@S] ''
-       | |Subtensor{int64::} [@F] 'coefficients[0:]'
-       | |ScalarFromTensor [@T] ''
-       |   |Elemwise{minimum,no_inplace} [@C] ''
-       |Subtensor{:int64:} [@U] ''
-       | |Subtensor{int64::} [@L] ''
-       | |ScalarFromTensor [@V] ''
-       |   |Elemwise{minimum,no_inplace} [@C] ''
-       |Elemwise{minimum,no_inplace} [@C] ''
-       |A [@W]
-       |k [@X]
+    expected_output = """Sum{acc_dtype=float64} [id A] ''
+     |for{cpu,scan_fn} [id B] ''
+       |Elemwise{minimum,no_inplace} [id C] ''
+       | |Subtensor{int64} [id D] ''
+       | | |Shape [id E] ''
+       | | | |Subtensor{int64::} [id F] 'coefficients[0:]'
+       | | |   |coefficients [id G]
+       | | |   |Constant{0} [id H]
+       | | |Constant{0} [id I]
+       | |Subtensor{int64} [id J] ''
+       |   |Shape [id K] ''
+       |   | |Subtensor{int64::} [id L] ''
+       |   |   |ARange{dtype='int64'} [id M] ''
+       |   |   | |TensorConstant{0} [id N]
+       |   |   | |TensorConstant{10} [id O]
+       |   |   | |TensorConstant{1} [id P]
+       |   |   |Constant{0} [id Q]
+       |   |Constant{0} [id R]
+       |Subtensor{:int64:} [id S] ''
+       | |Subtensor{int64::} [id F] 'coefficients[0:]'
+       | |ScalarFromTensor [id T] ''
+       |   |Elemwise{minimum,no_inplace} [id C] ''
+       |Subtensor{:int64:} [id U] ''
+       | |Subtensor{int64::} [id L] ''
+       | |ScalarFromTensor [id V] ''
+       |   |Elemwise{minimum,no_inplace} [id C] ''
+       |Elemwise{minimum,no_inplace} [id C] ''
+       |A [id W]
+       |k [id X]
 
     Inner graphs of the scan ops:
 
-    for{cpu,scan_fn} [@B] ''
-     >Elemwise{mul,no_inplace} [@Y] ''
-     > |DimShuffle{x} [@Z] ''
-     > | |coefficients[t] [@BA] -> [@S]
-     > |Elemwise{pow,no_inplace} [@BB] ''
-     >   |Subtensor{int64} [@BC] ''
-     >   | |Subtensor{int64::} [@BD] ''
-     >   | | |for{cpu,scan_fn} [@BE] ''
-     >   | | | |k_copy [@BF] -> [@X]
-     >   | | | |IncSubtensor{Set;:int64:} [@BG] ''
-     >   | | | | |AllocEmpty{dtype='float64'} [@BH] ''
-     >   | | | | | |Elemwise{add,no_inplace} [@BI] ''
-     >   | | | | | | |k_copy [@BF] -> [@X]
-     >   | | | | | | |Subtensor{int64} [@BJ] ''
-     >   | | | | | |   |Shape [@BK] ''
-     >   | | | | | |   | |Rebroadcast{0} [@BL] ''
-     >   | | | | | |   |   |DimShuffle{x,0} [@BM] ''
-     >   | | | | | |   |     |Elemwise{second,no_inplace} [@BN] ''
-     >   | | | | | |   |       |A_copy [@BO] -> [@W]
-     >   | | | | | |   |       |DimShuffle{x} [@BP] ''
-     >   | | | | | |   |         |TensorConstant{1.0} [@BQ]
-     >   | | | | | |   |Constant{0} [@BR]
-     >   | | | | | |Subtensor{int64} [@BS] ''
-     >   | | | | |   |Shape [@BT] ''
-     >   | | | | |   | |Rebroadcast{0} [@BL] ''
-     >   | | | | |   |Constant{1} [@BU]
-     >   | | | | |Rebroadcast{0} [@BL] ''
-     >   | | | | |ScalarFromTensor [@BV] ''
-     >   | | | |   |Subtensor{int64} [@BJ] ''
-     >   | | | |A_copy [@BO] -> [@W]
-     >   | | |Constant{1} [@BW]
-     >   | |Constant{-1} [@BX]
-     >   |DimShuffle{x} [@BY] ''
-     >     |<TensorType(int64, scalar)> [@BZ] -> [@U]
+    for{cpu,scan_fn} [id B] ''
+     >Elemwise{mul,no_inplace} [id Y] ''
+     > |DimShuffle{x} [id Z] ''
+     > | |coefficients[t] [id BA] -> [id S]
+     > |Elemwise{pow,no_inplace} [id BB] ''
+     >   |Subtensor{int64} [id BC] ''
+     >   | |Subtensor{int64::} [id BD] ''
+     >   | | |for{cpu,scan_fn} [id BE] ''
+     >   | | | |k_copy [id BF] -> [id X]
+     >   | | | |IncSubtensor{Set;:int64:} [id BG] ''
+     >   | | | | |AllocEmpty{dtype='float64'} [id BH] ''
+     >   | | | | | |Elemwise{add,no_inplace} [id BI] ''
+     >   | | | | | | |k_copy [id BF] -> [id X]
+     >   | | | | | | |Subtensor{int64} [id BJ] ''
+     >   | | | | | |   |Shape [id BK] ''
+     >   | | | | | |   | |Rebroadcast{0} [id BL] ''
+     >   | | | | | |   |   |DimShuffle{x,0} [id BM] ''
+     >   | | | | | |   |     |Elemwise{second,no_inplace} [id BN] ''
+     >   | | | | | |   |       |A_copy [id BO] -> [id W]
+     >   | | | | | |   |       |DimShuffle{x} [id BP] ''
+     >   | | | | | |   |         |TensorConstant{1.0} [id BQ]
+     >   | | | | | |   |Constant{0} [id BR]
+     >   | | | | | |Subtensor{int64} [id BS] ''
+     >   | | | | |   |Shape [id BT] ''
+     >   | | | | |   | |Rebroadcast{0} [id BL] ''
+     >   | | | | |   |Constant{1} [id BU]
+     >   | | | | |Rebroadcast{0} [id BL] ''
+     >   | | | | |ScalarFromTensor [id BV] ''
+     >   | | | |   |Subtensor{int64} [id BJ] ''
+     >   | | | |A_copy [id BO] -> [id W]
+     >   | | |Constant{1} [id BW]
+     >   | |Constant{-1} [id BX]
+     >   |DimShuffle{x} [id BY] ''
+     >     |<TensorType(int64, scalar)> [id BZ] -> [id U]
 
-    for{cpu,scan_fn} [@BE] ''
-     >Elemwise{mul,no_inplace} [@CA] ''
-     > |<TensorType(float64, vector)> [@CB] -> [@BG]
-     > |A_copy [@CC] -> [@BO]"""
+    for{cpu,scan_fn} [id BE] ''
+     >Elemwise{mul,no_inplace} [id CA] ''
+     > |<TensorType(float64, vector)> [id CB] -> [id BG]
+     > |A_copy [id CC] -> [id BO]"""
 
     for truth, out in zip(expected_output.split("\n"), lines):
         assert truth.strip() == out.strip()
@@ -527,54 +527,54 @@ def test_scan_debugprint4():
     for line in output_str.split('\n'):
         lines += [line]
 
-    expected_output = """Elemwise{add,no_inplace} [@A] ''
-     |Subtensor{int64::} [@B] ''
-     | |for{cpu,scan_fn}.0 [@C] ''
-     | | |TensorConstant{5} [@D]
-     | | |IncSubtensor{Set;:int64:} [@E] ''
-     | | | |AllocEmpty{dtype='int64'} [@F] ''
-     | | | | |Elemwise{add,no_inplace} [@G] ''
-     | | | |   |TensorConstant{5} [@D]
-     | | | |   |Subtensor{int64} [@H] ''
-     | | | |     |Shape [@I] ''
-     | | | |     | |Subtensor{:int64:} [@J] ''
-     | | | |     |   |<TensorType(int64, vector)> [@K]
-     | | | |     |   |Constant{2} [@L]
-     | | | |     |Constant{0} [@M]
-     | | | |Subtensor{:int64:} [@J] ''
-     | | | |ScalarFromTensor [@N] ''
-     | | |   |Subtensor{int64} [@H] ''
-     | | |IncSubtensor{Set;:int64:} [@O] ''
-     | |   |AllocEmpty{dtype='int64'} [@P] ''
-     | |   | |Elemwise{add,no_inplace} [@Q] ''
-     | |   |   |TensorConstant{5} [@D]
-     | |   |   |Subtensor{int64} [@R] ''
-     | |   |     |Shape [@S] ''
-     | |   |     | |Subtensor{:int64:} [@T] ''
-     | |   |     |   |<TensorType(int64, vector)> [@U]
-     | |   |     |   |Constant{2} [@V]
-     | |   |     |Constant{0} [@W]
-     | |   |Subtensor{:int64:} [@T] ''
-     | |   |ScalarFromTensor [@X] ''
-     | |     |Subtensor{int64} [@R] ''
-     | |Constant{2} [@Y]
-     |Subtensor{int64::} [@Z] ''
-       |for{cpu,scan_fn}.1 [@C] ''
-       |Constant{2} [@BA]
+    expected_output = """Elemwise{add,no_inplace} [id A] ''
+     |Subtensor{int64::} [id B] ''
+     | |for{cpu,scan_fn}.0 [id C] ''
+     | | |TensorConstant{5} [id D]
+     | | |IncSubtensor{Set;:int64:} [id E] ''
+     | | | |AllocEmpty{dtype='int64'} [id F] ''
+     | | | | |Elemwise{add,no_inplace} [id G] ''
+     | | | |   |TensorConstant{5} [id D]
+     | | | |   |Subtensor{int64} [id H] ''
+     | | | |     |Shape [id I] ''
+     | | | |     | |Subtensor{:int64:} [id J] ''
+     | | | |     |   |<TensorType(int64, vector)> [id K]
+     | | | |     |   |Constant{2} [id L]
+     | | | |     |Constant{0} [id M]
+     | | | |Subtensor{:int64:} [id J] ''
+     | | | |ScalarFromTensor [id N] ''
+     | | |   |Subtensor{int64} [id H] ''
+     | | |IncSubtensor{Set;:int64:} [id O] ''
+     | |   |AllocEmpty{dtype='int64'} [id P] ''
+     | |   | |Elemwise{add,no_inplace} [id Q] ''
+     | |   |   |TensorConstant{5} [id D]
+     | |   |   |Subtensor{int64} [id R] ''
+     | |   |     |Shape [id S] ''
+     | |   |     | |Subtensor{:int64:} [id T] ''
+     | |   |     |   |<TensorType(int64, vector)> [id U]
+     | |   |     |   |Constant{2} [id V]
+     | |   |     |Constant{0} [id W]
+     | |   |Subtensor{:int64:} [id T] ''
+     | |   |ScalarFromTensor [id X] ''
+     | |     |Subtensor{int64} [id R] ''
+     | |Constant{2} [id Y]
+     |Subtensor{int64::} [id Z] ''
+       |for{cpu,scan_fn}.1 [id C] ''
+       |Constant{2} [id BA]
 
     Inner graphs of the scan ops:
 
-    for{cpu,scan_fn}.0 [@C] ''
-     >Elemwise{add,no_inplace} [@BB] ''
-     > |<TensorType(int64, scalar)> [@BC] -> [@E]
-     > |<TensorType(int64, scalar)> [@BD] -> [@E]
-     >Elemwise{add,no_inplace} [@BE] ''
-     > |<TensorType(int64, scalar)> [@BF] -> [@O]
-     > |<TensorType(int64, scalar)> [@BG] -> [@O]
+    for{cpu,scan_fn}.0 [id C] ''
+     >Elemwise{add,no_inplace} [id BB] ''
+     > |<TensorType(int64, scalar)> [id BC] -> [id E]
+     > |<TensorType(int64, scalar)> [id BD] -> [id E]
+     >Elemwise{add,no_inplace} [id BE] ''
+     > |<TensorType(int64, scalar)> [id BF] -> [id O]
+     > |<TensorType(int64, scalar)> [id BG] -> [id O]
 
-    for{cpu,scan_fn}.1 [@C] ''
-     >Elemwise{add,no_inplace} [@BB] ''
-     >Elemwise{add,no_inplace} [@BE] ''"""
+    for{cpu,scan_fn}.1 [id C] ''
+     >Elemwise{add,no_inplace} [id BB] ''
+     >Elemwise{add,no_inplace} [id BE] ''"""
 
     for truth, out in zip(expected_output.split("\n"), lines):
         assert truth.strip() == out.strip()
@@ -598,122 +598,122 @@ def test_scan_debugprint5():
     for line in output_str.split('\n'):
         lines += [line]
 
-    expected_output = """Subtensor{int64} [@A] ''
-    |for{cpu,grad_of_scan_fn}.1 [@B] ''
-    | |Elemwise{sub,no_inplace} [@C] ''
-    | | |Subtensor{int64} [@D] ''
-    | | | |Shape [@E] ''
-    | | | | |for{cpu,scan_fn} [@F] ''
-    | | | |   |k [@G]
-    | | | |   |IncSubtensor{Set;:int64:} [@H] ''
-    | | | |   | |AllocEmpty{dtype='float64'} [@I] ''
-    | | | |   | | |Elemwise{add,no_inplace} [@J] ''
-    | | | |   | | | |k [@G]
-    | | | |   | | | |Subtensor{int64} [@K] ''
-    | | | |   | | |   |Shape [@L] ''
-    | | | |   | | |   | |Rebroadcast{0} [@M] ''
-    | | | |   | | |   |   |DimShuffle{x,0} [@N] ''
-    | | | |   | | |   |     |Elemwise{second,no_inplace} [@O] ''
-    | | | |   | | |   |       |A [@P]
-    | | | |   | | |   |       |DimShuffle{x} [@Q] ''
-    | | | |   | | |   |         |TensorConstant{1.0} [@R]
-    | | | |   | | |   |Constant{0} [@S]
-    | | | |   | | |Subtensor{int64} [@T] ''
-    | | | |   | |   |Shape [@U] ''
-    | | | |   | |   | |Rebroadcast{0} [@M] ''
-    | | | |   | |   |Constant{1} [@V]
-    | | | |   | |Rebroadcast{0} [@M] ''
-    | | | |   | |ScalarFromTensor [@W] ''
-    | | | |   |   |Subtensor{int64} [@K] ''
-    | | | |   |A [@P]
-    | | | |Constant{0} [@X]
-    | | |TensorConstant{1} [@Y]
-    | |Subtensor{:int64:} [@Z] ''
-    | | |Subtensor{::int64} [@BA] ''
-    | | | |Subtensor{:int64:} [@BB] ''
-    | | | | |for{cpu,scan_fn} [@F] ''
-    | | | | |Constant{-1} [@BC]
-    | | | |Constant{-1} [@BD]
-    | | |ScalarFromTensor [@BE] ''
-    | |   |Elemwise{sub,no_inplace} [@C] ''
-    | |Subtensor{:int64:} [@BF] ''
-    | | |Subtensor{:int64:} [@BG] ''
-    | | | |Subtensor{::int64} [@BH] ''
-    | | | | |for{cpu,scan_fn} [@F] ''
-    | | | | |Constant{-1} [@BI]
-    | | | |Constant{-1} [@BJ]
-    | | |ScalarFromTensor [@BK] ''
-    | |   |Elemwise{sub,no_inplace} [@C] ''
-    | |Subtensor{::int64} [@BL] ''
-    | | |IncSubtensor{Inc;int64::} [@BM] ''
-    | | | |Elemwise{second,no_inplace} [@BN] ''
-    | | | | |for{cpu,scan_fn} [@BO] ''
-    | | | | | |k [@G]
-    | | | | | |IncSubtensor{Set;:int64:} [@H] ''
-    | | | | | |A [@P]
-    | | | | |DimShuffle{x,x} [@BP] ''
-    | | | |   |TensorConstant{0.0} [@BQ]
-    | | | |IncSubtensor{Inc;int64} [@BR] ''
-    | | | | |Elemwise{second,no_inplace} [@BS] ''
-    | | | | | |Subtensor{int64::} [@BT] ''
-    | | | | | | |for{cpu,scan_fn} [@BO] ''
-    | | | | | | |Constant{1} [@BU]
-    | | | | | |DimShuffle{x,x} [@BV] ''
-    | | | | |   |TensorConstant{0.0} [@BQ]
-    | | | | |Elemwise{second} [@BW] ''
-    | | | | | |Subtensor{int64} [@BX] ''
-    | | | | | | |Subtensor{int64::} [@BT] ''
-    | | | | | | |Constant{-1} [@BY]
-    | | | | | |DimShuffle{x} [@BZ] ''
-    | | | | |   |Elemwise{second,no_inplace} [@CA] ''
-    | | | | |     |Sum{acc_dtype=float64} [@CB] ''
-    | | | | |     | |Subtensor{int64} [@BX] ''
-    | | | | |     |TensorConstant{1.0} [@R]
-    | | | | |Constant{-1} [@BY]
-    | | | |Constant{1} [@BU]
-    | | |Constant{-1} [@CC]
-    | |Alloc [@CD] ''
-    | | |TensorConstant{0.0} [@BQ]
-    | | |Elemwise{add,no_inplace} [@CE] ''
-    | | | |Elemwise{sub,no_inplace} [@C] ''
-    | | | |TensorConstant{1} [@Y]
-    | | |Subtensor{int64} [@CF] ''
-    | |   |Shape [@CG] ''
-    | |   | |A [@P]
-    | |   |Constant{0} [@CH]
-    | |A [@P]
-    |Constant{-1} [@CI]
+    expected_output = """Subtensor{int64} [id A] ''
+    |for{cpu,grad_of_scan_fn}.1 [id B] ''
+    | |Elemwise{sub,no_inplace} [id C] ''
+    | | |Subtensor{int64} [id D] ''
+    | | | |Shape [id E] ''
+    | | | | |for{cpu,scan_fn} [id F] ''
+    | | | |   |k [id G]
+    | | | |   |IncSubtensor{Set;:int64:} [id H] ''
+    | | | |   | |AllocEmpty{dtype='float64'} [id I] ''
+    | | | |   | | |Elemwise{add,no_inplace} [id J] ''
+    | | | |   | | | |k [id G]
+    | | | |   | | | |Subtensor{int64} [id K] ''
+    | | | |   | | |   |Shape [id L] ''
+    | | | |   | | |   | |Rebroadcast{0} [id M] ''
+    | | | |   | | |   |   |DimShuffle{x,0} [id N] ''
+    | | | |   | | |   |     |Elemwise{second,no_inplace} [id O] ''
+    | | | |   | | |   |       |A [id P]
+    | | | |   | | |   |       |DimShuffle{x} [id Q] ''
+    | | | |   | | |   |         |TensorConstant{1.0} [id R]
+    | | | |   | | |   |Constant{0} [id S]
+    | | | |   | | |Subtensor{int64} [id T] ''
+    | | | |   | |   |Shape [id U] ''
+    | | | |   | |   | |Rebroadcast{0} [id M] ''
+    | | | |   | |   |Constant{1} [id V]
+    | | | |   | |Rebroadcast{0} [id M] ''
+    | | | |   | |ScalarFromTensor [id W] ''
+    | | | |   |   |Subtensor{int64} [id K] ''
+    | | | |   |A [id P]
+    | | | |Constant{0} [id X]
+    | | |TensorConstant{1} [id Y]
+    | |Subtensor{:int64:} [id Z] ''
+    | | |Subtensor{::int64} [id BA] ''
+    | | | |Subtensor{:int64:} [id BB] ''
+    | | | | |for{cpu,scan_fn} [id F] ''
+    | | | | |Constant{-1} [id BC]
+    | | | |Constant{-1} [id BD]
+    | | |ScalarFromTensor [id BE] ''
+    | |   |Elemwise{sub,no_inplace} [id C] ''
+    | |Subtensor{:int64:} [id BF] ''
+    | | |Subtensor{:int64:} [id BG] ''
+    | | | |Subtensor{::int64} [id BH] ''
+    | | | | |for{cpu,scan_fn} [id F] ''
+    | | | | |Constant{-1} [id BI]
+    | | | |Constant{-1} [id BJ]
+    | | |ScalarFromTensor [id BK] ''
+    | |   |Elemwise{sub,no_inplace} [id C] ''
+    | |Subtensor{::int64} [id BL] ''
+    | | |IncSubtensor{Inc;int64::} [id BM] ''
+    | | | |Elemwise{second,no_inplace} [id BN] ''
+    | | | | |for{cpu,scan_fn} [id BO] ''
+    | | | | | |k [id G]
+    | | | | | |IncSubtensor{Set;:int64:} [id H] ''
+    | | | | | |A [id P]
+    | | | | |DimShuffle{x,x} [id BP] ''
+    | | | |   |TensorConstant{0.0} [id BQ]
+    | | | |IncSubtensor{Inc;int64} [id BR] ''
+    | | | | |Elemwise{second,no_inplace} [id BS] ''
+    | | | | | |Subtensor{int64::} [id BT] ''
+    | | | | | | |for{cpu,scan_fn} [id BO] ''
+    | | | | | | |Constant{1} [id BU]
+    | | | | | |DimShuffle{x,x} [id BV] ''
+    | | | | |   |TensorConstant{0.0} [id BQ]
+    | | | | |Elemwise{second} [id BW] ''
+    | | | | | |Subtensor{int64} [id BX] ''
+    | | | | | | |Subtensor{int64::} [id BT] ''
+    | | | | | | |Constant{-1} [id BY]
+    | | | | | |DimShuffle{x} [id BZ] ''
+    | | | | |   |Elemwise{second,no_inplace} [id CA] ''
+    | | | | |     |Sum{acc_dtype=float64} [id CB] ''
+    | | | | |     | |Subtensor{int64} [id BX] ''
+    | | | | |     |TensorConstant{1.0} [id R]
+    | | | | |Constant{-1} [id BY]
+    | | | |Constant{1} [id BU]
+    | | |Constant{-1} [id CC]
+    | |Alloc [id CD] ''
+    | | |TensorConstant{0.0} [id BQ]
+    | | |Elemwise{add,no_inplace} [id CE] ''
+    | | | |Elemwise{sub,no_inplace} [id C] ''
+    | | | |TensorConstant{1} [id Y]
+    | | |Subtensor{int64} [id CF] ''
+    | |   |Shape [id CG] ''
+    | |   | |A [id P]
+    | |   |Constant{0} [id CH]
+    | |A [id P]
+    |Constant{-1} [id CI]
 
     Inner graphs of the scan ops:
 
-    for{cpu,grad_of_scan_fn}.1 [@B] ''
-    >Elemwise{add,no_inplace} [@CJ] ''
-    > |Elemwise{mul} [@CK] ''
-    > | |<TensorType(float64, vector)> [@CL] -> [@BL]
-    > | |A_copy [@CM] -> [@P]
-    > |<TensorType(float64, vector)> [@CN] -> [@BL]
-    >Elemwise{add,no_inplace} [@CO] ''
-    > |Elemwise{mul} [@CP] ''
-    > | |<TensorType(float64, vector)> [@CL] -> [@BL]
-    > | |<TensorType(float64, vector)> [@CQ] -> [@Z]
-    > |<TensorType(float64, vector)> [@CR] -> [@CD]
+    for{cpu,grad_of_scan_fn}.1 [id B] ''
+    >Elemwise{add,no_inplace} [id CJ] ''
+    > |Elemwise{mul} [id CK] ''
+    > | |<TensorType(float64, vector)> [id CL] -> [id BL]
+    > | |A_copy [id CM] -> [id P]
+    > |<TensorType(float64, vector)> [id CN] -> [id BL]
+    >Elemwise{add,no_inplace} [id CO] ''
+    > |Elemwise{mul} [id CP] ''
+    > | |<TensorType(float64, vector)> [id CL] -> [id BL]
+    > | |<TensorType(float64, vector)> [id CQ] -> [id Z]
+    > |<TensorType(float64, vector)> [id CR] -> [id CD]
 
-    for{cpu,scan_fn} [@F] ''
-    >Elemwise{mul,no_inplace} [@CS] ''
-    > |<TensorType(float64, vector)> [@CT] -> [@H]
-    > |A_copy [@CU] -> [@P]
+    for{cpu,scan_fn} [id F] ''
+    >Elemwise{mul,no_inplace} [id CS] ''
+    > |<TensorType(float64, vector)> [id CT] -> [id H]
+    > |A_copy [id CU] -> [id P]
 
-    for{cpu,scan_fn} [@F] ''
-    >Elemwise{mul,no_inplace} [@CS] ''
+    for{cpu,scan_fn} [id F] ''
+    >Elemwise{mul,no_inplace} [id CS] ''
 
-    for{cpu,scan_fn} [@F] ''
-    >Elemwise{mul,no_inplace} [@CS] ''
+    for{cpu,scan_fn} [id F] ''
+    >Elemwise{mul,no_inplace} [id CS] ''
 
-    for{cpu,scan_fn} [@BO] ''
-    >Elemwise{mul,no_inplace} [@CS] ''
+    for{cpu,scan_fn} [id BO] ''
+    >Elemwise{mul,no_inplace} [id CS] ''
 
-    for{cpu,scan_fn} [@BO] ''
-    >Elemwise{mul,no_inplace} [@CS] ''"""
+    for{cpu,scan_fn} [id BO] ''
+    >Elemwise{mul,no_inplace} [id CS] ''"""
 
     for truth, out in zip(expected_output.split("\n"), lines):
         assert truth.strip() == out.strip()

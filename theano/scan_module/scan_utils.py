@@ -156,7 +156,7 @@ def traverse(out, x, x_copy, d, visited=None):
             d[out] = cuda.gpu_from_host(x_copy)
         else:
             assert isinstance(x.type, gpuarray.GpuArrayType)
-            d[out] = gpuarray.gpu_from_host(x_copy)
+            d[out] = gpuarray.GpuFromHost(x.type.context_name)(x_copy)
         return d
     elif out.owner is None:
         return d
@@ -857,16 +857,19 @@ class Validator(object):
             return None
 
         if out.owner is None:
-            # This is an unknown input node, so it is invalid.
-            self.invalid.add(out)
             if isinstance(out, tensor.TensorConstant):
-                # We can clone it to get a valid constant
+                # This might be a constant from the outer graph or a constant
+                # from the inner graph. In all cases, we can clone it to be
+                # certain we have a valid constant
                 cloned_out = out.clone()
                 self.valid.add(cloned_out)
+                self.invalid.add(out)
                 self.valid_equivalent[out] = cloned_out
                 return cloned_out, False
-
-            return None
+            else:
+                # This is an input node and it has not been explicitly marked
+                # as invalid so we can use it
+                return out, True
 
         # Recurse over inputs
         inputs = [self.check(i) for i in out.owner.inputs]

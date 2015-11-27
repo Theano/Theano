@@ -1,0 +1,14 @@
+.. _libdoc_blocksparse:
+
+===============================================================================
+:mod:`blocksparse` --  Block sparse dot operations (gemv and outer)
+===============================================================================
+
+.. module:: tensor.nnet.blocksparse
+   :platform: Unix, Windows
+   :synopsis: Block sparse dot
+.. moduleauthor:: LISA
+
+
+.. automodule:: theano.tensor.nnet.blocksparse
+    :members:

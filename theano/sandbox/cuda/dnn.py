@@ -11,9 +11,9 @@ from theano.gof.type import CDataType, Generic
 from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.tensor.nnet import SoftmaxGrad
+from theano.tensor.nnet.abstract_conv2d import get_conv_output_shape
 from theano.tensor.signal.downsample import (
     DownsampleFactorMax, MaxPoolGrad, AveragePoolGrad)
-from theano.tensor.opt import register_specialize_device
 from theano.sandbox.cuda.type import CudaNdarrayType
 
 from theano.sandbox.cuda import GpuOp
@@ -33,9 +33,6 @@ from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 from theano.tensor.nnet.abstract_conv2d import (AbstractConv2d,
                                                 AbstractConv2d_gradWeights,
                                                 AbstractConv2d_gradInputs)
-from theano.tensor.opt import register_specialize_device
-
-
 
 def dnn_available():
     if dnn_available.avail is None:
@@ -69,6 +66,8 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
                 params.append("-I" + config.dnn.include_path)
             if config.dnn.library_path:
                 params.append("-L" + config.dnn.library_path)
+            if config.nvcc.compiler_bindir:
+                params.extend(['--compiler-bindir', config.nvcc.compiler_bindir])
             # Do not run here the test program. It would run on the
             # default gpu, not the one selected by the user. If mixed
             # GPU are installed or if the GPUs are configured in
@@ -105,7 +104,7 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
                         " This isn't supported anymore."
                         " Update to CuDNN v2 final version.")
                     raise RuntimeError(dnn_available.msg)
-                if v[0] >= 3000 and v[0] < 3007:
+                if 3000 <= v[0] < 3007:
                     # 3007 is the final release of cudnn v3
                     dnn_available.avail = False
                     dnn_available.msg = (
@@ -551,29 +550,11 @@ class GpuDnnConv(DnnBase, COp):
         or scalar.
 
         """
-        b = ishape[0]  # Number of inputs
-        h = ishape[2]  # Height of input feature maps
-        w = ishape[3]  # Width of input feature maps
-        nb = kshape[0]  # Number of output feature maps
-        kh = kshape[2]  # Height of each filter
-        kw = kshape[3]  # Width of each filter
-
-        sh, sw = subsample
-        if border_mode == 'full':
-            padh = kh - 1
-            padw = kw - 1
-        elif isinstance(border_mode, tuple):
-            padh, padw = border_mode
-        else:
-            assert border_mode == 'valid'
-            padh = 0
-            padw = 0
-
-        return (
-            b, nb,
-            (h + 2*padh - kh)//sh + 1,
-            (w + 2*padw - kw)//sw + 1
-        )
+        return get_conv_output_shape(
+            ishape,
+            kshape,
+            border_mode,
+            subsample)
 
     def infer_shape(self, node, shape):
         return [shape[2]]
@@ -650,34 +631,11 @@ class GpuDnnConv3d(GpuDnnConv):
         the specified parameters.  `ishape` and `kshape` can be symbolic
         or scalar.
         """
-        b = ishape[0]  # Number of inputs
-        d = ishape[2]  # Depth of input feature maps
-        h = ishape[3]  # Height of input feature maps
-        w = ishape[4]  # Width of input feature maps
-        nb = kshape[0]  # Number of output feature maps
-        kd = kshape[2]  # Depth of each filter
-        kh = kshape[3]  # Height of each filter
-        kw = kshape[4]  # Width of each filter
-
-        sd, sh, sw = subsample
-        if border_mode == 'full':
-            padd = kd - 1
-            padh = kh - 1
-            padw = kw - 1
-        elif isinstance(border_mode, tuple):
-            padd, padh, padw = border_mode
-        else:
-            assert border_mode == 'valid'
-            padd = 0
-            padh = 0
-            padw = 0
-
-        return (
-            b, nb,
-            (d + 2*padd - kd)//sd + 1,
-            (h + 2*padh - kh)//sh + 1,
-            (w + 2*padw - kw)//sw + 1
-        )
+        return get_conv_output_shape(
+            ishape,
+            kshape,
+            border_mode,
+            subsample)
 
 
 class GpuDnnConvGradW(DnnBase, COp):
@@ -2233,43 +2191,43 @@ if True:
                    70.0, 'fast_run', 'inplace', 'gpu', 'cudnn')
 
     @register_opt('cudnn')
-    @alpha_merge(GpuDnnConv, alpha_in=4, beta_in=5, nd=4)
+    @alpha_merge(GpuDnnConv, alpha_in=4, beta_in=5)
     def local_dnn_conv_alpha_merge(node, *inputs):
         if not dnn_available() or version() == -1:
             return None
-        return [GpuDnnConv(algo=node.op.algo)(*inputs)]
+        return [node.op(*inputs)]
 
     @register_opt('cudnn')
-    @alpha_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5, nd=4)
+    @alpha_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5)
     def local_dnn_convw_alpha_merge(node, *inputs):
         if not dnn_available() or version() == -1:
             return None
-        return [GpuDnnConvGradW()(*inputs)]
+        return [node.op(*inputs)]
 
     @register_opt('cudnn')
-    @alpha_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5, nd=4)
+    @alpha_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5)
     def local_dnn_convi_alpha_merge(node, *inputs):
         if not dnn_available() or version() == -1:
             return None
-        return [GpuDnnConvGradI()(*inputs)]
+        return [node.op(*inputs)]
 
     @register_opt('cudnn')
-    @output_merge(GpuDnnConv, alpha_in=4, beta_in=5, out_in=2, nd=4)
+    @output_merge(GpuDnnConv, alpha_in=4, beta_in=5, out_in=2)
     def local_dnn_conv_output_merge(node, *inputs):
         inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
-        return [GpuDnnConv(algo=node.op.algo)(*inputs)]
+        return [node.op(*inputs)]
 
     @register_opt('cudnn')
-    @output_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5, out_in=2, nd=4)
+    @output_merge(GpuDnnConvGradW, alpha_in=4, beta_in=5, out_in=2)
     def local_dnn_convw_output_merge(node, *inputs):
         inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
-        return [GpuDnnConvGradW()(*inputs)]
+        return [node.op(*inputs)]
 
     @register_opt('cudnn')
-    @output_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5, out_in=2, nd=4)
+    @output_merge(GpuDnnConvGradI, alpha_in=4, beta_in=5, out_in=2)
     def local_dnn_convi_output_merge(node, *inputs):
         inputs = inputs[0:2] + (gpu_contiguous(inputs[2]),) + inputs[3:]
-        return [GpuDnnConvGradI()(*inputs)]
+        return [node.op(*inputs)]
 
     @register_opt('cudnn')
     @local_optimizer([GpuDownsampleFactorMax])
@@ -2440,24 +2398,26 @@ if True:
             )
             return [out.dimshuffle(0, 1)]
 
-### AbstractConv Optimizations
-@local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights, AbstractConv2d_gradInputs])
+
+# AbstractConv Optimizations
+@local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights,
+                  AbstractConv2d_gradInputs])
 def local_abstractconv_cudnn(node):
     inp1 = node.inputs[0]
     inp2 = node.inputs[1]
 
-    if ((not isinstance(node.op, AbstractConv2d) or
-         not isinstance(node.op, AbstractConv2d_gradWeights) or
-         not isinstance(node.op, AbstractConv2d_gradInputs))):
+    if (not isinstance(node.op, (AbstractConv2d,
+                                 AbstractConv2d_gradWeights,
+                                 AbstractConv2d_gradInputs))):
         return None
 
-    if not isinstance(inp1.type, CudaNdarrayType) or \
-            not isinstance(inp2.type, CudaNdarrayType):
+    if (not isinstance(inp1.type, CudaNdarrayType) or
+            not isinstance(inp2.type, CudaNdarrayType)):
         return None
     if not dnn_available():
         return None
 
-    if node.op.filters_flip:
+    if node.op.filter_flip:
         conv_mode = 'conv'
     else:
         conv_mode = 'cross'
@@ -2466,20 +2426,21 @@ def local_abstractconv_cudnn(node):
                         border_mode=node.op.border_mode,
                         subsample=node.op.subsample,
                         direction_hint='forward',
-                        conv_mode = conv_mode)
+                        conv_mode=conv_mode)
         return [rval]
     if (isinstance(node.op, AbstractConv2d_gradWeights)):
-        shape = (inp2.shape[1], inp1.shape[1], node.inputs[2][0], node.inputs[2][1])
+        shape = (inp2.shape[1], inp1.shape[1],
+                 node.inputs[2][0], node.inputs[2][1])
         rval = dnn_gradweight(inp1, inp2, shape,
                               border_mode=node.op.border_mode,
                               subsample=node.op.subsample,
-                              conv_mode = conv_mode)
+                              conv_mode=conv_mode)
         return [rval]
     if (isinstance(node.op, AbstractConv2d_gradInputs)):
-        shape = (inp2.shape[0], inp1.shape[1], node.inputs[2][0], node.inputs[2][1])
+        shape = (inp2.shape[0], inp1.shape[1],
+                 node.inputs[2][0], node.inputs[2][1])
         rval = dnn_gradinput(inp1, inp2, shape,
                              border_mode=node.op.border_mode,
                              subsample=node.op.subsample,
-                             conv_mode = conv_mode)
+                             conv_mode=conv_mode)
         return [rval]
-

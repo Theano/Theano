@@ -159,7 +159,7 @@ class CURAND_Base(GpuOp):
         int odims[%(ndim)s];
         int n_elements = 1;
         int must_alloc_sample = ((NULL == %(o_sample)s)
-                || !CudaNdarray_Check(py_%(o_sample)s)
+                || !CudaNdarray_Check((PyObject*)%(o_sample)s)
                 || (CudaNdarray_NDIM(%(o_sample)s) != %(ndim)s));
 
         if (PyArray_NDIM(%(size)s) != 1)
@@ -246,7 +246,7 @@ class CURAND_Base(GpuOp):
         return code
 
     def c_code_cache_version(self):
-        return (3,)
+        return (4,)
 
 
 class CURAND_Normal(CURAND_Base):

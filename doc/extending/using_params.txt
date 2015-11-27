@@ -138,23 +138,23 @@ the params type.
        params_type = Generic()
        __props__ = ('mul',)
 
-      def __init__(self, mul):
-          self.mul = float(mul)
+       def __init__(self, mul):
+           self.mul = float(mul)
 
-      def get_params(self, node):
-          return self.mul
+       def get_params(self, node):
+           return self.mul
 
-      def make_node(self, inp):
-          inp = as_scalar(inp)
-          return Apply(self, [inp], [inp.type()]
+       def make_node(self, inp):
+           inp = as_scalar(inp)
+           return Apply(self, [inp], [inp.type()]
 
-      def perform(self, node, inputs, output_storage, params):
-          # Here params is a python float so this is ok
-          output_storage[0][0] = inputs[0] * params
+       def perform(self, node, inputs, output_storage, params):
+           # Here params is a python float so this is ok
+           output_storage[0][0] = inputs[0] * params
 
-      def c_code(self, node, name, inputs, outputs, sub):
-          return ("%(z)s = %(x)s * PyFloat_AsDouble(%(p)s);" %
-                  dict(z=outputs[0], x=inputs[0], p=sub['params']))
+       def c_code(self, node, name, inputs, outputs, sub):
+           return ("%(z)s = %(x)s * PyFloat_AsDouble(%(p)s);" %
+                   dict(z=outputs[0], x=inputs[0], p=sub['params']))
 
 .. testoutput::
    :hide:

@@ -383,16 +383,16 @@ class TestMergeOptimizer:
         g = FunctionGraph([x1, x2], [e])
         MergeOptimizer().optimize(g)
         strg = theano.printing.debugprint(g, file='str')
-        strref = '''Elemwise{add,no_inplace} [@A] ''   4
- |dot [@B] ''   3
- | |Assert{msg='Theano Assert failed!'} [@C] ''   2
- | | |x1 [@D]
- | | |All [@E] ''   1
- | |   |Elemwise{gt,no_inplace} [@F] ''   0
- | |     |x1 [@D]
- | |     |x2 [@G]
- | |x2 [@G]
- |dot [@B] ''   3
+        strref = '''Elemwise{add,no_inplace} [id A] ''   4
+ |dot [id B] ''   3
+ | |Assert{msg='Theano Assert failed!'} [id C] ''   2
+ | | |x1 [id D]
+ | | |All [id E] ''   1
+ | |   |Elemwise{gt,no_inplace} [id F] ''   0
+ | |     |x1 [id D]
+ | |     |x2 [id G]
+ | |x2 [id G]
+ |dot [id B] ''   3
 '''
         assert strg == strref, (strg, strref)
 
@@ -407,35 +407,35 @@ class TestMergeOptimizer:
         g = FunctionGraph([x1, x2, x3], [e])
         MergeOptimizer().optimize(g)
         strg = theano.printing.debugprint(g, file='str')
-        strref1 = '''Elemwise{add,no_inplace} [@A] ''   6
- |dot [@B] ''   5
- | |Assert{msg='Theano Assert failed!'} [@C] ''   4
- | | |x1 [@D]
- | | |All [@E] ''   3
- | | | |Elemwise{gt,no_inplace} [@F] ''   1
- | | |   |x1 [@D]
- | | |   |x3 [@G]
- | | |All [@H] ''   2
- | |   |Elemwise{gt,no_inplace} [@I] ''   0
- | |     |x1 [@D]
- | |     |x2 [@J]
- | |x2 [@J]
- |dot [@B] ''   5
+        strref1 = '''Elemwise{add,no_inplace} [id A] ''   6
+ |dot [id B] ''   5
+ | |Assert{msg='Theano Assert failed!'} [id C] ''   4
+ | | |x1 [id D]
+ | | |All [id E] ''   3
+ | | | |Elemwise{gt,no_inplace} [id F] ''   1
+ | | |   |x1 [id D]
+ | | |   |x3 [id G]
+ | | |All [id H] ''   2
+ | |   |Elemwise{gt,no_inplace} [id I] ''   0
+ | |     |x1 [id D]
+ | |     |x2 [id J]
+ | |x2 [id J]
+ |dot [id B] ''   5
 '''
-        strref2 = '''Elemwise{add,no_inplace} [@A] ''   6
- |dot [@B] ''   5
- | |Assert{msg='Theano Assert failed!'} [@C] ''   4
- | | |x1 [@D]
- | | |All [@E] ''   3
- | | | |Elemwise{gt,no_inplace} [@F] ''   1
- | | |   |x1 [@D]
- | | |   |x2 [@G]
- | | |All [@H] ''   2
- | |   |Elemwise{gt,no_inplace} [@I] ''   0
- | |     |x1 [@D]
- | |     |x3 [@J]
- | |x2 [@G]
- |dot [@B] ''   5
+        strref2 = '''Elemwise{add,no_inplace} [id A] ''   6
+ |dot [id B] ''   5
+ | |Assert{msg='Theano Assert failed!'} [id C] ''   4
+ | | |x1 [id D]
+ | | |All [id E] ''   3
+ | | | |Elemwise{gt,no_inplace} [id F] ''   1
+ | | |   |x1 [id D]
+ | | |   |x2 [id G]
+ | | |All [id H] ''   2
+ | |   |Elemwise{gt,no_inplace} [id I] ''   0
+ | |     |x1 [id D]
+ | |     |x3 [id J]
+ | |x2 [id G]
+ |dot [id B] ''   5
 '''
         # print(strg)
         assert strg == strref1 or strg == strref2, (strg, strref1, strref2)
@@ -450,21 +450,21 @@ class TestMergeOptimizer:
         g = FunctionGraph([x1, x2, x3], [e])
         MergeOptimizer().optimize(g)
         strg = theano.printing.debugprint(g, file='str')
-        strref = '''Elemwise{add,no_inplace} [@A] ''   7
- |dot [@B] ''   6
- | |Assert{msg='Theano Assert failed!'} [@C] ''   5
- | | |x1 [@D]
- | | |All [@E] ''   3
- | |   |Elemwise{gt,no_inplace} [@F] ''   1
- | |     |x1 [@D]
- | |     |x3 [@G]
- | |Assert{msg='Theano Assert failed!'} [@H] ''   4
- |   |x2 [@I]
- |   |All [@J] ''   2
- |     |Elemwise{gt,no_inplace} [@K] ''   0
- |       |x2 [@I]
- |       |x3 [@G]
- |dot [@B] ''   6
+        strref = '''Elemwise{add,no_inplace} [id A] ''   7
+ |dot [id B] ''   6
+ | |Assert{msg='Theano Assert failed!'} [id C] ''   5
+ | | |x1 [id D]
+ | | |All [id E] ''   3
+ | |   |Elemwise{gt,no_inplace} [id F] ''   1
+ | |     |x1 [id D]
+ | |     |x3 [id G]
+ | |Assert{msg='Theano Assert failed!'} [id H] ''   4
+ |   |x2 [id I]
+ |   |All [id J] ''   2
+ |     |Elemwise{gt,no_inplace} [id K] ''   0
+ |       |x2 [id I]
+ |       |x3 [id G]
+ |dot [id B] ''   6
 '''
         # print(strg)
         assert strg == strref, (strg, strref)
@@ -479,21 +479,21 @@ class TestMergeOptimizer:
         g = FunctionGraph([x1, x2, x3], [e])
         MergeOptimizer().optimize(g)
         strg = theano.printing.debugprint(g, file='str')
-        strref = '''Elemwise{add,no_inplace} [@A] ''   7
- |dot [@B] ''   6
- | |Assert{msg='Theano Assert failed!'} [@C] ''   5
- | | |x1 [@D]
- | | |All [@E] ''   3
- | |   |Elemwise{gt,no_inplace} [@F] ''   1
- | |     |x1 [@D]
- | |     |x3 [@G]
- | |Assert{msg='Theano Assert failed!'} [@H] ''   4
- |   |x2 [@I]
- |   |All [@J] ''   2
- |     |Elemwise{gt,no_inplace} [@K] ''   0
- |       |x2 [@I]
- |       |x3 [@G]
- |dot [@B] ''   6
+        strref = '''Elemwise{add,no_inplace} [id A] ''   7
+ |dot [id B] ''   6
+ | |Assert{msg='Theano Assert failed!'} [id C] ''   5
+ | | |x1 [id D]
+ | | |All [id E] ''   3
+ | |   |Elemwise{gt,no_inplace} [id F] ''   1
+ | |     |x1 [id D]
+ | |     |x3 [id G]
+ | |Assert{msg='Theano Assert failed!'} [id H] ''   4
+ |   |x2 [id I]
+ |   |All [id J] ''   2
+ |     |Elemwise{gt,no_inplace} [id K] ''   0
+ |       |x2 [id I]
+ |       |x3 [id G]
+ |dot [id B] ''   6
 '''
         print(strg)
         assert strg == strref, (strg, strref)

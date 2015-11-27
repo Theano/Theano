@@ -1,4 +1,3 @@
-import copy
 
 import numpy
 
@@ -109,7 +108,7 @@ Parameters
 ----------
 x
     Typed list.
-index 
+index
     The index of the value to return from `x`.
 
 """
@@ -596,7 +595,7 @@ class MakeList(Op):
         a2 = []
         for elem in a:
             if not isinstance(elem, theano.gof.Variable):
-                elem = as_tensor_variable(elem)
+                elem = theano.tensor.as_tensor_variable(elem)
             a2.append(elem)
         if not all(a2[0].type == elem.type for elem in a2):
             raise TypeError(

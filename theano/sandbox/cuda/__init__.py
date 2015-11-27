@@ -429,6 +429,10 @@ def use(device,
                 # query the active GPU. If we check the active GPU before
                 # the device is initialized we will always receive 0
                 # event if another device is selected later.
+                if not hasattr(cuda_ndarray.cuda_ndarray, 'select_a_gpu'):
+                    raise Exception(
+                        "Delete your Theano cache. The automatic"
+                        " recompilation did not work.")
                 cuda_ndarray.cuda_ndarray.select_a_gpu()
                 use.device_number = active_device_number()
                 # This is needed to initialize the cublas handle.
@@ -518,11 +522,10 @@ def unuse():
     cuda_enabled = False
     handle_shared_float32(False)
     optdb.remove_tags('gpu_opt',
-                   'fast_run',
-                   'inplace')
+                      'fast_compile',
+                      'fast_run')
     optdb.remove_tags('gpu_after_fusion',
-                   'fast_run',
-                   'inplace')
+                      'fast_run')
 
 
 def handle_shared_float32(tf):

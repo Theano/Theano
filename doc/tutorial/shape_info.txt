@@ -24,11 +24,11 @@ Currently, information regarding shape is used in two ways in Theano:
 >>> x = theano.tensor.matrix('x')
 >>> f = theano.function([x], (x ** 2).shape)
 >>> theano.printing.debugprint(f) # doctest: +NORMALIZE_WHITESPACE
-MakeVector{dtype='int64'} [@A] ''   2
- |Shape_i{0} [@B] ''   1
- | |x [@C]
- |Shape_i{1} [@D] ''   0
-   |x [@C]
+MakeVector{dtype='int64'} [id A] ''   2
+ |Shape_i{0} [id B] ''   1
+ | |x [id C]
+ |Shape_i{1} [id D] ''   0
+   |x [id C]
     
 
 The output of this compiled function does not contain any multiplication
@@ -51,24 +51,24 @@ can lead to errors. Consider this example:
 
 >>> f = theano.function([x, y], z.shape)
 >>> theano.printing.debugprint(f) # doctest: +NORMALIZE_WHITESPACE
-MakeVector{dtype='int64'} [@A] ''   4
- |Elemwise{Add}[(0, 0)] [@B] ''   3
- | |Shape_i{0} [@C] ''   1
- | | |x [@D]
- | |Shape_i{0} [@E] ''   2
- |   |y [@F]
- |Shape_i{1} [@G] ''   0
-   |x [@D]
+MakeVector{dtype='int64'} [id A] ''   4
+ |Elemwise{Add}[(0, 0)] [id B] ''   3
+ | |Shape_i{0} [id C] ''   1
+ | | |x [id D]
+ | |Shape_i{0} [id E] ''   2
+ |   |y [id F]
+ |Shape_i{1} [id G] ''   0
+   |x [id D]
 
 >>> f(xv, yv) # DOES NOT RAISE AN ERROR AS SHOULD BE.
 array([8, 4])
 
 >>> f = theano.function([x,y], z)# Do not take the shape.
 >>> theano.printing.debugprint(f) # doctest: +NORMALIZE_WHITESPACE
-Join [@A] ''   0
- |TensorConstant{0} [@B]
- |x [@C]
- |y [@D]
+Join [id A] ''   0
+ |TensorConstant{0} [id B]
+ |x [id C]
+ |y [id D]
 
 >>> f(xv, yv)  # doctest: +ELLIPSIS
 Traceback (most recent call last):
@@ -121,8 +121,8 @@ upgrade.  Here is the current state of what can be done:
 >>> x_specify_shape = theano.tensor.specify_shape(x, (2, 2))
 >>> f = theano.function([x], (x_specify_shape ** 2).shape)
 >>> theano.printing.debugprint(f) # doctest: +NORMALIZE_WHITESPACE
-DeepCopyOp [@A] ''   0
- |TensorConstant{(2,) of 2} [@B]
+DeepCopyOp [id A] ''   0
+ |TensorConstant{(2,) of 2} [id B]
 
 Future Plans
 ============

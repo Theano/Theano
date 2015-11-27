@@ -14,12 +14,15 @@ import logging
 
 import numpy
 from six.moves import xrange
+import warnings
 
 import theano
 from theano import OpenMPOp
 from theano.tensor import (as_tensor_variable, blas, get_scalar_constant_value,
                            patternbroadcast, NotScalarConstantError)
 from theano.gof import Apply
+from theano.tensor.nnet.abstract_conv2d import (get_conv_output_shape,
+                                                get_conv_shape_1axis)
 
 try:
     # TODO: move these back out to global scope when they no longer
@@ -363,9 +366,9 @@ class ConvOp(OpenMPOp):
         # The formula would be ceil((i + s * k - s * 1) / float(d)),
         # with s=1 for mode=='full' and s=-1 for mode=='valid'.
         # To support symbolic shapes, we express this with integer arithmetics.
-        return tuple(None if i is None or k is None
-                     else ((i - k) // d + 1) if mode == 'valid'
-                     else ((i + k + d - 2) // d)
+        warnings.warn("The method `getOutputShape` is deprecated use"
+                      "`get_conv_output_shape` instead.")
+        return tuple(get_conv_shape_1axis(i, k, mode, d)
                      for i, k, d in zip(inshp, kshp, stride))
 
     def __init__(self, imshp=None, kshp=None, nkern=None, bsize=None,
@@ -511,12 +514,16 @@ class ConvOp(OpenMPOp):
                 _logger.warn(warnstr, self.unroll_kern, self.nkern, new)
                 self.unroll_kern = new
 
-        self.outshp = ConvOp.getOutputShape(self.imshp_logical[1:],
-                                            self.kshp_logical, (dx, dy),
-                                            output_mode)
-        self.fulloutshp = ConvOp.getOutputShape(self.imshp_logical[1:],
-                                                self.kshp_logical, (1, 1),
-                                                output_mode)
+        self.outshp = get_conv_output_shape(
+            (None,) + self.imshp_logical,
+            (None, None,) + self.kshp_logical,
+            output_mode,
+            (dx, dy))[2:]
+        self.fulloutshp = get_conv_output_shape(
+            (None,) + self.imshp_logical,
+            (None, None,) + self.kshp_logical,
+            output_mode,
+            (1, 1))[2:]
 
         self.out_mode = output_mode
 
@@ -669,9 +676,12 @@ class ConvOp(OpenMPOp):
             if self.kshp_logical[i] is not None:
                 kshp[i] = self.kshp_logical[i]
         # infer output shape from what we have
-        outshp = ConvOp.getOutputShape(imshp[1:], kshp, (self.dx, self.dy),
-                                       self.out_mode)
-        return [(bsize, nkern) + outshp]
+        res = get_conv_output_shape(
+            (bsize,) + tuple(imshp),
+            (nkern, None,) + tuple(kshp),
+            self.out_mode,
+            (self.dx, self.dy))
+        return [res]
 
     def perform(self, node, inp, out):
         """
@@ -737,8 +747,11 @@ class ConvOp(OpenMPOp):
         if all(shp is not None for shp in self.fulloutshp):
             fulloutshp = tuple(self.fulloutshp)
         else:
-            fulloutshp = tuple(ConvOp.getOutputShape(imshp_logical[
-                1:], kshp_logical, (1, 1), self.out_mode))
+            fulloutshp = get_conv_output_shape(
+                (None,) + imshp_logical,
+                (None, None,) + kshp_logical,
+                self.out_mode,
+                (1, 1))[2:]
 
         if z[0] is None or z[0].shape != (bsize, nkern,) + fulloutshp:
             z[0] = numpy.zeros((bsize, nkern,) + fulloutshp,

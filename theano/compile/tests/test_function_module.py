@@ -556,7 +556,7 @@ class T_function(unittest.TestCase):
 
         for key, val in iteritems(func.fn.storage_map):
             if not isinstance(key, theano.gof.Constant):
-                assert (val[0] == None)
+                assert (val[0] is None)
 
 
 class T_picklefunction(unittest.TestCase):

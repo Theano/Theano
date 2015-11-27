@@ -10,7 +10,7 @@ import theano
 from theano import tensor
 import theano.tests.unittest_tools as utt
 
-from theano.sandbox.blocksparse import sparse_block_dot, \
+from theano.tensor.nnet.blocksparse import sparse_block_dot, \
     sparse_block_gemv, sparse_block_outer
 
 

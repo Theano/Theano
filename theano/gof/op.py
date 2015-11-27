@@ -542,7 +542,7 @@ class PureOp(object):
                     "For compute_test_value, one input test value does not"
                     " have the requested type.\n")
                 tr = getattr(v.tag, 'trace', [])
-                if len(tr) > 0:
+                if type(tr) is list and len(tr) > 0:
                     detailed_err_msg += (
                         " \nBacktrace when that variable is created:\n")
                     # Print separate message for each element in the list

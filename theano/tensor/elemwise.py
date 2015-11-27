@@ -210,7 +210,7 @@ class DimShuffle(Op):
                 ob.append(ib[value])
 
         output = TensorType(dtype=input.type.dtype,
-                            broadcastable=ob).make_variable()
+                            broadcastable=ob)()
 
         return Apply(self, [input], [output])
 
@@ -527,7 +527,7 @@ class Elemwise(OpenMPOp):
         self.nfunc = None
         if getattr(self, 'nfunc_spec', None):
             self.nfunc = getattr(numpy, self.nfunc_spec[0])
-        elif self.scalar_op.nin > 0 and self.scalar_op.nin < 32:
+        elif 0 < self.scalar_op.nin < 32:
             self.ufunc = numpy.frompyfunc(self.scalar_op.impl,
                                           self.scalar_op.nin,
                                           self.scalar_op.nout)

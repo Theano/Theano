@@ -74,11 +74,11 @@ message becomes :
         z = z + y
 
     Debugprint of the apply node:
-    Elemwise{add,no_inplace} [@A] <TensorType(float64, vector)> ''
-     |Elemwise{add,no_inplace} [@B] <TensorType(float64, vector)> ''
-     | |<TensorType(float64, vector)> [@C] <TensorType(float64, vector)>
-     | |<TensorType(float64, vector)> [@C] <TensorType(float64, vector)>
-     |<TensorType(float64, vector)> [@D] <TensorType(float64, vector)>
+    Elemwise{add,no_inplace} [id A] <TensorType(float64, vector)> ''
+     |Elemwise{add,no_inplace} [id B] <TensorType(float64, vector)> ''
+     | |<TensorType(float64, vector)> [id C] <TensorType(float64, vector)>
+     | |<TensorType(float64, vector)> [id C] <TensorType(float64, vector)>
+     |<TensorType(float64, vector)> [id D] <TensorType(float64, vector)>
 
 We can here see that the error can be traced back to the line ``z = z + y``.
 For this example, using ``optimizer=fast_compile`` worked. If it did not,
@@ -150,12 +150,12 @@ Running the above code generates the following error message:
     Inputs scalar values: ['not scalar', 'not scalar']
 
     Debugprint of the apply node:
-    Dot22 [@A] <TensorType(float64, matrix)> ''
-     |x [@B] <TensorType(float64, matrix)>
-     |DimShuffle{1,0} [@C] <TensorType(float64, matrix)> ''
-       |Flatten{2} [@D] <TensorType(float64, matrix)> ''
-         |DimShuffle{2,0,1} [@E] <TensorType(float64, 3D)> ''
-           |W1 [@F] <TensorType(float64, 3D)>
+    Dot22 [id A] <TensorType(float64, matrix)> ''
+     |x [id B] <TensorType(float64, matrix)>
+     |DimShuffle{1,0} [id C] <TensorType(float64, matrix)> ''
+       |Flatten{2} [id D] <TensorType(float64, matrix)> ''
+         |DimShuffle{2,0,1} [id E] <TensorType(float64, 3D)> ''
+           |W1 [id F] <TensorType(float64, 3D)>
 
     HINT: Re-running with most Theano optimization disabled could give you a back-traces when this node was created. This can be done with by setting the Theano flags 'optimizer=fast_compile'. If that does not work, Theano optimization can be disabled with 'optimizer=None'.
 
@@ -392,8 +392,8 @@ can be achieved as follows:
    :options: +NORMALIZE_WHITESPACE
 
    *** NaN detected ***
-   Elemwise{Composite{(log(i0) * i0)}} [@A] ''
-    |x [@B]
+   Elemwise{Composite{(log(i0) * i0)}} [id A] ''
+    |x [id B]
    Inputs : [array(0.0)]
    Outputs: [array(nan)]
 
@@ -567,3 +567,6 @@ the Ops from Theano and Pylearn2.
     # Where filename is a string to a file that we will write to.
 
 Then send us filename.
+
+
+.. autoclass:: theano.tests.breakpoint.PdbBreakpoint

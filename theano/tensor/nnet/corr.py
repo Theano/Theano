@@ -5,6 +5,7 @@ import theano
 from theano import Apply
 from theano import gof
 from theano.tensor import as_tensor_variable, TensorType
+from theano.tensor.nnet.abstract_conv2d import get_conv_output_shape
 from theano.tensor.blas_headers import blas_header_text
 from theano.tensor.blas import ldflags
 
@@ -370,37 +371,14 @@ class CorrMM(BaseCorrMM):
         return Apply(self, [img, kern], [TensorType(dtype, broadcastable)()])
 
     def infer_shape(self, node, input_shape):
-        if self.border_mode == "half":
-            padH = padW = -1
-        elif self.border_mode == "full":
-            padH = padW = -2
-        elif isinstance(self.border_mode, tuple):
-            padH, padW = self.border_mode
-        else:
-            assert self.border_mode == "valid"
-            padH = padW = 0
-        dH, dW = self.subsample
         imshp = input_shape[0]
         kshp = input_shape[1]
-        bsize, imshp = imshp[0], list(imshp[2:])
-        nkern, kshp = kshp[0], list(kshp[2:])
-        kH, kW = kshp
-        if padH == -1:
-            padH = kH // 2
-        elif padH == -2:
-            padH = kH - 1
-        elif padH < 0:
-            raise ValueError("CorrMM: border_mode must be >= 0")
-        if padW == -1:
-            padW = kW // 2
-        elif padW == -2:
-            padW = kW - 1
-        elif padW < 0:
-            raise ValueError("CorrMM: border_mode must be >= 0")
-        out_shp0 = (imshp[0] + 2 * padH - kshp[0]) // dH + 1
-        out_shp1 = (imshp[1] + 2 * padW - kshp[1]) // dW + 1
-        out_shp = (out_shp0, out_shp1)
-        return [(bsize, nkern) + out_shp]
+        res = get_conv_output_shape(
+            imshp,
+            kshp,
+            self.border_mode,
+            self.subsample)
+        return [res]
 
     def c_code(self, node, nodename, inp, out_, sub):
         bottom, weights = inp

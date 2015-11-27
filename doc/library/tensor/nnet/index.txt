@@ -20,3 +20,4 @@ and ops which are particular to neural networks and deep learning.
     nnet
     neighbours
     bn
+    blocksparse

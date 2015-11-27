@@ -124,9 +124,9 @@ TODO: Give examples on how to use these things! They are pretty complicated.
       This is a CPU-only 2d correlation implementation taken from
       `caffe <https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cpp>`_
       and also used by Torch. It does not flip the kernel. As it provides a gradient,
-      you can use it as a replacement for nnet.conv2d. There is currently no
-      optimization to move this to GPU. This will be added when the new convolution
-      interface is finished.
+      you can use it as a replacement for nnet.conv2d. For convolutions done on
+      CPU, nnet.conv2d will be replaced by CorrMM. To explicitly disable it, set
+      ``THEANO_FLAGS=optimizer_excluding=conv_gemm`` in your environment.
     - :func:`dnn_conv <theano.sandbox.cuda.dnn.dnn_conv>` GPU-only
       convolution using NVIDIA's cuDNN library. This requires that you have
       cuDNN installed and available, which in turn requires CUDA 6.5 and a GPU

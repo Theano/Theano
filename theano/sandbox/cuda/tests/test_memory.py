@@ -131,13 +131,13 @@ def test_memory_lazy():
     executed in the graph. This mess with [c]vm gc implementation.
     """
     shapes = (50, 100)
-    # more_alloc1 and more_alloc2 is not the same for both dtype.
+    # more_alloc1 is not the same for both dtype.
     # when dtype is float32, the computation is done on the gpu.
     # This insert constant on the gpu during compilation
     # that raise the number of alloc.
     # When dtype is float64, only the shared is on the gpu and it is transferd
     # to the cpu for computation. So no extra alloc after compilation.
-    # more_alloc1 if after the first compilation, more_alloc2 after the second.
+    # more_alloc1 if after the first compilation
     for dtype, more_alloc1 in [("float32", 1),
                                ("float64", 0)]:
         print(dtype)

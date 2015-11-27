@@ -647,11 +647,11 @@ def debugprint(r, prefix='', depth=-1, done=None, print_type=False,
         if obj in done:
             id_str = done[obj]
         elif ids == "id":
-            id_str = "[@%s]" % str(id(r))
+            id_str = "[id %s]" % str(id(r))
         elif ids == "int":
-            id_str = "[@%s]" % str(len(done))
+            id_str = "[id %s]" % str(len(done))
         elif ids == "CHAR":
-            id_str = "[@%s]" % char_from_number(len(done))
+            id_str = "[id %s]" % char_from_number(len(done))
         elif ids == "":
             id_str = ""
         done[obj] = id_str
@@ -1939,10 +1939,7 @@ class _Linker(gof.link.LocalLinker):
                                 if r not in fgraph.inputs]
 
         # Precompute some things for storage pre-allocation
-        try:
-            def_val = int(config.unittests.rseed)
-        except ValueError:
-            def_val = 666
+        def_val = int(config.unittests.rseed)
 
         #####
         # This is the function that runs when you evaluate the graph

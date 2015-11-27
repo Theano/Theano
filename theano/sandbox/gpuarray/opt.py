@@ -51,7 +51,7 @@ conv_groupopt = LocalGroupDB()
 conv_groupopt.__name__ = "gpua_conv_opts"
 
 gpu_seqopt.register('gpuarray_local_optimiziations', gpu_optimizer, 1,
-                    'fast_compile', 'fast_run', 'inplace', 'gpuarray')
+                    'fast_compile', 'fast_run', 'gpuarray')
 gpu_seqopt.register('gpuarray_cut_transfers', gpu_cut_copies, 2,
                     'fast_compile', 'fast_run', 'gpuarray')
 
@@ -361,9 +361,9 @@ def local_gpu_elemwise(node, context_name):
         for inp in node.inputs:
             if inp.dtype != out_dtype:
                 gpu_cast_op = GpuElemwise(Cast(Scalar(out_dtype)))
-                new_inputs.append(gpu_cast_op(as_gpuarray_variable(inp)))
+                new_inputs.append(gpu_cast_op(as_gpuarray_variable(inp, context_name)))
             else:
-                new_inputs.append(as_gpuarray_variable(inp))
+                new_inputs.append(as_gpuarray_variable(inp, context_name))
 
         # Perform the exponent on the gpu and transfer the output back to the
         # cpu.

@@ -372,7 +372,7 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
         """ % locals()
         inputs = ["dst", "src"]
         outputs = ["ret"]
-        sub = {"fail": "return NULL;", "context": "dst->context"}
+        sub = {"fail": "return NULL;", "params": "dst->context"}
         ret += gop.c_code(self.iadd_node, sub_name, inputs, outputs, sub)
         ret += """
             return ret;

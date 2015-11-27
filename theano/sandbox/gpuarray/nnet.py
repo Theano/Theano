@@ -58,11 +58,13 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
         write_x = write_w(dtype_x)
         write_b = write_w(dtype_b)
         flags = Kernel.get_flags(dtype_x, dtype_b, dtype_y_idx)
-        type_x = gpuarray.dtype_to_ctype(work_x)
-        type_b = gpuarray.dtype_to_ctype(work_b)
+        type_x = gpuarray.dtype_to_ctype(dtype_x)
+        type_b = gpuarray.dtype_to_ctype(dtype_b)
+        work_x = gpuarray.dtype_to_ctype(work_x)
         type_y_idx = gpuarray.dtype_to_ctype(dtype_y_idx)
         kname = "k_xent_sm_1hot_bias"
         k_var = "k_xent_sm_1hot_bias_" + nodename
+        f = '' if dtype_x == 'float64' else 'f'
         sio = StringIO()
         print("""
         KERNEL void %(kname)s(const ga_size M, const ga_size N,
@@ -89,49 +91,88 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
           for (int row = blockIdx.x; row < M; row += gridDim.x){
 
             const %(type_x)s* x = x_data + xs0 * row;
-            const %(type_y_idx)s y_idx = y_idx_data[row * y_idxs0];
             %(type_x)s* sm = sm_data + sms0 * row;
 
-            %(type_x)s sum = 0.0;
-            int row_max_j = 0;
-            %(type_x)s row_max = %(load_x)s(x[0]) + %(load_b)s(b[0]);
-            for (int j = 1; j < N; ++j)
+            extern LOCAL_MEM %(work_x)s per_thread_values[];
+            LOCAL_MEM %(work_x)s row_max, sum, sum_inv;
+            LOCAL_MEM int row_max_threadIdx;
+
+            %(work_x)s per_thread_row_max, per_thread_sum;
+            int per_thread_row_max_j;
+
+            // COMPUTE ROW MAX AND ARGMAX
+
+            // compute separate per-thread maximums and argmaxes
+            per_thread_row_max = NAN;
+            per_thread_row_max_j = 0;
+
+            for (int j = threadIdx.x; j < N; j += blockDim.x)
             {
-                %(type_x)s row_ij = %(load_x)s(x[j*xs1]) +
-                                    %(load_b)s(b[j*bs0]);
-                //todo: store to shared memory
-                row_max_j = (row_ij > row_max) ? j : row_max_j;
-                row_max   = (row_ij > row_max) ? row_ij : row_max;
+              float row_ij = %(load_x)s(x[j * xs1]) + %(load_b)s(b[j * bs0]);
+              per_thread_row_max_j = (row_ij > per_thread_row_max) ? j : per_thread_row_max_j;
+              per_thread_row_max = fmax%(f)s(row_ij, per_thread_row_max);
             }
-            //compute the exp
-            for (int j = 0; j < N; ++j)
+            per_thread_values[threadIdx.x] = per_thread_row_max;
+
+            local_barrier();
+
+            if (threadIdx.x == 0) {
+              row_max = NAN;
+              row_max_threadIdx = 0;
+              for (int j = 0; j < blockDim.x; j++)
+              {
+                float per_thread_max = per_thread_values[j];
+                row_max_threadIdx = (per_thread_max > row_max) ? j : row_max_threadIdx;
+                row_max = fmax%(f)s(per_thread_max, row_max);
+              }
+            }
+
+            local_barrier();
+
+            // The thread with the higest max writes out which of its
+            // values was the winner.
+            if (threadIdx.x == row_max_threadIdx) am_data[row * ams0] = per_thread_row_max_j;
+
+            // COMPUTE SOFTMAX
+            per_thread_sum = 0.0;
+            for (int j = threadIdx.x; j < N; j += blockDim.x)
             {
-                %(type_x)s row_ij = %(load_x)s(x[j*xs1]) +
-                                    %(load_b)s(b[j*bs0]);
-                %(type_x)s sm_ij = exp(row_ij - row_max);
-                sum += sm_ij;
-                sm[j * sms1] = %(write_x)s(sm_ij);
+              %(work_x)s row_ij = %(load_x)s(x[j * xs1]) + %(load_b)s(b[j * bs0]);
+              %(work_x)s sm_ij = exp%(f)s(row_ij - row_max);
+              per_thread_sum += sm_ij;
+              sm[j * sms1] = %(write_x)s(sm_ij);
             }
-            %(type_x)s sum_inv = 1.0 / sum;
-            for (int j = 0; j < N; ++j)
-            {
-                %(type_x)s __tmp = %(load_x)s(sm[j * sms1]);
-                __tmp *= sum_inv;
-                sm[j * sms1] = %(write_x)s(__tmp);
+
+            per_thread_values[threadIdx.x] = per_thread_sum;
+
+            local_barrier();
+
+            if (threadIdx.x == 0) {
+              sum = 0.0;
+              for (int j = 0; j < blockDim.x; j++) {
+                sum += per_thread_values[j];
+              }
+              sum_inv = 1.0 / sum;
             }
-            if ((y_idx >= N) || (y_idx < 0))
-            {
-                //TODO: set raise an error bit in a global var?
-                nll_data[row*nlls0] = %(write_x)s(0.0); // raise some suspicion at least...
+
+            local_barrier();
+
+            for (int j = threadIdx.x; j < N; j += blockDim.x) {
+              sm[j * sms1] = %(write_x)s(%(load_x)s(sm[j * sms1]) * sum_inv);
             }
-            else
-            {
-                nll_data[row*nlls0] = %(write_x)s(- %(load_x)s(x[y_idx*xs1])
-                           - %(load_b)s(b[y_idx*bs0])
-                           + row_max
-                           + log(sum));
+
+            if (threadIdx.x == 0) {
+              const %(type_y_idx)s y_idx = (int)y_idx_data[row * y_idxs0];
+              if ((y_idx >= N || y_idx < 0)) {
+                // raise some suspicion.
+                nll_data[row * nlls0] = %(write_x)s(0.0);
+              } else {
+                nll_data[row * nlls0] = %(write_x)s(
+                   - %(load_x)s(x[y_idx * xs1])
+                   - %(load_b)s(b[y_idx * bs0])
+                   + row_max + log%(f)s(sum));
+              }
             }
-            am_data[row*ams0] = row_max_j;
           }
         }
         """ % locals(), file=sio)
@@ -154,6 +195,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
         typecode_b = pygpu.gpuarray.dtype_to_typecode(node.inputs[1].dtype)
         typecode_y_idx = pygpu.gpuarray.dtype_to_typecode(node.inputs[2].dtype)
         itemsize_x = numpy.dtype(node.inputs[0].dtype).itemsize
+        worksize_x = numpy.dtype(work_dtype(node.inputs[0].dtype)).itemsize
         itemsize_b = numpy.dtype(node.inputs[1].dtype).itemsize
         itemsize_y_idx = numpy.dtype(node.inputs[2].dtype).itemsize
         itemsize_nll = numpy.dtype(node.outputs[0].dtype).itemsize
@@ -263,8 +305,9 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
             }
         }
         {
-            size_t n_blocks[3] = {std::min(PyGpuArray_DIMS(%(x)s)[0], (size_t)256), 1, 1};
-            size_t threads_per_block[3] = {1, 1, 1};
+            size_t n_blocks = std::min(PyGpuArray_DIM(%(x)s, 0), (size_t)4096);
+            size_t n_threads = std::min(PyGpuArray_DIM(%(x)s, 1), (size_t)256);
+            size_t n_shared = n_threads * %(worksize_x)s;
             ssize_t stride_X0 = PyGpuArray_STRIDES(%(x)s)[0] / %(itemsize_x)s;
             ssize_t stride_X1 = PyGpuArray_STRIDES(%(x)s)[1] / %(itemsize_x)s;
             ssize_t stride_B0 = PyGpuArray_STRIDES(%(b)s)[0] / %(itemsize_b)s;
@@ -289,7 +332,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
                 (void *)&stride_SM0, (void *)&stride_SM1,
                 (void *)%(am)s->ga.data, (void *)&%(am)s->ga.offset,
                 (void *)&stride_AM0};
-            int err = GpuKernel_call(&%(k_var)s, 3, threads_per_block, n_blocks, 0, kernel_params);
+            int err = GpuKernel_call(&%(k_var)s, 1, &n_threads, &n_blocks, n_shared, kernel_params);
             %(err_check)s
             %(sync)s
         }
@@ -297,7 +340,7 @@ class GpuCrossentropySoftmaxArgmax1HotWithBias(GpuKernelBase, Op):
         return sio.getvalue()
 
     def c_code_cache_version(self):
-        return (8,)
+        return (9,)
 
 
 gpu_crossentropy_softmax_argmax_1hot_with_bias = GpuCrossentropySoftmaxArgmax1HotWithBias()

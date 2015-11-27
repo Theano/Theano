@@ -11,8 +11,8 @@ from theano.tests import unittest_tools as utt
 
 # took from tensors/tests/test_basic.py
 def rand_ranged_matrix(minimum, maximum, shape):
-    return numpy.asarray(numpy.random.rand(*shape) * (maximum - minimum)
-                         + minimum, dtype=theano.config.floatX)
+    return numpy.asarray(numpy.random.rand(*shape) * (maximum - minimum) +
+                         minimum, dtype=theano.config.floatX)
 
 
 class test_typed_list_type(unittest.TestCase):
@@ -63,13 +63,13 @@ class test_typed_list_type(unittest.TestCase):
         """
         # list of matrices
         myType1 = TypedListType(T.TensorType(theano.config.floatX,
-                                            (False, False)))
+                                             (False, False)))
         # list of matrices
         myType2 = TypedListType(T.TensorType(theano.config.floatX,
-                                            (False, False)))
+                                             (False, False)))
         # list of scalars
         myType3 = TypedListType(T.TensorType(theano.config.floatX,
-                                            ()))
+                                             ()))
 
         self.assertTrue(myType2 == myType1)
         self.assertFalse(myType3 == myType1)
@@ -118,7 +118,7 @@ class test_typed_list_type(unittest.TestCase):
         Testing nested list with one level of depth
         """
         myNestedType = TypedListType(T.TensorType(theano.config.floatX,
-                                            (False, False)))
+                                                  (False, False)))
 
         myType = TypedListType(myNestedType)
 
@@ -131,7 +131,7 @@ class test_typed_list_type(unittest.TestCase):
         Nested list with different depth aren't the same
         """
         myNestedType = TypedListType(T.TensorType(theano.config.floatX,
-                                            (False, False)))
+                                                  (False, False)))
 
         myNestedType2 = TypedListType(myNestedType)
 
@@ -144,13 +144,13 @@ class test_typed_list_type(unittest.TestCase):
         test for the 'depth' optionnal argument
         """
         myNestedType = TypedListType(T.TensorType(theano.config.floatX,
-                                            (False, False)), 3)
+                                                  (False, False)), 3)
 
         myType = TypedListType(T.TensorType(theano.config.floatX,
                                             (False, False)))
 
         myManualNestedType = TypedListType(TypedListType(
-                             TypedListType(myType)))
+                                           TypedListType(myType)))
 
         self.assertTrue(myNestedType == myManualNestedType)
 
@@ -162,7 +162,7 @@ class test_typed_list_type(unittest.TestCase):
                                             (False, False)))
 
         myManualNestedType = TypedListType(TypedListType(
-                             TypedListType(myType)))
+                                           TypedListType(myType)))
 
         self.assertTrue(myManualNestedType.get_depth() == 3)
 
@@ -175,17 +175,16 @@ class test_typed_list_type(unittest.TestCase):
                                             (False, False)))
 
         myManualNestedType1 = TypedListType(TypedListType(
-                             TypedListType(myType)))
+                                            TypedListType(myType)))
 
-        myManualNestedType2 = TypedListType(TypedListType(
-                             myType))
+        myManualNestedType2 = TypedListType(TypedListType(myType))
 
         self.assertFalse(myManualNestedType1 == myManualNestedType2)
         self.assertFalse(myManualNestedType2 == myManualNestedType1)
 
     def test_variable_is_Typed_List_variable(self):
         mySymbolicVariable = TypedListType(T.TensorType(theano.config.floatX,
-                                            (False, False)))()
+                                           (False, False)))()
 
         self.assertTrue(isinstance(mySymbolicVariable,
                                    theano.typed_list.TypedListVariable))

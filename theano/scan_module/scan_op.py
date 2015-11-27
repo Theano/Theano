@@ -314,12 +314,21 @@ class Scan(PureOp):
             # Generate the mappings between inner and outer inputs and outputs
             # if they haven't already been generated.
             self.var_mappings = self.get_oinp_iinp_iout_oout_mappings()
-        if (hasattr(self, 'fn') and
-                not hasattr(self, 'thunk_mit_mot_out_slices')):
-            # The thunk has been compiled before mit_mot preallocation feature
-            # was implemented. Mark every mit_mot output tap as not having
-            # been preallocated
-            self.mitmots_preallocated = [False] * self.n_mit_mot_outs
+        if hasattr(self, 'fn'):
+            if not hasattr(self, 'thunk_mit_mot_out_slices'):
+                # The thunk has been compiled before mit_mot preallocation
+                # feature was implemented. Mark every mit_mot output tap as
+                # not having been preallocated
+                self.mitmots_preallocated = [False] * self.n_mit_mot_outs
+
+            if not hasattr(self, 'outs_is_tensor'):
+                # The thunk has been compiled before the analysis, at
+                # compilation time, of the location of the inputs and outputs.
+                # Perform this analysis here.
+                self.inps_is_tensor = [isinstance(out, theano.tensor.TensorVariable)
+                                       for out in self.fn.maker.fgraph.inputs]
+                self.outs_is_tensor = [isinstance(out, theano.tensor.TensorVariable)
+                                       for out in self.fn.maker.fgraph.outputs]
 
         # Ensure that the graph associated with the inner function is valid.
         self.validate_inner_graph()
@@ -858,6 +867,13 @@ class Scan(PureOp):
                                profile=profile,
                                on_unused_input='ignore')
 
+        # Analyse the compile inner function to determine which inputs and
+        # outputs are on the gpu and speed up some checks during the execution
+        self.inps_is_tensor = [isinstance(out, theano.tensor.TensorVariable)
+                               for out in self.fn.maker.fgraph.inputs]
+        self.outs_is_tensor = [isinstance(out, theano.tensor.TensorVariable)
+                               for out in self.fn.maker.fgraph.outputs]
+
         try:
             cython_mintaps = numpy.asarray(self.mintaps, dtype='int32')
             cython_tap_array_len = \
@@ -894,6 +910,11 @@ class Scan(PureOp):
             cython_mitmots_preallocated = numpy.asarray(self.mitmots_preallocated,
                                                         dtype='int32')
 
+            cython_inps_is_tensor = numpy.asarray(self.inps_is_tensor,
+                                                  dtype='int32')
+            cython_outs_is_tensor = numpy.asarray(self.outs_is_tensor,
+                                                  dtype='int32')
+
             if hasattr(self, 'destroy_map'):
                 cython_destroy_map = [x in self.destroy_map
                                   for x in xrange(len(node.outputs))]
@@ -921,6 +942,8 @@ class Scan(PureOp):
                         cython_mit_mot_out_slices,
                         cython_mit_mot_out_nslices,
                         cython_mitmots_preallocated,
+                        cython_inps_is_tensor,
+                        cython_outs_is_tensor,
                         self.fn.fn,
                         self.fn,
                         cython_destroy_map,
@@ -1280,12 +1303,12 @@ class Scan(PureOp):
                 var = output_storage[idx].storage[0]
                 old_output_storage[idx] = var
 
-                if hasattr(var, 'gpudata'):
-                    old_output_data[idx] = var.gpudata
-                elif hasattr(var, 'data'):
+                if var is None:
+                    old_output_data[idx] = None
+                elif self.outs_is_tensor[idx]:
                     old_output_data[idx] = var.data
                 else:
-                    old_output_data[idx] = None
+                    old_output_data[idx] = var.gpudata
 
             # 4.6. Keep a reference to the variables (ndarrays, CudaNdarrays,
             # etc) associated with mitmot inputs currently in the
@@ -1298,12 +1321,12 @@ class Scan(PureOp):
                 var = input_storage[idx + self.n_seqs].storage[0]
                 old_mitmot_input_storage[idx] = var
 
-                if hasattr(var, 'gpudata'):
-                    old_mitmot_input_data[idx] = var.gpudata
-                elif hasattr(var, 'data'):
+                if var is None:
+                    old_mitmot_input_data[idx] = None
+                elif self.inps_is_tensor[idx]:
                     old_mitmot_input_data[idx] = var.data
                 else:
-                    old_mitmot_input_data[idx] = None
+                    old_mitmot_input_data[idx] = var.gpudata
 
             # 5.1 compute outputs
             t0_fn = time.time()
@@ -1365,10 +1388,10 @@ class Scan(PureOp):
                         new_var = input_storage[self.n_seqs + inp_idx].storage[0]
                         if old_var is new_var:
                             old_data = old_mitmot_input_data[inp_idx]
-                            if hasattr(new_var, 'gpudata'):
-                                same_data = (new_var.gpudata == old_data)
-                            elif hasattr(new_var, 'data'):
+                            if self.inps_is_tensor[self.n_seqs + inp_idx]:
                                 same_data = (new_var.data == old_data)
+                            else:
+                                same_data = (new_var.gpudata == old_data)
                         else:
                             same_data = False
 
@@ -1411,10 +1434,10 @@ class Scan(PureOp):
                         old_data = old_output_data[offset_out + j]
                         if old_data is None:
                             output_reused = False
-                        elif hasattr(new_var, 'gpudata'):
-                            output_reused = (new_var.gpudata == old_data)
-                        elif hasattr(new_var, 'data'):
+                        elif self.outs_is_tensor[offset_out + j]:
                             output_reused = (new_var.data == old_data)
+                        else:
+                            output_reused = (new_var.gpudata == old_data)
                     else:
                         output_reused = False
 
@@ -1454,10 +1477,10 @@ class Scan(PureOp):
                     if old_var is new_var:
                         if old_data is None:
                             output_reused = False
-                        elif hasattr(new_var, 'gpudata'):
-                            output_reused = (new_var.gpudata == old_data)
-                        elif hasattr(new_var, 'data'):
+                        elif self.outs_is_tensor[offset_out + j]:
                             output_reused = (new_var.data == old_data)
+                        else:
+                            output_reused = (new_var.gpudata == old_data)
                     else:
                         output_reused = False
 
@@ -1566,23 +1589,46 @@ class Scan(PureOp):
     # Infer Shape
     def infer_shape(self, node, input_shapes):
         # input_shapes correspond to the shapes of node.inputs
-        # Here, we build a list inner_ins_shape, such that inner_ins_shape[i]
-        # is the shape of self.inputs[i]
-
         for inp, inp_shp in izip(node.inputs, input_shapes):
             assert inp_shp is None or len(inp_shp) == inp.type.ndim
 
-        # sequences
-        # We skip iputs_shapes[0] as it is the total or current number
+        # Here we build 2 variables;
+        # - A list `inner_ins_shapes`, such that inner_ins_shapes[i] is the
+        #   shape of self.inputs[i]
+        # - A dictionary `out_equivalent` containing, for every inner input,
+        #   an equivalent variable computed from the outer inputs.
+        #   NOTE : For non-sequences, this equivalence is trivial. For
+        #   sequences and recurrent states, there is no direct equivalence
+        #   between outer and inner inputs. However, because every iteration
+        #   of the Scan needs to give the same output shapes, we can give an
+        #   equivalence between these inner inputs and the subelements of the
+        #   corresponding outer inputs that the Scan would use as input for
+        #   any given iteration. For simplicity, we use iteration 0.
+        inner_ins_shapes = []
+        out_equivalent = OrderedDict()
+
+        # We skip the first outer input as it is the total or current number
         # of iterations.
+        # sequences
         seqs_shape = [x[1:] for x in input_shapes[1:1 + self.n_seqs]]
+        inner_seqs = self.inputs[:self.n_seqs]
+        outer_seqs = node.inputs[1:1 + self.n_seqs]
+        for in_s, out_s in izip(inner_seqs, outer_seqs):
+            out_equivalent[in_s] = out_s[0]
 
         # mit_mot, mit_sot, sit_sot
+        outer_inp_idx = 1 + self.n_seqs
+        inner_inp_idx = self.n_seqs
         n_outs = self.n_mit_mot + self.n_mit_sot + self.n_sit_sot
         outs_shape = []
         for idx in xrange(n_outs):
+            mintap = abs(min(self.tap_array[idx]))
             for k in self.tap_array[idx]:
                 outs_shape += [input_shapes[idx + self.n_seqs + 1][1:]]
+                corresponding_tap = node.inputs[outer_inp_idx][mintap + k]
+                out_equivalent[self.inputs[inner_inp_idx]] = corresponding_tap
+                inner_inp_idx += 1
+            outer_inp_idx += 1
 
         # shared_outs
         offset = 1 + self.n_seqs + n_outs
@@ -1597,9 +1643,9 @@ class Scan(PureOp):
         # Non-sequences have a direct equivalent from self.inputs in
         # node.inputs
         inner_non_sequences = self.inputs[len(seqs_shape) + len(outs_shape):]
-        out_equivalent = OrderedDict()
         for in_ns, out_ns in izip(inner_non_sequences, node.inputs[offset:]):
             out_equivalent[in_ns] = out_ns
+
         if self.as_while:
             self_outs = self.outputs[:-1]
         else:
