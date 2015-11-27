@@ -862,20 +862,31 @@ def local_gpu_careduce(node):
                             new_in_shp.append(x_shape[i])
 
                     new_greduce = GpuCAReduce(new_mask, scalar_op)
-                    reshaped_x = x.reshape(tensor.stack(new_in_shp))
-                    gpu_reshaped_x = as_cuda_ndarray_variable(reshaped_x)
-                    reshaped_gpu_inputs = [gpu_reshaped_x]
-                    if new_greduce.supports_c_code(reshaped_gpu_inputs):
-                        reduce_reshaped_x = host_from_gpu(
-                            new_greduce(gpu_reshaped_x))
+                    new_x = x.reshape(tensor.stack(new_in_shp))
+                    gpu_new_x = as_cuda_ndarray_variable(new_x)
+                    if not new_greduce.supports_c_code([gpu_new_x]):
+                        if not new_mask == [1, 0, 1]:
+                            return
+                        # The reduced mask [1, 0, 1] is not supported but
+                        # [1, 0, 1, 1] is. Therefore, we add a broadcastable
+                        # dimension to new_x and change the mask to
+                        # [1, 0, 1, 1].
+                        new_x = new_x.dimshuffle(0, 1, 2, 'x')
+                        gpu_new_x = as_cuda_ndarray_variable(new_x)
 
-                        if reduce_reshaped_x.ndim != out.ndim:
-                            rval = reduce_reshaped_x.reshape(
-                                tensor.stack(shape_of[out]))
-                        else:
-                            rval = reduce_reshaped_x
-                    else:
-                        return
+                        new_greduce = GpuCAReduce([1, 0, 1, 1], scalar_op)
+                        if not new_greduce.supports_c_code([gpu_new_x]):
+                            raise Exception('Reduction mask [1, 0, 1, 1] is'
+                                            'supposed to be supported.')
+
+                    rval = host_from_gpu(
+                        new_greduce(gpu_new_x))
+
+                    # Restore the expected shape of the output
+                    if rval.ndim != out.ndim:
+                        rval = rval.reshape(
+                            tensor.stack(shape_of[out]))
+
                 if rval.type == out.type:
                     return [rval]
                 else:
