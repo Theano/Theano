@@ -193,11 +193,20 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
                 # DownsampleFactorMax op
                 maxpool_op = DownsampleFactorMax(maxpoolshp,
-                                                 ignore_border=ignore_border,
-                                                 mode=mode)(images)
+                                                ignore_border=ignore_border,
+                                                mode=mode)(images)
+
+                output_shape = DownsampleFactorMax.out_shape(imval, maxpoolshp,
+                                                        ignore_border=ignore_border)
+                
+                assert numpy.asarray(output_shape).shape == numpy_output_val.shape, (
+                        "outshape is %s, calculated shape is %s"
+                        % (numpy.asarray(output_shape).shape, numpy_output_val.shape))
+
                 f = function([images], maxpool_op)
                 output_val = f(imval)
                 utt.assert_allclose(output_val, numpy_output_val)
+
 
     def test_DownsampleFactorMaxStride(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
