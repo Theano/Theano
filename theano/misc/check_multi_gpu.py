@@ -76,21 +76,14 @@ def main(dev1, dev2):
     t2 = time.time()
     r = None
 
-    print("two ctx, 2 fct async, 1 thread %f" % (t2 - t,))
+    print("two ctx, 2 fct async %f" % (t2 - t,))
 
     t = time.time()
     r = f5.fn()
     r2 = f6.fn()
     t2 = time.time()
     r = None
-    print("two ctx, 2 fct with transfer, 1 thread %f" % (t2 - t,))
-
-    t = time.time()
-    r = f5()
-    t2 = time.time()
-    r = None
-
-    print("one ctx, 1 fct with transfer, 1 thread %f" % (t2 - t,))
+    print("two ctx, 2 fct with transfer %f" % (t2 - t,))
 
     # Multi-thread version
     class myThread (threading.Thread):
@@ -104,13 +97,14 @@ def main(dev1, dev2):
             # print "Starting " + self.name
             # r = self.f.fn(n_calls=10)
             r = self.f()
+            # print "End " + self.name
             if self.sync:
                 r[0].sync()
             self.r = r
             # print "Exiting " + self.name
 
-    thread1 = myThread("Thread-1", f3, True)
-    thread2 = myThread("Thread-2", f4, True)
+    thread1 = myThread("Thread-3", f3, True)
+    thread2 = myThread("Thread-4", f4, True)
     t = time.time()
     thread1.start()
     thread2.start()
@@ -120,32 +114,8 @@ def main(dev1, dev2):
 
     print("two ctx, 2 fct async, 2 threads %f" % (t2 - t,))
 
-    thread1 = myThread("Thread-1", f3, True)
-    thread2 = myThread("Thread-2", f4, True)
-    t = time.time()
-    thread1.start()
-    thread2.start()
-    thread2.join()
-    thread1.join()
-    t2 = time.time()
-
-    print("two ctx, 2 fct async, 2 threads %f reverse join" % (t2 - t,))
-
-    thread1 = myThread("Thread-1", f3, False)
-    thread2 = myThread("Thread-2", f4, False)
-    t = time.time()
-    thread1.start()
-    thread2.start()
-    thread1.join()
-    thread2.join()
-    thread1.r[0].sync()
-    thread2.r[0].sync()
-    t2 = time.time()
-
-    print("two ctx, 2 fct async + late sync, 2 threads %f" % (t2 - t,))
-
-    thread1 = myThread("Thread-3", f5, False)
-    thread2 = myThread("Thread-4", f6, False)
+    thread1 = myThread("Thread-5", f5, False)
+    thread2 = myThread("Thread-6", f6, False)
     t = time.time()
     thread1.start()
     thread2.start()
@@ -155,16 +125,6 @@ def main(dev1, dev2):
 
     print("two ctx, 2 fct with transfer, 2 threads %f" % (t2 - t,))
 
-    thread1 = myThread("Thread-3", f5, False)
-    thread2 = myThread("Thread-4", f6, False)
-    t = time.time()
-    thread1.start()
-    thread2.start()
-    thread2.join()
-    thread1.join()
-    t2 = time.time()
-
-    print("two ctx, 2 fct with transfer, 2 threads %f reverse join" % (t2 - t,))
 
 if __name__ == '__main__':
     import sys
