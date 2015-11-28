@@ -325,9 +325,11 @@ class HostFromGpu(Op):
             if (%(name)s_ga == &%(name)s_ga_s) GpuArray_clear(%(name)s_ga);
             %(fail)s
         }
+        Py_BEGIN_ALLOW_THREADS
         %(name)serr = GpuArray_read(PyArray_DATA(%(out)s),
                                     PyArray_NBYTES(%(out)s),
                                     %(name)s_ga);
+        Py_END_ALLOW_THREADS
         if (%(name)s_ga == &%(name)s_ga_s) GpuArray_clear(%(name)s_ga);
         if (%(name)serr != GA_NO_ERROR) {
             PyErr_SetString(PyExc_RuntimeError, "Could not read device data.");
@@ -337,7 +339,7 @@ class HostFromGpu(Op):
                'out': outputs[0]}
 
     def c_code_cache_version(self):
-        return (1,)
+        return (2,)
 
     def grad(self, inputs, grads):
         gz, = grads
@@ -408,8 +410,10 @@ class GpuFromHost(Op):
             theano_size_check(%(out)s, PyArray_NDIM(%(name)s_tmp),
                               (size_t *)PyArray_DIMS(%(name)s_tmp),
                               get_typecode((PyObject *)PyArray_DESCR(%(name)s_tmp)))) {
+          Py_BEGIN_ALLOW_THREADS
           int err = GpuArray_write(&%(out)s->ga, PyArray_DATA(%(name)s_tmp),
                                    PyArray_NBYTES(%(name)s_tmp));
+          Py_END_ALLOW_THREADS
           Py_DECREF(%(name)s_tmp);
           if (err != GA_NO_ERROR) {
             PyErr_Format(PyExc_RuntimeError, "Could not write data to gpu");
@@ -433,7 +437,7 @@ class GpuFromHost(Op):
                'out': outputs[0], 'fail': sub['fail']}
 
     def c_code_cache_version(self):
-        return (8,)
+        return (9,)
 
 
 class GpuToGpu(Op):
