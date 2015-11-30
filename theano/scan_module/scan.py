@@ -46,6 +46,7 @@ __contact__ = "Razvan Pascanu <r.pascanu@gmail>"
 import logging
 import numpy
 import warnings
+from collections import deque
 
 from theano.compat import ifilter, izip
 from six import iteritems
@@ -789,26 +790,49 @@ def scan(fn,
 
     # extract still missing inputs (there still might be so) and add them
     # as non sequences at the end of our args
-    fake_nonseqs = [x.type() for x in non_seqs]
-    fake_outputs = scan_utils.clone(outputs,
-                                    replace=OrderedDict(izip(non_seqs,
-                                                             fake_nonseqs)))
-    all_inputs = ifilter(
-        lambda x: (isinstance(x, gof.Variable) and
-                   not isinstance(x, SharedVariable) and
-                   not isinstance(x, gof.Constant)),
-        gof.graph.inputs(fake_outputs))
-    extra_inputs = [x for x in all_inputs if x not in args + fake_nonseqs]
-    non_seqs += extra_inputs
-    # Note we do not use all_inputs directly since the order of variables
-    # in args is quite important
-    dummy_args += extra_inputs
+    if config.scan.greedy_non_seqs:
+        extra_inputs = []
+        def expand(r):
+            if r in args + non_seqs + extra_inputs: return  # nothing to do
+            # Does r depend on any of the step function args?
+            deps = set(args + non_seqs) & set(gof.graph.ancestors([r], blockers=extra_inputs))
+            if deps:
+                if r.owner:
+                    return reversed(r.owner.inputs)
+            else:
+                # No, it does depend on the args. Add to list and don't expand further.
+                extra_inputs.append(r)
+        gof.graph.stack_search(deque(outputs), expand, 'dfs')
+        non_seqs += extra_inputs
 
+        dummy_givens = OrderedDict([(arg, tensor.constant(numpy.zeros([1] * arg.ndim, dtype=arg.dtype), name=arg.name))
+                                    for arg in extra_inputs
+                                    if (not isinstance(arg, SharedVariable) and
+                                        not isinstance(arg, tensor.Constant))])
+
+    else:
+        fake_nonseqs = [x.type() for x in non_seqs]
+        fake_outputs = scan_utils.clone(outputs,
+                                        replace=OrderedDict(izip(non_seqs,
+                                                                 fake_nonseqs)))
+        all_inputs = ifilter(
+            lambda x: (isinstance(x, gof.Variable) and
+                       not isinstance(x, SharedVariable) and
+                       not isinstance(x, gof.Constant)),
+            gof.graph.inputs(fake_outputs))
+        extra_inputs = [x for x in all_inputs if x not in args + fake_nonseqs]
+        # Note we do not use all_inputs directly since the order of variables
+        # in args is quite important
+        dummy_args += extra_inputs
+        dummy_givens = []
+
+    non_seqs += extra_inputs
     dummy_outs = outputs
     if condition is not None:
         dummy_outs.append(condition)
     dummy_f = function(dummy_args,
                        dummy_outs,
+                       givens=dummy_givens,
                        updates=updates,
                        mode=compile.mode.Mode(linker='py',
                                               optimizer=None),
