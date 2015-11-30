@@ -783,36 +783,37 @@ def local_assert(node, context_name):
                                       *node.inputs[1:]))]
 
 
-# These two deal with any abstract convs that have a transfer somewhere
-@register_opt()
-@op_lifter([AbstractConv2d])
-def local_lift_abstractconv2d(node, context_name):
-    return [node.op(as_gpuarray_variable(node.inputs[0],
-                                         context_name=context_name),
-                    as_gpuarray_variable(node.inputs[0],
-                                         context_name=context_name))]
+@register_opt('fast_compile')
+@op_lifter([ConvOp])
+def local_error_convop(node, context_name):
+    assert False, """
+ConvOp does not work with the gpuarray backend.
 
+Use the new convolution interface to have GPU convolution working:
+theano.tensor.nnet.abstract_conv2d.conv2d()
+"""
 
-@register_opt()
-@op_lifter([AbstractConv2d_gradWeights,
+# This deals with any abstract convs that have a transfer somewhere
+@register_opt('fast_compile')
+@op_lifter([AbstractConv2d,
+            AbstractConv2d_gradWeights,
             AbstractConv2d_gradInputs])
-def local_lift_abstractconv2dgrad(node, context_name):
-    return [node.op(as_gpuarray_variable(node.inputs[0],
-                                         context_name=context_name),
-                    as_gpuarray_variable(node.inputs[0],
-                                         context_name=context_name),
-                    node.inputs[2])]
-
-
-# Register this here so that it goes after the abstract lifting
-register_opt()(conv_groupopt)
+def local_lift_abstractconv2d(node, context_name):
+    inps = list(node.inputs)
+    inps[0] = as_gpuarray_variable(node.inputs[0],
+                                   context_name=context_name)
+    inps[1] = as_gpuarray_variable(node.inputs[1],
+                                   context_name=context_name)
+    return [node.op(*inps)]
 
 
 # This will deal with ops that don't have an explicit transfer but
 # have one of their inputs on the GPU already and the other not on the
 # GPU (to avoid endlessly replacing things).
-@register_opt()
-@local_optimizer([AbstractConv2d])
+@register_opt('fast_compile')
+@local_optimizer([AbstractConv2d,
+                  AbstractConv2d_gradWeights,
+                  AbstractConv2d_gradInputs])
 def local_gpu_abstractconv2d(node):
     if isinstance(node.op, BaseAbstractConv2d):
         if ((isinstance(node.inputs[0].type, GpuArrayType) or
@@ -824,6 +825,9 @@ def local_gpu_abstractconv2d(node):
             inps[0] = as_gpuarray_variable(inps[0], context_name=ctx_name)
             inps[1] = as_gpuarray_variable(inps[1], context_name=ctx_name)
             return as_tensor_variable(node.op(*inps))
+
+# Register this here so that it goes after the abstract lifting
+register_opt()(conv_groupopt)
 
 
 @register_opt("low_memory")
