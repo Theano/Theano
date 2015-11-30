@@ -1024,10 +1024,7 @@ class ShapeFeature(object):
         """
         rval = []
         for r in node.outputs:
-            try:
-                rval.append(self.shape_tuple(r))
-            except AttributeError:
-                rval.append(None)
+            rval.append(self.shape_tuple(r))
         return rval
 
     def unpack(self, s_i):
