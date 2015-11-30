@@ -1537,7 +1537,7 @@ if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
         stride = inputs[2]
         pad = inputs[3]
         out, = outputs
-        print node.inputs[1].type.ndim
+
         if self.mode == 'max':
             mode_flag = 'CUDNN_POOLING_MAX'
         elif self.mode == "average_inc_pad":
@@ -1632,9 +1632,9 @@ if (err != CUDNN_STATUS_SUCCESS) {
 
         out = self(img, ws, stride, pad)
 
-        g_out = GpuDnnPoolGrad()(img, out, grad, ws, stride, pad)
+        g_out = GpuDnnPoolGrad(self.mode)(img, out, grad, ws, stride, pad)
 
-        return g_out, theano.gradient.DisconnectedType()()
+        return g_out, theano.gradient.DisconnectedType()(), theano.gradient.DisconnectedType()(), theano.gradient.DisconnectedType()()
 
     def connection_pattern(self, node):
         # not connected to desc
@@ -1656,35 +1656,42 @@ class GpuDnnPoolGrad(DnnBase):
         The output of the pooling in the forward.
     inp_grad
         Same size as out, but is the corresponding gradient information.
-    desc
-        The pooling descriptor.
-
+    ws
+        Windows size.
+    stride
+        (dx, dy).
+    mode : {'max', 'average_inc_pad', 'average_exc_pad'}
+        The old deprecated name 'average' correspond to 'average_inc_pad'.
+    pad
+        (padX, padY) padding information.
+        padX is the size of the left and right borders,
+        padY is the size of the top and bottom borders.
     """
 
     __props__ = ()
+    
+    def __init__(self, mode='max'):
+        super(GpuDnnPoolGrad, self).__init__()
+        if mode == 'average':
+            mode = 'average_inc_pad'
+        assert mode in ('max', 'average_inc_pad', 'average_exc_pad')
+        self.mode = mode
 
     def make_node(self, inp, out, inp_grad, ws, stride, pad):
-        if not isinstance(desc.type, CDataType) \
-                or desc.type.ctype != 'cudnnPoolingDescriptor_t':
-            raise TypeError('desc must be cudnnPoolingDescriptor_t')
-
         inp = as_cuda_ndarray_variable(inp)
+        assert (inp.ndim in [4, 5])
         inp_grad = as_cuda_ndarray_variable(inp_grad)
+        assert (inp_grad.ndim in [4, 5])
         out = as_cuda_ndarray_variable(out)
-
-        if desc.owner is not None:
-            nd = desc.owner.op.get_ndim() + 2  # 4 or 5
-
-            if inp.type.ndim != nd:
-                raise TypeError('inp must be %dD tensor' % (nd,))
-
-            if inp_grad.type.ndim != nd:
-                raise TypeError('inp_grad must be %dD tensor' % (nd,))
-
-            if out.type.ndim != nd:
-                raise TypeError('out must be %dD tensor' % (nd,))
-
-        return Apply(self, [inp, out, inp_grad, desc],
+        assert(out.ndim in [4, 5])
+        
+        ws = tensor.as_tensor_variable(ws)
+        stride = tensor.as_tensor_variable(stride)
+        pad = tensor.as_tensor_variable(pad)
+        assert ws.type.ndim == stride.type.ndim and ws.type.ndim == pad.type.ndim
+        assert ws.type.ndim == 1
+                
+        return Apply(self, [inp, out, inp_grad, ws, stride, pad],
                      [inp.type()])
 
     def c_support_code_struct(self, node, name):
@@ -1749,8 +1756,22 @@ if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
         # Here the name out and inp are based on the cudnn definition.
         # Not the definition of this class.
         # This make it complicated.
-        out, inp, inp_grad, desc = inputs
+        print len(inputs)
+        out, inp, inp_grad, ws, stride, pad = inputs
         out_grad, = outputs
+        
+        out, = outputs
+
+        if self.mode == 'max':
+            mode_flag = 'CUDNN_POOLING_MAX'
+        elif self.mode == "average_inc_pad":
+            mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING'
+        elif self.mode == "average_exc_pad":
+            mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING'
+            if version() == -1:
+                raise Exception("cudnn v1 do not support average_exc_pad")
+        else:
+            raise NotImplementedError("Unsupported pooling model.")
 
         return """
 cudnnStatus_t err%(name)s;
@@ -1810,19 +1831,6 @@ PyErr_Format(PyExc_RuntimeError, "could not set op descriptor: %%s",
 %(fail)s
 }
 
-// Get the pooling_mode to be used. Variable 'tmp' is used because we don't
-// care about the other outputs of the function
-cudnnPoolingMode_t pooling_mode;
-
-int tmp;
-err%(name)s = cudnnGetPoolingNdDescriptor(%(desc)s, 0, &pooling_mode, &tmp,
-                                          &tmp, &tmp, &tmp);
-if (err%(name)s != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_RuntimeError,
-               "GpuDnnPoolGrad: could not obtain pooling mode");
- %(fail)s
-}
-
 if (c_set_tensorNd(%(output_grad)s, %(output_grad_desc)s) != 0)
   %(fail)s
 
@@ -1831,7 +1839,7 @@ const float alpha = 1;
 const float beta = 0;
 err%(name)s = cudnnPoolingBackward(
 _handle,
-%(desc)s,
+pool%(name)s,
 &alpha,
 %(input_desc)s, CudaNdarray_DEV_DATA(%(input)s),
 %(input_grad_desc)s, CudaNdarray_DEV_DATA(%(input_grad)s),
@@ -1846,13 +1854,15 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
                cudnnGetErrorString(err%(name)s));
  %(fail)s
 }
-""" % dict(output_grad=out_grad, desc=desc,
+""" % dict(output_grad=out_grad,
            fail=sub['fail'], name=name,
            input=inp, input_grad=inp_grad, output=out,
            input_desc="input"+name,
            input_grad_desc="input_grad"+name,
            output_desc="output"+name,
-           output_grad_desc="output_grad"+name)
+           output_grad_desc="output_grad"+name,
+           mode_flag=mode_flag, nd=node.inputs[0].ndim - 2,
+           ws=ws, pad=pad, str=stride)
 
     #def c_code_cache_version(self):
         #return (7, version())
