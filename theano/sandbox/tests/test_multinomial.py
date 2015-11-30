@@ -83,7 +83,7 @@ def test_n_samples_compatibility():
     pickle.dump([X, samples], open("multinomial_test_graph.pkl", "w"))
     """
     folder = os.path.dirname(os.path.abspath(__file__))
-    with open(os.path.join(folder, "multinomial_test_graph.pkl")) as pkl_file:
+    with open(os.path.join(folder, "multinomial_test_graph.pkl"), "rb") as pkl_file:
         if PY3:
             u = CompatUnpickler(pkl_file, encoding="latin1")
         else:
