@@ -12,11 +12,6 @@ APPLY_SPECIFIC(conv_gw)(CudaNdarray *input, CudaNdarray *output,
     return 1;
   }
 
-  if (c_set_tensorNd(input, APPLY_SPECIFIC(input)) == -1)
-    return 1;
-  if (c_set_tensorNd(output, APPLY_SPECIFIC(output)) == -1)
-    return 1;
-
   int nb_dim = CudaNdarray_NDIM(output);
 
 #ifdef CONV_INPLACE
@@ -30,6 +25,20 @@ APPLY_SPECIFIC(conv_gw)(CudaNdarray *input, CudaNdarray *output,
     return 1;
 #endif
 
+
+  if (CudaNdarray_HOST_DIMS(input)[0] == 0) {
+    // zero batch size. Return a zero gradient without calling cuDNN (which will fail on zero batch size)
+    Py_XDECREF(*kerns);
+    *kerns = (CudaNdarray *) CudaNdarray_ZEROS(CudaNdarray_NDIM((*kerns)), (int *) CudaNdarray_HOST_DIMS((*kerns)));
+    if (*kerns == NULL) return 1;
+    return 0;
+  }
+
+
+  if (c_set_tensorNd(input, APPLY_SPECIFIC(input)) == -1)
+    return 1;
+  if (c_set_tensorNd(output, APPLY_SPECIFIC(output)) == -1)
+    return 1;
   if (c_set_filterNd(*kerns, APPLY_SPECIFIC(kerns)) == -1)
     return 1;
 
