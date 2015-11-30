@@ -11,29 +11,38 @@ Profiling Theano function
     anymore.
 
 Besides checking for errors, another important task is to profile your
-code. For this, you can use Theano flags and/or parameters which are
-to be passed as an argument to :func:`theano.function <function.function>`.
+code in terms of speed and/or memory usage.
 
-The simplest way to profile Theano functions is to use the Theano
-flags described below. When the process exits, they will cause the
-information to be printed on stdout.
+You can profile your
+functions using either of the following two options:
 
 
-Using the ProfileMode is a three-step process.
+1. Use Theano flag :attr:`config.profile` to enable profiling. 
+    - To enable the memory profiler use the Theano flag:
+      :attr:`config.profile_memory` in addition to :attr:`config.profile`.
+    - Moreover, to enable the profiling of Theano optimization phase,
+      use the Theano flag: :attr:`config.profile_optimizer` in addition
+      to :attr:`config.profile`.
+    - You can also use the Theano flags :attr:`profiling.n_apply`,
+      :attr:`profiling.n_ops` and :attr:`profiling.min_memory_size`
+      to modify the quantify of information printed.
 
-Enabling the profiler is pretty easy. Just use the Theano flag
-:attr:`config.profile`.
+2. Pass the argument :attr:`profile=True` to the function
+   :func:`theano.function <function.function>`. And then call
+   :attr:`f.profile.print_summary()` for a single function.
+    - Use this option when you want to profile not all the
+      functions but one or more specific function(s).
+    - You can also combine the profile of many functions: 
+    
+      .. testcode::
 
-To enable the memory profiler use the Theano flag:
-:attr:`config.profile_memory` in addition to :attr:`config.profile`.
+          profile = theano.compile.ProfileStats()
+          f = theano.function(..., profile=profile)
+          g = theano.function(..., profile=profile)
+          ...
+          profile.print_summary()
 
-To enable the profiling of Theano optimization phase, use the Theano
-flag: :attr:`config.profile_optimizer` in addition to
-:attr:`config.profile`.
 
-You can use the Theano flags :attr:`profiling.n_apply`,
-:attr:`profiling.n_ops` and :attr:`profiling.min_memory_size` to
-modify the quantify of information printed.
 
 The profiler will output one profile per Theano function and profile
 that is the sum of the printed profile. Each profile contains 4
