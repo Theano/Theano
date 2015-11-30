@@ -22,15 +22,6 @@ models between machines.
    cases observed, but make sure to double-check your results before
    publishing a paper or anything of the sort.
 
-.. warning::
-
-   Due to some implementation issues, models using multiple GPUs will,
-   in most cases not exhibit any speedup over running on a single GPU.
-   These issues are being worked on and should be solved within 2-3
-   weeks.  We do not expect any interface change, so you can still
-   start coding models that take advantage of this and they will get
-   the expected speedup when the fix is merged.
-
 
 Defining the context map
 ------------------------
