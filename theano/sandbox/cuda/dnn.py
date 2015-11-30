@@ -1464,7 +1464,7 @@ class GpuDnnPoolDesc(GpuOp):
 
 
 class GpuDnnPool(DnnBase):
-    """
+    """    
     Pooling.
 
     Parameters
@@ -1647,14 +1647,14 @@ if (err != CUDNN_STATUS_SUCCESS) {
            mode_flag=mode_flag)
 
     def grad(self, inp, grads):
-        img, desc = inp
+        img, ws, stride, pad = inp
         grad, = grads
 
         grad = gpu_contiguous(grad)
 
-        out = self(img, desc)
+        out = self(img, ws, stride, pad)
 
-        g_out = GpuDnnPoolGrad()(img, out, grad, desc)
+        g_out = GpuDnnPoolGrad()(img, out, grad, ws, stride, pad)
 
         return g_out, theano.gradient.DisconnectedType()()
 
@@ -1685,7 +1685,7 @@ class GpuDnnPoolGrad(DnnBase):
 
     __props__ = ()
 
-    def make_node(self, inp, out, inp_grad, desc):
+    def make_node(self, inp, out, inp_grad, ws, stride, pad):
         if not isinstance(desc.type, CDataType) \
                 or desc.type.ctype != 'cudnnPoolingDescriptor_t':
             raise TypeError('desc must be cudnnPoolingDescriptor_t')
