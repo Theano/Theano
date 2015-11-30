@@ -54,8 +54,8 @@ class MultinomialFromUniform(Op):
         (gz,) = outgrads
         return [T.zeros_like(x) for x in ins]
 
-#    def c_code_cache_version(self):
-#        return (6,)
+    def c_code_cache_version(self):
+        return (7,)
 
     def c_code(self, node, name, ins, outs, sub):
         # support old pickled graphs
