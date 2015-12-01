@@ -189,7 +189,6 @@ class SoftmaxWithBias(gof.Op):
         {
             size_t j;
             double sum = 0.0;
-            bool  discount_max = false;
 
             const dtype_%(x)s* __restrict__ x_i = (dtype_%(x)s*)(PyArray_BYTES(%(x)s) + PyArray_STRIDES(%(x)s)[0] * i);
             const dtype_%(b)s* __restrict__ b_i = (dtype_%(b)s*)(PyArray_BYTES(%(b)s));
@@ -508,12 +507,10 @@ class Softmax(gof.Op):
         {
             size_t j;
             double sum = 0.0;
-            bool  discount_max = false;
 
             const dtype_%(x)s* __restrict__ x_i = (dtype_%(x)s*)(PyArray_BYTES(%(x)s) + PyArray_STRIDES(%(x)s)[0] * i);
             dtype_%(sm) s* __restrict__ sm_i = (dtype_%(sm)s*)(PyArray_BYTES(%(sm)s) + PyArray_STRIDES(%(sm)s)[0] * i);
 
-            size_t row_max_j=0;
             dtype_%(sm)s row_max = x_i[0];
             //std::cout << "0 " << row_max << "\\n";
             // Get the maximum value of the row
@@ -521,7 +518,6 @@ class Softmax(gof.Op):
             {
                 dtype_%(sm)s row_ij = x_i[j * Sx1] ;
                 //std::cout << "1 " << row_ij << "\\n";
-                row_max_j = (row_ij > row_max) ? j : row_max_j;
                 row_max   = (row_ij > row_max) ? row_ij : row_max;
             }
 
@@ -608,6 +604,8 @@ class LogSoftmax(gof.Op):
     activation function gets applied row-wise.
 
     """
+    __props__ = ()
+
     def make_node(self, x):
         x = tensor.as_tensor_variable(x)
         if x.type.ndim not in (1, 2) \
@@ -640,6 +638,100 @@ class LogSoftmax(gof.Op):
 
     def infer_shape(self, node, shape):
         return shape
+
+    def c_headers(self):
+        return ['<cmath>']
+
+    @staticmethod
+    def c_code_template(dtype):
+        init_decl = """
+          npy_intp* Nx = PyArray_DIMS(%(x)s);
+          npy_intp Sx1 = 0;
+          npy_intp Ssm1 = 0;
+
+          if (PyArray_NDIM(%(x)s) != 2)
+          {
+              PyErr_SetString(PyExc_ValueError, "not a 2d tensor");
+              %(fail)s;
+          }
+          if ((PyArray_TYPE(%(x)s) != NPY_DOUBLE) &&
+              (PyArray_TYPE(%(x)s) != NPY_FLOAT))
+          {
+              PyErr_SetString(PyExc_TypeError, "not a float");
+              %(fail)s;
+          }
+
+          if ((NULL == %(sm)s)
+              || (PyArray_DIMS(%(sm)s)[0] != PyArray_DIMS(%(x)s)[0])
+              || (PyArray_DIMS(%(sm)s)[1] != PyArray_DIMS(%(x)s)[1]))
+          {
+              Py_XDECREF(%(sm)s);
+              %(sm)s = (PyArrayObject*)PyArray_SimpleNew(
+                  2, PyArray_DIMS(%(x)s),
+                  PyArray_TYPE(%(x)s));
+              if(!%(sm)s) {
+                  PyErr_SetString(PyExc_MemoryError,
+                       "failed to alloc sm output");
+                  %(fail)s
+              }
+          }
+          Sx1 = PyArray_STRIDES(%(x)s)[1]/sizeof(dtype_%(x)s);
+          Ssm1 = PyArray_STRIDES(%(sm)s)[1]/sizeof(dtype_%(sm)s);
+          """
+
+        begin_row_loop = """
+          // minibatch loop
+          for (size_t i = 0; i < Nx[0]; ++i)
+          {
+              size_t j;
+              double sum = 0.0;
+
+              const dtype_%(x)s* __restrict__ x_i = (dtype_%(x)s*)(
+                  PyArray_BYTES(%(x)s) + PyArray_STRIDES(%(x)s)[0] * i);
+              dtype_%(sm)s* __restrict__ sm_i = (dtype_%(sm)s*)(
+                  PyArray_BYTES(%(sm)s) + PyArray_STRIDES(%(sm)s)[0] * i);
+
+              dtype_%(sm)s row_max = x_i[0];
+              // Get the maximum value of the row
+              for (j = 1; j < Nx[1]; ++j)
+              {
+                  dtype_%(sm)s x_ij = x_i[j * Sx1] ;
+                  row_max = (x_ij > row_max) ? x_ij : row_max;
+              }
+              """
+
+        inside_row_loop = """
+              // Compute xdev and sum(exp(xdev), axis=1)
+              double xdev_exp_row_sum = 0.0;
+              for (j = 0; j < Nx[1]; j++)
+              {
+                  // use sm_i to temporary store xdev
+                  sm_i[j * Ssm1] = (dtype_%(sm)s) (x_i[j * Sx1] - row_max);
+                  xdev_exp_row_sum += exp(sm_i[j * Ssm1]);
+              }
+
+              // Write sm = xdev - log(sum(exp(xdev), axis=1))
+              xdev_exp_row_sum = log(xdev_exp_row_sum);
+              for (j = 0; j < Nx[1]; ++j)
+              {
+                  sm_i[j * Ssm1] -= (dtype_%(sm)s) xdev_exp_row_sum;
+              }
+              """
+        end_row_loop = """
+          }
+          """
+        return (init_decl, begin_row_loop, inside_row_loop, end_row_loop)
+
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        sm, = out
+        code_template = ''.join(self.c_code_template(
+            node.inputs[0].type.dtype_specs()[1]))
+        return code_template % dict(locals(), **sub)
+
+    @staticmethod
+    def c_code_cache_version():
+        return (0,)
 
 logsoftmax_op = LogSoftmax()
 
