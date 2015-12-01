@@ -403,6 +403,7 @@ class GpuFromHost(Op):
         return """
         PyArrayObject *%(name)s_tmp;
         %(name)s_tmp = PyArray_GETCONTIGUOUS(%(inp)s);
+        int err;
         if (%(name)s_tmp == NULL)
           %(fail)s
 
@@ -411,8 +412,8 @@ class GpuFromHost(Op):
                               (size_t *)PyArray_DIMS(%(name)s_tmp),
                               get_typecode((PyObject *)PyArray_DESCR(%(name)s_tmp)))) {
           Py_BEGIN_ALLOW_THREADS
-          int err = GpuArray_write(&%(out)s->ga, PyArray_DATA(%(name)s_tmp),
-                                   PyArray_NBYTES(%(name)s_tmp));
+          err = GpuArray_write(&%(out)s->ga, PyArray_DATA(%(name)s_tmp),
+                               PyArray_NBYTES(%(name)s_tmp));
           Py_END_ALLOW_THREADS
           Py_DECREF(%(name)s_tmp);
           if (err != GA_NO_ERROR) {
