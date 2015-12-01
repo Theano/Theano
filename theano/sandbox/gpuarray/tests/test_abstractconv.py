@@ -11,7 +11,7 @@ from theano.compile import shared as cpu_shared
 from ..type import gpuarray_shared_contructor as gpu_shared
 from ..dnn import dnn_available, dnn_conv, dnn_gradweight, dnn_gradinput
 
-from .config import mode_with_gpu, mode_without_gpu, test_ctx
+from .config import mode_with_gpu, mode_without_gpu, test_ctx_name
 
 
 class TestConv2d(unittest.TestCase):
@@ -177,7 +177,7 @@ class TestConv2d(unittest.TestCase):
                             mode=mode, eps=1)
 
     def test_dnn_conv(self):
-        if not dnn_available():
+        if not dnn_available(test_ctx_name):
             raise SkipTest(cuda.dnn.dnn_available.msg)
         mode = mode_with_gpu
         # provide_shape is not used by the CuDNN impementation
@@ -204,8 +204,36 @@ class TestConv2d(unittest.TestCase):
                                provide_shape=provide_shape, border_mode=b,
                                filter_flip=flip)
 
+    def test_cormm_conv(self):
+        if not dnn_available(test_ctx_name):
+            raise SkipTest(cuda.dnn.dnn_available.msg)
+
+        mode = mode_without_gpu
+        for (i, f), s, b, flip, provide_shape in itertools.product(
+                zip(self.inputs_shapes, self.filters_shapes),
+                self.subsamples,
+                self.border_modes,
+                self.filter_flip,
+                [False, True]):
+
+            o = self.get_output_shape(i, f, s, b)
+            self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
+                         verify_grad=True, mode=mode, device='cpu',
+                         provide_shape=provide_shape, border_mode=b,
+                         filter_flip=flip)
+            self.run_gradweight(inputs_shape=i, filters_shape=f,
+                                output_shape=o, subsample=s,
+                                verify_grad=True, mode=mode, device='cpu',
+                                provide_shape=provide_shape, border_mode=b,
+                                filter_flip=flip)
+            self.run_gradinput(inputs_shape=i, filters_shape=f,
+                               output_shape=o, subsample=s,
+                               verify_grad=True, mode=mode, device='cpu',
+                               provide_shape=provide_shape, border_mode=b,
+                               filter_flip=flip)
+
     def test_cpu_conv(self):
-        if not dnn_available():
+        if not dnn_available(test_ctx_name):
             raise SkipTest(cuda.dnn.dnn_available.msg)
 
         mode = mode_without_gpu.excluding('conv_gemm')
