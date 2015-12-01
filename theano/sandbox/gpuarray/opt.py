@@ -787,7 +787,7 @@ def local_error_convop(node, context_name):
 ConvOp does not work with the gpuarray backend.
 
 Use the new convolution interface to have GPU convolution working:
-theano.tensor.nnet.abstract_conv2d.conv2d()
+theano.tensor.nnet.conv2d()
 """
 
 # This deals with any abstract convs that have a transfer somewhere
