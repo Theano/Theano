@@ -302,10 +302,10 @@ You can try it as follows:
 .. testoutput:: example
    :hide:
    :options: +ELLIPSIS
-   
+
    ...
    ...
-   
+
 .. code-block:: none
 
     [[ 0.02443785  0.67833979  0.91954769  0.95444365]
@@ -657,6 +657,8 @@ signature:
     It converts the Python function to a callable object that takes as
     inputs Theano variables that were declared.
 
+.. note::
+    The python function wrapped by the `as_op` decorator needs to return a new data allocation, no views or in place modification of the input.
 
 as_op Example
 -------------
