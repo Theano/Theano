@@ -11,7 +11,7 @@ the :ref:`gpuarray` backend, so make sure that works correctly.
 
 In order to keep a reasonably high level of abstraction you do not
 refer to device names directly for multiple-gpu use.  You instead
-referer to what we call context names.  These are then mapped to a
+refer to what we call context names.  These are then mapped to a
 device using the theano configuration.  This allows portability of
 models between machines.
 
