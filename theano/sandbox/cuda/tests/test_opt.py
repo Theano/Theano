@@ -504,6 +504,24 @@ def test_pdbbreakpoint_op():
     assert topo[-1].op == cuda.host_from_gpu
 
 
+def test_local_gpu_elemwise_careduce():
+    x = theano.tensor.fmatrix()
+    o = (x * x).sum()
+    f = theano.function([x], o, mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 3
+    assert topo[1].op.pre_scalar_op == theano.scalar.sqr
+    data = numpy.random.rand(3, 4).astype('float32')
+    utt.assert_allclose(f(data), (data*data).sum())
+
+    o = (x * x).sum(axis=1)
+    f = theano.function([x], o, mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 3
+    assert topo[1].op.pre_scalar_op == theano.scalar.sqr
+    utt.assert_allclose(f(data), (data*data).sum(axis=1))
+
+
 def test_huge_elemwise_fusion():
     """ Test the the GpuElemwise fusion work correctly
         We check that we fuse one node with part of its input
