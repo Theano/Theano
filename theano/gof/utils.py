@@ -87,6 +87,7 @@ def add_tag_trace(thing, user_line=1):
         file_path = tr[-1][0]
         rm = False
         for p in ["theano/tensor/", "theano\\tensor\\",
+                  "theano/compile/", "theano\\compile\\",
                   "theano/gof/", "theano\\gof\\",
                   "theano/scalar/basic.py", "theano\\scalar\\basic.py",
                   "theano/sandbox/", "theano\\sandbox\\",
