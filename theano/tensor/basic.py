@@ -3475,7 +3475,7 @@ class BatchedDot(Op):
                 iv0 = gof.op.get_test_value(inputs[0])
             except AttributeError:
                 gof.op.missing_test_message(
-                    'first input passed to Dot.R_op has no test value')
+                    'first input passed to BatchedDot.R_op has no test value')
                 debugger_available = False
 
             try:
