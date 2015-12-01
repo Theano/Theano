@@ -1774,7 +1774,9 @@ if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
             raise NotImplementedError("Unsupported pooling model.")
 
         return """
+/*
 cudnnStatus_t err%(name)s;
+raise(SIGINT);
 
 if (!CudaNdarray_is_c_contiguous(%(input)s)) {
   PyErr_SetString(PyExc_ValueError,
@@ -1821,13 +1823,13 @@ for(int i = 0; i < %(nd)d; i++) {
 for(int i = 0; i < %(nd)d; i++) {
    str[i] = *((npy_intp*)PyArray_GETPTR1(%(str)s, i));
 }
-err = cudnnSetPoolingNdDescriptor(
+err%(name)s = cudnnSetPoolingNdDescriptor(
     pool%(name)s, %(mode_flag)s, %(nd)d,
     win, pad, str);
 
-if (err != CUDNN_STATUS_SUCCESS) {
+if (err%(name)s != CUDNN_STATUS_SUCCESS) {
 PyErr_Format(PyExc_RuntimeError, "could not set op descriptor: %%s",
-                cudnnGetErrorString(err));
+                cudnnGetErrorString(err%(name)s));
 %(fail)s
 }
 
@@ -1854,6 +1856,7 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
                cudnnGetErrorString(err%(name)s));
  %(fail)s
 }
+*/
 """ % dict(output_grad=out_grad,
            fail=sub['fail'], name=name,
            input=inp, input_grad=inp_grad, output=out,
