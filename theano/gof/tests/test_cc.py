@@ -19,7 +19,7 @@ def as_variable(x):
 
 
 class TDouble(Type):
-    def filter(self, data):
+    def filter(self, data, strict=False, allow_downcast=False):
         return float(data)
 
     def c_declare(self, name, sub, check_input=True):
@@ -103,7 +103,7 @@ class MyOp(Op):
         out[0] = self.impl(*inputs)
 
     def c_code_cache_version(self):
-        return ()
+        return (1,)
 
 
 # class Unary(MyOp):
@@ -199,6 +199,35 @@ def test_clinker_literal_inlining():
     # print "=== Code generated ==="
     # print code
     assert "4.12345678" in code  # we expect the number to be inlined
+
+
+def test_clinker_literal_cache():
+    # This caused bugs in the past related to the cache.
+    if not theano.config.cxx:
+        raise SkipTest("G++ not available, so we need to skip this test.")
+
+    mode = theano.Mode(linker='c')
+
+    A = theano.tensor.matrix()
+    input1 = theano.tensor.vector()
+
+    normal_svd = numpy.array([[5.936276e+01, -4.664007e-07, -2.56265e-06],
+                              [-4.664007e-07, 9.468691e-01, -3.18862e-02],
+                              [-2.562651e-06, -3.188625e-02, 1.05226e+00]],
+                             dtype=theano.config.floatX)
+
+    orientationi = numpy.array([59.36276866, 1.06116353, 0.93797339],
+                               dtype=theano.config.floatX)
+
+    for out1 in [A - input1[0] * numpy.identity(3),
+                 input1[0] * numpy.identity(3)]:
+        benchmark = theano.function(
+            inputs=[A, input1],
+            outputs=[out1],
+            on_unused_input='ignore',
+            mode=mode)
+
+        out1 = benchmark(normal_svd, orientationi)
 
 
 def test_clinker_single_node():

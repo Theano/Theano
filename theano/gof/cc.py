@@ -510,7 +510,8 @@ def struct_variable_codeblocks(variable, policies, id, symbol_table, sub):
     """
 
     name = "V%i" % id
-    symbol_table[variable] = name
+    if variable not in symbol_table:
+        symbol_table[variable] = name
     sub = dict(sub)
 #    sub['name'] = name
     sub['id'] = id
@@ -608,9 +609,20 @@ class CLinker(link.Linker):
         self.orphans = list(r for r in self.variables
                             if isinstance(r, graph.Constant) and
                             r not in self.inputs)
+        # C type constants (theano.scalar.Scalar). They don't request an object
+        self.consts = []
+        # Move c type from orphans (theano.scalar.Scalar) to self.consts
+        for variable in self.orphans:
+            if isinstance(variable, graph.Constant):
+                try:
+                    variable.type.c_literal(variable.data)
+                    self.consts.append(variable)
+                    self.orphans.remove(variable)
+                except (utils.MethodNotDefined, NotImplementedError):
+                    pass
+
         self.temps = list(set(self.variables).difference(
             self.inputs).difference(self.outputs).difference(self.orphans))
-        self.consts = []
 
     def code_gen(self):
         """
@@ -633,8 +645,6 @@ class CLinker(link.Linker):
             return self.struct_code
 
         no_recycling = self.no_recycling
-
-        self.consts = []
 
         c_support_code_apply = []
         c_init_code_apply = []
@@ -664,7 +674,11 @@ class CLinker(link.Linker):
             #           [what to declare in each run,
             #            what to do at the beginning of each run,
             #            what to do at the end of each run]]
-            if variable in self.inputs:
+            if variable in self.consts:
+                symbol[variable] = ("(" + variable.type.c_literal(
+                    variable.data) + ")")
+                continue
+            elif variable in self.inputs:
                 # We need to extract the new inputs at each run
                 # they do not need to be relayed to Python, so we don't sync.
                 # If the variable is both an input and an output, there is
@@ -675,15 +689,6 @@ class CLinker(link.Linker):
                 if not isinstance(variable, graph.Constant):
                     raise TypeError("All orphans to CLinker must be Constant"
                                     " instances.", variable)
-                if isinstance(variable, graph.Constant):
-                    try:
-                        symbol[variable] = ("(" + variable.type.c_literal(
-                            variable.data) + ")")
-                        self.consts.append(variable)
-                        self.orphans.remove(variable)
-                        continue
-                    except (utils.MethodNotDefined, NotImplementedError):
-                        pass
                 # orphans are not inputs so we'll just get fetch them
                 # when we initialize the struct and assume they stay
                 # the same
@@ -1159,13 +1164,6 @@ class CLinker(link.Linker):
         for v in self.variables:
             if v in self.consts:
                 continue
-            if v in self.orphans and isinstance(v, graph.Constant):
-                try:
-                    # constant will be inlined, no need to get
-                    v.type.c_literal(v.data)
-                    continue
-                except (utils.MethodNotDefined, NotImplementedError):
-                    pass
             init_tasks.append((v, 'init', id))
             tasks.append((v, 'get', id + 1))
             id += 2
