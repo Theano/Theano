@@ -1935,7 +1935,7 @@ int main(int argc, char *argv[]) {
         n_args = len(self.args)
         struct_name = self.struct_name
         param = ','.join('PyObject * arg_%i' % n for n in range(n_args)), ');'
-        symbol2r = {v: k for k, v in self.r2symbol.items()}
+        symbol2r = {v: k for (k, v) in self.r2symbol.items()}
         in_out_list = ""
         in_out_param = ["io%d_list" % idx for idx in range(n_args)]
         for idx, arg in enumerate(self.args):
