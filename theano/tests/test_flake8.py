@@ -106,7 +106,6 @@ whitelist_flake8 = [
     "sandbox/tests/test_neighbourhoods.py",
     "sandbox/tests/test_multinomial.py",
     "sandbox/tests/__init__.py",
-    "sandbox/cuda/dnn.py",
     "sandbox/cuda/var.py",
     "sandbox/cuda/GpuConvGrad3D.py",
     "sandbox/cuda/basic_ops.py",
