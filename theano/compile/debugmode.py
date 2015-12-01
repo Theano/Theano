@@ -1941,7 +1941,7 @@ class _Linker(gof.link.LocalLinker):
         # Precompute some things for storage pre-allocation
         try:
             def_val = int(config.unittests.rseed)
-        except ValueError:
+        except (ValueError, AttributeError):
             def_val = 666
 
         #####
