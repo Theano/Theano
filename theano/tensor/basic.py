@@ -3534,9 +3534,6 @@ class BatchedDot(Op):
         xshp, yshp = shapes
         return [xshp[:-1] + yshp[2:]]
 
-    def __str__(self):
-        return "batched_dot"
-
 
 def batched_dot(a, b):
     """
