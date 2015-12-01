@@ -3457,12 +3457,7 @@ class BatchedDot(Op):
         if ygrad.broadcastable != y.broadcastable:
             ygrad = patternbroadcast(ygrad, y.broadcastable)
 
-        rval = xgrad, ygrad
-
-        for elem in rval:
-            assert elem.dtype.find('float') != -1
-
-        return rval
+        return xgrad, ygrad
 
     def R_op(self, inputs, eval_points):
         # R_op for a \dot b evaluted at c for a and d for b is
