@@ -2,16 +2,14 @@
 Define abstract conv2d interface
 """
 
-__docformat__ = "restructuredtext en"
-
 import logging
-
 import theano
-from theano.tensor import (as_tensor_variable, patternbroadcast)
-from theano.tensor import TensorType
+
+from theano.tensor import as_tensor_variable
 from theano.gof import Apply, Op
 
 
+__docformat__ = "restructuredtext en"
 _logger = logging.getLogger("theano.tensor.nnet.conv2d")
 
 
@@ -168,7 +166,6 @@ def conv2d(input,
                              subsample=subsample,
                              filter_flip=filter_flip)
     return conv_op(input, filters)
-
 
 
 class BaseAbstractConv2d(Op):
