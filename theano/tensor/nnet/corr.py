@@ -5,7 +5,7 @@ import theano
 from theano import Apply
 from theano import gof
 from theano.tensor import as_tensor_variable, TensorType
-from theano.tensor.nnet.abstract_conv2d import get_conv_output_shape
+from theano.tensor.nnet.abstract_conv import get_conv_output_shape
 from theano.tensor.blas_headers import blas_header_text
 from theano.tensor.blas import ldflags
 

@@ -75,10 +75,10 @@ from theano.tensor import slinalg
 from theano.tensor.nnet.Conv3D import Conv3D
 from theano.tests.breakpoint import PdbBreakpoint
 
-from theano.tensor.nnet.abstract_conv2d import (BaseAbstractConv2d,
-                                                AbstractConv2d,
-                                                AbstractConv2d_gradWeights,
-                                                AbstractConv2d_gradInputs)
+from theano.tensor.nnet.abstract_conv import (BaseAbstractConv2d,
+                                              AbstractConv2d,
+                                              AbstractConv2d_gradWeights,
+                                              AbstractConv2d_gradInputs)
 from theano.tensor.opt import register_specialize_device
 
 

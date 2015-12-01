@@ -21,8 +21,8 @@ from theano import OpenMPOp
 from theano.tensor import (as_tensor_variable, blas, get_scalar_constant_value,
                            patternbroadcast, NotScalarConstantError)
 from theano.gof import Apply
-from theano.tensor.nnet.abstract_conv2d import (get_conv_output_shape,
-                                                get_conv_shape_1axis)
+from theano.tensor.nnet.abstract_conv import (get_conv_output_shape,
+                                              get_conv_shape_1axis)
 
 try:
     # TODO: move these back out to global scope when they no longer

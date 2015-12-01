@@ -4,7 +4,7 @@ import itertools
 
 import theano
 from theano.tests import unittest_tools as utt
-import theano.tensor.nnet.abstract_conv2d as conv
+import theano.tensor.nnet.abstract_conv as conv
 from theano.sandbox.cuda import float32_shared_constructor as gpu_shared
 from theano.compile import shared as cpu_shared
 from theano.sandbox.cuda.dnn import dnn_available, dnn_conv, dnn_gradweight, dnn_gradinput
