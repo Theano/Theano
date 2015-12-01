@@ -107,7 +107,8 @@ if config.device.startswith('gpu') or config.init_gpu_device.startswith('gpu'):
     if theano.sandbox.cuda.cuda_available:
         import theano.sandbox.cuda.tests.test_driver
 
-        theano.sandbox.cuda.tests.test_driver.test_nvidia_driver1()
+        if config.enable_initial_driver_test:
+            theano.sandbox.cuda.tests.test_driver.test_nvidia_driver1()
 
 if (config.device.startswith('cuda') or
         config.device.startswith('opencl') or
