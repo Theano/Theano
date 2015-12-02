@@ -829,7 +829,7 @@ def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
     topgrad = gpu_contiguous(topgrad)
     kerns_shp = as_tensor_variable(kerns_shp)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
-                          conv_mode=conv_mode)(img.shape, kerns_shp)
+                          conv_mode=conv_mode)(kerns_shp)
     out = GpuAllocEmpty(img.dtype, ctx_name)(*kerns_shp)
     return GpuDnnConvGradW()(img, topgrad, out, desc)
 
@@ -841,7 +841,7 @@ def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
     topgrad = gpu_contiguous(topgrad)
     img_shp = as_tensor_variable(img_shp)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
-                          conv_mode=conv_mode)(img_shp, kerns.shape)
+                          conv_mode=conv_mode)(kerns.shape)
     out = GpuAllocEmpty(kerns.dtype, ctx_name)(*img_shp)
     return GpuDnnConvGradI()(kerns, topgrad, out, desc)
 
@@ -1228,7 +1228,7 @@ def local_abstractconv_cudnn(node):
             not isinstance(inp2.type, GpuArrayType)):
         return None
 
-    if not dnn_available():
+    if not dnn_available(inp1.type.context_name):
         return None
 
     if node.op.filter_flip:
@@ -1258,7 +1258,10 @@ def local_abstractconv_cudnn(node):
                              conv_mode=conv_mode)
     return [rval]
 
-conv_groupopt.register(local_abstractconv_cudnn)
+conv_groupopt.register('local_abstractconv_cudnn',
+                       local_abstractconv_cudnn, 20,
+                       'fast_compile', 'fast_run',
+                       'gpuarray', 'conv_dnn', 'cudnn')
 
 
 @inplace_allocempty(GpuDnnConv, 2)

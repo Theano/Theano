@@ -6,9 +6,9 @@ from nose.plugins.skip import SkipTest
 
 import theano
 from theano.tests import unittest_tools as utt
-import theano.tensor.nnet.abstract_conv2d as conv
+import theano.tensor.nnet.abstract_conv as conv
 from theano.compile import shared as cpu_shared
-from ..type import gpuarray_shared_contructor as gpu_shared
+from ..type import gpuarray_shared_constructor as gpu_shared
 from ..dnn import dnn_available, dnn_conv, dnn_gradweight, dnn_gradinput
 
 from .config import mode_with_gpu, mode_without_gpu, test_ctx_name
@@ -39,7 +39,7 @@ class TestConv2d(unittest.TestCase):
                       else ((i + 2 * pad - k) // d + 1)
                       for i, k, d, pad in zip(inputs_shape[2:],
                                               filters_shape[2:],
-                                              subsample, border_mode))
+                                              subsample, border_mode)))
 
     def run_fwd(self, inputs_shape, filters_shape, ref=dnn_conv,
                 subsample=(1, 1), verify_grad=True, mode=mode_without_gpu,
