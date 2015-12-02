@@ -105,7 +105,7 @@ def conv2d(input, filters, input_shape=None, image_shape=None, filter_shape=None
                       " and will be ignored.")
 
     if image_shape is not None:
-        warnings.warn("image_shape is not longer supported in "
+        warnings.warn("image_shape is no longer supported in "
                       "`tensor.nnet.abstract_conv.conv2d` interface"
                       " use input_shape instead.")
         if input_shape is None:
