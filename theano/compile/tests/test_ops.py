@@ -6,7 +6,6 @@ import numpy as np
 from theano.tests import unittest_tools as utt
 from theano import function
 import theano
-from theano import tensor
 from theano.tensor import dmatrix, dvector
 from numpy import allclose
 from theano.compile import as_op
@@ -21,16 +20,17 @@ def mul(a, b):
 
 
 class OpDecoratorTests(utt.InferShapeTester):
+
     def test_1arg(self):
         x = dmatrix('x')
 
         @as_op(dmatrix, dvector)
-        def diag(x):
-            return np.diag(x)
+        def cumprod(x):
+            return np.cumprod(x)
 
-        fn = function([x], diag(x))
+        fn = function([x], cumprod(x))
         r = fn([[1.5, 5], [2, 2]])
-        r0 = np.array([1.5, 2])
+        r0 = np.array([1.5, 7.5, 15., 30.])
 
         assert allclose(r, r0), (r, r0)
 
@@ -41,12 +41,12 @@ class OpDecoratorTests(utt.InferShapeTester):
         y.tag.test_value = [0, 0]
 
         @as_op([dmatrix, dvector], dvector)
-        def diag_mult(x, y):
-            return np.diag(x) * y
+        def cumprod_plus(x, y):
+            return np.cumprod(x) + y
 
-        fn = function([x, y], diag_mult(x, y))
-        r = fn([[1.5, 5], [2, 2]], [1, 100])
-        r0 = np.array([1.5, 200])
+        fn = function([x, y], cumprod_plus(x, y))
+        r = fn([[1.5, 5], [2, 2]], [1, 100, 2, 200])
+        r0 = np.array([2.5, 107.5, 17., 230.])
 
         assert allclose(r, r0), (r, r0)
 
@@ -61,12 +61,12 @@ class OpDecoratorTests(utt.InferShapeTester):
             return [y]
 
         @as_op([dmatrix, dvector], dvector, infer_shape)
-        def diag_mult(x, y):
-            return np.diag(x) * y
+        def cumprod_plus(x, y):
+            return np.cumprod(x) + y
 
-        self._compile_and_check([x, y], [diag_mult(x, y)],
-                                [[[1.5, 5], [2, 2]], [1, 100]],
-                                diag_mult.__class__, warn=False)
+        self._compile_and_check([x, y], [cumprod_plus(x, y)],
+                                [[[1.5, 5], [2, 2]], [1, 100, 2, 200]],
+                                cumprod_plus.__class__, warn=False)
 
     def test_pickle(self):
         x = dmatrix('x')
@@ -81,5 +81,4 @@ class OpDecoratorTests(utt.InferShapeTester):
 
 
 def test_shape_i_hash():
-    assert isinstance(theano.tensor.opt.Shape_i(np.int64(1)).__hash__(),
-                      int)
+    assert isinstance(theano.tensor.opt.Shape_i(np.int64(1)).__hash__(), int)
