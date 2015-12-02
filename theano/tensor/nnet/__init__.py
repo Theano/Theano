@@ -100,15 +100,17 @@ def conv2d(input, filters, input_shape=None, image_shape=None, filter_shape=None
 
     if len(kargs.keys()) > 0:
         warnings.warn(str(kargs.keys()) +
-                      " are not deprecared in "
-                      "`tensor.nnet.abstract_conv.conv2d` interface")
+                      " are now deprecared in "
+                      "`tensor.nnet.abstract_conv.conv2d` interface"
+                      " and will be ignored.")
 
     if image_shape is not None:
-        warnings.warn("image_shape is not supported in "
+        warnings.warn("image_shape is not longer supported in "
                       "`tensor.nnet.abstract_conv.conv2d` interface"
                       " use input_shape instead.")
         if input_shape is None:
-            input_shape = image_shape
+            raise ValueError("input_shape and image_shape should not"
+                             " be provided at the same time.")
 
     return abstract_conv2d(input, filters, input_shape, filter_shape,
                            border_mode, subsample=(1, 1))
