@@ -1550,6 +1550,7 @@ if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
             raise NotImplementedError("Unsupported pooling model.")
         
         return """
+fprintf(stderr, "test_forward\\n");
 cudnnStatus_t err;
 
 int %(out)s_dims[5];
@@ -1640,8 +1641,8 @@ if (err != CUDNN_STATUS_SUCCESS) {
         # not connected to desc
         return [[1], [0], [0], [0]]
 
-    def c_code_cache_version(self):
-        return (8, version())
+    #def c_code_cache_version(self):
+    #    return (8, version())
 
 
 class GpuDnnPoolGrad(DnnBase):
@@ -1671,7 +1672,8 @@ class GpuDnnPoolGrad(DnnBase):
     __props__ = ()
     
     def __init__(self, mode='max'):
-        super(GpuDnnPoolGrad, self).__init__()
+        #super(GpuDnnPoolGrad, self).__init__()
+        COp.__init__(self, "dnn_base2.c")
         if mode == 'average':
             mode = 'average_inc_pad'
         assert mode in ('max', 'average_inc_pad', 'average_exc_pad')
@@ -1696,15 +1698,18 @@ class GpuDnnPoolGrad(DnnBase):
 
     def c_support_code_struct(self, node, name):
         return """
+/*
 cudnnTensorDescriptor_t input%(name)s;
 cudnnTensorDescriptor_t input_grad%(name)s;
 cudnnTensorDescriptor_t output%(name)s;
 cudnnTensorDescriptor_t output_grad%(name)s;
 cudnnPoolingDescriptor_t pool%(name)s;
+*/
 """ % dict(name=name)
 
     def c_init_code_struct(self, node, name, sub):
         return """
+/*
 cudnnStatus_t err%(name)s;
 input%(name)s = NULL;
 input_grad%(name)s = NULL;
@@ -1741,18 +1746,25 @@ if ((err%(name)s = cudnnCreatePoolingDescriptor(&pool%(name)s)) != CUDNN_STATUS_
                "(pool): %%s", cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
+*/
 """ % dict(name=name, fail=sub['fail'])
 
     def c_cleanup_code_struct(self, node, name):
         return """
+/*
 if (input%(name)s != NULL) { cudnnDestroyTensorDescriptor(input%(name)s); }
 if (input_grad%(name)s != NULL) { cudnnDestroyTensorDescriptor(input_grad%(name)s); }
 if (output%(name)s != NULL) { cudnnDestroyTensorDescriptor(output%(name)s); }
 if (output_grad%(name)s != NULL) { cudnnDestroyTensorDescriptor(output_grad%(name)s); }
 if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
+*/
 """ % dict(name=name)
-
+    
+    def perform(self, node, inputs_storage, output_storage):
+        return
+    
     def c_code(self, node, name, inputs, outputs, sub):
+        raise NotImplementedError()
         # Here the name out and inp are based on the cudnn definition.
         # Not the definition of this class.
         # This make it complicated.
@@ -1867,7 +1879,8 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
            mode_flag=mode_flag, nd=node.inputs[0].ndim - 2,
            ws=ws, pad=pad, str=stride)
 
-    #def c_code_cache_version(self):
+    def c_code_cache_version(self):
+        return 
         #return (7, version())
 
     def infer_shape(self, node, shape):
