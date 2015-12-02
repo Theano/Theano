@@ -155,6 +155,8 @@ class SharedVariable(Variable):
         return cp
 
     def clone_with_new_type(self, type):
+        # This will copy the value, unlike the regular clone above,
+        # because we change the type.
         cp = self.__class__(
             name=self.name,
             type=type,

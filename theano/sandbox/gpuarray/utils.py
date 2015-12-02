@@ -55,8 +55,6 @@ def clone_swap_dev(f, context_map, name=None, profile=None):
         A Theano function.
     context_map : dict
         A dictionary mapping old context names to new ones.
-    clone_shared : bool
-        Whether to create new shared variables or not.
     name : string
         Name for the new function (defaults to `f.name + 'copy'`)
     profile : object

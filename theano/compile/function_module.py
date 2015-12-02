@@ -564,14 +564,6 @@ class Function(object):
         function so that it will not be 100% equivalent to the old
         one.
 
-        .. warning::
-
-            If you use the `clone_var` and/or `clone_apply`
-            functionality and a `swap` dictionary, some combinations
-            may not work.  It is usually a better idea to have a
-            special case for shared variables in `clone_var` than to
-            try and get swap to work with it.
-
         Parameters
         ----------
         share_memory : boolean
@@ -584,7 +576,7 @@ class Function(object):
         swap : dict
             Dictionary or function that maps old SharedVariables to
             new ones.  The variables are only replaced in the returned
-            function.
+            function.  Not compatible with `clone_var`.
         delete_updates : boolean
             If True, the copied function will not have updates.
         name : string
@@ -592,8 +584,10 @@ class Function(object):
             Function. Otherwise, it will be old + " copy"
         profile : object
             See the `profile` argument of :meth:`theano.function`.
-        clone_v : callable
+        clone_var : callable
             Function to clone a variable.  Generally not needed.
+            If you want to swap as well, use a special case in the
+            function you pass for this.
         clone_apply : callable
             Function to call to clone an apply node.  Generally not
             needed.
@@ -653,6 +647,10 @@ class Function(object):
 
         # swap SharedVariable
         if swap is not None:
+            if clone_var is not None:
+                raise ValueError(
+"""Using swap and clone_var together is not supported.  If you really
+want to do both, use a special case in your clone_var function.""")
             exist_svs = [i.variable for i in maker.inputs]
 
             # Check if given ShareVariables exist

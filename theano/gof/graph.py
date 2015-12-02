@@ -839,15 +839,17 @@ def clone_get_equiv(inputs, outputs, copy_inputs_and_orphans=True, memo=None,
         If a dictionary is passed, this function will work in-place on that
         dictionary and return it.
     clone_var : callable
-        Function to use to clone variables.
+        Function to use to clone variables. Usually not needed.
     clone_apply : callable
-        Function to use to clone apply nodes.
+        Function to use to clone apply nodes. Usually not needed.
 
     """
     if clone_var is None:
-        clone_var = lambda v: v.clone()
+        def clone_var(v):
+            return v.clone()
     if clone_apply is None:
-        clone_apply = lambda n, inps: n.clone_with_new_inputs(inps)
+        def clone_apply(n, inps):
+            return n.clone_with_new_inputs(inps)
 
     if memo is None:
         memo = {}
