@@ -464,12 +464,13 @@ class Variable(Node):
         Examples
         --------
 
+        >>> import numpy
         >>> import theano.tensor as T
         >>> x = T.dscalar('x')
         >>> y = T.dscalar('y')
         >>> z = x + y
-        >>> z.eval({x : 16.3, y : 12.1})
-        array(28.4)
+        >>> numpy.allclose(z.eval({x : 16.3, y : 12.1}), 28.4)
+        True
 
         We passed :func:`eval` a dictionary mapping symbolic theano
         variables to the values to substitute for them, and it returned

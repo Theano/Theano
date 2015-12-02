@@ -207,15 +207,15 @@ Let's try it out!
 .. theano/tests/test_tutorial.py:T_examples.test_examples_8
 
 >>> state.get_value()
-array(0)
+0
 >>> accumulator(1)
 array(0)
 >>> state.get_value()
-array(1)
+1
 >>> accumulator(300)
 array(1)
 >>> state.get_value()
-array(301)
+301
 
 It is possible to reset the state. Just use the ``.set_value()`` method:
 
@@ -223,7 +223,7 @@ It is possible to reset the state. Just use the ``.set_value()`` method:
 >>> accumulator(3)
 array(-1)
 >>> state.get_value()
-array(2)
+2
 
 As we mentioned above, you can define more than one function to use the same
 shared variable.  These functions can all update the value.
@@ -235,7 +235,7 @@ shared variable.  These functions can all update the value.
 >>> decrementor(2)
 array(2)
 >>> state.get_value()
-array(0)
+0
 
 You might be wondering why the updates mechanism exists.  You can always
 achieve a similar result by returning the new expressions, and working with
@@ -262,7 +262,7 @@ for the purpose of one particular function.
 >>> skip_shared(1, 3)  # we're using 3 for the state, not state.value
 array(7)
 >>> state.get_value()  # old state still there, but we didn't use it
-array(0)
+0
 
 The ``givens`` parameter can be used to replace any symbolic variable, not just a
 shared variable. You can replace constants, and expressions, in general.  Be
