@@ -54,7 +54,7 @@ def conv2d(input, filters, input_shape=None, image_shape=None, filter_shape=None
         See the optional parameter ``filter_shape``.
 
     :type image_shape: None, tuple/list of len 4 of int or Constant variable
-    :param image_shape Deprected, use input_shape instead
+    :param image_shape Deprecated, use input_shape instead
 
     :type input_shape: None, tuple/list of len 4 of int or Constant variable
     :param input_shape: The shape of the input parameter.
@@ -100,7 +100,7 @@ def conv2d(input, filters, input_shape=None, image_shape=None, filter_shape=None
 
     if len(kargs.keys()) > 0:
         warnings.warn(str(kargs.keys()) +
-                      " are now deprecared in "
+                      " are now deprecated in "
                       "`tensor.nnet.abstract_conv.conv2d` interface"
                       " and will be ignored.")
 
@@ -109,6 +109,8 @@ def conv2d(input, filters, input_shape=None, image_shape=None, filter_shape=None
                       "`tensor.nnet.abstract_conv.conv2d` interface"
                       " use input_shape instead.")
         if input_shape is None:
+            input_shape = image_shape
+        else:
             raise ValueError("input_shape and image_shape should not"
                              " be provided at the same time.")
 
