@@ -23,6 +23,7 @@ Here is the code to compute this gradient:
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_examples.test_examples_4
 
+>>> import numpy
 >>> import theano
 >>> import theano.tensor as T
 >>> from theano import pp 
@@ -34,8 +35,8 @@ Here is the code to compute this gradient:
 >>> f = theano.function([x], gy)
 >>> f(4)
 array(8.0)
->>> f(94.2)
-array(188.4)
+>>> numpy.allclose(f(94.2), 188.4)
+True
 
 In this example, we can see from ``pp(gy)`` that we are computing
 the correct symbolic gradient.

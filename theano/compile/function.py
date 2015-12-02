@@ -50,9 +50,10 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
     >>> f = theano.function(**d)  # doctest: +SKIP
 
     Note:
-      The parameter extra_tag_to_remove, is passed to the StripPickler used.
-      To pickle graph made by Blocks, it must be:
-          ['annotations', 'replacement_of', 'aggregation_scheme', 'rolesc']
+    
+    The parameter extra_tag_to_remove, is passed to the StripPickler used.
+    To pickle graph made by Blocks, it must be:
+    ['annotations', 'replacement_of', 'aggregation_scheme', 'rolesc']
 
     """
     assert isinstance(filename, string_types)
