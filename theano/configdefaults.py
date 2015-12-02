@@ -765,3 +765,306 @@ AddConfigVar('unittests.rseed',
              "Special value 'random' means using a seed of None.",
              StrParam(666, is_valid=good_seed_param),
              in_c_key=False)
+
+AddConfigVar('NanGuardMode.nan_is_error',
+             "Default value for nan_is_error",
+             BoolParam(True),
+             in_c_key=False)
+
+AddConfigVar('NanGuardMode.inf_is_error',
+             "Default value for inf_is_error",
+             BoolParam(True),
+             in_c_key=False)
+
+AddConfigVar('NanGuardMode.big_is_error',
+             "Default value for big_is_error",
+             BoolParam(True),
+             in_c_key=False)
+
+AddConfigVar('NanGuardMode.action',
+             "What NanGuardMode does when it finds a problem",
+             EnumStr('raise', 'warn', 'pdb'),
+             in_c_key=False)
+
+AddConfigVar('ProfileMode.n_apply_to_print',
+             "Number of apply instances to print by default",
+             IntParam(15, lambda i: i > 0),
+             in_c_key=False)
+
+AddConfigVar('ProfileMode.n_ops_to_print',
+             "Number of ops to print by default",
+             IntParam(20, lambda i: i > 0),
+             in_c_key=False)
+
+AddConfigVar('ProfileMode.min_memory_size',
+             "For the memory profile, do not print apply nodes if the size "
+             "of their outputs (in bytes) is lower then this threshold",
+             IntParam(1024, lambda i: i >= 0),
+             in_c_key=False)
+
+AddConfigVar('ProfileMode.profile_memory',
+             """Enable profiling of memory used by Theano functions""",
+             BoolParam(False),
+             in_c_key=False)
+
+AddConfigVar('optimizer_excluding',
+             ("When using the default mode, we will remove optimizer with "
+              "these tags. Separate tags with ':'."),
+             StrParam("", allow_override=False),
+             in_c_key=False)
+
+AddConfigVar('optimizer_including',
+             ("When using the default mode, we will add optimizer with "
+              "these tags. Separate tags with ':'."),
+             StrParam("", allow_override=False),
+             in_c_key=False)
+
+AddConfigVar('optimizer_requiring',
+             ("When using the default mode, we will require optimizer with "
+              "these tags. Separate tags with ':'."),
+             StrParam("", allow_override=False),
+             in_c_key=False)
+
+AddConfigVar('DebugMode.patience',
+             "Optimize graph this many times to detect inconsistency",
+             IntParam(10, lambda i: i > 0),
+             in_c_key=False)
+
+AddConfigVar('DebugMode.check_c',
+             "Run C implementations where possible",
+             BoolParam(bool(theano.config.cxx)),
+             in_c_key=False)
+
+AddConfigVar('DebugMode.check_py',
+             "Run Python implementations where possible",
+             BoolParam(True),
+             in_c_key=False)
+
+AddConfigVar('DebugMode.check_finite',
+             "True -> complain about NaN/Inf results",
+             BoolParam(True),
+             in_c_key=False)
+
+AddConfigVar('DebugMode.check_strides',
+             ("Check that Python- and C-produced ndarrays have same strides. "
+              "On difference: (0) - ignore, (1) warn, or (2) raise error"),
+             IntParam(0, lambda i: i in (0, 1, 2)),
+             in_c_key=False)
+
+AddConfigVar('DebugMode.warn_input_not_reused',
+             ("Generate a warning when destroy_map or view_map says that an "
+              "op works inplace, but the op did not reuse the input for its "
+              "output."),
+             BoolParam(True),
+             in_c_key=False)
+
+AddConfigVar('profiling.time_thunks',
+             """Time individual thunks when profiling""",
+             BoolParam(True),
+             in_c_key=False)
+
+AddConfigVar('profiling.n_apply',
+             "Number of Apply instances to print by default",
+             IntParam(20, lambda i: i > 0),
+             in_c_key=False)
+
+AddConfigVar('profiling.n_ops',
+             "Number of Ops to print by default",
+             IntParam(20, lambda i: i > 0),
+             in_c_key=False)
+
+AddConfigVar('profiling.output_line_width',
+             "Max line width for the profiling output",
+             IntParam(512, lambda i: i > 0),
+             in_c_key=False)
+
+AddConfigVar('profiling.min_memory_size',
+             """For the memory profile, do not print Apply nodes if the size
+             of their outputs (in bytes) is lower than this threshold""",
+             IntParam(1024, lambda i: i >= 0),
+             in_c_key=False)
+
+AddConfigVar('profiling.min_peak_memory',
+             """The min peak memory usage of the order""",
+             BoolParam(False),
+             in_c_key=False)
+
+AddConfigVar('profiling.destination',
+             """
+             File destination of the profiling output
+             """,
+             StrParam('stderr'),
+             in_c_key=False)
+
+AddConfigVar('profiling.debugprint',
+             """
+             Do a debugprint of the profiled functions
+             """,
+             BoolParam(False),
+             in_c_key=False)
+
+AddConfigVar('optdb.position_cutoff',
+             'Where to stop eariler during optimization. It represent the'
+             ' position of the optimizer where to stop.',
+             FloatParam(numpy.inf),
+             in_c_key=False)
+
+AddConfigVar('optdb.max_use_ratio',
+             'A ratio that prevent infinite loop in EquilibriumOptimizer.',
+             FloatParam(5),
+             in_c_key=False)
+
+AddConfigVar('gcc.cxxflags',
+             "Extra compiler flags for gcc",
+             StrParam(""))
+
+AddConfigVar(
+    'cmodule.mac_framework_link',
+    "If set to True, breaks certain MacOS installations with the infamous "
+    "Bus Error",
+    BoolParam(False))
+
+AddConfigVar('cmodule.warn_no_version',
+             "If True, will print a warning when compiling one or more Op "
+             "with C code that can't be cached because there is no "
+             "c_code_cache_version() function associated to at least one of "
+             "those Ops.",
+             BoolParam(False),
+             in_c_key=False)
+
+AddConfigVar('cmodule.remove_gxx_opt',
+             "If True, will remove the -O* parameter passed to g++."
+             "This is useful to debug in gdb modules compiled by Theano."
+             "The parameter -g is passed by default to g++",
+             BoolParam(False))
+
+AddConfigVar('cmodule.compilation_warning',
+             "If True, will print compilation warnings.",
+             BoolParam(False))
+
+
+AddConfigVar('cmodule.preload_cache',
+             "If set to True, will preload the C module cache at import time",
+             BoolParam(False, allow_override=False),
+             in_c_key=False)
+
+AddConfigVar(
+    'metaopt.verbose',
+    "Enable verbose output for meta optimizers",
+    theano.configparser.BoolParam(False),
+    in_c_key=False)
+
+AddConfigVar('profile',
+             "If VM should collect profile information",
+             BoolParam(False),
+             in_c_key=False)
+
+AddConfigVar('profile_optimizer',
+             "If VM should collect optimizer profile information",
+             BoolParam(False),
+             in_c_key=False)
+
+AddConfigVar('profile_memory',
+             "If VM should collect memory profile information and print it",
+             BoolParam(False),
+             in_c_key=False)
+
+
+def filter_vm_lazy(val):
+    if val == 'False' or val is False:
+        return False
+    elif val == 'True' or val is True:
+        return True
+    elif val == 'None' or val is None:
+        return None
+    else:
+        raise ValueError('Valid values for an vm.lazy parameter '
+                         'should be None, False or True, not `%s`.' % val)
+
+AddConfigVar('vm.lazy',
+             "Useful only for the vm linkers. When lazy is None,"
+             " auto detect if lazy evaluation is needed and use the apropriate"
+             " version. If lazy is True/False, force the version used between"
+             " Loop/LoopGC and Stack.",
+             ConfigParam('None', filter_vm_lazy),
+             in_c_key=False)
+
+AddConfigVar(
+    'warn.identify_1pexp_bug',
+    'Warn if Theano versions prior to 7987b51 (2011-12-18) could have '
+    'yielded a wrong result due to a bug in the is_1pexp function',
+    BoolParam(theano.configdefaults.warn_default('0.4.1')),
+    in_c_key=False)
+
+AddConfigVar('on_shape_error',
+             "warn: print a warning and use the default"
+             " value. raise: raise an error",
+             theano.configparser.EnumStr("warn", "raise"),
+             in_c_key=False)
+
+AddConfigVar(
+    'tensor.insert_inplace_optimizer_validate_nb',
+    "-1: auto, if graph have less then 500 nodes 1, else 10",
+    theano.configparser.IntParam(-1),
+    in_c_key=False)
+
+AddConfigVar('experimental.local_alloc_elemwise',
+             "DEPRECATED: If True, enable the experimental"
+             " optimization local_alloc_elemwise."
+             " Generates error if not True. Use"
+             " optimizer_excluding=local_alloc_elemwise"
+             " to dsiable.",
+             theano.configparser.BoolParam(
+                 True,
+                 is_valid=lambda x: x
+             ),
+             in_c_key=False)
+
+# False could make the graph faster but not as safe.
+AddConfigVar(
+    'experimental.local_alloc_elemwise_assert',
+    "When the local_alloc_elemwise is applied, add"
+    " an assert to highlight shape errors.",
+    theano.configparser.BoolParam(True),
+    in_c_key=False)
+
+AddConfigVar('scan.allow_gc',
+             "Allow/disallow gc inside of Scan (default: False)",
+             BoolParam(False))
+
+AddConfigVar('scan.allow_output_prealloc',
+             "Allow/disallow memory preallocation for outputs inside of scan "
+             "(default: True)",
+             BoolParam(True))
+
+AddConfigVar('pycuda.init',
+        """If True, always initialize PyCUDA when Theano want to
+           initilize the GPU.  Currently, we must always initialize
+           PyCUDA before Theano do it.  Setting this flag to True,
+           ensure that, but always import PyCUDA.  It can be done
+           manually by importing theano.misc.pycuda_init before theano
+           initialize the GPU device.
+             """,
+        BoolParam(False),
+        in_c_key=False)
+
+AddConfigVar('cublas.lib',
+        """Name of the cuda blas library for the linker.""",
+        StrParam('cublas'))
+
+AddConfigVar('lib.cnmem',
+             """Do we enable CNMeM or not (a faster CUDA memory allocator).
+
+             The parameter represent the start size (in MB or % of
+             total GPU memory) of the memory pool.
+
+             0: not enabled.
+             0 < N <= 1: % of the total GPU memory (clipped to .985 for driver memory)
+             > 0: use that number of MB of memory.
+
+             """,
+             # We should not mix both allocator, so we can't override
+             FloatParam(0, lambda i: i >= 0, allow_override=False),
+             in_c_key=False)
+
+

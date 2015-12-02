@@ -38,51 +38,6 @@ config = theano.config
 _atexit_print_list = []
 _atexit_registered = False
 
-AddConfigVar('profiling.time_thunks',
-             """Time individual thunks when profiling""",
-             BoolParam(True),
-             in_c_key=False)
-
-AddConfigVar('profiling.n_apply',
-             "Number of Apply instances to print by default",
-             IntParam(20, lambda i: i > 0),
-             in_c_key=False)
-
-AddConfigVar('profiling.n_ops',
-             "Number of Ops to print by default",
-             IntParam(20, lambda i: i > 0),
-             in_c_key=False)
-
-AddConfigVar('profiling.output_line_width',
-             "Max line width for the profiling output",
-             IntParam(512, lambda i: i > 0),
-             in_c_key=False)
-
-AddConfigVar('profiling.min_memory_size',
-             """For the memory profile, do not print Apply nodes if the size
-             of their outputs (in bytes) is lower than this threshold""",
-             IntParam(1024, lambda i: i >= 0),
-             in_c_key=False)
-
-AddConfigVar('profiling.min_peak_memory',
-             """The min peak memory usage of the order""",
-             BoolParam(False),
-             in_c_key=False)
-
-AddConfigVar('profiling.destination',
-             """
-             File destination of the profiling output
-             """,
-             StrParam('stderr'),
-             in_c_key=False)
-
-AddConfigVar('profiling.debugprint',
-             """
-             Do a debugprint of the profiled functions
-             """,
-             BoolParam(False),
-             in_c_key=False)
-
 
 def _atexit_print_fn():
     """

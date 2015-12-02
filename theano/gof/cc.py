@@ -33,10 +33,6 @@ from theano.gof import cmodule
 from theano.gof.compilelock import get_lock, release_lock
 from theano.gof.callcache import CallCache
 
-AddConfigVar('gcc.cxxflags',
-             "Extra compiler flags for gcc",
-             StrParam(""))
-
 
 _logger = logging.getLogger("theano.gof.cc")
 
