@@ -3345,6 +3345,17 @@ class T_outer(unittest.TestCase):
             utt.verify_grad(tensor.outer, [data0, data1])
 
 
+class T_GetVectorLength(unittest.TestCase):
+    def test_get_vector_length(self):
+        x = theano.shared(numpy.zeros((2, 3, 4, 5)))
+        assert len(list(x.shape)) == 4
+        assert len(list(x.shape[2:4])) == 2
+        assert len(list(x.shape[2:])) == 2
+        assert len(list(x.shape[1:4])) == 3
+        assert len(list(x.shape[1:5])) == 3
+        assert len(list(x.shape[1:10])) == 3
+
+
 class T_Join_and_Split(unittest.TestCase):
     """
     Split is tested by each verify_grad method.

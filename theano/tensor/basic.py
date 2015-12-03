@@ -4243,15 +4243,20 @@ def get_vector_length(v):
     # If we take a slice, we know how many elements it will result in
     if ((v.owner and
          isinstance(v.owner.op, theano.tensor.subtensor.Subtensor) and
-         isinstance(v.owner.op.idx_list[0], slice))):
+         isinstance(v.owner.op.idx_list[0], slice) and
+         v.owner.inputs[0].owner and
+         isinstance(v.owner.inputs[0].owner.op, theano.compile.ops.Shape))):
         start = extract_constant(theano.tensor.subtensor.get_idx_list(
             v.owner.inputs, v.owner.op.idx_list)[0].start)
         stop = extract_constant(theano.tensor.subtensor.get_idx_list(
             v.owner.inputs, v.owner.op.idx_list)[0].stop)
         if start is None:
             start = 0
+        ndim = v.owner.inputs[0].owner.inputs[0].ndim
         if stop is None:
-            stop = 0
+            stop = ndim
+        elif isinstance(stop, numbers.Integral) and stop > ndim :
+            stop = ndim
         if ((isinstance(stop, numbers.Integral) and
              isinstance(start, numbers.Integral))):
             return stop - start
