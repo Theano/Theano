@@ -85,6 +85,11 @@ int APPLY_SPECIFIC(softmax_grad)(PyGpuArrayObject *dy,
     }
 
     cuda_enter(c->ctx);
+
+    cuda_wait(sm->ga.data, GPUARRAY_CUDA_WAIT_READ);
+    cuda_wait(dy->ga.data, GPUARRAY_CUDA_WAIT_READ);
+    cuda_wait((*dx)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
+
     err = cudnnSoftmaxBackward(
       APPLY_SPECIFIC(_handle),
       SOFTMAX_ALGO,
@@ -98,6 +103,11 @@ int APPLY_SPECIFIC(softmax_grad)(PyGpuArrayObject *dy,
       APPLY_SPECIFIC(dx),
       PyGpuArray_DEV_DATA(*dx)
       );
+
+    cuda_record(sm->ga.data, GPUARRAY_CUDA_WAIT_READ);
+    cuda_record(dy->ga.data, GPUARRAY_CUDA_WAIT_READ);
+    cuda_record((*dx)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
+
     cuda_exit(c->ctx);
   }
 

@@ -93,12 +93,20 @@ int APPLY_SPECIFIC(dnn_pool)(PyGpuArrayObject *img,
     }
 
     cuda_enter(c->ctx);
+
+    cuda_wait(img->ga.data, GPUARRAY_CUDA_WAIT_READ);
+    cuda_wait((*out)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
+
     err = cudnnPoolingForward(
       APPLY_SPECIFIC(_handle), desc,
       alpha,
       APPLY_SPECIFIC(input), PyGpuArray_DEV_DATA(img),
       beta,
       APPLY_SPECIFIC(output), PyGpuArray_DEV_DATA(*out));
+
+    cuda_record(img->ga.data, GPUARRAY_CUDA_WAIT_READ);
+    cuda_record((*out)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
+
     cuda_exit(c->ctx);
   }
   if (err != CUDNN_STATUS_SUCCESS) {

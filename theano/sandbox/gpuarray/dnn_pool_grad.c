@@ -111,6 +111,12 @@ int APPLY_SPECIFIC(dnn_pool_grad)(PyGpuArrayObject *inp,
     }
 
     cuda_enter(c->ctx);
+
+    cuda_wait(out->ga.data, GPUARRAY_CUDA_WAIT_READ);
+    cuda_wait(out_grad->ga.data, GPUARRAY_CUDA_WAIT_READ);
+    cuda_wait(inp->ga.data, GPUARRAY_CUDA_WAIT_READ);
+    cuda_wait((*inp_grad)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
+
     err = cudnnPoolingBackward(
       APPLY_SPECIFIC(_handle), desc,
       alpha,
@@ -120,6 +126,12 @@ int APPLY_SPECIFIC(dnn_pool_grad)(PyGpuArrayObject *inp,
       beta,
       APPLY_SPECIFIC(input_grad), PyGpuArray_DEV_DATA(*inp_grad)
       );
+
+    cuda_record(out->ga.data, GPUARRAY_CUDA_WAIT_READ);
+    cuda_record(out_grad->ga.data, GPUARRAY_CUDA_WAIT_READ);
+    cuda_record(inp->ga.data, GPUARRAY_CUDA_WAIT_READ);
+    cuda_record((*inp_grad)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
+
     cuda_exit(c->ctx);
   }
 

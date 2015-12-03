@@ -211,6 +211,10 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
       }
     }
 
+    cuda_wait(input->ga.data, GPUARRAY_CUDA_WAIT_READ);
+    cuda_wait(kerns->ga.data, GPUARRAY_CUDA_WAIT_READ);
+    cuda_wait((*output)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
+
     err = cudnnConvolutionForward(
       APPLY_SPECIFIC(_handle),
       alpha_p,
@@ -223,6 +227,10 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
 
     if (worksize != 0)
       c->ops->buffer_release(workspace);
+
+    cuda_record(input->ga.data, GPUARRAY_CUDA_WAIT_READ);
+    cuda_record(kerns->ga.data, GPUARRAY_CUDA_WAIT_READ);
+    cuda_record((*output)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
   }
   cuda_exit(c->ctx);
 
