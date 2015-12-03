@@ -193,16 +193,23 @@ class DownsampleFactorMax(Op):
         c += padding[1] * 2
 
         if ignore_border:
-            out_r = (r - ds[0]) // st[0] + 1
-            out_c = (c - ds[1]) // st[1] + 1
-            if isinstance(r, theano.Variable):
-                nr = tensor.maximum(out_r, 0)
+            if ds[0] == st[0]:
+                nr = r // st[0]
             else:
-                nr = numpy.maximum(out_r, 0)
-            if isinstance(c, theano.Variable):
-                nc = tensor.maximum(out_c, 0)
+                out_r = (r - ds[0]) // st[0] + 1
+                if isinstance(r, theano.Variable):
+                    nr = tensor.maximum(out_r, 0)
+                else:
+                    nr = numpy.maximum(out_r, 0)
+
+            if ds[1] == st[1]:
+                nc = c // st[1]
             else:
-                nc = numpy.maximum(out_c, 0)
+                out_c = (c - ds[1]) // st[1] + 1
+                if isinstance(c, theano.Variable):
+                    nc = tensor.maximum(out_c, 0)
+                else:
+                    nc = numpy.maximum(out_c, 0)
         else:
             if isinstance(r, theano.Variable):
                 nr = tensor.switch(tensor.ge(st[0], ds[0]),
