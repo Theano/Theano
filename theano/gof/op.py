@@ -779,6 +779,10 @@ class Op(utils.object2, PureOp, CLinkerOp):
     def _props(self):
         return tuple(getattr(self, a) for a in self.__props__)
 
+    def _props_dict(self):
+        return dict([(a, getattr(self, a))
+                     for a in self.__props__])
+
     def __hash__(self):
         if hasattr(self, '__props__'):
             return hash((type(self), self._props()))
