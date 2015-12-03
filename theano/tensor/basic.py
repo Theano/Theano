@@ -4424,7 +4424,7 @@ class Reshape(Op):
         else:
             new_dims = [node.inputs[1][i] for i in xrange(self.ndim)]
             return [tuple([switch(eq(new_dims[i], -1),
-                                  theano.tensor.mul(*ishapes[0]) /
+                                  theano.tensor.mul(*ishapes[0]) //
                                   (-theano.tensor.mul(*new_dims)),
                                   new_dims[i])
                            for i in xrange(self.ndim)])]
