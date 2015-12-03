@@ -12,7 +12,7 @@ from theano.gof.type import CDataType, Generic
 from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.tensor.nnet import SoftmaxGrad
-from theano.tensor.nnet.abstract_conv2d import get_conv_output_shape
+from theano.tensor.nnet.abstract_conv import get_conv_output_shape
 from theano.tensor.signal.downsample import (
     DownsampleFactorMax, MaxPoolGrad, AveragePoolGrad)
 

@@ -11,7 +11,7 @@ from theano.gof.type import CDataType, Generic
 from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.tensor.nnet import SoftmaxGrad
-from theano.tensor.nnet.abstract_conv2d import get_conv_output_shape
+from theano.tensor.nnet.abstract_conv import get_conv_output_shape
 from theano.tensor.signal.downsample import (
     DownsampleFactorMax, MaxPoolGrad, AveragePoolGrad)
 from theano.sandbox.cuda.type import CudaNdarrayType
@@ -30,9 +30,9 @@ from theano.sandbox.cuda import gpu_seqopt, register_opt
 
 from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 
-from theano.tensor.nnet.abstract_conv2d import (AbstractConv2d,
-                                                AbstractConv2d_gradWeights,
-                                                AbstractConv2d_gradInputs)
+from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
+                                              AbstractConv2d_gradWeights,
+                                              AbstractConv2d_gradInputs)
 
 def dnn_available():
     if dnn_available.avail is None:

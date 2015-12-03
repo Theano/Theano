@@ -233,7 +233,7 @@ optdb.register('uncanonicalize', gof.EquilibriumDB(),
 
 # misc special cases for speed that are dependent on the device.
 optdb.register('specialize_device', gof.EquilibriumDB(),
-               48.6, 'fast_run')  # must be after gpu stuff at 48.5
+               48.6, 'fast_compile', 'fast_run')  # must be after gpu stuff at 48.5
 
 # especially constant merge
 optdb.register('merge2', gof.MergeOptimizer(),

@@ -1,15 +1,15 @@
 """
 Define abstract conv2d interface
 """
-import logging
 
+import logging
 import theano
+
 from theano.tensor import as_tensor_variable
 from theano.gof import Apply, Op
 
 
 __docformat__ = "restructuredtext en"
-
 _logger = logging.getLogger("theano.tensor.nnet.conv2d")
 
 
@@ -187,6 +187,7 @@ class BaseAbstractConv2d(Op):
         element is not known at compile time.
         kshp is defined w.r.t the forward conv.
 
+
     :type border_mode: str, int or tuple of two int
     :param border_mode: Either of the following:
         * ``'valid'``: apply filter wherever it completely overlaps with the
@@ -219,6 +220,7 @@ class BaseAbstractConv2d(Op):
                  imshp=None, kshp=None,
                  border_mode="valid", subsample=(1, 1),
                  filter_flip=True):
+
         if isinstance(border_mode, int):
             border_mode = (border_mode, border_mode)
         if isinstance(border_mode, tuple):
@@ -297,6 +299,7 @@ class AbstractConv2d(BaseAbstractConv2d):
                                                self.border_mode,
                                                self.subsample,
                                                self.filter_flip)(
+
             bottom, top, weights.shape[-2:])
         return d_bottom, d_weights
 

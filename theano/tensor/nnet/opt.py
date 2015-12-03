@@ -13,9 +13,9 @@ from theano.tensor.nnet.blocksparse import (
     SparseBlockOuter,
     sparse_block_gemv_inplace,
     sparse_block_outer_inplace)
-from theano.tensor.nnet.abstract_conv2d import (AbstractConv2d,
-                                                AbstractConv2d_gradWeights,
-                                                AbstractConv2d_gradInputs)
+from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
+                                              AbstractConv2d_gradWeights,
+                                              AbstractConv2d_gradInputs)
 from theano.tensor.opt import register_specialize_device
 from theano.tensor import TensorType
 
