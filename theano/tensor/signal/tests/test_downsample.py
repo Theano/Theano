@@ -582,10 +582,10 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
             stridesize = stridesizes[i]
             paddingsize = paddingsizes[i]
 
-            grad_shape = DownsampleFactorMaxGradGrad.out_shape(imval.shape,
-                                                               maxpoolsize, st=stridesize,
-                                                               ignore_border=True,
-                                                               padding=paddingsize)
+            grad_shape = DownsampleFactorMax.out_shape(imval.shape,
+                                                       maxpoolsize, st=stridesize,
+                                                       ignore_border=True,
+                                                       padding=paddingsize)
             grad_val = rng.rand(*grad_shape) * 10.0
 
             def mp(input, grad):

@@ -34,6 +34,7 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv2d_gradWeights,
                                               AbstractConv2d_gradInputs)
 
+
 def dnn_available():
     if dnn_available.avail is None:
         if not theano.sandbox.cuda.cuda_available:
@@ -67,7 +68,8 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
             if config.dnn.library_path:
                 params.append("-L" + config.dnn.library_path)
             if config.nvcc.compiler_bindir:
-                params.extend(['--compiler-bindir', config.nvcc.compiler_bindir])
+                params.extend(['--compiler-bindir',
+                               config.nvcc.compiler_bindir])
             # Do not run here the test program. It would run on the
             # default gpu, not the one selected by the user. If mixed
             # GPU are installed or if the GPUs are configured in
@@ -1087,9 +1089,9 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         This parameter is used internally by graph optimizers and may be
         removed at any time without a deprecation period. You have been warned.
     workmem
-	*deprecated*, use parameter algo instead.
-    algo : {'none', 'small', 'large', 'fft', 'guess_once', 'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
-	Convolution implementation to use. Some of its  values may require certain
+        *deprecated*, use parameter algo instead.
+        algo : {'none', 'small', 'large', 'fft', 'guess_once', 'guess_on_shape_change', 'time_once', 'time_on_shape_change'}
+        Convolution implementation to use. Some of its  values may require certain
         versions of CuDNN to be installed. Default is the value of
         :attr:`config.dnn.conv.algo_fwd`.
 
@@ -1167,10 +1169,10 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
     :param img: images to do the convolution over
     :param kerns: convolution filters
     :param border_mode: One of 'valid', 'full'; additionally, the padding
-    	size can be directly specified by an integer or a pair of integers
-    	(as a tuple), specifying the amount of zero padding added to _both_
-    	the top and bottom (first entry) and left and right (second entry)
-    	sides of the image.
+        size can be directly specified by an integer or a pair of integers
+        (as a tuple), specifying the amount of zero padding added to _both_
+        the top and bottom (first entry) and left and right (second entry)
+        sides of the image.
     :param subsample: perform subsampling of the output (default: (1, 1, 1))
     :param conv_mode: perform convolution (kernels flipped) or
         cross-correlation. One of 'conv', 'cross'. (default: 'conv')
@@ -1257,11 +1259,12 @@ def dnn_gradweight(img, topgrad,
 
     img = gpu_contiguous(img)
     topgrad = gpu_contiguous(topgrad)
-    kerns_shp = theano.tensor.as_tensor_variable(kerns_shp) 
+    kerns_shp = theano.tensor.as_tensor_variable(kerns_shp)
     desc = GpuDnnConvDesc(border_mode=border_mode, subsample=subsample,
                           conv_mode=conv_mode)(img.shape, kerns_shp)
     out = gpu_alloc_empty(*kerns_shp)
     return GpuDnnConvGradW()(img, topgrad, out, desc)
+
 
 def dnn_gradinput(kerns, topgrad,
                   img_shp,
@@ -1550,8 +1553,8 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
 }
 """ % dict(out=out, desc=desc, fail=sub['fail'],
            name=name, input=inputs[0],
-           input_desc="input"+name,
-           output_desc="output"+name)
+           input_desc="input" + name,
+           output_desc="output" + name)
 
     def grad(self, inp, grads):
         img, desc = inp
@@ -1745,10 +1748,10 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
 """ % dict(output_grad=out_grad, desc=desc,
            fail=sub['fail'], name=name,
            input=inp, input_grad=inp_grad, output=out,
-           input_desc="input"+name,
-           input_grad_desc="input_grad"+name,
-           output_desc="output"+name,
-           output_grad_desc="output_grad"+name)
+           input_desc="input" + name,
+           input_grad_desc="input_grad" + name,
+           output_desc="output" + name,
+           output_grad_desc="output_grad" + name)
 
     def c_code_cache_version(self):
         return (7, version())
@@ -1804,8 +1807,8 @@ class GpuDnnSoftmaxBase(DnnBase):
         Always set this to 'bc01'.
     algo
         'fast', 'accurate' or 'log' indicating whether, respectively, computations
-	should be optimized for speed, for accuracy, or if CuDNN should rather
-	compute the log-softmax instead.
+        should be optimized for speed, for accuracy, or if CuDNN should rather
+        compute the log-softmax instead.
     mode
         'instance' or 'channel' indicating whether the softmax should
         be computed per image across 'c01' or per spatial location '01' per

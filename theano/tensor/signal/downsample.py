@@ -193,16 +193,23 @@ class DownsampleFactorMax(Op):
         c += padding[1] * 2
 
         if ignore_border:
-            out_r = (r - ds[0]) // st[0] + 1
-            out_c = (c - ds[1]) // st[1] + 1
-            if isinstance(r, theano.Variable):
-                nr = tensor.maximum(out_r, 0)
+            if ds[0] == st[0]:
+                nr = r // st[0]
             else:
-                nr = numpy.maximum(out_r, 0)
-            if isinstance(c, theano.Variable):
-                nc = tensor.maximum(out_c, 0)
+                out_r = (r - ds[0]) // st[0] + 1
+                if isinstance(r, theano.Variable):
+                    nr = tensor.maximum(out_r, 0)
+                else:
+                    nr = numpy.maximum(out_r, 0)
+
+            if ds[1] == st[1]:
+                nc = c // st[1]
             else:
-                nc = numpy.maximum(out_c, 0)
+                out_c = (c - ds[1]) // st[1] + 1
+                if isinstance(c, theano.Variable):
+                    nc = tensor.maximum(out_c, 0)
+                else:
+                    nc = numpy.maximum(out_c, 0)
         else:
             if isinstance(r, theano.Variable):
                 nr = tensor.switch(tensor.ge(st[0], ds[0]),
@@ -893,84 +900,6 @@ class AveragePoolGrad(PoolGrad):
 class DownsampleFactorMaxGradGrad(Op):
     __props__ = ('ds', 'ignore_border', 'st', 'padding', 'mode')
 
-    @staticmethod
-    def out_shape(imgshape, ds, ignore_border=False, st=None, padding=(0, 0)):
-        """
-        Return the shape of the output from this op, for input of given
-        shape and flags.
-
-        Parameters
-        ----------
-        imgshape : tuple, list, or similar of integer or scalar Theano variable
-            The shape of a tensor of images. The last two elements
-            are interpreted as the number of rows, and the number of cols.
-        ds : list or tuple of two ints
-            Downsample factor over rows and columns this parameter indicates the
-            size of the pooling region.
-        st: list or tuple of two ints
-            The stride size. This is the distance between the pooling regions.
-            If it's set to None, in which case it equlas ds.
-        ignore_border: bool
-            If ds doesn't divide imgshape, do we include an
-            extra row/col of partial downsampling (False) or ignore it (True).
-        padding : tuple of two ints
-            (pad_h, pad_w), pad zeros to extend beyond four borders
-            of the images, pad_h is the size of the top and bottom margins,
-            and pad_w is the size of the left and right margins.
-
-        Returns
-        -------
-        list
-            The shape of the output from this op, for input of given shape.
-            This will have the same length as imgshape, but with last two
-            elements reduced as per the downsampling & ignore_border flags.
-
-        """
-        if len(imgshape) < 2:
-            raise TypeError('imgshape must have at least two elements '
-                            '(rows, cols)')
-
-        if st is None:
-            st = ds
-        r, c = imgshape[-2:]
-        r += padding[0] * 2
-        c += padding[1] * 2
-
-        if ignore_border:
-            out_r = (r - ds[0]) // st[0] + 1
-            out_c = (c - ds[1]) // st[1] + 1
-            if isinstance(r, theano.Variable):
-                nr = tensor.maximum(out_r, 0)
-            else:
-                nr = numpy.maximum(out_r, 0)
-            if isinstance(c, theano.Variable):
-                nc = tensor.maximum(out_c, 0)
-            else:
-                nc = numpy.maximum(out_c, 0)
-        else:
-            if isinstance(r, theano.Variable):
-                nr = tensor.switch(tensor.ge(st[0], ds[0]),
-                                   (r - 1) // st[0] + 1,
-                                   tensor.maximum(0, (r - 1 - ds[0]) //
-                                                  st[0] + 1) + 1)
-            elif st[0] >= ds[0]:
-                nr = (r - 1) // st[0] + 1
-            else:
-                nr = max(0, (r - 1 - ds[0]) // st[0] + 1) + 1
-
-            if isinstance(c, theano.Variable):
-                nc = tensor.switch(tensor.ge(st[1], ds[1]),
-                                   (c - 1) // st[1] + 1,
-                                   tensor.maximum(0, (c - 1 - ds[1]) //
-                                                  st[1] + 1) + 1)
-            elif st[1] >= ds[1]:
-                nc = (c - 1) // st[1] + 1
-            else:
-                nc = max(0, (c - 1 - ds[1]) // st[1] + 1) + 1
-
-        rval = list(imgshape[:-2]) + [nr, nc]
-        return rval
-
     def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='max'):
         self.ds = tuple(ds)
         if not all([isinstance(d, int) for d in ds]):
@@ -1010,10 +939,8 @@ class DownsampleFactorMaxGradGrad(Op):
         if len(x.shape) != 4:
             raise NotImplementedError(
                 'DownsampleFactorMaxGradGrad requires 4D input for now')
-        z_shape = self.out_shape(x.shape, self.ds, self.ignore_border,
-                                 self.st, self.padding)
-        if (z[0] is None) or (z[0].shape != z_shape):
-            z[0] = numpy.zeros(z_shape, dtype=x.dtype)
+        if (z[0] is None) or (z[0].shape != x.shape):
+            z[0] = numpy.zeros(x.shape, dtype=x.dtype)
         ggz = z[0]  # grad wrt maxout_grad has the same shape as maxout
         # number of pooling output rows
         pr = ggz.shape[-2]
@@ -1053,7 +980,7 @@ class DownsampleFactorMaxGradGrad(Op):
                                     ggz[n, k, r, c] = ggx_padded[n, k, row_ind, col_ind]
 
     def infer_shape(self, node, in_shapes):
-        return [in_shapes[0]]
+        return [in_shapes[1]]
 
     def c_code(self, node, name, inp, out, sub):
         if self.mode != 'max':
