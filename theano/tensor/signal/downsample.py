@@ -1053,7 +1053,7 @@ class DownsampleFactorMaxGradGrad(Op):
                                     ggz[n, k, r, c] = ggx_padded[n, k, row_ind, col_ind]
 
     def infer_shape(self, node, in_shapes):
-        return [in_shapes[0]]
+        return [in_shapes[1]]
 
     def c_code(self, node, name, inp, out, sub):
         if self.mode != 'max':
