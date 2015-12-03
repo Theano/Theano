@@ -644,6 +644,16 @@ AddConfigVar(
     in_c_key=False)
 
 
+AddConfigVar(
+    'print_test_value',
+    ("If 'True', the __eval__ of a Theano variable will return its test_value "
+     "when this is available. This has the practical conseguence that, e.g., "
+     "in debugging `my_var` will print the same as `my_var.tag.test_value` "
+     "when a test value is defined."),
+    BoolParam(False),
+    in_c_key=False)
+
+
 AddConfigVar('compute_test_value_opt',
              ("For debugging Theano optimization only."
               " Same as compute_test_value, but is used"

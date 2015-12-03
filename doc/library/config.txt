@@ -861,6 +861,13 @@ import theano and print the config variable, as in:
    optimization phase. Theano user's do not need to use this. This is
    to help debug shape error in Theano optimization.
 
+.. attribute:: print_test_value
+
+    Bool value, default: False 
+
+    If ``'True'``, Theano will override the '__str__' method of its variables 
+    to also print the tag.test_value when this is available.
+
 .. attribute:: reoptimize_unpickled_function
 
     Bool value, default: False (changed in master after Theano 0.7 release)
