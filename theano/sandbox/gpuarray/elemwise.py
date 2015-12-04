@@ -3,6 +3,7 @@ import copy
 from theano.compat import izip
 import numpy
 
+import theano
 from theano import Apply, scalar, config
 from theano import scalar as scal
 from six.moves import StringIO, xrange
@@ -654,7 +655,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         return node.inputs[0].type.context
 
     def perform(self, node, inp, out, ctx):
-        raise MethodNotDefined("")
+        theano.Op.perform(self, node, inp, out, ctx)
 
     def supports_c_code(self, inputs):
         """
