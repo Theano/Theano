@@ -1184,6 +1184,8 @@ class ScanSaveMem(gof.Optimizer):
                 return y
             if y is None:
                 return x
+            if type(x) in integer_types and type(y) in integer_types:
+                return min(x, y)
             return tensor.minimum(x, y)
 
         def select_max(x, y):
@@ -1191,6 +1193,8 @@ class ScanSaveMem(gof.Optimizer):
                 return y
             if y is None:
                 return x
+            if type(x) in integer_types and type(y) in integer_types:
+                return max(x, y)
             return tensor.maximum(x, y)
 
         def sanitize(x):
