@@ -7178,7 +7178,8 @@ class TestInferShape(utt.InferShapeTester):
         outdim = 1
         self._compile_and_check([avec],
                                 [flatten(avec, outdim)],
-                                [avec_val], Reshape)
+                                [avec_val], Reshape,
+                                excluding=['local_useless_reshape'])
 
         # Eye
         aiscal = iscalar()
