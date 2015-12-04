@@ -62,7 +62,7 @@ import copy
 
 
 def get_version():
-    return 0.292
+    return 0.293
 
 @cython.boundscheck(False)
 def perform(
@@ -385,7 +385,7 @@ def perform(
 
             if var is None:
                 old_mitmot_input_data[idx] = None
-            elif inps_is_tensor[idx]:
+            elif inps_is_tensor[idx + n_seqs]:
                 old_mitmot_input_data[idx] = var.data
             else:
                 old_mitmot_input_data[idx] = var.gpudata

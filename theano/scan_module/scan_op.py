@@ -1323,7 +1323,7 @@ class Scan(PureOp):
 
                 if var is None:
                     old_mitmot_input_data[idx] = None
-                elif self.inps_is_tensor[idx]:
+                elif self.inps_is_tensor[idx + self.n_seqs]:
                     old_mitmot_input_data[idx] = var.data
                 else:
                     old_mitmot_input_data[idx] = var.gpudata
