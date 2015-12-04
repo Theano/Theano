@@ -146,6 +146,13 @@ AddConfigVar(
     in_c_key=False)
 
 
+AddConfigVar(
+    'enable_initial_driver_test',
+    "Tests the nvidia driver when a GPU device is initialized.",
+    BoolParam(True, allow_override=False),
+    in_c_key=False)
+
+
 def default_cuda_root():
     v = os.getenv('CUDA_ROOT', "")
     if v:
