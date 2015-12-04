@@ -1178,13 +1178,15 @@ class ScanSaveMem(gof.Optimizer):
 
     def process_node(self, fgraph, node):
 
+        _integer_types = integer_types + (numpy.integer,)
+
         # helpful functions
         def select_min(x, y):
             if x is None:
                 return y
             if y is None:
                 return x
-            if type(x) in integer_types and type(y) in integer_types:
+            if isinstance(x, _integer_types) and isinstance(y, _integer_types):
                 return min(x, y)
             return tensor.minimum(x, y)
 
@@ -1193,7 +1195,7 @@ class ScanSaveMem(gof.Optimizer):
                 return y
             if y is None:
                 return x
-            if type(x) in integer_types and type(y) in integer_types:
+            if isinstance(x, _integer_types) and isinstance(y, _integer_types):
                 return max(x, y)
             return tensor.maximum(x, y)
 
@@ -1429,6 +1431,18 @@ class ScanSaveMem(gof.Optimizer):
                             cf_slice[0].start)
                     else:
                         start = tensor.basic.extract_constant(cf_slice[0])
+                    remaining = nw_steps - start  # generic
+                    # In the case of grad_scan, we usually are interested in only the last element.
+                    # Thus, we often have this_slice[0] = Constant{-1}. In such cases,
+                    # we can infer that remaining = 1.
+                    if not isinstance(this_slice[0], slice):
+                        try:
+                            idx_const = tensor.get_scalar_constant_value(this_slice[0])
+                        except tensor.NotScalarConstantError:
+                            pass
+                        else:
+                            if idx_const < 0:
+                                remaining = -idx_const
                     if start == 0 or store_steps[i] == 0:
                         store_steps[i] = 0
                     else:
@@ -1451,10 +1465,10 @@ class ScanSaveMem(gof.Optimizer):
                         preallocable_output = (first_mitsot_idx <= i <= last_sitsot_idx)
 
                         if (prealloc_outs and preallocable_output):
-                            pval = select_max(nw_steps - start + init_l[i],
+                            pval = select_max(remaining + init_l[i],
                                               init_l[i] + 1)
                         else:
-                            pval = select_max(nw_steps - start + init_l[i],
+                            pval = select_max(remaining + init_l[i],
                                               init_l[i])
 
                         if store_steps[i] != -1:
