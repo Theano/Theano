@@ -156,6 +156,8 @@ def test_transinv_to_invtrans():
 
 
 def test_tag_solve_triangular():
+    if not imported_scipy:
+        raise SkipTest("Scipy needed for the Cholesky op.")
     cholesky_lower = Cholesky(lower=True)
     cholesky_upper = Cholesky(lower=False)
     A = tensor.matrix('A')
