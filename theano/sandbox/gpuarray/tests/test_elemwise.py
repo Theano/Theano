@@ -83,6 +83,7 @@ class test_GpuCAReduceCPY(test_elemwise.test_CAReduce):
     op = GpuCAReduceCPY
     reds = [scalar.add, scalar.mul]
     pre_scalar_op = None
+    mode = mode_with_gpu
 
     def test_perform(self):
         for dtype in self.dtypes + self.bin_dtypes:
