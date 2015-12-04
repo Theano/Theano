@@ -5895,8 +5895,7 @@ def test_local_flatten_lift():
         shape_out_np = tuple(x_np.shape[:i-1])+(numpy.prod(x_np.shape[i-1:]),)
         assert shape_out_np == out_np.shape
 
-        reshape_nodes = filter(
-            lambda apply_node: isinstance(apply_node.op, tensor.Reshape), topo)
+        reshape_nodes = [n for n in topo if isinstance(n.op, tensor.Reshape)]
         assert (len(reshape_nodes) == 1 and
             tensor.is_flat(reshape_nodes[0].outputs[0], outdim=i))
         assert isinstance(topo[-1].op, tensor.Elemwise)
