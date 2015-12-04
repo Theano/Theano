@@ -19,7 +19,6 @@ from theano.tensor import (raw_random, TensorType, as_tensor_variable,
 from theano.tensor import sqrt, log, sin, cos, join, prod
 from theano.compile import optdb
 from theano.gof import local_optimizer
-
 from . import multinomial
 
 from theano.sandbox.cuda import cuda_available, cuda_enabled, GpuOp
@@ -1318,11 +1317,12 @@ class MRG_RandomStreams(object):
     def multinomial(self, size=None, n=1, pvals=None, ndim=None, dtype='int64',
                     nstreams=None):
         """
-        Sample `n` (currently `n` needs to be 1) times from a multinomial
+        Sample `n` (`n` needs to be >= 1, default 1) times from a multinomial
         distribution defined by probabilities pvals.
 
-        Example : pvals = [[.98, .01, .01], [.01, .98, .01]] will
-        probably result in [[1,0,0],[0,1,0]].
+        Example : pvals = [[.98, .01, .01], [.01, .49, .50]] and n=1 will
+        probably result in [[1,0,0],[0,0,1]]. When setting n=2, this
+        will probably result in [[2,0,0],[0,1,1]].
 
         Notes
         -----
@@ -1345,25 +1345,23 @@ class MRG_RandomStreams(object):
                     "The specified size contains a dimension with value <= 0",
                     size)
 
-        if n == 1 and pvals.ndim == 2:
-            if size is not None:
-                raise ValueError("Provided a size argument to "
-                        "MRG_RandomStreams.multinomial, which does not use "
-                        "the size argument.")
-            if ndim is not None:
-                raise ValueError("Provided an ndim argument to "
-                        "MRG_RandomStreams.multinomial, which does not use "
-                        "the ndim argument.")
-            ndim, size, bcast = raw_random._infer_ndim_bcast(
-                    ndim, size, pvals[:, 0])
-            assert ndim == 1
-            bcast = bcast + (pvals.type.broadcastable[-1],)
+        if size is not None:
+            raise ValueError("Provided a size argument to "
+                             "MRG_RandomStreams.multinomial, which does not use "
+                             "the size argument.")
+        if ndim is not None:
+            raise ValueError("Provided an ndim argument to "
+                             "MRG_RandomStreams.multinomial, which does not use "
+                             "the ndim argument.")
+        if pvals.ndim == 2:
+            size = pvals[:,0].shape * n
             unis = self.uniform(size=size, ndim=1, nstreams=nstreams)
             op = multinomial.MultinomialFromUniform(dtype)
-            return op(pvals, unis)
+            n_samples = as_tensor_variable(n)
+            return op(pvals, unis, n_samples)
         else:
             raise NotImplementedError(("MRG_RandomStreams.multinomial only"
-                " implemented with n == 1 and pvals.ndim = 2"))
+                                       " implemented for pvals.ndim = 2"))
 
     def normal(self, size, avg=0.0, std=1.0, ndim=None,
                dtype=None, nstreams=None):

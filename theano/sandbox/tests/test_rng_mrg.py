@@ -772,7 +772,7 @@ def test_normal0():
                   prefix='numpy ', allow_01=True, inputs=input, mean_rtol=rtol)
 
 
-def basic_multinomialtest(f, steps, sample_size, target_pvals,
+def basic_multinomialtest(f, steps, sample_size, target_pvals, n_samples,
                           prefix="", mean_rtol=0.04):
 
     dt = 0.0
@@ -782,11 +782,13 @@ def basic_multinomialtest(f, steps, sample_size, target_pvals,
         t0 = time.time()
         ival = f()
         assert ival.shape == sample_size
+        assert numpy.all(numpy.sum(ival, axis=1) == n_samples)
         dt += time.time() - t0
-        #ival = numpy.asarray(ival)
         avg_pvals += ival
-    avg_pvals /= steps
+    avg_pvals /= (steps * n_samples)
 
+    assert numpy.mean(abs(avg_pvals - target_pvals)) < mean_rtol
+    
     print('random?[:10]\n', numpy.asarray(f()[:10]))
     print(prefix, 'mean', avg_pvals)
     # < mean_rtol, 'bad mean? %s %s' % (str(avg_pvals), str(target_pvals))
@@ -797,7 +799,6 @@ def basic_multinomialtest(f, steps, sample_size, target_pvals,
 
 
 def test_multinomial():
-
     steps = 100
     mode_ = mode
     if mode == 'FAST_COMPILE':
@@ -820,7 +821,7 @@ def test_multinomial():
     f = theano.function([], m, mode=mode_)
     # theano.printing.debugprint(f)
     out = f()
-    basic_multinomialtest(f, steps, sample_size, pvals, prefix='mrg ')
+    basic_multinomialtest(f, steps, sample_size, pvals, n_samples=1, prefix='mrg ')
 
     sys.stdout.flush()
 
@@ -841,10 +842,46 @@ def test_multinomial():
         # theano.printing.debugprint(f)
         gpu_out = f()
         sys.stdout.flush()
-        basic_multinomialtest(f, steps, sample_size, pvals, prefix='gpu mrg ')
+        basic_multinomialtest(f, steps, sample_size, pvals, n_samples=1, prefix='gpu mrg ')
         numpy.testing.assert_array_almost_equal(out, gpu_out, decimal=6)
 
 
+def test_multinomial_n_samples():
+    mode_ = mode
+    if mode == 'FAST_COMPILE':
+        mode_ = 'FAST_RUN'
+
+    if (mode in ['DEBUG_MODE', 'DebugMode', 'FAST_COMPILE'] or
+        mode == 'Mode' and config.linker in ['py']):
+        sample_size = (49, 5)
+    else:
+        sample_size = (450, 6)
+    mode_ = theano.compile.mode.get_mode(mode_)
+
+    pvals = numpy.asarray(numpy.random.uniform(size=sample_size))
+    pvals = numpy.apply_along_axis(lambda row: row / numpy.sum(row), 1, pvals)
+    R = MRG_RandomStreams(234, use_cuda=False)
+    
+    for n_samples, steps in zip([5, 10, 100, 1000], [20, 10, 1, 1]):
+        m = R.multinomial(pvals=pvals, n=n_samples, dtype=config.floatX, nstreams=30 * 256)
+        f = theano.function([], m, mode=mode_)
+        basic_multinomialtest(f, steps, sample_size, pvals, n_samples, prefix='mrg ')
+        sys.stdout.flush()
+        
+        if mode != 'FAST_COMPILE' and cuda_available:
+            R = MRG_RandomStreams(234, use_cuda=True)
+            pvals = numpy.asarray(pvals, dtype='float32')
+            n = R.multinomial(pvals=pvals, n=n_samples, dtype='float32', nstreams=30 * 256)
+            assert n.dtype == 'float32'
+            f = theano.function(
+                [],
+                theano.sandbox.cuda.basic_ops.gpu_from_host(n),
+                mode=mode_.including('gpu'))
+        
+            sys.stdout.flush()
+            basic_multinomialtest(f, steps, sample_size, pvals, n_samples, prefix='gpu mrg ')
+        
+        
 class T_MRG(unittest.TestCase):
     def test_bad_size(self):
 

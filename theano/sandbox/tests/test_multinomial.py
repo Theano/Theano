@@ -8,7 +8,10 @@ from theano.sandbox import multinomial
 from theano.compile.mode import get_default_mode, predefined_linkers
 import theano.sandbox.cuda as cuda
 import theano.tests.unittest_tools as utt
-
+import six.moves.cPickle as pickle
+import os
+from theano.compat import PY3
+from theano.misc.pkl_utils import CompatUnpickler
 
 def get_mode(gpu):
     mode = get_default_mode()
@@ -29,18 +32,80 @@ def run_with_c(f, gpu=False):
     f(mode, gpu)
 
 
+def test_n_samples_1():
+    p = tensor.fmatrix()
+    u = tensor.fvector()
+    n = tensor.iscalar()
+    m = multinomial.MultinomialFromUniform('auto')(p, u, n)
+    
+    f = function([p, u, n], m, allow_input_downcast=True)
+
+    numpy.random.seed(12345)
+    for i in [1, 5, 10, 100, 1000, 10000]:
+        uni = numpy.random.rand(2*i).astype(config.floatX)
+        res = f([[1.0, 0.0], [0.0, 1.0]], uni, i)
+        utt.assert_allclose(res, [[i*1.0, 0.0], [0.0, i*1.0]])
+
+
+def test_n_samples_2():
+    p = tensor.fmatrix()
+    u = tensor.fvector()
+    n = tensor.iscalar()
+    m = multinomial.MultinomialFromUniform('auto')(p, u, n)
+    
+    f = function([p, u, n], m, allow_input_downcast=True)
+
+    numpy.random.seed(12345)
+    for i in [1, 5, 10, 100, 1000]:
+        uni = numpy.random.rand(i).astype(config.floatX)
+        pvals = numpy.random.randint(1,1000,(1,1000)).astype(config.floatX)
+        pvals /= pvals.sum(1)
+        res = f(pvals, uni, i)
+        assert res.sum() == i
+
+    for i in [1, 5, 10, 100, 1000]:
+        uni = numpy.random.rand(i).astype(config.floatX)
+        pvals = numpy.random.randint(1,1000000,(1,1000000)).astype(config.floatX)
+        pvals /= pvals.sum(1)
+        res = f(pvals, uni, i)
+        assert res.sum() == i
+
+def test_n_samples_compatibility():
+    """
+    This test checks if the new change to MultinomialFromUniform is still compatible
+    with old interface. Here I will load a graph created (using the old interface) as follows:
+    RandomStreams = theano.sandbox.rng_mrg.MRG_RandomStreams
+    th_rng = RandomStreams(12345)
+    X = T.matrix('X')
+    pvals = T.exp(X)
+    pvals = pvals / pvals.sum(axis=1, keepdims=True)
+    samples = th_rng.multinomial(pvals=pvals)
+    pickle.dump([X, samples], open("multinomial_test_graph.pkl", "w"))
+    """
+    folder = os.path.dirname(os.path.abspath(__file__))
+    with open(os.path.join(folder, "multinomial_test_graph.pkl"), "rb") as pkl_file:
+        if PY3:
+            u = CompatUnpickler(pkl_file, encoding="latin1")
+        else:
+            u = CompatUnpickler(pkl_file)
+        X, samples = u.load()
+        f = theano.function([X], samples)
+        res = f(numpy.random.randn(20,10))
+        assert numpy.all(res.sum(axis=1) == 1)
+
 def test_multinomial_0():
     # This tests the MultinomialFromUniform Op directly, not going through the
     # multinomial() call in GPU random generation.
 
     p = tensor.fmatrix()
     u = tensor.fvector()
-
+    
     m = multinomial.MultinomialFromUniform('auto')(p, u)
 
     def body(mode, gpu):
         # the m*2 allows the multinomial to reuse output
         f = function([p, u], m*2, allow_input_downcast=True, mode=mode)
+
         if gpu:
             assert any([type(node.op) is multinomial.GpuMultinomialFromUniform
                         for node in f.maker.fgraph.toposort()])
