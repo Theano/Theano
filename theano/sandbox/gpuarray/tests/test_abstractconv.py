@@ -178,7 +178,7 @@ class TestConv2d(unittest.TestCase):
 
     def test_dnn_conv(self):
         if not dnn_available(test_ctx_name):
-            raise SkipTest(cuda.dnn.dnn_available.msg)
+            raise SkipTest(dnn_available.msg)
         mode = mode_with_gpu
         # provide_shape is not used by the CuDNN impementation
         provide_shape = False
@@ -206,7 +206,7 @@ class TestConv2d(unittest.TestCase):
 
     def test_cormm_conv(self):
         if not dnn_available(test_ctx_name):
-            raise SkipTest(cuda.dnn.dnn_available.msg)
+            raise SkipTest(dnn_available.msg)
 
         mode = mode_without_gpu
         for (i, f), s, b, flip, provide_shape in itertools.product(
@@ -234,7 +234,7 @@ class TestConv2d(unittest.TestCase):
 
     def test_cpu_conv(self):
         if not dnn_available(test_ctx_name):
-            raise SkipTest(cuda.dnn.dnn_available.msg)
+            raise SkipTest(dnn_available.msg)
 
         mode = mode_without_gpu.excluding('conv_gemm')
         for (i, f), s, b, flip, provide_shape in itertools.product(
