@@ -7161,28 +7161,24 @@ class TestInferShape(utt.InferShapeTester):
                                 [flatten(atens3, 1)],
                                 [atens3_val], Reshape)
 
-        # Reshape.infershape is badly written and therefore all Reshapes are
-        # not removed from atens3.shape after compiling.
-        # The following lines should be uncommented afte fixing issue #3420
+        for outdim in (3, 2, 1):
+            self._compile_and_check([atens3],
+                                    [flatten(atens3, outdim)],
+                                    [atens3_val], Reshape)
 
-        #for outdim in (3, 2, 1):
-        #    self._compile_and_check([atens3],
-        #                            [flatten(atens3, outdim)],
-        #                            [atens3_val], Reshape)
+        amat = matrix()
+        amat_val = rand(4, 5)
+        for outdim in (2, 1):
+            self._compile_and_check([amat],
+                                    [flatten(amat, outdim)],
+                                    [amat_val], Reshape)
 
-        #amat = matrix()
-        #amat_val = rand(4, 5)
-        #for outdim in (2, 1):
-        #    self._compile_and_check([amat],
-        #                            [flatten(amat, outdim)],
-        #                            [amat_val], Reshape)
-
-        #avec = vector()
-        #avec_val = rand(4)
-        #outdim = 1
-        #self._compile_and_check([avec],
-        #                        [flatten(avec, outdim)],
-        #                        [avec_val], Reshape)
+        avec = vector()
+        avec_val = rand(4)
+        outdim = 1
+        self._compile_and_check([avec],
+                                [flatten(avec, outdim)],
+                                [avec_val], Reshape)
 
         # Eye
         aiscal = iscalar()
