@@ -833,7 +833,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
 
         return sio.getvalue()
 
-    def _makecall(self, node, name, x, z, fail, pattern=None):
+    def _makecall(self, node, name, x, z, fail, pattern=None, extra_dims=(), extra_strides=()):
         """
         Return a string for making a kernel call.
 
@@ -876,6 +876,9 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
 
         for i in xrange(ndim):
             params.append("(void *)&PyGpuArray_DIMS(%(x)s)[%(i)s]" % locals())
+        for declaration, value in extra_dims:
+            print(declaration % locals(), file=sio)
+            params.append(value)
         params.append("(void *)%(x)s->ga.data" % locals())
         params.append("(void *)&%(x)s->ga.offset" % locals())
         for i in xrange(ndim):
@@ -883,6 +886,9 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             ssize_t stride_A%(i)d = PyGpuArray_STRIDES(%(x)s)[%(i)s]/sizeof(%(in_dtype)s);
             """ % locals(), file=sio)
             params.append("(void *)&stride_A%(i)d" % locals())
+        for declaration, value in extra_strides:
+            print(declaration % locals(), file=sio)
+            params.append(value)
 
         params.append("(void *)%(z)s->ga.data" % locals())
         params.append("(void *)&%(z)s->ga.offset" % locals())
@@ -1779,6 +1785,34 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         }
         """ % locals(), file=sio)
 
+    def c_code_reduce_101(self, sio, node, name, x, z, fail):
+        makecall = self._makecall(node, name, x, z, fail,
+                                  extra_dims=[("size_t one = 1;", "(void *) &one")],
+                                  extra_strides=[("ssize_t sone = 1;", "(void *) &sone")],
+                                  pattern="1011")
+        print("""
+        {
+            int verbose = 0;
+//            size_t n_threads[3] = {std::min(PyGpuArray_DIMS(%(x)s)[3],
+//                                            (size_t) 256), 1, 1};
+            size_t n_threads[3] = {1, 1, 1};
+
+            while (n_threads[0] * (n_threads[1]+1) <= 256) ++n_threads[1];
+            if (n_threads[1] > PyGpuArray_DIMS(%(x)s)[2])
+                n_threads[1] = PyGpuArray_DIMS(%(x)s)[2];
+
+            while (n_threads[0] * n_threads[1] * (n_threads[2]+1) <= 256)
+                ++n_threads[2];
+            if (n_threads[2] > 64)
+                n_threads[2] = 64;
+            if (n_threads[2] > PyGpuArray_DIMS(%(x)s)[0])
+                n_threads[2] = PyGpuArray_DIMS(%(x)s)[0];
+
+            size_t n_blocks[3] = {PyGpuArray_DIMS(%(x)s)[1], 1, 1};
+            %(makecall)s
+        }
+        """ % locals(), file=sio)
+
     def c_code_reduce_111(self, sio, node, name, x, z, fail):
         makecall = self._makecall(node, name, x, z, fail)
         print("""
@@ -2572,7 +2606,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
             """ % locals(), file=sio)
             kernels.append(Kernel(code=sio.getvalue(), name=kname,
                                   params=params, flags=flags, objvar=k_var))
-        if self.reduce_mask == (1, 0, 1, 1):
+        if self.reduce_mask == (1, 0, 1, 1) or self.reduce_mask == (1, 0, 1):
             reducebuf = self._k_reduce_buf('Z[blockIdx.x*sZ0]',
                                            node, nodename, sub={})
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
