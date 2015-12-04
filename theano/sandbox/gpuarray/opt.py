@@ -16,10 +16,10 @@ from theano.scan_module import scan_utils, scan_op, scan_opt
 
 from theano.tensor import as_tensor_variable
 from theano.tensor.nnet.conv import ConvOp
-from theano.tensor.nnet.abstract_conv2d import (BaseAbstractConv2d,
-                                                AbstractConv2d,
-                                                AbstractConv2d_gradWeights,
-                                                AbstractConv2d_gradInputs)
+from theano.tensor.nnet.abstract_conv import (BaseAbstractConv2d,
+                                              AbstractConv2d,
+                                              AbstractConv2d_gradWeights,
+                                              AbstractConv2d_gradInputs)
 
 from theano.tests.breakpoint import PdbBreakpoint
 
