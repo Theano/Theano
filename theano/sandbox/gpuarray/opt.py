@@ -276,6 +276,8 @@ def local_gpuaalloc(node, context_name):
 @register_opt('fast_compile')
 @op_lifter([tensor.AllocEmpty])
 def local_gpuaallocempty(node, context_name):
+    # We use _props_dict() to make sure that the GPU op know all the
+    # CPU op props.
     return GpuAllocEmpty(context_name=context_name,
                          **node.op._props_dict())(*node.inputs)
 
