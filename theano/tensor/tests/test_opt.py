@@ -5878,10 +5878,6 @@ def test_local_useless_split():
 
 
 def test_local_flatten_lift():
-    """
-    .. note:: The Flatten(Op) is deprecated, and this method
-        should be removed with Flatten.
-    """
     for i in xrange(1, 4):
         x = tensor.tensor4()
         out = tensor.flatten(T.exp(x), i)
