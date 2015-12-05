@@ -779,6 +779,17 @@ class Op(utils.object2, PureOp, CLinkerOp):
     def _props(self):
         return tuple(getattr(self, a) for a in self.__props__)
 
+    def _props_dict(self):
+        """This return a dict of all ``__props__`` key-> value.
+
+        This is useful in optimization to swap op that should have the
+        same props. This help detect error that the new op have at
+        least all the original props.
+
+        """
+        return dict([(a, getattr(self, a))
+                     for a in self.__props__])
+
     def __hash__(self):
         if hasattr(self, '__props__'):
             return hash((type(self), self._props()))

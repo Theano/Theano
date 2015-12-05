@@ -323,7 +323,7 @@ def test_opt_gpujoin_joinvectors_elemwise_then_minusone():
     assert isinstance(graph_nodes[-2].op, cuda.GpuSubtensor)
     assert isinstance(graph_nodes[-3].op, cuda.GpuJoin)
 
-    concat = numpy.concatenate([numpy.cos(_a), numpy.sin(_b)], axis=1)
+    concat = numpy.concatenate([numpy.cos(_a), numpy.sin(_b)], axis=0)
     concat = concat[:-1]
 
     assert numpy.allclose(numpy.asarray(f()), concat)

@@ -9,7 +9,8 @@ from theano.tensor.tests import test_basic
 import theano.sandbox.gpuarray
 from .. import basic_ops
 from ..type import GpuArrayType, gpuarray_shared_constructor, get_context
-from ..basic_ops import GpuAlloc, GpuReshape, GpuFromHost, host_from_gpu
+from ..basic_ops import (
+    GpuAlloc, GpuAllocEmpty, GpuReshape, GpuFromHost, host_from_gpu)
 from ..elemwise import GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise
 from ..subtensor import GpuSubtensor
 
@@ -149,6 +150,29 @@ def test_local_gpualloc_memset_0():
     assert isinstance(topo[0].op, GpuAlloc)
     assert not topo[0].op.memset_0
     assert (numpy.asarray(f(2)) == 1).all()
+
+
+def test_local_gpualloc_empty():
+    i = theano.tensor.iscalar()
+    ii = theano.tensor.iscalar()
+
+    # Test with vector
+    a = tensor.AllocEmpty('float32')(i)
+    f = theano.function([i], a, mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 2
+    assert isinstance(topo[0].op, GpuAllocEmpty)
+    # This return not initilized data, so we can only check the shape
+    assert f(3).shape == (3,)
+
+    # Test with matrix
+    a = tensor.AllocEmpty('float32')(i, ii)
+    f = theano.function([i, ii], a, mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 2
+    assert isinstance(topo[0].op, GpuAllocEmpty)
+    # This return not initilized data, so we can only check the shape
+    assert f(3, 4).shape == (3, 4)
 
 
 def test_rebroadcast():

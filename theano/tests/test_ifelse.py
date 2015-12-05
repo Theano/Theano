@@ -67,7 +67,10 @@ class test_ifelse(unittest.TestCase, utt.TestOptimizationMixin):
         y2 = reduce(lambda x, y: x + y, [y] + list(range(200)))
         f = theano.function([c, x, y], ifelse(c, x, y2), mode=mode)
         # For not inplace ifelse
-        self.assertFunctionContains1(f, IfElse(1))
+        ifnode = [n for n in f.maker.fgraph.toposort()
+                  if isinstance(n.op, IfElse)]
+        assert len(ifnode) == 1
+        assert not ifnode[0].op.as_view
         rng = numpy.random.RandomState(utt.fetch_seed())
 
         xlen = rng.randint(200)

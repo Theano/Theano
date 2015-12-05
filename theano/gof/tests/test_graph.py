@@ -1,9 +1,10 @@
 from __future__ import print_function
+from itertools import count
 import pickle
 import unittest
-import numpy
-from itertools import count
 
+from nose.plugins.skip import SkipTest
+import numpy
 
 from theano import (
     sparse,
@@ -361,6 +362,8 @@ class TestAutoName:
 
     def test_sparsevariable(self):
         # Get counter value
+        if not sparse.enable_sparse:
+            raise SkipTest('Optional package SciPy not installed')
         autoname_id = next(Variable.__count__)
         Variable.__count__ = count(autoname_id)
         r1 = sparse.csc_matrix(name='x', dtype='float32')
