@@ -24,7 +24,8 @@ from theano.sandbox.cuda.basic_ops import (
     gpu_eye, gpu_contiguous,
     gpu_from_host, host_from_gpu, GpuFromHost, HostFromGpu,
     GpuContiguous,
-    GpuElemwise, GpuDimShuffle, GpuReshape, GpuCAReduce, GpuFlatten,
+    GpuElemwise, GpuDimShuffle, GpuReshape, GpuCAReduce,
+    GpuFlatten, gpu_flatten,
     GpuSubtensor, GpuAdvancedSubtensor1,
     GpuAdvancedIncSubtensor1, GpuAdvancedIncSubtensor1_dev20,
     GpuIncSubtensor, gpu_alloc, GpuAlloc, gpu_shape, GpuSplit, GpuAllocEmpty)
@@ -152,7 +153,7 @@ cpu_ops_moved_to_gpu = [
     tensor.elemwise.All, tensor.elemwise.Any,
     tensor.elemwise.CAReduceDtype, tensor.elemwise.Sum,
     tensor.elemwise.Prod, tensor.elemwise.ProdWithoutZeros,
-    tensor.Reshape, tensor.Flatten, tensor.Subtensor,
+    tensor.Reshape, tensor.flatten, tensor.Subtensor,
     tensor.AdvancedSubtensor1, tensor.AdvancedIncSubtensor1,
     tensor.IncSubtensor, tensor.Shape, tensor.Join,
     tensor.Alloc, tensor.Eye]
@@ -980,14 +981,14 @@ def local_gpu_flatten(node):
         if host_input.owner and \
            isinstance(host_input.owner.op, tensor.Flatten):
             outdim = host_input.owner.op.outdim
-            return [GpuFlatten(outdim)(
+            return [gpu_flatten(host_input.owner.inputs[0], outdim)(
                 as_cuda_ndarray_variable(host_input.owner.inputs[0]))]
     if isinstance(node.op, tensor.Flatten):
-        x, = node.inputs
+        x, shp= node.inputs
         outdim = node.op.outdim
         if x.owner and isinstance(x.owner.op, HostFromGpu):
             gpu_x, = x.owner.inputs
-            return [host_from_gpu(GpuFlatten(outdim)(gpu_x))]
+            return [host_from_gpu(gpu_flatten(host_input.owner.inputs[0], outdim)(gpu_x))]
     return False
 
 

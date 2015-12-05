@@ -18,6 +18,7 @@ from nose.plugins.skip import SkipTest
 import numpy
 from numpy.testing import dec, assert_array_equal, assert_allclose
 from distutils.version import LooseVersion
+from functools import partial
 
 import theano
 from theano.compat import PY3, exc_message, operator_div
@@ -31,8 +32,8 @@ from theano.tensor import (_shared, wvector, bvector, autocast_float_as,
         fscalar, zeros_like, sum, tensor3, vector, add, addbroadcast,
         alloc, as_tensor_variable, tensor_from_scalar, ARange, autocast_float,
         clip, constant, default, dot,
-        dmatrix, dscalar, dvector, eq, eye, fill, flatten, inverse_permutation,
-        tensor4, permute_row_elements, Flatten, fmatrix, fscalars, grad,
+        dmatrix, dscalar, dvector, eq, eye, fill, flatten, inverse_permutation, Flatten,
+        tensor4, permute_row_elements, fmatrix, fscalars, grad,
         inplace, iscalar, matrix, minimum, matrices, maximum, mul, neq,
         Reshape, row, scalar, scalars, second, smallest, stack, sub, Tensor,
         tensor_copy, tensordot, TensorType, Tri, tri, tril, triu, unbroadcast,
@@ -5147,11 +5148,6 @@ def test_make_column_matrix_broadcastable():
 
 
 def test_flatten_outdimNone():
-    """Flatten always returns a copy of the array. There is no danger
-    with in-place operations and thus no need to test it.
-
-    """
-
     a = dmatrix()
     c = flatten(a)
     f = inplace_func([a], c)
@@ -5161,7 +5157,7 @@ def test_flatten_outdimNone():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val) == c_val)
 
-    utt.verify_grad(Flatten(), [a_val])
+    utt.verify_grad(flatten, [a_val])
 
 
 def test_flatten_scalar():
@@ -5174,7 +5170,7 @@ def test_flatten_scalar():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val) == c_val)
 
-    # utt.verify_grad(Flatten(), [a_val]) #TODO: fix verify_grd to work on scalars
+    # utt.verify_grad(flatten, [a_val]) #TODO: fix verify_grd to work on scalars
 
 
 def test_flatten_outdim1():
@@ -5187,7 +5183,7 @@ def test_flatten_outdim1():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val) == c_val)
 
-    utt.verify_grad(Flatten(1), [a_val])
+    utt.verify_grad(flatten, [a_val])
 
 
 def test_flatten_outdim2():
@@ -5199,7 +5195,8 @@ def test_flatten_outdim2():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val) == a_val)
 
-    utt.verify_grad(Flatten(2), [a_val])
+    flatten_2 = partial(flatten, outdim=2)
+    utt.verify_grad(flatten_2, [a_val])
 
 
 def test_flatten_outdim2_of_3():
@@ -5213,7 +5210,8 @@ def test_flatten_outdim2_of_3():
     f = inplace_func([a], c)
     assert numpy.all(f(a_val) == c_val)
 
-    utt.verify_grad(Flatten(2), [a_val])
+    flatten_2 = partial(flatten, outdim=2)
+    utt.verify_grad(flatten_2, [a_val])
 
 
 def test_flatten_broadcastable():
@@ -5253,6 +5251,37 @@ def test_flatten_outdim_invalid():
         assert False
     except ValueError:
         pass
+
+
+def test_is_flat():
+    """
+    tests is_flat method for constant and symbolic variables,
+    as well as reshaped constant and symbolic variables on the
+    given outdim
+    """
+    # Constant variable
+    assert tensor.is_flat(tensor.as_tensor_variable(numpy.zeros((10))))
+    assert tensor.is_flat(tensor.as_tensor_variable(numpy.zeros((10, 10, 10))),
+                        outdim=3)
+    assert not tensor.is_flat(
+      tensor.as_tensor_variable(numpy.zeros((10, 10, 10))))
+
+    # Symbolic variable
+    assert tensor.is_flat(tensor.vector())
+    assert tensor.is_flat(tensor.tensor3(), outdim=3)
+    assert not tensor.is_flat(tensor.tensor3())
+
+    # Reshape with constant shape
+    X = tensor.tensor4()
+    assert tensor.is_flat(X.reshape((-1, )))
+    assert tensor.is_flat(X.reshape((10, 10, -1)), outdim=3)
+    assert not tensor.is_flat(X.reshape((10, 10, -1)))
+
+    # Reshape with symbolic shape
+    X = tensor.tensor4()
+    assert tensor.is_flat(X.reshape((tensor.iscalar(), )))
+    assert tensor.is_flat(X.reshape((tensor.iscalar(), ) * 3), outdim=3)
+    assert not tensor.is_flat(X.reshape((tensor.iscalar(), ) * 3))
 
 
 def test_tile():
@@ -7128,24 +7157,29 @@ class TestInferShape(utt.InferShapeTester):
         # Flatten
         atens3 = tensor3()
         atens3_val = rand(4, 5, 3)
+        self._compile_and_check([atens3],
+                                [flatten(atens3, 1)],
+                                [atens3_val], Reshape)
+
         for outdim in (3, 2, 1):
             self._compile_and_check([atens3],
-                                    [Flatten(outdim)(atens3)],
-                                    [atens3_val], Flatten)
+                                    [flatten(atens3, outdim)],
+                                    [atens3_val], Reshape)
 
         amat = matrix()
         amat_val = rand(4, 5)
         for outdim in (2, 1):
             self._compile_and_check([amat],
-                                    [Flatten(outdim)(amat)],
-                                    [amat_val], Flatten)
+                                    [flatten(amat, outdim)],
+                                    [amat_val], Reshape)
 
         avec = vector()
         avec_val = rand(4)
         outdim = 1
         self._compile_and_check([avec],
-                                [Flatten(outdim)(avec)],
-                                [avec_val], Flatten)
+                                [flatten(avec, outdim)],
+                                [avec_val], Reshape,
+                                excluding=['local_useless_reshape'])
 
         # Eye
         aiscal = iscalar()

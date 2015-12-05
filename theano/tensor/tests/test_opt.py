@@ -5879,18 +5879,22 @@ def test_local_useless_split():
 
 def test_local_flatten_lift():
     for i in xrange(1, 4):
-        op = tensor.Flatten(i)
         x = tensor.tensor4()
-        out = op(T.exp(x))
+        out = tensor.flatten(T.exp(x), i)
         assert out.ndim == i
         mode = compile.mode.get_default_mode()
-        mode = mode.including('local_flatten_lift')
+        mode = mode.including('local_reshape_lift')
         f = theano.function([x], out, mode=mode)
-        f(numpy.random.rand(5, 4, 3, 2).astype(config.floatX))
+        x_np = numpy.random.rand(5, 4, 3, 2).astype(config.floatX)
+        out_np = f(x_np)
         topo = f.maker.fgraph.toposort()
-        assert len(topo) == 2
-        assert isinstance(topo[0].op, tensor.Flatten)
-        assert isinstance(topo[1].op, tensor.Elemwise)
+        shape_out_np = tuple(x_np.shape[:i-1])+(numpy.prod(x_np.shape[i-1:]),)
+        assert shape_out_np == out_np.shape
+
+        reshape_nodes = [n for n in topo if isinstance(n.op, tensor.Reshape)]
+        assert (len(reshape_nodes) == 1 and
+            tensor.is_flat(reshape_nodes[0].outputs[0], outdim=i))
+        assert isinstance(topo[-1].op, tensor.Elemwise)
 
 
 class Test_Reshape(unittest.TestCase):
