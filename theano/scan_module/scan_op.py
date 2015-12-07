@@ -826,24 +826,22 @@ class Scan(PureOp):
                                self.inputs[input_idx:input_idx_mitsot_start]]
             input_idx = input_idx_mitsot_start
 
-        if theano.config.scan.prefer_inplace:
+        if theano.config.scan.prefer_inplace and 'store_steps' in self.info:
             input_idx = input_idx_mitsot_start
             assert self.n_outs == self.n_mit_mot + self.n_mit_sot + self.n_sit_sot
             assert len(self.tap_array) == self.n_outs
             for i, taps in enumerate(self.tap_array[self.n_mit_mot:]):  # mitsots and sitsots
                 for tap in taps:
                     # We need to get the outer input to get the store_steps (shape[0] of outer input).
-                    outer_input_idx = 1 + self.n_seqs + self.n_mit_mot + i
-                    node_input = node.inputs[outer_input_idx]
+                    outer_output_idx = self.n_mit_mot + i
 
-                    try:
-                        store_steps = theano.tensor.get_scalar_constant_shape(node_input, 0)
-                        min_store_steps = 1
-                        if theano.config.scan.allow_output_prealloc:
-                            min_store_steps += 1
-                        can_work_inplace = store_steps <= min_store_steps  # TODO correct?
-                    except theano.tensor.NotScalarConstantError as e:
-                        can_work_inplace = False
+                    store_steps = self.info['store_steps'][outer_output_idx]
+                    if store_steps is None or store_steps <= 0:
+                        store_steps = float("inf")
+                    min_store_steps = 1
+                    if theano.config.scan.allow_output_prealloc:
+                        min_store_steps += 1
+                    can_work_inplace = store_steps <= min_store_steps  # TODO correct?
                     if can_work_inplace:
                         wrapped_inputs += [In(self.inputs[input_idx], mutable=True)]
                         # Figure out the index of the corresponding output
