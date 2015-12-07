@@ -765,6 +765,10 @@ class Op(utils.object2, PureOp, CLinkerOp):
     Convenience class to bundle `PureOp` and `CLinkerOp`.
 
     """
+
+    
+
+
     def __new__(cls, *args, **kwargs):
         # this function exists to silently and transparently ensure that all
         # existing Ops get a _op_use_c_code attribute
@@ -932,6 +936,23 @@ class Op(utils.object2, PureOp, CLinkerOp):
 
         # condition: either there was no c_code, or it failed
         return self.make_py_thunk(node, storage_map, compute_map, no_recycling)
+    
+    def make_node(self, *inputs):
+
+        if  not hasattr(self, 'itypes'):
+            raise NotImplementedError("itypes not defined")
+
+        if not hasattr(self, 'otypes') :
+            raise NotImplementedError("otypes not defined")
+            
+        if len(inputs) != len(self.itypes):
+            raise ValueError("We expected %d inputs but got %d." %
+                             (len(self.itypes), len(inputs)))
+        if not all(inp.type == it for inp, it in zip(inputs, self.itypes)):
+            raise TypeError(
+                "We expected inputs of types '%s' but got types '%s' " %
+                (str([inp.type for inp in inputs]), str(self.itypes)))
+        return theano.Apply(self, inputs, [o() for o in self.otypes])
 
 
 def get_test_value(v):

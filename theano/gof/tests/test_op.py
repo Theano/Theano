@@ -9,6 +9,7 @@ from six import string_types
 from theano.gof.type import Type, Generic
 from theano.gof.graph import Apply, Variable
 import theano.tensor as T
+from theano.compile import as_op
 from theano import scalar
 from theano import shared
 
@@ -57,7 +58,8 @@ class MyType(Type):
 class MyOp(Op):
 
     __props__ = ()
-
+    
+    '''
     def make_node(self, *inputs):
         inputs = list(map(as_variable, inputs))
         for input in inputs:
@@ -65,6 +67,7 @@ class MyOp(Op):
                 raise Exception("Error 1")
             outputs = [MyType(sum([input.type.thingy for input in inputs]))()]
             return Apply(self, inputs, outputs)
+    '''
 
 MyOp = MyOp()
 
@@ -380,6 +383,29 @@ def test_debug_error_message():
             assert raised
         finally:
             config.compute_test_value = prev_value
+
+'''
+def test_make_node():
+    x = T.dmatrix('x')
+    x.tag.test_value = numpy.zeros((2, 2))
+    y = T.dvector('y')
+    y.tag.test_value = [0, 0]
+
+    with unittest.assertRaisesRegexp(NotImplementedError, "itypes not defined") :
+
+        @as_op(itypes=[], otypes=T.dvector)
+        def none_itypes(x,y):
+            return numpy.dot(x,y)
+        none_itypes(x,y)
+
+    with assertRaisesRegexp(NotImplementedError, "otypes not defined") :
+
+        @as_op(itypes=[T.dmatrix, T.dvector], otypes=[])
+        def none_otypes(x,y):
+            return numpy.dot(x,y)
+        none_otypes(x, y)
+'''
+
 
 if __name__ == '__main__':
     unittest.main()

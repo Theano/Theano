@@ -34,26 +34,6 @@ class OpDecoratorTests(utt.InferShapeTester):
 
         assert allclose(r, r0), (r, r0)
 
-    def test_make_node(self):
-        x = dmatrix('x')
-        x.tag.test_value = np.zeros((2, 2))
-        y = dvector('y')
-        y.tag.test_value = [0, 0]
-
-        with self.assertRaisesRegexp(NotImplementedError, "itypes not defined") :
-
-            @as_op(itypes=[], otypes=dvector)
-            def none_itypes(x,y):
-                return np.dot(x,y)
-            none_itypes(x,y)
-
-        with self.assertRaisesRegexp(NotImplementedError, "otypes not defined") :
-
-            @as_op(itypes=[dmatrix, dvector], otypes=[])
-            def none_otypes(x,y):
-                return np.dot(x,y)
-            none_otypes(x, y)
-
     def test_2arg(self):
         x = dmatrix('x')
         x.tag.test_value = np.zeros((2, 2))
