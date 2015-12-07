@@ -1689,39 +1689,39 @@ class CLinker(link.Linker):
         """ % dict(struct_name=self.struct_name)
 
         # We add all the support code, compile args, headers and libs we need.
-                for support_code in self.support_code() + self.c_support_code_apply:
-                    mod.add_support_code(support_code)
-                if not self.c_callable:
-                    mod.add_support_code("""
-                                         #ifdef _WIN32
-                                         #define DllExport __declspec(dllexport)
-                                         #else
-                                         #define DllExport
-                                         #endif
-                                         """)
-                    mod.add_support_code(self.struct_code)
-                else:
+            for support_code in self.support_code() + self.c_support_code_apply:
+                mod.add_support_code(support_code)
+            if not self.c_callable:
+                mod.add_support_code("""
+                                     #ifdef _WIN32
+                                     #define DllExport __declspec(dllexport)
+                                     #else
+                                     #define DllExport
+                                     #endif
+                                     """)
+                mod.add_support_code(self.struct_code)
+            else:
+                mod.add_header_code("""
+                                    #ifdef _WIN32
+                                    #define DllExport __declspec(dllexport)
+                                    #else
+                                    #define DllExport
+                                    #endif
+                                    """)
+                mod.add_header_code(self.struct_code)
+            mod.add_support_code(self.run_code)
+            mod.add_support_code(static)
+            mod.add_function(instantiate)
+            for header in self.headers():
+                mod.add_include(header)
+            for init_code_block in self.init_code() + self.c_init_code_apply:
+                if self.c_callable:
+                    mod.add_support_code(self.cinit_code())
                     mod.add_header_code("""
-                                        #ifdef _WIN32
-                                        #define DllExport __declspec(dllexport)
-                                        #else
-                                        #define DllExport
-                                        #endif
-                                        """)
-                    mod.add_header_code(self.struct_code)
-                mod.add_support_code(self.run_code)
-                mod.add_support_code(static)
-                mod.add_function(instantiate)
-                for header in self.headers():
-                    mod.add_include(header)
-                for init_code_block in self.init_code() + self.c_init_code_apply:
-                    if self.c_callable:
-                        mod.add_support_code(self.cinit_code())
-                        mod.add_header_code("""
-                                            DllExport %(struct_name)s* cinit();
-                                            """ % dict(struct_name=self.struct_name))
-                    mod.add_init_code(init_code_block)
-                self._mod = mod
+                                        DllExport %(struct_name)s* cinit();
+                                        """ % dict(struct_name=self.struct_name))
+                mod.add_init_code(init_code_block)
+            self._mod = mod
         return self._mod
 
     def cthunk_factory(self, error_storage, in_storage, out_storage,
