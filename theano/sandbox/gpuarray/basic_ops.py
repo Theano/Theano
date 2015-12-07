@@ -422,6 +422,7 @@ class GpuFromHost(Op):
           }
         } else {
           Py_XDECREF(%(out)s);
+          // This method will release the GIL when needed.
           %(out)s = pygpu_fromhostdata(PyArray_DATA(%(name)s_tmp),
                                        get_typecode((PyObject *)PyArray_DESCR(%(name)s_tmp)),
                                        PyArray_NDIM(%(name)s_tmp),
