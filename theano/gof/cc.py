@@ -1934,7 +1934,7 @@ int main(int argc, char *argv[]) {
         n_args = len(self.args)
         struct_name = self.struct_name
         param = ','.join('PyObject * arg_%i' % n for n in range(n_args)), ');'
-        symbol2r = {v: k for (k, v) in self.r2symbol.items()}
+        symbol2r = dict([(v, k) for (k, v) in self.r2symbol.items()])
         in_out_list = ""
         in_out_param = ["io%d_list" % idx for idx in range(n_args)]
         for idx, arg in enumerate(self.args):
@@ -1950,7 +1950,7 @@ int main(int argc, char *argv[]) {
                 shp_str = ",".join([str(s) for s in shp])
                 for_str = ""
                 for i, el in enumerate(vals):
-                    for_str += "ptr_%(var)s[%(i)s]=%(el)s;\n"%locals()
+                    for_str += "ptr_%(var)s[%(i)s]=%(el)s;\n" % locals()
 
                 in_out_list += """
                 PyObject* %(var)s = PyList_New(1);
