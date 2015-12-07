@@ -765,10 +765,6 @@ class Op(utils.object2, PureOp, CLinkerOp):
     Convenience class to bundle `PureOp` and `CLinkerOp`.
 
     """
-
-    
-
-
     def __new__(cls, *args, **kwargs):
         # this function exists to silently and transparently ensure that all
         # existing Ops get a _op_use_c_code attribute
@@ -936,7 +932,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
 
         # condition: either there was no c_code, or it failed
         return self.make_py_thunk(node, storage_map, compute_map, no_recycling)
-    
+
     def make_node(self, *inputs):
 
         if  not hasattr(self, 'itypes'):
