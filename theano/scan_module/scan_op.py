@@ -103,6 +103,11 @@ AddConfigVar('scan.greedy_non_seqs',
              "(default: False)",
              BoolParam(False))
 
+AddConfigVar('scan.prefer_inplace',
+             "Will try to make the inner scan fn run inplace on its input "
+             "(default: True)",
+             BoolParam(True))
+
 
 class Scan(PureOp):
     """
