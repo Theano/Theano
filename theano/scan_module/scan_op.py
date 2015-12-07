@@ -98,6 +98,11 @@ AddConfigVar('scan.allow_output_prealloc',
              "(default: True)",
              BoolParam(True))
 
+AddConfigVar('scan.greedy_non_seqs',
+             "Will try to move as much as possible out of the loop. "
+             "(default: False)",
+             BoolParam(False))
+
 
 class Scan(PureOp):
     """
