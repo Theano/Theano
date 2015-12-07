@@ -1632,6 +1632,17 @@ class ScanSaveMem(gof.Optimizer):
             if theano.tensor.extract_constant(node_ins[0]) == 0:
                 return
 
+            def convert_store_step_info(s):
+                if isinstance(s, _integer_types):
+                    return int(s)  # convert to plain int, could be numpy.int64 or so
+                return None  # all symbolics are saved as None
+            # store_steps is per outer output. (op.n_out)
+            # We store this because it is really hard to symbolically recover this constant
+            # information otherwise (e.g. via get_scalar_constant_shape or so).
+            info['store_steps'] = [convert_store_step_info(s)
+                                   for (i, s) in enumerate(store_steps)
+                                   if i not in not_required]
+
             # Do not call make_node for test_value
             new_outs = scan_op.Scan(inps, outs, info)(*node_ins,
                                                       **dict(return_list=True))
