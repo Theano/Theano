@@ -4250,16 +4250,23 @@ def get_vector_length(v):
             v.owner.inputs, v.owner.op.idx_list)[0].start)
         stop = extract_constant(theano.tensor.subtensor.get_idx_list(
             v.owner.inputs, v.owner.op.idx_list)[0].stop)
+        step = extract_constant(theano.tensor.subtensor.get_idx_list(
+            v.owner.inputs, v.owner.op.idx_list)[0].step)
         if start is None:
             start = 0
         ndim = v.owner.inputs[0].owner.inputs[0].ndim
+        types = (numbers.Integral, numpy.integer)
         if stop is None:
             stop = ndim
-        elif isinstance(stop, numbers.Integral) and stop > ndim :
+        elif isinstance(stop, types) and stop > ndim:
             stop = ndim
-        if ((isinstance(stop, numbers.Integral) and
-             isinstance(start, numbers.Integral))):
-            return stop - start
+        if step is None:
+            step = 1
+
+        if (isinstance(stop, types) and
+                isinstance(start, types) and
+                start >= 0 and stop >= 0):
+            return (stop - start - 1) // step + 1
     if isinstance(v, Variable):
         msg = theano.printing.debugprint(v, file='str')
     else:

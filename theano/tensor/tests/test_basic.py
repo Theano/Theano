@@ -3354,6 +3354,7 @@ class T_GetVectorLength(unittest.TestCase):
         assert len(list(x.shape[1:4])) == 3
         assert len(list(x.shape[1:5])) == 3
         assert len(list(x.shape[1:10])) == 3
+        assert len(list(x.shape[1:10:2])) == 2
 
 
 class T_Join_and_Split(unittest.TestCase):
