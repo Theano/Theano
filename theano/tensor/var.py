@@ -535,7 +535,10 @@ class _tensor_py_operators(object):
 
     # COPYING
     def copy(self, name=None):
-        """Copy a variable and optionally assign a name."""
+        """Return a symbolic copy and optionally assign a name.
+
+        Do not copy the tags.
+        """
         copied_variable = theano.tensor.basic.tensor_copy(self)
         copied_variable.name = name
         return copied_variable
