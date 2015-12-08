@@ -592,7 +592,7 @@ class CLinker(link.Linker):
         self.outputs = fgraph.outputs
 
         self.node_order = self.schedule(fgraph)
-        
+
         # list(fgraph.variables)
         # We need to include the unused inputs in our variables,
         # otherwise we can't pass them to the module.
@@ -872,14 +872,15 @@ class CLinker(link.Linker):
         # is b), rather than (a==b) since Constant instances can
         # compare equal to equivalent Constant instances.
         args = ["storage_%s" % symbol[variable] for variable
-                 in utils.uniq(self.inputs + self.outputs + self.orphans)]
+                in utils.uniq(self.inputs + self.outputs + self.orphans)]
 
         # <<<<HASH_PLACEHOLDER>>>> will be replaced by a hash of the whole
         # code in the file, including support code, in DynamicModule.code.
         struct_name = '__struct_compiled_op_%s' % '<<<<HASH_PLACEHOLDER>>>>'
         struct_code, run_code = struct_gen(args, init_blocks, blocks,
-                                 dict(failure_var=failure_var,
-                                      name=struct_name), self.c_callable)
+                                           dict(failure_var=failure_var,
+                                                name=struct_name),
+                                           self.c_callable)
 
         self.struct_code = struct_code
         self.run_code = run_code
@@ -1405,7 +1406,7 @@ class CLinker(link.Linker):
                 if isinstance(var, graph.Constant):
                     constants_vals += str(var.data.flatten())
             if constants_vals != '':
-                sig.append('constants: '+constants_vals)
+                sig.append('constants: ' + constants_vals)
 
         error_on_play = [False]
 
@@ -1633,10 +1634,10 @@ class CLinker(link.Linker):
                         manifest = os.path.join(location, "py_dll.manifest")
                         exec_f = os.path.join(location, "exec.exe")
                         call_subprocess_Popen('"' + mt + '"' +
-                                            " -inputresource:" + py_dll + ";#2 -out:" + manifest)
+                                              " -inputresource:" + py_dll + ";#2 -out:" + manifest)
                         call_subprocess_Popen('"' + mt + '"' +
-                            " -manifest " + manifest +
-                            " -outputresource:" + exec_f)
+                                              " -manifest " + manifest +
+                                              " -outputresource:" + exec_f)
 
             except Exception as e:
                 e.args += (str(self.fgraph),)
@@ -1818,7 +1819,7 @@ class CLinker(link.Linker):
                 mapping_str += "// Input %(var)s->%(name)s\n" % locals()
                 dtype = var.type.dtype_specs()[2]
                 ndim = var.ndim
-                shp = range(3, 3+ndim)
+                shp = range(3, 3 + ndim)
                 for idx in range(var.ndim):
                     if var.type.broadcastable[idx]:
                         shp[idx] = 1
@@ -1841,7 +1842,7 @@ class CLinker(link.Linker):
    PyObject *load = PyObject_GetAttrString(numpy, "load");
             """
         for name in shared_variables:
-            file_name = name+".npy"
+            file_name = name + ".npy"
             shared_load += """
    PyObject * %(name)s_value=PyObject_CallFunction(load, "s", "%(file_name)s");
    if(!%(name)s_value)
@@ -1849,7 +1850,7 @@ class CLinker(link.Linker):
       PyErr_Print();
       return 2;
     }
-   PyList_SetItem(struct_ptr->%(name)s, 0, %(name)s_value);      
+   PyList_SetItem(struct_ptr->%(name)s, 0, %(name)s_value);
             """ % locals()
         if len(shared_variables) > 0:
             shared_load += """
