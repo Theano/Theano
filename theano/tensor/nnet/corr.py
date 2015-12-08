@@ -87,7 +87,11 @@ class BaseCorrMM(gof.OpenMPOp):
         return ldflags(libs=False, include_dir=True)
 
     def c_headers(self):
-        return ['<stdio.h>']
+        ret = ['<stdio.h>']
+        # OpenMP heads
+        ret += super(BaseCorrMM, self).c_headers()
+
+        return ret
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
