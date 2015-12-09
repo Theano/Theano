@@ -195,8 +195,8 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     // Define some useful variables
     const int bottom_stride = PyArray_STRIDES(bottom)[0]/%(n_bytes)f;
     const int top_stride = PyArray_STRIDES(top)[0]/%(n_bytes)f;
-    const int K_ = col_dim[0];
-    const int N_ = col_dim[1];
+    const int K_ = col_dim[1];
+    const int N_ = col_dim[2];
     const int M_ = nFilters;
     const %(c_float_type)s one = 1.0;
     const %(c_float_type)s zero = 0.0;
