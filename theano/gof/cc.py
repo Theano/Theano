@@ -1882,10 +1882,17 @@ class CLinker(link.Linker):
    printf("%%s\\n", PyString_AsString(str_%(name)s));
    Py_CLEAR(str_%(name)s);
                 """ % locals()
+        if PY3:
+            set_program_name = """wchar_t progname[FILENAME_MAX + 1];
+  mbstowcs(progname, argv[0], strlen(argv[0]) + 1);
+  Py_SetProgramName(progname); """
+        else:
+            set_program_name = """Py_SetProgramName(argv[0]);"""
         main = """
 %(mapping_str)s
-int main(int argc, char *argv[]) {
- Py_SetProgramName(argv[0]);  /* optional but recommended */
+ int main(int argc, char *argv[]) {
+
+ %(set_program_name)s
  Py_Initialize();
 
  // Those print are there to help debug import of python module
@@ -1911,8 +1918,8 @@ int main(int argc, char *argv[]) {
    }else if(run_ret != 0){
      // See out_print to know why we can't call PyObject_Print on win32
      PyObject *str_err = PyObject_Str(struct_ptr->__ERROR);
-     //PyString_AsString return a ptr to the internal representation.
-     printf("Error: %%s\\n", PyString_AsString(str_err));
+     //PyUnicode_AsUnicode return a ptr to the internal representation.
+     printf("Error: %%s\\n",PyUnicode_AsUnicode(str_err));
      Py_CLEAR(str_err);
    }
  }else{
