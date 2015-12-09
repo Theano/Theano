@@ -264,9 +264,13 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         // Iterate over batch
         #pragma omp parallel for schedule(static)
         for (int n = 0; n < batchSize; n++) {
+            int colidx = 0;
+#if defined(_OPENMP)
+            colidx = omp_get_thread_num();
+#endif
             // First, im2col
             im2col((%(float_type)s*)PyArray_DATA(bottom) + n * bottom_stride, nChannels, bottomHeight,
-                    bottomWidth, kH, kW, padH, padW, dH, dW, (%(float_type)s*)PyArray_DATA(col));
+                    bottomWidth, kH, kW, padH, padW, dH, dW, (%(float_type)s*)PyArray_GETPTR3(col, colidx, 0, 0));
             // Second, gemm
             // Note that we accumulate into weight. We do so by setting beta = 0
             // for the first iteration and beta = 1 for subsequent ones. (This
@@ -274,7 +278,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
             %(gemm)s(&Trans, &NTrans,
                    &K_, &M_, &N_,
                    &one,
-                   (%(float_type)s*)PyArray_DATA(col), &N_,
+                   (%(float_type)s*)PyArray_GETPTR3(col, colidx, 0, 0), &N_,
                    (%(float_type)s*)PyArray_DATA(top) + n * top_stride, &N_,
                    (n == 0) ? &zero : &one,
                    (%(float_type)s*)PyArray_DATA(weight), &K_);
