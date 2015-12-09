@@ -509,7 +509,7 @@ class FromFunctionOp(gof.Op):
             self.infer_shape = self._infer_shape
 
     def __eq__(self, other):
-        return (type(self) == type(other) and
+        return (isinstance(self, type(other)) and
                 self.__fn == other.__fn)
 
     def __hash__(self):
@@ -523,9 +523,9 @@ class FromFunctionOp(gof.Op):
         if not self.itypes:
             raise NotImplementedError("itypes not defined")
 
-        if not self.otypes :
+        if not self.otypes:
             raise NotImplementedError("otypes not defined")
-            
+
         if len(inputs) != len(self.itypes):
             raise ValueError("We expected %d inputs but got %d." %
                              (len(self.itypes), len(inputs)))

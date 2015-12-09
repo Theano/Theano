@@ -29,7 +29,7 @@ class MyType(Type):
         self.thingy = thingy
 
     def __eq__(self, other):
-        return type(other) == type(self) and other.thingy == self.thingy
+        return isinstance(other, type(self)) and other.thingy == self.thingy
 
     def __str__(self):
         return str(self.thingy)
@@ -58,7 +58,7 @@ class MyType(Type):
 class MyOp(Op):
 
     __props__ = ()
-    
+
     def make_node(self, *inputs):
         inputs = list(map(as_variable, inputs))
         for input in inputs:
@@ -157,6 +157,7 @@ class TestOp:
 
 
 class TestMakeThunk(unittest.TestCase):
+
     def test_no_c_code(self):
         class IncOnePython(Op):
             """An Op with only a Python (perform) implementation"""
@@ -233,6 +234,28 @@ class TestMakeThunk(unittest.TestCase):
         else:
             self.assertRaises((NotImplementedError, utils.MethodNotDefined),
                               thunk)
+
+    def test_no_make_node(self):
+        class IncOne(Op):
+            """An Op without make_node"""
+            __props__ = ()
+            itypes = [T.fmatrix]
+            otypes = [T.fmatrix]
+
+            def perform(self, node, inputs, outputs):
+                input, = inputs
+                output, = outputs
+                output[0] = input + 1
+
+        x_input = T.fmatrix('x')
+        o = IncOne()(x_input)
+
+        # Confirming that make_node method is implemented
+        try:
+            self.assertRaises((NotImplementedError, utils.MethodNotDefined),
+                              o.owner.op.make_node, x_input)
+        except AssertionError:
+            pass
 
 
 def test_test_value_python_objects():

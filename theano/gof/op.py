@@ -38,6 +38,7 @@ class CLinkerObject(object):
     Standard elements of an Op or Type used with the CLinker.
 
     """
+
     def c_headers(self):
         """
         Optional: Return a list of header files required by code returned by
@@ -59,7 +60,8 @@ class CLinkerObject(object):
             Subclass does not implement this method.
 
         """
-        raise utils.MethodNotDefined("c_headers", type(self), self.__class__.__name__)
+        raise utils.MethodNotDefined(
+            "c_headers", type(self), self.__class__.__name__)
 
     def c_header_dirs(self):
         """
@@ -82,7 +84,10 @@ class CLinkerObject(object):
             Subclass does not implement this method.
 
         """
-        raise utils.MethodNotDefined("c_header_dirs", type(self), self.__class__.__name__)
+        raise utils.MethodNotDefined(
+            "c_header_dirs",
+            type(self),
+            self.__class__.__name__)
 
     def c_libraries(self):
         """
@@ -105,7 +110,8 @@ class CLinkerObject(object):
             Subclass does not implement this method.
 
         """
-        raise utils.MethodNotDefined("c_libraries", type(self), self.__class__.__name__)
+        raise utils.MethodNotDefined(
+            "c_libraries", type(self), self.__class__.__name__)
 
     def c_lib_dirs(self):
         """
@@ -128,7 +134,8 @@ class CLinkerObject(object):
             Subclass does not implement this method.
 
         """
-        raise utils.MethodNotDefined("c_lib_dirs", type(self), self.__class__.__name__)
+        raise utils.MethodNotDefined(
+            "c_lib_dirs", type(self), self.__class__.__name__)
 
     def c_support_code(self):
         """
@@ -144,7 +151,10 @@ class CLinkerObject(object):
             Subclass does not implement this method.
 
         """
-        raise utils.MethodNotDefined("c_support_code", type(self), self.__class__.__name__)
+        raise utils.MethodNotDefined(
+            "c_support_code",
+            type(self),
+            self.__class__.__name__)
 
     def c_code_cache_version(self):
         """
@@ -182,7 +192,10 @@ class CLinkerObject(object):
             Subclass does not implement this method.
 
         """
-        raise utils.MethodNotDefined("c_compile_args", type(self), self.__class__.__name__)
+        raise utils.MethodNotDefined(
+            "c_compile_args",
+            type(self),
+            self.__class__.__name__)
 
     def c_no_compile_args(self):
         """
@@ -203,7 +216,10 @@ class CLinkerObject(object):
             The subclass does not override this method.
 
         """
-        raise utils.MethodNotDefined("c_no_compile_args", type(self), self.__class__.__name__)
+        raise utils.MethodNotDefined(
+            "c_no_compile_args",
+            type(self),
+            self.__class__.__name__)
 
     def c_init_code(self):
         """
@@ -512,7 +528,8 @@ class PureOp(object):
         MethodNotDefined : the subclass does not override this method.
 
         """
-        raise utils.MethodNotDefined("make_node", type(self), self.__class__.__name__)
+        raise utils.MethodNotDefined(
+            "make_node", type(self), self.__class__.__name__)
 
     @classmethod
     def _get_test_value(cls, v):
@@ -542,7 +559,7 @@ class PureOp(object):
                     "For compute_test_value, one input test value does not"
                     " have the requested type.\n")
                 tr = getattr(v.tag, 'trace', [])
-                if type(tr) is list and len(tr) > 0:
+                if isinstance(tr, list) and len(tr) > 0:
                     detailed_err_msg += (
                         " \nBacktrace when that variable is created:\n")
                     # Print separate message for each element in the list
@@ -612,10 +629,14 @@ class PureOp(object):
                 except AttributeError:
                     # no test-value was specified, act accordingly
                     if config.compute_test_value == 'warn':
-                        warnings.warn('Warning, Cannot compute test value: input %i (%s) of Op %s missing default value' % (i, ins, node), stacklevel=2)
+                        warnings.warn(
+                            'Warning, Cannot compute test value: input %i (%s) of Op %s missing default value' %
+                            (i, ins, node), stacklevel=2)
                         run_perform = False
                     elif config.compute_test_value == 'raise':
-                        raise ValueError('Cannot compute test value: input %i (%s) of Op %s missing default value' % (i, ins, node))
+                        raise ValueError(
+                            'Cannot compute test value: input %i (%s) of Op %s missing default value' %
+                            (i, ins, node))
                     elif config.compute_test_value == 'ignore':
                         # silently skip test
                         run_perform = False
@@ -623,7 +644,9 @@ class PureOp(object):
                         import pdb
                         pdb.post_mortem(sys.exc_info()[2])
                     else:
-                        raise ValueError('%s is invalid for option config.compute_Test_value' % config.compute_test_value)
+                        raise ValueError(
+                            '%s is invalid for option config.compute_Test_value' %
+                            config.compute_test_value)
 
             # if all inputs have test-values, run the actual op
             if run_perform:
@@ -653,7 +676,8 @@ class PureOp(object):
 
                 for output in node.outputs:
                     # Check that the output has been computed
-                    assert compute_map[output][0], (output, storage_map[output][0])
+                    assert compute_map[output][
+                        0], (output, storage_map[output][0])
 
                     # add 'test_value' to output tag, so that downstream ops can use these
                     # numerical values as inputs to their perform method.
@@ -746,7 +770,8 @@ class PureOp(object):
             The subclass does not override this method.
 
         """
-        raise utils.MethodNotDefined("perform", type(self), self.__class__.__name__)
+        raise utils.MethodNotDefined(
+            "perform", type(self), self.__class__.__name__)
 
     def do_constant_folding(self, node):
         """
@@ -810,7 +835,8 @@ class Op(utils.object2, PureOp, CLinkerOp):
 
     def __eq__(self, other):
         if hasattr(self, '__props__'):
-            return (type(self) == type(other) and self._props() == other._props())
+            return (isinstance(self, type(other))
+                    and self._props() == other._props())
         else:
             return NotImplemented
 
@@ -935,12 +961,12 @@ class Op(utils.object2, PureOp, CLinkerOp):
 
     def make_node(self, *inputs):
 
-        if  not hasattr(self, 'itypes'):
+        if not hasattr(self, 'itypes'):
             raise NotImplementedError("itypes not defined")
 
-        if not hasattr(self, 'otypes') :
+        if not hasattr(self, 'otypes'):
             raise NotImplementedError("otypes not defined")
-            
+
         if len(inputs) != len(self.itypes):
             raise ValueError("We expected %d inputs but got %d." %
                              (len(self.itypes), len(inputs)))
@@ -1220,7 +1246,9 @@ class COp(Op):
     """
 
     section_re = re.compile(r'^#section ([a-zA-Z0-9_]+)$', re.MULTILINE)
-    backward_re = re.compile(r'^THEANO_(APPLY|SUPPORT)_CODE_SECTION$', re.MULTILINE)
+    backward_re = re.compile(
+        r'^THEANO_(APPLY|SUPPORT)_CODE_SECTION$',
+        re.MULTILINE)
     # This is the set of allowed markers
     SECTIONS = set([
         'init_code', 'init_code_apply', 'init_code_struct',
@@ -1320,8 +1348,9 @@ class COp(Op):
                 n = 1
                 while n < len(split):
                     if split[n] not in self.SECTIONS:
-                        raise ValueError("Unknown section type (in file %s): %s" %
-                                         (self.func_files[i], split[n]))
+                        raise ValueError(
+                            "Unknown section type (in file %s): %s" %
+                            (self.func_files[i], split[n]))
                     if split[n] not in self.code_sections:
                         self.code_sections[split[n]] = ""
                     self.code_sections[split[n]] += split[n + 1]
@@ -1377,8 +1406,9 @@ class COp(Op):
         if check_input:
             # Extract the various properties of the input and output variables
             variables = node.inputs + node.outputs
-            variable_names = (["INPUT_%i" % i for i in range(len(node.inputs))] +
-                              ["OUTPUT_%i" % i for i in range(len(node.inputs))])
+            variable_names = (["INPUT_%i" %
+                               i for i in range(len(node.inputs))] + ["OUTPUT_%i" %
+                                                                      i for i in range(len(node.inputs))])
 
             # Generate dtype macros
             for i, v in enumerate(variables):
@@ -1389,7 +1419,9 @@ class COp(Op):
                 macro_name = "DTYPE_" + vname
                 macro_value = "npy_" + v.dtype
 
-                define_macros.append(define_template % (macro_name, macro_value))
+                define_macros.append(
+                    define_template %
+                    (macro_name, macro_value))
                 undef_macros.append(undef_template % macro_name)
 
                 d = numpy.dtype(v.dtype)
@@ -1397,13 +1429,17 @@ class COp(Op):
                 macro_name = "TYPENUM_" + vname
                 macro_value = d.num
 
-                define_macros.append(define_template % (macro_name, macro_value))
+                define_macros.append(
+                    define_template %
+                    (macro_name, macro_value))
                 undef_macros.append(undef_template % macro_name)
 
                 macro_name = "ITEMSIZE_" + vname
                 macro_value = d.itemsize
 
-                define_macros.append(define_template % (macro_name, macro_value))
+                define_macros.append(
+                    define_template %
+                    (macro_name, macro_value))
                 undef_macros.append(undef_template % macro_name)
 
         # Generate a macro to mark code as being apply-specific
