@@ -1,7 +1,4 @@
 import os
-
-import numpy as np
-
 import theano
 
 
@@ -11,19 +8,14 @@ def test_basic():
     for inps, out in [([a], theano.tensor.exp(a)),  # 1 input/1 outputs
                       ([a, b], a + b),  # 2 inputs
                       ((a, b), [a, b]),  # 2 outputs, 2 deepcopy ops
-                      ((a, b), [a + b, a - b]),
-                  ]:
+                      ((a, b), [a + b, a - b])]:
         linker = theano.gof.CLinker(c_callable=True)
         mode = theano.Mode(linker=linker)
         f = theano.function(inps, out, mode=mode,
                             on_unused_input='ignore')
         theano.printing.debugprint(f, print_type=True)
-        #filename = f.fn.thunks[0].filename  # with linker=vm
         filename = f.fn.filename  # with linker=c
         print(filename)
-
-        #theano.shared_lib(f, name='libtheano_exp')
-        #f(np.arange(10))
         x = os.system(os.path.join(os.path.split(filename)[0], 'exec'))
         assert x == 0, "The executable crashed!"
 
@@ -35,3 +27,6 @@ def test_basic():
             assert False, "Expected an error"
         except NotImplementedError:
             pass
+
+if __name__ == '__main__':
+    test_basic()
