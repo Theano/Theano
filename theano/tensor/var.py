@@ -537,7 +537,7 @@ class _tensor_py_operators(object):
     def copy(self, name=None):
         """Return a symbolic copy and optionally assign a name.
 
-        Do not copy the tags.
+        Does not copy the tags.
         """
         copied_variable = theano.tensor.basic.tensor_copy(self)
         copied_variable.name = name
