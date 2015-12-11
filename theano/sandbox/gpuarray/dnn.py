@@ -119,7 +119,7 @@ def dnn_available(context_name):
 
     # This is a hack because bin_id is in the from of
     # "<something>_<major><minor>" for cuda devices.
-    if ctx.bin_id[:-2] < '30':
+    if ctx.bin_id[-2:] < b'30':
         dnn_available.msg = "Device not supported by cuDNN"
         return False
 

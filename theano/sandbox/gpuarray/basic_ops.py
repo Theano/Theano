@@ -12,7 +12,7 @@ from theano.gof.utils import MethodNotDefined
 
 from collections import deque
 
-from six import string_types
+from six import string_types, iterbytes
 from six.moves import xrange
 
 try:
@@ -195,7 +195,7 @@ class GpuKernelBase(object):
         gk = gpuarray.GpuKernel(k.code, k.name, k.params, context=ctx,
                                 **k.flags)
         bin = gk._binary
-        bcode = ','.join(hex(ord(c)) for c in bin)
+        bcode = ','.join(hex(c) for c in iterbytes(bin))
         return ("""static const char %(bname)s[] = { %(bcode)s };""" %
                 dict(bname=k.binvar, bcode=bcode))
 
@@ -941,6 +941,13 @@ class GpuJoin(HideC, Join):
 
     def c_code_cache_version(self):
         return (2,)
+
+    def c_support_code(self):
+        return """
+#if PY_MAJOR_VERSION >= 3
+#define PyInt_AsLong PyLong_AsLong
+#endif
+"""
 
     def c_code(self, node, name, inputs, out_, sub):
         copy_to_list = []

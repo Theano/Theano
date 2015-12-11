@@ -632,7 +632,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, GpuAdvancedIncSubtensor1):
         if (self.set_instead_of_inc or
                 node.inputs[0].ndim != node.inputs[1].ndim or
                 node.inputs[0].ndim != 2 or
-                ctx.bin_id[-2] < '2'):
+                ctx.bin_id[-2] < b'2'):
             raise NotImplementedError("This case does not have C code yet.")
 
         x = inputs[0]
