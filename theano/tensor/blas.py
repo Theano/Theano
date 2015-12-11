@@ -1751,7 +1751,7 @@ class Dot22(GemmRelated):
             dims[0] = PyArray_DIMS(%(_x)s)[0];
             dims[1] = PyArray_DIMS(%(_y)s)[1];
             %(_zout)s = (PyArrayObject*)PyArray_SimpleNew(2, dims,
-                            PyArray_TYPE((PyArrayObject*) py_%(_x)s));
+                            PyArray_TYPE(%(_x)s));
             //fprintf(stderr, "Dot Allocating %%i %%i\\n", dims[0], dims[1]);
             if(!%(_zout)s) {
                 PyErr_SetString(PyExc_MemoryError,
@@ -1788,7 +1788,7 @@ class Dot22(GemmRelated):
     def c_code_cache_version(self):
         gv = self.build_gemm_version()
         if gv:
-            return (1,) + gv
+            return (2,) + gv
         else:
             return gv
 
