@@ -521,6 +521,29 @@ class TestConv2D(utt.InferShapeTester):
                 border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
 
 
+# Test that broadcasting of gradients works correctly when using the
+# nnet.conv2d() interface. This was reported in #3763, and uses the example
+# code from that ticket.
+def test_broadcast_grad():
+    rng = numpy.random.RandomState(utt.fetch_seed())
+    x1 = T.tensor4('x')
+    x1_data = rng.randn(1, 1, 300, 300)
+    sigma = T.scalar('sigma')
+    sigma_data = 20
+    window_radius = 3
+
+    filter_1d = T.arange(-window_radius, window_radius+1)
+    filter_1d = filter_1d.astype(theano.config.floatX)
+    filter_1d = T.exp(-0.5*filter_1d**2/sigma**2)
+    filter_1d = filter_1d / filter_1d.sum()
+
+    filter_W = filter_1d.dimshuffle(['x', 'x', 0, 'x'])
+
+    y = theano.tensor.nnet.conv2d(x1, filter_W, border_mode='full',
+                                  filter_shape=[1, 1, None, None])
+    theano.grad(y.sum(), sigma)
+
+
 if __name__ == '__main__':
 
     t = TestConv2D('setUp')
