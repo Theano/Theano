@@ -29,7 +29,7 @@ class MyType(Type):
         self.thingy = thingy
 
     def __eq__(self, other):
-        return isinstance(other, type(self)) and other.thingy == self.thingy
+        return type(other) == type(self) and other.thingy == self.thingy
 
     def __str__(self):
         return str(self.thingy)
@@ -229,7 +229,7 @@ class TestMakeThunk(unittest.TestCase):
             required = thunk()
             # Check everything went OK
             assert not required  # We provided all inputs
-            assert compute_map[o][0]
+            assert compute_map[o][0]    
             assert storage_map[o][0] == 4
         else:
             self.assertRaises((NotImplementedError, utils.MethodNotDefined),

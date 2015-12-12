@@ -835,7 +835,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
 
     def __eq__(self, other):
         if hasattr(self, '__props__'):
-            return (isinstance(self, type(other))
+            return (type(self) == type(other)
                     and self._props() == other._props())
         else:
             return NotImplemented
