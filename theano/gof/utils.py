@@ -10,7 +10,7 @@ from theano import config
 from theano.compat import OrderedDict, PY3
 
 
-def simple_extract_stack(f=None, limit=None):
+def simple_extract_stack(f=None, limit=None, skips=[]):
     """
     This is traceback.extract_stack from python 2.7 with this change:
 
@@ -19,6 +19,8 @@ def simple_extract_stack(f=None, limit=None):
     This is because this update cause an call to os.stat to get the
     line content. This cause too much long on cluster.
 
+    skips - partial path of stack level we don't want to keep and count.
+        When we find one level that isn't skipped, we stop skipping.
     """
     if f is None:
         try:
@@ -41,8 +43,20 @@ def simple_extract_stack(f=None, limit=None):
             line = line.strip()
         else:
             line = None
-        list.append((filename, lineno, name, line))
         f = f.f_back
+        if len(list) == 0:
+            rm = False
+            for p in skips:
+                # Julian: I added the 'tests' exception together with
+                # Arnaud.  Otherwise, we'd lose the stack trace during
+                # in our test cases (e.g. in test_opt.py). We're not
+                # sure this is the right way to do it though.
+                if p in filename and 'tests' not in filename:
+                    rm = True
+                    break
+            if rm:
+                continue
+        list.append((filename, lineno, name, line))
         n = n + 1
     list.reverse()
     return list
@@ -76,39 +90,19 @@ def add_tag_trace(thing, user_line=1):
     limit = config.traceback.limit
     if limit == -1:
         limit = None
-    tr = simple_extract_stack(limit=limit)[:-1]
-
+    skips = ["theano/tensor/", "theano\\tensor\\",
+             "theano/compile/", "theano\\compile\\",
+             "theano/gof/", "theano\\gof\\",
+             "theano/scalar/basic.py", "theano\\scalar\\basic.py",
+             "theano/sandbox/", "theano\\sandbox\\",
+             "theano/scan_module/", "theano\\scan_module\\",
+             "theano/sparse/", "theano\\sparse\\",
+             "theano/typed_list/", "theano\\typed_list\\",]
+    tr = simple_extract_stack(limit=user_line, skips=skips)
     # Different python version use different sementic for
     # limit. python 2.7 include the call to extrack_stack. The -1 get
     # rid of it.
 
-    # Get rid of Theano internal
-    while tr:
-        file_path = tr[-1][0]
-        rm = False
-        for p in ["theano/tensor/", "theano\\tensor\\",
-                  "theano/compile/", "theano\\compile\\",
-                  "theano/gof/", "theano\\gof\\",
-                  "theano/scalar/basic.py", "theano\\scalar\\basic.py",
-                  "theano/sandbox/", "theano\\sandbox\\",
-                  "theano/scan_module/", "theano\\scan_module\\",
-                  "theano/sparse/", "theano\\sparse\\",
-                  "theano/typed_list/", "theano\\typed_list\\",
-                  ]:
-            # Julian: I added the 'tests' exception together with Arnaud.
-            # Otherwise, we'd lose the stack trace during in our test cases
-            # (e.g. in test_opt.py). We're not sure this is the right way to
-            # do it though.
-            if p in file_path and 'tests' not in file_path:
-                tr = tr[:-1]
-                rm = True
-                break
-        if not rm:
-            break
-    # Keep only the most recent stack level.
-    # The order is from the oldest to the newest
-    if len(tr) > user_line:
-        tr = tr[-user_line:]
     if tr:
         thing.tag.trace = [tr]
     else:
