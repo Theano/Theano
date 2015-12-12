@@ -16,11 +16,13 @@ from theano.compile import builders
 
 pydot_imported = False
 try:
-    import pydot as pd
-    if pd.find_graphviz():
-        pydot_imported = True
+    # pydot-ng is a fork of pydot that is better maintained
+    import pydot_ng as pd
 except ImportError:
-    pass
+    # fall back on pydot if necessary
+    import pydot as pd
+if pd.find_graphviz():
+    pydot_imported = True
 
 
 class PyDotFormatter(object):
