@@ -621,7 +621,7 @@ def expand_empty(tensor_var, size):
     empty = tensor.AllocEmpty(tensor_var.dtype)(*new_shape)
 
     ret = tensor.set_subtensor(empty[:shapes[0]], tensor_var)
-    ret.nan_guard_mode_check = False
+    ret.tag.nan_guard_mode_check = False
     return ret
 
 

@@ -323,7 +323,7 @@ class NanGuardMode(Mode):
             fn()
             outputs = fn.outputs
             for x, var in zip(outputs, node.outputs):
-                if getattr(var, 'nan_guard_mode_check', True):
+                if getattr(var.tag, 'nan_guard_mode_check', True):
                     do_check_on(x[0], node, fn, False)
 
         wrap_linker = theano.gof.WrapLinker([theano.gof.OpWiseCLinker()],

@@ -454,11 +454,17 @@ class PrintListener(Feature):
                 node, i, r, new_r))
 
 
-class PreserveNames(Feature):
+class PreserveVariableAttributes(Feature):
+    """
+    This preserve some variables attributes and tag during optimization.
+    """
 
     def on_change_input(self, fgraph, node, i, r, new_r, reason=None):
         if r.name is not None and new_r.name is None:
             new_r.name = r.name
+        if getattr(r.tag, 'nan_guard_mode_check', False) and getattr(
+                new_r.tag, 'nan_guard_mode_check', False) is False:
+            new_r.tag.nan_guard_mode_check = r.tag.nan_guard_mode_check
 
 
 class NoOutputFromInplace(Feature):

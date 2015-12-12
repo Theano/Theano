@@ -6242,7 +6242,9 @@ class AllocEmpty(gof.Op):
         # We can't reuse filter_checks_isfinite as by default it is
         # False and it is set to true only in DebugMode.
         # We can't set it in the type as other make_node can reuse the type.
-        output.nan_guard_mode_check = False
+        # We can't set it in the variable as it isn't copied when we copy
+        # the variale. So we set it in the tag.
+        output.tag.nan_guard_mode_check = False
         return Apply(self, shape, [output])
 
     def perform(self, node, inputs, out_):

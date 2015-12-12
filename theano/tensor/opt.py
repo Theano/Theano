@@ -3076,9 +3076,6 @@ def local_inplace_setsubtensor(node):
             set_instead_of_inc=node.op.set_instead_of_inc,
             destroyhandler_tolerate_aliased=dta)
         new_node = new_op(*node.inputs)
-        # Keep the information needed for NanGuardMode.
-        new_node.nan_guard_mode_check = getattr(
-            node.op, 'nan_guard_mode_check', True)
         # Copy stacktrace from original outputs to new outputs.
         # This is sensible, because the new operation is the
         # same as the old one, but now with different attributes.
