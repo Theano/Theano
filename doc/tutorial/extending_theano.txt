@@ -64,6 +64,13 @@ possibilities you may encounter or need.  For that refer to
         # Properties attribute
         __props__ = ()
 
+        #itypes and otypes attributes are
+        #compulsory if make_node method is not defined.
+        #They're the type of input and output respectively
+        itypes = []
+        otypes = []
+
+        #Compulsory if itypes and otypes are not defined
         def make_node(self, *inputs):
             pass
 
@@ -98,7 +105,7 @@ possibilities you may encounter or need.  For that refer to
 .. ../extending/op.txt
 
 An op has to implement some methods defined in the the interface of
-:class:`gof.Op`. More specifically, it is mandatory for an op to define the method :func:`make_node` and one of the implementation methods, either :func:`perform`, :meth:`Op.c_code` or :func:`make_thunk`.
+:class:`gof.Op`. More specifically, it is mandatory for an op to define either the method :func:`make_node` or :attr:`itypes`, :attr:`otypes` and one of the implementation methods, either :func:`perform`, :meth:`Op.c_code` or :func:`make_thunk`.
 
   :func:`make_node` method creates an Apply node representing the application
   of the op on the inputs provided. This method is reponsible for three things:
@@ -174,6 +181,10 @@ An op has to implement some methods defined in the the interface of
   If :func:`make_thunk()` is defined by an op, it will be used by Theano
   to obtain the op's implementation.
   :func:`perform` and :meth:`Op.c_code` will be ignored.
+
+  If :func:`make_node` is not defined, the :attr:`itypes` and :attr:`otypes` 
+  are used by the Op's :func:`make_node` method to implement the functionality
+  of :func:`make_node` method mentioned above.
 
 Other methods can be optionally defined by the op.
 
@@ -265,6 +276,36 @@ Op Example
             assert hasattr(self, '_props'), "Your version of theano is too old to support __props__."
             x = theano.tensor.as_tensor_variable(x)
             return theano.Apply(self, [x], [x.type()])
+
+        def perform(self, node, inputs, output_storage):
+            x = inputs[0]
+            z = output_storage[0]
+            z[0] = x * 2
+
+        def infer_shape(self, node, i0_shapes):
+            return i0_shapes
+
+        def grad(self, inputs, output_grads):
+            return [output_grads[0] * 2]
+
+        def R_op(self, inputs, eval_points):
+            # R_op can receive None as eval_points.
+            # That mean there is no diferientiable path through that input
+            # If this imply that you cannot compute some outputs,
+            # return None for those.
+            if eval_points[0] is None:
+                return eval_points
+            return self.grad(inputs, eval_points)
+
+.. testcode:: example (using itypes and otypes)
+
+    import theano
+
+    class DoubleOp(theano.Op):
+        __props__ = ()
+
+        itypes = [theano.tensor.dmatrix]
+        otypes = [theano.tensor.dmatrix]
 
         def perform(self, node, inputs, output_storage):
             x = inputs[0]

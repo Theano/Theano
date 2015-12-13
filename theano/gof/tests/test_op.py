@@ -9,7 +9,6 @@ from six import string_types
 from theano.gof.type import Type, Generic
 from theano.gof.graph import Apply, Variable
 import theano.tensor as T
-from theano.compile import as_op
 from theano import scalar
 from theano import shared
 
