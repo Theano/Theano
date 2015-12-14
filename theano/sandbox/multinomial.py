@@ -192,6 +192,72 @@ class MultinomialFromUniform(Op):
                             z[0][n, m] += 1
                             break
 
+class WeightedSelectionFromUniform(Op):
+    """
+    Converts samples from a uniform into sample from a multinomial.
+
+    """
+
+    __props__ = ("odtype",)
+
+    def __init__(self, odtype):
+        self.odtype = odtype
+
+    def __str__(self):
+        return '%s{%s}' % (self.__class__.__name__, self.odtype)
+
+    def __setstate__(self, dct):
+        self.__dict__.update(dct)
+        try:
+            self.odtype
+        except AttributeError:
+            self.odtype = 'auto'
+
+    def make_node(self, pvals, unis, n=1):
+        pvals = T.as_tensor_variable(pvals)
+        unis = T.as_tensor_variable(unis)
+        if pvals.ndim != 2:
+            raise NotImplementedError('pvals ndim should be 2', pvals.ndim)
+        if unis.ndim != 1:
+            raise NotImplementedError('unis ndim should be 1', unis.ndim)
+        if self.odtype == 'auto':
+            odtype = pvals.dtype
+        else:
+            odtype = self.odtype
+        out = T.tensor(dtype=odtype, broadcastable=pvals.type.broadcastable)
+        return Apply(self, [pvals, unis, as_scalar(n)], [out])
+
+    def grad(self, ins, outgrads):
+        pvals, unis, n = ins
+        (gz,) = outgrads
+        return [T.zeros_like(x) for x in ins]
+
+    def perform(self, node, ins, outs):
+        (pvals, unis, n_samples) = ins
+        (z,) = outs
+
+        if unis.shape[0] != pvals.shape[0] * n_samples:
+            raise ValueError("unis.shape[0] != pvals.shape[0] * n_samples",
+                             unis.shape[0], pvals.shape[0], n_samples)
+        if z[0] is None or numpy.any(z[0].shape != [pvals.shape[0], n_samples]):
+            z[0] = numpy.zeros((pvals.shape[0], n_samples), dtype=node.outputs[0].dtype)
+
+        nb_multi = pvals.shape[0]
+        nb_outcomes = pvals.shape[1]
+
+        # For each multinomial, loop over each possible outcome,
+        # and set selected pval to 0 after being selected
+        for c in range(n_samples):
+            for n in range(nb_multi):
+                cummul = 0
+                unis_n = unis[c*nb_multi+n]
+                for m in range(nb_outcomes):
+                    cummul += pvals[n, m]
+                    if (cummul > unis_n):
+                        z[0][n, c] = m
+                        # set to zero so that it's not selected again
+                        pvals[n, m] = 0.
+                        
 
 class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
     """

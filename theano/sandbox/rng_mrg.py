@@ -1363,6 +1363,52 @@ class MRG_RandomStreams(object):
             raise NotImplementedError(("MRG_RandomStreams.multinomial only"
                                        " implemented for pvals.ndim = 2"))
 
+    def weighted_selection(self, size=None, n=1, pvals=None, ndim=None, dtype='int64',
+                           nstreams=None):
+        """
+        Sample `n` times (`n` needs to be in [1, m], where m is pvals.shape[1], default 1)
+        *WITHOUT replacement* from a multinomial distribution defined by probabilities pvals.
+        
+        Example : WRITEME
+        
+        Notes
+        -----
+        -`size` and `ndim` are only there keep the same signature as other
+        uniform, binomial, normal, etc.
+        TODO : adapt multinomial to take that into account
+
+        -Does not do any value checking on pvals, i.e. there is no
+        check that the elements are non-negative, less than 1, or
+        sum to 1. passing pvals = [[-2., 2.]] will result in
+        sampling [[0, 0]]
+
+        """
+        if pvals is None:
+            raise TypeError("You have to specify pvals")
+        pvals = as_tensor_variable(pvals)
+
+        if n > pvals.shape[1]:
+            raise ValueError("Cannot sample without replacement n samples bigger "
+                             "than the size of the distribution.")
+        if size is not None:
+            raise ValueError("Provided a size argument to "
+                             "MRG_RandomStreams.weighted_selection, which does not use "
+                             "the size argument.")
+        if ndim is not None:
+            raise ValueError("Provided an ndim argument to "
+                             "MRG_RandomStreams.weighted_selection, which does not use "
+                             "the ndim argument.")
+        if pvals.ndim == 2:
+            # size = [pvals.shape[0], as_tensor_variable(n)]
+            size = pvals[:,0].shape * n
+            unis = self.uniform(size=size, ndim=1, nstreams=nstreams)
+            op = multinomial.WeightedSelectionFromUniform(dtype)
+            n_samples = as_tensor_variable(n)
+            return op(pvals, unis, n_samples)
+        else:
+            raise NotImplementedError(("MRG_RandomStreams.weighted_selection only"
+                                       " implemented for pvals.ndim = 2"))
+
     def normal(self, size, avg=0.0, std=1.0, ndim=None,
                dtype=None, nstreams=None):
         """
