@@ -714,7 +714,7 @@ class PureOp(object):
             "own op, implement the R_op method." %
             (self, self.__class__.__name__))
 
-    def perform(self, node, inputs, output_storage):
+    def perform(self, node, inputs, output_storage, params=None):
         """
         Required: Calculate the function on the inputs and put the variables in
         the output storage. Return None.
@@ -746,7 +746,10 @@ class PureOp(object):
             The subclass does not override this method.
 
         """
-        raise utils.MethodNotDefined("perform", type(self), self.__class__.__name__)
+        raise utils.MethodNotDefined(
+            "perform", type(self), self.__class__.__name__,
+            "Did you used Theano flags mode=FAST_COMPILE?"
+            " You can use optimizer=fast_compile instead.")
 
     def do_constant_folding(self, node):
         """
