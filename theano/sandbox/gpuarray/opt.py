@@ -569,9 +569,13 @@ def local_gpua_subtensor(node, context_name):
 @register_opt('fast_compile')
 @op_lifter([tensor.IncSubtensor])
 def local_gpua_incsubtensor(node, context_name):
-    return GpuIncSubtensor(node.op.idx_list, node.op.inplace,
-                           node.op.set_instead_of_inc,
-                           node.op.destroyhandler_tolerate_aliased)
+    op = GpuIncSubtensor(node.op.idx_list, node.op.inplace,
+                         node.op.set_instead_of_inc,
+                         node.op.destroyhandler_tolerate_aliased)
+    ret = op(*node.inputs)
+    val = getattr(node.outputs[0].tag, 'nan_guard_mode_check', True)
+    ret.tag.nan_guard_mode_check = val
+    return ret
 
 
 @register_opt('fast_compile')

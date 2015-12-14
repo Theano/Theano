@@ -1190,14 +1190,16 @@ def local_gpu_incsubtensor(node):
                 # The IncSubtensor upcast to float32 y, so we do it
                 # explicitly to move it to the GPU.
                 y = y.astype('float32')
-
-            return [GpuIncSubtensor(
+            ret = GpuIncSubtensor(
                 incsubt.idx_list,
                 inplace=incsubt.inplace,
                 set_instead_of_inc=incsubt.set_instead_of_inc)(
                     as_cuda_ndarray_variable(x),
                     as_cuda_ndarray_variable(y),
-                    *coords)]
+                    *coords)
+            ret.tag.nan_guard_mode_check = getattr(
+                host_output.tag, 'nan_guard_mode_check', True)
+            return [ret]
     # Incrementing a float32 x results in a float32
     # output even if y is float64, so we can downcast
     # y to put it on GPU
@@ -1221,10 +1223,16 @@ def local_gpu_incsubtensor(node):
                 y = tensor.cast(y, 'float32')
             gpu_y = as_cuda_ndarray_variable(y)
         if go_gpu:
-            return [host_from_gpu(GpuIncSubtensor(
+            ret = GpuIncSubtensor(
                 node.op.idx_list, inplace=node.op.inplace,
                 set_instead_of_inc=node.op.set_instead_of_inc)(
-                    gpu_x, gpu_y, *coords))]
+                    gpu_x, gpu_y, *coords)
+
+            val = getattr(node.outputs[0].tag, 'nan_guard_mode_check', True)
+            ret.tag.nan_guard_mode_check = val
+            ret = host_from_gpu(ret)
+            ret.tag.nan_guard_mode_check = val
+            return [ret]
     return False
 
 
