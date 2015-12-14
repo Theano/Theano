@@ -228,7 +228,7 @@ class TestMakeThunk(unittest.TestCase):
             required = thunk()
             # Check everything went OK
             assert not required  # We provided all inputs
-            assert compute_map[o][0]    
+            assert compute_map[o][0]
             assert storage_map[o][0] == 4
         else:
             self.assertRaises((NotImplementedError, utils.MethodNotDefined),
