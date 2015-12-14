@@ -510,7 +510,7 @@ TensorVariable
     .. method:: diagonal(offset=0, axis1=0, axis2=1)
     .. method:: astype(dtype)
     .. method:: take(indices, axis=None, mode='raise')
-    .. method:: copy()
+    .. method:: copy() Return a new symbolic variable that is a copy of the variable. Does not copy the tag.
     .. method:: norm(L, axis=None)
     .. method:: nonzero(self, return_matrix=False)
     .. method:: nonzero_values(self)

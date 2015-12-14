@@ -881,8 +881,9 @@ class ConvOp(OpenMPOp):
 
         if self.dx not in (1, 2) or self.dy not in (1, 2):
             raise NotImplementedError(
-                "ERROR: We disable ConvOp.grad now when dx or "
-                "dy are different from 1 and 2, as there is a bug in it.")
+                "ERROR: We disable ConvOp.grad now when output_mode is not"
+                " 'valid' and dx or dy are greater than 2, as there is a bug"
+                " in it. See `abstract_conv2d <>`_ for a version that support this.")
 
         all_shape = self.has_all_shape(self.imshp, self.kshp,
                                        self.nkern, self.bsize)
