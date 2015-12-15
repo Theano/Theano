@@ -614,7 +614,8 @@ class TestConv2DGPU(unittest.TestCase):
                 cuda.blas.BaseGpuCorrMM)
 
     def test_logical_shapes(self):
-        seed_rng()
+        # Logical shapes are not supported anymore, so we check that it
+        # raises an Exception.
         for stride in range(1, 4):
             kshp = (10, 2, 10, 10)
             featshp = (3, 10, 11, 11)
@@ -629,23 +630,14 @@ class TestConv2DGPU(unittest.TestCase):
             featshp_logical = (featshp[0], featshp[1], featshp[2] * stride,
                                featshp[3] * stride)
             kshp_rotated = (kshp[1], kshp[0], kshp[2], kshp[3])
-            # print featshp, kshp_rotated, featshp_logical[1:], kshp[2:]
-            image_estimate = tensor.nnet.conv2d(a, kernel_rotated,
-                                                border_mode='full',
-                                                image_shape=featshp,
-                                                filter_shape=kshp_rotated,
-                                                imshp_logical=featshp_logical[1:],
-                                                kshp_logical=kshp[2:])
+            self.assertRaises(ValueError, tensor.nnet.conv2d,
+                              a, kernel_rotated,
+                              border_mode='full',
+                              image_shape=featshp,
+                              filter_shape=kshp_rotated,
+                              imshp_logical=featshp_logical[1:],
+                              kshp_logical=kshp[2:])
 
-            func = theano.function([a, A], image_estimate, mode=theano_mode)
-            # theano.printing.debugprint(func,)
-            assert any([isinstance(node.op, self.conv_ops)
-                        for node in func.maker.fgraph.toposort()])
-
-            a_in = numpy.random.randn(*featshp).astype("float32")
-            A_in = numpy.random.randn(*kshp).astype("float32")
-
-            func(a_in, A_in)
 
     def test_invalid_input_shape(self):
         """
