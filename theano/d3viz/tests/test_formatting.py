@@ -1,7 +1,7 @@
 from nose.plugins.skip import SkipTest
 
-from theano.d3viz import has_requirements
-if not has_requirements:
+from theano.d3viz.formatting import pydot_imported
+if not pydot_imported:
     raise SkipTest('Missing requirements')
 
 import numpy as np
