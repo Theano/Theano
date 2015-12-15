@@ -101,6 +101,12 @@ def conv2d(input, filters, input_shape=None, filter_shape=None,
         of shape (batch size, output channels, output rows, output columns)
     """
 
+    if 'imshp_logical' in kwargs or 'kshp_logical' in kwargs:
+        raise ValueError(
+            "Keyword arguments 'imshp_logical' and 'kshp_logical' for conv2d "
+            "are not supported anymore (and have not been a reliable way to "
+            "perform upsampling). That feature is still available by calling "
+            "theano.tensor.nnet.conv.conv2d() for the time being.")
     if len(kwargs.keys()) > 0:
         warnings.warn(str(kwargs.keys()) +
                       " are now deprecated in "
