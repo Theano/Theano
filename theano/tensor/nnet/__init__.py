@@ -105,12 +105,14 @@ def conv2d(input, filters, input_shape=None, filter_shape=None,
         warnings.warn(str(kwargs.keys()) +
                       " are now deprecated in "
                       "`tensor.nnet.abstract_conv.conv2d` interface"
-                      " and will be ignored.")
+                      " and will be ignored.",
+                      stacklevel=2)
 
     if image_shape is not None:
         warnings.warn("The `image_shape` keyword argument to "
                       "`tensor.nnet.conv2d` is deprecated, it has been "
-                      "renamed to `input_shape`.")
+                      "renamed to `input_shape`.",
+                      stacklevel=2)
         if input_shape is None:
             input_shape = image_shape
         else:
