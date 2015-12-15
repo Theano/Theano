@@ -16,6 +16,7 @@ from theano.tensor.nnet.blocksparse import (
 from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv2d_gradWeights,
                                               AbstractConv2d_gradInputs)
+from theano.tensor.nnet.abstract_conv import get_conv_output_shape
 from theano.tensor.opt import register_specialize_device
 from theano.tensor import TensorType
 
@@ -199,12 +200,10 @@ def local_conv2d_gradweight_cpu(node):
     # Determine gradient on kernels
     assert len(op_imshp) == 4 and len(op_kshp) == 4
 
-    outshp = ConvOp.getOutputShape(op_imshp[2:],
-                                   op_kshp[2:], node.op.subsample,
-                                   node.op.border_mode)
-    fulloutshp = ConvOp.getOutputShape(op_imshp[2:],
-                                       op_kshp[2:], (1, 1),
-                                       node.op.border_mode)
+    outshp = get_conv_output_shape(op_imshp, op_kshp,
+                                   node.op.border_mode, node.op.subsample)[2:]
+    fulloutshp = get_conv_output_shape(op_imshp, op_kshp,
+                                       node.op.border_mode, (1, 1))[2:]
 
     newimg = img.dimshuffle((1, 0, 2, 3))
     newtopgrad = topgrad.dimshuffle((1, 0, 2, 3))
@@ -307,12 +306,11 @@ def local_conv2d_gradinputs_cpu(node):
     filters = kern.dimshuffle((1, 0, 2, 3))
     filters = filters[:, :, ::-1, ::-1]
 
-    outshp = ConvOp.getOutputShape(op_imshp[2:],
-                                   op_kshp[2:], node.op.subsample,
-                                   node.op.border_mode)
-    fulloutshp = ConvOp.getOutputShape(op_imshp[2:],
-                                       op_kshp[2:], (1, 1),
-                                       node.op.border_mode)
+    outshp = get_conv_output_shape(op_imshp, op_kshp,
+                                   node.op.border_mode, node.op.subsample)[2:]
+    fulloutshp = get_conv_output_shape(op_imshp, op_kshp,
+                                       node.op.border_mode, (1, 1))[2:]
+
     nkern = op_imshp[1]
     imshp = (op_kshp[0], outshp[0], outshp[1])
     imshp_logical = (op_kshp[0], fulloutshp[0], fulloutshp[1])

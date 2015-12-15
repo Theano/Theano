@@ -14,7 +14,13 @@ from theano.gof.optdb import LocalGroupDB
 from theano.scalar.basic import Scalar, Pow, Cast
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
+from theano.tensor import as_tensor_variable
 from theano.tensor.nnet.conv import ConvOp
+from theano.tensor.nnet.abstract_conv import (BaseAbstractConv2d,
+                                              AbstractConv2d,
+                                              AbstractConv2d_gradWeights,
+                                              AbstractConv2d_gradInputs)
+
 from theano.tests.breakpoint import PdbBreakpoint
 
 from .type import (GpuArrayType, GpuArrayConstant, get_context,
@@ -27,7 +33,6 @@ from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         GpuEye, gpu_join, GpuJoin)
 from .blas import (gpu_dot22, GpuGemv, GpuGemm, GpuGer,
                    gpugemm_no_inplace)
-from .conv import GpuConv
 from .nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
                    GpuCrossentropySoftmax1HotWithBiasDx,
                    GpuSoftmaxWithBias, GpuSoftmax)
@@ -786,77 +791,49 @@ def local_assert(node, context_name):
 
 @register_opt('fast_compile')
 @op_lifter([ConvOp])
-def local_gpu_conv(node, context_name):
-    def GpuConvOp_from_ConvOp(op):
-        logical_img_hw = None
+def local_error_convop(node, context_name):
+    assert False, """
+ConvOp does not work with the gpuarray backend.
 
-        if op.kshp_logical is not None and op.kshp_logical != op.kshp:
-            return None
+Use the new convolution interface to have GPU convolution working:
+theano.tensor.nnet.conv2d()
+"""
 
-        ret = GpuConv(border_mode=op.out_mode,
-                      subsample=(op.dx, op.dy),
-                      logical_img_hw=logical_img_hw,
-                      logical_kern_hw=op.kshp_logical,
-                      logical_kern_align_top=op.kshp_logical_top_aligned,
-                      kshp=op.kshp,
-                      version=op.version,
-                      direction_hint=op.direction_hint,
-                      verbose=op.verbose,
-                      imshp=op.imshp,
-                      nkern=op.nkern,
-                      bsize=op.bsize,
-                      fft_opt=op.fft_opt)
-        if op.imshp_logical is not None:
-            logical_img_hw = op.imshp_logical[1:3]
-            if logical_img_hw != op.imshp[1:3]:
-                rstride = int(numpy.ceil(op.imshp_logical[1] /
-                                         float(op.imshp[1])))
-                cstride = int(numpy.ceil(op.imshp_logical[2] /
-                                         float(op.imshp[2])))
 
-                def make_graph(img, kern):
-                    buf = tensor.alloc(numpy.asarray(0, dtype=img.dtype),
-                                       img.shape[0], *op.imshp_logical)
-                    img = tensor.set_subtensor(buf[:, :, ::rstride, ::cstride],
-                                               img)
-                    img = GpuFromHost(context_name)(img)
-                    return ret(img, kern)
+# This deals with any abstract convs that have a transfer somewhere
+@register_opt('fast_compile')
+@op_lifter([AbstractConv2d,
+            AbstractConv2d_gradWeights,
+            AbstractConv2d_gradInputs])
+def local_lift_abstractconv2d(node, context_name):
+    inps = list(node.inputs)
+    inps[0] = as_gpuarray_variable(node.inputs[0],
+                                   context_name=context_name)
+    inps[1] = as_gpuarray_variable(node.inputs[1],
+                                   context_name=context_name)
+    return [node.op(*inps)]
 
-                return make_graph
-        return ret
 
-    def values_eq_approx(a, b):
-        """
-        This fct is needed to don't have DebugMode raise useless
-        error due to ronding error.
+# This will deal with ops that don't have an explicit transfer but
+# have one of their inputs on the GPU already and the other not on the
+# GPU (to avoid endlessly replacing things).
+@register_opt('fast_compile')
+@local_optimizer([AbstractConv2d,
+                  AbstractConv2d_gradWeights,
+                  AbstractConv2d_gradInputs])
+def local_gpu_abstractconv2d(node):
+    if isinstance(node.op, BaseAbstractConv2d):
+        if ((isinstance(node.inputs[0].type, GpuArrayType) or
+             isinstance(node.inputs[1].type, GpuArrayType)) and
+            not (isinstance(node.inputs[0].type, GpuArrayType) or
+                 isinstance(node.inputs[1].type, GpuArrayType))):
+            inps = list(node.inputs)
+            ctx_name = infer_context_name(inps[0], inps[1])
+            inps[0] = as_gpuarray_variable(inps[0], context_name=ctx_name)
+            inps[1] = as_gpuarray_variable(inps[1], context_name=ctx_name)
+            return as_tensor_variable(node.op(*inps))
 
-        This happen as We reduce on the two last dimensions, so this
-        can raise the absolute error if the number of element we
-        reduce on is significant.
-
-        """
-        assert a.ndim == 4
-        atol = None
-        if a.shape[-1] * a.shape[-2] > 100:
-            # For float32 the default atol is 1e-5
-            atol = 3e-5
-        return GpuArrayType.values_eq_approx(a, b, atol=atol)
-
-    img, kern = node.inputs
-    gpu_conv = GpuConvOp_from_ConvOp(node.op)
-    if gpu_conv is None:
-        return
-    out = gpu_conv(GpuFromHost(context_name)(img),
-                   GpuFromHost(context_name)(kern))
-    assert isinstance(out.type, GpuArrayType)
-    # Make sure to keep the broadcastable pattern of the original
-    # convolution even if we might gain or lose some due to different
-    # information at the node level.
-    out = tensor.patternbroadcast(out, node.outputs[0].broadcastable)
-    out.values_eq_approx = values_eq_approx
-    return [out]
-
-# Register this here so that it goes after 'local_gpu_conv'
+# Register this here so that it goes after the abstract lifting
 register_opt()(conv_groupopt)
 
 

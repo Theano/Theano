@@ -32,7 +32,7 @@ def test_local_remove_all_assert():
     a = theano.tensor.opt.assert_op(x, theano.tensor.eq(x, 0).any())
 
     # By default `unsafe` should not be there
-    f = theano.function([x], a, mode=mode_with_gpu)
+    f = theano.function([x], a, mode=mode_with_gpu.excluding('unsafe'))
     topo = f.maker.fgraph.toposort()
     a_op = [n for n in topo if isinstance(n.op, theano.tensor.opt.Assert)]
     assert len(a_op) == 1
