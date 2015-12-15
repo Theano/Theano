@@ -269,6 +269,11 @@ class BaseAbstractConv2d(Op):
         flops *= inputs[1] * filters[0] * inputs[0]
         return flops
 
+    def do_constant_folding(self, node):
+        # Disable constant folding since there is no implementation.
+        # This may change in the future.
+        return False
+
 
 class AbstractConv2d(BaseAbstractConv2d):
     """
