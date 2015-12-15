@@ -303,7 +303,10 @@ class AbstractConv2d(BaseAbstractConv2d):
         return Apply(self, [img, kern], [output])
 
     def perform(self, node, inp, out_):
-        raise NotImplementedError('AbstractConv2d theano optimization failed')
+        raise NotImplementedError(
+            'AbstractConv2d theano optimization failed. '
+            'Did you exclude both "conv_dnn" and "conv_gemm" from '
+            'the optimizer?')
 
     def grad(self, inp, grads):
         bottom, weights = inp
@@ -378,7 +381,9 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
 
     def perform(self, node, inp, out_):
         raise NotImplementedError(
-            'AbstractConv2d_gradWeight theano optimization failed')
+            'AbstractConv2d_gradWeights theano optimization failed. '
+            'Did you exclude both "conv_dnn" and "conv_gemm" from '
+            'the optimizer?')
 
     def grad(self, inp, grads):
         bottom, top = inp[:2]
@@ -457,7 +462,9 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
 
     def perform(self, node, inp, out_):
         raise NotImplementedError(
-            'AbstractConv2d_gradWeight theano optimization failed')
+            'AbstractConv2d_gradInputs theano optimization failed. '
+            'Did you exclude both "conv_dnn" and "conv_gemm" from '
+            'the optimizer?')
 
     def grad(self, inp, grads):
         weights, top = inp[:2]
