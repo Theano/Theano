@@ -4259,6 +4259,8 @@ def get_vector_length(v):
             start = 0
         elif isinstance(start, types) and start < 0:
             start += ndim
+            if start < 0:
+                start = 0
         if stop is None:
             stop = ndim
         elif isinstance(stop, types):
@@ -4271,7 +4273,9 @@ def get_vector_length(v):
 
         if (isinstance(stop, types) and
                 isinstance(start, types) and
-                start >= 0 and stop >= 0):
+                isinstance(step, types) and
+                start >= 0 and stop >= 0 and
+                step > 0 and stop >= start):
             return (stop - start - 1) // step + 1
     if isinstance(v, Variable):
         msg = theano.printing.debugprint(v, file='str')

@@ -3352,12 +3352,14 @@ class T_GetVectorLength(unittest.TestCase):
         assert len(list(x.shape[2:4])) == 2
         assert len(list(x.shape[2:])) == 2
         assert len(list(x.shape[1:4])) == 3
+        assert len(list(x.shape[2:2])) == 0
         assert len(list(x.shape[1:5])) == 3
         assert len(list(x.shape[1:10])) == 3
         # Test step
         assert len(list(x.shape[1:10:2])) == 2
         # Test neg start
         assert len(list(x.shape[-1:4])) == 1
+        assert len(list(x.shape[-6:4])) == 4
         # test neg stop
         assert len(list(x.shape[1:-2])) == 1
         assert len(list(x.shape[1:-1])) == 2
