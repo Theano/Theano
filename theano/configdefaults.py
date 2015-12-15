@@ -219,28 +219,89 @@ AddConfigVar('gpuarray.sync',
              BoolParam(False),
              in_c_key=True)
 
+
+def safe_no_dnn_workmem(workmem):
+    """
+    Make sure the user is not attempting to use dnn.conv.workmem`.
+    """
+    if workmem:
+        raise RuntimeError(
+            'The option `dnn.conv.workmem` has been removed and should '
+            'not be used anymore. Please use the option '
+            '`dnn.conv.algo_fwd` instead.')
+    return True
+
 AddConfigVar('dnn.conv.workmem',
              "This flag is deprecated; use dnn.conv.algo_fwd.",
-             EnumStr(''),
+             ConfigParam('', allow_override=False, filter=safe_no_dnn_workmem),
              in_c_key=False)
+
+
+def safe_no_dnn_workmem_bwd(workmem):
+    """
+    Make sure the user is not attempting to use dnn.conv.workmem_bwd`.
+    """
+    if workmem:
+        raise RuntimeError(
+            'The option `dnn.conv.workmem_bwd` has been removed and '
+            'should not be used anymore. Please use the options '
+            '`dnn.conv.algo_bwd_filter` and `dnn.conv.algo_bwd_data` instead.')
+    return True
 
 AddConfigVar('dnn.conv.workmem_bwd',
              "This flag is deprecated; use dnn.conv.algo_bwd.",
-             EnumStr(''),
+             ConfigParam('', allow_override=False,
+                         filter=safe_no_dnn_workmem_bwd),
+             in_c_key=False)
+
+
+def safe_no_dnn_algo_bwd(algo):
+    """
+    Make sure the user is not attempting to use dnn.conv.algo_bwd`.
+    """
+    if algo:
+        raise RuntimeError(
+            'The option `dnn.conv.algo_bwd` has been removed and '
+            'should not be used anymore. Please use the options '
+            '`dnn.conv.algo_bwd_filter` and `dnn.conv.algo_bwd_data` instead.')
+    return True
+
+AddConfigVar('dnn.conv.algo_bwd',
+             "This flag is deprecated; use dnn.conv.algo_bwd_data and "
+             "dnn.conv.algo_bwd_filter.",
+             ConfigParam('', allow_override=False,
+                         filter=safe_no_dnn_algo_bwd),
              in_c_key=False)
 
 AddConfigVar('dnn.conv.algo_fwd',
              "Default implementation to use for CuDNN forward convolution.",
-             EnumStr('small', 'none', 'large', 'fft', 'guess_once',
+             EnumStr('small', 'none', 'large', 'fft', 'fft_tiling',
+                     'guess_once', 'guess_on_shape_change',
+                     'time_once', 'time_on_shape_change'),
+             in_c_key=False)
+
+AddConfigVar('dnn.conv.algo_bwd_data',
+             "Default implementation to use for CuDNN backward convolution to "
+             "get the gradients of the convolution with regard to the inputs.",
+             EnumStr('none', 'deterministic', 'fft', 'fft_tiling',
+                     'guess_once', 'guess_on_shape_change', 'time_once',
+                     'time_on_shape_change'),
+             in_c_key=False)
+
+AddConfigVar('dnn.conv.algo_bwd_filter',
+             "Default implementation to use for CuDNN backward convolution to "
+             "get the gradients of the convolution with regard to the "
+             "filters.",
+             EnumStr('none', 'deterministic', 'fft', 'small', 'guess_once',
                      'guess_on_shape_change', 'time_once',
                      'time_on_shape_change'),
              in_c_key=False)
 
-AddConfigVar('dnn.conv.algo_bwd',
-             "Default implementation to use for CuDNN backward convolution.",
-             EnumStr('none', 'deterministic', 'fft', 'guess_once',
-                     'guess_on_shape_change', 'time_once',
-                     'time_on_shape_change'),
+AddConfigVar('dnn.conv.precision',
+             "Default data precision to use for the computation in CuDNN "
+             "convolutions (defaults to the same dtype as the inputs of the "
+             "convolutions).",
+             EnumStr('as_input', 'float16', 'float32', 'float64'),
              in_c_key=False)
 
 
