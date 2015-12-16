@@ -367,7 +367,7 @@ class ConvOp(OpenMPOp):
         # with s=1 for mode=='full' and s=-1 for mode=='valid'.
         # To support symbolic shapes, we express this with integer arithmetics.
         warnings.warn("The method `getOutputShape` is deprecated use"
-                      "`get_conv_output_shape` instead.")
+                      "`get_conv_output_shape` instead.", stacklevel=2)
         return tuple(get_conv_shape_1axis(i, k, mode, d)
                      for i, k, d in zip(inshp, kshp, stride))
 

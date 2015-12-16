@@ -13,8 +13,14 @@ from theano.tests.unittest_tools import attr
 
 
 class TestConv2D(utt.InferShapeTester):
+    # This class contains tests for the legacy 2d convolution,
+    # but will also be inherited from for other implementations
     mode = None
     dtype = theano.config.floatX
+    # This will be set to the appropriate function in the inherited classes.
+    # The call to `staticmethod` is necessary to prevent Python from passing
+    # `self` as the first argument.
+    conv2d = staticmethod(conv.conv2d)
 
     def setUp(self):
         super(TestConv2D, self).setUp()
@@ -435,7 +441,7 @@ class TestConv2D(utt.InferShapeTester):
                         input = theano.shared(numpy.random.random(image_shape))
                         filters = theano.shared(numpy.random.random(filter_shape))
 
-                        output = conv.conv2d(input, filters,
+                        output = self.conv2d(input, filters,
                                              image_shape, filter_shape,
                                              border_mode,
                                              unroll_patch=True,
@@ -465,61 +471,74 @@ class TestConv2D(utt.InferShapeTester):
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
+                [self.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp,
+                excluding=['conv_gemm'])
 
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
+                [self.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp,
+                excluding=['conv_gemm'])
 
         aivec_val = [6, 2, 8, 3]
         bivec_val = [4, 2, 5, 3]
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
+                [self.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp,
+                excluding=['conv_gemm'])
 
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
+                [self.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp,
+                excluding=['conv_gemm'])
 
         aivec_val = [3, 6, 7, 5]
         bivec_val = [5, 6, 3, 2]
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
+                [self.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp,
+                excluding=['conv_gemm'])
 
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
+                [self.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp,
+                excluding=['conv_gemm'])
 
         aivec_val = [3, 6, 7, 5]
         bivec_val = [5, 6, 2, 3]
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
+                [self.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp,
+                excluding=['conv_gemm'])
 
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
+                [self.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp,
+                excluding=['conv_gemm'])
 
         aivec_val = [5, 2, 4, 3]
         bivec_val = [6, 2, 4, 3]
         adtens_val = rand(*aivec_val)
         bdtens_val = rand(*bivec_val)
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp)
+                [self.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                border_mode='valid')], [adtens_val, bdtens_val], conv.ConvOp,
+                excluding=['conv_gemm'])
 
         self._compile_and_check([adtens, bdtens],
-                [conv.conv2d(adtens, bdtens, aivec_val, bivec_val,
-                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp)
+                [self.conv2d(adtens, bdtens, aivec_val, bivec_val,
+                border_mode='full')], [adtens_val, bdtens_val], conv.ConvOp,
+                excluding=['conv_gemm'])
 
+
+class TestDefaultConv2D(TestConv2D):
+    conv2d = staticmethod(theano.tensor.nnet.conv2d)
 
 # Test that broadcasting of gradients works correctly when using the
 # nnet.conv2d() interface. This was reported in #3763, and uses the example
