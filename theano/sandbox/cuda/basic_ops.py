@@ -2710,7 +2710,7 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
             raise TypeError('cannot index into a scalar')
 
         # c code suppose it is int64
-        if x.ndim in [2, 3] and ilist_.dtype in [
+        if x.ndim in [1, 2, 3] and ilist_.dtype in [
             'int8', 'int16', 'int32', 'uint8', 'uint16', 'uint32']:
             ilist_ = tensor.cast(ilist_, 'int64')
 
@@ -2776,7 +2776,7 @@ class GpuAdvancedSubtensor1(tensor.AdvancedSubtensor1, GpuOp):
         x, idx = inputs
         out, = outputs
         fail = sub['fail']
-        if node.inputs[0].ndim not in [2, 3]:
+        if node.inputs[0].ndim not in [1, 2, 3]:
             raise NotImplementedError("This case does not have C code yet.")
         if node.inputs[1].dtype != 'int64':
             raise Exception("Index should have dtype int64. Check this node make_node().")
@@ -2891,8 +2891,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         return (6,)
 
     def c_code(self, node, name, inputs, outputs, sub):
-        if (self.set_instead_of_inc) or \
-           (node.inputs[0].ndim != node.inputs[1].ndim):
+        if (node.inputs[0].ndim != node.inputs[1].ndim):
             raise NotImplementedError("This case does not have C code yet.")
 
         x = inputs[0]
@@ -2901,6 +2900,7 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
         out = outputs[0]
         fail = sub['fail']
         inplace = int(self.inplace)
+        set_instead_of_inc = int(self.set_instead_of_inc)
 
         return """
         PyObject *row_x, *row_y;
@@ -2960,8 +2960,11 @@ class GpuAdvancedIncSubtensor1(tensor.AdvancedIncSubtensor1, GpuOp):
                   Py_XDECREF(x_rowind_obj);
                   %(fail)s;
              }
-
-             ret = CudaNdarray_inplace_elemwise(row_x, row_y, IADD);
+             if (%(set_instead_of_inc)s) {
+                 ret = CudaNdarray_CopyFromCudaNdarray((CudaNdarray *) row_x, (CudaNdarray *) row_y);
+             } else {
+                 ret = CudaNdarray_inplace_elemwise(row_x, row_y, IADD);
+             }
              if (ret != 0) {
                  Py_XDECREF(row_y);
                  Py_XDECREF(row_x);
