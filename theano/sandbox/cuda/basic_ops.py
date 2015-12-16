@@ -3035,8 +3035,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
     def c_code(self, node, name, inputs, outputs, sub):
         active_device_no = theano.sandbox.cuda.active_device_number()
         compute_capability = device_properties(active_device_no)['major']
-        if ((self.set_instead_of_inc) or
-            (node.inputs[0].ndim != node.inputs[1].ndim) or
+        if ((node.inputs[0].ndim != node.inputs[1].ndim) or
             (node.inputs[0].ndim != 2) or
             (compute_capability < 2)):
             raise NotImplementedError("This case does not have C code yet.")
@@ -3047,6 +3046,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
         out = outputs[0]
         fail = sub['fail']
         inplace = int(self.inplace)
+        set_instead_of_inc = int(self.set_instead_of_inc)
         return """
         Py_XDECREF(%(out)s);
         if (!%(inplace)s) {
@@ -3056,7 +3056,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
             Py_XINCREF(%(out)s);
         }
 
-        if (CudaNdarray_vector_add_fast(%(out)s, %(y)s, %(ind)s) != 0){
+        if (CudaNdarray_vector_add_or_replace_fast(%(out)s, %(y)s, %(ind)s, %(set_instead_of_inc)s) != 0){
             %(fail)s
         }
 
@@ -3068,7 +3068,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
     def c_support_code_apply(self, node, nodename):
         return """
 
-        __global__ void k_vector_add_fast(int numRowsX,
+        __global__ void k_vector_add_or_replace_fast(int numRowsX,
                                           int numColsX,
                                           int stridesX0,
                                           int stridesX1,
@@ -3080,6 +3080,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
                                           float *Y ,
                                           long *d_indices_arr,
                                           int num,
+                                          const int set_instead_of_inc,
                                           int* err)
         {
              for (int i = (blockIdx.x); i < num; i += gridDim.x)
@@ -3091,8 +3092,13 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
                           x_row += numRowsX;
                       int y_row = i;
                       if(x_row < numRowsX && x_row >= 0){
-                        atomicAdd(&X[(x_row * stridesX0) + (j * stridesX1)],
+                        if(set_instead_of_inc){
+                            atomicExch(&X[(x_row * stridesX0) + (j * stridesX1)],
                                   Y[(y_row * stridesY0) + (j * stridesY1)]);
+                        } else{
+                            atomicAdd(&X[(x_row * stridesX0) + (j * stridesX1)],
+                                  Y[(y_row * stridesY0) + (j * stridesY1)]);
+                        }
                       } else {
                         *err = 1;
                       }
@@ -3101,8 +3107,9 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
              return;
         }
 
-        int CudaNdarray_vector_add_fast(CudaNdarray* py_self,
-            CudaNdarray* py_other, PyArrayObject *indices_arr)
+        int CudaNdarray_vector_add_or_replace_fast(CudaNdarray* py_self,
+            CudaNdarray* py_other, PyArrayObject *indices_arr,
+            const int set_instead_of_inc)
         {
             if(init_err_var()!= 0) return -1;
 
@@ -3144,7 +3151,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
                 return -1;
             }
 
-            k_vector_add_fast<<<n_blocks, n_threads>>>(
+            k_vector_add_or_replace_fast<<<n_blocks, n_threads>>>(
                 shapeX[0],
                 shapeX[1],
                 strX[0],
@@ -3157,6 +3164,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
                 CudaNdarray_DEV_DATA(py_other),
                 d_indices_arr,
                 PyArray_SIZE(indices_arr),
+                set_instead_of_inc,
                 err_var
             );
             int index_err = check_err_var();
