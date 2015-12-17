@@ -1,8 +1,12 @@
 import os
 import sys
 import logging
+import platform
+import textwrap
+import re
 
 import theano
+from theano import config
 from theano.configparser import (AddConfigVar, BoolParam, ConfigParam, EnumStr,
                                  IntParam, StrParam, TheanoConfigParser)
 from theano.misc.cpucount import cpuCount
@@ -1066,5 +1070,226 @@ AddConfigVar('lib.cnmem',
              # We should not mix both allocator, so we can't override
              FloatParam(0, lambda i: i >= 0, allow_override=False),
              in_c_key=False)
+
+AddConfigVar('compile.wait',
+             """Time to wait before retrying to aquire the compile lock.""",
+             IntParam(5, lambda i: i > 0, allow_override=False),
+             in_c_key=False)
+
+
+def _timeout_default():
+    return config.compile.wait * 24
+
+AddConfigVar('compile.timeout',
+             """In seconds, time that a process will wait before deciding to
+override an existing lock. An override only happens when the existing
+lock is held by the same owner *and* has not been 'refreshed' by this
+owner for more than this period. Refreshes are done every half timeout
+period for running processes.""",
+             IntParam(_timeout_default, lambda i: i >= 0,
+                      allow_override=False),
+             in_c_key=False)
+
+compiledir_format_dict = {
+    "platform": platform.platform(),
+    "processor": platform.processor(),
+    "python_version": platform.python_version(),
+    "python_bitwidth": local_bitwidth(),
+    "python_int_bitwidth": python_int_bitwidth(),
+    "theano_version": theano.__version__,
+    "numpy_version": numpy.__version__,
+    "gxx_version": gcc_version_str.replace(" ", "_"),
+    "hostname": socket.gethostname()}
+
+
+def short_platform(r=None, p=None):
+    """
+    Return a safe shorter version of platform.platform().
+
+    The old default Theano compiledir used platform.platform in
+    it. This use the platform.version() as a substring. This is too
+    specific as it contain the full kernel number and package
+    version. This cause the compiledir to change each time there is a
+    new linux kernel update. This function remove the part of platform
+    that are too precise.
+
+    If we have something else then expected, we do nothing. So this
+    should be safe on other OS.
+
+    Some example if we use platform.platform() direction. On the same
+    OS, with just some kernel updates.
+
+    compiledir_Linux-2.6.32-504.el6.x86_64-x86_64-with-redhat-6.6-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-431.29.2.el6.x86_64-x86_64-with-redhat-6.5-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-431.23.3.el6.x86_64-x86_64-with-redhat-6.5-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-431.20.3.el6.x86_64-x86_64-with-redhat-6.5-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-431.17.1.el6.x86_64-x86_64-with-redhat-6.5-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-431.11.2.el6.x86_64-x86_64-with-redhat-6.5-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-431.el6.x86_64-x86_64-with-redhat-6.5-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-358.23.2.el6.x86_64-x86_64-with-redhat-6.4-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-358.6.2.el6.x86_64-x86_64-with-redhat-6.4-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-358.6.1.el6.x86_64-x86_64-with-redhat-6.4-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-358.2.1.el6.x86_64-x86_64-with-redhat-6.4-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-358.el6.x86_64-x86_64-with-redhat-6.4-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-358.el6.x86_64-x86_64-with-redhat-6.4-Santiago-x86_64-2.6.6
+    compiledir_Linux-2.6.32-279.14.1.el6.x86_64-x86_64-with-redhat-6.4-Santiago-x86_64-2.6.6
+    compiledir_Linux-2.6.32-279.14.1.el6.x86_64-x86_64-with-redhat-6.3-Santiago-x86_64-2.6.6
+    compiledir_Linux-2.6.32-279.5.2.el6.x86_64-x86_64-with-redhat-6.3-Santiago-x86_64-2.6.6
+    compiledir_Linux-2.6.32-220.13.1.el6.x86_64-x86_64-with-redhat-6.3-Santiago-x86_64-2.6.6
+    compiledir_Linux-2.6.32-220.13.1.el6.x86_64-x86_64-with-redhat-6.2-Santiago-x86_64-2.6.6
+    compiledir_Linux-2.6.32-220.7.1.el6.x86_64-x86_64-with-redhat-6.2-Santiago-x86_64-2.6.6
+    compiledir_Linux-2.6.32-220.4.1.el6.x86_64-x86_64-with-redhat-6.2-Santiago-x86_64-2.6.6
+
+    We suppose the version are ``X.Y[.*]-(digit)*(anything)*``. We keep ``X.Y``
+    and don't keep less important digit in the part before ``-`` and we remove
+    the leading digit after the first ``-``.
+
+    If the information don't fit that pattern, we do not modify platform.
+
+    """
+    if r is None:
+        r = platform.release()
+    if p is None:
+        p = platform.platform()
+    sp = r.split('-')
+    if len(sp) < 2:
+        return p
+
+    # For the split before the first -, we remove all learning digit:
+    kernel_version = sp[0].split('.')
+    if len(kernel_version) <= 2:
+        # kernel version should always have at least 3 number.
+        # If not, it use another semantic, so don't change it.
+        return p
+    sp[0] = '.'.join(kernel_version[:2])
+
+    # For the split after the first -, we remove leading non-digit value.
+    rest = sp[1].split('.')
+    while len(rest):
+        if rest[0].isdigit():
+            del rest[0]
+        else:
+            break
+    sp[1] = '.'.join(rest)
+
+    # For sp[2:], we don't change anything.
+    sr = '-'.join(sp)
+    p = p.replace(r, sr)
+
+    return p
+compiledir_format_dict['short_platform'] = short_platform()
+compiledir_format_keys = ", ".join(sorted(compiledir_format_dict.keys()))
+default_compiledir_format = ("compiledir_%(short_platform)s-%(processor)s-"
+                             "%(python_version)s-%(python_bitwidth)s")
+
+AddConfigVar("compiledir_format",
+             textwrap.fill(textwrap.dedent("""\
+                 Format string for platform-dependent compiled
+                 module subdirectory (relative to base_compiledir).
+                 Available keys: %s. Defaults to %r.
+             """ % (compiledir_format_keys, default_compiledir_format))),
+             StrParam(default_compiledir_format, allow_override=False),
+             in_c_key=False)
+
+def default_compiledirname():
+    formatted = config.compiledir_format % compiledir_format_dict
+    safe = re.sub("[\(\)\s,]+", "_", formatted)
+    return safe
+
+
+def filter_base_compiledir(path):
+    # Expand '~' in path
+    return os.path.expanduser(str(path))
+
+
+def filter_compiledir(path):
+    # Expand '~' in path
+    path = os.path.expanduser(path)
+    # Turn path into the 'real' path. This ensures that:
+    #   1. There is no relative path, which would fail e.g. when trying to
+    #      import modules from the compile dir.
+    #   2. The path is stable w.r.t. e.g. symlinks (which makes it easier
+    #      to re-use compiled modules).
+    path = os.path.realpath(path)
+    if os.access(path, os.F_OK):  # Do it exist?
+        if not os.access(path, os.R_OK | os.W_OK | os.X_OK):
+            # If it exist we need read, write and listing access
+            raise ValueError(
+                "compiledir '%s' exists but you don't have read, write"
+                " or listing permissions." % path)
+    else:
+        try:
+            os.makedirs(path, 0o770)  # read-write-execute for user and group
+        except OSError as e:
+            # Maybe another parallel execution of theano was trying to create
+            # the same directory at the same time.
+            if e.errno != errno.EEXIST:
+                raise ValueError(
+                    "Unable to create the compiledir directory"
+                    " '%s'. Check the permissions." % path)
+
+    # PROBLEM: sometimes the initial approach based on
+    # os.system('touch') returned -1 for an unknown reason; the
+    # alternate approach here worked in all cases... it was weird.
+    # No error should happen as we checked the permissions.
+    init_file = os.path.join(path, '__init__.py')
+    if not os.path.exists(init_file):
+        try:
+            open(init_file, 'w').close()
+        except IOError as e:
+            if os.path.exists(init_file):
+                pass  # has already been created
+            else:
+                e.args += ('%s exist? %s' % (path, os.path.exists(path)),)
+                raise
+    return path
+
+
+def get_home_dir():
+    """
+    Return location of the user's home directory.
+
+    """
+    home = os.getenv('HOME')
+    if home is None:
+        # This expanduser usually works on Windows (see discussion on
+        # theano-users, July 13 2010).
+        home = os.path.expanduser('~')
+        if home == '~':
+            # This might happen when expanduser fails. Although the cause of
+            # failure is a mystery, it has been seen on some Windows system.
+            home = os.getenv('USERPROFILE')
+    assert home is not None
+    return home
+
+
+# On Windows we should avoid writing temporary files to a directory that is
+# part of the roaming part of the user profile. Instead we use the local part
+# of the user profile, when available.
+if sys.platform == 'win32' and os.getenv('LOCALAPPDATA') is not None:
+    default_base_compiledir = os.path.join(os.getenv('LOCALAPPDATA'), 'Theano')
+else:
+    default_base_compiledir = os.path.join(get_home_dir(), '.theano')
+
+
+AddConfigVar(
+    'base_compiledir',
+    "platform-independent root directory for compiled modules",
+    ConfigParam(
+        default_base_compiledir,
+        filter=filter_base_compiledir,
+        allow_override=False),
+    in_c_key=False)
+
+AddConfigVar(
+    'compiledir',
+    "platform-dependent cache directory for compiled modules",
+    ConfigParam(
+        os.path.join(
+            config.base_compiledir,
+            default_compiledirname()),
+        filter=filter_compiledir,
+        allow_override=False),
+    in_c_key=False)
 
 
