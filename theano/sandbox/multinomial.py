@@ -245,7 +245,7 @@ class WeightedSelectionFromUniform(Op):
                              unis.shape[0], pvals.shape[0], n_samples)
         
         if z[0] is None or not numpy.all(z[0].shape == [pvals.shape[0], n_samples]):
-            z[0] = -1 * numpy.ones((pvals.shape[0], n_samples), dtype=node.outputs[0].dtype)
+            z[0] = -1 * numpy.ones((pvals.shape[0], n_samples), dtype='int')
 
         nb_multi = pvals.shape[0]
         nb_outcomes = pvals.shape[1]
