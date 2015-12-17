@@ -3507,7 +3507,7 @@ class BatchedDot(Op):
             return """{
                 npy_intp dims[3] = {%(_shape)s};
                 PyArray_Dims newshape = {.ptr = dims, .len = 3};
-                %(newname)s = (PyArrayObject*)PyArray_Newshape(%(oldname)s, &newshape, NPY_KEEPORDER);
+                %(newname)s = (PyArrayObject*)PyArray_Newshape(%(oldname)s, &newshape, NPY_ANYORDER);
                 if (!%(newname)s)
                     %(_fail)s
                 // make sure we didn't accidentally copy
