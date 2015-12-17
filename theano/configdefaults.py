@@ -6,7 +6,6 @@ import textwrap
 import re
 
 import theano
-from theano import config
 from theano.configparser import (AddConfigVar, BoolParam, ConfigParam, EnumStr,
                                  IntParam, StrParam, TheanoConfigParser)
 from theano.misc.cpucount import cpuCount
@@ -243,9 +242,9 @@ AddConfigVar('dnn.conv.algo_bwd',
 
 def default_dnn_path(suffix):
     def f(suffix=suffix):
-        if config.cuda.root == '':
+        if theano.config.cuda.root == '':
             return ''
-        return os.path.join(config.cuda.root, suffix)
+        return os.path.join(theano.config.cuda.root, suffix)
     return f
 
 AddConfigVar('dnn.include_path',
@@ -836,7 +835,8 @@ AddConfigVar('DebugMode.patience',
 
 AddConfigVar('DebugMode.check_c',
              "Run C implementations where possible",
-             BoolParam(bool(theano.config.cxx)),
+             BoolParam(
+                 lambda: bool(theano.config.cxx)),
              in_c_key=False)
 
 AddConfigVar('DebugMode.check_py',
@@ -1078,7 +1078,7 @@ AddConfigVar('compile.wait',
 
 
 def _timeout_default():
-    return config.compile.wait * 24
+    return theano.config.compile.wait * 24
 
 AddConfigVar('compile.timeout',
              """In seconds, time that a process will wait before deciding to
@@ -1192,7 +1192,7 @@ AddConfigVar("compiledir_format",
              in_c_key=False)
 
 def default_compiledirname():
-    formatted = config.compiledir_format % compiledir_format_dict
+    formatted = theano.config.compiledir_format % compiledir_format_dict
     safe = re.sub("[\(\)\s,]+", "_", formatted)
     return safe
 
@@ -1281,13 +1281,17 @@ AddConfigVar(
         allow_override=False),
     in_c_key=False)
 
+def default_compiledir():
+    return os.path.join(
+        theano.config.base_compiledir,
+        default_compiledirname())
+
 AddConfigVar(
     'compiledir',
     "platform-dependent cache directory for compiled modules",
+    
     ConfigParam(
-        os.path.join(
-            config.base_compiledir,
-            default_compiledirname()),
+        default_compiledir,
         filter=filter_compiledir,
         allow_override=False),
     in_c_key=False)
