@@ -128,15 +128,26 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
 
 #endif
 
-#if CUDNN_VERSION > 3000
-  if (algo == CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT) {
+  // The FFT implementation does not support strides, 1x1 filters or inputs
+  // with a spatial dimension larger than 1024. The tiled-FFT implementation
+  // does not support strides.
+  // If the chosen implementation is FFT or tiled-FFT, validate that it can
+  // be used on the current data and default to a safe implementation if it
+  // can't.
+  // The following code is 2d-specific but it is fine as FFT and tiled-FFT are
+  // defined only for 2d filters
+  if ((algo == CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING ||
+       algo == CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT) && PyGpuArray_NDIM(kerns) == 4) {
+
+    // Extract the properties of the convolution descriptor
     int nd;
     int pad[2];
     int stride[2];
     int upscale[2];
     cudnnConvolutionMode_t mode;
-    err = cudnnGetConvolutionNdDescriptor(desc, 2, &nd, pad, stride,
-                                          upscale, &mode);
+    cudnnDataType_t data_type;
+    err = cudnnGetConvolutionNdDescriptor_v3(desc, 2, &nd, pad, stride,
+                                             upscale, &mode, &data_type);
     if (err != CUDNN_STATUS_SUCCESS) {
       PyErr_Format(PyExc_RuntimeError,
                    "error getting convolution properties: %s",
@@ -145,13 +156,24 @@ APPLY_SPECIFIC(conv_gi)(PyGpuArrayObject *kerns, PyGpuArrayObject *output,
       return 1;
     }
 
-    if (stride[0] != 1 || stride[1] != 1 ||
-        PyGpuArray_DIM(*input, 2) > 1024 || PyGpuArray_DIM(*input, 3) > 1024 ||
-        (PyGpuArray_DIM(kerns, 2) == 1 && PyGpuArray_DIM(kerns, 3) == 1)) {
-      algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
+    if (algo == CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT)
+    {
+      if (stride[0] != 1 || stride[1] != 1 ||
+          PyGpuArray_DIM(*input, 2) > 1024 || PyGpuArray_DIM(*input, 3) > 1024 ||
+          (PyGpuArray_DIM(kerns, 2) == 1 && PyGpuArray_DIM(kerns, 3) == 1))
+      {
+        algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
+      }
+    }
+    else
+    {
+      // algo == CUDNN_CONVOLUTION_BWD_DATA_ALGO_FFT_TILING
+      if (stride[0] != 1 || stride[1] != 1)
+      {
+        algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_0;
+      }
     }
   }
-#endif
 
   size_t worksize;
   gpudata *workspace;

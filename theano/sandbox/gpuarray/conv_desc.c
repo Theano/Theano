@@ -29,7 +29,7 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp,
     return -1;
   }
 
-  err = cudnnSetConvolutionNdDescriptor(*desc, NB_DIMS, pad, strides, upscale,
-                                        CONV_MODE);
+  err = cudnnSetConvolutionNdDescriptor_v3(*desc, NB_DIMS, pad, strides,
+                                           upscale, CONV_MODE, PRECISION);
   return 0;
 }

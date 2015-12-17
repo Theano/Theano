@@ -136,15 +136,26 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
        algo == CUDNN_CONVOLUTION_FWD_ALGO_GEMM))
     algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
 
-#if CUDNN_VERSION > 3000
-  if (algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT) {
+  // The FFT implementation does not support strides, 1x1 filters or inputs
+  // with a spatial dimension larger than 1024. The tiled-FFT implementation
+  // does not support strides.
+  // If the chosen implementation is FFT or tiled-FFT, validate that it can
+  // be used on the current data and default to a safe implementation if it
+  // can't.
+  // The following code is 2d-specific but it is fine as FFT and tiled-FFT are
+  // defined only for 2d filters
+  if ((algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT ||
+       algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING) && PyGpuArray_NDIM(input) == 4) {
+
+    // Extract the properties of the convolution descriptor
     int nd;
     int pad[2];
     int stride[2];
     int upscale[2];
     cudnnConvolutionMode_t mode;
-    err = cudnnGetConvolutionNdDescriptor(desc, 2, &nd, pad, stride,
-                                          upscale, &mode);
+    cudnnDataType_t data_type;
+    err = cudnnGetConvolutionNdDescriptor_v3(desc, 2, &nd, pad, stride,
+                                             upscale, &mode, &data_type);
     if (err != CUDNN_STATUS_SUCCESS) {
       PyErr_Format(PyExc_RuntimeError,
                    "error getting convolution properties: %s",
@@ -153,30 +164,24 @@ APPLY_SPECIFIC(conv_fwd)(PyGpuArrayObject *input, PyGpuArrayObject *kerns,
       return 1;
     }
 
-    if (stride[0] != 1 || stride[1] != 1 ||
-        PyGpuArray_DIM(input, 2) > 1024 || PyGpuArray_DIM(input, 3) > 1024 ||
-        (PyGpuArray_DIM(kerns, 2) == 1 && PyGpuArray_DIM(kerns, 3) == 1)) {
-      algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
+    if (algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT)
+    {
+      if (stride[0] != 1 || stride[1] != 1 ||
+          PyGpuArray_DIM(input, 2) > 1024 || PyGpuArray_DIM(input, 3) > 1024 ||
+          (PyGpuArray_DIM(kerns, 2) == 1 && PyGpuArray_DIM(kerns, 3) == 1))
+      {
+        algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+      }
+    }
+    else
+    {
+      // algo == CUDNN_CONVOLUTION_FWD_ALGO_FFT_TILING
+      if (stride[0] != 1 || stride[1] != 1)
+      {
+        algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_GEMM;
+      }
     }
   }
-#endif
-
-#if CUDNN_VERSION < 3000
-  /* cuDNN before v3 does not support kernels larger than input even
-   * if appropriate padding is selected. */
-  for (unsigned int i = 2; i < PyGpuArray_NDIM(input); i++) {
-    if (PyGpuArray_DIM(kerns, i) > PyGpuArray_DIM(input, i)) {
-      PyErr_SetString(PyExc_RuntimeError, "the current version "
-                      "of CuDNN does not support kernels larger than the "
-                      "inputs in any spatial dimension, even if the inputs "
-                      "are padded such that the padded inputs are larger "
-                      "than the kernels. Update your installation of CuDNN "
-                      "to V3 or more recent to solve the issue.");
-      cuda_exit(c->ctx);
-      return 1;
-    }
-  }
-#endif
 
   {
     size_t worksize;
