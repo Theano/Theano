@@ -27,6 +27,20 @@ from .fp16_help import write_w
 
 
 def as_gpuarray_variable(x, context_name):
+    """
+    This will attempt to convert `x` into a variable on the GPU.
+
+    It can take either a value of another variable.  If `x` is already
+    suitable, it will be returned as-is.
+
+    Parameters
+    ----------
+    x
+        Object to convert
+    context_name : str or None
+        target context name for the result
+
+    """
     # If this is already some form of variable, try to avoid an extra transfer
     if isinstance(x, Variable):
         while True:
@@ -174,6 +188,13 @@ class Kernel(object):
 
 
 class GpuKernelBase(object):
+    """
+    Base class for operations that need to compile kernels.
+
+    It is not mandatory to use this class, but it helps with a lot of
+    the small things that you have to pay attention to.
+
+    """
     params_type = gpu_context_type
 
     def gpu_kernels(self, node, name):
@@ -274,10 +295,25 @@ class GpuKernelBase(object):
         return (self.c_code_cache_version(), self.kernel_version(node))
 
     def kernel_version(self, node):
+        """
+        If you override :meth:`c_code_cache_version_apply`, call this
+        method to have the version of the kernel support code and
+        device.
+
+        Parameters
+        ----------
+        node : apply node
+            The node that we need the cache version for.
+
+        """
         return (3, self.get_params(node).bin_id)
 
 
 class HostFromGpu(Op):
+    """
+    Transfer data to CPU.
+
+    """
     __props__ = ()
     _f16_ok = True
 
@@ -356,6 +392,10 @@ host_from_gpu = HostFromGpu()
 
 
 class GpuFromHost(Op):
+    """
+    Transfer data to GPU.
+
+    """
     __props__ = ('context_name',)
     _f16_ok = True
     params_type = gpu_context_type
@@ -443,6 +483,10 @@ class GpuFromHost(Op):
 
 
 class GpuToGpu(Op):
+    """
+    Transfer data between GPUs.
+
+    """
     __props__ = ('context_name',)
     _f16_ok = True
     params_type = gpu_context_type
@@ -494,6 +538,7 @@ class GpuToGpu(Op):
 
 class GpuAlloc(HideC, Alloc):
     """
+    Allocate initialized memory on the GPU.
 
     Parameters
     ----------
@@ -654,6 +699,10 @@ class GpuAlloc(HideC, Alloc):
 
 
 class GpuAllocEmpty(HideC, Alloc):
+    """
+    Allocate uninitialized memory on the GPU.
+
+    """
     __props__ = ('dtype', 'context_name')
     _f16_ok = True
     params_type = gpu_context_type
@@ -732,8 +781,10 @@ def empty_like(var):
 
 class GpuContiguous(Op):
     """
-    Always return a c contiguous output. Copy the input only if it is
-    not already c contiguous.
+    Return a C contiguous version of the input.
+
+    This may either pass the object as-is (if already C contiguous) or
+    make a copy.
 
     """
     __props__ = ()
@@ -793,7 +844,7 @@ gpu_contiguous = GpuContiguous()
 
 class GpuReshape(HideC, tensor.Reshape):
     """
-    Implement Reshape on the gpu.
+    Reshape for GPU variables.
 
     """
 
@@ -914,6 +965,10 @@ class GpuReshape(HideC, tensor.Reshape):
 
 
 class GpuJoin(HideC, Join):
+    """
+    Join for GPU.
+
+    """
     _f16_ok = True
     params_type = gpu_context_type
 
@@ -991,6 +1046,10 @@ gpu_join = GpuJoin()
 
 
 class GpuSplit(HideC, Split):
+    """
+    Split for GPU.
+
+    """
     def make_node(self, x, axis, splits):
         node = Split.make_node(self, x, axis, splits)
         x = as_gpuarray_variable(x, infer_context_name(x))
@@ -1002,6 +1061,10 @@ class GpuSplit(HideC, Split):
 
 
 class GpuEye(GpuKernelBase, Op):
+    """
+    Eye for GPU.
+
+    """
     __props__ = ('dtype', 'context_name')
     _f16_ok = True
 

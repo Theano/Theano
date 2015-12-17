@@ -22,7 +22,7 @@ def grab_cpu_scalar(v, nd):
 
     Parameters
     ----------
-    v : variable
+    v
         Theano variable to extract the constant value from.
     nd : int
         Expected number of dimensions for the variable (for
@@ -55,7 +55,7 @@ def find_node(v, cls, ignore_clients=False):
 
     Parameters
     ----------
-    v : variable
+    v
         The variable to dig through
     cls : Op class
         The type of the node we are looking for
@@ -84,9 +84,9 @@ def is_equal(var, val):
 
     Parameters
     ----------
-    var : variable
+    var
         Variable to compare
-    val : value
+    val
         Python value
 
     """
@@ -101,11 +101,11 @@ def alpha_merge(cls, alpha_in, beta_in):
     """
     Decorator to merge multiplication by a scalar on the output.
 
-    This will find a pattern of scal * <yourop>(some, params, alpha,
-    beta) and update it so that the scalar multiplication happens as
+    This will find a pattern of `scal * <yourop>(some, params, alpha,
+    beta)` and update it so that the scalar multiplication happens as
     part of your op.
 
-    The op needs to accept an alpha and a beta scalar which act this way:
+    The op needs to accept an alpha and a beta scalar which act this way::
 
        out = Op() * alpha + out_like * beta
 
@@ -113,7 +113,7 @@ def alpha_merge(cls, alpha_in, beta_in):
     and gets added to the "real" output of the operation.  An example
     of an operation that respects this pattern is GEMM from blas.
 
-    The decorated function must have this signature:
+    The decorated function must have this signature::
 
         maker(node, *inputs)
 
@@ -122,7 +122,7 @@ def alpha_merge(cls, alpha_in, beta_in):
     for your op so that the new version performs the same computation.
     The `*inputs` parameters contains the new inputs for your op.  You
     MUST use those inputs instead of the ones on `node`.  Note that
-    this function can be as simple as:
+    this function can be as simple as::
 
         def maker(node, *inputs):
             return node.op(*inputs)
@@ -138,8 +138,9 @@ def alpha_merge(cls, alpha_in, beta_in):
 
     Returns
     -------
-    This returns an unregistered local optimizer that has the same
-    name as the decorated function.
+    local optimizer
+        an unregistered local optimizer that has the same name as the
+        decorated function.
 
     Notes
     -----
@@ -191,11 +192,11 @@ def output_merge(cls, alpha_in, beta_in, out_in):
     """
     Decorator to merge addition by a value on the output.
 
-    This will find a pattern of val * <yourop>(some, params, alpha,
-    beta, out_like) and update it so that the addtition happens as
+    This will find a pattern of `val * <yourop>(some, params, alpha,
+    beta, out_like)` and update it so that the addtition happens as
     part of your op.
 
-    The op needs to accept an alpha and a beta scalar which act this way:
+    The op needs to accept an alpha and a beta scalar which act this way::
 
        out = Op() * alpha + out_like * beta
 
@@ -203,7 +204,7 @@ def output_merge(cls, alpha_in, beta_in, out_in):
     and gets added to the "real" output of the operation.  An example
     of an operation that respects this pattern is GEMM from blas.
 
-    The decorated function must have this signature:
+    The decorated function must have this signature::
 
         maker(node, *inputs)
 
@@ -212,7 +213,7 @@ def output_merge(cls, alpha_in, beta_in, out_in):
     for your op so that the new version performs the same computation.
     The `*inputs` parameters contains the new inputs for your op.  You
     MUST use those inputs instead of the ones on `node`.  Note that
-    this function can be as simple as:
+    this function can be as simple as::
 
         def maker(node, *inputs):
             return node.op(*inputs)
@@ -230,8 +231,9 @@ def output_merge(cls, alpha_in, beta_in, out_in):
 
     Returns
     -------
-    This returns an unregistered local optimizer that has the same
-    name as the decorated function.
+    local optimizer
+        an unregistered local optimizer that has the same name as the
+        decorated function.
 
     Notes
     -----
@@ -281,7 +283,7 @@ def inplace_allocempty(op, idx):
     This will duplicate the alloc input if it has more than one client
     to allow the op to work on it inplace.
 
-    The decorated function must have this signature:
+    The decorated function must have this signature::
 
         maker(node, inputs)
 
@@ -291,7 +293,7 @@ def inplace_allocempty(op, idx):
     You should also switch the op to work inplace.  The `*inputs`
     parameters contains the new inputs for your op.  You MUST use
     those inputs instead of the ones on `node`.  Note that this
-    function can be as simple as:
+    function can be as simple as::
 
         def maker(node, inputs):
             return [node.op.__class__(inplace=True)(*inputs)]
@@ -305,8 +307,9 @@ def inplace_allocempty(op, idx):
 
     Returns
     -------
-    This returns an unregistered inplace local optimizer that has the
-    same name as the decorated function.
+    local optimizer
+        an unregistered inplace local optimizer that has the same name
+        as the decorated function.
 
     """
     def wrapper(maker):

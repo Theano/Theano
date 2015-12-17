@@ -57,6 +57,10 @@ def as_C_string_const(s):
 
 
 class GpuElemwise(GpuKernelBase, HideC, Elemwise):
+    """
+    Elemwise on the GPU.
+
+    """
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
     _f16_ok = True
@@ -445,6 +449,10 @@ class SupportCodeError(Exception):
 
 
 class GpuDimShuffle(HideC, DimShuffle):
+    """
+    DimShuffle on the GPU.
+
+    """
     _f16_ok = True
 
     def make_node(self, input):
@@ -548,7 +556,7 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
 
     Parameters
     ----------
-    reduce-mask
+    reduce_mask
         The dimensions along which to reduce. The `reduce_mask` is a tuple of
         booleans (actually integers 0 or 1) that specify for each input
         dimension, whether to reduce it (1) or not (0).
@@ -1279,14 +1287,6 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
         """ % locals()
 
     def c_code_reduce_ccontig(self, sio, node, name, x, z, fail):
-        """
-        WRITEME
-
-        IG: I believe, based on how this is called in c_code, that it
-        is for the case where we are reducing on all axes and x is
-        C contiguous.
-
-        """
         in_dtype = "npy_" + node.inputs[0].dtype
         out_dtype = "npy_" + node.outputs[0].dtype
         if getattr(self.scalar_op, 'identity', None) == 0:
@@ -2665,8 +2665,6 @@ class GpuCAReduceCuda(GpuKernelBase, HideC, CAReduceDtype):
 class GpuCAReduceCPY(GpuKernelBase, HideC, CAReduceDtype):
     """
     CAReduce that reuse the python code from gpuarray.
-
-    Too slow for now as it only have a python interface.
 
     """
     def __init__(self, scalar_op, axis=None, dtype=None, acc_dtype=None):

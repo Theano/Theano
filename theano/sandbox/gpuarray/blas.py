@@ -31,6 +31,10 @@ class BlasOp(Op):
 
 
 class GpuGemv(BlasOp):
+    """
+    Gemv on the GPU.
+
+    """
     __props__ = ('inplace',)
 
     def __init__(self, inplace=False):
@@ -107,6 +111,10 @@ gpugemv_inplace = GpuGemv(inplace=True)
 
 
 class GpuGemm(BlasOp):
+    """
+    Gemm on the GPU.
+
+    """
     __props__ = ('inplace',)
     _f16_ok = True
 
@@ -184,6 +192,10 @@ gpugemm_inplace = GpuGemm(inplace=True)
 
 
 class GpuGer(BlasOp):
+    """
+    Ger on the GPU.
+
+    """
     __props__ = ('inplace',)
 
     def __init__(self, inplace=False):
@@ -256,6 +268,10 @@ gpuger_inplace = GpuGer(inplace=True)
 
 
 class GpuDot22(BlasOp):
+    """
+    Dot22 on the GPU.
+
+    """
     __props__ = ()
 
     def make_node(self, x, y):

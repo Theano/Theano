@@ -24,6 +24,9 @@ from .elemwise import GpuElemwise
 
 
 class GpuSubtensor(HideC, Subtensor):
+    """
+    Subtensor on the GPU.
+    """
     _f16_ok = True
 
     def make_node(self, x, *inputs):
@@ -173,8 +176,8 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
     The optimization to make this inplace is in tensor/opt.
     The same optimization handles IncSubtensor and GpuIncSubtensor.
     This Op has c_code too; it inherits tensor.IncSubtensor's c_code.
-    The helper methods like do_type_checking, copy_of_x, etc. specialize
-    the c_code for this Op.
+    The helper methods like :meth:`do_type_checking`,
+    :meth:`copy_of_x`, etc. specialize the c_code for this Op.
 
     """
 
@@ -405,6 +408,9 @@ class GpuIncSubtensor(GpuKernelBase, IncSubtensor):
 
 
 class GpuAdvancedSubtensor1(HideC, tensor.AdvancedSubtensor1):
+    """
+    AdvancedSubrensor1 on the GPU.
+    """
     def make_node(self, x, ilist):
         ctx_name = infer_context_name(x, ilist)
         x_ = as_gpuarray_variable(x, ctx_name)
@@ -580,8 +586,10 @@ class GpuAdvancedIncSubtensor1_dev20(GpuKernelBase, GpuAdvancedIncSubtensor1):
     _f16_ok = True
 
     def make_node(self, x, y, ilist):
-        """It defer from GpuAdvancedIncSubtensor1 in that it make sure
-        the index are of type long.
+        """
+        It differs from GpuAdvancedIncSubtensor1 in that it makes sure
+        the indexes are of type long.
+
         """
         ctx_name = infer_context_name(x, y, ilist)
         x_ = as_gpuarray_variable(x, ctx_name)

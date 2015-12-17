@@ -67,6 +67,7 @@ def get_context(name):
 def list_contexts():
     """
     Return an iterable of all the registered context names.
+
     """
     return _context_reg.keys()
 
@@ -85,6 +86,54 @@ def _unreg_context(name):
 
 
 class GpuArrayType(Type):
+    """
+    The type that represents an array on a gpu.
+
+    The `dtype` indicates what scalar data type the elements of
+    variables of this type will be.
+
+    `broadcastable` indicates whether each dimension is broadcastable
+    or not (to be broadcastable a dimension must always be of length
+    1).
+
+    The `context_name` is the name of the context on will values of
+    variables of this type will be stored.
+
+    Parameters
+    ----------
+    dtype : str
+        The name of a numpy dtype
+    broadcastable : tuple of bools
+        A tuple that indicates both the number of dimensions (by its
+        length) and whether those dimensions are broadcastable or not
+        (by the boolean values).
+    context_name : str
+        The name of the context the that this type is attached to
+        (default: None, which is the context specified by
+        config.device).
+    name : string, optional
+        A name for the type that will be used in printouts.
+
+    Attributes
+    ----------
+    dtype : str
+        Data type used for scalar elements of variables.
+    broadcastable : tuple of bools
+        Indicates whether the dimensions are broadcastable or not.
+    ndim : int
+        The number of dimensions
+    context_name : str
+        The name of a gpu context on which variables will have their values.
+    name : str
+        A string used to print the type if given.
+    typecode : int
+        The gpuarray typecode for `dtype`
+
+    See Also
+    --------
+    theano.gof.type.PureType
+
+    """
     def __init__(self, dtype, broadcastable, context_name=None, name=None):
         # In case this was not provided and no global value is available
         self.dtype = str(dtype)
@@ -111,6 +160,11 @@ class GpuArrayType(Type):
     # This is a property to keep the type pickleable
     @property
     def context(self):
+        """
+        The context object mapped to the type's :attr:`context_name`.
+        This is a property.
+
+        """
         return get_context(self.context_name)
 
     def __repr__(self):
@@ -306,8 +360,6 @@ class GpuArrayType(Type):
         This function is used internally as part of C code generation.
 
         """
-        # TODO: add more type correspondances for e.g. int32, int64, float32,
-        # complex64, etc.
         try:
             return {
                 'float16': (float, 'npy_float16', 'NPY_FLOAT16'),
@@ -321,8 +373,8 @@ class GpuArrayType(Type):
                 'int32': (int, 'npy_int32', 'NPY_INT32'),
                 'uint64': (int, 'npy_uint64', 'NPY_UINT64'),
                 'int64': (int, 'npy_int64', 'NPY_INT64'),
-                'complex128': (complex, 'theano_complex128', 'NPY_COMPLEX128'),
-                'complex64': (complex, 'theano_complex64', 'NPY_COMPLEX64')
+                # 'complex128': (complex, 'theano_complex128', 'NPY_COMPLEX128'),
+                # 'complex64': (complex, 'theano_complex64', 'NPY_COMPLEX64')
                 }[self.dtype]
         except KeyError:
             raise TypeError("Unsupported dtype for %s: %s" %
@@ -420,10 +472,21 @@ class _operators(_tensor_py_operators):
 
 
 class GpuArrayVariable(_operators, Variable):
+    """
+    A variable representing a computation on a certain GPU.
+
+    This supports all the operations that :class:`TensorType`
+    supports.
+
+    See Also
+    --------
+    Variable
+
+    """
+
     # override the default
     def __repr_test_value__(self):
         return repr(numpy.array(theano.gof.op.get_test_value(self)))
-    pass
 
 
 GpuArrayType.Variable = GpuArrayVariable
@@ -436,6 +499,17 @@ class GpuArraySignature(tensor.TensorConstantSignature):
 
 
 class GpuArrayConstant(_operators, Constant):
+    """
+    A constant representing a value on a certain GPU.
+
+    This supports all the operations that :class:`TensorType`
+    supports.
+
+    See Also
+    --------
+    Constant
+
+    """
     def signature(self):
         return GpuArraySignature((self.type, numpy.asarray(self.data)))
 
@@ -453,6 +527,17 @@ GpuArrayType.Constant = GpuArrayConstant
 
 
 class GpuArraySharedVariable(_operators, SharedVariable):
+    """
+    A variable representing a shared value on a certain GPU.
+
+    This supports all the operations that :class:`TensorType`
+    supports.
+
+    See Also
+    --------
+    SharedVariable
+
+    """
     def get_value(self, borrow=False, return_internal_type=False):
         if return_internal_type:
             if borrow:
@@ -480,6 +565,8 @@ def gpuarray_shared_constructor(value, name=None, strict=False,
                                 broadcastable=None, target=None):
     """
     SharedVariable constructor for GpuArrayType.
+
+    See :func:`theano.shared`.
 
     """
     if target == 'gpu' or target == 'cpu':
@@ -596,6 +683,13 @@ theano.compile.register_specify_shape_c_code(
 
 
 class GpuContextType(Type):
+    """
+    Minimal type used for passing contexts to nodes.
+
+    This Type is not a complete type and should never be used for
+    regular graph operations.
+
+    """
     def filter(self, data, strict=False, allow_downcast=None):
         if not isinstance(data, gpuarray.GpuContext):
             raise TypeError('context is not a GpuContext')
@@ -652,4 +746,8 @@ Py_INCREF(%(name)s);
 
     # Variable, Contstant, ... not declared
 
+"""
+Instance of :class:`GpuContextType` to use for the context_type
+declaration of an operation.
+"""
 gpu_context_type = GpuContextType()
