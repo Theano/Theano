@@ -273,7 +273,7 @@ def sp_ones_like(x):
 
     Returns
     -------
-    matrix
+    A sparse matrix
         The same as `x` with data changed for ones.
 
     """
@@ -293,7 +293,7 @@ def sp_zeros_like(x):
 
     Returns
     -------
-    matrix
+    A sparse matrix
         The same as `x` with zero entries for all element.
 
     """
@@ -1765,7 +1765,7 @@ def row_scale(x, s):
 
     Returns
     -------
-    matrix
+    A sparse matrix
         A sparse matrix in the same format as `x` whose each row has been
         multiplied by the corresponding element of `s`.
 
@@ -2070,7 +2070,7 @@ def clean(x):
 
     Returns
     -------
-    matrix
+    A sparse matrix
         The same as `x` with indices sorted and zeros
         removed.
 
@@ -2166,7 +2166,7 @@ y
 
 Returns
 -------
-matrix
+A sparse matrix
     The sum of the two sparse matrices element wise.
 
 Notes
@@ -2270,7 +2270,7 @@ y
 
 Returns
 -------
-matrix
+A sparse matrix
     A sparse matrix containing the addition of the vector to
     the data of the sparse matrix.
 
@@ -2297,7 +2297,7 @@ def add(x, y):
 
     Returns
     -------
-    matrix
+    A sparse matrix
         `x` + `y`
 
     Notes
@@ -2348,7 +2348,7 @@ def sub(x, y):
 
     Returns
     -------
-    matrix
+    A sparse matrix
         `x` - `y`
 
     Notes
@@ -2547,7 +2547,7 @@ y
 
 Returns
 -------
-matrix
+A sparse matrix
     The product x * y element wise.
 
 Notes
@@ -2572,7 +2572,7 @@ def mul(x, y):
 
     Returns
     -------
-    matrix
+    A sparse matrix
         `x` + `y`
 
     Notes
@@ -3720,7 +3720,7 @@ def structured_dot(x, y):
 
     Returns
     -------
-    matrix
+    A sparse matrix
         The dot product of `a` and `b`.
 
     Notes

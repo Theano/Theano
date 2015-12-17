@@ -200,19 +200,24 @@ def shared_constructor(ctor, remove=False):
 
 
 def shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
-    """
-    Return a SharedVariable Variable, initialized with a copy or
+    """Return a SharedVariable Variable, initialized with a copy or
     reference of `value`.
 
-    This function iterates over
-    :ref:`constructor functions <shared_constructor>`
-    to find a suitable SharedVariable subclass.
-    The suitable one is the first constructor that accept the given value.
+    This function iterates over constructor functions to find a
+    suitable SharedVariable subclass.  The suitable one is the first
+    constructor that accept the given value.  See the documentation of
+    :func:`shared_constructor` for the definition of a contructor
+    function.
 
     This function is meant as a convenient default.  If you want to use a
     specific shared variable constructor, consider calling it directly.
 
     ``theano.shared`` is a shortcut to this function.
+
+    .. attribute:: constructors
+
+    A list of shared variable constructors that will be tried in reverse
+    order.
 
     Notes
     -----
@@ -228,11 +233,6 @@ def shared(value, name=None, strict=False, allow_downcast=None, **kwargs):
     broadcastable, even if ``value`` has a shape of 1 along some dimension.
     This parameter allows you to create for example a `row` or `column` 2d
     tensor.
-
-    .. attribute:: constructors
-
-    A list of shared variable constructors that will be tried in reverse
-    order.
 
     """
 

@@ -461,7 +461,7 @@ class Elemwise(OpenMPOp):
     scalar.ScalarOp to get help about controlling the output type)
 
     Parameters
-    -----------
+    ----------
     scalar_op
         An instance of a subclass of scalar.ScalarOp which works uniquely
         on scalars.

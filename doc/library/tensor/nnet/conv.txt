@@ -104,7 +104,7 @@ TODO: Give examples on how to use these things! They are pretty complicated.
       as a manual replacement for nnet.conv2d.
     - :func:`GpuCorrMM <theano.sandbox.cuda.blas.GpuCorrMM>`
       This is a GPU-only 2d correlation implementation taken from
-      `caffe <https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu>`_
+      `caffe's CUDA implementation <https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cu>`_
       and also used by Torch. It does not flip the kernel.
 
       For each element in a batch, it first creates a
@@ -122,7 +122,7 @@ TODO: Give examples on how to use these things! They are pretty complicated.
       If using it, please see the warning about a bug in CUDA 5.0 to 6.0 below.
     - :func:`CorrMM <theano.tensor.nnet.corr.CorrMM>`
       This is a CPU-only 2d correlation implementation taken from
-      `caffe <https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cpp>`_
+      `caffe's cpp implementation <https://github.com/BVLC/caffe/blob/master/src/caffe/layers/conv_layer.cpp>`_
       and also used by Torch. It does not flip the kernel. As it provides a gradient,
       you can use it as a replacement for nnet.conv2d. For convolutions done on
       CPU, nnet.conv2d will be replaced by CorrMM. To explicitly disable it, set
