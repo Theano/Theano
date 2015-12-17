@@ -125,3 +125,7 @@ cudnnHandle_t APPLY_SPECIFIC(_handle);
   }
   cuda_exit(PARAMS->ctx);
 }
+
+#section cleanup_code_struct
+
+cudnnDestroy(APPLY_SPECIFIC(_handle));
