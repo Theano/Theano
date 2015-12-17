@@ -519,13 +519,6 @@ class FromFunctionOp(gof.Op):
         return 'FromFunctionOp{%s}' % self.__fn.__name__
 
     def make_node(self, *inputs):
-
-        if not self.itypes:
-            raise NotImplementedError("itypes not defined")
-
-        if not self.otypes:
-            raise NotImplementedError("otypes not defined")
-
         if len(inputs) != len(self.itypes):
             raise ValueError("We expected %d inputs but got %d." %
                              (len(self.itypes), len(inputs)))

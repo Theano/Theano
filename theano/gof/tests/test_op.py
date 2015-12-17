@@ -235,26 +235,24 @@ class TestMakeThunk(unittest.TestCase):
                               thunk)
 
     def test_no_make_node(self):
-        class IncOne(Op):
+        class DoubleOp(Op):
             """An Op without make_node"""
+
             __props__ = ()
-            itypes = [T.fmatrix]
-            otypes = [T.fmatrix]
+
+            itypes = [T.dmatrix]
+            otypes = [T.dmatrix]
 
             def perform(self, node, inputs, outputs):
-                input, = inputs
-                output, = outputs
-                output[0] = input + 1
+                inp = inputs[0]
+                output = outputs[0]
+                output[0] = inp * 2
 
-        x_input = T.fmatrix('x')
-        o = IncOne()(x_input)
-
-        # Confirming that make_node method is implemented
-        try:
-            self.assertRaises((NotImplementedError, utils.MethodNotDefined),
-                              o.owner.op.make_node, x_input)
-        except AssertionError:
-            pass
+        x_input = T.matrix('x_input')
+        f = theano.function([x_input], DoubleOp()(x_input))
+        inp = numpy.random.rand(5, 4)
+        out = f(inp)
+        assert numpy.allclose(inp * 2, out)
 
 
 def test_test_value_python_objects():
