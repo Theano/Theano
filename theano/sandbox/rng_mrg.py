@@ -1366,8 +1366,9 @@ class MRG_RandomStreams(object):
     def weighted_selection(self, size=None, n=1, pvals=None, ndim=None, dtype='int64',
                            nstreams=None):
         """
-        Sample `n` times (`n` needs to be in [1, m], where m is pvals.shape[1], default 1)
-        *WITHOUT replacement* from a multinomial distribution defined by probabilities pvals.
+        Sample `n` times *WITHOUT replacement* from a multinomial distribution
+        defined by probabilities pvals. `n` needs to be in [1, m], where m is the number of
+        elements to select from, i.e. m == pvals.shape[1]. By default n = 1.
         
         Example : WRITEME
         
@@ -1387,9 +1388,6 @@ class MRG_RandomStreams(object):
             raise TypeError("You have to specify pvals")
         pvals = as_tensor_variable(pvals)
 
-        if n > pvals.shape[1]:
-            raise ValueError("Cannot sample without replacement n samples bigger "
-                             "than the size of the distribution.")
         if size is not None:
             raise ValueError("Provided a size argument to "
                              "MRG_RandomStreams.weighted_selection, which does not use "

@@ -236,11 +236,16 @@ class WeightedSelectionFromUniform(Op):
         (pvals, unis, n_samples) = ins
         (z,) = outs
 
+        if n_samples > pvals.shape[1]:
+            raise ValueError("Cannot sample without replacement n samples bigger "
+                             "than the size of the distribution.")
+        
         if unis.shape[0] != pvals.shape[0] * n_samples:
             raise ValueError("unis.shape[0] != pvals.shape[0] * n_samples",
                              unis.shape[0], pvals.shape[0], n_samples)
-        if z[0] is None or numpy.any(z[0].shape != [pvals.shape[0], n_samples]):
-            z[0] = numpy.zeros((pvals.shape[0], n_samples), dtype=node.outputs[0].dtype)
+        
+        if z[0] is None or not numpy.all(z[0].shape == [pvals.shape[0], n_samples]):
+            z[0] = -1 * numpy.ones((pvals.shape[0], n_samples), dtype=node.outputs[0].dtype)
 
         nb_multi = pvals.shape[0]
         nb_outcomes = pvals.shape[1]
@@ -255,9 +260,10 @@ class WeightedSelectionFromUniform(Op):
                     cummul += pvals[n, m]
                     if (cummul > unis_n):
                         z[0][n, c] = m
-                        # set to zero so that it's not selected again
+                        # set to zero and re-normalize so that it's not selected again
                         pvals[n, m] = 0.
-                        
+                        pvals[n] /= pvals[n].sum()
+                        break
 
 class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
     """
