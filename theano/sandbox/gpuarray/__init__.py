@@ -46,7 +46,16 @@ def init_dev(dev, name=None):
                            "are in sync.")
     global pygpu_activated
     if dev not in init_dev.devmap:
-        init_dev.devmap[dev] = pygpu.init(dev)
+        ctx = pygpu.init(dev)
+        init_dev.devmap[dev] = ctx
+        if config.gpuarray.preallocate != 0:
+            if config.gpuarray.preallocate < 1:
+                gmem = config.gpuarray.preallocate * ctx.total_gmem
+            else:
+                gmem = config.gpuarray.preallocate * (1024*1024)
+            # This will allocate and immediatly free an object of size gmem
+            # which will reserve that amount of memory on the GPU.
+            pygpu.empty((gmem,), dtype='int8', context=ctx)
     context = init_dev.devmap[dev]
     # This will map the context name to the real context object.
     reg_context(name, context)
