@@ -5747,6 +5747,46 @@ pprint.assign(_dot, printing.OperatorPrinter(printing.special['middle_dot'],
                                              -1, 'left'))
 
 
+def matmul(a, b):
+    """
+    Computes the matrix multiplication two tensor variables.
+
+    For two matrices, this is equivalent to matrix multiplication.
+    For two vectors, this is the inner product.
+    For N > 2 dimensions, this is a batched dot product
+    """
+    nd1, nd2 = a.ndim, b.ndim
+
+    # According to PEP 465 matmul should *not* work with scalars
+    if nd1 == 0 or nd2 == 0:
+        raise ValueError("Scalar operands are not allowed, use '*' instead")
+
+    # If both operands have ndim < 2 this a simple dot operation
+    if nd1 <= 2 and nd2 <= 2:
+        return dot(a, b)
+
+    # if one of the operands have ndim > 2 this is a batched dot (einsum).
+    # operands of inequal size would be ambigous
+    if nd1 != nd2:
+        raise ValueError('a.ndim != b.ndim. matmult takes only operands of same',
+                         'dimensionality when one operand has ndim > 2')
+
+    # for ndim 3 there exists a method we can use without modification
+    if nd1 == 3:
+        return batched_dot(a, b)
+
+    # ndim > 3
+    # shape of a and b must be the same except for the last 2 axes which must
+    # compatible with the dot operation:
+    #   a: ND (..., dim1, dim2)
+    #   b: ND (..., dim2, dim3)
+
+    _a = a.reshape([-1, a.shape[-2], a.shape[-1]], 3)
+    _b = b.reshape([-1, b.shape[-2], b.shape[-1]], 3)
+    out = batched_dot(_a, _b)
+    return out.reshape(concatenate([a.shape[:-1], [b.shape[-1]]]), a.ndim)
+
+
 def dot(a, b):
     """
     Computes the dot product of two variables.
