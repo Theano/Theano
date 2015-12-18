@@ -82,7 +82,8 @@ def test_pydotprint_variables():
     theano.theano_logger.addHandler(new_handler)
     try:
         theano.printing.pydotprint(x * 2)
-        theano.printing.pydotprint_variables(x * 2)
+        if not theano.printing.pd.__name__ == "pydot_ng":
+            theano.printing.pydotprint_variables(x * 2)
     finally:
         theano.theano_logger.addHandler(orig_handler)
         theano.theano_logger.removeHandler(new_handler)
