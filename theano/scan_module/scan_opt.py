@@ -694,9 +694,23 @@ class PushOutScanOutput(gof.Optimizer):
                          op.inputs, op.outputs, op.info)
 
         new_scan_node = None
-        local_fgraph_topo = theano.gof.graph.io_toposort(args.inner_inputs,
-                                                         args.inner_outputs)
 
+        # We need to clone, as otherwise, the Constant get include in
+        # a graph and this cause problems later.
+        # io_toposort on op.inputs, op.outputs don't work as args are cloned.
+
+        # io_toposort on args.inner_{inputs,outputs} don't work as we
+        # check the clients later and as they aren't in a
+        # FunctionGraph, there won't be client.
+
+        # Maybe we can not clone and disown the FunctionGraph?
+        # Currently it isn't used, and we know it don't revert
+        # absolutly all change.
+        local_fgraph = gof.FunctionGraph(args.inner_inputs,
+                                         args.inner_outputs,
+                                         clone=True)
+
+        local_fgraph_topo = theano.gof.graph.io_toposort(op.inputs, op.outputs)
         for nd in local_fgraph_topo:
             if (isinstance(nd.op, theano.tensor.Dot) and
                     nd.out in args.inner_out_nit_sot):
