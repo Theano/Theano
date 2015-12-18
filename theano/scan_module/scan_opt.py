@@ -694,7 +694,8 @@ class PushOutScanOutput(gof.Optimizer):
                          op.inputs, op.outputs, op.info)
 
         new_scan_node = None
-        local_fgraph_topo = theano.gof.graph.io_toposort(op.inputs, op.outputs)
+        local_fgraph_topo = theano.gof.graph.io_toposort(args.inner_inputs,
+                                                         args.inner_outputs)
 
         for nd in local_fgraph_topo:
             if (isinstance(nd.op, theano.tensor.Dot) and
