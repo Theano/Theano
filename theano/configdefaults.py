@@ -4,7 +4,8 @@ import logging
 
 import theano
 from theano.configparser import (AddConfigVar, BoolParam, ConfigParam, EnumStr,
-                                 IntParam, StrParam, TheanoConfigParser)
+                                 FloatParam, IntParam, StrParam,
+                                 TheanoConfigParser)
 from theano.misc.cpucount import cpuCount
 from theano.misc.windows import call_subprocess_Popen
 
@@ -218,6 +219,14 @@ AddConfigVar('gpuarray.sync',
                 but give much more accurate results in profiling.""",
              BoolParam(False),
              in_c_key=True)
+
+AddConfigVar('gpuarray.preallocate',
+             """If 0 it doesn't do anything.  If between 0 and 1 it
+             will preallocate that fraction of the total GPU memory.
+             If 1 or greater it will preallocate that amount of memory
+             (in megabytes).""",
+             FloatParam(0, lambda i: i >= 0),
+             in_c_key=False)
 
 
 def safe_no_dnn_workmem(workmem):
