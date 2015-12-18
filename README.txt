@@ -2,7 +2,6 @@ To install the package, see this page:
 
    http://deeplearning.net/software/theano/install.html
 
-
 For the documentation, see the project website:
 
    http://deeplearning.net/software/theano/
@@ -14,7 +13,7 @@ Related Projects:
 We recommend you look at the documentation on the website, since it
 will be more current than the documentation included with the package.
 If you really wish to build the documentation yourself, you will need
-epydoc and sphinx. Issue the following command:
+sphinx. Issue the following command:
 
     python ./doc/scripts/docgen.py
 

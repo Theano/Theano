@@ -89,7 +89,7 @@ The proposal is for two new ways of creating a *shared* variable:
     def shared(value, name=None, strict=False, **kwargs):
         """Return a SharedVariable Variable, initialized with a copy or reference of `value`.
 
-        This function iterates over constructor functions (see `shared_constructor`) to find a
+        This function iterates over constructor functions (see :func:`shared_constructor`) to find a
         suitable SharedVariable subclass.
 
         :note:

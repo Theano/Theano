@@ -40,8 +40,8 @@ Use ReST for documentation
 --------------------------
 
  * `ReST <http://docutils.sourceforge.net/rst.html>`__ is standardized.
-   epydoc is not. trac wiki-markup is not.
-   This means that ReST can be cut-and-pasted between epydoc, code, other
+   trac wiki-markup is not.
+   This means that ReST can be cut-and-pasted between code, other
    docs, and TRAC.  This is a huge win!
  * ReST is extensible: we can write our own roles and directives to automatically link to WIKI, for example.
  * ReST has figure and table directives, and can be converted (using a standard tool) to latex documents.

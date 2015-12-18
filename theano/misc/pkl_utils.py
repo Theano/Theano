@@ -144,6 +144,7 @@ else:
                 u = CompatUnpickler(fp, encoding="latin1")
             else:
                 u = CompatUnpickler(fp)
+
             mat = u.load()
         """
         pass

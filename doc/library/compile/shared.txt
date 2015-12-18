@@ -5,7 +5,7 @@
 :mod:`shared` - defines theano.shared
 ===========================================
 
-.. module:: shared
+.. module:: theano.compile.sharedvalue
    :platform: Unix, Windows
    :synopsis: defines theano.shared and related classes
 .. moduleauthor:: LISA
@@ -47,7 +47,7 @@
 
         :type: class:`Container`
 
-.. autofunction:: theano.compile.sharedvalue.shared
+.. autofunction:: shared
 
 .. function:: shared_constructor(ctor)
 

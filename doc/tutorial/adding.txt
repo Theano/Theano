@@ -11,6 +11,7 @@ To get us started with Theano and get a feel of what we're working with,
 let's make a simple function: add two numbers together. Here is how you do
 it:
 
+>>> import numpy
 >>> import theano.tensor as T
 >>> from theano import function
 >>> x = T.dscalar('x')
@@ -22,9 +23,8 @@ And now that we've created our function we can use it:
 
 >>> f(2, 3)
 array(5.0)
->>> f(16.3, 12.1)
-array(28.4)
-
+>>> numpy.allclose(f(16.3, 12.1), 28.4)
+True
 
 Let's break this down into several steps. The first step is to define
 two symbols (*Variables*) representing the quantities that you want
@@ -123,12 +123,13 @@ then be used like a normal Python function.
     the tutorial so far. It has the added benefit of not requiring
     you to import :func:`function` . Here is how :func:`eval` works:
 
+    >>> import numpy
     >>> import theano.tensor as T
     >>> x = T.dscalar('x')
     >>> y = T.dscalar('y')
     >>> z = x + y
-    >>> z.eval({x : 16.3, y : 12.1})
-    array(28.4)
+    >>> numpy.allclose(z.eval({x : 16.3, y : 12.1}), 28.4)
+    True
 
     We passed :func:`eval` a dictionary mapping symbolic theano
     variables to the values to substitute for them, and it returned
