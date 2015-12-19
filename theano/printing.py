@@ -1027,7 +1027,8 @@ def pydotprint(fct, outfile=None,
             g.write(outfile, prog='dot', format=format)
         except pd.InvocationException:
             # based on https://github.com/Theano/Theano/issues/2988
-            if map(int, pd.__version__.split(".")) < [1, 0, 28]:
+            version = getattr(pd, '__version__', "")
+            if version and map(int, version.split(".")) < [1, 0, 28]:
                 raise Exception("Old version of pydot detected, which can "
                                 "cause issues with pydot printing. Try "
                                 "upgrading pydot version to a newer one")
@@ -1062,7 +1063,10 @@ def pydotprint_variables(vars,
     if not pydot_imported:
         raise RuntimeError("Failed to import pydot. You must install pydot"
                            " and graphviz for `pydotprint_variables` to work.")
-
+    if pd.__name__ == "pydot_ng":
+        raise RuntimeError("pydotprint_variables do not support pydot_ng."
+                           "pydotprint_variables is also deprecated, "
+                           "use pydotprint() that support pydot_ng")
     g = pd.Dot()
     my_list = {}
     orphanes = []
@@ -1186,11 +1190,12 @@ def pydotprint_variables(vars,
     except pd.InvocationException as e:
         # Some version of pydot are bugged/don't work correctly with
         # empty label. Provide a better user error message.
-        if pd.__version__ == "1.0.28" and "label=]" in e.message:
+        version = getattr(pd, '__version__', "")
+        if version == "1.0.28" and "label=]" in e.message:
             raise Exception("pydot 1.0.28 is know to be bugged. Use another "
                             "working version of pydot")
         elif "label=]" in e.message:
-            raise Exception("Your version of pydot " + pd.__version__ +
+            raise Exception("Your version of pydot " + version +
                             " returned an error. Version 1.0.28 is known"
                             " to be bugged and 1.0.25 to be working with"
                             " Theano. Using another version of pydot could"

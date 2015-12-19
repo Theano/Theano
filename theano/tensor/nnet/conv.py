@@ -528,7 +528,7 @@ class ConvOp(OpenMPOp):
         self.out_mode = output_mode
 
         if self.out_mode not in ["valid", "full"]:
-            raise Exception("Mode %s not implemented" % self.out_mode)
+            raise Exception("Mode %s not implemented" % str(self.out_mode))
 
         if any((shp is not None) and (shp <= 0) for shp in self.outshp):
             raise Exception("Bad size for the output shape. Verify that [post-"
