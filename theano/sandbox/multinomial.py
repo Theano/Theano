@@ -177,7 +177,7 @@ class MultinomialFromUniform(Op):
             for n in range(nb_multi):
                 waiting = True
                 cummul = 0
-                unis_n = unis[n]
+                unis_n = unis[c * nb_multi + n]
 
                 for m in range(nb_outcomes):
                     cummul += pvals[n, m]
