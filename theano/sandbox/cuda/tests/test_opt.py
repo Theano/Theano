@@ -300,6 +300,21 @@ def test_opt_gpujoin_onlyajoin():
 
     assert numpy.all(f() == numpy.concatenate([_a, _b], axis=1))
 
+    # test mixed dtype
+    _b = numpy.asarray([[5, 6, 7], [8, 9, 10]], dtype='float64')
+    b = theano.tensor.constant(_b)
+
+    c = tensor.join(1, a, b)
+
+    f = theano.function([], c, mode=mode_with_gpu)
+
+    f()
+
+    graph_nodes = f.maker.fgraph.toposort()
+    assert isinstance(graph_nodes[-1].op, theano.tensor.Join)
+
+    assert numpy.all(f() == numpy.concatenate([_a, _b], axis=1))
+
 
 def test_opt_gpujoin_joinvectors_elemwise_then_minusone():
     # from a bug in gpu normal sampling

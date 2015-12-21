@@ -1949,9 +1949,10 @@ def local_gpu_join(node):
 
         # print "OPT: axis_and_tensors=", axis_and_tensors
 
-        matches = [(t.owner is not None and
-                    isinstance(t.owner.op, HostFromGpu)) or
-                   isinstance(t, gof.Constant) for t in axis_and_tensors[1:]]
+        matches = [t.dtype == 'float32' and
+                   ((t.owner is not None and
+                     isinstance(t.owner.op, HostFromGpu)) or
+                    isinstance(t, gof.Constant)) for t in axis_and_tensors[1:]]
         # print "OPT: matches =", matches
 
         # if all input tensors are host_from_gpu'ified
