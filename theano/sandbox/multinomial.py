@@ -172,7 +172,6 @@ class MultinomialFromUniform(Op):
 
         nb_multi = pvals.shape[0]
         nb_outcomes = pvals.shape[1]
-
         # For each multinomial, loop over each possible outcome
         for c in range(n_samples):
             for n in range(nb_multi):
