@@ -800,16 +800,16 @@ def scan(fn,
             if deps:
                 if r.owner:
                     return reversed(r.owner.inputs)
+            elif isinstance(r, scalar.ScalarVariable):  # ScanOp cannot handle scalars.
+                if r.owner:
+                    return reversed(r.owner.inputs)
             else:
                 # No, it does depend on the args. Add to list and don't expand further.
                 extra_inputs.append(r)
         gof.graph.stack_search(deque(outputs), expand, 'dfs')
         non_seqs += extra_inputs
 
-        dummy_givens = OrderedDict([(arg,
-                                     scalar.ScalarConstant(scalar.get_scalar_type(arg.dtype), 1)
-                                     if isinstance(arg.type, scalar.Scalar)
-                                     else tensor.constant(numpy.zeros([1] * arg.ndim, dtype=arg.dtype), name=arg.name))
+        dummy_givens = OrderedDict([(arg,tensor.constant(numpy.zeros([1] * arg.ndim, dtype=arg.dtype), name=arg.name))
                                     for arg in extra_inputs
                                     if (not isinstance(arg, SharedVariable) and
                                         not isinstance(arg, tensor.Constant))])
