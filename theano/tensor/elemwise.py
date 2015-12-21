@@ -868,8 +868,13 @@ class Elemwise(OpenMPOp):
             # This is done via the "sig" kwarg of the ufunc, its value
             # should be something like "ff->f", where the characters
             # represent the dtype of the inputs and outputs.
+
+            # NumPy 1.10.1 raise an error when giving the signature
+            # when the input is complex. So add it only when inputs is int.
             out_dtype = node.outputs[0].dtype
-            if out_dtype in float_dtypes and isinstance(ufunc, numpy.ufunc):
+            if (out_dtype in float_dtypes and
+                    isinstance(ufunc, numpy.ufunc) and
+                    inputs[0].dtype in scalar.int_types):
                 char = numpy.sctype2char(out_dtype)
                 sig = char * node.nin + '->' + char * node.nout
                 ufunc_kwargs['sig'] = sig
