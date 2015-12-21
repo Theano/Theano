@@ -12,7 +12,6 @@ from theano.tensor.blas_scipy import ScipyGer
 from theano.tensor.blas import Ger
 
 from theano.tensor.blas_c import CGemv
-from theano.tensor.blas_scipy import ScipyGer
 from theano.tensor.blas import Gemv
 
 from theano.tensor.blas_c import check_force_gemv_init

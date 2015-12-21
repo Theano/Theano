@@ -1,7 +1,6 @@
 import errno
 import logging
 import os
-from six.moves import reload_module as reload
 import sys
 import warnings
 

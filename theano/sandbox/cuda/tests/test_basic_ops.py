@@ -873,8 +873,6 @@ def test_hostfromgpu_shape_i():
 
 # -----------------------------------------------------------------------
 
-import theano.sandbox.cuda as cuda_ndarray
-
 
 def test_gpujoin_assert_cndas():
     # this will end up being an ndarray, as it's float64
