@@ -53,7 +53,7 @@ def init_dev(dev, name=None):
         init_dev.devmap[dev] = ctx
         if config.gpuarray.preallocate != 0:
             if config.gpuarray.preallocate < 1:
-                gmem = config.gpuarray.preallocate * ctx.total_gmem
+                gmem = min(config.gpuarray.preallocate, 0.98) * ctx.total_gmem
             else:
                 gmem = config.gpuarray.preallocate * (1024*1024)
             # This will allocate and immediatly free an object of size gmem
