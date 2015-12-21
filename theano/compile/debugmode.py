@@ -33,39 +33,6 @@ from theano.compile.ops import OutputGuard
 
 __docformat__ = "restructuredtext en"
 
-AddConfigVar('DebugMode.patience',
-             "Optimize graph this many times to detect inconsistency",
-             IntParam(10, lambda i: i > 0),
-             in_c_key=False)
-
-AddConfigVar('DebugMode.check_c',
-             "Run C implementations where possible",
-             BoolParam(bool(theano.config.cxx)),
-             in_c_key=False)
-
-AddConfigVar('DebugMode.check_py',
-             "Run Python implementations where possible",
-             BoolParam(True),
-             in_c_key=False)
-
-AddConfigVar('DebugMode.check_finite',
-             "True -> complain about NaN/Inf results",
-             BoolParam(True),
-             in_c_key=False)
-
-AddConfigVar('DebugMode.check_strides',
-             ("Check that Python- and C-produced ndarrays have same strides. "
-              "On difference: (0) - ignore, (1) warn, or (2) raise error"),
-             IntParam(0, lambda i: i in (0, 1, 2)),
-             in_c_key=False)
-
-AddConfigVar('DebugMode.warn_input_not_reused',
-             ("Generate a warning when destroy_map or view_map says that an "
-              "op works inplace, but the op did not reuse the input for its "
-              "output."),
-             BoolParam(True),
-             in_c_key=False)
-
 
 def is_valid_check_preallocated_output_param(param):
     if not isinstance(param, string_types):

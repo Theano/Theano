@@ -17,22 +17,6 @@ from six import string_types
 
 _logger = logging.getLogger('theano.compile.mode')
 
-AddConfigVar('optimizer_excluding',
-             ("When using the default mode, we will remove optimizer with "
-              "these tags. Separate tags with ':'."),
-             StrParam("", allow_override=False),
-             in_c_key=False)
-AddConfigVar('optimizer_including',
-             ("When using the default mode, we will add optimizer with "
-              "these tags. Separate tags with ':'."),
-             StrParam("", allow_override=False),
-             in_c_key=False)
-AddConfigVar('optimizer_requiring',
-             ("When using the default mode, we will require optimizer with "
-              "these tags. Separate tags with ':'."),
-             StrParam("", allow_override=False),
-             in_c_key=False)
-
 
 def check_equal(x, y):
     """

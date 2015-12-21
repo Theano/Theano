@@ -462,14 +462,6 @@ def is_1pexp(t):
     return None
 
 
-AddConfigVar(
-    'warn.identify_1pexp_bug',
-    'Warn if Theano versions prior to 7987b51 (2011-12-18) could have '
-    'yielded a wrong result due to a bug in the is_1pexp function',
-    BoolParam(theano.configdefaults.warn_default('0.4.1')),
-    in_c_key=False)
-
-
 def is_exp(var):
     """
     Match a variable with either of the `exp(x)` or `-exp(x)` patterns.
