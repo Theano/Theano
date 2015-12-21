@@ -25,6 +25,7 @@ config = theano.config
 # so we redefine them here
 discrete_dtypes = list(map(str, scalar.discrete_types))
 float_dtypes = list(map(str, scalar.float_types))
+int_dtypes = list(map(str, scalar.int_types))
 
 
 # tensor depends on elemwise to provide definitions for several ops
@@ -825,7 +826,7 @@ class Elemwise(OpenMPOp):
         out_dtype = node.outputs[0].dtype
         if (out_dtype in float_dtypes and
                 isinstance(self.nfunc, numpy.ufunc) and
-                node.inputs[0].dtype in scalar.int_types):
+                node.inputs[0].dtype in int_dtypes):
             char = numpy.sctype2char(out_dtype)
             sig = char * node.nin + '->' + char * node.nout
             node.tag.sig = sig
