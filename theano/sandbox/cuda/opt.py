@@ -368,8 +368,8 @@ def local_gpu_split(node):
         outs_clients = reduce(list.__add__,
                               [out.clients for out in node.outputs])
         if (input.owner and isinstance(input.owner.op, HostFromGpu) or
-            any([c != 'output' and isinstance(c.op, GpuFromHost) for c, idx
-                 in outs_clients])):
+            any(c != 'output' and isinstance(c.op, GpuFromHost) for c, idx
+                in outs_clients)):
             new_op = GpuSplit(node.op.len_splits)
             split_res = new_op(as_cuda_ndarray_variable(input),
                                *node.inputs[1:], return_list=True)
@@ -1253,9 +1253,9 @@ def local_gpu_pdbbreakpoint_op(node):
 
             input_is_from_gpu = (inp.owner and
                                  isinstance(inp.owner.op, HostFromGpu))
-            output_goes_to_gpu = any([c[0] != "output" and
-                                      isinstance(c[0].op, GpuFromHost)
-                                      for c in out.clients])
+            output_goes_to_gpu = any(c[0] != "output" and
+                                     isinstance(c[0].op, GpuFromHost)
+                                     for c in out.clients)
 
             if input_is_from_gpu:
                 # The op should be applied on the GPU version of the input
@@ -2163,9 +2163,9 @@ def local_gpualloc(node):
             replace = True
         elif all([c != 'output' and
                   c.op == tensor.join and
-                  all([i.owner and
-                       i.owner.op in [host_from_gpu, tensor.alloc]
-                       for i in c.inputs[1:]])
+                  all(i.owner and
+                      i.owner.op in [host_from_gpu, tensor.alloc]
+                      for i in c.inputs[1:])
                   for c, idx in node.outputs[0].clients]):
             # if the client is on gpu or alloc
             replace = True
