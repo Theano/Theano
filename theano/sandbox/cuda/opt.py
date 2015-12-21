@@ -1943,29 +1943,19 @@ def local_gpu_join(node):
         # optimizing this case:
         # join(host_from_gpu) -> host_from_gpu(gpu_join)
 
-        # print "OPT: we've got a Join instance"
-
         axis_and_tensors = node.inputs
-
-        # print "OPT: axis_and_tensors=", axis_and_tensors
 
         matches = [t.dtype == 'float32' and
                    ((t.owner is not None and
                      isinstance(t.owner.op, HostFromGpu)) or
                     isinstance(t, gof.Constant)) for t in axis_and_tensors[1:]]
-        # print "OPT: matches =", matches
 
-        # if all input tensors are host_from_gpu'ified
         if all(matches):
-            # the extra gpu_from_host introduced here will
-            # be removed by further optimizations
             new_tensors = [as_cuda_ndarray_variable(t)
                            for t in axis_and_tensors[1:]]
             new_a_and_t = [axis_and_tensors[0]] + new_tensors
 
             replacement_node = host_from_gpu(gpu_join(*new_a_and_t))
-
-            # print "OPT: replacement_node", replacement_node
 
             return [replacement_node]
 
