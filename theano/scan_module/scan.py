@@ -57,6 +57,7 @@ from theano import gof
 from theano.tensor import opt
 from theano import tensor
 from theano import config
+from theano import scalar
 from theano.updates import OrderedUpdates
 from theano.compile import ops
 from theano.compat import OrderedDict
@@ -805,7 +806,10 @@ def scan(fn,
         gof.graph.stack_search(deque(outputs), expand, 'dfs')
         non_seqs += extra_inputs
 
-        dummy_givens = OrderedDict([(arg, tensor.constant(numpy.zeros([1] * arg.ndim, dtype=arg.dtype), name=arg.name))
+        dummy_givens = OrderedDict([(arg,
+                                     scalar.ScalarConstant(scalar.get_scalar_type(arg.dtype), 1)
+                                     if isinstance(arg.type, scalar.Scalar)
+                                     else tensor.constant(numpy.zeros([1] * arg.ndim, dtype=arg.dtype), name=arg.name))
                                     for arg in extra_inputs
                                     if (not isinstance(arg, SharedVariable) and
                                         not isinstance(arg, tensor.Constant))])
