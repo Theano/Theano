@@ -1108,6 +1108,41 @@ def test_advinc_subtensor1():
         rep[[0, 2]] += yval
         utt.assert_allclose(rval, rep)
 
+def test_advset_subtensor1():
+    """ Test GPU version of set_subtensor on vectors (uses GpuAdvancedIncSubtensor1) """
+    shp = (10,)
+    shared = cuda.shared_constructor
+    xval = numpy.arange(shp[0], dtype='float32').reshape(shp) + 1
+    idxs = numpy.array([0,2,5,7,3], dtype='int32')
+    yval = numpy.ones(len(idxs), dtype='float32')*10
+    x = shared(xval, name='x')
+    y = T.tensor(dtype='float32', broadcastable=(False,) * len(shp), name='y')
+    expr = T.advanced_set_subtensor1(x, y, idxs)
+    f = theano.function([y], expr, mode=mode_with_gpu)
+    assert sum([isinstance(node.op, cuda.GpuAdvancedIncSubtensor1)
+                for node in f.maker.fgraph.toposort()]) == 1
+    rval = f(yval)
+    rep = xval.copy()
+    rep[idxs] = yval
+    utt.assert_allclose(rval, rep)
+
+def test_advset_subtensor1_2d():
+    """ Test GPU version of set_subtensor on matrices (uses GpuAdvancedIncSubtensor1_dev20 if compute capability >= 2.0) """
+    shp = (10,5)
+    shared = cuda.shared_constructor
+    xval = numpy.arange(numpy.prod(shp), dtype='float32').reshape(shp) + 1
+    idxs = numpy.array([0,2,5,7,3], dtype='int32')
+    yval = numpy.ones((len(idxs), shp[1]), dtype='float32')*10
+    x = shared(xval, name='x')
+    y = T.tensor(dtype='float32', broadcastable=(False,) * len(shp), name='y')
+    expr = T.advanced_set_subtensor1(x, y, idxs)
+    f = theano.function([y], expr, mode=mode_with_gpu)
+    assert sum([isinstance(node.op, cuda.GpuAdvancedIncSubtensor1)
+                for node in f.maker.fgraph.toposort()]) == 1
+    rval = f(yval)
+    rep = xval.copy()
+    rep[idxs] = yval
+    utt.assert_allclose(rval, rep)
 
 def test_inc_subtensor():
     shared = cuda.shared_constructor
@@ -1341,5 +1376,7 @@ def speed_reduce10():
 
 
 if __name__ == '__main__':
-    test_many_arg_elemwise()
-    test_gpujoin_assert_cndas()
+    #test_many_arg_elemwise()
+    #test_gpujoin_assert_cndas()
+    test_advset_subtensor1()
+    test_advset_subtensor1_2d()
