@@ -340,7 +340,7 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
         }
         """)
     flags = ['-lblas']
-    flags.extend('-L'.join(theano.gof.cmodule.std_lib_dirs()))
+    flags.extend('-L' + d for d in theano.gof.cmodule.std_lib_dirs())
     res = GCC_compiler.try_compile_tmp(
         test_code, tmp_prefix='try_blas_',
         flags=flags, try_run=True)
