@@ -213,7 +213,7 @@ class TestConv2d(unittest.TestCase):
                                provide_shape=provide_shape, border_mode=b,
                                filter_flip=flip)
 
-    def test_gpucormm_conv(self):
+    def test_gpucorrmm_conv(self):
         if not dnn_available():
             raise SkipTest(cuda.dnn.dnn_available.msg)
 
