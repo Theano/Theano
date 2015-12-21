@@ -63,7 +63,7 @@ def max_pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
     ignore_border : bool (default None, will print a warning and set to False)
         When True, (5,5) input with ds=(2,2) will generate a (2,2) output.
         (3,3) otherwise.
-    st : tuple of lenght 2
+    st : tuple of two ints
         Stride size, which is the number of shifts over rows/cols to get the
         next pool region. If st is None, it is considered equal to ds
         (no overlap on pooling regions).
