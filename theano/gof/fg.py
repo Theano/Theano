@@ -154,6 +154,7 @@ class FunctionGraph(utils.object2):
         self.inputs = list(inputs)
         self.outputs = outputs
 
+        # Why add feature before import of the graph?
         for f in features:
             self.attach_feature(f)
         self.attach_feature(toolbox.ReplaceValidate())
@@ -172,8 +173,6 @@ class FunctionGraph(utils.object2):
         for i, output in enumerate(outputs):
             output.clients.append(('output', i))
 
-        self.node_locks = {}
-        self.variable_locks = {}
         self.profile = None
         self.update_mapping = update_mapping
 
