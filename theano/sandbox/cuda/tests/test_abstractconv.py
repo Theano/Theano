@@ -35,7 +35,8 @@ class TestConv2d(unittest.TestCase):
         self.border_modes = ["valid", "full", (0, 0), (1, 1), (5, 5), (5, 2)]
         self.filter_flip = [True, False]
 
-    def get_output_shape(self, inputs_shape, filters_shape, subsample, border_mode):
+    def get_output_shape(self, inputs_shape, filters_shape,
+                         subsample, border_mode):
         if border_mode == "valid":
             border_mode = (0, 0)
         if border_mode == "full":
@@ -139,8 +140,10 @@ class TestConv2d(unittest.TestCase):
             utt.verify_grad(abstract_conv2d_gradweight, [inputs_val, output_val],
                             mode=mode, eps=1)
 
-    def run_gradinput(self, inputs_shape, filters_shape, output_shape, ref=dnn_gradinput,
-                      subsample=(1, 1), filter_flip=True, verify_grad=True, mode=mode_without_gpu,
+    def run_gradinput(self, inputs_shape, filters_shape,
+                      output_shape, ref=dnn_gradinput,
+                      subsample=(1, 1), filter_flip=True,
+                      verify_grad=True, mode=mode_without_gpu,
                       border_mode='valid', device='cpu', provide_shape=False):
 
         output_val = numpy.random.random(output_shape).astype('float32')
