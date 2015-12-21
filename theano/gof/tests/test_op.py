@@ -248,7 +248,7 @@ class TestMakeThunk(unittest.TestCase):
                 output = outputs[0]
                 output[0] = inp * 2
 
-        x_input = T.matrix('x_input')
+        x_input = T.dmatrix('x_input')
         f = theano.function([x_input], DoubleOp()(x_input))
         inp = numpy.random.rand(5, 4)
         out = f(inp)
