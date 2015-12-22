@@ -1955,7 +1955,11 @@ ConjInplaceTester = makeBroadcastTester(
     inplace=True)
 
 
+# the reference function in numpy is new in version 1.10.0
+# skip the test if numpy version is lower
+skip_matmul = tuple(int(v) for v in numpy.version.version.split('.')) < (1, 10, 0)
 MatmulTester = makeTester(name='MatmulTester',
+                       skip=skip_matmul,
                        op=matmul,
                        expected=lambda x, y: numpy.matmul(x, y),
                        checks={},
