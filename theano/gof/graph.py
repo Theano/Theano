@@ -568,7 +568,7 @@ class Constant(Variable):
         else:
             name = str(self.data)
             if len(name) > 20:
-                name = name[:10] + '...' + name[-10]
+                name = name[:10] + '...' + name[-10:]
             return 'Constant{%s}' % name
 
     def clone(self):
