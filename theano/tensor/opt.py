@@ -1169,7 +1169,9 @@ class ShapeFeature(object):
         # Merge other_shape with r_shape, giving the priority to other_shape
         merged_shape = []
         for i, ps in enumerate(other_shape):
-            if (ps.owner and
+            if r_shape is None and other_shape:
+                merged_shape.append(other_shape[i])
+            elif (ps.owner and
                     isinstance(getattr(ps.owner, 'op', None), Shape_i) and
                     ps.owner.op.i == i and
                     ps.owner.inputs[0] in (r, other_r)):
