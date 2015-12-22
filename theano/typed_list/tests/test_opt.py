@@ -110,3 +110,13 @@ class test_inplace(unittest.TestCase):
         y = rand_ranged_matrix(-1000, 1000, [100, 101])
 
         self.assertTrue(numpy.array_equal(f([x, y], y), [x]))
+
+
+def test_constant_folding():
+    m = theano.tensor.ones((1,), dtype='int8')
+    l = theano.typed_list.make_list([m, m])
+    f = theano.function([], l)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo)
+    assert isinstance(topo[0].op, theano.compile.ops.DeepCopyOp)
+    assert f() == [1, 1]
