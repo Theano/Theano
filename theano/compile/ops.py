@@ -517,7 +517,7 @@ class FromFunctionOp(gof.Op):
 
     def __str__(self):
         return 'FromFunctionOp{%s}' % self.__fn.__name__
-        
+
     def perform(self, node, inputs, outputs):
         outs = self.__fn(*inputs)
         if not isinstance(outs, (list, tuple)):
