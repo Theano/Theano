@@ -236,7 +236,10 @@ def get_home_dir():
 if sys.platform == 'win32' and os.getenv('LOCALAPPDATA') is not None:
     default_base_compiledir = os.path.join(os.getenv('LOCALAPPDATA'), 'Theano')
 else:
-    default_base_compiledir = os.path.join(get_home_dir(), '.theano')
+    home_dir = get_home_dir()
+    if not os.access(home_dir, os.W_OK):
+        home_dir = '/tmp'
+    default_base_compiledir = os.path.join(home_dir, '.theano')
 
 
 AddConfigVar(
