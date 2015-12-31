@@ -33,7 +33,7 @@ def batch_normalization(inputs, gamma, beta, mean, std,
     """
     This function will build the symbolic graph for applying batch normalization
     to a set of activations.
-    Work also on GPU
+    Also works on GPUs
 
     .. versionadded:: 0.7.1
 
