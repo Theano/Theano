@@ -19,7 +19,7 @@
 Inputs
 ======
 
-The ``inputs`` argument to ``theano.function`` is a list, containing the ``Variable`` instances for which values will be specified at the time of the function call.  But inputs can be more than just Variables.  
+The ``inputs`` argument to ``theano.function`` is a list, containing the ``Variable`` instances for which values will be specified at the time of the function call.  But inputs can be more than just Variables.
 ``In`` instances let us attach properties to ``Variables`` to tell function more about how to use them.
 
 
@@ -50,7 +50,7 @@ The ``inputs`` argument to ``theano.function`` is a list, containing the ``Varia
       compiled function to modify the Python object being used as the
       default value. The default value is ``False``.
 
-      ``strict``: Bool (default: ``False`` ). ``True`` means that the value 
+      ``strict``: Bool (default: ``False`` ). ``True`` means that the value
       you pass for this input must have exactly the right type. Otherwise, it
       may be cast automatically to the proper type.
 
@@ -90,7 +90,7 @@ Since we provided a ``value`` for ``s`` and ``x``, we can call it with just a va
 
 >>> inc(5)         # update s with 10+3*5
 []
->>> print inc[s]
+>>> print(inc[s])
 25.0
 
 The effect of this call is to increment the storage associated to ``s`` in ``inc`` by 15.
@@ -100,18 +100,18 @@ If we pass two arguments to ``inc``, then we override the value associated to
 
 >>> inc(3, 4)      # update s with 25 + 3*4
 []
->>> print inc[s]
+>>> print(inc[s])
 37.0
->>> print inc[x]   # the override value of 4 was only temporary
+>>> print(inc[x])   # the override value of 4 was only temporary
 3.0
 
-If we pass three arguments to ``inc``, then we override the value associated 
+If we pass three arguments to ``inc``, then we override the value associated
 with ``x`` and ``u`` and ``s``.
 Since ``s``'s value is updated on every call, the old value of ``s`` will be ignored and then replaced.
 
 >>> inc(3, 4, 7)      # update s with 7 + 3*4
 []
->>> print inc[s]
+>>> print(inc[s])
 19.0
 
 We can also assign to ``inc[s]`` directly:
@@ -286,13 +286,13 @@ The ``outputs`` argument to function can be one of
 - a Variable or ``Out`` instance, or
 - a list of Variables or ``Out`` instances.
 
-An ``Out`` instance is a structure that lets us attach options to individual output ``Variable`` instances, 
+An ``Out`` instance is a structure that lets us attach options to individual output ``Variable`` instances,
 similarly to how ``In`` lets us attach options to individual input ``Variable`` instances.
 
 **Out(variable, borrow=False)** returns an ``Out`` instance:
 
   * ``borrow``
-  
+
     If ``True``, a reference to function's internal storage
     is OK.  A value returned for this output might be clobbered by running
     the function again, but the function might be faster.

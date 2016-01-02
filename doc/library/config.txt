@@ -35,7 +35,7 @@ variables, type this from the command-line:
 
 .. code-block:: bash
 
-    python -c 'import theano; print theano.config' | less
+    python -c 'import theano; print(theano.config)' | less
 
 Environment Variables
 =====================
@@ -98,7 +98,7 @@ import theano and print the config variable, as in:
 
 .. code-block:: bash
 
-    python -c 'import theano; print theano.config' | less
+    python -c 'import theano; print(theano.config)' | less
 
 .. attribute:: device
 
@@ -465,7 +465,7 @@ import theano and print the config variable, as in:
     Default: 'ignore'
 
     If there is a CPU op in the computational graph, depending on its value;
-    this flag can either raise a warning, an exception or stop the 
+    this flag can either raise a warning, an exception or stop the
     compilation with pdb.
 
 .. attribute:: on_shape_error
@@ -525,7 +525,7 @@ import theano and print the config variable, as in:
     This is a Python format string that specifies the subdirectory
     of ``config.base_compiledir`` in which to store platform-dependent
     compiled modules. To see a list of all available substitution keys,
-    run ``python -c "import theano; print theano.config"``, and look
+    run ``python -c "import theano; print(theano.config)"``, and look
     for compiledir_format.
 
     This flag's value cannot be modified during the program execution.
@@ -871,9 +871,9 @@ import theano and print the config variable, as in:
 
 .. attribute:: print_test_value
 
-    Bool value, default: False 
+    Bool value, default: False
 
-    If ``'True'``, Theano will override the '__str__' method of its variables 
+    If ``'True'``, Theano will override the '__str__' method of its variables
     to also print the tag.test_value when this is available.
 
 .. attribute:: reoptimize_unpickled_function
