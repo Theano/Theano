@@ -292,15 +292,7 @@ class SeqOptimizer(Optimizer, list):
             else:
                 ll.append((opt.name, opt.__class__.__name__,
                            opts.index(opt)))
-        lll = list(zip(prof, ll))
-
-        def cmp(a, b):
-            if a[0] == b[0]:
-                return 0
-            elif a[0] < b[0]:
-                return -1
-            return 1
-        lll.sort(cmp)
+        lll = sorted(zip(prof, ll), key=lambda a: a[0])
 
         for (t, opt) in lll[::-1]:
             # if t < 1:
