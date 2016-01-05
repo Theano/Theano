@@ -142,6 +142,11 @@ def short_platform(r=None, p=None):
     sr = '-'.join(sp)
     p = p.replace(r, sr)
 
+    p = p.replace(':', '-')
+    p = p.replace('?', '-')
+    p = p.replace('*', '-')
+    p = p.replace('/', '-')
+
     return p
 compiledir_format_dict['short_platform'] = short_platform()
 compiledir_format_keys = ", ".join(sorted(compiledir_format_dict.keys()))
