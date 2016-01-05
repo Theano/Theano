@@ -203,7 +203,7 @@ class Scalar(Type):
         diff = a - b
         if diff == 0:
             return True
-        return abs(diff) <= ((abs(a) + abs(b)) * tolerance)
+        return abs(diff) <= (abs(a) * tolerance) + (abs(b) * tolerance)
 
     def c_headers(self, c_compiler):
         l = ['<math.h>']
