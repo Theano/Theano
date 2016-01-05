@@ -85,10 +85,11 @@ def max_pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
             " default value changed to True (currently"
             " False). To have consistent behavior with all Theano"
             " version, explicitly add the parameter ignore_border=True."
-            " On the GPU, using ignore_border=False allow to use cudnn."
-            " Without ignore_border=True and cudnn, the only GPU combination"
-            " supported is when the `ds == st and padding == (0, 0) and"
-            " mode == 'max'`",
+            " On the GPU, using ignore_border=False is needed to use CuDNN."
+            " When using ignore_border=False and not using CuDNN, the only"
+            " GPU combination supported is when"
+            " `ds == st and padding == (0, 0) and mode == 'max'`."
+            " Otherwise, the convolution will be executed on CPU.",
             stacklevel=2)
         ignore_border = False
     if input.ndim == 4:
