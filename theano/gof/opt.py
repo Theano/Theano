@@ -292,15 +292,7 @@ class SeqOptimizer(Optimizer, list):
             else:
                 ll.append((opt.name, opt.__class__.__name__,
                            opts.index(opt)))
-        lll = list(zip(prof, ll))
-
-        def cmp(a, b):
-            if a[0] == b[0]:
-                return 0
-            elif a[0] < b[0]:
-                return -1
-            return 1
-        lll.sort(cmp)
+        lll = sorted(zip(prof, ll), key=lambda a: a[0])
 
         for (t, opt) in lll[::-1]:
             # if t < 1:
@@ -2361,7 +2353,7 @@ class EquilibriumOptimizer(NavigatorOptimizer):
                     t, count, n_created, o), file=stream)
             print(blanc, '  %.3fs - in %d optimization that where not used (display only those with a runtime > 0)' % (
                 not_used_time, len(not_used)), file=stream)
-            not_used.sort()
+            not_used.sort(key=lambda nu: (nu[0], str(nu[1])))
             for (t, o) in not_used[::-1]:
                 if t > 0:
                     # Skip opt that have 0 times, they probably wasn't even tried.
@@ -2370,8 +2362,8 @@ class EquilibriumOptimizer(NavigatorOptimizer):
         gf_opts = [o for o in (opt.global_optimizers +
                                list(opt.final_optimizers) +
                                list(opt.cleanup_optimizers))
-                   if o.print_profile.func_code is not
-                   Optimizer.print_profile.func_code]
+                   if o.print_profile.__code__ is not
+                   Optimizer.print_profile.__code__]
         if not gf_opts:
             return
         print(blanc, "Global, final and clean up optimizers", file=stream)

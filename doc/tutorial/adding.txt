@@ -7,7 +7,7 @@ Baby Steps - Algebra
 Adding two Scalars
 ==================
 
-To get us started with Theano and get a feel of what we're working with, 
+To get us started with Theano and get a feel of what we're working with,
 let's make a simple function: add two numbers together. Here is how you do
 it:
 
@@ -28,9 +28,9 @@ True
 
 Let's break this down into several steps. The first step is to define
 two symbols (*Variables*) representing the quantities that you want
-to add. Note that from now on, we will use the term 
-*Variable* to mean "symbol" (in other words, 
-*x*, *y*, *z* are all *Variable* objects). The output of the function 
+to add. Note that from now on, we will use the term
+*Variable* to mean "symbol" (in other words,
+*x*, *y*, *z* are all *Variable* objects). The output of the function
 *f* is a ``numpy.ndarray`` with zero dimensions.
 
 If you are following along and typing into an interpreter, you may have
@@ -44,10 +44,10 @@ instruction. Behind the scene, *f* was being compiled into C code.
   using Theano. The symbolic inputs that you operate on are
   *Variables* and what you get from applying various operations to
   these inputs are also *Variables*. For example, when I type
-  
+
   >>> x = theano.tensor.ivector()
   >>> y = -x
-  
+
   *x* and *y* are both Variables, i.e. instances of the
   ``theano.gof.graph.Variable`` class. The
   type of both *x* and *y* is ``theano.tensor.ivector``.
@@ -97,7 +97,7 @@ The second step is to combine *x* and *y* into their sum *z*:
 function to pretty-print out the computation associated to *z*.
 
 >>> from theano import pp
->>> print pp(z)
+>>> print(pp(z))
 (x + y)
 
 

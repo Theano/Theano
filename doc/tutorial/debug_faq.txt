@@ -300,10 +300,10 @@ Tips:
 "Why does my GPU function seem to be slow?"
 -------------------------------------------
 
-When you compile a theano function, if you do not get the speedup that you expect over the 
+When you compile a theano function, if you do not get the speedup that you expect over the
 CPU performance of the same code. It is oftentimes due to the fact that some Ops might be running
-on CPU instead GPU. If that is the case, you can use assert_no_cpu_op to check if there 
-is a CPU Op on your computational graph. assert_no_cpu_op can take the following one of the three 
+on CPU instead GPU. If that is the case, you can use assert_no_cpu_op to check if there
+is a CPU Op on your computational graph. assert_no_cpu_op can take the following one of the three
 options:
 
 * ``warn``: Raise a warning
@@ -314,7 +314,7 @@ options:
 It is possible to use this mode by providing the flag in THEANO_FLAGS, such as:
 ``THEANO_FLAGS="float32,device=gpu,assert_no_cpu_op='raise'" python test.py``
 
-But note that this optimization will not catch all the CPU Ops, it might miss some 
+But note that this optimization will not catch all the CPU Ops, it might miss some
 Ops.
 
 .. _faq_monitormode:
@@ -328,13 +328,15 @@ shows how to print all inputs and outputs:
 
 .. testcode::
 
+    from __future__ import print_function
     import theano
 
     def inspect_inputs(i, node, fn):
-        print i, node, "input(s) value(s):", [input[0] for input in fn.inputs],
+        print(i, node, "input(s) value(s):", [input[0] for input in fn.inputs],
+              end='')
 
     def inspect_outputs(i, node, fn):
-        print "output(s) value(s):", [output[0] for output in fn.outputs]
+        print("output(s) value(s):", [output[0] for output in fn.outputs])
 
     x = theano.tensor.dscalar('x')
     f = theano.function([x], [5 * x],
@@ -376,10 +378,10 @@ can be achieved as follows:
         for output in fn.outputs:
             if (not isinstance(output[0], numpy.random.RandomState) and
                 numpy.isnan(output[0]).any()):
-                print '*** NaN detected ***'
+                print('*** NaN detected ***')
                 theano.printing.debugprint(node)
-                print 'Inputs : %s' % [input[0] for input in fn.inputs]
-                print 'Outputs: %s' % [output[0] for output in fn.outputs]
+                print('Inputs : %s' % [input[0] for input in fn.inputs])
+                print('Outputs: %s' % [output[0] for output in fn.outputs])
                 break
 
     x = theano.tensor.dscalar('x')

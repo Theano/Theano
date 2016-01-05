@@ -279,22 +279,24 @@ For GPU graphs, this borrowing can have a major speed impact.  See the following
                  Out(sandbox.cuda.basic_ops.gpu_from_host(tensor.exp(x)),
                      borrow=True))
    t0 = time.time()
-   for i in xrange(iters):
+   for i in range(iters):
        r = f1()
    t1 = time.time()
    no_borrow = t1 - t0
    t0 = time.time()
-   for i in xrange(iters):
+   for i in range(iters):
        r = f2()
    t1 = time.time()
-   print 'Looping', iters, 'times took', no_borrow, 'seconds without borrow',
-   print 'and', t1 - t0, 'seconds with borrow.'
+   print(
+       "Looping %s times took %s seconds without borrow "
+       "and %s seconds with borrow" % (iters, no_borrow, (t1 - t0))
+   )
    if numpy.any([isinstance(x.op, tensor.Elemwise) and
                  ('Gpu' not in type(x.op).__name__)
                  for x in f1.maker.fgraph.toposort()]):
-       print 'Used the cpu'
+       print('Used the cpu')
    else:
-       print 'Used the gpu'
+       print('Used the gpu')
 
 Which produces this output:
 

@@ -24,8 +24,8 @@ More precisely, if *A* is a tensor you want to compute
 .. code-block:: python
 
   result = 1
-  for i in xrange(k):
-    result = result * A
+  for i in range(k):
+      result = result * A
 
 There are three things here that we need to handle: the initial value
 assigned to ``result``, the accumulation of results in ``result``, and
@@ -57,8 +57,8 @@ The equivalent Theano code would be:
   # compiled function that returns A**k
   power = theano.function(inputs=[A,k], outputs=final_result, updates=updates)
 
-  print power(range(10),2)
-  print power(range(10),4)
+  print(power(range(10),2))
+  print(power(range(10),4))
 
 .. testoutput::
 
@@ -121,8 +121,8 @@ from a list of its coefficients:
     # Test
     test_coefficients = numpy.asarray([1, 0, 2], dtype=numpy.float32)
     test_value = 3
-    print calculate_polynomial(test_coefficients, test_value)
-    print 1.0 * (3 ** 0) + 0.0 * (3 ** 1) + 2.0 * (3 ** 2)
+    print(calculate_polynomial(test_coefficients, test_value))
+    print(1.0 * (3 ** 0) + 0.0 * (3 ** 1) + 2.0 * (3 ** 2))
 
 .. testoutput::
 
@@ -188,7 +188,7 @@ downcast** of the latter.
     some_num = 15
     print(triangular_sequence(some_num))
     print([n * (n + 1) // 2 for n in xrange(some_num)])
-    
+
 .. testoutput::
 
     [  0   1   3   6  10  15  21  28  36  45  55  66  78  91 105]
@@ -513,8 +513,8 @@ value ``max_value``.
 
     f = theano.function([max_value], values)
 
-    print f(45)
-    
+    print(f(45))
+
 .. testoutput::
 
     [  2.   4.   8.  16.  32.  64.]
