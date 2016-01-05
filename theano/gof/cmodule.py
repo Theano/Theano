@@ -1440,8 +1440,8 @@ class ModuleCache(object):
         for filename in os.listdir(self.dirname):
             if filename.startswith('tmp'):
                 try:
-                    open(os.path.join(self.dirname, filename, 'key.pkl')
-                    ).close()
+                    fname = os.path.join(self.dirname, filename, 'key.pkl')
+                    open(fname).close()
                     has_key = True
                 except IOError:
                     has_key = False
@@ -1476,8 +1476,8 @@ class ModuleCache(object):
         with compilelock.lock_ctx():
             for f in to_del:
                 _rmtree(f,
-                    msg='old unversioned', level=logging.INFO,
-                    ignore_nocleanup=True)
+                        msg='old unversioned', level=logging.INFO,
+                        ignore_nocleanup=True)
 
     def _on_atexit(self):
         # Note: no need to call refresh() since it is called by clear_old().
