@@ -306,7 +306,7 @@ class AbstractConv2d(BaseAbstractConv2d):
         raise NotImplementedError(
             'AbstractConv2d theano optimization failed. '
             'Did you exclude both "conv_dnn" and "conv_gemm" from '
-            'the optimizer?')
+            'the optimizer? Is cudnn available and does the GPU support it?')
 
     def grad(self, inp, grads):
         bottom, weights = inp

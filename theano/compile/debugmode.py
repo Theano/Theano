@@ -2043,7 +2043,7 @@ class _Linker(gof.link.LocalLinker):
                                       "output storage", i)
                         try:
                             thunk_py()
-                        except utils.MethodNotDefined:
+                        except (utils.MethodNotDefined, NotImplementedError):
                             # shouldn't have put it into the list in
                             # the first place
                             thunk_py = None

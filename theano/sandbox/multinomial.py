@@ -172,13 +172,12 @@ class MultinomialFromUniform(Op):
 
         nb_multi = pvals.shape[0]
         nb_outcomes = pvals.shape[1]
-
         # For each multinomial, loop over each possible outcome
         for c in range(n_samples):
             for n in range(nb_multi):
                 waiting = True
                 cummul = 0
-                unis_n = unis[n]
+                unis_n = unis[c * nb_multi + n]
 
                 for m in range(nb_outcomes):
                     cummul += pvals[n, m]

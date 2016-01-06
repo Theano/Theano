@@ -25,6 +25,7 @@ config = theano.config
 # so we redefine them here
 discrete_dtypes = list(map(str, scalar.discrete_types))
 float_dtypes = list(map(str, scalar.float_types))
+int_dtypes = list(map(str, scalar.int_types))
 
 
 # tensor depends on elemwise to provide definitions for several ops
@@ -811,6 +812,24 @@ class Elemwise(OpenMPOp):
             else:
                 node.tag.ufunc = ufunc
 
+        # Numpy ufuncs will sometimes perform operations in
+        # float16, in particular when the input is int8.
+        # This is not something that we want, and we do not
+        # do it in the C code, so we specify that the computation
+        # should be carried out in the returned dtype.
+        # This is done via the "sig" kwarg of the ufunc, its value
+        # should be something like "ff->f", where the characters
+        # represent the dtype of the inputs and outputs.
+
+        # NumPy 1.10.1 raise an error when giving the signature
+        # when the input is complex. So add it only when inputs is int.
+        out_dtype = node.outputs[0].dtype
+        if (out_dtype in float_dtypes and
+                isinstance(self.nfunc, numpy.ufunc) and
+                node.inputs[0].dtype in int_dtypes):
+            char = numpy.sctype2char(out_dtype)
+            sig = char * node.nin + '->' + char * node.nout
+            node.tag.sig = sig
         return super(Elemwise, node_.op).make_thunk(node_, storage_map,
                                                     compute_map, no_recycling)
 
@@ -860,19 +879,8 @@ class Elemwise(OpenMPOp):
         if self.nfunc and len(inputs) == self.nfunc_spec[1]:
             ufunc = self.nfunc
             nout = self.nfunc_spec[2]
-            # Numpy ufuncs will sometimes perform operations in
-            # float16, in particular when the input is int8.
-            # This is not something that we want, and we do not
-            # do it in the C code, so we specify that the computation
-            # should be carried out in the returned dtype.
-            # This is done via the "sig" kwarg of the ufunc, its value
-            # should be something like "ff->f", where the characters
-            # represent the dtype of the inputs and outputs.
-            out_dtype = node.outputs[0].dtype
-            if out_dtype in float_dtypes and isinstance(ufunc, numpy.ufunc):
-                char = numpy.sctype2char(out_dtype)
-                sig = char * node.nin + '->' + char * node.nout
-                ufunc_kwargs['sig'] = sig
+            if hasattr(node.tag, 'sig'):
+                ufunc_kwargs['sig'] = node.tag.sig
             # Unfortunately, the else case does not allow us to
             # directly feed the destination arguments to the nfunc
             # since it sometimes requires resizing. Doing this
