@@ -63,7 +63,7 @@ def max_pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
     ignore_border : bool (default None, will print a warning and set to False)
         When True, (5,5) input with ds=(2,2) will generate a (2,2) output.
         (3,3) otherwise.
-    st : tuple of lenght 2
+    st : tuple of two ints
         Stride size, which is the number of shifts over rows/cols to get the
         next pool region. If st is None, it is considered equal to ds
         (no overlap on pooling regions).
@@ -80,13 +80,17 @@ def max_pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
     if input.ndim < 2:
         raise NotImplementedError('max_pool_2d requires a dimension >= 2')
     if ignore_border is None:
-        warnings.warn("max_pool_2d() will have the parameter ignore_border"
-                      " default value changed to True (currently"
-                      " False). To have consistent behavior with all Theano"
-                      " version, explicitly add the parameter"
-                      "  ignore_border=True. (this is also faster than"
-                      " ignore_border=False)",
-                      stacklevel=2)
+        warnings.warn(
+            "max_pool_2d() will have the parameter ignore_border"
+            " default value changed to True (currently"
+            " False). To have consistent behavior with all Theano"
+            " version, explicitly add the parameter ignore_border=True."
+            " On the GPU, using ignore_border=False is needed to use CuDNN."
+            " When using ignore_border=False and not using CuDNN, the only"
+            " GPU combination supported is when"
+            " `ds == st and padding == (0, 0) and mode == 'max'`."
+            " Otherwise, the convolution will be executed on CPU.",
+            stacklevel=2)
         ignore_border = False
     if input.ndim == 4:
         op = DownsampleFactorMax(ds, ignore_border, st=st, padding=padding,

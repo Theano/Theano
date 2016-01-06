@@ -183,7 +183,7 @@ whitelist_flake8 = [
 ]
 
 
-def list_files(dir_path=theano.__path__[0], pattern='*.py'):
+def list_files(dir_path=theano.__path__[0], pattern='*.py', no_match=".#"):
     """
     List all files under theano's path.
     """
@@ -192,7 +192,8 @@ def list_files(dir_path=theano.__path__[0], pattern='*.py'):
         for f in files:
             if fnmatch(f, pattern):
                 path = os.path.join(dir, f)
-                files_list.append(path)
+                if not f.startswith(no_match):
+                    files_list.append(path)
     return files_list
 
 

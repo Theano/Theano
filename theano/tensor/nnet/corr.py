@@ -179,13 +179,13 @@ class BaseCorrMM(gof.Op):
                 raise ValueError("height must be given for backprop with vertical sampling or border_mode='half'")
             height = '(*(npy_int*)(PyArray_DATA(%s)))' % height
         else:
-            height = 'NULL'
+            height = '-1'
         if ((direction != 0) and (dW != 1)) or ((direction == 1) and (padW == -1)):
             if not width:
                 raise ValueError("width must be given for backprop with horizontal sampling or border_mode='half'")
             width = '(*(npy_int*)(PyArray_DATA(%s)))' % width
         else:
-            width = 'NULL'
+            width = '-1'
         sub = sub.copy()
         sub.update(locals())
 

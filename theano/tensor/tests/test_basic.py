@@ -5020,7 +5020,7 @@ class T_reshape(utt.InferShapeTester, utt.TestOptimizationMixin):
         # The tag canonicalize is needed for the shape test in FAST_COMPILE
         self.mode = mode
         self.ignore_topo = ignore_topo
-        return super(T_reshape, self).__init__(name)
+        super(T_reshape, self).__init__(name)
 
     def function(self, inputs, outputs):
         f = function(inputs, outputs, mode=self.mode)
