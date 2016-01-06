@@ -38,7 +38,6 @@ class MatrixPinv(Op):
 
     def make_node(self, x):
         x = as_tensor_variable(x)
-        assert x.ndim == 2
         return Apply(self, [x], [x.type()])
 
     def perform(self, node, inputs, outputs):
@@ -70,7 +69,6 @@ class MatrixInverse(Op):
 
     def make_node(self, x):
         x = as_tensor_variable(x)
-        assert x.ndim == 2
         return Apply(self, [x], [x.type()])
 
     def perform(self, node, inputs, outputs):
@@ -273,7 +271,6 @@ class Det(Op):
 
     def make_node(self, x):
         x = as_tensor_variable(x)
-        assert x.ndim == 2
         o = theano.tensor.scalar(dtype=x.dtype)
         return Apply(self, [x], [o])
 
@@ -292,7 +289,7 @@ class Det(Op):
         return [gz * self(x) * matrix_inverse(x).T]
 
     def infer_shape(self, node, shapes):
-        return [()]
+        return [shapes[0]]
 
     def __str__(self):
         return "Det"
@@ -310,7 +307,6 @@ class Eig(Op):
 
     def make_node(self, x):
         x = as_tensor_variable(x)
-        assert x.ndim == 2
         w = theano.tensor.vector(dtype=x.dtype)
         v = theano.tensor.matrix(dtype=x.dtype)
         return Apply(self, [x], [w, v])
@@ -342,7 +338,6 @@ class Eigh(Eig):
 
     def make_node(self, x):
         x = as_tensor_variable(x)
-        assert x.ndim == 2
         # Numpy's linalg.eigh may return either double or single
         # presision eigenvalues depending on installed version of
         # LAPACK.  Rather than trying to reproduce the (rather
@@ -419,11 +414,7 @@ class EighGrad(Op):
 
     def make_node(self, x, w, v, gw, gv):
         x, w, v, gw, gv = map(as_tensor_variable, (x, w, v, gw, gv))
-        assert x.ndim == 2
-        assert w.ndim == 1
-        assert v.ndim == 2
-        assert gw.ndim == 1
-        assert gv.ndim == 2
+        assert 2 * x.ndim ==  w.ndim == 2 * v.ndim == gw.ndim == 2 * gv.ndim
         out_dtype = theano.scalar.upcast(x.dtype, w.dtype, v.dtype,
                                          gw.dtype, gv.dtype)
         out = theano.tensor.matrix(dtype=out_dtype)
@@ -488,7 +479,6 @@ class QRFull(Op):
 
     def make_node(self, x):
         x = as_tensor_variable(x)
-        assert x.ndim == 2, "The input of qr function should be a matrix."
         q = theano.tensor.matrix(dtype=x.dtype)
         if self.mode != 'raw':
             r = theano.tensor.matrix(dtype=x.dtype)
@@ -500,7 +490,6 @@ class QRFull(Op):
     def perform(self, node, inputs, outputs):
         (x,) = inputs
         (q, r) = outputs
-        assert x.ndim == 2, "The input of qr function should be a matrix."
         q[0], r[0] = self._numop(x, self.mode)
 
 
@@ -521,14 +510,12 @@ class QRIncomplete(Op):
 
     def make_node(self, x):
         x = as_tensor_variable(x)
-        assert x.ndim == 2, "The input of qr function should be a matrix."
         q = theano.tensor.matrix(dtype=x.dtype)
         return Apply(self, [x], [q])
 
     def perform(self, node, inputs, outputs):
         (x,) = inputs
         (q,) = outputs
-        assert x.ndim == 2, "The input of qr function should be a matrix."
         q[0] = self._numop(x,
                            self.mode)
 
@@ -626,7 +613,6 @@ class SVD(Op):
 
     def make_node(self, x):
         x = as_tensor_variable(x)
-        assert x.ndim == 2, "The input of svd function should be a matrix."
         w = theano.tensor.matrix(dtype=x.dtype)
         u = theano.tensor.vector(dtype=x.dtype)
         v = theano.tensor.matrix(dtype=x.dtype)
@@ -635,7 +621,6 @@ class SVD(Op):
     def perform(self, node, inputs, outputs):
         (x,) = inputs
         (w, u, v) = outputs
-        assert x.ndim == 2, "The input of svd function should be a matrix."
         w[0], u[0], v[0] = self._numop(x,
                                        self.full_matrices,
                                        self.compute_uv)
