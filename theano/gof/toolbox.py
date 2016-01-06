@@ -454,6 +454,18 @@ class PrintListener(Feature):
                 node, i, r, new_r))
 
 
+class PreserveNames(Feature):
+    """
+    This preserve some variables names during optimization.
+
+    Deprecated. We need to keep it to allow unpickling.
+    """
+
+    def on_change_input(self, fgraph, node, i, r, new_r, reason=None):
+        if r.name is not None and new_r.name is None:
+            new_r.name = r.name
+
+
 class PreserveVariableAttributes(Feature):
     """
     This preserve some variables attributes and tag during optimization.
