@@ -19,7 +19,7 @@ from theano.compile import optdb
 from theano.gof import (local_optimizer, EquilibriumDB, ProxyDB,
                         Optimizer, TopoOptimizer, toolbox)
 from theano.gof.opt import LocalMetaOptimizer
-from theano.sandbox.cuda import as_cuda_ndarray_variable
+#from theano.sandbox.cuda import 
 from theano.sandbox.cuda.basic_ops import (
     gpu_eye, gpu_contiguous,
     gpu_from_host, host_from_gpu, GpuFromHost, HostFromGpu,
@@ -28,7 +28,8 @@ from theano.sandbox.cuda.basic_ops import (
     GpuFlatten, gpu_flatten,
     GpuSubtensor, GpuAdvancedSubtensor1,
     GpuAdvancedIncSubtensor1, GpuAdvancedIncSubtensor1_dev20,
-    GpuIncSubtensor, gpu_alloc, GpuAlloc, gpu_shape, GpuSplit, GpuAllocEmpty)
+    GpuIncSubtensor, gpu_alloc, GpuAlloc, gpu_shape, GpuSplit, GpuAllocEmpty,
+    as_cuda_ndarray_variable)
 
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (
