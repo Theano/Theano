@@ -5751,9 +5751,48 @@ def matmul(a, b):
     """
     Computes the matrix multiplication two tensor variables.
 
+    If any operands are scalar an error is raised.
+    If number of dimensions do not match and one operand is a vector, the vector
+    is promoted to a matrix before applying operation.
+        Note: As the exact shape of the operands cannot be determined at
+        compilation time, it is not possible to infer whether the vector should
+        be treated as a row- or column vector. Therefore _column_ vectors will
+        be assumed, if any inference must be made. such promoted vector will
+        have shape = [1, m] as is the default transform from 1D array to
+        np.matrix in the numpy library. *note that this is not strictly
+        compliant with PEP 465*. Therefore the user must take care to correctly
+        transpose the vector if a row vector was intended.
+
     For two matrices, this is equivalent to matrix multiplication.
     For two vectors, this is the inner product.
-    For N > 2 dimensions, this is a batched dot product
+
+    If any operand has more than 2 dimensions, this is a batched matrix
+    multiplication:
+        The matrix multiplication is performed with the assumption, that the
+        operands are stacks of matrices with the matrix residing in the last 2
+        dimensions. (remember that a vector is promoted to matrix before this
+        step is reached)
+
+        The stacks do not have to have same number of dimensions, the stack with
+        the least number dimensions will be broadcast onto the other. This
+        corresponds to repeating the stack such that the resulting promoted
+        stack matches the other:
+            A.ndim = 3, B.ndim=4
+            B.shape[0] = 3
+            A -> Ap: [A, A, A]
+            Ap.ndim = 4
+            result: matmult(Ap, B)
+
+        The batching will the be performed over the first n-2 dimensions which
+        therefore must match:
+            Ap.shape[:-2] == B.shape[:-2]
+
+        To perform the matrix multiplication the last dimension of the first
+        operand must match the second to last operand of the second operand:
+            Ap.shape[-1] == B.shape[-2]
+
+        The result then has the shape:
+            B.shape[:-2] + B[-2] + A[-1]
     """
     nd1, nd2 = a.ndim, b.ndim
 
@@ -5762,24 +5801,52 @@ def matmul(a, b):
         raise ValueError("Scalar operands are not allowed, use '*' instead")
 
     # If both operands have ndim < 2 this a simple dot operation
+    # promotion of 1d vectors to 2d matrix should be handled by dot()
     if nd1 <= 2 and nd2 <= 2:
         return dot(a, b)
 
-    # if one of the operands have ndim > 2 this is a batched dot (einsum).
-    # operands of inequal size would be ambigous
+    # if any operand have ndim > 2 this is a batched matrix multiplication.
+
+    # do vector promotion
+    if a.ndim == 1:
+        a = a.reshape([a.shape[0], 1], 2)
+
+    if b.ndim == 1:
+        b = b.reshape([b.shape[0], 1], 2)
+
+    # if the stacks are not aligned, use scan to iterate over first dimension
+    # of largest operand and call recursively until a and b has same ndim
     if nd1 != nd2:
-        raise ValueError('a.ndim != b.ndim. matmult takes only operands of same',
-                         'dimensionality when one operand has ndim > 2')
+        if a.ndim > b.ndim:
+            result, updates = theano.scan(
+                fn=lambda a_sub_tensor, _b:
+                matmul(a_sub_tensor, _b),
+                outputs_info=None,
+                sequences=[a],
+                non_sequences=[b])
+            return result
+
+        if a.ndim < b.ndim:
+            result, updates = theano.scan(
+                fn=lambda b_sub_tensor, _a:
+                matmul(_a, b_sub_tensor),
+                outputs_info=None,
+                sequences=[b],
+                non_sequences=[a])
+            return result
+
+    # If this code is reached operands have same number of dimensions
+    # shape of a and b must be the same except for the last 2 axes which must
+    # be compatible with a matrix multiplication:
+    #   a: ND (..., dim1, dim2)
+    #   b: ND (..., dim2, dim3)
 
     # for ndim 3 there exists a method we can use without modification
     if nd1 == 3:
         return batched_dot(a, b)
 
-    # ndim > 3
-    # shape of a and b must be the same except for the last 2 axes which must
-    # compatible with the dot operation:
-    #   a: ND (..., dim1, dim2)
-    #   b: ND (..., dim2, dim3)
+    # for ndim > 3 we flatten all but last 2 dimensions such that the new
+    # operands have ndim == 3
 
     _a = a.reshape([-1, a.shape[-2], a.shape[-1]], 3)
     _b = b.reshape([-1, b.shape[-2], b.shape[-1]], 3)

@@ -1969,11 +1969,20 @@ MatmulTester = makeTester(name='MatmulTester',
                                  correct3x3_2=(rand(5, 5, 7), rand(5, 7, 9)),
                                  correct2x2_1=(rand(5, 7), rand(7, 5)),
                                  correct2x2_2=(rand(5, 7), rand(7, 9)),
+                                 # matrix matrix w. bc
+                                 correct4x5_1=(rand(2, 5, 5, 7), rand(3, 2, 5, 7, 9)),
+                                 correct5x4_2=(rand(3, 2, 5, 5, 7), rand(2, 5, 7, 9)),
+                                 correct3x4_1=(rand(5, 5, 7), rand(2, 5, 7, 9)),
+                                 correct4x3_2=(rand(2, 5, 5, 7), rand(5, 7, 9)),
+                                 # matrix vector
                                  correct2x1=(rand(5, 7), rand(7)),
-                                 correct1x2=(rand(5), rand(5, 7))
+                                 correct1x2=(rand(5), rand(5, 7)),
+                                 # vector vector
+                                 correct1x1_1=(rand(5), rand(5)),
+                                 correct1x1_2=(rand(1, 5), rand(5)),
+                                 correct1x1_3=(rand(5), rand(5, 1)),
                                  ),
-                       bad_build=dict(badscalar=(1, rand(2, 2)),
-                                      baddim3x4=(rand(2, 5, 7, 5), rand(5, 7, 5)),
+                       bad_build=dict(badscalar=(1, rand(2, 2))
                                       ),
                        bad_runtime=dict(bad2x2_1=(rand(5, 7), rand(5, 7)),
                                         bad2x2_2=(rand(5, 7), rand(8, 3)),
