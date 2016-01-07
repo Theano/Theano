@@ -259,10 +259,10 @@ class GpuDnnConvDesc(GpuOp):
             assert len(border_mode) == len(subsample)
             border_mode = tuple(map(int, border_mode))
         if not ((isinstance(border_mode, tuple) and min(border_mode) >= 0) or
-                border_mode in ('valid', 'full')):
+                border_mode in ('valid', 'full', 'half')):
             raise ValueError(
                 'invalid border_mode {}, which must be either '
-                '"valid", "full", an integer or a pair of'
+                '"valid", "full", "half", an integer or a pair of'
                 ' integers'.format(border_mode))
         self.border_mode = border_mode
         assert len(subsample) in [2, 3]
@@ -292,12 +292,14 @@ class GpuDnnConvDesc(GpuOp):
         if isinstance(self.border_mode, tuple):
             pad_desc = tuple(map(int, self.border_mode))
             assert min(pad_desc) >= 0
-            bmode = 2
+            bmode = 1
         else:
             pad_desc = [0] * nb_dim
 
             if self.border_mode == "valid":
                 bmode = 1
+            elif self.border_mode == "half":
+                bmode = 2
             else:
                 assert self.border_mode == "full"
                 bmode = 0
@@ -343,6 +345,14 @@ class GpuDnnConvDesc(GpuOp):
         pad[2] = *(npy_int64 *)PyArray_GETPTR1(%(kern_shape)s, 4) - 1;
     }
   }
+  // Adjust padding values if using half convolution
+  else if (%(bmode)d == 2) {
+    pad[0] = *(npy_int64 *)PyArray_GETPTR1(%(kern_shape)s, 2) / 2;
+    pad[1] = *(npy_int64 *)PyArray_GETPTR1(%(kern_shape)s, 3) / 2;
+    if (%(nb_dim)d >= 3) {
+        pad[2] = *(npy_int64 *)PyArray_GETPTR1(%(kern_shape)s, 4) / 2;
+    }
+  }
 
   err = cudnnSetConvolutionNdDescriptor_v3(
   %(desc)s,
@@ -365,7 +375,7 @@ class GpuDnnConvDesc(GpuOp):
            upscale_str=upscale_str, nb_dim=nb_dim, precision=precision)
 
     def c_code_cache_version(self):
-        return (3, version())
+        return (4, version())
 
 # scalar constants
 _zero = constant(numpy.asarray(0.0, dtype='float32'))
@@ -1097,7 +1107,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     kerns
         Convolution filters.
     border_mode
-        One of 'valid', 'full'; additionally, the padding size can be
+        One of 'valid', 'full', 'half'; additionally, the padding size can be
         directly specified by an integer or a pair of integers (as a tuple),
         specifying the amount of zero padding added to _both_ the top and
         bottom (first entry) and left and right (second entry) sides of
@@ -1210,11 +1220,11 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
 
     :param img: images to do the convolution over
     :param kerns: convolution filters
-    :param border_mode: One of 'valid', 'full'; additionally, the padding
-        size can be directly specified by an integer or a pair of integers
-        (as a tuple), specifying the amount of zero padding added to _both_
-        the top and bottom (first entry) and left and right (second entry)
-        sides of the image.
+    :param border_mode: One of 'valid', 'full', 'half'; additionally, the
+        padding size can be directly specified by an integer or a triplet of
+        integers (as a tuple), specifying the amount of zero padding added to
+        _both_ the top and bottom (first entry) and left and right (second
+        entry) and front and back (third entry) sides of the volume.
     :param subsample: perform subsampling of the output (default: (1, 1, 1))
     :param conv_mode: perform convolution (kernels flipped) or
         cross-correlation. One of 'conv', 'cross'. (default: 'conv')
