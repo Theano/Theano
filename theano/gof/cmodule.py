@@ -1268,8 +1268,11 @@ class ModuleCache(object):
     """
 
     def clear_old(self, age_thresh_del=None, delete_if_problem=False):
-        """
-        Delete entries from the filesystem for cache entries that are too old.
+        """Delete entries from the filesystem for cache entries that are too old.
+
+        This refreshes the content of the cache. Don't hold the lock
+        while calling this method, this is useless. It will be taken
+        if needed.
 
         Parameters
         ----------
@@ -1380,11 +1383,16 @@ class ModuleCache(object):
                                         to_rename, to_delete)
 
     def clear_unversioned(self, min_age=None):
-        """
-        Delete unversioned dynamic modules.
+        """Delete unversioned dynamic modules.
 
         They are deleted both from the internal dictionaries and from the
         filesystem.
+
+        No need to have the lock when calling this method. It does not
+        take the lock as unversioned module aren't shared.
+
+        This method does not refresh the cache content, it just
+        accesses the in-memory known module(s).
 
         Parameters
         ----------
@@ -1471,13 +1479,11 @@ class ModuleCache(object):
                     if age > min_age:
                         to_del.append(os.path.join(self.dirname, filename))
 
-        if not to_del:
-            return
-        with compilelock.lock_ctx():
-            for f in to_del:
-                _rmtree(f,
-                        msg='old unversioned', level=logging.INFO,
-                        ignore_nocleanup=True)
+        # No need to take the lock as it isn't shared.
+        for f in to_del:
+            _rmtree(f,
+                    msg='old unversioned', level=logging.INFO,
+                    ignore_nocleanup=True)
 
     def _on_atexit(self):
         # Note: no need to call refresh() since it is called by clear_old().
