@@ -14,7 +14,7 @@ except ImportError:
     flake8_available = False
 
 __authors__ = ("Saizheng Zhang")
-__copyright__ = "(c) 2015, Universite de Montreal"
+__copyright__ = "(c) 2016, Universite de Montreal"
 __contact__ = "Saizheng Zhang <saizhenglisa..at..gmail.com>"
 
 # We ignore:
