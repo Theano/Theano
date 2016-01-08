@@ -239,6 +239,10 @@ else:
     home_dir = get_home_dir()
     if not os.access(home_dir, os.W_OK):
         home_dir = '/tmp'
+        user = os.getenv('USER')
+        if user is not None:
+            home_dir = os.path.join(home_dir, user)
+
     default_base_compiledir = os.path.join(home_dir, '.theano')
 
 
