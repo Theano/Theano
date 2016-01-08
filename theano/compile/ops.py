@@ -657,11 +657,13 @@ class Rebroadcast(gof.Op):
         items = sorted(axis)
         self.axis = OrderedDict(items)
         for axis, broad in iteritems(self.axis):
-            assert isinstance(axis, (numpy.integer, int)), (
-                "Rebroadcast needs integer axes. Got ", axis)
-            assert isinstance(broad, bool), (
-                "Rebroadcast needs bool for new broadcast pattern. Got ",
-                broad)
+            if not isinstance(axis, (numpy.integer, int)):
+                raise TypeError("Rebroadcast needs integer axes. "
+                                "Got {}".format(axis))
+
+            if not isinstance(broad, (numpy.bool_, bool)):
+                raise TypeError("Rebroadcast needs bool for new broadcast "
+                                "pattern. Got {}".format(broad))
 
     def __hash__(self):
         # Need special __hash__ as dict aren't hashable.
