@@ -300,6 +300,19 @@ def local_gpualloc_memset_0(node):
             return [new_op(*node.inputs)]
 
 
+# Don't register by default.
+@gof.local_optimizer([GpuAllocEmpty])
+def local_gpua_alloc_empty_to_zeros(node):
+    if isinstance(node.op, GpuAllocEmpty):
+        return [GpuAlloc()(theano.tensor.constant(0, dtype='float32'),
+                           *node.inputs)]
+optdb.register('local_gpua_alloc_empty_to_zeros',
+               local_gpua_alloc_empty_to_zeros,
+               # After move to gpu and merge2, before inplace.
+               49.3,
+               'alloc_empty_to_zeros',)
+
+
 @register_opt()
 @local_optimizer([GpuContiguous])
 def local_gpu_contiguous_gpu_contiguous(node):

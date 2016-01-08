@@ -1766,6 +1766,26 @@ def local_useless_alloc(node):
             return [node.inputs[0]]
 
 
+# Don't register by default.
+@gof.local_optimizer([T.AllocEmpty])
+def local_alloc_empty_to_zeros(node):
+    """This convert AllocEmpty to Alloc of 0.
+
+    This help investigate NaN with NanGuardMode.  Not registered by
+    default. To activate it, use the Theano flag
+    optimizer_including=alloc_empty_to_zeros. This also enable
+    the GPU version of this optimizations.
+
+    """
+    if isinstance(node.op, T.AllocEmpty):
+        return [T.zeros(node.inputs, dtype=node.outputs[0].dtype)]
+compile.optdb.register('local_alloc_empty_to_zeros',
+                       local_alloc_empty_to_zeros,
+                       # After move to gpu and merge2, before inplace.
+                       49.3,
+                       'alloc_empty_to_zeros',)
+
+
 @register_specialize
 @register_canonicalize
 @gof.local_optimizer([T.shape])
