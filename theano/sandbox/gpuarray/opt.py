@@ -806,6 +806,9 @@ theano.tensor.nnet.conv2d()
             AbstractConv2d_gradWeights,
             AbstractConv2d_gradInputs])
 def local_lift_abstractconv2d(node, context_name):
+    if isinstance(node.outputs[0].type, GpuArrayType):
+        # Don't handle this node here.
+        return
     inps = list(node.inputs)
     inps[0] = as_gpuarray_variable(node.inputs[0],
                                    context_name=context_name)
