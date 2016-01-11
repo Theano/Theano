@@ -40,6 +40,7 @@ _logger = logging.getLogger("theano.tensor.nnet.conv")
 def conv2d(input, filters, image_shape=None, filter_shape=None,
            border_mode='valid', subsample=(1, 1), **kargs):
     """
+    Deprecated, old conv2d interface.
     This function will build the symbolic graph for convolving a stack of
     input images with a set of filters. The implementation is modelled after
     Convolutional Neural Networks (CNN). It is simply a wrapper to the ConvOp
