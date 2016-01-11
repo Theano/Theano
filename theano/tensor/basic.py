@@ -3618,7 +3618,7 @@ class BatchedDot(Op):
             && (PyArray_DESCR(zs)->type_num != NPY_FLOAT))
         {PyErr_SetString(PyExc_NotImplementedError, "type(z) is not double or float"); %(fail)s;}
 
-        if ((PyArray_DESCR(xs)->type_num != PyArray_DESCR(%(_y)s)->type_num)
+        if ((PyArray_DESCR(xs)->type_num != PyArray_DESCR(ys)->type_num)
             ||(PyArray_DESCR(xs)->type_num != PyArray_DESCR(zs)->type_num))
         { PyErr_SetString(PyExc_NotImplementedError, "type(x), type(y), type(z) are not all the same"); %(fail)s; }
 
