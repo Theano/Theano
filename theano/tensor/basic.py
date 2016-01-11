@@ -3667,7 +3667,7 @@ class BatchedDot(Op):
                         case 0x111: sgemm_(&N, &N, &Nz1, &Nz2, &Nx2, &a, x, &sx_2, y, &sy_2, &b, z, &sz_2); break;
                         default: PyErr_SetString(PyExc_ValueError, "some matrix has no unit stride"); %(fail)s;
                     };
-                    x += Sz[0]; y += Sy[0]; z += Sz[0];
+                    x += Sx[0]; y += Sy[0]; z += Sz[0];
                 }
             }
             break;
@@ -3697,7 +3697,7 @@ class BatchedDot(Op):
                                                  "some matrix has no unit stride");
                                  %(fail)s;
                     };
-                    x += Sz[0]; y += Sy[0]; z += Sz[0];
+                    x += Sx[0]; y += Sy[0]; z += Sz[0];
                 }
 
             }
