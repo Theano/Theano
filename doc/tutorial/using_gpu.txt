@@ -538,6 +538,12 @@ int, ...) however GPU support varies and some units can't deal with
 double (float64) or small (less than 32 bits like int16) data types.
 You will get an error at compile time or runtime if this is the case.
 
+Also, by default float inputs will get transferred to GPU, but int
+will not.  You can force the transfer of int inputs by setting the
+tag.target attribute to None or a context name.  You can also prevent
+a float value from getting transferred by setting its tag.target
+attribute to 'cpu'.
+
 Complex support is untested and most likely completely broken.
 
 In general, large operations like matrix multiplication, or
@@ -553,19 +559,12 @@ means that they are only scheduled to run and the function returns.
 This is made somewhat transparently by the underlying libgpuarray.
 
 A forced synchronization point is introduced when doing memory
-transfers between device and host. Another is introduced when
-releasing active memory buffers on the GPU (active buffers are buffers
-that are still in use by a kernel).
+transfers between device and host.
 
 It is possible to force synchronization for a particular GpuArray by
 calling its ``sync()`` method.  This is useful to get accurate timings
 when doing benchmarks.
 
-The forced synchronization points interact with the garbage collection
-of the intermediate results.  To get the fastest speed possible, you
-should disable the garbage collector by using the theano flag
-``allow_gc=False``.  Be aware that this will increase memory usage
-sometimes significantly.
 
 
 -------------------------------------------
