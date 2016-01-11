@@ -769,16 +769,14 @@ def local_logsoftmax_grad(node):
         if (isinstance(node.op, SoftmaxGrad) and
             len(node.inputs) == 2 and
             isinstance(node.inputs[0].owner.op, tensor.Elemwise) and
-            node.inputs[0].owner.inputs[1].owner.op == Softmax() and
-            node.inputs[1] == node.inputs[0].owner.inputs[1]) and not(
+            node.inputs[0].owner.inputs[1].owner.op == softmax_op and
+            node.inputs[1] == node.inputs[0].owner.inputs[1] and
+            not (
                 # skip if it will be optimized by
                 # local_advanced_indexing_crossentropy_onehot_grad
-                node.inputs[1].owner and node.inputs[1].owner.op in
-                (softmax_op, softmax_with_bias) and
                 node.inputs[0].owner.op == tensor.true_div and
-                node.inputs[0].owner.inputs[1] == node.inputs[1] and
                 isinstance(node.inputs[0].owner.inputs[0].owner.op,
-                           subtensor.AdvancedIncSubtensor)):
+                           subtensor.AdvancedIncSubtensor))):
             # get parameters from unoptimized op
             sm = node.inputs[0].owner.inputs[1]
             # sm_input = node.inputs[1].owner.inputs[0]
