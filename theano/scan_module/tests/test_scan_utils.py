@@ -30,7 +30,7 @@ class TestMapVariables(unittest.TestCase):
         # the bug happens only when replacing composite graphs
         # (i.e. graphs that are not input variables), so negate
         # the inputs to make these composite.
-        a, b, c = [-tensor.scalar(s) for s in "abc"]
+        a, b = [-tensor.scalar(s) for s in "ab"]
         c = tensor.constant(1.0, name="c", dtype=theano.config.floatX)
 
         u = a + b
