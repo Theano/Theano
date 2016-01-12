@@ -1562,7 +1562,7 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
                     # If the preallocated output has been reused, check
                     # that it has the same data pointer
                     var = storage_map[r][0]
-                    if init_output_vars[i] is var:
+                    if init_output_vars[i] is var and hasattr(var, 'gpudata'):
                         if hasattr(var, 'data'):
                             data = var.data
                         elif hasattr(var, 'gpudata'):
