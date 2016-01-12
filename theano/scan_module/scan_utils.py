@@ -285,7 +285,32 @@ def map_variables(replacer, graphs):
 
         # v is now equal to a * b + c
     """
+    rval = _map_variables(replacer, graphs)
+    # clear cache after every call because the keys are mutable
+    _without_cached_constants_cache.clear()
+    return rval
 
+
+_without_cached_constants_cache = dict()
+def without_cached_constants(graphs):
+    try:
+        # cache results of cloning for performance and to preserve
+        # object identity
+        return list(_without_cached_constants_cache[tuple(graphs)])
+    except KeyError:
+        inputs_ = list(set(gof.graph.inputs(graphs)))
+        cached_constants = [x for x in inputs_ if getattr(x, "cached", False)]
+        if not cached_constants:
+            return graphs
+        copied_constants = clone(cached_constants, share_inputs=False)
+        new_graphs = clone(
+            graphs, share_inputs=True,
+            replace=list(zip(cached_constants, copied_constants)))
+        _without_cached_constants_cache[tuple(graphs)] = tuple(new_graphs)
+        return list(new_graphs)
+
+
+def _map_variables(replacer, graphs):
     # perform any desired replacement of input variables.  these
     # aren't replaced by the local optimizer approach because they are
     # not outputs of any Apply node.
@@ -456,30 +481,11 @@ def _map_variables_inner(replacer, inner_inputs, outer_inputs,
                                   replace=replacements)
         return new_graph
 
-    new_inner_outputs = map_variables(inner_replacer, inner_outputs)
+    new_inner_outputs = _map_variables(inner_replacer, inner_outputs)
     new_inner_inputs = list(chain(inner_inputs, extra_inner_inputs))
     new_outer_inputs = list(chain(outer_inputs, extra_outer_inputs))
 
     return new_inner_inputs, new_outer_inputs, new_inner_outputs
-
-
-_without_cached_constant_cache = dict()
-def without_cached_constants(graphs):
-    try:
-        # cache results of cloning for performance and to preserve
-        # object identity
-        return list(_without_cached_constant_cache[tuple(graphs)])
-    except KeyError:
-        inputs_ = list(set(gof.graph.inputs(graphs)))
-        cached_constants = [x for x in inputs_ if getattr(x, "cached", False)]
-        if not cached_constants:
-            return graphs
-        copied_constants = clone(cached_constants, share_inputs=False)
-        new_graphs = clone(
-            graphs, share_inputs=True,
-            replace=list(zip(cached_constants, copied_constants)))
-        _without_cached_constant_cache[tuple(graphs)] = tuple(new_graphs)
-        return list(new_graphs)
 
 
 def get_updates_and_outputs(ls):
