@@ -3727,8 +3727,8 @@ class BatchedDot(Op):
         return xgrad, ygrad
 
     def R_op(self, inputs, eval_points):
-        # R_op for a \dot b evaluted at c for a and d for b is
-        # simply c \dot b + a \dot d
+        # R_op for batched_dot(a, b) evaluted at c for a and d for b is
+        # simply batched_dot(c, b) + batched_dot(a, d)
 
         assert len(inputs) == 2
         assert len(eval_points) == 2
