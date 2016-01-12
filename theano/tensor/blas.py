@@ -288,7 +288,8 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
                 flags += ['-l%s' % l for l in ["mkl_core",
                                                "mkl_intel_thread",
                                                "mkl_rt"]]
-                if GCC_compiler.try_flags(flags):
+                if GCC_compiler.try_flags(flags) and try_blas_flag():
+                    flags += ['-lblas']
                     return ' '.join(flags)
 
         # If numpy was linked with library that are not installed or
@@ -304,14 +305,16 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
                 ['-L%s' % l for l in blas_info['library_dirs']] +
                 ['-l%s' % l for l in blas_info['libraries']] +
                 [])
-            if GCC_compiler.try_flags(ret):
+            if GCC_compiler.try_flags(ret) and try_blas_flag():
+                ret += ['-lblas']
                 return ' '.join(ret)
             # Try to add the anaconda lib directory to runtime loading of lib.
             # This fix some case with Anaconda 2.3 on Linux.
             if "Anaconda" in sys.version and "linux" in sys.platform:
                 lib_path = os.path.join(sys.prefix, 'lib')
                 ret.append('-Wl,-rpath,' + lib_path)
-                if GCC_compiler.try_flags(ret):
+                if GCC_compiler.try_flags(ret) and try_blas_flag():
+                    ret += ['-lblas']
                     return ' '.join(ret)
 
     except KeyError:
@@ -322,7 +325,10 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
     # readily available. We try to see if that's the case, rather
     # than disable blas. To test it correctly, we must load a program.
     # Otherwise, there could be problem in the LD_LIBRARY_PATH.
+    return try_blas_flag()
 
+
+def try_blas_flag():
     test_code = textwrap.dedent("""\
         extern "C" float sdot_(int*, float*, int*, float*, int*);
         int main(int argc, char** argv)
@@ -344,6 +350,9 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
     res = GCC_compiler.try_compile_tmp(
         test_code, tmp_prefix='try_blas_',
         flags=flags, try_run=True)
+    # res[0]: shows successful compilation
+    # res[1]: shows successful execution
+    print(res)
     if res and res[0] and res[1]:
         return "-lblas"
     else:
