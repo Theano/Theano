@@ -1334,7 +1334,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                     # is c-contiguous, so we transpose it before and after.
                     new_buf = CudaNdarray(new_buf.T)
                     new_buf = cuda_dimshuffle(
-                        new_buf, reversed(list(range(new_buf.ndim))))
+                        new_buf, range(new_buf.ndim)[::-1]) #reversed(list(range(new_buf.ndim))))
 
                 f_cont_outputs[r] = new_buf
 
