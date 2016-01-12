@@ -3401,7 +3401,9 @@ class BatchedDot(Op):
         dtype = scal.upcast(*[input.type.dtype for input in inputs])
         # upcast inputs to common dtype if needed
         upcasted_inputs = [cast(input, dtype) for input in inputs]
-        broadcastable = (inputs[0].type.broadcastable[:-1] +
+        broadcastable = ((inputs[0].type.broadcastable[0] or
+                          inputs[1].type.broadcastable[0],) +
+                         inputs[0].type.broadcastable[1:-1] +
                          inputs[1].type.broadcastable[2:])
         return Apply(self, upcasted_inputs, [tensor(dtype, broadcastable)])
 
