@@ -356,3 +356,12 @@ def test_local_gpu_elemwise():
     out = f(a_v, b_v)
     utt.assert_allclose(out[0], a_v[::2] + b_v[::2])
     utt.assert_allclose(out[1], a_v[::2] * c_v[::2])
+
+
+def test_local_lift_abstractconv_gpu_shape(self):
+    s = tensor.ivector()
+    a = tensor.alloc(0, s[0], s[1], s[2], s[3])
+    b = tensor.alloc(0, s[0], s[1], s[2], s[3])
+    c = tensor.conv.conv2d(a, b)
+    g = theano.grad(c)
+    f = theano.function([s], g, mode=mode_with_gpu)
