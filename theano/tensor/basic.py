@@ -3399,9 +3399,11 @@ class BatchedDot(Op):
                 'theano.tensor.batched_dot instead.' % inputs[1].ndim)
 
         dtype = scal.upcast(*[input.type.dtype for input in inputs])
+        # upcast inputs to common dtype if needed
+        upcasted_inputs = [cast(input, dtype) for input in inputs]
         broadcastable = (inputs[0].type.broadcastable[:-1] +
                          inputs[1].type.broadcastable[2:])
-        return Apply(self, inputs, [tensor(dtype, broadcastable)])
+        return Apply(self, upcasted_inputs, [tensor(dtype, broadcastable)])
 
     def perform(self, node, inp, out):
         x, y = inp
