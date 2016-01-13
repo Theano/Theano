@@ -44,6 +44,8 @@ class StripPickler(Pickler):
     """
     Subclass of Pickler that strips unnecessary attributes from Theano objects.
 
+    .. versionadded:: 0.8
+
     Example of use::
 
         fn_args = dict(inputs=inputs,
@@ -117,6 +119,8 @@ if PY3:
         """
         Allow to reload in python 3 some pickled numpy ndarray.
 
+        .. versionadded:: 0.8
+
         Examples
         --------
 
@@ -135,6 +139,8 @@ else:
     class CompatUnpickler(pickle.Unpickler):
         """
         Allow to reload in python 3 some pickled numpy ndarray.
+
+        .. versionadded:: 0.8
 
         Examples
         --------
@@ -305,6 +311,7 @@ def dump(obj, file_handler, protocol=DEFAULT_PROTOCOL,
         separate NPY file inside of the zip file.
     :type persistent_id: callable
 
+    .. versionadded:: 0.8
 
     .. note::
         The final file is simply a zipped file containing at least one file,
@@ -347,6 +354,7 @@ def load(f, persistent_load=PersistentNdarrayLoad):
         used when pickling.
     :type persistent_load: callable, optional
 
+    .. versionadded:: 0.8
     """
     with closing(zipfile.ZipFile(f, 'r')) as zip_file:
         p = pickle.Unpickler(BytesIO(zip_file.open('pkl').read()))
