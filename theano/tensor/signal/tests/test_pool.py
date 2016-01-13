@@ -10,8 +10,7 @@ import theano.tensor as tensor
 from theano.tests import unittest_tools as utt
 from theano.tensor.signal.pool import (Pool, pool_2d,
                                        MaxPoolGrad, AveragePoolGrad,
-                                       DownsampleFactorMaxGrad,
-                                       DownsampleFactorMaxGradGrad,
+                                       DownsampleFactorMaxGrad,                         
                                        max_pool_2d_same_size)
 from theano import function
 
@@ -194,8 +193,8 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
 
                 # Pool op
                 maxpool_op = Pool(maxpoolshp,
-                                                 ignore_border=ignore_border,
-                                                 mode=mode)(images)
+                                  ignore_border=ignore_border,
+                                  mode=mode)(images)
 
                 output_shape = Pool.out_shape(imval.shape, maxpoolshp,
                                               ignore_border=ignore_border)
@@ -643,7 +642,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         # The value has been manually computed from the theoretical gradient,
         # and confirmed by the implementation.
 
-        assert numpy.allclose(fn_hess( [1, 2]), [[0., 0.], [0., 982.7667]])
+        assert numpy.allclose(fn_hess([1, 2]), [[0., 0.], [0., 982.7667]])
 
     def test_max_pool_2d_2D(self):
         rng = numpy.random.RandomState(utt.fetch_seed())
