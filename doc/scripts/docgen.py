@@ -31,7 +31,7 @@ if __name__ == '__main__':
               'processed. Specifying files will implies --cache.')
         sys.exit(0)
 
-    if options['--rst'] or options['--test']:
+    if not(options['--rst'] or options['--test']):
         # Default is now rst
         options['--rst'] = True
 
