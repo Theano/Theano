@@ -820,7 +820,8 @@ class CLinker(link.Linker):
                 pass
 
             try:
-                struct_cleanup = op.c_cleanup_code_struct(node, name)
+                struct_cleanup = op.c_cleanup_code_struct(node, name,
+                                                          sub_struct)
                 assert isinstance(struct_cleanup, string_types), (
                     str(node.op) +
                     " didn't return a string for c_cleanup_code_struct")

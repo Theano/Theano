@@ -402,7 +402,7 @@ class CLinkerOp(CLinkerObject):
         node : an Apply instance in the graph being compiled
         name : str
             A unique name to distinguish variables from those of other nodes.
-        sub
+        sub : dict
             A dictionary of values to substitute in the code.
             Most notably it contains a 'fail' entry that you should place in
             your code after setting a python exception to indicate an error.
@@ -438,7 +438,7 @@ class CLinkerOp(CLinkerObject):
         raise utils.MethodNotDefined("c_support_code_struct",
                                      type(self), self.__class__.__name__)
 
-    def c_cleanup_code_struct(self, node, name):
+    def c_cleanup_code_struct(self, node, name, sub):
         """
         Optional: return a code string specific to the apply to be
         inserted in the struct cleanup code.
@@ -448,6 +448,10 @@ class CLinkerOp(CLinkerObject):
         node : an Apply instance in the graph being compiled
         name : str
             A unique name to distinguish variables from those of other nodes.
+        sub : dict
+            A dictionary of values to substitute in the code.
+            Most notably it contains a 'fail' entry that you should place in
+            your code after setting a python exception to indicate an error.
 
         Raises
         ------
@@ -1343,7 +1347,6 @@ class COp(Op):
     c_support_code = simple_meth('support_code')
     c_support_code_apply = apply_meth('support_code_apply')
     c_support_code_struct = apply_meth('support_code_struct')
-    c_cleanup_code_struct = apply_meth('cleanup_code_struct')
 
     def format_c_function_args(self, inp, out):
         # Generate an string containing the arguments sent to the external C
@@ -1448,6 +1451,20 @@ class COp(Op):
         else:
             raise utils.MethodNotDefined(
                 'c_init_code_struct', type(self), type(self).__name__)
+
+    def c_cleanup_code_struct(self, node, name, sub):
+        if 'cleanup_code_struct' in self.code_sections:
+            op_code = self.code_sections['cleanup_code_struct']
+
+            def_macros, undef_macros = self.get_c_macros(node, name)
+            def_sub, undef_sub = self.get_sub_macros(sub)
+
+            return os.linesep.join(['', def_macros, def_sub,
+                                    op_code,
+                                    undef_sub, undef_macros])
+        else:
+            raise utils.MethodNotDefined(
+                'c_cleanup_code_struct', type(self), type(self).__name__)
 
     def c_code(self, node, name, inp, out, sub):
         if self.func_name is not None:
