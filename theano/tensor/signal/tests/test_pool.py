@@ -10,7 +10,7 @@ import theano.tensor as tensor
 from theano.tests import unittest_tools as utt
 from theano.tensor.signal.pool import (Pool, pool_2d,
                                        MaxPoolGrad, AveragePoolGrad,
-                                       DownsampleFactorMaxGrad,                         
+                                       DownsampleFactorMaxGrad,
                                        max_pool_2d_same_size)
 from theano import function
 
