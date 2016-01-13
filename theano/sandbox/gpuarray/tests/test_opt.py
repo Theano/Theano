@@ -366,6 +366,6 @@ def test_local_lift_abstractconv_gpu_shape():
         a = tensor.ftensor4()
         b = tensor.ftensor4()
         c = tensor.nnet.abstract_conv.AbstractConv2d_gradWeights()(a, b, s)
-        f = theano.function([s, a, b], c, mode=mode_with_gpu)
+        theano.function([s, a, b], c, mode=mode_with_gpu)
     finally:
         theano.config.on_opt_error = prev
