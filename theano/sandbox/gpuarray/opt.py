@@ -172,12 +172,7 @@ class InputToGpuOptimizer(Optimizer):
                     for cl in input.clients)):
                 continue
 
-            if input.type.dtype.startswith('float'):
-                default = None
-            else:
-                default = 'cpu'
-
-            target = getattr(input.tag, 'target', default)
+            target = getattr(input.tag, 'target', None)
             if target == 'cpu':
                 continue
 
