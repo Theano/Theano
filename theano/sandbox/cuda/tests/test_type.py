@@ -11,8 +11,8 @@ from theano.sandbox.cuda import cuda_available
 
 if not cuda_available:
     raise SkipTest('Optional package cuda disabled')
-
-from theano.sandbox.cuda import CudaNdarray
+else:
+    from theano.sandbox.cuda import CudaNdarray
 
 # testfile created on cuda enabled machine using
 # >>> with open('CudaNdarray.pkl', 'wb') as fp:
