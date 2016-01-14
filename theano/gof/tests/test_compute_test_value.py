@@ -286,7 +286,8 @@ class TestComputeTestValue(unittest.TestCase):
                 # Get frame info 4 layers up
                 frame_info = traceback.extract_tb(tb)[-5]
                 # We should be in the "fx" function defined above
-                assert os.path.split(frame_info[0])[1] == 'test_compute_test_value.py'
+                expected = 'test_compute_test_value.py'
+                assert os.path.split(frame_info[0])[1] == expected, frame_info
                 assert frame_info[2] == 'fx'
 
         finally:

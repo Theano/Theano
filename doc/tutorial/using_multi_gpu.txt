@@ -22,6 +22,10 @@ models between machines.
    cases observed, but make sure to double-check your results before
    publishing a paper or anything of the sort.
 
+.. note::
+
+   For data-parallelism, you probably are better using `platoon
+   <https://github.com/mila-udem/platoon>`_.
 
 Defining the context map
 ------------------------

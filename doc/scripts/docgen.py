@@ -31,7 +31,7 @@ if __name__ == '__main__':
               'processed. Specifying files will implies --cache.')
         sys.exit(0)
 
-    if options['--rst'] or options['--test']:
+    if not(options['--rst'] or options['--test']):
         # Default is now rst
         options['--rst'] = True
 
@@ -45,6 +45,7 @@ if __name__ == '__main__':
     files = None
     if len(args) != 0:
         files = [os.path.abspath(f) for f in args]
+    currentdir = os.getcwd()
     mkdir(outdir)
     os.chdir(outdir)
 
@@ -91,3 +92,5 @@ if __name__ == '__main__':
         mkdir("doc")
         sys.path[0:0] = [os.path.join(throot, 'doc')]
         call_sphinx('doctest', '.')
+    # To go back to the original current directory.
+    os.chdir(currentdir)

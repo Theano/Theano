@@ -1028,7 +1028,7 @@ def pydotprint(fct, outfile=None,
         except pd.InvocationException:
             # based on https://github.com/Theano/Theano/issues/2988
             version = getattr(pd, '__version__', "")
-            if version and list(map(int, version.split("."))) < [1, 0, 28]:
+            if version and [int(n) for n in version.split(".")] < [1, 0, 28]:
                 raise Exception("Old version of pydot detected, which can "
                                 "cause issues with pydot printing. Try "
                                 "upgrading pydot version to a newer one")

@@ -4,10 +4,6 @@
 Installing Theano
 =================
 
-.. note::
-    If you are a member of LISA Labo, have a look at :ref:`lisa_labo` for
-    lab-specific installation instructions.
-
 
 Requirements
 ------------
