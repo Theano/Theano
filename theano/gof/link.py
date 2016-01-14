@@ -227,7 +227,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
                 dtype = storage_map[k][0].dtype
                 storage_map_item.append(numpy.dtype(dtype).itemsize)
                 if shapeinfo is None:
-                    storage_map_item.append(None)
+                    storage_map_item.append(-1)
                 else:
                     sz = numpy.dtype(dtype).itemsize * numpy.prod(shapeinfo)
                     storage_map_item.append(sz)
@@ -263,7 +263,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
             else:
                 bytes = getsizeof(storage_map[k][0])
                 storage_map_item.append(bytes)
-                storage_map_item.append(None)
+                storage_map_item.append(-1)
 
             # Flag of shared val
             # storage_map_item[4]
@@ -278,7 +278,7 @@ def raise_with_op(node, thunk=None, exc_info=None, storage_map=None):
         from operator import itemgetter
         storage_map_list.sort(key=itemgetter(3), reverse=True)
         for item in storage_map_list:
-            if item[3] is None:
+            if item[3] == -1:
                 continue
             detailed_err_msg += " - " + item[0] + ", "
             if item[4] is True:
