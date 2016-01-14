@@ -349,7 +349,7 @@ def try_blas_flag(flags):
     # res[0]: shows successful compilation
     # res[1]: shows successful execution
     if res and res[0] and res[1]:
-        return "-lblas"
+        return flags
     else:
         return ""
 
