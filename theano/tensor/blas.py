@@ -322,7 +322,7 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
     # readily available. We try to see if that's the case, rather
     # than disable blas. To test it correctly, we must load a program.
     # Otherwise, there could be problem in the LD_LIBRARY_PATH.
-    return try_blas_flag()
+    return try_blas_flag(['-lblas'])
 
 
 def try_blas_flag(flags):
