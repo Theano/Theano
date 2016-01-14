@@ -67,6 +67,7 @@ from theano.compile.function_module import deep_copy_op
 from theano.gof import toolbox, DestroyHandler, InconsistencyError
 from theano.gof.opt import Optimizer
 from theano.gof.opt import pre_constant_merge, pre_greedy_local_optimizer
+from theano.sandbox.cuda import cuda_available
 
 from theano.scan_module import scan_op
 from theano.scan_module import scan_utils
@@ -1083,10 +1084,10 @@ class ScanInplaceOptimizer(Optimizer):
         # Depending on the values of gpu_flag and gpua_flag, get the list of
         # memory allocation ops that the optimization should be able to handle
         alloc_ops = (Alloc, AllocEmpty)
-        if self.gpu_flag:
+        if self.gpu_flag and cuda_available:
             alloc_ops += (theano.sandbox.cuda.GpuAlloc,
                           theano.sandbox.cuda.GpuAllocEmpty)
-        if self.gpua_flag:
+        if self.gpua_flag and cuda_available:
             # gpuarray might be imported but not its GpuAlloc and
             # GpuAllopEmpty ops.
             try:

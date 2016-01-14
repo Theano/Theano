@@ -19,9 +19,9 @@ from theano.compile import optdb
 from theano.gof import (local_optimizer, EquilibriumDB, ProxyDB,
                         Optimizer, TopoOptimizer, toolbox)
 from theano.gof.opt import LocalMetaOptimizer
-from theano.sandbox.cuda import as_cuda_ndarray_variable
 from theano.sandbox.cuda.basic_ops import (
     gpu_eye, gpu_contiguous,
+    as_cuda_ndarray_variable,
     gpu_from_host, host_from_gpu, GpuFromHost, HostFromGpu,
     GpuContiguous,
     GpuElemwise, GpuDimShuffle, GpuReshape, GpuCAReduce,
