@@ -166,7 +166,8 @@ def do_setup():
           package_data={
               '': ['*.txt', '*.rst', '*.cu', '*.cuh', '*.c', '*.sh', '*.pkl',
                    '*.h', '*.cpp', 'ChangeLog'],
-              'theano.misc': ['*.sh']
+              'theano.misc': ['*.sh'],
+              'theano.d3viz' : ['html/*','css/*','js/*']
           },
           scripts=['bin/theano-cache', 'bin/theano-nose', 'bin/theano-test'],
           keywords=' '.join([
