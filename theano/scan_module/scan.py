@@ -1014,9 +1014,6 @@ def scan(fn,
     info['profile'] = profile
     info['allow_gc'] = allow_gc
     info['strict'] = strict
-    if strict:
-        warnings.warn('In the strict mode, all neccessary shared variables '
-                      'must be passed as a part of non_sequences', Warning)
 
     local_op = scan_op.Scan(inner_inputs, new_outs, info)
 
