@@ -1532,7 +1532,7 @@ if ((err%(name)s = cudnnCreateTensorDescriptor(&output%(name)s)) != CUDNN_STATUS
 }
 """ % dict(name=name, fail=sub['fail'])
 
-    def c_cleanup_code_struct(self, node, name, sub):
+    def c_cleanup_code_struct(self, node, name):
         return """
 if (input%(name)s != NULL) { cudnnDestroyTensorDescriptor(input%(name)s); }
 if (output%(name)s != NULL) { cudnnDestroyTensorDescriptor(output%(name)s); }
@@ -1714,7 +1714,7 @@ if ((err%(name)s = cudnnCreateTensorDescriptor(&output_grad%(name)s)) != CUDNN_S
 }
 """ % dict(name=name, fail=sub['fail'])
 
-    def c_cleanup_code_struct(self, node, name, sub):
+    def c_cleanup_code_struct(self, node, name):
         return """
 if (input%(name)s != NULL) { cudnnDestroyTensorDescriptor(input%(name)s); }
 if (input_grad%(name)s != NULL) { cudnnDestroyTensorDescriptor(input_grad%(name)s); }
@@ -1938,7 +1938,7 @@ cudnnStatus_t err%(name)s;
             result += self._init_tensor4d_desc(name, id, sub['fail'])
         return result
 
-    def c_cleanup_code_struct(self, node, name, sub):
+    def c_cleanup_code_struct(self, node, name):
         result = ''
         for id in self.tensor_4d_descs:
             result += self._clean_tensor4d_desc(name, id)

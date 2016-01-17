@@ -284,7 +284,7 @@ class GpuKernelBase(object):
     def _generate_kernel_cleanup(self, k):
         return "GpuKernel_clear(&%(ovar)s);" % dict(ovar=k.objvar)
 
-    def c_cleanup_code_struct(self, node, name, sub):
+    def c_cleanup_code_struct(self, node, name):
         kernels = self.gpu_kernels(node, name)
         cleanups = '\n'.join(self._generate_kernel_cleanup(k) for k in kernels)
         return cleanups
