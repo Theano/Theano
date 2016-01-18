@@ -744,17 +744,14 @@ def local_logsoftmax(node):
 
     Note: only forward pass is affected
     """
-    try:
-        if (isinstance(node.op, tensor.Elemwise) and
+    if (isinstance(node.op, tensor.Elemwise) and
             isinstance(node.op.scalar_op, scalar.basic.Log) and
             len(node.inputs) == 1 and
-            node.inputs[0].owner and
-                isinstance(node.inputs[0].owner.op, Softmax)):
-            inVars = node.inputs[0].owner.inputs[0]
-            new_op = LogSoftmax()
-            return [new_op(inVars)]
-    except AttributeError:
-        pass
+            node.inputs[0].owner is not None and
+            isinstance(node.inputs[0].owner.op, Softmax)):
+        inVars = node.inputs[0].owner.inputs[0]
+        new_op = LogSoftmax()
+        return [new_op(inVars)]
 
 
 @opt.register_specialize('stabilize', 'fast_compile')
@@ -765,28 +762,29 @@ def local_logsoftmax_grad(node):
 
     Note: only grad is affected
     """
-    try:
-        if (isinstance(node.op, SoftmaxGrad) and
-            len(node.inputs) == 2 and
-            isinstance(node.inputs[0].owner.op, tensor.Elemwise) and
-            node.inputs[0].owner.inputs[1].owner.op == softmax_op and
-            node.inputs[1] == node.inputs[0].owner.inputs[1] and
-            not (
-                # skip if it will be optimized by
-                # local_advanced_indexing_crossentropy_onehot_grad
-                node.inputs[0].owner.op == tensor.true_div and
-                isinstance(node.inputs[0].owner.inputs[0].owner.op,
-                           subtensor.AdvancedIncSubtensor))):
-            # get parameters from unoptimized op
-            sm = node.inputs[0].owner.inputs[1]
-            # sm_input = node.inputs[1].owner.inputs[0]
-            grads = node.inputs[0].owner.inputs[0]
-            if grads.broadcastable[1] and not sm.broadcastable[1]:
-                grads = tensor.alloc(grads, grads.shape[0], sm.shape[1])
+    if (isinstance(node.op, SoftmaxGrad) and
+        len(node.inputs) == 2 and
+        node.inputs[0].owner is not None and
+        isinstance(node.inputs[0].owner.op, tensor.Elemwise) and
+        len(node.inputs[0].owner.inputs) >= 2 and
+        node.inputs[0].owner.inputs[1].owner is not None and
+        node.inputs[0].owner.inputs[1].owner.op == softmax_op and
+        node.inputs[1] == node.inputs[0].owner.inputs[1] and
+        not (
+            # skip if it will be optimized by
+            # local_advanced_indexing_crossentropy_onehot_grad
+            node.inputs[0].owner.op == tensor.true_div and
+            node.inputs[0].owner.inputs[0].owner is not None and
+            isinstance(node.inputs[0].owner.inputs[0].owner.op,
+                       subtensor.AdvancedIncSubtensor))):
+        # get parameters from unoptimized op
+        sm = node.inputs[0].owner.inputs[1]
+        # sm_input = node.inputs[1].owner.inputs[0]
+        grads = node.inputs[0].owner.inputs[0]
+        if grads.broadcastable[1] and not sm.broadcastable[1]:
+            grads = tensor.alloc(grads, grads.shape[0], sm.shape[1])
 
-            return [grads - tensor.sum(grads, axis=1, keepdims=True) * sm]
-    except AttributeError:
-        pass
+        return [grads - tensor.sum(grads, axis=1, keepdims=True) * sm]
 
 
 def softmax_graph(c):
