@@ -139,7 +139,7 @@ if (GpuKernel_init(&k_%(name)s, c->ops, c->ctx, 1, &bcode, &sz,
             codel.append(self.init_gpukernel(name, sub['fail']))
         return '\n'.join(codel)
 
-    def c_cleanup_code_struct(self, node, nodename, sub):
+    def c_cleanup_code_struct(self, node, nodename):
         codel = []
         for name in self.KERN_NAMES:
             codel.append("GpuKernel_clear(&k_{0});".format(name))
