@@ -938,7 +938,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
         """
         logger = logging.getLogger('theano.gof.op.Op')
 
-        new_node = self.prepare_node(self, node)
+        new_node = self.prepare_node(node)
         if new_node is not None:
             node = new_node
 
