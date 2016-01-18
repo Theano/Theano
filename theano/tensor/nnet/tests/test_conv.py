@@ -99,6 +99,8 @@ class TestConv2D(utt.InferShapeTester):
         out_shape2d = numpy.array(N_image_shape[-2:]) +\
                       s * numpy.array(N_filter_shape[-2:]) - s
         out_shape2d = numpy.ceil(out_shape2d / numpy.array(subsample))
+        # avoid numpy deprecation
+        out_shape2d = out_shape2d.astype('int32')
         out_shape = (N_image_shape[0], N_filter_shape[0]) + tuple(out_shape2d)
         ref_output = numpy.zeros(out_shape)
 

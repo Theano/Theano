@@ -1493,6 +1493,12 @@ CosInplaceTester = makeBroadcastTester(
     grad=_grad_broadcast_unary_wide,
     inplace=True)
 
+def test_py_c_match():
+    a = tensor.TensorType(dtype='int8', broadcastable=(False,))()
+    f = theano.function([a], tensor.arccos(a), mode='DebugMode')
+    # This can fail in DebugMode
+    f(numpy.asarray([1, 0, -1], dtype='int8'))
+
 ArccosTester = makeBroadcastTester(op=tensor.arccos,
                                    expected=upcast_float16_ufunc(numpy.arccos),
                                    good=_good_broadcast_unary_arcsin,

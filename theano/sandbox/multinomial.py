@@ -55,7 +55,7 @@ class MultinomialFromUniform(Op):
         return [T.zeros_like(x) for x in ins]
 
     def c_code_cache_version(self):
-        return (7,)
+        return (8,)
 
     def c_code(self, node, name, ins, outs, sub):
         # support old pickled graphs
@@ -122,7 +122,7 @@ class MultinomialFromUniform(Op):
             for (int n = 0; n < nb_multi; ++n)
             {
                 int waiting = 1;
-                dtype_%(pvals)s cummul = 0.;
+                double cummul = 0.;
                 const dtype_%(unis)s* unis_n = (dtype_%(unis)s*)PyArray_GETPTR1(%(unis)s, c*nb_multi + n);
                 for (int m = 0; m < nb_outcomes; ++m)
                 {

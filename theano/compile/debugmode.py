@@ -1784,8 +1784,7 @@ class _VariableEquivalenceTracker(object):
 # List of default version of make thunk.
 # This is needed to know if the user overrided it.
 # The GpuOp will be added here when theano.sandbox.cuda is imported.
-default_make_thunk = [get_unbound_function(theano.gof.Op.make_thunk),
-                      get_unbound_function(theano.gof.OpenMPOp.make_thunk)]
+default_make_thunk = [get_unbound_function(theano.gof.Op.make_thunk)]
 
 
 # Debug mode cheats and initializes the linker in a different way in
@@ -1879,6 +1878,10 @@ class _Linker(gof.link.LocalLinker):
                 thunk.inputs = [storage_map[v] for v in node.inputs]
                 thunk.outputs = [storage_map[v] for v in node.outputs]
                 thunk_other = thunk
+            else:
+                new_node = node.op.prepare_node(node)
+                if new_node is not None:
+                    node = new_node
 
             try:
                 if not self.maker.mode.check_c_code:

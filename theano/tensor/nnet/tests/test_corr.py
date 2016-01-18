@@ -97,6 +97,8 @@ class TestCorr2D(utt.InferShapeTester):
         else:
             raise NotImplementedError('Unsupported border_mode {}'.format(border_mode))
         out_shape2d = numpy.floor((img_shape2d + 2 * (padHW) - fil_shape2d) / subsample2d) + 1
+        # avoid numpy deprecation
+        out_shape2d = out_shape2d.astype('int32')
         out_shape = (N_image_shape[0], N_filter_shape[0]) + tuple(out_shape2d)
         ref_output = numpy.zeros(out_shape)
 
