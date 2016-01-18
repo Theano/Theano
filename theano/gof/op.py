@@ -821,6 +821,14 @@ class Op(utils.object2, PureOp, CLinkerOp):
         else:
             return NotImplemented
 
+    def prepare_node(self, node):
+        """
+        Make any special modifications that the Op needs before doing
+        make_thunk().
+
+        """
+        pass
+
     def make_c_thunk(self, node, storage_map, compute_map, no_recycling):
         """
         Like make_thunk, but will only try to make a C thunk.
@@ -929,6 +937,10 @@ class Op(utils.object2, PureOp, CLinkerOp):
 
         """
         logger = logging.getLogger('theano.gof.op.Op')
+
+        new_node = self.prepare_node(self, node)
+        if new_node is not None:
+            node = new_node
 
         if self._op_use_c_code:
             try:
@@ -1166,10 +1178,8 @@ int main( int argc, const char* argv[] )
                 self.openmp = False
                 theano.config.openmp = False
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
+    def prepare_node(self, node):
         self.update_self_openmp()
-        return super(OpenMPOp, self).make_thunk(node, storage_map,
-                                                compute_map, no_recycling)
 
 
 def simple_meth(tag):
