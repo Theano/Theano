@@ -30,7 +30,6 @@ from theano.tensor.nnet.sigm import sigmoid, softplus
 from theano.gradient import DisconnectedType
 from theano.gradient import grad_not_implemented
 from theano.tensor.nnet.blocksparse import sparse_block_dot
-from theano.tensor.type import values_eq_approx_remove_nan
 
 
 ############
@@ -190,7 +189,6 @@ class SoftmaxWithBias(gof.Op):
         {
             size_t j;
             double sum = 0.0;
-            bool  discount_max = false;
 
             const dtype_%(x)s* __restrict__ x_i = (dtype_%(x)s*)(PyArray_BYTES(%(x)s) + PyArray_STRIDES(%(x)s)[0] * i);
             const dtype_%(b)s* __restrict__ b_i = (dtype_%(b)s*)(PyArray_BYTES(%(b)s));
@@ -431,6 +429,7 @@ class Softmax(gof.Op):
                              x.type)
         if x.ndim == 1:
             x = tensor.shape_padleft(x, n_ones=1)
+
         return Apply(self, [x], [x.type()])
 
     def perform(self, node, input_storage, output_storage):
@@ -508,12 +507,10 @@ class Softmax(gof.Op):
         {
             size_t j;
             double sum = 0.0;
-            bool  discount_max = false;
 
             const dtype_%(x)s* __restrict__ x_i = (dtype_%(x)s*)(PyArray_BYTES(%(x)s) + PyArray_STRIDES(%(x)s)[0] * i);
             dtype_%(sm) s* __restrict__ sm_i = (dtype_%(sm)s*)(PyArray_BYTES(%(sm)s) + PyArray_STRIDES(%(sm)s)[0] * i);
 
-            size_t row_max_j=0;
             dtype_%(sm)s row_max = x_i[0];
             //std::cout << "0 " << row_max << "\\n";
             // Get the maximum value of the row
@@ -521,7 +518,6 @@ class Softmax(gof.Op):
             {
                 dtype_%(sm)s row_ij = x_i[j * Sx1] ;
                 //std::cout << "1 " << row_ij << "\\n";
-                row_max_j = (row_ij > row_max) ? j : row_max_j;
                 row_max   = (row_ij > row_max) ? row_ij : row_max;
             }
 
@@ -599,12 +595,208 @@ class Softmax(gof.Op):
 softmax_op = Softmax()
 
 
+class LogSoftmax(gof.Op):
+    """
+    LogSoftmax activation function
+    :math:`\\varphi(\\mathbf{x})_j =
+    \\e^{(\mathbf{x}_j - log{\sum_{k=1}^K e^{\mathbf{x}_k})}}
+    where :math:`K` is the total number of neurons in the layer. This
+    activation function gets applied row-wise.
+
+    """
+    __props__ = ()
+
+    def make_node(self, x):
+        x = tensor.as_tensor_variable(x)
+        if x.type.ndim not in (1, 2) \
+                or x.type.dtype not in tensor.float_dtypes:
+            raise ValueError('x must be 1-d or 2-d tensor of floats. Got %s' %
+                             x.type)
+        if x.ndim == 1:
+            x = tensor.shape_padleft(x, n_ones=1)
+
+        return Apply(self, [x], [x.type()])
+
+    def perform(self, node, input_storage, output_storage):
+        x, = input_storage
+        xdev = x - x.max(axis=1)[:, None]
+        lsm = xdev - numpy.log(numpy.sum(numpy.exp(xdev), axis=1,
+                               keepdims=True))
+        output_storage[0][0] = lsm
+
+    def grad(self, inp, grads):
+        x, = inp
+        sm = softmax_op(x)
+        return [grads[0] - tensor.sum(grads[0], axis=1, keepdims=True) * sm]
+
+    def R_op(self, inputs, eval_points):
+        # I think the Jacobian is symmetric so the R_op
+        # is the same as the grad
+        if None in eval_points:
+            return [None]
+        return self.grad(inputs, eval_points)
+
+    def infer_shape(self, node, shape):
+        return shape
+
+    def c_headers(self):
+        return ['<cmath>']
+
+    @staticmethod
+    def c_code_template(dtype):
+        init_decl = """
+          npy_intp* Nx = PyArray_DIMS(%(x)s);
+          npy_intp Sx1 = 0;
+          npy_intp Ssm1 = 0;
+
+          if (PyArray_NDIM(%(x)s) != 2)
+          {
+              PyErr_SetString(PyExc_ValueError, "not a 2d tensor");
+              %(fail)s;
+          }
+          if ((PyArray_TYPE(%(x)s) != NPY_DOUBLE) &&
+              (PyArray_TYPE(%(x)s) != NPY_FLOAT))
+          {
+              PyErr_SetString(PyExc_TypeError, "not a float");
+              %(fail)s;
+          }
+
+          if ((NULL == %(sm)s)
+              || (PyArray_DIMS(%(sm)s)[0] != PyArray_DIMS(%(x)s)[0])
+              || (PyArray_DIMS(%(sm)s)[1] != PyArray_DIMS(%(x)s)[1]))
+          {
+              Py_XDECREF(%(sm)s);
+              %(sm)s = (PyArrayObject*)PyArray_SimpleNew(
+                  2, PyArray_DIMS(%(x)s),
+                  PyArray_TYPE(%(x)s));
+              if(!%(sm)s) {
+                  PyErr_SetString(PyExc_MemoryError,
+                       "failed to alloc sm output");
+                  %(fail)s
+              }
+          }
+          Sx1 = PyArray_STRIDES(%(x)s)[1]/sizeof(dtype_%(x)s);
+          Ssm1 = PyArray_STRIDES(%(sm)s)[1]/sizeof(dtype_%(sm)s);
+          """
+
+        begin_row_loop = """
+          // minibatch loop
+          for (size_t i = 0; i < Nx[0]; ++i)
+          {
+              size_t j;
+              double sum = 0.0;
+
+              const dtype_%(x)s* __restrict__ x_i = (dtype_%(x)s*)(
+                  PyArray_BYTES(%(x)s) + PyArray_STRIDES(%(x)s)[0] * i);
+              dtype_%(sm)s* __restrict__ sm_i = (dtype_%(sm)s*)(
+                  PyArray_BYTES(%(sm)s) + PyArray_STRIDES(%(sm)s)[0] * i);
+
+              dtype_%(sm)s row_max = x_i[0];
+              // Get the maximum value of the row
+              for (j = 1; j < Nx[1]; ++j)
+              {
+                  dtype_%(sm)s x_ij = x_i[j * Sx1] ;
+                  row_max = (x_ij > row_max) ? x_ij : row_max;
+              }
+              """
+
+        inside_row_loop = """
+              // Compute xdev and sum(exp(xdev), axis=1)
+              double xdev_exp_row_sum = 0.0;
+              for (j = 0; j < Nx[1]; j++)
+              {
+                  // use sm_i to temporary store xdev
+                  sm_i[j * Ssm1] = (dtype_%(sm)s) (x_i[j * Sx1] - row_max);
+                  xdev_exp_row_sum += exp(sm_i[j * Ssm1]);
+              }
+
+              // Write sm = xdev - log(sum(exp(xdev), axis=1))
+              xdev_exp_row_sum = log(xdev_exp_row_sum);
+              for (j = 0; j < Nx[1]; ++j)
+              {
+                  sm_i[j * Ssm1] -= (dtype_%(sm)s) xdev_exp_row_sum;
+              }
+              """
+        end_row_loop = """
+          }
+          """
+        return (init_decl, begin_row_loop, inside_row_loop, end_row_loop)
+
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        sm, = out
+        code_template = ''.join(self.c_code_template(
+            node.inputs[0].type.dtype_specs()[1]))
+        return code_template % dict(locals(), **sub)
+
+    @staticmethod
+    def c_code_cache_version():
+        return (0,)
+
+logsoftmax_op = LogSoftmax()
+
+
+@opt.register_specialize('stabilize', 'fast_compile')
+@gof.local_optimizer([tensor.Elemwise])
+def local_logsoftmax(node):
+    """
+    Detect Log(Softmax(x)) and replace it with LogSoftmax(x)
+
+    Note: only forward pass is affected
+    """
+    if (isinstance(node.op, tensor.Elemwise) and
+            isinstance(node.op.scalar_op, scalar.basic.Log) and
+            len(node.inputs) == 1 and
+            node.inputs[0].owner is not None and
+            isinstance(node.inputs[0].owner.op, Softmax)):
+        inVars = node.inputs[0].owner.inputs[0]
+        new_op = LogSoftmax()
+        return [new_op(inVars)]
+
+
+@opt.register_specialize('stabilize', 'fast_compile')
+@gof.local_optimizer([SoftmaxGrad])
+def local_logsoftmax_grad(node):
+    """
+    Detect Log(Softmax(x))'s grad and replace it with LogSoftmax(x)'s grad
+
+    Note: only grad is affected
+    """
+    if (isinstance(node.op, SoftmaxGrad) and
+        len(node.inputs) == 2 and
+        node.inputs[0].owner is not None and
+        isinstance(node.inputs[0].owner.op, tensor.Elemwise) and
+        len(node.inputs[0].owner.inputs) >= 2 and
+        node.inputs[0].owner.inputs[1].owner is not None and
+        node.inputs[0].owner.inputs[1].owner.op == softmax_op and
+        node.inputs[1] == node.inputs[0].owner.inputs[1] and
+        not (
+            # skip if it will be optimized by
+            # local_advanced_indexing_crossentropy_onehot_grad
+            node.inputs[0].owner.op == tensor.true_div and
+            node.inputs[0].owner.inputs[0].owner is not None and
+            isinstance(node.inputs[0].owner.inputs[0].owner.op,
+                       subtensor.AdvancedIncSubtensor))):
+        # get parameters from unoptimized op
+        sm = node.inputs[0].owner.inputs[1]
+        # sm_input = node.inputs[1].owner.inputs[0]
+        grads = node.inputs[0].owner.inputs[0]
+        if grads.broadcastable[1] and not sm.broadcastable[1]:
+            grads = tensor.alloc(grads, grads.shape[0], sm.shape[1])
+
+        return [grads - tensor.sum(grads, axis=1, keepdims=True) * sm]
+
+
 def softmax_graph(c):
     return tensor.exp(c) / tensor.exp(c).sum(axis=-1, keepdims=True)
 
 
 def softmax(c):
     return softmax_op(c)
+
+
+def logsoftmax(c):
+    return logsoftmax_op(c)
 
 
 @opt.register_specialize('fast_compile_gpu')
@@ -1472,7 +1664,7 @@ def local_advanced_indexing_crossentropy_onehot(node):
             sm = log.owner.inputs[0]
 
     # Second case: log(softmax(x)[rows, labels])
-    if node.op == tensor.log:
+    elif node.op == tensor.log:
         pre_log = node.inputs[0].owner
         if pre_log and isinstance(pre_log.op, subtensor.AdvancedSubtensor):
             try:
@@ -1980,27 +2172,6 @@ class Prepend_scalar_to_each_row(gof.Op):
 prepend_scalar_to_each_row = Prepend_scalar_to_each_row()
 prepend_0_to_each_row = Prepend_scalar_constant_to_each_row(0.)
 prepend_1_to_each_row = Prepend_scalar_constant_to_each_row(1.)
-
-
-# numerically stabilize log softmax (X)
-# as  X-X.max(axis=1).dimshuffle(0,'x') - log(exp(X-X.max(axis=1).dimshuffle(0,'x')).sum(axis=1)).dimshuffle(0,'x)
-def make_out_pattern(X):
-    stabilized_X = X - X.max(axis=1).dimshuffle(0, 'x')
-    out_var = stabilized_X - tensor.log(tensor.exp(stabilized_X).sum(
-        axis=1)).dimshuffle(0, 'x')
-    # tell DEBUG_MODE that it's OK if the original graph produced NaN and the optimized graph does not
-    out_var.values_eq_approx = values_eq_approx_remove_nan
-    return out_var
-
-
-local_log_softmax = gof.PatternSub(in_pattern=(tensor.log, (softmax_op, 'x')),
-                                   out_pattern=(make_out_pattern, 'x'),
-                                   allow_multiple_clients=True)
-
-# don't do register_stabilize, this is to make local_log_softmax run
-# only after another more specific optimization that stabilizes cross entropy
-# opt.register_stabilize(local_log_softmax, name = 'local_log_softmax')
-opt.register_specialize(local_log_softmax, 'fast_compile_gpu', name='local_log_softmax')
 
 
 def relu(x, alpha=0):

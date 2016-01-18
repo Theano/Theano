@@ -1,7 +1,8 @@
 from .nnet import (
     CrossentropyCategorical1Hot, CrossentropyCategorical1HotGrad,
     CrossentropySoftmax1HotWithBiasDx, CrossentropySoftmaxArgmax1HotWithBias,
-    Prepend_scalar_constant_to_each_row, Prepend_scalar_to_each_row, Softmax,
+    LogSoftmax, Prepend_scalar_constant_to_each_row,
+    Prepend_scalar_to_each_row, Softmax,
     SoftmaxGrad, SoftmaxWithBias, binary_crossentropy,
     categorical_crossentropy, crossentropy_categorical_1hot,
     crossentropy_categorical_1hot_grad, crossentropy_softmax_1hot,
@@ -13,12 +14,7 @@ from .nnet import (
     crossentropy_to_crossentropy_with_softmax,
     crossentropy_to_crossentropy_with_softmax_with_bias,
     graph_merge_softmax_with_crossentropy_softmax, h_softmax,
-    local_advanced_indexing_crossentropy_onehot,
-    local_advanced_indexing_crossentropy_onehot_grad, local_argmax_pushdown,
-    local_log_softmax, local_softmax_grad_to_crossentropy_with_softmax_grad,
-    local_softmax_with_bias,
-    local_useless_crossentropy_softmax_1hot_with_bias_dx_alloc,
-    make_out_pattern, prepend_0_to_each_row, prepend_1_to_each_row,
+    logsoftmax, logsoftmax_op, prepend_0_to_each_row, prepend_1_to_each_row,
     prepend_scalar_to_each_row, relu, softmax, softmax_grad, softmax_graph,
     softmax_op, softmax_simplifier, softmax_with_bias)
 from . import opt
