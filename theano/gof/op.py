@@ -826,6 +826,8 @@ class Op(utils.object2, PureOp, CLinkerOp):
         Make any special modifications that the Op needs before doing
         make_thunk().
 
+        This can either modify the node inplace or return a new one.
+
         """
         pass
 
