@@ -521,12 +521,6 @@ class PureOp(object):
         Required: return an Apply instance representing the
         application of this Op to the provided inputs.
 
-        All subclasses should over-ride this function.
-
-        Raises
-        ------
-        MethodNotDefined : the subclass does not override this method.
-
         """
         raise utils.MethodNotDefined(
             "make_node", type(self), self.__class__.__name__)
@@ -964,10 +958,12 @@ class Op(utils.object2, PureOp, CLinkerOp):
     def make_node(self, *inputs):
 
         if not hasattr(self, 'itypes'):
-            raise NotImplementedError("itypes not defined")
+            raise NotImplementedError("You can either define itypes and otypes,\
+             or implement make_node")
 
         if not hasattr(self, 'otypes'):
-            raise NotImplementedError("otypes not defined")
+            raise NotImplementedError("You can either define itypes and otypes,\
+             or implement make_node")
 
         if len(inputs) != len(self.itypes):
             raise ValueError("We expected %d inputs but got %d." %
@@ -1408,9 +1404,8 @@ class COp(Op):
         if check_input:
             # Extract the various properties of the input and output variables
             variables = node.inputs + node.outputs
-            variable_names = (["INPUT_%i" %
-                               i for i in range(len(node.inputs))] + ["OUTPUT_%i" %
-                                                                      i for i in range(len(node.inputs))])
+            variable_names = (["INPUT_%i" % i for i in range(len(node.inputs))] +
+                              ["OUTPUT_%i" % i for i in range(len(node.inputs))])
 
             # Generate dtype macros
             for i, v in enumerate(variables):

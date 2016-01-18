@@ -67,8 +67,8 @@ possibilities you may encounter or need.  For that refer to
         #itypes and otypes attributes are
         #compulsory if make_node method is not defined.
         #They're the type of input and output respectively
-        itypes = []
-        otypes = []
+        itypes = None
+        otypes = None
 
         #Compulsory if itypes and otypes are not defined
         def make_node(self, *inputs):
@@ -265,7 +265,10 @@ Op Example
 
     import theano
 
-    class DoubleOp(theano.Op):
+    #Using make_node
+
+
+    class DoubleOp1(theano.Op):
         __props__ = ()
 
         def make_node(self, x):
@@ -297,11 +300,10 @@ Op Example
                 return eval_points
             return self.grad(inputs, eval_points)
 
-.. testcode:: example (using itypes and otypes)
+    #Using itypes and otypes
 
-    import theano
 
-    class DoubleOp(theano.Op):
+    class DoubleOp2(theano.Op):
         __props__ = ()
 
         itypes = [theano.tensor.dmatrix]
@@ -329,16 +331,48 @@ Op Example
 
 You can try it as follows:
 
-.. testcode:: example
+.. testcode:: example(Using make_node)
 
     x = theano.tensor.matrix()
-    f = theano.function([x], DoubleOp()(x))
+    f = theano.function([x], DoubleOp1()(x))
     import numpy
     inp = numpy.random.rand(5, 4)
     out = f(inp)
     assert numpy.allclose(inp * 2, out)
     print(inp)
     print(out)
+
+.. testoutput:: example
+   :hide:
+   :options: +ELLIPSIS
+
+   ...
+   ...
+
+.. code-block:: none
+
+    [[ 0.08257206  0.34308357  0.5288043   0.06582951]
+     [ 0.65977826  0.10040307  0.5402353   0.55472296]
+     [ 0.82358552  0.29502171  0.97387481  0.0080757 ]
+     [ 0.77327215  0.65401857  0.76562992  0.94145702]
+     [ 0.8452076   0.30500101  0.88430501  0.95818655]]
+    [[ 0.16514411  0.68616713  1.0576086   0.13165902]
+     [ 1.31955651  0.20080613  1.08047061  1.10944593]
+     [ 1.64717104  0.59004341  1.94774962  0.0161514 ]
+     [ 1.5465443   1.30803715  1.53125983  1.88291403]
+     [ 1.6904152   0.61000201  1.76861002  1.9163731 ]]
+
+.. testcode:: example (Using itypes and otypes)
+
+    x = theano.tensor.matrix()
+    f = theano.function([x], DoubleOp2()(x))
+    import numpy
+    inp = numpy.random.rand(5, 4)
+    out = f(inp)
+    assert numpy.allclose(inp * 2, out)
+    print(inp)
+    print(out)
+
 
 .. testoutput:: example
    :hide:
