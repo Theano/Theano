@@ -1787,7 +1787,6 @@ class _VariableEquivalenceTracker(object):
 default_make_thunk = [get_unbound_function(theano.gof.Op.make_thunk)]
 
 
-
 # Debug mode cheats and initializes the linker in a different way in
 # its maker so we can cheat some more by having a linker to satisfy
 # the external requirements of the .linker attribute of a mode

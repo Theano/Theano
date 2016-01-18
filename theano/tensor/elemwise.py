@@ -7,7 +7,6 @@ import numpy
 import theano
 from theano import gof
 from theano.compat import izip
-from theano.compat import get_unbound_function
 from six import iteritems
 from six.moves import xrange
 from theano.gof import Apply, Op, OpenMPOp
