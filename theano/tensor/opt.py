@@ -886,7 +886,7 @@ class ShapeFeature(object):
     just for the ConvOp.  All that's necessary to do shape
     inference is 1) to mark shared inputs as having a particular
     shape, either via a .tag or some similar hacking; and 2) to
-    add an optional Param() argument to promise that inputs will
+    add an optional In() argument to promise that inputs will
     have a certain shape (or even to have certain shapes in
     certain dimensions). We can't automatically infer the shape of
     shared variables as they can change of shape during the

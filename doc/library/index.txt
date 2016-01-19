@@ -47,9 +47,9 @@ There are also some top-level imports that you might find more convenient:
     
     Alias for :func:`theano.compile.sharedvalue.shared`
 
-.. class:: Param
+.. class:: In
 
-    Alias for :class:`function.Param`
+    Alias for :class:`function.In`
 
 .. function:: dot(x, y)
 

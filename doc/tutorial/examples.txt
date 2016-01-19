@@ -112,19 +112,19 @@ one. You can do it like this:
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_examples.test_examples_6
 
->>> from theano import Param
+>>> from theano import In
 >>> from theano import function
 >>> x, y = T.dscalars('x', 'y')
 >>> z = x + y
->>> f = function([x, Param(y, default=1)], z)
+>>> f = function([x, In(y, default=1)], z)
 >>> f(33)
 array(34.0)
 >>> f(33, 2)
 array(35.0)
 
-This makes use of the :ref:`Param <function_inputs>` class which allows
+This makes use of the :ref:`In <function_inputs>` class which allows
 you to specify properties of your function's parameters with greater detail. Here we
-give a default value of 1 for *y* by creating a ``Param`` instance with
+give a default value of 1 for *y* by creating a ``In`` instance with
 its ``default`` field set to 1.
 
 Inputs with default values must follow inputs without default
@@ -137,7 +137,7 @@ be set positionally or by name, as in standard Python:
 
 >>> x, y, w = T.dscalars('x', 'y', 'w')
 >>> z = (x + y) * w
->>> f = function([x, Param(y, default=1), Param(w, default=2, name='w_by_name')], z)
+>>> f = function([x, In(y, default=1), In(w, default=2, name='w_by_name')], z)
 >>> f(33)
 array(68.0)
 >>> f(33, 2)
@@ -150,11 +150,11 @@ array(34.0)
 array(33.0)
 
 .. note::
-   ``Param`` does not know the name of the local variables *y* and *w*
+   ``In`` does not know the name of the local variables *y* and *w*
    that are passed as arguments.  The symbolic variable objects have name
    attributes (set by ``dscalars`` in the example above) and *these* are the
    names of the keyword parameters in the functions that we build.  This is
-   the mechanism at work in ``Param(y, default=1)``.  In the case of ``Param(w,
+   the mechanism at work in ``In(y, default=1)``.  In the case of ``In(w,
    default=2, name='w_by_name')``. We override the symbolic variable's name
    attribute with a name to be used for this function.
 

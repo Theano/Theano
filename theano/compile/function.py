@@ -79,7 +79,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
     Parameters
     ----------
-    inputs : list of either Variable or Param instances.
+    inputs : list of either Variable or In instances.
         Function parameters, these are not allowed to be shared variables.
     outputs : list or dict of Variables or Out instances.
         If it is a dict, the keys must be strings. Expressions to compute.

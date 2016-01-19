@@ -27,7 +27,7 @@ array(8.0)
 The idea here is that we've compiled the symbolic graph (``2*x``) into a function that can be called on a number and will do some computations.
 
 The behaviour of function can be controlled in several ways, such as
-:class:`Param`, ``mode``, ``updates``, and ``givens``.  These are covered
+:class:`In`, ``mode``, ``updates``, and ``givens``.  These are covered
 in the :ref:`tutorial examples <basictutexamples>` and :ref:`tutorial on modes <using_modes>`.
 
 Reference
@@ -50,7 +50,7 @@ Reference
 
         Initialize attributes from arguments.
 
-.. class:: Param
+.. class:: In
 
     A class for attaching information to function inputs.
 
@@ -87,7 +87,7 @@ Reference
 
     Return a :class:`callable object <theano.compile.function_module.Function>` that will calculate `outputs` from `inputs`.
 
-    :type params: list of either Variable or Param instances, but not shared
+    :type params: list of either Variable or In instances, but not shared
         variables.
 
     :param params: the returned :class:`Function` instance will have
@@ -159,8 +159,8 @@ Reference
       and update the implicit function arguments according to the `updates`.
 
 
-    Inputs can be given as variables or Param instances.
-    :class:`Param` instances also have a variable, but they attach some extra
+    Inputs can be given as variables or In instances.
+    :class:`In` instances also have a variable, but they attach some extra
     information about how call-time arguments corresponding to that variable
     should be used.  Similarly, :class:`Out` instances can attach information
     about how output variables should be returned.
