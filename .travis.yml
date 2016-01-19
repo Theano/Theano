@@ -63,5 +63,3 @@ script:
 
 after_failure:
   - cat /home/travis/.pip/pip.log
-
-cache: apt
