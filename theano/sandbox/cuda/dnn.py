@@ -1673,7 +1673,7 @@ class GpuDnnPoolGrad(DnnBase):
     
     def __init__(self, mode='max'):
         #super(GpuDnnPoolGrad, self).__init__()
-        COp.__init__(self, "dnn_base2.c")
+        COp.__init__(self, "dnn_base.c")
         if mode == 'average':
             mode = 'average_inc_pad'
         assert mode in ('max', 'average_inc_pad', 'average_exc_pad')
@@ -1698,18 +1698,15 @@ class GpuDnnPoolGrad(DnnBase):
 
     def c_support_code_struct(self, node, name):
         return """
-/*
 cudnnTensorDescriptor_t input%(name)s;
 cudnnTensorDescriptor_t input_grad%(name)s;
 cudnnTensorDescriptor_t output%(name)s;
 cudnnTensorDescriptor_t output_grad%(name)s;
 cudnnPoolingDescriptor_t pool%(name)s;
-*/
 """ % dict(name=name)
 
     def c_init_code_struct(self, node, name, sub):
         return """
-/*
 cudnnStatus_t err%(name)s;
 input%(name)s = NULL;
 input_grad%(name)s = NULL;
@@ -1746,25 +1743,23 @@ if ((err%(name)s = cudnnCreatePoolingDescriptor(&pool%(name)s)) != CUDNN_STATUS_
                "(pool): %%s", cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
-*/
 """ % dict(name=name, fail=sub['fail'])
 
     def c_cleanup_code_struct(self, node, name):
         return """
-/*
 if (input%(name)s != NULL) { cudnnDestroyTensorDescriptor(input%(name)s); }
 if (input_grad%(name)s != NULL) { cudnnDestroyTensorDescriptor(input_grad%(name)s); }
 if (output%(name)s != NULL) { cudnnDestroyTensorDescriptor(output%(name)s); }
 if (output_grad%(name)s != NULL) { cudnnDestroyTensorDescriptor(output_grad%(name)s); }
 if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
-*/
 """ % dict(name=name)
     
-    def perform(self, node, inputs_storage, output_storage):
-        return
+#    def perform(self, node, inputs_storage, output_storage):
+#        output_storage[0][0] = inputs_storage[0].copy()
+#        return
     
     def c_code(self, node, name, inputs, outputs, sub):
-        raise NotImplementedError()
+#       raise NotImplementedError()
         # Here the name out and inp are based on the cudnn definition.
         # Not the definition of this class.
         # This make it complicated.
@@ -1772,7 +1767,7 @@ if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
         out, inp, inp_grad, ws, stride, pad = inputs
         out_grad, = outputs
         
-        out, = outputs
+#        out, = outputs
 
         if self.mode == 'max':
             mode_flag = 'CUDNN_POOLING_MAX'
@@ -1786,9 +1781,8 @@ if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
             raise NotImplementedError("Unsupported pooling model.")
 
         return """
-/*
 cudnnStatus_t err%(name)s;
-raise(SIGINT);
+//raise(SIGINT);
 
 if (!CudaNdarray_is_c_contiguous(%(input)s)) {
   PyErr_SetString(PyExc_ValueError,
@@ -1868,7 +1862,6 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
                cudnnGetErrorString(err%(name)s));
  %(fail)s
 }
-*/
 """ % dict(output_grad=out_grad,
            fail=sub['fail'], name=name,
            input=inp, input_grad=inp_grad, output=out,
