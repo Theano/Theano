@@ -33,9 +33,8 @@ install:
 
 # command to run tests
 env:
-  - PART="theano/sandbox theano/sparse theano/scalar theano/tensor/nnet theano/scan_module"
-  - PART="theano/tensor/tests/test_basic.py theano/tensor/signal theano/compile theano/gof theano/misc theano/tests theano/compat"
-  - PART="-e test_basic.py theano/tensor/tests theano/d3viz"
+  - PART="theano/sandbox theano/sparse theano/scalar theano/tensor/nnet theano/scan_module" DOC=1
+  - PART="theano/tensor/tests theano/tensor/signal theano/compile theano/gof theano/misc theano/tests theano/compat"
 
 matrix:
   fast_finish: true
@@ -44,8 +43,6 @@ matrix:
       env: PART="." THEANO_FLAGS="mode=FAST_COMPILE"
     - python: "2.6"
       env: PART="." THEANO_FLAGS="mode=FAST_COMPILE,floatX=float32"
-    - python: 2.6
-      env: PART="." DOC=1
 
 script:
   - export THEANO_FLAGS=$THEANO_FLAGS,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,gcc.cxxflags=-pipe
@@ -60,7 +57,8 @@ script:
   - cd $(python -c 'import theano; import os; print(os.path.split(theano.__file__)[0])')
   - echo "$PART"
   - cd -; cd Theano
-  - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --nopdf; else theano-nose -v $PART; fi
+  - theano-nose -v $PART
+  - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --nopdf; fi
   - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --test; fi
 #  - theano-cache list
 
