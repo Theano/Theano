@@ -1781,15 +1781,12 @@ if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
 #        return
     
     def c_code(self, node, name, inputs, outputs, sub):
-#       raise NotImplementedError()
         # Here the name out and inp are based on the cudnn definition.
         # Not the definition of this class.
         # This make it complicated.
-        print len(inputs)
         out, inp, inp_grad, ws, stride, pad = inputs
         out_grad, = outputs
         
-#        out, = outputs
 
         if self.mode == 'max':
             mode_flag = 'CUDNN_POOLING_MAX'
@@ -2413,12 +2410,11 @@ if True:
                 return
             inp, out, inp_grad = node.inputs
             ds = node.op.ds
-
-            desc = GpuDnnPoolDesc(ws=ds, stride=ds, mode="max")()
-            return [GpuDnnPoolGrad()(gpu_contiguous(inp),
+            
+            return [GpuDnnPoolGrad(mode='max')(gpu_contiguous(inp),
                                      gpu_contiguous(out),
                                      gpu_contiguous(inp_grad),
-                                     desc)]
+                                     ds, ds, (0, 0))]
 
     @register_opt('cudnn')
     @local_optimizer([MaxPoolGrad])
@@ -2438,11 +2434,11 @@ if True:
                 (out.owner and isinstance(out.owner.op, HostFromGpu)) or
                 (inp_grad.owner and isinstance(inp_grad.owner.op,
                                                HostFromGpu))):
-                desc = GpuDnnPoolDesc(ws=ds, stride=st, mode=mode, pad=pad)()
-                ret = GpuDnnPoolGrad()(gpu_contiguous(inp),
+
+                ret = GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp),
                                        gpu_contiguous(out),
                                        gpu_contiguous(inp_grad),
-                                       desc)
+                                       ds, st, pad)
                 return [host_from_gpu(ret)]
 
     @register_opt('cudnn')
@@ -2462,12 +2458,11 @@ if True:
             if ((inp.owner and isinstance(inp.owner.op, HostFromGpu)) or
                 (inp_grad.owner and isinstance(inp_grad.owner.op,
                                                HostFromGpu))):
-                desc = GpuDnnPoolDesc(ws=ds, stride=st, mode=mode, pad=pad)()
                 contiguous_inp_grad = gpu_contiguous(inp_grad)
-                ret = GpuDnnPoolGrad()(gpu_contiguous(inp),
+                ret = GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp),
                                        contiguous_inp_grad,
                                        contiguous_inp_grad,
-                                       desc)
+                                       ds, st, pad)
                 return [host_from_gpu(ret)]
 
     @register_opt('cudnn')

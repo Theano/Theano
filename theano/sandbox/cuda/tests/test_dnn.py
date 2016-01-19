@@ -284,14 +284,14 @@ def test_pooling2():
                         
         
        
-    data = numpy.random.normal(0, 1, (1, 10, 100, 100)).astype("float32") * 10
+    data = numpy.random.normal(0, 1, (10, 3, 47, 47)).astype("float32") * 10
     ws = 2
-    stride = 2
+    stride = 1
     pad = (0, 0)
     mode = 'max'
     
     ws = theano.shared(numpy.array([2, 2]))
-    stride = theano.shared(numpy.array([2, 2])) 
+    stride = theano.shared(numpy.array([1, 1])) 
     pad = theano.shared(numpy.array([0, 0]))
     
     ## This test the CPU grad + opt + GPU implemtentation
@@ -312,6 +312,7 @@ def test_pooling2():
     def fn(x):
         dnn_op = cuda.dnn.dnn_pool(x, ws, stride=stride, pad=pad, mode=mode)
         return dnn_op
+    
     theano.tests.unittest_tools.verify_grad(
         fn, [data],
         cast_to_output_type=False,
@@ -397,7 +398,7 @@ def test_pooling():
                     b = f2(data).__array__()
                     assert numpy.allclose(a, b,
                                           atol=numpy.finfo(numpy.float32).eps)
-
+        
         # Test the grad
         for shp in [(1, 1, 2, 2),
                     (1, 1, 3, 3)]:

@@ -1693,7 +1693,6 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
         try:
             num_grad = numeric_grad(cost_fn, [p.copy() for p in pt],
                                     eps, out_type)
-
             analytic_grad = grad_fn(*[p.copy() for p in pt])
 
             # Since `tensor_pt` is a list, `analytic_grad` should be one too.
@@ -1703,7 +1702,9 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
                 analytic_grad, abs_tol, rel_tol)
 
             if max_abs_err > abs_tol and max_rel_err > rel_tol:
-
+                print(pt)
+                print(analytic_grad)
+                print(num_grad.gf)
                 raise verify_grad.E_grad(max_arg, max_err_pos,
                                          max_abs_err, max_rel_err,
                                          abs_tol, rel_tol)
@@ -1760,6 +1761,8 @@ def jacobian(expression, wrt, consider_constant=None,
         (or if all links are non-differentiable). The possible values are:
         - 'ignore': considers that the gradient on these parameters is zero.
         - 'warn': consider the gradient zero, and print a warning.
+
+
         - 'raise': raise an exception.
 
     :return: either a instance of Variable or list/tuple of Variables
