@@ -60,11 +60,8 @@ script:
   - theano-nose -v $PART
   - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --nopdf; fi
   - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --test; fi
-#  - theano-cache list
 
-#after_script:
 after_failure:
   - cat /home/travis/.pip/pip.log
-#after_success:
 
 cache: apt
