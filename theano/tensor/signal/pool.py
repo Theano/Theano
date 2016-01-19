@@ -64,9 +64,9 @@ def pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
         next pool region. If st is None, it is considered equal to ds
         (no overlap on pooling regions).
     padding : tuple of two ints
-        (pad_h, pad_w), pad zeros to extend beyond four borders
-            of the images, pad_h is the size of the top and bottom margins,
-            and pad_w is the size of the left and right margins.
+        (pad_h, pad_w), pad zeros to extend beyond four borders of the
+        images, pad_h is the size of the top and bottom margins, and
+        pad_w is the size of the left and right margins.
     mode : {'max', 'sum', 'average_inc_pad', 'average_exc_pad'}
         Operation executed on each window. `max` and `sum` always exclude
         the padding in the computation. `average` gives you the choice to
