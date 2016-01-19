@@ -244,7 +244,7 @@ def conv3d(signals, filters,
     out_4d = tensor.nnet.conv2d(
         signals.reshape(_signals_shape_4d),
         filters.reshape(_filters_shape_4d),
-        image_shape=conv2d_signal_shape,
+        input_shape=conv2d_signal_shape,
         filter_shape=conv2d_filter_shape,
         border_mode=border_mode[1])  # ignoring border_mode[2]
 
