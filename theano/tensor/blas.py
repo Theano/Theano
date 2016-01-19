@@ -272,10 +272,11 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
                                           "mk2_rt"]])
         # Anaconda
         if "Anaconda" in sys.version and sys.platform == "win32":
-            # If the "mkl-service" conda package (available through Python
-            # package "mkl") is installed and importable, then the libraries
-            # (installed by conda package "mkl-rt") are actually available.
-            # Using "conda install mkl" will install both, as well as
+            # If the "mkl-service" conda package (available
+            # through Python package "mkl") is installed and
+            # importable, then the libraries (installed by conda
+            # package "mkl-rt") are actually available.  Using
+            # "conda install mkl" will install both, as well as
             # optimized versions of numpy and scipy.
             try:
                 import mkl  # noqa
@@ -291,28 +292,24 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
                 if try_blas_flag(flags):
                     return ' '.join(flags)
 
-        # If numpy was linked with library that are not installed or
-        # the dev version of the package is not currently available, we
-        # can't reuse them.
-        if any(os.path.exists(dir) for dir in blas_info['library_dirs']):
-            ret = (
-                # TODO: the Gemm op below should separate the
-                # -L and -l arguments into the two callbacks
-                # that CLinker uses for that stuff.  for now,
-                # we just pass the whole ldflags as the -l
-                # options part.
-                ['-L%s' % l for l in blas_info['library_dirs']] +
-                ['-l%s' % l for l in blas_info['libraries']] +
-                [])
+        ret = (
+            # TODO: the Gemm op below should separate the
+            # -L and -l arguments into the two callbacks
+            # that CLinker uses for that stuff.  for now,
+            # we just pass the whole ldflags as the -l
+            # options part.
+            ['-L%s' % l for l in blas_info.get('library_dirs', [])] +
+            ['-l%s' % l for l in blas_info.get('libraries', [])] +
+            blas_info.get('extra_link_args', []))
+        if try_blas_flag(ret):
+            return ' '.join(ret)
+        # Try to add the anaconda lib directory to runtime loading of lib.
+        # This fix some case with Anaconda 2.3 on Linux.
+        if "Anaconda" in sys.version and "linux" in sys.platform:
+            lib_path = os.path.join(sys.prefix, 'lib')
+            ret.append('-Wl,-rpath,' + lib_path)
             if try_blas_flag(ret):
                 return ' '.join(ret)
-            # Try to add the anaconda lib directory to runtime loading of lib.
-            # This fix some case with Anaconda 2.3 on Linux.
-            if "Anaconda" in sys.version and "linux" in sys.platform:
-                lib_path = os.path.join(sys.prefix, 'lib')
-                ret.append('-Wl,-rpath,' + lib_path)
-                if try_blas_flag(ret):
-                    return ' '.join(ret)
 
     except KeyError:
         pass
@@ -327,15 +324,15 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
 
 def try_blas_flag(flags):
     test_code = textwrap.dedent("""\
-        extern "C" float sdot_(int*, float*, int*, float*, int*);
+        extern "C" double ddot_(int*, double*, int*, double*, int*);
         int main(int argc, char** argv)
         {
             int Nx = 5;
             int Sx = 1;
-            float x[5] = {0, 1, 2, 3, 4};
-            float r = sdot_(&Nx, x, &Sx, x, &Sx);
+            double x[5] = {0, 1, 2, 3, 4};
+            double r = ddot_(&Nx, x, &Sx, x, &Sx);
 
-            if ((r - 30.f) > 1e-6 || (r - 30.f) < -1e-6)
+            if ((r - 30.) > 1e-6 || (r - 30.) < -1e-6)
             {
                 return -1;
             }
