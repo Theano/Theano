@@ -64,7 +64,9 @@ if __name__ == '__main__':
         inopt = [docpath, workdir]
         if files is not None:
             inopt.extend(files)
-        sphinx.build_main(['', '-b', builder] + extraopts + inopt)
+        ret = sphinx.build_main(['', '-b', builder] + extraopts + inopt)
+        if ret != 0:
+            sys.exit(ret)
 
     if options['--all'] or options['--rst']:
         mkdir("doc")
@@ -92,5 +94,6 @@ if __name__ == '__main__':
         mkdir("doc")
         sys.path[0:0] = [os.path.join(throot, 'doc')]
         call_sphinx('doctest', '.')
+
     # To go back to the original current directory.
     os.chdir(currentdir)
