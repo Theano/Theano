@@ -89,7 +89,7 @@ class TestCorr2D(utt.InferShapeTester):
         elif border_mode == 'valid':
             padHW = numpy.array([0, 0])
         elif border_mode == 'half':
-            padHW = numpy.floor(fil_shape2d / 2)
+            padHW = numpy.floor(fil_shape2d / 2).astype('int32')
         elif isinstance(border_mode, tuple):
             padHW = numpy.array(border_mode)
         elif isinstance(border_mode, int):
