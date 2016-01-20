@@ -1459,7 +1459,7 @@ def local_softmax_dnn(node):
 
 
 @register_opt('cudnn')
-@local_optimizer([GpuElemwise, LogSoftmax])
+@local_optimizer([GpuElemwise])
 def local_log_softmax_dnn(node):
     if version() < 3000:
         # No log-softmax before cudnn v3
@@ -1474,8 +1474,16 @@ def local_log_softmax_dnn(node):
         new_softmax = GpuDnnSoftmax('log', softmax_node.op.mode)
         return [new_softmax(softmax_node.inputs[0])]
 
-    elif (isinstance(node.op, LogSoftmax) and node.inputs[0].owner and
-          isinstance(node.inputs[0].owner.op, HostFromGpu)):
+
+@register_opt('cudnn')
+@op_lifter([LogSoftmax])
+def local_logsoftmax_to_dnn(node, ctx_name):
+    if not dnn_available(ctx_name) or version() < 3:
+        # No log-softmax before cudnn v3
+        return
+
+    if (isinstance(node.op, LogSoftmax) and node.inputs[0].owner and
+            isinstance(node.inputs[0].owner.op, HostFromGpu)):
 
         # Transform the input in the format expected by GpuDnnSoftmax
         inp = node.inputs[0].owner.inputs[0]
