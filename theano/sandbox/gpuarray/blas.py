@@ -8,7 +8,6 @@ from theano.tensor.basic import as_tensor_variable
 from theano.tensor.opt import in2out
 
 from .basic_ops import as_gpuarray_variable, infer_context_name
-
 from .opt_util import inplace_allocempty
 
 try:
@@ -281,7 +280,9 @@ class GpuDot22(BlasOp):
         assert x.ndim == 2
         assert y.ndim == 2
         assert x.dtype == y.dtype
-        return Apply(self, [x, y], [x.type()])
+        otype = x.type.clone(
+            broadcastable=(x.type.broadcastable[0], y.type.broadcastable[1]))
+        return Apply(self, [x, y], [otype()])
 
     def perform(self, node, inputs, outputs):
         x, y = inputs
