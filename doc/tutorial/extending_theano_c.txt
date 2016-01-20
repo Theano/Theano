@@ -997,8 +997,10 @@ down computation on the GPU, but it is enabled by default on the CPU).
 Then you must start Python inside GDB and in it start your Python
 process (e.g. theano-nose):
 
-$gdb python
-(gdb)r bin/theano-nose theano/
+.. code-block::
+
+    $gdb python
+    (gdb)r bin/theano-nose theano/
 
 `Quick guide to GDB <https://www.cs.cmu.edu/~gilpin/tutorial/>`_.
 
