@@ -3,6 +3,7 @@ import numpy
 import theano
 from theano.compile import DeepCopyOp
 
+from .config import test_ctx_name
 from .test_basic_ops import rand_gpuarray
 
 from ..type import GpuArrayType
@@ -37,3 +38,7 @@ def test_specify_shape():
     g = GpuArrayType(dtype='float32', broadcastable=(False,))('g')
     f = theano.function([g], theano.tensor.specify_shape(g, [20]))
     f(a)
+
+def test_filter_float():
+    s = theano.shared(numpy.array(0.0, dtype='float32'), target=test_ctx_name)
+    theano.function([], updates=[(s, 0.0)])
