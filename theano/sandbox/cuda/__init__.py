@@ -194,15 +194,16 @@ if compile_cuda_ndarray and cuda_available:
                         tmpdir = os.environ['TMPDIR']
                         if not os.path.exists(tmpdir):
                             os.makedirs(tmpdir)
-
                     compiler = nvcc_compiler.NVCC_compiler()
+                    preargs = ['-O3'] + compiler.compile_args()
+                    preargs += [f for f in config.nvcc.flags.split(' ') if f]
                     compiler.compile_str(
                             'cuda_ndarray',
                             code,
                             location=cuda_ndarray_loc,
                             include_dirs=[cuda_path],
                             libs=[config.cublas.lib],
-                            preargs=['-O3'] + compiler.compile_args(),
+                            preargs=preargs,
                     )
                     from cuda_ndarray.cuda_ndarray import *
             except Exception as e:
