@@ -348,8 +348,8 @@ class StructuredDotCSC(gof.Op):
             // pointers to access actual data in the arrays passed as params.
             dtype_%(z)s*     __restrict__ Dz   = (dtype_%(z)s*)PyArray_DATA(%(z)s);
             const dtype_%(a_val)s* __restrict__ Dval = (dtype_%(a_val)s*)PyArray_DATA(%(a_val)s);
-            const npy_int32 * __restrict__ Dind = (npy_int32*)PyArray_DATA(%(a_ind)s;
-            const npy_int32 * __restrict__ Dptr = (npy_int32*)PyArray_DATA(%(a_ptr)s;
+            const npy_int32 * __restrict__ Dind = (npy_int32*)PyArray_DATA(%(a_ind)s);
+            const npy_int32 * __restrict__ Dptr = (npy_int32*)PyArray_DATA(%(a_ptr)s);
 
             //npy_intp nnz = PyArray_DIMS(%(a_ind)s)[0];
 
