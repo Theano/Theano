@@ -7,7 +7,11 @@ from theano.tests import unittest_tools as utt
 import theano.tensor.nnet.abstract_conv as conv
 from theano.sandbox.cuda import float32_shared_constructor as gpu_shared
 from theano.compile import shared as cpu_shared
-from theano.sandbox.cuda.dnn import dnn_available, dnn_conv, dnn_gradweight, dnn_gradinput
+from theano.sandbox.cuda.dnn import (
+    dnn_available, dnn_conv, dnn_gradweight, dnn_gradinput,
+    GpuDnnConv, GpuDnnConvGradW, GpuDnnConvGradI)
+from theano.sandbox.cuda.blas import (
+    GpuCorrMM, GpuCorrMM_gradWeights, GpuCorrMM_gradInputs)
 from nose.plugins.skip import SkipTest
 
 import theano.sandbox.cuda as cuda
@@ -51,7 +55,8 @@ class TestConv2d(unittest.TestCase):
 
     def run_fwd(self, inputs_shape, filters_shape, ref=dnn_conv,
                 subsample=(1, 1), verify_grad=True, mode=mode_without_gpu,
-                border_mode='valid', filter_flip=True, device='cpu', provide_shape=False):
+                border_mode='valid', filter_flip=True, device='cpu', provide_shape=False,
+                target_op=None):
 
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         filters_val = numpy.random.random(filters_shape).astype('float32')
@@ -84,6 +89,11 @@ class TestConv2d(unittest.TestCase):
                         filter_shape=kshp)
         f_ref = theano.function([], c_ref, mode=mode)
         f = theano.function([], c, mode)
+
+        if target_op is not None:
+          assert any([isinstance(n.op, target_op) for n
+                      in f.maker.fgraph.toposort()])
+
         res_ref = numpy.array(f_ref())
         res = numpy.array(f())
         utt.assert_allclose(res_ref, res)
@@ -96,7 +106,7 @@ class TestConv2d(unittest.TestCase):
     def run_gradweight(self, inputs_shape, filters_shape, output_shape,
                        ref=dnn_gradweight, subsample=(1, 1), filter_flip=True,
                        verify_grad=True, mode=mode_without_gpu, border_mode='valid',
-                       device='cpu', provide_shape=False):
+                       device='cpu', provide_shape=False, target_op=None):
 
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         output_val = numpy.random.random(output_shape).astype('float32')
@@ -128,6 +138,11 @@ class TestConv2d(unittest.TestCase):
                     conv_mode=conv_mode)
         f = theano.function([], c, mode)
         f_ref = theano.function([], c_ref, mode)
+
+        if target_op is not None:
+          assert any([isinstance(n.op, target_op) for n
+                      in f.maker.fgraph.toposort()])
+
         res_ref = numpy.array(f_ref())
         res = numpy.array(f())
         utt.assert_allclose(res_ref, res)
@@ -144,7 +159,8 @@ class TestConv2d(unittest.TestCase):
                       output_shape, ref=dnn_gradinput,
                       subsample=(1, 1), filter_flip=True,
                       verify_grad=True, mode=mode_without_gpu,
-                      border_mode='valid', device='cpu', provide_shape=False):
+                      border_mode='valid', device='cpu', provide_shape=False,
+                      target_op=None):
 
         output_val = numpy.random.random(output_shape).astype('float32')
         filters_val = numpy.random.random(filters_shape).astype('float32')
@@ -174,6 +190,11 @@ class TestConv2d(unittest.TestCase):
                     conv_mode=conv_mode)
         f = theano.function([], c, mode)
         f_ref = theano.function([], c_ref, mode)
+
+        if target_op is not None:
+          assert any([isinstance(n.op, target_op) for n
+                      in f.maker.fgraph.toposort()])
+
         res_ref = numpy.array(f_ref())
         res = numpy.array(f())
         utt.assert_allclose(res_ref, res)
@@ -200,17 +221,17 @@ class TestConv2d(unittest.TestCase):
             self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
                          verify_grad=True, mode=mode, device='gpu',
                          provide_shape=provide_shape, border_mode=b,
-                         filter_flip=flip)
+                         filter_flip=flip, target_op=GpuDnnConv)
             self.run_gradweight(inputs_shape=i, filters_shape=f,
                                 output_shape=o, subsample=s,
                                 verify_grad=True, mode=mode, device='gpu',
                                 provide_shape=provide_shape, border_mode=b,
-                                filter_flip=flip)
+                                filter_flip=flip, target_op=GpuDnnConvGradW)
             self.run_gradinput(inputs_shape=i, filters_shape=f,
                                output_shape=o, subsample=s,
                                verify_grad=True, mode=mode, device='gpu',
                                provide_shape=provide_shape, border_mode=b,
-                               filter_flip=flip)
+                               filter_flip=flip, target_op=GpuDnnConvGradI)
 
     def test_gpucorrmm_conv(self):
         if not dnn_available():
@@ -228,14 +249,16 @@ class TestConv2d(unittest.TestCase):
             self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
                          verify_grad=True, mode=mode, device='gpu',
                          provide_shape=provide_shape, border_mode=b,
-                         filter_flip=flip)
+                         filter_flip=flip, target_op=GpuCorrMM)
             self.run_gradweight(inputs_shape=i, filters_shape=f,
                                 output_shape=o, subsample=s,
                                 verify_grad=True, mode=mode, device='gpu',
                                 provide_shape=provide_shape, border_mode=b,
-                                filter_flip=flip)
+                                filter_flip=flip,
+                                target_op=GpuCorrMM_gradWeights)
             self.run_gradinput(inputs_shape=i, filters_shape=f,
                                output_shape=o, subsample=s,
                                verify_grad=True, mode=mode, device='gpu',
                                provide_shape=provide_shape, border_mode=b,
-                               filter_flip=flip)
+                               filter_flip=flip,
+                               target_op=GpuCorrMM_gradInputs)
