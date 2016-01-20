@@ -983,6 +983,23 @@ macros defined by ``COp``. Finally, the function
 macros and also because it calls ``vector_elemwise_mult()`` which is
 an apply-specific function.
 
+
+Using GDB to debug Op's C code
+==============================
+
+When debugging C code, it can be useful to use GDB for code compiled
+by Theano.
+
+For this, you must enable this Theano: `cmodule.remove_gxx_opt=True`.
+For the GPU, you must add in this second flag `nvcc.flags=-g` (it slow
+down computation on the GPU, but it is enabled by default on the CPU).
+
+Then you must start Python inside GDB and in it start your Python
+process (e.g. theano-nose):
+
+$gdb python
+(gdb)r bin/theano-nose theano/
+
 Final Note
 ==========
 
