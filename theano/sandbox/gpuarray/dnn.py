@@ -1170,8 +1170,9 @@ class GpuDnnSoftmaxBase(DnnBase):
     Parameters
     ----------
     algo
-        'fast' or 'accurate' indicating whether computations should be
-        optimized for speed or accuracy respectively.
+        'fast', 'accurate' or 'log' indicating whether, respectively,
+        computations should be optimized for speed, for accuracy, or if CuDNN
+        should rather compute the log-softmax instead.
     mode
         'instance' or 'channel' indicating whether the softmax should be
         computed per image across 'c01' or per spatial location '01' per
@@ -1219,8 +1220,9 @@ class GpuDnnSoftmax(GpuDnnSoftmaxBase):
     Op for the cuDNN Softmax.
 
     algo
-        'fast' or 'accurate' indicating whether computations should be
-        optimized for speed or accuracy respectively.
+        'fast', 'accurate' or 'log' indicating whether, respectively,
+        computations should be optimized for speed, for accuracy, or if CuDNN
+        should rather compute the log-softmax instead.
     mode
         'instance' or 'channel' indicating whether the softmax should be
         computed per image across 'c01' or per spatial location '01' per
@@ -1253,8 +1255,9 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
     Parameters
     ----------
     algo
-        'fast' or 'accurate' indicating whether computations should be
-        optimized for speed or accuracy respectively.
+        'fast', 'accurate' or 'log' indicating whether, respectively,
+        computations should be optimized for speed, for accuracy, or if CuDNN
+        should rather compute the gradient of the log-softmax instead.
     mode
         'instance' or 'channel' indicating whether the softmax should
         be computed per image across 'c01' or per spatial location '01' per
