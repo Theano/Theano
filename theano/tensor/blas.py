@@ -346,21 +346,15 @@ def try_blas_flag(flags):
             return 0;
         }
         """)
+    cflags = flags + ['-L' + d for d in theano.gof.cmodule.std_lib_dirs()]
     res = GCC_compiler.try_compile_tmp(
         test_code, tmp_prefix='try_blas_',
-        flags=flags, try_run=True)
+        flags=cflags, try_run=True)
     # res[0]: shows successful compilation
     # res[1]: shows successful execution
     if res and res[0] and res[1]:
         return ' '.join(flags)
     else:
-        # Retry adding '-L' flags which may be required
-        flags = flags + ['-L' + d for d in theano.gof.cmodule.std_lib_dirs()]
-        res = GCC_compiler.try_compile_tmp(
-            test_code, tmp_prefix='try_blas_',
-            flags=flags, try_run=True)
-        if res and res[0] and res[1]:
-            return ' '.join(flags)
         return ""
 
 
