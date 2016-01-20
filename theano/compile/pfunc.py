@@ -470,7 +470,7 @@ def _pfunc_param_to_in(param, strict=False, allow_downcast=None):
         return In(
             variable=param.variable,
             name=param.name,
-            value=param.default,
+            value=param.value,
             mutable=param.mutable,
             strict=param.strict,
             borrow=param.borrow,

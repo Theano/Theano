@@ -26,7 +26,7 @@ class Test_pfunc(unittest.TestCase):
         a = lscalar()
         b = shared(1)
         f1 = pfunc([a], (a + b))
-        f2 = pfunc([In(a, default=44)], a + b, updates={b: b + 1})
+        f2 = pfunc([In(a, value=44)], a + b, updates={b: b + 1})
         self.assertTrue(b.get_value() == 1)
         self.assertTrue(f1(3) == 4)
         self.assertTrue(f2(3) == 4)
