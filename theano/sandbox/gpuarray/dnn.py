@@ -12,7 +12,7 @@ from theano.gof.cmodule import GCC_compiler
 from theano.gof.type import CDataType, Generic
 from theano.compile import optdb
 from theano.compile.ops import shape_i
-from theano.tensor.nnet import SoftmaxGrad
+from theano.tensor.nnet import LogSoftmax, SoftmaxGrad
 from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv2d_gradWeights,
                                               AbstractConv2d_gradInputs,
@@ -1459,7 +1459,7 @@ def local_softmax_dnn(node):
 
 
 @register_opt('cudnn')
-@local_optimizer([GpuElemwise])
+@local_optimizer([GpuElemwise, LogSoftmax])
 def local_log_softmax_dnn(node):
     if version() < 3000:
         # No log-softmax before cudnn v3
@@ -1473,6 +1473,19 @@ def local_log_softmax_dnn(node):
         softmax_node = node.inputs[0].owner
         new_softmax = GpuDnnSoftmax('log', softmax_node.op.mode)
         return [new_softmax(softmax_node.inputs[0])]
+
+    elif (isinstance(node.op, LogSoftmax) and node.inputs[0].owner and
+          isinstance(node.inputs[0].owner.op, HostFromGpu)):
+
+        # Transform the input in the format expected by GpuDnnSoftmax
+        inp = node.inputs[0].owner.inputs[0]
+        if inp.ndim != 2:
+            return
+        inp = inp.dimshuffle(0, 1, 'x', 'x')
+
+        # Apply GpuDnnSoftmax and return the result
+        out = GpuDnnSoftmax('log', 'channel')(gpu_contiguous(inp))
+        return [out.dimshuffle(0, 1)]
 
 
 class NoCuDNNRaise(Optimizer):
