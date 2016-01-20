@@ -2143,15 +2143,14 @@ class GCC_compiler(Compiler):
         lib_dirs = std_lib_dirs() + lib_dirs
 
         cppfilename = os.path.join(location, 'mod.cpp')
-        cppfile = open(cppfilename, 'w')
+        with open(cppfilename, 'w') as cppfile:
 
-        _logger.debug('Writing module C++ code to %s', cppfilename)
+            _logger.debug('Writing module C++ code to %s', cppfilename)
 
-        cppfile.write(src_code)
-        # Avoid gcc warning "no newline at end of file".
-        if not src_code.endswith('\n'):
-            cppfile.write('\n')
-        cppfile.close()
+            cppfile.write(src_code)
+            # Avoid gcc warning "no newline at end of file".
+            if not src_code.endswith('\n'):
+                cppfile.write('\n')
 
         lib_filename = os.path.join(
             location,

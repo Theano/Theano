@@ -233,12 +233,11 @@ class NVCC_compiler(Compiler):
                 lib_dirs.append(python_lib)
 
         cppfilename = os.path.join(location, 'mod.cu')
-        cppfile = open(cppfilename, 'w')
+        with open(cppfilename, 'w') as cppfile:
 
-        _logger.debug('Writing module C++ code to %s', cppfilename)
+            _logger.debug('Writing module C++ code to %s', cppfilename)
+            cppfile.write(src_code)
 
-        cppfile.write(src_code)
-        cppfile.close()
         lib_filename = os.path.join(location, '%s.%s' %
                 (module_name, get_lib_extension()))
 

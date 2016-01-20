@@ -23,9 +23,8 @@ for dir in dirs:
 
     key = None
     try:
-        f = open(os.path.join(dir, "key.pkl"))
-        key = f.read()
-        f.close()
+        with open(os.path.join(dir, "key.pkl")) as f:
+            key = f.read()
         keys.setdefault(key, 0)
         keys[key] += 1
         del f
@@ -36,9 +35,8 @@ for dir in dirs:
         path = os.path.join(dir, "mod.cpp")
         if not os.path.exists(path):
             path = os.path.join(dir, "mod.cu")
-        f = open(path)
-        mod = f.read()
-        f.close()
+        with open(path) as f:
+            mod = f.read()
         mods.setdefault(mod, ())
         mods[mod] += (key,)
         del mod

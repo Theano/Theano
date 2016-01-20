@@ -3852,16 +3852,13 @@ class test_shapeoptimizer(unittest.TestCase):
         # Due to incompatibilities between python 2 and 3 in the format
         # of pickled numpy ndarray, we have to force an encoding
         from theano.misc.pkl_utils import CompatUnpickler
-        pkl_file = open(pkl_filename, "rb")
-        try:
+        with open(pkl_filename, "rb") as pkl_file:
             if PY3:
                 u = CompatUnpickler(pkl_file, encoding="latin1")
             else:
                 u = CompatUnpickler(pkl_file)
             fn_args = u.load()
             theano.function(**fn_args)
-        finally:
-            pkl_file.close()
 
 
 class test_assert(utt.InferShapeTester):

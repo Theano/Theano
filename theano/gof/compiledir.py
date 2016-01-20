@@ -361,11 +361,9 @@ def print_compiledir_content():
     total_key_sizes = 0
     nb_keys = {}
     for dir in os.listdir(compiledir):
-        file = None
-        try:
+        filename = os.path.join(compiledir, dir, "key.pkl")
+        with open(filename, 'rb') as file:
             try:
-                filename = os.path.join(compiledir, dir, "key.pkl")
-                file = open(filename, 'rb')
                 keydata = pickle.load(file)
                 ops = list(set([x for x in flatten(keydata.keys)
                                 if isinstance(x, theano.gof.Op)]))
@@ -387,9 +385,6 @@ def print_compiledir_content():
                 nb_keys[len(keydata.keys)] += 1
             except IOError:
                 pass
-        finally:
-            if file is not None:
-                file.close()
 
     print("List of %d compiled individual ops in this theano cache %s:" % (
         len(table), compiledir))

@@ -1214,22 +1214,17 @@ class FunctionMaker(object):
                 print('graph_db already exists')
             else:
                 # create graph_db
-                f = open(graph_db_file, 'wb')
-                print('create new graph_db in %s' % graph_db_file)
-                # file needs to be open and closed for every pickle
-                f.close()
+                with open(graph_db_file, 'wb') as f:
+                    print('create new graph_db in %s' % graph_db_file)
             # load the graph_db dictionary
             try:
-                f = open(graph_db_file, 'rb')
-                # Temporary hack to allow
-                # theano.scan_module.tests.test_scan.T_Scan to
-                # finish. Should be changed in definitive version.
-                tmp = theano.config.unpickle_function
-                theano.config.unpickle_function = False
-                graph_db = pickle.load(f)
-
-                # hack end
-                f.close()
+                with open(graph_db_file, 'rb') as f:
+                    # Temporary hack to allow
+                    # theano.scan_module.tests.test_scan.T_Scan to
+                    # finish. Should be changed in definitive version.
+                    tmp = theano.config.unpickle_function
+                    theano.config.unpickle_function = False
+                    graph_db = pickle.load(f)
                 print('graph_db loaded and it is not empty')
             except EOFError as e:
                 # the file has nothing in it
@@ -1358,9 +1353,8 @@ class FunctionMaker(object):
             before_opt = self.fgraph.clone(check_integrity=False)
             optimizer_profile = optimizer(self.fgraph)
             graph_db.update({before_opt: self.fgraph})
-            f = open(graph_db_file, 'wb')
-            pickle.dump(graph_db, f, -1)
-            f.close()
+            with open(graph_db_file, 'wb') as f:
+                pickle.dump(graph_db, f, -1)
             print('new graph saved into graph_db')
         release_lock()
         return optimizer_profile
