@@ -847,3 +847,32 @@ class test_SoftMax(test_nnet.test_SoftMax):
                                      numpy.exp(input_val).sum(1)[:, None, :, :])
 
             utt.assert_allclose(out, expected_out)
+            
+    def test_log_softmax2(self):
+        # Test that the op LogSoftmax is correctly replaced by the op
+        # DnnSoftmax with the 'log' mode.
+
+        # This is a test for an optimization that depends on CuDNN v3 or
+        # more recent. Don't test if the CuDNN version is too old.
+        if dnn.version() < 3000:
+            raise SkipTest("Log-softmax is only in cudnn v3+")
+
+        # Build the first graph and ensure that the optimization is applied
+        x = T.fmatrix()
+        log_softmax_out = T.nnet.LogSoftmax()(x)
+        f = theano.function([x], log_softmax_out, mode=mode_with_gpu)
+
+        dnn_softmax_nodes = [n for n in f.maker.fgraph.toposort() if
+                             isinstance(n.op, dnn.GpuDnnSoftmax)]
+        assert len(dnn_softmax_nodes) == 1
+        assert dnn_softmax_nodes[0].op.algo == "log"
+
+        # Build the first graph and ensure that the optimization is applied
+        x = T.fmatrix()
+        log_softmax_out = T.log(T.nnet.Softmax()(x))
+        f = theano.function([x], log_softmax_out, mode=mode_with_gpu)
+
+        dnn_softmax_nodes = [n for n in f.maker.fgraph.toposort() if
+                             isinstance(n.op, dnn.GpuDnnSoftmax)]
+        assert len(dnn_softmax_nodes) == 1
+        assert dnn_softmax_nodes[0].op.algo == "log"
