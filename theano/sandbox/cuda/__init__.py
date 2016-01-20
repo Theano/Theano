@@ -450,9 +450,15 @@ def use(device,
                                  " this property")
 
             if config.print_active_device:
+                import theano.sandbox.cuda.dnn
+                cudnn_version = ""
+                try:
+                    cudnn_version = ", cuDNN v%i" % (theano.sandbox.cuda.dnn.version())
+                except:
+                    pass
                 cnmem_enabled = "enabled" if config.lib.cnmem else "disabled"
-                print("Using gpu device %d: %s (CNMeM is %s)" % (
-                        active_device_number(), active_device_name(), cnmem_enabled), file=sys.stderr)
+                print("Using gpu device %d: %s (CNMeM is %s%s)" % (
+                        active_device_number(), active_device_name(), cnmem_enabled, cudnn_version), file=sys.stderr)
             if device_properties(use.device_number)['regsPerBlock'] < 16384:
                 # We will try to use too much register per bloc at many places
                 # when there is only 8k register per multi-processor.
