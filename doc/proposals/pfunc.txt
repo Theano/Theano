@@ -28,7 +28,7 @@ The following code gives a very quick idea of what is being proposed:
     b = shared(1) #NEW: create a shared variable
 
     f1 = pfunc([a], a+b)
-    f2 = pfunc([In(a, default=44)], a + b, updates={b: b + 1})
+    f2 = pfunc([In(a, value=44)], a + b, updates={b: b + 1})
 
     b.value # -> 1
 
