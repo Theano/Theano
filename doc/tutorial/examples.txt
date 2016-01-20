@@ -507,7 +507,7 @@ It will be used repeatedly.
     # between training iterations (updates)
     w = theano.shared(rng.randn(feats), name="w")
 
-    # initialize the bias (constant) term
+    # initialize the bias term
     b = theano.shared(0., name="b")
 
     print("Initial model:")
