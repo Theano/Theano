@@ -422,6 +422,7 @@ def test_pooling():
                                  mode=mode_with_gpu)
             assert any([isinstance(node.op, cuda.dnn.GpuDnnPoolGrad)
                         for node in fg.maker.fgraph.toposort()])
+            
 
             # Test the GPU grad + GPU implementation
             def fn(x):

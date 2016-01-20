@@ -1654,8 +1654,9 @@ if (err != CUDNN_STATUS_SUCCESS) {
         grad = gpu_contiguous(grad)
 
         out = self(img, ws, stride, pad)
+        print out.mode + "grad"
 
-        g_out = GpuDnnPoolGrad(self.mode)(img, out, grad, ws, stride, pad)
+        g_out = GpuDnnPoolGrad(mode=self.mode)(img, out, grad, ws, stride, pad)
 
         return g_out, theano.gradient.DisconnectedType()(), theano.gradient.DisconnectedType()(), theano.gradient.DisconnectedType()()
 
@@ -1798,7 +1799,7 @@ if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
                 raise Exception("cudnn v1 do not support average_exc_pad")
         else:
             raise NotImplementedError("Unsupported pooling model.")
-
+        print mode_flag
         return """
 cudnnStatus_t err%(name)s;
 //raise(SIGINT);
