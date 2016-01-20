@@ -166,8 +166,14 @@ def test_pooling():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
 
+    # 'average_exc_pad' is disabled for versions < 4004
+    if dnn.version() < 4004:
+        modes = ('max', 'average_inc_pad')
+    else:
+        modes = ('max', 'average_inc_pad', 'average_exc_pad')
+
     x = T.ftensor4()
-    for mode, pad in product(('max', 'average_inc_pad', 'average_exc_pad'),
+    for mode, pad in product(modes,
                              ((0, 0), (1, 0), (1, 0), (2, 3), (3, 2))):
         if mode == 'max':
             func = T.max
@@ -506,10 +512,17 @@ class TestDnnInferShapes(utt.InferShapeTester):
             numpy.random.rand(2, 3, 4, 5),
             dtype='float32'
         )
+
+        # 'average_exc_pad' is disabled for versions < 4004
+        if dnn.version() < 4004:
+            modes = ['max', 'average_inc_pad']
+        else:
+            modes = ['max', 'average_inc_pad', 'average_exc_pad']
+
         for params in product(
             [(1, 1), (2, 2), (3, 3)],
             [(1, 1), (2, 2), (3, 3)],
-            ['max', 'average_inc_pad', 'average_exc_pad']
+            modes
         ):
             desc = dnn.GpuDnnPoolDesc(
                 ws=params[0],

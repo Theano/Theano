@@ -1401,6 +1401,10 @@ class GpuDnnPoolDesc(GpuOp):
             raise RuntimeError("CuDNN pooling with padding requires CuDNN v2")
         if self.get_ndim() == 3 and version() < (3000, 3000):
             raise RuntimeError("CuDNN 3d pooling requires CuDNN v3")
+        if (mode == 'average_exc_pad' and max(pad) > 0 and
+                version() < (4004, 4004)):
+            raise RuntimeError(
+                "CuDNN pooling mode 'average_exc_pad' requires at least v4")
 
     def get_ndim(self):
         return len(self.ws)
