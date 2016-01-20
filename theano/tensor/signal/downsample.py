@@ -1,5 +1,5 @@
 from __future__ import print_function
-import pool
+from . import pool
 import warnings
 
 warnings.warn("downsample module has been moved to the pool module.")
