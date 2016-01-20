@@ -453,7 +453,8 @@ def use(device,
                 import theano.sandbox.cuda.dnn
                 cudnn_version = ""
                 try:
-                    cudnn_version = ", cuDNN v%i" % (theano.sandbox.cuda.dnn.version())
+                    (hdr_v, runtime_v) = theano.sandbox.cuda.dnn.version()
+                    cudnn_version = ", cuDNN v%i" % (runtime_v)
                 except:
                     pass
                 cnmem_enabled = "enabled" if config.lib.cnmem else "disabled"
