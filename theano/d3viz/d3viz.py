@@ -81,7 +81,7 @@ def d3viz(fct, outfile, copy_deps=True, *args, **kwargs):
 
     # Create output directory if not existing
     outdir = os.path.dirname(outfile)
-    if not os.path.exists(outdir):
+    if not outdir == '' and not os.path.exists(outdir):
         os.makedirs(outdir)
 
     # Read template HTML file
