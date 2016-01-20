@@ -467,16 +467,6 @@ def _pfunc_param_to_in(param, strict=False, allow_downcast=None):
     if isinstance(param, Variable):  # N.B. includes SharedVariable
         return In(variable=param, strict=strict, allow_downcast=allow_downcast)
     elif isinstance(param, In):
-        return In(
-            variable=param.variable,
-            name=param.name,
-            value=param.value,
-            mutable=param.mutable,
-            strict=param.strict,
-            borrow=param.borrow,
-            allow_downcast=param.allow_downcast,
-            implicit=param.implicit)
-    elif isinstance(param, In):
         return param
     raise TypeError('Unknown parameter type: %s' % type(param))
 
