@@ -1677,6 +1677,8 @@ if imported_scipy_special:
     expected_gammaln = scipy.special.gammaln
     expected_psi = scipy.special.psi
     expected_chi2sf = lambda x, df: scipy.stats.chi2.sf(x, df).astype(x.dtype)
+    expected_j0 = scipy.special.j0
+    expected_j1 = scipy.special.j1
     skip_scipy = False
     if LooseVersion(scipy_version) >= LooseVersion("0.12.0"):
         expected_erfcx = scipy.special.erfcx
@@ -1860,6 +1862,43 @@ Chi2SFInplaceTester = makeBroadcastTester(
     inplace=True,
     skip=skip_scipy,
     name='Chi2SF')
+
+_good_broadcast_unary_j = dict(
+    normal=(rand_ranged(0.1, 8, (2, 3)),),)
+
+J0Tester = makeBroadcastTester(
+    op=tensor.j0,
+    expected=expected_j0,
+    good=_good_broadcast_unary_j,
+    grad=_good_broadcast_unary_j,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    skip=skip_scipy)
+J0InplaceTester = makeBroadcastTester(
+    op=inplace.j0_inplace,
+    expected=expected_j0,
+    good=_good_broadcast_unary_j,
+    grad=_good_broadcast_unary_j,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    inplace=True,
+    skip=skip_scipy)
+
+J1Tester = makeBroadcastTester(
+    op=tensor.j1,
+    expected=expected_j1,
+    good=_good_broadcast_unary_j,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    skip=skip_scipy)
+J1InplaceTester = makeBroadcastTester(
+    op=inplace.j1_inplace,
+    expected=expected_j1,
+    good=_good_broadcast_unary_j,
+    eps=2e-10,
+    mode=mode_no_scipy,
+    inplace=True,
+    skip=skip_scipy)
 
 ZerosLikeTester = makeBroadcastTester(
         op=tensor.zeros_like,

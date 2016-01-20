@@ -394,3 +394,45 @@ class Chi2SF(BinaryScalarOp):
         return hash(type(self))
 
 chi2sf = Chi2SF(upgrade_to_float, name='chi2sf')
+
+
+class J1(UnaryScalarOp):
+    """
+    Bessel function of the 1'th kind
+    """
+
+    @staticmethod
+    def impl(x):
+        return scipy.special.j1(x)
+
+    def grad(self, inp, grads):
+        raise NotImplementedError()
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+j1 = J1(upgrade_to_float, name='j1')
+
+
+class J0(UnaryScalarOp):
+    """
+    Bessel function of the 0'th kind
+    """
+
+    @staticmethod
+    def impl(x):
+        return scipy.special.j0(x)
+
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
+        return [gz * -1 * j1(x)]
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def __hash__(self):
+        return hash(type(self))
+j0 = J0(upgrade_to_float, name='j0')

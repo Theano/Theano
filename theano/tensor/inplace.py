@@ -285,6 +285,16 @@ def chi2sf_inplace(x, k):
 
 
 @_scal_inplace
+def j0_inplace(a):
+    """Bessel function of the 0'th kind"""
+
+
+@_scal_inplace
+def j1_inplace(a):
+    """Bessel function of the 0'th kind"""
+
+
+@_scal_inplace
 def second_inplace(a):
     """Fill `a` with `b`"""
 

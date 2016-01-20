@@ -2202,6 +2202,16 @@ def chi2sf(x, k):
 
 
 @_scal_elemwise
+def j0(a):
+    """Bessel function of the 0'th kind"""
+
+
+@_scal_elemwise
+def j1(a):
+    """Bessel function of the 1'th kind"""
+
+
+@_scal_elemwise
 def real(z):
     """Return real component of complex-valued tensor `z`"""
 _tensor_py_operators.real = property(real)
