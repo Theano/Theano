@@ -847,7 +847,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
                                      numpy.exp(input_val).sum(1)[:, None, :, :])
 
             utt.assert_allclose(out, expected_out)
-            
+
     def test_log_softmax2(self):
         # Test that the op LogSoftmax is correctly replaced by the op
         # DnnSoftmax with the 'log' mode.
@@ -857,8 +857,12 @@ class test_SoftMax(test_nnet.test_SoftMax):
         if dnn.version() < 3000:
             raise SkipTest("Log-softmax is only in cudnn v3+")
 
-        # Build the first graph and ensure that the optimization is applied
+        # Compile a reference function, on the CPU, to be used to validate the
+        # results of the other function.
         x = T.fmatrix()
+        f_ref = theano.function([x], T.nnet.LogSoftmax()(x))
+
+        # Build the first graph and ensure that the optimization is applied
         log_softmax_out = T.nnet.LogSoftmax()(x)
         f = theano.function([x], log_softmax_out, mode=mode_with_gpu)
 
@@ -867,8 +871,11 @@ class test_SoftMax(test_nnet.test_SoftMax):
         assert len(dnn_softmax_nodes) == 1
         assert dnn_softmax_nodes[0].op.algo == "log"
 
+        # Compare the output of the function with the reference function
+        inp = numpy.random.normal(0, 1, (5, 6)).astype("float32")
+        utt.assert_allclose(f(inp), f_ref(inp))
+
         # Build the first graph and ensure that the optimization is applied
-        x = T.fmatrix()
         log_softmax_out = T.log(T.nnet.Softmax()(x))
         f = theano.function([x], log_softmax_out, mode=mode_with_gpu)
 
@@ -876,3 +883,7 @@ class test_SoftMax(test_nnet.test_SoftMax):
                              isinstance(n.op, dnn.GpuDnnSoftmax)]
         assert len(dnn_softmax_nodes) == 1
         assert dnn_softmax_nodes[0].op.algo == "log"
+
+        # Compare the output of the function with the reference function
+        inp = numpy.random.normal(0, 1, (5, 6)).astype("float32")
+        utt.assert_allclose(f(inp), f_ref(inp))
