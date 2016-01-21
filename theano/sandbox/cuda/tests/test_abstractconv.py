@@ -91,8 +91,8 @@ class TestConv2d(unittest.TestCase):
         f = theano.function([], c, mode)
 
         if target_op is not None:
-          assert any([isinstance(n.op, target_op) for n
-                      in f.maker.fgraph.toposort()])
+            assert any([isinstance(n.op, target_op) for n
+                        in f.maker.fgraph.toposort()])
 
         res_ref = numpy.array(f_ref())
         res = numpy.array(f())
@@ -140,8 +140,8 @@ class TestConv2d(unittest.TestCase):
         f_ref = theano.function([], c_ref, mode)
 
         if target_op is not None:
-          assert any([isinstance(n.op, target_op) for n
-                      in f.maker.fgraph.toposort()])
+            assert any([isinstance(n.op, target_op) for n
+                        in f.maker.fgraph.toposort()])
 
         res_ref = numpy.array(f_ref())
         res = numpy.array(f())
@@ -192,8 +192,8 @@ class TestConv2d(unittest.TestCase):
         f_ref = theano.function([], c_ref, mode)
 
         if target_op is not None:
-          assert any([isinstance(n.op, target_op) for n
-                      in f.maker.fgraph.toposort()])
+            assert any([isinstance(n.op, target_op) for n
+                        in f.maker.fgraph.toposort()])
 
         res_ref = numpy.array(f_ref())
         res = numpy.array(f())
@@ -249,7 +249,10 @@ class TestConv2d(unittest.TestCase):
             self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
                          verify_grad=True, mode=mode, device='gpu',
                          provide_shape=provide_shape, border_mode=b,
-                         filter_flip=flip, target_op=GpuCorrMM)
+                         filter_flip=flip,
+                         target_op=(GpuCorrMM,
+                                    GpuCorrMM_gradWeights,
+                                    GpuCorrMM_gradInputs))
             self.run_gradweight(inputs_shape=i, filters_shape=f,
                                 output_shape=o, subsample=s,
                                 verify_grad=True, mode=mode, device='gpu',

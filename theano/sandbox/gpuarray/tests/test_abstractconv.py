@@ -10,10 +10,10 @@ import theano.tensor.nnet.abstract_conv as conv
 from theano.compile import shared as cpu_shared
 from ..type import gpuarray_shared_constructor as gpu_shared
 from ..dnn import (
-  dnn_available, dnn_conv, dnn_gradweight, dnn_gradinput,
-  GpuDnnConv, GpuDnnConvGradW, GpuDnnConvGradI)
+    dnn_available, dnn_conv, dnn_gradweight, dnn_gradinput,
+    GpuDnnConv, GpuDnnConvGradW, GpuDnnConvGradI)
 from theano.tensor.nnet.corr import (
-  CorrMM, CorrMM_gradWeights, CorrMM_gradInputs)
+    CorrMM, CorrMM_gradWeights, CorrMM_gradInputs)
 from theano.tensor.nnet.conv import ConvOp
 from theano.tensor.nnet import ConvGrad3D, ConvTransp3D
 
@@ -85,8 +85,8 @@ class TestConv2d(unittest.TestCase):
         f = theano.function([], c, mode)
 
         if target_op is not None:
-          assert any([isinstance(n.op, target_op) for n
-                      in f.maker.fgraph.toposort()])
+            assert any([isinstance(n.op, target_op) for n
+                        in f.maker.fgraph.toposort()])
 
         res_ref = numpy.array(f_ref())
         res = numpy.array(f())
@@ -134,8 +134,8 @@ class TestConv2d(unittest.TestCase):
         f_ref = theano.function([], c_ref, mode)
 
         if target_op is not None:
-          assert any([isinstance(n.op, target_op) for n
-                      in f.maker.fgraph.toposort()])
+            assert any([isinstance(n.op, target_op) for n
+                        in f.maker.fgraph.toposort()])
 
         res_ref = numpy.array(f_ref())
         res = numpy.array(f())
@@ -184,8 +184,8 @@ class TestConv2d(unittest.TestCase):
         f_ref = theano.function([], c_ref, mode)
 
         if target_op is not None:
-          assert any([isinstance(n.op, target_op) for n
-                      in f.maker.fgraph.toposort()])
+            assert any([isinstance(n.op, target_op) for n
+                        in f.maker.fgraph.toposort()])
 
         res_ref = numpy.array(f_ref())
         res = numpy.array(f())
