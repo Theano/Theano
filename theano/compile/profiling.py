@@ -31,7 +31,6 @@ from six import iteritems
 from theano.gof import graph
 from theano.configparser import AddConfigVar, BoolParam, IntParam, StrParam
 
-
 theano_imported_time = time.time()
 config = theano.config
 
@@ -1302,16 +1301,16 @@ class ProfileStats(object):
             print("-----------------", file=file)
             self.optimizer_profile[0].print_profile(file,
                                                     self.optimizer_profile[1])
-        self.print_tips()
+        self.print_tips(file)
 
-    def print_tips(self):
+    def print_tips(self, file):
         print("""Here are tips to potentially make your code run faster
                  (if you think of new ones, suggest them on the mailing list).
-                 Test them first, as they are not guaranteed to always provide a speedup.""")
-        from theano import tensor as T
-        from theano.tensor.raw_random import RandomFunction
-        import theano
-        import theano.scalar as scal
+                 Test them first, as they are not guaranteed to always provide a speedup.""", file = file)
+
+        RandomFunction = theano.tensor.raw_random.RandomFunction
+        scal = theano.scalar
+        T = theano.tensor
         scalar_op_amdlibm_no_speed_up = [scal.LT, scal.GT, scal.LE, scal.GE,
                                          scal.EQ, scal.NEQ, scal.InRange,
                                          scal.Switch, scal.OR, scal.XOR,
@@ -1356,7 +1355,7 @@ class ProfileStats(object):
                         return True
                     elif s_op.__class__ not in scalar_op_amdlibm_no_speed_up:
                         print("We don't know if amdlibm will accelerate "
-                              "this scalar op.", s_op)
+                              "this scalar op.", s_op , file = file)
                 return False
 
         def exp_float32_op(op):
@@ -1369,28 +1368,28 @@ class ProfileStats(object):
         printed_tip = False
         # tip 1
         if config.floatX == 'float64':
-            print("  - Try the Theano flag floatX=float32")
+            print("  - Try the Theano flag floatX=float32", file = file)
             printed_tip = True
 
         # tip 2
-        if not config.lib.amdlibm and any([amdlibm_speed_up(a.op) for i, a
+        if not config.lib.amdlibm and any([amdlibm_speed_up(a.op) for a
                                            in self.apply_time]):
             print("  - Try installing amdlibm and set the Theano flag "
                   "lib.amdlibm=True. This speeds up only some Elemwise "
-                  "operation.")
+                  "operation.", file = file)
             printed_tip = True
 
         # tip 3
         if not config.lib.amdlibm and any([exp_float32_op(a.op) and
                                            a.inputs[0].dtype == 'float32'
-                                           for i, a in self.apply_time]):
+                                           for a in self.apply_time]):
             print("  - With the default gcc libm, exp in float32 is slower "
                   "than in float64! Try Theano flag floatX=float64, or "
-                  "install amdlibm and set the theano flags lib.amdlibm=True")
+                  "install amdlibm and set the theano flags lib.amdlibm=True", file = file)
             printed_tip = True
 
         # tip 4
-        for a, t in iteritems(self.apply_time):
+        for a in self.apply_time:
             node = a
             if (isinstance(node.op, T.Dot) and
                     all([len(i.type.broadcastable) == 2
@@ -1399,25 +1398,25 @@ class ProfileStats(object):
                       " dot22 (which is faster). Make sure the inputs are "
                       "float32 or float64, and are the same for both inputs. "
                       "Currently they are: %s" %
-                      [i.type for i in node.inputs])
+                      [i.type for i in node.inputs], file = file)
                 printed_tip = True
 
         # tip 5
-        for a, t in iteritems(self.apply_time):
+        for a in self.apply_time:
             node = a
             if isinstance(node.op, RandomFunction):
                 printed_tip = True
                 print("  - Replace the default random number generator by "
                       "'from theano.sandbox.rng_mrg import MRG_RandomStreams "
                       "as RandomStreams', as this is is faster. It is still "
-                      "experimental, but seems to work correctly.")
+                      "experimental, but seems to work correctly.", file = file)
                 if config.device.startswith("gpu"):
                     print("     - MRG_RandomStreams is the only random number"
-                          " generator supported on the GPU.")
+                          " generator supported on the GPU.", file = file)
                 break
 
         if not printed_tip:
-            print("  Sorry, no tip for today.")
+            print("  Sorry, no tip for today.", file = file)
 
 
 if False:  # old code still to be ported from ProfileMode
