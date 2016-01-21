@@ -39,6 +39,7 @@ def test_specify_shape():
     f = theano.function([g], theano.tensor.specify_shape(g, [20]))
     f(a)
 
+
 def test_filter_float():
     s = theano.shared(numpy.array(0.0, dtype='float32'), target=test_ctx_name)
     theano.function([], updates=[(s, 0.0)])
