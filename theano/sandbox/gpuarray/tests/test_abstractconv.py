@@ -81,7 +81,6 @@ class TestConv2d(unittest.TestCase):
                         filter_flip=filter_flip,
                         input_shape=imshp,
                         filter_shape=kshp)
-        self.assertTrue(hasattr(c.tag, 'trace'))
         f_ref = theano.function([], c_ref, mode=mode)
         f = theano.function([], c, mode)
 
@@ -89,11 +88,13 @@ class TestConv2d(unittest.TestCase):
             assert any([isinstance(n.op, target_op) for n
                         in f.maker.fgraph.toposort()])
 
+        self.assertTrue(hasattr(f.maker.fgraph.outputs[0].tag, 'trace'))
         res_ref = numpy.array(f_ref())
         res = numpy.array(f())
         utt.assert_allclose(res_ref, res)
         if verify_grad:
-            utt.verify_grad(conv.AbstractConv2d(border_mode="valid", imshp=imshp, kshp=kshp,
+            utt.verify_grad(conv.AbstractConv2d(border_mode="valid",
+                                                imshp=imshp, kshp=kshp,
                                                 subsample=subsample),
                             [inputs_val, filters_val],
                             mode=mode)
@@ -125,7 +126,6 @@ class TestConv2d(unittest.TestCase):
                                             filter_flip=filter_flip,
                                             subsample=subsample,
                                             imshp=imshp, kshp=kshp)
-        self.assertTrue(hasattr(c.tag, 'trace'))
         c = c(inputs, output, filters_shape[-2:])
         c_ref = ref(inputs, output,
                     filters_shape,
@@ -133,6 +133,7 @@ class TestConv2d(unittest.TestCase):
                     subsample=subsample,
                     conv_mode=conv_mode)
         f = theano.function([], c, mode)
+        self.assertTrue(hasattr(f.maker.fgraph.outputs[0].tag, 'trace'))
         f_ref = theano.function([], c_ref, mode)
 
         if target_op is not None:
@@ -178,12 +179,12 @@ class TestConv2d(unittest.TestCase):
                                            subsample=subsample,
                                            filter_flip=filter_flip,
                                            imshp=imshp, kshp=kshp)
-        self.assertTrue(hasattr(c.tag, 'trace'))
         c = c(filters, output, inputs_shape[-2:])
         c_ref = ref(filters, output, inputs_shape,
                     border_mode=border_mode, subsample=subsample,
                     conv_mode=conv_mode)
         f = theano.function([], c, mode)
+        self.assertTrue(hasattr(f.maker.fgraph.outputs[0].tag, 'trace'))
         f_ref = theano.function([], c_ref, mode)
 
         if target_op is not None:
