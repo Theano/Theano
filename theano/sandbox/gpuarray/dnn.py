@@ -1482,18 +1482,16 @@ def local_logsoftmax_to_dnn(node, ctx_name):
         # No log-softmax before cudnn v3
         return
 
-    if (isinstance(node.op, LogSoftmax) and node.inputs[0].owner and
-            isinstance(node.inputs[0].owner.op, HostFromGpu)):
+    # Transform the input in the format expected by GpuDnnSoftmax
+    inp = node.inputs[0]
+    if inp.ndim != 2:
+        return
+    inp = inp.dimshuffle(0, 1, 'x', 'x')
+    inp.tag.context_name = ctx_name
 
-        # Transform the input in the format expected by GpuDnnSoftmax
-        inp = node.inputs[0].owner.inputs[0]
-        if inp.ndim != 2:
-            return
-        inp = inp.dimshuffle(0, 1, 'x', 'x')
-
-        # Apply GpuDnnSoftmax and return the result
-        out = GpuDnnSoftmax('log', 'channel')(gpu_contiguous(inp))
-        return [out.dimshuffle(0, 1)]
+    # Apply GpuDnnSoftmax and return the result
+    out = GpuDnnSoftmax('log', 'channel')(gpu_contiguous(inp))
+    return [out.dimshuffle(0, 1)]
 
 
 class NoCuDNNRaise(Optimizer):
