@@ -81,6 +81,7 @@ class TestConv2d(unittest.TestCase):
                         filter_flip=filter_flip,
                         input_shape=imshp,
                         filter_shape=kshp)
+        self.assertTrue(hasattr(c.tag, 'trace'))
         f_ref = theano.function([], c_ref, mode=mode)
         f = theano.function([], c, mode)
 
@@ -124,6 +125,7 @@ class TestConv2d(unittest.TestCase):
                                             filter_flip=filter_flip,
                                             subsample=subsample,
                                             imshp=imshp, kshp=kshp)
+        self.assertTrue(hasattr(c.tag, 'trace'))
         c = c(inputs, output, filters_shape[-2:])
         c_ref = ref(inputs, output,
                     filters_shape,
@@ -176,6 +178,7 @@ class TestConv2d(unittest.TestCase):
                                            subsample=subsample,
                                            filter_flip=filter_flip,
                                            imshp=imshp, kshp=kshp)
+        self.assertTrue(hasattr(c.tag, 'trace'))
         c = c(filters, output, inputs_shape[-2:])
         c_ref = ref(filters, output, inputs_shape,
                     border_mode=border_mode, subsample=subsample,

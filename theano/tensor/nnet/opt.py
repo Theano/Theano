@@ -17,7 +17,8 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv2d_gradWeights,
                                               AbstractConv2d_gradInputs)
 from theano.tensor.nnet.abstract_conv import get_conv_output_shape
-from theano.tensor.opt import register_specialize_device
+from theano.tensor.opt import (copy_stack_trace,
+                               register_specialize_device)
 from theano.tensor import TensorType
 
 # Cpu implementation
@@ -75,6 +76,7 @@ def local_abstractconv_gemm(node):
         kern = kern[:, :, ::-1, ::-1]
     rval = CorrMM(border_mode=node.op.border_mode,
                   subsample=node.op.subsample)(img, kern)
+    copy_stack_trace(node.outputs[0], rval)
 
     return [rval]
 
@@ -96,6 +98,7 @@ def local_abstractconv_gradweight_gemm(node):
     if node.op.filter_flip:
         rval = rval[:, :, ::-1, ::-1]
     rval = theano.tensor.patternbroadcast(rval, node.outputs[0].broadcastable)
+    copy_stack_trace(node.outputs[0], rval)
 
     return [rval]
 
@@ -117,6 +120,7 @@ def local_abstractconv_gradinputs_gemm(node):
     rval = CorrMM_gradInputs(border_mode=node.op.border_mode,
                              subsample=node.op.subsample)(kern, topgrad,
                                                           shape)
+    copy_stack_trace(node.outputs[0], rval)
 
     return [rval]
 
@@ -141,6 +145,8 @@ def local_conv2d_cpu(node):
                   node.op.imshp, node.op.kshp,
                   border_mode=node.op.border_mode,
                   subsample=node.op.subsample)
+
+    copy_stack_trace(node.outputs[0], rval)
     return [rval]
 
 
@@ -181,6 +187,7 @@ def local_conv2d_gradweight_cpu(node):
         rval = rval[:, :, ::-1, ::-1]
         rval = theano.tensor.patternbroadcast(rval,
                                               node.outputs[0].broadcastable)
+        copy_stack_trace(node.outputs[0], rval)
         return [rval]
 
     dx, dy = node.op.subsample
@@ -251,6 +258,8 @@ def local_conv2d_gradweight_cpu(node):
         res = res[:, :, ::-1, ::-1]
 
     res = theano.tensor.patternbroadcast(res, node.outputs[0].broadcastable)
+
+    copy_stack_trace(node.outputs[0], res)
     return [res]
 
 
@@ -284,6 +293,8 @@ def local_conv2d_gradinputs_cpu(node):
         rval = rval.dimshuffle(0, 4, 1, 2)
         rval = theano.tensor.patternbroadcast(rval,
                                               node.outputs[0].broadcastable)
+
+        copy_stack_trace(node.outputs[0], rval)
         return [rval]
 
     # Conv2d Implementation
@@ -333,6 +344,7 @@ def local_conv2d_gradinputs_cpu(node):
                  direction_hint='bprop inputs')
     din = din(topgrad, filters)
     din = theano.tensor.patternbroadcast(din, node.outputs[0].broadcastable)
+    copy_stack_trace(node.outputs[0], din)
     return [din]
 
 
