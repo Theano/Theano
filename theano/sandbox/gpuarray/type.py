@@ -189,13 +189,13 @@ class GpuArrayType(Type):
             if self.context != data.context:
                 raise TypeError("data context does not match type context")
             # fallthrough to ndim check
-            elif (allow_downcast or
-                  (allow_downcast is None and
-                   type(data) == float and
-                   self.dtype == config.floatX)):
-                data = gpuarray.array(data, dtype=self.typecode, copy=False,
-                                      ndmin=len(self.broadcastable),
-                                      context=self.context)
+        elif (allow_downcast or
+              (allow_downcast is None and
+               type(data) == float and
+               self.dtype == config.floatX)):
+            data = gpuarray.array(data, dtype=self.typecode, copy=False,
+                                  ndmin=len(self.broadcastable),
+                                  context=self.context)
         else:
             if not hasattr(data, 'dtype'):
                 # This is to convert objects that don't have a dtype

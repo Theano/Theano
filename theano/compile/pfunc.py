@@ -195,7 +195,7 @@ def rebuild_collect_shared(outputs,
                            store_into,
                            store_into.type,
                            update_val,
-                           update_val.type))
+                           getattr(update_val, 'type', None)))
             err_sug = ('If the difference is related to the broadcast pattern,'
                        ' you can call the'
                        ' tensor.unbroadcast(var, axis_to_unbroadcast[, ...])'
