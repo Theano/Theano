@@ -310,8 +310,9 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
         # This fix some case with Anaconda 2.3 on Linux.
         # Newer Anaconda still have this problem but only have
         # Continuum in sys.version.
-        if (("Anaconda" in sys.version or "Continuum" in sys.version)
-            and "linux" in sys.platform):
+        if (("Anaconda" in sys.version or
+             "Continuum" in sys.version) and
+                "linux" in sys.platform):
             lib_path = os.path.join(sys.prefix, 'lib')
             ret.append('-Wl,-rpath,' + lib_path)
             res = try_blas_flag(ret)
