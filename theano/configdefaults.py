@@ -1,14 +1,19 @@
+import errno
 import os
 import sys
 import logging
+import numpy
 import platform
 import textwrap
 import re
+import socket
 
 import theano
 from theano.configparser import (AddConfigVar, BoolParam, ConfigParam, EnumStr,
                                  FloatParam, IntParam, StrParam,
                                  TheanoConfigParser)
+from theano.gof.compiledir import (local_bitwidth, python_int_bitwidth,
+                                   gcc_version_str)
 from theano.misc.cpucount import cpuCount
 from theano.misc.windows import call_subprocess_Popen
 
