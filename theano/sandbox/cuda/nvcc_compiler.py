@@ -203,6 +203,9 @@ class NVCC_compiler(Compiler):
             preargs = list(preargs)
         if sys.platform != 'win32':
             preargs.append('-fPIC')
+        if config.cmodule.remove_gxx_opt:
+            preargs = [p for p in preargs if not p.startswith('-O')]
+
         cuda_root = config.cuda.root
 
         # The include dirs gived by the user should have precedence over
