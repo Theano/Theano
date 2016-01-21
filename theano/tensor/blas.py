@@ -289,8 +289,9 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
                 flags += ['-l%s' % l for l in ["mkl_core",
                                                "mkl_intel_thread",
                                                "mkl_rt"]]
-                if try_blas_flag(flags):
-                    return ' '.join(flags)
+                res = try_blas_flag(flags)
+                if res:
+                    return res
 
         ret = (
             # TODO: the Gemm op below should separate the
@@ -301,15 +302,22 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
             ['-L%s' % l for l in blas_info.get('library_dirs', [])] +
             ['-l%s' % l for l in blas_info.get('libraries', [])] +
             blas_info.get('extra_link_args', []))
-        if try_blas_flag(ret):
-            return ' '.join(ret)
+        res = try_blas_flag(ret)
+        if res:
+            return res
+
         # Try to add the anaconda lib directory to runtime loading of lib.
         # This fix some case with Anaconda 2.3 on Linux.
-        if "Anaconda" in sys.version and "linux" in sys.platform:
+        # Newer Anaconda still have this problem but only have
+        # Continuum in sys.version.
+        if (("Anaconda" in sys.version or
+             "Continuum" in sys.version) and
+                "linux" in sys.platform):
             lib_path = os.path.join(sys.prefix, 'lib')
             ret.append('-Wl,-rpath,' + lib_path)
-            if try_blas_flag(ret):
-                return ' '.join(ret)
+            res = try_blas_flag(ret)
+            if res:
+                return res
 
     except KeyError:
         pass
@@ -339,14 +347,14 @@ def try_blas_flag(flags):
             return 0;
         }
         """)
-    flags.extend('-L' + d for d in theano.gof.cmodule.std_lib_dirs())
+    cflags = flags + ['-L' + d for d in theano.gof.cmodule.std_lib_dirs()]
     res = GCC_compiler.try_compile_tmp(
         test_code, tmp_prefix='try_blas_',
-        flags=flags, try_run=True)
+        flags=cflags, try_run=True)
     # res[0]: shows successful compilation
     # res[1]: shows successful execution
     if res and res[0] and res[1]:
-        return flags
+        return ' '.join(flags)
     else:
         return ""
 
