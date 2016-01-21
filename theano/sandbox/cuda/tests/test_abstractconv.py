@@ -3,6 +3,7 @@ import numpy
 import itertools
 
 import theano
+from theano import tensor
 from theano.tests import unittest_tools as utt
 import theano.tensor.nnet.abstract_conv as conv
 from theano.sandbox.cuda import float32_shared_constructor as gpu_shared
@@ -265,3 +266,55 @@ class TestConv2d(unittest.TestCase):
                                provide_shape=provide_shape, border_mode=b,
                                filter_flip=flip,
                                target_op=GpuCorrMM_gradInputs)
+
+    def test_grad_types(self):
+        # This function simply tests the behaviour of the AbstractConv
+        # Ops, not their optimizations
+        cpu_input = tensor.ftensor4()
+        cpu_filters = tensor.ftensor4()
+        cpu_topgrad = tensor.ftensor4()
+        gpu_input = cuda.ftensor4()
+        gpu_filters = cuda.ftensor4()
+        gpu_topgrad = cuda.ftensor4()
+
+        out_shape = tensor.lvector()
+
+        # Check the gradient of the forward conv2d
+        for input, filters in itertools.product(
+                (cpu_input, gpu_input),
+                (cpu_filters, gpu_filters)):
+            output = conv.conv2d(input, filters)
+            grad_input, grad_filters = theano.grad(output.sum(),
+                                                   wrt=(input, filters))
+            assert grad_input.type == input.type, (
+                grad_input, grad_input.type, input, input.type)
+            assert grad_filters.type == filters.type, (
+                grad_filters, grad_filters.type, filters, filters.type)
+
+        # Check the gradient of gradweight
+        for input, topgrad in itertools.product(
+                (cpu_input, gpu_input),
+                (cpu_topgrad, gpu_topgrad)):
+            grad_filters = conv.AbstractConv2d_gradWeights()(
+                input, topgrad, out_shape)
+            grad_input, grad_topgrad = theano.grad(grad_filters.sum(),
+                                                   wrt=(input, topgrad))
+
+            assert grad_input.type == input.type, (
+                grad_input, grad_input.type, input, input.type)
+            assert grad_topgrad.type == topgrad.type, (
+                grad_topgrad, grad_topgrad.type, topgrad, topgrad.type)
+
+        # Check the gradient of gradinputs
+        for filters, topgrad in itertools.product(
+                (cpu_filters, gpu_filters),
+                (cpu_topgrad, gpu_topgrad)):
+            grad_input = conv.AbstractConv2d_gradInputs()(
+                filters, topgrad, out_shape)
+            grad_filters, grad_topgrad = theano.grad(grad_input.sum(),
+                                                     wrt=(filters, topgrad))
+
+            assert grad_filters.type == filters.type, (
+                grad_filters, grad_filters.type, filters, filters.type)
+            assert grad_topgrad.type == topgrad.type, (
+                grad_topgrad, grad_topgrad.type, topgrad, topgrad.type)

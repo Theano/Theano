@@ -337,8 +337,12 @@ class AbstractConv2d(BaseAbstractConv2d):
         # Make sure that the broadcastable pattern of the inputs is used
         # for the gradients, even if the grad opts are not able to infer
         # that the dimensions are broadcastable.
+        # Also make sure that the gradient lives on the same device than
+        # the corresponding input.
         d_bottom = patternbroadcast(d_bottom, bottom.broadcastable)
+        d_bottom = bottom.type.filter_variable(d_bottom)
         d_weights = patternbroadcast(d_weights, weights.broadcastable)
+        d_weights = weights.type.filter_variable(d_weights)
         return d_bottom, d_weights
 
     def infer_shape(self, node, input_shapes):
@@ -414,8 +418,12 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
         # Make sure that the broadcastable pattern of the inputs is used
         # for the gradients, even if the grad opts are not able to infer
         # that the dimensions are broadcastable.
+        # Also make sure that the gradient lives on the same device than
+        # the corresponding input.
         d_bottom = patternbroadcast(d_bottom, bottom.broadcastable)
+        d_bottom = bottom.type.filter_variable(d_bottom)
         d_top = patternbroadcast(d_top, top.broadcastable)
+        d_top = top.type.filter_variable(d_top)
 
         d_height_width = (theano.gradient.DisconnectedType()(),)
         return (d_bottom, d_top) + d_height_width
@@ -491,8 +499,12 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
         # Make sure that the broadcastable pattern of the inputs is used
         # for the gradients, even if the grad opts are not able to infer
         # that the dimensions are broadcastable.
+        # Also make sure that the gradient lives on the same device than
+        # the corresponding input.
         d_weights = patternbroadcast(d_weights, weights.broadcastable)
+        d_weights = weights.type.filter_variable(d_weights)
         d_top = patternbroadcast(d_top, top.broadcastable)
+        d_top = top.type.filter_variable(d_top)
 
         d_height_width = (theano.gradient.DisconnectedType()(),)
         return (d_weights, d_top) + d_height_width
