@@ -1478,7 +1478,7 @@ def local_log_softmax_dnn(node):
 @register_opt('cudnn')
 @op_lifter([LogSoftmax])
 def local_logsoftmax_to_dnn(node, ctx_name):
-    if not dnn_available(ctx_name) or version() < 3:
+    if not dnn_available(ctx_name) or version() < 3000:
         # No log-softmax before cudnn v3
         return
 
