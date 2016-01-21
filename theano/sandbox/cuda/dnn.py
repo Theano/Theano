@@ -1654,7 +1654,6 @@ if (err != CUDNN_STATUS_SUCCESS) {
         grad = gpu_contiguous(grad)
 
         out = self(img, ws, stride, pad)
-        print out.mode + "grad"
 
         g_out = GpuDnnPoolGrad(mode=self.mode)(img, out, grad, ws, stride, pad)
 
@@ -1692,11 +1691,10 @@ class GpuDnnPoolGrad(DnnBase):
         padY is the size of the top and bottom borders.
     """
 
-    __props__ = ()
+    __props__ = ('mode',)
     
     def __init__(self, mode='max'):
-        #super(GpuDnnPoolGrad, self).__init__()
-        COp.__init__(self, "dnn_base.c")
+        super(GpuDnnPoolGrad, self).__init__()
         if mode == 'average':
             mode = 'average_inc_pad'
         assert mode in ('max', 'average_inc_pad', 'average_exc_pad')

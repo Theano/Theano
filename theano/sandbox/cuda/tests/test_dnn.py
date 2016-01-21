@@ -283,31 +283,13 @@ def test_pooling2():
                                             #atol=numpy.finfo(numpy.float32).eps)
                         
         
-       
-    data = numpy.random.normal(0, 1, (10, 3, 47, 47)).astype("float32") * 10
-    ws = 2
-    stride = 1
-    pad = (0, 0)
-    mode = 'max'
+    data = numpy.random.normal(0, 1, (10, 3, 7, 7)).astype("float32") * 10
+    mode = 'average_inc_pad'
     
     ws = theano.shared(numpy.array([2, 2]))
     stride = theano.shared(numpy.array([1, 1])) 
     pad = theano.shared(numpy.array([0, 0]))
     
-    ## This test the CPU grad + opt + GPU implemtentation
-    #def fn(x):
-        #return max_pool_2d(x, (ws, ws), ignore_border=True,
-                            #padding=pad, mode=mode)
-    #theano.tests.unittest_tools.verify_grad(fn, [data],
-                                            #cast_to_output_type=False,
-                                            #mode=mode_with_gpu)
-    ## Confirm that the opt would have inserted it.
-    #fg = theano.function([x], theano.grad(fn(x).sum(), x),
-                            #mode=mode_with_gpu)
-    #assert any([isinstance(node.op, cuda.dnn.GpuDnnPoolGrad)
-                #for node in fg.maker.fgraph.toposort()])
-
-
     # Test the GPU grad + GPU implementation
     def fn(x):
         dnn_op = cuda.dnn.dnn_pool(x, ws, stride=stride, pad=pad, mode=mode)
@@ -318,27 +300,27 @@ def test_pooling2():
         cast_to_output_type=False,
         mode=mode_with_gpu)
     
-    # Confirm that we get the good op.
-    #fg = theano.function([x], theano.grad(fn(x).sum(), x),
-                            #mode=mode_with_gpu)
-    #assert any([isinstance(node.op, cuda.dnn.GpuDnnPoolGrad)
-                #for node in fg.maker.fgraph.toposort()])
-    #g_out = fg(data)
+    Confirm that we get the good op.
+    fg = theano.function([x], theano.grad(fn(x).sum(), x),
+                            mode=mode_with_gpu)
+    assert any([isinstance(node.op, cuda.dnn.GpuDnnPoolGrad)
+                for node in fg.maker.fgraph.toposort()])
+    g_out = fg(data)
 
-    ## Compare again the CPU result
-    #out = max_pool_2d(x, (ws, ws),
-                        #padding=pad,
-                        #ignore_border=True, mode=mode)
-    #fc = theano.function([x], theano.grad(out.sum(), x),
-                            #mode=mode_without_gpu)
-    #if mode == 'max':
-        #assert any([isinstance(node.op, MaxPoolGrad)
-                    #for node in fc.maker.fgraph.toposort()])
-    #else:
-        #assert any([isinstance(node.op, AveragePoolGrad)
-                    #for node in fc.maker.fgraph.toposort()])
-    #c_out = fc(data)
-    #assert numpy.allclose(c_out, g_out) 
+    # Compare again the CPU result
+    out = max_pool_2d(x, (ws, ws),
+                        padding=pad,
+                        ignore_border=True, mode=mode)
+    fc = theano.function([x], theano.grad(out.sum(), x),
+                            mode=mode_without_gpu)
+    if mode == 'max':
+        assert any([isinstance(node.op, MaxPoolGrad)
+                    for node in fc.maker.fgraph.toposort()])
+    else:
+        assert any([isinstance(node.op, AveragePoolGrad)
+                    for node in fc.maker.fgraph.toposort()])
+    c_out = fc(data)
+    assert numpy.allclose(c_out, g_out) 
         
        
 
@@ -410,7 +392,7 @@ def test_pooling():
                 # Not implemented
                 continue
 
-            # This test the CPU grad + opt + GPU implemtentation
+            ## This test the CPU grad + opt + GPU implemtentation
             def fn(x):
                 return pool_2d(x, (ws, ws), ignore_border=True,
                                padding=pad, mode=mode)
