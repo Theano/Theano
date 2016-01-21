@@ -16,7 +16,7 @@ import pickle
 # reachable from pickle (as in it cannot be defined inline)
 @as_op([dmatrix, dmatrix], dmatrix)
 def mul(a, b):
-    return a*b
+    return a * b
 
 
 class OpDecoratorTests(utt.InferShapeTester):
