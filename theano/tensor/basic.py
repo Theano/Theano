@@ -3541,8 +3541,10 @@ class BatchedDot(Op):
 
         # generate code to allocate output based on runtime input shapes
         z_dims = ["PyArray_DIMS(%s)[0]" % _x]
-        if x_ndim == 3: z_dims.append("PyArray_DIMS(%s)[1]" % _x)
-        if y_ndim == 3: z_dims.append("PyArray_DIMS(%s)[2]" % _y)
+        if x_ndim == 3:
+            z_dims.append("PyArray_DIMS(%s)[1]" % _x)
+        if y_ndim == 3:
+            z_dims.append("PyArray_DIMS(%s)[2]" % _y)
         assert len(z_dims) == z_ndim
 
         z_shape_correct = " && ".join("PyArray_DIMS(%s)[%i] == %s"
