@@ -657,6 +657,35 @@ PyObject * CudaNdarray_As_Buffer(CudaNdarray * self, PyObject *args)
 
     //printf("offset = %d size = %d\n", offset,size);
 
+    //check unified addressing  
+    
+    int device;
+    cudaError_t err =cudaGetDevice (&device);
+
+    if (cudaSuccess != err)
+    {
+        PyErr_Format(PyExc_RuntimeError,
+                         "Can't get the device being used.");
+        return NULL;
+    }
+
+    cudaDeviceProp prop;
+    cudaError_t err2 = cudaGetDeviceProperties(&prop,device);
+    
+    if (cudaSuccess != err2)
+    {
+        PyErr_Format(PyExc_RuntimeError,
+                         "Can't get properties of device %d.", device);
+        return NULL;
+    }
+
+    if (prop.unifiedAddressing != 1)
+    {
+        PyErr_Format(PyExc_RuntimeError,
+                         "Device %d does not share a unified address space with the host.", device);
+        return NULL;
+    }
+    
     return (PyObject *)(PyBuffer_FromReadWriteMemory((void *) (self->devdata + offset), size));
 }
 
