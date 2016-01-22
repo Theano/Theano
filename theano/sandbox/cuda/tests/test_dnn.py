@@ -283,24 +283,9 @@ def test_pooling2():
                                             #atol=numpy.finfo(numpy.float32).eps)
                         
         
-    data = numpy.random.normal(0, 1, (10, 3, 7, 7)).astype("float32") * 10
-    mode = 'average_inc_pad'
+
     
-    ws = theano.shared(numpy.array([2, 2]))
-    stride = theano.shared(numpy.array([1, 1])) 
-    pad = theano.shared(numpy.array([0, 0]))
-    
-    # Test the GPU grad + GPU implementation
-    def fn(x):
-        dnn_op = cuda.dnn.dnn_pool(x, ws, stride=stride, pad=pad, mode=mode)
-        return dnn_op
-    
-    theano.tests.unittest_tools.verify_grad(
-        fn, [data],
-        cast_to_output_type=False,
-        mode=mode_with_gpu)
-    
-    Confirm that we get the good op.
+    #Confirm that we get the good op.
     fg = theano.function([x], theano.grad(fn(x).sum(), x),
                             mode=mode_with_gpu)
     assert any([isinstance(node.op, cuda.dnn.GpuDnnPoolGrad)
@@ -333,10 +318,11 @@ def test_pooling():
         modes = ('max', 'average_inc_pad')
     else:
         modes = ('max', 'average_inc_pad', 'average_exc_pad')
-
+        
     x = T.ftensor4()
     for mode, pad in product(modes,
                              ((0, 0), (1, 0), (1, 0), (2, 3), (3, 2))):
+
         if mode == 'max':
             func = T.max
         else:
@@ -386,16 +372,21 @@ def test_pooling():
                     (1, 1, 3, 3)]:
             data = numpy.random.normal(0, 1, shp).astype("float32") * 10
 
-            ws = 2
-            stride = 2
-            if pad[0] > stride or pad[1] > stride:
+            ws = theano.shared(numpy.array([2, 2]))
+            stride = theano.shared(numpy.array([1, 1]))
+            if pad[0] > 1 or pad[1] > 1:
                 # Not implemented
                 continue
-
+            pad_ = theano.shared(numpy.array(pad))
             ## This test the CPU grad + opt + GPU implemtentation
             def fn(x):
+<<<<<<< HEAD
                 return pool_2d(x, (ws, ws), ignore_border=True,
                                padding=pad, mode=mode)
+=======
+                return max_pool_2d(x, (2, 2), ignore_border=True,
+                                   padding=pad, mode=mode)
+>>>>>>> 479b4cd... up
             theano.tests.unittest_tools.verify_grad(fn, [data],
                                                     cast_to_output_type=False,
                                                     mode=mode_with_gpu)
@@ -409,11 +400,12 @@ def test_pooling():
             # Test the GPU grad + GPU implementation
             def fn(x):
                 dnn_op = cuda.dnn.dnn_pool(
-                    x, ws=(ws, ws),
-                    stride=(stride, stride),
-                    pad=pad,
+                    x, ws=(2, 2),
+                    stride=(1, 1),
+                    pad=pad_,
                     mode=mode)
                 return dnn_op
+            
             theano.tests.unittest_tools.verify_grad(
                 fn, [data],
                 cast_to_output_type=False,
@@ -426,9 +418,16 @@ def test_pooling():
             g_out = fg(data)
 
             # Compare again the CPU result
+<<<<<<< HEAD
             out = pool_2d(x, (ws, ws),
                           padding=pad,
                           ignore_border=True, mode=mode)
+=======
+            out = max_pool_2d(x, (2, 2),
+                              st=(1,1),
+                              padding=(0, 0),
+                              ignore_border=False, mode=mode)
+>>>>>>> 479b4cd... up
             fc = theano.function([x], theano.grad(out.sum(), x),
                                  mode=mode_without_gpu)
             if mode == 'max':
@@ -439,7 +438,23 @@ def test_pooling():
                             for node in fc.maker.fgraph.toposort()])
             c_out = fc(data)
             assert numpy.allclose(c_out, g_out)
-
+            
+    data = numpy.random.normal(0, 1, (10, 3, 7, 7)).astype("float32") * 10
+    mode = 'average_inc_pad'
+    
+    ws = theano.shared(numpy.array([2, 2]))
+    stride = theano.shared(numpy.array([1, 1])) 
+    pad = theano.shared(numpy.array([0, 0]))
+    
+    # Test the GPU grad + GPU implementation
+    def fn(x):
+        dnn_op = cuda.dnn.dnn_pool(x, ws, stride=stride, pad=pad, mode=mode)
+        return dnn_op
+    
+    theano.tests.unittest_tools.verify_grad(
+        fn, [data],
+        cast_to_output_type=False,
+        mode=mode_with_gpu)
 
 def test_pooling3d():
     # CuDNN 3d pooling requires CuDNN v3. Don't test if the CuDNN version is
