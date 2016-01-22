@@ -1937,9 +1937,7 @@ BatchedDotTester = makeTester(
     op=batched_dot,
     expected=(lambda xs, ys:
         numpy.asarray(
-            list(x * y if x.ndim == 0 or y.ndim == 0
-                 else (numpy.dot(x, y) if y.ndim == 1
-                     else numpy.tensordot(x, y, [[x.ndim - 1], [y.ndim - 2]]))
+            list(x * y if x.ndim == 0 or y.ndim == 0 else numpy.dot(x, y)
                  for x, y in zip(xs, ys)),
             dtype=theano.scalar.upcast(xs.dtype, ys.dtype))),
     checks={},
