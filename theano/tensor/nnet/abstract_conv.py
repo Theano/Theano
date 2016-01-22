@@ -3,9 +3,12 @@ Abstract conv interface
 """
 
 import logging
+from six import reraise
+
 import theano
 
 from theano.tensor import as_tensor_variable, patternbroadcast
+from theano.tensor import get_scalar_constant_value, NotScalarConstantError
 from theano.gof import Apply, Op
 
 from six.moves import xrange
@@ -412,7 +415,25 @@ class BaseAbstractConv2d(Op):
                 ' integers'.format(border_mode))
 
         self.imshp = tuple(imshp) if imshp else None
+        for imshp_i in self.imshp:
+            if imshp_i is not None:
+                # Components of imshp should be constant or ints
+                try:
+                    get_scalar_constant_value(imshp_i)
+                except NotScalarConstantError:
+                    _logger.error("imshp should be None or "
+                                  "a tuple of constant int values")
+                    raise
         self.kshp = tuple(kshp) if kshp else None
+        for kshp_i in self.kshp:
+            if kshp_i is not None:
+                # Components of kshp should be constant or ints
+                try:
+                    get_scalar_constant_value(kshp_i)
+                except NotScalarConstantError:
+                    _logger.error("kshp should be None or "
+                                  "a tuple of constant int values")
+                    raise
         self.border_mode = border_mode
         self.filter_flip = filter_flip
 
