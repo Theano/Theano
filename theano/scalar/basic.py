@@ -1671,7 +1671,7 @@ class TrueDiv(BinaryScalarOp):
         # This is different from it not being connected
         # to the output; x/y is still a function of x
         # and y; it's just a step function.
-        if (x / y).type in discrete_types:
+        if all(a.dtype in discrete_types for a in (x, y)):
             return [x.zeros_like(), y.zeros_like()]
 
         first_part = gz / y
