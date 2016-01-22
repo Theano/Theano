@@ -12,7 +12,7 @@ from theano.gof.cmodule import GCC_compiler
 from theano.gof.type import CDataType, Generic
 from theano.compile import optdb
 from theano.compile.ops import shape_i
-from theano.tensor.nnet import SoftmaxGrad
+from theano.tensor.nnet import LogSoftmax, SoftmaxGrad
 from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv2d_gradWeights,
                                               AbstractConv2d_gradInputs,
@@ -1170,8 +1170,9 @@ class GpuDnnSoftmaxBase(DnnBase):
     Parameters
     ----------
     algo
-        'fast' or 'accurate' indicating whether computations should be
-        optimized for speed or accuracy respectively.
+        'fast', 'accurate' or 'log' indicating whether, respectively,
+        computations should be optimized for speed, for accuracy, or if CuDNN
+        should rather compute the log-softmax instead.
     mode
         'instance' or 'channel' indicating whether the softmax should be
         computed per image across 'c01' or per spatial location '01' per
@@ -1219,8 +1220,9 @@ class GpuDnnSoftmax(GpuDnnSoftmaxBase):
     Op for the cuDNN Softmax.
 
     algo
-        'fast' or 'accurate' indicating whether computations should be
-        optimized for speed or accuracy respectively.
+        'fast', 'accurate' or 'log' indicating whether, respectively,
+        computations should be optimized for speed, for accuracy, or if CuDNN
+        should rather compute the log-softmax instead.
     mode
         'instance' or 'channel' indicating whether the softmax should be
         computed per image across 'c01' or per spatial location '01' per
@@ -1253,8 +1255,9 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
     Parameters
     ----------
     algo
-        'fast' or 'accurate' indicating whether computations should be
-        optimized for speed or accuracy respectively.
+        'fast', 'accurate' or 'log' indicating whether, respectively,
+        computations should be optimized for speed, for accuracy, or if CuDNN
+        should rather compute the gradient of the log-softmax instead.
     mode
         'instance' or 'channel' indicating whether the softmax should
         be computed per image across 'c01' or per spatial location '01' per
@@ -1470,6 +1473,25 @@ def local_log_softmax_dnn(node):
         softmax_node = node.inputs[0].owner
         new_softmax = GpuDnnSoftmax('log', softmax_node.op.mode)
         return [new_softmax(softmax_node.inputs[0])]
+
+
+@register_opt('cudnn')
+@op_lifter([LogSoftmax])
+def local_logsoftmax_to_dnn(node, ctx_name):
+    if not dnn_available(ctx_name) or version() < 3000:
+        # No log-softmax before cudnn v3
+        return
+
+    # Transform the input in the format expected by GpuDnnSoftmax
+    inp = node.inputs[0]
+    if inp.ndim != 2:
+        return
+    inp = inp.dimshuffle(0, 1, 'x', 'x')
+    inp.tag.context_name = ctx_name
+
+    # Apply GpuDnnSoftmax and return the result
+    out = GpuDnnSoftmax('log', 'channel')(gpu_contiguous(inp))
+    return [out.dimshuffle(0, 1)]
 
 
 class NoCuDNNRaise(Optimizer):
