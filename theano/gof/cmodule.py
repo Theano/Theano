@@ -2142,6 +2142,10 @@ class GCC_compiler(Compiler):
         libs = std_libs() + libs
         lib_dirs = std_lib_dirs() + lib_dirs
 
+        additional_libraries = theano.config.gcc.libraries.split(' ')
+        if not additional_libraries == ['']:
+             libs += additional_libraries
+
         cppfilename = os.path.join(location, 'mod.cpp')
         with open(cppfilename, 'w') as cppfile:
 
