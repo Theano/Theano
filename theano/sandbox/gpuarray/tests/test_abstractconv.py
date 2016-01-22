@@ -9,7 +9,13 @@ from theano.tests import unittest_tools as utt
 import theano.tensor.nnet.abstract_conv as conv
 from theano.compile import shared as cpu_shared
 from ..type import gpuarray_shared_constructor as gpu_shared
-from ..dnn import dnn_available, dnn_conv, dnn_gradweight, dnn_gradinput
+from ..dnn import (
+    dnn_available, dnn_conv, dnn_gradweight, dnn_gradinput,
+    GpuDnnConv, GpuDnnConvGradW, GpuDnnConvGradI)
+from theano.tensor.nnet.corr import (
+    CorrMM, CorrMM_gradWeights, CorrMM_gradInputs)
+from theano.tensor.nnet.conv import ConvOp
+from theano.tensor.nnet import ConvGrad3D, ConvTransp3D
 
 from .config import mode_with_gpu, mode_without_gpu, test_ctx_name
 
@@ -44,7 +50,7 @@ class TestConv2d(unittest.TestCase):
     def run_fwd(self, inputs_shape, filters_shape, ref=dnn_conv,
                 subsample=(1, 1), verify_grad=True, mode=mode_without_gpu,
                 border_mode='valid', filter_flip=True, device='cpu',
-                provide_shape=False):
+                provide_shape=False, target_op=None):
 
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         filters_val = numpy.random.random(filters_shape).astype('float32')
@@ -77,6 +83,11 @@ class TestConv2d(unittest.TestCase):
                         filter_shape=kshp)
         f_ref = theano.function([], c_ref, mode=mode)
         f = theano.function([], c, mode)
+
+        if target_op is not None:
+            assert any([isinstance(n.op, target_op) for n
+                        in f.maker.fgraph.toposort()])
+
         res_ref = numpy.array(f_ref())
         res = numpy.array(f())
         utt.assert_allclose(res_ref, res)
@@ -89,7 +100,7 @@ class TestConv2d(unittest.TestCase):
     def run_gradweight(self, inputs_shape, filters_shape, output_shape,
                        ref=dnn_gradweight, subsample=(1, 1), filter_flip=True,
                        verify_grad=True, mode=mode_without_gpu, border_mode='valid',
-                       device='cpu', provide_shape=False):
+                       device='cpu', provide_shape=False, target_op=None):
 
         inputs_val = numpy.random.random(inputs_shape).astype('float32')
         output_val = numpy.random.random(output_shape).astype('float32')
@@ -121,6 +132,11 @@ class TestConv2d(unittest.TestCase):
                     conv_mode=conv_mode)
         f = theano.function([], c, mode)
         f_ref = theano.function([], c_ref, mode)
+
+        if target_op is not None:
+            assert any([isinstance(n.op, target_op) for n
+                        in f.maker.fgraph.toposort()])
+
         res_ref = numpy.array(f_ref())
         res = numpy.array(f())
         utt.assert_allclose(res_ref, res)
@@ -135,7 +151,8 @@ class TestConv2d(unittest.TestCase):
 
     def run_gradinput(self, inputs_shape, filters_shape, output_shape, ref=dnn_gradinput,
                       subsample=(1, 1), filter_flip=True, verify_grad=True, mode=mode_without_gpu,
-                      border_mode='valid', device='cpu', provide_shape=False):
+                      border_mode='valid', device='cpu', provide_shape=False,
+                      target_op=None):
 
         output_val = numpy.random.random(output_shape).astype('float32')
         filters_val = numpy.random.random(filters_shape).astype('float32')
@@ -165,6 +182,11 @@ class TestConv2d(unittest.TestCase):
                     conv_mode=conv_mode)
         f = theano.function([], c, mode)
         f_ref = theano.function([], c_ref, mode)
+
+        if target_op is not None:
+            assert any([isinstance(n.op, target_op) for n
+                        in f.maker.fgraph.toposort()])
+
         res_ref = numpy.array(f_ref())
         res = numpy.array(f())
         utt.assert_allclose(res_ref, res)
@@ -192,17 +214,17 @@ class TestConv2d(unittest.TestCase):
             self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
                          verify_grad=True, mode=mode, device='gpu',
                          provide_shape=provide_shape, border_mode=b,
-                         filter_flip=flip)
+                         filter_flip=flip, target_op=GpuDnnConv)
             self.run_gradweight(inputs_shape=i, filters_shape=f,
                                 output_shape=o, subsample=s,
                                 verify_grad=True, mode=mode, device='gpu',
                                 provide_shape=provide_shape, border_mode=b,
-                                filter_flip=flip)
+                                filter_flip=flip, target_op=GpuDnnConvGradW)
             self.run_gradinput(inputs_shape=i, filters_shape=f,
                                output_shape=o, subsample=s,
                                verify_grad=True, mode=mode, device='gpu',
                                provide_shape=provide_shape, border_mode=b,
-                               filter_flip=flip)
+                               filter_flip=flip, target_op=GpuDnnConvGradI)
 
     def test_cormm_conv(self):
         if not dnn_available(test_ctx_name):
@@ -220,17 +242,17 @@ class TestConv2d(unittest.TestCase):
             self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
                          verify_grad=True, mode=mode, device='cpu',
                          provide_shape=provide_shape, border_mode=b,
-                         filter_flip=flip)
+                         filter_flip=flip, target_op=CorrMM)
             self.run_gradweight(inputs_shape=i, filters_shape=f,
                                 output_shape=o, subsample=s,
                                 verify_grad=True, mode=mode, device='cpu',
                                 provide_shape=provide_shape, border_mode=b,
-                                filter_flip=flip)
+                                filter_flip=flip, target_op=CorrMM_gradWeights)
             self.run_gradinput(inputs_shape=i, filters_shape=f,
                                output_shape=o, subsample=s,
                                verify_grad=True, mode=mode, device='cpu',
                                provide_shape=provide_shape, border_mode=b,
-                               filter_flip=flip)
+                               filter_flip=flip, target_op=CorrMM_gradInputs)
 
     def test_cpu_conv(self):
         if not dnn_available(test_ctx_name):
@@ -271,7 +293,7 @@ class TestConv2d(unittest.TestCase):
                 self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
                              verify_grad=True, mode=mode, device='cpu',
                              provide_shape=provide_shape, border_mode=b,
-                             filter_flip=flip)
+                             filter_flip=flip, target_op=ConvOp)
             else:
                 self.assertRaises(NotImplementedError,
                                   self.run_fwd,
@@ -290,7 +312,8 @@ class TestConv2d(unittest.TestCase):
                                     output_shape=o, subsample=s,
                                     verify_grad=False, mode=mode, device='cpu',
                                     provide_shape=provide_shape, border_mode=b,
-                                    filter_flip=flip)
+                                    filter_flip=flip,
+                                    target_op=(ConvOp, ConvGrad3D))
             else:
                 self.assertRaises(NotImplementedError,
                                   self.run_gradweight,
@@ -310,7 +333,8 @@ class TestConv2d(unittest.TestCase):
                                    output_shape=o, subsample=s,
                                    verify_grad=False, mode=mode, device='cpu',
                                    provide_shape=provide_shape, border_mode=b,
-                                   filter_flip=flip)
+                                   filter_flip=flip,
+                                   target_op=(ConvOp, ConvTransp3D))
             else:
                 self.assertRaises(NotImplementedError,
                                   self.run_gradinput,
