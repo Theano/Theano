@@ -2498,7 +2498,8 @@ class BatchedDot(Op):
         """ % locals()
 
     def c_code_cache_version(self):
-        return None
+        from theano.tensor.blas_headers import blas_header_version
+        return (1, blas_header_version())
 
     def grad(self, inp, grads):
         x, y = inp
