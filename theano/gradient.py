@@ -1702,10 +1702,6 @@ def verify_grad(fun, pt, n_tests=2, rng=None, eps=None,
                 analytic_grad, abs_tol, rel_tol)
 
             if max_abs_err > abs_tol and max_rel_err > rel_tol:
-                print(pt)
-                print(cost_fn(*pt))
-                print(analytic_grad)
-                print(num_grad.gf)
                 raise verify_grad.E_grad(max_arg, max_err_pos,
                                          max_abs_err, max_rel_err,
                                          abs_tol, rel_tol)
