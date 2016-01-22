@@ -11,12 +11,12 @@ arrays efficiently. Theano features:
 * **efficient symbolic differentiation** -- Theano does your derivatives for function with one or many inputs.
 * **speed and stability optimizations** -- Get the right answer for ``log(1+x)`` even when ``x`` is really tiny.
 * **dynamic C code generation** -- Evaluate expressions faster.
-* **extensive unit-testing and self-verification** -- Detect and diagnose many types of mistake.
+* **extensive unit-testing and self-verification** -- Detect and diagnose many types of errors.
 
 Theano has been powering large-scale computationally intensive
 scientific investigations since 2007.  But it is also approachable
-enough to be used in the classroom (IFT6266 at the University of
-Montreal).
+enough to be used in the classroom (University of Montreal's `deep
+learning/machine learning <http://www.mila.umontreal.ca/Home/courses>`_ classes).
 
 News
 ====
