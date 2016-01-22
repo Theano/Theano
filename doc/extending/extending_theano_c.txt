@@ -410,6 +410,36 @@ commonly used.
         this function should return a tuple of integers as previously
         described.
 
+Important restrictions when implementing an Op
+==============================================
+
+There are some important restrictions to remember when implementing an Op.
+Unless your Op correctly defines a ``view_map`` attribute, the ``perform`` and ``c_code`` must not
+produce outputs whose memory is aliased to any input (technically, if changing the
+output could change the input object in some sense, they are aliased).
+Unless your Op correctly defines a ``destroy_map`` attribute, ``perform`` and ``c_code`` must
+not modify any of the inputs.
+
+TODO: EXPLAIN DESTROYMAP and VIEWMAP BETTER AND GIVE EXAMPLE.
+
+When developing an Op, you should run computations in DebugMode, by using
+argument ``mode='DebugMode'`` to ``theano.function``. DebugMode is
+slow, but it can catch many common violations of the Op contract.
+
+TODO: Like what? How? Talk about Python vs. C too.
+
+DebugMode is no silver bullet though.
+For example, if you modify an Op ``self.*`` during any of
+``make_node``, ``perform``, or ``c_code``, you are probably doing something
+wrong but DebugMode will not detect this.
+
+TODO: jpt: I don't understand the following sentence.
+
+Ops and Types should usually be considered immutable -- you should
+definitely not make a change that would have an impact on ``__eq__``,
+``__hash__``, or the mathematical value that would be computed by  ``perform``
+or ``c_code``.
+
 
 Simple C Op example
 ===================
@@ -525,6 +555,11 @@ storage with the right shape and number of dimensions.
 
             return c_code % locals()
 
+
+The ``c_code`` method accepts variable names as arguments (``name``, ``inp``,
+``out``, ``sub``) and returns a C code fragment that computes the expression 
+output. In case of error, the ``%(fail)s`` statement cleans up and returns 
+properly.
 
 More complex C Op example
 =========================
