@@ -3420,9 +3420,9 @@ class BatchedDot(Op):
 
         shape = self.infer_shape(node, [i.shape for i in inp])[0]
         dtype = node.outputs[0].dtype
-        z[0] = numpy.empty(shape, dtype=dtype)
-        for i in xrange(z[0].shape[0]):
-            z[0][i] = numpy.dot(x[i], y[i])
+        z0 = z[0] = numpy.empty(shape, dtype=dtype)
+        for i in xrange(z0.shape[0]):
+            z0[i] = numpy.dot(x[i], y[i])
 
     def c_support_code(self):
         from theano.tensor.blas_headers import blas_header_text
