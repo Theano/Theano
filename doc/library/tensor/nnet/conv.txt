@@ -31,11 +31,15 @@
     that will be replaced by an actual convolution implementation during
     the optimization phase.
 
+    Since the abstract Op does not have any implementation, it will prevent
+    computations in the un-optimized graph, and cause problems with DebugMode,
+    test values, and when compiling with optimizer=None.
+
     By default, if :ref:`cuDNN <libdoc_cuda_dnn>`
     is available, we will use it, otherwise we will fall back to using the
     gemm version (slower then cuDNN in most cases and uses more memory).
 
-    Both cuDNN and the gemm version can be disabled using the Theano flags
+    Either cuDNN and the gemm version can be disabled using the Theano flags
     ``optimizer_excluding=conv_dnn`` and ``optimizer_excluding=conv_gemm``,
     respectively. In this case, we will fall back to using the legacy
     convolution code, which is slower, but does not require extra memory.

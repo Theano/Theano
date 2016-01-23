@@ -124,22 +124,24 @@ class BaseAbstractConv2d(Op):
     Define an abstract convolution op that will be replaced with the
     appropriate implementation
 
-    :type imshp: None, tuple/list of len 4 of int or Constant variable
-    :param imshp: The shape of the input parameter.
+    Parameters
+    ----------
+     imshp: None, tuple/list of len 4 of int or Constant variable
+        The shape of the input parameter.
         Optional, possibly used to choose an optimal implementation.
         You can give ``None`` for any element of the list to specify that this
         element is not known at compile time.
         imshp is defined w.r.t the forward conv.
 
-    :type kshp: None, tuple/list of len 4 of int or Constant variable
-    :param kshp: The shape of the filters parameter.
+     kshp: None, tuple/list of len 4 of int or Constant variable
+        The shape of the filters parameter.
         Optional, possibly used to choose an optimal implementation.
         You can give ``None`` for any element of the list to specify that this
         element is not known at compile time.
         kshp is defined w.r.t the forward conv.
 
-    :type border_mode: str, int or tuple of two int
-    :param border_mode: Either of the following:
+     border_mode: str, int or tuple of two int
+        Either of the following:
 
         ``'valid'``: apply filter wherever it completely overlaps with the
             input. Generates output of shape: input shape - filter shape + 1
@@ -154,12 +156,12 @@ class BaseAbstractConv2d(Op):
         ``(int1, int2)``: pad input with a symmetric border of ``int1`` rows
             and ``int2`` columns, then perform a valid convolution.
 
-    :type subsample: tuple of len 2
-    :param subsample: factor by which to subsample the output.
+    subsample: tuple of len 2
+        Factor by which to subsample the output.
         Also called strides elsewhere.
 
-    :type filter_flip: bool
-    :param filter_flip: If ``True``, will flip the filter rows and columns
+    filter_flip: bool
+        If ``True``, will flip the filter rows and columns
         before sliding them over the input. This operation is normally referred
         to as a convolution, and this is the default. If ``False``, the filters
         are not flipped and the operation is referred to as a
