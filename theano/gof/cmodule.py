@@ -1,4 +1,4 @@
-"""
+rator"""
 Generate and compile C modules for Python.
 
 """
@@ -1649,9 +1649,9 @@ def std_lib_dirs_and_libs():
     elif sys.platform == 'darwin':
         std_lib_dirs_and_libs.data = [], []
     else:
-        # assume Linux 
+        # assume Linux
         # Typical include directory: /usr/include/python2.6
-        
+
         # get the name of the python library (shared object)
         libname = distutils.sysconfig.get_config_var("LDLIBRARY")
 
@@ -1661,10 +1661,10 @@ def std_lib_dirs_and_libs():
         # remove extension if present
         if libname.endswith(".so"):
             libname = libname[:-3]
-    
+
         libdir = distutils.sysconfig.get_config_var("LIBDIR")
 
-        std_lib_dirs_and_libs.data = [ libname ], [ libdir ]
+        std_lib_dirs_and_libs.data = [libname], [libdir]
 
     # sometimes, the linker cannot find -lpython so we need to tell it
     # explicitly where it is located this returns
