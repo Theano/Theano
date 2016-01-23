@@ -5,6 +5,13 @@
 Easy Installation of an Optimized Theano on Current Ubuntu
 ==========================================================
 
+For NVIDIA Jetson TX1 embedded platform:
+
+.. code-block:: bash
+
+    sudo apt-get install python-numpy python-scipy python-dev python-pip python-nose g++ libblas-dev git
+    pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git --user  # Need Theano 0.8(not yet released) or more recent
+
 For Ubuntu 11.10 through 14.04:
 
 .. code-block:: bash
