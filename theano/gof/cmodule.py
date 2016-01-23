@@ -1,4 +1,4 @@
-rator"""
+"""
 Generate and compile C modules for Python.
 
 """
