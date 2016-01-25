@@ -198,6 +198,9 @@ class DeepCopyOp(gof.Op):
         # Else, no C code
         return super(DeepCopyOp, self).c_code(node, name, inames, onames, sub)
 
+    def infer_shape(self, node, input_shapes):
+        return input_shapes
+
 
 deep_copy_op = DeepCopyOp()
 

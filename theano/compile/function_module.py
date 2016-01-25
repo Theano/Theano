@@ -137,7 +137,7 @@ class Supervisor:
             return True
         for r in self.protected + list(fgraph.outputs):
             if fgraph.destroyers(r):
-                raise gof.InconsistencyError("Trying to destroy a protected"
+                raise gof.InconsistencyError("Trying to destroy a protected "
                                              "Variable.", r)
 
 
@@ -1045,7 +1045,7 @@ def insert_deepcopy(fgraph, wrapped_inputs, wrapped_outputs):
     # memory contract
 
     # We don't insert deep copy when the output.borrow is True for all
-    # conserned outputs.
+    # concerned outputs.
 
     assert len(wrapped_inputs) == len(fgraph.inputs)
     assert len(wrapped_outputs) == len(fgraph.outputs)

@@ -62,7 +62,24 @@ import copy
 
 
 def get_version():
-    return 0.293
+    return 0.294
+
+
+@cython.boundscheck(False)
+def _same_data_and_repr(a, b):
+    if hasattr(a, "gpudata") and hasattr(b, "gpudata"):
+        if a.gpudata != b.gpudata: return False
+    else:
+        if a.__array_interface__["data"] != b.__array_interface__["data"]: return False
+    if a.shape != b.shape: return False
+    if a.strides != b.strides: return False
+    return True
+
+@cython.boundscheck(False)
+def _assign_if_needed(a, unsigned int idx, b):
+    if _same_data_and_repr(a[idx], b): return
+    a[idx] = b
+
 
 @cython.boundscheck(False)
 def perform(
@@ -461,14 +478,14 @@ def perform(
                     # recover the value as usual. Otherwise, the input was
                     # modified inplace and nothing needs to be done.
                     if not same_data:
-                        outs[j][0][<unsigned int>(k + pos[j])] = \
-                            input_storage[<unsigned int>(n_seqs + inp_idx)].storage[0]
+                        _assign_if_needed(outs[j][0], <unsigned int>(k + pos[j]),
+                                          input_storage[<unsigned int>(n_seqs + inp_idx)].storage[0])
 
                 else:
                     # This output tap has not been preallocated, recover
                     # its value as usual
-                    outs[j][0][<unsigned int>(k + pos[j])] = \
-                            output_storage[<unsigned int>offset_out].storage[0]
+                    _assign_if_needed(outs[j][0], <unsigned int>(k + pos[j]),
+                                      output_storage[<unsigned int>offset_out].storage[0])
                     offset_out += 1
 
                 mitmot_out_idx += 1
@@ -484,7 +501,8 @@ def perform(
 
             # Copy the output value to `outs`, if necessary
             if store_steps[j] == 1 or vector_outs[j] == 1:
-                outs[j][0][pos[j]] = output_storage[<unsigned int>(offset_out+j)].storage[0]
+                _assign_if_needed(outs[j][0], pos[j],
+                                  output_storage[<unsigned int>(offset_out+j)].storage[0])
             else:
                 # Check whether the initialization of the output storage map
                 # for this output has been reused.
@@ -502,8 +520,8 @@ def perform(
                     output_reused = False
 
                 if not output_reused:
-                    outs[j][0][pos[j]] = \
-                        output_storage[<unsigned int>(offset_out+j)].storage[0]
+                    _assign_if_needed(outs[j][0], pos[j],
+                                      output_storage[<unsigned int>(offset_out+j)].storage[0])
 
 
         # 5.5 Copy over the values for nit_sot outputs
@@ -524,9 +542,10 @@ def perform(
                     outs[j][0] = node.outputs[j].type.value_zeros(shape)
                 elif outs[j][0].shape[0] != store_steps[j]:
                     outs[j][0] = outs[j][0][:store_steps[j]]
-                outs[j][0][pos[j]] = output_storage[jout].storage[0]
+                _assign_if_needed(outs[j][0], pos[j], output_storage[jout].storage[0])
             elif store_steps[j] == 1 or vector_outs[j] == 1:
-                outs[j][0][pos[j]] = output_storage[j+offset_out].storage[0]
+                _assign_if_needed(outs[j][0], pos[j],
+                                  output_storage[j+offset_out].storage[0])
             else:
                 # Check whether the initialization of the output storage map
                 # for this output has been reused.
@@ -544,7 +563,8 @@ def perform(
                     output_reused = False
 
                 if not output_reused:
-                    outs[j][0][pos[j]] = output_storage[j+offset_out].storage[0]
+                    _assign_if_needed(outs[j][0], pos[j],
+                                      output_storage[j+offset_out].storage[0])
 
         # 5.6 Copy over the values for outputs corresponding to shared
         # variables

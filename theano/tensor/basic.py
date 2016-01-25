@@ -626,9 +626,7 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                 v = v.owner.inputs[0]
                 continue
             elif isinstance(v.owner.op, theano.compile.ops.Shape_i):
-                if isinstance(v.owner.inputs[0], Constant):
-                    return numpy.asarray(
-                        v.owner.inputs[0].data.shape[v.owner.op.i])
+                return get_scalar_constant_shape(v.owner.inputs[0], v.owner.op.i)
             # Don't act as the constant_folding optimization here as this
             # fct is used too early in the optimization phase.  This would
             # mess with the stabilization optimization and be too slow.
@@ -750,31 +748,81 @@ def get_scalar_constant_value(orig_v, elemwise=True,
                     if isinstance(idx, gof.Type):
                         idx = get_scalar_constant_value(owner.inputs[1])
                     grandparent = leftmost_parent.owner.inputs[0]
-                    gp_broadcastable = grandparent.type.broadcastable
-                    ndim = grandparent.type.ndim
-                    if grandparent.owner and isinstance(grandparent.owner.op,
-                                                        Rebroadcast):
-                        ggp_broadcastable = grandparent.owner.inputs[0].broadcastable
-                        l = [b1 or b2 for b1, b2 in zip(ggp_broadcastable,
-                                                        gp_broadcastable)]
-                        gp_broadcastable = tuple(l)
-
-                    assert ndim == len(gp_broadcastable)
-
-                    if not (idx < len(gp_broadcastable)):
-                        msg = ("get_scalar_constant_value detected " +
-                               "deterministic IndexError: x.shape[%d] " +
-                               "when x.ndim=%d.") % (idx, ndim)
-                        if config.exception_verbosity == 'high':
-                            msg += ' x=%s' % min_informative_str(v)
-                        else:
-                            msg += ' x=%s' % str(v)
-                        raise ValueError(msg)
-
-                    if gp_broadcastable[idx]:
-                        return numpy.asarray(1)
+                    return get_scalar_constant_shape(grandparent, idx)
 
         raise NotScalarConstantError(v)
+
+
+def get_scalar_constant_shape(v, idx):
+    """Return the constant scalar(0-D) `v.shape[shape_idx]`.
+
+    If `v` is the output of dimshuffles, fills, allocs, rebroadcasts,
+    cast, OutputGuard, DeepCopyOp, ScalarFromTensor, ScalarOp, Elemwise
+    and some pattern with Subtensor, this function digs through them.
+
+    If the shape is not constant, then raise a NotScalarConstantError.
+    """
+    if isinstance(idx, int):
+        pass  # good
+    elif isinstance(idx, numpy.ndarray):
+        assert idx == int(idx)
+        idx = int(idx)
+    else:
+        idx = get_scalar_constant_value(idx)
+        assert idx == int(idx)
+        idx = int(idx)
+    if isinstance(v, Constant):
+        return numpy.asarray(v.data.shape[idx])
+
+    ndim = v.type.ndim
+    if idx >= ndim:
+        msg = ("get_scalar_constant_shape detected " +
+               "deterministic IndexError: x.shape[%d] " +
+               "when x.ndim=%d.") % (idx, ndim)
+        if config.exception_verbosity == 'high':
+            msg += ' x=%s' % min_informative_str(v)
+        else:
+            msg += ' x=%s' % str(v)
+        raise ValueError(msg)
+    idx %= ndim  # if idx is negative
+
+    # First, simple check: If the dim is a broadcast dim, we have shape 1.
+    if hasattr(v.type, "broadcastable"):
+        v_broadcastable = v.type.broadcastable
+        assert ndim == len(v_broadcastable)
+        if v_broadcastable[idx]:
+            return numpy.asarray(1)
+
+    if not v.owner:  # all further checks expect that
+        raise NotScalarConstantError(v)
+
+    if isinstance(v.owner.op, Rebroadcast):  # simple fall-through
+        return get_scalar_constant_shape(v.owner.inputs[0], idx)
+
+    if isinstance(v.owner.op, theano.tensor.IncSubtensor):  # simple fall-through
+        return get_scalar_constant_shape(v.owner.inputs[0], idx)
+
+    if isinstance(v.owner.op, Alloc):
+        assert 1 + idx < len(v.owner.inputs)  # should have been caught above
+        return get_scalar_constant_value(v.owner.inputs[1 + idx])
+
+    if isinstance(v.owner.op, AllocEmpty):
+        assert idx < len(v.owner.inputs)  # should have been caught above
+        return get_scalar_constant_value(v.owner.inputs[idx])
+
+    # Try generic solution via infer_shape.
+    if hasattr(v.owner.op, "infer_shape") and numpy.all([hasattr(x, "ndim") for x in v.owner.inputs]):
+        assert v.owner.outputs[v.index] is v
+        v_input_shapes = [tuple([int(get_scalar_constant_shape(x, i)) for i in range(x.ndim)])
+                          for x in v.owner.inputs]
+        v_output_shapes = v.owner.op.infer_shape(v.owner, v_input_shapes)
+        output_shape = v_output_shapes[v.index]
+        assert isinstance(output_shape, (list, tuple))
+        assert len(output_shape) == ndim
+        # only_process_constants=True to avoid infinite loops in some cases.
+        return get_scalar_constant_value(output_shape[idx], only_process_constants=True)
+
+    raise NotScalarConstantError(v)
 
 
 # Easy constructors

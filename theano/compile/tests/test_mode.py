@@ -19,7 +19,7 @@ def test_no_output_from_implace():
 
     # Ensure that the elemwise op that produces the output is not inplace when
     # using a mode that includes the optimization
-    opt = AddFeatureOptimizer(NoOutputFromInplace())
+    opt = AddFeatureOptimizer(NoOutputFromInplace([0]))
     mode_opt = Mode(linker="cvm", optimizer="fast_run").register((opt, 49.9))
 
     fct_opt = theano.function([x, y], b, mode=mode_opt)
