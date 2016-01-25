@@ -3408,8 +3408,7 @@ def batched_dot(a, b):
             a, b, [[a.ndim - 1], [numpy.maximum(1, b.ndim - 2)]])
     else:
         # avoid circular import
-        from blas import BatchedDot
-        return BatchedDot()(a, b)
+        return theano.tensor.blas.BatchedDot()(a, b)
 
 
 def batched_tensordot(x, y, axes=2):
