@@ -18,8 +18,6 @@ The strategy is to
 - introduce a new kind of ``Variable`` (``SharedVariable``) that has a container
   associated with it, and can allow multiple functions to share a value.
 
-- introduce a class called ``Param`` to serve a role similar to that of ``In``,
-
 - introduce a friendlier version of function (tentative name ``pfunc``),
 
 The following code gives a very quick idea of what is being proposed:
@@ -30,7 +28,7 @@ The following code gives a very quick idea of what is being proposed:
     b = shared(1) #NEW: create a shared variable
 
     f1 = pfunc([a], a+b)
-    f2 = pfunc([Param(a, default=44)], a + b, updates={b: b + 1})
+    f2 = pfunc([In(a, value=44)], a + b, updates={b: b + 1})
 
     b.value # -> 1
 
@@ -140,10 +138,10 @@ prone to easy mistakes (e.g. accidentally overwriting the content of a shared
 variable).
 
 
-Param and pfunc
-===============
+pfunc
+=====
 
-The examples above give the general flavour of what pfunc and Param are for.
+The examples above give the general flavour of what pfunc is for.
 Their signatures are below.
 Corner cases and exotic examples can be found in the tests.
 
@@ -152,7 +150,7 @@ Corner cases and exotic examples can be found in the tests.
     def pfunc(params, outputs, mode=None, givens=None, updates=None)
         """Function-constructor for graphs with shared variables.
 
-        :type params: list of either Variable or Param instances.
+        :type params: list of either Variable or In instances.
         :param params: function parameters, these are not allowed to be shared
         variables
 
@@ -171,27 +169,6 @@ Corner cases and exotic examples can be found in the tests.
         """
         ...
 
-.. code-block:: python
-
-    class Param(object):
-        def __init__(self, variable, default=None, mutable=False, strict=False):
-            """
-            :param variable: A node in an expression graph to set with each function call.
-
-            :param default: The default value to use at call-time (can also be a Container where
-            the function will find a value at call-time.)
-
-            :param name: A string to identify this parameter from function kwargs.
-
-            :param mutable: True -> function is allowed to modify this argument.
-
-            :param strict: False -> function arguments may be copied or cast to match the
-            type required by the parameter `variable`.  True -> function arguments must exactly match the type
-            required by `variable`.
-
-            :param implicit: see help(theano.io.In)
-
-            """
 
 Note that if some update value is not a variable, it will be cast into
 a ``SharedVariable`` using the ``shared`` function. This ensures it is
