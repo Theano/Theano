@@ -93,11 +93,13 @@ class TestConv2d(unittest.TestCase):
             assert any([isinstance(n.op, target_op) for n
                         in f.maker.fgraph.toposort()])
 
+        self.assertTrue(hasattr(f.maker.fgraph.outputs[0].tag, 'trace'))
         res_ref = numpy.array(f_ref())
         res = numpy.array(f())
         utt.assert_allclose(res_ref, res)
         if verify_grad:
-            utt.verify_grad(conv.AbstractConv2d(border_mode="valid", imshp=imshp, kshp=kshp,
+            utt.verify_grad(conv.AbstractConv2d(border_mode="valid",
+                                                imshp=imshp, kshp=kshp,
                                                 subsample=subsample),
                             [inputs_val, filters_val],
                             mode=mode)
@@ -136,6 +138,7 @@ class TestConv2d(unittest.TestCase):
                     subsample=subsample,
                     conv_mode=conv_mode)
         f = theano.function([], c, mode)
+        self.assertTrue(hasattr(f.maker.fgraph.outputs[0].tag, 'trace'))
         f_ref = theano.function([], c_ref, mode)
 
         if target_op is not None:
@@ -186,6 +189,7 @@ class TestConv2d(unittest.TestCase):
                     border_mode=border_mode, subsample=subsample,
                     conv_mode=conv_mode)
         f = theano.function([], c, mode)
+        self.assertTrue(hasattr(f.maker.fgraph.outputs[0].tag, 'trace'))
         f_ref = theano.function([], c_ref, mode)
 
         if target_op is not None:

@@ -36,4 +36,4 @@ distribute-*.tar.gz
 Theano.suo
 .ipynb_checkpoints
 .pydevproject
-
+.ropeproject
