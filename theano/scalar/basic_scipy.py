@@ -406,10 +406,21 @@ class J1(UnaryScalarOp):
         return scipy.special.j1(x)
 
     def impl(self, x):
-        return self.st_impl(x)
+        if imported_scipy_special:
+            return self.st_impl(x)
+        else:
+            super(J1, self).impl(x)
 
     def grad(self, inp, grads):
         raise NotImplementedError()
+
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
+        if node.inputs[0].type in float_types:
+            return """%(z)s =
+                j1(%(x)s);""" % locals()
+        raise NotImplementedError('only floating point is implemented')
 
     def __eq__(self, other):
         return type(self) == type(other)
@@ -429,12 +440,23 @@ class J0(UnaryScalarOp):
         return scipy.special.j0(x)
 
     def impl(self, x):
-        return self.st_impl(x)
+        if imported_scipy_special:
+            return self.st_impl(x)
+        else:
+            super(J0, self).impl(x)
 
     def grad(self, inp, grads):
         x, = inp
         gz, = grads
         return [gz * -1 * j1(x)]
+
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
+        if node.inputs[0].type in float_types:
+            return """%(z)s =
+                j0(%(x)s);""" % locals()
+        raise NotImplementedError('only floating point is implemented')
 
     def __eq__(self, other):
         return type(self) == type(other)
