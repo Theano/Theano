@@ -402,8 +402,11 @@ class J1(UnaryScalarOp):
     """
 
     @staticmethod
-    def impl(x):
+    def st_impl(x):
         return scipy.special.j1(x)
+
+    def impl(self, x):
+        return self.st_impl(x)
 
     def grad(self, inp, grads):
         raise NotImplementedError()
@@ -422,8 +425,11 @@ class J0(UnaryScalarOp):
     """
 
     @staticmethod
-    def impl(x):
+    def st_impl(x):
         return scipy.special.j0(x)
+
+    def impl(self, x):
+        return self.st_impl(x)
 
     def grad(self, inp, grads):
         x, = inp
