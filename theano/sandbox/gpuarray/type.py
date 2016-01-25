@@ -1,4 +1,7 @@
 import numpy
+import six.moves.copyreg as copyreg
+from six import iteritems
+import warnings
 
 import theano
 from theano.tensor.var import _tensor_py_operators
@@ -12,7 +15,7 @@ try:
     from pygpu import gpuarray
     from pygpu.elemwise import compare, elemwise2
 except ImportError:
-    pass
+    pygpu = None
 
 _context_reg = {}
 
@@ -74,7 +77,7 @@ def list_contexts():
 
 # Private method
 def _name_for_ctx(ctx):
-    for k, v in _context_reg:
+    for k, v in iteritems(_context_reg):
         if v == ctx:
             return k
         raise ContextNotDefined('context is not registered')
@@ -751,3 +754,34 @@ Instance of :class:`GpuContextType` to use for the context_type
 declaration of an operation.
 """
 gpu_context_type = GpuContextType()
+
+
+# THIS WORKS But CudaNdarray instances don't compare equal to one
+# another, and what about __hash__ ?  So the unpickled version doesn't
+# equal the pickled version, and the cmodule cache is not happy with
+# the situation.
+def GpuArray_unpickler(npa, ctx_name):
+    if config.experimental.unpickle_gpu_on_cpu:
+        # directly return numpy array
+        warnings.warn(
+            "config.experimental.unpickle_gpu_on_cpu is set to True. "
+            "Unpickling GpuArray as numpy.ndarray")
+        return npa
+    elif pygpu:
+        ctx = get_context(ctx_name)
+        return pygpu.gpuarray.array(npa, copy=True, context=ctx)
+    else:
+        raise ImportError("Cuda not found. Cannot unpickle GpuArray")
+
+copyreg.constructor(GpuArray_unpickler)
+
+
+def GpuArray_pickler(cnda):
+    ctx_name = _name_for_ctx(cnda.context)
+    return (GpuArray_unpickler, (numpy.asarray(cnda), ctx_name))
+
+# In case pygpu is not imported.
+if pygpu is not None:
+    copyreg.pickle(pygpu.gpuarray.GpuArray,
+                   GpuArray_pickler,
+                   GpuArray_unpickler)
