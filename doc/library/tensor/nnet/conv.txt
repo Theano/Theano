@@ -9,7 +9,7 @@
     Two similar implementation exists for conv2d:
 
         :func:`signal.conv2d <theano.tensor.signal.conv.conv2d>` and
-        :func:`nnet.conv2d <theano.tensor.nnet.conv.conv2d>`.
+        :func:`nnet.conv2d <theano.tensor.nnet.conv2d>`.
 
     The former implements a traditional
     2D convolution, while the latter implements the convolutional layers
@@ -24,12 +24,22 @@
 
 .. note::
 
-    As of October 21st, 2014, the default GPU image convolution
-    changed: By default, if :ref:`cuDNN <libdoc_cuda_dnn>`
+    As of December 2015, a new conv2d interface has been introduced.
+    :func:`nnet.conv2d <theano.tensor.nnet.conv2d>` defines an
+    abstract theano graph convolution operation
+    (:func:`nnet.abstract_conv.AbstractConv2d <theano.tensor.nnet.abstract_conv.AbstractConv2d>`)
+    that will be replaced by an actual convolution implementation during
+    the optimization phase.
+
+    Since the abstract Op does not have any implementation, it will prevent
+    computations in the un-optimized graph, and cause problems with DebugMode,
+    test values, and when compiling with optimizer=None.
+
+    By default, if :ref:`cuDNN <libdoc_cuda_dnn>`
     is available, we will use it, otherwise we will fall back to using the
     gemm version (slower then cuDNN in most cases and uses more memory).
 
-    Both cuDNN and the gemm version can be disabled using the Theano flags
+    Either cuDNN and the gemm version can be disabled using the Theano flags
     ``optimizer_excluding=conv_dnn`` and ``optimizer_excluding=conv_gemm``,
     respectively. In this case, we will fall back to using the legacy
     convolution code, which is slower, but does not require extra memory.
@@ -45,28 +55,34 @@
     into Theano, and an implementation by Alex Krizhevsky available via
     Pylearn2. See the documentation below on how to use them.
 
-    As of November 24th, 2014, you can also use a meta-optimizer to
-    automatically choose the fastest implementation for each specific
-    convolution in your graph. For each instance, it will compile and benchmark
-    each applicable implementation of the ones listed below and choose the
-    fastest one. As performance is dependent on input and filter shapes, this
-    only works for operations introduced via nnet.conv2d with fully specified
-    shape information.
-    Enable it via the Theano flag ``optimizer_including=conv_meta``, and
-    optionally set it to verbose mode via the flag `metaopt.verbose=1`.
+    Old conv2d interface is still accessible through :func:`nnet.conv.conv2d <theano.tensor.nnet.conv.conv2d>`.
+
 
 
 TODO: Give examples on how to use these things! They are pretty complicated.
 
+
+
 - Implemented operators for neural network 2D / image convolution:
-    - :func:`nnet.conv2d <theano.tensor.nnet.conv.conv2d>`.
+    - :func:`nnet.conv.conv2d <theano.tensor.nnet.conv.conv2d>`.
+      CPU convolution implementation, previously used as the convolution interface.
       This is the standard operator for convolutional neural networks working
-      with batches of multi-channel 2D images, available for CPU and GPU. It
+      with batches of multi-channel 2D images, available. It
       computes a convolution, i.e., it flips the kernel.
       Most of the more efficient GPU implementations listed below can be
-      inserted automatically as a replacement for nnet.conv2d via graph
+      inserted automatically as a replacement for nnet.conv.conv2d via graph
       optimizations. Some of these graph optimizations are enabled by default,
       others can be enabled via Theano flags.
+      Since November 24th, 2014, you can also use a meta-optimizer to
+      automatically choose the fastest implementation for each specific
+      convolution in your graph using the old interface. For each instance,
+      it will compile and benchmark each applicable implementation of the ones
+      listed below and choose the fastest one.
+      As performance is dependent on input and filter shapes, this
+      only works for operations introduced via nnet.conv.conv2d with fully specified
+      shape information.
+      Enable it via the Theano flag ``optimizer_including=conv_meta``, and
+      optionally set it to verbose mode via the flag `metaopt.verbose=1`.
     - :func:`conv2d_fft <theano.sandbox.cuda.fftconv.conv2d_fft>` This
       is a GPU-only version of nnet.conv2d that uses an FFT transform
       to perform the work.  It flips the kernel just like ``conv2d``.
@@ -82,6 +98,7 @@ TODO: Give examples on how to use these things! They are pretty complicated.
       nnet.conv2d while the optimization flag is active, you can set
       its ``version`` parameter to ``'no_fft'``. To enable it for just
       one Theano function:
+
 
       .. code-block:: python
 
@@ -178,8 +195,12 @@ TODO: Give examples on how to use these things! They are pretty complicated.
       It is faster in some cases than conv3d, and work on the GPU.
       It flip the kernel.
 
-.. autofunction:: theano.tensor.nnet.conv.conv2d
+.. autofunction:: theano.tensor.nnet.conv2d
 .. autofunction:: theano.sandbox.cuda.fftconv.conv2d_fft
 .. autofunction:: theano.tensor.nnet.Conv3D.conv3D
 .. autofunction:: theano.sandbox.cuda.fftconv.conv3d_fft
 .. autofunction:: theano.tensor.nnet.conv3d2d.conv3d
+.. autofunction:: theano.tensor.nnet.conv.conv2d
+
+.. automodule:: theano.tensor.nnet.abstract_conv
+    :members:
