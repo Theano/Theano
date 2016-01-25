@@ -380,7 +380,7 @@ def test_pooling():
             pad_ = theano.shared(numpy.array(pad))
             ## This test the CPU grad + opt + GPU implemtentation
             def fn(x):
-                return pool_2d(x, (ws, ws), ignore_border=True,
+                return pool_2d(x, (2, 2), ignore_border=True,
                                padding=pad, mode=mode)
             theano.tests.unittest_tools.verify_grad(fn, [data],
                                                     cast_to_output_type=False,
@@ -391,13 +391,12 @@ def test_pooling():
             assert any([isinstance(node.op, cuda.dnn.GpuDnnPoolGrad)
                         for node in fg.maker.fgraph.toposort()])
             
-
             # Test the GPU grad + GPU implementation
             def fn(x):
                 dnn_op = cuda.dnn.dnn_pool(
                     x, ws=ws,
                     stride=stride,
-                    pad=pad,
+                    pad=pad_,
                     mode=mode)
                 return dnn_op
             
@@ -413,7 +412,7 @@ def test_pooling():
             g_out = fg(data)
 
             # Compare again the CPU result
-            out = pool_2d(x, (ws, ws),
+            out = pool_2d(x, (2, 2), st=(1, 1),
                           padding=pad,
                           ignore_border=True, mode=mode)
             
