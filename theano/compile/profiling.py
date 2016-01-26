@@ -738,14 +738,16 @@ class ProfileStats(object):
         max_sum_size = 0
 
         # statistics with the old and new order
-        stats_old = [[0, 0, 0], [0, 0, 0], 0, 0]
-        stats_new = [[0, 0, 0], [0, 0, 0], 0, 0]
+        stats = [[[0, 0, 0], [0, 0, 0], 0, 0], # old, with dmap
+                 [[0, 0, 0], [0, 0, 0], 0, 0], # old, without dmap
+                 [[0, 0, 0], [0, 0, 0], 0, 0], # new, with dmap
+                 [[0, 0, 0], [0, 0, 0], 0, 0]] # new, without dmap
 
         # track min peak memory usage
         min_max_peak = 0
         min_peak_time = 0
 
-        def count_running_memory(order, fgraph, nodes_mem):
+        def count_running_memory(order, fgraph, nodes_mem, ignore_dmap=False):
             """
             Calculate memory with specific node order.
 
@@ -795,7 +797,10 @@ class ProfileStats(object):
                 for var in node.outputs:
                     compute_map[var][0] = 1
                 idx = 0
-                dmap = getattr(node.op, 'destroy_map', None)
+                if ignore_dmap:
+                    dmap = None
+                else:
+                    dmap = getattr(node.op, 'destroy_map', None)
                 vmap = getattr(node.op, 'view_map', None)
                 val = nodes_mem[node]
 
@@ -1086,14 +1091,6 @@ class ProfileStats(object):
             # It mean that after executing the node,
             # the corresponding variable can be gc.
 
-            old_running_memory = count_running_memory(order, fgraph, nodes_mem)
-
-            new_order = fgraph.profile.node_executed_order
-            # A list of new executed node order
-
-            new_running_memory = count_running_memory(new_order,
-                                                      fgraph, nodes_mem)
-
             # Store the max of some stats by any function in this profile.
             max_sum_size = max(max_sum_size, sum_size)
             def compute_max_stats(running_memory, stats):
@@ -1126,8 +1123,16 @@ class ProfileStats(object):
                         max_node_memory_saved_by_view,
                         max_node_memory_saved_by_inplace)
 
-            stats_old = compute_max_stats(old_running_memory, stats_old)
-            stats_new = compute_max_stats(new_running_memory, stats_new)
+            new_order = fgraph.profile.node_executed_order
+            # A list of new executed node order
+            for i, (ord, ignore_dmap) in enumerate([(order, False),
+                                                    (order, True),
+                                                    (new_order, False),
+                                                    (new_order, True)]):
+                running_memory =  count_running_memory(
+                    ord, fgraph, nodes_mem, ignore_dmap=ignore_dmap)
+
+                stats[i] = compute_max_stats(running_memory, stats[i])
 
             # Config: whether print min memory peak
             if config.profiling.min_peak_memory:
@@ -1148,11 +1153,11 @@ class ProfileStats(object):
         (max_node_memory_size,
          max_running_max_memory_size,
          max_node_memory_saved_by_view,
-         max_node_memory_saved_by_inplace) = stats_old
+         max_node_memory_saved_by_inplace) = stats[0]
         (new_max_node_memory_size,
          new_max_running_max_memory_size,
          new_max_node_memory_saved_by_view,
-         new_max_node_memory_saved_by_inplace) = stats_new
+         new_max_node_memory_saved_by_inplace) = stats[2]
 
         print("(Sparse variables are ignored)", file=file)
         print("(For values in brackets, it's for linker = c|py", file=file)
@@ -1182,8 +1187,27 @@ class ProfileStats(object):
             new_max_running_max_memory_size[2] / 1024.)), int(round(
                 max_running_max_memory_size[2] / 1024.)))), file=file)
 
+        (new_max_node_memory_size,
+         new_max_running_max_memory_size,
+         new_max_node_memory_saved_by_view,
+         new_max_node_memory_saved_by_inplace) = stats[3]
+
+        print("    Max if linker=cvm(default) and disable inplace: %dKB (%dKB)" % (int(round(
+            new_max_running_max_memory_size[0] / 1024.)), int(round(
+                max_running_max_memory_size[0] / 1024.))), file=file)
+        print("    CPU: %dKB (%dKB)" % ((int(round(
+            new_max_running_max_memory_size[1] / 1024.)), int(round(
+                max_running_max_memory_size[1] / 1024.)))), file=file)
+        print("    GPU: %dKB (%dKB)" % ((int(round(
+            new_max_running_max_memory_size[2] / 1024.)), int(round(
+                max_running_max_memory_size[2] / 1024.)))), file=file)
+
         print("---", file=file)
 
+        (new_max_node_memory_size,
+         new_max_running_max_memory_size,
+         new_max_node_memory_saved_by_view,
+         new_max_node_memory_saved_by_inplace) = stats[2]
         if min_max_peak:
             print("    Minimum peak from all valid apply node order is "
                   "%dKB(took %.3fs to compute)" %
