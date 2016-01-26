@@ -725,7 +725,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         kerns = T.ftensor4('kerns')
         out = T.ftensor4('out')
         img_val = numpy.asarray(
-            numpy.random.rand(7, 2, 6, 4),
+            numpy.random.rand(10, 2, 6, 4),
             dtype='float32'
         )
         kern_vals = numpy.asarray(
@@ -734,7 +734,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         )
 
         for params in product(
-            ['valid', 'full'],
+            ['valid', 'full', 'half'],
             [(1, 1), (2, 2)],
             ['conv', 'cross']
         ):
@@ -764,7 +764,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         kerns = ftensor5('kerns')
         out = ftensor5('out')
         img_val = numpy.asarray(
-            numpy.random.rand(7, 2, 6, 4, 11),
+            numpy.random.rand(10, 2, 6, 4, 11),
             dtype='float32'
         )
         kern_vals = numpy.asarray(
@@ -773,7 +773,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         )
 
         for params in product(
-            ['valid', 'full'],
+            ['valid', 'full', 'half'],
             [(1, 1, 1), (2, 2, 2)],
             ['conv', 'cross']
         ):
@@ -811,7 +811,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         )
 
         for params in product(
-            ['valid', 'full'],
+            ['valid', 'full', 'half'],
             [(1, 1)],  # strides besides (1, 1)
             ['conv', 'cross']
         ):
@@ -852,7 +852,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         kerns = ftensor5('kerns')
         out = ftensor5('out')
         img_val = numpy.asarray(
-            numpy.random.rand(9, 2, 4, 8, 7),
+            numpy.random.rand(9, 2, 4, 8, 13),
             dtype='float32'
         )
         kern_vals = numpy.asarray(
@@ -861,7 +861,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         )
 
         for params in product(
-            ['valid', 'full'],
+            ['valid', 'full', 'half'],
             [(1, 1, 1), (2, 2, 2)],
             ['conv', 'cross']
         ):
@@ -942,7 +942,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         kerns = ftensor5('kerns')
         out = ftensor5('out')
         img_val = numpy.asarray(
-            numpy.random.rand(8, 4, 6, 7, 5),
+            numpy.random.rand(8, 4, 6, 7, 11),
             dtype='float32'
         )
         kern_vals = numpy.asarray(
@@ -951,7 +951,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         )
 
         for params in product(
-            ['valid', 'full'],
+            ['valid', 'full', 'half'],
             [(1, 1, 1), (2, 2, 2)],
             ['conv', 'cross']
         ):
@@ -1065,6 +1065,7 @@ def test_dnn_conv_border_mode():
     dnn.dnn_conv(img, kern, border_mode=(2, 3))
     dnn.dnn_conv(img, kern, border_mode='full')
     dnn.dnn_conv(img, kern, border_mode='valid')
+    dnn.dnn_conv(img, kern, border_mode='half')
 
 
 def test_dnn_conv_alpha_output_merge():
@@ -1323,7 +1324,7 @@ def get_conv3d_test_cases():
                         [(6, 2, 2, 2, 2), (4, 2, 1, 3, 1), (1, 1, 1)],
                         [(6, 2, 2, 2, 2), (4, 2, 1, 1, 3), (1, 1, 1)],
                         [(6, 2, 2, 2, 2), (4, 2, 5, 5, 5), (1, 1, 1)]]
-    border_modes = ['valid', 'full', (1, 2, 3), (3, 2, 1), 1, 2]
+    border_modes = ['valid', 'full', 'half', (1, 2, 3), (3, 2, 1), 1, 2]
     conv_modes = ['conv', 'cross']
 
     if cuda.dnn.dnn_available() and dnn.version() >= (3000, 3000):
@@ -1379,6 +1380,8 @@ def test_conv3d_fwd():
         else:
             if border_mode == 'full':
                 pad_per_dim = [filters_shape[i] - 1 for i in range(2, 5)]
+            elif border_mode == 'half':
+                pad_per_dim = [filters_shape[i] // 2 for i in range(2, 5)]
             else:
                 if isinstance(border_mode, int):
                     pad_per_dim = [border_mode] * 3
@@ -1447,6 +1450,8 @@ def test_conv3d_bwd():
         else:
             if border_mode == 'full':
                 pad_per_dim = [filters_shape[i] - 1 for i in range(2, 5)]
+            elif border_mode == 'half':
+                pad_per_dim = [filters_shape[i] // 2 for i in range(2, 5)]
             else:
                 if isinstance(border_mode, int):
                     pad_per_dim = [border_mode] * 3

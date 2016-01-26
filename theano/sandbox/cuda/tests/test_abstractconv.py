@@ -37,15 +37,18 @@ class TestConv2d(unittest.TestCase):
         self.filters_shapes = [(5, 1, 2, 2), (4, 1, 3, 3), (2, 1, 3, 3),
                                (1, 1, 2, 5), (4, 1, 2, 2), (4, 5, 2, 2)]
         self.subsamples = [(1, 1), (2, 2), (2, 4)]
-        self.border_modes = ["valid", "full", (0, 0), (1, 1), (5, 5), (5, 2)]
+        self.border_modes = ["valid", "full", "half",
+                             (0, 0), (1, 1), (5, 5), (5, 2)]
         self.filter_flip = [True, False]
 
     def get_output_shape(self, inputs_shape, filters_shape,
                          subsample, border_mode):
         if border_mode == "valid":
             border_mode = (0, 0)
-        if border_mode == "full":
+        elif border_mode == "full":
             border_mode = (filters_shape[2] - 1, filters_shape[3] - 1)
+        elif border_mode == "half":
+            border_mode = (filters_shape[2] // 2, filters_shape[3] // 2)
         batch_size = inputs_shape[0]
         num_filters = filters_shape[0]
         return (batch_size, num_filters,) \
