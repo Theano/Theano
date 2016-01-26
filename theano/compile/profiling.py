@@ -1150,64 +1150,46 @@ class ProfileStats(object):
         else:
             print("Memory Profile", file=file)
 
-        (max_node_memory_size,
-         max_running_max_memory_size,
-         max_node_memory_saved_by_view,
-         max_node_memory_saved_by_inplace) = stats[0]
-        (new_max_node_memory_size,
-         new_max_running_max_memory_size,
-         new_max_node_memory_saved_by_view,
-         new_max_node_memory_saved_by_inplace) = stats[2]
-
         print("(Sparse variables are ignored)", file=file)
         print("(For values in brackets, it's for linker = c|py", file=file)
 
-        print("---", file=file)
-        # print >> file,  "    Max if no gc, inplace and view: %dKB" % int(
-        # round(max_sum_size / 1024))
-        print("    Max if no gc (allow_gc=False): %dKB (%dKB)" % (int(round(
-            new_max_node_memory_size[0] / 1024.)), int(round(
-                max_node_memory_size[0] / 1024.))), file=file)
-        print("    CPU: %dKB (%dKB)" % ((int(round(
-            new_max_node_memory_size[1] / 1024.)), int(round(
-                max_node_memory_size[1] / 1024.)))), file=file)
-        print("    GPU: %dKB (%dKB)" % ((int(round(
-            new_max_node_memory_size[2] / 1024.)), int(round(
-                max_node_memory_size[2] / 1024.)))), file=file)
+        def print_stats(stats1, stats2):
+            (max_node_memory_size,
+             max_running_max_memory_size,
+             max_node_memory_saved_by_view,
+             max_node_memory_saved_by_inplace) = stats1
+            (new_max_node_memory_size,
+             new_max_running_max_memory_size,
+             new_max_node_memory_saved_by_view,
+             new_max_node_memory_saved_by_inplace) = stats2
+
+            print("    CPU + GPU: %dKB (%dKB)" % (int(round(
+                new_max_running_max_memory_size[0] / 1024.)), int(round(
+                    max_running_max_memory_size[0] / 1024.))), file=file)
+            print("    CPU: %dKB (%dKB)" % ((int(round(
+                new_max_running_max_memory_size[1] / 1024.)), int(round(
+                    max_running_max_memory_size[1] / 1024.)))), file=file)
+            print("    GPU: %dKB (%dKB)" % ((int(round(
+                new_max_running_max_memory_size[2] / 1024.)), int(round(
+                    max_running_max_memory_size[2] / 1024.)))), file=file)
 
         print("---", file=file)
+        print("    Max peak memory with current setting", file=file)
+        print_stats(stats[0], stats[2])
+        print("    Max peak memory with current setting and Theano flag optimizer_excluding=inplace", file=file)
+        print_stats(stats[1], stats[3])
 
-        print("    Max if linker=cvm(default): %dKB (%dKB)" % (int(round(
-            new_max_running_max_memory_size[0] / 1024.)), int(round(
-                max_running_max_memory_size[0] / 1024.))), file=file)
-        print("    CPU: %dKB (%dKB)" % ((int(round(
-            new_max_running_max_memory_size[1] / 1024.)), int(round(
-                max_running_max_memory_size[1] / 1024.)))), file=file)
-        print("    GPU: %dKB (%dKB)" % ((int(round(
-            new_max_running_max_memory_size[2] / 1024.)), int(round(
-                max_running_max_memory_size[2] / 1024.)))), file=file)
-
-        (new_max_node_memory_size,
-         new_max_running_max_memory_size,
-         new_max_node_memory_saved_by_view,
-         new_max_node_memory_saved_by_inplace) = stats[3]
-
-        print("    Max if linker=cvm(default) and disable inplace: %dKB (%dKB)" % (int(round(
-            new_max_running_max_memory_size[0] / 1024.)), int(round(
-                max_running_max_memory_size[0] / 1024.))), file=file)
-        print("    CPU: %dKB (%dKB)" % ((int(round(
-            new_max_running_max_memory_size[1] / 1024.)), int(round(
-                max_running_max_memory_size[1] / 1024.)))), file=file)
-        print("    GPU: %dKB (%dKB)" % ((int(round(
-            new_max_running_max_memory_size[2] / 1024.)), int(round(
-                max_running_max_memory_size[2] / 1024.)))), file=file)
-
+        (max_node_memory_size, _, _, _) = stats[0]
+        (new_max_node_memory_size, _, _, _) = stats[2]
+        print("    Max peak memory if allow_gc=False (linker don't make a difference)", file=file)
+        print("    CPU + GPU: %dKB" % int(round(
+            new_max_node_memory_size[0] / 1024.)), file=file)
+        print("    CPU: %dKB" % int(round(
+            new_max_node_memory_size[1] / 1024.)), file=file)
+        print("    GPU: %dKB" % int(round(
+            new_max_node_memory_size[2] / 1024.)), file=file)
         print("---", file=file)
 
-        (new_max_node_memory_size,
-         new_max_running_max_memory_size,
-         new_max_node_memory_saved_by_view,
-         new_max_node_memory_saved_by_inplace) = stats[2]
         if min_max_peak:
             print("    Minimum peak from all valid apply node order is "
                   "%dKB(took %.3fs to compute)" %
