@@ -1212,20 +1212,8 @@ class ProfileStats(object):
             print("    Minimum peak from all valid apply node order is "
                   "%dKB(took %.3fs to compute)" %
                   (int(round(min_max_peak / 1024.)), min_peak_time), file=file)
-        print("    Memory saved if views are used: %dKB (%dKB)" %
-              (int(round(new_max_node_memory_saved_by_view / 1024.)),
-               int(round(max_node_memory_saved_by_view / 1024.))), file=file)
-        print("    Memory saved if inplace ops are used: %dKB (%dKB)" %
-              (int(round(new_max_node_memory_saved_by_inplace / 1024.)),
-               int(round(max_node_memory_saved_by_inplace / 1024.))),
-              file=file)
-        print("    Memory saved if gc is enabled: %dKB (%dKB)" %
-              (int(round(new_max_node_memory_size[0] -
-                         new_max_running_max_memory_size[0]) / 1024.),
-               int(round(max_node_memory_size[0] -
-                         max_running_max_memory_size[0]) / 1024.)), file=file)
 
-        print("---", file=file)
+            print("---", file=file)
 
         if (hasattr(theano, 'sandbox') and
             hasattr(theano.sandbox, 'cuda') and
