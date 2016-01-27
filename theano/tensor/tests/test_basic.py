@@ -6581,7 +6581,7 @@ class T_long_tensor(unittest.TestCase):
         for exp in xrange(64):
             val = L(2 ** exp - 1)
             scalar_ct = constant(val)
-            assert scalar_ct.dtype.startswith('int')
+            assert scalar_ct.dtype.startswith('int'), scalar_ct.dtype
             assert scalar_ct.value == val
 
             vector_ct = constant([val, val])
