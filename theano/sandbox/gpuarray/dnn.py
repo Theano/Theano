@@ -263,10 +263,10 @@ class GpuDnnConvDesc(COp):
             assert len(border_mode) == len(subsample)
             border_mode = tuple(map(int, border_mode))
         if not ((isinstance(border_mode, tuple) and min(border_mode) >= 0) or
-                border_mode in ('valid', 'full')):
+                border_mode in ('valid', 'full', 'half')):
             raise ValueError(
                 'invalid border_mode {}, which must be either '
-                '"valid", "full", an integer or a pair of'
+                '"valid", "full", "half", an integer or a pair of'
                 ' integers'.format(border_mode))
         self.border_mode = border_mode
         assert len(subsample) in (2, 3)
@@ -294,9 +294,11 @@ class GpuDnnConvDesc(COp):
             pad1 = str(self.border_mode[1])
             if len(self.border_mode) > 2:
                 pad2 = str(self.border_mode[2])
-            bmode = '2'
+            bmode = '1'
         elif self.border_mode == "valid":
             bmode = '1'
+        elif self.border_mode == "half":
+            bmode = '2'
         elif self.border_mode == "full":
             bmode = '0'
         else:
@@ -781,7 +783,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
     kerns
         Convolution filters.
     border_mode
-        One of 'valid', 'full'; additionally, the padding size
+        One of 'valid', 'full', 'half'; additionally, the padding size
         could be directly specified by an integer or a pair of integers.
     subsample
         Perform subsampling of the output (default: (1, 1)).
