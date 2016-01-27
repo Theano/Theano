@@ -13,6 +13,12 @@ int APPLY_SPECIFIC(conv_desc)(PyArrayObject *filt_shp,
 #if NB_DIMS > 2
   pad[2] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 4) - 1;
 #endif
+#elif BORDER_MODE == 2
+  pad[0] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 2) / 2;
+  pad[1] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 3) / 2;
+#if NB_DIMS > 2
+  pad[2] = *(npy_int64 *)PyArray_GETPTR1(filt_shp, 4) / 2;
+#endif
 #endif
 
   if (PyArray_DIM(filt_shp, 0) - 2 != NB_DIMS) {

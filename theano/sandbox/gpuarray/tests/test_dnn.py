@@ -389,7 +389,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         )
 
         for params in product(
-            ['valid', 'full'],
+            ['valid', 'full', 'half'],
             [(1, 1), (2, 2)],
             ['conv', 'cross']
         ):
@@ -427,7 +427,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         )
 
         for params in product(
-            ['valid', 'full'],
+            ['valid', 'full', 'half'],
             [(1, 1)],  # strides besides (1, 1)
             ['conv', 'cross']
         ):
@@ -590,6 +590,7 @@ def test_dnn_conv_border_mode():
     dnn.dnn_conv(img, kern, border_mode=(2, 3))
     dnn.dnn_conv(img, kern, border_mode='full')
     dnn.dnn_conv(img, kern, border_mode='valid')
+    dnn.dnn_conv(img, kern, border_mode='half')
 
 
 def test_dnn_conv_alpha_output_merge():
