@@ -436,6 +436,7 @@ class TestRepeatOp(utt.InferShapeTester):
                     r_var = T.scalar(dtype=dtype)
                     r = numpy.asarray(3, dtype=dtype)
                     if dtype in self.numpy_unsupported_dtypes:
+                        r_var = T.vector(dtype=dtype)
                         self.assertRaises(TypeError,
                                 repeat, x, r_var, axis=axis)
                     else:
@@ -489,6 +490,7 @@ class TestRepeatOp(utt.InferShapeTester):
                     r_var = T.scalar(dtype=dtype)
                     r = numpy.asarray(3, dtype=dtype)
                     if dtype in self.numpy_unsupported_dtypes:
+                        r_var = T.vector(dtype=dtype)
                         self.assertRaises(TypeError, repeat, x, r_var)
                     else:
                         self._compile_and_check(
