@@ -156,13 +156,25 @@ class TestBinCountOp(utt.InferShapeTester):
                 f1 = theano.function([x], bincount(x))
                 f2 = theano.function([x, w], bincount(x, weights=w))
 
-                assert (np.bincount(a) == f1(a)).all()
-                assert np.allclose(np.bincount(a, weights=weights),
-                                   f2(a, weights))
-                f3 = theano.function([x], bincount(x, minlength=23))
+                def ref(data, w=None, minlength=None):
+                    size = data.max() + 1
+                    if minlength:
+                        size = max(size, minlength)
+                    if w:
+                        out = np.zeros(size, dtype=weights.dtype)
+                        for i in range(data.shape[0]):
+                            out[data[i]] += weights[i]
+                    else:
+                        out = np.zeros(size, dtype=a.dtype)
+                        for i in range(data.shape[0]):
+                            out[data[i]] += 1
+                    return out
+                assert (ref(a) == f1(a)).all()
+                assert np.allclose(ref(a, w), f2(a, weights))
+                f3 = theano.function([x], bincount(x, minlength=55))
                 f4 = theano.function([x], bincount(x, minlength=5))
-                assert (np.bincount(a, minlength=23) == f3(a)).all()
-                assert (np.bincount(a, minlength=5) == f4(a)).all()
+                assert (ref(a, minlength=55) == f3(a)).all()
+                assert (ref(a, minlength=5) == f4(a)).all()
                 # skip the following test when using unsigned ints
                 if not dtype.startswith('u'):
                     a[0] = -1
