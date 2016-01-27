@@ -6,33 +6,18 @@
 import os
 
 import theano
-import copy
-from theano.sandbox.cuda import cuda_available, GpuOp
-from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable, gpu_contiguous)
-from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
+from theano.sandbox.cuda import GpuOp
+from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable, gpu_contiguous
 
 import cuda_ndarray
 
-if cuda_available:
-    from theano.sandbox.cuda import CudaNdarrayType
-    from theano.sandbox.cuda.basic_ops import host_from_gpu, gpu_from_host, HostFromGpu
-    from theano.sandbox.cuda import register_opt as register_gpu_opt
-
 class FastACDC(GpuOp):
 
-    def __init__(self):
-        self.max_threads_dim0 = None
-        self.max_grid_size1 = None
-        self.max_grid_size2 = None
-
-    def c_compiler(self):
-        return NVCC_compiler
-
     def c_headers(self):
-        return ['<stdio.h>', '<cuda.h>', '<cufft.h>', 'cuda_ndarray.cuh']
+        return ['<stdio.h>', '<cufft.h>']
 
     def c_libraries(self):
-        return ['cuda', 'cufft']
+        return ['cufft']
 
     def make_node(self, x, A, Ab, D, Db):
         x_ = as_cuda_ndarray_variable(x)
@@ -40,38 +25,15 @@ class FastACDC(GpuOp):
         Ab_ = as_cuda_ndarray_variable(Ab)
         D_ = as_cuda_ndarray_variable(D)
         Db_ = as_cuda_ndarray_variable(Db)
-
-        assert x_.dtype == 'float32'
+        for t in [x_, A_, Ab_, D_, Db_]:
+            assert t.dtype == 'float32'
         return theano.Apply(self, [x_, A_, Ab_, D_, Db_], [x_.type()])
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
-        node_ = copy.copy(node)
-        assert node.op is node_.op
-        if node_.op.max_threads_dim0 is None or node_.op.max_grid_size1 is None or node_.op.max_grid_size2 is None:
-            cuda = theano.sandbox.cuda
-            device_id = cuda.use.device_number
-            if device_id is None:
-                cuda.use("gpu",
-                         force=False,
-                         default_to_move_computation_to_gpu=False,
-                         move_shared_float32_to_gpu=False,
-                         enable_cuda=False,
-                         test_driver=True)
-                device_id = cuda.use.device_number
-            cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
-            prop = cuda_ndarray.device_properties(device_id)
-            node_.op.max_threads_dim0 = prop['maxThreadsDim0']
-            node_.op.max_grid_size1 = prop['maxGridSize1']
-            node_.op.max_grid_size2 = prop['maxGridSize2']
-
-        return super(FastACDC, node_.op).make_thunk(node_, storage_map,
-                                                      compute_map, no_recycling)
     def grad(self, inputs, cost_grad):
         inp, A, Ab, D, Db = inputs
         gradOutput, = cost_grad
         gradOutput = gpu_contiguous(gradOutput)
-        fast_acdc_grad = FastACDCGrad()
-        return fast_acdc_grad(inp, gradOutput, A, Ab, D, Db)
+        return FastACDCGrad()(inp, gradOutput, A, Ab, D, Db)
 
     def c_support_code_apply(self, node, nodename):
         # Based on a similar mechanism in sandbox/cuda/blas.py
@@ -87,15 +49,6 @@ class FastACDC(GpuOp):
         x, A, Ab, D, Db = inputs
         z, = outputs
         fail = sub['fail']
-
-        max_threads_dim0 = self.max_threads_dim0
-        max_grid_size1 = self.max_grid_size1
-        max_grid_size2 = self.max_grid_size2
-        if max_threads_dim0 is None or max_grid_size1 is None or max_grid_size2 is None:
-            raise NotImplementedError("TODOc_code should not be called "
-                                      "directly. It should be called by "
-                                      "make_thunk() that add some information "
-                                      "related to the selected GPU.")
         return """
 // int Tensor_(Fast_ACDC_updateOutput)(lua_State* L)
 {
@@ -116,7 +69,9 @@ class FastACDC(GpuOp):
 
     // Declare auxiliary arrays.
     CudaNdarray* tmp1 = (CudaNdarray*)CudaNdarray_NewDims(1, &tmp_len);
+    Py_XINCREF(tmp1);
     CudaNdarray* tmp2 = (CudaNdarray*)CudaNdarray_NewDims(1, &tmp_len);
+    Py_XINCREF(tmp2);
 
     // Verify.
     if (!%(x)s || !%(z)s || !%(A)s || !%(Ab)s || !%(D)s || !%(Db)s || !tmp1 || !tmp2) {
@@ -204,6 +159,8 @@ class FastACDC(GpuOp):
                   Tensor_(data)(state, tmp1),
                   Tensor_(data)(state, tmp2));
                   */
+    Py_XDECREF(tmp1);
+    Py_XDECREF(tmp1);
     // return 1;
 }
 """ % locals()
@@ -217,8 +174,8 @@ class FastACDCGrad(FastACDC):
         Ab_ = gpu_contiguous(as_cuda_ndarray_variable(Ab))
         D_ = gpu_contiguous(as_cuda_ndarray_variable(D))
         Db_ = gpu_contiguous(as_cuda_ndarray_variable(Db))
-
-        assert inp_.dtype == 'float32'
+        for t in [inp_, gradOutput_, A_, Ab_, D_, Db_]:
+            assert t.dtype == 'float32'
         return theano.Apply(self, [inp_, gradOutput_, A_, Ab_, D_, Db_],
                             [inp_.type(), A_.type(), Ab_.type(), D_.type(), Db_.type()])
 
@@ -226,15 +183,6 @@ class FastACDCGrad(FastACDC):
         inp, gradOutput, A, Ab, D, Db = inputs
         gradInput, gradA, gradAb, gradD, gradDb = outputs
         fail = sub['fail']
-
-        max_threads_dim0 = self.max_threads_dim0
-        max_grid_size1 = self.max_grid_size1
-        max_grid_size2 = self.max_grid_size2
-        if max_threads_dim0 is None or max_grid_size1 is None or max_grid_size2 is None:
-            raise NotImplementedError("TODOc_code should not be called "
-                                      "directly. It should be called by "
-                                      "make_thunk() that add some information "
-                                      "related to the selected GPU.")
         return """
 {
     // Validate output storage.
@@ -276,10 +224,14 @@ class FastACDCGrad(FastACDC):
     int delta_mid_len = acdc_size * acdc_size;
 
     CudaNdarray* tmp1 = (CudaNdarray*)CudaNdarray_NewDims(1, &tmp_len);
+    Py_XINCREF(tmp1);
     CudaNdarray* tmp2 = (CudaNdarray*)CudaNdarray_NewDims(1, &tmp_len);
+    Py_XINCREF(tmp1);
     CudaNdarray* delta_mid = (CudaNdarray*)CudaNdarray_NewDims(1, &delta_mid_len);
+    Py_XINCREF(delta_mid);
     CudaNdarray* inputD = (CudaNdarray*)CudaNdarray_NewDims(
         CudaNdarray_NDIM(%(inp)s), CudaNdarray_HOST_DIMS(%(inp)s));
+    Py_XINCREF(inputD);
 
     // Verify.
     if (!%(gradA)s || !%(gradAb)s || !%(gradD)s || !%(gradDb)s ||
@@ -428,6 +380,10 @@ class FastACDCGrad(FastACDC):
                   
     // lua_pushvalue(L, outputIdx);
     
+    Py_XDECREF(tmp1);
+    Py_XDECREF(tmp1);
+    Py_XDECREF(delta_mid);
+    Py_XDECREF(inputD);
     // return 1;
 }
 """ % locals()
