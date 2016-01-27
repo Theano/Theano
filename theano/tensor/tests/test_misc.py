@@ -12,7 +12,6 @@ def test_bug_2009_06_02_trac_387():
     f = theano.function([y],
             tensor.int_div(
                 tensor.DimShuffle(y[0].broadcastable, ['x'])(y[0]), 2))
-    sys.stdout.flush()
     print(f(numpy.ones(1, dtype='int64') * 3))
     # XXX: there is no assert, nor comment that DEBUGMODE is to do the
     #      checking. What was the bug, and how is it being tested?
