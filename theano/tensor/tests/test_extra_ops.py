@@ -138,48 +138,36 @@ class TestBinCountOp(utt.InferShapeTester):
                       'uint8', 'uint16', 'uint32', 'uint64'):
             x = T.vector('x', dtype=dtype)
 
-            # uint64 always fails
-            # int64 and uint32 also fail if python int are 32-bit
-            int_bitwidth = theano.gof.python_int_bitwidth()
-            if int_bitwidth == 64:
-                numpy_unsupported_dtypes = ('uint64',)
-            if int_bitwidth == 32:
-                numpy_unsupported_dtypes = ('uint32', 'int64', 'uint64')
-            # uint64 always fails
-            if dtype in numpy_unsupported_dtypes:
-                self.assertRaises(TypeError, bincount, x)
+            a = np.random.random_integers(50, size=(25)).astype(dtype)
+            weights = np.random.random((25,)).astype(config.floatX)
 
-            else:
-                a = np.random.random_integers(50, size=(25)).astype(dtype)
-                weights = np.random.random((25,)).astype(config.floatX)
+            f1 = theano.function([x], bincount(x))
+            f2 = theano.function([x, w], bincount(x, weights=w))
 
-                f1 = theano.function([x], bincount(x))
-                f2 = theano.function([x, w], bincount(x, weights=w))
-
-                def ref(data, w=None, minlength=None):
-                    size = data.max() + 1
-                    if minlength:
-                        size = max(size, minlength)
-                    if w:
-                        out = np.zeros(size, dtype=weights.dtype)
-                        for i in range(data.shape[0]):
-                            out[data[i]] += weights[i]
-                    else:
-                        out = np.zeros(size, dtype=a.dtype)
-                        for i in range(data.shape[0]):
-                            out[data[i]] += 1
-                    return out
-                assert (ref(a) == f1(a)).all()
-                assert np.allclose(ref(a, w), f2(a, weights))
-                f3 = theano.function([x], bincount(x, minlength=55))
-                f4 = theano.function([x], bincount(x, minlength=5))
-                assert (ref(a, minlength=55) == f3(a)).all()
-                assert (ref(a, minlength=5) == f4(a)).all()
-                # skip the following test when using unsigned ints
-                if not dtype.startswith('u'):
-                    a[0] = -1
-                    f5 = theano.function([x], bincount(x, assert_nonneg=True))
-                    self.assertRaises(AssertionError, f5, a)
+            def ref(data, w=None, minlength=None):
+                size = data.max() + 1
+                if minlength:
+                    size = max(size, minlength)
+                if w:
+                    out = np.zeros(size, dtype=weights.dtype)
+                    for i in range(data.shape[0]):
+                        out[data[i]] += weights[i]
+                else:
+                    out = np.zeros(size, dtype=a.dtype)
+                    for i in range(data.shape[0]):
+                        out[data[i]] += 1
+                return out
+            assert (ref(a) == f1(a)).all()
+            assert np.allclose(ref(a, w), f2(a, weights))
+            f3 = theano.function([x], bincount(x, minlength=55))
+            f4 = theano.function([x], bincount(x, minlength=5))
+            assert (ref(a, minlength=55) == f3(a)).all()
+            assert (ref(a, minlength=5) == f4(a)).all()
+            # skip the following test when using unsigned ints
+            if not dtype.startswith('u'):
+                a[0] = -1
+                f5 = theano.function([x], bincount(x, assert_nonneg=True))
+                self.assertRaises(AssertionError, f5, a)
 
     def test_bincountOp(self):
         w = T.vector('w')
