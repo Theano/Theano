@@ -1780,13 +1780,13 @@ if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
 #        return
     
     def c_code(self, node, name, inputs, outputs, sub):
+#       raise NotImplementedError()
         # Here the name out and inp are based on the cudnn definition.
         # Not the definition of this class.
         # This make it complicated.
         out, inp, inp_grad, ws, stride, pad = inputs
         out_grad, = outputs
         
-
         if self.mode == 'max':
             mode_flag = 'CUDNN_POOLING_MAX'
         elif self.mode == "average_inc_pad":

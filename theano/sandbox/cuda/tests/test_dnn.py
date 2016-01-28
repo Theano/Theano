@@ -283,8 +283,6 @@ def test_pooling2():
                                             #atol=numpy.finfo(numpy.float32).eps)
                         
         
-
-    
     #Confirm that we get the good op.
     fg = theano.function([x], theano.grad(fn(x).sum(), x),
                             mode=mode_with_gpu)
@@ -306,8 +304,7 @@ def test_pooling2():
                     for node in fc.maker.fgraph.toposort()])
     c_out = fc(data)
     assert numpy.allclose(c_out, g_out) 
-        
-       
+      
 
 def test_pooling():
     if not cuda.dnn.dnn_available():
@@ -366,7 +363,7 @@ def test_pooling():
                     b = f2(data).__array__()
                     assert numpy.allclose(a, b,
                                           atol=numpy.finfo(numpy.float32).eps)
-        
+
         # Test the grad
         for shp in [(1, 1, 2, 2),
                     (1, 1, 3, 3)]:
