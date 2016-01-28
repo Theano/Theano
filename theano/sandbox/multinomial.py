@@ -208,10 +208,6 @@ class WeightedSelectionFromUniform(Op):
 
     def __setstate__(self, dct):
         self.__dict__.update(dct)
-        try:
-            self.odtype
-        except AttributeError:
-            self.odtype = 'auto'
 
     def make_node(self, pvals, unis, n=1):
         pvals = T.as_tensor_variable(pvals)
