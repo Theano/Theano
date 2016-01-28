@@ -3373,52 +3373,52 @@ def transpose(x, axes=None):
     return ret
 
 
-def batched_dot(x, y):
+def batched_dot(a, b):
     """
-    This function computes the dot product between the two tensors, by
-    iterating over the first dimension using scan.
+    Compute the batched dot product of two variables:
 
-    Parameters
-    ----------
-    x : tensor
-        A Tensor with sizes e.g.: for  3D (dim1, dim3, dim2).
-    y : tensor
-        A Tensor with sizes e.g.: for 3D (dim1, dim2, dim4).
+        batched_dot(a, b)[i] = dot(a[i], b[i])
 
-    Returns
-    -------
-    tensor
-        A tensor of size e.g. if it is 3D: (dim1, dim3, dim4).
+    Note that this batched_dot function does one of three things, in the
+    following sequence:
 
-    Notes
-    -----
-    This is a subset of numpy.einsum, but we do not provide it for now.
-    But numpy einsum is slower than dot or tensordot:
-    http://mail.scipy.org/pipermail/numpy-discussion/2012-October/064259.html
+        1.  If either a or b is a vector, it returns the batched elementwise
+            product without calling the Theano BatchedDot op.
 
-    Examples
-    --------
-    >>> first = tensor.tensor3('first')
-    >>> second = tensor.tensor3('second')
-    >>> result = batched_dot(first, second)
+        2.  If both a and b have either 2 or 3 dimensions, it calls Theano's
+            BatchedDot op on a and b.
 
+        3.  If either a or b has more than 3 dimensions, it calls Theano's
+            batched_tensordot function with appropriate axes. The
+            batched_tensordot function expresses high-dimensional batched
+            dot products in terms of batched matrix-matrix dot products, so
+            it may be possible to futherize optimize for performance.
     """
-    result, updates = theano.scan(
-        fn=lambda x_mat, y_mat:
-        theano.tensor.dot(x_mat, y_mat),
-        outputs_info=None,
-        sequences=[x, y],
-        non_sequences=None)
-    return result
+    a, b = as_tensor_variable(a), as_tensor_variable(b)
+
+    if a.ndim == 0:
+        raise TypeError("a must have at least one (batch) axis")
+    elif b.ndim == 0:
+        raise TypeError("b must have at least one (batch) axis")
+    elif a.ndim == 1:
+        return a.dimshuffle(*([0] + ["x"] * (b.ndim - 1))) * b
+    elif b.ndim == 1:
+        return a * b.dimshuffle(*([0] + ["x"] * (a.ndim - 1)))
+    elif a.ndim > 3 or b.ndim > 3:
+        return batched_tensordot(
+            a, b, [[a.ndim - 1], [numpy.maximum(1, b.ndim - 2)]])
+    else:
+        # avoid circular import
+        return theano.tensor.blas.BatchedDot()(a, b)
 
 
 def batched_tensordot(x, y, axes=2):
     """
-    Compute the tensordot product.
+    Compute a batched tensordot product.
 
-    A hybrid of batch_dot and tensordot, this function computes the
+    A hybrid of batched_dot and tensordot, this function computes the
     tensordot product between the two tensors, by iterating over the
-    first dimension using scan to perform a sequence of tensordots.
+    first dimension to perform a sequence of tensordots.
 
     Parameters
     ----------

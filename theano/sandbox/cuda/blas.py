@@ -212,6 +212,10 @@ class BatchedDotOp(GpuOp):
     def c_code_cache_version(self):
         return (1,)
 
+    def infer_shape(self, node, shapes):
+        xshp, yshp = shapes
+        return [xshp[:-1] + yshp[2:]]
+
 batched_dot = BatchedDotOp()
 """
 Call cublasSgemmBatched. Take 2 3d tensor as input.
