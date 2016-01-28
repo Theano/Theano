@@ -6791,8 +6791,8 @@ def test_unalign():
     else:
         dtype = "b1,f4"
 
-    a = numpy.empty(1e4, dtype=dtype)['f1']
-    b = numpy.empty(1e4, dtype=dtype)['f1']
+    a = numpy.empty(10000, dtype=dtype)['f1']
+    b = numpy.empty(10000, dtype=dtype)['f1']
     assert not a.flags.aligned
     assert not b.flags.aligned
     a[:] = rand(len(a))
