@@ -1367,10 +1367,14 @@ class MRG_RandomStreams(object):
                            nstreams=None):
         """
         Sample `n` times *WITHOUT replacement* from a multinomial distribution
-        defined by probabilities pvals. `n` needs to be in [1, m], where m is the number of
-        elements to select from, i.e. m == pvals.shape[1]. By default n = 1.
+        defined by probabilities pvals, and returns the indices of the sampled
+        elements.
+        `n` needs to be in [1, m], where m is the number of elements to select
+        from, i.e. m == pvals.shape[1]. By default n = 1.
         
-        Example : WRITEME
+        Example : pvals = [[.98, .01, .01], [.01, .49, .50]] and n=1 will
+        probably result in [[0],[2]]. When setting n=2, this
+        will probably result in [[0,1],[2,1]].
         
         Notes
         -----
