@@ -663,9 +663,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                 output = pool_2d(images, maxpoolshp, ignore_border,
                                  mode=mode)
                 output_val = function([images], output)(imval)
-                assert numpy.all(output_val == numpy_output_val), (
-                    "output_val is %s, numpy_output_val is %s"
-                    % (output_val, numpy_output_val))
+                utt.assert_allclose(output_val, numpy_output_val)
 
                 def mp(input):
                     return pool_2d(input, maxpoolshp, ignore_border,
@@ -686,12 +684,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
         patch_size = (2, 2)
         op = max_pool_2d_same_size(input, patch_size)
         op_output = function([input], op)(test_input_array)
-        assert numpy.all(op_output == test_answer_array), (
-            "op_output is %s, test_answer_array is %s" % (
-
-                op_output, test_answer_array
-            )
-        )
+        utt.assert_allclose(op_output, test_answer_array)
 
         def mp(input):
             return max_pool_2d_same_size(input, patch_size)
@@ -716,9 +709,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                 output = pool_2d(images, maxpoolshp, ignore_border,
                                  mode=mode)
                 output_val = function([images], output)(imval)
-                assert numpy.all(output_val == numpy_output_val), (
-                    "output_val is %s, numpy_output_val is %s"
-                    % (output_val, numpy_output_val))
+                utt.assert_allclose(output_val, numpy_output_val)
 
 # removed as already tested in test_max_pool_2d_2D
 # This make test in debug mode too slow.
@@ -745,7 +736,7 @@ class TestDownsampleFactorMax(utt.InferShapeTester):
                 output = pool_2d(images, maxpoolshp, ignore_border,
                                  mode=mode)
                 output_val = function([images], output)(imval)
-                assert numpy.all(output_val == numpy_output_val)
+                utt.assert_allclose(output_val, numpy_output_val)
 
 # removed as already tested in test_max_pool_2d_2D
 # This make test in debug mode too slow.
