@@ -1,4 +1,6 @@
 
+.. _extending_theano:
+
 Creating a new Op: Python implementation
 ========================================
 
@@ -16,6 +18,7 @@ Ops, Types, and Optimizations.
 
 .. These first few pages will walk you through the definition of a new :ref:`type`,
 .. ``double``, and a basic arithmetic :ref:`operations <op>` on that Type. 
+
 As an illustration, this tutorial shows how to write a simple Python-based 
 :ref:`operations <op>` which performs operations on 
 :ref:`type`, ``double<Double>``. 
@@ -68,7 +71,7 @@ implement to make a new op.  It does not provide extensive coverage of all the
 possibilities you may encounter or need.  For that refer to
 :ref:`op_contract`.
 
-.. testcode::
+.. testcode:: python
 
     import theano
 
@@ -402,6 +405,7 @@ indirectly as the first element of single-element lists.  If ``doubleOp1`` had
 a second output, it would be stored in ``output_storage[1][0]``.
 
 .. jpt: DOn't understand the following
+
 In some execution modes, the output storage might contain the return value of 
 a previous call.  That old value can be reused to avoid memory re-allocation, 
 but it must not influence the semantics of the Op output.
@@ -708,10 +712,10 @@ The following are particularly useful for development purposes since
 they call for particular classes or even for particular tests:
 
 * ``theano-nose test_file.py:test_DoubleRop``: Run every test found inside the 
-class *test_DoubleRop*.
+  class *test_DoubleRop*.
 
 * ``theano-nose test_file.py:test_DoubleRop.test_double_op``: Run only the test 
-*test_double_op* in the class *test_DoubleRop*.
+  *test_double_op* in the class *test_DoubleRop*.
 
 Help with the use and functionalities of ``theano-nose`` may be
 obtained by running it with the command line parameter ``--help
@@ -800,11 +804,11 @@ implementation.
 It takes an optional :func:`infer_shape` parameter that must have this
 signature:
 
-  .. code-block:: python
+.. code-block:: python
 
-           def infer_shape(node, input_shapes):
-                # ...
-                return output_shapes
+    def infer_shape(node, input_shapes):
+        # ...
+        return output_shapes
 
   - `input_shapes` and `output_shapes` are lists of tuples that
     represent the shape of the corresponding inputs/outputs.
@@ -880,7 +884,7 @@ the documentation.
 
 Here is an example how to add docstring to a class.
 
-.. testcode::
+.. testcode:: python
 
     import theano
 

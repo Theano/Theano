@@ -66,7 +66,7 @@ from gurus on hand if you get stuck.
     introduction
     theano
     advanced_theano
-    /tutorial/extending_theano
+    /extending/extending_theano
     pyCUDA
     gpundarray
 
