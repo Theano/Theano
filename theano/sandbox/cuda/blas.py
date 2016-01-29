@@ -217,6 +217,7 @@ class GpuBatchedDot(GpuOp):
         return [xshp[:-1] + yshp[2:]]
 
 batched_dot = GpuBatchedDot()
+BatchedDotOp = GpuBatchedDot()
 """
 Call cublasSgemmBatched. Take 2 3d tensor as input.
 """
