@@ -18,4 +18,3 @@
     linalg
     neighbours
     rng_mrg
-    blocksparse
