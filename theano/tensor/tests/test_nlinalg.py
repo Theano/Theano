@@ -531,7 +531,8 @@ class TestLogAbsDet(unittest.TestCase):
         x = theano.tensor.matrix()
         f = theano.function([x], self.op(x))
         out = f(input_mat)
-        numpy_out = numpy.sum(numpy.log(numpy.linalg.svd(input_mat, compute_uv=False)))
+        svd_diag = numpy.linalg.svd(input_mat, compute_uv=False)
+        numpy_out = numpy.sum(numpy.log(numpy.abs(svd_diag)))
 
         # Compare the result computed to the expected value.
         utt.assert_allclose(numpy_out, out)

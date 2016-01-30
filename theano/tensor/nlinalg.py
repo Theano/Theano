@@ -743,7 +743,8 @@ class LogAbsDet(Op):
     def perform(self, node, (x,), (z,)):
         try:
             s = numpy.linalg.svd(x, compute_uv=False)
-            z[0] = numpy.asarray(numpy.sum(numpy.log(s)), dtype=x.dtype)
+            log_abs_det = numpy.sum(numpy.log(numpy.abs(s)))
+            z[0] = numpy.asarray(log_abs_det, dtype=x.dtype)
         except Exception:
             print('Failed to compute logabsdet of {}.'.format(x))
             raise
