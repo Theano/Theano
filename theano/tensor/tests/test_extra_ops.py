@@ -423,8 +423,9 @@ class TestRepeatOp(utt.InferShapeTester):
                 for dtype in tensor.discrete_dtypes:
                     r_var = T.scalar(dtype=dtype)
                     r = numpy.asarray(3, dtype=dtype)
-                    if dtype in self.numpy_unsupported_dtypes:
-                        r_var = T.vector(dtype=dtype)
+                    if (dtype in self.numpy_unsupported_dtypes and
+                        # uint64 is always not implemented
+                        (r_var.ndim == 1 or dtype == 'uint64')):
                         self.assertRaises(TypeError,
                                 repeat, x, r_var, axis=axis)
                     else:
@@ -441,10 +442,14 @@ class TestRepeatOp(utt.InferShapeTester):
                             r = np.random.random_integers(
                                     5, size=(10,)).astype(dtype)
 
-                        f = theano.function([x, r_var],
-                                            repeat(x, r_var, axis=axis))
-                        assert np.allclose(np.repeat(a, r, axis=axis),
-                                           f(a, r))
+                        if dtype in self.numpy_unsupported_dtypes and r_var.ndim == 1:
+                            self.assertRaises(TypeError,
+                                              repeat, x, r_var, axis=axis)
+                        else:
+                            f = theano.function([x, r_var],
+                                                repeat(x, r_var, axis=axis))
+                            assert np.allclose(np.repeat(a, r, axis=axis),
+                                               f(a, r))
 
                         #check when r is a list of single integer, e.g. [3].
                         r = np.random.random_integers(10, size=()).astype(dtype) + 2

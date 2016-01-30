@@ -726,6 +726,9 @@ def repeat(x, repeats, axis=None):
         if repeats.ndim == 1:
             repeats = repeats[0]
 
+        if x.dtype == ('uint64',):
+            raise TypeError("theano.tensor.repeat don't support dtype uint64")
+
         if axis is None:
             axis = 0
             x = x.flatten()
