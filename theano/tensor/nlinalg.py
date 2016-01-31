@@ -740,8 +740,10 @@ class LogAbsDet(Op):
         o = theano.tensor.scalar(dtype=x.dtype)
         return Apply(self, [x], [o])
 
-    def perform(self, node, (x,), (z,)):
+    def perform(self, node, inputs, outputs):
         try:
+            (x,) = inputs
+            (z,) = outputs
             s = numpy.linalg.svd(x, compute_uv=False)
             log_abs_det = numpy.sum(numpy.log(numpy.abs(s)))
             z[0] = numpy.asarray(log_abs_det, dtype=x.dtype)
