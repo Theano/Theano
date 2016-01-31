@@ -1696,6 +1696,8 @@ else:
     expected_gammaln = []
     expected_psi = []
     expected_chi2sf = []
+    expected_j0 = []
+    expected_j1 = []
     skip_scipy = "scipy is not present"
     skip_scipy12 = "scipy is not present"
 
