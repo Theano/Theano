@@ -231,12 +231,6 @@ class Gamma(UnaryScalarOp):
         if node.inputs[0].type in float_types:
             return """%(z)s = tgamma(%(x)s);""" % locals()
         raise NotImplementedError('only floating point is implemented')
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
 gamma = Gamma(upgrade_to_float, name='gamma')
 
 
@@ -275,12 +269,6 @@ class GammaLn(UnaryScalarOp):
             return """%(z)s =
                 lgamma(%(x)s);""" % locals()
         raise NotImplementedError('only floating point is implemented')
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
 gammaln = GammaLn(upgrade_to_float, name='gammaln')
 
 
@@ -357,12 +345,6 @@ class Psi(UnaryScalarOp):
             return """%(z)s =
                 _psi(%(x)s);""" % locals()
         raise NotImplementedError('only floating point is implemented')
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
 psi = Psi(upgrade_to_float, name='psi')
 
 
@@ -386,13 +368,6 @@ class Chi2SF(BinaryScalarOp):
             return Chi2SF.st_impl(x, k)
         else:
             super(Chi2SF, self).impl(x, k)
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
 chi2sf = Chi2SF(upgrade_to_float, name='chi2sf')
 
 
@@ -421,12 +396,6 @@ class J1(UnaryScalarOp):
             return """%(z)s =
                 j1(%(x)s);""" % locals()
         raise NotImplementedError('only floating point is implemented')
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
 j1 = J1(upgrade_to_float, name='j1')
 
 
@@ -457,10 +426,4 @@ class J0(UnaryScalarOp):
             return """%(z)s =
                 j0(%(x)s);""" % locals()
         raise NotImplementedError('only floating point is implemented')
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
 j0 = J0(upgrade_to_float, name='j0')
