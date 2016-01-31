@@ -759,5 +759,3 @@ class LogAbsDet(Op):
 
 logabsdet = LogAbsDet()
 
-
-

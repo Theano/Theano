@@ -542,8 +542,5 @@ class TestLogAbsDet(unittest.TestCase):
 
     def test_basic(self):
         # Calls validate with different params
-        self.validate(numpy.random.randn(3, 3))
-        self.validate(numpy.random.randn(10, 10))
-
-
-
+        self.validate(numpy.random.randn(3, 3).astype(theano.config.floatX))
+        self.validate(numpy.random.randn(10, 10).astype(theano.config.floatX))
