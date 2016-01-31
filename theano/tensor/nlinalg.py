@@ -726,3 +726,36 @@ def norm(x, ord):
             raise ValueError(0)
     elif ndim > 2:
         raise NotImplementedError("We don't support norm witn ndim > 2")
+
+
+class LogAbsDet(Op):
+    """Computes the logarithm of absolute determinant of a square
+    matrix M, log(abs(det(M))), on CPU. Avoids det(M) overflow/
+    underflow.
+
+    TODO: add GPU code!
+    """
+    def make_node(self, x):
+        x = theano.tensor.as_tensor_variable(x)
+        o = theano.tensor.scalar(dtype=x.dtype)
+        return Apply(self, [x], [o])
+
+    def perform(self, node, (x,), (z,)):
+        try:
+            s = numpy.linalg.svd(x, compute_uv=False)
+            log_abs_det = numpy.sum(numpy.log(numpy.abs(s)))
+            z[0] = numpy.asarray(log_abs_det, dtype=x.dtype)
+        except Exception:
+            print('Failed to compute logabsdet of {}.'.format(x))
+            raise
+
+    def grad(self, inputs, g_outputs):
+        gz, = g_outputs
+        x, = inputs
+        return [gz * matrix_inverse(x).T]
+
+    def __str__(self):
+        return "LogAbsDet"
+
+logabsdet = LogAbsDet()
+
