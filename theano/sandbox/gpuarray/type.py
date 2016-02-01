@@ -205,7 +205,13 @@ class GpuArrayType(Type):
                 # (like lists).  We anticipate that the type below
                 # will match and we pass copy=False so it won't make a
                 # second object on the GPU.
-                data = gpuarray.array(data, copy=False, context=self.context)
+                converted_data = gpuarray.array(data, dtype=self.dtype, context=self.context)
+                g_data = gpuarray.array(data, copy=False, context=self.context)
+                if self.values_eq(g_data,
+                                  converted_data,
+                                  force_same_dtype=False):
+                    data = converted_data
+
 
             up_dtype = scalar.upcast(self.dtype, data.dtype)
             if up_dtype == self.dtype:
@@ -263,10 +269,10 @@ class GpuArrayType(Type):
         return GpuFromHost(self.context_name)(other)
 
     @staticmethod
-    def values_eq(a, b):
+    def values_eq(a, b, force_same_dtype=True):
         if a.shape != b.shape:
             return False
-        if a.typecode != b.typecode:
+        if force_same_dtype and a.typecode != b.typecode:
             return False
         a_eq_b = numpy.asarray(compare(a, '==', b))
         if a_eq_b.all():

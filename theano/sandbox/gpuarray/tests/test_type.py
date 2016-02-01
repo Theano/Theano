@@ -10,7 +10,7 @@ from theano.misc.pkl_utils import CompatUnpickler
 
 from .config import test_ctx_name
 from .test_basic_ops import rand_gpuarray
-from ..type import GpuArrayType
+from ..type import GpuArrayType, gpuarray_shared_constructor
 
 import pygpu
 
@@ -47,8 +47,13 @@ def test_specify_shape():
 
 
 def test_filter_float():
-    s = theano.shared(numpy.array(0.0, dtype='float32'), target=test_ctx_name)
-    theano.function([], updates=[(s, 0.0)])
+    theano.compile.shared_constructor(gpuarray_shared_constructor)
+    try:
+        s = theano.shared(numpy.array(0.0, dtype='float32'),
+                          target=test_ctx_name)
+        theano.function([], updates=[(s, 0.0)])
+    finally:
+        del theano.compile.sharedvalue.shared.constructors[-1]
 
 
 def test_unpickle_gpuarray_as_numpy_ndarray_flag0():
