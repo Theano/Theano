@@ -250,6 +250,7 @@ class NVCC_compiler(Compiler):
         # '--gpu-code=compute_13',
         # nvcc argument
         preargs1 = []
+        preargs2 = []
         for pa in preargs:
             if pa.startswith('-Wl,'):
                 preargs1.append('-Xlinker')
@@ -264,8 +265,8 @@ class NVCC_compiler(Compiler):
 
                 if pa.startswith(pattern):
                     preargs1.append(pa)
-        preargs2 = [pa for pa in preargs
-                    if pa not in preargs1]  # other arguments
+                else:
+                    preargs2.append(pa)
 
         # Don't put -G by default, as it slow things down.
         # We aren't sure if -g slow things down, so we don't put it by default.
