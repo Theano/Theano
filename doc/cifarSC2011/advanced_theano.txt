@@ -123,6 +123,7 @@ Loops
 
 .. testcode::
 
+  import numpy
   import theano
   import theano.tensor as T
 
@@ -179,96 +180,189 @@ Inplace optimization
 Profiling
 ---------
 
-- To replace the default mode with this mode, use the Theano flags ``mode=ProfileMode``
+- To replace the default mode with this mode, use the Theano flags ``profile=True``
 
-- To enable the memory profiling use the flags ``ProfileMode.profile_memory=True``
+- To enable the memory profiling use the flags ``profile=True,profile_memory=True``
 
 Theano output:
 
 .. code-block:: python
 
     """
-    Time since import 33.456s
-    Theano compile time: 1.023s (3.1% since import)
-      Optimization time: 0.789s
-      Linker time: 0.221s
-    Theano fct call 30.878s (92.3% since import)
-     Theano Op time 29.411s 87.9%(since import) 95.3%(of fct call)
-     Theano function overhead in ProfileMode 1.466s 4.4%(since import)
-                                                  4.7%(of fct call)
-    10001 Theano fct call, 0.003s per call
-    Rest of the time since import 1.555s 4.6%
+    Function profiling
+    ==================
+      Message: train.py:17
+      Time in 1 calls to Function.__call__: 5.440712e-04s
+      Time in Function.fn.__call__: 4.799366e-04s (88.212%)
+      Time in thunks: 7.891655e-05s (14.505%)
+      Total compile time: 5.701292e-01s
+        Number of Apply nodes: 20
+        Theano Optimizer time: 2.405829e-01s
+           Theano validate time: 1.702785e-03s
+        Theano Linker time (includes C, CUDA code generation/compiling): 1.597619e-02s
+           Import time 1.968861e-03s
 
-    Theano fct summary:
-    <% total fct time> <total time> <time per call> <nb call> <fct name>
-     100.0% 30.877s 3.09e-03s 10000 train
-      0.0% 0.000s 4.06e-04s 1 predict
+    Time in all call to theano.grad() 0.000000e+00s
+    Time since theano import 1.436s
+    Class
+    ---
+    <% time> <sum %> <apply time> <time per call> <type> <#call> <#apply> <Class name>
+      54.4%    54.4%       0.000s       3.90e-06s     C       11      11   theano.tensor.elemwise.Elemwise
+      17.8%    72.2%       0.000s       1.41e-05s     C        1       1   theano.compile.ops.Shape_i
+      11.5%    83.7%       0.000s       2.26e-06s     C        4       4   theano.tensor.basic.ScalarFromTensor
+       9.1%    92.7%       0.000s       3.58e-06s     C        2       2   theano.tensor.subtensor.Subtensor
+       3.6%    96.4%       0.000s       2.86e-06s     C        1       1   theano.tensor.elemwise.DimShuffle
+       3.6%   100.0%       0.000s       2.86e-06s     C        1       1   theano.tensor.elemwise.Sum
+       ... (remaining 0 Classes account for   0.00%(0.00s) of the runtime)
 
-    Single Op-wise summary:
-    <% of local_time spent on this kind of Op> <cumulative %>
-        <self seconds> <cumulative seconds> <time per call> <nb_call>
-        <nb_op> <nb_apply> <Op name>
-       87.3%   87.3%  25.672s  25.672s  2.57e-03s   10000  1  1 <Gemv>
-        9.7% s  97.0%  2.843s  28.515s  2.84e-04s   10001  1  2 <Dot>
-        2.4%   99.3%  0.691s  29.206s  7.68e-06s * 90001 10 10 <Elemwise>
-        0.4%   99.7%  0.127s  29.334s  1.27e-05s   10000  1  1 <Alloc>
-        0.2%   99.9%  0.053s  29.386s  1.75e-06s * 30001  2  4 <DimShuffle>
-        0.0%  100.0%  0.014s  29.400s  1.40e-06s * 10000  1  1 <Sum>
-        0.0%  100.0%  0.011s  29.411s  1.10e-06s * 10000  1  1 <Shape_i>
-    (*) Op is running a c implementation
+    Ops
+    ---
+    <% time> <sum %> <apply time> <time per call> <type> <#call> <#apply> <Op name>
+      17.8%    17.8%       0.000s       1.41e-05s     C        1        1   Shape_i{0}
+      15.1%    32.9%       0.000s       1.19e-05s     C        1        1   Elemwise{Composite{(i0 * (i1 ** i2))}}
+      11.5%    44.4%       0.000s       2.26e-06s     C        4        4   ScalarFromTensor
+       9.1%    53.5%       0.000s       3.58e-06s     C        2        2   Subtensor{int64:int64:int8}
+       8.8%    62.2%       0.000s       3.46e-06s     C        2        2   Elemwise{switch,no_inplace}
+       6.3%    68.6%       0.000s       2.50e-06s     C        2        2   Elemwise{Composite{Switch(i0, i1, minimum(i2, i3))}}[(0, 2)]
+       6.0%    74.6%       0.000s       2.38e-06s     C        2        2   Elemwise{le,no_inplace}
+       5.1%    79.8%       0.000s       4.05e-06s     C        1        1   Elemwise{Composite{Switch(i0, Switch(LT((i1 + i2), i3), i3, (i1 + i2)), Switch(LT(i2, i1), i2, i1))}}[(0, 2)]
+       5.1%    84.9%       0.000s       4.05e-06s     C        1        1   Elemwise{minimum,no_inplace}
+       3.9%    88.8%       0.000s       3.10e-06s     C        1        1   Elemwise{lt,no_inplace}
+       3.9%    92.7%       0.000s       3.10e-06s     C        1        1   Elemwise{Composite{Switch(i0, Switch(LT((i1 + i2), i3), i3, (i1 + i2)), Switch(LT(i1, i2), i1, i2))}}
+       3.6%    96.4%       0.000s       2.86e-06s     C        1        1   Sum{acc_dtype=float64}
+       3.6%   100.0%       0.000s       2.86e-06s     C        1        1   InplaceDimShuffle{x}
+       ... (remaining 0 Ops account for   0.00%(0.00s) of the runtime)
 
-    Op-wise summary:
-    <% of local_time spent on this kind of Op> <cumulative %>
-        <self seconds> <cumulative seconds> <time per call>
-        <nb_call> <nb apply> <Op name>
-       87.3%   87.3%  25.672s  25.672s  2.57e-03s   10000  1 Gemv{inplace}
-        9.7%   97.0%  2.843s  28.515s  2.84e-04s   10001  2 dot
-        1.3%   98.2%  0.378s  28.893s  3.78e-05s * 10000  1 Elemwise{Composite{scalar_softplus,{mul,scalar_softplus,{neg,mul,sub}}}}
-        0.4%   98.7%  0.127s  29.021s  1.27e-05s   10000  1 Alloc
-        0.3%   99.0%  0.092s  29.112s  9.16e-06s * 10000  1 Elemwise{Composite{exp,{mul,{true_div,neg,{add,mul}}}}}[(0, 0)]
-        0.1%   99.3%  0.033s  29.265s  1.66e-06s * 20001  3 InplaceDimShuffle{x}
-       ... (remaining 11 Apply account for 0.7%(0.00s) of the runtime)
-    (*) Op is running a c implementation
+    Apply
+    ------
+    <% time> <sum %> <apply time> <time per call> <#call> <id> <Mflops> <Gflops/s> <Apply name>
+      17.8%    17.8%       0.000s       1.41e-05s      1     0                     Shape_i{0}(coefficients)
+        input 0: dtype=float32, shape=(3,), strides=c
+        output 0: dtype=int64, shape=(), strides=c
+      15.1%    32.9%       0.000s       1.19e-05s      1    18                     Elemwise{Composite{(i0 * (i1 ** i2))}}(Subtensor{int64:int64:int8}.0, InplaceDimShuffle{x}.0, Subtensor{int64:int64:int8}.0)
+        input 0: dtype=float32, shape=(3,), strides=c
+        input 1: dtype=float32, shape=(1,), strides=c
+        input 2: dtype=int64, shape=(3,), strides=c
+        output 0: dtype=float64, shape=(3,), strides=c
+       5.1%    38.1%       0.000s       4.05e-06s      1    17                     Subtensor{int64:int64:int8}(TensorConstant{[   0    1..9998 9999]}, ScalarFromTensor.0, ScalarFromTensor.0, Constant{1})
+        input 0: dtype=int64, shape=(10000,), strides=c
+        input 1: dtype=int64, shape=8, strides=c
+        input 2: dtype=int64, shape=8, strides=c
+        input 3: dtype=int8, shape=1, strides=c
+        output 0: dtype=int64, shape=(3,), strides=c
+       5.1%    43.2%       0.000s       4.05e-06s      1    11                     Elemwise{switch,no_inplace}(Elemwise{le,no_inplace}.0, TensorConstant{0}, TensorConstant{0})
+        input 0: dtype=int8, shape=(), strides=c
+        input 1: dtype=int8, shape=(), strides=c
+        input 2: dtype=int64, shape=(), strides=c
+        output 0: dtype=int64, shape=(), strides=c
+       5.1%    48.3%       0.000s       4.05e-06s      1     5                     Elemwise{Composite{Switch(i0, Switch(LT((i1 + i2), i3), i3, (i1 + i2)), Switch(LT(i2, i1), i2, i1))}}[(0, 2)](Elemwise{lt,no_inplace}.0, TensorConstant{10000}, Elemwise{minimum,no_inplace}.0, TensorConstant{0})
+        input 0: dtype=int8, shape=(), strides=c
+        input 1: dtype=int64, shape=(), strides=c
+        input 2: dtype=int64, shape=(), strides=c
+        input 3: dtype=int8, shape=(), strides=c
+        output 0: dtype=int64, shape=(), strides=c
+       5.1%    53.5%       0.000s       4.05e-06s      1     2                     Elemwise{minimum,no_inplace}(Shape_i{0}.0, TensorConstant{10000})
+        input 0: dtype=int64, shape=(), strides=c
+        input 1: dtype=int64, shape=(), strides=c
+        output 0: dtype=int64, shape=(), strides=c
+       3.9%    57.4%       0.000s       3.10e-06s      1    16                     Subtensor{int64:int64:int8}(coefficients, ScalarFromTensor.0, ScalarFromTensor.0, Constant{1})
+        input 0: dtype=float32, shape=(3,), strides=c
+        input 1: dtype=int64, shape=8, strides=c
+        input 2: dtype=int64, shape=8, strides=c
+        input 3: dtype=int8, shape=1, strides=c
+        output 0: dtype=float32, shape=(3,), strides=c
+       3.9%    61.3%       0.000s       3.10e-06s      1    14                     ScalarFromTensor(Elemwise{Composite{Switch(i0, i1, minimum(i2, i3))}}[(0, 2)].0)
+        input 0: dtype=int64, shape=(), strides=c
+        output 0: dtype=int64, shape=8, strides=c
+       3.9%    65.3%       0.000s       3.10e-06s      1    10                     Elemwise{Composite{Switch(i0, i1, minimum(i2, i3))}}[(0, 2)](Elemwise{le,no_inplace}.0, TensorConstant{0}, Elemwise{Composite{Switch(i0, Switch(LT((i1 + i2), i3), i3, (i1 + i2)), Switch(LT(i2, i1), i2, i1))}}[(0, 2)].0, TensorConstant{10000})
+        input 0: dtype=int8, shape=(), strides=c
+        input 1: dtype=int8, shape=(), strides=c
+        input 2: dtype=int64, shape=(), strides=c
+        input 3: dtype=int64, shape=(), strides=c
+        output 0: dtype=int64, shape=(), strides=c
+       3.9%    69.2%       0.000s       3.10e-06s      1     4                     Elemwise{Composite{Switch(i0, Switch(LT((i1 + i2), i3), i3, (i1 + i2)), Switch(LT(i1, i2), i1, i2))}}(Elemwise{lt,no_inplace}.0, Elemwise{minimum,no_inplace}.0, Shape_i{0}.0, TensorConstant{0})
+        input 0: dtype=int8, shape=(), strides=c
+        input 1: dtype=int64, shape=(), strides=c
+        input 2: dtype=int64, shape=(), strides=c
+        input 3: dtype=int8, shape=(), strides=c
+        output 0: dtype=int64, shape=(), strides=c
+       3.9%    73.1%       0.000s       3.10e-06s      1     3                     Elemwise{lt,no_inplace}(Elemwise{minimum,no_inplace}.0, TensorConstant{0})
+        input 0: dtype=int64, shape=(), strides=c
+        input 1: dtype=int8, shape=(), strides=c
+        output 0: dtype=int8, shape=(), strides=c
+       3.6%    76.7%       0.000s       2.86e-06s      1    19                     Sum{acc_dtype=float64}(Elemwise{Composite{(i0 * (i1 ** i2))}}.0)
+        input 0: dtype=float64, shape=(3,), strides=c
+        output 0: dtype=float64, shape=(), strides=c
+       3.6%    80.4%       0.000s       2.86e-06s      1     9                     Elemwise{switch,no_inplace}(Elemwise{le,no_inplace}.0, TensorConstant{0}, TensorConstant{0})
+        input 0: dtype=int8, shape=(), strides=c
+        input 1: dtype=int8, shape=(), strides=c
+        input 2: dtype=int64, shape=(), strides=c
+        output 0: dtype=int64, shape=(), strides=c
+       3.6%    84.0%       0.000s       2.86e-06s      1     7                     Elemwise{le,no_inplace}(Elemwise{Composite{Switch(i0, Switch(LT((i1 + i2), i3), i3, (i1 + i2)), Switch(LT(i2, i1), i2, i1))}}[(0, 2)].0, TensorConstant{0})
+        input 0: dtype=int64, shape=(), strides=c
+        input 1: dtype=int8, shape=(), strides=c
+        output 0: dtype=int8, shape=(), strides=c
+       3.6%    87.6%       0.000s       2.86e-06s      1     1                     InplaceDimShuffle{x}(x)
+        input 0: dtype=float32, shape=(), strides=c
+        output 0: dtype=float32, shape=(1,), strides=c
+       2.7%    90.3%       0.000s       2.15e-06s      1    12                     ScalarFromTensor(Elemwise{Composite{Switch(i0, i1, minimum(i2, i3))}}[(0, 2)].0)
+        input 0: dtype=int64, shape=(), strides=c
+        output 0: dtype=int64, shape=8, strides=c
+       2.4%    92.7%       0.000s       1.91e-06s      1    15                     ScalarFromTensor(Elemwise{switch,no_inplace}.0)
+        input 0: dtype=int64, shape=(), strides=c
+        output 0: dtype=int64, shape=8, strides=c
+       2.4%    95.2%       0.000s       1.91e-06s      1    13                     ScalarFromTensor(Elemwise{switch,no_inplace}.0)
+        input 0: dtype=int64, shape=(), strides=c
+        output 0: dtype=int64, shape=8, strides=c
+       2.4%    97.6%       0.000s       1.91e-06s      1     8                     Elemwise{Composite{Switch(i0, i1, minimum(i2, i3))}}[(0, 2)](Elemwise{le,no_inplace}.0, TensorConstant{0}, Elemwise{Composite{Switch(i0, Switch(LT((i1 + i2), i3), i3, (i1 + i2)), Switch(LT(i1, i2), i1, i2))}}.0, Shape_i{0}.0)
+        input 0: dtype=int8, shape=(), strides=c
+        input 1: dtype=int8, shape=(), strides=c
+        input 2: dtype=int64, shape=(), strides=c
+        input 3: dtype=int64, shape=(), strides=c
+        output 0: dtype=int64, shape=(), strides=c
+       2.4%   100.0%       0.000s       1.91e-06s      1     6                     Elemwise{le,no_inplace}(Elemwise{Composite{Switch(i0, Switch(LT((i1 + i2), i3), i3, (i1 + i2)), Switch(LT(i1, i2), i1, i2))}}.0, TensorConstant{0})
+        input 0: dtype=int64, shape=(), strides=c
+        input 1: dtype=int8, shape=(), strides=c
+        output 0: dtype=int8, shape=(), strides=c
+       ... (remaining 0 Apply instances account for 0.00%(0.00s) of the runtime)
 
-    Apply-wise summary:
-    <% of local_time spent at this position> <cumulative %%>
-        <apply time> <cumulative seconds> <time per call>
-        <nb_call> <Apply position> <Apply Op name>
-       87.3%   87.3%  25.672s  25.672s 2.57e-03s  10000  15 Gemv{inplace}(w, TensorConstant{-0.01}, InplaceDimShuffle{1,0}.0, Elemwise{Composite{exp,{mul,{true_div,neg,{add,mul}}}}}[(0, 0)].0, TensorConstant{0.9998})
-        9.7%   97.0%  2.843s  28.515s 2.84e-04s  10000   1 dot(x, w)
-        1.3%   98.2%  0.378s  28.893s 3.78e-05s  10000   9 Elemwise{Composite{scalar_softplus,{mul,scalar_softplus,{neg,mul,sub}}}}(y, Elemwise{Composite{neg,sub}}[(0, 0)].0, Elemwise{sub,no_inplace}.0, Elemwise{neg,no_inplace}.0)
-        0.4%   98.7%  0.127s  29.020s 1.27e-05s  10000  10 Alloc(Elemwise{inv,no_inplace}.0, Shape_i{0}.0)
-        0.3%   99.0%  0.092s  29.112s 9.16e-06s  10000  13 Elemwise{Composite{exp,{mul,{true_div,neg,{add,mul}}}}}[(0,0)](Elemwise{ScalarSigmoid{output_types_preference=transfer_type{0}, _op_use_c_code=True}}[(0, 0)].0, Alloc.0, y, Elemwise{Composite{neg,sub}}[(0,0)].0, Elemwise{sub,no_inplace}.0, InplaceDimShuffle{x}.0)
-        0.3%   99.3%  0.080s  29.192s 7.99e-06s  10000  11 Elemwise{ScalarSigmoid{output_types_preference=transfer_type{0}, _op_use_c_code=True}}[(0, 0)](Elemwise{neg,no_inplace}.0)
-       ... (remaining 14 Apply instances account for
-           0.7%(0.00s) of the runtime)
+    Memory Profile
+    (Sparse variables are ignored)
+    (For values in brackets, it's for linker = c|py
+    ---
+        Max if no gc (allow_gc=False): 0KB (0KB)
+        CPU: 0KB (0KB)
+        GPU: 0KB (0KB)
+    ---
+        Max if linker=cvm(default): 0KB (0KB)
+        CPU: 0KB (0KB)
+        GPU: 0KB (0KB)
+    ---
+        Memory saved if views are used: 0KB (0KB)
+        Memory saved if inplace ops are used: 0KB (0KB)
+        Memory saved if gc is enabled: 0KB (0KB)
+    ---
 
-    Profile of Theano functions memory:
-    (This check only the output of each apply node. It don't check the temporary memory used by the op in the apply node.)
-    Theano fct: train
-        Max without gc, inplace and view (KB) 2481
-        Max FAST_RUN_NO_GC (KB) 16
-        Max FAST_RUN (KB) 16
-        Memory saved by view (KB) 2450
-        Memory saved by inplace (KB) 15
-        Memory saved by GC (KB) 0
-        <Sum apply outputs (bytes)> <Apply outputs memory size(bytes)>
-            <created/inplace/view> <Apply node>
-        <created/inplace/view> is taked from the op declaration, not ...
-             2508800B  [2508800] v InplaceDimShuffle{1,0}(x)
-                6272B  [6272] i Gemv{inplace}(w, ...)
-                3200B  [3200] c Elemwise{Composite{...}}(y, ...)
+        <Sum apply outputs (bytes)> <Apply outputs shape> <created/inplace/view> <Apply node>
 
-    Here are tips to potentially make your code run faster (if you think of new ones, suggest them on the mailing list).
-    Test them first, as they are not guaranteed to always provide a speedup.
-      - Try the Theano flag floatX=float32
+       ... (remaining 20 Apply account for  171B/171B ((100.00%)) of the Apply with dense outputs sizes)
+
+        All Apply nodes have output sizes that take less than 1024B.
+        <created/inplace/view> is taken from the Op's declaration.
+        Apply nodes marked 'inplace' or 'view' may actually allocate memory, this is not reported here. If you use DebugMode, warnings will be emitted in those cases.
+
+    Here are tips to potentially make your code run faster
+                     (if you think of new ones, suggest them on the mailing list).
+                     Test them first, as they are not guaranteed to always provide a speedup.
+      Sorry, no tip for today.
+
     """
 
 Exercise 5
 -----------
 
 - In the last exercises, do you see a speed up with the GPU?
-- Where does it come from? (Use ProfileMode)
+- Where does it come from? (Use profile=True)
 - Is there something we can do to speed up the GPU version?
 
 
@@ -427,4 +521,3 @@ Known limitations
   - A few hundreds nodes is fine
   - Disabling a few optimizations can speed up compilation
   - Usually too many nodes indicates a problem with the graph
-
