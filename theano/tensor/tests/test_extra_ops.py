@@ -423,9 +423,8 @@ class TestRepeatOp(utt.InferShapeTester):
                 for dtype in tensor.discrete_dtypes:
                     r_var = T.scalar(dtype=dtype)
                     r = numpy.asarray(3, dtype=dtype)
-                    if (dtype in self.numpy_unsupported_dtypes and
-                        # uint64 is always not implemented
-                        (r_var.ndim == 1 or dtype == 'uint64')):
+                    if (dtype == 'uint64' or
+                        (dtype in self.numpy_unsupported_dtypes and r_var.ndim == 1)):
                         self.assertRaises(TypeError,
                                 repeat, x, r_var, axis=axis)
                     else:
