@@ -17,8 +17,12 @@ from theano import config
 from theano.misc.pkl_utils import CompatUnpickler
 
 if not theano.sandbox.gpuarray.pygpu_activated:
+    try:
+        import pygpu
+    except ImportError:
+        pygpu = None
     import theano.sandbox.cuda as cuda_ndarray
-    if cuda_ndarray.cuda_available:
+    if pygpu and cuda_ndarray.cuda_available:
         cuda_ndarray.use('gpu', default_to_move_computation_to_gpu=False,
                          move_shared_float32_to_gpu=False,
                          enable_cuda=False)
