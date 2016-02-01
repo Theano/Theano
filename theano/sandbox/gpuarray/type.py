@@ -771,7 +771,7 @@ def GpuArray_unpickler(npa, ctx_name):
         ctx = get_context(ctx_name)
         return pygpu.gpuarray.array(npa, copy=True, context=ctx)
     else:
-        raise ImportError("Cuda not found. Cannot unpickle GpuArray")
+        raise ImportError("pygpu not found. Cannot unpickle GpuArray")
 
 copyreg.constructor(GpuArray_unpickler)
 
