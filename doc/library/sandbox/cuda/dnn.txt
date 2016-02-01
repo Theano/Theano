@@ -38,8 +38,10 @@ By default, Theano will detect if it can use cuDNN. If so, it will use
 it.  If not, Theano optimizations will not introduce cuDNN ops. So
 Theano will still work if the user did not introduce them manually.
 
-To get an error if Theano can not use cuDNN, use this Theano flag:
-``optimizer_including=cudnn``.
+The recently added Theano flag :attr:`allow_gc <config.dnn.enabled>`
+allow to change the default behavior to force it or disable it. You
+can also get an error with older Theano version if cuDNN can not be
+used, by using this Theano flag: ``optimizer_including=cudnn``.
 
 .. note::
 

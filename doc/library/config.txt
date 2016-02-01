@@ -567,6 +567,19 @@ import theano and print the config variable, as in:
 
     A directory with bin/, lib/, include/ folders containing cuda utilities.
 
+.. attribute:: dnn.enabled
+
+  String value: ``auto``, ``True``, ``False``
+
+  Default ``auto``
+
+  If ``auto``, auto detect if cudnn is there, if not, raise an error.
+
+  If ``True``, if we can't use cudnn, raise an error.
+
+  If ``False``, do not test if cudnn is there and don't use it.
+  Useful to disable it completly when the auto detection crash in some strange case.
+
 .. attribute:: config.dnn.conv.workmem
 
    Deprecated, use dnn.conv.algo_fwd.
