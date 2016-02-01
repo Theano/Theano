@@ -240,10 +240,11 @@ def test_pooling():
         modes = ('max', 'average_inc_pad')
     else:
         modes = ('max', 'average_inc_pad', 'average_exc_pad')
-
+        
     x = T.ftensor4()
     for mode, pad in product(modes,
                              ((0, 0), (1, 0), (1, 0), (2, 3), (3, 2))):
+
         if mode == 'max':
             func = T.max
         else:
@@ -285,22 +286,23 @@ def test_pooling():
                     a = f1(data).__array__()
 
                     b = f2(data).__array__()
-                    utt.assert_allclose(a, b)
+                    assert numpy.allclose(a, b,
+                                          atol=numpy.finfo(numpy.float32).eps)
 
         # Test the grad
         for shp in [(1, 1, 2, 2),
                     (1, 1, 3, 3)]:
             data = numpy.random.normal(0, 1, shp).astype("float32") * 10
 
-            ws = 2
-            stride = 2
-            if pad[0] > stride or pad[1] > stride:
+            ws = theano.shared(numpy.array([2, 2]))
+            stride = theano.shared(numpy.array([1, 1]))
+            if pad[0] > 1 or pad[1] > 1:
                 # Not implemented
                 continue
-
-            # This test the CPU grad + opt + GPU implemtentation
+            pad_ = theano.shared(numpy.array(pad))
+            ## This test the CPU grad + opt + GPU implemtentation
             def fn(x):
-                return pool_2d(x, (ws, ws), ignore_border=True,
+                return pool_2d(x, (2, 2), ignore_border=True,
                                padding=pad, mode=mode)
             theano.tests.unittest_tools.verify_grad(fn, [data],
                                                     cast_to_output_type=False,
@@ -310,15 +312,16 @@ def test_pooling():
                                  mode=mode_with_gpu)
             assert any([isinstance(node.op, cuda.dnn.GpuDnnPoolGrad)
                         for node in fg.maker.fgraph.toposort()])
-
+            
             # Test the GPU grad + GPU implementation
             def fn(x):
                 dnn_op = cuda.dnn.dnn_pool(
-                    x, ws=(ws, ws),
-                    stride=(stride, stride),
-                    pad=pad,
+                    x, ws=ws,
+                    stride=stride,
+                    pad=pad_,
                     mode=mode)
                 return dnn_op
+            
             theano.tests.unittest_tools.verify_grad(
                 fn, [data],
                 cast_to_output_type=False,
@@ -331,9 +334,10 @@ def test_pooling():
             g_out = fg(data)
 
             # Compare again the CPU result
-            out = pool_2d(x, (ws, ws),
+            out = pool_2d(x, (2, 2), st=(1, 1),
                           padding=pad,
                           ignore_border=True, mode=mode)
+            
             fc = theano.function([x], theano.grad(out.sum(), x),
                                  mode=mode_without_gpu)
             if mode == 'max':
@@ -343,7 +347,7 @@ def test_pooling():
                 assert any([isinstance(node.op, AveragePoolGrad)
                             for node in fc.maker.fgraph.toposort()])
             c_out = fc(data)
-            utt.assert_allclose(c_out, g_out)
+            assert numpy.allclose(c_out, g_out)
 
 
 def test_pooling3d():
@@ -999,14 +1003,9 @@ class TestDnnInferShapes(utt.InferShapeTester):
             [(1, 1), (2, 2), (3, 3)],
             modes
         ):
-            desc = dnn.GpuDnnPoolDesc(
-                ws=params[0],
-                stride=params[1],
-                mode=params[2]
-            )()
             self._compile_and_check(
                 [img],
-                [dnn.GpuDnnPool()(img, desc)],
+                [dnn.GpuDnnPool(mode=params[2])(img, params[0], params[1], (0,0))],
                 [img_val],
                 dnn.GpuDnnPool
             )
@@ -1035,16 +1034,13 @@ class TestDnnInferShapes(utt.InferShapeTester):
             [(1, 1), (2, 2), (3, 3)],
             ['max', 'average_inc_pad']
         ):
-            desc = dnn.GpuDnnPoolDesc(
-                ws=params[0],
-                stride=params[1],
-                mode=params[2]
-            )()
             pool_grad = dnn.GpuDnnPoolGrad()(
                 img,
                 out,
                 img_grad,
-                desc
+                params[0],
+                params[1],
+                (0, 0)
             )
             self._compile_and_check(
                 [img, img_grad, out],
