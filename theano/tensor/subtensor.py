@@ -1779,7 +1779,8 @@ class AdvancedSubtensor1(Op):
             if (i_type != NPY_INTP) {
                 // Cast %(i_name)s to NPY_INTP (expected by PyArray_TakeFrom),
                 // if all values fit.
-                if (!PyArray_CanCastSafely(i_type, NPY_INTP)) {
+                if (!PyArray_CanCastSafely(i_type, NPY_INTP) &&
+                    PyArray_SIZE(%(i_name)s) > 0) {
                     npy_int64 min_val, max_val;
                     PyObject* py_min_val = PyArray_Min(%(i_name)s, NPY_MAXDIMS,
                                                        NULL);
@@ -1850,7 +1851,7 @@ class AdvancedSubtensor1(Op):
         """ % locals()
 
     def c_code_cache_version(self):
-        return (0, 1, 1)
+        return (0, 1, 2)
 
 advanced_subtensor1 = AdvancedSubtensor1()
 
