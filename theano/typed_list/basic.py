@@ -596,7 +596,6 @@ x
 
 
 class MakeList(Op):
-
     __props__ = ()
 
     def make_node(self, a):
@@ -615,7 +614,8 @@ class MakeList(Op):
 
     def perform(self, node, inputs, outputs):
         (out,) = outputs
-        out[0] = list(inputs)
+        # We need to make sure that we don't get a view on our inputs
+        out[0] = [_lessbroken_deepcopy(inp) for inp in inputs]
 
 make_list = MakeList()
 """
