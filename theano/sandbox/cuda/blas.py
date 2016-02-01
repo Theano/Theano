@@ -15,7 +15,7 @@ from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
 from theano.tensor import as_tensor_variable
 
 
-class BatchedDotOp(GpuOp):
+class GpuBatchedDot(GpuOp):
     __props__ = ()
 
     def make_node(self, inp1, inp2):
@@ -216,7 +216,8 @@ class BatchedDotOp(GpuOp):
         xshp, yshp = shapes
         return [xshp[:-1] + yshp[2:]]
 
-batched_dot = BatchedDotOp()
+batched_dot = GpuBatchedDot()
+BatchedDotOp = GpuBatchedDot()
 """
 Call cublasSgemmBatched. Take 2 3d tensor as input.
 """

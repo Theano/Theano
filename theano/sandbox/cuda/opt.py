@@ -33,7 +33,7 @@ from theano.sandbox.cuda.basic_ops import (
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (
     gpu_dot22, gpu_dot22scalar, gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv,
-    BatchedDotOp, GpuCorrMM, GpuCorrMM_gradInputs, GpuCorrMM_gradWeights,
+    GpuBatchedDot, GpuCorrMM, GpuCorrMM_gradInputs, GpuCorrMM_gradWeights,
     GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights)
 
 from theano.sandbox.cuda.blas import gpu_gemv_inplace
@@ -629,7 +629,7 @@ def local_gpu_batched_dot(node):
             x_ = x_.dimshuffle(0, "x", 1)
         if y.ndim == 2:
             y_ = y_.dimshuffle(0, 1, "x")
-        z = BatchedDotOp()(as_cuda_ndarray_variable(x_),
+        z = GpuBatchedDot()(as_cuda_ndarray_variable(x_),
                            as_cuda_ndarray_variable(y_))
         # unpad z shape
         if x.ndim == 2:

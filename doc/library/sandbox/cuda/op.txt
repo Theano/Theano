@@ -1,3 +1,4 @@
+
 .. _libdoc_cuda_op:
 
 ======================================================
@@ -19,7 +20,7 @@ Blas Op
 
 .. automodule:: theano.sandbox.cuda.blas
     :members:
-.. autoclass:: theano.sandbox.cuda.blas.BatchedDotOp
+.. autoclass:: theano.sandbox.cuda.blas.GpuBatchedDot
 
 Nnet Op
 =======
