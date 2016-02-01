@@ -84,11 +84,11 @@ def _dnn_check_version():
 
 
 def dnn_present():
+    if dnn_present.avail is not None:
+        return dnn_present.avail
     if config.dnn.enabled == "False":
         dnn_present.msg = "disabled by dnn.enabled flag"
         dnn_present.avail = False
-    if dnn_present.avail is not None:
-        return dnn_present.avail
 
     if pygpu is None:
         dnn_present.msg = "PyGPU not available"
