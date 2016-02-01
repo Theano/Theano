@@ -77,7 +77,7 @@ def d3viz(fct, outfile, copy_deps=True, *args, **kwargs):
     # Create DOT graph
     formatter = PyDotFormatter(*args, **kwargs)
     graph = formatter(fct)
-    dot_graph = escape_quotes(graph.create_dot()).replace('\n', '').replace('\r', '')
+    dot_graph = escape_quotes(str(graph.create_dot())).replace('\n', '').replace('\r', '')
 
     # Create output directory if not existing
     outdir = os.path.dirname(outfile)

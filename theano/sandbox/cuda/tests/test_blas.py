@@ -45,6 +45,7 @@ def my_rand(*shape):
 
 
 class TestBatchedDot(unittest_tools.InferShapeTester):
+    mode = mode_with_gpu
 
     def test_batched_dot_correctness(self):
 

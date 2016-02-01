@@ -55,7 +55,7 @@ def test_pydotprint_return_image():
 
     x = tensor.dvector()
     ret = theano.printing.pydotprint(x * 2, return_image=True)
-    assert isinstance(ret, str)
+    assert isinstance(ret, (str, bytes))
 
 
 def test_pydotprint_variables():
