@@ -63,7 +63,7 @@ Glossary
         then compiling them with :term:`theano.function`.
 
         See also :term:`Variable`, :term:`Op`, :term:`Apply`, and
-        :term:`Type`, or read more about :ref:`tutorial_graphstructures`.
+        :term:`Type`, or read more about :ref:`graphstructures`.
 
     Destructive
         An :term:`Op` is destructive (of particular input[s]) if its
@@ -108,7 +108,7 @@ Glossary
         are provided with Theano, but you can add more.
 
         See also :term:`Variable`, :term:`Type`, and :term:`Apply`, 
-        or read more about :ref:`tutorial_graphstructures`.
+        or read more about :ref:`graphstructures`.
 
     Optimizer
         An instance of :class:`Optimizer`, which has the capacity to provide
@@ -141,7 +141,7 @@ Glossary
         ``.type`` attribute of a :term:`Variable`.  
 
         See also :term:`Variable`, :term:`Op`, and :term:`Apply`, 
-        or read more about :ref:`tutorial_graphstructures`.
+        or read more about :ref:`graphstructures`.
 
     Variable
         The the main data structure you work with when using Theano.
@@ -153,7 +153,7 @@ Glossary
         ``x`` and ``y`` are both `Variables`, i.e. instances of the :class:`Variable` class.
 
         See also :term:`Type`, :term:`Op`, and :term:`Apply`, 
-        or read more about :ref:`tutorial_graphstructures`.
+        or read more about :ref:`graphstructures`.
 
     View
         Some Tensor Ops (such as Subtensor and Transpose) can be computed in
