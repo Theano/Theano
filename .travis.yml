@@ -35,7 +35,7 @@ install:
 env:
   - PART="theano/sandbox theano/sparse theano/scalar theano/tensor/nnet theano/scan_module"
   - PART="theano/tensor/tests/test_basic.py theano/tensor/signal theano/compile theano/gof theano/misc theano/tests theano/compat"
-  - PART="-e test_basic.py theano/tensor/tests"
+  - PART="-e test_basic.py theano/tensor/tests theano/d3viz"
 
 matrix:
   fast_finish: true
