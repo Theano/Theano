@@ -265,8 +265,9 @@ class NVCC_compiler(Compiler):
 
                 if pa.startswith(pattern):
                     preargs1.append(pa)
-                else:
-                    preargs2.append(pa)
+                    break
+            else:
+                preargs2.append(pa)
 
         # Don't put -G by default, as it slow things down.
         # We aren't sure if -g slow things down, so we don't put it by default.
