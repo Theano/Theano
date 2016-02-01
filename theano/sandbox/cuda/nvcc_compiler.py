@@ -251,6 +251,10 @@ class NVCC_compiler(Compiler):
         # nvcc argument
         preargs1 = []
         for pa in preargs:
+            if pa.startswith('-Wl,'):
+                preargs1.append('-Xlinker')
+                preargs1.append(pa[4:])
+                continue
             for pattern in ['-O', '-arch=', '-ccbin=', '-G', '-g', '-I',
                             '-L', '--fmad', '--ftz', '--maxrregcount',
                             '--prec-div', '--prec-sqrt',  '--use_fast_math',
