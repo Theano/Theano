@@ -4,6 +4,7 @@ from six import iteritems
 import warnings
 
 import theano
+from theano.tensor.type import TensorType
 from theano.tensor.var import _tensor_py_operators
 from theano import Type, Variable, Constant, tensor, config, scalar
 from theano.compile import SharedVariable
@@ -201,17 +202,14 @@ class GpuArrayType(Type):
                                   context=self.context)
         else:
             if not hasattr(data, 'dtype'):
-                # This is to convert objects that don't have a dtype
-                # (like lists).  We anticipate that the type below
-                # will match and we pass copy=False so it won't make a
-                # second object on the GPU.
-                converted_data = gpuarray.array(data, dtype=self.dtype, context=self.context)
-                g_data = gpuarray.array(data, copy=False, context=self.context)
-                if self.values_eq(g_data,
-                                  converted_data,
-                                  force_same_dtype=False):
+                converted_data = theano._asarray(data, self.dtype)
+                # We use the `values_eq` static function from TensorType
+                # to handle NaN values.
+                if TensorType.values_eq(numpy.asarray(data),
+                                        converted_data,
+                                        force_same_dtype=False):
                     data = converted_data
-
+                    data = gpuarray.array(data, context=self.context)
 
             up_dtype = scalar.upcast(self.dtype, data.dtype)
             if up_dtype == self.dtype:
