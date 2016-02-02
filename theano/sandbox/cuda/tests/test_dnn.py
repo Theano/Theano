@@ -240,7 +240,7 @@ def test_pooling():
         modes = ('max', 'average_inc_pad')
     else:
         modes = ('max', 'average_inc_pad', 'average_exc_pad')
-        
+
     x = T.ftensor4()
     for mode, pad in product(modes,
                              ((0, 0), (1, 0), (1, 0), (2, 3), (3, 2))):
@@ -300,7 +300,8 @@ def test_pooling():
                 # Not implemented
                 continue
             pad_ = theano.shared(numpy.array(pad))
-            ## This test the CPU grad + opt + GPU implemtentation
+
+            # This test the CPU grad + opt + GPU implemtentation
             def fn(x):
                 return pool_2d(x, (2, 2), ignore_border=True,
                                padding=pad, mode=mode)
@@ -312,7 +313,7 @@ def test_pooling():
                                  mode=mode_with_gpu)
             assert any([isinstance(node.op, cuda.dnn.GpuDnnPoolGrad)
                         for node in fg.maker.fgraph.toposort()])
-            
+
             # Test the GPU grad + GPU implementation
             def fn(x):
                 dnn_op = cuda.dnn.dnn_pool(
@@ -321,7 +322,7 @@ def test_pooling():
                     pad=pad_,
                     mode=mode)
                 return dnn_op
-            
+
             theano.tests.unittest_tools.verify_grad(
                 fn, [data],
                 cast_to_output_type=False,
@@ -337,7 +338,7 @@ def test_pooling():
             out = pool_2d(x, (2, 2), st=(1, 1),
                           padding=pad,
                           ignore_border=True, mode=mode)
-            
+
             fc = theano.function([x], theano.grad(out.sum(), x),
                                  mode=mode_without_gpu)
             if mode == 'max':
@@ -1005,7 +1006,8 @@ class TestDnnInferShapes(utt.InferShapeTester):
         ):
             self._compile_and_check(
                 [img],
-                [dnn.GpuDnnPool(mode=params[2])(img, params[0], params[1], (0,0))],
+                [dnn.GpuDnnPool(mode=params[2])
+                               (img, params[0], params[1], (0, 0))],
                 [img_val],
                 dnn.GpuDnnPool
             )

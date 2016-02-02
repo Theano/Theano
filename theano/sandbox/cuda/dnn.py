@@ -1351,7 +1351,7 @@ class GpuDnnPoolDesc(GpuOp):
 
 
 class GpuDnnPool(DnnBase):
-    """    
+    """
     Pooling.
 
     Parameters
@@ -1371,7 +1371,7 @@ class GpuDnnPool(DnnBase):
     """
 
     __props__ = ("mode",)
-    
+
     def __init__(self, mode='max'):
         super(GpuDnnPool, self).__init__()
         if mode == 'average':
@@ -1382,13 +1382,13 @@ class GpuDnnPool(DnnBase):
     def make_node(self, img, ws, stride, pad):
         img = as_cuda_ndarray_variable(img)
         assert (img.ndim in [4, 5])
-        
+
         ws = tensor.as_tensor_variable(ws)
         stride = tensor.as_tensor_variable(stride)
         pad = tensor.as_tensor_variable(pad)
         assert ws.type.ndim == stride.type.ndim and ws.type.ndim == pad.type.ndim
         assert ws.type.ndim == 1
-        
+
         return Apply(self, [img, ws, stride, pad], [img.type()])
 
     def infer_shape(self, node, shape):
@@ -1457,7 +1457,7 @@ if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
                 raise Exception("cudnn v1 do not support average_exc_pad")
         else:
             raise NotImplementedError("Unsupported pooling model.")
-        
+
         return """
 fprintf(stderr, "test_forward\\n");
 cudnnStatus_t err;
@@ -1530,8 +1530,8 @@ if (err != CUDNN_STATUS_SUCCESS) {
 """ % dict(out=out, fail=sub['fail'],
            name=name, input=inputs[0],
            ws=ws, pad=pad, str=stride,
-           nd=node.inputs[0].ndim-2, input_desc="input"+name,
-           output_desc="output"+name,
+           nd=node.inputs[0].ndim - 2, input_desc="input" + name,
+           output_desc="output" + name,
            mode_flag=mode_flag)
 
     def grad(self, inp, grads):
@@ -1550,8 +1550,8 @@ if (err != CUDNN_STATUS_SUCCESS) {
         # not connected to desc
         return [[1], [0], [0], [0]]
 
-    #def c_code_cache_version(self):
-    #    return (8, version())
+    def c_code_cache_version(self):
+        return (8, version())
 
 
 class GpuDnnPoolGrad(DnnBase):
@@ -1579,7 +1579,7 @@ class GpuDnnPoolGrad(DnnBase):
     """
 
     __props__ = ('mode',)
-    
+
     def __init__(self, mode='max'):
         super(GpuDnnPoolGrad, self).__init__()
         if mode == 'average':
@@ -1594,13 +1594,13 @@ class GpuDnnPoolGrad(DnnBase):
         assert (inp_grad.ndim in [4, 5])
         out = as_cuda_ndarray_variable(out)
         assert(out.ndim in [4, 5])
-        
+
         ws = tensor.as_tensor_variable(ws)
         stride = tensor.as_tensor_variable(stride)
         pad = tensor.as_tensor_variable(pad)
         assert ws.type.ndim == stride.type.ndim and ws.type.ndim == pad.type.ndim
         assert ws.type.ndim == 1
-                
+
         return Apply(self, [inp, out, inp_grad, ws, stride, pad],
                      [inp.type()])
 
@@ -1661,19 +1661,14 @@ if (output%(name)s != NULL) { cudnnDestroyTensorDescriptor(output%(name)s); }
 if (output_grad%(name)s != NULL) { cudnnDestroyTensorDescriptor(output_grad%(name)s); }
 if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
 """ % dict(name=name)
-    
-#    def perform(self, node, inputs_storage, output_storage):
-#        output_storage[0][0] = inputs_storage[0].copy()
-#        return
-    
+
     def c_code(self, node, name, inputs, outputs, sub):
-#       raise NotImplementedError()
         # Here the name out and inp are based on the cudnn definition.
         # Not the definition of this class.
         # This make it complicated.
         out, inp, inp_grad, ws, stride, pad = inputs
         out_grad, = outputs
-        
+
         if self.mode == 'max':
             mode_flag = 'CUDNN_POOLING_MAX'
         elif self.mode == "average_inc_pad":
@@ -1770,16 +1765,15 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
 """ % dict(output_grad=out_grad,
            fail=sub['fail'], name=name,
            input=inp, input_grad=inp_grad, output=out,
-           input_desc="input"+name,
-           input_grad_desc="input_grad"+name,
-           output_desc="output"+name,
-           output_grad_desc="output_grad"+name,
+           input_desc="input" + name,
+           input_grad_desc="input_grad" + name,
+           output_desc="output" + name,
+           output_grad_desc="output_grad" + name,
            mode_flag=mode_flag, nd=node.inputs[0].ndim - 2,
            ws=ws, pad=pad, str=stride)
 
     def c_code_cache_version(self):
-        return 
-        #return (7, version())
+        return (8, version())
 
     def infer_shape(self, node, shape):
         return [shape[0]]
@@ -1801,7 +1795,7 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
     stride
         Subsampling stride (default: (1, 1)).
     mode : {'max', 'average_inc_pad', 'average_exc_pad}
-    pad : 
+    pad :
         (pad_h, pad_w) padding information.
         pad_h is the number of zero-valued pixels added to each of the top and
         bottom borders.
@@ -2296,11 +2290,11 @@ if True:
                 return
             inp, out, inp_grad = node.inputs
             ds = node.op.ds
-            
+
             return [GpuDnnPoolGrad(mode='max')(gpu_contiguous(inp),
-                                     gpu_contiguous(out),
-                                     gpu_contiguous(inp_grad),
-                                     ds, ds, (0, 0))]
+                                               gpu_contiguous(out),
+                                               gpu_contiguous(inp_grad),
+                                               ds, ds, (0, 0))]
 
     @register_opt('cudnn')
     @local_optimizer([MaxPoolGrad])
@@ -2322,9 +2316,9 @@ if True:
                                                HostFromGpu))):
 
                 ret = GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp),
-                                       gpu_contiguous(out),
-                                       gpu_contiguous(inp_grad),
-                                       ds, st, pad)
+                                                gpu_contiguous(out),
+                                                gpu_contiguous(inp_grad),
+                                                ds, st, pad)
                 return [host_from_gpu(ret)]
 
     @register_opt('cudnn')
@@ -2346,11 +2340,10 @@ if True:
                                                HostFromGpu))):
                 contiguous_inp_grad = gpu_contiguous(inp_grad)
                 ret = GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp),
-                                       contiguous_inp_grad,
-                                       contiguous_inp_grad,
-                                       ds, st, pad)
+                                                contiguous_inp_grad,
+                                                contiguous_inp_grad,
+                                                ds, st, pad)
                 return [host_from_gpu(ret)]
-
 
     @register_opt('cudnn')
     @local_optimizer([GpuSoftmax])
