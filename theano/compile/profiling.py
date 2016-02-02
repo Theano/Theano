@@ -737,24 +737,17 @@ class ProfileStats(object):
         # Find the function that used the most of that statistic
         max_sum_size = 0
 
-        # statistics with the old order
-        # TODO: Make list more flexible with mulitply GPUs later
-        max_node_memory_size = [0, 0, 0]
-        max_running_max_memory_size = [0, 0, 0]
-        max_node_memory_saved_by_view = 0
-        max_node_memory_saved_by_inplace = 0
-
-        # statistics with the new order
-        new_max_node_memory_size = [0, 0, 0]
-        new_max_running_max_memory_size = [0, 0, 0]
-        new_max_node_memory_saved_by_view = 0
-        new_max_node_memory_saved_by_inplace = 0
+        # statistics with the old and new order
+        stats = [[[0, 0, 0], [0, 0, 0], 0, 0], # old, with dmap
+                 [[0, 0, 0], [0, 0, 0], 0, 0], # old, without dmap
+                 [[0, 0, 0], [0, 0, 0], 0, 0], # new, with dmap
+                 [[0, 0, 0], [0, 0, 0], 0, 0]] # new, without dmap
 
         # track min peak memory usage
         min_max_peak = 0
         min_peak_time = 0
 
-        def count_running_memory(order, fgraph, nodes_mem):
+        def count_running_memory(order, fgraph, nodes_mem, ignore_dmap=False):
             """
             Calculate memory with specific node order.
 
@@ -804,7 +797,10 @@ class ProfileStats(object):
                 for var in node.outputs:
                     compute_map[var][0] = 1
                 idx = 0
-                dmap = getattr(node.op, 'destroy_map', None)
+                if ignore_dmap:
+                    dmap = None
+                else:
+                    dmap = getattr(node.op, 'destroy_map', None)
                 vmap = getattr(node.op, 'view_map', None)
                 val = nodes_mem[node]
 
@@ -1095,60 +1091,48 @@ class ProfileStats(object):
             # It mean that after executing the node,
             # the corresponding variable can be gc.
 
-            old_running_memory = count_running_memory(order, fgraph, nodes_mem)
+            # Store the max of some stats by any function in this profile.
+            max_sum_size = max(max_sum_size, sum_size)
+            def compute_max_stats(running_memory, stats):
+                (max_node_memory_size,
+                 max_running_max_memory_size,
+                 max_node_memory_saved_by_view,
+                 max_node_memory_saved_by_inplace) = stats
+
+                max_node_memory_size[0] = max(max_node_memory_size[0],
+                                              sum(running_memory[0]))
+                max_running_max_memory_size[0] = \
+                    max(max_running_max_memory_size[0], sum(running_memory[2]))
+
+                # Separate CPU and GPU
+                max_node_memory_size[1] = max(max_node_memory_size[1],
+                                              running_memory[0][0])
+                max_node_memory_size[2] = max(max_node_memory_size[2],
+                                              running_memory[0][1])
+                max_running_max_memory_size[1] = \
+                    max(max_running_max_memory_size[1], running_memory[2][0])
+                max_running_max_memory_size[2] = \
+                    max(max_running_max_memory_size[2], running_memory[2][1])
+
+                max_node_memory_saved_by_inplace = \
+                    max(max_node_memory_saved_by_inplace, running_memory[3])
+                max_node_memory_saved_by_view = max(max_node_memory_saved_by_view,
+                                                    running_memory[4])
+                return (max_node_memory_size,
+                        max_running_max_memory_size,
+                        max_node_memory_saved_by_view,
+                        max_node_memory_saved_by_inplace)
 
             new_order = fgraph.profile.node_executed_order
             # A list of new executed node order
+            for i, (ord, ignore_dmap) in enumerate([(order, False),
+                                                    (order, True),
+                                                    (new_order, False),
+                                                    (new_order, True)]):
+                running_memory =  count_running_memory(
+                    ord, fgraph, nodes_mem, ignore_dmap=ignore_dmap)
 
-            new_running_memory = count_running_memory(new_order,
-                                                      fgraph, nodes_mem)
-
-            # Store the max of some stats by any function in this profile.
-            max_sum_size = max(max_sum_size, sum_size)
-            max_node_memory_size[0] = max(max_node_memory_size[0],
-                                          sum(old_running_memory[0]))
-            max_running_max_memory_size[0] = \
-                max(max_running_max_memory_size[0], sum(old_running_memory[2]))
-
-            # Separate CPU and GPU
-            max_node_memory_size[1] = max(max_node_memory_size[1],
-                                          old_running_memory[0][0])
-            max_node_memory_size[2] = max(max_node_memory_size[2],
-                                          old_running_memory[0][1])
-            max_running_max_memory_size[1] = \
-                max(max_running_max_memory_size[1], old_running_memory[2][0])
-            max_running_max_memory_size[2] = \
-                max(max_running_max_memory_size[2], old_running_memory[2][1])
-
-            max_node_memory_saved_by_inplace = \
-                max(max_node_memory_saved_by_inplace, old_running_memory[3])
-            max_node_memory_saved_by_view = max(max_node_memory_saved_by_view,
-                                                old_running_memory[4])
-
-            # Store max of some stats with new order
-            new_max_node_memory_size[0] = max(new_max_node_memory_size[0],
-                                              sum(new_running_memory[0]))
-            new_max_running_max_memory_size[0] = \
-                max(new_max_running_max_memory_size[0],
-                    sum(new_running_memory[2]))
-
-            # Separate CPU and GPU
-            new_max_node_memory_size[1] = max(new_max_node_memory_size[1],
-                                              new_running_memory[0][0])
-            new_max_node_memory_size[2] = max(new_max_node_memory_size[2],
-                                              new_running_memory[0][1])
-            new_max_running_max_memory_size[1] = \
-                max(new_max_running_max_memory_size[1],
-                    new_running_memory[2][0])
-            new_max_running_max_memory_size[2] = \
-                max(new_max_running_max_memory_size[2],
-                    new_running_memory[2][1])
-
-            new_max_node_memory_saved_by_inplace = \
-                max(new_max_node_memory_saved_by_inplace,
-                    new_running_memory[3])
-            new_max_node_memory_saved_by_view = \
-                max(new_max_node_memory_saved_by_view, new_running_memory[4])
+                stats[i] = compute_max_stats(running_memory, stats[i])
 
             # Config: whether print min memory peak
             if config.profiling.min_peak_memory:
@@ -1169,51 +1153,43 @@ class ProfileStats(object):
         print("(Sparse variables are ignored)", file=file)
         print("(For values in brackets, it's for linker = c|py", file=file)
 
-        print("---", file=file)
-        # print >> file,  "    Max if no gc, inplace and view: %dKB" % int(
-        # round(max_sum_size / 1024))
-        print("    Max if no gc (allow_gc=False): %dKB (%dKB)" % (int(round(
-            new_max_node_memory_size[0] / 1024.)), int(round(
-                max_node_memory_size[0] / 1024.))), file=file)
-        print("    CPU: %dKB (%dKB)" % ((int(round(
-            new_max_node_memory_size[1] / 1024.)), int(round(
-                max_node_memory_size[1] / 1024.)))), file=file)
-        print("    GPU: %dKB (%dKB)" % ((int(round(
-            new_max_node_memory_size[2] / 1024.)), int(round(
-                max_node_memory_size[2] / 1024.)))), file=file)
+        def print_stats(stats1, stats2):
+            (_, max_running_max_memory_size, _, _) = stats1
+            (_, new_max_running_max_memory_size, _, _) = stats2
+
+            print("        CPU: %dKB (%dKB)" % ((int(round(
+                new_max_running_max_memory_size[1] / 1024.)), int(round(
+                    max_running_max_memory_size[1] / 1024.)))), file=file)
+            print("        GPU: %dKB (%dKB)" % ((int(round(
+                new_max_running_max_memory_size[2] / 1024.)), int(round(
+                    max_running_max_memory_size[2] / 1024.)))), file=file)
+            print("        CPU + GPU: %dKB (%dKB)" % (int(round(
+                new_max_running_max_memory_size[0] / 1024.)), int(round(
+                    max_running_max_memory_size[0] / 1024.))), file=file)
 
         print("---", file=file)
+        print("    Max peak memory with current setting", file=file)
+        print_stats(stats[0], stats[2])
+        print("    Max peak memory with current setting and Theano flag optimizer_excluding=inplace", file=file)
+        print_stats(stats[1], stats[3])
 
-        print("    Max if linker=cvm(default): %dKB (%dKB)" % (int(round(
-            new_max_running_max_memory_size[0] / 1024.)), int(round(
-                max_running_max_memory_size[0] / 1024.))), file=file)
-        print("    CPU: %dKB (%dKB)" % ((int(round(
-            new_max_running_max_memory_size[1] / 1024.)), int(round(
-                max_running_max_memory_size[1] / 1024.)))), file=file)
-        print("    GPU: %dKB (%dKB)" % ((int(round(
-            new_max_running_max_memory_size[2] / 1024.)), int(round(
-                max_running_max_memory_size[2] / 1024.)))), file=file)
-
+        (max_node_memory_size, _, _, _) = stats[0]
+        (new_max_node_memory_size, _, _, _) = stats[2]
+        print("    Max peak memory if allow_gc=False (linker don't make a difference)", file=file)
+        print("        CPU: %dKB" % int(round(
+            new_max_node_memory_size[1] / 1024.)), file=file)
+        print("        GPU: %dKB" % int(round(
+            new_max_node_memory_size[2] / 1024.)), file=file)
+        print("        CPU + GPU: %dKB" % int(round(
+            new_max_node_memory_size[0] / 1024.)), file=file)
         print("---", file=file)
 
         if min_max_peak:
             print("    Minimum peak from all valid apply node order is "
                   "%dKB(took %.3fs to compute)" %
                   (int(round(min_max_peak / 1024.)), min_peak_time), file=file)
-        print("    Memory saved if views are used: %dKB (%dKB)" %
-              (int(round(new_max_node_memory_saved_by_view / 1024.)),
-               int(round(max_node_memory_saved_by_view / 1024.))), file=file)
-        print("    Memory saved if inplace ops are used: %dKB (%dKB)" %
-              (int(round(new_max_node_memory_saved_by_inplace / 1024.)),
-               int(round(max_node_memory_saved_by_inplace / 1024.))),
-              file=file)
-        print("    Memory saved if gc is enabled: %dKB (%dKB)" %
-              (int(round(new_max_node_memory_size[0] -
-                         new_max_running_max_memory_size[0]) / 1024.),
-               int(round(max_node_memory_size[0] -
-                         max_running_max_memory_size[0]) / 1024.)), file=file)
 
-        print("---", file=file)
+            print("---", file=file)
 
         if (hasattr(theano, 'sandbox') and
             hasattr(theano.sandbox, 'cuda') and
