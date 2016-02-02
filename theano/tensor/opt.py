@@ -5826,38 +5826,6 @@ register_stabilize(topo_constant_folding, 'fast_compile', final_opt=True)
 register_specialize(topo_constant_folding, 'fast_compile', final_opt=True)
 
 
-def _is_1(expr):
-    """
-
-    Returns
-    -------
-    bool
-        True iff expr is a constant close to 1.
-
-    """
-    try:
-        v = get_scalar_constant_value(expr)
-        return numpy.allclose(v, 1)
-    except NotScalarConstantError:
-        return False
-
-
-def _is_minus1(expr):
-    """
-
-    Returns
-    -------
-    bool
-        True iff expr is a constant close to -1.
-
-    """
-    try:
-        v = get_scalar_constant_value(expr)
-        return numpy.allclose(v, -1)
-    except NotScalarConstantError:
-        return False
-
-
 def get_clients(node):
     """
     Used by erf/erfc opt to track less frequent op.
@@ -5881,7 +5849,7 @@ def get_clients2(node):
 
 # 1+erf(x)=>erfc(-x)
 local_one_plus_erf = gof.PatternSub((T.add,
-                                     dict(pattern='y', constraint=_is_1),
+                                     1,
                                      (T.erf, 'x')),
                                     (T.erfc, (T.neg, 'x')),
                                     allow_multiple_clients=True,
@@ -5894,7 +5862,7 @@ register_specialize(local_one_plus_erf)
 
 # 1-erf(x)=>erfc(x)
 local_one_minus_erf = gof.PatternSub((T.sub,
-                                      dict(pattern='y', constraint=_is_1),
+                                      1,
                                       (T.erf, 'x')),
                                      (T.erfc, 'x'),
                                      allow_multiple_clients=True,
@@ -5916,7 +5884,7 @@ register_specialize(local_one_minus_erf2)
 # 1+(-erf(x))=>erfc(x) This is a different graph then the previous as
 # the canonicalize don't work completly
 local_one_plus_neg_erf = gof.PatternSub((T.add,
-                                         dict(pattern='y', constraint=_is_1),
+                                         1,
                                          (T.neg, (T.erf, 'x'))),
                                         (T.erfc, 'x'),
                                         allow_multiple_clients=True,
@@ -5930,7 +5898,7 @@ register_specialize(local_one_plus_neg_erf)
 # (-1)+erf(x) => -erfc(x) don't need erf(x)+(-1) as the canonicalize
 # will put the -1 as the first argument.
 local_erf_minus_one = gof.PatternSub((T.add,
-                                      dict(pattern='y', constraint=_is_minus1),
+                                      -1,
                                       (T.erf, 'x')),
                                      (T.neg, (T.erfc, 'x')),
                                      allow_multiple_clients=True,
@@ -5943,7 +5911,7 @@ register_specialize(local_erf_minus_one)
 
 # 1-erfc(x) => erf(x)
 local_one_minus_erfc = gof.PatternSub((T.sub,
-                                       dict(pattern='y', constraint=_is_1),
+                                       1,
                                        (T.erfc, 'x')),
                                       (T.erf, 'x'),
                                       allow_multiple_clients=True,
@@ -5981,7 +5949,7 @@ register_specialize(local_one_minus_erfc3)
 # 1+(-erfc(x)) => erf(x) This is a different graph then the previous as
 # the canonicalize don't work completly
 local_one_add_neg_erfc = gof.PatternSub((T.add,
-                                         dict(pattern='y', constraint=_is_1),
+                                         1,
                                          (T.neg, (T.erfc, 'x'))),
                                         (T.erf, 'x'),
                                         allow_multiple_clients=True,
@@ -5995,7 +5963,7 @@ register_specialize(local_one_add_neg_erfc)
 
 # (-1)+erfc(-x)=>erf(x)
 local_erf_neg_minus_one = gof.PatternSub((T.add,
-                                          dict(pattern='y', constraint=_is_minus1),
+                                          -1,
                                           (T.erfc, (T.neg, 'x'))),
                                          (T.erf, 'x'),
                                          allow_multiple_clients=True,
@@ -6008,7 +5976,7 @@ register_specialize(local_erf_neg_minus_one)
 
 # (-1)+erfc(-1*x)=>erf(x)
 local_erf_neg_minus_one2 = gof.PatternSub((T.add,
-                                           dict(pattern='y', constraint=_is_minus1),
+                                           -1,
                                            (T.erfc, (T.mul, -1, 'x'))),
                                           (T.erf, 'x'),
                                           allow_multiple_clients=True,
