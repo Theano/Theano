@@ -220,7 +220,7 @@ class NanGuardMode(Mode):
     # We currently loose the 3 first params frequently, when calling
     # mode.including() and variant.
     def __init__(self, nan_is_error=None, inf_is_error=None, big_is_error=None,
-                 optimizer=None, linker=None):
+                 optimizer='default', linker=None):
         self.provided_optimizer = optimizer
         if nan_is_error is None:
             nan_is_error = config.NanGuardMode.nan_is_error
