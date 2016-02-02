@@ -579,8 +579,7 @@ import theano and print the config variable, as in:
   If ``True``, if we can't use cudnn, raise an error.
 
   If ``False``, do not test if cudnn is there and don't use it.
-  Useful to disable it completly when the auto detection crash in some
-  strange case.
+  Useful to disable it completely when the auto detection crashes.
 
 .. attribute:: config.dnn.conv.workmem
 
