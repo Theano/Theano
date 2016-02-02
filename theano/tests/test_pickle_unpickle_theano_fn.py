@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 """
 This script tests the pickle and unpickle of theano functions.
 When a compiled theano has shared vars, their values are also being pickled.

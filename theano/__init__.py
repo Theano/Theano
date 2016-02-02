@@ -21,6 +21,7 @@ which may be rendered with Sphinx. A rendered version is
 maintained at http://www.deeplearning.net/software/theano/library/
 
 """
+from __future__ import absolute_import, print_function, division
 
 __docformat__ = "restructuredtext en"
 

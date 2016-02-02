@@ -1,4 +1,5 @@
 # This is the example in the Theano/doc/tutorial/extending_theano.txt
+from __future__ import absolute_import, print_function, division
 
 import theano
 

@@ -1,5 +1,8 @@
+from __future__ import absolute_import, print_function, division
+
 import numpy
 import unittest
+import numpy, theano, unittest
 
 from theano.compile.pfunc import pfunc
 from theano.compile.sharedvalue import shared

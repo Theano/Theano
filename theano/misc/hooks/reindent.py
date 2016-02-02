@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 #! /usr/bin/env python
 
 # Released to the public domain, by Tim Peters, 03 October 2000.

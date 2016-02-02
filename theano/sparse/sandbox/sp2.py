@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 import numpy
 from six.moves import xrange
 import theano

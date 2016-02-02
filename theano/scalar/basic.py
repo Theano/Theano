@@ -9,7 +9,7 @@ what you are doing!
 If you want to use a scalar variable in a Theano graph,
 you probably want to use theano.tensor.[c,z,f,d,b,w,i,l,]scalar!
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 
 from itertools import chain
 import math

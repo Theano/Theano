@@ -1,7 +1,7 @@
 """
 Test config options.
 """
-
+from __future__ import absolute_import, print_function, division
 import unittest
 from theano.configparser import AddConfigVar, ConfigParam, THEANO_FLAGS_DICT
 

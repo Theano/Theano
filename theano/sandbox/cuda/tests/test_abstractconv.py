@@ -1,4 +1,7 @@
+from __future__ import absolute_import, print_function, division
+import unittest
 import numpy
+import itertools
 
 import theano
 from theano.tensor.nnet.tests import test_abstract_conv

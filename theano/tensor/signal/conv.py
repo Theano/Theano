@@ -3,6 +3,7 @@ Contains a wrapper function for tensor.nnet.ConvOp, which can be used to perform
 generic 2D convolution.
 
 """
+from __future__ import absolute_import, print_function, division
 import warnings
 
 import theano

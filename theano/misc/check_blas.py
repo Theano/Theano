@@ -5,7 +5,7 @@
 # C=a*C+dot(A,B)*b
 # A,B,C matrix
 # a,b scalar
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 import os
 import sys

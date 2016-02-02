@@ -2,6 +2,8 @@
 Define the `function` function.
 
 """
+from __future__ import absolute_import, print_function, division
+
 import logging
 
 import traceback as tb

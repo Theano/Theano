@@ -5,7 +5,7 @@ Generator code in SSJ package (L'Ecuyer & Simard).
 http://www.iro.umontreal.ca/~simardr/ssj/indexe.html
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import warnings
 
 import numpy

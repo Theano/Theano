@@ -2,6 +2,8 @@
 Define `SymbolicInput`, `SymbolicOutput`, `In`, `Out`.
 
 """
+from __future__ import absolute_import, print_function, division
+
 from theano import gof
 from .sharedvalue import SharedVariable
 

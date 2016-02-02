@@ -1,5 +1,7 @@
-from theano import config
+from __future__ import absolute_import, print_function, division
+import numpy
 
+from theano import config
 from theano.tensor.opt import in2out
 from theano.tensor.blas import ldflags, blas_header_text, blas_header_version
 from theano.tensor.blas import blas_optdb, optdb, local_optimizer

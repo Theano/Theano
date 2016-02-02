@@ -7,7 +7,7 @@ U{http://www-users.cs.umn.edu/~saad/software/SPARSKIT/paper.ps}.
 @todo: Automatic methods for determining best sparse format?
 """
 # COPIED FROM hpu/icml09/sp.py
-
+from __future__ import absolute_import, print_function, division
 import numpy
 import scipy
 from scipy import sparse as scipy_sparse

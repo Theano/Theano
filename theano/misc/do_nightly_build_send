@@ -1,5 +1,6 @@
 #!/bin/env python
 # Import smtplib for the actual sending function
+from __future__ import absolute_import, print_function, division
 import smtplib
 import os.path
 import sys

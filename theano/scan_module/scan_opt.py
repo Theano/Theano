@@ -49,7 +49,7 @@ scan_eqopt2 -> They are all global optimizer. (in2out convert local to global).
                ScanSaveMem,
                in2out(remove_constants_and_unused_inputs_scan3)
 """
-
+from __future__ import absolute_import, print_function, division
 import logging
 import copy
 from sys import maxsize

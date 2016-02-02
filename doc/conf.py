@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 # -*- coding: utf-8 -*-
 #
 # theano documentation build configuration file, created by

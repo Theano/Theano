@@ -1,3 +1,4 @@
+from __future__ import absolute_import, print_function, division
 
 from theano.gof.graph import Variable, Apply
 from theano.gof.type import Type

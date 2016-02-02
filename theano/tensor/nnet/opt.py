@@ -1,7 +1,7 @@
 """
 Optimizations addressing the ops in nnet root directory
 """
-
+from __future__ import absolute_import, print_function, division
 import theano
 from theano import compile, gof
 from theano.compile import optdb

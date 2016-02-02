@@ -2,8 +2,10 @@
 Provide a simple user friendly API.
 
 """
+from __future__ import absolute_import, print_function, division
 import warnings
 
+from theano import config
 from six import iteritems
 
 from theano import config

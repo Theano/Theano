@@ -5,7 +5,7 @@ To read about different sparse formats, see
 http://www-users.cs.umn.edu/~saad/software/SPARSKIT/paper.ps
 
 """
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 
 # TODO
 # Automatic methods for determining best sparse format?
