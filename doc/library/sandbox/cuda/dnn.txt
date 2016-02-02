@@ -41,7 +41,7 @@ Theano will still work if the user did not introduce them manually.
 The recently added Theano flag :attr:`dnn.enabled
 <config.dnn.enabled>` allows to change the default behavior to force
 it or disable it. Older Theano version do not support this flag. To
-get an error when CuDNN can not be sued with them, use this flag:
+get an error when CuDNN can not be used with them, use this flag:
 ``optimizer_including=cudnn``.
 
 .. note::
@@ -82,8 +82,7 @@ get an error when CuDNN can not be sued with them, use this flag:
      don't match the shapes from the last execution.
 
    The Theano flag ``dnn.conv.algo_bwd_filter`` and
-   ``dnn.conv.algo_bwd_data`` allows to specify the CuDNN The Theano
-   flag ``dnn.conv.algo_bwd_data`` allows to specify the CuDNN
+   ``dnn.conv.algo_bwd_data`` allows to specify the CuDNN
    convolution implementation that Theano should use for gradient
    convolutions.  Possible values include :
 

@@ -330,7 +330,7 @@ AddConfigVar('dnn.library_path',
              StrParam(default_dnn_path('lib64')))
 
 AddConfigVar('dnn.enabled',
-             "'auto', use CuDNN is available, but silently fall back"
+             "'auto', use CuDNN if available, but silently fall back"
              " to not using it if not present."
              " If True and CuDNN can not be used, raise an error."
              " If False, disable cudnn",
