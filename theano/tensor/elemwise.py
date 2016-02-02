@@ -824,7 +824,7 @@ class Elemwise(OpenMPOp):
         out_dtype = node.outputs[0].dtype
         if (out_dtype in float_dtypes and
                 isinstance(self.nfunc, numpy.ufunc) and
-                node.inputs[0].dtype in int_dtypes):
+                node.inputs[0].dtype in discrete_dtypes):
             char = numpy.sctype2char(out_dtype)
             sig = char * node.nin + '->' + char * node.nout
             node.tag.sig = sig
