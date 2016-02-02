@@ -760,10 +760,11 @@ declaration of an operation.
 gpu_context_type = GpuContextType()
 
 
-# THIS WORKS But CudaNdarray instances don't compare equal to one
+# THIS WORKS But GpuArray instances don't compare equal to one
 # another, and what about __hash__ ?  So the unpickled version doesn't
 # equal the pickled version, and the cmodule cache is not happy with
-# the situation.
+# the situation. The old back-end have this same comment and use the
+# same mechanism.
 def GpuArray_unpickler(npa, ctx_name):
     if config.experimental.unpickle_gpu_on_cpu:
         # directly return numpy array
