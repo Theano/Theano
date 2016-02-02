@@ -153,6 +153,7 @@ class FunctionGraph(utils.object2):
 
         self.inputs = list(inputs)
         self.outputs = outputs
+        self._removed_nodes = set()
 
         for f in features:
             self.attach_feature(f)
@@ -320,13 +321,15 @@ class FunctionGraph(utils.object2):
                               if output.clients or output in self.outputs]
             # If the apply node is not used and is not an output
             if not used_or_output:
-                self.apply_nodes.remove(apply_node)
-                self.variables.difference_update(apply_node.outputs)
-                self.execute_callbacks('on_prune', apply_node, reason)
-
-                for i, input in enumerate(apply_node.inputs):
-                    self.__remove_clients__(input, [(apply_node, i)],
-                                            reason=reason)
+                if apply_node in self.apply_nodes:
+                    #keeping track of removed apply node
+                    self.apply_nodes.remove(apply_node)
+                    self.variables.difference_update(apply_node.outputs)
+                    self.execute_callbacks('on_prune', apply_node, reason)
+                    self._removed_nodes.add(apply_node)
+                    for i, input in enumerate(apply_node.inputs):
+                        self.__remove_clients__(input, [(apply_node, i)],
+                                                reason=reason)
         # variable should not have any clients.
         # assert not variable.clients
 
@@ -478,8 +481,14 @@ class FunctionGraph(utils.object2):
 
         for node in new_nodes:
             assert node not in self.apply_nodes
-            self.__setup_node__(node)
-            self.apply_nodes.add(node)
+            prevent_addition = False
+            for n in self._removed_nodes :
+                if node is n :
+                    prevent_addition = True
+                    
+            if not prevent_addition : 
+                self.__setup_node__(node)
+                self.apply_nodes.add(node)
             for output in node.outputs:
                 self.__setup_r__(output)
                 self.variables.add(output)
@@ -488,8 +497,9 @@ class FunctionGraph(utils.object2):
                     self.__setup_r__(input)
                     self.variables.add(input)
                 self.__add_clients__(input, [(node, i)])
-            assert node.fgraph is self
-            self.execute_callbacks('on_import', node, reason)
+            if not prevent_addition :
+                assert node.fgraph is self
+                self.execute_callbacks('on_import', node, reason)
 
     # change input #
     def change_input(self, node, i, new_r, reason=None):
