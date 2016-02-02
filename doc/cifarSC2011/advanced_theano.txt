@@ -184,170 +184,182 @@ Profiling
 
 - To enable the memory profiling use the flags ``profile=True,profile_memory=True``
 
-Theano output:
+Theano output for running the train function of logistic regression
+example from :doc:`here <../tutorial/examples>` for one epoch:
 
 .. code-block:: python
 
     """
     Function profiling
     ==================
-      Message: train.py:17
-      Time in 1 calls to Function.__call__: 5.440712e-04s
-      Time in Function.fn.__call__: 4.799366e-04s (88.212%)
-      Time in thunks: 7.891655e-05s (14.505%)
-      Total compile time: 5.701292e-01s
-        Number of Apply nodes: 20
-        Theano Optimizer time: 2.405829e-01s
-           Theano validate time: 1.702785e-03s
-        Theano Linker time (includes C, CUDA code generation/compiling): 1.597619e-02s
-           Import time 1.968861e-03s
+      Message: train.py:47
+      Time in 1 calls to Function.__call__: 5.981922e-03s
+      Time in Function.fn.__call__: 5.180120e-03s (86.596%)
+      Time in thunks: 4.213095e-03s (70.430%)
+      Total compile time: 3.739440e-01s
+        Number of Apply nodes: 21
+        Theano Optimizer time: 3.258998e-01s
+           Theano validate time: 5.632162e-03s
+        Theano Linker time (includes C, CUDA code generation/compiling): 3.185582e-02s
+           Import time 3.157377e-03s
 
-    Time in all call to theano.grad() 0.000000e+00s
-    Time since theano import 1.436s
+    Time in all call to theano.grad() 2.997899e-02s
+    Time since theano import 3.616s
     Class
     ---
     <% time> <sum %> <apply time> <time per call> <type> <#call> <#apply> <Class name>
-      54.4%    54.4%       0.000s       3.90e-06s     C       11      11   theano.tensor.elemwise.Elemwise
-      17.8%    72.2%       0.000s       1.41e-05s     C        1       1   theano.compile.ops.Shape_i
-      11.5%    83.7%       0.000s       2.26e-06s     C        4       4   theano.tensor.basic.ScalarFromTensor
-       9.1%    92.7%       0.000s       3.58e-06s     C        2       2   theano.tensor.subtensor.Subtensor
-       3.6%    96.4%       0.000s       2.86e-06s     C        1       1   theano.tensor.elemwise.DimShuffle
-       3.6%   100.0%       0.000s       2.86e-06s     C        1       1   theano.tensor.elemwise.Sum
+      50.6%    50.6%       0.002s       1.07e-03s     Py       2       2   theano.tensor.basic.Dot
+      27.2%    77.8%       0.001s       5.74e-04s     C        2       2   theano.sandbox.cuda.basic_ops.HostFromGpu
+      18.1%    95.9%       0.001s       3.81e-04s     C        2       2   theano.sandbox.cuda.basic_ops.GpuFromHost
+       2.6%    98.6%       0.000s       1.23e-05s     C        9       9   theano.tensor.elemwise.Elemwise
+       0.8%    99.3%       0.000s       3.29e-05s     C        1       1   theano.sandbox.cuda.basic_ops.GpuElemwise
+       0.3%    99.6%       0.000s       5.60e-06s     C        2       2   theano.tensor.elemwise.DimShuffle
+       0.2%    99.8%       0.000s       6.91e-06s     C        1       1   theano.sandbox.cuda.basic_ops.GpuDimShuffle
+       0.1%    99.9%       0.000s       5.01e-06s     C        1       1   theano.compile.ops.Shape_i
+       0.1%   100.0%       0.000s       5.01e-06s     C        1       1   theano.tensor.elemwise.Sum
        ... (remaining 0 Classes account for   0.00%(0.00s) of the runtime)
 
     Ops
     ---
     <% time> <sum %> <apply time> <time per call> <type> <#call> <#apply> <Op name>
-      17.8%    17.8%       0.000s       1.41e-05s     C        1        1   Shape_i{0}
-      15.1%    32.9%       0.000s       1.19e-05s     C        1        1   Elemwise{Composite{(i0 * (i1 ** i2))}}
-      11.5%    44.4%       0.000s       2.26e-06s     C        4        4   ScalarFromTensor
-       9.1%    53.5%       0.000s       3.58e-06s     C        2        2   Subtensor{int64:int64:int8}
-       8.8%    62.2%       0.000s       3.46e-06s     C        2        2   Elemwise{switch,no_inplace}
-       6.3%    68.6%       0.000s       2.50e-06s     C        2        2   Elemwise{Composite{Switch(i0, i1, minimum(i2, i3))}}[(0, 2)]
-       6.0%    74.6%       0.000s       2.38e-06s     C        2        2   Elemwise{le,no_inplace}
-       5.1%    79.8%       0.000s       4.05e-06s     C        1        1   Elemwise{Composite{Switch(i0, Switch(LT((i1 + i2), i3), i3, (i1 + i2)), Switch(LT(i2, i1), i2, i1))}}[(0, 2)]
-       5.1%    84.9%       0.000s       4.05e-06s     C        1        1   Elemwise{minimum,no_inplace}
-       3.9%    88.8%       0.000s       3.10e-06s     C        1        1   Elemwise{lt,no_inplace}
-       3.9%    92.7%       0.000s       3.10e-06s     C        1        1   Elemwise{Composite{Switch(i0, Switch(LT((i1 + i2), i3), i3, (i1 + i2)), Switch(LT(i1, i2), i1, i2))}}
-       3.6%    96.4%       0.000s       2.86e-06s     C        1        1   Sum{acc_dtype=float64}
-       3.6%   100.0%       0.000s       2.86e-06s     C        1        1   InplaceDimShuffle{x}
+      50.6%    50.6%       0.002s       1.07e-03s     Py       2        2   dot
+      27.2%    77.8%       0.001s       5.74e-04s     C        2        2   HostFromGpu
+      18.1%    95.9%       0.001s       3.81e-04s     C        2        2   GpuFromHost
+       1.0%    97.0%       0.000s       4.39e-05s     C        1        1   Elemwise{Composite{((i0 * scalar_softplus(i1)) - (i2 * i3 * scalar_softplus(i4)))}}
+       0.8%    97.7%       0.000s       3.29e-05s     C        1        1   GpuElemwise{Sub}[(0, 1)]
+       0.4%    98.1%       0.000s       1.50e-05s     C        1        1   Elemwise{Composite{(((scalar_sigmoid(i0) * i1 * i2) / i3) - ((i4 * i1 * i5) / i3))}}[(0, 0)]
+       0.3%    98.4%       0.000s       5.60e-06s     C        2        2   InplaceDimShuffle{x}
+       0.3%    98.6%       0.000s       1.10e-05s     C        1        1   Elemwise{ScalarSigmoid}[(0, 0)]
+       0.2%    98.8%       0.000s       9.06e-06s     C        1        1   Elemwise{Composite{(i0 - (i1 * (i2 + (i3 * i0))))}}[(0, 0)]
+       0.2%    99.0%       0.000s       7.15e-06s     C        1        1   Elemwise{gt,no_inplace}
+       0.2%    99.2%       0.000s       6.91e-06s     C        1        1   Elemwise{Composite{(i0 - (i1 * i2))}}[(0, 0)]
+       0.2%    99.3%       0.000s       6.91e-06s     C        1        1   GpuDimShuffle{1,0}
+       0.2%    99.5%       0.000s       6.91e-06s     C        1        1   Elemwise{neg,no_inplace}
+       0.1%    99.6%       0.000s       5.96e-06s     C        1        1   Elemwise{Composite{((-i0) - i1)}}[(0, 0)]
+       0.1%    99.8%       0.000s       5.01e-06s     C        1        1   Elemwise{Cast{float64}}
+       0.1%    99.9%       0.000s       5.01e-06s     C        1        1   Shape_i{0}
+       0.1%   100.0%       0.000s       5.01e-06s     C        1        1   Sum{acc_dtype=float64}
        ... (remaining 0 Ops account for   0.00%(0.00s) of the runtime)
 
     Apply
     ------
     <% time> <sum %> <apply time> <time per call> <#call> <id> <Mflops> <Gflops/s> <Apply name>
-      17.8%    17.8%       0.000s       1.41e-05s      1     0                     Shape_i{0}(coefficients)
-        input 0: dtype=float32, shape=(3,), strides=c
-        output 0: dtype=int64, shape=(), strides=c
-      15.1%    32.9%       0.000s       1.19e-05s      1    18                     Elemwise{Composite{(i0 * (i1 ** i2))}}(Subtensor{int64:int64:int8}.0, InplaceDimShuffle{x}.0, Subtensor{int64:int64:int8}.0)
-        input 0: dtype=float32, shape=(3,), strides=c
+      26.8%    26.8%       0.001s       1.13e-03s      1     1                     dot(x, w)
+        input 0: dtype=float32, shape=(400, 784), strides=c
+        input 1: dtype=float64, shape=(784,), strides=c
+        output 0: dtype=float64, shape=(400,), strides=c
+      26.5%    53.4%       0.001s       1.12e-03s      1    10                     HostFromGpu(GpuDimShuffle{1,0}.0)
+        input 0: dtype=float32, shape=(784, 400), strides=(1, 784)
+        output 0: dtype=float32, shape=(784, 400), strides=c
+      23.8%    77.1%       0.001s       1.00e-03s      1    18                     dot(x.T, Elemwise{Composite{(((scalar_sigmoid(i0) * i1 * i2) / i3) - ((i4 * i1 * i5) / i3))}}[(0, 0)].0)
+        input 0: dtype=float32, shape=(784, 400), strides=c
+        input 1: dtype=float64, shape=(400,), strides=c
+        output 0: dtype=float64, shape=(784,), strides=c
+       9.6%    86.7%       0.000s       4.04e-04s      1     3                     GpuFromHost(y)
+        input 0: dtype=float32, shape=(400,), strides=c
+        output 0: dtype=float32, shape=(400,), strides=(1,)
+       8.5%    95.2%       0.000s       3.58e-04s      1     2                     GpuFromHost(x)
+        input 0: dtype=float32, shape=(400, 784), strides=c
+        output 0: dtype=float32, shape=(400, 784), strides=(784, 1)
+       1.0%    96.3%       0.000s       4.39e-05s      1    13                     Elemwise{Composite{((i0 * scalar_softplus(i1)) - (i2 * i3 * scalar_softplus(i4)))}}(y, Elemwise{Composite{((-i0) - i1)}}[(0, 0)].0, TensorConstant{(1,) of -1.0}, HostFromGpu.0, Elemwise{neg,no_inplace}.0)
+        input 0: dtype=float32, shape=(400,), strides=c
+        input 1: dtype=float64, shape=(400,), strides=c
+        input 2: dtype=float64, shape=(1,), strides=c
+        input 3: dtype=float32, shape=(400,), strides=c
+        input 4: dtype=float64, shape=(400,), strides=c
+        output 0: dtype=float64, shape=(400,), strides=c
+       0.8%    97.1%       0.000s       3.29e-05s      1     7                     GpuElemwise{Sub}[(0, 1)](CudaNdarrayConstant{[ 1.]}, GpuFromHost.0)
+        input 0: dtype=float32, shape=(1,), strides=c
+        input 1: dtype=float32, shape=(400,), strides=(1,)
+        output 0: dtype=float32, shape=(400,), strides=c
+       0.7%    97.7%       0.000s       2.91e-05s      1    11                     HostFromGpu(GpuElemwise{Sub}[(0, 1)].0)
+        input 0: dtype=float32, shape=(400,), strides=c
+        output 0: dtype=float32, shape=(400,), strides=c
+       0.4%    98.1%       0.000s       1.50e-05s      1    15                     Elemwise{Composite{(((scalar_sigmoid(i0) * i1 * i2) / i3) - ((i4 * i1 * i5) / i3))}}[(0, 0)](Elemwise{Composite{((-i0) - i1)}}[(0, 0)].0, TensorConstant{(1,) of -1.0}, y, Elemwise{Cast{float64}}.0, Elemwise{ScalarSigmoid}[(0, 0)].0, HostFromGpu.0)
+        input 0: dtype=float64, shape=(400,), strides=c
+        input 1: dtype=float64, shape=(1,), strides=c
+        input 2: dtype=float32, shape=(400,), strides=c
+        input 3: dtype=float64, shape=(1,), strides=c
+        input 4: dtype=float64, shape=(400,), strides=c
+        input 5: dtype=float32, shape=(400,), strides=c
+        output 0: dtype=float64, shape=(400,), strides=c
+       0.3%    98.4%       0.000s       1.10e-05s      1    14                     Elemwise{ScalarSigmoid}[(0, 0)](Elemwise{neg,no_inplace}.0)
+        input 0: dtype=float64, shape=(400,), strides=c
+        output 0: dtype=float64, shape=(400,), strides=c
+       0.2%    98.6%       0.000s       9.06e-06s      1    20                     Elemwise{Composite{(i0 - (i1 * (i2 + (i3 * i0))))}}[(0, 0)](w, TensorConstant{(1,) of 0...0000000149}, dot.0, TensorConstant{(1,) of 0...9999999553})
+        input 0: dtype=float64, shape=(784,), strides=c
+        input 1: dtype=float64, shape=(1,), strides=c
+        input 2: dtype=float64, shape=(784,), strides=c
+        input 3: dtype=float64, shape=(1,), strides=c
+        output 0: dtype=float64, shape=(784,), strides=c
+       0.2%    98.7%       0.000s       7.15e-06s      1    16                     Elemwise{gt,no_inplace}(Elemwise{ScalarSigmoid}[(0, 0)].0, TensorConstant{(1,) of 0.5})
+        input 0: dtype=float64, shape=(400,), strides=c
         input 1: dtype=float32, shape=(1,), strides=c
-        input 2: dtype=int64, shape=(3,), strides=c
-        output 0: dtype=float64, shape=(3,), strides=c
-       5.1%    38.1%       0.000s       4.05e-06s      1    17                     Subtensor{int64:int64:int8}(TensorConstant{[   0    1..9998 9999]}, ScalarFromTensor.0, ScalarFromTensor.0, Constant{1})
-        input 0: dtype=int64, shape=(10000,), strides=c
-        input 1: dtype=int64, shape=8, strides=c
-        input 2: dtype=int64, shape=8, strides=c
-        input 3: dtype=int8, shape=1, strides=c
-        output 0: dtype=int64, shape=(3,), strides=c
-       5.1%    43.2%       0.000s       4.05e-06s      1    11                     Elemwise{switch,no_inplace}(Elemwise{le,no_inplace}.0, TensorConstant{0}, TensorConstant{0})
-        input 0: dtype=int8, shape=(), strides=c
-        input 1: dtype=int8, shape=(), strides=c
-        input 2: dtype=int64, shape=(), strides=c
-        output 0: dtype=int64, shape=(), strides=c
-       5.1%    48.3%       0.000s       4.05e-06s      1     5                     Elemwise{Composite{Switch(i0, Switch(LT((i1 + i2), i3), i3, (i1 + i2)), Switch(LT(i2, i1), i2, i1))}}[(0, 2)](Elemwise{lt,no_inplace}.0, TensorConstant{10000}, Elemwise{minimum,no_inplace}.0, TensorConstant{0})
-        input 0: dtype=int8, shape=(), strides=c
-        input 1: dtype=int64, shape=(), strides=c
-        input 2: dtype=int64, shape=(), strides=c
-        input 3: dtype=int8, shape=(), strides=c
-        output 0: dtype=int64, shape=(), strides=c
-       5.1%    53.5%       0.000s       4.05e-06s      1     2                     Elemwise{minimum,no_inplace}(Shape_i{0}.0, TensorConstant{10000})
-        input 0: dtype=int64, shape=(), strides=c
-        input 1: dtype=int64, shape=(), strides=c
-        output 0: dtype=int64, shape=(), strides=c
-       3.9%    57.4%       0.000s       3.10e-06s      1    16                     Subtensor{int64:int64:int8}(coefficients, ScalarFromTensor.0, ScalarFromTensor.0, Constant{1})
-        input 0: dtype=float32, shape=(3,), strides=c
-        input 1: dtype=int64, shape=8, strides=c
-        input 2: dtype=int64, shape=8, strides=c
-        input 3: dtype=int8, shape=1, strides=c
-        output 0: dtype=float32, shape=(3,), strides=c
-       3.9%    61.3%       0.000s       3.10e-06s      1    14                     ScalarFromTensor(Elemwise{Composite{Switch(i0, i1, minimum(i2, i3))}}[(0, 2)].0)
-        input 0: dtype=int64, shape=(), strides=c
-        output 0: dtype=int64, shape=8, strides=c
-       3.9%    65.3%       0.000s       3.10e-06s      1    10                     Elemwise{Composite{Switch(i0, i1, minimum(i2, i3))}}[(0, 2)](Elemwise{le,no_inplace}.0, TensorConstant{0}, Elemwise{Composite{Switch(i0, Switch(LT((i1 + i2), i3), i3, (i1 + i2)), Switch(LT(i2, i1), i2, i1))}}[(0, 2)].0, TensorConstant{10000})
-        input 0: dtype=int8, shape=(), strides=c
-        input 1: dtype=int8, shape=(), strides=c
-        input 2: dtype=int64, shape=(), strides=c
-        input 3: dtype=int64, shape=(), strides=c
-        output 0: dtype=int64, shape=(), strides=c
-       3.9%    69.2%       0.000s       3.10e-06s      1     4                     Elemwise{Composite{Switch(i0, Switch(LT((i1 + i2), i3), i3, (i1 + i2)), Switch(LT(i1, i2), i1, i2))}}(Elemwise{lt,no_inplace}.0, Elemwise{minimum,no_inplace}.0, Shape_i{0}.0, TensorConstant{0})
-        input 0: dtype=int8, shape=(), strides=c
-        input 1: dtype=int64, shape=(), strides=c
-        input 2: dtype=int64, shape=(), strides=c
-        input 3: dtype=int8, shape=(), strides=c
-        output 0: dtype=int64, shape=(), strides=c
-       3.9%    73.1%       0.000s       3.10e-06s      1     3                     Elemwise{lt,no_inplace}(Elemwise{minimum,no_inplace}.0, TensorConstant{0})
-        input 0: dtype=int64, shape=(), strides=c
-        input 1: dtype=int8, shape=(), strides=c
-        output 0: dtype=int8, shape=(), strides=c
-       3.6%    76.7%       0.000s       2.86e-06s      1    19                     Sum{acc_dtype=float64}(Elemwise{Composite{(i0 * (i1 ** i2))}}.0)
-        input 0: dtype=float64, shape=(3,), strides=c
+        output 0: dtype=int8, shape=(400,), strides=c
+       0.2%    98.9%       0.000s       7.15e-06s      1     0                     InplaceDimShuffle{x}(b)
+        input 0: dtype=float64, shape=(), strides=c
+        output 0: dtype=float64, shape=(1,), strides=c
+       0.2%    99.1%       0.000s       6.91e-06s      1    19                     Elemwise{Composite{(i0 - (i1 * i2))}}[(0, 0)](b, TensorConstant{0.10000000149}, Sum{acc_dtype=float64}.0)
+        input 0: dtype=float64, shape=(), strides=c
+        input 1: dtype=float64, shape=(), strides=c
+        input 2: dtype=float64, shape=(), strides=c
         output 0: dtype=float64, shape=(), strides=c
-       3.6%    80.4%       0.000s       2.86e-06s      1     9                     Elemwise{switch,no_inplace}(Elemwise{le,no_inplace}.0, TensorConstant{0}, TensorConstant{0})
-        input 0: dtype=int8, shape=(), strides=c
-        input 1: dtype=int8, shape=(), strides=c
-        input 2: dtype=int64, shape=(), strides=c
+       0.2%    99.2%       0.000s       6.91e-06s      1     9                     Elemwise{neg,no_inplace}(Elemwise{Composite{((-i0) - i1)}}[(0, 0)].0)
+        input 0: dtype=float64, shape=(400,), strides=c
+        output 0: dtype=float64, shape=(400,), strides=c
+       0.2%    99.4%       0.000s       6.91e-06s      1     6                     GpuDimShuffle{1,0}(GpuFromHost.0)
+        input 0: dtype=float32, shape=(400, 784), strides=(784, 1)
+        output 0: dtype=float32, shape=(784, 400), strides=(1, 784)
+       0.1%    99.5%       0.000s       5.96e-06s      1     5                     Elemwise{Composite{((-i0) - i1)}}[(0, 0)](dot.0, InplaceDimShuffle{x}.0)
+        input 0: dtype=float64, shape=(400,), strides=c
+        input 1: dtype=float64, shape=(1,), strides=c
+        output 0: dtype=float64, shape=(400,), strides=c
+       0.1%    99.7%       0.000s       5.01e-06s      1    17                     Sum{acc_dtype=float64}(Elemwise{Composite{(((scalar_sigmoid(i0) * i1 * i2) / i3) - ((i4 * i1 * i5) / i3))}}[(0, 0)].0)
+        input 0: dtype=float64, shape=(400,), strides=c
+        output 0: dtype=float64, shape=(), strides=c
+       0.1%    99.8%       0.000s       5.01e-06s      1    12                     Elemwise{Cast{float64}}(InplaceDimShuffle{x}.0)
+        input 0: dtype=int64, shape=(1,), strides=c
+        output 0: dtype=float64, shape=(1,), strides=c
+       0.1%    99.9%       0.000s       5.01e-06s      1     4                     Shape_i{0}(y)
+        input 0: dtype=float32, shape=(400,), strides=c
         output 0: dtype=int64, shape=(), strides=c
-       3.6%    84.0%       0.000s       2.86e-06s      1     7                     Elemwise{le,no_inplace}(Elemwise{Composite{Switch(i0, Switch(LT((i1 + i2), i3), i3, (i1 + i2)), Switch(LT(i2, i1), i2, i1))}}[(0, 2)].0, TensorConstant{0})
-        input 0: dtype=int64, shape=(), strides=c
-        input 1: dtype=int8, shape=(), strides=c
-        output 0: dtype=int8, shape=(), strides=c
-       3.6%    87.6%       0.000s       2.86e-06s      1     1                     InplaceDimShuffle{x}(x)
-        input 0: dtype=float32, shape=(), strides=c
-        output 0: dtype=float32, shape=(1,), strides=c
-       2.7%    90.3%       0.000s       2.15e-06s      1    12                     ScalarFromTensor(Elemwise{Composite{Switch(i0, i1, minimum(i2, i3))}}[(0, 2)].0)
-        input 0: dtype=int64, shape=(), strides=c
-        output 0: dtype=int64, shape=8, strides=c
-       2.4%    92.7%       0.000s       1.91e-06s      1    15                     ScalarFromTensor(Elemwise{switch,no_inplace}.0)
-        input 0: dtype=int64, shape=(), strides=c
-        output 0: dtype=int64, shape=8, strides=c
-       2.4%    95.2%       0.000s       1.91e-06s      1    13                     ScalarFromTensor(Elemwise{switch,no_inplace}.0)
-        input 0: dtype=int64, shape=(), strides=c
-        output 0: dtype=int64, shape=8, strides=c
-       2.4%    97.6%       0.000s       1.91e-06s      1     8                     Elemwise{Composite{Switch(i0, i1, minimum(i2, i3))}}[(0, 2)](Elemwise{le,no_inplace}.0, TensorConstant{0}, Elemwise{Composite{Switch(i0, Switch(LT((i1 + i2), i3), i3, (i1 + i2)), Switch(LT(i1, i2), i1, i2))}}.0, Shape_i{0}.0)
-        input 0: dtype=int8, shape=(), strides=c
-        input 1: dtype=int8, shape=(), strides=c
-        input 2: dtype=int64, shape=(), strides=c
-        input 3: dtype=int64, shape=(), strides=c
-        output 0: dtype=int64, shape=(), strides=c
-       2.4%   100.0%       0.000s       1.91e-06s      1     6                     Elemwise{le,no_inplace}(Elemwise{Composite{Switch(i0, Switch(LT((i1 + i2), i3), i3, (i1 + i2)), Switch(LT(i1, i2), i1, i2))}}.0, TensorConstant{0})
-        input 0: dtype=int64, shape=(), strides=c
-        input 1: dtype=int8, shape=(), strides=c
-        output 0: dtype=int8, shape=(), strides=c
-       ... (remaining 0 Apply instances account for 0.00%(0.00s) of the runtime)
+       ... (remaining 1 Apply instances account for 0.10%(0.00s) of the runtime)
 
     Memory Profile
     (Sparse variables are ignored)
     (For values in brackets, it's for linker = c|py
     ---
-        Max if no gc (allow_gc=False): 0KB (0KB)
-        CPU: 0KB (0KB)
-        GPU: 0KB (0KB)
+        Max if no gc (allow_gc=False): 2469KB (2469KB)
+        CPU: 1242KB (1242KB)
+        GPU: 1227KB (1227KB)
     ---
-        Max if linker=cvm(default): 0KB (0KB)
-        CPU: 0KB (0KB)
-        GPU: 0KB (0KB)
+        Max if linker=cvm(default): 2466KB (2464KB)
+        CPU: 1241KB (1238KB)
+        GPU: 1225KB (1227KB)
     ---
-        Memory saved if views are used: 0KB (0KB)
-        Memory saved if inplace ops are used: 0KB (0KB)
-        Memory saved if gc is enabled: 0KB (0KB)
+        Memory saved if views are used: 1225KB (1225KB)
+        Memory saved if inplace ops are used: 17KB (17KB)
+        Memory saved if gc is enabled: 3KB (4KB)
     ---
 
         <Sum apply outputs (bytes)> <Apply outputs shape> <created/inplace/view> <Apply node>
 
-       ... (remaining 20 Apply account for  171B/171B ((100.00%)) of the Apply with dense outputs sizes)
+           1254400B  [(400, 784)] c GpuFromHost(x)
+           1254400B  [(784, 400)] v GpuDimShuffle{1,0}(GpuFromHost.0)
+           1254400B  [(784, 400)] c HostFromGpu(GpuDimShuffle{1,0}.0)
+              6272B  [(784,)] c dot(x.T, Elemwise{Composite{(((scalar_sigmoid(i0) * i1 * i2) / i3) - ((i4 * i1 * i5) / i3))}}[(0, 0)].0)
+              6272B  [(784,)] i Elemwise{Composite{(i0 - (i1 * (i2 + (i3 * i0))))}}[(0, 0)](w, TensorConstant{(1,) of 0...0000000149}, dot.0, TensorConstant{(1,) of 0...9999999553})
+              3200B  [(400,)] c dot(x, w)
+              3200B  [(400,)] i Elemwise{Composite{((-i0) - i1)}}[(0, 0)](dot.0, InplaceDimShuffle{x}.0)
+              3200B  [(400,)] i Elemwise{ScalarSigmoid}[(0, 0)](Elemwise{neg,no_inplace}.0)
+              3200B  [(400,)] c Elemwise{neg,no_inplace}(Elemwise{Composite{((-i0) - i1)}}[(0, 0)].0)
+              3200B  [(400,)] i Elemwise{Composite{(((scalar_sigmoid(i0) * i1 * i2) / i3) - ((i4 * i1 * i5) / i3))}}[(0, 0)](Elemwise{Composite{((-i0) - i1)}}[(0, 0)].0, TensorConstant{(1,) of -1.0}, y, Elemwise{Cast{float64}}.0, Elemwise{ScalarSigmoid}[(0, 0)].0, HostFromGpu.0)
+              3200B  [(400,)] c Elemwise{Composite{((i0 * scalar_softplus(i1)) - (i2 * i3 * scalar_softplus(i4)))}}(y, Elemwise{Composite{((-i0) - i1)}}[(0, 0)].0, TensorConstant{(1,) of -1.0}, HostFromGpu.0, Elemwise{neg,no_inplace}.0)
+              1600B  [(400,)] i GpuElemwise{Sub}[(0, 1)](CudaNdarrayConstant{[ 1.]}, GpuFromHost.0)
+              1600B  [(400,)] c HostFromGpu(GpuElemwise{Sub}[(0, 1)].0)
+              1600B  [(400,)] c GpuFromHost(y)
+       ... (remaining 7 Apply account for  448B/3800192B ((0.01%)) of the Apply with dense outputs sizes)
 
-        All Apply nodes have output sizes that take less than 1024B.
         <created/inplace/view> is taken from the Op's declaration.
         Apply nodes marked 'inplace' or 'view' may actually allocate memory, this is not reported here. If you use DebugMode, warnings will be emitted in those cases.
 
@@ -355,7 +367,6 @@ Theano output:
                      (if you think of new ones, suggest them on the mailing list).
                      Test them first, as they are not guaranteed to always provide a speedup.
       Sorry, no tip for today.
-
     """
 
 Exercise 5
