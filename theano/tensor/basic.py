@@ -3344,7 +3344,7 @@ pprint.assign(pow, printing.OperatorPrinter('**', 1, 'right'))
 ##########################
 
 
-def extract_constant(x, elemwise=True):
+def extract_constant(x, elemwise=True, only_process_constants=False):
     """
     This function is basically a call to tensor.get_scalar_constant_value.
 
@@ -3356,7 +3356,9 @@ def extract_constant(x, elemwise=True):
 
     """
     try:
-        x = get_scalar_constant_value(x, elemwise=elemwise)
+        x = get_scalar_constant_value(x,
+                                      elemwise,
+                                      only_process_constants)
     except NotScalarConstantError:
         pass
     if ((isinstance(x, scal.ScalarVariable) or
