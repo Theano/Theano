@@ -1,0 +1,144 @@
+
+.. _tut_using_multi_gpu:
+
+===================
+Using multiple GPUs
+===================
+
+Theano has a feature to allow the use of multiple GPUs at the same
+time in one function.  The multiple gpu feature requires the use of
+the :ref:`gpuarray` backend, so make sure that works correctly.
+
+In order to keep a reasonably high level of abstraction you do not
+refer to device names directly for multiple-gpu use.  You instead
+refer to what we call context names.  These are then mapped to a
+device using the theano configuration.  This allows portability of
+models between machines.
+
+.. warning::
+
+   The code is rather new and is still considered experimental at this
+   point.  It has been tested and seems to perform correctly in all
+   cases observed, but make sure to double-check your results before
+   publishing a paper or anything of the sort.
+
+.. note::
+
+   For data-parallelism, you probably are better using `platoon
+   <https://github.com/mila-udem/platoon>`_.
+
+Defining the context map
+------------------------
+
+The mapping from context names to devices is done through the
+:attr:`config.contexts` option.  The format looks like this::
+
+    dev0->cuda0;dev1->cuda1
+
+Let's break it down.  First there is a list of mappings.  Each of
+these mappings is separeted by a semicolon ';'.  There can be any
+number of such mappings, but in the example above we have two of them:
+`dev0->cuda0` and `dev1->cuda1`.
+
+The mappings themselves are composed of a context name followed by the
+two characters '->' and the device name.  The context name is a simple
+string which does not have any special meaning for Theano.  For
+parsing reasons, the context name cannot contain the sequence '->' or
+';'.  To avoid confusion context names that begin with 'cuda' or
+'opencl' are disallowed.  The device name is a device in the form that
+gpuarray expects like 'cuda0' or 'opencl0:0'.
+
+.. note::
+
+   Since there are a bunch of shell special characters in the syntax,
+   defining this on the command-line will require proper quoting, like this:
+
+   .. code-block:: shell
+
+       $ THEANO_FLAGS="contexts=dev0->cuda0"
+
+When you define a context map, if :attr:`config.print_active_device`
+is `True` (the default), Theano will print the mappings as they are
+defined.  This will look like this:
+
+.. code-block:: bash
+
+   $ THEANO_FLAGS="contexts=dev0->cuda0;dev1->cuda1" python -c 'import theano'
+   Mapped name dev0 to device cuda0: GeForce GTX TITAN X
+   Mapped name dev1 to device cuda1: GeForce GTX TITAN X
+
+
+If you don't have enough GPUs for a certain model, you can assign the
+same device to more than one name. You can also assign extra names
+that a model doesn't need to some other devices.  However, a
+proliferation of names is not always a good idea since theano often
+assumes that different context names will be on different devices and
+will optimize accordingly.  So you may get faster performance for a
+single name and a single device.
+
+.. note::
+
+   It is often the case that multi-gpu operation requires or assumes
+   that all the GPUs involved are equivalent.  This is not the case
+   for this implementation.  Since the user has the task of
+   distrubuting the jobs across the different device a model can be
+   built on the assumption that one of the GPU is slower or has
+   smaller memory.
+
+
+A simple graph on two GPUs
+--------------------------
+
+The following simple program works on two GPUs.  It builds a function
+which perform two dot products on two different GPUs.
+
+.. code-block:: python
+
+   import numpy
+   import theano
+
+   v01 = theano.shared(numpy.random.random((1024, 1024)).astype('float32'),
+                       target='dev0')
+   v02 = theano.shared(numpy.random.random((1024, 1024)).astype('float32'),
+                       target='dev0')
+   v11 = theano.shared(numpy.random.random((1024, 1024)).astype('float32'),
+                       target='dev1')
+   v12 = theano.shared(numpy.random.random((1024, 1024)).astype('float32'),
+                       target='dev1')
+
+   f = theano.function([], [theano.tensor.dot(v01, v02),
+                            theano.tensor.dot(v11, v12)])
+
+   f()
+
+This model requires a context map with assignations for 'dev0' and
+'dev1'.  It should run twice as fast when the devices are different.
+
+Explicit transfers of data
+--------------------------
+
+Since operations themselves cannot work on more than one device, they
+will pick a device to work on based on their inputs and automatically
+insert transfers for any input which is not on the right device.
+
+However you may want some explicit control over where and how these
+transfers are done at some points.  This is done by using the new
+:meth:`transfer` method that is present on variables.  It works for
+moving data between GPUs and also between the host and the GPUs.  Here
+is a example.
+
+.. code-block:: python
+
+   import theano
+
+   v = theano.tensor.fmatrix()
+
+   # Move to the device associated with 'gpudev'
+   gv = v.transfer('gpudev')
+
+   # Move back to the cpu
+   cv = gv.transfer('cpu')
+
+Of course you can mix transfers and operations in any order you
+choose.  However you should try to minimize transfer operations
+because they will introduce overhead any may reduce performance.

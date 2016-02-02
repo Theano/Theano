@@ -12,6 +12,7 @@ from copy import copy
 from itertools import count
 
 import theano
+from theano import config
 from theano.gof import utils
 from six import string_types, integer_types, iteritems
 from theano.misc.ordered_set import OrderedSet
@@ -391,8 +392,7 @@ class Variable(Node):
         self.auto_name = 'auto_' + str(next(self.__count__))
 
     def __str__(self):
-        """
-        WRITEME
+        """Return a str representation of the Variable.
 
         """
         if self.name is not None:
@@ -406,8 +406,29 @@ class Variable(Node):
         else:
             return "<%s>" % str(self.type)
 
-    def __repr__(self):
-        return str(self)
+    def __repr_test_value__(self):
+        """Return a repr of the test value.
+
+        Return a printable representation of the test value. It can be
+        overridden by classes with non printable test_value to provide a
+        suitable representation of the test_value.
+        """
+        return repr(theano.gof.op.get_test_value(self))
+
+    def __repr__(self, firstPass=True):
+        """Return a repr of the Variable.
+
+        Return a printable name or description of the Variable. If
+        config.print_test_value is True it will also print the test_value if
+        any.
+        """
+        to_print = [str(self)]
+        if config.print_test_value and firstPass:
+            try:
+                to_print.append(self.__repr_test_value__())
+            except AttributeError:
+                pass
+        return '\n'.join(to_print)
 
     def clone(self):
         """
@@ -464,12 +485,13 @@ class Variable(Node):
         Examples
         --------
 
+        >>> import numpy
         >>> import theano.tensor as T
         >>> x = T.dscalar('x')
         >>> y = T.dscalar('y')
         >>> z = x + y
-        >>> z.eval({x : 16.3, y : 12.1})
-        array(28.4)
+        >>> numpy.allclose(z.eval({x : 16.3, y : 12.1}), 28.4)
+        True
 
         We passed :func:`eval` a dictionary mapping symbolic theano
         variables to the values to substitute for them, and it returned
@@ -546,7 +568,7 @@ class Constant(Variable):
         else:
             name = str(self.data)
             if len(name) > 20:
-                name = name[:10] + '...' + name[-10]
+                name = name[:10] + '...' + name[-10:]
             return 'Constant{%s}' % name
 
     def clone(self):

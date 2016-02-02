@@ -24,7 +24,8 @@ from theano.sandbox.cuda.basic_ops import (
     gpu_eye, gpu_contiguous,
     gpu_from_host, host_from_gpu, GpuFromHost, HostFromGpu,
     GpuContiguous,
-    GpuElemwise, GpuDimShuffle, GpuReshape, GpuCAReduce, GpuFlatten,
+    GpuElemwise, GpuDimShuffle, GpuReshape, GpuCAReduce,
+    GpuFlatten, gpu_flatten,
     GpuSubtensor, GpuAdvancedSubtensor1,
     GpuAdvancedIncSubtensor1, GpuAdvancedIncSubtensor1_dev20,
     GpuIncSubtensor, gpu_alloc, GpuAlloc, gpu_shape, GpuSplit, GpuAllocEmpty)
@@ -32,7 +33,7 @@ from theano.sandbox.cuda.basic_ops import (
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda.blas import (
     gpu_dot22, gpu_dot22scalar, gpu_gemm_inplace, gpu_gemm_no_inplace, GpuConv,
-    GpuCorrMM, GpuCorrMM_gradInputs, GpuCorrMM_gradWeights,
+    GpuBatchedDot, GpuCorrMM, GpuCorrMM_gradInputs, GpuCorrMM_gradWeights,
     GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights)
 
 from theano.sandbox.cuda.blas import gpu_gemv_inplace
@@ -75,10 +76,10 @@ from theano.tensor import slinalg
 from theano.tensor.nnet.Conv3D import Conv3D
 from theano.tests.breakpoint import PdbBreakpoint
 
-from theano.tensor.nnet.abstract_conv2d import (BaseAbstractConv2d,
-                                                AbstractConv2d,
-                                                AbstractConv2d_gradWeights,
-                                                AbstractConv2d_gradInputs)
+from theano.tensor.nnet.abstract_conv import (BaseAbstractConv2d,
+                                              AbstractConv2d,
+                                              AbstractConv2d_gradWeights,
+                                              AbstractConv2d_gradInputs)
 from theano.tensor.opt import register_specialize_device
 
 
@@ -136,14 +137,14 @@ register_opt(name='local_gpu_reshape_chain')(
 # This is a partial list of CPU ops that can be in some circonstance
 # moved to the GPU. This list is used by an optimization.
 # Hopefully, we can keep this list up to date.
-import theano.tensor.signal.downsample
+import theano.tensor.signal.pool
 import theano.tensor.nnet.neighbours
 cpu_ops_moved_to_gpu = [
     tensor.blas.Dot22, tensor.blas.Dot22Scalar, tensor.blas.Gemm,
     tensor.blas.Gemv, tensor.blas.Ger, tensor.nnet.conv.ConvOp,
-    tensor.signal.downsample.DownsampleFactorMax,
-    tensor.signal.downsample.MaxPoolGrad,
-    tensor.signal.downsample.AveragePoolGrad,
+    tensor.signal.pool.Pool,
+    tensor.signal.pool.MaxPoolGrad,
+    tensor.signal.pool.AveragePoolGrad,
     theano.tensor.nnet.neighbours.Images2Neibs,
     tensor.nnet.CrossentropySoftmaxArgmax1HotWithBias,
     tensor.nnet.CrossentropySoftmax1HotWithBiasDx,
@@ -152,10 +153,10 @@ cpu_ops_moved_to_gpu = [
     tensor.elemwise.All, tensor.elemwise.Any,
     tensor.elemwise.CAReduceDtype, tensor.elemwise.Sum,
     tensor.elemwise.Prod, tensor.elemwise.ProdWithoutZeros,
-    tensor.Reshape, tensor.Flatten, tensor.Subtensor,
+    tensor.Reshape, tensor.flatten, tensor.Subtensor,
     tensor.AdvancedSubtensor1, tensor.AdvancedIncSubtensor1,
     tensor.IncSubtensor, tensor.Shape, tensor.Join,
-    tensor.Alloc, tensor.Eye]
+    tensor.Alloc, tensor.Eye, tensor.blas.BatchedDot]
 
 
 class InputToGpuOptimizer(Optimizer):
@@ -367,8 +368,8 @@ def local_gpu_split(node):
         outs_clients = reduce(list.__add__,
                               [out.clients for out in node.outputs])
         if (input.owner and isinstance(input.owner.op, HostFromGpu) or
-            any([c != 'output' and isinstance(c.op, GpuFromHost) for c, idx
-                 in outs_clients])):
+            any(c != 'output' and isinstance(c.op, GpuFromHost) for c, idx
+                in outs_clients)):
             new_op = GpuSplit(node.op.len_splits)
             split_res = new_op(as_cuda_ndarray_variable(input),
                                *node.inputs[1:], return_list=True)
@@ -609,6 +610,45 @@ def local_gpu_dot22(node):
             x, y = node.inputs
             return [host_from_gpu(gpu_dot22(as_cuda_ndarray_variable(x),
                                             as_cuda_ndarray_variable(y)))]
+    return False
+
+
+@register_opt()
+@local_optimizer([gpu_from_host, tensor.blas.BatchedDot])
+def local_gpu_batched_dot(node):
+    """
+    gpu_from_host(batched_dot) -> gpu_batched_dot(gpu_from_host)
+
+    batched_dot(host_from_gpu) -> host_from_gpu(gpu_batched_dot)
+
+    """
+    def gpu_batched_dot(x, y):
+        # pad x and y shapes to be third-order tensors
+        x_, y_ = x, y
+        if x.ndim == 2:
+            x_ = x_.dimshuffle(0, "x", 1)
+        if y.ndim == 2:
+            y_ = y_.dimshuffle(0, 1, "x")
+        z = GpuBatchedDot()(as_cuda_ndarray_variable(x_),
+                           as_cuda_ndarray_variable(y_))
+        # unpad z shape
+        if x.ndim == 2:
+            z = z.dimshuffle(0, *range(2, z.ndim))
+        if y.ndim == 2:
+            z = z.dimshuffle(*range(z.ndim - 1))
+        return as_cuda_ndarray_variable(z)
+
+    if isinstance(node.op, GpuFromHost):
+        host_input = node.inputs[0]
+        if host_input.owner and isinstance(host_input.owner.op,
+                                           tensor.blas.BatchedDot):
+            x, y = host_input.owner.inputs
+            return [gpu_batched_dot(x, y)]
+    if isinstance(node.op, tensor.blas.BatchedDot):
+        if any([(i.owner and isinstance(i.owner.op, HostFromGpu))
+                for i in node.inputs]):
+            x, y = node.inputs
+            return [host_from_gpu(gpu_batched_dot(x, y))]
     return False
 
 
@@ -865,20 +905,31 @@ def local_gpu_careduce(node):
                             new_in_shp.append(x_shape[i])
 
                     new_greduce = GpuCAReduce(new_mask, scalar_op)
-                    reshaped_x = x.reshape(tensor.stack(new_in_shp))
-                    gpu_reshaped_x = as_cuda_ndarray_variable(reshaped_x)
-                    reshaped_gpu_inputs = [gpu_reshaped_x]
-                    if new_greduce.supports_c_code(reshaped_gpu_inputs):
-                        reduce_reshaped_x = host_from_gpu(
-                            new_greduce(gpu_reshaped_x))
+                    new_x = x.reshape(tensor.stack(new_in_shp))
+                    gpu_new_x = as_cuda_ndarray_variable(new_x)
+                    if not new_greduce.supports_c_code([gpu_new_x]):
+                        if not new_mask == [1, 0, 1]:
+                            return
+                        # The reduced mask [1, 0, 1] is not supported but
+                        # [1, 0, 1, 1] is. Therefore, we add a broadcastable
+                        # dimension to new_x and change the mask to
+                        # [1, 0, 1, 1].
+                        new_x = new_x.dimshuffle(0, 1, 2, 'x')
+                        gpu_new_x = as_cuda_ndarray_variable(new_x)
 
-                        if reduce_reshaped_x.ndim != out.ndim:
-                            rval = reduce_reshaped_x.reshape(
-                                tensor.stack(shape_of[out]))
-                        else:
-                            rval = reduce_reshaped_x
-                    else:
-                        return
+                        new_greduce = GpuCAReduce([1, 0, 1, 1], scalar_op)
+                        if not new_greduce.supports_c_code([gpu_new_x]):
+                            raise Exception('Reduction mask [1, 0, 1, 1] is'
+                                            'supposed to be supported.')
+
+                    rval = host_from_gpu(
+                        new_greduce(gpu_new_x))
+
+                    # Restore the expected shape of the output
+                    if rval.ndim != out.ndim:
+                        rval = rval.reshape(
+                            tensor.stack(shape_of[out]))
+
                 if rval.type == out.type:
                     return [rval]
                 else:
@@ -969,14 +1020,14 @@ def local_gpu_flatten(node):
         if host_input.owner and \
            isinstance(host_input.owner.op, tensor.Flatten):
             outdim = host_input.owner.op.outdim
-            return [GpuFlatten(outdim)(
+            return [gpu_flatten(host_input.owner.inputs[0], outdim)(
                 as_cuda_ndarray_variable(host_input.owner.inputs[0]))]
     if isinstance(node.op, tensor.Flatten):
-        x, = node.inputs
+        x, shp= node.inputs
         outdim = node.op.outdim
         if x.owner and isinstance(x.owner.op, HostFromGpu):
             gpu_x, = x.owner.inputs
-            return [host_from_gpu(GpuFlatten(outdim)(gpu_x))]
+            return [host_from_gpu(gpu_flatten(host_input.owner.inputs[0], outdim)(gpu_x))]
     return False
 
 
@@ -1241,9 +1292,9 @@ def local_gpu_pdbbreakpoint_op(node):
 
             input_is_from_gpu = (inp.owner and
                                  isinstance(inp.owner.op, HostFromGpu))
-            output_goes_to_gpu = any([c[0] != "output" and
-                                      isinstance(c[0].op, GpuFromHost)
-                                      for c in out.clients])
+            output_goes_to_gpu = any(c[0] != "output" and
+                                     isinstance(c[0].op, GpuFromHost)
+                                     for c in out.clients)
 
             if input_is_from_gpu:
                 # The op should be applied on the GPU version of the input
@@ -1836,13 +1887,13 @@ gpu_optimizer.register("convtransp3d_gemm", local_convtransp3d_gemm)
 
 
 # Pooling
-import theano.tensor.signal.downsample as downsample
+import theano.tensor.signal.pool as pool
 
 
 @register_opt()
-@local_optimizer([downsample.DownsampleFactorMax])
+@local_optimizer([pool.Pool])
 def local_gpu_downsample_factor_max(node):
-    if (isinstance(node.op, downsample.DownsampleFactorMax)
+    if (isinstance(node.op, pool.Pool)
         and node.op.ds == node.op.st):
 
         assert node.op.__props__ == ('ds', 'ignore_border', 'st', 'padding',
@@ -1856,9 +1907,9 @@ def local_gpu_downsample_factor_max(node):
 
 
 @register_opt()
-@local_optimizer([downsample.MaxPoolGrad])
+@local_optimizer([pool.MaxPoolGrad])
 def local_gpu_downsample_factor_max_grad(node):
-    if (isinstance(node.op, downsample.MaxPoolGrad) and
+    if (isinstance(node.op, pool.MaxPoolGrad) and
         node.op.ds == node.op.st):
 
         assert node.op.__props__ == ('ds', 'ignore_border', 'st', 'padding',
@@ -1878,9 +1929,9 @@ def local_gpu_downsample_factor_max_grad(node):
 
 
 @register_opt()
-@local_optimizer([downsample.DownsampleFactorMaxGradGrad])
+@local_optimizer([pool.DownsampleFactorMaxGradGrad])
 def local_gpu_downsample_factor_max_grad_grad(node):
-    if isinstance(node.op, downsample.DownsampleFactorMaxGradGrad):
+    if isinstance(node.op, pool.DownsampleFactorMaxGradGrad):
         assert node.op.__props__ == ('ds', 'ignore_border', 'st',
                                      'padding', 'mode')
         if node.op.padding != (0, 0) or node.op.mode != 'max':
@@ -1931,28 +1982,19 @@ def local_gpu_join(node):
         # optimizing this case:
         # join(host_from_gpu) -> host_from_gpu(gpu_join)
 
-        # print "OPT: we've got a Join instance"
-
         axis_and_tensors = node.inputs
 
-        # print "OPT: axis_and_tensors=", axis_and_tensors
+        matches = [t.dtype == 'float32' and
+                   ((t.owner is not None and
+                     isinstance(t.owner.op, HostFromGpu)) or
+                    isinstance(t, gof.Constant)) for t in axis_and_tensors[1:]]
 
-        matches = [(t.owner is not None and
-                    isinstance(t.owner.op, HostFromGpu)) or
-                   isinstance(t, gof.Constant) for t in axis_and_tensors[1:]]
-        # print "OPT: matches =", matches
-
-        # if all input tensors are host_from_gpu'ified
         if all(matches):
-            # the extra gpu_from_host introduced here will
-            # be removed by further optimizations
             new_tensors = [as_cuda_ndarray_variable(t)
                            for t in axis_and_tensors[1:]]
             new_a_and_t = [axis_and_tensors[0]] + new_tensors
 
             replacement_node = host_from_gpu(gpu_join(*new_a_and_t))
-
-            # print "OPT: replacement_node", replacement_node
 
             return [replacement_node]
 
@@ -2151,9 +2193,9 @@ def local_gpualloc(node):
             replace = True
         elif all([c != 'output' and
                   c.op == tensor.join and
-                  all([i.owner and
-                       i.owner.op in [host_from_gpu, tensor.alloc]
-                       for i in c.inputs[1:]])
+                  all(i.owner and
+                      i.owner.op in [host_from_gpu, tensor.alloc]
+                      for i in c.inputs[1:])
                   for c, idx in node.outputs[0].clients]):
             # if the client is on gpu or alloc
             replace = True

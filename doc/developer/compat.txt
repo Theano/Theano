@@ -92,8 +92,7 @@ come up for Theano's purposes. ``str`` represents encoded text, i.e. character
 encoding-aware; all Python 3 strings are internally stored as Unicode. When
 converting from one or the other, you must `.encode(...)` bytes and
 `.decode(...)` strings with a given character encoding (e.g. ``'ascii'``,
-``'utf8'``, ``'latin1'``). Fortunately, these methods exist as no-ops
-in Python 2.6 and 2.7.
+``'utf8'``, ``'latin1'``).
 
 C code compatibility
 --------------------

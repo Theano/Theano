@@ -9,8 +9,8 @@ from six import StringIO
 import theano.tensor as T
 import theano.tests.unittest_tools as utt
 from theano.sandbox.neighbours import images2neibs
-from theano.tensor.signal.downsample import max_pool_2d
-from theano.tensor.signal.downsample import MaxPoolGrad, AveragePoolGrad
+from theano.tensor.signal.pool import pool_2d
+from theano.tensor.signal.pool import MaxPoolGrad, AveragePoolGrad
 
 from .. import dnn
 from ..basic_ops import GpuAllocEmpty
@@ -166,8 +166,14 @@ def test_pooling():
     if not dnn.dnn_available(test_ctx_name):
         raise SkipTest(dnn.dnn_available.msg)
 
+    # 'average_exc_pad' is disabled for versions < 4004
+    if dnn.version() < 4004:
+        modes = ('max', 'average_inc_pad')
+    else:
+        modes = ('max', 'average_inc_pad', 'average_exc_pad')
+
     x = T.ftensor4()
-    for mode, pad in product(('max', 'average_inc_pad', 'average_exc_pad'),
+    for mode, pad in product(modes,
                              ((0, 0), (1, 0), (1, 0), (2, 3), (3, 2))):
         if mode == 'max':
             func = T.max
@@ -185,10 +191,10 @@ def test_pooling():
                     # Not implemented
                     continue
                 # We will check that the opt introduced it.
-                out1 = max_pool_2d(x, (ws, ws),
-                                   st=(stride, stride),
-                                   ignore_border=True,
-                                   padding=pad, mode=mode)
+                out1 = pool_2d(x, (ws, ws),
+                               st=(stride, stride),
+                               ignore_border=True,
+                               padding=pad, mode=mode)
                 out2 = pool_2d_i2n(x, ds=(ws, ws), strides=(stride, stride),
                                    pad=pad,
                                    pool_function=func)
@@ -223,8 +229,8 @@ def test_pooling():
 
             # This test the CPU grad + opt + GPU implemtentation
             def fn(x):
-                return max_pool_2d(x, (ws, ws), ignore_border=True,
-                                   padding=pad, mode=mode)
+                return pool_2d(x, (ws, ws), ignore_border=True,
+                               padding=pad, mode=mode)
             utt.verify_grad(fn, [data],
                             cast_to_output_type=False,
                             mode=mode_with_gpu)
@@ -253,9 +259,9 @@ def test_pooling():
             g_out = fg(data)
 
             # Compare against the CPU result
-            out = max_pool_2d(x, (ws, ws),
-                              padding=pad,
-                              ignore_border=True, mode=mode)
+            out = pool_2d(x, (ws, ws),
+                          padding=pad,
+                          ignore_border=True, mode=mode)
             fc = theano.function([x], theano.grad(out.sum(), x),
                                  mode=mode_without_gpu)
             if mode == 'max':
@@ -276,8 +282,8 @@ def test_pooling_opt():
 
     f = theano.function(
         [x],
-        max_pool_2d(x, ds=(2, 2), mode='average_inc_pad',
-                    ignore_border=True),
+        pool_2d(x, ds=(2, 2), mode='average_inc_pad',
+                ignore_border=True),
         mode=mode_with_gpu)
 
     assert any([isinstance(n.op, dnn.GpuDnnPool)
@@ -287,8 +293,8 @@ def test_pooling_opt():
 
     f = theano.function(
         [x],
-        T.grad(max_pool_2d(x, ds=(2, 2), mode='average_inc_pad',
-                           ignore_border=True).sum(),
+        T.grad(pool_2d(x, ds=(2, 2), mode='average_inc_pad',
+                       ignore_border=True).sum(),
                x),
         mode=mode_with_gpu.including("cudnn"))
 
@@ -315,7 +321,7 @@ def test_dnn_tag():
     try:
         f = theano.function(
             [x],
-            max_pool_2d(x, ds=(2, 2), ignore_border=True),
+            pool_2d(x, ds=(2, 2), ignore_border=True),
             mode=mode_with_gpu.including("cudnn"))
     except (AssertionError, RuntimeError):
         assert not dnn.dnn_available(test_ctx_name)
@@ -383,7 +389,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         )
 
         for params in product(
-            ['valid', 'full'],
+            ['valid', 'full', 'half'],
             [(1, 1), (2, 2)],
             ['conv', 'cross']
         ):
@@ -421,7 +427,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         )
 
         for params in product(
-            ['valid', 'full'],
+            ['valid', 'full', 'half'],
             [(1, 1)],  # strides besides (1, 1)
             ['conv', 'cross']
         ):
@@ -506,10 +512,17 @@ class TestDnnInferShapes(utt.InferShapeTester):
             numpy.random.rand(2, 3, 4, 5),
             dtype='float32'
         )
+
+        # 'average_exc_pad' is disabled for versions < 4004
+        if dnn.version() < 4004:
+            modes = ['max', 'average_inc_pad']
+        else:
+            modes = ['max', 'average_inc_pad', 'average_exc_pad']
+
         for params in product(
             [(1, 1), (2, 2), (3, 3)],
             [(1, 1), (2, 2), (3, 3)],
-            ['max', 'average_inc_pad', 'average_exc_pad']
+            modes
         ):
             desc = dnn.GpuDnnPoolDesc(
                 ws=params[0],
@@ -577,6 +590,7 @@ def test_dnn_conv_border_mode():
     dnn.dnn_conv(img, kern, border_mode=(2, 3))
     dnn.dnn_conv(img, kern, border_mode='full')
     dnn.dnn_conv(img, kern, border_mode='valid')
+    dnn.dnn_conv(img, kern, border_mode='half')
 
 
 def test_dnn_conv_alpha_output_merge():
@@ -834,3 +848,43 @@ class test_SoftMax(test_nnet.test_SoftMax):
                                      numpy.exp(input_val).sum(1)[:, None, :, :])
 
             utt.assert_allclose(out, expected_out)
+
+    def test_log_softmax2(self):
+        # Test that the op LogSoftmax is correctly replaced by the op
+        # DnnSoftmax with the 'log' mode.
+
+        # This is a test for an optimization that depends on CuDNN v3 or
+        # more recent. Don't test if the CuDNN version is too old.
+        if dnn.version() < 3000:
+            raise SkipTest("Log-softmax is only in cudnn v3+")
+
+        # Compile a reference function, on the CPU, to be used to validate the
+        # results of the other function.
+        x = T.fmatrix()
+        f_ref = theano.function([x], T.nnet.LogSoftmax()(x))
+
+        # Build the first graph and ensure that the optimization is applied
+        log_softmax_out = T.nnet.LogSoftmax()(x)
+        f = theano.function([x], log_softmax_out, mode=mode_with_gpu)
+
+        dnn_softmax_nodes = [n for n in f.maker.fgraph.toposort() if
+                             isinstance(n.op, dnn.GpuDnnSoftmax)]
+        assert len(dnn_softmax_nodes) == 1
+        assert dnn_softmax_nodes[0].op.algo == "log"
+
+        # Compare the output of the function with the reference function
+        inp = numpy.random.normal(0, 1, (5, 6)).astype("float32")
+        utt.assert_allclose(f(inp), f_ref(inp))
+
+        # Build the first graph and ensure that the optimization is applied
+        log_softmax_out = T.log(T.nnet.Softmax()(x))
+        f = theano.function([x], log_softmax_out, mode=mode_with_gpu)
+
+        dnn_softmax_nodes = [n for n in f.maker.fgraph.toposort() if
+                             isinstance(n.op, dnn.GpuDnnSoftmax)]
+        assert len(dnn_softmax_nodes) == 1
+        assert dnn_softmax_nodes[0].op.algo == "log"
+
+        # Compare the output of the function with the reference function
+        inp = numpy.random.normal(0, 1, (5, 6)).astype("float32")
+        utt.assert_allclose(f(inp), f_ref(inp))

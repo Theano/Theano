@@ -3,7 +3,7 @@ Contains an Op for convolving input images with a set of filters. This was
 developed especially for Convolutional Neural Networks.
 
 For related ops, including downsampling and subsampling, see
-tensor.signal and tensor.signal.downsample.
+tensor.signal and tensor.signal.pool.
 
 See especially conv2d().
 """
@@ -21,8 +21,8 @@ from theano import OpenMPOp
 from theano.tensor import (as_tensor_variable, blas, get_scalar_constant_value,
                            patternbroadcast, NotScalarConstantError)
 from theano.gof import Apply
-from theano.tensor.nnet.abstract_conv2d import (get_conv_output_shape,
-                                                get_conv_shape_1axis)
+from theano.tensor.nnet.abstract_conv import (get_conv_output_shape,
+                                              get_conv_shape_1axis)
 
 try:
     # TODO: move these back out to global scope when they no longer
@@ -40,6 +40,7 @@ _logger = logging.getLogger("theano.tensor.nnet.conv")
 def conv2d(input, filters, image_shape=None, filter_shape=None,
            border_mode='valid', subsample=(1, 1), **kargs):
     """
+    Deprecated, old conv2d interface.
     This function will build the symbolic graph for convolving a stack of
     input images with a set of filters. The implementation is modelled after
     Convolutional Neural Networks (CNN). It is simply a wrapper to the ConvOp
@@ -108,7 +109,7 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
                         " information are constant values. We got"
                         " %s for the image_shape parameter" %
                         image_shape[i])
-                assert "int" in str(image_shape[i].dtype)
+                assert image_shape[i].dtype in theano.tensor.discrete_dtypes
                 image_shape[i] = int(image_shape[i])
     if filter_shape is not None:
         filter_shape = list(filter_shape)
@@ -123,7 +124,7 @@ def conv2d(input, filters, image_shape=None, filter_shape=None,
                         " information are constant values. We got"
                         " %s for the filter_shape "
                         "parameter" % filter_shape[i])
-                assert "int" in str(filter_shape[i].dtype)
+                assert filter_shape[i].dtype in theano.tensor.discrete_dtypes
                 filter_shape[i] = int(filter_shape[i])
 
     if image_shape and filter_shape:
@@ -367,7 +368,7 @@ class ConvOp(OpenMPOp):
         # with s=1 for mode=='full' and s=-1 for mode=='valid'.
         # To support symbolic shapes, we express this with integer arithmetics.
         warnings.warn("The method `getOutputShape` is deprecated use"
-                      "`get_conv_output_shape` instead.")
+                      "`get_conv_output_shape` instead.", stacklevel=2)
         return tuple(get_conv_shape_1axis(i, k, mode, d)
                      for i, k, d in zip(inshp, kshp, stride))
 
@@ -528,7 +529,7 @@ class ConvOp(OpenMPOp):
         self.out_mode = output_mode
 
         if self.out_mode not in ["valid", "full"]:
-            raise Exception("Mode %s not implemented" % self.out_mode)
+            raise Exception("Mode %s not implemented" % str(self.out_mode))
 
         if any((shp is not None) and (shp <= 0) for shp in self.outshp):
             raise Exception("Bad size for the output shape. Verify that [post-"
@@ -881,8 +882,9 @@ class ConvOp(OpenMPOp):
 
         if self.dx not in (1, 2) or self.dy not in (1, 2):
             raise NotImplementedError(
-                "ERROR: We disable ConvOp.grad now when dx or "
-                "dy are different from 1 and 2, as there is a bug in it.")
+                "ERROR: We disable ConvOp.grad now when output_mode is not"
+                " 'valid' and dx or dy are greater than 2, as there is a bug"
+                " in it. See `abstract_conv2d <>`_ for a version that support this.")
 
         all_shape = self.has_all_shape(self.imshp, self.kshp,
                                        self.nkern, self.bsize)

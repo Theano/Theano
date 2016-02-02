@@ -31,7 +31,6 @@ from six import iteritems
 from theano.gof import graph
 from theano.configparser import AddConfigVar, BoolParam, IntParam, StrParam
 
-
 theano_imported_time = time.time()
 config = theano.config
 
@@ -738,24 +737,17 @@ class ProfileStats(object):
         # Find the function that used the most of that statistic
         max_sum_size = 0
 
-        # statistics with the old order
-        # TODO: Make list more flexible with mulitply GPUs later
-        max_node_memory_size = [0, 0, 0]
-        max_running_max_memory_size = [0, 0, 0]
-        max_node_memory_saved_by_view = 0
-        max_node_memory_saved_by_inplace = 0
-
-        # statistics with the new order
-        new_max_node_memory_size = [0, 0, 0]
-        new_max_running_max_memory_size = [0, 0, 0]
-        new_max_node_memory_saved_by_view = 0
-        new_max_node_memory_saved_by_inplace = 0
+        # statistics with the old and new order
+        stats = [[[0, 0, 0], [0, 0, 0], 0, 0], # old, with dmap
+                 [[0, 0, 0], [0, 0, 0], 0, 0], # old, without dmap
+                 [[0, 0, 0], [0, 0, 0], 0, 0], # new, with dmap
+                 [[0, 0, 0], [0, 0, 0], 0, 0]] # new, without dmap
 
         # track min peak memory usage
         min_max_peak = 0
         min_peak_time = 0
 
-        def count_running_memory(order, fgraph, nodes_mem):
+        def count_running_memory(order, fgraph, nodes_mem, ignore_dmap=False):
             """
             Calculate memory with specific node order.
 
@@ -805,7 +797,10 @@ class ProfileStats(object):
                 for var in node.outputs:
                     compute_map[var][0] = 1
                 idx = 0
-                dmap = getattr(node.op, 'destroy_map', None)
+                if ignore_dmap:
+                    dmap = None
+                else:
+                    dmap = getattr(node.op, 'destroy_map', None)
                 vmap = getattr(node.op, 'view_map', None)
                 val = nodes_mem[node]
 
@@ -1096,60 +1091,48 @@ class ProfileStats(object):
             # It mean that after executing the node,
             # the corresponding variable can be gc.
 
-            old_running_memory = count_running_memory(order, fgraph, nodes_mem)
+            # Store the max of some stats by any function in this profile.
+            max_sum_size = max(max_sum_size, sum_size)
+            def compute_max_stats(running_memory, stats):
+                (max_node_memory_size,
+                 max_running_max_memory_size,
+                 max_node_memory_saved_by_view,
+                 max_node_memory_saved_by_inplace) = stats
+
+                max_node_memory_size[0] = max(max_node_memory_size[0],
+                                              sum(running_memory[0]))
+                max_running_max_memory_size[0] = \
+                    max(max_running_max_memory_size[0], sum(running_memory[2]))
+
+                # Separate CPU and GPU
+                max_node_memory_size[1] = max(max_node_memory_size[1],
+                                              running_memory[0][0])
+                max_node_memory_size[2] = max(max_node_memory_size[2],
+                                              running_memory[0][1])
+                max_running_max_memory_size[1] = \
+                    max(max_running_max_memory_size[1], running_memory[2][0])
+                max_running_max_memory_size[2] = \
+                    max(max_running_max_memory_size[2], running_memory[2][1])
+
+                max_node_memory_saved_by_inplace = \
+                    max(max_node_memory_saved_by_inplace, running_memory[3])
+                max_node_memory_saved_by_view = max(max_node_memory_saved_by_view,
+                                                    running_memory[4])
+                return (max_node_memory_size,
+                        max_running_max_memory_size,
+                        max_node_memory_saved_by_view,
+                        max_node_memory_saved_by_inplace)
 
             new_order = fgraph.profile.node_executed_order
             # A list of new executed node order
+            for i, (ord, ignore_dmap) in enumerate([(order, False),
+                                                    (order, True),
+                                                    (new_order, False),
+                                                    (new_order, True)]):
+                running_memory =  count_running_memory(
+                    ord, fgraph, nodes_mem, ignore_dmap=ignore_dmap)
 
-            new_running_memory = count_running_memory(new_order,
-                                                      fgraph, nodes_mem)
-
-            # Store the max of some stats by any function in this profile.
-            max_sum_size = max(max_sum_size, sum_size)
-            max_node_memory_size[0] = max(max_node_memory_size[0],
-                                          sum(old_running_memory[0]))
-            max_running_max_memory_size[0] = \
-                max(max_running_max_memory_size[0], sum(old_running_memory[2]))
-
-            # Separate CPU and GPU
-            max_node_memory_size[1] = max(max_node_memory_size[1],
-                                          old_running_memory[0][0])
-            max_node_memory_size[2] = max(max_node_memory_size[2],
-                                          old_running_memory[0][1])
-            max_running_max_memory_size[1] = \
-                max(max_running_max_memory_size[1], old_running_memory[2][0])
-            max_running_max_memory_size[2] = \
-                max(max_running_max_memory_size[2], old_running_memory[2][1])
-
-            max_node_memory_saved_by_inplace = \
-                max(max_node_memory_saved_by_inplace, old_running_memory[3])
-            max_node_memory_saved_by_view = max(max_node_memory_saved_by_view,
-                                                old_running_memory[4])
-
-            # Store max of some stats with new order
-            new_max_node_memory_size[0] = max(new_max_node_memory_size[0],
-                                              sum(new_running_memory[0]))
-            new_max_running_max_memory_size[0] = \
-                max(new_max_running_max_memory_size[0],
-                    sum(new_running_memory[2]))
-
-            # Separate CPU and GPU
-            new_max_node_memory_size[1] = max(new_max_node_memory_size[1],
-                                              new_running_memory[0][0])
-            new_max_node_memory_size[2] = max(new_max_node_memory_size[2],
-                                              new_running_memory[0][1])
-            new_max_running_max_memory_size[1] = \
-                max(new_max_running_max_memory_size[1],
-                    new_running_memory[2][0])
-            new_max_running_max_memory_size[2] = \
-                max(new_max_running_max_memory_size[2],
-                    new_running_memory[2][1])
-
-            new_max_node_memory_saved_by_inplace = \
-                max(new_max_node_memory_saved_by_inplace,
-                    new_running_memory[3])
-            new_max_node_memory_saved_by_view = \
-                max(new_max_node_memory_saved_by_view, new_running_memory[4])
+                stats[i] = compute_max_stats(running_memory, stats[i])
 
             # Config: whether print min memory peak
             if config.profiling.min_peak_memory:
@@ -1170,51 +1153,43 @@ class ProfileStats(object):
         print("(Sparse variables are ignored)", file=file)
         print("(For values in brackets, it's for linker = c|py", file=file)
 
-        print("---", file=file)
-        # print >> file,  "    Max if no gc, inplace and view: %dKB" % int(
-        # round(max_sum_size / 1024))
-        print("    Max if no gc (allow_gc=False): %dKB (%dKB)" % (int(round(
-            new_max_node_memory_size[0] / 1024.)), int(round(
-                max_node_memory_size[0] / 1024.))), file=file)
-        print("    CPU: %dKB (%dKB)" % ((int(round(
-            new_max_node_memory_size[1] / 1024.)), int(round(
-                max_node_memory_size[1] / 1024.)))), file=file)
-        print("    GPU: %dKB (%dKB)" % ((int(round(
-            new_max_node_memory_size[2] / 1024.)), int(round(
-                max_node_memory_size[2] / 1024.)))), file=file)
+        def print_stats(stats1, stats2):
+            (_, max_running_max_memory_size, _, _) = stats1
+            (_, new_max_running_max_memory_size, _, _) = stats2
+
+            print("        CPU: %dKB (%dKB)" % ((int(round(
+                new_max_running_max_memory_size[1] / 1024.)), int(round(
+                    max_running_max_memory_size[1] / 1024.)))), file=file)
+            print("        GPU: %dKB (%dKB)" % ((int(round(
+                new_max_running_max_memory_size[2] / 1024.)), int(round(
+                    max_running_max_memory_size[2] / 1024.)))), file=file)
+            print("        CPU + GPU: %dKB (%dKB)" % (int(round(
+                new_max_running_max_memory_size[0] / 1024.)), int(round(
+                    max_running_max_memory_size[0] / 1024.))), file=file)
 
         print("---", file=file)
+        print("    Max peak memory with current setting", file=file)
+        print_stats(stats[0], stats[2])
+        print("    Max peak memory with current setting and Theano flag optimizer_excluding=inplace", file=file)
+        print_stats(stats[1], stats[3])
 
-        print("    Max if linker=cvm(default): %dKB (%dKB)" % (int(round(
-            new_max_running_max_memory_size[0] / 1024.)), int(round(
-                max_running_max_memory_size[0] / 1024.))), file=file)
-        print("    CPU: %dKB (%dKB)" % ((int(round(
-            new_max_running_max_memory_size[1] / 1024.)), int(round(
-                max_running_max_memory_size[1] / 1024.)))), file=file)
-        print("    GPU: %dKB (%dKB)" % ((int(round(
-            new_max_running_max_memory_size[2] / 1024.)), int(round(
-                max_running_max_memory_size[2] / 1024.)))), file=file)
-
+        (max_node_memory_size, _, _, _) = stats[0]
+        (new_max_node_memory_size, _, _, _) = stats[2]
+        print("    Max peak memory if allow_gc=False (linker don't make a difference)", file=file)
+        print("        CPU: %dKB" % int(round(
+            new_max_node_memory_size[1] / 1024.)), file=file)
+        print("        GPU: %dKB" % int(round(
+            new_max_node_memory_size[2] / 1024.)), file=file)
+        print("        CPU + GPU: %dKB" % int(round(
+            new_max_node_memory_size[0] / 1024.)), file=file)
         print("---", file=file)
 
         if min_max_peak:
             print("    Minimum peak from all valid apply node order is "
                   "%dKB(took %.3fs to compute)" %
                   (int(round(min_max_peak / 1024.)), min_peak_time), file=file)
-        print("    Memory saved if views are used: %dKB (%dKB)" %
-              (int(round(new_max_node_memory_saved_by_view / 1024.)),
-               int(round(max_node_memory_saved_by_view / 1024.))), file=file)
-        print("    Memory saved if inplace ops are used: %dKB (%dKB)" %
-              (int(round(new_max_node_memory_saved_by_inplace / 1024.)),
-               int(round(max_node_memory_saved_by_inplace / 1024.))),
-              file=file)
-        print("    Memory saved if gc is enabled: %dKB (%dKB)" %
-              (int(round(new_max_node_memory_size[0] -
-                         new_max_running_max_memory_size[0]) / 1024.),
-               int(round(max_node_memory_size[0] -
-                         max_running_max_memory_size[0]) / 1024.)), file=file)
 
-        print("---", file=file)
+            print("---", file=file)
 
         if (hasattr(theano, 'sandbox') and
             hasattr(theano.sandbox, 'cuda') and
@@ -1302,6 +1277,122 @@ class ProfileStats(object):
             print("-----------------", file=file)
             self.optimizer_profile[0].print_profile(file,
                                                     self.optimizer_profile[1])
+        self.print_tips(file)
+
+    def print_tips(self, file):
+        print("""Here are tips to potentially make your code run faster
+                 (if you think of new ones, suggest them on the mailing list).
+                 Test them first, as they are not guaranteed to always provide a speedup.""", file = file)
+
+        RandomFunction = theano.tensor.raw_random.RandomFunction
+        scal = theano.scalar
+        T = theano.tensor
+        scalar_op_amdlibm_no_speed_up = [scal.LT, scal.GT, scal.LE, scal.GE,
+                                         scal.EQ, scal.NEQ, scal.InRange,
+                                         scal.Switch, scal.OR, scal.XOR,
+                                         scal.AND, scal.Invert, scal.Maximum,
+                                         scal.Minimum, scal.Add, scal.Mul,
+                                         scal.Sub, scal.TrueDiv, scal.IntDiv,
+                                         scal.Clip, scal.Second, scal.Identity,
+                                         scal.Cast, scal.Sgn, scal.Neg,
+                                         scal.Inv, scal.Sqr]
+        scalar_op_amdlibm_speed_up = [scal.Mod, scal.Pow, scal.Ceil,
+                                      scal.Floor, scal.RoundHalfToEven,
+                                      scal.RoundHalfAwayFromZero, scal.Log,
+                                      scal.Log2, scal.Log10, scal.Log1p,
+                                      scal.Exp, scal.Sqrt, scal.Abs, scal.Cos,
+                                      scal.Sin, scal.Tan, scal.Tanh,
+                                      scal.Cosh, scal.Sinh,
+                                      T.nnet.sigm.ScalarSigmoid,
+                                      T.nnet.sigm.ScalarSoftplus]
+
+        def get_scalar_ops(s):
+            if isinstance(s, theano.scalar.Composite):
+                l = []
+                for node in s.fgraph.toposort():
+                    l += get_scalar_ops(node.op)
+                return l
+            else:
+                return [s]
+
+        def list_scalar_op(op):
+            if isinstance(op.scalar_op, theano.scalar.Composite):
+                return get_scalar_ops(op.scalar_op)
+            else:
+                return [op.scalar_op]
+
+        def amdlibm_speed_up(op):
+            if not isinstance(op, T.Elemwise):
+                return False
+            else:
+                l = list_scalar_op(op)
+                for s_op in l:
+                    if s_op.__class__ in scalar_op_amdlibm_speed_up:
+                        return True
+                    elif s_op.__class__ not in scalar_op_amdlibm_no_speed_up:
+                        print("We don't know if amdlibm will accelerate "
+                              "this scalar op.", s_op , file = file)
+                return False
+
+        def exp_float32_op(op):
+            if not isinstance(op, T.Elemwise):
+                return False
+            else:
+                l = list_scalar_op(op)
+                return any([s_op.__class__ in [scal.Exp] for s_op in l])
+
+        printed_tip = False
+        # tip 1
+        if config.floatX == 'float64':
+            print("  - Try the Theano flag floatX=float32", file = file)
+            printed_tip = True
+
+        # tip 2
+        if not config.lib.amdlibm and any([amdlibm_speed_up(a.op) for a
+                                           in self.apply_time]):
+            print("  - Try installing amdlibm and set the Theano flag "
+                  "lib.amdlibm=True. This speeds up only some Elemwise "
+                  "operation.", file = file)
+            printed_tip = True
+
+        # tip 3
+        if not config.lib.amdlibm and any([exp_float32_op(a.op) and
+                                           a.inputs[0].dtype == 'float32'
+                                           for a in self.apply_time]):
+            print("  - With the default gcc libm, exp in float32 is slower "
+                  "than in float64! Try Theano flag floatX=float64, or "
+                  "install amdlibm and set the theano flags lib.amdlibm=True", file = file)
+            printed_tip = True
+
+        # tip 4
+        for a in self.apply_time:
+            node = a
+            if (isinstance(node.op, T.Dot) and
+                    all([len(i.type.broadcastable) == 2
+                         for i in node.inputs])):
+                print("  - You have a dot operation that was not optimized to"
+                      " dot22 (which is faster). Make sure the inputs are "
+                      "float32 or float64, and are the same for both inputs. "
+                      "Currently they are: %s" %
+                      [i.type for i in node.inputs], file = file)
+                printed_tip = True
+
+        # tip 5
+        for a in self.apply_time:
+            node = a
+            if isinstance(node.op, RandomFunction):
+                printed_tip = True
+                print("  - Replace the default random number generator by "
+                      "'from theano.sandbox.rng_mrg import MRG_RandomStreams "
+                      "as RandomStreams', as this is is faster. It is still "
+                      "experimental, but seems to work correctly.", file = file)
+                if config.device.startswith("gpu"):
+                    print("     - MRG_RandomStreams is the only random number"
+                          " generator supported on the GPU.", file = file)
+                break
+
+        if not printed_tip:
+            print("  Sorry, no tip for today.", file = file)
 
 
 if False:  # old code still to be ported from ProfileMode

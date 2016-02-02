@@ -14,7 +14,7 @@ except ImportError:
     flake8_available = False
 
 __authors__ = ("Saizheng Zhang")
-__copyright__ = "(c) 2015, Universite de Montreal"
+__copyright__ = "(c) 2016, Universite de Montreal"
 __contact__ = "Saizheng Zhang <saizhenglisa..at..gmail.com>"
 
 # We ignore:
@@ -79,7 +79,7 @@ whitelist_flake8 = [
     "tensor/tests/test_blas_c.py",
     "tensor/tests/test_blas_scipy.py",
     "tensor/tests/test_mpi.py",
-    "tensor/signal/downsample.py",
+    "tensor/signal/pool.py",
     "tensor/signal/conv.py",
     "tensor/signal/tests/test_conv.py",
     "tensor/signal/tests/test_downsample.py",
@@ -102,11 +102,8 @@ whitelist_flake8 = [
     "sandbox/debug.py",
     "sandbox/tests/test_theano_object.py",
     "sandbox/tests/test_scan.py",
-    "sandbox/tests/test_rng_mrg.py",
     "sandbox/tests/test_neighbourhoods.py",
-    "sandbox/tests/test_multinomial.py",
     "sandbox/tests/__init__.py",
-    "sandbox/cuda/dnn.py",
     "sandbox/cuda/var.py",
     "sandbox/cuda/GpuConvGrad3D.py",
     "sandbox/cuda/basic_ops.py",
@@ -186,7 +183,7 @@ whitelist_flake8 = [
 ]
 
 
-def list_files(dir_path=theano.__path__[0], pattern='*.py'):
+def list_files(dir_path=theano.__path__[0], pattern='*.py', no_match=".#"):
     """
     List all files under theano's path.
     """
@@ -195,7 +192,8 @@ def list_files(dir_path=theano.__path__[0], pattern='*.py'):
         for f in files:
             if fnmatch(f, pattern):
                 path = os.path.join(dir, f)
-                files_list.append(path)
+                if not f.startswith(no_match):
+                    files_list.append(path)
     return files_list
 
 
@@ -251,17 +249,16 @@ def check_all_files(dir_path=theano.__path__[0], pattern='*.py'):
     the "whitelist_flake8" in this file.
     """
 
-    f_txt = open('theano_filelist.txt', 'a')
-    for (dir, _, files) in os.walk(dir_path):
-        for f in files:
-            if fnmatch(f, pattern):
-                error_num = flake8.main.check_file(os.path.join(dir, f),
-                                                   ignore=ignore)
-                if error_num > 0:
-                    path = os.path.relpath(os.path.join(dir, f),
-                                           theano.__path__[0])
-                    f_txt.write('"' + path + '",\n')
-    f_txt.close()
+    with open('theano_filelist.txt', 'a') as f_txt:
+        for (dir, _, files) in os.walk(dir_path):
+            for f in files:
+                if fnmatch(f, pattern):
+                    error_num = flake8.main.check_file(os.path.join(dir, f),
+                                                       ignore=ignore)
+                    if error_num > 0:
+                        path = os.path.relpath(os.path.join(dir, f),
+                                               theano.__path__[0])
+                        f_txt.write('"' + path + '",\n')
 
 
 if __name__ == "__main__":

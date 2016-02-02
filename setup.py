@@ -51,9 +51,9 @@ AUTHOR              = "LISA laboratory, University of Montreal"
 AUTHOR_EMAIL        = "theano-dev@googlegroups.com"
 PLATFORMS           = ["Windows", "Linux", "Solaris", "Mac OS-X", "Unix"]
 MAJOR               = 0
-MINOR               = 7
+MINOR               = 8
 MICRO               = 0
-SUFFIX              = ""  # Should be blank except for rc's, betas, etc.
+SUFFIX              = ".dev0"  # Should be blank except for rc's, betas, etc.
 ISRELEASED          = False
 
 VERSION             = '%d.%d.%d%s' % (MAJOR, MINOR, MICRO, SUFFIX)
@@ -166,7 +166,8 @@ def do_setup():
           package_data={
               '': ['*.txt', '*.rst', '*.cu', '*.cuh', '*.c', '*.sh', '*.pkl',
                    '*.h', '*.cpp', 'ChangeLog'],
-              'theano.misc': ['*.sh']
+              'theano.misc': ['*.sh'],
+              'theano.d3viz' : ['html/*','css/*','js/*']
           },
           scripts=['bin/theano-cache', 'bin/theano-nose', 'bin/theano-test'],
           keywords=' '.join([

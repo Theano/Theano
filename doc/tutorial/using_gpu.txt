@@ -48,7 +48,7 @@ file and run it.
     f = function([], T.exp(x))
     print(f.maker.fgraph.toposort())
     t0 = time.time()
-    for i in xrange(iters):
+    for i in range(iters):
         r = f()
     t1 = time.time()
     print("Looping %d times took %f seconds" % (iters, t1 - t0))
@@ -124,7 +124,7 @@ after the ``T.exp(x)`` is replaced by a GPU version of ``exp()``.
     f = function([], sandbox.cuda.basic_ops.gpu_from_host(T.exp(x)))
     print(f.maker.fgraph.toposort())
     t0 = time.time()
-    for i in xrange(iters):
+    for i in range(iters):
         r = f()
     t1 = time.time()
     print("Looping %d times took %f seconds" % (iters, t1 - t0))
@@ -229,7 +229,7 @@ Tips for Improving Performance on GPU
   enable all of them with the `nvcc.flags=--use_fast_math` Theano
   flag or you can enable them individually as in this example:
   `nvcc.flags=-ftz=true --prec-div=false`.
-* To investigate whether if all the Ops in the computational graph are running on GPU. 
+* To investigate whether if all the Ops in the computational graph are running on GPU.
   It is possible to debug or check your code by providing a value to `assert_no_cpu_op`
   flag, i.e. `warn`, for warning `raise` for raising an error or `pdb` for putting a breakpoint
   in the computational graph if there is a CPU Op.
@@ -326,7 +326,7 @@ Consider again the logistic regression:
 .. testoutput::
    :hide:
    :options: + ELLIPSIS
-   
+
    Used the cpu
    target values for D
    ...
@@ -405,7 +405,7 @@ into a file and run it.
   f = function([], tensor.exp(x))
   print(f.maker.fgraph.toposort())
   t0 = time.time()
-  for i in xrange(iters):
+  for i in range(iters):
       r = f()
   t1 = time.time()
   print("Looping %d times took %f seconds" % (iters, t1 - t0))
@@ -473,7 +473,7 @@ the GPU object directly.  The following code is modifed to do just that.
   f = function([], sandbox.gpuarray.basic_ops.gpu_from_host(tensor.exp(x)))
   print(f.maker.fgraph.toposort())
   t0 = time.time()
-  for i in xrange(iters):
+  for i in range(iters):
       r = f()
   t1 = time.time()
   print("Looping %d times took %f seconds" % (iters, t1 - t0))
@@ -495,7 +495,7 @@ The output is
 .. testoutput::
    :hide:
    :options: +ELLIPSIS, +SKIP
-   
+
    Using device cuda0: ...
    [GpuElemwise{exp,no_inplace}(<GpuArray<float64>>)]
    Looping 1000 times took ... seconds
@@ -538,6 +538,10 @@ int, ...) however GPU support varies and some units can't deal with
 double (float64) or small (less than 32 bits like int16) data types.
 You will get an error at compile time or runtime if this is the case.
 
+By default all inputs will get transferred to GPU.  You can prevent an
+input from getting transferred by setting its tag.target attribute to
+'cpu'.
+
 Complex support is untested and most likely completely broken.
 
 In general, large operations like matrix multiplication, or
@@ -553,19 +557,12 @@ means that they are only scheduled to run and the function returns.
 This is made somewhat transparently by the underlying libgpuarray.
 
 A forced synchronization point is introduced when doing memory
-transfers between device and host. Another is introduced when
-releasing active memory buffers on the GPU (active buffers are buffers
-that are still in use by a kernel).
+transfers between device and host.
 
 It is possible to force synchronization for a particular GpuArray by
 calling its ``sync()`` method.  This is useful to get accurate timings
 when doing benchmarks.
 
-The forced synchronization points interact with the garbage collection
-of the intermediate results.  To get the fastest speed possible, you
-should disable the garbage collector by using the theano flag
-``allow_gc=False``.  Be aware that this will increase memory usage
-sometimes significantly.
 
 
 -------------------------------------------

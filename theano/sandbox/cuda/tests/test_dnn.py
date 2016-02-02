@@ -9,8 +9,8 @@ from six import StringIO
 import theano.tensor as T
 import theano.tests.unittest_tools as utt
 from theano.sandbox.neighbours import images2neibs
-from theano.tensor.signal.downsample import max_pool_2d
-from theano.tensor.signal.downsample import MaxPoolGrad, AveragePoolGrad
+from theano.tensor.signal.pool import pool_2d
+from theano.tensor.signal.pool import MaxPoolGrad, AveragePoolGrad
 import theano.sandbox.cuda.dnn as dnn
 from theano.sandbox.cuda.basic_ops import GpuAllocEmpty, gpu_alloc_empty
 from theano.sandbox.cuda import float32_shared_constructor as shared
@@ -235,8 +235,14 @@ def test_pooling():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
 
+    # 'average_exc_pad' is disabled for versions < 4004
+    if cuda.dnn.version() < (4004, 4004):
+        modes = ('max', 'average_inc_pad')
+    else:
+        modes = ('max', 'average_inc_pad', 'average_exc_pad')
+
     x = T.ftensor4()
-    for mode, pad in product(('max', 'average_inc_pad', 'average_exc_pad'),
+    for mode, pad in product(modes,
                              ((0, 0), (1, 0), (1, 0), (2, 3), (3, 2))):
         if mode == 'max':
             func = T.max
@@ -256,10 +262,10 @@ def test_pooling():
                     # Not implemented
                     continue
                 # We will check that the opt introduced it.
-                out1 = max_pool_2d(x, (ws, ws),
-                                   st=(stride, stride),
-                                   ignore_border=True,
-                                   padding=pad, mode=mode)
+                out1 = pool_2d(x, (ws, ws),
+                               st=(stride, stride),
+                               ignore_border=True,
+                               padding=pad, mode=mode)
                 out2 = pool_2d_i2n(x, ds=(ws, ws), strides=(stride, stride),
                                    pad=pad,
                                    pool_function=func)
@@ -294,8 +300,8 @@ def test_pooling():
 
             # This test the CPU grad + opt + GPU implemtentation
             def fn(x):
-                return max_pool_2d(x, (ws, ws), ignore_border=True,
-                                   padding=pad, mode=mode)
+                return pool_2d(x, (ws, ws), ignore_border=True,
+                               padding=pad, mode=mode)
             theano.tests.unittest_tools.verify_grad(fn, [data],
                                                     cast_to_output_type=False,
                                                     mode=mode_with_gpu)
@@ -325,9 +331,9 @@ def test_pooling():
             g_out = fg(data)
 
             # Compare again the CPU result
-            out = max_pool_2d(x, (ws, ws),
-                              padding=pad,
-                              ignore_border=True, mode=mode)
+            out = pool_2d(x, (ws, ws),
+                          padding=pad,
+                          ignore_border=True, mode=mode)
             fc = theano.function([x], theano.grad(out.sum(), x),
                                  mode=mode_without_gpu)
             if mode == 'max':
@@ -346,9 +352,15 @@ def test_pooling3d():
     if not cuda.dnn.dnn_available() or cuda.dnn.version() < (3000, 3000):
         raise SkipTest(cuda.dnn.dnn_available.msg)
 
+    # 'average_exc_pad' is disabled for versions < 4004
+    if cuda.dnn.version() < (4004, 4004):
+        modes = ('max', 'average_inc_pad')
+    else:
+        modes = ('max', 'average_inc_pad', 'average_exc_pad')
+
     x = T.TensorType(broadcastable=(False, False, False, False, False),
                      dtype='float32')()
-    for mode, pad in product(('max', 'average_inc_pad', 'average_exc_pad'),
+    for mode, pad in product(modes,
                              ((0, 0, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1),
                               (2, 3, 2), (3, 2, 2), (2, 2, 3))):
         if mode == 'max':
@@ -453,7 +465,7 @@ def test_pooling_opt():
 
     f = theano.function(
         [x],
-        max_pool_2d(x, ds=(2, 2), mode='average_inc_pad', ignore_border=True),
+        pool_2d(x, ds=(2, 2), mode='average_inc_pad', ignore_border=True),
         mode=mode_with_gpu)
 
     assert any([isinstance(n.op, cuda.dnn.GpuDnnPool)
@@ -463,8 +475,8 @@ def test_pooling_opt():
 
     f = theano.function(
         [x],
-        T.grad(max_pool_2d(x, ds=(2, 2), mode='average_inc_pad',
-                           ignore_border=True).sum(), x),
+        T.grad(pool_2d(x, ds=(2, 2), mode='average_inc_pad',
+                       ignore_border=True).sum(), x),
         mode=mode_with_gpu.including("cudnn"))
 
     assert any([isinstance(n.op, cuda.dnn.GpuDnnPoolGrad)
@@ -600,6 +612,41 @@ class test_DnnSoftMax(test_nnet.test_SoftMax):
 
             utt.assert_allclose(out, expected_out)
 
+    def test_log_softmax2(self):
+        # Test that the op LogSoftmax is correctly replaced by the op
+        # DnnSoftmax with the 'log' mode.
+
+        # Compile a reference function, on the CPU, to be used to validate the
+        # results of the other function.
+        x = T.fmatrix()
+        f_ref = theano.function([x], T.nnet.LogSoftmax()(x))
+
+        # Build the first graph and ensure that the optimization is applied
+        log_softmax_out = T.nnet.LogSoftmax()(x)
+        f = theano.function([x], log_softmax_out, mode=mode_with_gpu)
+
+        dnn_softmax_nodes = [n for n in f.maker.fgraph.toposort() if
+                             isinstance(n.op, cuda.dnn.GpuDnnSoftmax)]
+        assert len(dnn_softmax_nodes) == 1
+        assert dnn_softmax_nodes[0].op.algo == "log"
+
+        # Compare the output of the function with the reference function
+        inp = numpy.random.normal(0, 1, (5, 6)).astype("float32")
+        utt.assert_allclose(f(inp), f_ref(inp))
+
+        # Build the first graph and ensure that the optimization is applied
+        log_softmax_out = T.log(T.nnet.Softmax()(x))
+        f = theano.function([x], log_softmax_out, mode=mode_with_gpu)
+
+        dnn_softmax_nodes = [n for n in f.maker.fgraph.toposort() if
+                             isinstance(n.op, cuda.dnn.GpuDnnSoftmax)]
+        assert len(dnn_softmax_nodes) == 1
+        assert dnn_softmax_nodes[0].op.algo == "log"
+
+        # Compare the output of the function with the reference function
+        inp = numpy.random.normal(0, 1, (5, 6)).astype("float32")
+        utt.assert_allclose(f(inp), f_ref(inp))
+
 
 def test_dnn_tag():
     """
@@ -618,7 +665,7 @@ def test_dnn_tag():
     try:
         f = theano.function(
             [x],
-            max_pool_2d(x, ds=(2, 2), ignore_border=True),
+            pool_2d(x, ds=(2, 2), ignore_border=True),
             mode=mode_with_gpu.including("cudnn"))
     except (AssertionError, RuntimeError):
         assert not cuda.dnn.dnn_available()
@@ -678,7 +725,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         kerns = T.ftensor4('kerns')
         out = T.ftensor4('out')
         img_val = numpy.asarray(
-            numpy.random.rand(7, 2, 6, 4),
+            numpy.random.rand(10, 2, 6, 4),
             dtype='float32'
         )
         kern_vals = numpy.asarray(
@@ -687,7 +734,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         )
 
         for params in product(
-            ['valid', 'full'],
+            ['valid', 'full', 'half'],
             [(1, 1), (2, 2)],
             ['conv', 'cross']
         ):
@@ -717,7 +764,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         kerns = ftensor5('kerns')
         out = ftensor5('out')
         img_val = numpy.asarray(
-            numpy.random.rand(7, 2, 6, 4, 11),
+            numpy.random.rand(10, 2, 6, 4, 11),
             dtype='float32'
         )
         kern_vals = numpy.asarray(
@@ -726,7 +773,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         )
 
         for params in product(
-            ['valid', 'full'],
+            ['valid', 'full', 'half'],
             [(1, 1, 1), (2, 2, 2)],
             ['conv', 'cross']
         ):
@@ -764,7 +811,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         )
 
         for params in product(
-            ['valid', 'full'],
+            ['valid', 'full', 'half'],
             [(1, 1)],  # strides besides (1, 1)
             ['conv', 'cross']
         ):
@@ -805,7 +852,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         kerns = ftensor5('kerns')
         out = ftensor5('out')
         img_val = numpy.asarray(
-            numpy.random.rand(9, 2, 4, 8, 7),
+            numpy.random.rand(9, 2, 4, 8, 13),
             dtype='float32'
         )
         kern_vals = numpy.asarray(
@@ -814,7 +861,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         )
 
         for params in product(
-            ['valid', 'full'],
+            ['valid', 'full', 'half'],
             [(1, 1, 1), (2, 2, 2)],
             ['conv', 'cross']
         ):
@@ -895,7 +942,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         kerns = ftensor5('kerns')
         out = ftensor5('out')
         img_val = numpy.asarray(
-            numpy.random.rand(8, 4, 6, 7, 5),
+            numpy.random.rand(8, 4, 6, 7, 11),
             dtype='float32'
         )
         kern_vals = numpy.asarray(
@@ -904,7 +951,7 @@ class TestDnnInferShapes(utt.InferShapeTester):
         )
 
         for params in product(
-            ['valid', 'full'],
+            ['valid', 'full', 'half'],
             [(1, 1, 1), (2, 2, 2)],
             ['conv', 'cross']
         ):
@@ -940,10 +987,17 @@ class TestDnnInferShapes(utt.InferShapeTester):
             numpy.random.rand(2, 3, 4, 5),
             dtype='float32'
         )
+
+        # 'average_exc_pad' is disabled for versions < 4004
+        if cuda.dnn.version() < (4004, 4004):
+            modes = ['max', 'average_inc_pad']
+        else:
+            modes = ['max', 'average_inc_pad', 'average_exc_pad']
+
         for params in product(
             [(1, 1), (2, 2), (3, 3)],
             [(1, 1), (2, 2), (3, 3)],
-            ['max', 'average_inc_pad', 'average_exc_pad']
+            modes
         ):
             desc = dnn.GpuDnnPoolDesc(
                 ws=params[0],
@@ -1011,6 +1065,7 @@ def test_dnn_conv_border_mode():
     dnn.dnn_conv(img, kern, border_mode=(2, 3))
     dnn.dnn_conv(img, kern, border_mode='full')
     dnn.dnn_conv(img, kern, border_mode='valid')
+    dnn.dnn_conv(img, kern, border_mode='half')
 
 
 def test_dnn_conv_alpha_output_merge():
@@ -1269,7 +1324,7 @@ def get_conv3d_test_cases():
                         [(6, 2, 2, 2, 2), (4, 2, 1, 3, 1), (1, 1, 1)],
                         [(6, 2, 2, 2, 2), (4, 2, 1, 1, 3), (1, 1, 1)],
                         [(6, 2, 2, 2, 2), (4, 2, 5, 5, 5), (1, 1, 1)]]
-    border_modes = ['valid', 'full', (1, 2, 3), (3, 2, 1), 1, 2]
+    border_modes = ['valid', 'full', 'half', (1, 2, 3), (3, 2, 1), 1, 2]
     conv_modes = ['conv', 'cross']
 
     if cuda.dnn.dnn_available() and dnn.version() >= (3000, 3000):
@@ -1325,6 +1380,8 @@ def test_conv3d_fwd():
         else:
             if border_mode == 'full':
                 pad_per_dim = [filters_shape[i] - 1 for i in range(2, 5)]
+            elif border_mode == 'half':
+                pad_per_dim = [filters_shape[i] // 2 for i in range(2, 5)]
             else:
                 if isinstance(border_mode, int):
                     pad_per_dim = [border_mode] * 3
@@ -1393,6 +1450,8 @@ def test_conv3d_bwd():
         else:
             if border_mode == 'full':
                 pad_per_dim = [filters_shape[i] - 1 for i in range(2, 5)]
+            elif border_mode == 'half':
+                pad_per_dim = [filters_shape[i] // 2 for i in range(2, 5)]
             else:
                 if isinstance(border_mode, int):
                     pad_per_dim = [border_mode] * 3

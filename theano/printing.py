@@ -22,25 +22,20 @@ from theano.gof import Op, Apply
 from theano.compile import Function, debugmode, SharedVariable
 from theano.compile.profilemode import ProfileMode
 
-# pydot-ng is a fork of pydot that is better maintained, and works
-# with more recent version of its dependencies (in particular pyparsing)
+pydot_imported = False
 try:
+    # pydot-ng is a fork of pydot that is better maintained
     import pydot_ng as pd
     if pd.find_graphviz():
         pydot_imported = True
-    else:
-        pydot_imported = False
-except Exception:
-    # Sometimes, a Windows-specific exception is raised
-    pydot_imported = False
-# Fall back on pydot if necessary
-if not pydot_imported:
+except ImportError:
     try:
+        # fall back on pydot if necessary
         import pydot as pd
         if pd.find_graphviz():
             pydot_imported = True
-    except Exception:
-        pass
+    except ImportError:
+        pass  # tests should not fail on optional dependency
 
 _logger = logging.getLogger("theano.printing")
 VALID_ASSOC = set(['left', 'right', 'either'])
@@ -733,7 +728,6 @@ def pydotprint(fct, outfile=None,
     if not pydot_imported:
         raise RuntimeError("Failed to import pydot. You must install pydot"
                            " and graphviz for `pydotprint` to work.")
-        return
 
     g = pd.Dot()
 
@@ -1033,7 +1027,8 @@ def pydotprint(fct, outfile=None,
             g.write(outfile, prog='dot', format=format)
         except pd.InvocationException:
             # based on https://github.com/Theano/Theano/issues/2988
-            if map(int, pd.__version__.split(".")) < [1, 0, 28]:
+            version = getattr(pd, '__version__', "")
+            if version and [int(n) for n in version.split(".")] < [1, 0, 28]:
                 raise Exception("Old version of pydot detected, which can "
                                 "cause issues with pydot printing. Try "
                                 "upgrading pydot version to a newer one")
@@ -1065,13 +1060,13 @@ def pydotprint_variables(vars,
     if outfile is None:
         outfile = os.path.join(config.compiledir, 'theano.pydotprint.' +
                                config.device + '.' + format)
-    try:
-        import pydot as pd
-    except ImportError:
-        err = ("Failed to import pydot. You must install pydot for " +
-               "`pydotprint_variables` to work.")
-        print(err)
-        return
+    if not pydot_imported:
+        raise RuntimeError("Failed to import pydot. You must install pydot"
+                           " and graphviz for `pydotprint_variables` to work.")
+    if pd.__name__ == "pydot_ng":
+        raise RuntimeError("pydotprint_variables do not support pydot_ng."
+                           "pydotprint_variables is also deprecated, "
+                           "use pydotprint() that support pydot_ng")
     g = pd.Dot()
     my_list = {}
     orphanes = []
@@ -1195,11 +1190,12 @@ def pydotprint_variables(vars,
     except pd.InvocationException as e:
         # Some version of pydot are bugged/don't work correctly with
         # empty label. Provide a better user error message.
-        if pd.__version__ == "1.0.28" and "label=]" in e.message:
+        version = getattr(pd, '__version__', "")
+        if version == "1.0.28" and "label=]" in e.message:
             raise Exception("pydot 1.0.28 is know to be bugged. Use another "
                             "working version of pydot")
         elif "label=]" in e.message:
-            raise Exception("Your version of pydot " + pd.__version__ +
+            raise Exception("Your version of pydot " + version +
                             " returned an error. Version 1.0.28 is known"
                             " to be bugged and 1.0.25 to be working with"
                             " Theano. Using another version of pydot could"

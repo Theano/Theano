@@ -21,8 +21,8 @@ import numpy
 from theano.gof import Op, Apply
 from theano.gradient import grad_undefined
 from theano.tests.unittest_tools import SkipTest
-from theano.tensor.signal.downsample import DownsampleFactorMax
-from theano.tensor.nnet import conv
+from theano.tensor.signal.pool import Pool
+from theano.tensor.nnet import conv, conv2d
 
 '''
 Special Op created to test what happens when you have one op that is not
@@ -260,50 +260,51 @@ class test_RopLop(RopLop_checker):
             (1,))
 
     def test_conv(self):
-        for border_mode in ['valid', 'full']:
-            image_shape = (2, 2, 4, 5)
-            filter_shape = (2, 2, 2, 3)
-            image_dim = len(image_shape)
-            filter_dim = len(filter_shape)
-            input      = tensor.TensorType(
-                theano.config.floatX,
-                [False] * image_dim)(name='input')
-            filters    = tensor.TensorType(
-                theano.config.floatX,
-                [False] * filter_dim)(name='filter')
-            ev_input   = tensor.TensorType(
-                theano.config.floatX,
-                [False] * image_dim)(name='ev_input')
-            ev_filters = tensor.TensorType(
-                theano.config.floatX,
-                [False] * filter_dim)(name='ev_filters')
+        for conv_op in [conv.conv2d, conv2d]:
+            for border_mode in ['valid', 'full']:
+                image_shape = (2, 2, 4, 5)
+                filter_shape = (2, 2, 2, 3)
+                image_dim = len(image_shape)
+                filter_dim = len(filter_shape)
+                input      = tensor.TensorType(
+                    theano.config.floatX,
+                    [False] * image_dim)(name='input')
+                filters    = tensor.TensorType(
+                    theano.config.floatX,
+                    [False] * filter_dim)(name='filter')
+                ev_input   = tensor.TensorType(
+                    theano.config.floatX,
+                    [False] * image_dim)(name='ev_input')
+                ev_filters = tensor.TensorType(
+                    theano.config.floatX,
+                    [False] * filter_dim)(name='ev_filters')
 
-            def sym_conv2d(input, filters):
-                return conv.conv2d(input, filters, border_mode=border_mode)
-            output = sym_conv2d(input, filters).flatten()
-            yv = tensor.Rop(output, [input, filters], [ev_input, ev_filters])
-            rop_f = function([input, filters, ev_input, ev_filters],
-                             yv, on_unused_input='ignore')
-            sy, _ = theano.scan(
-                lambda i, y, x1, x2, v1, v2:
-                    (tensor.grad(y[i], x1) * v1).sum() + \
-                    (tensor.grad(y[i], x2) * v2).sum(),
-                                sequences=tensor.arange(output.shape[0]),
-                                non_sequences=[output, input, filters,
-                                               ev_input, ev_filters])
-            scan_f = function([input, filters, ev_input, ev_filters], sy,
-                              on_unused_input='ignore')
+                def sym_conv2d(input, filters):
+                    return conv_op(input, filters, border_mode=border_mode)
+                output = sym_conv2d(input, filters).flatten()
+                yv = tensor.Rop(output, [input, filters], [ev_input, ev_filters])
+                rop_f = function([input, filters, ev_input, ev_filters],
+                                yv, on_unused_input='ignore')
+                sy, _ = theano.scan(
+                    lambda i, y, x1, x2, v1, v2:
+                        (tensor.grad(y[i], x1) * v1).sum() + \
+                        (tensor.grad(y[i], x2) * v2).sum(),
+                                    sequences=tensor.arange(output.shape[0]),
+                                    non_sequences=[output, input, filters,
+                                                ev_input, ev_filters])
+                scan_f = function([input, filters, ev_input, ev_filters], sy,
+                                on_unused_input='ignore')
 
-            dtype = theano.config.floatX
-            image_data = numpy.random.random(image_shape).astype(dtype)
-            filter_data = numpy.random.random(filter_shape).astype(dtype)
-            ev_image_data = numpy.random.random(image_shape).astype(dtype)
-            ev_filter_data = numpy.random.random(filter_shape).astype(dtype)
-            v1 = rop_f(image_data, filter_data, ev_image_data,
-                       ev_filter_data)
-            v2 = scan_f(image_data, filter_data, ev_image_data,
+                dtype = theano.config.floatX
+                image_data = numpy.random.random(image_shape).astype(dtype)
+                filter_data = numpy.random.random(filter_shape).astype(dtype)
+                ev_image_data = numpy.random.random(image_shape).astype(dtype)
+                ev_filter_data = numpy.random.random(filter_shape).astype(dtype)
+                v1 = rop_f(image_data, filter_data, ev_image_data,
                         ev_filter_data)
-            assert numpy.allclose(v1, v2), ("Rop mismatch: %s %s" %
+                v2 = scan_f(image_data, filter_data, ev_image_data,
+                            ev_filter_data)
+                assert numpy.allclose(v1, v2), ("Rop mismatch: %s %s" %
                                             (v1, v2))
 
     def test_join(self):

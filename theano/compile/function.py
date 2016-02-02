@@ -50,9 +50,9 @@ def function_dump(filename, inputs, outputs=None, mode=None, updates=None,
     >>> f = theano.function(**d)  # doctest: +SKIP
 
     Note:
-      The parameter extra_tag_to_remove, is passed to the StripPickler used.
-      To pickle graph made by Blocks, it must be:
-          ['annotations', 'replacement_of', 'aggregation_scheme', 'rolesc']
+    The parameter extra_tag_to_remove, is passed to the StripPickler used.
+    To pickle graph made by Blocks, it must be:
+    ['annotations', 'replacement_of', 'aggregation_scheme', 'roles']
 
     """
     assert isinstance(filename, string_types)
@@ -79,7 +79,7 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
 
     Parameters
     ----------
-    inputs : list of either Variable or Param instances.
+    inputs : list of either Variable or In instances.
         Function parameters, these are not allowed to be shared variables.
     outputs : list or dict of Variables or Out instances.
         If it is a dict, the keys must be strings. Expressions to compute.

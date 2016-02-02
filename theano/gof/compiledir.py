@@ -142,6 +142,11 @@ def short_platform(r=None, p=None):
     sr = '-'.join(sp)
     p = p.replace(r, sr)
 
+    p = p.replace(':', '-')
+    p = p.replace('?', '-')
+    p = p.replace('*', '-')
+    p = p.replace('/', '-')
+
     return p
 compiledir_format_dict['short_platform'] = short_platform()
 compiledir_format_keys = ", ".join(sorted(compiledir_format_dict.keys()))
@@ -236,7 +241,14 @@ def get_home_dir():
 if sys.platform == 'win32' and os.getenv('LOCALAPPDATA') is not None:
     default_base_compiledir = os.path.join(os.getenv('LOCALAPPDATA'), 'Theano')
 else:
-    default_base_compiledir = os.path.join(get_home_dir(), '.theano')
+    home_dir = get_home_dir()
+    if not os.access(home_dir, os.W_OK):
+        home_dir = '/tmp'
+        user = os.getenv('USER')
+        if user is not None:
+            home_dir = os.path.join(home_dir, user)
+
+    default_base_compiledir = os.path.join(home_dir, '.theano')
 
 
 AddConfigVar(
@@ -349,11 +361,9 @@ def print_compiledir_content():
     total_key_sizes = 0
     nb_keys = {}
     for dir in os.listdir(compiledir):
-        file = None
-        try:
+        filename = os.path.join(compiledir, dir, "key.pkl")
+        with open(filename, 'rb') as file:
             try:
-                filename = os.path.join(compiledir, dir, "key.pkl")
-                file = open(filename, 'rb')
                 keydata = pickle.load(file)
                 ops = list(set([x for x in flatten(keydata.keys)
                                 if isinstance(x, theano.gof.Op)]))
@@ -375,9 +385,6 @@ def print_compiledir_content():
                 nb_keys[len(keydata.keys)] += 1
             except IOError:
                 pass
-        finally:
-            if file is not None:
-                file.close()
 
     print("List of %d compiled individual ops in this theano cache %s:" % (
         len(table), compiledir))

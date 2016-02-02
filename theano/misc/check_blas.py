@@ -262,6 +262,7 @@ if __name__ == "__main__":
         GTX Titan Black   0.64s  0.64s
         GTX Titan(D15U-50)
         GTX 780
+        GTX 980 Ti        0.41s
         GTX 980
         GTX 970
         GTX 680                  1.57s
@@ -271,6 +272,7 @@ if __name__ == "__main__":
         GTX 660           2.32s  2.32s
         GTX 580           2.42s         2.47s
         GTX 480           2.87s         2.88s
+        TX1                      7.6s
         GT 610                   33.5s
         """)
 

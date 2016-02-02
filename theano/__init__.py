@@ -67,7 +67,7 @@ from theano.compile import (
     predefined_modes, predefined_linkers, predefined_optimizers,
     FunctionMaker, function, function_dump, OpFromGraph,
     ProfileMode, ProfileStats,
-    Param, shared, as_op)
+    shared, as_op)
 
 from theano.misc.safe_asarray import _asarray
 
@@ -107,7 +107,8 @@ if config.device.startswith('gpu') or config.init_gpu_device.startswith('gpu'):
     if theano.sandbox.cuda.cuda_available:
         import theano.sandbox.cuda.tests.test_driver
 
-        theano.sandbox.cuda.tests.test_driver.test_nvidia_driver1()
+        if config.enable_initial_driver_test:
+            theano.sandbox.cuda.tests.test_driver.test_nvidia_driver1()
 
 if (config.device.startswith('cuda') or
         config.device.startswith('opencl') or

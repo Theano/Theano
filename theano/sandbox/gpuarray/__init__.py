@@ -26,7 +26,7 @@ from .type import (GpuArrayType, GpuArrayVariable, GpuArrayConstant,
                    GpuArraySharedVariable, gpuarray_shared_constructor,
                    reg_context, get_context, ContextNotDefined)
 from .basic_ops import as_gpuarray_variable
-from . import opt, nerv
+from . import dnn, opt, nerv
 
 def transfer(x, target):
     try:
@@ -39,14 +39,26 @@ register_transfer(transfer)
 
 
 def init_dev(dev, name=None):
-    if pygpu.gpuarray.api_version() != (-10000, 0):
-        raise RuntimeError("Wrong API version for gpuarray:",
-                           pygpu.gpuarray.api_version(),
+    v = pygpu.gpuarray.api_version()
+    if v[0] != -10000:
+        raise RuntimeError("Wrong major API version for gpuarray:", v[0],
                            "Make sure Theano and libgpuarray/pygpu "
                            "are in sync.")
+    if v[1] < 0:
+        raise RuntimeError("Wrong minor API version for gpuarray:", v[1],
+                           "Please update libgpuarray/pygpu.")
     global pygpu_activated
     if dev not in init_dev.devmap:
-        init_dev.devmap[dev] = pygpu.init(dev)
+        ctx = pygpu.init(dev)
+        init_dev.devmap[dev] = ctx
+        if config.gpuarray.preallocate != 0:
+            if config.gpuarray.preallocate < 1:
+                gmem = min(config.gpuarray.preallocate, 0.98) * ctx.total_gmem
+            else:
+                gmem = config.gpuarray.preallocate * (1024*1024)
+            # This will allocate and immediatly free an object of size gmem
+            # which will reserve that amount of memory on the GPU.
+            pygpu.empty((gmem,), dtype='int8', context=ctx)
     context = init_dev.devmap[dev]
     # This will map the context name to the real context object.
     reg_context(name, context)

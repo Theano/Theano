@@ -5,7 +5,7 @@ Sparse
 ======
 
 In general, *sparse* matrices provide the same functionality as regular
-matrices. The difference lies in the way the elements of *sparse* matrices are 
+matrices. The difference lies in the way the elements of *sparse* matrices are
 represented and stored in memory. Only the non-zero elements of the latter are stored.
 This has some potential advantages: first, this
 may obviously lead to reduced memory usage and, second, clever
@@ -13,7 +13,7 @@ storage methods may lead to reduced computation time through the use of
 sparse specific algorithms. We usually refer to the generically stored matrices
 as *dense* matrices.
 
-Theano's sparse package provides efficient algorithms, but its use is not recommended 
+Theano's sparse package provides efficient algorithms, but its use is not recommended
 in all cases or for all matrices. As an obvious example, consider the case where
 the *sparsity proportion* if very low. The *sparsity proportion* refers to the
 ratio of the number of zero elements to the number of all elements in a matrix.
@@ -30,7 +30,7 @@ ways to represent them in memory. This is usually designated by the so-called ``
 of the matrix. Since Theano's sparse matrix package is based on the SciPy
 sparse package, complete information about sparse matrices can be found
 in the SciPy documentation. Like SciPy, Theano does not implement sparse formats for
-arrays with a number of dimensions different from two. 
+arrays with a number of dimensions different from two.
 
 So far, Theano implements two ``formats`` of sparse matrix: ``csc`` and ``csr``.
 Those are almost identical except that ``csc`` is based on the *columns* of the
@@ -82,14 +82,14 @@ the rows and with a matrix that have a lower number of rows, ``csr`` format is a
 
     If shape[0] > shape[1], use ``csr`` format. Otherwise, use ``csc``.
 
-Sometimes, since the sparse module is young, ops does not exist for both format. So here is 
+Sometimes, since the sparse module is young, ops does not exist for both format. So here is
 what may be the most relevent rule:
 
 .. note::
 
     Use the format compatible with the ops in your computation graph.
 
-The documentation about the ops and their supported format may be found in 
+The documentation about the ops and their supported format may be found in
 the :ref:`Sparse Library Reference <libdoc_sparse>`.
 
 Handling Sparse in Theano
@@ -123,7 +123,7 @@ an example that performs a full cycle from sparse to sparse:
 Properties and Construction
 ---------------------------
 
-Although sparse variables do not allow direct access to their properties, 
+Although sparse variables do not allow direct access to their properties,
 this can be accomplished using the ``csm_properties`` function. This will return
 a tuple of one-dimensional ``tensor`` variables that represents the internal characteristics
 of the sparse matrix.
@@ -138,11 +138,11 @@ a ``csr`` one.
 >>> y = sparse.CSR(data, indices, indptr, shape)
 >>> f = theano.function([x], y)
 >>> a = sp.csc_matrix(np.asarray([[0, 1, 1], [0, 0, 0], [1, 0, 0]]))
->>> print a.toarray()
+>>> print(a.toarray())
 [[0 1 1]
  [0 0 0]
  [1 0 0]]
->>> print f(a).toarray()
+>>> print(f(a).toarray())
 [[0 0 1]
  [1 0 0]
  [1 0 0]]
@@ -165,11 +165,11 @@ provide a structured gradient. More explication below.
 >>> y = sparse.structured_add(x, 2)
 >>> f = theano.function([x], y)
 >>> a = sp.csc_matrix(np.asarray([[0, 0, -1], [0, -2, 1], [3, 0, 0]], dtype='float32'))
->>> print a.toarray()
+>>> print(a.toarray())
 [[ 0.  0. -1.]
  [ 0. -2.  1.]
  [ 3.  0.  0.]]
->>> print f(a).toarray()
+>>> print(f(a).toarray())
 [[ 0.  0.  1.]
  [ 0.  0.  3.]
  [ 5.  0.  0.]]

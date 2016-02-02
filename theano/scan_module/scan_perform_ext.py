@@ -1,7 +1,6 @@
 import errno
 import logging
 import os
-from six.moves import reload_module as reload
 import sys
 import warnings
 
@@ -17,7 +16,7 @@ from theano.gof import cmodule
 _logger = logging.getLogger('theano.scan_module.scan_perform')
 
 
-version = 0.292  # must match constant returned in function get_version()
+version = 0.293  # must match constant returned in function get_version()
 
 need_reload = False
 
@@ -76,7 +75,8 @@ except ImportError:
                 )
                 raise ImportError("The file lazylinker_c.c is not available.")
 
-            code = open(cfile).read()
+            with open(cfile) as f:
+                code = f.read()
             loc = os.path.join(config.compiledir, dirname)
             if not os.path.exists(loc):
                 try:
@@ -114,7 +114,8 @@ except ImportError:
                                              hide_symbols=False)
             # Save version into the __init__.py file.
             init_py = os.path.join(loc, '__init__.py')
-            open(init_py, 'w').write('_version = %s\n' % version)
+            with open(init_py, 'w') as f:
+                f.write('_version = %s\n' % version)
             # If we just compiled the module for the first time, then it was
             # imported at the same time: we need to make sure we do not
             # reload the now outdated __init__.pyc below.

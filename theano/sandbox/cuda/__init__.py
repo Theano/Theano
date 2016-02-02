@@ -6,6 +6,7 @@ import os
 import shutil
 import stat
 import sys
+import warnings
 
 import theano
 from theano.compat import get_unbound_function
@@ -193,15 +194,16 @@ if compile_cuda_ndarray and cuda_available:
                         tmpdir = os.environ['TMPDIR']
                         if not os.path.exists(tmpdir):
                             os.makedirs(tmpdir)
-
                     compiler = nvcc_compiler.NVCC_compiler()
+                    preargs = ['-O3'] + compiler.compile_args()
+                    preargs += [f for f in config.nvcc.flags.split(' ') if f]
                     compiler.compile_str(
                             'cuda_ndarray',
                             code,
                             location=cuda_ndarray_loc,
                             include_dirs=[cuda_path],
                             libs=[config.cublas.lib],
-                            preargs=['-O3'] + compiler.compile_args(),
+                            preargs=preargs,
                     )
                     from cuda_ndarray.cuda_ndarray import *
             except Exception as e:
@@ -318,7 +320,7 @@ if cuda_available:
             GpuDimShuffle, GpuCAReduce, GpuReshape, GpuContiguous,
             GpuSubtensor, GpuIncSubtensor,
             GpuAdvancedSubtensor1, GpuAdvancedIncSubtensor1,
-            GpuFlatten, GpuShape, GpuAlloc, GpuAllocEmpty, GpuSplit,
+            gpu_flatten, GpuFlatten, GpuShape, GpuAlloc, GpuAllocEmpty, GpuSplit,
             GpuJoin, fscalar, fvector, fmatrix, frow, fcol,
             ftensor3, ftensor4,
             scalar, vector, matrix, row, col,

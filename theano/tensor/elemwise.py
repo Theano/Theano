@@ -7,7 +7,6 @@ import numpy
 import theano
 from theano import gof
 from theano.compat import izip
-from theano.compat import get_unbound_function
 from six import iteritems
 from six.moves import xrange
 from theano.gof import Apply, Op, OpenMPOp
@@ -25,6 +24,7 @@ config = theano.config
 # so we redefine them here
 discrete_dtypes = list(map(str, scalar.discrete_types))
 float_dtypes = list(map(str, scalar.float_types))
+int_dtypes = list(map(str, scalar.int_types))
 
 
 # tensor depends on elemwise to provide definitions for several ops
@@ -461,7 +461,7 @@ class Elemwise(OpenMPOp):
     scalar.ScalarOp to get help about controlling the output type)
 
     Parameters
-    -----------
+    ----------
     scalar_op
         An instance of a subclass of scalar.ScalarOp which works uniquely
         on scalars.
@@ -792,8 +792,7 @@ class Elemwise(OpenMPOp):
 
         return ret
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
-        node_ = node
+    def prepare_node(self, node):
         # Postpone the ufunc building to the last minutes
         # NumPy ufunc support only up to 31 inputs.
         # But our c code support more.
@@ -811,8 +810,24 @@ class Elemwise(OpenMPOp):
             else:
                 node.tag.ufunc = ufunc
 
-        return super(Elemwise, node_.op).make_thunk(node_, storage_map,
-                                                    compute_map, no_recycling)
+        # Numpy ufuncs will sometimes perform operations in
+        # float16, in particular when the input is int8.
+        # This is not something that we want, and we do not
+        # do it in the C code, so we specify that the computation
+        # should be carried out in the returned dtype.
+        # This is done via the "sig" kwarg of the ufunc, its value
+        # should be something like "ff->f", where the characters
+        # represent the dtype of the inputs and outputs.
+
+        # NumPy 1.10.1 raise an error when giving the signature
+        # when the input is complex. So add it only when inputs is int.
+        out_dtype = node.outputs[0].dtype
+        if (out_dtype in float_dtypes and
+                isinstance(self.nfunc, numpy.ufunc) and
+                node.inputs[0].dtype in discrete_dtypes):
+            char = numpy.sctype2char(out_dtype)
+            sig = char * node.nin + '->' + char * node.nout
+            node.tag.sig = sig
 
     def perform(self, node, inputs, output_storage):
         if len(node.inputs) >= 32:
@@ -860,19 +875,8 @@ class Elemwise(OpenMPOp):
         if self.nfunc and len(inputs) == self.nfunc_spec[1]:
             ufunc = self.nfunc
             nout = self.nfunc_spec[2]
-            # Numpy ufuncs will sometimes perform operations in
-            # float16, in particular when the input is int8.
-            # This is not something that we want, and we do not
-            # do it in the C code, so we specify that the computation
-            # should be carried out in the returned dtype.
-            # This is done via the "sig" kwarg of the ufunc, its value
-            # should be something like "ff->f", where the characters
-            # represent the dtype of the inputs and outputs.
-            out_dtype = node.outputs[0].dtype
-            if out_dtype in float_dtypes and isinstance(ufunc, numpy.ufunc):
-                char = numpy.sctype2char(out_dtype)
-                sig = char * node.nin + '->' + char * node.nout
-                ufunc_kwargs['sig'] = sig
+            if hasattr(node.tag, 'sig'):
+                ufunc_kwargs['sig'] = node.tag.sig
             # Unfortunately, the else case does not allow us to
             # directly feed the destination arguments to the nfunc
             # since it sometimes requires resizing. Doing this
@@ -1264,19 +1268,6 @@ class Elemwise(OpenMPOp):
         when doing constant folding of this node.
         """
         return node.outputs[0].ndim == 0
-
-theano.compile.debugmode.default_make_thunk.append(
-    get_unbound_function(Elemwise.make_thunk))
-
-# def elemwise_to_scal(fgraph):
-# TODO: why is this commented out? should it be removed?
-#       it has needed maintenance despite being commented
-#     mapping = {}
-#     inputs = []
-#     outputs = []
-#     for node in fgraph.io_toposort():
-#         if not isinstance(node.op, Elemwise):
-#             raise TypeError('All ops in the graph must be Elemwise.')
 
 
 ################

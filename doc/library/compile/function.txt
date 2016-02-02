@@ -27,11 +27,64 @@ array(8.0)
 The idea here is that we've compiled the symbolic graph (``2*x``) into a function that can be called on a number and will do some computations.
 
 The behaviour of function can be controlled in several ways, such as
-:class:`Param`, ``mode``, ``updates``, and ``givens``.  These are covered
+:class:`In`, :class:`Out`, ``mode``, ``updates``, and ``givens``.  These are covered
 in the :ref:`tutorial examples <basictutexamples>` and :ref:`tutorial on modes <using_modes>`.
 
 Reference
 =========
+
+.. class:: In
+
+    A class for attaching information to function inputs.
+
+    .. attribute:: variable
+
+        A variable in an expression graph to use as a compiled-function parameter
+
+    .. attribute:: name
+
+        A string to identify an argument for this parameter in keyword arguments.
+
+    .. attribute:: value
+
+        The default value to use at call-time (can also be a Container where
+        the function will find a value at call-time.)
+
+    .. attribute:: update
+
+        An expression which indicates updates to the Value after each function call.
+
+    .. attribute:: mutable
+
+        ``True`` means the compiled-function is allowed to modify this
+        argument. ``False`` means it is not allowed.
+
+    .. attribute:: borrow
+
+        ``True`` indicates that a reference to internal storage may be returned, and that the caller is aware that subsequent function evaluations might overwrite this memory.
+
+    .. attribute:: strict
+
+      If ``False``, a function argument may be copied or cast to match the type
+      required by the parameter `variable`.  If ``True``, a function argument
+      must exactly match the type required by `variable`.
+
+    .. attribute:: allow_downcast
+
+        ``True`` indicates that the value you pass for this input can be silently downcasted to fit the right type, which may lose precision. (Only applies when `strict` is ``False``.)
+
+    .. attribute:: autoname
+
+        ``True`` means that the `name` is set to variable.name.
+
+    .. attribute:: implicit
+
+        ``True`` means that the input is implicit in the sense that the user is not allowed to provide a value for it. Requires 'value' to be set.
+        ``False`` means that the user can provide a value for this input.
+
+    .. method:: __init__(self, variable, name=None, value=None, update=None, mutable=None, strict=False, allow_downcast=None, autoname=True, implicit=None, borrow=None, shared=False)
+
+        Initialize attributes from arguments.
 
 .. class:: Out
 
@@ -50,44 +103,12 @@ Reference
 
         Initialize attributes from arguments.
 
-.. class:: Param
-
-    A class for attaching information to function inputs.
-
-    .. attribute:: variable
-
-        A variable in an expression graph to use as a compiled-function parameter
-
-    .. attribute:: default
-
-        The default value to use at call-time (can also be a Container where
-        the function will find a value at call-time.)
-
-    .. attribute:: name
-
-        A string to identify an argument for this parameter in keyword arguments.
-
-    .. attribute:: mutable
-
-        ``True`` means the compiled-function is allowed to modify this
-        argument. ``False`` means it is not allowed.
-
-    .. attribute:: strict
-
-      If ``False``, a function argument may be copied or cast to match the type
-      required by the parameter `variable`.  If ``True``, a function argument
-      must exactly match the type required by `variable`.
-
-    .. method:: __init__(self, variable, default=None, name=None, mutable=False, strict=False)
-
-        Initialize object attributes.
-
 
 .. function:: function(inputs, outputs, mode=None, updates=None, givens=None, no_default_updates=False, accept_inplace=False, name=None, rebuild_strict=True, allow_input_downcast=None, profile=None, on_unused_input='raise')
 
     Return a :class:`callable object <theano.compile.function_module.Function>` that will calculate `outputs` from `inputs`.
 
-    :type params: list of either Variable or Param instances, but not shared
+    :type params: list of either Variable or In instances, but not shared
         variables.
 
     :param params: the returned :class:`Function` instance will have
@@ -159,8 +180,8 @@ Reference
       and update the implicit function arguments according to the `updates`.
 
 
-    Inputs can be given as variables or Param instances.
-    :class:`Param` instances also have a variable, but they attach some extra
+    Inputs can be given as variables or In instances.
+    :class:`In` instances also have a variable, but they attach some extra
     information about how call-time arguments corresponding to that variable
     should be used.  Similarly, :class:`Out` instances can attach information
     about how output variables should be returned.

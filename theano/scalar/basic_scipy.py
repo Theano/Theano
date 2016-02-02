@@ -231,12 +231,6 @@ class Gamma(UnaryScalarOp):
         if node.inputs[0].type in float_types:
             return """%(z)s = tgamma(%(x)s);""" % locals()
         raise NotImplementedError('only floating point is implemented')
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
 gamma = Gamma(upgrade_to_float, name='gamma')
 
 
@@ -275,12 +269,6 @@ class GammaLn(UnaryScalarOp):
             return """%(z)s =
                 lgamma(%(x)s);""" % locals()
         raise NotImplementedError('only floating point is implemented')
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
 gammaln = GammaLn(upgrade_to_float, name='gammaln')
 
 
@@ -357,12 +345,6 @@ class Psi(UnaryScalarOp):
             return """%(z)s =
                 _psi(%(x)s);""" % locals()
         raise NotImplementedError('only floating point is implemented')
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
 psi = Psi(upgrade_to_float, name='psi')
 
 
@@ -386,11 +368,62 @@ class Chi2SF(BinaryScalarOp):
             return Chi2SF.st_impl(x, k)
         else:
             super(Chi2SF, self).impl(x, k)
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
 chi2sf = Chi2SF(upgrade_to_float, name='chi2sf')
+
+
+class J1(UnaryScalarOp):
+    """
+    Bessel function of the 1'th kind
+    """
+
+    @staticmethod
+    def st_impl(x):
+        return scipy.special.j1(x)
+
+    def impl(self, x):
+        if imported_scipy_special:
+            return self.st_impl(x)
+        else:
+            super(J1, self).impl(x)
+
+    def grad(self, inp, grads):
+        raise NotImplementedError()
+
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
+        if node.inputs[0].type in float_types:
+            return """%(z)s =
+                j1(%(x)s);""" % locals()
+        raise NotImplementedError('only floating point is implemented')
+j1 = J1(upgrade_to_float, name='j1')
+
+
+class J0(UnaryScalarOp):
+    """
+    Bessel function of the 0'th kind
+    """
+
+    @staticmethod
+    def st_impl(x):
+        return scipy.special.j0(x)
+
+    def impl(self, x):
+        if imported_scipy_special:
+            return self.st_impl(x)
+        else:
+            super(J0, self).impl(x)
+
+    def grad(self, inp, grads):
+        x, = inp
+        gz, = grads
+        return [gz * -1 * j1(x)]
+
+    def c_code(self, node, name, inp, out, sub):
+        x, = inp
+        z, = out
+        if node.inputs[0].type in float_types:
+            return """%(z)s =
+                j0(%(x)s);""" % locals()
+        raise NotImplementedError('only floating point is implemented')
+j0 = J0(upgrade_to_float, name='j0')

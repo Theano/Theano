@@ -55,7 +55,7 @@ def test_pydotprint_return_image():
 
     x = tensor.dvector()
     ret = theano.printing.pydotprint(x * 2, return_image=True)
-    assert isinstance(ret, str)
+    assert isinstance(ret, (str, bytes))
 
 
 def test_pydotprint_variables():
@@ -82,7 +82,8 @@ def test_pydotprint_variables():
     theano.theano_logger.addHandler(new_handler)
     try:
         theano.printing.pydotprint(x * 2)
-        theano.printing.pydotprint_variables(x * 2)
+        if not theano.printing.pd.__name__ == "pydot_ng":
+            theano.printing.pydotprint_variables(x * 2)
     finally:
         theano.theano_logger.addHandler(orig_handler)
         theano.theano_logger.removeHandler(new_handler)
@@ -513,8 +514,8 @@ def test_scan_debugprint4():
     def fn(a_m2, a_m1, b_m2, b_m1):
         return a_m1 + a_m2, b_m1 + b_m2
 
-    a0 = theano.shared(numpy.arange(2))
-    b0 = theano.shared(numpy.arange(2))
+    a0 = theano.shared(numpy.arange(2, dtype='int64'))
+    b0 = theano.shared(numpy.arange(2, dtype='int64'))
 
     (a, b), _ = theano.scan(
         fn, outputs_info=[{'initial': a0, 'taps': [-2, -1]},

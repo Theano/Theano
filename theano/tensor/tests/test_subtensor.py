@@ -1264,7 +1264,7 @@ class TestAdvancedSubtensor(unittest.TestCase):
         self.mode = mode
         self.dtype = dtype
         self.ignore_topo = ignore_topo
-        return super(TestAdvancedSubtensor, self).__init__(name)
+        super(TestAdvancedSubtensor, self).__init__(name)
 
     def setUp(self):
         self.s = iscalar()

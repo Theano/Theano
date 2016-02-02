@@ -199,7 +199,11 @@ class Scalar(Type):
                 type(data), data, self.dtype), e)
 
     def values_eq_approx(self, a, b, tolerance=1e-4):
-        return abs(a - b) <= ((abs(a) + abs(b)) * tolerance)
+        # The addition have risk of overflow especially with [u]int8
+        diff = a - b
+        if diff == 0:
+            return True
+        return abs(diff) <= (abs(a) * tolerance) + (abs(b) * tolerance)
 
     def c_headers(self, c_compiler):
         l = ['<math.h>']
@@ -1667,7 +1671,7 @@ class TrueDiv(BinaryScalarOp):
         # This is different from it not being connected
         # to the output; x/y is still a function of x
         # and y; it's just a step function.
-        if (x / y).type in discrete_types:
+        if all(a.dtype in discrete_types for a in (x, y)):
             return [x.zeros_like(), y.zeros_like()]
 
         first_part = gz / y

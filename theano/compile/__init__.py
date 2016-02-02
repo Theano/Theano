@@ -22,7 +22,7 @@ from theano.compile.profilemode import ProfileMode
 
 from theano.compile.sharedvalue import (shared, shared_constructor,
                                         SharedVariable)
-from theano.compile.pfunc import pfunc, Param, rebuild_collect_shared
+from theano.compile.pfunc import pfunc, rebuild_collect_shared
 
 from theano.compile.builders import *
 

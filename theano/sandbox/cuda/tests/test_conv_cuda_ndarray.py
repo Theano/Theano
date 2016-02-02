@@ -439,18 +439,6 @@ def test_default_conv():
         assert any([isinstance(a.op, cuda.blas.GpuCorrMM)
                     for a in f.maker.fgraph.apply_nodes])
 
-    mode = theano_mode.excluding('local_conv_dnn', 'local_conv_gemm')
-    f = theano.function([img, fil], c, mode=mode)
-
-    assert any([isinstance(a.op, cuda.blas.GpuConv)
-                for a in f.maker.fgraph.apply_nodes])
-
-    mode = theano_mode.excluding('conv_dnn', 'conv_gemm')
-    f = theano.function([img, fil], c, mode=mode)
-
-    assert any([isinstance(a.op, cuda.blas.GpuConv)
-                for a in f.maker.fgraph.apply_nodes])
-
 
 def _test_full(cls, mode=None, version=[-1], extra_shapes=[],
                test_bigger_kernels=True):
@@ -614,7 +602,8 @@ class TestConv2DGPU(unittest.TestCase):
                 cuda.blas.BaseGpuCorrMM)
 
     def test_logical_shapes(self):
-        seed_rng()
+        # Logical shapes are not supported anymore, so we check that it
+        # raises an Exception.
         for stride in range(1, 4):
             kshp = (10, 2, 10, 10)
             featshp = (3, 10, 11, 11)
@@ -629,23 +618,14 @@ class TestConv2DGPU(unittest.TestCase):
             featshp_logical = (featshp[0], featshp[1], featshp[2] * stride,
                                featshp[3] * stride)
             kshp_rotated = (kshp[1], kshp[0], kshp[2], kshp[3])
-            # print featshp, kshp_rotated, featshp_logical[1:], kshp[2:]
-            image_estimate = tensor.nnet.conv2d(a, kernel_rotated,
-                                                border_mode='full',
-                                                image_shape=featshp,
-                                                filter_shape=kshp_rotated,
-                                                imshp_logical=featshp_logical[1:],
-                                                kshp_logical=kshp[2:])
+            self.assertRaises(ValueError, tensor.nnet.conv2d,
+                              a, kernel_rotated,
+                              border_mode='full',
+                              image_shape=featshp,
+                              filter_shape=kshp_rotated,
+                              imshp_logical=featshp_logical[1:],
+                              kshp_logical=kshp[2:])
 
-            func = theano.function([a, A], image_estimate, mode=theano_mode)
-            # theano.printing.debugprint(func,)
-            assert any([isinstance(node.op, self.conv_ops)
-                        for node in func.maker.fgraph.toposort()])
-
-            a_in = numpy.random.randn(*featshp).astype("float32")
-            A_in = numpy.random.randn(*kshp).astype("float32")
-
-            func(a_in, A_in)
 
     def test_invalid_input_shape(self):
         """
@@ -838,17 +818,8 @@ def conv_grad(mode, bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsample, op):
 
     # TODO: also test custom pad values
     corr_op = op(mode, subsample)(i, k)
-    # try to compile reference implementation without shape,
-    # so we don't have to compile hundreds of versions
     conv_op = tensor.nnet.conv2d(i, k[:, :, ::-1, ::-1],
                                  border_mode=mode, subsample=subsample)
-    try:
-        conv_op_di = theano.grad(conv_op.sum(), i)
-        conv_op_dk = theano.grad(conv_op.sum(), k)
-    except Exception:
-        # compile with shape information only when needed
-        conv_op = tensor.nnet.conv2d(i, k[:, :, ::-1, ::-1],
-                                     ishape, kshape, mode, subsample)
     conv_op_di = theano.grad(conv_op.sum(), i)
     conv_op_dk = theano.grad(conv_op.sum(), k)
     corr_op_di = theano.grad(corr_op.sum(), i)
@@ -856,18 +827,15 @@ def conv_grad(mode, bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsample, op):
     outputs = [corr_op, conv_op,
                corr_op_di, conv_op_di,
                corr_op_dk, conv_op_dk]
-    try:
-        conv_op_dik = theano.grad(conv_op_di.sum(), k)
-        conv_op_dki = theano.grad(conv_op_dk.sum(), i)
-        corr_op_dik = theano.grad(corr_op_di.sum(), k)
-        corr_op_dki = theano.grad(corr_op_dk.sum(), i)
-        outputs.extend([corr_op_dik, conv_op_dik,
-                        corr_op_dki, conv_op_dki])
-    except Exception:
-        # skip if the reference implementation can't do it
-        pass
 
-    f = theano.function([i, k], outputs, mode=theano_mode.excluding('conv_dnn', 'conv_gemm'))
+    conv_op_dik = theano.grad(conv_op_di.sum(), k)
+    conv_op_dki = theano.grad(conv_op_dk.sum(), i)
+    corr_op_dik = theano.grad(corr_op_di.sum(), k)
+    corr_op_dki = theano.grad(corr_op_dk.sum(), i)
+    outputs.extend([corr_op_dik, conv_op_dik,
+                    corr_op_dki, conv_op_dki])
+
+    f = theano.function([i, k], outputs, mode=theano_mode)
 
     allvals = f(npy_img, npy_kern)
 

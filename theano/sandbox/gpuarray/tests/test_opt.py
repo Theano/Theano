@@ -9,7 +9,8 @@ from theano.tensor.tests import test_basic
 import theano.sandbox.gpuarray
 from .. import basic_ops
 from ..type import GpuArrayType, gpuarray_shared_constructor, get_context
-from ..basic_ops import GpuAlloc, GpuReshape, GpuFromHost, host_from_gpu
+from ..basic_ops import (
+    GpuAlloc, GpuAllocEmpty, GpuReshape, GpuFromHost, host_from_gpu)
 from ..elemwise import GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise
 from ..subtensor import GpuSubtensor
 
@@ -31,7 +32,7 @@ def test_local_remove_all_assert():
     a = theano.tensor.opt.assert_op(x, theano.tensor.eq(x, 0).any())
 
     # By default `unsafe` should not be there
-    f = theano.function([x], a, mode=mode_with_gpu)
+    f = theano.function([x], a, mode=mode_with_gpu.excluding('unsafe'))
     topo = f.maker.fgraph.toposort()
     a_op = [n for n in topo if isinstance(n.op, theano.tensor.opt.Assert)]
     assert len(a_op) == 1
@@ -151,6 +152,29 @@ def test_local_gpualloc_memset_0():
     assert (numpy.asarray(f(2)) == 1).all()
 
 
+def test_local_gpualloc_empty():
+    i = theano.tensor.iscalar()
+    ii = theano.tensor.iscalar()
+
+    # Test with vector
+    a = tensor.AllocEmpty('float32')(i)
+    f = theano.function([i], a, mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 2
+    assert isinstance(topo[0].op, GpuAllocEmpty)
+    # This return not initilized data, so we can only check the shape
+    assert f(3).shape == (3,)
+
+    # Test with matrix
+    a = tensor.AllocEmpty('float32')(i, ii)
+    f = theano.function([i, ii], a, mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 2
+    assert isinstance(topo[0].op, GpuAllocEmpty)
+    # This return not initilized data, so we can only check the shape
+    assert f(3, 4).shape == (3, 4)
+
+
 def test_rebroadcast():
     d = numpy.random.rand(10, 10).astype('float32')
     v = theano.tensor.fmatrix()
@@ -212,7 +236,15 @@ def test_local_gpu_elemwise_careduce():
     topo = f.maker.fgraph.toposort()
     assert len(topo) == 3
     assert topo[1].op.pre_scalar_op == theano.scalar.sqr
-    f(numpy.random.rand(3, 4).astype(theano.config.floatX))
+    data = numpy.random.rand(3, 4).astype(theano.config.floatX)
+    utt.assert_allclose(f(data), (data * data).sum())
+
+    o = (x * x).sum(axis=1)
+    f = theano.function([x], o, mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 3
+    assert topo[1].op.pre_scalar_op == theano.scalar.sqr
+    utt.assert_allclose(f(data), (data * data).sum(axis=1))
 
 
 def test_local_gpu_subtensor():
@@ -324,3 +356,16 @@ def test_local_gpu_elemwise():
     out = f(a_v, b_v)
     utt.assert_allclose(out[0], a_v[::2] + b_v[::2])
     utt.assert_allclose(out[1], a_v[::2] * c_v[::2])
+
+
+def test_local_lift_abstractconv_gpu_shape():
+    prev = theano.config.on_opt_error
+    try:
+        theano.config.on_opt_error = 'raise'
+        s = tensor.ivector()
+        a = tensor.ftensor4()
+        b = tensor.ftensor4()
+        c = tensor.nnet.abstract_conv.AbstractConv2d_gradWeights()(a, b, s)
+        theano.function([s, a, b], c, mode=mode_with_gpu)
+    finally:
+        theano.config.on_opt_error = prev

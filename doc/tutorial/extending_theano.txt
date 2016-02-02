@@ -64,6 +64,13 @@ possibilities you may encounter or need.  For that refer to
         # Properties attribute
         __props__ = ()
 
+        #itypes and otypes attributes are
+        #compulsory if make_node method is not defined.
+        #They're the type of input and output respectively
+        itypes = None
+        otypes = None
+
+        #Compulsory if itypes and otypes are not defined
         def make_node(self, *inputs):
             pass
 
@@ -98,7 +105,7 @@ possibilities you may encounter or need.  For that refer to
 .. ../extending/op.txt
 
 An op has to implement some methods defined in the the interface of
-:class:`gof.Op`. More specifically, it is mandatory for an op to define the method :func:`make_node` and one of the implementation methods, either :func:`perform`, :meth:`Op.c_code` or :func:`make_thunk`.
+:class:`gof.Op`. More specifically, it is mandatory for an op to define either the method :func:`make_node` or :attr:`itypes`, :attr:`otypes` and one of the implementation methods, either :func:`perform`, :meth:`Op.c_code` or :func:`make_thunk`.
 
   :func:`make_node` method creates an Apply node representing the application
   of the op on the inputs provided. This method is reponsible for three things:
@@ -174,6 +181,10 @@ An op has to implement some methods defined in the the interface of
   If :func:`make_thunk()` is defined by an op, it will be used by Theano
   to obtain the op's implementation.
   :func:`perform` and :meth:`Op.c_code` will be ignored.
+
+  If :func:`make_node` is not defined, the :attr:`itypes` and :attr:`otypes` 
+  are used by the Op's :func:`make_node` method to implement the functionality
+  of :func:`make_node` method mentioned above.
 
 Other methods can be optionally defined by the op.
 
@@ -254,7 +265,10 @@ Op Example
 
     import theano
 
-    class DoubleOp(theano.Op):
+    #Using make_node
+
+
+    class DoubleOp1(theano.Op):
         __props__ = ()
 
         def make_node(self, x):
@@ -286,12 +300,41 @@ Op Example
                 return eval_points
             return self.grad(inputs, eval_points)
 
+    #Using itypes and otypes
+
+
+    class DoubleOp2(theano.Op):
+        __props__ = ()
+
+        itypes = [theano.tensor.dmatrix]
+        otypes = [theano.tensor.dmatrix]
+
+        def perform(self, node, inputs, output_storage):
+            x = inputs[0]
+            z = output_storage[0]
+            z[0] = x * 2
+
+        def infer_shape(self, node, i0_shapes):
+            return i0_shapes
+
+        def grad(self, inputs, output_grads):
+            return [output_grads[0] * 2]
+
+        def R_op(self, inputs, eval_points):
+            # R_op can receive None as eval_points.
+            # That mean there is no diferientiable path through that input
+            # If this imply that you cannot compute some outputs,
+            # return None for those.
+            if eval_points[0] is None:
+                return eval_points
+            return self.grad(inputs, eval_points)
+
 You can try it as follows:
 
-.. testcode:: example
+.. testcode:: example(Using make_node)
 
     x = theano.tensor.matrix()
-    f = theano.function([x], DoubleOp()(x))
+    f = theano.function([x], DoubleOp1()(x))
     import numpy
     inp = numpy.random.rand(5, 4)
     out = f(inp)
@@ -302,10 +345,42 @@ You can try it as follows:
 .. testoutput:: example
    :hide:
    :options: +ELLIPSIS
-   
+
    ...
    ...
-   
+
+.. code-block:: none
+
+    [[ 0.08257206  0.34308357  0.5288043   0.06582951]
+     [ 0.65977826  0.10040307  0.5402353   0.55472296]
+     [ 0.82358552  0.29502171  0.97387481  0.0080757 ]
+     [ 0.77327215  0.65401857  0.76562992  0.94145702]
+     [ 0.8452076   0.30500101  0.88430501  0.95818655]]
+    [[ 0.16514411  0.68616713  1.0576086   0.13165902]
+     [ 1.31955651  0.20080613  1.08047061  1.10944593]
+     [ 1.64717104  0.59004341  1.94774962  0.0161514 ]
+     [ 1.5465443   1.30803715  1.53125983  1.88291403]
+     [ 1.6904152   0.61000201  1.76861002  1.9163731 ]]
+
+.. testcode:: example (Using itypes and otypes)
+
+    x = theano.tensor.matrix()
+    f = theano.function([x], DoubleOp2()(x))
+    import numpy
+    inp = numpy.random.rand(5, 4)
+    out = f(inp)
+    assert numpy.allclose(inp * 2, out)
+    print(inp)
+    print(out)
+
+
+.. testoutput:: example
+   :hide:
+   :options: +ELLIPSIS
+
+   ...
+   ...
+
 .. code-block:: none
 
     [[ 0.02443785  0.67833979  0.91954769  0.95444365]
@@ -657,6 +732,8 @@ signature:
     It converts the Python function to a callable object that takes as
     inputs Theano variables that were declared.
 
+.. note::
+    The python function wrapped by the `as_op` decorator needs to return a new data allocation, no views or in place modification of the input.
 
 as_op Example
 -------------

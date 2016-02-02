@@ -14,7 +14,13 @@ from theano.gof.optdb import LocalGroupDB
 from theano.scalar.basic import Scalar, Pow, Cast
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
+from theano.tensor import as_tensor_variable
 from theano.tensor.nnet.conv import ConvOp
+from theano.tensor.nnet.abstract_conv import (BaseAbstractConv2d,
+                                              AbstractConv2d,
+                                              AbstractConv2d_gradWeights,
+                                              AbstractConv2d_gradInputs)
+
 from theano.tests.breakpoint import PdbBreakpoint
 
 from .type import (GpuArrayType, GpuArrayConstant, get_context,
@@ -27,7 +33,6 @@ from .basic_ops import (as_gpuarray_variable, infer_context_name,
                         GpuEye, gpu_join, GpuJoin)
 from .blas import (gpu_dot22, GpuGemv, GpuGemm, GpuGer,
                    gpugemm_no_inplace)
-from .conv import GpuConv
 from .nnet import (GpuCrossentropySoftmaxArgmax1HotWithBias,
                    GpuCrossentropySoftmax1HotWithBiasDx,
                    GpuSoftmaxWithBias, GpuSoftmax)
@@ -129,18 +134,16 @@ def op_lifter(OP, cuda_only=False):
                      get_context(context_name).kind != 'cuda')):
                     return False
 
+                # tag the inputs with the context in case
+                # the context was derived from the outputs
+                for i in node.inputs:
+                    i.tag.context_name = context_name
                 new_op = maker(node, context_name)
                 # This is needed as sometimes new_op inherits from OP.
                 if new_op and new_op != node.op:
                     if isinstance(new_op, theano.Op):
-                        # tag the inputs with the context in case
-                        # the context was derived from the outputs
-                        def tag(i, ctx):
-                            i.tag.context_name = ctx
-                            return i
-                        inputs = [tag(i, context_name) for i in node.inputs]
                         return [safe_to_cpu(o) for o in
-                                new_op(*inputs, return_list=True)]
+                                new_op(*node.inputs, return_list=True)]
                     elif isinstance(new_op, (tuple, list)):
                         return [safe_to_cpu(o) for o in new_op]
                     else:  # suppose it is a variable on the GPU
@@ -156,7 +159,6 @@ class InputToGpuOptimizer(Optimizer):
     Transfer the input to the gpu to start the rolling wave.
 
     """
-
     def add_requirements(self, fgraph):
         fgraph.attach_feature(toolbox.ReplaceValidate())
 
@@ -170,16 +172,19 @@ class InputToGpuOptimizer(Optimizer):
                     for cl in input.clients)):
                 continue
 
-            ctx_name = getattr(input.tag, 'context_name', None)
+            target = getattr(input.tag, 'target', None)
+            if target == 'cpu':
+                continue
+
             try:
-                new_input = host_from_gpu(GpuFromHost(ctx_name)(input))
+                new_input = host_from_gpu(GpuFromHost(target)(input))
                 fgraph.replace_validate(input, new_input,
                                         "InputToGpuOptimizer")
             except TypeError:
                 # This could fail if the inputs are not TensorTypes
                 pass
             except ContextNotDefined:
-                if hasattr(input.tag, 'context_name'):
+                if hasattr(input.tag, 'target'):
                     raise
                 # If there is no context tag and no default context
                 # then it stays on the CPU
@@ -273,6 +278,15 @@ def local_gpuaalloc2(node):
 @op_lifter([tensor.Alloc])
 def local_gpuaalloc(node, context_name):
     return GpuAlloc(context_name)(*node.inputs)
+
+
+@register_opt('fast_compile')
+@op_lifter([tensor.AllocEmpty])
+def local_gpuaallocempty(node, context_name):
+    # We use _props_dict() to make sure that the GPU op know all the
+    # CPU op props.
+    return GpuAllocEmpty(context_name=context_name,
+                         **node.op._props_dict())(*node.inputs)
 
 
 @register_opt()
@@ -593,11 +607,11 @@ def local_gpua_advanced_incsubtensor(node, context_name):
     compute_capability = device_properties(active_device_no)['major']
 
     if (compute_capability < 2 or x.ndim != 2 or y.ndim != 2):
-        return [GpuAdvancedIncSubtensor1(
-                set_instead_of_inc=set_instead_of_inc)(x, y, ilist)]
+        return GpuAdvancedIncSubtensor1(
+            set_instead_of_inc=set_instead_of_inc)
     else:
-        return [GpuAdvancedIncSubtensor1_dev20(
-                set_instead_of_inc=set_instead_of_inc)(x, y, ilist)]
+        return GpuAdvancedIncSubtensor1_dev20(
+            set_instead_of_inc=set_instead_of_inc)
 
 
 @register_opt('fast_compile')
@@ -621,7 +635,6 @@ def local_gpua_careduce(node, context_name):
             node.op.scalar_op, axis=node.op.axis,
             dtype=getattr(node.op, 'dtype', None),
             acc_dtype=getattr(node.op, 'acc_dtype', None))
-        x.tag.context_name = context_name
         gvar = greduce(x)
         # We need to have the make node called, otherwise the mask can
         # be None
@@ -780,77 +793,52 @@ def local_assert(node, context_name):
 
 @register_opt('fast_compile')
 @op_lifter([ConvOp])
-def local_gpu_conv(node, context_name):
-    def GpuConvOp_from_ConvOp(op):
-        logical_img_hw = None
+def local_error_convop(node, context_name):
+    assert False, """
+ConvOp does not work with the gpuarray backend.
 
-        if op.kshp_logical is not None and op.kshp_logical != op.kshp:
-            return None
+Use the new convolution interface to have GPU convolution working:
+theano.tensor.nnet.conv2d()
+"""
 
-        ret = GpuConv(border_mode=op.out_mode,
-                      subsample=(op.dx, op.dy),
-                      logical_img_hw=logical_img_hw,
-                      logical_kern_hw=op.kshp_logical,
-                      logical_kern_align_top=op.kshp_logical_top_aligned,
-                      kshp=op.kshp,
-                      version=op.version,
-                      direction_hint=op.direction_hint,
-                      verbose=op.verbose,
-                      imshp=op.imshp,
-                      nkern=op.nkern,
-                      bsize=op.bsize,
-                      fft_opt=op.fft_opt)
-        if op.imshp_logical is not None:
-            logical_img_hw = op.imshp_logical[1:3]
-            if logical_img_hw != op.imshp[1:3]:
-                rstride = int(numpy.ceil(op.imshp_logical[1] /
-                                         float(op.imshp[1])))
-                cstride = int(numpy.ceil(op.imshp_logical[2] /
-                                         float(op.imshp[2])))
 
-                def make_graph(img, kern):
-                    buf = tensor.alloc(numpy.asarray(0, dtype=img.dtype),
-                                       img.shape[0], *op.imshp_logical)
-                    img = tensor.set_subtensor(buf[:, :, ::rstride, ::cstride],
-                                               img)
-                    img = GpuFromHost(context_name)(img)
-                    return ret(img, kern)
-
-                return make_graph
-        return ret
-
-    def values_eq_approx(a, b):
-        """
-        This fct is needed to don't have DebugMode raise useless
-        error due to ronding error.
-
-        This happen as We reduce on the two last dimensions, so this
-        can raise the absolute error if the number of element we
-        reduce on is significant.
-
-        """
-        assert a.ndim == 4
-        atol = None
-        if a.shape[-1] * a.shape[-2] > 100:
-            # For float32 the default atol is 1e-5
-            atol = 3e-5
-        return GpuArrayType.values_eq_approx(a, b, atol=atol)
-
-    img, kern = node.inputs
-    gpu_conv = GpuConvOp_from_ConvOp(node.op)
-    if gpu_conv is None:
+# This deals with any abstract convs that have a transfer somewhere
+@register_opt('fast_compile')
+@op_lifter([AbstractConv2d,
+            AbstractConv2d_gradWeights,
+            AbstractConv2d_gradInputs])
+def local_lift_abstractconv2d(node, context_name):
+    if isinstance(node.outputs[0].type, GpuArrayType):
+        # Don't handle this node here, it's already on the GPU.
         return
-    out = gpu_conv(GpuFromHost(context_name)(img),
-                   GpuFromHost(context_name)(kern))
-    assert isinstance(out.type, GpuArrayType)
-    # Make sure to keep the broadcastable pattern of the original
-    # convolution even if we might gain or lose some due to different
-    # information at the node level.
-    out = tensor.patternbroadcast(out, node.outputs[0].broadcastable)
-    out.values_eq_approx = values_eq_approx
-    return [out]
+    inps = list(node.inputs)
+    inps[0] = as_gpuarray_variable(node.inputs[0],
+                                   context_name=context_name)
+    inps[1] = as_gpuarray_variable(node.inputs[1],
+                                   context_name=context_name)
+    return [node.op(*inps)]
 
-# Register this here so that it goes after 'local_gpu_conv'
+
+# This will deal with ops that don't have an explicit transfer but
+# have one of their inputs on the GPU already and the other not on the
+# GPU (to avoid endlessly replacing things).
+@register_opt('fast_compile')
+@local_optimizer([AbstractConv2d,
+                  AbstractConv2d_gradWeights,
+                  AbstractConv2d_gradInputs])
+def local_gpu_abstractconv2d(node):
+    if isinstance(node.op, BaseAbstractConv2d):
+        if ((isinstance(node.inputs[0].type, GpuArrayType) or
+             isinstance(node.inputs[1].type, GpuArrayType)) and
+            not (isinstance(node.inputs[0].type, GpuArrayType) or
+                 isinstance(node.inputs[1].type, GpuArrayType))):
+            inps = list(node.inputs)
+            ctx_name = infer_context_name(inps[0], inps[1])
+            inps[0] = as_gpuarray_variable(inps[0], context_name=ctx_name)
+            inps[1] = as_gpuarray_variable(inps[1], context_name=ctx_name)
+            return as_tensor_variable(node.op(*inps))
+
+# Register this here so that it goes after the abstract lifting
 register_opt()(conv_groupopt)
 
 
@@ -867,12 +855,13 @@ def local_gpu_elemwise_careduce(node):
             isinstance(node.inputs[0].owner.op, GpuElemwise) and
             # The Op support all scalar with 1 inputs.  We don't
             # automatically add more case, as some like trigonometic
-            # operation with some reduction pattern will probably result
-            # to slow down.
+            # operation with some reduction pattern will probably results
+            # in slow down.
             isinstance(node.inputs[0].owner.op.scalar_op, scalar.basic.Sqr)):
         op = node.op
         inp = node.inputs[0].owner.inputs[0]
         return [GpuCAReduceCuda(scalar_op=op.scalar_op,
+                                axis=op.axis,
                                 reduce_mask=op.reduce_mask,
                                 pre_scalar_op=scalar.basic.sqr)(inp)]
 

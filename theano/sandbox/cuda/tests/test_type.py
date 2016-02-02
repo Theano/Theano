@@ -1,5 +1,6 @@
 import os.path
 
+from nose.plugins.skip import SkipTest
 from nose.tools import assert_raises
 import numpy
 
@@ -8,7 +9,9 @@ from theano.compat import PY3
 from theano.misc.pkl_utils import CompatUnpickler
 from theano.sandbox.cuda import cuda_available
 
-if cuda_available:
+if not cuda_available:
+    raise SkipTest('Optional package cuda disabled')
+else:
     from theano.sandbox.cuda import CudaNdarray
 
 # testfile created on cuda enabled machine using

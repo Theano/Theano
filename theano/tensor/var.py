@@ -535,7 +535,10 @@ class _tensor_py_operators(object):
 
     # COPYING
     def copy(self, name=None):
-        """Copy a variable and optionally assign a name."""
+        """Return a symbolic copy and optionally assign a name.
+
+        Does not copy the tags.
+        """
         copied_variable = theano.tensor.basic.tensor_copy(self)
         copied_variable.name = name
         return copied_variable
@@ -862,12 +865,12 @@ class TensorConstant(_tensor_py_operators, Constant):
     """
     def __init__(self, type, data, name=None):
         Constant.__init__(self, type, data, name)
-        if (isinstance(data, numpy.ndarray) and
-                data.ndim > 0 and
-                len(numpy.unique(data)) == 1):
-            self.tag.unique_value = numpy.unique(data)[0]
-        else:
-            self.tag.unique_value = None
+        self.tag.unique_value = None
+        if isinstance(data, numpy.ndarray) and data.ndim > 0:
+            flat_data = data.ravel()
+            if flat_data.shape[0]:
+                if (flat_data == flat_data[0]).all():
+                    self.tag.unique_value = flat_data[0]
 
     def __str__(self):
         if self.tag.unique_value is not None:

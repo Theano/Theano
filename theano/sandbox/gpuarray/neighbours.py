@@ -17,6 +17,10 @@ from .type import GpuArrayType
 
 
 class GpuImages2Neibs(GpuKernelBase, Images2Neibs, Op):
+    """
+    Images2Neibs for the GPU.
+
+    """
     def __init__(self, mode='valid'):
         if mode not in ['valid', 'ignore_borders', 'wrap_centered']:
             raise NotImplementedError("Only the mode valid, ignore_borders"

@@ -3,7 +3,7 @@ import copy
 from theano import Op
 from theano.gof import local_optimizer
 from theano.sandbox.cuda import cuda_available, GpuOp
-from theano.sandbox.cuda.basic_ops import GpuFlatten
+from theano.sandbox.cuda.basic_ops import gpu_flatten
 from theano.tensor.extra_ops import CumsumOp
 
 if cuda_available:
@@ -453,7 +453,7 @@ def use_gpu_cumsum(node):
         x = gpu_from_host(x)
 
         if axis is None and x.ndim > 1:
-            x = GpuFlatten()(x)
+            x = gpu_flatten(x)
 
         # ``gpu_cumsum`` assume array has been flattened if needed.
         if axis is None:

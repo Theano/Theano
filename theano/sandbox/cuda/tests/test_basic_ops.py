@@ -113,17 +113,9 @@ def test_careduce():
                                ((4100, 4, 3), [2]), ((5, 4100, 3), [2]), ((5, 4, 4100), [2]),  # 001
                                ((4100, 4, 3), [0, 1]), ((5, 4100, 3), [0, 1]), ((5, 4, 4100), [0, 1]),  # 110
                                ((4100, 4, 3), [1, 2]), ((5, 4100, 3), [1, 2]), ((5, 4, 4100), [1, 2]),  # 011
-                               #((4100,4,3),[0,2]),((5,4100,3),[0,2]),((5,4,4100),[0,2]),#101 ##not implemented
+                               ((4100,4,3),[0,2]),((5,4100,3),[0,2]),((5,4,4100),[0,2]),
                                ((4100, 4, 3), [0, 1, 2]), ((5, 4100, 3), [0, 1, 2]), ((5, 4, 4100), [0, 1, 2]),  # 111
                                ((65, 4, 3), [0, 1, 2]), ((5, 65, 3), [0, 1, 2]), ((5, 4, 65), [0, 1, 2]),  # 111
-
-                               ((4100, 4, 3, 2), [2, 3]), ((4, 4100, 3, 2), [2, 3]), ((4, 3, 4100, 2), [2, 3]), ((4, 3, 2, 4100), [2, 3]),  # 0011
-                               ((4100, 4, 3, 2), [1, 3]), ((4, 4100, 3, 2), [1, 3]), ((4, 3, 4100, 2), [1, 3]), ((4, 3, 2, 4100), [1, 3]),  # 0101
-                               ((4100, 4, 3, 2), [0, 2, 3]), ((4, 4100, 3, 2), [0, 2, 3]), ((4, 3, 4100, 2), [0, 2, 3]),  # ((4,3,2,4100),[0,2,3]),#1011
-                               ((4100, 4, 3, 2), [1, 2, 3]), ((4, 4100, 3, 2), [1, 2, 3]), ((4, 3, 4100, 2), [1, 2, 3]), ((4, 3, 2, 4100), [1, 2, 3]),  # 0111
-                               ((65, 4, 3, 2), [1, 2, 3]), ((4, 65, 3, 2), [1, 2, 3]), ((4, 3, 65, 2), [1, 2, 3]), ((4, 3, 2, 65), [1, 2, 3]),  # 0111
-                               ((4100, 2, 3, 4), [0, 1, 2, 3]), ((2, 4100, 3, 4), [0, 1, 2, 3]), ((2, 3, 4100, 4), [0, 1, 2, 3]), ((2, 3, 4, 4100), [0, 1, 2, 3]), ((128, 1, 3, 3), [0, 1, 2, 3]),  # 1111
-
 
                                # test pattern implemented by reshape
                                ((4100, 4, 3, 2), [0]), ((4, 4100, 3, 2), [0]), ((4, 3, 4100, 2), [0]), ((4, 3, 2, 4100), [0]),  # 1000
@@ -132,18 +124,23 @@ def test_careduce():
                                ((4100, 4, 3, 2), [3]), ((4, 4100, 3, 2), [3]), ((4, 3, 4100, 2), [3]), ((4, 3, 2, 4100), [3]),  # 0001
 
                                # reduce over 2d
+                               ((4100, 4, 3, 2), [2, 3]), ((4, 4100, 3, 2), [2, 3]), ((4, 3, 4100, 2), [2, 3]), ((4, 3, 2, 4100), [2, 3]),  # 0011
+                               ((4100, 4, 3, 2), [1, 3]), ((4, 4100, 3, 2), [1, 3]), ((4, 3, 4100, 2), [1, 3]), ((4, 3, 2, 4100), [1, 3]),  # 0101
                                ((4100, 4, 3, 2), [1, 2]), ((4, 4100, 3, 2), [1, 2]), ((4, 3, 4100, 2), [1, 2]), ((4, 3, 2, 4100), [1, 2]),  # 0110
-#                               ((4100,4,3,2),[0,3]),((4,4100,3,2),[0,3]),((4,3,4100,2),[0,3]),((4,3,2,4100),[0,3]),#1001 need 101
+                               ((4100,4,3,2),[0,3]),((4,4100,3,2),[0,3]),((4,3,4100,2),[0,3]),((4,3,2,4100),[0,3]),#1001
 #                               ((4100,4,3,2),[0,2]),((4,4100,3,2),[0,2]),((4,3,4100,2),[0,2]),((4,3,2,4100),[0,2]),#1010 not implemented
                                ((4100, 4, 3, 2), [0, 1]), ((4, 4100, 3, 2), [0, 1]), ((4, 3, 4100, 2), [0, 1]), ((4, 3, 2, 4100), [0, 1]),  # 1100
 
                                # reduce over 3d
                                # 3d not tested: 1101, 1110, 1111
-#                               ((4100,4,3,2),[0,1,3]),((4,4100,3,2),[0,1,3]),((4,3,4100,2),[0,1,3]),((4,3,2,4100),[0,1,3]),#1101 need 101
+                               ((4100,4,3,2),[0,1,3]),((4,4100,3,2),[0,1,3]),((4,3,4100,2),[0,1,3]),((4,3,2,4100),[0,1,3]),#1101
                                ((4100, 4, 3, 2), [0, 1, 2]), ((4, 4100, 3, 2), [0, 1, 2]), ((4, 3, 4100, 2), [0, 1, 2]), ((4, 3, 2, 4100), [0, 1, 2]),  # 1110
+                               ((4100, 4, 3, 2), [0, 2, 3]), ((4, 4100, 3, 2), [0, 2, 3]), ((4, 3, 4100, 2), [0, 2, 3]),  # ((4,3,2,4100),[0,2,3]),#1011
+                               ((4100, 4, 3, 2), [1, 2, 3]), ((4, 4100, 3, 2), [1, 2, 3]), ((4, 3, 4100, 2), [1, 2, 3]), ((4, 3, 2, 4100), [1, 2, 3]),  # 0111
+                               ((65, 4, 3, 2), [1, 2, 3]), ((4, 65, 3, 2), [1, 2, 3]), ((4, 3, 65, 2), [1, 2, 3]), ((4, 3, 2, 65), [1, 2, 3]),  # 0111
 
                                # reduce over 4d
-                               ((4100, 4, 3, 2), [0]), ((4, 4100, 3, 2), [0]), ((4, 3, 4100, 2), [0]), ((4, 3, 2, 4100), [0]),  # 1111
+                               ((4100, 2, 3, 4), [0, 1, 2, 3]), ((2, 4100, 3, 4), [0, 1, 2, 3]), ((2, 3, 4100, 4), [0, 1, 2, 3]), ((2, 3, 4, 4100), [0, 1, 2, 3]), ((128, 1, 3, 3), [0, 1, 2, 3]),  # 1111
 
                                # reduce over 5d
                                ((1100, 2, 3, 4, 5), [0, 1, 2, 3, 4]), ((2, 1100, 3, 4, 5), [0, 1, 2, 3, 4]), ((2, 3, 1100, 4, 5), [0, 1, 2, 3, 4]), ((2, 3, 4, 1100, 5), [0, 1, 2, 3, 4]), ((2, 3, 4, 5, 1100), [0, 1, 2, 3, 4]),  # 11111
@@ -307,7 +304,8 @@ def test_flatten():
     x = cuda.fmatrix('x')
     f = theano.function([x], x.flatten(), mode=mode_with_gpu)
     assert any([node for node in f.maker.fgraph.toposort()
-                if isinstance(node.op, B.GpuFlatten)])
+                if isinstance(node.op, B.GpuReshape)])
+    assert theano.tensor.is_flat(x.flatten())
     assert len(f([[0., 0.], [0., 0.]]).shape) == 1
 
 
@@ -875,8 +873,6 @@ def test_hostfromgpu_shape_i():
 
 # -----------------------------------------------------------------------
 
-import theano.sandbox.cuda as cuda_ndarray
-
 
 def test_gpujoin_assert_cndas():
     # this will end up being an ndarray, as it's float64
@@ -1110,6 +1106,41 @@ def test_advinc_subtensor1():
         rep[[0, 2]] += yval
         utt.assert_allclose(rval, rep)
 
+def test_advset_subtensor1():
+    """ Test GPU version of set_subtensor on vectors (uses GpuAdvancedIncSubtensor1) """
+    shp = (10,)
+    shared = cuda.shared_constructor
+    xval = numpy.arange(shp[0], dtype='float32').reshape(shp) + 1
+    idxs = numpy.array([0,2,5,7,3], dtype='int32')
+    yval = numpy.ones(len(idxs), dtype='float32')*10
+    x = shared(xval, name='x')
+    y = T.tensor(dtype='float32', broadcastable=(False,) * len(shp), name='y')
+    expr = T.advanced_set_subtensor1(x, y, idxs)
+    f = theano.function([y], expr, mode=mode_with_gpu)
+    assert sum([isinstance(node.op, cuda.GpuAdvancedIncSubtensor1)
+                for node in f.maker.fgraph.toposort()]) == 1
+    rval = f(yval)
+    rep = xval.copy()
+    rep[idxs] = yval
+    utt.assert_allclose(rval, rep)
+
+def test_advset_subtensor1_2d():
+    """ Test GPU version of set_subtensor on matrices (uses GpuAdvancedIncSubtensor1_dev20 if compute capability >= 2.0) """
+    shp = (10,5)
+    shared = cuda.shared_constructor
+    xval = numpy.arange(numpy.prod(shp), dtype='float32').reshape(shp) + 1
+    idxs = numpy.array([0,2,5,7,3], dtype='int32')
+    yval = numpy.ones((len(idxs), shp[1]), dtype='float32')*10
+    x = shared(xval, name='x')
+    y = T.tensor(dtype='float32', broadcastable=(False,) * len(shp), name='y')
+    expr = T.advanced_set_subtensor1(x, y, idxs)
+    f = theano.function([y], expr, mode=mode_with_gpu)
+    assert sum([isinstance(node.op, cuda.GpuAdvancedIncSubtensor1)
+                for node in f.maker.fgraph.toposort()]) == 1
+    rval = f(yval)
+    rep = xval.copy()
+    rep[idxs] = yval
+    utt.assert_allclose(rval, rep)
 
 def test_inc_subtensor():
     shared = cuda.shared_constructor
@@ -1343,5 +1374,7 @@ def speed_reduce10():
 
 
 if __name__ == '__main__':
-    test_many_arg_elemwise()
-    test_gpujoin_assert_cndas()
+    #test_many_arg_elemwise()
+    #test_gpujoin_assert_cndas()
+    test_advset_subtensor1()
+    test_advset_subtensor1_2d()

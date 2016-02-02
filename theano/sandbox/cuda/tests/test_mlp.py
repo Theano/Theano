@@ -14,7 +14,7 @@ from theano.compile.pfunc import pfunc
 from theano import tensor
 from theano import config
 import theano.tensor.nnet.conv as conv
-import theano.tensor.signal.downsample as downsample
+import theano.tensor.signal.pool as pool
 import theano.sandbox.cuda as tcn
 import theano.tests.unittest_tools as utt
 
@@ -372,7 +372,7 @@ def build_conv_nnet2_classif(use_gpu, isize, ksize, n_batch,
         (n_kern, logical_hid_shape[0] // 2, logical_hid_shape[1] // 2),
         shape_kern1[2:], n_kern1, n_batch, 1, 1, verbose=verbose, version=version)
 
-    ds_op = downsample.DownsampleFactorMax((2, 2), ignore_border=False)
+    ds_op = pool.Pool((2, 2), ignore_border=False)
     if downsample_ops:
         hid = tensor.tanh(ds_op(conv_op(x, w0) + b0.dimshuffle((0, 'x', 'x'))))
     else:
@@ -612,7 +612,7 @@ def test_lenet_32():  # CIFAR10 / Shapeset
 
 
 def test_lenet_32_long():  # CIFAR10 / Shapeset
-    # this tests the gradient of downsample on the GPU,
+    # this tests the gradient of pool on the GPU,
     # which does not recieve specific testing
     cmp_run_conv_nnet2_classif(seed, 32, 5, 30, n_train=50,
                                ignore_error=ignore_error, gpu_only=gpu_only,

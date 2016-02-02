@@ -146,7 +146,7 @@ the params type.
 
        def make_node(self, inp):
            inp = as_scalar(inp)
-           return Apply(self, [inp], [inp.type()]
+           return Apply(self, [inp], [inp.type()])
 
        def perform(self, node, inputs, output_storage, params):
            # Here params is a python float so this is ok
@@ -193,7 +193,7 @@ weights.
        def make_node(self, x, y):
            x = as_scalar(x)
            y = as_scalar(y)
-           return Apply(self, [x, y], [x.type()]
+           return Apply(self, [x, y], [x.type()])
 
        def c_support_code_struct(self, node, name):
            return """

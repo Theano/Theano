@@ -37,6 +37,7 @@ you out.
     loop
     sparse
     using_gpu
+    using_multi_gpu
     gpu_data_convert
     aliasing
     shape_info

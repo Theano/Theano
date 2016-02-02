@@ -130,15 +130,24 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
 
 #endif
 
-#if CUDNN_VERSION > 3000
-  if (algo == CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT) {
+  // The FFT implementation does not support strides, 1x1 filters or inputs
+  // with a spatial dimension larger than 1024.
+  // If the chosen implementation is FFT, validate that it can
+  // be used on the current data and default to a safe implementation if it
+  // can't.
+  // The following code is 2d-specific but it is fine as FFT and tiled-FFT are
+  // defined only for 2d filters
+  if (algo == CUDNN_CONVOLUTION_BWD_FILTER_ALGO_FFT &&
+      PyGpuArray_NDIM(input) == 4) {
+    // Extract the properties of the convolution descriptor
     int nd;
     int pad[2];
     int stride[2];
     int upscale[2];
     cudnnConvolutionMode_t mode;
-    err = cudnnGetConvolutionNdDescriptor(desc, 2, &nd, pad, stride,
-                                          upscale, &mode);
+    cudnnDataType_t data_type;
+    err = cudnnGetConvolutionNdDescriptor_v3(desc, 2, &nd, pad, stride,
+                                             upscale, &mode, &data_type);
     if (err != CUDNN_STATUS_SUCCESS) {
       PyErr_Format(PyExc_RuntimeError,
                    "error getting convolution properties: %s",
@@ -153,7 +162,6 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
       algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0;
     }
   }
-#endif
 
   size_t worksize;
   gpudata *workspace;
@@ -178,6 +186,10 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
     }
   }
 
+  cuda_wait(input->ga.data, GPUARRAY_CUDA_WAIT_READ);
+  cuda_wait(output->ga.data, GPUARRAY_CUDA_WAIT_READ);
+  cuda_wait((*kerns)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
+
   err = cudnnConvolutionBackwardFilter_v3(
     APPLY_SPECIFIC(_handle),
     alpha_p,
@@ -189,6 +201,10 @@ APPLY_SPECIFIC(conv_gw)(PyGpuArrayObject *input, PyGpuArrayObject *output,
 
   if (worksize != 0)
     c->ops->buffer_release(workspace);
+
+  cuda_record(input->ga.data, GPUARRAY_CUDA_WAIT_READ);
+  cuda_record(output->ga.data, GPUARRAY_CUDA_WAIT_READ);
+  cuda_record((*kerns)->ga.data, GPUARRAY_CUDA_WAIT_WRITE);
 
   cuda_exit(c->ctx);
 

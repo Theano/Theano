@@ -112,19 +112,19 @@ one. You can do it like this:
 .. If you modify this code, also change :
 .. theano/tests/test_tutorial.py:T_examples.test_examples_6
 
->>> from theano import Param
+>>> from theano import In
 >>> from theano import function
 >>> x, y = T.dscalars('x', 'y')
 >>> z = x + y
->>> f = function([x, Param(y, default=1)], z)
+>>> f = function([x, In(y, default=1)], z)
 >>> f(33)
 array(34.0)
 >>> f(33, 2)
 array(35.0)
 
-This makes use of the :ref:`Param <function_inputs>` class which allows
+This makes use of the :ref:`In <function_inputs>` class which allows
 you to specify properties of your function's parameters with greater detail. Here we
-give a default value of 1 for *y* by creating a ``Param`` instance with
+give a default value of 1 for *y* by creating a ``In`` instance with
 its ``default`` field set to 1.
 
 Inputs with default values must follow inputs without default
@@ -137,7 +137,7 @@ be set positionally or by name, as in standard Python:
 
 >>> x, y, w = T.dscalars('x', 'y', 'w')
 >>> z = (x + y) * w
->>> f = function([x, Param(y, default=1), Param(w, default=2, name='w_by_name')], z)
+>>> f = function([x, In(y, default=1), In(w, default=2, name='w_by_name')], z)
 >>> f(33)
 array(68.0)
 >>> f(33, 2)
@@ -150,11 +150,11 @@ array(34.0)
 array(33.0)
 
 .. note::
-   ``Param`` does not know the name of the local variables *y* and *w*
+   ``In`` does not know the name of the local variables *y* and *w*
    that are passed as arguments.  The symbolic variable objects have name
    attributes (set by ``dscalars`` in the example above) and *these* are the
    names of the keyword parameters in the functions that we build.  This is
-   the mechanism at work in ``Param(y, default=1)``.  In the case of ``Param(w,
+   the mechanism at work in ``In(y, default=1)``.  In the case of ``In(w,
    default=2, name='w_by_name')``. We override the symbolic variable's name
    attribute with a name to be used for this function.
 
@@ -207,15 +207,15 @@ Let's try it out!
 .. theano/tests/test_tutorial.py:T_examples.test_examples_8
 
 >>> state.get_value()
-array(0)
+0
 >>> accumulator(1)
 array(0)
 >>> state.get_value()
-array(1)
+1
 >>> accumulator(300)
 array(1)
 >>> state.get_value()
-array(301)
+301
 
 It is possible to reset the state. Just use the ``.set_value()`` method:
 
@@ -223,7 +223,7 @@ It is possible to reset the state. Just use the ``.set_value()`` method:
 >>> accumulator(3)
 array(-1)
 >>> state.get_value()
-array(2)
+2
 
 As we mentioned above, you can define more than one function to use the same
 shared variable.  These functions can all update the value.
@@ -235,7 +235,7 @@ shared variable.  These functions can all update the value.
 >>> decrementor(2)
 array(2)
 >>> state.get_value()
-array(0)
+0
 
 You might be wondering why the updates mechanism exists.  You can always
 achieve a similar result by returning the new expressions, and working with
@@ -262,7 +262,7 @@ for the purpose of one particular function.
 >>> skip_shared(1, 3)  # we're using 3 for the state, not state.value
 array(7)
 >>> state.get_value()  # old state still there, but we didn't use it
-array(0)
+0
 
 The ``givens`` parameter can be used to replace any symbolic variable, not just a
 shared variable. You can replace constants, and expressions, in general.  Be
@@ -489,16 +489,27 @@ It will be used repeatedly.
     import theano.tensor as T
     rng = numpy.random
   
-    N = 400
-    feats = 784
+    N = 400                                   # training sample size
+    feats = 784                               # number of input variables
+
+    # generate a dataset: D = (input_values, target_class)
     D = (rng.randn(N, feats), rng.randint(size=N, low=0, high=2))
     training_steps = 10000
   
     # Declare Theano symbolic variables
     x = T.matrix("x")
     y = T.vector("y")
+
+    # initialize the weight vector w randomly
+    #
+    # this and the following bias variable b
+    # are shared so they keep their values
+    # between training iterations (updates)
     w = theano.shared(rng.randn(feats), name="w")
+
+    # initialize the bias term
     b = theano.shared(0., name="b")
+
     print("Initial model:")
     print(w.get_value())
     print(b.get_value())
@@ -509,6 +520,8 @@ It will be used repeatedly.
     xent = -y * T.log(p_1) - (1-y) * T.log(1-p_1) # Cross-entropy loss function
     cost = xent.mean() + 0.01 * (w ** 2).sum()# The cost to minimize
     gw, gb = T.grad(cost, [w, b])             # Compute the gradient of the cost
+                                              # w.r.t weight vector w and
+                                              # bias term b
                                               # (we shall return to this in a
                                               # following section of this tutorial)
 

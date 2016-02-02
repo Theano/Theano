@@ -53,6 +53,15 @@ class TypedListVariable(_typed_list_py_operators, Variable):
 TypedListType.Variable = TypedListVariable
 
 
+class TypedListConstant(_typed_list_py_operators, Constant):
+    """
+    Subclass to add the typed list operators to the basic `Variable` class.
+
+    """
+
+TypedListType.Constant = TypedListConstant
+
+
 class GetItem(Op):
     # See doc in instance of this Op or function after this class definition.
     view_map = {0: [0]}

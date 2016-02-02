@@ -1,0 +1,19 @@
+
+.. _libdoc_gpuarray:
+
+=======================================================
+:mod:`theano.sandbox.gpuarray` -- The (new) GPU backend
+=======================================================
+
+.. module:: theano.sandbox.gpuarray
+   :platform: Unix, Windows
+   :synopsis: Code for GPU programming (new)
+.. moduleauthor:: MILA
+
+.. toctree::
+    :maxdepth: 1
+
+    op
+    dnn
+    type
+    extra

@@ -4,10 +4,6 @@
 Installing Theano
 =================
 
-.. note::
-    If you are a member of LISA Labo, have a look at :ref:`lisa_labo` for
-    lab-specific installation instructions.
-
 
 Requirements
 ------------
@@ -886,7 +882,7 @@ We recommend you look at the documentation on the website, since it
 will be more current than the documentation included with the package.
 
 If you really wish to build the documentation yourself, you will need
-epydoc and sphinx, as described above. Issue the following command::
+sphinx, as described above. Issue the following command::
 
     python ./doc/scripts/docgen.py
 

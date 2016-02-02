@@ -24,6 +24,8 @@ class TestCorr2D(utt.InferShapeTester):
         self.filters.name = 'default_filters'
         if not conv.imported_scipy_signal and theano.config.cxx == "":
             raise SkipTest("CorrMM tests need SciPy or a c++ compiler")
+        if not theano.config.blas.ldflags:
+            raise SkipTest("CorrMM tests need a BLAS")
 
     def validate(self, image_shape, filter_shape,
                  border_mode='valid', subsample=(1, 1),
@@ -87,7 +89,7 @@ class TestCorr2D(utt.InferShapeTester):
         elif border_mode == 'valid':
             padHW = numpy.array([0, 0])
         elif border_mode == 'half':
-            padHW = numpy.floor(fil_shape2d / 2)
+            padHW = numpy.floor(fil_shape2d / 2).astype('int32')
         elif isinstance(border_mode, tuple):
             padHW = numpy.array(border_mode)
         elif isinstance(border_mode, int):
@@ -95,6 +97,8 @@ class TestCorr2D(utt.InferShapeTester):
         else:
             raise NotImplementedError('Unsupported border_mode {}'.format(border_mode))
         out_shape2d = numpy.floor((img_shape2d + 2 * (padHW) - fil_shape2d) / subsample2d) + 1
+        # avoid numpy deprecation
+        out_shape2d = out_shape2d.astype('int32')
         out_shape = (N_image_shape[0], N_filter_shape[0]) + tuple(out_shape2d)
         ref_output = numpy.zeros(out_shape)
 

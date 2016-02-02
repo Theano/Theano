@@ -886,7 +886,7 @@ class ShapeFeature(object):
     just for the ConvOp.  All that's necessary to do shape
     inference is 1) to mark shared inputs as having a particular
     shape, either via a .tag or some similar hacking; and 2) to
-    add an optional Param() argument to promise that inputs will
+    add an optional In() argument to promise that inputs will
     have a certain shape (or even to have certain shapes in
     certain dimensions). We can't automatically infer the shape of
     shared variables as they can change of shape during the
@@ -1169,7 +1169,9 @@ class ShapeFeature(object):
         # Merge other_shape with r_shape, giving the priority to other_shape
         merged_shape = []
         for i, ps in enumerate(other_shape):
-            if (ps.owner and
+            if r_shape is None and other_shape:
+                merged_shape.append(other_shape[i])
+            elif (ps.owner and
                     isinstance(getattr(ps.owner, 'op', None), Shape_i) and
                     ps.owner.op.i == i and
                     ps.owner.inputs[0] in (r, other_r)):
@@ -4663,23 +4665,23 @@ def local_useless_elemwise_comparison(node):
     if isinstance(node.op.scalar_op, scalar.LT) and \
        node.inputs[0].owner and \
        isinstance(node.inputs[0].owner.op, Shape_i) and \
-       T.extract_constant(node.inputs[1]) == 0:
+       T.extract_constant(node.inputs[1], only_process_constants=True) == 0:
         return [T.zeros_like(node.inputs[0], dtype=node.outputs[0].dtype)]
     # Elemwise[GE](X.shape[i], 0) -> Elemwise[ones](X)
     if isinstance(node.op.scalar_op, scalar.GE) and \
        node.inputs[0].owner and \
        isinstance(node.inputs[0].owner.op, Shape_i) and \
-       T.extract_constant(node.inputs[1]) == 0:
+       T.extract_constant(node.inputs[1], only_process_constants=True) == 0:
         return [T.ones_like(node.inputs[0], dtype=node.outputs[0].dtype)]
     # Elemwise[maximum](X.shape[i], 0) -> X.shape[i]
     if isinstance(node.op.scalar_op, scalar.Maximum) and \
        node.inputs[0].owner and \
        isinstance(node.inputs[0].owner.op, Shape_i) and \
-       T.extract_constant(node.inputs[1]) == 0:
+       T.extract_constant(node.inputs[1], only_process_constants=True) == 0:
         return [node.inputs[0]]
     # Elemwise[maximum](0, X.shape[i]) -> X.shape[i]
     if isinstance(node.op.scalar_op, scalar.Maximum) and \
-       T.extract_constant(node.inputs[0]) == 0 and \
+       T.extract_constant(node.inputs[0], only_process_constants=True) == 0 and \
        node.inputs[1].owner and \
        isinstance(node.inputs[1].owner.op, Shape_i):
         return [node.inputs[1]]
@@ -4687,11 +4689,11 @@ def local_useless_elemwise_comparison(node):
     if isinstance(node.op.scalar_op, scalar.Minimum) and \
        node.inputs[0].owner and \
        isinstance(node.inputs[0].owner.op, Shape_i) and \
-       T.extract_constant(node.inputs[1]) == 0:
+       T.extract_constant(node.inputs[1], only_process_constants=True) == 0:
         return [T.zeros_like(node.inputs[0], dtype=node.outputs[0].dtype)]
     # Elemwise[minimum](0, X.shape[i]) -> 0
     if isinstance(node.op.scalar_op, scalar.Minimum) and \
-       T.extract_constant(node.inputs[0]) == 0 and \
+       T.extract_constant(node.inputs[0], only_process_constants=True) == 0 and \
        node.inputs[1].owner and \
        isinstance(node.inputs[1].owner.op, Shape_i):
         return [T.zeros_like(node.inputs[1], dtype=node.outputs[0].dtype)]
@@ -4703,7 +4705,7 @@ def local_useless_elemwise_comparison(node):
        isinstance(node.inputs[0].owner.op.scalar_op, scalar.Add) and \
        all([isinstance(var.owner and var.owner.op, Shape_i)
             for var in node.inputs[0].owner.inputs]) and \
-       T.extract_constant(node.inputs[1]) == 0:
+       T.extract_constant(node.inputs[1], only_process_constants=True) == 0:
 
         return [T.zeros_like(node.inputs[0], dtype=node.outputs[0].dtype)]
     # Elemwise[GE](add([anything that is shapes]), 0) -> Elemwise[ones](X)
@@ -4713,7 +4715,7 @@ def local_useless_elemwise_comparison(node):
        isinstance(node.inputs[0].owner.op.scalar_op, scalar.Add) and \
        all([isinstance(var.owner and var.owner.op, Shape_i)
             for var in node.inputs[0].owner.inputs]) and \
-       T.extract_constant(node.inputs[1]) == 0:
+       T.extract_constant(node.inputs[1], only_process_constants=True) == 0:
         return [T.ones_like(node.inputs[0], dtype=node.outputs[0].dtype)]
 
     return
@@ -5824,38 +5826,6 @@ register_stabilize(topo_constant_folding, 'fast_compile', final_opt=True)
 register_specialize(topo_constant_folding, 'fast_compile', final_opt=True)
 
 
-def _is_1(expr):
-    """
-
-    Returns
-    -------
-    bool
-        True iff expr is a constant close to 1.
-
-    """
-    try:
-        v = get_scalar_constant_value(expr)
-        return numpy.allclose(v, 1)
-    except NotScalarConstantError:
-        return False
-
-
-def _is_minus1(expr):
-    """
-
-    Returns
-    -------
-    bool
-        True iff expr is a constant close to -1.
-
-    """
-    try:
-        v = get_scalar_constant_value(expr)
-        return numpy.allclose(v, -1)
-    except NotScalarConstantError:
-        return False
-
-
 def get_clients(node):
     """
     Used by erf/erfc opt to track less frequent op.
@@ -5879,7 +5849,7 @@ def get_clients2(node):
 
 # 1+erf(x)=>erfc(-x)
 local_one_plus_erf = gof.PatternSub((T.add,
-                                     dict(pattern='y', constraint=_is_1),
+                                     1,
                                      (T.erf, 'x')),
                                     (T.erfc, (T.neg, 'x')),
                                     allow_multiple_clients=True,
@@ -5892,7 +5862,7 @@ register_specialize(local_one_plus_erf)
 
 # 1-erf(x)=>erfc(x)
 local_one_minus_erf = gof.PatternSub((T.sub,
-                                      dict(pattern='y', constraint=_is_1),
+                                      1,
                                       (T.erf, 'x')),
                                      (T.erfc, 'x'),
                                      allow_multiple_clients=True,
@@ -5914,7 +5884,7 @@ register_specialize(local_one_minus_erf2)
 # 1+(-erf(x))=>erfc(x) This is a different graph then the previous as
 # the canonicalize don't work completly
 local_one_plus_neg_erf = gof.PatternSub((T.add,
-                                         dict(pattern='y', constraint=_is_1),
+                                         1,
                                          (T.neg, (T.erf, 'x'))),
                                         (T.erfc, 'x'),
                                         allow_multiple_clients=True,
@@ -5928,7 +5898,7 @@ register_specialize(local_one_plus_neg_erf)
 # (-1)+erf(x) => -erfc(x) don't need erf(x)+(-1) as the canonicalize
 # will put the -1 as the first argument.
 local_erf_minus_one = gof.PatternSub((T.add,
-                                      dict(pattern='y', constraint=_is_minus1),
+                                      -1,
                                       (T.erf, 'x')),
                                      (T.neg, (T.erfc, 'x')),
                                      allow_multiple_clients=True,
@@ -5941,7 +5911,7 @@ register_specialize(local_erf_minus_one)
 
 # 1-erfc(x) => erf(x)
 local_one_minus_erfc = gof.PatternSub((T.sub,
-                                       dict(pattern='y', constraint=_is_1),
+                                       1,
                                        (T.erfc, 'x')),
                                       (T.erf, 'x'),
                                       allow_multiple_clients=True,
@@ -5979,7 +5949,7 @@ register_specialize(local_one_minus_erfc3)
 # 1+(-erfc(x)) => erf(x) This is a different graph then the previous as
 # the canonicalize don't work completly
 local_one_add_neg_erfc = gof.PatternSub((T.add,
-                                         dict(pattern='y', constraint=_is_1),
+                                         1,
                                          (T.neg, (T.erfc, 'x'))),
                                         (T.erf, 'x'),
                                         allow_multiple_clients=True,
@@ -5993,7 +5963,7 @@ register_specialize(local_one_add_neg_erfc)
 
 # (-1)+erfc(-x)=>erf(x)
 local_erf_neg_minus_one = gof.PatternSub((T.add,
-                                          dict(pattern='y', constraint=_is_minus1),
+                                          -1,
                                           (T.erfc, (T.neg, 'x'))),
                                          (T.erf, 'x'),
                                          allow_multiple_clients=True,
@@ -6006,7 +5976,7 @@ register_specialize(local_erf_neg_minus_one)
 
 # (-1)+erfc(-1*x)=>erf(x)
 local_erf_neg_minus_one2 = gof.PatternSub((T.add,
-                                           dict(pattern='y', constraint=_is_minus1),
+                                           -1,
                                            (T.erfc, (T.mul, -1, 'x'))),
                                           (T.erf, 'x'),
                                           allow_multiple_clients=True,

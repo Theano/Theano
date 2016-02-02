@@ -102,11 +102,16 @@ setup_ext_cuda();
 
 #section support_code_struct
 
+PyGpuContextObject *ctx;
 cudnnHandle_t APPLY_SPECIFIC(_handle);
 
 #section init_code_struct
 
 {
+  // We need to keep a reference here to have it available in the destructor.
+  ctx = PARAMS;
+  Py_INCREF(ctx);
+
   cuda_enter(PARAMS->ctx);
   cudnnStatus_t err;
   APPLY_SPECIFIC(_handle) = NULL;
@@ -125,3 +130,10 @@ cudnnHandle_t APPLY_SPECIFIC(_handle);
   }
   cuda_exit(PARAMS->ctx);
 }
+
+#section cleanup_code_struct
+
+cuda_enter(ctx->ctx);
+cudnnDestroy(APPLY_SPECIFIC(_handle));
+cuda_exit(ctx->ctx);
+Py_DECREF((PyObject *)ctx);
