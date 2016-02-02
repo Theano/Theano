@@ -579,5 +579,5 @@ class TestMakeList(unittest.TestCase):
         z = make_list((x, y))
         fc = theano.function([a, b], c)
         fz = theano.function([x, y], z)
-        self.assertTrue(fc(A, B) == [A, B])
-        self.assertTrue(fz(X, Y) == [X, Y])
+        self.assertTrue((m == n).all() for m, n in zip(fc(A, B), [A, B]))
+        self.assertTrue((m == n).all() for m, n in zip(fz(X, Y), [X, Y]))
