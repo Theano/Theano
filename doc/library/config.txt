@@ -51,7 +51,7 @@ Environment Variables
 
     .. code-block:: bash
 
-        THEANO_FLAGS='floatX=float32,device=gpu0,nvcc.fastmath=True'  python <myscript>.py
+        THEANO_FLAGS='floatX=float32,device=gpu0,lib.cnmem=1'  python <myscript>.py
 
     If a value is defined several times in ``THEANO_FLAGS``,
     the right-most definition is used. So, for instance, if
@@ -72,15 +72,15 @@ Environment Variables
         floatX = float32
         device = gpu0
 
-        [nvcc]
-        fastmath = True
+        [lib]
+        cnmem = True
 
     Configuration attributes that are available directly in ``config``
     (e.g. ``config.device``, ``config.mode``) should be defined in the
     ``[global]`` section.
-    Attributes from a subsection of ``config`` (e.g. ``config.nvcc.fastmath``,
-    ``config.blas.ldflags``) should be defined in their corresponding section
-    (e.g. ``[nvcc]``, ``[blas]``).
+    Attributes from a subsection of ``config`` (e.g. ``config.lib.cnmem``,
+    ``dnn.conv.algo_fwd``) should be defined in their corresponding section
+    (e.g. ``[nvcc]``, ``[dnn.conv]``).
 
     Multiple configuration files can be specified by separating them with ':'
     characters (as in $PATH).  Multiple configuration files will be merged,
@@ -644,7 +644,8 @@ import theano and print the config variable, as in:
     <http://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/#options-for-steering-cuda-compilation>`_)
     mode for compiled cuda code which makes div and sqrt faster at the
     cost of precision.  This also disables support for denormal
-    numbers.
+    numbers. This can cause NaN. So if you have NaN and use this flag,
+    try to disable it.
 
 .. attribute:: config.optimizer_excluding
 
