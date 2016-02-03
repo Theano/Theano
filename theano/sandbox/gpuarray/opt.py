@@ -977,11 +977,12 @@ def _scan_type_infer(node):
                             context_name=context_name)
     return typebuild
 
+# Do not register in fast_run or fast_compile.
+# It will be added to fast_run if the GPU is enabled.
 optdb.register('gpua_scanOp_make_inplace',
                scan_opt.ScanInplaceOptimizer(typeInfer=_scan_type_infer,
                                              gpua_flag=True),
                75,
                'gpuarray',
-               'fast_run',
                'inplace',
                'scan')

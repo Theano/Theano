@@ -2535,12 +2535,13 @@ def local_gpu_allocempty(node):
 def typeInfer(node):
     return typeConstructor
 
+# Do not register in fast_run or fast_compile.
+# It will be added to fast_run if the GPU is enabled.
 optdb.register('gpu_scanOp_make_inplace',
                scan_opt.ScanInplaceOptimizer(typeInfer=typeInfer,
                                              gpu_flag=True),
                75,
                'gpu',
-               'fast_run',
                'inplace',
                'scan')
 
