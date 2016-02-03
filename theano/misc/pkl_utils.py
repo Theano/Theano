@@ -124,12 +124,15 @@ if PY3:
         Examples
         --------
 
-        with open(fname, 'rb') as fp:
-            if PY3:
-                u = CompatUnpickler(fp, encoding="latin1")
-            else:
-                u = CompatUnpickler(fp)
-            mat = u.load()
+        ::
+
+            with open(fname, 'rb') as fp:
+                if PY3:
+                    u = CompatUnpickler(fp, encoding="latin1")
+                else:
+                    u = CompatUnpickler(fp)
+                mat = u.load()
+
         """
         pass
 
@@ -145,13 +148,15 @@ else:
         Examples
         --------
 
-        with open(fname, 'rb') as fp:
-            if PY3:
-                u = CompatUnpickler(fp, encoding="latin1")
-            else:
-                u = CompatUnpickler(fp)
+        ::
 
-            mat = u.load()
+            with open(fname, 'rb') as fp:
+                if PY3:
+                    u = CompatUnpickler(fp, encoding="latin1")
+                else:
+                    u = CompatUnpickler(fp)
+                mat = u.load()
+
         """
         pass
 
