@@ -1145,6 +1145,7 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         :attr:`config.dnn.conv.precision`.
 
     """
+    # For consistence, when using direction_hint too.
     if border_mode == (0, 0):
         border_mode = 'valid'
 
