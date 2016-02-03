@@ -790,7 +790,7 @@ shape
 
 Returns
 -------
-matrix
+sparse matrix
     A sparse matrix having the properties specified by the inputs.
 
 Notes
@@ -820,7 +820,7 @@ shape
 
 Returns
 -------
-matrix
+sparse matrix
     A sparse matrix having the properties specified by the inputs.
 
 Notes
@@ -1053,7 +1053,7 @@ x
 
 Returns
 -------
-matrix
+theano.tensor.matrix
     A dense matrix, the same as `x`.
 
 Notes
@@ -1121,7 +1121,7 @@ x
 
 Returns
 -------
-matrix
+sparse matrix
     The same as `x` in a sparse csr matrix format.
 
 """
@@ -1137,7 +1137,7 @@ x
 
 Returns
 -------
-matrix
+sparse matrix
     The same as `x` in a sparse csc matrix format.
 
 """
@@ -1187,7 +1187,7 @@ index
 
 Returns
 -------
-matrix
+sparse matrix
     The corresponding rows in `x`.
 
 """
@@ -1284,7 +1284,7 @@ index
 
 Returns
 -------
-vector
+theano.tensor.vector
     The corresponding elements in `x`.
 
 """
@@ -1436,7 +1436,8 @@ index
 
 Returns
 -------
-The corresponding slice in `x`.
+sparse matrix
+    The corresponding slice in `x`.
 
 
 Notes
@@ -1511,7 +1512,7 @@ index
 
 Returns
 -------
-scalar
+theano.tensor.scalar
     The corresponding item in `x`.
 
 Notes
@@ -1566,7 +1567,7 @@ x
 
 Returns
 -------
-matrix
+sparse matrix
     `x` transposed.
 
 Notes
@@ -1617,7 +1618,7 @@ x
 
 Returns
 -------
-matrix
+sparse matrix
     -`x`.
 
 Notes
@@ -1930,7 +1931,7 @@ x
 
 Returns
 -------
-vector
+theano.tensor.vector
     A dense vector representing the diagonal elements.
 
 Notes
@@ -1985,7 +1986,7 @@ x
 
 Returns
 -------
-matrix
+sparse matrix
     A sparse matrix having `x` as diagonal.
 
 Notes
@@ -2044,7 +2045,7 @@ x
 
 Returns
 -------
-matrix
+sparse matrix
     The same as `x` with indices sorted.
 
 Notes
@@ -2854,7 +2855,7 @@ y
 
 Returns
 -------
-matrix
+matrix variable
     `x` == `y`
 
 Notes
@@ -2875,7 +2876,7 @@ y
 
 Returns
 -------
-matrix
+matrix variable
     `x` != `y`
 
 Notes
@@ -2896,7 +2897,7 @@ y
 
 Returns
 -------
-matrix
+matrix variable
     `x` < `y`
 
 Notes
@@ -2917,7 +2918,7 @@ y
 
 Returns
 -------
-matrix
+matrix variable
     `x` > `y`
 
 Notes
@@ -2937,6 +2938,7 @@ y
 
 Returns
 -------
+matrix variable
     `x` <= `y`
 
 Notes
@@ -2957,7 +2959,7 @@ y
 
 Returns
 -------
-matrix
+matrix variable
     `x` >= `y`
 
 Notes
@@ -3199,7 +3201,7 @@ x
 
 Returns
 -------
-matrix
+sparse matrix
     Exactly `x` but with a data attribute exempt of zeros.
 
 Notes
@@ -4112,7 +4114,7 @@ p
 
 Returns
 -------
-matrix
+sparse matrix
     A dense matrix containing the dot product of `x` by `y`.T only
     where `p` is 1.
 
