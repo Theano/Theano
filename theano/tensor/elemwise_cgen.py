@@ -272,25 +272,25 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub,
     # The first element of each pair is the absolute value of the stride
     # The second element correspond to the index in the initial loop order
     order_loops = """
-    std::vector< std::pair<int, int> > %(ovar)s_loops(%(nnested)i);
-    std::vector< std::pair<int, int> >::iterator %(ovar)s_loops_it = %(ovar)s_loops.begin();
+    std::vector< std::pair<int, int> > loops(%(nnested)i);
+    std::vector< std::pair<int, int> >::iterator loops_it = loops.begin();
     """ % locals()
 
     # Fill the loop vector with the appropriate <stride, index> pairs
     for i, index in enumerate(init_loop_orders[olv_index]):
         if index != 'x':
             order_loops += """
-            %(ovar)s_loops_it->first = abs(PyArray_STRIDES(%(ovar)s)[%(index)i]);
+            loops_it->first = abs(PyArray_STRIDES(%(ovar)s)[%(index)i]);
             """ % locals()
         else:
             # Stride is 0 when dimension is broadcastable
             order_loops += """
-            %(ovar)s_loops_it->first = 0;
+            loops_it->first = 0;
             """ % locals()
 
         order_loops += """
-        %(ovar)s_loops_it->second = %(i)i;
-        ++%(ovar)s_loops_it;
+        loops_it->second = %(i)i;
+        ++loops_it;
         """ % locals()
 
     # We sort in decreasing order so that the outermost loop (loop 0)
@@ -298,7 +298,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub,
     # the smallest stride.
     order_loops += """
     // rbegin and rend are reversed iterators, so this sorts in decreasing order
-    std::sort(%(ovar)s_loops.rbegin(), %(ovar)s_loops.rend());
+    std::sort(loops.rbegin(), loops.rend());
     """ % locals()
 
     # Get the (sorted) total number of iterations of each loop
@@ -327,13 +327,13 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub,
     # Sort totals to match the new order that was computed by sorting
     # the loop vector. One integer variable per loop is declared.
     declare_totals += """
-    %(ovar)s_loops_it = %(ovar)s_loops.begin();
+    loops_it = loops.begin();
     """ % locals()
 
     for i in xrange(nnested):
         declare_totals += """
-        int TOTAL_%(i)i = init_totals[%(ovar)s_loops_it->second];
-        ++%(ovar)s_loops_it;
+        int TOTAL_%(i)i = init_totals[loops_it->second];
+        ++loops_it;
         """ % locals()
 
     # Get sorted strides
@@ -368,17 +368,17 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub,
     # Declare (sorted) stride and for each variable
     # we iterate from innermost loop to outermost loop
     declare_strides += """
-    std::vector< std::pair<int, int> >::reverse_iterator %(ovar)s_loops_rit;
+    std::vector< std::pair<int, int> >::reverse_iterator loops_rit;
     """ % locals()
 
     for i in xrange(nvars):
         var = sub["lv%i" % i]
         declare_strides += """
-        %(ovar)s_loops_rit = %(ovar)s_loops.rbegin();""" % locals()
+        loops_rit = loops.rbegin();""" % locals()
         for j in reversed(xrange(nnested)):
             declare_strides += """
-            int %(var)s_stride_l%(j)i = init_strides[%(i)i][%(ovar)s_loops_rit->second];
-            ++%(ovar)s_loops_rit;
+            int %(var)s_stride_l%(j)i = init_strides[%(i)i][loops_rit->second];
+            ++loops_rit;
             """ % locals()
 
     declare_iter = ""
