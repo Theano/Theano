@@ -172,32 +172,6 @@ class FastACDCGrad(FastACDC):
         return theano.Apply(self, [inp_, gradOutput_, A_, Ab_, D_, Db_],
                             [inp_.type(), A_.type(), Ab_.type(), D_.type(), Db_.type()])
 
-    def infer_shape(self, node, shape):
-        return [shape[0]] 
-
-    def c_code_cache_version(self):
-        return (1,)
-
-    def c_support_code_struct(self, node, name):
-        return """
-cufftHandle planR2C%(name)s;
-cufftHandle planC2C%(name)s;
-int planLength%(name)s = -1;
-int planBatchSize%(name)s = -1;
-""" % dict(name=name)
-
-    def c_init_code_struct(self, node, name, sub):
-        return """
-cufftHandle planR2C%(name)s = NULL;
-cufftHandle planC2C%(name)s = NULL;
-""" % dict(name=name)
-
-    def c_cleanup_code_struct(self, node, name):
-        return """
-          cufftDestroy(planR2C%(name)s);
-          cufftDestroy(planC2C%(name)s);
-""" % dict(name=name)
-
     def c_code(self, node, name, inputs, outputs, sub):
         inp, gradOutput, A, Ab, D, Db = inputs
         gradInput, gradA, gradAb, gradD, gradDb = outputs
