@@ -370,6 +370,8 @@ class BaseAbstractConv2d(Op):
         if isinstance(border_mode, tuple):
             pad_h, pad_w = map(int, border_mode)
             border_mode = (pad_h, pad_w)
+        if border_mode == (0, 0):
+            border_mode = 'valid'
         if not ((isinstance(border_mode, tuple) and min(border_mode) >= 0) or
                 border_mode in ('valid', 'full', 'half')):
             raise ValueError(
