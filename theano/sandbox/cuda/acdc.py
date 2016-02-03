@@ -25,15 +25,52 @@ class FastACDC(GpuOp):
         Ab_ = gpu_contiguous(as_cuda_ndarray_variable(Ab))
         D_ = gpu_contiguous(as_cuda_ndarray_variable(D))
         Db_ = gpu_contiguous(as_cuda_ndarray_variable(Db))
-        for t in [x_, A_, Ab_, D_, Db_]:
-            assert t.dtype == 'float32'
+
+        assert x_.ndim <= 3
+        if A_.ndim != 1:
+           raise TypeError('Diagonal matrix A must be represented by a column vector')
+        if Ab_.ndim != 1:
+           raise TypeError('Ab must be represented by a column vector')
+        if D_.ndim != 1:
+           raise TypeError('Diagonal matrix D must be represented by a column vector')
+        if Db_.ndim != 1:
+           raise TypeError('Db must be represented by a column vector')
+
+        self.my_fast_acdc_grad = FastACDCGrad()
+
         return theano.Apply(self, [x_, A_, Ab_, D_, Db_], [x_.type()])
+
+    def infer_shape(self, node, shape):
+        return [shape[0]] 
 
     def grad(self, inputs, cost_grad):
         inp, A, Ab, D, Db = inputs
         gradOutput, = cost_grad
         gradOutput = gpu_contiguous(gradOutput)
-        return FastACDCGrad()(inp, gradOutput, A, Ab, D, Db)
+        return self.my_fast_acdc_grad(inp, gradOutput, A, Ab, D, Db)
+
+    def c_code_cache_version(self):
+        return (1,)
+
+    def c_support_code_struct(self, node, name):
+        return """
+cufftHandle planR2C%(name)s;
+cufftHandle planC2C%(name)s;
+int planLength%(name)s = -1;
+int planBatchSize%(name)s = -1;
+""" % dict(name=name)
+
+    def c_init_code_struct(self, node, name, sub):
+        return """
+cufftHandle planR2C%(name)s = NULL;
+cufftHandle planC2C%(name)s = NULL;
+""" % dict(name=name)
+
+    def c_cleanup_code_struct(self, node, name):
+        return """
+          cufftDestroy(planR2C%(name)s);
+          cufftDestroy(planC2C%(name)s);
+""" % dict(name=name)
 
     def c_support_code_apply(self, node, nodename):
         # Based on a similar mechanism in sandbox/cuda/blas.py
@@ -51,18 +88,8 @@ class FastACDC(GpuOp):
         fail = sub['fail']
         return """
 {
-    // Validate that the output storage exists.
-    if (NULL == %(z)s ||
-        CudaNdarray_NDIM(%(z)s) != CudaNdarray_NDIM(%(x)s))
-    {
-        /* Reference received to invalid output variable.
-        Decrease received reference's ref count and allocate new
-        output variable */
-        Py_XDECREF(%(z)s);
-        %(z)s = (CudaNdarray*)CudaNdarray_NewDims(CudaNdarray_NDIM(%(x)s),
-                                                  CudaNdarray_HOST_DIMS(%(x)s));
-    }
-
+    CudaNdarray_prep_output(%(z)s, CudaNdarray_NDIM(%(x)s),
+                            CudaNdarray_HOST_DIMS(%(x)s), 0);
     int batch_size;
     int input_size;
     int group_size;
@@ -99,27 +126,7 @@ class FastACDC(GpuOp):
         %(fail)s;
     }
 
-    // cudaStream_t stream = THCState_getCurrentStream(state);
-    cudaStream_t stream = 0; // Assign the default stream?
-
-    // It should be up to the calling framework to provide plans.
-    // This is a hack to make it work, though will be very slow if the
-    // length/batchSize/groupSize change frequently.
-    static cufftHandle planR2C;
-    static cufftHandle planC2C;
-    static int planLength = -1;
-    static int planBatchSize = -1;
-
-    if (planLength != input_size || planBatchSize != batch_size * group_size) {
-       if (planLength != -1 && planBatchSize != -1) {
-          cufftDestroy(planR2C);
-          cufftDestroy(planC2C);
-       }
-       cufftPlan1d(&planR2C, input_size, CUFFT_R2C, batch_size * group_size);
-       cufftPlan1d(&planC2C, input_size, CUFFT_C2C, batch_size * group_size);
-       planLength = input_size;
-       planBatchSize = batch_size * group_size;
-    }
+    cudaStream_t stream = 0;
 
     acdc_fp<cufftReal, cufftComplex>(
                   stream,
@@ -150,10 +157,46 @@ class FastACDCGrad(FastACDC):
         Ab_ = gpu_contiguous(as_cuda_ndarray_variable(Ab))
         D_ = gpu_contiguous(as_cuda_ndarray_variable(D))
         Db_ = gpu_contiguous(as_cuda_ndarray_variable(Db))
-        for t in [inp_, gradOutput_, A_, Ab_, D_, Db_]:
-            assert t.dtype == 'float32'
+
+        assert 1 <= inp_.ndim <= 3
+        assert inp_.ndim == gradOutput_.ndim
+        if A_.ndim != 1:
+           raise TypeError('Diagonal matrix A must be represented by a column vector')
+        if Ab_.ndim != 1:
+           raise TypeError('Ab must be by a column vector')
+        if D_.ndim != 1:
+           raise TypeError('Diagonal matrix D must be represented by a column vector')
+        if Db_.ndim != 1:
+           raise TypeError('Db must be a column vector')
+
         return theano.Apply(self, [inp_, gradOutput_, A_, Ab_, D_, Db_],
                             [inp_.type(), A_.type(), Ab_.type(), D_.type(), Db_.type()])
+
+    def infer_shape(self, node, shape):
+        return [shape[0]] 
+
+    def c_code_cache_version(self):
+        return (1,)
+
+    def c_support_code_struct(self, node, name):
+        return """
+cufftHandle planR2C%(name)s;
+cufftHandle planC2C%(name)s;
+int planLength%(name)s = -1;
+int planBatchSize%(name)s = -1;
+""" % dict(name=name)
+
+    def c_init_code_struct(self, node, name, sub):
+        return """
+cufftHandle planR2C%(name)s = NULL;
+cufftHandle planC2C%(name)s = NULL;
+""" % dict(name=name)
+
+    def c_cleanup_code_struct(self, node, name):
+        return """
+          cufftDestroy(planR2C%(name)s);
+          cufftDestroy(planC2C%(name)s);
+""" % dict(name=name)
 
     def c_code(self, node, name, inputs, outputs, sub):
         inp, gradOutput, A, Ab, D, Db = inputs
@@ -161,15 +204,8 @@ class FastACDCGrad(FastACDC):
         fail = sub['fail']
         return """
 {
-    // Validate output storage.
-    if (NULL == %(gradInput)s ||
-        CudaNdarray_NDIM(%(gradInput)s) != CudaNdarray_NDIM(%(gradOutput)s))
-    {
-        Py_XDECREF(%(gradInput)s);
-        %(gradInput)s = (CudaNdarray*)CudaNdarray_NewDims(
-            CudaNdarray_NDIM(%(gradOutput)s), CudaNdarray_HOST_DIMS(%(gradOutput)s));
-    }
-
+    CudaNdarray_prep_output(%(gradInput)s, CudaNdarray_NDIM(%(gradOutput)s),
+                            CudaNdarray_HOST_DIMS(%(gradOutput)s), 0);
     int batch_size;
     int input_size;
     int group_size;
@@ -242,16 +278,7 @@ class FastACDCGrad(FastACDC):
     cudaMemset(CudaNdarray_DEV_DATA(%(gradD)s), 0, total_size);
     cudaMemset(CudaNdarray_DEV_DATA(%(gradDb)s), 0, total_size);
 
-    // cudaStream_t stream = THCState_getCurrentStream(state);
-    cudaStream_t stream = 0; // Assign the default stream?
-
-    // It should be up to the calling framework to provide plans.
-    // This is a hack to make it work, though will be very slow if the
-    // length/batchSize/groupSize change frequently.
-    static cufftHandle planR2C;
-    static cufftHandle planC2C;
-    static int planLength = -1;
-    static int planBatchSize = -1;
+    cudaStream_t stream = 0;
 
     if (planLength != input_size || planBatchSize != batch_size * group_size) {
        if (planLength != -1 && planBatchSize != -1) {
