@@ -835,6 +835,7 @@ def conv_grad(mode, bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsample, op):
     outputs.extend([corr_op_dik, conv_op_dik,
                     corr_op_dki, conv_op_dki])
 
+    theano_mode = None
     if theano.config.mode == 'DEBUG_MODE':
         # TODO: fix when the abstractconv tests can pass debug mode.
         theano_mode = 'FAST_RUN'
