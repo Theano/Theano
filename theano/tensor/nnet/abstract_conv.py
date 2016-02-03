@@ -264,10 +264,10 @@ def conv2d_grad_wrt_inputs(output_grad,
     """
 
     grad_input_op = AbstractConv2d_gradInputs(imshp=input_shape,
-                                          kshp=filter_shape,
-                                          border_mode=border_mode,
-                                          subsample=subsample,
-                                          filter_flip=filter_flip)
+                                              kshp=filter_shape,
+                                              border_mode=border_mode,
+                                              subsample=subsample,
+                                              filter_flip=filter_flip)
 
     return grad_input_op(filters, input, output_grad_shape)
 
