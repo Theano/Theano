@@ -835,10 +835,11 @@ def conv_grad(mode, bs, ch, nf, rImg1, rImg2, rFlt1, rFlt2, subsample, op):
     outputs.extend([corr_op_dik, conv_op_dik,
                     corr_op_dki, conv_op_dki])
 
+    # TODO: fix when the abstractconv tests can pass debug mode.
+    mode = theano_mode
     if theano.config.mode == 'DEBUG_MODE':
-        # TODO: fix when the abstractconv tests can pass debug mode.
-        theano_mode = 'FAST_RUN'
-    f = theano.function([i, k], outputs, mode=theano_mode)
+        mode = theano.compile.mode.get_mode('FAST_RUN').including('gpu')
+    f = theano.function([i, k], outputs, mode=mode)
 
     allvals = f(npy_img, npy_kern)
 
