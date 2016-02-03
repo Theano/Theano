@@ -348,7 +348,7 @@ def test_pooling():
                 assert any([isinstance(node.op, AveragePoolGrad)
                             for node in fc.maker.fgraph.toposort()])
             c_out = fc(data)
-            assert numpy.allclose(c_out, g_out)
+            assert utt.assert_allclose(c_out, g_out)
 
 
 def test_pooling3d():

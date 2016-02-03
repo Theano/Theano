@@ -1459,7 +1459,6 @@ if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
             raise NotImplementedError("Unsupported pooling model.")
 
         return """
-fprintf(stderr, "test_forward\\n");
 cudnnStatus_t err;
 
 int %(out)s_dims[5];
@@ -1594,6 +1593,9 @@ class GpuDnnPoolGrad(DnnBase):
         assert (inp_grad.ndim in [4, 5])
         out = as_cuda_ndarray_variable(out)
         assert(out.ndim in [4, 5])
+        
+        assert (inp_grad.ndim == inp.dim)
+        assert (inp.dim == out.dim)
 
         ws = tensor.as_tensor_variable(ws)
         stride = tensor.as_tensor_variable(stride)
@@ -1679,10 +1681,9 @@ if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
                 raise Exception("cudnn v1 do not support average_exc_pad")
         else:
             raise NotImplementedError("Unsupported pooling model.")
-        print mode_flag
+
         return """
 cudnnStatus_t err%(name)s;
-//raise(SIGINT);
 
 if (!CudaNdarray_is_c_contiguous(%(input)s)) {
   PyErr_SetString(PyExc_ValueError,
