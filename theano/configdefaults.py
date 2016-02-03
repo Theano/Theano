@@ -329,6 +329,14 @@ AddConfigVar('dnn.library_path',
              "Location of the cudnn header (defaults to the cuda root)",
              StrParam(default_dnn_path('lib64')))
 
+AddConfigVar('dnn.enabled',
+             "'auto', use CuDNN if available, but silently fall back"
+             " to not using it if not present."
+             " If True and CuDNN can not be used, raise an error."
+             " If False, disable cudnn",
+             StrParam("auto", "True", "False"),
+             in_c_key=False)
+
 # This flag determines whether or not to raise error/warning message if
 # there is a CPU Op in the computational graph.
 AddConfigVar(

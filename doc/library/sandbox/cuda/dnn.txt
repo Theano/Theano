@@ -38,7 +38,10 @@ By default, Theano will detect if it can use cuDNN. If so, it will use
 it.  If not, Theano optimizations will not introduce cuDNN ops. So
 Theano will still work if the user did not introduce them manually.
 
-To get an error if Theano can not use cuDNN, use this Theano flag:
+The recently added Theano flag :attr:`dnn.enabled
+<config.dnn.enabled>` allows to change the default behavior to force
+it or disable it. Older Theano version do not support this flag. To
+get an error when CuDNN can not be used with them, use this flag:
 ``optimizer_including=cudnn``.
 
 .. note::
@@ -63,6 +66,8 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
    * ``large`` : use a sometimes faster implementation with large memory usage
    * ``fft`` : use the Fast Fourrier Transform implementation of convolution
      (very high memory usage)
+   * ``fft_tiling`` : use the Fast Fourrier Transform implementation of convolution
+     with tiling (high memory usage, but less then fft)
    * ``guess_once`` : the first time a convolution is executed, the
      implementation to use is chosen according to CuDNN's heuristics and reused
      for every subsequent execution of the convolution.
@@ -76,9 +81,10 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
      implementation selected every time the shapes of the inputs and kernels
      don't match the shapes from the last execution.
 
-   The Theano flag ``dnn.conv.algo_bwd`` allows to specify the CuDNN
-   convolution implementation that Theano should use for gradient convolutions.
-   Possible values include :
+   The Theano flag ``dnn.conv.algo_bwd_filter`` and
+   ``dnn.conv.algo_bwd_data`` allows to specify the CuDNN
+   convolution implementation that Theano should use for gradient
+   convolutions.  Possible values include :
 
    * ``none`` (default) : use the default non-deterministic convolution
      implementation
@@ -97,6 +103,13 @@ To get an error if Theano can not use cuDNN, use this Theano flag:
    * ``time_on_shape_change`` : like ``time_once`` but a new convolution
      implementation selected every time the shapes of the inputs and kernels
      don't match the shapes from the last execution.
+
+   * (algo_bwd_data only) ``fft_tiling`` : use the Fast Fourrier
+     Transform implementation of convolution with tiling (high memory
+     usage, but less then fft)
+
+   * (algo_bwd_data only) ``small`` : use a convolution implementation
+     with small memory usage
 
    ``guess_*`` and ``time_*`` flag values take into account the amount of
    available memory when selecting an implementation. This means that slower

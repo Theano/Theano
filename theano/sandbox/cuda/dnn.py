@@ -36,11 +36,13 @@ from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
 
 
 def dnn_available():
-    if dnn_available.avail is None:
-        if not theano.sandbox.cuda.cuda_available:
-            dnn_available.msg = "CUDA not available"
-            dnn_available.avail = False
-            return False
+    if config.dnn.enabled == "False":
+        dnn_available.avail = False
+        dnn_available.msg = "disabled by dnn.enabled flag"
+    if dnn_available.avail is None and not theano.sandbox.cuda.cuda_available:
+        dnn_available.msg = "CUDA not available"
+        dnn_available.avail = False
+    elif dnn_available.avail is None:
         dev = theano.sandbox.cuda.active_device_number()
         if theano.sandbox.cuda.device_properties(dev)['major'] < 3:
             dnn_available.msg = "Device not supported by cuDNN"
@@ -100,7 +102,11 @@ if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
                         "candidate) that isn't supported.  Please update to "
                         "at least v3 final version.")
                     raise RuntimeError(dnn_available.msg)
-
+    if config.dnn.enabled == "True":
+        if not dnn_available.avail:
+            raise RuntimeError(
+                "You enabled CuDNN, but we aren't able to use it: %s" %
+                dnn_available.msg)
     return dnn_available.avail
 
 
