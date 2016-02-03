@@ -67,7 +67,7 @@ from theano.compile import (
     predefined_modes, predefined_linkers, predefined_optimizers,
     FunctionMaker, function, function_dump, OpFromGraph,
     ProfileMode, ProfileStats,
-    shared, as_op)
+    Param, shared, as_op)
 
 from theano.misc.safe_asarray import _asarray
 
