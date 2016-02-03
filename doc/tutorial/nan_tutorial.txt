@@ -69,3 +69,10 @@ In the most difficult situations, you may go through the above steps and find
 nothing wrong. If the above methods fail to uncover the cause, there is a good
 chance that something is wrong with your algorithm. Go back to the mathematics
 and find out if everything is derived correctly.
+
+
+Cuda Specific Option
+--------------------
+
+The Theano flags ``nvcc.fastmath=True``, can genarate NaN. Don't set
+this flag while debugging nan.

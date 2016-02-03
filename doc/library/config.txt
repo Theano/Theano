@@ -79,8 +79,8 @@ Environment Variables
     (e.g. ``config.device``, ``config.mode``) should be defined in the
     ``[global]`` section.
     Attributes from a subsection of ``config`` (e.g. ``config.lib.cnmem``,
-    ``dnn.conv.algo_fwd``) should be defined in their corresponding section
-    (e.g. ``[nvcc]``, ``[dnn.conv]``).
+    ``config.dnn.conv.algo_fwd``) should be defined in their corresponding
+    section (e.g. ``[nvcc]``, ``[dnn.conv]``).
 
     Multiple configuration files can be specified by separating them with ':'
     characters (as in $PATH).  Multiple configuration files will be merged,
