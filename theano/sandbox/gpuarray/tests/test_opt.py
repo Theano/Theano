@@ -125,6 +125,14 @@ def test_local_gpualloc_memset_0():
     o = numpy.ones((1,), dtype='float32')
     ones = numpy.ones((2,), dtype='float32')
 
+    # Test with 0 from CPU op.
+    a = tensor.alloc(z, i)
+    f = theano.function([i], a, mode=mode_with_gpu)
+    topo = f.maker.fgraph.toposort()
+    assert len(topo) == 2
+    assert isinstance(topo[0].op, GpuAlloc) and topo[0].op.memset_0
+    assert (numpy.asarray(f(6)) == 0).all()
+
     # Test with 0
     a = GpuAlloc(test_ctx_name)(z, i)
     f = theano.function([i], a, mode=mode_with_gpu)

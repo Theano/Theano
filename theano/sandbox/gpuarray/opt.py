@@ -74,7 +74,8 @@ def register_opt(*tags, **kwargs):
     return f
 
 register_opt('fast_compile')(theano.tensor.opt.local_track_shape_i)
-
+register_opt(final_opt=True, name='gpua_constant_folding')(
+    tensor.opt.constant_folding)
 gpu_optimizer.register('local_remove_all_assert',
                        theano.tensor.opt.local_remove_all_assert,
                        'unsafe')
