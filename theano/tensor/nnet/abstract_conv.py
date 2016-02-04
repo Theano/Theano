@@ -132,68 +132,80 @@ def conv2d_grad_wrt_inputs(output_grad,
     used by the convolution, such that the output_grad is upsampled
     to the input shape.
 
-    :type output_grad: symbolic 4D tensor.
-    :param output_grad: mini-batch of feature map stacks, of shape
-        (batch size, input channels, input rows, input columns).
-        This is the tensor that will be upsampled or the output
-        gradient of the convolution whose gradient will be taken
-        with respect to the input of the convolution.
-        See the optional parameter ``output_grad_shape``.
-
-    :type filters: symbolic 4D tensor.
-    :param filters: set of filters used in CNN layer of shape
-        (output channels, input channels, filter rows, filter columns).
-        See the optional parameter ``filter_shape``.
-
-    :type output_grad_shape: None, tuple/list of len 4 of int or
-        Constant variable.
-    :param output_grad_shape: The shape of the output_grad parameter.
-        Optional, possibly used to choose an optimal implementation.
-        You can give ``None`` for any element of the list to specify that this
+    Parameters
+    ----------
+    output_grad : symbolic 4D tensor
+        mini-batch of feature map stacks, of shape (batch size, input
+        channels, input rows, input columns).  This is the tensor that
+        will be upsampled or the output gradient of the convolution
+        whose gradient will be taken with respect to the input of the
+        convolution.  See the optional parameter
+        ``output_grad_shape``.
+    filters : symbolic 4D tensor
+        set of filters used in CNN layer of shape (output channels,
+        input channels, filter rows, filter columns).  See the
+        optional parameter ``filter_shape``.
+    output_grad_shape : list of 4 symbolic or real ints
+        The shape of the output_grad parameter.  Optional, possibly
+        used to choose an optimal implementation.  You can give
+        ``None`` for any element of the list to specify that this
         element is not known at compile time.
+    input_shape : list of 2 symbolic or real ints
+        The shape (row and column size) of the input (upsampled)
+        parameter.  Not Optional, since given the output_grad_shape
+        and the subsample values, multiple input_shape may be
+        plausible.
+    filter_shape : list of 4 symbolic or real ints
+        The shape of the filters parameter.  Optional, possibly used
+        to choose an optimal implementation.  You can give ``None``
+        for any element of the list to specify that this element is
+        not known at compile time.
+    border_mode : str, int or tuple of two int
+        Either of the following:
 
-    :type input_shape: tuple/list of len 2 of int or Constant variable.
-    :param input_shape: The shape (row and column size) of the
-        input (upsampled) parameter.
-        Not Optional, since given the output_grad_shape and the subsample values,
-        multiple input_shape may be plausible.
+          ``'valid'``
+            apply filter wherever it completely overlaps with the
+            input. Generates output of shape: input shape - filter
+            shape + 1
 
-    :type filter_shape: None, tuple/list of len 4 of int or Constant variable
-    :param filter_shape: The shape of the filters parameter.
-        Optional, possibly used to choose an optimal implementation.
-        You can give ``None`` for any element of the list to specify that this
-        element is not known at compile time.
+          ``'full'``
+            apply filter wherever it partly overlaps with the input.
+            Generates output of shape: input shape + filter shape - 1
 
-    :type border_mode: str, int or tuple of two int
-    :param border_mode: Either of the following:
-        * ``'valid'``: apply filter wherever it completely overlaps with the
-          input. Generates output of shape: input shape - filter shape + 1
-        * ``'full'``: apply filter wherever it partly overlaps with the input.
-          Generates output of shape: input shape + filter shape - 1
-        * ``'half'``: pad input with a symmetric border of ``filter rows // 2``
-          rows and ``filter columns // 2`` columns, then perform a valid
-          convolution. For filters with an odd number of rows and columns, this
-          leads to the output shape being equal to the input shape.
-        * ``int``: pad input with a symmetric border of zeros of the given
-          width, then perform a valid convolution.
-        * ``(int1, int2)``: pad input with a symmetric border of ``int1`` rows
-          and ``int2`` columns, then perform a valid convolution.
+          ``'half'``
+            pad input with a symmetric border of ``filter rows // 2``
+            rows and ``filter columns // 2`` columns, then perform a
+            valid convolution. For filters with an odd number of rows
+            and columns, this leads to the output shape being equal to
+            the input shape.
 
-    :type subsample: tuple of len 2, the subsampling used in the forward pass
-        of the convolutional operation.
-    :param subsample: factor by which to subsample the output.
-        Also called strides elsewhere.
+          ``int``
+            pad input with a symmetric border of zeros of the given
+            width, then perform a valid convolution.
 
-    :type filter_flip: bool
-    :param filter_flip: If ``True``, will flip the filter rows and columns
-        before sliding them over the input. This operation is normally referred
-        to as a convolution, and this is the default. If ``False``, the filters
-        are not flipped and the operation is referred to as a
-        cross-correlation.
+          ``(int1, int2)``
+            pad input with a symmetric border of ``int1`` rows and
+            ``int2`` columns, then perform a valid convolution.
 
-    :rtype: symbolic 4D tensor.
-    :return: set of feature maps generated by convolutional layer. Tensor is
-        of shape (batch size, output channels, output rows, output columns)
+    subsample : tuple of len 2
+        The subsampling used in the forward pass.  Also called strides
+        elsewhere.
+    filter_flip : bool
+        If ``True``, will flip the filter rows and columns before
+        sliding them over the input. This operation is normally
+        referred to as a convolution, and this is the default. If
+        ``False``, the filters are not flipped and the operation is
+        referred to as a cross-correlation.
+
+    Returns
+    -------
+    symbolic 4D tensor
+        set of feature maps generated by convolutional layer. Tensor
+        is of shape (batch size, output channels, output rows, output
+        columns)
+
+    Notes
+    -----
 
     :note: If CuDNN is available, it will be used on the
         GPU. Otherwise, it is the *CorrMM* convolution that will be used
@@ -224,71 +236,81 @@ def conv2d_grad_wrt_weights(input,
     """This function will build the symbolic graph for getting the
     gradient of the output of a convolution (output_grad) w.r.t its wights.
 
-    :type input: symbolic 4D tensor.
-    :param input: mini-batch of feature map stacks, of shape
-        (batch size, input channels, input rows, input columns).
-        This is the input of the convolution in the forward pass.
-
-    :type output_grad: symbolic 4D tensor.
-    :param output_grad: mini-batch of feature map stacks, of shape
-        (batch size, input channels, input rows, input columns).
-        This is the gradient of the output of convolution.
-
-    :type filters: symbolic 4D tensor.
-    :param filters: set of filters used in CNN layer of shape
-        (output channels, input channels, filter rows, filter columns).
-        See the optional parameter ``filter_shape``.
-
-    :type output_grad_shape: None, tuple/list of len 4 of int
-        or Constant variable.
-    :param output_grad_shape: The shape of the input parameter.
+    Parameters
+    ----------
+    input : symbolic 4D tensor
+        mini-batch of feature map stacks, of shape (batch size, input
+        channels, input rows, input columns).  This is the input of
+        the convolution in the forward pass.
+    output_grad : symbolic 4D tensor
+        mini-batch of feature map stacks, of shape (batch size, input
+        channels, input rows, input columns).  This is the gradient of
+        the output of convolution.
+    filters : symbolic 4D tensor.
+        set of filters used in CNN layer of shape (output channels,
+        input channels, filter rows, filter columns).  See the
+        optional parameter ``filter_shape``.
+    output_grad_shape : list of 4 ints or Constant variables
+        The shape of the input parameter.  Optional, possibly used to
+        choose an optimal implementation.  You can give ``None`` for
+        any element of the list to specify that this element is not
+        known at compile time.
+    input_shape : list of 2 ints or Constant variables
+        The shape of the input parameter.  This parameter indicates
+        the row and column size of the input in the forward pass.
         Optional, possibly used to choose an optimal implementation.
-        You can give ``None`` for any element of the list to specify that this
-        element is not known at compile time.
+        You can give ``None`` for any element of the list to specify
+        that this element is not known at compile time.
+    filter_shape : list of 4 ints or Constant variables
+        The shape of the filters parameter.  Not Optional, since given
+        the output_grad_shape and the input_shape, multiple
+        filter_shape may be plausible.
+    border_mode : str, int or tuple of two ints
+        Either of the following:
 
-    :type input_shape: tuple/list of len 2 of int or Constant variable.
-    :param input_shape: The shape of the input parameter.
-        This parameter indicates the row and column size of the input
-        in the forward pass.
-        Optional, possibly used to choose an optimal implementation.
-        You can give ``None`` for any element of the list to specify that this
-        element is not known at compile time.
+          ``'valid'``
+            apply filter wherever it completely overlaps with the
+            input. Generates output of shape: input shape - filter
+            shape + 1
 
-    :type filter_shape: None, tuple/list of len 4 of int or Constant variable.
-    :param filter_shape: The shape of the filters parameter.
-        Not Optional, since given the output_grad_shape and the input_shape,
-        multiple filter_shape may be plausible.
+          ``'full'``
+            apply filter wherever it partly overlaps with the input.
+            Generates output of shape: input shape + filter shape - 1
 
-    :type border_mode: str, int or tuple of two int
-    :param border_mode: Either of the following:
-        * ``'valid'``: apply filter wherever it completely overlaps with the
-          input. Generates output of shape: input shape - filter shape + 1
-        * ``'full'``: apply filter wherever it partly overlaps with the input.
-          Generates output of shape: input shape + filter shape - 1
-        * ``'half'``: pad input with a symmetric border of ``filter rows // 2``
-          rows and ``filter columns // 2`` columns, then perform a valid
-          convolution. For filters with an odd number of rows and columns, this
-          leads to the output shape being equal to the input shape.
-        * ``int``: pad input with a symmetric border of zeros of the given
-          width, then perform a valid convolution.
-        * ``(int1, int2)``: pad input with a symmetric border of ``int1`` rows
-          and ``int2`` columns, then perform a valid convolution.
+          ``'half'``
+            pad input with a symmetric border of ``filter rows // 2``
+            rows and ``filter columns // 2`` columns, then perform a
+            valid convolution. For filters with an odd number of rows
+            and columns, this leads to the output shape being equal to
+            the input shape.
 
-    :type subsample: tuple of len 2, the subsampling used in the forward pass
-        of the convolutional operation.
-    :param subsample: factor by which to subsample the output.
-        Also called strides elsewhere.
+          ``int``
+            pad input with a symmetric border of zeros of the given
+            width, then perform a valid convolution.
 
-    :type filter_flip: bool
-    :param filter_flip: If ``True``, will flip the filter rows and columns
-        before sliding them over the input. This operation is normally referred
-        to as a convolution, and this is the default. If ``False``, the filters
-        are not flipped and the operation is referred to as a
-        cross-correlation.
+          ``(int1, int2)``
+            pad input with a symmetric border of ``int1`` rows and
+            ``int2`` columns, then perform a valid convolution.
 
-    :rtype: symbolic 4D tensor.
-    :return: set of feature maps generated by convolutional layer. Tensor is
-        of shape (batch size, output channels, output rows, output columns)
+    subsample : tuple of len 2
+        The subsampling used in the forward pass of the convolutional
+        operation.  Also called strides elsewhere.
+    filter_flip : bool
+        If ``True``, will flip the filter rows and columns before
+        sliding them over the input. This operation is normally
+        referred to as a convolution, and this is the default. If
+        ``False``, the filters are not flipped and the operation is
+        referred to as a cross-correlation.
+
+    Returns
+    -------
+    symbolic 4D tensor
+        set of feature maps generated by convolutional layer. Tensor
+        is of shape (batch size, output channels, output rows, output
+        columns)
+
+    Notes
+    -----
 
     :note: If CuDNN is available, it will be used on the
         GPU. Otherwise, it is the *CorrMM* convolution that will be used
