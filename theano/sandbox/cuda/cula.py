@@ -95,7 +95,7 @@ class GpuSolve(GpuOp):
             # If b is one-dimensional reshape to two-dimensional array with
             # singleton second dimension
             if b.ndim == 1:
-                b_2d = b.reshape((-1, 1))
+                b_2d = b.reshape((b.shape[0], 1))
             else:
                 b_2d = b
 
