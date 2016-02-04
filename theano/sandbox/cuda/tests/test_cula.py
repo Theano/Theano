@@ -32,13 +32,22 @@ class TestCula(unittest.TestCase):
     def run_gpu_solve(self, A_val, x_val):
         b_val = numpy.dot(A_val, x_val)
         A = theano.tensor.matrix("A", dtype="float32")
-        b = theano.tensor.matrix("b", dtype="float32")
-
+        if x_val.ndim == 1:
+            b = theano.tensor.vector("b", dtype="float32")
+        else:
+            b = theano.tensor.matrix("b", dtype="float32")
         solver = cula.gpu_solve(A, b)
         fn = theano.function([A, b], [solver])
         res = fn(A_val, b_val)
         x_res = numpy.array(res[0])
         utt.assert_allclose(x_res, x_val)
+
+    def test_invalid_input_fail_3D(self):
+        def invalid_input_func():
+            A = theano.tensor.tensor3("A", dtype="float32")
+            b = theano.tensor.matrix("b", dtype="float32")
+            solve = cula.gpu_solve(A, b)
+        self.assertRaises(AssertionError, invalid_input_func)
 
     def test_diag_solve(self):
         """ Diagonal solve test case with 1D vector as 2D matrix RHS. """
