@@ -26,6 +26,9 @@ else:
 
 
 class TestCula(unittest.TestCase):
+    def setUp(self):
+        utt.seed_rng()
+
     def run_gpu_solve(self, A_val, x_val):
         b_val = numpy.dot(A_val, x_val)
         A = theano.tensor.matrix("A", dtype="float32")
@@ -39,7 +42,6 @@ class TestCula(unittest.TestCase):
 
     def test_diag_solve(self):
         """ Diagonal solve test case with 1D vector as 2D matrix RHS. """
-        numpy.random.seed(1)
         A_val = numpy.asarray([[2, 0, 0], [0, 1, 0], [0, 0, 1]],
                               dtype="float32")
         x_val = numpy.random.uniform(-0.4, 0.4, (A_val.shape[1],
@@ -48,7 +50,6 @@ class TestCula(unittest.TestCase):
 
     def test_sym_solve(self):
         """ Symmetric solve test case with 1D vector as 2D matrix RHS. """
-        numpy.random.seed(1)
         A_val = numpy.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
         A_sym = (A_val + A_val.T) / 2.0
         x_val = numpy.random.uniform(-0.4, 0.4, (A_val.shape[1],
@@ -57,7 +58,6 @@ class TestCula(unittest.TestCase):
 
     def test_orth_solve(self):
         """ Orthogonal solve test case with 1D vector as 2D matrix RHS. """
-        numpy.random.seed(1)
         A_val = numpy.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
         A_orth = numpy.linalg.svd(A_val)[0]
         x_val = numpy.random.uniform(-0.4, 0.4, (A_orth.shape[1],
@@ -66,7 +66,6 @@ class TestCula(unittest.TestCase):
 
     def test_uni_rand_solve(self):
         """ Uniform random solve test case with 2D matrix RHS. """
-        numpy.random.seed(1)
         A_val = numpy.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
         x_val = numpy.random.uniform(-0.4, 0.4,
                                      (A_val.shape[1], 4)).astype("float32")
@@ -74,7 +73,6 @@ class TestCula(unittest.TestCase):
 
     def test_diag_solve_1d(self):
         """ Diagonal solve test case with 1D vector RHS. """
-        numpy.random.seed(1)
         A_val = numpy.asarray([[2, 0, 0], [0, 1, 0], [0, 0, 1]],
                               dtype="float32")
         x_val = numpy.random.uniform(-0.4, 0.4,
@@ -83,7 +81,6 @@ class TestCula(unittest.TestCase):
 
     def test_sym_solve_1d(self):
         """ Symmetric solve test case with 1D vector RHS. """
-        numpy.random.seed(1)
         A_val = numpy.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
         A_sym = (A_val + A_val.T) / 2.0
         x_val = numpy.random.uniform(-0.4, 0.4,
@@ -92,7 +89,6 @@ class TestCula(unittest.TestCase):
 
     def test_orth_solve_1d(self):
         """ Orthogonal solve test case with 1D vector RHS. """
-        numpy.random.seed(1)
         A_val = numpy.random.uniform(-0.4, 0.4, (5, 5)).astype("float32")
         A_orth = numpy.linalg.svd(A_val)[0]
         x_val = numpy.random.uniform(-0.4, 0.4,
