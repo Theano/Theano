@@ -16,7 +16,7 @@ if __name__ == '__main__':
     opts, args = getopt.getopt(
         sys.argv[1:],
         'o:f:',
-        ['rst', 'help', 'nopdf', 'cache', 'test'])
+        ['rst', 'help', 'nopdf', 'cache', 'check', 'test'])
     options.update(dict([x, y or True] for x, y in opts))
     if options['--help']:
         print('Usage: %s [OPTIONS] [files...]' % sys.argv[0])
@@ -25,6 +25,7 @@ if __name__ == '__main__':
         print('  --rst: only compile the doc (requires sphinx)')
         print('  --nopdf: do not produce a PDF file from the doc, only HTML')
         print('  --test: run all the code samples in the documentaton')
+        print('  --check: treat warnings as errors')
         print('  --help: this help')
         print('If one or more files are specified after the options then only '
               'those files will be built. Otherwise the whole tree is '
@@ -54,17 +55,21 @@ if __name__ == '__main__':
     pythonpath = os.pathsep.join([throot, pythonpath])
     sys.path[0:0] = [throot]  # We must not use os.environ.
 
-    def call_sphinx(builder, workdir, extraopts=None):
+    def call_sphinx(builder, workdir):
         import sphinx
-        if extraopts is None:
+        if options['--check']:
             extraopts = ['-W']
+        else:
+            extraopts = []
         if not options['--cache'] and files is None:
             extraopts.append('-E')
         docpath = os.path.join(throot, 'doc')
         inopt = [docpath, workdir]
         if files is not None:
             inopt.extend(files)
-        sphinx.build_main(['', '-b', builder] + extraopts + inopt)
+        ret = sphinx.build_main(['', '-b', builder] + extraopts + inopt)
+        if ret != 0:
+            sys.exit(ret)
 
     if options['--all'] or options['--rst']:
         mkdir("doc")
@@ -92,5 +97,6 @@ if __name__ == '__main__':
         mkdir("doc")
         sys.path[0:0] = [os.path.join(throot, 'doc')]
         call_sphinx('doctest', '.')
+
     # To go back to the original current directory.
     os.chdir(currentdir)
