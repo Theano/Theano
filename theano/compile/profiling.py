@@ -1,4 +1,3 @@
-from __future__ import absolute_import, print_function, division
 """
 ProfileStats object for runtime and memory profiling.
 
@@ -10,6 +9,8 @@ ProfileStats object for runtime and memory profiling.
 # TODO: ensure field width for string fields makes columns line up
 # TODO: what to do about 'diff summary'? (ask Fred?)
 #
+from __future__ import absolute_import, print_function, division
+
 __authors__ = "James Bergstra"
 __reviewer__ = "Razvan Pascanu"
 __copyright__ = "(c) 2011, Universite de Montreal"
@@ -17,6 +18,7 @@ __license__ = "3-clause BSD License"
 __contact__ = "theano-dev <theano-dev@googlegroups.com>"
 
 __docformat__ = "restructuredtext en"
+
 import atexit
 import copy
 import os

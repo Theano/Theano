@@ -1,4 +1,3 @@
-from __future__ import absolute_import, print_function, division
 #!/usr/bin/env python
 # Theano tutorial
 # Solution to Exercise in section 'Using the GPU'
@@ -7,7 +6,7 @@ from __future__ import absolute_import, print_function, division
 # 1. Raw results
 
 
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import numpy
 import theano
 import theano.tensor as tt

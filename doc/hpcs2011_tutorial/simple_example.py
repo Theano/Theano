@@ -1,5 +1,4 @@
 from __future__ import absolute_import, print_function, division
-from __future__ import print_function
 import theano
 a = theano.tensor.vector("a") # declare variable
 b = a + a**10                 # build symbolic expression

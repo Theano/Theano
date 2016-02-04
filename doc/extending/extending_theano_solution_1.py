@@ -1,7 +1,8 @@
-from __future__ import absolute_import, print_function, division
 #!/usr/bin/env python
 # Theano tutorial
 # Solution to Exercise in section 'Extending Theano'
+from __future__ import absolute_import, print_function, division
+
 import unittest
 
 import theano

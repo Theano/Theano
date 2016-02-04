@@ -1,5 +1,4 @@
 from __future__ import absolute_import, print_function, division
-from __future__ import print_function
 import sys, timeit, time
 import numpy
 import theano, theano.tensor.signal.conv

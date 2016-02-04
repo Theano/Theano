@@ -1,9 +1,8 @@
-from __future__ import absolute_import, print_function, division
 #!/usr/bin/env python
 # Theano tutorial
 # Solution to Exercise in section 'Baby Steps - Algebra'
 
-from __future__ import print_function
+from __future__ import absolute_import, print_function, division
 import theano
 a = theano.tensor.vector()  # declare variable
 b = theano.tensor.vector()  # declare variable

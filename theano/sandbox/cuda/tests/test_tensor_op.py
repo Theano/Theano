@@ -1,7 +1,7 @@
-from __future__ import absolute_import, print_function, division
 """
 This file test tensor op that should also operate on CudaNdaray.
 """
+from __future__ import absolute_import, print_function, division
 import copy
 from nose.plugins.skip import SkipTest
 

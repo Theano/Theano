@@ -1,5 +1,4 @@
 from __future__ import absolute_import, print_function, division
-from __future__ import print_function
 import pycuda.autoinit
 import pycuda.driver as drv
 import numpy
