@@ -2145,7 +2145,7 @@ class GCC_compiler(Compiler):
         lib_dirs = std_lib_dirs() + lib_dirs
         library_name = os.path.join(location, '%s.%s' %
                                     (module_name, get_lib_extension()))
-
+        include_dirs.append(location)
         # sometimes, the linker cannot find -lpython so we need to tell it
         # explicitly where it is located
         # this returns somepath/lib/python2.x
@@ -2198,7 +2198,7 @@ class GCC_compiler(Compiler):
         include_dirs = std_include_dirs() + include_dirs
         libs = std_libs() + libs
         lib_dirs = std_lib_dirs() + lib_dirs
-
+        include_dirs.append(location)
         cpp_filename = os.path.join(location, code_filename)
 
         if shared:
