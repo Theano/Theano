@@ -18,7 +18,7 @@ from theano.printing import pprint
 from theano.tensor import basic as tensor
 from theano.tensor import elemwise, opt, NotScalarConstantError
 from theano.tensor.type import values_eq_approx_remove_inf
-
+from theano.tensor.opt import copy_stack_trace
 
 ############
 #
@@ -262,6 +262,7 @@ def local_ultra_fast_sigmoid(node):
     if (isinstance(node.op, tensor.Elemwise) and
             node.op.scalar_op == scalar_sigmoid):
         out = ultra_fast_sigmoid(node.inputs[0])
+        copy_stack_trace(node.outputs[0], out)
 
         def values_eq_approx_remove_low_prec(a, b):
             # atol is found by trial/error.
@@ -301,6 +302,7 @@ def local_hard_sigmoid(node):
     if (isinstance(node.op, tensor.Elemwise) and
             node.op.scalar_op == scalar_sigmoid):
         out = hard_sigmoid(node.inputs[0])
+        copy_stack_trace(node.outputs[0], out)
 
         def values_eq_approx_remove_low_prec(a, b):
             # atol is found by trial/error.
@@ -925,7 +927,10 @@ def local_sigm_times_exp(node):
     # get rid of them.
     mul_tree = simplify_mul(mul_tree)
     # Recompute final output based on the updated tree.
-    return [compute_mul(mul_tree)]
+    out = compute_mul(mul_tree)
+    # keep the stack trace
+    copy_stack_trace(node.outputs[0], out)
+    return [out]
 
 
 @opt.register_stabilize
@@ -946,10 +951,13 @@ def local_inv_1_plus_exp(node):
             if len(nonconsts) == 1:
                 if nonconsts[0].owner and nonconsts[0].owner.op == tensor.exp:
                     if scalars and numpy.allclose(numpy.sum(scalars), 1):
-                        return opt._fill_chain(
+                        out = opt._fill_chain(
                             sigmoid(
                                 tensor.neg(nonconsts[0].owner.inputs[0])),
                             scalar_inputs)
+                        # keep stack trace
+                        copy_stack_trace(node.outputs[0], out)
+                        return out
 
 # Registration is below, and conditional.
 
@@ -970,7 +978,9 @@ def local_1msigmoid(node):
             except Exception:
                 return
             if numpy.allclose(numpy.sum(val_l), 1):
-                return [sigmoid(-sub_r.owner.inputs[0])]
+                out = sigmoid(-sub_r.owner.inputs[0])
+                copy_stack_trace(node.outputs[0], out)
+                return [out]
 
 register_local_1msigmoid = False
 # This is False because the Stabilize pattern above
