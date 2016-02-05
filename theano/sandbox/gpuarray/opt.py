@@ -14,10 +14,8 @@ from theano.gof.optdb import LocalGroupDB
 from theano.scalar.basic import Scalar, Pow, Cast
 from theano.scan_module import scan_utils, scan_op, scan_opt
 
-from theano.tensor import as_tensor_variable
 from theano.tensor.nnet.conv import ConvOp
-from theano.tensor.nnet.abstract_conv import (BaseAbstractConv2d,
-                                              AbstractConv2d,
+from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv2d_gradWeights,
                                               AbstractConv2d_gradInputs)
 
@@ -329,8 +327,7 @@ def local_gpureshape(node, context_name):
 @register_opt('fast_compile')
 @op_lifter([tensor.Rebroadcast])
 def local_gpu_rebroadcast(node, context_name):
-    if isinstance(node.inputs[0].owner.op, HostFromGpu):
-        return node.op(node.inputs[0].owner.inputs[0])
+    return node.op(as_gpuarray_variable(node.inputs[0], context_name))
 
 
 @register_opt('fast_compile')
@@ -453,7 +450,7 @@ def gpu_print_wrapper(op, cnda):
 @op_lifter([tensor.printing.Print])
 def local_gpu_print_op(node, context_name):
     x, = node.inputs
-    gpu_x, = x.owner.inputs
+    gpu_x = as_gpuarray_variable(x, context_name=context_name)
     new_op = node.op.__class__(global_fn=gpu_print_wrapper)
     new_op.old_op = node.op
     return new_op(gpu_x)
@@ -786,10 +783,9 @@ def local_gpua_softmaxwithbias(node, context_name):
 @register_opt('fast_compile')
 @op_lifter([theano.tensor.opt.Assert])
 def local_assert(node, context_name):
-    if (node.inputs[0].owner and
-            isinstance(node.inputs[0].owner.op, HostFromGpu)):
-        return [host_from_gpu(node.op(node.inputs[0].owner.inputs[0],
-                                      *node.inputs[1:]))]
+    return [host_from_gpu(node.op(as_gpuarray_variable(node.inputs[0],
+                                                       context_name),
+                                  *node.inputs[1:]))]
 
 
 @register_opt('fast_compile')
@@ -818,26 +814,6 @@ def local_lift_abstractconv2d(node, context_name):
     inps[1] = as_gpuarray_variable(node.inputs[1],
                                    context_name=context_name)
     return [node.op(*inps)]
-
-
-# This will deal with ops that don't have an explicit transfer but
-# have one of their inputs on the GPU already and the other not on the
-# GPU (to avoid endlessly replacing things).
-@register_opt('fast_compile')
-@local_optimizer([AbstractConv2d,
-                  AbstractConv2d_gradWeights,
-                  AbstractConv2d_gradInputs])
-def local_gpu_abstractconv2d(node):
-    if isinstance(node.op, BaseAbstractConv2d):
-        if ((isinstance(node.inputs[0].type, GpuArrayType) or
-             isinstance(node.inputs[1].type, GpuArrayType)) and
-            not (isinstance(node.inputs[0].type, GpuArrayType) or
-                 isinstance(node.inputs[1].type, GpuArrayType))):
-            inps = list(node.inputs)
-            ctx_name = infer_context_name(inps[0], inps[1])
-            inps[0] = as_gpuarray_variable(inps[0], context_name=ctx_name)
-            inps[1] = as_gpuarray_variable(inps[1], context_name=ctx_name)
-            return as_tensor_variable(node.op(*inps))
 
 # Register this here so that it goes after the abstract lifting
 register_opt()(conv_groupopt)

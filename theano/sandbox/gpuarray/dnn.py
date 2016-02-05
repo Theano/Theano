@@ -22,8 +22,7 @@ from theano.tensor.signal.pool import (
 from . import pygpu
 from .type import get_context, gpu_context_type, list_contexts, GpuArrayType
 from .basic_ops import (as_gpuarray_variable, infer_context_name,
-                        gpu_contiguous, HostFromGpu,
-                        GpuAllocEmpty, empty_like)
+                        gpu_contiguous, GpuAllocEmpty, empty_like)
 from .elemwise import GpuElemwise
 
 # These don't exist in gpuarray
@@ -892,6 +891,8 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
 def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
                    subsample=(1, 1), conv_mode='conv'):
     ctx_name = infer_context_name(img, topgrad)
+    img = as_gpuarray_variable(img, ctx_name)
+    topgrad = as_gpuarray_variable(topgrad, ctx_name)
     img = gpu_contiguous(img)
     topgrad = gpu_contiguous(topgrad)
     kerns_shp = as_tensor_variable(kerns_shp)
@@ -904,6 +905,8 @@ def dnn_gradweight(img, topgrad, kerns_shp, border_mode='valid',
 def dnn_gradinput(kerns, topgrad, img_shp, border_mode='valid',
                   subsample=(1, 1), conv_mode='conv'):
     ctx_name = infer_context_name(kerns, topgrad)
+    kerns = as_gpuarray_variable(kerns, ctx_name)
+    topgrad = as_gpuarray_variable(topgrad, ctx_name)
     kerns = gpu_contiguous(kerns)
     topgrad = gpu_contiguous(topgrad)
     img_shp = as_tensor_variable(img_shp)
@@ -1291,17 +1294,16 @@ class GpuDnnSoftmaxGrad(GpuDnnSoftmaxBase):
 @local_optimizer([AbstractConv2d, AbstractConv2d_gradWeights,
                   AbstractConv2d_gradInputs])
 def local_abstractconv_cudnn(node):
-    if (not isinstance(node.op, (AbstractConv2d, AbstractConv2d_gradWeights,
+    if (not isinstance(node.op, (AbstractConv2d,
+                                 AbstractConv2d_gradWeights,
                                  AbstractConv2d_gradInputs))):
         return None
+
     inp1 = node.inputs[0]
     inp2 = node.inputs[1]
 
     if (not isinstance(inp1.type, GpuArrayType) or
-            not isinstance(inp2.type, GpuArrayType)):
-        return None
-
-    if not dnn_available(inp1.type.context_name):
+            not dnn_available(inp1.type.context_name)):
         return None
 
     if node.op.filter_flip:
@@ -1406,12 +1408,12 @@ def local_pool_dnn_alternative(node, ctx_name):
     if not node.op.ignore_border:
         return
     img, = node.inputs
+    img = as_gpuarray_variable(img, ctx_name)
     ds = node.op.ds
     stride = node.op.st
     pad = node.op.padding
     mode = node.op.mode
-    return dnn_pool(gpu_contiguous(img.owner.inputs[0]),
-                    ds, stride=stride, pad=pad, mode=mode)
+    return dnn_pool(gpu_contiguous(img), ds, stride=stride, pad=pad, mode=mode)
 
 
 @register_opt('cudnn')
@@ -1422,6 +1424,9 @@ def local_pool_dnn_grad_stride(node, ctx_name):
     if not node.op.ignore_border:
         return
     inp, out, out_grad = node.inputs
+    inp = as_gpuarray_variable(inp, ctx_name)
+    out = as_gpuarray_variable(out, ctx_name)
+    out_grad = as_gpuarray_variable(out_grad, ctx_name)
     ds = node.op.ds
     st = node.op.st
     pad = node.op.padding
@@ -1442,6 +1447,8 @@ def local_avg_pool_dnn_grad_stride(node, ctx_name):
     if not node.op.ignore_border:
         return
     inp, out_grad = node.inputs
+    inp = as_gpuarray_variable(inp, ctx_name)
+    out_grad = as_gpuarray_variable(out_grad, ctx_name)
     ds = node.op.ds
     st = node.op.st
     pad = node.op.padding
@@ -1530,8 +1537,7 @@ def local_softmax_dnn_grad(node, ctx_name):
         return
     ins = []
     for n in node.inputs:
-        if isinstance(n.owner.op, HostFromGpu):
-            n = n.owner.inputs[0]
+        n = as_gpuarray_variable(n, ctx_name)
         if n.ndim != 2:
             return
         ins.append(n.dimshuffle(0, 1, 'x', 'x'))
