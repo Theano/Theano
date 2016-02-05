@@ -74,13 +74,16 @@ class TestGpuCholesky(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
 
+    def get_gpu_cholesky_func(self, lower):
+        A = theano.tensor.matrix("A", dtype="float32")
+        chol_A = cula.gpu_cholesky(A, lower)
+        return theano.function([A], chol_A)
+
     def run_gpu_cholesky(self, A_val, lower):
         chol_A_val = numpy.linalg.cholesky(A_val)
         if not lower:
             chol_A_val = chol_A_val.T
-        A = theano.tensor.matrix("A", dtype="float32")
-        chol_A = cula.gpu_cholesky(A, lower)
-        fn = theano.function([A], chol_A)
+        fn = self.get_gpu_cholesky_func(lower)
         res = fn(A_val)
         chol_A_res = numpy.tril(res) if lower else numpy.triu(res)
         utt.assert_allclose(chol_A_res, chol_A_val)
@@ -89,7 +92,8 @@ class TestGpuCholesky(unittest.TestCase):
         """ Invalid Cholesky input test with non-square matrix as input. """
         def invalid_input_func():
             A_val = numpy.random.normal(size=(3, 2)).astype("float32")
-            self.run_gpu_cholesky(A_val, True)
+            fn = self.get_gpu_cholesk_func(True)
+            fn(A_val)
         self.assertRaises(ValueError, invalid_input_func)
 
     def test_invalid_input_fail_non_positive_definite(self):
@@ -97,22 +101,23 @@ class TestGpuCholesky(unittest.TestCase):
         def invalid_input_func():
             M_val = numpy.random.normal(size=(3, 3)).astype("float32")
             A_val = -M_val.dot(M_val.T)
-            self.run_gpu_cholesky(A_val, True)
-        self.assertRaises(cula.culaError, invalid_input_func)
+            fn = self.get_gpu_cholesk_func(True)
+            fn(A_val)
+        self.assertRaises(cula.cula.culaError, invalid_input_func)
 
     def test_invalid_input_fail_vector(self):
         """ Invalid Cholesky input test with vector as input. """
         def invalid_input_func():
             A = theano.tensor.vector("A", dtype="float32")
             cula.gpu_cholesky(A, True)
-        self.assertRaises(ValueError, invalid_input_func)
+        self.assertRaises(AssertionError, invalid_input_func)
 
     def test_invalid_input_fail_tensor3(self):
         """ Invalid Cholesky input test with vector as input. """
         def invalid_input_func():
             A = theano.tensor.tensor3("A", dtype="float32")
             cula.gpu_cholesky(A, True)
-        self.assertRaises(ValueError, invalid_input_func)
+        self.assertRaises(AssertionError, invalid_input_func)
 
     def test_diag_chol(self):
         """ Diagonal matrix input with positive entries Cholesky test. """
