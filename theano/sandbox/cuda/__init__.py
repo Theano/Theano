@@ -493,6 +493,8 @@ def use(device,
                        'fast_run')
         optdb.add_tags('gpu_after_fusion',
                        'fast_run')
+        optdb.add_tags('gpu_scanOp_make_inplace',
+                       'fast_run')
 
     if force:
         try:

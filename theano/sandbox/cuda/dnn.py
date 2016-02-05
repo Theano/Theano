@@ -1145,6 +1145,9 @@ def dnn_conv(img, kerns, border_mode='valid', subsample=(1, 1),
         :attr:`config.dnn.conv.precision`.
 
     """
+    # For consistence, when using direction_hint too.
+    if border_mode == (0, 0):
+        border_mode = 'valid'
 
     # Establish dtype in which to perform the computation of the convolution
     if precision is None:
@@ -1255,6 +1258,8 @@ def dnn_conv3d(img, kerns, border_mode='valid', subsample=(1, 1, 1),
     :warning: dnn_conv3d only works with cuDNN library 3.0
 
     """
+    if border_mode == (0, 0):
+        border_mode = 'valid'
 
     # Establish dtype in which to perform the computation of the convolution
     if precision is None:

@@ -1449,7 +1449,7 @@ from theano.sandbox.gpuarray.opt import (register_opt as register_gpua,
                                          host_from_gpu as host_from_gpua)
 
 
-@register_gpua()
+@register_gpua('fast_compile')
 @local_optimizer([mrg_uniform])
 def local_gpua_mrg(node):
     if (type(node.op) == mrg_uniform and

@@ -967,9 +967,14 @@ class Function(object):
             for node in self.nodes_with_inner_function:
                 ops_with_inner_function[node.op].free()
 
+    def get_shared(self):
+        """
+        Return the shared variable read or updated by by this function.
+        """
+        return [i.variable for i in self.maker.inputs if i.implicit]
+
 
 # pickling/deepcopy support for Function
-
 def _pickle_Function(f):
     # copy of the input storage list
     ins = list(f.input_storage)

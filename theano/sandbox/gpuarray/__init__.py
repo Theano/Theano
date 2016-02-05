@@ -78,6 +78,7 @@ if pygpu:
             import theano.compile
             theano.compile.shared_constructor(gpuarray_shared_constructor)
             optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile')
+            optdb.add_tags('gpua_scanOp_make_inplace', 'fast_run')
         elif (config.init_gpu_device.startswith('cuda') or
               config.init_gpu_device.startswith('opencl')):
             if config.device != 'cpu':
@@ -91,6 +92,7 @@ if pygpu:
             import theano.compile
             theano.compile.shared_constructor(gpuarray_shared_constructor)
             optdb.add_tags('gpuarray_opt', 'fast_run', 'fast_compile')
+            optdb.add_tags('gpua_scanOp_make_inplace', 'fast_run')
 
         from .basic_ops import (GpuAlloc, GpuAllocEmpty, GpuContiguous, GpuEye,
                                 GpuFromHost, GpuJoin, GpuReshape, GpuSplit,

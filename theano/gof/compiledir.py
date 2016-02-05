@@ -362,6 +362,8 @@ def print_compiledir_content():
     nb_keys = {}
     for dir in os.listdir(compiledir):
         filename = os.path.join(compiledir, dir, "key.pkl")
+        if not os.path.exists(filename):
+            continue
         with open(filename, 'rb') as file:
             try:
                 keydata = pickle.load(file)

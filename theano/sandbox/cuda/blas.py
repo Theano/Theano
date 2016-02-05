@@ -1948,10 +1948,8 @@ class GpuConv(GpuOp):
                      images[2] * images[3] * 2)
         return flops
 
-    def make_thunk(self, node, storage_map, compute_map, no_recycling):
-        node_ = copy.copy(node)
-        assert node.op is node_.op
-        if node_.op.max_threads_dim0 is None:
+    def prepare_node(self, node):
+        if node.op.max_threads_dim0 is None:
             cuda = theano.sandbox.cuda
             device_id = cuda.use.device_number
             if device_id is None:
@@ -1964,9 +1962,7 @@ class GpuConv(GpuOp):
                 device_id = cuda.use.device_number
             cuda_ndarray = theano.sandbox.cuda.cuda_ndarray.cuda_ndarray
             prop = cuda_ndarray.device_properties(device_id)
-            node_.op.max_threads_dim0 = prop['maxThreadsDim0']
-        return super(GpuConv, node_.op).make_thunk(node_, storage_map,
-                                                   compute_map, no_recycling)
+            node.op.max_threads_dim0 = prop['maxThreadsDim0']
 
     def c_compile_args(self):
         nb = 0
