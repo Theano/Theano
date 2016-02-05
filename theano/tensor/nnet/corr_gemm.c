@@ -172,26 +172,31 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     }
 
     // Create temporary columns
-    npy_intp col_dim[2];
-    col_dim[0] = (npy_intp)(nChannels * kW * kH);
-    col_dim[1] = (npy_intp)(topHeight * topWidth);
-    PyArrayObject* col = (PyArrayObject*)PyArray_EMPTY(2,
-		                           col_dim,
-                                           PyArray_TYPE(top),
-					   0);
+    int max = 1;
+#if defined(_OPENMP)
+    max = omp_get_max_threads();
+#endif
+    npy_intp col_dim[3];
+    col_dim[0] = (npy_intp)(max);
+    col_dim[1] = (npy_intp)(nChannels * kW * kH);
+    col_dim[2] = (npy_intp)(topHeight * topWidth);
+    PyArrayObject* col = (PyArrayObject*)PyArray_EMPTY(3,
+                               col_dim,
+                               PyArray_TYPE(top),
+                               0);
     if (NULL == col)
     {
         PyErr_Format(PyExc_RuntimeError,
-                "CorrMM failed to allocate working memory of %%d x %%d\n",
-                col_dim[0], col_dim[1]);
+                "CorrMM failed to allocate working memory of %%d x %%d x %%d\n",
+                col_dim[0], col_dim[1], col_dim[2]);
         return NULL;
     }
 
     // Define some useful variables
     const int bottom_stride = PyArray_STRIDES(bottom)[0]/%(n_bytes)f;
     const int top_stride = PyArray_STRIDES(top)[0]/%(n_bytes)f;
-    const int K_ = col_dim[0];
-    const int N_ = col_dim[1];
+    const int K_ = col_dim[1];
+    const int N_ = col_dim[2];
     const int M_ = nFilters;
     const %(c_float_type)s one = 1.0;
     const %(c_float_type)s zero = 0.0;
@@ -203,15 +208,20 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         output = top;
         // valid correlation: im2col, then gemm
         // Iterate over batch
+        #pragma omp parallel for schedule(static)
         for (int n = 0; n < batchSize; n++) {
+            int colidx = 0;
+#if defined(_OPENMP)
+            colidx = omp_get_thread_num();
+#endif
             // First, im2col
             im2col((%(float_type)s*)PyArray_DATA(bottom) + n * bottom_stride, nChannels, bottomHeight,
-                    bottomWidth, kH, kW, padH, padW, dH, dW, (%(float_type)s*)PyArray_DATA(col));
+                    bottomWidth, kH, kW, padH, padW, dH, dW, (%(float_type)s*)PyArray_GETPTR3(col, colidx, 0, 0));
             // Second, gemm
             %(gemm)s(&NTrans, &NTrans,
                    &N_, &M_, &K_,
                    &one,
-                   (%(float_type)s*)PyArray_DATA(col), &N_,
+                   (%(float_type)s*)PyArray_GETPTR3(col, colidx, 0, 0), &N_,
                    (%(float_type)s*)PyArray_DATA(weight), &K_,
                    &zero,
                    (%(float_type)s*)PyArray_DATA(top) + n * top_stride, &N_);
@@ -252,10 +262,15 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         output = weight;
         // valid convolution: im2col, then gemm
         // Iterate over batch
+        #pragma omp parallel for schedule(static)
         for (int n = 0; n < batchSize; n++) {
+            int colidx = 0;
+#if defined(_OPENMP)
+            colidx = omp_get_thread_num();
+#endif
             // First, im2col
             im2col((%(float_type)s*)PyArray_DATA(bottom) + n * bottom_stride, nChannels, bottomHeight,
-                    bottomWidth, kH, kW, padH, padW, dH, dW, (%(float_type)s*)PyArray_DATA(col));
+                    bottomWidth, kH, kW, padH, padW, dH, dW, (%(float_type)s*)PyArray_GETPTR3(col, colidx, 0, 0));
             // Second, gemm
             // Note that we accumulate into weight. We do so by setting beta = 0
             // for the first iteration and beta = 1 for subsequent ones. (This
@@ -263,7 +278,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
             %(gemm)s(&Trans, &NTrans,
                    &K_, &M_, &N_,
                    &one,
-                   (%(float_type)s*)PyArray_DATA(col), &N_,
+                   (%(float_type)s*)PyArray_GETPTR3(col, colidx, 0, 0), &N_,
                    (%(float_type)s*)PyArray_DATA(top) + n * top_stride, &N_,
                    (n == 0) ? &zero : &one,
                    (%(float_type)s*)PyArray_DATA(weight), &K_);
@@ -303,7 +318,12 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
         PyArray_FILLWBYTE(bottom, 0);
         // full convolution: gemm, then col2im
         // Iterate over batch
+        #pragma omp parallel for schedule(static)
         for (int n = 0; n < batchSize; n++) {
+            int colidx = 0;
+#if defined(_OPENMP)
+            colidx = omp_get_thread_num();
+#endif
             // gemm into columns
             %(gemm)s(&NTrans, &Trans,
                    &N_, &K_, &M_,
@@ -311,9 +331,9 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                    (%(float_type)s*)PyArray_DATA(top) + n * top_stride, &N_,
                    (%(float_type)s*)PyArray_DATA(weight), &K_,
                    &zero,
-                   (%(float_type)s*)PyArray_DATA(col), &N_);
+                   (%(float_type)s*)PyArray_GETPTR3(col, colidx, 0, 0), &N_);
             // col2im back to the data
-            col2im((%(float_type)s*)PyArray_DATA(col), nChannels, bottomHeight, bottomWidth,
+            col2im((%(float_type)s*)PyArray_GETPTR3(col, colidx, 0, 0), nChannels, bottomHeight, bottomWidth,
                     kH, kW, padH, padW, dH, dW, (%(float_type)s*)PyArray_DATA(bottom) + n * bottom_stride);
         }
         /*
