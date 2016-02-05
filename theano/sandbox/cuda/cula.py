@@ -192,8 +192,8 @@ class GpuCholesky(GpuOp):
             cula.culaInitialize()
             cula_initialized = True
 
-        # import util functions here to avoid circular import errors
-        from theano.misc.pycuda_utils import to_gpuarray, to_cudandarray
+        # import util function here to avoid circular import errors
+        from theano.misc.pycuda_utils import to_gpuarray
 
         inputs = [storage_map[v] for v in node.inputs]
         outputs = [storage_map[v] for v in node.outputs]
@@ -258,18 +258,18 @@ class GpuCholesky(GpuOp):
             # function to convert CudaNdArray -> GPUArray, applying this
             # before any transpose operation to ensure A_cpy buffer is still
             # C-contiguous as so can be shared with GPUArray object without
-            # any copy required.
+            # any copy required this meaning triu/tril operations occur in
+            # place on A_cpy buffer.
             if self.lower:
                 # extract only upper triangle in C-ordering i.e. lower triangle
                 # in F-ordering
-                A_copy_tri = linalg.triu(to_gpuarray(A_cpy), overwrite=True)
+                linalg.triu(to_gpuarray(A_cpy), overwrite=True)
             else:
                 # extract only lower triangle in C-ordering i.e. upper triangle
                 # in F-ordering
-                A_copy_tri = linalg.tril(to_gpuarray(A_cpy), overwrite=True)
-            # Convert back to CudaNdArray and assign output as transposed array
-            # to move from F to C ordering.
-            A_chol[0] = to_cudandarray(A_copy_tri).T
+                linalg.tril(to_gpuarray(A_cpy), overwrite=True)
+            # Assign output as transposed array to move from F to C ordering.
+            A_chol[0] = dimshuffle(A_cpy, (1, 0))
 
         thunk.inputs = inputs
         thunk.outputs = outputs
