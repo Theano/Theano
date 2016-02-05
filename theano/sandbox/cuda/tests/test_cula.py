@@ -47,7 +47,7 @@ class TestCula(unittest.TestCase):
         def invalid_input_func():
             A = theano.tensor.tensor3("A", dtype="float32")
             b = theano.tensor.matrix("b", dtype="float32")
-            solve = cula.gpu_solve(A, b)
+            cula.gpu_solve(A, b)
         self.assertRaises(AssertionError, invalid_input_func)
 
     def test_invalid_input_fail_3d(self):
@@ -55,7 +55,7 @@ class TestCula(unittest.TestCase):
         def invalid_input_func():
             A = theano.tensor.vector("A", dtype="float32")
             b = theano.tensor.matrix("b", dtype="float32")
-            solve = cula.gpu_solve(A, b)
+            cula.gpu_solve(A, b)
         self.assertRaises(AssertionError, invalid_input_func)
 
     def test_diag_solve_2d(self):
