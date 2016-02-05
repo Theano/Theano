@@ -25,6 +25,7 @@ from theano.tensor.opt import copy_stack_trace
 # SCALAR OPS
 #
 
+
 class ScalarSigmoid(scalar.UnaryScalarOp):
     """
     This is just speed opt. Not for stability.
