@@ -37,7 +37,7 @@ from theano.sandbox.cuda.blas import (
     GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights)
 
 from theano.sandbox.cuda.blas import gpu_gemv_inplace
-from theano.sandbox.cuda.cula import gpu_solve
+from theano.sandbox.cuda.cula import gpu_solve, gpu_cholesky
 
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace
@@ -706,6 +706,34 @@ def local_gpu_solve(node):
             return [host_from_gpu(
                     gpu_solve(as_cuda_ndarray_variable(x),
                               as_cuda_ndarray_variable(y)))]
+    return False
+
+
+@register_opt()
+@local_optimizer([gpu_from_host, slinalg.Cholesky])
+def local_gpu_cholesky(node):
+    """
+    gpu_from_host(CpuCholesky) -> GpuCholesky(gpu_from_host)
+
+    CpuCholesky(host_from_gpu) -> host_from_gpu(GpuCholesky)
+
+    """
+    if isinstance(node.op, GpuFromHost):
+        host_input = node.inputs[0]
+        if (host_input.owner and
+            isinstance(host_input.owner.op,
+                       slinalg.Cholesky)):
+            A = host_input.owner.inputs[0]
+            lower = host_input.owner.op.lower
+            return [gpu_cholesky(as_cuda_ndarray_variable(A), lower)]
+
+    if isinstance(node.op, slinalg.Solve):
+        if any([i.owner and isinstance(i.owner.op, HostFromGpu)
+                for i in node.inputs]):
+            A = node.inputs[0]
+            lower = node.op.lower
+            return [host_from_gpu(
+                    gpu_cholesky(as_cuda_ndarray_variable(A), lower))]
     return False
 
 

@@ -786,6 +786,40 @@ def test_local_gpu_solve():
     cmp((5, 5), (5, 1))
 
 
+def test_local_gpu_cholesky():
+
+    if not cula.cula_available:
+        raise SkipTest('Optional dependency CULA not available')
+
+    numpy.random.seed(1)
+
+    def cmp(A_dim):
+        M = numpy.random.normal(size=(A_dim, A_dim)).astype('float32')
+        A_val = M.dot(M.T)
+        A = cuda.shared_constructor(A_val, 'A')
+
+        lower = True
+        cholesky_op = tensor.slinalg.Cholesky(lower=lower)
+        f = pfunc([], cholesky_op(A), mode=mode_with_gpu)
+
+        assert isinstance(f.maker.fgraph.toposort()[1].inputs[0].owner.op,
+                          cuda.cula.GpuCholesky)
+
+        assert f.maker.fgraph.toposort()[1].inputs[0].owner.op.lower == lower
+
+        assert cuda.opt.local_gpu_cholesky.transform(
+            tensor.slinalg.cholesky(A).owner)
+
+        A_chol_res = f()
+        # numpy cholesky always returns lower-triangular matrix
+        A_chol_np = numpy.linalg.cholesky(A_val)
+
+        assert numpy.allclose(A_chol_np, A_chol_res)
+
+    cmp(3)
+    cmp(6)
+
+
 def test_local_gpu_dot_to_dot22dot():
     def cmp(a_shp, b_shp):
         a0 = numpy.random.rand(*a_shp).astype('float32')
