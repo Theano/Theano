@@ -75,17 +75,19 @@ class TestGpuCholesky(unittest.TestCase):
         utt.seed_rng()
 
     def get_gpu_cholesky_func(self, lower):
+        """ Helper function to compile function from GPU Cholesky op. """
         A = theano.tensor.matrix("A", dtype="float32")
         chol_A = cula.gpu_cholesky(A, lower)
         return theano.function([A], chol_A)
 
-    def run_gpu_cholesky(self, A_val, lower):
+    def compare_gpu_cholesky_to_numpy(self, A_val, lower):
+        """ Helper function to compare op output to numpy.cholesky output. """
         chol_A_val = numpy.linalg.cholesky(A_val)
         if not lower:
             chol_A_val = chol_A_val.T
         fn = self.get_gpu_cholesky_func(lower)
         res = fn(A_val)
-        chol_A_res = numpy.tril(res) if lower else numpy.triu(res)
+        chol_A_res = numpy.array(res)
         utt.assert_allclose(chol_A_res, chol_A_val)
 
     def test_invalid_input_fail_non_square(self):
@@ -121,17 +123,17 @@ class TestGpuCholesky(unittest.TestCase):
 
     def test_diag_chol(self):
         """ Diagonal matrix input with positive entries Cholesky test. """
-        A_val = numpy.diag(numpy.random.uniform(size=5).astype("float32") + 1.)
-        self.run_gpu_cholesky(A_val, lower=True)
+        A_val = numpy.diag(numpy.random.uniform(size=5).astype("float32") + 1)
+        self.compare_gpu_cholesky_to_numpy(A_val, lower=True)
 
     def test_dense_chol_lower(self):
         """ Dense matrix input lower-triangular Cholesky test. """
         M_val = numpy.random.normal(size=(3, 3)).astype("float32")
         A_val = M_val.dot(M_val.T)
-        self.run_gpu_cholesky(A_val, lower=True)
+        self.compare_gpu_cholesky_to_numpy(A_val, lower=True)
 
     def test_dense_chol_upper(self):
-        """ Dense matrix input lower-triangular Cholesky test. """
+        """ Dense matrix input upper-triangular Cholesky test. """
         M_val = numpy.random.normal(size=(3, 3)).astype("float32")
         A_val = M_val.dot(M_val.T)
-        self.run_gpu_cholesky(A_val, lower=False)
+        self.compare_gpu_cholesky_to_numpy(A_val, lower=False)
