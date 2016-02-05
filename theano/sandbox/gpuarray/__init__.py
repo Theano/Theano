@@ -65,19 +65,20 @@ def init_dev(dev, name=None):
     reg_context(name, context)
     pygpu_activated = True
     if config.print_active_device:
-        cudnn_version = "not available"
         warn = None
-        try:
-            cudnn_version = dnn.version()
-            # 4100 should not print warning with cudnn 4 final.
-            if cudnn_version > 4100:
-                warn = ("Your CuDNN version is more recent then Theano."
-                        " If you see problems, try updating Theano or"
-                        " downgrading CuDNN to version 4.")
-
-        except Exception:
-            raise RuntimeError("CuDNN is mandatory with the GpuArray back-end.")
-        print("Mapped name %s to device %s: %s (CuDNN version %s)" % (
+        cudnn_version = ""
+        if dev.startswith('cuda'):
+            try:
+                cudnn_version = dnn.version()
+                # 4100 should not print warning with cudnn 4 final.
+                if cudnn_version > 4100:
+                    warn = ("Your CuDNN version is more recent then Theano."
+                            " If you see problems, try updating Theano or"
+                            " downgrading CuDNN to version 4.")
+                cudnn_version = " (CuDNN version %s)" % cudnn_version
+            except Exception:
+                raise RuntimeError("CuDNN is mandatory with the GpuArray back-end.")
+        print("Mapped name %s to device %s: %s%s" % (
             name, dev, context.devname, cudnn_version),
               file=sys.stderr)
         if warn:
