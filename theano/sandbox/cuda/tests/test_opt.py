@@ -835,6 +835,7 @@ def test_local_gpu_cholesky():
         chol_A_res = f()
         # numpy cholesky always returns lower-triangular matrix
         chol_A_val = numpy.linalg.cholesky(A_val)
+        chol_A_val = chol_A_val if lower else chol_A_val.T
 
         utt.assert_allclose(chol_A_res, chol_A_val)
 
