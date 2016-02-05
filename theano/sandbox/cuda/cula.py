@@ -5,6 +5,7 @@ import theano
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
+from theano.misc.pycuda_utils import to_gpuarray, to_cudandarray
 
 try:
     from theano.sandbox.cuda import cuda_ndarray
@@ -15,9 +16,11 @@ except ImportError:
 cula_available = False
 
 try:
-    from scikits.cuda import cula
+    from skcuda import cula
+    from skcuda import linalg
     cula_available = True
-except (ImportError, OSError, RuntimeError, pkg_resources.DistributionNotFound):
+except (ImportError, OSError, RuntimeError,
+        pkg_resources.DistributionNotFound):
     pass
 
 cula_initialized = False
@@ -162,7 +165,7 @@ class GpuCholesky(GpuOp):
     __props__ = ('lower',)
 
     def __init__(self, lower=True):
-        self.lower = True
+        self.lower = lower
         super(GpuCholesky, self).__init__()
 
     def output_type(self, inp):
@@ -194,42 +197,77 @@ class GpuCholesky(GpuOp):
         outputs = [storage_map[v] for v in node.outputs]
 
         def thunk():
-            # size of the matrices to invert
-            z = outputs[0]
 
-            # Matrix
+            # Matrix to decompose is first (and only) input
             A = inputs[0][0]
 
-            # This copy forces allocation of a new C-contiguous buffer
-            # and returns it.
+            # Cholesky decomposition of matrix is first (and only) output
+            A_chol = outputs[0]
+
+            # CULA Cholesky function is destructive as it assigns calculated
+            # decomposition to lower / upper triangle of input array therefore
+            # force copy of array with allocation of a new C-contiguous buffer.
+            # CULA operation assumes Fortran ordering however input matrix must
+            # be symmetric therefore no need to alter order.
             A_cpy = A.copy()
 
             def cula_gpu_cholesky(A_, lower=True):
 
                 A_shape = A_.shape
 
-                assert(len(A_shape) == 2)
+                # Decomposition only valid for matrix inputs.
+                if len(A_shape) != 2:
+                    raise ValueError('A must be two-dimensional.')
 
                 m, n = A_shape
 
+                # Decomposition only exists for square matrix inputs.
                 if m != n:
                     raise ValueError('A must be square.')
 
-                # construct pointer arrays needed for culaDeviceSpotrf
-                # Cula requires a pointer for A.
+                # Get pointer to A array data needed for culaDeviceSpotrf.
                 A_ptr = A_.gpudata
 
+                # culaDeviceSpotrf takes upper-lower argument as string.
                 uplo = 'L' if lower else 'U'
+
+                # Leading dimension of input array A.
                 lda = max(1, n)
 
+                # CULA may raise exception if input matrix found not to be
+                # positive-definite therefore make sure buffers freed even
+                # in error cases.
                 try:
                     cula.culaDeviceSpotrf(uplo, n, A_ptr, lda)
                 finally:
                     cula.culaFreeBuffers()
 
+            # Decomposition assigned in-place to A_cpy
             cula_gpu_cholesky(A_cpy, self.lower)
 
-            z[0] = A_cpy
+            # CULA assumes Fortran ordering and assigns the calculated
+            # decomposition to the relevant triangle of A_cpy (i.e. lower
+            # triangle if lower=True and upper otherwise) in Fortran ordering.
+            # The remaining elements in A_cpy are left as the original values
+            # in A i.e. A_cpy is not enforced to be lower / upper triangular.
+            # Therefore use skcuda.linalg triu/tril functions to extract
+            # relevant triangle elements only, others set to zero. These
+            # require a pycuda GPUArray type as input therefore use util
+            # function to convert CudaNdArray -> GPUArray, applying this
+            # before any transpose operation to ensure A_cpy buffer is still
+            # C-contiguous as so can be shared with GPUArray object without
+            # any copy required.
+            if self.lower:
+                # extract only upper triangle in C-ordering i.e. lower triangle
+                # in F-ordering
+                A_copy_tri = linalg.triu(to_gpuarray(A_cpy), overwrite=True)
+            else:
+                # extract only lower triangle in C-ordering i.e. upper triangle
+                # in F-ordering
+                A_copy_tri = linalg.tril(to_gpuarray(A_cpy), overwrite=True)
+            # Convert back to CudaNdArray and assign output as transposed array
+            # to move from F to C ordering.
+            A_chol[0] = to_cudandarray(A_copy_tri).T
 
         thunk.inputs = inputs
         thunk.outputs = outputs
