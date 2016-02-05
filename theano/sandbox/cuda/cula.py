@@ -140,3 +140,100 @@ class GpuSolve(GpuOp):
         return thunk
 
 gpu_solve = GpuSolve()
+
+
+class GpuCholesky(GpuOp):
+    """
+    CULA GPU Choleksy factorisation op.
+
+    Given a real positive definite matrix `A` returns either a lower
+    triangular matrix `L` such that `A == dot(L, L.T)` if `lower == True`
+    else returns an upper triangular matrix `U` such that `A == dot(U.T, U)`
+    if `lower == False`.
+
+    Parameters
+    ----------
+    lower
+        Whether to return a lower rather than upper triangular decomposition.
+
+    """
+
+    __props__ = ('lower',)
+
+    def __init__(self, lower=True):
+        self.lower = True
+        super(GpuCholesky, self).__init__()
+
+    def output_type(self, inp):
+        return CudaNdarrayType(broadcastable=[False] * inp.type.ndim)
+
+    def make_node(self, inp):
+        inp = as_cuda_ndarray_variable(inp)
+
+        assert inp.ndim == 2
+        return theano.Apply(self, [inp], [self.output_type(inp)()])
+
+    def make_thunk(self,
+                   node,
+                   storage_map, _,
+                   no_recycling=[]):
+
+        # Initialize CULA the first time it is needed
+        global cula_initialized
+
+        if not cula_available:
+            raise RuntimeError('Cula is not available and '
+                               'GpuCholesky Op can not be constructed.')
+
+        if not cula_initialized:
+            cula.culaInitialize()
+            cula_initialized = True
+
+        inputs = [storage_map[v] for v in node.inputs]
+        outputs = [storage_map[v] for v in node.outputs]
+
+        def thunk():
+            # size of the matrices to invert
+            z = outputs[0]
+
+            # Matrix
+            A = inputs[0][0]
+
+            # This copy forces allocation of a new C-contiguous buffer
+            # and returns it.
+            A_cpy = A.copy()
+
+            def cula_gpu_cholesky(A_, lower=True):
+
+                A_shape = A_.shape
+
+                assert(len(A_shape) == 2)
+
+                m, n = A_shape
+
+                if m != n:
+                    raise ValueError('A must be square.')
+
+                # construct pointer arrays needed for culaDeviceSpotrf
+                # Cula requires a pointer for A.
+                A_ptr = A_.gpudata
+
+                uplo = 'L' if lower else 'U'
+                lda = max(1, n)
+
+                try:
+                    cula.culaDeviceSpotrf(uplo, n, A_ptr, lda)
+                finally:
+                    cula.culaFreeBuffers()
+
+            cula_gpu_cholesky(A_cpy, self.lower)
+
+            z[0] = A_cpy
+
+        thunk.inputs = inputs
+        thunk.outputs = outputs
+        thunk.lazy = False
+
+        return thunk
+
+gpu_cholesky = lambda A, lower=True: GpuCholesky(lower)(A)
