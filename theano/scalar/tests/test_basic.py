@@ -9,6 +9,7 @@ If you do want to rewrite these tests, bear in mind:
   * FunctionGraph and DualLinker are old, use compile.function instead.
 """
 
+from __future__ import division
 import unittest
 import numpy as np
 
