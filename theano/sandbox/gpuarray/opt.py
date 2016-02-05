@@ -785,7 +785,7 @@ def local_gpua_softmaxwithbias(node, context_name):
 def local_assert(node, context_name):
     return [host_from_gpu(node.op(as_gpuarray_variable(node.inputs[0],
                                                        context_name),
-                                  node.inputs[1:]))]
+                                  *node.inputs[1:]))]
 
 
 @register_opt('fast_compile')
