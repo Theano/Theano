@@ -24,6 +24,7 @@ if not cuda.cuda_available:
     raise SkipTest('Optional package cuda disabled')
 
 import theano.sandbox.cuda.cula as cula
+from theano.misc.pycuda_init import pycuda_available
 
 from theano.sandbox.cuda import basic_ops
 from theano.sandbox.cuda.type import CudaNdarrayType
@@ -810,15 +811,16 @@ def test_local_gpu_cholesky():
 
     if not cula.cula_available:
         raise SkipTest('Optional dependency CULA not available')
+    if not pycuda_available:
+        raise SkipTest('Optional dependency pycuda not available')
 
     numpy.random.seed(1)
 
-    def cmp(A_dim):
+    def cmp(A_dim, lower):
         M = numpy.random.normal(size=(A_dim, A_dim)).astype('float32')
         A_val = M.dot(M.T)
         A = cuda.shared_constructor(A_val, 'A')
 
-        lower = True
         cholesky_op = tensor.slinalg.Cholesky(lower=lower)
         f = pfunc([], cholesky_op(A), mode=mode_with_gpu)
 
@@ -830,14 +832,14 @@ def test_local_gpu_cholesky():
         assert cuda.opt.local_gpu_cholesky.transform(
             tensor.slinalg.cholesky(A).owner)
 
-        A_chol_res = f()
+        chol_A_res = f()
         # numpy cholesky always returns lower-triangular matrix
-        A_chol_np = numpy.linalg.cholesky(A_val)
+        chol_A_val = numpy.linalg.cholesky(A_val)
 
-        assert numpy.allclose(A_chol_np, A_chol_res)
+        utt.assert_allclose(chol_A_res, chol_A_val)
 
-    cmp(3)
-    cmp(6)
+    cmp(3, True)
+    cmp(6, False)
 
 
 def test_local_gpu_dot_to_dot22dot():

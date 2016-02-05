@@ -5,6 +5,7 @@ import theano
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
+from theano.misc.pycuda_init import pycuda_available
 
 try:
     from theano.sandbox.cuda import cuda_ndarray
@@ -186,6 +187,10 @@ class GpuCholesky(GpuOp):
 
         if not cula_available:
             raise RuntimeError('Cula is not available and '
+                               'GpuCholesky Op can not be constructed.')
+
+        if not pycuda_available:
+            raise RuntimeError('pycuda is not available and '
                                'GpuCholesky Op can not be constructed.')
 
         if not cula_initialized:
