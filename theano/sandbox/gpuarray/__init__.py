@@ -1,6 +1,7 @@
 from __future__ import print_function
-import sys
 import logging
+import sys
+import warnings
 
 import theano
 from theano.configparser import config, AddConfigVar, BoolParam
@@ -65,13 +66,22 @@ def init_dev(dev, name=None):
     pygpu_activated = True
     if config.print_active_device:
         cudnn_version = "not available"
+        warn = None
         try:
             cudnn_version = dnn.version()
+            # 4100 should not print warning with cudnn 4 final.
+            if cudnn_version > 4100:
+                warn = ("Your CuDNN version is more recent then Theano."
+                        " If you see problems, try updating Theano or"
+                        " downgrading CuDNN to version 4.")
+
         except Exception:
             pass
         print("Mapped name %s to device %s: %s (CuDNN version %s)" % (
             name, dev, context.devname, cudnn_version),
               file=sys.stderr)
+        if warn:
+            warnings.warn(warn)
 
 # This maps things like 'cuda0' to the context object on that device.
 init_dev.devmap = {}

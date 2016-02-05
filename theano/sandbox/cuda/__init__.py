@@ -593,9 +593,15 @@ def use(device,
             if config.print_active_device:
                 cnmem_enabled = "enabled" if config.lib.cnmem else "disabled"
                 cudnn_version = "not available"
+                warn = None
                 try:
                     (hdr_v, runtime_v) = dnn_version()
-                    cudnn_version = "%i" % (runtime_v)
+                    cudnn_version = runtime_v
+                    # 4100 should not print warning with cudnn 4 final.
+                    if cudnn_version > 4100:
+                        warn = ("Your CuDNN version is more recent then Theano."
+                                " If you see problems, try updating Theano or"
+                                " downgrading CuDNN to version 4.")
                 except Exception, e:
                     pass
                 print("Using gpu device %d: %s (CNMeM is %s, CuDNN %s)" % (
@@ -604,6 +610,10 @@ def use(device,
                     cnmem_enabled,
                     cudnn_version,),
                       file=sys.stderr)
+                if warn:
+                    import warnings
+                    warnings.warn(warn)
+
             if device_properties(use.device_number)['regsPerBlock'] < 16384:
                 # We will try to use too much register per bloc at many places
                 # when there is only 8k register per multi-processor.
