@@ -2255,8 +2255,8 @@ class _Linker(gof.link.LocalLinker):
                     for r in node.outputs:
                         if r not in r_vals:
                             idx = order.index(node)
-                            assert thunks_py[idx] is None
-                            assert thunks_c[idx] is None
+                            assert thunks_py[idx] is None, node
+                            assert thunks_c[idx] is None, node
                             raise Exception("No code run for %s" % node)
 
                 if False:
