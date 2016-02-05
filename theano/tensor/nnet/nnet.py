@@ -753,7 +753,7 @@ def local_logsoftmax(node):
         new_op = LogSoftmax()
         ret = new_op(inVars)
         ret .tag.values_eq_approx = values_eq_approx_remove_inf
-        copy_stack_trace(node.outputs[0], ret)
+        copy_stack_trace([node.inputs[0], node.outputs[0]], ret)
         return [ret]
 
 
@@ -867,7 +867,6 @@ def local_softmax_with_bias(node):
                 if sm_bias.type == node.outputs[0].type:
                     # This condition is not always true. See the test
                     # nnet/tests/test_nnet.py:T_SoftmaxWithBias.test_broadcast
-                    copy_stack_trace(node.outputs[0], sm_bias)
                     return [sm_bias]
 
 

@@ -955,8 +955,12 @@ def local_inv_1_plus_exp(node):
                             sigmoid(
                                 tensor.neg(nonconsts[0].owner.inputs[0])),
                             scalar_inputs)
-                        # keep stack trace
-                        copy_stack_trace(node.outputs[0], out)
+                        # keep combined stack traces of
+                        #     exp(x):           nonconsts[0],
+                        #     1 + exp(x):       inv_arg,
+                        #     1 / (1 + exp(x)): node.outputs[0]
+                        copy_stack_trace(
+                            [nonconsts[0], inv_arg, node.outputs[0]], out)
                         return out
 
 # Registration is below, and conditional.
@@ -979,7 +983,7 @@ def local_1msigmoid(node):
                 return
             if numpy.allclose(numpy.sum(val_l), 1):
                 out = sigmoid(-sub_r.owner.inputs[0])
-                copy_stack_trace(node.outputs[0], out)
+                copy_stack_trace([sub_r, node.outputs[0]], out)
                 return [out]
 
 register_local_1msigmoid = False

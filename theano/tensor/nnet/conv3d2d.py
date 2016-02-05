@@ -329,9 +329,11 @@ def make_gpu_optimizer(op, to_gpu):
                 new_inp = list(node.inputs)
                 for idx in to_gpu:
                     new_inp[idx] = cuda.gpu_from_host(new_inp[idx])
-                new_node = cuda.host_from_gpu(op()(*new_inp))
-                copy_stack_trace(node.outputs[0], new_node)
-                return [new_node]
+                result_node = op()(*new_inp)
+                copy_stack_trace(node.outputs[0], result_node)
+                transfer_node = cuda.host_from_gpu(result_node)
+                copy_stack_trace(node.outputs[0], transfer_node)
+                return [transfer_node]
         if node.op == cuda.gpu_from_host:
             # gpu_from_host(op) -> op(gpu_from_host)
             host_input = node.inputs[0]
@@ -342,7 +344,7 @@ def make_gpu_optimizer(op, to_gpu):
                 for idx in to_gpu:
                     new_inp[idx] = cuda.gpu_from_host(new_inp[idx])
                 new_node = op()(*new_inp)
-                copy_stack_trace(node.outputs[0], new_node)
+                copy_stack_trace(host_input, new_node)
                 return [new_node]
         return False
     local_to_gpu.__name__ = "local_to_gpu_" + op.__name__
