@@ -46,7 +46,7 @@ class CudaNdarrayVariable(_operators, Variable):
 
     # override default
     def __repr_test_value__(self):
-        return repr(numpy.array(theano.gof.op.get_test_value(self)))
+        return repr(theano.gof.op.get_test_value(self))
 CudaNdarrayType.Variable = CudaNdarrayVariable
 
 
