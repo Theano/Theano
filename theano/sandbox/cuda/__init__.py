@@ -278,12 +278,12 @@ class GpuOp(theano.gof.Op):
     """
 
     def make_thunk(self, node, storage_map, compute_map, no_recycling):
-        if theano.sandbox.cuda.use.device_number is None:
-            theano.sandbox.cuda.use("gpu",
-                                    force=True,
-                                    default_to_move_computation_to_gpu=False,
-                                    move_shared_float32_to_gpu=False,
-                                    enable_cuda=False)
+        if use.device_number is None:
+            use("gpu",
+                force=True,
+                default_to_move_computation_to_gpu=False,
+                move_shared_float32_to_gpu=False,
+                enable_cuda=False)
         return super(GpuOp, self).make_thunk(node, storage_map,
                                              compute_map, no_recycling)
 
@@ -297,6 +297,146 @@ from theano.sandbox.cuda.var import (CudaNdarrayVariable,
                                      CudaNdarraySharedVariable,
                                      float32_shared_constructor)
 from theano.sandbox.cuda.type import CudaNdarrayType
+
+
+def dnn_available():
+    if config.dnn.enabled == "False":
+        dnn_available.avail = False
+        dnn_available.msg = "disabled by dnn.enabled flag"
+    if dnn_available.avail is None and not cuda_available:
+        dnn_available.msg = "CUDA not available"
+        dnn_available.avail = False
+    elif dnn_available.avail is None:
+        dev = active_device_number()
+        if device_properties(dev)['major'] < 3:
+            dnn_available.msg = "Device not supported by cuDNN"
+            dnn_available.avail = False
+        else:
+            preambule = """
+#include <stdio.h>
+#include <cuda.h>
+#include <cudnn.h>
+#include <cudnn_helper.h>
+            """
+
+            body = """
+cudnnHandle_t _handle = NULL;
+cudnnStatus_t err;
+if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
+  fprintf(stderr, "could not create cuDNN handle: %s",
+          cudnnGetErrorString(err));
+  return 1;
+}
+"""
+            params = ["-l", "cudnn", "-I" + os.path.dirname(__file__)]
+            if config.dnn.include_path:
+                params.append("-I" + config.dnn.include_path)
+            if config.dnn.library_path:
+                params.append("-L" + config.dnn.library_path)
+            if config.nvcc.compiler_bindir:
+                params.extend(['--compiler-bindir',
+                               config.nvcc.compiler_bindir])
+            # Do not run here the test program. It would run on the
+            # default gpu, not the one selected by the user. If mixed
+            # GPU are installed or if the GPUs are configured in
+            # exclusive mode, this cause bad detection.
+            comp, out, err = nvcc_compiler.NVCC_compiler.try_flags(
+                flag_list=params, preambule=preambule, body=body,
+                try_run=False, output=True)
+
+            dnn_available.avail = comp
+            if not dnn_available.avail:
+                dnn_available.msg = (
+                    "Theano can not compile with cuDNN. We got this error:\n" +
+                    str(err))
+            else:
+                # If we can compile, check that we can import and run.
+                v = dnn_version()
+                if isinstance(v, tuple) and v[0] != v[1]:
+                    dnn_available.avail = False
+                    dnn_available.msg = ("Mixed dnn version. The header is"
+                                         " from one version, but we link with"
+                                         " a different version %s" % str(v))
+                    raise RuntimeError(dnn_available.msg)
+                if v == -1 or v[0] < 3007:
+                    # 3007 is the final release of cudnn v3
+                    dnn_available.avail = False
+                    dnn_available.msg = (
+                        "You have an old release of CuDNN (or a release "
+                        "candidate) that isn't supported.  Please update to "
+                        "at least v3 final version.")
+                    raise RuntimeError(dnn_available.msg)
+    if config.dnn.enabled == "True":
+        if not dnn_available.avail:
+            raise RuntimeError(
+                "You enabled CuDNN, but we aren't able to use it: %s" %
+                dnn_available.msg)
+    return dnn_available.avail
+
+
+dnn_available.avail = None
+dnn_available.msg = None
+
+
+class DnnVersion(GpuOp):
+    def c_compiler(self):
+        return nvcc_compiler.NVCC_compiler
+
+    def c_headers(self):
+        return ['cudnn.h']
+
+    def c_libraries(self):
+        return ['cudnn']
+
+    def c_support_code(self):
+        return """
+#if PY_MAJOR_VERSION >= 3
+#define PyInt_FromLong PyLong_FromLong
+#endif
+"""
+
+    def make_node(self):
+        return theano.gof.Apply(self, [], [theano.gof.Generic()()])
+
+    def c_code(self, node, name, inputs, outputs, sub):
+        o = outputs[0]
+        return """
+        #if defined(CUDNN_VERSION)
+        %(o)s = PyTuple_Pack(2, PyInt_FromLong(CUDNN_VERSION), PyInt_FromLong(cudnnGetVersion()));
+        #else
+        %(o)s = PyInt_FromLong(-1);
+        #endif
+        """ % locals()
+
+    def do_constant_folding(self, node):
+        # Needed as we do not want to cache this information.
+        return False
+
+    def c_code_cache_version(self):
+        # Not needed, but make it clear that we do not want to cache this.
+        return None
+
+
+def dnn_version():
+    """Return the current cuDNN version we compile with.
+
+    This returns a tuple with the header version and the library
+    version we link with. For older cudnn version without version
+    information, we return -1.
+
+    """
+    if not dnn_available():
+        raise Exception(
+            "We can't determine the cudnn version as it is not available",
+            dnn_available.msg)
+
+    if dnn_version.v is None:
+        f = theano.function([], DnnVersion()(),
+                            theano.Mode(optimizer=None),
+                            profile=False)
+        dnn_version.v = f()
+    return dnn_version.v
+dnn_version.v = None
 
 
 if cuda_available:
@@ -452,8 +592,18 @@ def use(device,
 
             if config.print_active_device:
                 cnmem_enabled = "enabled" if config.lib.cnmem else "disabled"
-                print("Using gpu device %d: %s (CNMeM is %s)" % (
-                        active_device_number(), active_device_name(), cnmem_enabled), file=sys.stderr)
+                cudnn_version = "not available"
+                try:
+                    (hdr_v, runtime_v) = dnn_version()
+                    cudnn_version = "%i" % (runtime_v)
+                except Exception, e:
+                    pass
+                print("Using gpu device %d: %s (CNMeM is %s, CuDNN %s)" % (
+                    active_device_number(),
+                    active_device_name(),
+                    cnmem_enabled,
+                    cudnn_version,),
+                      file=sys.stderr)
             if device_properties(use.device_number)['regsPerBlock'] < 16384:
                 # We will try to use too much register per bloc at many places
                 # when there is only 8k register per multi-processor.
