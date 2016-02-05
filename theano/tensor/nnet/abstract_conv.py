@@ -222,7 +222,7 @@ def conv2d_grad_wrt_inputs(output_grad,
                                               subsample=subsample,
                                               filter_flip=filter_flip)
 
-    return grad_input_op(filters, input, output_grad_shape)
+    return grad_input_op(filters, output_grad, input_shape)
 
 
 def conv2d_grad_wrt_weights(input,
@@ -326,7 +326,7 @@ def conv2d_grad_wrt_weights(input,
                                                subsample=subsample,
                                                filter_flip=filter_flip)
 
-    return gradWeight_op(input, output_grad, input_shape)
+    return gradWeight_op(input, output_grad, filter_shape)
 
 
 class BaseAbstractConv2d(Op):
