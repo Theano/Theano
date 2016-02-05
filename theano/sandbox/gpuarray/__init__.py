@@ -64,7 +64,13 @@ def init_dev(dev, name=None):
     reg_context(name, context)
     pygpu_activated = True
     if config.print_active_device:
-        print("Mapped name %s to device %s: %s" % (name, dev, context.devname),
+        cudnn_version = "not available"
+        try:
+            cudnn_version = dnn.version()
+        except Exception:
+            pass
+        print("Mapped name %s to device %s: %s (CuDNN version %s)" % (
+            name, dev, context.devname, cudnn_version),
               file=sys.stderr)
 
 # This maps things like 'cuda0' to the context object on that device.
