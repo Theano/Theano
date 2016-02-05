@@ -645,6 +645,8 @@ import theano and print the config variable, as in:
     mode for compiled cuda code which makes div and sqrt faster at the
     cost of precision.  This also disables support for denormal
     numbers.
+    
+    Note: Error occurs when fastmath is used together with fast_compile (`square of negative number is NA <https://github.com/Theano/Theano/issues/3953>`_)
 
 .. attribute:: config.optimizer_excluding
 
