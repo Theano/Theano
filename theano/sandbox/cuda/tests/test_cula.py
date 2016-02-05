@@ -93,7 +93,7 @@ class TestGpuCholesky(unittest.TestCase):
         """ Invalid Cholesky input test with non-square matrix as input. """
         def invalid_input_func():
             A_val = numpy.random.normal(size=(3, 2)).astype("float32")
-            fn = self.get_gpu_cholesk_func(True)
+            fn = self.get_gpu_cholesky_func(True)
             fn(A_val)
         self.assertRaises(ValueError, invalid_input_func)
 
@@ -102,7 +102,7 @@ class TestGpuCholesky(unittest.TestCase):
         def invalid_input_func():
             M_val = numpy.random.normal(size=(3, 3)).astype("float32")
             A_val = -M_val.dot(M_val.T)
-            fn = self.get_gpu_cholesk_func(True)
+            fn = self.get_gpu_cholesky_func(True)
             fn(A_val)
         self.assertRaises(cula.cula.culaError, invalid_input_func)
 
@@ -123,7 +123,7 @@ class TestGpuCholesky(unittest.TestCase):
     def test_diag_chol(self):
         """ Diagonal matrix input with positive entries Cholesky test. """
         A_val = numpy.diag(numpy.random.uniform(size=5).astype("float32") + 1.)
-        self.run_gpu_cholesky(A_val)
+        self.run_gpu_cholesky(A_val, lower=True)
 
     def test_dense_chol_lower(self):
         """ Dense matrix input lower-triangular Cholesky test. """
