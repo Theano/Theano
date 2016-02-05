@@ -5,7 +5,6 @@ import theano
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
 from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
-from theano.misc.pycuda_utils import to_gpuarray, to_cudandarray
 
 try:
     from theano.sandbox.cuda import cuda_ndarray
@@ -192,6 +191,9 @@ class GpuCholesky(GpuOp):
         if not cula_initialized:
             cula.culaInitialize()
             cula_initialized = True
+
+        # import util functions here to avoid circular import errors
+        from theano.misc.pycuda_utils import to_gpuarray, to_cudandarray
 
         inputs = [storage_map[v] for v in node.inputs]
         outputs = [storage_map[v] for v in node.outputs]
