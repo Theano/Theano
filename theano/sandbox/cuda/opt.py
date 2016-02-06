@@ -38,6 +38,7 @@ from theano.sandbox.cuda.blas import (
 
 from theano.sandbox.cuda.blas import gpu_gemv_inplace
 from theano.sandbox.cuda.cula import GpuSolve
+from theano.sandbox.cuda.cublas import GpuTriangularSolve
 
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace
@@ -689,6 +690,9 @@ def local_gpu_solve(node):
 
     CpuSolve(host_from_gpu) -> host_from_gpu(GpuSolve)
 
+    If 'A_structure' property of Solve op is specified to be 'lower_triangular'
+    or 'upper_triangular' a specialized `GpuTriangularSolve` op is used instead
+    of the general dense `GpuSolve` op.
     """
     if isinstance(node.op, GpuFromHost):
         host_input = node.inputs[0]
@@ -697,7 +701,12 @@ def local_gpu_solve(node):
                        slinalg.Solve)):
             x, y = host_input.owner.inputs
             A_structure = host_input.owner.op.A_structure
-            gpu_solve = GpuSolve(A_structure=A_structure)
+            if A_structure == 'lower_triangular':
+                gpu_solve = GpuTriangularSolve(lower=True)
+            elif A_structure == 'upper_triangular':
+                gpu_solve = GpuTriangularSolve(lower=False)
+            else:
+                gpu_solve = GpuSolve(A_structure=A_structure)
             return [gpu_solve(as_cuda_ndarray_variable(x),
                               as_cuda_ndarray_variable(y))]
 
@@ -706,7 +715,12 @@ def local_gpu_solve(node):
                 for i in node.inputs]):
             x, y = node.inputs
             A_structure = node.op.A_structure
-            gpu_solve = GpuSolve(A_structure=A_structure)
+            if A_structure == 'lower_triangular':
+                gpu_solve = GpuTriangularSolve(lower=True)
+            elif A_structure == 'upper_triangular':
+                gpu_solve = GpuTriangularSolve(lower=False)
+            else:
+                gpu_solve = GpuSolve(A_structure=A_structure)
             return [host_from_gpu(
                     gpu_solve(as_cuda_ndarray_variable(x),
                               as_cuda_ndarray_variable(y)))]
