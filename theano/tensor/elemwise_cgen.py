@@ -280,7 +280,7 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub,
     for i, index in enumerate(init_loop_orders[olv_index]):
         if index != 'x':
             order_loops += """
-            loops_it->first = abs(PyArray_STRIDES(%(ovar)s)[%(index)i]);
+            loops_it->first = abs(PyArray_STRIDES(*outRef[olv_index])[%(index)i]);
             """ % locals()
         else:
             # Stride is 0 when dimension is broadcastable

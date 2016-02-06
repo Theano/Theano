@@ -1,4 +1,5 @@
 from __future__ import absolute_import, print_function, division
+import sys
 from copy import copy
 
 import numpy as np
@@ -17,6 +18,8 @@ from theano.gradient import DisconnectedType
 from theano.gof.null_type import NullType
 from theano.tensor import elemwise_cgen as cgen
 from theano.misc.frozendict import frozendict
+from theano.gof.type import Generic
+
 config = theano.config
 
 
@@ -405,6 +408,14 @@ pprint.assign(DimShuffle, DimShufflePrinter())
 #   Elemwise   #
 ################
 
+class ElemwiseParams(object):
+    def __init__(self, inplace_pattern):
+        self.inplace_pattern = inplace_pattern
+
+    def __hash__(self):
+        return hash(frozenset(self.inplace_pattern.items()))
+
+
 class Elemwise(OpenMPOp):
     """
     Generalizes a scalar op to tensors.
@@ -462,8 +473,11 @@ second dimension
             inplace_pattern = frozendict({})
         self.name = name
         self.scalar_op = scalar_op
+
         self.inplace_pattern = frozendict(inplace_pattern)
         self.destroy_map = dict((o, [i]) for o, i in self.inplace_pattern.items())
+
+        self.params = ElemwiseParams(self.inplace_pattern)
 
         self.ufunc = None
         self.nfunc = None
@@ -494,10 +508,17 @@ second dimension
                                        self.scalar_op.nin,
                                        self.scalar_op.nout)
 
+
+    def get_params(self, node):
+        return self.params
+
     def get_output_info(self, dim_shuffle, *inputs):
         """Return the outputs dtype and broadcastable pattern and the
-        dimshuffled niputs.
-
+        dimshuffled inputs.
+  
+        If the inputs have different number of dimensions, their shape
+        is left-completed to the greatest number of dimensions with 1s
+        using DimShuffle.
         """
         shadow = self.scalar_op.make_node(
             *[get_scalar_type(dtype=i.type.dtype).make_variable()
@@ -770,7 +791,7 @@ second dimension
 
         self.scalar_op.prepare_node(node.tag.fake_node, None, None, impl)
 
-    def perform(self, node, inputs, output_storage):
+    def perform(self, node, inputs, output_storage, params):
         if len(node.inputs) >= 32:
             # Some versions of NumPy will segfault, other will raise a
             # ValueError, if the number of inputs to a ufunc is 32 or more.
@@ -1009,7 +1030,58 @@ second dimension
                                      fortran=alloc_fortran)
             alloc += cgen.make_checks([list(range(nnested))], [odtype],
                                       dict(sub, lv0=oname))
-        olv_index = i  # index of the last output
+        # index of the last output
+        olv_index = i
+        alloc += """
+        int olv_index;
+        olv_index = %(i)i;
+        """ % locals()
+
+        # CHANGED HERE
+        olength = len(onames)
+        outArray = """
+        PyArrayObject **outRef[%(olength)s];
+        """ % locals()
+        for oname, i in izip(onames, range(len(onames))):
+            outArray += """
+            outRef[%(i)i]=&%(oname)s;
+            """ % locals()
+
+        ilength = len(inames)
+        inArray = """
+        PyArrayObject **inRef[%(ilength)s];
+        """ % locals()
+        for iname, i in izip(inames, range(len(inames))):
+            inArray += """
+            inRef[%(i)i]=&%(iname)s;
+            """ % locals()
+
+        alloc += outArray + inArray
+
+        alloc += """
+        int outDm[%(dml)s];
+        int inDm[%(dml)s];
+        PyObject *tmpOut, *tmpIn;
+        Py_ssize_t pos;
+        pos = 0;
+        PyObject* destroyMap;
+        destroyMap =PyObject_GetAttrString(%(p)s,"inplace_pattern");
+        """ % dict(dml=len(self.inplace_pattern.keys()), p=sub['params'])
+
+        for i in range(len(self.inplace_pattern.keys())):
+            alloc += """
+            PyDict_Next(destroyMap, &pos, &tmpOut, &tmpIn);
+            outDm[%(i)i] = PyInt_AsLong(tmpOut);
+            inDm[%(i)i] = PyInt_AsLong(tmpIn);
+            PyArrayObject **aliasedOutput;
+            aliasedOutput = outRef[outDm[%(i)i]];
+            if (*aliasedOutput) {
+                Py_XDECREF(*aliasedOutput);
+            }
+            *aliasedOutput = *inRef[inDm[%(i)i]];
+            Py_XINCREF(*aliasedOutput);
+            olv_index = %(i)i;
+            """ % locals()
 
         # We loop over the "aliased" outputs, i.e., those that are
         # inplace (overwrite the contents of one of the inputs) and
@@ -1021,13 +1093,6 @@ second dimension
             # We make the output point to the corresponding input and
             # decrease the reference of whatever the output contained
             # prior to this
-            alloc += """
-            if (%(oname)s) {
-                Py_XDECREF(%(oname)s);
-            }
-            %(oname)s = %(iname)s;
-            Py_XINCREF(%(oname)s);
-            """ % locals()
             # We alias the scalar variables
             defines += "#define %(oname)s_i %(iname)s_i\n" % locals()
             undefs += "#undef %(oname)s_i\n" % locals()
@@ -1202,7 +1267,7 @@ second dimension
         return support_code
 
     def c_code_cache_version_apply(self, node):
-        version = [12]  # the version corresponding to the c code in this Op
+        version = [13]  # the version corresponding to the c code in this Op
 
         # now we insert versions for the ops on which we depend...
         scalar_node = Apply(
