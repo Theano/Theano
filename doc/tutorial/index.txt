@@ -66,6 +66,7 @@ Further readings
 
 .. toctree::
 
+    ../extending/graphstructures 
     loading_and_saving
     gpu_data_convert
     aliasing
