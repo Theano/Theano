@@ -155,12 +155,14 @@ class GpuTriangularSolve(GpuOp):
                 A_ptr = A_.gpudata
                 b_ptr = b_.gpudata
 
-                alpha = 1.0  # unit scalar used for multiplicatio
-                side = 'l'  # indicates matrix A is on right of B
-                uplo = 'l' if lower else 'u'  # set whether upper or lower
-                                              # part of matrix A stored
-                diag = 'n'  # indicates elements on diagonal of matrix A may
-                            # not be unity
+                # unit scalar used for multiplication
+                alpha = 1.0
+                # indicates matrix A is on left of B
+                side = 'l'
+                # set whether upper or lower part of matrix A stored
+                uplo = 'l' if lower else 'u'
+                # indicates elements on diagonal of matrix A may not be unity
+                diag = 'n'
 
                 cublas.cublasStrsm(cublas_handle, side, uplo, trans, diag,
                                    n, m, alpha, A_ptr, lda, b_ptr, ldb)
