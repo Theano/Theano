@@ -805,7 +805,7 @@ def test_local_gpu_triangular_solve():
 
         A_structure = 'lower_triangular' if lower else 'upper_triangular'
         solve_op = tensor.slinalg.Solve(A_structure=A_structure, lower=lower)
-        f = pfunc([], solve_op((A, b), mode=mode_with_gpu))
+        f = pfunc([], solve_op(A, b), mode=mode_with_gpu)
 
         assert isinstance(f.maker.fgraph.toposort()[1].inputs[0].owner.op,
                           cuda.cublas.GpuTriangularSolve)
