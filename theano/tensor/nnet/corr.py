@@ -7,13 +7,13 @@ from theano import gof
 from theano.tensor import as_tensor_variable, TensorType
 from theano.tensor.nnet.abstract_conv import get_conv_output_shape
 from theano.tensor.blas_headers import blas_header_text
-from theano.tensor.blas import ldflags
+from theano.tensor.blas import ldflags, blas_header_version
 
 
 _logger = logging.getLogger(__name__)
 
 
-class BaseCorrMM(gof.Op):
+class BaseCorrMM(gof.OpenMPOp):
     """
     Base class for `CorrMM`, `CorrMM_gradWeights` and
     `CorrMM_gradInputs`. Cannot be used directly.
@@ -29,7 +29,8 @@ class BaseCorrMM(gof.Op):
     check_broadcast = False
     __props__ = ('border_mode', 'subsample')
 
-    def __init__(self, border_mode="valid", subsample=(1, 1)):
+    def __init__(self, border_mode="valid", subsample=(1, 1), openmp=None):
+        super(BaseCorrMM, self).__init__(openmp=openmp)
         if isinstance(border_mode, int):
             if border_mode < 0:
                 raise ValueError(
@@ -73,7 +74,11 @@ class BaseCorrMM(gof.Op):
         return ldflags()
 
     def c_compile_args(self):
-        return ldflags(libs=False, flags=True)
+        ret = ldflags(libs=False, flags=True)
+        # Add the -fopenmp flags
+        ret += super(BaseCorrMM, self).c_compile_args()
+
+        return ret
 
     def c_lib_dirs(self):
         return ldflags(libs=False, libs_dir=True)
@@ -82,11 +87,15 @@ class BaseCorrMM(gof.Op):
         return ldflags(libs=False, include_dir=True)
 
     def c_headers(self):
-        return ['<stdio.h>']
+        ret = ['<stdio.h>']
+        # OpenMP heads
+        ret += super(BaseCorrMM, self).c_headers()
+
+        return ret
 
     def c_code_cache_version(self):
         # raise this whenever modifying any of the support_code_files
-        return (1, 0)
+        return (2, self.openmp, blas_header_version())
 
     def c_support_code_apply(self, node, nodename):
         # REMEMBER TO RAISE c_code_cache_version when changing any of
@@ -354,8 +363,8 @@ class CorrMM(BaseCorrMM):
         Set to `(1, 1)` to disable subsampling.
 
     """
-    def __init__(self, border_mode="valid", subsample=(1, 1)):
-        super(CorrMM, self).__init__(border_mode, subsample)
+    def __init__(self, border_mode="valid", subsample=(1, 1), openmp=None):
+        super(CorrMM, self).__init__(border_mode, subsample, openmp=openmp)
 
     def make_node(self, img, kern):
         img = as_tensor_variable(img)
@@ -410,8 +419,8 @@ class CorrMM_gradWeights(BaseCorrMM):
 
     """
 
-    def __init__(self, border_mode="valid", subsample=(1, 1)):
-        super(CorrMM_gradWeights, self).__init__(border_mode, subsample)
+    def __init__(self, border_mode="valid", subsample=(1, 1), openmp=None):
+        super(CorrMM_gradWeights, self).__init__(border_mode, subsample, openmp=openmp)
 
     def make_node(self, img, topgrad, shape=None):
         img = as_tensor_variable(img)
@@ -507,8 +516,8 @@ class CorrMM_gradInputs(BaseCorrMM):
 
     """
 
-    def __init__(self, border_mode="valid", subsample=(1, 1)):
-        super(CorrMM_gradInputs, self).__init__(border_mode, subsample)
+    def __init__(self, border_mode="valid", subsample=(1, 1), openmp=None):
+        super(CorrMM_gradInputs, self).__init__(border_mode, subsample, openmp=openmp)
 
     def make_node(self, kern, topgrad, shape=None):
         kern = as_tensor_variable(kern)
