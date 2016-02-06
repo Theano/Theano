@@ -282,4 +282,4 @@ class GpuCholesky(GpuOp):
 
         return thunk
 
-gpu_cholesky = lambda A, lower=True: GpuCholesky(lower)(A)
+gpu_cholesky = GpuCholesky()
