@@ -1,5 +1,7 @@
-from __future__ import division
+from __future__ import absolute_import, print_function, division
+
 import numpy
+
 from theano.tensor.elemwise import Elemwise
 from theano import scalar
 
@@ -54,7 +56,7 @@ class XlogY0(scalar.BinaryScalarOp):
     def grad(self, inputs, grads):
         x, y = inputs
         gz, = grads
-        return [gz * scalar.log(y), gz * x/y]
+        return [gz * scalar.log(y), gz * x / y]
 
     def c_code(self, node, name, inputs, outputs, sub):
         x, y = inputs

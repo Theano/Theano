@@ -21,7 +21,7 @@ import numpy
 from six.moves import xrange
 
 import theano
-from theano.compat import PY3, imap, izip
+from theano.compat import imap, izip
 from theano import gof, printing
 from theano.gof import (Op, utils, Variable, Constant, Type, Apply,
                         FunctionGraph)
@@ -604,12 +604,11 @@ class _scalar_py_operators:
     def __mul__(self, other):
         return mul(self, other)
 
-    if PY3:
-        def __truediv__(self, other):
-            return div_proxy(self, other)
-    else:
-        def __div__(self, other):
-            return div_proxy(self, other)
+    def __truediv__(self, other):
+        return div_proxy(self, other)
+
+    def __div__(self, other):
+        return div_proxy(self, other)
 
     def __floordiv__(self, other):
         return int_div(self, other)

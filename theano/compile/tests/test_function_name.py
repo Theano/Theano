@@ -1,5 +1,6 @@
-import unittest
+from __future__ import absolute_import, print_function, division
 
+import unittest
 import os
 import re
 
@@ -12,5 +13,5 @@ class FunctionName(unittest.TestCase):
         x = tensor.vector('x')
         func = theano.function([x], x + 1.)
 
-        regex = re.compile(os.path.basename('.*test_function_name.pyc?:13'))
+        regex = re.compile(os.path.basename('.*test_function_name.pyc?:14'))
         assert(regex.match(func.name) is not None)
