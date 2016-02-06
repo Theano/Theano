@@ -4957,7 +4957,7 @@ class ARange(Op):
         inputs = [start, stop, step]
         outputs = [tensor(self.dtype, (False,))]
         return Apply(self, inputs, outputs)
-
+    
     def infer_shape(self, node, i_shapes):
         # Note start, stop and step can be float numbers.
         start, stop, step = node.inputs
