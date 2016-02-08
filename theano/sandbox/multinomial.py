@@ -192,6 +192,7 @@ class MultinomialFromUniform(Op):
                             z[0][n, m] += 1
                             break
 
+
 class WeightedSelectionFromUniform(Op):
     """
     Converts samples from a uniform into sample from a multinomial.
@@ -235,11 +236,11 @@ class WeightedSelectionFromUniform(Op):
         if n_samples > pvals.shape[1]:
             raise ValueError("Cannot sample without replacement n samples bigger "
                              "than the size of the distribution.")
-        
+
         if unis.shape[0] != pvals.shape[0] * n_samples:
             raise ValueError("unis.shape[0] != pvals.shape[0] * n_samples",
                              unis.shape[0], pvals.shape[0], n_samples)
-        
+
         if z[0] is None or not numpy.all(z[0].shape == [pvals.shape[0], n_samples]):
             z[0] = -1 * numpy.ones((pvals.shape[0], n_samples), dtype='int')
 
@@ -251,7 +252,7 @@ class WeightedSelectionFromUniform(Op):
         for c in range(n_samples):
             for n in range(nb_multi):
                 cummul = 0
-                unis_n = unis[c*nb_multi+n]
+                unis_n = unis[c * nb_multi + n]
                 for m in range(nb_outcomes):
                     cummul += pvals[n, m]
                     if (cummul > unis_n):
@@ -260,6 +261,7 @@ class WeightedSelectionFromUniform(Op):
                         pvals[n, m] = 0.
                         pvals[n] /= pvals[n].sum()
                         break
+
 
 class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
     """

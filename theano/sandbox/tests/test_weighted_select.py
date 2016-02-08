@@ -1,9 +1,9 @@
 import numpy
-import theano
 from theano import config, function, tensor
 from theano.sandbox import multinomial
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 import unittest
+
 
 class test_OP(unittest.TestCase):
 
@@ -22,7 +22,7 @@ class test_OP(unittest.TestCase):
         numpy.random.seed(12345)
         for i in [5, 10, 50, 100, 500, n_elements]:
             uni = numpy.random.rand(i).astype(config.floatX)
-            pvals = numpy.random.randint(1,100,(1,n_elements)).astype(config.floatX)
+            pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
             pvals /= pvals.sum(1)
             res = f(pvals, uni, i)
             res = numpy.squeeze(res)
@@ -45,7 +45,7 @@ class test_OP(unittest.TestCase):
         n_selected = 200
         numpy.random.seed(12345)
         uni = numpy.random.rand(n_selected).astype(config.floatX)
-        pvals = numpy.random.randint(1,100,(1,n_elements)).astype(config.floatX)
+        pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
         pvals /= pvals.sum(1)
         self.assertRaises(ValueError, f, pvals, uni, n_selected)
 
@@ -65,7 +65,7 @@ class test_OP(unittest.TestCase):
         n_selected = 10
         mean_rtol = 0.04
         numpy.random.seed(12345)
-        pvals = numpy.random.randint(1,100,(1,n_elements)).astype(config.floatX)
+        pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
         pvals /= pvals.sum(1)
         avg_pvals = numpy.zeros((n_elements,))
 
@@ -95,7 +95,7 @@ class test_function(unittest.TestCase):
         n_elements = 1000
         numpy.random.seed(12345)
         for i in [5, 10, 50, 100, 500, n_elements]:
-            pvals = numpy.random.randint(1,100,(1,n_elements)).astype(config.floatX)
+            pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
             pvals /= pvals.sum(1)
             res = f(pvals, i)
             res = numpy.squeeze(res)
@@ -118,7 +118,7 @@ class test_function(unittest.TestCase):
         n_elements = 100
         n_selected = 200
         numpy.random.seed(12345)
-        pvals = numpy.random.randint(1,100,(1,n_elements)).astype(config.floatX)
+        pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
         pvals /= pvals.sum(1)
         self.assertRaises(ValueError, f, pvals, n_selected)
 
@@ -139,7 +139,7 @@ class test_function(unittest.TestCase):
         n_selected = 10
         mean_rtol = 0.04
         numpy.random.seed(12345)
-        pvals = numpy.random.randint(1,100,(1,n_elements)).astype(config.floatX)
+        pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
         pvals /= pvals.sum(1)
         avg_pvals = numpy.zeros((n_elements,))
 
