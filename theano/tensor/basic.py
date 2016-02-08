@@ -4958,6 +4958,7 @@ class ARange(Op):
         outputs = [tensor(self.dtype, (False,))]
         return Apply(self, inputs, outputs)
 
+    @theano.configparser.change_flags(warn_float64='ignore')
     def infer_shape(self, node, i_shapes):
         # Note start, stop and step can be float numbers.
         start, stop, step = node.inputs
