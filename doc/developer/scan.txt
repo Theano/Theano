@@ -218,6 +218,16 @@ many times on many smaller tensors. However, this optimization can lead to
 increased memory usage.  
 
 
+PushOutScanOutput
+-----------------
+
+This optimizations attempts to push out some of the computation at the end
+of the inner function to the outer function, to be executed after the Scan
+node. Like PushOutSeqScan, this optimization aims to replace many operations
+on small tensors by few operations on large tensors. It can also lead to
+increased memory usage.
+
+
 
 
 
