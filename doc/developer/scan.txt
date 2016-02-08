@@ -241,10 +241,28 @@ ScanInplaceOptimizer
 
 This optimization attempts to make Scan compute its recurrent outputs inplace
 on the input tensors that contain their initial states. This optimization can
-improve runtime performance as well as reduce memory usage. 
+improve runtime performance as well as reduce memory usage.
 
 
+ScanSaveMem
+-----------
 
+This optimizations attempts to determine if a Scan node, during its execution,
+for any of its outputs, can get away with allocating a memory buffer that is
+large enough to contain some of the computed timesteps of that output but not
+all of them.
+
+By default, during the execution of a Scan node, memory buffers will be
+allocated to store the values computed for every output at every iteration.
+However, in some cases, there are outputs for which there is only really a
+need to store the most recent N values, not all of them.
+
+For instance, if a Scan node has a sitsot output (last computed value is
+fed back as an input at the next iteration) and only the last timestep of
+that output is ever used in the outer function, the ScanSaveMem optimization
+could determine that there is no need to store all computed timesteps for
+that sitsot output. Only the most recently computed timestep ever needs to
+be kept in memory.
 
 
 ScanMerge
