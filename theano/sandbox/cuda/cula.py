@@ -209,8 +209,11 @@ class GpuCholesky(GpuOp):
             # CULA Cholesky function is destructive as it assigns calculated
             # decomposition to lower / upper triangle of input array therefore
             # force copy of array with allocation of a new C-contiguous buffer.
-            # CULA operation assumes Fortran ordering however input matrix must
-            # be symmetric therefore no need to alter order.
+            # CULA operation assumes Fortran ordering however valid input
+            # matrices must be symmetric therefore no need to alter order. If
+            # a non-symmetric matrix is passed, it will be non-symmetric
+            # whether C or Fortan ordering is assumed and will cause a
+            # CulaError to be raised when the decomposition fails.
             A_cpy = A.copy()
 
             def cula_gpu_cholesky(A_, lower=True):
