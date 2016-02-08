@@ -228,6 +228,22 @@ on small tensors by few operations on large tensors. It can also lead to
 increased memory usage.
 
 
+PushOutDot1
+-----------
+
+This is another optimization that attempts to detect certain patterns of
+computation in a Scan op's inner function and move this computation to the
+outer graph.
+
+
+ScanInplaceOptimizer
+--------------------
+
+This optimization attempts to make Scan compute its recurrent outputs inplace
+on the input tensors that contain their initial states. This optimization can
+improve runtime performance as well as reduce memory usage. 
+
+
 
 
 
