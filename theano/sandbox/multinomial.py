@@ -12,6 +12,7 @@ if cuda_available:
     from theano.sandbox.cuda import CudaNdarrayType
     from theano.sandbox.cuda.basic_ops import host_from_gpu, gpu_from_host
     from theano.sandbox.cuda.opt import register_opt
+import sys
 
 
 class MultinomialFromUniform(Op):
@@ -218,7 +219,10 @@ class WeightedSelectionFromUniform(Op):
         if unis.ndim != 1:
             raise NotImplementedError('unis ndim should be 1', unis.ndim)
         if self.odtype == 'auto':
-            odtype = pvals.dtype
+            if sys.maxsize > 2**32:
+                odtype = 'int64'
+            else:
+                odtype = 'int32'
         else:
             odtype = self.odtype
         out = T.tensor(dtype=odtype, broadcastable=pvals.type.broadcastable)
@@ -241,8 +245,12 @@ class WeightedSelectionFromUniform(Op):
             raise ValueError("unis.shape[0] != pvals.shape[0] * n_samples",
                              unis.shape[0], pvals.shape[0], n_samples)
 
+        if sys.maxsize > 2**32:
+            odtype = 'int64'
+        else:
+            odtype = 'int32'
         if z[0] is None or not numpy.all(z[0].shape == [pvals.shape[0], n_samples]):
-            z[0] = -1 * numpy.ones((pvals.shape[0], n_samples), dtype='int')
+            z[0] = -1 * numpy.ones((pvals.shape[0], n_samples), dtype=odtype)
 
         nb_multi = pvals.shape[0]
         nb_outcomes = pvals.shape[1]

@@ -19,6 +19,7 @@ class test_OP(unittest.TestCase):
         f = function([p, u, n], m, allow_input_downcast=True)
 
         n_elements = 1000
+        all_indices = range(n_elements)
         numpy.random.seed(12345)
         for i in [5, 10, 50, 100, 500, n_elements]:
             uni = numpy.random.rand(i).astype(config.floatX)
@@ -27,7 +28,7 @@ class test_OP(unittest.TestCase):
             res = f(pvals, uni, i)
             res = numpy.squeeze(res)
             assert len(res) == i
-            assert numpy.all(numpy.in1d(numpy.unique(res), res)), res
+            assert numpy.all(numpy.in1d(numpy.unique(res), all_indices)), res
 
     def test_fail_select_alot(self):
         """
@@ -63,13 +64,13 @@ class test_OP(unittest.TestCase):
 
         n_elements = 100
         n_selected = 10
-        mean_rtol = 0.04
+        mean_rtol = 0.0005
         numpy.random.seed(12345)
         pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
         pvals /= pvals.sum(1)
         avg_pvals = numpy.zeros((n_elements,))
 
-        for rep in range(1000):
+        for rep in range(10000):
             uni = numpy.random.rand(n_selected).astype(config.floatX)
             res = f(pvals, uni, n_selected)
             res = numpy.squeeze(res)
@@ -93,6 +94,7 @@ class test_function(unittest.TestCase):
         f = function([p, n], m, allow_input_downcast=True)
 
         n_elements = 1000
+        all_indices = range(n_elements)
         numpy.random.seed(12345)
         for i in [5, 10, 50, 100, 500, n_elements]:
             pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
@@ -100,7 +102,7 @@ class test_function(unittest.TestCase):
             res = f(pvals, i)
             res = numpy.squeeze(res)
             assert len(res) == i
-            assert numpy.all(numpy.in1d(numpy.unique(res), res)), res
+            assert numpy.all(numpy.in1d(numpy.unique(res), all_indices)), res
 
     def test_fail_select_alot(self):
         """
@@ -137,13 +139,13 @@ class test_function(unittest.TestCase):
 
         n_elements = 100
         n_selected = 10
-        mean_rtol = 0.04
+        mean_rtol = 0.0005
         numpy.random.seed(12345)
         pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
         pvals /= pvals.sum(1)
         avg_pvals = numpy.zeros((n_elements,))
 
-        for rep in range(1000):
+        for rep in range(10000):
             res = f(pvals, n_selected)
             res = numpy.squeeze(res)
             avg_pvals[res] += 1
