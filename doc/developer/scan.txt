@@ -192,3 +192,25 @@ Optimizations
 Helper classes and functions
 ============================
 
+Because of the complexity involved in dealing with Scan, a large number of
+helper classes and functions have been developped over time to implement
+operations commonly needed when dealing with the Scan op. The Scan op
+itself defines a large number of them and others can be found in the file
+`scan_utils.py`. This sections aims to point out the most useful ones and
+organize them according to their uses.
+
+
+Accessing/manipulating Scan's inputs and outputs by type
+--------------------------------------------------------
+
+Declared in `scan_utils.py`, the class `scan_args` handles the parsing
+of the inputs and outputs (both inner and outer) to a format that is easier to
+analyse and manipulate. Without this class, analysing scan's inputs and
+outputs often required convoluted logic which make for code that is hard to
+read and to maintain. Because of this, you should favor using `scan_args` when
+it is practical and appropriate to do so.
+
+The Scan op also defines a few helper functions for this purpose, such as
+`inner_nitsot_outs()` or `mitmot_out_taps()`, but they are often poorly
+documented and easy to misuse. These should be used with great care.
+
