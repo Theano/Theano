@@ -66,8 +66,21 @@ files, and section of the code they deal with, are :
 Notation
 ========
 
+Scan being a sizeable and complex module, it has its own naming convention for
+functions and variables which this section will attempt to introduce.
 
+Recall that a Scan op contains a Theano function representing the computation
+that is done in a single iteration of the loop represented by the Scan op (in
+other words, the computation given by the function provided as value to
+theano.scan's ''fn'' argument ). Whenever we discuss a scan op, "outer function"
+refers to the Theano function that *contains* the Scan op whereas the "inner
+function" refers to the Theano function that is *contained* in the Scan op.
 
+In the same spirit, the inputs to the Apply node wrapping the Scan op (or "Scan
+node" for short) and its outputs are referred to as "outer inputs" and "outer
+outputs", respectively, because these inputs and outputs are variables in the
+outer function graph. The inputs and outputs of scan's inner function are
+designated "inner inputs" and "inner outputs".
 
 Scan Op
 =======
