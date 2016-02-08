@@ -46,8 +46,9 @@ def max_pool_2d_same_size(input, patch_size):
 
 
 def pool_2d(input, ds, ignore_border=None, st=None, padding=(0, 0),
-                mode='max'):
-    """
+            mode='max'):
+    """Downscale the input by a specified factor
+
     Takes as input a N-D tensor, where N >= 2. It downscales the input image by
     the specified factor, by keeping only the maximum value of non-overlapping
     patches of size (ds[0],ds[1])
@@ -888,7 +889,7 @@ class AveragePoolGrad(PoolGrad):
         ggx, = grads
         return [theano.tensor.zeros_like(x),
                 Pool(self.ds, ignore_border=self.ignore_border,
-                      st=self.st, padding=self.padding, mode=self.mode)(ggx)]
+                     st=self.st, padding=self.padding, mode=self.mode)(ggx)]
 
 
 class DownsampleFactorMaxGradGrad(Op):

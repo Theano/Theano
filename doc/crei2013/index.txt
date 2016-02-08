@@ -69,4 +69,4 @@ from gurus on hand if you get stuck.
     theano
     advanced_theano
     gpundarray
-    /tutorial/extending_theano
+    /extending/extending_theano

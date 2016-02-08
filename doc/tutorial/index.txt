@@ -22,30 +22,54 @@ Throughout the tutorial, bear in mind that there is a :ref:`glossary` as well
 as *index* and *modules* links in the upper-right corner of each page to help
 you out.
 
+Prerequisites
+-------------
 .. toctree::
 
     python
     numpy
+
+Basics
+------
+
+.. toctree::
+
     adding
     examples
-    symbolic_graphs
-    printing_drawing
     gradients
-    modes
-    loading_and_saving
     conditions
     loop
+    shape_info
+
+Advanced
+--------
+
+.. toctree::
+
     sparse
     using_gpu
     using_multi_gpu
-    gpu_data_convert
-    aliasing
-    shape_info
+
+Advanced configuration and debugging
+------------------------------------
+
+.. toctree::
+
+    modes
+    printing_drawing
     debug_faq
     nan_tutorial
     profiling
-    extending_theano
-    extending_theano_c
+
+Further readings
+----------------
+
+.. toctree::
+
+    ../extending/graphstructures 
+    loading_and_saving
+    gpu_data_convert
+    aliasing
     python-memory-management
     multi_cores
     faq_tutorial

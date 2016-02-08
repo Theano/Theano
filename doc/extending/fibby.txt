@@ -3,19 +3,6 @@
 Writing an Op to work on an ``ndarray`` in C
 =============================================
 
-So suppose you have looked through the library documentation and you don't see a
-function that does what you want.
-
-If you can implement something in terms of existing Ops, you should do that.
-Odds are your function that uses existing Theano expressions is short,
-has no bugs, and potentially profits from optimizations that have already been
-implemented.
-
-However, if you cannot implement an Op in terms of existing Ops, you have to
-write a new one.
-Don't worry,
-Theano was designed to make it easy to add new Ops, Types, and Optimizations.
-
 This section walks through a non-trivial example Op that does something pretty
 weird and unrealistic, that is hard to express with existing Ops.
 (Technically, we could use ``Scan`` to implement the Op we're about to describe,
@@ -73,73 +60,12 @@ you should check the strides and alignment.
 
    fibby = Fibby()
 
-At a high level, the code fragment declares a class (``Fibby``) and then
-creates one instance of it (``fibby``).
-We often gloss over this distinction, but will be precise here:
-``fibby`` (the instance) is an Op, not ``Fibby`` (the class which is a subclass of ``theano.Op``).
-You can call ``fibby(tensor.vector())`` on a Variable to build an
-expression, and in the expression there will be a ``.op`` attribute that refers
-to ``fibby``.
-
-The first two methods in the Op are relatively boilerplate: ``__eq__`` and ``__hash__``.
-When two Ops are equal, Theano will merge their outputs if they are applied to the same inputs.
-The base class (Op) says two objects are equal if (and only if)
-they are the same object.
-Writing these boilerplate definitions ensures that the logic of the equality comparison is always explicit.
-
-It is an essential part of the :ref:`op_contract` that if two Ops compare
-equal, then they must compute the same result when presented with the same
-inputs.  Here, if we allocated another instance of ``Fibby`` by typing ``fibby2
-= Fibby()`` then we would have two Ops that behave identically.
-
-When should the implementation of ``__eq__`` be more complicated?
-If ``Fibby.__init__`` had parameters, then we could
-have configured ``fibby2`` differently from ``fibby`` by passing different
-arguments to the constructor. If we had done that, and if that different
-configuration made ``fibby2`` compute different results from ``fibby`` (for the
-same inputs) then we would have to add logic to the ``__eq__`` and ``__hash__``
-function so that he two ``Fibby`` Ops would *not be equal*.  The reason why: Theano's merge
-optimization looks for Ops comparing equal and merges them. If two Ops compare
-equal but don't always produce equal results from equal inputs, then you might
-see wrong calculation.
-
-
-The ``make_node`` method creates a node to be included in the expression graph.
-It runs when we apply our Op (``fibby``) to Variable (``x``), as in ``fibby(tensor.vector())``.
-When an Op has multiple inputs, their order in the inputs argument to ``Apply``
-is important:  Theano will call ``make_node(*inputs)`` to copy the graph,
-so it is important not to change the semantics of the expression by changing the argument order.
-
-
-
-All the ``inputs`` and ``outputs`` arguments to ``Apply`` must be Variables.
-A common and easy way to ensure inputs are variables is to run them through
-``as_tensor_variable``.
-This function leaves TensorType variables alone, raises an
-error for non-TensorType variables, and copies any ``numpy.ndarray`` into the
-storage for a TensorType Constant.
-The ``make_node`` method dictates the appropriate Type for all output
-variables.
-
-The ``perform`` method implements the Op's mathematical logic in Python.
-The inputs (here ``x``) are passed by value,
-but a single output is returned indirectly as the first element of
-single-element lists.  If ``fibby`` had a second output, it would be stored
-in ``output_storage[1][0]``.
-.. jpt: DOn't understand the following
-In some execution modes, the output storage might
-contain the return value of a previous call.  That old value can be reused to avoid
-memory re-allocation, but it must not influence the semantics of the Op output.
-
-The ``c_code`` method accepts variable names as arguments (``name``, ``inames``,
-``onames``) and returns a C code fragment that computes the expression output.
-In case of error, the ``%(fail)s`` statement cleans up and returns properly.
-The variables ``%(x)s`` and ``%(y)s`` are set up by the TensorType to be ``PyArrayObject`` pointers.
-TensorType also set up ``dtype_%(x)s`` to be a typdef to the C type for ``x``.
 
 In the first two lines of the C function, we make y point to a new array with
 the correct size for the output. This is essentially simulating the line
 ``y = x.copy()``.
+The variables ``%(x)s`` and ``%(y)s`` are set up by the TensorType to be ``PyArrayObject`` pointers.
+TensorType also set up ``dtype_%(x)s`` to be a typdef to the C type for ``x``.
 
 
 .. code-block:: c
@@ -156,34 +82,6 @@ structs. This is part of the numpy/scipy C API documented at
 http://docs.scipy.org/doc/numpy/reference/c-api.types-and-structures.html
 
 TODO: NEEDS MORE EXPLANATION.
-
-There are some important restrictions to remember when implementing an Op.
-Unless your Op correctly defines a ``view_map`` attribute, the ``perform`` and ``c_code`` must not
-produce outputs whose memory is aliased to any input (technically, if changing the
-output could change the input object in some sense, they are aliased).
-Unless your Op correctly defines a ``destroy_map`` attribute, ``perform`` and ``c_code`` must
-not modify any of the inputs.
-
-TODO: EXPLAIN DESTROYMAP and VIEWMAP BETTER AND GIVE EXAMPLE.
-
-When developing an Op, you should run computations in DebugMode, by using
-argument ``mode='DebugMode'`` to ``theano.function``. DebugMode is
-slow, but it can catch many common violations of the Op contract.
-
-TODO: Like what? How? Talk about Python vs. C too.
-
-DebugMode is no silver bullet though.
-For example, if you modify an Op ``self.*`` during any of
-``make_node``, ``perform``, or ``c_code``, you are probably doing something
-wrong but DebugMode will not detect this.
-
-TODO: jpt: I don't understand the following sentence.
-
-Ops and Types should usually be considered immutable -- you should
-definitely not make a change that would have an impact on ``__eq__``,
-``__hash__``, or the mathematical value that would be computed by  ``perform``
-or ``c_code``.
-
 
 .. _op_contract_fibby:
 
