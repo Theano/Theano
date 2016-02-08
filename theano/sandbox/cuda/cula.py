@@ -167,14 +167,10 @@ class GpuCholesky(GpuOp):
         self.lower = lower
         super(GpuCholesky, self).__init__()
 
-    def output_type(self, inp):
-        return CudaNdarrayType(broadcastable=[False] * inp.type.ndim)
-
     def make_node(self, inp):
         inp = as_cuda_ndarray_variable(inp)
-
         assert inp.ndim == 2
-        return theano.Apply(self, [inp], [self.output_type(inp)()])
+        return theano.Apply(self, [inp], [inp.type()])
 
     def make_thunk(self,
                    node,
