@@ -77,7 +77,7 @@ class TestGpuCholesky(unittest.TestCase):
     def get_gpu_cholesky_func(self, lower):
         """ Helper function to compile function from GPU Cholesky op. """
         A = theano.tensor.matrix("A", dtype="float32")
-        chol_A = cula.gpu_cholesky(A, lower)
+        chol_A = cula.GpuCholesky(lower)(A)
         return theano.function([A], chol_A)
 
     def compare_gpu_cholesky_to_numpy(self, A_val, lower):
@@ -124,14 +124,14 @@ class TestGpuCholesky(unittest.TestCase):
         """ Invalid Cholesky input test with vector as input. """
         def invalid_input_func():
             A = theano.tensor.vector("A", dtype="float32")
-            cula.gpu_cholesky(A, True)
+            cula.gpu_cholesky(A)
         self.assertRaises(AssertionError, invalid_input_func)
 
     def test_invalid_input_fail_tensor3(self):
         """ Invalid Cholesky input test with vector as input. """
         def invalid_input_func():
             A = theano.tensor.tensor3("A", dtype="float32")
-            cula.gpu_cholesky(A, True)
+            cula.gpu_cholesky(A)
         self.assertRaises(AssertionError, invalid_input_func)
 
     def test_diag_chol(self):
