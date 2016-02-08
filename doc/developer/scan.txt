@@ -6,7 +6,25 @@ Developper documentation for Scan
 Context
 =======
 
+This document is meant to act as reference material for developers working
+on Theano's loop mechanism. This mechanism is called Scan and its internals
+are highly complex, hence the need for a centralized repository of knoledge
+regarding its inner workings.
 
+The `theano.scan()` function is the public-facing interface for looping in
+Theano. Under the hood, this function will perform some processing on its
+inputs and instantiate the `Scan` Op class which implements the looping
+mechanism. It achieves this by compiling it's own Theano function representing
+the computation to be done at every iteration of the loop and calling it as
+many times as necessary.
+
+The correspondence between the parameters and behaviors of the function and the
+op is not always simple since the former is meant for usability and the second
+for performance. Since this document is intended to be used by developers
+working inside scan itself, it will mostly discuss things from the point of view
+of the `Scan` Op class. Nonetheless, it will attempt to link those elements to
+their corresponding concepts in the scan function as often as is reasonnably
+practical.
 
 
 Pre-requisites
