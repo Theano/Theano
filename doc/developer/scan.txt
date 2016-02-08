@@ -82,10 +82,105 @@ outputs", respectively, because these inputs and outputs are variables in the
 outer function graph. The inputs and outputs of scan's inner function are
 designated "inner inputs" and "inner outputs".
 
-Scan Op
-=======
+
+Scan variables
+==============
+
+The following are the different types of variables that Scan has the capacity to
+handle, along with their various caracteristics.
+
+**Sequence** : A sequence is a Theano variable which Scan will iterate over and
+give sub-elements to its inner function. For a sequence variable `X`, at
+timestep `t`, the inner function will receive as input the sequence element
+`X[t]`. These variables are used through the argument `sequences` of the
+`theano.scan()` function.
+
+**Non-sequences** : A sequence is a Theano variable which Scan will provide
+`as-is` to its inner function. For a non-sequence variable X, at timestep `t`,
+the inner function will receive as input the variable X. These variables are
+used through the argument `non_sequences` of the `theano.scan()` function.
+
+**Nitsot (no input tap, single output tap)** : A nitsot is an output variable of
+the inner function that is not fed back as an input to the next iteration of the
+inner function. Nitsots are typically encountered in situations where Scan is
+used to perform a 'map' operation (every element in a tensor is independently
+altered using a given operation to produce a new tensor) such as squaring every
+number in a vector.
+
+**Sitsot (single input tap, single output tap)** : A sitsot is an output
+variable of the inner function that is fed back as an input to the next
+iteration of the inner function. A typical setting where a sistot might be
+encountered is the case where scan is used  Sitsots are typically encountered in
+situations where Scan is used to sum the elements of a vector and a sitsot
+output is employed to act as an accumulator.
+
+**Mitsot (multiple input taps, single output tap)** : A sitsot is an output
+variable of the inner function that is fed back as an input to future iterations
+of the inner function (either multiple future iterations or a single one that
+isn't the immediate next one).
+
+**Mitmot (multiple input taps, multiple output taps)** : These outputs exist but
+not 'in the wild'. They can appear in a theano graph as a result of taking the
+gradient of the output of a Scan : taking the gradient of the output of a Scan
+wrt its inputs will result in the creation of a new Scan node used to compute
+the gradients of the first Scan node. This new Scan might use mitmot outputs.
 
 
+To synthesise :
+
+.. list_table:: Scan variables
+    :widths: 30 30 30
+    :header-rows: 1
+
+    *   - Type of scan variables
+        - Corresponding outer input
+        - Corresponding inner input at timestep `t` (indexed from 0)
+        - Corresponding inner output at timestep `t` (indexed from 0)
+        - Corresponding outer output `t`
+        - Corresponding argument of the `theano.scan()` function
+
+    *   - Sequence
+        - Sequence of elements X
+        - Individual sequence element X[t]
+        - *No corresponding inner output*
+        - *No corresponding outer output*
+        - `sequences`
+
+    *   - Non-Sequence
+        - Any variable X
+        - Variable identical to X
+        - *No corresponding inner output*
+        - *No corresponding outer output*
+        - `non_sequences`
+
+    *   - Non-recurring output (nitsot)
+        - *No corresponding outer input*
+        - *No corresponding inner input*
+        - Output value at timestep `t`
+        - Concatenation of the values of the output at all timestep
+        - `outputs_info`
+
+    *   - Singly-recurrent output (sitsot)
+        - Initial value (value at timestep `-1`)
+        - Output value at previous timestep (`t-1`)
+        - Output value at timestep `t`
+        - Concatenation of the values of the output at all timestep
+        - `outputs_info`
+
+    *   - Multiply-recurrent output (mitsot)
+        - Initial values for the required timesteps where `t<0`
+        - Output value at previous required timesteps
+        - Output value at timestep `t`
+        - Concatenation of the values of the output at all timestep
+        - `outputs_info`
+
+    *   - Multiply-recurrent multiple outputs (mitmot)
+        - Initial values for the required timesteps where `t<0`
+        - Output value at previous required timesteps
+        - Output values for current and multiple future timesteps
+        - Concatenation of the values of the output at all timestep
+        - No corresponding argument. Mitmots cannot be created through
+          `theano.scan()`
 
 
 Optimizations
