@@ -30,7 +30,13 @@ practical.
 Pre-requisites
 ==============
 
+The following sections assumes the reader is familiar with the following :
 
+1. Theano's graph structure (Apply nodes, Variable nodes and Ops)
+    http://deeplearning.net/software/theano/tutorial/extending_theano.html#theano-graphs
+
+2. The interface and usage of Theano's `scan()` function
+    http://deeplearning.net/software/theano/library/scan.html
 
 
 Relevant code files
