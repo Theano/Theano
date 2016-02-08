@@ -289,6 +289,7 @@ class MultinomialWOReplacementFromUniform(MultinomialFromUniform):
             {
                 double cummul = 0.;
                 const dtype_%(unis)s* unis_n = (dtype_%(unis)s*)PyArray_GETPTR1(%(unis)s, c*nb_multi + n);
+                dtype_%(z)s* z_nc = (dtype_%(z)s*)PyArray_GETPTR2(%(z)s, n, c);
                 for (int m = 0; m < nb_outcomes; ++m)
                 {
                     dtype_%(z)s* z_nc = (dtype_%(z)s*)PyArray_GETPTR2(%(z)s, n, c);
@@ -306,7 +307,6 @@ class MultinomialWOReplacementFromUniform(MultinomialFromUniform):
                             sum = sum + *pvals_n;
                             pvals_n++;
                         }
-                        
                         pvals_n = (dtype_%(pvals)s*)PyArray_GETPTR2(%(pvals)s, n, 0);
                         for (int k = 0; k < nb_outcomes; ++k)
                         {
