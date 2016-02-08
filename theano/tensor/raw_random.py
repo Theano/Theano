@@ -520,6 +520,11 @@ def binomial(random_state, size=None, n=1, p=0.5, ndim=None,
     n = tensor.as_tensor_variable(n)
     p = tensor.as_tensor_variable(p)
     ndim, size, bcast = _infer_ndim_bcast(ndim, size, n, p)
+    if n.dtype == 'int64':
+        try:
+            numpy.random.binomial(n=numpy.asarray([2,3,4], dtype='int64'), p=numpy.asarray([.1, .2, .3], dtype='float64'))
+        except TypeError:
+            n = tensor.cast(n, 'int32')
     # THIS WORKS AROUND A NUMPY BUG on 32bit machine
     n = tensor.cast(n, 'int64')
     op = RandomFunction('binomial',
