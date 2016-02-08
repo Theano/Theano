@@ -195,6 +195,7 @@ them, instead injecting the constants directly into the graph or the Scan
 Op's inner function. This will allow constant folding to happen inside the
 inner function.
 
+
 PushOutNonSeqScan
 -----------------
 
@@ -206,6 +207,26 @@ reduces the amount of computation that needs to be performed.
 
 
 
+
+
+ScanMerge
+---------
+
+This optimization attempts to fuse distinct Scan ops into a single Scan op
+that performs all the computation. The main advantage of merging Scan ops
+together comes from the possibility of both original ops having some
+computation in common. In such a setting, this computation ends up being done
+twice. The fused Scan op, however, would only need to do it once and could
+therefore be more computationaly efficient.
+
+
+scan_merge_inouts
+-----------------
+
+This optimization attempts to merge a Scan op's identical outer inputs as well
+as merge its identical outer outputs (outputs that perform the same
+computation on the same inputs). This can reduce the amount of computation as
+well as result in a simpler graph for the inner function.
 
 
 Helper classes and functions
