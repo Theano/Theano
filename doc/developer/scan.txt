@@ -48,7 +48,7 @@ files, and section of the code they deal with, are :
 * ``scan.py`` implements the ``scan`` function. The ``scan`` function
   arranges the arguments of scan correctly, constructs the scan op and
   afterwards calls the constructed scan op on the arguments. This function
-  takes care of figuring out missing inputs and shared variables. 
+  takes care of figuring out missing inputs and shared variables.
 
 * ``scan_op.py`` implements the ``Scan`` Op class. The ``Scan`` respects
   the ``Op`` interface, and contains most of the logic of the scan operator.
@@ -128,59 +128,16 @@ the gradients of the first Scan node. This new Scan might use mitmot outputs.
 
 To synthesise :
 
-.. list_table:: Scan variables
-    :widths: 30 30 30
-    :header-rows: 1
-
-    *   - Type of scan variables
-        - Corresponding outer input
-        - Corresponding inner input at timestep `t` (indexed from 0)
-        - Corresponding inner output at timestep `t` (indexed from 0)
-        - Corresponding outer output `t`
-        - Corresponding argument of the `theano.scan()` function
-
-    *   - Sequence
-        - Sequence of elements X
-        - Individual sequence element X[t]
-        - *No corresponding inner output*
-        - *No corresponding outer output*
-        - `sequences`
-
-    *   - Non-Sequence
-        - Any variable X
-        - Variable identical to X
-        - *No corresponding inner output*
-        - *No corresponding outer output*
-        - `non_sequences`
-
-    *   - Non-recurring output (nitsot)
-        - *No corresponding outer input*
-        - *No corresponding inner input*
-        - Output value at timestep `t`
-        - Concatenation of the values of the output at all timestep
-        - `outputs_info`
-
-    *   - Singly-recurrent output (sitsot)
-        - Initial value (value at timestep `-1`)
-        - Output value at previous timestep (`t-1`)
-        - Output value at timestep `t`
-        - Concatenation of the values of the output at all timestep
-        - `outputs_info`
-
-    *   - Multiply-recurrent output (mitsot)
-        - Initial values for the required timesteps where `t<0`
-        - Output value at previous required timesteps
-        - Output value at timestep `t`
-        - Concatenation of the values of the output at all timestep
-        - `outputs_info`
-
-    *   - Multiply-recurrent multiple outputs (mitmot)
-        - Initial values for the required timesteps where `t<0`
-        - Output value at previous required timesteps
-        - Output values for current and multiple future timesteps
-        - Concatenation of the values of the output at all timestep
-        - No corresponding argument. Mitmots cannot be created through
-          `theano.scan()`
+===========================================================  =====================================================  ==========================================================  ===========================================================  =========================================================  ======================================================
+Type of scan variables                                       Corresponding outer input                              Corresponding inner input at timestep `t` (indexed from 0)  Corresponding inner output at timestep `t` (indexed from 0)  Corresponding outer output `t`                             Corresponding argument of the `theano.scan()` function
+===========================================================  =====================================================  ==========================================================  ===========================================================  =========================================================  ======================================================
+Sequence                                                     Sequence of elements X                                 Individual sequence element X[t]                            *No corresponding inner output*                              *No corresponding outer output*                            `sequences`
+Non-Sequence                                                 Any variable X                                         Variable identical to X                                     *No corresponding inner output*                              *No corresponding outer output*                            `non_sequences`
+Non-recurring output (nitsot)                                *No corresponding outer input*                         *No corresponding inner input*                              Output value at timestep `t`                                 Concatenation of the values of the output at all timestep  `outputs_info`
+Singly-recurrent output (sitsot)                             Initial value (value at timestep `-1`)                 Output value at previous timestep (`t-1`)                   Output value at timestep `t`                                 Concatenation of the values of the output at all timestep  `outputs_info`
+Multiply-recurrent output (mitsot)                           Initial values for the required timesteps where `t<0`  Output value at previous required timesteps                 Output value at timestep `t`                                 Concatenation of the values of the output at all timestep  `outputs_info`
+Multiply-recurrent multiple outputs (mitmot)                 Initial values for the required timesteps where `t<0`  Output value at previous required timesteps                 Output values for current and multiple future timesteps      Concatenation of the values of the output at all timestep  *No corresponding argument*
+===========================================================  =====================================================  ==========================================================  ===========================================================  =========================================================  ======================================================
 
 
 Optimizations
@@ -215,7 +172,7 @@ non-sequence inputs. The idea behing this optimization is that, when it is
 possible to do so, it is generally more computationnaly efficient to perform
 a single operation on a large tensor rather then perform that same operation
 many times on many smaller tensors. However, this optimization can lead to
-increased memory usage.  
+increased memory usage.
 
 
 PushOutScanOutput
