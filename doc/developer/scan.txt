@@ -186,6 +186,15 @@ To synthesise :
 Optimizations
 =============
 
+remove_constants_and_unused_inputs_scan
+---------------------------------------
+
+This optimization serves two purposes, The first is to remove a Scan Op's
+unused inputs. The second it to take a Scan Op's constant inputs and remove
+them, instead injecting the constants directly into the graph or the Scan
+Op's inner function. This will allow constant folding to happen inside the
+inner function.
+
 
 
 
