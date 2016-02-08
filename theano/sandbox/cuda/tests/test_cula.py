@@ -99,6 +99,19 @@ class TestGpuCholesky(unittest.TestCase):
             fn(A_val)
         self.assertRaises(ValueError, invalid_input_func)
 
+    def test_invalid_input_fail_non_symmetric(self):
+        """ Invalid Cholesky input test with non-symmetric input.
+            (Non-symmetric real input must also be non-positive definite). """
+        def invalid_input_func():
+            A_val = numpy.random.normal(size=(3, 3)).astype("float32")
+            # double-check random A_val is asymmetric - the probability of
+            # this not being the case even with finite precision should be
+            # negligible
+            assert not numpy.allclose(A_val, A_val.T)
+            fn = self.get_gpu_cholesky_func(True)
+            fn(A_val)
+        self.assertRaises(cula.cula.culaError, invalid_input_func)
+
     def test_invalid_input_fail_non_positive_definite(self):
         """ Invalid Cholesky input test with non positive-definite input. """
         def invalid_input_func():
