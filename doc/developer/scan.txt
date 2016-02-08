@@ -214,3 +214,47 @@ The Scan op also defines a few helper functions for this purpose, such as
 `inner_nitsot_outs()` or `mitmot_out_taps()`, but they are often poorly
 documented and easy to misuse. These should be used with great care.
 
+
+Navigating between outer inputs/outputs and inner inputs/outputs
+----------------------------------------------------------------
+
+Navigation between these four sets of variables can be done in two ways,
+depending on the type of navigation that is required.
+
+If the goal is to navigate between variables that are associated with the same
+states (ex : going from an outer sequence input to the corresponding inner
+sequence input, going from an inner output associated with a recurrent state
+to the inner input(s) associated with that same recurrent state, etc.), then
+the `var_mappings` attribute of the Scan op can be used.
+
+This attribute is a dictionnary with 12 {key/value} pairs. The keys are listed
+below :
+
+*   "outer_inp_from_outer_out"
+*   "inner_inp_from_outer_out"
+*   "inner_out_from_outer_out"
+*   "inner_inp_from_outer_inp"
+*   "inner_out_from_outer_inp"
+*   "outer_out_from_outer_inp"
+*   "outer_inp_from_inner_inp"
+*   "inner_out_from_inner_inp"
+*   "outer_out_from_inner_inp"
+*   "outer_inp_from_inner_out"
+*   "inner_inp_from_inner_out"
+*   "outer_out_from_inner_out"
+
+Every corresponding value is a dictionary detailing a mapping from one set of
+variables to another. For each of those dictionaries the keys are indices of
+variables in one set and the values are the indices of the corresponding
+variables in another set. For mappings to outer variables, the values are
+individual indices or -1 if there is not corresponding outer variable.
+For mappings to inner variables, the values are list of indices because
+multiple inner variables may be associated with the same state.
+
+If the goal is to navigate between variables that are *connected* (meaning
+that one of them is used to compute the other), the methods
+`connection_pattern()` and `inner_connection_pattern()` can be used.
+The method `connection_pattern()` returns a list of list detailing, for every
+pair of outer input and outer output whether they are connected or not. The
+method `inner_connection_pattern()` accomplishes the same goal but for every
+possible pair of inner output and inner input.
