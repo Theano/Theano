@@ -728,9 +728,9 @@ def local_gpu_cholesky(node):
             return [gpu_cholesky(as_cuda_ndarray_variable(A), lower)]
 
     if isinstance(node.op, slinalg.Cholesky):
-        if any([i.owner and isinstance(i.owner.op, HostFromGpu)
-                for i in node.inputs]):
-            A = node.inputs[0]
+        node_inp = node.inputs[0]
+        if node_inp.owner and isinstance(node_inp.owner.op, HostFromGpu):
+            A = node_inp
             lower = node.op.lower
             return [host_from_gpu(
                     gpu_cholesky(as_cuda_ndarray_variable(A), lower))]
