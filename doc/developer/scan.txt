@@ -195,6 +195,16 @@ them, instead injecting the constants directly into the graph or the Scan
 Op's inner function. This will allow constant folding to happen inside the
 inner function.
 
+PushOutNonSeqScan
+-----------------
+
+This optimizations pushes, out of Scan's inner function and into the outer
+function, computation that depends only on non-sequence inputs. Such
+computation ends up being done every iteration on the same values so moving
+it to the outer function to be executed only once, before the Scan Op,
+reduces the amount of computation that needs to be performed.
+
+
 
 
 
