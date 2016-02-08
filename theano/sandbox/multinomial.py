@@ -6,13 +6,13 @@ import theano.tensor as T
 from theano.gof import local_optimizer
 from theano.tensor import NotScalarConstantError, get_scalar_constant_value
 from theano.scalar import as_scalar
+import sys
 
 from theano.sandbox.cuda import cuda_available, GpuOp
 if cuda_available:
     from theano.sandbox.cuda import CudaNdarrayType
     from theano.sandbox.cuda.basic_ops import host_from_gpu, gpu_from_host
     from theano.sandbox.cuda.opt import register_opt
-import sys
 
 
 class MultinomialFromUniform(Op):
