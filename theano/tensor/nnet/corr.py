@@ -177,13 +177,13 @@ class BaseCorrMM(gof.Op):
         if ((direction != 0) and (dH != 1)) or ((direction == 1) and (padH == -1)):
             if not height:
                 raise ValueError("height must be given for backprop with vertical sampling or border_mode='half'")
-            height = '(*(npy_int*)(PyArray_DATA(%s)))' % height
+            height = '(*(npy_int64 *)(PyArray_DATA(%s)))' % height
         else:
             height = '-1'
         if ((direction != 0) and (dW != 1)) or ((direction == 1) and (padW == -1)):
             if not width:
                 raise ValueError("width must be given for backprop with horizontal sampling or border_mode='half'")
-            width = '(*(npy_int*)(PyArray_DATA(%s)))' % width
+            width = '(*(npy_int64 *)(PyArray_DATA(%s)))' % width
         else:
             width = '-1'
         sub = sub.copy()
@@ -314,8 +314,8 @@ class BaseCorrMM(gof.Op):
         if (NULL == %(out)s)
         {
             PyErr_Format(PyExc_RuntimeError,
-                    "BaseCorrMM: Failed to allocate output of %%d x %%d x %%d x %%d",
-                    out_dim[0], out_dim[1], out_dim[2], out_dim[3]);
+                    "BaseCorrMM: Failed to allocate output of %%lld x %%lld x %%lld x %%lld",
+                    (long long)out_dim[0], (long long)out_dim[1], (long long)out_dim[2], (long long)out_dim[3]);
             %(fail)s
         }
     }
@@ -424,7 +424,7 @@ class CorrMM_gradWeights(BaseCorrMM):
             if shape is None:
                 raise ValueError('shape must be given if subsample != (1, 1)'
                                  ' or border_mode == "half"')
-            height_width = [as_tensor_variable(shape[0]), as_tensor_variable(shape[1])]
+            height_width = [as_tensor_variable(shape[0]).astype('int64'), as_tensor_variable(shape[1]).astype('int64')]
         else:
             height_width = []
 
@@ -519,7 +519,7 @@ class CorrMM_gradInputs(BaseCorrMM):
             raise TypeError('topgrad must be 4D tensor')
         if self.subsample != (1, 1) and shape is None:
             raise ValueError('shape must be given if subsample != (1, 1)')
-        height_width = [as_tensor_variable(shape[0]), as_tensor_variable(shape[1])] if self.subsample != (1, 1) else []
+        height_width = [as_tensor_variable(shape[0]).astype('int64'), as_tensor_variable(shape[1]).astype('int64')] if self.subsample != (1, 1) else []
 
         broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
                          False, False]
