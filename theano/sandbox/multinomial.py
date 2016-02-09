@@ -7,6 +7,7 @@ from theano.gof import local_optimizer
 from theano.tensor import NotScalarConstantError, get_scalar_constant_value
 from theano.scalar import as_scalar
 import sys
+import copy
 
 from theano.sandbox.cuda import cuda_available, GpuOp
 if cuda_available:
@@ -194,22 +195,11 @@ class MultinomialFromUniform(Op):
                             break
 
 
-class MultinomialWOReplacementFromUniform(Op):
+class MultinomialWOReplacementFromUniform(MultinomialFromUniform):
     """
-    Converts samples from a uniform into sample from a multinomial.
+    Converts samples from a uniform into sample (without replacement) from a multinomial.
 
     """
-
-    __props__ = ("odtype",)
-
-    def __init__(self, odtype):
-        self.odtype = odtype
-
-    def __str__(self):
-        return '%s{%s}' % (self.__class__.__name__, self.odtype)
-
-    def __setstate__(self, dct):
-        self.__dict__.update(dct)
 
     def make_node(self, pvals, unis, n=1):
         pvals = T.as_tensor_variable(pvals)
@@ -219,22 +209,16 @@ class MultinomialWOReplacementFromUniform(Op):
         if unis.ndim != 1:
             raise NotImplementedError('unis ndim should be 1', unis.ndim)
         if self.odtype == 'auto':
-            if sys.maxsize > 2**32:
-                odtype = 'int64'
-            else:
-                odtype = 'int32'
+            odtype = 'int64'
         else:
             odtype = self.odtype
         out = T.tensor(dtype=odtype, broadcastable=pvals.type.broadcastable)
         return Apply(self, [pvals, unis, as_scalar(n)], [out])
 
-    def grad(self, ins, outgrads):
-        pvals, unis, n = ins
-        (gz,) = outgrads
-        return [T.zeros_like(x) for x in ins]
-
     def perform(self, node, ins, outs):
         (pvals, unis, n_samples) = ins
+        # make a copy so we do not overwrite the input
+        pvals = copy.copy(pvals)
         (z,) = outs
 
         if n_samples > pvals.shape[1]:
@@ -245,10 +229,10 @@ class MultinomialWOReplacementFromUniform(Op):
             raise ValueError("unis.shape[0] != pvals.shape[0] * n_samples",
                              unis.shape[0], pvals.shape[0], n_samples)
 
-        if sys.maxsize > 2**32:
+        if self.odtype == 'auto':
             odtype = 'int64'
         else:
-            odtype = 'int32'
+            odtype = self.odtype
         if z[0] is None or not numpy.all(z[0].shape == [pvals.shape[0], n_samples]):
             z[0] = -1 * numpy.ones((pvals.shape[0], n_samples), dtype=odtype)
 
@@ -269,6 +253,12 @@ class MultinomialWOReplacementFromUniform(Op):
                         pvals[n, m] = 0.
                         pvals[n] /= pvals[n].sum()
                         break
+
+    def c_code_cache_version(self):
+        return None
+
+    def c_code(self, node, name, ins, outs, sub):
+        raise NotImplementedError('no C implementation yet!')
 
 
 class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):

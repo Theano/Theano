@@ -68,7 +68,7 @@ class test_OP(unittest.TestCase):
         numpy.random.seed(12345)
         pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
         pvals /= pvals.sum(1)
-        avg_pvals = numpy.zeros((n_elements,))
+        avg_pvals = numpy.zeros((n_elements,), dtype=config.floatX)
 
         for rep in range(10000):
             uni = numpy.random.rand(n_selected).astype(config.floatX)
@@ -76,7 +76,8 @@ class test_OP(unittest.TestCase):
             res = numpy.squeeze(res)
             avg_pvals[res] += 1
         avg_pvals /= avg_pvals.sum()
-        assert numpy.mean(abs(avg_pvals - pvals)) < mean_rtol
+        avg_diff = numpy.mean(abs(avg_pvals - pvals))
+        assert avg_diff < mean_rtol, avg_diff
 
 
 class test_function(unittest.TestCase):
@@ -143,11 +144,12 @@ class test_function(unittest.TestCase):
         numpy.random.seed(12345)
         pvals = numpy.random.randint(1, 100, (1, n_elements)).astype(config.floatX)
         pvals /= pvals.sum(1)
-        avg_pvals = numpy.zeros((n_elements,))
+        avg_pvals = numpy.zeros((n_elements,), dtype=config.floatX)
 
         for rep in range(10000):
             res = f(pvals, n_selected)
             res = numpy.squeeze(res)
             avg_pvals[res] += 1
         avg_pvals /= avg_pvals.sum()
-        assert numpy.mean(abs(avg_pvals - pvals)) < mean_rtol
+        avg_diff = numpy.mean(abs(avg_pvals - pvals))
+        assert avg_diff < mean_rtol
