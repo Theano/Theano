@@ -194,7 +194,7 @@ class MultinomialFromUniform(Op):
                             break
 
 
-class WeightedSelectionFromUniform(Op):
+class MultinomialWOReplacementFromUniform(Op):
     """
     Converts samples from a uniform into sample from a multinomial.
 

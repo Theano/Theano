@@ -9,12 +9,12 @@ class test_OP(unittest.TestCase):
 
     def test_select_distinct(self):
         """
-        Tests that WeightedSelectionFromUniform always selects distinct elements
+        Tests that MultinomialWOReplacementFromUniform always selects distinct elements
         """
         p = tensor.fmatrix()
         u = tensor.fvector()
         n = tensor.iscalar()
-        m = multinomial.WeightedSelectionFromUniform('auto')(p, u, n)
+        m = multinomial.MultinomialWOReplacementFromUniform('auto')(p, u, n)
 
         f = function([p, u, n], m, allow_input_downcast=True)
 
@@ -32,13 +32,13 @@ class test_OP(unittest.TestCase):
 
     def test_fail_select_alot(self):
         """
-        Tests that WeightedSelectionFromUniform fails when asked to sample more
+        Tests that MultinomialWOReplacementFromUniform fails when asked to sample more
         elements than the actual number of elements
         """
         p = tensor.fmatrix()
         u = tensor.fvector()
         n = tensor.iscalar()
-        m = multinomial.WeightedSelectionFromUniform('auto')(p, u, n)
+        m = multinomial.MultinomialWOReplacementFromUniform('auto')(p, u, n)
 
         f = function([p, u, n], m, allow_input_downcast=True)
 
@@ -52,13 +52,13 @@ class test_OP(unittest.TestCase):
 
     def test_select_proportional_to_weight(self):
         """
-        Tests that WeightedSelectionFromUniform selects elements, on average,
+        Tests that MultinomialWOReplacementFromUniform selects elements, on average,
         proportional to the their probabilities
         """
         p = tensor.fmatrix()
         u = tensor.fvector()
         n = tensor.iscalar()
-        m = multinomial.WeightedSelectionFromUniform('auto')(p, u, n)
+        m = multinomial.MultinomialWOReplacementFromUniform('auto')(p, u, n)
 
         f = function([p, u, n], m, allow_input_downcast=True)
 
@@ -83,13 +83,13 @@ class test_function(unittest.TestCase):
 
     def test_select_distinct(self):
         """
-        Tests that weighted_selection always selects distinct elements
+        Tests that multinomial_wo_replacement always selects distinct elements
         """
         th_rng = RandomStreams(12345)
 
         p = tensor.fmatrix()
         n = tensor.iscalar()
-        m = th_rng.weighted_selection(pvals=p, n=n)
+        m = th_rng.multinomial_wo_replacement(pvals=p, n=n)
 
         f = function([p, n], m, allow_input_downcast=True)
 
@@ -106,14 +106,14 @@ class test_function(unittest.TestCase):
 
     def test_fail_select_alot(self):
         """
-        Tests that weighted_selection fails when asked to sample more
+        Tests that multinomial_wo_replacement fails when asked to sample more
         elements than the actual number of elements
         """
         th_rng = RandomStreams(12345)
 
         p = tensor.fmatrix()
         n = tensor.iscalar()
-        m = th_rng.weighted_selection(pvals=p, n=n)
+        m = th_rng.multinomial_wo_replacement(pvals=p, n=n)
 
         f = function([p, n], m, allow_input_downcast=True)
 
@@ -126,14 +126,14 @@ class test_function(unittest.TestCase):
 
     def test_select_proportional_to_weight(self):
         """
-        Tests that weighted_selection selects elements, on average,
+        Tests that multinomial_wo_replacement selects elements, on average,
         proportional to the their probabilities
         """
         th_rng = RandomStreams(12345)
 
         p = tensor.fmatrix()
         n = tensor.iscalar()
-        m = th_rng.weighted_selection(pvals=p, n=n)
+        m = th_rng.multinomial_wo_replacement(pvals=p, n=n)
 
         f = function([p, n], m, allow_input_downcast=True)
 

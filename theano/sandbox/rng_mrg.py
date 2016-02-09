@@ -1363,8 +1363,8 @@ class MRG_RandomStreams(object):
             raise NotImplementedError(("MRG_RandomStreams.multinomial only"
                                        " implemented for pvals.ndim = 2"))
 
-    def weighted_selection(self, size=None, n=1, pvals=None, ndim=None, dtype='int64',
-                           nstreams=None):
+    def multinomial_wo_replacement(self, size=None, n=1, pvals=None, ndim=None, dtype='int64',
+                                   nstreams=None):
         """
         Sample `n` times *WITHOUT replacement* from a multinomial distribution
         defined by probabilities pvals, and returns the indices of the sampled
@@ -1394,21 +1394,21 @@ class MRG_RandomStreams(object):
 
         if size is not None:
             raise ValueError("Provided a size argument to "
-                             "MRG_RandomStreams.weighted_selection, which does not use "
+                             "MRG_RandomStreams.multinomial_wo_replacement, which does not use "
                              "the size argument.")
         if ndim is not None:
             raise ValueError("Provided an ndim argument to "
-                             "MRG_RandomStreams.weighted_selection, which does not use "
+                             "MRG_RandomStreams.multinomial_wo_replacement, which does not use "
                              "the ndim argument.")
         if pvals.ndim == 2:
             # size = [pvals.shape[0], as_tensor_variable(n)]
             size = pvals[:,0].shape * n
             unis = self.uniform(size=size, ndim=1, nstreams=nstreams)
-            op = multinomial.WeightedSelectionFromUniform(dtype)
+            op = multinomial.MultinomialWOReplacementFromUniform(dtype)
             n_samples = as_tensor_variable(n)
             return op(pvals, unis, n_samples)
         else:
-            raise NotImplementedError(("MRG_RandomStreams.weighted_selection only"
+            raise NotImplementedError(("MRG_RandomStreams.multinomial_wo_replacement only"
                                        " implemented for pvals.ndim = 2"))
 
     def normal(self, size, avg=0.0, std=1.0, ndim=None,
