@@ -2293,14 +2293,8 @@ def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
 
     if target is None:  # Computes the probabilites of all the outputs
 
-        class_ids = tensor.tile(
-            tensor.arange(n_classes, dtype="int32")[None, :], (batch_size, 1))
-
         # Second softmax that computes the output probabilities
-        activations = sparse_block_dot(
-            W2[None, :, :, :], x[:, None, :],
-            tensor.zeros((batch_size, 1), dtype='int32'), b2, class_ids)
-
+        activations = tensor.tensordot(x, W2, (1, 1)) + b2
         output_probs = theano.tensor.nnet.softmax(
             activations.reshape((-1, n_outputs_per_class)))
         output_probs = output_probs.reshape((batch_size, n_classes, -1))

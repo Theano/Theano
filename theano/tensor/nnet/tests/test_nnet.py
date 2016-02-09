@@ -1614,6 +1614,14 @@ def test_h_softmax():
     #############
     x_mat = numpy.random.normal(size=(batch_size, input_size)).astype(floatX)
     y_mat = numpy.random.randint(0, output_size, batch_size).astype('int32')
-    
-    assert(fun_output_tg(x_mat, y_mat).shape == (batch_size,))
-    assert(fun_output(x_mat).shape == (batch_size, output_size))
+
+    tg_output = fun_output_tg(x_mat, y_mat)
+    all_outputs = fun_output(x_mat)
+
+    assert(tg_output.shape == (batch_size,))
+    assert(all_outputs.shape == (batch_size, output_size))
+
+    # Verifies that the outputs computed by fun_output_tg are the same as those
+    # computed by fun_output.
+    utt.assert_allclose(
+            all_outputs[numpy.arange(0, batch_size), y_mat], tg_output)
