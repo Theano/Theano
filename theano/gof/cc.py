@@ -1614,6 +1614,7 @@ class CLinker(link.Linker):
                         libs=libs,
                         preargs=preargs,
                         shared=False, py_module=False,
+                        hide_symbols=False,
                         code_filename='exec.cpp',
                         out_filename='exec')
                     mod_exec.gen_header(os.path.join(location, 'exec.h'))
