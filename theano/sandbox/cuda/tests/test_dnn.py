@@ -244,7 +244,6 @@ def test_pooling():
     x = T.ftensor4()
     for mode, pad in product(modes,
                              ((0, 0), (1, 0), (1, 0), (2, 3), (3, 2))):
-
         if mode == 'max':
             func = T.max
         else:
@@ -286,24 +285,22 @@ def test_pooling():
                     a = f1(data).__array__()
 
                     b = f2(data).__array__()
-                    assert numpy.allclose(a, b,
-                                          atol=numpy.finfo(numpy.float32).eps)
+                    utt.assert_allclose(a, b)
 
         # Test the grad
         for shp in [(1, 1, 2, 2),
                     (1, 1, 3, 3)]:
             data = numpy.random.normal(0, 1, shp).astype("float32") * 10
 
-            ws = theano.shared(numpy.array([2, 2]))
-            stride = theano.shared(numpy.array([1, 1]))
-            if pad[0] > 1 or pad[1] > 1:
+            ws = 2
+            stride = 2
+            if pad[0] > stride or pad[1] > stride:
                 # Not implemented
                 continue
-            pad_ = theano.shared(numpy.array(pad))
 
             # This test the CPU grad + opt + GPU implemtentation
             def fn(x):
-                return pool_2d(x, (2, 2), ignore_border=True,
+                return pool_2d(x, (ws, ws), ignore_border=True,
                                padding=pad, mode=mode)
             theano.tests.unittest_tools.verify_grad(fn, [data],
                                                     cast_to_output_type=False,
@@ -317,12 +314,11 @@ def test_pooling():
             # Test the GPU grad + GPU implementation
             def fn(x):
                 dnn_op = cuda.dnn.dnn_pool(
-                    x, ws=ws,
-                    stride=stride,
-                    pad=pad_,
+                    x, ws=(ws, ws),
+                    stride=(stride, stride),
+                    pad=pad,
                     mode=mode)
                 return dnn_op
-
             theano.tests.unittest_tools.verify_grad(
                 fn, [data],
                 cast_to_output_type=False,
@@ -335,10 +331,9 @@ def test_pooling():
             g_out = fg(data)
 
             # Compare again the CPU result
-            out = pool_2d(x, (2, 2), st=(1, 1),
+            out = pool_2d(x, (ws, ws),
                           padding=pad,
                           ignore_border=True, mode=mode)
-
             fc = theano.function([x], theano.grad(out.sum(), x),
                                  mode=mode_without_gpu)
             if mode == 'max':
@@ -348,7 +343,53 @@ def test_pooling():
                 assert any([isinstance(node.op, AveragePoolGrad)
                             for node in fc.maker.fgraph.toposort()])
             c_out = fc(data)
-            assert utt.assert_allclose(c_out, g_out)
+            utt.assert_allclose(c_out, g_out)
+
+
+def test_pooling_with_tensor_vars():
+    x = T.ftensor4()
+    ws = theano.shared(numpy.array([2, 2], dtype='int32'))
+    st = theano.shared(numpy.array([1, 1], dtype='int32'))
+    pad = theano.shared(numpy.array([0, 0], dtype='int32'))
+    mode = 'max'
+
+    def fn(x):
+        dnn_op = cuda.dnn.dnn_pool(
+            x, ws=ws,
+            stride=st,
+            pad=pad,
+            mode=mode)
+        return dnn_op
+
+    for shp in [(1, 1, 2, 2),
+                (1, 1, 3, 3)]:
+        data = numpy.random.normal(0, 1, shp).astype("float32") * 10
+        theano.tests.unittest_tools.verify_grad(
+            fn, [data],
+            cast_to_output_type=False,
+            mode=mode_with_gpu)
+
+    out2 = pool_2d_i2n(x, ds=(2, 2), strides=(1, 1),
+                       pad=(0, 0),
+                       pool_function=T.max)
+    mode_without_gpu2 = mode_without_gpu.including()
+    mode_without_gpu2.check_isfinite = False
+
+    f1 = theano.function([x], fn(x), mode=mode_with_gpu)
+    assert any([isinstance(node.op, cuda.dnn.GpuDnnPool)
+                for node in f1.maker.fgraph.apply_nodes])
+    f2 = theano.function([x], out2, mode=mode_without_gpu2)
+    assert not any([isinstance(node.op, cuda.dnn.GpuDnnPool)
+                    for node in f2.maker.fgraph.apply_nodes])
+    for shp in [(1, 10, 100, 100),
+                (1, 3, 99, 99),
+                (32, 1, 147, 197),
+                ]:
+        data = numpy.random.normal(0, 1, shp).astype("float32")
+        a = f1(data).__array__()
+
+        b = f2(data).__array__()
+        utt.assert_allclose(a, b)
 
 
 def test_pooling3d():

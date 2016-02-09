@@ -1593,9 +1593,9 @@ class GpuDnnPoolGrad(DnnBase):
         assert (inp_grad.ndim in [4, 5])
         out = as_cuda_ndarray_variable(out)
         assert(out.ndim in [4, 5])
-        
-        assert (inp_grad.ndim == inp.dim)
-        assert (inp.dim == out.dim)
+
+        assert (inp_grad.ndim == inp.ndim)
+        assert (inp.ndim == out.ndim)
 
         ws = tensor.as_tensor_variable(ws)
         stride = tensor.as_tensor_variable(stride)
