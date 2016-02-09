@@ -218,17 +218,17 @@ class GpuCholesky(GpuOp):
             # check if inplace flag. If acting inplace still need to make
             # sure array is contiguous in memory as this is expected by
             # CULA decomposition function.
-            if self.inplace:
-                A_out = gpu_contiguous(A)
-            else:
             # If not an inplace op, force copy of array with allocation of a
             # new C-contiguous buffer.
-                A_out = A.copy()
             # CULA operation assumes Fortran ordering however valid input
             # matrices must be symmetric therefore no need to alter order. If
             # a non-symmetric matrix is passed, it will be non-symmetric
             # whether C or Fortan ordering is assumed and will cause a
             # CulaError to be raised when the decomposition fails.
+            if self.inplace:
+                A_out = gpu_contiguous(A)
+            else:
+                A_out = A.copy()
 
             def cula_gpu_cholesky(A_, lower=True):
 
