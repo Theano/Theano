@@ -4,7 +4,8 @@ import pkg_resources
 import theano
 from theano.sandbox.cuda.type import CudaNdarrayType
 from theano.sandbox.cuda import GpuOp
-from theano.sandbox.cuda.basic_ops import as_cuda_ndarray_variable
+from theano.sandbox.cuda.basic_ops import (
+    as_cuda_ndarray_variable, gpu_contiguous)
 from theano.misc.pycuda_init import pycuda_available
 
 try:
@@ -159,13 +160,18 @@ class GpuCholesky(GpuOp):
     ----------
     lower
         Whether to return a lower rather than upper triangular decomposition.
+    inplace
+        Whether to perform Cholesky decomposition inplace on input.
 
     """
 
-    __props__ = ('lower',)
+    __props__ = ('lower', 'inplace')
 
-    def __init__(self, lower=True):
+    def __init__(self, lower=True, inplace=False):
         self.lower = lower
+        self.inplace = inplace
+        if inplace:
+            self.destroy_map = {0: [0]}
         super(GpuCholesky, self).__init__()
 
     def make_node(self, inp):
@@ -209,13 +215,20 @@ class GpuCholesky(GpuOp):
 
             # CULA Cholesky function is destructive as it assigns calculated
             # decomposition to lower / upper triangle of input array therefore
-            # force copy of array with allocation of a new C-contiguous buffer.
+            # check if inplace flag. If acting inplace still need to make
+            # sure array is contiguous in memory as this is expected by
+            # CULA decomposition function.
+            if self.inplace:
+                A_out = gpu_contiguous(A)
+            else:
+            # If not an inplace op, force copy of array with allocation of a
+            # new C-contiguous buffer.
+                A_out = A.copy()
             # CULA operation assumes Fortran ordering however valid input
             # matrices must be symmetric therefore no need to alter order. If
             # a non-symmetric matrix is passed, it will be non-symmetric
             # whether C or Fortan ordering is assumed and will cause a
             # CulaError to be raised when the decomposition fails.
-            A_cpy = A.copy()
 
             def cula_gpu_cholesky(A_, lower=True):
 
@@ -248,32 +261,32 @@ class GpuCholesky(GpuOp):
                 finally:
                     cula.culaFreeBuffers()
 
-            # Decomposition assigned in-place to A_cpy
-            cula_gpu_cholesky(A_cpy, self.lower)
+            # Decomposition assigned in-place to A_out
+            cula_gpu_cholesky(A_out, self.lower)
 
             # CULA assumes Fortran ordering and assigns the calculated
-            # decomposition to the relevant triangle of A_cpy (i.e. lower
+            # decomposition to the relevant triangle of A_out (i.e. lower
             # triangle if lower=True and upper otherwise) in Fortran ordering.
-            # The remaining elements in A_cpy are left as the original values
-            # in A i.e. A_cpy is not enforced to be lower / upper triangular.
+            # The remaining elements in A_cout are left as the original values
+            # in A i.e. A_out is not enforced to be lower / upper triangular.
             # Therefore use skcuda.linalg triu/tril functions to extract
             # relevant triangle elements only, others set to zero. These
             # require a pycuda GPUArray type as input therefore use util
             # function to convert CudaNdArray -> GPUArray, applying this
-            # before any transpose operation to ensure A_cpy buffer is still
+            # before any transpose operation to ensure A_out buffer is still
             # C-contiguous as so can be shared with GPUArray object without
             # any copy required this meaning triu/tril operations occur in
-            # place on A_cpy buffer.
+            # place on A_out buffer.
             if self.lower:
                 # extract only upper triangle in C-ordering i.e. lower triangle
                 # in F-ordering
-                linalg.triu(to_gpuarray(A_cpy), overwrite=True)
+                linalg.triu(to_gpuarray(A_out), overwrite=True)
             else:
                 # extract only lower triangle in C-ordering i.e. upper triangle
                 # in F-ordering
-                linalg.tril(to_gpuarray(A_cpy), overwrite=True)
+                linalg.tril(to_gpuarray(A_out), overwrite=True)
             # Assign output as transposed array to move from F to C ordering.
-            A_chol[0] = dimshuffle(A_cpy, (1, 0))
+            A_chol[0] = dimshuffle(A_out, (1, 0))
 
         thunk.inputs = inputs
         thunk.outputs = outputs
@@ -281,4 +294,7 @@ class GpuCholesky(GpuOp):
 
         return thunk
 
-gpu_cholesky = GpuCholesky()
+gpu_cholesky_lower_no_inplace = GpuCholesky(lower=True, inplace=False)
+gpu_cholesky_lower_inplace = GpuCholesky(lower=True, inplace=True)
+gpu_cholesky_upper_no_inplace = GpuCholesky(lower=False, inplace=False)
+gpu_cholesky_upper_inplace = GpuCholesky(lower=False, inplace=True)

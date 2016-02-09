@@ -37,7 +37,9 @@ from theano.sandbox.cuda.blas import (
     GpuCorr3dMM, GpuCorr3dMM_gradInputs, GpuCorr3dMM_gradWeights)
 
 from theano.sandbox.cuda.blas import gpu_gemv_inplace
-from theano.sandbox.cuda.cula import gpu_solve, GpuCholesky
+from theano.sandbox.cuda.cula import (
+    gpu_solve, gpu_cholesky_lower_no_inplace, gpu_cholesky_upper_no_inplace,
+    gpu_cholesky_lower_inplace, gpu_cholesky_upper_inplace)
 
 from theano.sandbox.cuda.blas import gpu_gemv_no_inplace
 from theano.sandbox.cuda.blas import gpu_ger_inplace
@@ -713,9 +715,9 @@ def local_gpu_solve(node):
 @local_optimizer([gpu_from_host, slinalg.Cholesky])
 def local_gpu_cholesky(node):
     """
-    gpu_from_host(CpuCholesky) -> GpuCholesky(gpu_from_host)
+    gpu_from_host(CpuCholesky) -> GpuCholesky{no_inplace}(gpu_from_host)
 
-    CpuCholesky(host_from_gpu) -> host_from_gpu(GpuCholesky)
+    CpuCholesky(host_from_gpu) -> host_from_gpu(GpuCholesky{no_inplace})
 
     """
     if isinstance(node.op, GpuFromHost):
@@ -724,16 +726,23 @@ def local_gpu_cholesky(node):
             isinstance(host_input.owner.op,
                        slinalg.Cholesky)):
             A = host_input.owner.inputs[0]
-            lower = host_input.owner.op.lower
-            return [GpuCholesky(lower)(as_cuda_ndarray_variable(A))]
+            A_ndarray = as_cuda_ndarray_variable(A)
+            if host_input.owner.op.lower:
+                return [gpu_cholesky_lower_no_inplace(A_ndarray)]
+            else:
+                return [gpu_cholesky_upper_no_inplace(A_ndarray)]
 
     if isinstance(node.op, slinalg.Cholesky):
         node_inp = node.inputs[0]
         if node_inp.owner and isinstance(node_inp.owner.op, HostFromGpu):
             A = node_inp
-            lower = node.op.lower
-            return [host_from_gpu(
-                    GpuCholesky(lower)(as_cuda_ndarray_variable(A)))]
+            A_ndarray = as_cuda_ndarray_variable(A)
+            if node.op.lower:
+                return [host_from_gpu(
+                        gpu_cholesky_lower_no_inplace(A_ndarray))]
+            else:
+                return [host_from_gpu(
+                        gpu_cholesky_upper_no_inplace(A_ndarray))]
     return False
 
 
@@ -2069,6 +2078,19 @@ def local_inplace_gemv(node):
 def local_inplace_ger(node):
     if node.op == gpu_ger_no_inplace:
         return [gpu_ger_inplace(*node.inputs)]
+
+
+@local_optimizer([gpu_cholesky_lower_no_inplace], inplace=True)
+def local_inplace_gpu_cholesky_lower(node):
+    if node.op == gpu_cholesky_lower_no_inplace:
+        return [gpu_cholesky_lower_inplace(*node.inputs)]
+
+
+@local_optimizer([gpu_cholesky_upper_no_inplace], inplace=True)
+def local_inplace_gpu_cholesky_upper(node):
+    if node.op == gpu_cholesky_upper_no_inplace:
+        return [gpu_cholesky_upper_inplace(*node.inputs)]
+
 
 # After destroyhandler is in but before we try to make elemwise things inplace
 # Try to make gpu gemm inplace
