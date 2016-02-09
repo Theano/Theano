@@ -481,14 +481,13 @@ class FunctionGraph(utils.object2):
 
         for node in new_nodes:
             assert node not in self.apply_nodes
-            prevent_addition = False
-            for n in self._removed_nodes :
-                if node is n :
-                    prevent_addition = True
+            prevent_addition = node in self._removed_nodes
                     
-            if not prevent_addition : 
-                self.__setup_node__(node)
-                self.apply_nodes.add(node)
+            if prevent_addition : 
+                raise InconsistencyError
+                ("Trying to reintroduce an old nodes in the graph. This should not happen")
+            self.__setup_node__(node)
+            self.apply_nodes.add(node)
             for output in node.outputs:
                 self.__setup_r__(output)
                 self.variables.add(output)
@@ -497,9 +496,8 @@ class FunctionGraph(utils.object2):
                     self.__setup_r__(input)
                     self.variables.add(input)
                 self.__add_clients__(input, [(node, i)])
-            if not prevent_addition :
-                assert node.fgraph is self
-                self.execute_callbacks('on_import', node, reason)
+            assert node.fgraph is self
+            self.execute_callbacks('on_import', node, reason)
 
     # change input #
     def change_input(self, node, i, new_r, reason=None):
