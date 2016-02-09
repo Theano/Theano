@@ -39,7 +39,6 @@ def conv_corr_gi(filters, topgrad, inputs_shape, border_mode="valid",
 
 
 class TestGetConvOutShape(unittest.TestCase):
-
     def test_basic(self):
         image_shape, kernel_shape = (3, 2, 8, 9), (4, 2, 5, 6)
         sub_sample = (1, 2)
@@ -297,7 +296,7 @@ class TestCpuConv2d(TestConv2d):
 
             if fwd_OK:
                 self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
-                             verify_grad=True, mode=mode,
+                             verify_grad=False, mode=mode,
                              provide_shape=provide_shape, border_mode=b,
                              filter_flip=flip, target_op=ConvOp)
             else:
