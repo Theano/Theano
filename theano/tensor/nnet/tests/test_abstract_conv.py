@@ -4,12 +4,12 @@ import itertools
 
 import theano
 from theano import tensor
-from theano.tests import unittests_tools as utt
-from theano.tensor.nnet.abstract_conv import conv, get_conv_output_shape
-from theano.tensor.nnet import corr
+from theano.tests import unittest_tools as utt
+from theano.tensor.nnet import corr, abstract_conv as conv
+from theano.tensor.nnet.abstract_conv import get_conv_output_shape
+from theano.tensor.nnet.conv import ConvOp
 from theano.tensor.nnet.corr import (CorrMM, CorrMM_gradWeights,
                                      CorrMM_gradInputs)
-from theano.tensor.nnet.conv import ConvOp
 from theano.tensor.nnet.ConvGrad3D import ConvGrad3D
 from theano.tensor.nnet.ConvTransp3D import ConvTransp3D
 
@@ -21,18 +21,21 @@ def conv_corr(inputs, filters, border_mode="valid", subsample=(1, 1),
     return corr.CorrMM(border_mode, subsample)(inputs, filters)
 
 
-def conv_corr_gw(inputs, filters, border_mode="valid", subsample=(1, 1),
-                 conv_mode='conv'):
+def conv_corr_gw(inputs, topgrad, filters_shape, border_mode="valid",
+                 subsample=(1, 1), conv_mode='conv'):
+    rval = corr.CorrMM_gradWeights(border_mode, subsample)(inputs, topgrad,
+                                                           filters_shape[2:])
     if conv_mode == 'conv':
-        filters = filters[:, :, ::-1, ::-1]
-    return corr.CorrMM(border_mode, subsample)(inputs, filters)
+        rval = rval[:, :, ::-1, ::-1]
+    return rval
 
 
-def conv_corr_gi(inputs, filters, border_mode="valid", subsample=(1, 1),
-                 conv_mode='conv'):
+def conv_corr_gi(filters, topgrad, inputs_shape, border_mode="valid",
+                 subsample=(1, 1), conv_mode='conv'):
     if conv_mode == 'conv':
         filters = filters[:, :, ::-1, ::-1]
-    return corr.CorrMM(border_mode, subsample)(inputs, filters)
+    return corr.CorrMM_gradInputs(border_mode, subsample)(filters, topgrad,
+                                                          inputs_shape[2:])
 
 
 class TestGetConvOutShape(unittest.TestCase):
@@ -279,7 +282,7 @@ class TestCpuConv2d(TestConv2d):
                 gradweight_OK = False
                 gradinput_OK = False
 
-            if b not in ('valid', 'full'):
+            if b not in ((0, 0), 'valid', 'full'):
                 fwd_OK = False
                 gradweight_OK = False
                 gradinput_OK = False
@@ -294,7 +297,7 @@ class TestCpuConv2d(TestConv2d):
 
             if fwd_OK:
                 self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
-                             verify_grad=True, mode=mode, device='cpu',
+                             verify_grad=True, mode=mode,
                              provide_shape=provide_shape, border_mode=b,
                              filter_flip=flip, target_op=ConvOp)
             else:
@@ -312,7 +315,7 @@ class TestCpuConv2d(TestConv2d):
             if gradweight_OK:
                 self.run_gradweight(inputs_shape=i, filters_shape=f,
                                     output_shape=o, subsample=s,
-                                    verify_grad=False, mode=mode, device='cpu',
+                                    verify_grad=False, mode=mode,
                                     provide_shape=provide_shape, border_mode=b,
                                     filter_flip=flip,
                                     target_op=(ConvOp, ConvGrad3D))
@@ -332,7 +335,7 @@ class TestCpuConv2d(TestConv2d):
             if gradinput_OK:
                 self.run_gradinput(inputs_shape=i, filters_shape=f,
                                    output_shape=o, subsample=s,
-                                   verify_grad=False, mode=mode, device='cpu',
+                                   verify_grad=False, mode=mode,
                                    provide_shape=provide_shape, border_mode=b,
                                    filter_flip=flip,
                                    target_op=(ConvOp, ConvTransp3D))

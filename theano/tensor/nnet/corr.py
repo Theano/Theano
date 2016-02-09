@@ -424,7 +424,7 @@ class CorrMM_gradWeights(BaseCorrMM):
             if shape is None:
                 raise ValueError('shape must be given if subsample != (1, 1)'
                                  ' or border_mode == "half"')
-            height_width = [shape[0], shape[1]]
+            height_width = [as_tensor_variable(shape[0]), as_tensor_variable(shape[1])]
         else:
             height_width = []
 
@@ -519,7 +519,7 @@ class CorrMM_gradInputs(BaseCorrMM):
             raise TypeError('topgrad must be 4D tensor')
         if self.subsample != (1, 1) and shape is None:
             raise ValueError('shape must be given if subsample != (1, 1)')
-        height_width = [shape[0], shape[1]] if self.subsample != (1, 1) else []
+        height_width = [as_tensor_variable(shape[0]), as_tensor_variable(shape[1])] if self.subsample != (1, 1) else []
 
         broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
                          False, False]
