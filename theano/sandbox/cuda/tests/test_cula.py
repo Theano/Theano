@@ -74,18 +74,27 @@ class TestGpuCholesky(unittest.TestCase):
     def setUp(self):
         utt.seed_rng()
 
-    def get_gpu_cholesky_func(self, lower):
+    def get_gpu_cholesky_func(self, lower=True, inplace=False):
         """ Helper function to compile function from GPU Cholesky op. """
         A = theano.tensor.matrix("A", dtype="float32")
-        chol_A = cula.GpuCholesky(lower)(A)
+        if inplace:
+            if lower:
+                chol_A = cula.gpu_cholesky_lower_inplace(A)
+            else:
+                chol_A = cula.gpu_cholesky_upper_inplace(A)
+        else:
+            if lower:
+                chol_A = cula.gpu_cholesky_lower_no_inplace(A)
+            else:
+                chol_A = cula.gpu_cholesky_upper_no_inplace(A)
         return theano.function([A], chol_A)
 
-    def compare_gpu_cholesky_to_numpy(self, A_val, lower):
+    def compare_gpu_cholesky_to_numpy(self, A_val, lower=True, inplace=False):
         """ Helper function to compare op output to numpy.cholesky output. """
         chol_A_val = numpy.linalg.cholesky(A_val)
         if not lower:
             chol_A_val = chol_A_val.T
-        fn = self.get_gpu_cholesky_func(lower)
+        fn = self.get_gpu_cholesky_func(lower, inplace)
         res = fn(A_val)
         chol_A_res = numpy.array(res)
         utt.assert_allclose(chol_A_res, chol_A_val)
@@ -94,7 +103,7 @@ class TestGpuCholesky(unittest.TestCase):
         """ Invalid Cholesky input test with non-square matrix as input. """
         def invalid_input_func():
             A_val = numpy.random.normal(size=(3, 2)).astype("float32")
-            fn = self.get_gpu_cholesky_func(True)
+            fn = self.get_gpu_cholesky_func(True, False)
             fn(A_val)
         self.assertRaises(ValueError, invalid_input_func)
 
@@ -107,7 +116,7 @@ class TestGpuCholesky(unittest.TestCase):
             # this not being the case even with finite precision should be
             # negligible
             assert not numpy.allclose(A_val, A_val.T)
-            fn = self.get_gpu_cholesky_func(True)
+            fn = self.get_gpu_cholesky_func(True, False)
             fn(A_val)
         self.assertRaises(cula.cula.culaError, invalid_input_func)
 
@@ -116,7 +125,7 @@ class TestGpuCholesky(unittest.TestCase):
         def invalid_input_func():
             M_val = numpy.random.normal(size=(3, 3)).astype("float32")
             A_val = -M_val.dot(M_val.T)
-            fn = self.get_gpu_cholesky_func(True)
+            fn = self.get_gpu_cholesky_func(True, False)
             fn(A_val)
         self.assertRaises(cula.cula.culaError, invalid_input_func)
 
@@ -124,29 +133,32 @@ class TestGpuCholesky(unittest.TestCase):
         """ Invalid Cholesky input test with vector as input. """
         def invalid_input_func():
             A = theano.tensor.vector("A", dtype="float32")
-            cula.gpu_cholesky(A)
+            cula.gpu_cholesky_lower_no_inplace(A)
         self.assertRaises(AssertionError, invalid_input_func)
 
     def test_invalid_input_fail_tensor3(self):
         """ Invalid Cholesky input test with vector as input. """
         def invalid_input_func():
             A = theano.tensor.tensor3("A", dtype="float32")
-            cula.gpu_cholesky(A)
+            cula.gpu_cholesky_lower_no_inplace(A)
         self.assertRaises(AssertionError, invalid_input_func)
 
     def test_diag_chol(self):
         """ Diagonal matrix input with positive entries Cholesky test. """
         A_val = numpy.diag(numpy.random.uniform(size=5).astype("float32") + 1)
-        self.compare_gpu_cholesky_to_numpy(A_val, lower=True)
+        self.compare_gpu_cholesky_to_numpy(A_val, lower=True, inplace=False)
+        self.compare_gpu_cholesky_to_numpy(A_val, lower=True, inplace=True)
 
     def test_dense_chol_lower(self):
         """ Dense matrix input lower-triangular Cholesky test. """
         M_val = numpy.random.normal(size=(3, 3)).astype("float32")
         A_val = M_val.dot(M_val.T)
-        self.compare_gpu_cholesky_to_numpy(A_val, lower=True)
+        self.compare_gpu_cholesky_to_numpy(A_val, lower=True, inplace=False)
+        self.compare_gpu_cholesky_to_numpy(A_val, lower=True, inplace=True)
 
     def test_dense_chol_upper(self):
         """ Dense matrix input upper-triangular Cholesky test. """
         M_val = numpy.random.normal(size=(3, 3)).astype("float32")
         A_val = M_val.dot(M_val.T)
-        self.compare_gpu_cholesky_to_numpy(A_val, lower=False)
+        self.compare_gpu_cholesky_to_numpy(A_val, lower=False, inplace=False)
+        self.compare_gpu_cholesky_to_numpy(A_val, lower=False, inplace=True)
