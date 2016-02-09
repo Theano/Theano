@@ -147,8 +147,12 @@ of the `master` branch (the principal one) of the central repository
 Submit your changes to the central repository
 ---------------------------------------------
 
-Once your code is ready for others to review, you need to push your
+Once your code is ready for others to review, you need to commit all the changes and then push your
 branch to your github fork first:
+
+.. code-block:: bash
+    
+    git commit -a -m "your message here"
 
 .. code-block:: bash
 
