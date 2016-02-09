@@ -148,18 +148,15 @@ class TestGpuCholesky(unittest.TestCase):
         """ Diagonal matrix input with positive entries Cholesky test. """
         A_val = numpy.diag(numpy.random.uniform(size=5).astype("float32") + 1)
         self.compare_gpu_cholesky_to_numpy(A_val, lower=True, inplace=False)
-        self.compare_gpu_cholesky_to_numpy(A_val, lower=True, inplace=True)
 
     def test_dense_chol_lower(self):
         """ Dense matrix input lower-triangular Cholesky test. """
         M_val = numpy.random.normal(size=(3, 3)).astype("float32")
         A_val = M_val.dot(M_val.T)
         self.compare_gpu_cholesky_to_numpy(A_val, lower=True, inplace=False)
-        self.compare_gpu_cholesky_to_numpy(A_val, lower=True, inplace=True)
 
     def test_dense_chol_upper(self):
         """ Dense matrix input upper-triangular Cholesky test. """
         M_val = numpy.random.normal(size=(3, 3)).astype("float32")
         A_val = M_val.dot(M_val.T)
         self.compare_gpu_cholesky_to_numpy(A_val, lower=False, inplace=False)
-        self.compare_gpu_cholesky_to_numpy(A_val, lower=False, inplace=True)
