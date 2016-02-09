@@ -6,7 +6,6 @@ import theano.tensor as T
 from theano.gof import local_optimizer
 from theano.tensor import NotScalarConstantError, get_scalar_constant_value
 from theano.scalar import as_scalar
-import sys
 import copy
 
 from theano.sandbox.cuda import cuda_available, GpuOp
