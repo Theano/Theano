@@ -207,12 +207,18 @@ def make_loop(loop_orders, dtypes, loop_tasks, sub, openmp=None):
         iterv = 'ITER_%i' % i
         update = ""
         suitable_n = "1"
+        update += """
+        void *refVar[%i];
+        """ % len(indices)
         for j, index in enumerate(indices):
             var = sub['lv%i' % j]
             dtype = dtypes[j]
             update += "%(dtype)s &%(var)s_i = * ( %(var)s_iter + %(iterv)s * %(var)s_jump%(index)s_%(i)s );\n" % locals()
             if index != 'x':
                 suitable_n = "%(var)s_n%(index)s" % locals()
+            update += """
+            refVar[%(j)i] = &%(var)s_i;
+            """ % locals()
         if openmp:
             openmp_elemwise_minsize = theano.config.openmp_elemwise_minsize
             forloop = """#pragma omp parallel for if( %(suitable_n)s >=%(openmp_elemwise_minsize)s)\n""" % locals()
@@ -386,7 +392,9 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub,
         var = sub["lv%i" % i]
         declare_iter += "%(var)s_iter = (%(dtype)s*)(PyArray_DATA(%(var)s));\n" % locals()
 
-    pointer_update = ''
+    pointer_update = """
+    void *refVar[%i];
+    """ % len(dtypes)
     for j, dtype in enumerate(dtypes):
         var = sub["lv%i" % j]
         pointer_update += "%(dtype)s &%(var)s_i = * ( %(var)s_iter" % locals()
@@ -395,6 +403,9 @@ def make_reordered_loop(init_loop_orders, olv_index, dtypes, inner_task, sub,
             iterv = 'ITER_%i' % i
             pointer_update += "+%(var)s_stride_l%(i)i*%(iterv)s" % locals()
         pointer_update += ");\n"
+        pointer_update += """
+        refVar[%(j)i] = &%(var)s_i;
+        """ % locals()
 
     loop = inner_task
     for i in reversed(range(nnested)):

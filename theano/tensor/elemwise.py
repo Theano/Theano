@@ -477,8 +477,6 @@ second dimension
         self.inplace_pattern = frozendict(inplace_pattern)
         self.destroy_map = dict((o, [i]) for o, i in self.inplace_pattern.items())
 
-        self.params = ElemwiseParams(self.inplace_pattern)
-
         self.ufunc = None
         self.nfunc = None
         if nfunc_spec is None:
@@ -510,6 +508,9 @@ second dimension
 
 
     def get_params(self, node):
+        if(not hasattr(self, 'params')):
+            self.params = ElemwiseParams(self.inplace_pattern)
+
         return self.params
 
     def get_output_info(self, dim_shuffle, *inputs):
@@ -791,7 +792,7 @@ second dimension
 
         self.scalar_op.prepare_node(node.tag.fake_node, None, None, impl)
 
-    def perform(self, node, inputs, output_storage, params):
+    def perform(self, node, inputs, output_storage, params=None):
         if len(node.inputs) >= 32:
             # Some versions of NumPy will segfault, other will raise a
             # ValueError, if the number of inputs to a ufunc is 32 or more.
@@ -1032,70 +1033,81 @@ second dimension
                                       dict(sub, lv0=oname))
         # index of the last output
         olv_index = i
-        alloc += """
-        int olv_index;
-        olv_index = %(i)i;
-        """ % locals()
 
         # CHANGED HERE
         olength = len(onames)
         outArray = """
         PyArrayObject **outRef[%(olength)s];
         """ % locals()
-        for oname, i in izip(onames, range(len(onames))):
+        for oname, j in izip(onames, range(len(onames))):
             outArray += """
-            outRef[%(i)i]=&%(oname)s;
+            outRef[%(j)i]=&%(oname)s;
             """ % locals()
 
         ilength = len(inames)
         inArray = """
         PyArrayObject **inRef[%(ilength)s];
         """ % locals()
-        for iname, i in izip(inames, range(len(inames))):
+        for iname, j in izip(inames, range(len(inames))):
             inArray += """
-            inRef[%(i)i]=&%(iname)s;
+            inRef[%(j)i]=&%(iname)s;
             """ % locals()
 
         alloc += outArray + inArray
-
-        alloc += """
-        int outDm[%(dml)s];
-        int inDm[%(dml)s];
-        PyObject *tmpOut, *tmpIn;
-        Py_ssize_t pos;
-        pos = 0;
-        PyObject* destroyMap;
-        destroyMap =PyObject_GetAttrString(%(p)s,"inplace_pattern");
-        """ % dict(dml=len(self.inplace_pattern.keys()), p=sub['params'])
-
-        for i in range(len(self.inplace_pattern.keys())):
+        if(len(self.inplace_pattern.keys()) > 0):
             alloc += """
-            PyDict_Next(destroyMap, &pos, &tmpOut, &tmpIn);
-            outDm[%(i)i] = PyInt_AsLong(tmpOut);
-            inDm[%(i)i] = PyInt_AsLong(tmpIn);
-            PyArrayObject **aliasedOutput;
-            aliasedOutput = outRef[outDm[%(i)i]];
-            if (*aliasedOutput) {
+            int outDm[%(dml)s];
+            int inDm[%(dml)s];
+            PyObject *tmpOut, *tmpIn;
+            Py_ssize_t pos;
+            pos = 0;
+            PyObject* destroyMap;
+            destroyMap =PyObject_GetAttrString(%(p)s,"inplace_pattern");
+            """ % dict(dml=len(self.inplace_pattern.keys()), p=sub['params'])
+
+            for i in range(len(self.inplace_pattern.keys())):
+                alloc += """
+                PyDict_Next(destroyMap, &pos, &tmpOut, &tmpIn);
+                outDm[%(i)i] = PyInt_AsLong(tmpOut);
+                inDm[%(i)i] = PyInt_AsLong(tmpIn);
+                PyArrayObject **aliasedOutput;
+                aliasedOutput = outRef[outDm[%(i)i]];
+                if (*aliasedOutput) {
                 Py_XDECREF(*aliasedOutput);
-            }
-            *aliasedOutput = *inRef[inDm[%(i)i]];
-            Py_XINCREF(*aliasedOutput);
-            olv_index = %(i)i;
-            """ % locals()
+                }
+                *aliasedOutput = *inRef[inDm[%(i)i]];
+                Py_XINCREF(*aliasedOutput);
+                """ % locals()
+
+            alloc += """
+            Py_XDECREF(destroyMap);
+            """
+        else:
+            i -= ilength
+        alloc += """
+        int olv_index;
+        olv_index = %(i)i;
+        """ % locals()
 
         # We loop over the "aliased" outputs, i.e., those that are
         # inplace (overwrite the contents of one of the inputs) and
         # make the output pointers point to their corresponding input
         # pointers.
-        for output, oname in izip(aliased_outputs, aliased_onames):
+        for output, oname, i in izip(aliased_outputs, aliased_onames, range(len(aliased_outputs))):
             olv_index = inputs.index(dmap[output][0])
             iname = inames[olv_index]
+            dtype = idtypes[olv_index]
             # We make the output point to the corresponding input and
             # decrease the reference of whatever the output contained
             # prior to this
             # We alias the scalar variables
-            defines += "#define %(oname)s_i %(iname)s_i\n" % locals()
-            undefs += "#undef %(oname)s_i\n" % locals()
+
+            defines += """
+            #define %(oname)s_i *(%(dtype)s*) (refVar[i%(oname)s])
+            int i%(oname)s;
+            i%(oname)s = inDm[%(i)i];
+            """ % locals()
+            undefs += "#undef %(oname)s_i" % locals()
 
         # Note: here, olv_index is either the index of the last output
         # which is allocated, OR, if there are any aliased outputs,
@@ -1134,10 +1146,17 @@ second dimension
                 all_code = [code]
             if len(all_code) == 1:
                 # No loops
-                task_decl = "".join([
-                    "%s& %s_i = *%s_iter;\n" % (dtype, name, name)
-                    for name, dtype in izip(inames + list(real_onames),
-                                            idtypes + list(real_odtypes))])
+                nbRealVars = len(inames + list(real_onames))
+                task_decl = """
+                void *refVar[%i];
+                """ % nbRealVars
+                task_decl += "".join([
+                    """%s& %s_i = *%s_iter;
+                    refVar[%i] = &%s_i;
+                    """ % (dtype, name, name, i, name)
+                    for name, dtype, i in izip(inames + list(real_onames),
+                                               idtypes + list(real_odtypes),
+                                               range(nbRealVars))])
 
                 preloops = {}
                 for i, (loop_order, dtype) in enumerate(zip(loop_orders,
