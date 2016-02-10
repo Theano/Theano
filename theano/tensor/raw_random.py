@@ -524,9 +524,8 @@ def binomial(random_state, size=None, n=1, p=0.5, ndim=None,
         try:
             numpy.random.binomial(n=numpy.asarray([2, 3, 4], dtype='int64'), p=numpy.asarray([.1, .2, .3], dtype='float64'))
         except TypeError:
+            # THIS WORKS AROUND A NUMPY BUG on 32bit machine
             n = tensor.cast(n, 'int32')
-    # THIS WORKS AROUND A NUMPY BUG on 32bit machine
-    n = tensor.cast(n, 'int64')
     op = RandomFunction('binomial',
                         tensor.TensorType(dtype=dtype,
                                           broadcastable=(False,) * ndim))
