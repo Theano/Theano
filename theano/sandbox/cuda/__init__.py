@@ -591,7 +591,14 @@ def use(device,
                                  " this property")
 
             if config.print_active_device:
-                cnmem_enabled = "enabled" if config.lib.cnmem else "disabled"
+                if config.lib.cnmem:
+                    if config.lib.cnmem > 1:
+                        cnmem_enabled = "enabled with initial size: %d MB" % config.lib.cnmem
+                    else:
+                        cnmem = min(config.lib.cnmem, 0.98)
+                        cnmem_enabled = "enabled with initial size: %.2f%% of memory" % cnmem
+                else:
+                    cnmem_enabled = "disabled"
                 cudnn_version = "not available"
                 warn = None
                 try:
