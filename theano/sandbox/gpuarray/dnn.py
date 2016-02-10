@@ -215,16 +215,22 @@ class DnnVersion(Op):
         return None
 
 
-def version():
+def version(raises=True):
     """
     Return the current cuDNN version we link with.
 
     This also does a check that the header version matches the runtime version.
+
+    :raises: If True, raise an exception if CuDNN is not present or badly installed.
+        Otherwise, return -1.
     """
     if not dnn_present():
-        raise Exception(
-            "We can't determine the cudnn version as it is not available",
-            dnn_available.msg)
+        if raises:
+            raise Exception(
+                "We can't determine the cudnn version as it is not available",
+                dnn_available.msg)
+        else:
+            return -1
 
     if version.v is None:
         f = theano.function([], DnnVersion()(),
@@ -1204,7 +1210,7 @@ class GpuDnnSoftmaxBase(DnnBase):
         DnnBase.__init__(self, [self.file], self.c_func)
 
         assert(algo in ('fast', 'accurate', 'log'))
-        if algo == 'log' and version() < 3000:
+        if algo == 'log' and version(raises=False) < 3000:
             raise RuntimeError("Need CuDNN v3 for log-softmax")
         self.algo = algo
 
@@ -1485,15 +1491,15 @@ def local_softmax_dnn(node):
 @register_opt('cudnn')
 @local_optimizer([GpuElemwise])
 def local_log_softmax_dnn(node):
-    if version() < 3000:
-        # No log-softmax before cudnn v3
-        return
     # This looks for GpuDnnSoftmax so we know that we have cudnn.
     if (isinstance(node.op, GpuElemwise) and
             isinstance(node.op.scalar_op, Log) and
             node.inputs[0].owner and
             isinstance(node.inputs[0].owner.op, GpuDnnSoftmax) and
             len(node.inputs[0].clients) == 1):
+        if version(raises=False) < 3000:
+            # No log-softmax before cudnn v3
+            raise_no_cudnn("Need CuDNN v3 for LogSoftmax")
         softmax_node = node.inputs[0].owner
         new_softmax = GpuDnnSoftmax('log', softmax_node.op.mode)
         return [new_softmax(softmax_node.inputs[0])]
@@ -1502,14 +1508,14 @@ def local_log_softmax_dnn(node):
 @register_opt('cudnn')
 @op_lifter([LogSoftmax])
 def local_logsoftmax_to_dnn(node, ctx_name):
-    if not dnn_available(ctx_name) or version() < 3000:
-        # No log-softmax before cudnn v3
-        raise_no_cudnn("Need CuDNN v3 for LogSoftmax")
-
     # Transform the input in the format expected by GpuDnnSoftmax
     inp = node.inputs[0]
     if inp.ndim != 2:
         return
+    if not dnn_available(ctx_name) or version(raises=False) < 3000:
+        # No log-softmax before cudnn v3
+        raise_no_cudnn("Need CuDNN v3 for LogSoftmax")
+
     inp = inp.dimshuffle(0, 1, 'x', 'x')
     inp.tag.context_name = ctx_name
 
