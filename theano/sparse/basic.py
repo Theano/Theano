@@ -554,7 +554,7 @@ class CSMProperties(gof.Op):
         if self.kmap is None:
             out[0][0] = csm.data
         else:
-            out[0][0] = csm.data[self.kmap]
+            warnings.warn("Do not use kmap, it is removed")
         if str(csm.data.dtype) == 'int32':
             out[0][0] = theano._asarray(out[0][0], dtype='int32')
         # backport
@@ -659,8 +659,9 @@ class CSM(gof.Op):
         # for efficiency, if remap does nothing, then do not apply it
         if kmap is not None and all(kmap == numpy.arange(numpy.size(kmap))):
             kmap = None
-
         self.kmap = kmap
+        if self.kmap is not None:
+            warnings.warn("Do not use kmap, it is removed")
 
         if not isinstance(self.kmap, numpy.ndarray):
             # should view the other inputs too, but viewing multiple
@@ -679,7 +680,7 @@ class CSM(gof.Op):
 
     def __str__(self):
         if self.kmap is not None:
-            return "%s{%s}" % (self.__class__.__name__, str(self.kmap))
+            warnings.warn("Do not use kmap, it is removed")
         return self.__class__.__name__
 
     def make_node(self, data, indices, indptr, shape):
@@ -727,7 +728,7 @@ class CSM(gof.Op):
         (data, indices, indptr, shape) = inputs
         (out,) = outputs
         if self.kmap is not None:
-            data = data[self.kmap]
+            warnings.warn("Do not use kmap, it is removed")
 
         if len(shape) != 2:
             raise ValueError('Shape should be an array of length 2')
@@ -766,8 +767,7 @@ class CSM(gof.Op):
             # node.inputs[3] is of lenght as we only support sparse matrix.
             return [(node.inputs[3][0], node.inputs[3][1])]
         else:
-            raise theano.tensor.basic.ShapeError("case not implemented")
-
+            raise Exception("Do not use kmap, it is removed")
 
 CSC = CSM('csc')
 """
@@ -846,7 +846,10 @@ class CSMGrad(gof.op.Op):
     # gradient data vector.
 
     def __init__(self, kmap=None):
-        self.kmap = kmap
+        if kmap == None:
+            self.kmap = kmap
+        else:
+            warnings.warn("Do not use kmap, it is removed")
         # This class always allocate a new output.
         # I keep this here to help GD understand what this kmap think is.
         # if self.kmap is None:
@@ -893,16 +896,13 @@ class CSMGrad(gof.op.Op):
 
         if self.kmap is None:
             g_out[0] = gout_data
-        else:
-            grad = numpy.zeros_like(x_data)
-            grad[self.kmap] = gout_data
-            g_out[0] = grad
-
+    
     def infer_shape(self, node, shapes):
         if self.kmap is None:
             return [shapes[1]]
         else:
-            return [shapes[0]]
+            raise Exception("Do not use kmap, it is removed")
+
 csm_grad = CSMGrad
 
 
