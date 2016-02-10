@@ -527,7 +527,10 @@ class CSMProperties(gof.Op):
     """
 
     def __init__(self, kmap=None):
-        self.kmap = kmap
+        if kmap == None:
+            self.kmap = kmap
+        else:
+            raise Exception("Do not use kmap, it is removed")
 
     def __eq__(self, other):
         return type(self) == type(other) and _kmap_eq(self.kmap, other.kmap)
@@ -553,8 +556,6 @@ class CSMProperties(gof.Op):
         (csm,) = inputs
         if self.kmap is None:
             out[0][0] = csm.data
-        else:
-            warnings.warn("Do not use kmap, it is removed")
         if str(csm.data.dtype) == 'int32':
             out[0][0] = theano._asarray(out[0][0], dtype='int32')
         # backport
@@ -661,8 +662,7 @@ class CSM(gof.Op):
             kmap = None
         self.kmap = kmap
         if self.kmap is not None:
-            warnings.warn("Do not use kmap, it is removed")
-
+            raise Exception("Do not use kmap, it is removed")
         if not isinstance(self.kmap, numpy.ndarray):
             # should view the other inputs too, but viewing multiple
             # inputs is not currently supported by the destroyhandler
@@ -679,8 +679,6 @@ class CSM(gof.Op):
         return self._hashval
 
     def __str__(self):
-        if self.kmap is not None:
-            warnings.warn("Do not use kmap, it is removed")
         return self.__class__.__name__
 
     def make_node(self, data, indices, indptr, shape):
@@ -727,8 +725,6 @@ class CSM(gof.Op):
         # for efficiency, if remap does nothing, then do not apply it
         (data, indices, indptr, shape) = inputs
         (out,) = outputs
-        if self.kmap is not None:
-            warnings.warn("Do not use kmap, it is removed")
 
         if len(shape) != 2:
             raise ValueError('Shape should be an array of length 2')
@@ -849,7 +845,7 @@ class CSMGrad(gof.op.Op):
         if kmap == None:
             self.kmap = kmap
         else:
-            warnings.warn("Do not use kmap, it is removed")
+            raise Exception("Do not use kmap, it is removed")
         # This class always allocate a new output.
         # I keep this here to help GD understand what this kmap think is.
         # if self.kmap is None:
