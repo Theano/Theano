@@ -1042,6 +1042,46 @@ class GpuCAReduce(GpuOp):
         return self.scalar_op.c_code(dummy_node, dummy_name, (left, right),
                                      (left,), sub)
 
+    def _get_reduce_code_transform_code(self, node, name, accum, elem, sub):
+        """
+            node: the node argument to this op's c_code
+            name: the name argument to this op's c_code
+            left: a C code string identifying an lvalue
+            right: a C code string identifying an expression
+            sub: the sub argument to this op's c_code
+            pre: If True, we will add the pre_scalar_op.c_code
+
+            returns C code to reduce left and right, assigning the
+            result to left."""
+
+        x, = node.inputs
+
+        dtype = x.dtype
+
+        dummy_accum = scal.Scalar(dtype=dtype)()
+        dummy_elem = scal.Scalar(dtype=dtype)()
+
+        dummy_node = self.scalar_op.make_node(dummy_accum, dummy_elem)
+
+        dummy_name = name + '_scalar_op' + str(self._n_scalar_op_calls)
+        self._n_scalar_op_calls += 1
+        red_code = self.scalar_op.c_code(dummy_node, dummy_name, (accum, elem),
+                                     ("",), sub)
+        assert red_code.startswith(' = ')
+        red_code = red_code[3:]
+
+        if not self.pre_scalar_op:
+            transform_code = elem + ";"
+        else:
+            dummy_node = self.pre_scalar_op.make_node(dummy_elem)
+            dummy_name = name + '_scalar_op' + str(self._n_scalar_op_calls)
+            self._n_scalar_op_calls += 1
+            transform_code = self.pre_scalar_op.c_code(dummy_node, dummy_name,
+                                                       (elem,), ("",), sub)
+            assert transform_code.startswith(' = ')
+            transform_code = transform_code[3:]
+        return (red_code, transform_code)
+
     def _k_reduce_buf(self, z_pos, node, name, sub):
         """
         WRITEME
@@ -1209,36 +1249,42 @@ class GpuCAReduce(GpuOp):
           if(CudaNdarray_SIZE(%(x)s)==0){
             %(zero_shp)s;
           }else{
-            int verbose = 0;
-            dim3 n_threads(
-                    std::min(CudaNdarray_SIZE(%(x)s),
-                             (size_t) NUM_VECTOR_OP_THREADS_PER_BLOCK));
-            dim3 n_blocks(1);
-            if (verbose) printf("running kernel_reduce_ccontig_%(name)s"
-                                " n_threads.x=%%d, size=%%d, ndim=%%d\\n",
-                                n_threads.x,CudaNdarray_SIZE(%(x)s),%(x)s->nd);
-            int n_shared = sizeof(float) * n_threads.x;
-            kernel_reduce_ccontig_%(name)s<<<n_blocks, n_threads, n_shared>>>(
-                    CudaNdarray_SIZE(%(x)s),
-                    CudaNdarray_DEV_DATA(%(x)s),
-                    CudaNdarray_DEV_DATA(%(z)s));
-            CNDA_THREAD_SYNC;
-            cudaError_t sts = cudaGetLastError();
+            //use CUB
+            CubReduction_%(name)s cub_red_op;
+            CubTransformation_%(name)s cub_trans_op;
+
+            cub::TransformInputIterator<float, CubTransformation_%(name)s, float*>
+                cub_itr(CudaNdarray_DEV_DATA(%(x)s), cub_trans_op);
+
+            // Determine temporary device storage requirements
+            void     *d_temp_storage = NULL;
+            size_t   temp_storage_bytes = 0;
+            cub::DeviceReduce::Reduce(d_temp_storage, temp_storage_bytes,
+                                      cub_itr,
+                                      CudaNdarray_DEV_DATA(%(z)s),
+                                      CudaNdarray_SIZE(%(x)s), cub_red_op);
+
+            d_temp_storage = device_malloc(temp_storage_bytes);
+            if(!d_temp_storage) {
+                PyErr_Format(PyExc_RuntimeError,
+                    "Error allocating temp memory for CUB for %(name)s");
+                %(fail)s;
+            }
+
+            cudaError_t sts = cub::DeviceReduce::Reduce(d_temp_storage,
+                                      temp_storage_bytes,
+                                      cub_itr,
+                                      CudaNdarray_DEV_DATA(%(z)s),
+                                      CudaNdarray_SIZE(%(x)s), cub_red_op);
             if (cudaSuccess != sts)
             {
                 PyErr_Format(PyExc_RuntimeError,
-                             "Cuda error: %%s: %%s."
-                             " (grid: %%i x %%i; block: %%i x %%i x %%i)\\n",
-                    "kernel_reduce_ccontig_%(name)s",
-                    cudaGetErrorString(sts),
-                    n_blocks.x,
-                    n_blocks.y,
-                    n_threads.x,
-                    n_threads.y,
-                    n_threads.z);
+                             "Cuda error in call to cub::DeviceReduce::Reduce in %(name)s: %%s.",
+                             cudaGetErrorString(sts));
                 %(fail)s;
             }
-         }
+            device_free(d_temp_storage);
+          }
         }
         """ % locals(), file=sio)
 
@@ -1855,29 +1901,28 @@ class GpuCAReduce(GpuOp):
             reduce_fct = self._assign_reduce(node, nodename, "myresult",
                                              "A[i0]",
                                              {}, True)
+            cub_reduce, cub_transform = self._get_reduce_code_transform_code(
+                node, nodename, "accum", "elem", {})
             reduce_init = self._assign_init("A[0]")
             print("""
-            static __global__ void kernel_reduce_ccontig_%(nodename)s(
-                    const unsigned int d0,
-                    const float *A,
-                    float * Z)
+
+            //For CUB-enabled reduction
+            struct CubReduction_%(nodename)s
             {
-                const int threadCount = blockDim.x;
-                const int threadNum = threadIdx.x;
-                extern __shared__ float buf[];
-                float myresult = %(reduce_init)s;
-
-                if (warpSize != 32)
-                {
-                    return;  //TODO: set error code
+                __host__ __device__ __forceinline__ float operator()(
+                    const float &accum, const float &elem) const {
+                    return %(cub_reduce)s
                 }
+            };
 
-                for (int i0 = threadIdx.x; i0 < d0; i0 += blockDim.x)
-                {
-                    %(reduce_fct)s
+            struct CubTransformation_%(nodename)s
+            {
+                __host__ __device__ __forceinline__ float operator()(
+                    const float &elem) const {
+                    return %(cub_transform)s
                 }
-                %(reducebuf)s
-            }
+            };
+
             """ % locals(), file=sio)
         if self.reduce_mask == (1,):
             # this kernel is ok for up to a few thousand elements, but
