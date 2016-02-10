@@ -56,7 +56,7 @@ class TestDnnConv2d(test_abstract_conv.TestConv2d):
 
 class TestCorrMMConv2d(test_abstract_conv.TestConv2d):
     def setUp(self):
-        super(TestDnnConv2d, self).setUp()
+        super(TestCorrMMConv2d, self).setUp()
         self.shared = gpu_shared
 
     def test_gpucorrmm_conv(self):
