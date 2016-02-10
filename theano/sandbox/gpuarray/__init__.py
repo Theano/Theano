@@ -77,7 +77,7 @@ def init_dev(dev, name=None):
                             " downgrading CuDNN to version 4.")
                 cudnn_version = " (CuDNN version %s)" % cudnn_version
             except Exception:
-                raise RuntimeError("CuDNN is mandatory with the GpuArray back-end.")
+                pass
         print("Mapped name %s to device %s: %s%s" % (
             name, dev, context.devname, cudnn_version),
               file=sys.stderr)

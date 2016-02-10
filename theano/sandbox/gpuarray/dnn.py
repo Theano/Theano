@@ -32,6 +32,10 @@ from .opt import gpu_seqopt, register_opt, conv_groupopt, op_lifter
 from .opt_util import alpha_merge, output_merge, inplace_allocempty
 
 
+def raise_no_cudnn(msg="CuDNN is required for convolution and pooling"):
+    raise RuntimeError(msg)
+
+
 def _dnn_check_compile():
     preambule = """
 #include <stdio.h>
@@ -1302,9 +1306,11 @@ def local_abstractconv_cudnn(node):
     inp1 = node.inputs[0]
     inp2 = node.inputs[1]
 
-    if (not isinstance(inp1.type, GpuArrayType) or
-            not dnn_available(inp1.type.context_name)):
+    if not isinstance(inp1.type, GpuArrayType):
         return None
+
+    if not dnn_available(inp1.type.context_name):
+        raise_no_cudnn()
 
     if node.op.filter_flip:
         conv_mode = 'conv'
@@ -1404,7 +1410,7 @@ def local_dnn_convi_output_merge(node, *inputs):
 @op_lifter([Pool])
 def local_pool_dnn_alternative(node, ctx_name):
     if not dnn_available(ctx_name):
-        return
+        raise_no_cudnn()
     if not node.op.ignore_border:
         return
     img, = node.inputs
@@ -1420,7 +1426,7 @@ def local_pool_dnn_alternative(node, ctx_name):
 @op_lifter([MaxPoolGrad])
 def local_pool_dnn_grad_stride(node, ctx_name):
     if not dnn_available(ctx_name):
-        return
+        raise_no_cudnn()
     if not node.op.ignore_border:
         return
     inp, out, out_grad = node.inputs
@@ -1443,7 +1449,7 @@ def local_pool_dnn_grad_stride(node, ctx_name):
 @op_lifter([AveragePoolGrad])
 def local_avg_pool_dnn_grad_stride(node, ctx_name):
     if not dnn_available(ctx_name):
-        return
+        raise_no_cudnn()
     if not node.op.ignore_border:
         return
     inp, out_grad = node.inputs
@@ -1468,7 +1474,7 @@ def local_avg_pool_dnn_grad_stride(node, ctx_name):
 def local_softmax_dnn(node):
     if isinstance(node.op, GpuSoftmax):
         if not dnn_available(node.outputs[0].type.context_name):
-            return
+            raise_no_cudnn()
         ins = node.inputs[0].dimshuffle(0, 1, 'x', 'x')
         ins = gpu_contiguous(ins)
         out = GpuDnnSoftmax('accurate', 'channel')(ins)
@@ -1498,7 +1504,7 @@ def local_log_softmax_dnn(node):
 def local_logsoftmax_to_dnn(node, ctx_name):
     if not dnn_available(ctx_name) or version() < 3000:
         # No log-softmax before cudnn v3
-        return
+        raise_no_cudnn("Need CuDNN v3 for LogSoftmax")
 
     # Transform the input in the format expected by GpuDnnSoftmax
     inp = node.inputs[0]
@@ -1534,7 +1540,7 @@ gpu_seqopt.register("NoCuDNNRaise", NoCuDNNRaise(), 0, 'cudnn')
 @op_lifter([SoftmaxGrad])
 def local_softmax_dnn_grad(node, ctx_name):
     if not dnn_available(ctx_name):
-        return
+        raise_no_cudnn("CuDNN needed for SoftmaxGrad")
     ins = []
     for n in node.inputs:
         n = as_gpuarray_variable(n, ctx_name)
