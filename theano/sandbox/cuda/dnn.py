@@ -7,7 +7,7 @@ from theano import Apply, tensor, config, Variable
 from theano.scalar import as_scalar, constant, Log
 from theano.gradient import DisconnectedType, grad_not_implemented
 from theano.gof import Optimizer, local_optimizer, COp
-from theano.gof.type import CDataType, Generic
+from theano.gof.type import CDataType
 from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.tensor.nnet import LogSoftmax, SoftmaxGrad

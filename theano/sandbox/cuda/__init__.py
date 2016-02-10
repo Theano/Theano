@@ -602,7 +602,7 @@ def use(device,
                         warn = ("Your CuDNN version is more recent then Theano."
                                 " If you see problems, try updating Theano or"
                                 " downgrading CuDNN to version 4.")
-                except Exception, e:
+                except Exception:
                     pass
                 print("Using gpu device %d: %s (CNMeM is %s, CuDNN %s)" % (
                     active_device_number(),
