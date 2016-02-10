@@ -68,6 +68,7 @@ def init_dev(dev, name=None):
         warn = None
         cudnn_version = ""
         if dev.startswith('cuda'):
+            cudnn_version = " (CuDNN not available)"
             try:
                 cudnn_version = dnn.version()
                 # 4100 should not print warning with cudnn 4 final.
