@@ -762,8 +762,6 @@ class CSM(gof.Op):
         if self.kmap is None:
             # node.inputs[3] is of lenght as we only support sparse matrix.
             return [(node.inputs[3][0], node.inputs[3][1])]
-        else:
-            raise Exception("Do not use kmap, it is removed")
 
 CSC = CSM('csc')
 """
@@ -896,8 +894,6 @@ class CSMGrad(gof.op.Op):
     def infer_shape(self, node, shapes):
         if self.kmap is None:
             return [shapes[1]]
-        else:
-            raise Exception("Do not use kmap, it is removed")
 
 csm_grad = CSMGrad
 
