@@ -2547,7 +2547,7 @@ def local_gpu_alloc_empty_to_zeros(node):
         return [gpu_alloc(theano.tensor.constant(0, dtype='float32'),
                           *node.inputs)]
 optdb.register('local_gpu_alloc_empty_to_zeros',
-               local_gpu_alloc_empty_to_zeros,
+               theano.tensor.opt.in2out(local_gpu_alloc_empty_to_zeros),
                # After move to gpu and merge2, before inplace.
                49.3,
                'alloc_empty_to_zeros',)

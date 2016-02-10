@@ -1780,7 +1780,7 @@ def local_alloc_empty_to_zeros(node):
     if isinstance(node.op, T.AllocEmpty):
         return [T.zeros(node.inputs, dtype=node.outputs[0].dtype)]
 compile.optdb.register('local_alloc_empty_to_zeros',
-                       local_alloc_empty_to_zeros,
+                       in2out(local_alloc_empty_to_zeros),
                        # After move to gpu and merge2, before inplace.
                        49.3,
                        'alloc_empty_to_zeros',)
