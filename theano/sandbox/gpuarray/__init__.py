@@ -73,7 +73,7 @@ def init_dev(dev, name=None):
                 cudnn_version = dnn.version()
                 # 4100 should not print warning with cudnn 4 final.
                 if cudnn_version > 4100:
-                    warn = ("Your CuDNN version is more recent then Theano."
+                    warn = ("Your CuDNN version is more recent than Theano."
                             " If you see problems, try updating Theano or"
                             " downgrading CuDNN to version 4.")
                 cudnn_version = " (CuDNN version %s)" % cudnn_version
