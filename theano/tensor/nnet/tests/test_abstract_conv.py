@@ -67,6 +67,7 @@ class TestConv2d(unittest.TestCase):
         self.subsamples = [(1, 1), (2, 2), (2, 4)]
         self.border_modes = ["valid", "full", (0, 0), (1, 1), (5, 5), (5, 2)]
         self.filter_flip = [True, False]
+        self.provide_shape = [True, False]
         self.shared = theano.compile.shared
 
     def get_output_shape(self, inputs_shape, filters_shape, subsample,
@@ -237,119 +238,123 @@ class TestConv2d(unittest.TestCase):
                             [filters_val, output_val],
                             mode=mode, eps=1)
 
+    def test_all(self):
+        ds = [0, 0]
+        db = (0, 0)
+        dflip = True in self.filter_flip
+        dprovide_shape = True in self.provide_shapes
+        for (i, f) in zip(self.inputs_shapes, self.filters_shapes):
+            for provide_shape in self.provide_shape:
+                self.tcase(i, f, ds, db, dflip, provide_shape)
+            for s in self.subsamples:
+                self.tcase(i, f, s, db, dflip, dprovide_shape)
+            for b in self.border_modes:
+                self.tcase(i, f, ds, b, dflip, dprovide_shape)
+            for flip in self.filter_flip:
+                self.tcase(i, f, ds, db, flip, dprovide_shape)
+
 
 class TestCorrConv2d(TestConv2d):
-    def test_corrmm_conv(self):
-        for (i, f), s, b, flip, provide_shape in itertools.product(
-                zip(self.inputs_shapes, self.filters_shapes),
-                self.subsamples,
-                self.border_modes,
-                self.filter_flip,
-                [False, True]):
-
-            o = self.get_output_shape(i, f, s, b)
-            self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
-                         verify_grad=True, provide_shape=provide_shape,
-                         border_mode=b, filter_flip=flip, target_op=CorrMM)
-            self.run_gradweight(inputs_shape=i, filters_shape=f,
-                                output_shape=o, subsample=s, verify_grad=True,
-                                provide_shape=provide_shape, border_mode=b,
-                                filter_flip=flip, target_op=CorrMM_gradWeights)
-            self.run_gradinput(inputs_shape=i, filters_shape=f,
-                               output_shape=o, subsample=s, verify_grad=True,
-                               provide_shape=provide_shape, border_mode=b,
-                               filter_flip=flip, target_op=CorrMM_gradInputs)
+    def tcase(self, i, f, s, b, flip, provide_shape):
+        o = self.get_output_shape(i, f, s, b)
+        self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
+                     verify_grad=True, provide_shape=provide_shape,
+                     border_mode=b, filter_flip=flip, target_op=CorrMM)
+        self.run_gradweight(inputs_shape=i, filters_shape=f,
+                            output_shape=o, subsample=s, verify_grad=True,
+                            provide_shape=provide_shape, border_mode=b,
+                            filter_flip=flip, target_op=CorrMM_gradWeights)
+        self.run_gradinput(inputs_shape=i, filters_shape=f,
+                           output_shape=o, subsample=s, verify_grad=True,
+                           provide_shape=provide_shape, border_mode=b,
+                           filter_flip=flip, target_op=CorrMM_gradInputs)
 
 
 class TestCpuConv2d(TestConv2d):
-    def test_cpu_conv(self):
-        mode = theano.compile.mode.get_default_mode().excluding('conv_gemm')
-        for (i, f), s, b, flip, provide_shape in itertools.product(
-                zip(self.inputs_shapes, self.filters_shapes),
-                self.subsamples,
-                self.border_modes,
-                self.filter_flip,
-                [False, True]):
+    def setUp(self):
+        super(TestCpuConv2d, self).setUp()
+        self.mode = theano.compile.mode.get_default_mode().excluding('conv_gemm')
+    def tcase(self, i, f, s, b, flip, provide_shape):
+        mode = self.mode
+        o = self.get_output_shape(i, f, s, b)
+        fwd_OK = True
+        gradweight_OK = True
+        gradinput_OK = True
 
-            o = self.get_output_shape(i, f, s, b)
-            fwd_OK = True
-            gradweight_OK = True
-            gradinput_OK = True
+        if not flip:
+            fwd_OK = False
+            gradweight_OK = False
+            gradinput_OK = False
 
-            if not flip:
-                fwd_OK = False
-                gradweight_OK = False
-                gradinput_OK = False
+        if b not in ((0, 0), 'valid', 'full'):
+            fwd_OK = False
+            gradweight_OK = False
+            gradinput_OK = False
 
-            if b not in ((0, 0), 'valid', 'full'):
-                fwd_OK = False
-                gradweight_OK = False
-                gradinput_OK = False
+        if (not provide_shape) and (s != (1, 1)) and (b == 'full'):
+            gradweight_OK = False
+            gradinput_OK = False
 
-            if (not provide_shape) and (s != (1, 1)) and (b == 'full'):
-                gradweight_OK = False
-                gradinput_OK = False
+        if ((s[0] not in (1, 2)) or (s[1] not in (1, 2))) and (b == 'full'):
+            gradweight_OK = False
+            gradinput_OK = False
 
-            if ((s[0] not in (1, 2)) or (s[1] not in (1, 2))) and (b == 'full'):
-                gradweight_OK = False
-                gradinput_OK = False
+        if fwd_OK:
+            self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
+                         verify_grad=(gradweights_ok and gradinput_ok),
+                         mode=mode, provide_shape=provide_shape,
+                         border_mode=b, filter_flip=flip, target_op=ConvOp)
+        else:
+            self.assertRaises(NotImplementedError,
+                              self.run_fwd,
+                              inputs_shape=i,
+                              filters_shape=f,
+                              subsample=s,
+                              verify_grad=False,
+                              mode=mode,
+                              provide_shape=provide_shape,
+                              border_mode=b,
+                              filter_flip=flip)
 
-            if fwd_OK:
-                self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
-                             verify_grad=False, mode=mode,
-                             provide_shape=provide_shape, border_mode=b,
-                             filter_flip=flip, target_op=ConvOp)
-            else:
-                self.assertRaises(NotImplementedError,
-                                  self.run_fwd,
-                                  inputs_shape=i,
-                                  filters_shape=f,
-                                  subsample=s,
-                                  verify_grad=False,
-                                  mode=mode,
-                                  provide_shape=provide_shape,
-                                  border_mode=b,
-                                  filter_flip=flip)
+        if gradweight_OK:
+            self.run_gradweight(inputs_shape=i, filters_shape=f,
+                                output_shape=o, subsample=s,
+                                verify_grad=False, mode=mode,
+                                provide_shape=provide_shape, border_mode=b,
+                                filter_flip=flip,
+                                target_op=(ConvOp, ConvGrad3D))
+        else:
+            self.assertRaises(NotImplementedError,
+                              self.run_gradweight,
+                              inputs_shape=i,
+                              filters_shape=f,
+                              output_shape=o,
+                              subsample=s,
+                              verify_grad=False,
+                              mode=mode,
+                              provide_shape=provide_shape,
+                              border_mode=b,
+                              filter_flip=flip)
 
-            if gradweight_OK:
-                self.run_gradweight(inputs_shape=i, filters_shape=f,
-                                    output_shape=o, subsample=s,
-                                    verify_grad=False, mode=mode,
-                                    provide_shape=provide_shape, border_mode=b,
-                                    filter_flip=flip,
-                                    target_op=(ConvOp, ConvGrad3D))
-            else:
-                self.assertRaises(NotImplementedError,
-                                  self.run_gradweight,
-                                  inputs_shape=i,
-                                  filters_shape=f,
-                                  output_shape=o,
-                                  subsample=s,
-                                  verify_grad=False,
-                                  mode=mode,
-                                  provide_shape=provide_shape,
-                                  border_mode=b,
-                                  filter_flip=flip)
-
-            if gradinput_OK:
-                self.run_gradinput(inputs_shape=i, filters_shape=f,
-                                   output_shape=o, subsample=s,
-                                   verify_grad=False, mode=mode,
-                                   provide_shape=provide_shape, border_mode=b,
-                                   filter_flip=flip,
-                                   target_op=(ConvOp, ConvTransp3D))
-            else:
-                self.assertRaises(NotImplementedError,
-                                  self.run_gradinput,
-                                  inputs_shape=i,
-                                  filters_shape=f,
-                                  output_shape=o,
-                                  subsample=s,
-                                  verify_grad=False,
-                                  mode=mode,
-                                  provide_shape=provide_shape,
-                                  border_mode=b,
-                                  filter_flip=flip)
+        if gradinput_OK:
+            self.run_gradinput(inputs_shape=i, filters_shape=f,
+                               output_shape=o, subsample=s,
+                               verify_grad=False, mode=mode,
+                               provide_shape=provide_shape, border_mode=b,
+                               filter_flip=flip,
+                               target_op=(ConvOp, ConvTransp3D))
+        else:
+            self.assertRaises(NotImplementedError,
+                              self.run_gradinput,
+                              inputs_shape=i,
+                              filters_shape=f,
+                              output_shape=o,
+                              subsample=s,
+                              verify_grad=False,
+                              mode=mode,
+                              provide_shape=provide_shape,
+                              border_mode=b,
+                              filter_flip=flip)
 
 
 class TestConvTypes(unittest.TestCase):
