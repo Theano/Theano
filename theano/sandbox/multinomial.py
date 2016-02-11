@@ -6,6 +6,7 @@ import theano.tensor as T
 from theano.gof import local_optimizer
 from theano.tensor import NotScalarConstantError, get_scalar_constant_value
 from theano.scalar import as_scalar
+import copy
 
 from theano.sandbox.cuda import cuda_available, GpuOp
 if cuda_available:
@@ -191,6 +192,72 @@ class MultinomialFromUniform(Op):
                         if (cummul > unis_n):
                             z[0][n, m] += 1
                             break
+
+
+class MultinomialWOReplacementFromUniform(MultinomialFromUniform):
+    """
+    Converts samples from a uniform into sample (without replacement) from a multinomial.
+
+    """
+
+    def make_node(self, pvals, unis, n=1):
+        pvals = T.as_tensor_variable(pvals)
+        unis = T.as_tensor_variable(unis)
+        if pvals.ndim != 2:
+            raise NotImplementedError('pvals ndim should be 2', pvals.ndim)
+        if unis.ndim != 1:
+            raise NotImplementedError('unis ndim should be 1', unis.ndim)
+        if self.odtype == 'auto':
+            odtype = 'int64'
+        else:
+            odtype = self.odtype
+        out = T.tensor(dtype=odtype, broadcastable=pvals.type.broadcastable)
+        return Apply(self, [pvals, unis, as_scalar(n)], [out])
+
+    def perform(self, node, ins, outs):
+        (pvals, unis, n_samples) = ins
+        # make a copy so we do not overwrite the input
+        pvals = copy.copy(pvals)
+        (z,) = outs
+
+        if n_samples > pvals.shape[1]:
+            raise ValueError("Cannot sample without replacement n samples bigger "
+                             "than the size of the distribution.")
+
+        if unis.shape[0] != pvals.shape[0] * n_samples:
+            raise ValueError("unis.shape[0] != pvals.shape[0] * n_samples",
+                             unis.shape[0], pvals.shape[0], n_samples)
+
+        if self.odtype == 'auto':
+            odtype = 'int64'
+        else:
+            odtype = self.odtype
+        if z[0] is None or not numpy.all(z[0].shape == [pvals.shape[0], n_samples]):
+            z[0] = -1 * numpy.ones((pvals.shape[0], n_samples), dtype=odtype)
+
+        nb_multi = pvals.shape[0]
+        nb_outcomes = pvals.shape[1]
+
+        # For each multinomial, loop over each possible outcome,
+        # and set selected pval to 0 after being selected
+        for c in range(n_samples):
+            for n in range(nb_multi):
+                cummul = 0
+                unis_n = unis[c * nb_multi + n]
+                for m in range(nb_outcomes):
+                    cummul += pvals[n, m]
+                    if (cummul > unis_n):
+                        z[0][n, c] = m
+                        # set to zero and re-normalize so that it's not selected again
+                        pvals[n, m] = 0.
+                        pvals[n] /= pvals[n].sum()
+                        break
+
+    def c_code_cache_version(self):
+        return None
+
+    def c_code(self, node, name, ins, outs, sub):
+        raise NotImplementedError('no C implementation yet!')
 
 
 class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
