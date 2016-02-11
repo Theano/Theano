@@ -247,9 +247,8 @@ class TestConv2d(unittest.TestCase):
             for provide_shape in self.provide_shape:
                 self.tcase(i, f, ds, db, dflip, provide_shape)
             for s in self.subsamples:
-                self.tcase(i, f, s, db, dflip, dprovide_shape)
-            for b in self.border_modes:
-                self.tcase(i, f, ds, b, dflip, dprovide_shape)
+                for b in self.border_modes:
+                    self.tcase(i, f, s, db, dflip, dprovide_shape)
             for flip in self.filter_flip:
                 self.tcase(i, f, ds, db, flip, dprovide_shape)
 
