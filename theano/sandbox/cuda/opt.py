@@ -2767,10 +2767,11 @@ def local_abstractconv_gemm(node):
         # GpuConv does not always store information on the batchsize and
         # channels, though, so we only use what information we have.)
         if ((subsample == (1, 1)) and
-                (node.op.imshp is not None) and
-                (None not in node.op.imshp[-2:]) and
-                (node.op.kshp is not None) and
-                (None not in node.op.kshp)):
+            (node.op.imshp is not None) and
+            (None not in node.op.imshp[-2:]) and
+            (node.op.kshp is not None) and
+            (None not in node.op.kshp) and
+             border_mode != "half"):
             # we know the kernel and output size
             prod1 = node.op.kshp[0] * node.op.kshp[1]
             prod2 = ((node.op.imshp[-2] - node.op.kshp[0] + 1) *
