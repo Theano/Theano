@@ -116,7 +116,7 @@ one. You can do it like this:
 >>> from theano import function
 >>> x, y = T.dscalars('x', 'y')
 >>> z = x + y
->>> f = function([x, In(y, default=1)], z)
+>>> f = function([x, In(y, value=1)], z)
 >>> f(33)
 array(34.0)
 >>> f(33, 2)
@@ -125,7 +125,7 @@ array(35.0)
 This makes use of the :ref:`In <function_inputs>` class which allows
 you to specify properties of your function's parameters with greater detail. Here we
 give a default value of 1 for *y* by creating a ``In`` instance with
-its ``default`` field set to 1.
+its ``value`` field set to 1.
 
 Inputs with default values must follow inputs without default
 values (like Python's functions).  There can be multiple inputs with default values. These parameters can
@@ -137,7 +137,7 @@ be set positionally or by name, as in standard Python:
 
 >>> x, y, w = T.dscalars('x', 'y', 'w')
 >>> z = (x + y) * w
->>> f = function([x, In(y, default=1), In(w, default=2, name='w_by_name')], z)
+>>> f = function([x, In(y, value=1), In(w, value=2, name='w_by_name')], z)
 >>> f(33)
 array(68.0)
 >>> f(33, 2)
@@ -154,8 +154,8 @@ array(33.0)
    that are passed as arguments.  The symbolic variable objects have name
    attributes (set by ``dscalars`` in the example above) and *these* are the
    names of the keyword parameters in the functions that we build.  This is
-   the mechanism at work in ``In(y, default=1)``.  In the case of ``In(w,
-   default=2, name='w_by_name')``. We override the symbolic variable's name
+   the mechanism at work in ``In(y, value=1)``.  In the case of ``In(w,
+   value=2, name='w_by_name')``. We override the symbolic variable's name
    attribute with a name to be used for this function.
 
 

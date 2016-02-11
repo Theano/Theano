@@ -33,7 +33,7 @@ functions using either of the following two options:
     - You can also combine the profile of many functions:
 
       .. testcode::
-
+          :hide:
           profile = theano.compile.ProfileStats()
           f = theano.function(..., profile=profile)
           g = theano.function(..., profile=profile)
