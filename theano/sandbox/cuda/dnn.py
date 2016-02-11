@@ -7,7 +7,7 @@ from theano import Apply, tensor, config, Variable
 from theano.scalar import as_scalar, constant, Log
 from theano.gradient import DisconnectedType, grad_not_implemented
 from theano.gof import Optimizer, local_optimizer, COp
-from theano.gof.type import CDataType, Generic
+from theano.gof.type import CDataType
 from theano.compile import optdb
 from theano.compile.ops import shape_i
 from theano.tensor.nnet import LogSoftmax, SoftmaxGrad
@@ -16,7 +16,8 @@ from theano.tensor.signal.pool import (
     Pool, MaxPoolGrad, AveragePoolGrad)
 from theano.sandbox.cuda.type import CudaNdarrayType
 
-from theano.sandbox.cuda import GpuOp
+from theano.sandbox.cuda import GpuOp, dnn_available
+from theano.sandbox.cuda import dnn_version as version
 from theano.sandbox.cuda.basic_ops import (as_cuda_ndarray_variable,
                                            host_from_gpu,
                                            gpu_contiguous, HostFromGpu,
@@ -33,85 +34,6 @@ from theano.sandbox.cuda.nvcc_compiler import NVCC_compiler
 from theano.tensor.nnet.abstract_conv import (AbstractConv2d,
                                               AbstractConv2d_gradWeights,
                                               AbstractConv2d_gradInputs)
-
-
-def dnn_available():
-    if config.dnn.enabled == "False":
-        dnn_available.avail = False
-        dnn_available.msg = "disabled by dnn.enabled flag"
-    if dnn_available.avail is None and not theano.sandbox.cuda.cuda_available:
-        dnn_available.msg = "CUDA not available"
-        dnn_available.avail = False
-    elif dnn_available.avail is None:
-        dev = theano.sandbox.cuda.active_device_number()
-        if theano.sandbox.cuda.device_properties(dev)['major'] < 3:
-            dnn_available.msg = "Device not supported by cuDNN"
-            dnn_available.avail = False
-        else:
-            preambule = """
-#include <stdio.h>
-#include <cuda.h>
-#include <cudnn.h>
-#include <cudnn_helper.h>
-            """
-
-            body = """
-cudnnHandle_t _handle = NULL;
-cudnnStatus_t err;
-if ((err = cudnnCreate(&_handle)) != CUDNN_STATUS_SUCCESS) {
-  fprintf(stderr, "could not create cuDNN handle: %s",
-          cudnnGetErrorString(err));
-  return 1;
-}
-"""
-            params = ["-l", "cudnn", "-I" + os.path.dirname(__file__)]
-            if config.dnn.include_path:
-                params.append("-I" + config.dnn.include_path)
-            if config.dnn.library_path:
-                params.append("-L" + config.dnn.library_path)
-            if config.nvcc.compiler_bindir:
-                params.extend(['--compiler-bindir',
-                               config.nvcc.compiler_bindir])
-            # Do not run here the test program. It would run on the
-            # default gpu, not the one selected by the user. If mixed
-            # GPU are installed or if the GPUs are configured in
-            # exclusive mode, this cause bad detection.
-            comp, out, err = NVCC_compiler.try_flags(
-                flag_list=params, preambule=preambule, body=body,
-                try_run=False, output=True)
-
-            dnn_available.avail = comp
-            if not dnn_available.avail:
-                dnn_available.msg = (
-                    "Theano can not compile with cuDNN. We got this error:\n" +
-                    str(err))
-            else:
-                # If we can compile, check that we can import and run.
-                v = version()
-                if isinstance(v, tuple) and v[0] != v[1]:
-                    dnn_available.avail = False
-                    dnn_available.msg = ("Mixed dnn version. The header is"
-                                         " from one version, but we link with"
-                                         " a different version %s" % str(v))
-                    raise RuntimeError(dnn_available.msg)
-                if v == -1 or v[0] < 3007:
-                    # 3007 is the final release of cudnn v3
-                    dnn_available.avail = False
-                    dnn_available.msg = (
-                        "You have an old release of CuDNN (or a release "
-                        "candidate) that isn't supported.  Please update to "
-                        "at least v3 final version.")
-                    raise RuntimeError(dnn_available.msg)
-    if config.dnn.enabled == "True":
-        if not dnn_available.avail:
-            raise RuntimeError(
-                "You enabled CuDNN, but we aren't able to use it: %s" %
-                dnn_available.msg)
-    return dnn_available.avail
-
-
-dnn_available.avail = None
-dnn_available.msg = None
 
 
 def c_set_tensor4d(var, desc, err, fail):
@@ -168,67 +90,6 @@ class DnnBase(GpuOp, COp):
 
     def c_libraries(self):
         return ['cudnn']
-
-
-class DnnVersion(GpuOp):
-    def c_compiler(self):
-        return NVCC_compiler
-
-    def c_headers(self):
-        return ['cudnn.h']
-
-    def c_libraries(self):
-        return ['cudnn']
-
-    def c_support_code(self):
-        return """
-#if PY_MAJOR_VERSION >= 3
-#define PyInt_FromLong PyLong_FromLong
-#endif
-"""
-
-    def make_node(self):
-        return Apply(self, [], [Generic()()])
-
-    def c_code(self, node, name, inputs, outputs, sub):
-        o = outputs[0]
-        return """
-        #if defined(CUDNN_VERSION)
-        %(o)s = PyTuple_Pack(2, PyInt_FromLong(CUDNN_VERSION), PyInt_FromLong(cudnnGetVersion()));
-        #else
-        %(o)s = PyInt_FromLong(-1);
-        #endif
-        """ % locals()
-
-    def do_constant_folding(self, node):
-        # Needed as we do not want to cache this information.
-        return False
-
-    def c_code_cache_version(self):
-        # Not needed, but make it clear that we do not want to cache this.
-        return None
-
-
-def version():
-    """Return the current cuDNN version we compile with.
-
-    This returns a tuple with the header version and the library
-    version we link with. For older cudnn version without version
-    information, we return -1.
-
-    """
-    if not dnn_available():
-        raise Exception(
-            "We can't determine the cudnn version as it is not available",
-            dnn_available.msg)
-
-    if version.v is None:
-        f = theano.function([], DnnVersion()(),
-                            theano.Mode(optimizer=None),
-                            profile=False)
-        version.v = f()
-    return version.v
-version.v = None
 
 
 class GpuDnnConvDesc(GpuOp):
