@@ -1143,6 +1143,8 @@ class GpuCorrMM_gradWeights(BaseGpuCorrMM):
                 raise ValueError('shape must be given if subsample != (1, 1)'
                                  ' or border_mode == "half"')
             height_width = [shape[0], shape[1]]
+            assert shape[0].ndim == 0
+            assert shape[1].ndim == 0
         else:
             height_width = []
 
@@ -1201,6 +1203,9 @@ class GpuCorrMM_gradInputs(BaseGpuCorrMM):
         if self.subsample != (1, 1) and shape is None:
             raise ValueError('shape must be given if subsample != (1, 1)')
         height_width = [shape[0], shape[1]] if self.subsample != (1, 1) else []
+        if height_width:
+            assert shape[0].ndim == 0
+            assert shape[1].ndim == 0
 
         broadcastable = [topgrad.type.broadcastable[0], kern.type.broadcastable[1],
                          False, False]

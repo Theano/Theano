@@ -2050,6 +2050,7 @@ class _Linker(gof.link.LocalLinker):
                             # shouldn't have put it into the list in
                             # the first place
                             thunk_py = None
+                            thunks_py[i] = None
                         except Exception as e:
                             # I think that only 1 optimization can
                             # insert a given apply node. If that is not True,

@@ -859,6 +859,20 @@ class Test_GpuReshape(test_opt.Test_Reshape):
         self.op = basic_ops.GpuReshape
 
 
+def test_local_abstractconv_gemm():
+    """ We test it here as this is the optimization only that we test.
+    This test gh-4036"""
+    image = tensor.ftensor4()
+    W = tensor.ftensor4()
+    conv = tensor.nnet.conv2d(image,
+                         W,
+                         input_shape=(1, 32, 32, 32),
+                         filter_shape=(32, 32, 3, 3),
+                         border_mode='half')
+    f = theano.function([image, W], [conv], mode=mode_with_gpu)
+    f(numpy.random.rand(1, 32, 32, 32).astype('float32'),
+      numpy.random.rand(32, 32, 3, 3).astype('float32'))
+
 if __name__ == '__main__':
     test_gpualloc()
     test_opt_gpujoin_onlyajoin()
