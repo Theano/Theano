@@ -15,8 +15,6 @@ import numpy
 import theano
 from theano import gof, Op, tensor, Variable, Apply
 
-from theano.tensor.opt import register_canonicalize
-
 
 def max_pool2D(*args, **kwargs):
     import sys
