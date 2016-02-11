@@ -36,6 +36,11 @@ The following sections assumes the reader is familiar with the following :
 
 2. The interface and usage of Theano's :ref:`scan() <lib_scan>` function
 
+Additionnaly, the :ref:`scan_internals_optimizations` section below assumes
+knowledge of:
+
+3. Theano's :ref:`graph optimizations <optimization>`
+
 
 Relevant code files
 ===================
@@ -57,8 +62,8 @@ files, and section of the code they deal with, are :
 * ``scan_views.py`` contains different views of the scan op that have
   simpler and easier signatures to be used in specific cases.
 
-* ``scan_opt.py`` contains the list of all optimizations for the scan
-  operator.
+* ``scan_opt.py`` contains the list of all Theano graph optimizations for the
+  scan operator.
 
 
 Notation
@@ -93,7 +98,7 @@ timestep `t`, the inner function will receive as input the sequence element
 `X[t]`. These variables are used through the argument `sequences` of the
 `theano.scan()` function.
 
-**Non-sequences** : A sequence is a Theano variable which Scan will provide
+**Non-sequences** : A non-sequence is a Theano variable which Scan will provide
 `as-is` to its inner function. For a non-sequence variable X, at timestep `t`,
 the inner function will receive as input the variable X. These variables are
 used through the argument `non_sequences` of the `theano.scan()` function.
@@ -107,21 +112,23 @@ number in a vector.
 
 **Sitsot (single input tap, single output tap)** : A sitsot is an output
 variable of the inner function that is fed back as an input to the next
-iteration of the inner function. A typical setting where a sistot might be
+iteration of the inner function. A typical setting where a sitsot might be
 encountered is the case where scan is used  Sitsots are typically encountered in
 situations where Scan is used to sum the elements of a vector and a sitsot
 output is employed to act as an accumulator.
 
-**Mitsot (multiple input taps, single output tap)** : A sitsot is an output
+**Mitsot (multiple input taps, single output tap)** : A mitsot is an output
 variable of the inner function that is fed back as an input to future iterations
 of the inner function (either multiple future iterations or a single one that
 isn't the immediate next one).
 
-**Mitmot (multiple input taps, multiple output taps)** : These outputs exist but
-not 'in the wild'. They can appear in a theano graph as a result of taking the
-gradient of the output of a Scan : taking the gradient of the output of a Scan
-wrt its inputs will result in the creation of a new Scan node used to compute
-the gradients of the first Scan node. This new Scan might use mitmot outputs.
+**Mitmot (multiple input taps, multiple output taps)** : These outputs exist
+but they cannot be directly created by the user. They can appear in a theano
+graph as a result of taking the gradient of the output of a Scan : taking the
+gradient of the output of a Scan wrt its inputs will result in the creation of
+a new Scan node used to compute the gradients of the first Scan node. If the
+original Scan had sitsots or mitsots variables, the new Scan will use mitmots
+to compute the gradients through time for these variables.
 
 
 To synthesise :
@@ -137,6 +144,8 @@ Multiply-recurrent output (mitsot)                           Initial values for 
 Multiply-recurrent multiple outputs (mitmot)                 Initial values for the required timesteps where `t<0`  Output value at previous required timesteps                 Output values for current and multiple future timesteps      Concatenation of the values of the output at all timestep  *No corresponding argument*
 ===========================================================  =====================================================  ==========================================================  ===========================================================  =========================================================  ======================================================
 
+
+.. _scan_internals_optimizations:
 
 Optimizations
 =============
@@ -228,7 +237,9 @@ that performs all the computation. The main advantage of merging Scan ops
 together comes from the possibility of both original ops having some
 computation in common. In such a setting, this computation ends up being done
 twice. The fused Scan op, however, would only need to do it once and could
-therefore be more computationaly efficient.
+therefore be more computationaly efficient. Also, since every Scan node
+involves a certain overhead, at runtime, reducing the number of Scan nodes in
+the graph can improve performance.
 
 
 scan_merge_inouts
@@ -237,7 +248,8 @@ scan_merge_inouts
 This optimization attempts to merge a Scan op's identical outer inputs as well
 as merge its identical outer outputs (outputs that perform the same
 computation on the same inputs). This can reduce the amount of computation as
-well as result in a simpler graph for the inner function.
+well as result in a simpler graph for both the inner function and the outer
+function.
 
 
 Helper classes and functions
