@@ -52,7 +52,11 @@ class MultinomialFromUniform(Op):
     def grad(self, ins, outgrads):
         pvals, unis, n = ins
         (gz,) = outgrads
-        return [T.zeros_like(x) for x in ins]
+        if x.dtype in T.discrete_dtypes:
+            return [T.zeros_like(x, dtype=theano.config.floatX) for x in ins]
+        else:
+            return [T.zeros_like(x) for x in ins]
+
 
     def c_code_cache_version(self):
         return (8,)
