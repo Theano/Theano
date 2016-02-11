@@ -239,7 +239,7 @@ class TestConv2d(unittest.TestCase):
                             mode=mode, eps=1)
 
     def test_all(self):
-        ds = [0, 0]
+        ds = [1, 1]
         db = (0, 0)
         dflip = True in self.filter_flip
         dprovide_shape = True in self.provide_shapes
