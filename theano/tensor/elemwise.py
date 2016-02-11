@@ -1034,7 +1034,7 @@ second dimension
         # index of the last output
         olv_index = i
 
-        # CHANGED HERE
+        # Array referencing all inputs
         ilength = len(_inames)
         inArray = """
         PyArrayObject **inRef[%(ilength)s];
@@ -1044,6 +1044,7 @@ second dimension
             inRef[%(j)i]=&%(iname)s;
             """ % locals()
 
+        # Array referencing all outputs
         olength = len(_onames)
         outArray = """
         PyArrayObject **outRef[%(olength)s];
@@ -1054,12 +1055,17 @@ second dimension
             """ % locals()
 
         alloc += outArray + inArray
+
+        # Declaration and initialization of the hardcoded olv_index
+        # used by the code generated in elemwise_cgen
         alloc += """
         int olv_index;
         olv_index = %(j)i;
         """ % locals()
 
+        # If the node has a non empty destroy map
         if(len(self.inplace_pattern.keys()) > 0):
+            # Get the destroy map from params
             alloc += """
             int outDm[%(dml)s];
             int inDm[%(dml)s];
@@ -1072,7 +1078,10 @@ second dimension
                 //Should place code to fail here
             }
             """ % dict(dml=len(self.inplace_pattern.keys()), p=sub['params'],ilength=ilength)
-
+            # Iterate over the python object to fill the destroy map arrays
+            # and make the output point to the corresponding input and
+            # decrease the reference of whatever the output contained
+            # prior to this
             for i in range(len(self.inplace_pattern.keys())):
                 alloc += """
                 PyDict_Next(destroyMap, &pos, &tmpOut, &tmpIn);
@@ -1088,6 +1097,8 @@ second dimension
                 olv_index = outDm[%(i)i];
                 """ % locals()
 
+            # We no longer need the reference to the original Python object
+            # containing the destroy map
             alloc += """
             Py_XDECREF(destroyMap);
             """
@@ -1101,9 +1112,6 @@ second dimension
             olv_index = inputs.index(dmap[output][0])
             iname = inames[olv_index]
             dtype = output.type.dtype_specs()[1]
-            # We make the output point to the corresponding input and
-            # decrease the reference of whatever the output contained
-            # prior to this
             # We alias the scalar variables
 
             defines += """
@@ -1117,6 +1125,8 @@ second dimension
         # which is allocated, OR, if there are any aliased outputs,
         # the index of the last of these aliased outputs.
 
+        # We declare another array to easily access the scalar variables
+        # from their respectives index
         task_code = """
                 void *refVar[%i];
                 """ % len(_inames)
@@ -1162,10 +1172,8 @@ second dimension
                 all_code = [code]
             if len(all_code) == 1:
                 # No loops
-                nbRealVars = len(inames + list(real_onames))
                 task_decl = "".join([
-                    """%s& %s_i = *%s_iter;
-                    """ % (dtype, name, name)
+                    "%s& %s_i = *%s_iter;\n" % (dtype, name, name)
                     for name, dtype in izip(inames + list(real_onames),
                                             idtypes + list(real_odtypes))])
 
