@@ -1442,9 +1442,16 @@ if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
 """ % dict(name=name)
 
     def c_code(self, node, name, inputs, outputs, sub):
-        ws = inputs[1]
-        stride = inputs[2]
-        pad = inputs[3]
+        if len(inputs) == 2:
+            warnings.warn("Theano GPUDnnPoolGrad internal changed.", stacklevel=3)
+            desc = inputs[1]
+            ws = desc.ws
+            stride = desc.stride
+            pad = desc.pad
+        else:
+            ws = inputs[1]
+            stride = inputs[2]
+            pad = inputs[3]
         out, = outputs
 
         if self.mode == 'max':
@@ -1668,7 +1675,15 @@ if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
         # Here the name out and inp are based on the cudnn definition.
         # Not the definition of this class.
         # This make it complicated.
-        out, inp, inp_grad, ws, stride, pad = inputs
+        if len(inputs) == 4:
+            warnings.warn("Theano GPUDnnPoolGrad internal changed.", stacklevel=3)
+            out, inp, inp_grad, desc = inputs
+            ws = desc.ws
+            stride = desc.stride
+            pad = desc.pad
+        else:
+            out, inp, inp_grad, ws, stride, pad = inputs
+            
         out_grad, = outputs
 
         if self.mode == 'max':

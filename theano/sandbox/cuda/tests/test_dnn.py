@@ -372,6 +372,7 @@ def test_pooling_with_tensor_vars():
     out2 = pool_2d_i2n(x, ds=(2, 2), strides=(1, 1),
                        pad=(0, 0),
                        pool_function=T.max)
+    
     mode_without_gpu2 = mode_without_gpu.including()
     mode_without_gpu2.check_isfinite = False
 
