@@ -29,7 +29,8 @@ from theano.tensor.nnet import (categorical_crossentropy,
                                 Prepend_scalar_constant_to_each_row,
                                 Prepend_scalar_to_each_row,
                                 relu,
-                                h_softmax)
+                                h_softmax,
+                                elu)
 from theano.tensor import matrix, vector, lvector, scalar
 
 
@@ -1625,3 +1626,19 @@ def test_h_softmax():
     # computed by fun_output.
     utt.assert_allclose(
             all_outputs[numpy.arange(0, batch_size), y_mat], tg_output)
+
+
+def test_elu():
+    x = matrix('x')
+    seed = theano.tests.unittest_tools.fetch_seed()
+    rng = numpy.random.RandomState(seed)
+    X = rng.randn(20, 30).astype(config.floatX)
+
+    # test the base case, without custom alpha value
+    y = elu(x).eval({x: X})
+    utt.assert_allclose(y, numpy.where(X > 0, X, numpy.exp(X) - 1))
+
+    # test for different constant alpha values
+    for alpha in 1.5, 2, -1, -1.5, -2:
+        y = elu(x, alpha).eval({x: X})
+        utt.assert_allclose(y, numpy.where(X > 0, X, alpha * (numpy.exp(X) - 1)))

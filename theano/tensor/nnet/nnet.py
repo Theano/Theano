@@ -2329,3 +2329,30 @@ def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
         output_probs = target_class_probs * output_probs
 
     return output_probs
+
+
+def elu(x, alpha=1):
+    """
+    Compute the element-wise exponential linear activation function.
+
+    .. versionadded:: 0.8.0
+
+    Parameters
+    ----------
+    x : symbolic tensor
+        Tensor to compute the activation function for.
+    alpha : scalar
+
+
+    Returns
+    -------
+    symbolic tensor
+        Element-wise exponential linear activation function applied to `x`.
+
+    References
+    -----
+    .. [1] Djork-Arne Clevert,  Thomas Unterthiner, Sepp Hochreiter
+        "Fast and Accurate Deep Network Learning by
+        Exponential Linear Units (ELUs)" <http://arxiv.org/abs/1511.07289>`.
+    """
+    return tensor.switch(x > 0, x, alpha * (tensor.exp(x) - 1))
