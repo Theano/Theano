@@ -934,8 +934,8 @@ class DownsampleFactorMaxGradGrad(Op):
         if len(x.shape) != 4:
             raise NotImplementedError(
                 'DownsampleFactorMaxGradGrad requires 4D input for now')
-        if (z[0] is None) or (z[0].shape != x.shape):
-            z[0] = numpy.zeros(x.shape, dtype=x.dtype)
+        if (z[0] is None) or (z[0].shape != maxout.shape):
+            z[0] = numpy.zeros(maxout.shape, dtype=x.dtype)
         ggz = z[0]  # grad wrt maxout_grad has the same shape as maxout
         # number of pooling output rows
         pr = ggz.shape[-2]
