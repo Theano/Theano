@@ -1035,25 +1035,30 @@ second dimension
         olv_index = i
 
         # CHANGED HERE
-        olength = len(onames)
-        outArray = """
-        PyArrayObject **outRef[%(olength)s];
-        """ % locals()
-        for oname, j in izip(onames, range(len(onames))):
-            outArray += """
-            outRef[%(j)i]=&%(oname)s;
-            """ % locals()
-
-        ilength = len(inames)
+        ilength = len(_inames)
         inArray = """
         PyArrayObject **inRef[%(ilength)s];
         """ % locals()
-        for iname, j in izip(inames, range(len(inames))):
+        for iname, j in izip(_inames, range(len(_inames))):
             inArray += """
             inRef[%(j)i]=&%(iname)s;
             """ % locals()
 
+        olength = len(_onames)
+        outArray = """
+        PyArrayObject **outRef[%(olength)s];
+        """ % locals()
+        for oname, j in izip(_onames, range(len(onames))):
+            outArray += """
+            outRef[%(j)i]=&%(oname)s;
+            """ % locals()
+
         alloc += outArray + inArray
+        alloc += """
+        int olv_index;
+        olv_index = %(j)i;
+        """ % locals()
+
         if(len(self.inplace_pattern.keys()) > 0):
             alloc += """
             int outDm[%(dml)s];
@@ -1063,7 +1068,10 @@ second dimension
             pos = 0;
             PyObject* destroyMap;
             destroyMap =PyObject_GetAttrString(%(p)s,"inplace_pattern");
-            """ % dict(dml=len(self.inplace_pattern.keys()), p=sub['params'])
+            if( destroyMap == NULL){
+                //Should place code to fail here
+            }
+            """ % dict(dml=len(self.inplace_pattern.keys()), p=sub['params'],ilength=ilength)
 
             for i in range(len(self.inplace_pattern.keys())):
                 alloc += """
@@ -1073,30 +1081,26 @@ second dimension
                 PyArrayObject **aliasedOutput;
                 aliasedOutput = outRef[outDm[%(i)i]];
                 if (*aliasedOutput) {
-                Py_XDECREF(*aliasedOutput);
+                          Py_XDECREF(*aliasedOutput);
                 }
                 *aliasedOutput = *inRef[inDm[%(i)i]];
                 Py_XINCREF(*aliasedOutput);
+                olv_index = outDm[%(i)i];
                 """ % locals()
 
             alloc += """
             Py_XDECREF(destroyMap);
             """
-        else:
-            i -= ilength
-        alloc += """
-        int olv_index;
-        olv_index = %(i)i;
-        """ % locals()
 
         # We loop over the "aliased" outputs, i.e., those that are
         # inplace (overwrite the contents of one of the inputs) and
         # make the output pointers point to their corresponding input
         # pointers.
-        for output, oname, i in izip(aliased_outputs, aliased_onames, range(len(aliased_outputs))):
+        for output, oname, i in izip(aliased_outputs, aliased_onames,
+                                     range(len(aliased_outputs))):
             olv_index = inputs.index(dmap[output][0])
             iname = inames[olv_index]
-            dtype = idtypes[olv_index]
+            dtype = output.type.dtype_specs()[1]
             # We make the output point to the corresponding input and
             # decrease the reference of whatever the output contained
             # prior to this
@@ -1113,6 +1117,13 @@ second dimension
         # which is allocated, OR, if there are any aliased outputs,
         # the index of the last of these aliased outputs.
 
+        task_code = """
+                void *refVar[%i];
+                """ % len(_inames)
+        for (i, iname) in enumerate(_inames):
+            task_code += """
+            refVar[%(i)i] = &%(iname)s_i;
+            """ % locals()
         # We generate the C code of the inner loop using the scalar op
         if self.openmp:
             # If we are using openmp, we need to get rid of the "goto"
@@ -1120,8 +1131,13 @@ second dimension
             fail = gof.cc.failure_code(sub, use_goto=False)
         else:
             fail = sub['fail']
-        task_code = self.scalar_op.c_code(
-            node.tag.fake_node,
+
+        task_code += self.scalar_op.c_code(
+            Apply(self.scalar_op,
+                  [get_scalar_type(dtype=input.type.dtype).make_variable()
+                   for input in node.inputs],
+                  [get_scalar_type(dtype=output.type.dtype).make_variable()
+                   for output in node.outputs]),
             nodename + '_scalar_',
             ["%s_i" % s for s in _inames],
             ["%s_i" % s for s in onames],
@@ -1147,16 +1163,11 @@ second dimension
             if len(all_code) == 1:
                 # No loops
                 nbRealVars = len(inames + list(real_onames))
-                task_decl = """
-                void *refVar[%i];
-                """ % nbRealVars
-                task_decl += "".join([
+                task_decl = "".join([
                     """%s& %s_i = *%s_iter;
-                    refVar[%i] = &%s_i;
-                    """ % (dtype, name, name, i, name)
-                    for name, dtype, i in izip(inames + list(real_onames),
-                                               idtypes + list(real_odtypes),
-                                               range(nbRealVars))])
+                    """ % (dtype, name, name)
+                    for name, dtype in izip(inames + list(real_onames),
+                                            idtypes + list(real_odtypes))])
 
                 preloops = {}
                 for i, (loop_order, dtype) in enumerate(zip(loop_orders,
