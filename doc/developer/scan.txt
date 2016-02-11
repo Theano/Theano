@@ -178,8 +178,8 @@ the inner function, the computation that only relies on sequence and
 non-sequence inputs. The idea behing this optimization is that, when it is
 possible to do so, it is generally more computationnaly efficient to perform
 a single operation on a large tensor rather then perform that same operation
-many times on many smaller tensors. However, this optimization can lead to
-increased memory usage.
+many times on many smaller tensors. In many cases, this optimization can
+increase memory usage but, in some specific cases, it can also decrease it.
 
 
 PushOutScanOutput
