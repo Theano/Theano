@@ -3066,6 +3066,12 @@ PyObject *CudaNdarray_repr(PyObject *self)
                         ")");
     Py_DECREF(str);
     Py_DECREF(np_object);
+    #if PY_MAJOR_VERSION >= 3
+    // In Python 3 PyString_FromFormat return a Bytes object
+    PyObject* out2 = PyObject_Str(out);
+    Py_DECREF(out);
+    return out2;
+    #endif
     return out;
 }
 
