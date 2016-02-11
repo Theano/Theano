@@ -93,20 +93,6 @@ def _is_dense(x):
     return isinstance(x, numpy.ndarray)
 
 
-def _kmap_eq(a, b):
-    if a is None and b is None:
-        return True
-    if a is None or b is None:
-        return False
-    return numpy.all(a == b)
-
-
-def _kmap_hash(a):
-    if a is None:
-        return 12345
-    return hash(numpy.str(a))
-
-
 # Wrapper type
 def as_sparse_variable(x, name=None):
     """
@@ -517,9 +503,9 @@ class CSMProperties(gof.Op):
 
     # we don't return a view of the shape, we create a new ndarray from the
     # shape tuple.
+    __props__ = ()
     view_map = {0: [0], 1: [0], 2: [0]}
 
-    kmap = None
     """
     Indexing to speficied what part of the data parameter
     should be use to construct the sparse matrix.
@@ -527,21 +513,8 @@ class CSMProperties(gof.Op):
     """
 
     def __init__(self, kmap=None):
-        if kmap == None:
-            self.kmap = kmap
-        else:
+        if kmap is not None:
             raise Exception("Do not use kmap, it is removed")
-
-    def __eq__(self, other):
-        return type(self) == type(other) and _kmap_eq(self.kmap, other.kmap)
-
-    def __hash__(self):
-        return 8234 ^ hash(type(self)) ^ _kmap_hash(self.kmap)
-
-    def __str__(self):
-        return "%s{%s}" % (
-            self.__class__.__name__,
-            self.kmap)
 
     def make_node(self, csm):
         csm = as_sparse_variable(csm)
@@ -554,12 +527,10 @@ class CSMProperties(gof.Op):
 
     def perform(self, node, inputs, out):
         (csm,) = inputs
-        if self.kmap is None:
-            out[0][0] = csm.data
+        out[0][0] = csm.data
         if str(csm.data.dtype) == 'int32':
             out[0][0] = theano._asarray(out[0][0], dtype='int32')
         # backport
-        # out[0][0] = csm.data if self.kmap is None else csm.data[self.kmap]
         out[1][0] = theano._asarray(csm.indices, dtype='int32')
         out[2][0] = theano._asarray(csm.indptr, dtype='int32')
         out[3][0] = theano._asarray(csm.shape, dtype='int32')
@@ -639,7 +610,6 @@ def csm_shape(csm):
 
 class CSM(gof.Op):
     # See doc in instance of this Op or function after this class definition.
-    kmap = None
     """
     Indexing to speficied what part of the data parameter
     should be used to construct the sparse matrix.
@@ -656,24 +626,17 @@ class CSM(gof.Op):
         if format not in ('csr', 'csc'):
             raise ValueError("format must be one of: 'csr', 'csc'", format)
         self.format = format
-
-        # for efficiency, if remap does nothing, then do not apply it
-        if kmap is not None and all(kmap == numpy.arange(numpy.size(kmap))):
-            kmap = None
-        self.kmap = kmap
-        if self.kmap is not None:
+        if kmap is not None:
             raise Exception("Do not use kmap, it is removed")
-        if not isinstance(self.kmap, numpy.ndarray):
-            # should view the other inputs too, but viewing multiple
-            # inputs is not currently supported by the destroyhandler
-            self.view_map = {0: [0]}
+        self.kmap = kmap
+        # should view the other inputs too, but viewing multiple
+        # inputs is not currently supported by the destroyhandler
+        self.view_map = {0: [0]}
 
-        self._hashval = (hash(type(self)) ^ hash(self.format) ^
-                         _kmap_hash(self.kmap))
+        self._hashval = (hash(type(self)) ^ hash(self.format))
 
     def __eq__(self, other):
-        return (type(other) is CSM and other.format == self.format and
-                _kmap_eq(self.kmap, other.kmap))
+        return (type(other) is CSM and other.format == self.format)
 
     def __hash__(self):
         return self._hashval
@@ -728,13 +691,11 @@ class CSM(gof.Op):
 
         if len(shape) != 2:
             raise ValueError('Shape should be an array of length 2')
-        if (data.shape != indices.shape and numpy.size(data) !=
-                numpy.size(self.kmap)):
+        if data.shape != indices.shape:
             errmsg = ('Data (shape ' + repr(data.shape) +
                       ' must have the same number of elements ' +
                       'as indices (shape' + repr(indices.shape) +
-                      ') or elements as kmap (' +
-                      repr(numpy.size(self.kmap)) + ')')
+                      ')')
             raise ValueError(errmsg)
         if self.format == 'csc':
             out[0] = scipy.sparse.csc_matrix((data, indices.copy(),
@@ -759,9 +720,8 @@ class CSM(gof.Op):
         return [g_data, DisconnectedType()(), DisconnectedType()(), DisconnectedType()()]
 
     def infer_shape(self, node, shapes):
-        if self.kmap is None:
-            # node.inputs[3] is of lenght as we only support sparse matrix.
-            return [(node.inputs[3][0], node.inputs[3][1])]
+        # node.inputs[3] is of lenght as we only support sparse matrix.
+        return [(node.inputs[3][0], node.inputs[3][1])]
 
 CSC = CSM('csc')
 """
@@ -838,27 +798,15 @@ class CSMGrad(gof.op.Op):
     # 2. The elements in the sparse dimension are not guaranteed to be sorted.
     # Therefore, the input data vector may have a different order than the
     # gradient data vector.
+    __props__ = ()
 
     def __init__(self, kmap=None):
-        if kmap == None:
-            self.kmap = kmap
-        else:
+        if kmap is not None:
             raise Exception("Do not use kmap, it is removed")
         # This class always allocate a new output.
         # I keep this here to help GD understand what this kmap think is.
         # if self.kmap is None:
         #    self.view_map = {0: [1]}
-
-    def __eq__(self, other):
-        return type(self) == type(other) and _kmap_eq(self.kmap, other.kmap)
-
-    def __hash__(self):
-        return 82345 ^ hash(type(self)) ^ _kmap_hash(self.kmap)
-
-    def __str__(self):
-        return "%s{%s}" % (
-            self.__class__.__name__,
-            self.kmap)
 
     def make_node(self, x_data, x_indices, x_indptr, x_shape,
                   g_data, g_indices, g_indptr, g_shape):
@@ -888,12 +836,10 @@ class CSMGrad(gof.op.Op):
             for j_ptr in range(g_indptr[i], g_indptr[i + 1]):
                 g_row[g_indices[j_ptr]] = 0
 
-        if self.kmap is None:
-            g_out[0] = gout_data
-    
+        g_out[0] = gout_data
+
     def infer_shape(self, node, shapes):
-        if self.kmap is None:
-            return [shapes[1]]
+        return [shapes[1]]
 
 csm_grad = CSMGrad
 

@@ -44,12 +44,6 @@ class ConvolutionIndices(Op):
     __props__ = ()
 
     @staticmethod
-    def sparse_eval(inshp, kshp, nkern, strides=(1, 1), mode='valid'):
-        (dx, dy) = strides
-        return convolution_indices.evaluate(inshp, kshp, (dx, dy),
-                                            nkern, mode=mode, ws=False)
-
-    @staticmethod
     def conv_eval(inshp, kshp, strides=(1, 1), mode='valid'):
         (dx, dy) = strides
         return convolution_indices.evaluate(inshp, kshp, (dx, dy),
@@ -73,7 +67,7 @@ class ConvolutionIndices(Op):
         :param mode: 'valid' generates output only when kernel and
                      image overlap overlap fully. Convolution obtained
                      by zero-padding the input
-        :param ws: True if weight sharing, false otherwise
+        :param ws: must be always True
         :param (dx,dy): offset parameter. In the case of no weight sharing,
                         gives the pixel offset between two receptive fields.
                         With weight sharing gives the offset between the
@@ -83,6 +77,9 @@ class ConvolutionIndices(Op):
         :returns: the structure of a sparse matrix, and the logical dimensions
                   of the image which will be the result of filtering.
         """
+        if not ws:
+            raise Exception("ws is obsolete and it must be always True")
+
         (dx, dy) = strides
         N = numpy
 
