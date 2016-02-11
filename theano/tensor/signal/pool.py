@@ -808,8 +808,6 @@ class MaxPoolGrad(PoolGrad):
     def c_code_cache_version(self):
         return (0, 7)
 
-DownsampleFactorMaxGrad = MaxPoolGrad
-
 
 class AveragePoolGrad(PoolGrad):
 
@@ -817,7 +815,7 @@ class AveragePoolGrad(PoolGrad):
         assert mode in ['sum', 'average_inc_pad', 'average_exc_pad']
         PoolGrad.__init__(self, ds, ignore_border, st, padding, mode)
 
-    def make_node(self, x, gz):
+    def make_node(self, x, gz, dummy=None):
         # make_node should only be called by the grad function of
         # Pool, so these asserts should not fail.
         assert isinstance(x, Variable) and x.ndim == 4
@@ -890,6 +888,18 @@ class AveragePoolGrad(PoolGrad):
         return [theano.tensor.zeros_like(x),
                 Pool(self.ds, ignore_border=self.ignore_border,
                      st=self.st, padding=self.padding, mode=self.mode)(ggx)]
+
+
+# This is for compatibility with pickled things.  It should go away at
+# some point.
+class DownsampleFactorMaxGrad(object):
+    def __new__(self, ds, ignore_border, st=None, padding=(0, 0), mode='max'):
+        if mode == 'max':
+            return MaxPoolGrad(ds=ds, ignore_border=ignore_border, st=st,
+                               padding=padding, mode='max')
+        else:
+            return AveragePoolGrad(ds=ds, ignore_border=ignore_border, st=st,
+                                   padding=padding, mode=mode)
 
 
 class DownsampleFactorMaxGradGrad(Op):
@@ -1060,19 +1070,3 @@ class DownsampleFactorMaxGradGrad(Op):
 
     def c_code_cache_version(self):
         return (0, 1)
-
-
-@register_canonicalize('fast_compile')
-@gof.local_optimizer([MaxPoolGrad])
-def local_average_pool_grad(node):
-    # To assure backward compatibility with
-    # DownsampleFactorMaxGrad
-    if (not isinstance(node.op, MaxPoolGrad) or node.op.mode not in
-            ['sum', 'average_exc_pad', 'average_inc_pad']):
-        return False
-    return [AveragePoolGrad(ds=node.op.ds,
-                            ignore_border=node.op.ignore_border,
-                            st=node.op.st,
-                            padding=node.op.padding,
-                            mode=node.op.mode)(node.inputs[0],
-                                               node.inputs[2])]
