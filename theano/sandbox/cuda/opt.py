@@ -379,7 +379,7 @@ def local_gpu_split(node):
         if (input.owner and isinstance(input.owner.op, HostFromGpu) or
             any(c != 'output' and isinstance(c.op, GpuFromHost) for c, idx
                 in outs_clients)):
-            new_op = GpuSplit(node.op.len_splits)
+            new_op = GpuSplit(**node.op._props_dict())
             split_res = new_op(as_cuda_ndarray_variable(input),
                                *node.inputs[1:], return_list=True)
             return [host_from_gpu(o) for o in split_res]
