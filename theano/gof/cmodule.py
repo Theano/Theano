@@ -1661,6 +1661,8 @@ def std_lib_dirs_and_libs():
         # remove extension if present
         if libname.endswith(".so"):
             libname = libname[:-3]
+        elif libname.endswith(".a"):
+            libname = libname[:-2]
 
         libdir = distutils.sysconfig.get_config_var("LIBDIR")
 
