@@ -1391,6 +1391,16 @@ class ProfileStats(object):
                           " generator supported on the GPU.", file = file)
                 break
 
+        # tip 6
+        for a in self.apply_time:
+            node = a
+            if (isinstance(node.op, T.Dot) and
+                len(set(i.dtype for i in node.inputs)) != 1):
+                print("  - You have a dot operation that has different dtype "
+                      " for inputs (%s). Make sure that the inputs have same "
+                      " dtype." % [i.type for i in node.inputs], file = file)
+                printed_tip = True
+
         if not printed_tip:
             print("  Sorry, no tip for today.", file = file)
 
