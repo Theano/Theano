@@ -32,7 +32,7 @@ from theano.misc.windows import (subprocess_Popen,
 
 # we will abuse the lockfile mechanism when reading and writing the registry
 from theano.gof import compilelock
-from theano.gof.compiledir import gcc_version_str, local_bitwidth
+from theano.configdefaults import gcc_version_str, local_bitwidth
 
 from theano.configparser import AddConfigVar, BoolParam
 

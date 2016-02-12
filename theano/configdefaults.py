@@ -7,15 +7,15 @@ import platform
 import textwrap
 import re
 import socket
+import struct
 
 import theano
 from theano.configparser import (AddConfigVar, BoolParam, ConfigParam, EnumStr,
                                  FloatParam, IntParam, StrParam,
                                  TheanoConfigParser, THEANO_FLAGS_DICT)
-from theano.gof.compiledir import (local_bitwidth, python_int_bitwidth,
-                                   gcc_version_str)
 from theano.misc.cpucount import cpuCount
-from theano.misc.windows import call_subprocess_Popen
+from theano.misc.windows import call_subprocess_Popen, output_subprocess_Popen
+
 
 _logger = logging.getLogger('theano.configdefaults')
 
@@ -1097,7 +1097,7 @@ AddConfigVar(
     'warn.identify_1pexp_bug',
     'Warn if Theano versions prior to 7987b51 (2011-12-18) could have '
     'yielded a wrong result due to a bug in the is_1pexp function',
-    BoolParam(theano.configdefaults.warn_default('0.4.1')),
+    BoolParam(warn_default('0.4.1')),
     in_c_key=False)
 
 AddConfigVar('on_shape_error',
@@ -1189,6 +1189,41 @@ period for running processes.""",
              IntParam(_timeout_default, lambda i: i >= 0,
                       allow_override=False),
              in_c_key=False)
+
+
+try:
+    p_out = output_subprocess_Popen([config.cxx, '-dumpversion'])
+    gcc_version_str = p_out[0].strip().decode()
+except OSError:
+    # Typically means gcc cannot be found.
+    gcc_version_str = 'GCC_NOT_FOUND'
+
+
+def local_bitwidth():
+    """
+    Return 32 for 32bit arch, 64 for 64bit arch.
+
+    By "architecture", we mean the size of memory pointers (size_t in C),
+    *not* the size of long int, as it can be different.
+
+    """
+    # Note that according to Python documentation, `platform.architecture()` is
+    # not reliable on OS X with universal binaries.
+    # Also, sys.maxsize does not exist in Python < 2.6.
+    # 'P' denotes a void*, and the size is expressed in bytes.
+    return struct.calcsize('P') * 8
+
+
+def python_int_bitwidth():
+    """
+    Return the bit width of Python int (C long int).
+
+    Note that it can be different from the size of a memory pointer.
+
+    """
+    # 'l' denotes a C long int, and the size is expressed in bytes.
+    return struct.calcsize('l') * 8
+
 
 compiledir_format_dict = {
     "platform": platform.platform(),

@@ -279,7 +279,7 @@ def AddConfigVar(name, doc, configparam, root=config, in_c_key=True):
             try:
                 fetch_val_for_key(configparam.fullname)
                 # The user provided a value, filter it now.
-                configparam.__get__(root, type(root))
+                configparam.__get__(root, type(root), delete_key=True)
             except KeyError:
                 pass
         setattr(root.__class__, sections[0], configparam)
@@ -307,12 +307,13 @@ class ConfigParam(object):
         # Calling `filter` here may actually be harmful if the default value is
         # invalid and causes a crash or has unwanted side effects.
 
-    def __get__(self, cls, type_):
+    def __get__(self, cls, type_, delete_key=False):
         if cls is None:
             return self
         if not hasattr(self, 'val'):
             try:
-                val_str = fetch_val_for_key(self.fullname, delete_key=True)
+                val_str = fetch_val_for_key(self.fullname,
+                                            delete_key=delete_key)
                 self.is_default = False
             except KeyError:
                 if callable(self.default):
