@@ -124,7 +124,7 @@ def change_flags(**kwargs):
     return change_flags_exec
 
 
-def fetch_val_for_key(key):
+def fetch_val_for_key(key, delete_key=False):
     """Return the overriding config value for a key.
     A successful search returns a string value.
     An unsuccessful search raises a KeyError
@@ -137,6 +137,8 @@ def fetch_val_for_key(key):
 
     # first try to find it in the FLAGS
     try:
+        if delete_key:
+            return THEANO_FLAGS_DICT.pop(key, None)
         return THEANO_FLAGS_DICT[key]
     except KeyError:
         pass
@@ -310,7 +312,7 @@ class ConfigParam(object):
             return self
         if not hasattr(self, 'val'):
             try:
-                val_str = fetch_val_for_key(self.fullname)
+                val_str = fetch_val_for_key(self.fullname, delete_key=True)
                 self.is_default = False
             except KeyError:
                 if callable(self.default):

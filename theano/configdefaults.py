@@ -11,7 +11,7 @@ import socket
 import theano
 from theano.configparser import (AddConfigVar, BoolParam, ConfigParam, EnumStr,
                                  FloatParam, IntParam, StrParam,
-                                 TheanoConfigParser)
+                                 TheanoConfigParser, THEANO_FLAGS_DICT)
 from theano.gof.compiledir import (local_bitwidth, python_int_bitwidth,
                                    gcc_version_str)
 from theano.misc.cpucount import cpuCount
@@ -1396,4 +1396,7 @@ AddConfigVar(
         allow_override=False),
     in_c_key=False)
 
-
+# Check if there are remaining flags provided by the user through THEANO_FLAGS.
+if THEANO_FLAGS_DICT:
+    raise ValueError('theano does not recognise this flag: {}'
+                     .format(THEANO_FLAGS_DICT.keys()[0]))
