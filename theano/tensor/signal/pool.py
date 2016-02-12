@@ -807,6 +807,8 @@ class AveragePoolGrad(PoolGrad):
         assert mode in ['sum', 'average_inc_pad', 'average_exc_pad']
         PoolGrad.__init__(self, ds, ignore_border, st, padding, mode)
 
+    # There is an extra dummy parameter to match the parameter count
+    # of MaxPoolGrad.  This is for backward compatibility.
     def make_node(self, x, gz, dummy=None):
         # make_node should only be called by the grad function of
         # Pool, so these asserts should not fail.
