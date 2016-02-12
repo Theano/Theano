@@ -413,7 +413,7 @@ class ElemwiseParams(object):
         self.inplace_pattern = inplace_pattern
 
     def __hash__(self):
-        return hash(frozenset(self.inplace_pattern.items()))
+        return hash_from_dict(self.inplace_pattern)
 
 
 class Elemwise(OpenMPOp):
@@ -1054,7 +1054,7 @@ second dimension
             outRef[%(j)i]=&%(oname)s;
             """ % locals()
 
-        alloc += outArray + inArray
+        alloc += inArray + outArray
 
         # Declaration and initialization of the hardcoded olv_index
         # used by the code generated in elemwise_cgen
@@ -1064,7 +1064,7 @@ second dimension
         """ % locals()
 
         # If the node has a non empty destroy map
-        if(len(self.inplace_pattern.keys()) > 0):
+        if(len(self.inplace_pattern) > 0):
             # Get the destroy map from params
             alloc += """
             int outDm[%(dml)s];
@@ -1075,9 +1075,10 @@ second dimension
             PyObject* destroyMap;
             destroyMap =PyObject_GetAttrString(%(p)s,"inplace_pattern");
             if( destroyMap == NULL){
-                //Should place code to fail here
+                %(fail)s
             }
-            """ % dict(dml=len(self.inplace_pattern.keys()), p=sub['params'],ilength=ilength)
+            """ % dict(dml=len(self.inplace_pattern),
+                       p=sub['params'], fail=sub['fail'])
             # Iterate over the python object to fill the destroy map arrays
             # and make the output point to the corresponding input and
             # decrease the reference of whatever the output contained
@@ -1111,11 +1112,11 @@ second dimension
                                      range(len(aliased_outputs))):
             olv_index = inputs.index(dmap[output][0])
             iname = inames[olv_index]
-            dtype = output.type.dtype_specs()[1]
+            idtype = output.type.dtype_specs()[1]
             # We alias the scalar variables
 
             defines += """
-            #define %(oname)s_i *(%(dtype)s*) (refVar[i%(oname)s])
+            #define %(oname)s_i *(%(idtype)s*) (refVar[i%(oname)s])
             int i%(oname)s;
             i%(oname)s = inDm[%(i)i];
             """ % locals()
