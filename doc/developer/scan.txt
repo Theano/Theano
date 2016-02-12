@@ -8,7 +8,7 @@ Context
 
 This document is meant to act as reference material for developers working
 on Theano's loop mechanism. This mechanism is called Scan and its internals
-are highly complex, hence the need for a centralized repository of knoledge
+are highly complex, hence the need for a centralized repository of knowledge
 regarding its inner workings.
 
 The `theano.scan()` function is the public-facing interface for looping in
@@ -23,7 +23,7 @@ op is not always simple since the former is meant for usability and the second
 for performance. Since this document is intended to be used by developers
 working inside scan itself, it will mostly discuss things from the point of view
 of the `Scan` Op class. Nonetheless, it will attempt to link those elements to
-their corresponding concepts in the scan function as often as is reasonnably
+their corresponding concepts in the scan function as often as is reasonably
 practical.
 
 
@@ -36,7 +36,7 @@ The following sections assumes the reader is familiar with the following :
 
 2. The interface and usage of Theano's :ref:`scan() <lib_scan>` function
 
-Additionnaly, the :ref:`scan_internals_optimizations` section below assumes
+Additionaly, the :ref:`scan_internals_optimizations` section below assumes
 knowledge of:
 
 3. Theano's :ref:`graph optimizations <optimization>`
@@ -113,9 +113,9 @@ number in a vector.
 **Sitsot (single input tap, single output tap)** : A sitsot is an output
 variable of the inner function that is fed back as an input to the next
 iteration of the inner function. A typical setting where a sitsot might be
-encountered is the case where scan is used  Sitsots are typically encountered in
-situations where Scan is used to sum the elements of a vector and a sitsot
-output is employed to act as an accumulator.
+encountered is the case where scan is used to compute the cumulative sum over
+the elements of a vector and a sitsot output is employed to act as an
+accumulator.
 
 **Mitsot (multiple input taps, single output tap)** : A mitsot is an output
 variable of the inner function that is fed back as an input to future iterations
@@ -176,7 +176,7 @@ PushOutSeqScan
 This optimization resembles PushOutNonSeqScan but it tries to push, out of
 the inner function, the computation that only relies on sequence and
 non-sequence inputs. The idea behing this optimization is that, when it is
-possible to do so, it is generally more computationnaly efficient to perform
+possible to do so, it is generally more computationaly efficient to perform
 a single operation on a large tensor rather then perform that same operation
 many times on many smaller tensors. In many cases, this optimization can
 increase memory usage but, in some specific cases, it can also decrease it.
