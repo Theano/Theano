@@ -882,18 +882,6 @@ class AveragePoolGrad(PoolGrad):
                      st=self.st, padding=self.padding, mode=self.mode)(ggx)]
 
 
-# This is for compatibility with pickled things.  It should go away at
-# some point.
-class DownsampleFactorMaxGrad(object):
-    def __new__(self, ds, ignore_border, st=None, padding=(0, 0), mode='max'):
-        if mode == 'max':
-            return MaxPoolGrad(ds=ds, ignore_border=ignore_border, st=st,
-                               padding=padding, mode='max')
-        else:
-            return AveragePoolGrad(ds=ds, ignore_border=ignore_border, st=st,
-                                   padding=padding, mode=mode)
-
-
 class DownsampleFactorMaxGradGrad(Op):
     __props__ = ('ds', 'ignore_border', 'st', 'padding', 'mode')
 
