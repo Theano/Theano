@@ -1,5 +1,3 @@
-import itertools
-
 import theano
 from theano.tensor.nnet.tests import test_abstract_conv
 from theano.sandbox.cuda import float32_shared_constructor as gpu_shared

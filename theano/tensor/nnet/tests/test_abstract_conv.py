@@ -1,6 +1,5 @@
 import numpy
 import unittest
-import itertools
 
 import theano
 from theano import tensor
@@ -242,7 +241,7 @@ class TestConv2d(unittest.TestCase):
         ds = [1, 1]
         db = (0, 0)
         dflip = True in self.filter_flip
-        dprovide_shape = True in self.provide_shapes
+        dprovide_shape = True in self.provide_shape
         for (i, f) in zip(self.inputs_shapes, self.filters_shapes):
             for provide_shape in self.provide_shape:
                 self.tcase(i, f, ds, db, dflip, provide_shape)
@@ -273,6 +272,7 @@ class TestCpuConv2d(TestConv2d):
     def setUp(self):
         super(TestCpuConv2d, self).setUp()
         self.mode = theano.compile.mode.get_default_mode().excluding('conv_gemm')
+
     def tcase(self, i, f, s, b, flip, provide_shape):
         mode = self.mode
         o = self.get_output_shape(i, f, s, b)
@@ -300,7 +300,7 @@ class TestCpuConv2d(TestConv2d):
 
         if fwd_OK:
             self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
-                         verify_grad=(gradweights_ok and gradinput_ok),
+                         verify_grad=(gradweight_OK and gradinput_OK),
                          mode=mode, provide_shape=provide_shape,
                          border_mode=b, filter_flip=flip, target_op=ConvOp)
         else:

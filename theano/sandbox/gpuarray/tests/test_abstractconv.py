@@ -1,5 +1,3 @@
-import itertools
-
 from nose.plugins.skip import SkipTest
 
 from theano.tensor.nnet.tests import test_abstract_conv
