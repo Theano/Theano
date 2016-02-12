@@ -62,7 +62,7 @@ compile.optdb.register('local_inplace_sparse_block_outer',
 # Conv opts
 @local_optimizer([AbstractConv2d])
 def local_abstractconv_gemm(node):
-    if theano.config.cxx == "":
+    if theano.config.cxx == "" or theano.config.blas.ldflags:
         return
     if not isinstance(node.op, AbstractConv2d):
         return None
@@ -83,7 +83,7 @@ def local_abstractconv_gemm(node):
 
 @local_optimizer([AbstractConv2d_gradWeights])
 def local_abstractconv_gradweight_gemm(node):
-    if theano.config.cxx == "":
+    if theano.config.cxx == "" or theano.config.blas.ldflags:
         return
     if not isinstance(node.op, AbstractConv2d_gradWeights):
         return None
@@ -107,7 +107,7 @@ def local_abstractconv_gradweight_gemm(node):
 
 @local_optimizer([AbstractConv2d_gradInputs])
 def local_abstractconv_gradinputs_gemm(node):
-    if theano.config.cxx == "":
+    if theano.config.cxx == "" or theano.config.blas.ldflags:
         return
     if not isinstance(node.op, AbstractConv2d_gradInputs):
         return None
