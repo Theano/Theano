@@ -36,7 +36,7 @@ The following sections assumes the reader is familiar with the following :
 
 2. The interface and usage of Theano's :ref:`scan() <lib_scan>` function
 
-Additionaly, the :ref:`scan_internals_optimizations` section below assumes
+Additionally, the :ref:`scan_internals_optimizations` section below assumes
 knowledge of:
 
 3. Theano's :ref:`graph optimizations <optimization>`
@@ -181,7 +181,7 @@ PushOutSeqScan
 This optimization resembles PushOutNonSeqScan but it tries to push, out of
 the inner function, the computation that only relies on sequence and
 non-sequence inputs. The idea behing this optimization is that, when it is
-possible to do so, it is generally more computationaly efficient to perform
+possible to do so, it is generally more computationally efficient to perform
 a single operation on a large tensor rather then perform that same operation
 many times on many smaller tensors. In many cases, this optimization can
 increase memory usage but, in some specific cases, it can also decrease it.
@@ -242,7 +242,7 @@ that performs all the computation. The main advantage of merging Scan ops
 together comes from the possibility of both original ops having some
 computation in common. In such a setting, this computation ends up being done
 twice. The fused Scan op, however, would only need to do it once and could
-therefore be more computationaly efficient. Also, since every Scan node
+therefore be more computationally efficient. Also, since every Scan node
 involves a certain overhead, at runtime, reducing the number of Scan nodes in
 the graph can improve performance.
 
