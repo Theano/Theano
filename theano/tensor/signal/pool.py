@@ -16,12 +16,6 @@ import theano
 from theano import gof, Op, tensor, Variable, Apply
 
 
-def max_pool2D(*args, **kwargs):
-    import sys
-    print("DEPRECATION: max_pool2D renamed to pool_2d", file=sys.stderr)
-    return pool_2d(*args, **kwargs)
-
-
 def max_pool_2d_same_size(input, patch_size):
     """
     Takes as input a 4-D tensor. It sets all non maximum values
