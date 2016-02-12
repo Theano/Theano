@@ -45,8 +45,9 @@ knowledge of:
 Relevant code files
 ===================
 
-The implementation of scan is spread over several files. The different
-files, and section of the code they deal with, are :
+The implementation of scan is spread over several files in
+``theano/scan_module``.  The different files, and sections of the code they
+deal with, are :
 
 * ``scan.py`` implements the ``scan`` function. The ``scan`` function
   arranges the arguments of scan correctly, constructs the scan op and
@@ -93,15 +94,16 @@ The following are the different types of variables that Scan has the capacity to
 handle, along with their various caracteristics.
 
 **Sequence** : A sequence is a Theano variable which Scan will iterate over and
-give sub-elements to its inner function. For a sequence variable `X`, at
-timestep `t`, the inner function will receive as input the sequence element
-`X[t]`. These variables are used through the argument `sequences` of the
-`theano.scan()` function.
+give sub-elements to its inner function as input. A sequence has no associated
+output. For a sequence variable `X`, at timestep `t`, the inner function will
+receive as input the sequence element `X[t]`. These variables are used through
+the argument `sequences` of the `theano.scan()` function.
 
 **Non-sequences** : A non-sequence is a Theano variable which Scan will provide
-`as-is` to its inner function. For a non-sequence variable X, at timestep `t`,
-the inner function will receive as input the variable X. These variables are
-used through the argument `non_sequences` of the `theano.scan()` function.
+`as-is` to its inner function. Like a sequence, a non-sequence has no
+associated output. For a non-sequence variable X, at timestep `t`, the inner
+function will receive as input the variable X. These variables are used through
+the argument `non_sequences` of the `theano.scan()` function.
 
 **Nitsot (no input tap, single output tap)** : A nitsot is an output variable of
 the inner function that is not fed back as an input to the next iteration of the
@@ -120,7 +122,10 @@ accumulator.
 **Mitsot (multiple input taps, single output tap)** : A mitsot is an output
 variable of the inner function that is fed back as an input to future iterations
 of the inner function (either multiple future iterations or a single one that
-isn't the immediate next one).
+isn't the immediate next one). For example, a mitsot might be used in the case
+where scan is used to compute the Fibonacci sequence, one term of the sequence
+at every timestep, since every computed term needs to be reused to compute
+the two next terms of the sequence.
 
 **Mitmot (multiple input taps, multiple output taps)** : These outputs exist
 but they cannot be directly created by the user. They can appear in a theano
