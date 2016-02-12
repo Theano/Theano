@@ -16,7 +16,7 @@ from .nnet import (
     graph_merge_softmax_with_crossentropy_softmax, h_softmax,
     logsoftmax, logsoftmax_op, prepend_0_to_each_row, prepend_1_to_each_row,
     prepend_scalar_to_each_row, relu, softmax, softmax_grad, softmax_graph,
-    softmax_op, softmax_simplifier, softmax_with_bias)
+    softmax_op, softmax_simplifier, softmax_with_bias, elu)
 from . import opt
 from .conv import ConvOp
 from .Conv3D import *
