@@ -89,6 +89,12 @@ AddConfigVar('DebugMode.check_preallocated_output',
              StrParam('', is_valid=is_valid_check_preallocated_output_param),
              in_c_key=False)
 
+AddConfigVar('DebugMode.check_overwrite_preallocated_data',
+             "When testing with preallocated outputs, test if the output "
+             "objects are reused but their data is altered.",
+             BoolParam(True),
+             in_c_key=False)
+
 AddConfigVar('DebugMode.check_preallocated_output_ndim',
              ('When testing with "strided" preallocated output memory, '
               'test all combinations of strides over that number of '
@@ -1328,7 +1334,7 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
                     # is c-contiguous, so we transpose it before and after.
                     new_buf = CudaNdarray(new_buf.T)
                     new_buf = cuda_dimshuffle(
-                        new_buf, reversed(list(range(new_buf.ndim))))
+                        new_buf, range(new_buf.ndim)[::-1]) #reversed(list(range(new_buf.ndim))))
 
                 f_cont_outputs[r] = new_buf
 
@@ -1461,7 +1467,8 @@ def _get_preallocated_maps(node, thunk, prealloc_modes, def_val,
 
 def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
                                storage_map, r_vals, dr_vals, perform,
-                               active_order_set, inplace_outs, init_outputs):
+                               active_order_set, inplace_outs, init_outputs,
+                               check_data_ptr):
     """
     Try to apply thunk() on different output storages.
 
@@ -1488,6 +1495,7 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
                     new_mode.check_isfinite = False
                     new_mode.require_matching_strides = 0
                     new_mode.check_preallocated_output = []
+                    new_mode.check_overwrite_preallocated_data = False
                     new_mode.stability_patience = 1
                     fn.maker.mode = new_mode
                     changed_inner_mode = True
@@ -1523,19 +1531,49 @@ def _check_preallocated_output(node, thunk, prealloc_modes, def_val,
 
             # Get the appropriate output storages
             # (no copy)
+            init_output_vars = []
+            init_output_data = []
             for r in node.outputs:
-                storage_map[r][0] = out_map.get(r, None)
+                var = out_map.get(r, None)
+                storage_map[r][0] = var
+
+                # Keep a reference to the initial output objects
+                # and data pointers for later comparison.
+                init_output_vars.append(var)
+                if hasattr(var, 'data'):
+                    init_output_data.append(var.data)
+                elif hasattr(var, 'gpudata'):
+                    init_output_data.append(var.gpudata)
+                else:
+                    init_output_data.append(None)
 
             thunk()
 
             # Check outputs
-            for r in node.outputs:
+            for i, r in enumerate(node.outputs):
                 if not r.type.is_valid_value(storage_map[r][0]):
                     raise InvalidValueError(
                         r, storage_map[r][0],
                         hint=thunk_name,
                         specific_hint=r.type.value_validity_msg(
                             storage_map[r][0]))
+
+                if check_data_ptr:
+                    # If the preallocated output has been reused, check
+                    # that it has the same data pointer
+                    var = storage_map[r][0]
+                    if init_output_vars[i] is var and hasattr(var, 'gpudata'):
+                        if hasattr(var, 'data'):
+                            data = var.data
+                        elif hasattr(var, 'gpudata'):
+                            data = var.gpudata
+                        else:
+                            data = None
+
+                        if data != init_output_data[i]:
+                            _logger.warning("The node %s reuses its "
+                                            "preallocated output but "
+                                            "modifies its data pointer", r)
 
             _check_inputs(node, storage_map, r_vals, dr_vals, active_order_set,
                           clobber_dr_vals=False,
@@ -2103,6 +2141,8 @@ class _Linker(gof.link.LocalLinker):
                         if self.maker.mode.check_preallocated_output:
                             prealloc_modes = \
                                 self.maker.mode.check_preallocated_output
+                            check_data_ptr = \
+                                self.maker.mode.check_overwrite_preallocated_data
                             _logger.debug(
                                 '%i - calling _check_preallocated_output '
                                 'with thunk_py', i)
@@ -2117,7 +2157,8 @@ class _Linker(gof.link.LocalLinker):
                                 perform='py',
                                 active_order_set=active_order_set,
                                 inplace_outs=py_inplace_outs,
-                                init_outputs=init_outputs)
+                                init_outputs=init_outputs,
+                                check_data_ptr=check_data_ptr)
 
                         sys.stdout.flush()
 
@@ -2224,6 +2265,8 @@ class _Linker(gof.link.LocalLinker):
                         if self.maker.mode.check_preallocated_output:
                             prealloc_modes = \
                                 self.maker.mode.check_preallocated_output
+                            check_data_ptr = \
+                                self.maker.mode.check_overwrite_preallocated_data
 
                             def thunk():
                                 try:
@@ -2244,7 +2287,8 @@ class _Linker(gof.link.LocalLinker):
                                 perform='c code',
                                 active_order_set=active_order_set,
                                 inplace_outs=c_inplace_outs,
-                                init_outputs=init_outputs)
+                                init_outputs=init_outputs,
+                                check_data_ptr=check_data_ptr)
 
                         sys.stdout.flush()
 
@@ -2736,6 +2780,8 @@ class DebugMode(Mode):
 
     """
 
+    check_overwrite_preallocated_data = config.DebugMode.check_overwrite_preallocated_data
+
     # This function will be used to create a FunctionMaker in
     # function_module.function
     def function_maker(self, i, o, m, *args, **kwargs):
@@ -2754,7 +2800,8 @@ class DebugMode(Mode):
                  check_isfinite=None,
                  check_preallocated_output=None,
                  require_matching_strides=None,
-                 linker=_DummyLinker()):
+                 linker=_DummyLinker(),
+                 check_overwrite_preallocated_data=None):
         """
         If any of these arguments (except optimizer) is not None, it overrides
         the class default. The linker argument is not used. It is set there to
@@ -2784,6 +2831,9 @@ class DebugMode(Mode):
         if check_preallocated_output is not None:
             # Copy to avoid sharing the same list across different instances
             self.check_preallocated_output = check_preallocated_output[:]
+
+        if check_overwrite_preallocated_data is not None:
+            self.check_overwrite_preallocated_data = check_overwrite_preallocated_data
 
         if require_matching_strides is not None:
             self.require_matching_strides = require_matching_strides
