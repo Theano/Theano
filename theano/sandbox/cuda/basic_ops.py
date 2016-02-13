@@ -185,6 +185,8 @@ class GpuElemwise(GpuOp):
 
     """
 
+    __props__ = ("scalar_op", )
+
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 
@@ -567,6 +569,8 @@ class GpuCAReduce(GpuOp):
            be removed during graph optimization.
 
     """
+
+    __props__ = ("reduce_mask", "scalar_op", )
 
     def __init__(self, reduce_mask, scalar_op, pre_scalar_op=None):
         self.reduce_mask = tuple(reduce_mask)

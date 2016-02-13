@@ -134,6 +134,7 @@ class DimShuffle(Op):
 
     _f16_ok = True
     check_input = False
+    __props__ = ("input_broadcastable", "new_order")
 
     def __init__(self, input_broadcastable, new_order, inplace=False):
         input_broadcastable = tuple(input_broadcastable)
@@ -502,6 +503,8 @@ second dimension
     | Elemwise(log)(rand(3, 4, 5))
 
     """
+
+    __props__ = ("scalar_op",)
 
     def __init__(self, scalar_op, inplace_pattern=None, name=None,
                  nfunc_spec=None, openmp=None):
