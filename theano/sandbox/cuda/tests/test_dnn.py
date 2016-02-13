@@ -347,6 +347,8 @@ def test_pooling():
 
 
 def test_pooling_with_tensor_vars():
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
     x = T.ftensor4()
     ws = theano.shared(numpy.array([2, 2], dtype='int32'))
     st = theano.shared(numpy.array([1, 1], dtype='int32'))
@@ -372,7 +374,7 @@ def test_pooling_with_tensor_vars():
     out2 = pool_2d_i2n(x, ds=(2, 2), strides=(1, 1),
                        pad=(0, 0),
                        pool_function=T.max)
-    
+
     mode_without_gpu2 = mode_without_gpu.including()
     mode_without_gpu2.check_isfinite = False
 
@@ -391,6 +393,13 @@ def test_pooling_with_tensor_vars():
 
         b = f2(data).__array__()
         utt.assert_allclose(a, b)
+
+
+def test_old_pool_interface():
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+    import pickle
+    pickle.load(open('old_pool_interface.pkl', 'rb'))
 
 
 def test_pooling3d():
@@ -654,8 +663,9 @@ class test_DnnSoftMax(test_nnet.test_SoftMax):
             input_val = numpy.random.normal(0, 1, inp_shape).astype("float32")
 
             out = f(input_val)
-            expected_out = numpy.log(numpy.exp(input_val) /
-                                     numpy.exp(input_val).sum(1)[:, None, :, :])
+            expected_out = numpy.log(
+                numpy.exp(input_val) /
+                numpy.exp(input_val).sum(1)[:, None, :, :])
 
             utt.assert_allclose(out, expected_out)
 

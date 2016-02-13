@@ -1379,6 +1379,24 @@ class GpuDnnPool(DnnBase):
         assert mode in ('max', 'average_inc_pad', 'average_exc_pad')
         self.mode = mode
 
+    def prepare_node(self, node, storage_map, compute_map):
+        if len(node.inputs) == 2:
+            warnings.warn("Theano GPUDnnPoolGrad internal changed.", stacklevel=3)
+            # Old interface
+            self.mode = node.inputs[1].owner.op.mode
+            ws = theano.tensor.constant(node.inputs[1].owner.op.ws)
+            st = theano.tensor.constant(node.inputs[1].owner.op.stride)
+            pad = theano.tensor.constant(node.inputs[1].owner.op.pad)
+            node.inputs[1] = ws
+            node.inputs.append(st)
+            node.inputs.append(pad)
+            storage_map[ws] = [None]
+            storage_map[st] = [None]
+            storage_map[pad] = [None]
+            compute_map[ws] = [False]
+            compute_map[st] = [False]
+            compute_map[pad] = [False]
+
     def make_node(self, img, ws, stride, pad):
         img = as_cuda_ndarray_variable(img)
         assert (img.ndim in [4, 5])
@@ -1442,16 +1460,9 @@ if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
 """ % dict(name=name)
 
     def c_code(self, node, name, inputs, outputs, sub):
-        if len(inputs) == 2:
-            warnings.warn("Theano GPUDnnPoolGrad internal changed.", stacklevel=3)
-            desc = inputs[1]
-            ws = desc.ws
-            stride = desc.stride
-            pad = desc.pad
-        else:
-            ws = inputs[1]
-            stride = inputs[2]
-            pad = inputs[3]
+        ws = inputs[1]
+        stride = inputs[2]
+        pad = inputs[3]
         out, = outputs
 
         if self.mode == 'max':
@@ -1593,6 +1604,24 @@ class GpuDnnPoolGrad(DnnBase):
         assert mode in ('max', 'average_inc_pad', 'average_exc_pad')
         self.mode = mode
 
+    def prepare_node(self, node, storage_map, compute_map):
+        if len(node.inputs) == 4:
+            warnings.warn("Theano GPUDnnPoolGrad internal changed.", stacklevel=3)
+            # Old interface
+            self.mode = node.inputs[3].owner.op.mode
+            ws = theano.tensor.constant(node.inputs[3].owner.op.ws)
+            st = theano.tensor.constant(node.inputs[3].owner.op.stride)
+            pad = theano.tensor.constant(node.inputs[3].owner.op.pad)
+            node.inputs[3] = ws
+            node.inputs.append(st)
+            node.inputs.append(pad)
+            storage_map[ws] = [None]
+            storage_map[st] = [None]
+            storage_map[pad] = [None]
+            compute_map[ws] = [False]
+            compute_map[st] = [False]
+            compute_map[pad] = [False]
+
     def make_node(self, inp, out, inp_grad, ws, stride, pad):
         inp = as_cuda_ndarray_variable(inp)
         assert (inp.ndim in [4, 5])
@@ -1675,15 +1704,8 @@ if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
         # Here the name out and inp are based on the cudnn definition.
         # Not the definition of this class.
         # This make it complicated.
-        if len(inputs) == 4:
-            warnings.warn("Theano GPUDnnPoolGrad internal changed.", stacklevel=3)
-            out, inp, inp_grad, desc = inputs
-            ws = desc.ws
-            stride = desc.stride
-            pad = desc.pad
-        else:
-            out, inp, inp_grad, ws, stride, pad = inputs
-            
+        out, inp, inp_grad, ws, stride, pad = inputs
+
         out_grad, = outputs
 
         if self.mode == 'max':
