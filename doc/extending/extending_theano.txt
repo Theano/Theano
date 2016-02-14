@@ -427,6 +427,8 @@ You can try the new Op as follows:
 .. testoutput:: example
    :hide:
    :options: +ELLIPSIS, +SKIP
+   
+    <BLANKLINE>
 
 .. code-block:: none
 
@@ -457,6 +459,8 @@ You can try the new Op as follows:
 .. testoutput:: example
    :hide:
    :options: +ELLIPSIS, +SKIP
+
+    <BLANKLINE>
 
 .. code-block:: none
 

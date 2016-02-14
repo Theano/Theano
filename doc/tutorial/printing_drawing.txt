@@ -89,7 +89,7 @@ The post-compilation graph:
 
 >>> theano.printing.debugprint(predict)  # doctest: +NORMALIZE_WHITESPACE
 Elemwise{Composite{GT(scalar_sigmoid((-((-i0) - i1))), i2)}} [id A] ''   4
- |CGemv{inplace} [id B] ''   3
+ |Gemv{inplace} [id B] ''   3
  | |AllocEmpty{dtype='float64'} [id C] ''   2
  | | |Shape_i{0} [id D] ''   1
  | |   |x [id E]
