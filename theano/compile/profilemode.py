@@ -11,7 +11,7 @@ from six import string_types, iteritems, itervalues
 from theano.compile.mode import (Mode, register_mode,
                                  predefined_modes, predefined_linkers,
                                  predefined_optimizers)
-from theano.configparser import config, AddConfigVar, IntParam, BoolParam
+from theano.configparser import config
 from theano.compile.function_module import FunctionMaker
 
 from .profiling import ProfileStats

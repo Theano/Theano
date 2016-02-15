@@ -34,8 +34,6 @@ from theano.misc.windows import (subprocess_Popen,
 from theano.gof import compilelock
 from theano.configdefaults import gcc_version_str, local_bitwidth
 
-from theano.configparser import AddConfigVar, BoolParam
-
 importlib = None
 try:
     import importlib

@@ -10,7 +10,6 @@ import theano
 from six import string_types, iteritems
 from theano.configparser import config
 from theano.gof.utils import flatten
-from theano.misc.windows import output_subprocess_Popen
 
 
 _logger = logging.getLogger("theano.gof.compiledir")

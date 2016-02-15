@@ -14,7 +14,6 @@ import numpy
 import theano
 from theano import config, gof, printing, scalar
 from theano.compat import imap
-from theano.configparser import AddConfigVar, BoolParam
 from theano.printing import pprint
 from theano.tensor import basic as tensor
 from theano.tensor import elemwise, opt, NotScalarConstantError

@@ -12,7 +12,6 @@ from contextlib import contextmanager
 import numpy as np
 
 from theano import config
-from theano.configparser import AddConfigVar, IntParam
 
 random = np.random.RandomState([2015, 8, 2])
 

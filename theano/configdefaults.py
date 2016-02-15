@@ -1143,19 +1143,19 @@ AddConfigVar('scan.allow_output_prealloc',
              BoolParam(True))
 
 AddConfigVar('pycuda.init',
-        """If True, always initialize PyCUDA when Theano want to
-           initilize the GPU.  Currently, we must always initialize
-           PyCUDA before Theano do it.  Setting this flag to True,
-           ensure that, but always import PyCUDA.  It can be done
-           manually by importing theano.misc.pycuda_init before theano
-           initialize the GPU device.
-             """,
-        BoolParam(False),
-        in_c_key=False)
+             """If True, always initialize PyCUDA when Theano want to
+                initilize the GPU.  Currently, we must always initialize
+                PyCUDA before Theano do it.  Setting this flag to True,
+                ensure that, but always import PyCUDA.  It can be done
+                manually by importing theano.misc.pycuda_init before theano
+                initialize the GPU device.
+                  """,
+             BoolParam(False),
+             in_c_key=False)
 
 AddConfigVar('cublas.lib',
-        """Name of the cuda blas library for the linker.""",
-        StrParam('cublas'))
+             """Name of the cuda blas library for the linker.""",
+             StrParam('cublas'))
 
 AddConfigVar('lib.cnmem',
              """Do we enable CNMeM or not (a faster CUDA memory allocator).
@@ -1327,6 +1327,7 @@ AddConfigVar("compiledir_format",
              StrParam(default_compiledir_format, allow_override=False),
              in_c_key=False)
 
+
 def default_compiledirname():
     formatted = theano.config.compiledir_format % compiledir_format_dict
     safe = re.sub("[\(\)\s,]+", "_", formatted)
@@ -1417,6 +1418,7 @@ AddConfigVar(
         allow_override=False),
     in_c_key=False)
 
+
 def default_compiledir():
     return os.path.join(
         theano.config.base_compiledir,
@@ -1425,7 +1427,7 @@ def default_compiledir():
 AddConfigVar(
     'compiledir',
     "platform-dependent cache directory for compiled modules",
-    
+
     ConfigParam(
         default_compiledir,
         filter=filter_compiledir,

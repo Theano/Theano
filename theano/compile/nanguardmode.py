@@ -6,7 +6,7 @@ from six.moves import StringIO
 import numpy as np
 
 import theano
-from theano.configparser import config, AddConfigVar, BoolParam, EnumStr
+from theano.configparser import config
 import theano.tensor as T
 import theano.sandbox.cuda as cuda
 from theano.compile import Mode

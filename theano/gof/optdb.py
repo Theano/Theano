@@ -2,13 +2,10 @@ from __future__ import print_function
 import copy
 import sys
 
-import numpy
-
 from theano.compat import DefaultOrderedDict
 from theano.misc.ordered_set import OrderedSet
 from six import StringIO
 from theano.gof import opt
-from theano.configparser import AddConfigVar, FloatParam
 from theano import config
 
 

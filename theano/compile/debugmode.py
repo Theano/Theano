@@ -23,8 +23,7 @@ from six import string_types, iteritems, itervalues
 from six.moves import StringIO, xrange
 from theano.gof import (graph, utils, link, ops_with_inner_function)
 from theano.gof.link import raise_with_op
-from theano.configparser import (config, AddConfigVar, BoolParam, IntParam,
-                                 StrParam)
+from theano.configparser import (config, AddConfigVar, IntParam, StrParam)
 from theano.compile.function_module import (
     FunctionMaker, Function, infer_reuse_pattern,
     SymbolicInputKit, SymbolicOutput, Supervisor, std_fgraph)

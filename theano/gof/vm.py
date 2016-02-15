@@ -13,8 +13,7 @@ import sys
 import time
 import warnings
 
-from theano.configparser import (config, AddConfigVar,
-                                 BoolParam, ConfigParam, _config_var_list)
+from theano.configparser import (config, _config_var_list)
 
 import theano.gof.cmodule
 

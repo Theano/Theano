@@ -1596,6 +1596,7 @@ local_elemwise_alloc = register_specialize(
         local_elemwise_alloc_op(T.Elemwise, T.Alloc, T.DimShuffle)),
     'local_alloc_elemwise')
 
+
 @gof.local_optimizer([T.Elemwise])
 def local_fill_sink(node):
     """

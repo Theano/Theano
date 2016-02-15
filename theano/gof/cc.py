@@ -20,11 +20,6 @@ from theano.compat import izip
 from six import string_types, reraise
 from six.moves import StringIO, xrange
 
-# Note that we need to do this before importing cutils, since when there is
-# no theano cache dir initialized yet, importing cutils may require compilation
-# of cutils_ext.
-from theano.configparser import AddConfigVar, StrParam
-
 # gof imports
 from theano.gof import graph
 from theano.gof import link

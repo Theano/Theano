@@ -10,7 +10,7 @@ import numpy
 import theano
 from theano import gof
 import theano.gof.vm
-from theano.configparser import config, AddConfigVar, StrParam
+from theano.configparser import config
 from theano.compile.ops import _output_guard
 from six import string_types
 
