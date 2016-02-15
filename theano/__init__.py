@@ -36,10 +36,10 @@ logging_default_handler.setFormatter(logging_default_formatter)
 theano_logger.addHandler(logging_default_handler)
 theano_logger.setLevel(logging.WARNING)
 
-from theano.configdefaults import config
-
 # Version information.
 from theano.version import version as __version__
+
+from theano.configdefaults import config
 
 # This is the api version for ops that generate C code.  External ops
 # might need manual changes if this number goes up.  An undefined
