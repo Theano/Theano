@@ -185,7 +185,7 @@ class GpuElemwise(GpuOp):
 
     """
 
-    __props__ = ("scalar_op", )
+    __props__ = ("scalar_op", "inplace_pattern", )
 
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
