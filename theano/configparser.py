@@ -138,7 +138,7 @@ def fetch_val_for_key(key, delete_key=False):
     # first try to find it in the FLAGS
     try:
         if delete_key:
-            return THEANO_FLAGS_DICT.pop(key, None)
+            return THEANO_FLAGS_DICT.pop(key)
         return THEANO_FLAGS_DICT[key]
     except KeyError:
         pass
@@ -272,7 +272,7 @@ def AddConfigVar(name, doc, configparam, root=config, in_c_key=True):
         # Trigger a read of the value from config files and env vars
         # This allow to filter wrong value from the user.
         if not callable(configparam.default):
-            configparam.__get__(root, type(root))
+            configparam.__get__(root, type(root), delete_key=True)
         else:
             # We do not want to evaluate now the default value
             # when it is a callable.
