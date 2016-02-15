@@ -8,6 +8,7 @@ import textwrap
 import re
 import socket
 import struct
+import warnings
 
 import theano
 from theano.configparser import (AddConfigVar, BoolParam, ConfigParam, EnumStr,
@@ -1432,6 +1433,5 @@ AddConfigVar(
     in_c_key=False)
 
 # Check if there are remaining flags provided by the user through THEANO_FLAGS.
-if THEANO_FLAGS_DICT:
-    raise ValueError('theano does not recognise this flag: {}'
-                     .format(THEANO_FLAGS_DICT.keys()[0]))
+for key in THEANO_FLAGS_DICT.keys():
+    warnings.warn('Theano does not recognise this flag: {}'.format(key))
