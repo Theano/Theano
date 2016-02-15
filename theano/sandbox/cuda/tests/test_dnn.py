@@ -3,6 +3,8 @@ import logging
 from nose.plugins.skip import SkipTest
 import numpy
 from itertools import chain, product
+import six.moves.cPickle as pickle
+import os
 
 import theano
 from six import StringIO
@@ -398,8 +400,10 @@ def test_pooling_with_tensor_vars():
 def test_old_pool_interface():
     if not cuda.dnn.dnn_available():
         raise SkipTest(cuda.dnn.dnn_available.msg)
-    import pickle
-    pickle.load(open('old_pool_interface.pkl', 'rb'))
+    testfile_dir = os.path.dirname(os.path.realpath(__file__))
+    fname = 'old_pool_interface.pkl'
+    with open(os.path.join(testfile_dir, fname), 'rb') as fp:
+        pickle.load(fp)
 
 
 def test_pooling3d():
