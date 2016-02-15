@@ -55,6 +55,7 @@ from theano.tensor import (
         Subtensor,
         TensorType,
         Tile,
+        tile
         )
 from theano.tensor.elemwise import DimShuffle
 from theano.tests import unittest_tools as utt
