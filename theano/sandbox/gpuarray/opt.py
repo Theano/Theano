@@ -753,9 +753,9 @@ def local_gpua_dot22(node, context_name):
 @register_opt('fast_compile')
 @op_lifter([tensor.blas.Dot22Scalar])
 def local_gpua_dot22scalar(node, context_name):
-    # x, y, a
-    return [node.inputs[2] * gpu_dot22(as_gpuarray_variable(node.inputs[0]),
-                                       as_gpuarray_variable(node.inputs[1]))]
+    dot = gpu_dot22(as_gpuarray_variable(node.inputs[0], context_name),
+                    as_gpuarray_variable(node.inputs[1], context_name))
+    return [node.inputs[2] * dot]
 
 
 @register_opt('fast_compile')
