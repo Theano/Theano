@@ -19,7 +19,7 @@ else:
     mode_with_gpu = theano.compile.mode.get_default_mode().including('gpu')
 
 
-class TestDnnConv2d(test_abstract_conv.TestConv2d):
+class TestDnnConv2d(test_abstract_conv.BaseTestConv2d):
     def setUp(self):
         super(TestDnnConv2d, self).setUp()
         # provide_shape is not used by the CuDNN impementation

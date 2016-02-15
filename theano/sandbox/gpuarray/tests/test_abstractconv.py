@@ -9,7 +9,7 @@ from .config import mode_with_gpu, test_ctx_name
 gpu_ftensor4 = GpuArrayType(dtype='float32', broadcastable=(False,) * 4)
 
 
-class TestDnnConv2d(test_abstract_conv.TestConv2d):
+class TestDnnConv2d(test_abstract_conv.BaseTestConv2d):
     def setUp(self):
         super(TestDnnConv2d, self).setUp()
         self.shared = gpuarray_shared_constructor

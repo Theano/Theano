@@ -56,9 +56,8 @@ class TestGetConvOutShape(unittest.TestCase):
         self.assertTrue(test4_params == (3, 4, 6, 4))
 
 
-class TestConv2d(unittest.TestCase):
+class BaseTestConv2d(object):
     def setUp(self):
-        super(TestConv2d, self).setUp()
         self.inputs_shapes = [(8, 1, 12, 12), (8, 1, 18, 18), (2, 1, 4, 4),
                               (6, 1, 10, 11), (2, 1, 6, 5), (1, 5, 9, 9)]
         self.filters_shapes = [(5, 1, 2, 2), (4, 1, 3, 3), (2, 1, 3, 3),
@@ -252,7 +251,7 @@ class TestConv2d(unittest.TestCase):
                 self.tcase(i, f, ds, db, flip, dprovide_shape)
 
 
-class TestCorrConv2d(TestConv2d):
+class TestCorrConv2d(BaseTestConv2d):
     def tcase(self, i, f, s, b, flip, provide_shape):
         o = self.get_output_shape(i, f, s, b)
         self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
@@ -268,7 +267,7 @@ class TestCorrConv2d(TestConv2d):
                            filter_flip=flip, target_op=CorrMM_gradInputs)
 
 
-class TestCpuConv2d(TestConv2d):
+class TestCpuConv2d(BaseTestConv2d):
     def setUp(self):
         super(TestCpuConv2d, self).setUp()
         self.mode = theano.compile.mode.get_default_mode().excluding('conv_gemm')
