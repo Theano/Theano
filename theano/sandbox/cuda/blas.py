@@ -18,6 +18,9 @@ from theano.tensor import as_tensor_variable
 class GpuBatchedDot(GpuOp):
     __props__ = ()
 
+    def __init__(self, stream_threshold=128):
+        self.stream_threshold = stream_threshold
+
     def make_node(self, inp1, inp2):
         inp1 = gpu_contiguous(as_cuda_ndarray_variable(inp1))
         inp2 = gpu_contiguous(as_cuda_ndarray_variable(inp2))
@@ -39,6 +42,7 @@ class GpuBatchedDot(GpuOp):
         bx, by = input_names
         bz, = output_names
         fail = sub['fail']
+        threshold = self.stream_threshold
         return ("""
         float alpha = 1.0;
         float beta = 0.0;
@@ -59,7 +63,7 @@ class GpuBatchedDot(GpuOp):
         y_dim2 = CudaNdarray_HOST_DIMS(%(by)s)[2];
 
         // use parallel cublasSgemm calls rather than cublasSgemmBatched for large products
-        bool use_cublas_sgemm_batched = x_dim1 * x_dim2 * y_dim2 < 128 * 128 * 128;
+        bool use_cublas_sgemm_batched = x_dim1 * x_dim2 * y_dim2 < %(threshold)s * %(threshold)s * %(threshold)s;
 
         if (x_dim0 != y_dim0)
         {
