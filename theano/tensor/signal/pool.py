@@ -625,9 +625,8 @@ class PoolGrad(Op):
 
 
 class MaxPoolGrad(PoolGrad):
-
-    def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='max'):
-        PoolGrad.__init__(self, ds, ignore_border, st, padding, mode)
+    def __init__(self, ds, ignore_border, st=None, padding=(0, 0)):
+        PoolGrad.__init__(self, ds, ignore_border, st, padding, mode='max')
 
     def make_node(self, x, maxout, gz):
         # make_node should only be called by the grad function of
@@ -802,13 +801,15 @@ class MaxPoolGrad(PoolGrad):
 
 
 class AveragePoolGrad(PoolGrad):
-
-    def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='average_inc_pad'):
+    def __init__(self, ds, ignore_border, st=None, padding=(0, 0),
+                 mode='average_inc_pad'):
         assert mode in ['sum', 'average_inc_pad', 'average_exc_pad']
         PoolGrad.__init__(self, ds, ignore_border, st, padding, mode)
 
     # There is an extra dummy parameter to match the parameter count
-    # of MaxPoolGrad.  This is for backward compatibility.
+    # of MaxPoolGrad.  They have to keep the same interface because of
+    # the DownsampleFactorMaxGrad trick to keep old scripts working
+    # (see downsample.py for details on this).
     def make_node(self, x, gz, dummy=None):
         # make_node should only be called by the grad function of
         # Pool, so these asserts should not fail.

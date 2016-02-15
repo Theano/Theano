@@ -17,7 +17,7 @@ class DownsampleFactorMaxGrad(object):
     def __new__(self, ds, ignore_border, st=None, padding=(0, 0), mode='max'):
         if mode == 'max':
                 return MaxPoolGrad(ds=ds, ignore_border=ignore_border, st=st,
-                                   padding=padding, mode='max')
+                                   padding=padding)
         else:
             return AveragePoolGrad(ds=ds, ignore_border=ignore_border, st=st,
                                    padding=padding, mode=mode)
