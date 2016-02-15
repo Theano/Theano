@@ -318,7 +318,8 @@ class NanGuardMode(Mode):
                 # If the input is the result of computation, then we
                 # don't need to check it. It is already done after the
                 # computation.
-                if var.owner is not None:
+                if (var.owner is not None and
+                    getattr(var.tag, 'nan_guard_mode_check', True)):
                     do_check_on(x[0], node, fn, True)
             fn()
             outputs = fn.outputs
