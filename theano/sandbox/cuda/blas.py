@@ -1953,7 +1953,7 @@ class GpuConv(GpuOp):
                      images[2] * images[3] * 2)
         return flops
 
-    def prepare_node(self, node):
+    def prepare_node(self, node, storage_map, compute_map):
         if node.op.max_threads_dim0 is None:
             cuda = theano.sandbox.cuda
             device_id = cuda.use.device_number
