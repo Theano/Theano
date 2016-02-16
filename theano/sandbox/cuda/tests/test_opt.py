@@ -798,6 +798,7 @@ def test_local_gpu_cholesky():
 
     def cmp(A_dim, lower):
         M = numpy.random.normal(size=(A_dim, A_dim)).astype('float32')
+        # A = M.dot(M) will be positive definite for all non-singular M
         A_val = M.dot(M.T)
         A = cuda.shared_constructor(A_val, 'A')
 
@@ -821,6 +822,26 @@ def test_local_gpu_cholesky():
 
     cmp(3, True)
     cmp(6, False)
+
+
+def test_local_inplace_gpu_cholesky():
+
+    if not cula.cula_available:
+        raise SkipTest('Optional dependency CULA not available')
+    if not pycuda_available:
+        raise SkipTest('Optional dependency pycuda not available')
+
+    def check_inplace_opt(lower):
+        A = tensor.matrix('A')
+        cholesky_op = tensor.slinalg.Cholesky(lower=lower)
+        f = theano.function([A], cholesky_op(A))
+        assert isinstance(f.maker.fgraph.toposort()[1].inputs[0].owner.op,
+                          cuda.cula.GpuCholesky)
+        assert f.maker.fgraph.toposort()[1].inputs[0].owner.op.inplace
+        assert f.maker.fgraph.toposort()[1].inputs[0].owner.op.lower == lower
+
+    check_inplace_opt(True)
+    check_inplace_opt(False)
 
 
 def test_local_gpu_dot_to_dot22dot():
