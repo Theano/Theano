@@ -2543,7 +2543,8 @@ def local_gpu_allocempty(node):
 # Don't register by default.
 @gof.local_optimizer([GpuAllocEmpty])
 def local_gpu_alloc_empty_to_zeros(node):
-    if isinstance(node.op, GpuAllocEmpty):
+    # We need the exact match as GpuAlloc inherit from GpuAllocEmpty.
+    if type(node.op) is GpuAllocEmpty:
         return [gpu_alloc(theano.tensor.constant(0, dtype='float32'),
                           *node.inputs)]
 optdb.register('local_gpu_alloc_empty_to_zeros',
