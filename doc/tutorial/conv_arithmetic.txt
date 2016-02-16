@@ -142,16 +142,20 @@ and :math:`s = 2`:
 
 .. figure:: conv_arithmetic_figures/no_padding_strides.gif
 
-.. todo::
-
-    Explain the logic behind this formula
+Once again, we are counting the number of positions where the bottom right
+corner of the kernel can be placed. Starting from the bottom right corner of
+a kernel placed at the top left corner of the input, we count the number of
+:math:`s`-sized hops we can make. This is equivalent to counting the number
+of groups of :math:`s` rows and columns we can make when ignoring the first
+:math:`k` rows and columns. We then need to add 1, because this counting method
+ignores the bottom right corner of the kernel.
 
 From this, we conclude that the output size :math:`o` of the strided convolution
 is
 
 .. math::
 
-    o = \left\lfloor \frac{i - (k - s)}{s} \right\rfloor.
+    o = \left\lfloor \frac{i - k}{s} \right\rfloor + 1.
 
 Combining padding and strides
 =============================
@@ -168,7 +172,7 @@ In other words,
 
 .. math::
 
-    o = \left\lfloor \frac{i + 2p - (k - s)}{s} \right\rfloor.
+    o = \left\lfloor \frac{i + 2p - k}{s} \right\rfloor + 1.
 
 Here is what it looks like for :math:`i = 5`, :math:`k = 3`, :math:`s = 2` and
 :math:`p = 1`:
