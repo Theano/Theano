@@ -14,7 +14,6 @@ import numpy
 import theano
 from theano import config, gof, printing, scalar
 from theano.compat import imap
-from theano.configparser import AddConfigVar, BoolParam
 from theano.printing import pprint
 from theano.tensor import basic as tensor
 from theano.tensor import elemwise, opt, NotScalarConstantError
@@ -460,14 +459,6 @@ def is_1pexp(t):
                         'option to False, or `warn.ignore_bug_before` to at '
                         'least \'0.4.1\'.')
     return None
-
-
-AddConfigVar(
-    'warn.identify_1pexp_bug',
-    'Warn if Theano versions prior to 7987b51 (2011-12-18) could have '
-    'yielded a wrong result due to a bug in the is_1pexp function',
-    BoolParam(theano.configdefaults.warn_default('0.4.1')),
-    in_c_key=False)
 
 
 def is_exp(var):

@@ -12,7 +12,6 @@ from contextlib import contextmanager
 import numpy as np
 
 from theano import config
-from theano.configparser import AddConfigVar, IntParam
 
 random = np.random.RandomState([2015, 8, 2])
 
@@ -21,25 +20,6 @@ _logger = logging.getLogger("theano.gof.compilelock")
 if _logger.level == logging.NOTSET:
     # INFO will show the "Refreshing lock" messages
     _logger.setLevel(logging.INFO)
-
-AddConfigVar('compile.wait',
-             """Time to wait before retrying to aquire the compile lock.""",
-             IntParam(5, lambda i: i > 0, allow_override=False),
-             in_c_key=False)
-
-
-def _timeout_default():
-    return config.compile.wait * 24
-
-AddConfigVar('compile.timeout',
-             """In seconds, time that a process will wait before deciding to
-override an existing lock. An override only happens when the existing
-lock is held by the same owner *and* has not been 'refreshed' by this
-owner for more than this period. Refreshes are done every half timeout
-period for running processes.""",
-             IntParam(_timeout_default, lambda i: i >= 0,
-                      allow_override=False),
-             in_c_key=False)
 
 hostname = socket.gethostname()
 

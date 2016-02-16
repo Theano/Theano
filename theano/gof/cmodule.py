@@ -32,45 +32,13 @@ from theano.misc.windows import (subprocess_Popen,
 
 # we will abuse the lockfile mechanism when reading and writing the registry
 from theano.gof import compilelock
-from theano.gof.compiledir import gcc_version_str, local_bitwidth
-
-from theano.configparser import AddConfigVar, BoolParam
+from theano.configdefaults import gcc_version_str, local_bitwidth
 
 importlib = None
 try:
     import importlib
 except ImportError:
     pass
-
-AddConfigVar(
-    'cmodule.mac_framework_link',
-    "If set to True, breaks certain MacOS installations with the infamous "
-    "Bus Error",
-    BoolParam(False))
-
-AddConfigVar('cmodule.warn_no_version',
-             "If True, will print a warning when compiling one or more Op "
-             "with C code that can't be cached because there is no "
-             "c_code_cache_version() function associated to at least one of "
-             "those Ops.",
-             BoolParam(False),
-             in_c_key=False)
-
-AddConfigVar('cmodule.remove_gxx_opt',
-             "If True, will remove the -O* parameter passed to g++."
-             "This is useful to debug in gdb modules compiled by Theano."
-             "The parameter -g is passed by default to g++",
-             BoolParam(False))
-
-AddConfigVar('cmodule.compilation_warning',
-             "If True, will print compilation warnings.",
-             BoolParam(False))
-
-
-AddConfigVar('cmodule.preload_cache',
-             "If set to True, will preload the C module cache at import time",
-             BoolParam(False, allow_override=False),
-             in_c_key=False)
 
 _logger = logging.getLogger("theano.gof.cmodule")
 

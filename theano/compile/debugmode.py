@@ -23,8 +23,7 @@ from six import string_types, iteritems, itervalues
 from six.moves import StringIO, xrange
 from theano.gof import (graph, utils, link, ops_with_inner_function)
 from theano.gof.link import raise_with_op
-from theano.configparser import (config, AddConfigVar, BoolParam, IntParam,
-                                 StrParam)
+from theano.configparser import (config, AddConfigVar, IntParam, StrParam)
 from theano.compile.function_module import (
     FunctionMaker, Function, infer_reuse_pattern,
     SymbolicInputKit, SymbolicOutput, Supervisor, std_fgraph)
@@ -32,39 +31,6 @@ from theano.compile.mode import Mode, register_mode
 from theano.compile.ops import OutputGuard
 
 __docformat__ = "restructuredtext en"
-
-AddConfigVar('DebugMode.patience',
-             "Optimize graph this many times to detect inconsistency",
-             IntParam(10, lambda i: i > 0),
-             in_c_key=False)
-
-AddConfigVar('DebugMode.check_c',
-             "Run C implementations where possible",
-             BoolParam(bool(theano.config.cxx)),
-             in_c_key=False)
-
-AddConfigVar('DebugMode.check_py',
-             "Run Python implementations where possible",
-             BoolParam(True),
-             in_c_key=False)
-
-AddConfigVar('DebugMode.check_finite',
-             "True -> complain about NaN/Inf results",
-             BoolParam(True),
-             in_c_key=False)
-
-AddConfigVar('DebugMode.check_strides',
-             ("Check that Python- and C-produced ndarrays have same strides. "
-              "On difference: (0) - ignore, (1) warn, or (2) raise error"),
-             IntParam(0, lambda i: i in (0, 1, 2)),
-             in_c_key=False)
-
-AddConfigVar('DebugMode.warn_input_not_reused',
-             ("Generate a warning when destroy_map or view_map says that an "
-              "op works inplace, but the op did not reuse the input for its "
-              "output."),
-             BoolParam(True),
-             in_c_key=False)
 
 
 def is_valid_check_preallocated_output_param(param):

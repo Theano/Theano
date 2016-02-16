@@ -10,28 +10,12 @@ import numpy
 import theano
 from theano import gof
 import theano.gof.vm
-from theano.configparser import config, AddConfigVar, StrParam
+from theano.configparser import config
 from theano.compile.ops import _output_guard
 from six import string_types
 
 
 _logger = logging.getLogger('theano.compile.mode')
-
-AddConfigVar('optimizer_excluding',
-             ("When using the default mode, we will remove optimizer with "
-              "these tags. Separate tags with ':'."),
-             StrParam("", allow_override=False),
-             in_c_key=False)
-AddConfigVar('optimizer_including',
-             ("When using the default mode, we will add optimizer with "
-              "these tags. Separate tags with ':'."),
-             StrParam("", allow_override=False),
-             in_c_key=False)
-AddConfigVar('optimizer_requiring',
-             ("When using the default mode, we will require optimizer with "
-              "these tags. Separate tags with ':'."),
-             StrParam("", allow_override=False),
-             in_c_key=False)
 
 
 def check_equal(x, y):

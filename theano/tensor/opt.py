@@ -53,12 +53,6 @@ from six import StringIO
 
 _logger = logging.getLogger('theano.tensor.opt')
 
-theano.configparser.AddConfigVar('on_shape_error',
-                                 "warn: print a warning and use the default"
-                                 " value. raise: raise an error",
-                                 theano.configparser.EnumStr("warn", "raise"),
-                                 in_c_key=False)
-
 # Utilities
 
 
@@ -228,13 +222,6 @@ def broadcast_like(value, template, fgraph, dtype=None):
                              str(template.broadcastable))
 
     return rval
-
-
-theano.configparser.AddConfigVar(
-    'tensor.insert_inplace_optimizer_validate_nb',
-    "-1: auto, if graph have less then 500 nodes 1, else 10",
-    theano.configparser.IntParam(-1),
-    in_c_key=False)
 
 
 def inplace_elemwise_optimizer_op(OP):
@@ -1608,26 +1595,6 @@ local_elemwise_alloc = register_specialize(
     gof.local_optimizer([T.Elemwise])(
         local_elemwise_alloc_op(T.Elemwise, T.Alloc, T.DimShuffle)),
     'local_alloc_elemwise')
-
-theano.configparser.AddConfigVar('experimental.local_alloc_elemwise',
-                                 "DEPRECATED: If True, enable the experimental"
-                                 " optimization local_alloc_elemwise."
-                                 " Generates error if not True. Use"
-                                 " optimizer_excluding=local_alloc_elemwise"
-                                 " to dsiable.",
-                                 theano.configparser.BoolParam(
-                                     True,
-                                     is_valid=lambda x: x
-                                 ),
-                                 in_c_key=False)
-
-# False could make the graph faster but not as safe.
-theano.configparser.AddConfigVar(
-    'experimental.local_alloc_elemwise_assert',
-    "When the local_alloc_elemwise is applied, add"
-    " an assert to highlight shape errors.",
-    theano.configparser.BoolParam(True),
-    in_c_key=False)
 
 
 @gof.local_optimizer([T.Elemwise])

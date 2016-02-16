@@ -2,24 +2,11 @@ from __future__ import print_function
 import copy
 import sys
 
-import numpy
-
 from theano.compat import DefaultOrderedDict
 from theano.misc.ordered_set import OrderedSet
 from six import StringIO
 from theano.gof import opt
-from theano.configparser import AddConfigVar, FloatParam
 from theano import config
-
-AddConfigVar('optdb.position_cutoff',
-             'Where to stop eariler during optimization. It represent the'
-             ' position of the optimizer where to stop.',
-             FloatParam(numpy.inf),
-             in_c_key=False)
-AddConfigVar('optdb.max_use_ratio',
-             'A ratio that prevent infinite loop in EquilibriumOptimizer.',
-             FloatParam(5),
-             in_c_key=False)
 
 
 class DB(object):

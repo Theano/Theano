@@ -3008,7 +3008,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
                        32: tensor.basic._convert_to_int32,
                        64: tensor.basic._convert_to_int64
         }
-        intwidth = theano.gof.compiledir.python_int_bitwidth()
+        intwidth = theano.configdefaults.python_int_bitwidth()
         ilist_ = convert_map[intwidth](ilist_)
 
         assert x_.type.dtype == y_.type.dtype

@@ -1,13 +1,22 @@
+import errno
 import os
 import sys
 import logging
+import numpy
+import platform
+import textwrap
+import re
+import socket
+import struct
+import warnings
 
 import theano
 from theano.configparser import (AddConfigVar, BoolParam, ConfigParam, EnumStr,
                                  FloatParam, IntParam, StrParam,
-                                 TheanoConfigParser)
+                                 TheanoConfigParser, THEANO_FLAGS_DICT)
 from theano.misc.cpucount import cpuCount
-from theano.misc.windows import call_subprocess_Popen
+from theano.misc.windows import call_subprocess_Popen, output_subprocess_Popen
+
 
 _logger = logging.getLogger('theano.configdefaults')
 
@@ -316,9 +325,9 @@ AddConfigVar('dnn.conv.precision',
 
 def default_dnn_path(suffix):
     def f(suffix=suffix):
-        if config.cuda.root == '':
+        if theano.config.cuda.root == '':
             return ''
-        return os.path.join(config.cuda.root, suffix)
+        return os.path.join(theano.config.cuda.root, suffix)
     return f
 
 AddConfigVar('dnn.include_path',
@@ -860,3 +869,571 @@ AddConfigVar('unittests.rseed',
              "Special value 'random' means using a seed of None.",
              StrParam(666, is_valid=good_seed_param),
              in_c_key=False)
+
+AddConfigVar('NanGuardMode.nan_is_error',
+             "Default value for nan_is_error",
+             BoolParam(True),
+             in_c_key=False)
+
+AddConfigVar('NanGuardMode.inf_is_error',
+             "Default value for inf_is_error",
+             BoolParam(True),
+             in_c_key=False)
+
+AddConfigVar('NanGuardMode.big_is_error',
+             "Default value for big_is_error",
+             BoolParam(True),
+             in_c_key=False)
+
+AddConfigVar('NanGuardMode.action',
+             "What NanGuardMode does when it finds a problem",
+             EnumStr('raise', 'warn', 'pdb'),
+             in_c_key=False)
+
+AddConfigVar('ProfileMode.n_apply_to_print',
+             "Number of apply instances to print by default",
+             IntParam(15, lambda i: i > 0),
+             in_c_key=False)
+
+AddConfigVar('ProfileMode.n_ops_to_print',
+             "Number of ops to print by default",
+             IntParam(20, lambda i: i > 0),
+             in_c_key=False)
+
+AddConfigVar('ProfileMode.min_memory_size',
+             "For the memory profile, do not print apply nodes if the size "
+             "of their outputs (in bytes) is lower then this threshold",
+             IntParam(1024, lambda i: i >= 0),
+             in_c_key=False)
+
+AddConfigVar('ProfileMode.profile_memory',
+             """Enable profiling of memory used by Theano functions""",
+             BoolParam(False),
+             in_c_key=False)
+
+AddConfigVar('optimizer_excluding',
+             ("When using the default mode, we will remove optimizer with "
+              "these tags. Separate tags with ':'."),
+             StrParam("", allow_override=False),
+             in_c_key=False)
+
+AddConfigVar('optimizer_including',
+             ("When using the default mode, we will add optimizer with "
+              "these tags. Separate tags with ':'."),
+             StrParam("", allow_override=False),
+             in_c_key=False)
+
+AddConfigVar('optimizer_requiring',
+             ("When using the default mode, we will require optimizer with "
+              "these tags. Separate tags with ':'."),
+             StrParam("", allow_override=False),
+             in_c_key=False)
+
+AddConfigVar('DebugMode.patience',
+             "Optimize graph this many times to detect inconsistency",
+             IntParam(10, lambda i: i > 0),
+             in_c_key=False)
+
+AddConfigVar('DebugMode.check_c',
+             "Run C implementations where possible",
+             BoolParam(
+                 lambda: bool(theano.config.cxx)),
+             in_c_key=False)
+
+AddConfigVar('DebugMode.check_py',
+             "Run Python implementations where possible",
+             BoolParam(True),
+             in_c_key=False)
+
+AddConfigVar('DebugMode.check_finite',
+             "True -> complain about NaN/Inf results",
+             BoolParam(True),
+             in_c_key=False)
+
+AddConfigVar('DebugMode.check_strides',
+             ("Check that Python- and C-produced ndarrays have same strides. "
+              "On difference: (0) - ignore, (1) warn, or (2) raise error"),
+             IntParam(0, lambda i: i in (0, 1, 2)),
+             in_c_key=False)
+
+AddConfigVar('DebugMode.warn_input_not_reused',
+             ("Generate a warning when destroy_map or view_map says that an "
+              "op works inplace, but the op did not reuse the input for its "
+              "output."),
+             BoolParam(True),
+             in_c_key=False)
+
+AddConfigVar('profiling.time_thunks',
+             """Time individual thunks when profiling""",
+             BoolParam(True),
+             in_c_key=False)
+
+AddConfigVar('profiling.n_apply',
+             "Number of Apply instances to print by default",
+             IntParam(20, lambda i: i > 0),
+             in_c_key=False)
+
+AddConfigVar('profiling.n_ops',
+             "Number of Ops to print by default",
+             IntParam(20, lambda i: i > 0),
+             in_c_key=False)
+
+AddConfigVar('profiling.output_line_width',
+             "Max line width for the profiling output",
+             IntParam(512, lambda i: i > 0),
+             in_c_key=False)
+
+AddConfigVar('profiling.min_memory_size',
+             """For the memory profile, do not print Apply nodes if the size
+             of their outputs (in bytes) is lower than this threshold""",
+             IntParam(1024, lambda i: i >= 0),
+             in_c_key=False)
+
+AddConfigVar('profiling.min_peak_memory',
+             """The min peak memory usage of the order""",
+             BoolParam(False),
+             in_c_key=False)
+
+AddConfigVar('profiling.destination',
+             """
+             File destination of the profiling output
+             """,
+             StrParam('stderr'),
+             in_c_key=False)
+
+AddConfigVar('profiling.debugprint',
+             """
+             Do a debugprint of the profiled functions
+             """,
+             BoolParam(False),
+             in_c_key=False)
+
+AddConfigVar('optdb.position_cutoff',
+             'Where to stop eariler during optimization. It represent the'
+             ' position of the optimizer where to stop.',
+             FloatParam(numpy.inf),
+             in_c_key=False)
+
+AddConfigVar('optdb.max_use_ratio',
+             'A ratio that prevent infinite loop in EquilibriumOptimizer.',
+             FloatParam(5),
+             in_c_key=False)
+
+AddConfigVar('gcc.cxxflags',
+             "Extra compiler flags for gcc",
+             StrParam(""))
+
+AddConfigVar(
+    'cmodule.mac_framework_link',
+    "If set to True, breaks certain MacOS installations with the infamous "
+    "Bus Error",
+    BoolParam(False))
+
+AddConfigVar('cmodule.warn_no_version',
+             "If True, will print a warning when compiling one or more Op "
+             "with C code that can't be cached because there is no "
+             "c_code_cache_version() function associated to at least one of "
+             "those Ops.",
+             BoolParam(False),
+             in_c_key=False)
+
+AddConfigVar('cmodule.remove_gxx_opt',
+             "If True, will remove the -O* parameter passed to g++."
+             "This is useful to debug in gdb modules compiled by Theano."
+             "The parameter -g is passed by default to g++",
+             BoolParam(False))
+
+AddConfigVar('cmodule.compilation_warning',
+             "If True, will print compilation warnings.",
+             BoolParam(False))
+
+
+AddConfigVar('cmodule.preload_cache',
+             "If set to True, will preload the C module cache at import time",
+             BoolParam(False, allow_override=False),
+             in_c_key=False)
+
+AddConfigVar(
+    'metaopt.verbose',
+    "Enable verbose output for meta optimizers",
+    theano.configparser.BoolParam(False),
+    in_c_key=False)
+
+AddConfigVar('profile',
+             "If VM should collect profile information",
+             BoolParam(False),
+             in_c_key=False)
+
+AddConfigVar('profile_optimizer',
+             "If VM should collect optimizer profile information",
+             BoolParam(False),
+             in_c_key=False)
+
+AddConfigVar('profile_memory',
+             "If VM should collect memory profile information and print it",
+             BoolParam(False),
+             in_c_key=False)
+
+
+def filter_vm_lazy(val):
+    if val == 'False' or val is False:
+        return False
+    elif val == 'True' or val is True:
+        return True
+    elif val == 'None' or val is None:
+        return None
+    else:
+        raise ValueError('Valid values for an vm.lazy parameter '
+                         'should be None, False or True, not `%s`.' % val)
+
+AddConfigVar('vm.lazy',
+             "Useful only for the vm linkers. When lazy is None,"
+             " auto detect if lazy evaluation is needed and use the apropriate"
+             " version. If lazy is True/False, force the version used between"
+             " Loop/LoopGC and Stack.",
+             ConfigParam('None', filter_vm_lazy),
+             in_c_key=False)
+
+AddConfigVar(
+    'warn.identify_1pexp_bug',
+    'Warn if Theano versions prior to 7987b51 (2011-12-18) could have '
+    'yielded a wrong result due to a bug in the is_1pexp function',
+    BoolParam(warn_default('0.4.1')),
+    in_c_key=False)
+
+AddConfigVar('on_shape_error',
+             "warn: print a warning and use the default"
+             " value. raise: raise an error",
+             theano.configparser.EnumStr("warn", "raise"),
+             in_c_key=False)
+
+AddConfigVar(
+    'tensor.insert_inplace_optimizer_validate_nb',
+    "-1: auto, if graph have less then 500 nodes 1, else 10",
+    theano.configparser.IntParam(-1),
+    in_c_key=False)
+
+AddConfigVar('experimental.local_alloc_elemwise',
+             "DEPRECATED: If True, enable the experimental"
+             " optimization local_alloc_elemwise."
+             " Generates error if not True. Use"
+             " optimizer_excluding=local_alloc_elemwise"
+             " to dsiable.",
+             theano.configparser.BoolParam(
+                 True,
+                 is_valid=lambda x: x
+             ),
+             in_c_key=False)
+
+# False could make the graph faster but not as safe.
+AddConfigVar(
+    'experimental.local_alloc_elemwise_assert',
+    "When the local_alloc_elemwise is applied, add"
+    " an assert to highlight shape errors.",
+    theano.configparser.BoolParam(True),
+    in_c_key=False)
+
+AddConfigVar('scan.allow_gc',
+             "Allow/disallow gc inside of Scan (default: False)",
+             BoolParam(False))
+
+AddConfigVar('scan.allow_output_prealloc',
+             "Allow/disallow memory preallocation for outputs inside of scan "
+             "(default: True)",
+             BoolParam(True))
+
+AddConfigVar('pycuda.init',
+             """If True, always initialize PyCUDA when Theano want to
+                initilize the GPU.  Currently, we must always initialize
+                PyCUDA before Theano do it.  Setting this flag to True,
+                ensure that, but always import PyCUDA.  It can be done
+                manually by importing theano.misc.pycuda_init before theano
+                initialize the GPU device.
+                  """,
+             BoolParam(False),
+             in_c_key=False)
+
+AddConfigVar('cublas.lib',
+             """Name of the cuda blas library for the linker.""",
+             StrParam('cublas'))
+
+AddConfigVar('lib.cnmem',
+             """Do we enable CNMeM or not (a faster CUDA memory allocator).
+
+             The parameter represent the start size (in MB or % of
+             total GPU memory) of the memory pool.
+
+             0: not enabled.
+             0 < N <= 1: % of the total GPU memory (clipped to .985 for driver memory)
+             > 0: use that number of MB of memory.
+
+             """,
+             # We should not mix both allocator, so we can't override
+             FloatParam(0, lambda i: i >= 0, allow_override=False),
+             in_c_key=False)
+
+AddConfigVar('compile.wait',
+             """Time to wait before retrying to aquire the compile lock.""",
+             IntParam(5, lambda i: i > 0, allow_override=False),
+             in_c_key=False)
+
+
+def _timeout_default():
+    return theano.config.compile.wait * 24
+
+AddConfigVar('compile.timeout',
+             """In seconds, time that a process will wait before deciding to
+override an existing lock. An override only happens when the existing
+lock is held by the same owner *and* has not been 'refreshed' by this
+owner for more than this period. Refreshes are done every half timeout
+period for running processes.""",
+             IntParam(_timeout_default, lambda i: i >= 0,
+                      allow_override=False),
+             in_c_key=False)
+
+
+try:
+    p_out = output_subprocess_Popen([config.cxx, '-dumpversion'])
+    gcc_version_str = p_out[0].strip().decode()
+except OSError:
+    # Typically means gcc cannot be found.
+    gcc_version_str = 'GCC_NOT_FOUND'
+
+
+def local_bitwidth():
+    """
+    Return 32 for 32bit arch, 64 for 64bit arch.
+
+    By "architecture", we mean the size of memory pointers (size_t in C),
+    *not* the size of long int, as it can be different.
+
+    """
+    # Note that according to Python documentation, `platform.architecture()` is
+    # not reliable on OS X with universal binaries.
+    # Also, sys.maxsize does not exist in Python < 2.6.
+    # 'P' denotes a void*, and the size is expressed in bytes.
+    return struct.calcsize('P') * 8
+
+
+def python_int_bitwidth():
+    """
+    Return the bit width of Python int (C long int).
+
+    Note that it can be different from the size of a memory pointer.
+
+    """
+    # 'l' denotes a C long int, and the size is expressed in bytes.
+    return struct.calcsize('l') * 8
+
+
+compiledir_format_dict = {
+    "platform": platform.platform(),
+    "processor": platform.processor(),
+    "python_version": platform.python_version(),
+    "python_bitwidth": local_bitwidth(),
+    "python_int_bitwidth": python_int_bitwidth(),
+    "theano_version": theano.__version__,
+    "numpy_version": numpy.__version__,
+    "gxx_version": gcc_version_str.replace(" ", "_"),
+    "hostname": socket.gethostname()}
+
+
+def short_platform(r=None, p=None):
+    """
+    Return a safe shorter version of platform.platform().
+
+    The old default Theano compiledir used platform.platform in
+    it. This use the platform.version() as a substring. This is too
+    specific as it contain the full kernel number and package
+    version. This cause the compiledir to change each time there is a
+    new linux kernel update. This function remove the part of platform
+    that are too precise.
+
+    If we have something else then expected, we do nothing. So this
+    should be safe on other OS.
+
+    Some example if we use platform.platform() direction. On the same
+    OS, with just some kernel updates.
+
+    compiledir_Linux-2.6.32-504.el6.x86_64-x86_64-with-redhat-6.6-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-431.29.2.el6.x86_64-x86_64-with-redhat-6.5-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-431.23.3.el6.x86_64-x86_64-with-redhat-6.5-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-431.20.3.el6.x86_64-x86_64-with-redhat-6.5-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-431.17.1.el6.x86_64-x86_64-with-redhat-6.5-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-431.11.2.el6.x86_64-x86_64-with-redhat-6.5-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-431.el6.x86_64-x86_64-with-redhat-6.5-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-358.23.2.el6.x86_64-x86_64-with-redhat-6.4-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-358.6.2.el6.x86_64-x86_64-with-redhat-6.4-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-358.6.1.el6.x86_64-x86_64-with-redhat-6.4-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-358.2.1.el6.x86_64-x86_64-with-redhat-6.4-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-358.el6.x86_64-x86_64-with-redhat-6.4-Santiago-x86_64-2.6.6-64
+    compiledir_Linux-2.6.32-358.el6.x86_64-x86_64-with-redhat-6.4-Santiago-x86_64-2.6.6
+    compiledir_Linux-2.6.32-279.14.1.el6.x86_64-x86_64-with-redhat-6.4-Santiago-x86_64-2.6.6
+    compiledir_Linux-2.6.32-279.14.1.el6.x86_64-x86_64-with-redhat-6.3-Santiago-x86_64-2.6.6
+    compiledir_Linux-2.6.32-279.5.2.el6.x86_64-x86_64-with-redhat-6.3-Santiago-x86_64-2.6.6
+    compiledir_Linux-2.6.32-220.13.1.el6.x86_64-x86_64-with-redhat-6.3-Santiago-x86_64-2.6.6
+    compiledir_Linux-2.6.32-220.13.1.el6.x86_64-x86_64-with-redhat-6.2-Santiago-x86_64-2.6.6
+    compiledir_Linux-2.6.32-220.7.1.el6.x86_64-x86_64-with-redhat-6.2-Santiago-x86_64-2.6.6
+    compiledir_Linux-2.6.32-220.4.1.el6.x86_64-x86_64-with-redhat-6.2-Santiago-x86_64-2.6.6
+
+    We suppose the version are ``X.Y[.*]-(digit)*(anything)*``. We keep ``X.Y``
+    and don't keep less important digit in the part before ``-`` and we remove
+    the leading digit after the first ``-``.
+
+    If the information don't fit that pattern, we do not modify platform.
+
+    """
+    if r is None:
+        r = platform.release()
+    if p is None:
+        p = platform.platform()
+    sp = r.split('-')
+    if len(sp) < 2:
+        return p
+
+    # For the split before the first -, we remove all learning digit:
+    kernel_version = sp[0].split('.')
+    if len(kernel_version) <= 2:
+        # kernel version should always have at least 3 number.
+        # If not, it use another semantic, so don't change it.
+        return p
+    sp[0] = '.'.join(kernel_version[:2])
+
+    # For the split after the first -, we remove leading non-digit value.
+    rest = sp[1].split('.')
+    while len(rest):
+        if rest[0].isdigit():
+            del rest[0]
+        else:
+            break
+    sp[1] = '.'.join(rest)
+
+    # For sp[2:], we don't change anything.
+    sr = '-'.join(sp)
+    p = p.replace(r, sr)
+
+    return p
+compiledir_format_dict['short_platform'] = short_platform()
+compiledir_format_keys = ", ".join(sorted(compiledir_format_dict.keys()))
+default_compiledir_format = ("compiledir_%(short_platform)s-%(processor)s-"
+                             "%(python_version)s-%(python_bitwidth)s")
+
+AddConfigVar("compiledir_format",
+             textwrap.fill(textwrap.dedent("""\
+                 Format string for platform-dependent compiled
+                 module subdirectory (relative to base_compiledir).
+                 Available keys: %s. Defaults to %r.
+             """ % (compiledir_format_keys, default_compiledir_format))),
+             StrParam(default_compiledir_format, allow_override=False),
+             in_c_key=False)
+
+
+def default_compiledirname():
+    formatted = theano.config.compiledir_format % compiledir_format_dict
+    safe = re.sub("[\(\)\s,]+", "_", formatted)
+    return safe
+
+
+def filter_base_compiledir(path):
+    # Expand '~' in path
+    return os.path.expanduser(str(path))
+
+
+def filter_compiledir(path):
+    # Expand '~' in path
+    path = os.path.expanduser(path)
+    # Turn path into the 'real' path. This ensures that:
+    #   1. There is no relative path, which would fail e.g. when trying to
+    #      import modules from the compile dir.
+    #   2. The path is stable w.r.t. e.g. symlinks (which makes it easier
+    #      to re-use compiled modules).
+    path = os.path.realpath(path)
+    if os.access(path, os.F_OK):  # Do it exist?
+        if not os.access(path, os.R_OK | os.W_OK | os.X_OK):
+            # If it exist we need read, write and listing access
+            raise ValueError(
+                "compiledir '%s' exists but you don't have read, write"
+                " or listing permissions." % path)
+    else:
+        try:
+            os.makedirs(path, 0o770)  # read-write-execute for user and group
+        except OSError as e:
+            # Maybe another parallel execution of theano was trying to create
+            # the same directory at the same time.
+            if e.errno != errno.EEXIST:
+                raise ValueError(
+                    "Unable to create the compiledir directory"
+                    " '%s'. Check the permissions." % path)
+
+    # PROBLEM: sometimes the initial approach based on
+    # os.system('touch') returned -1 for an unknown reason; the
+    # alternate approach here worked in all cases... it was weird.
+    # No error should happen as we checked the permissions.
+    init_file = os.path.join(path, '__init__.py')
+    if not os.path.exists(init_file):
+        try:
+            open(init_file, 'w').close()
+        except IOError as e:
+            if os.path.exists(init_file):
+                pass  # has already been created
+            else:
+                e.args += ('%s exist? %s' % (path, os.path.exists(path)),)
+                raise
+    return path
+
+
+def get_home_dir():
+    """
+    Return location of the user's home directory.
+
+    """
+    home = os.getenv('HOME')
+    if home is None:
+        # This expanduser usually works on Windows (see discussion on
+        # theano-users, July 13 2010).
+        home = os.path.expanduser('~')
+        if home == '~':
+            # This might happen when expanduser fails. Although the cause of
+            # failure is a mystery, it has been seen on some Windows system.
+            home = os.getenv('USERPROFILE')
+    assert home is not None
+    return home
+
+
+# On Windows we should avoid writing temporary files to a directory that is
+# part of the roaming part of the user profile. Instead we use the local part
+# of the user profile, when available.
+if sys.platform == 'win32' and os.getenv('LOCALAPPDATA') is not None:
+    default_base_compiledir = os.path.join(os.getenv('LOCALAPPDATA'), 'Theano')
+else:
+    default_base_compiledir = os.path.join(get_home_dir(), '.theano')
+
+
+AddConfigVar(
+    'base_compiledir',
+    "platform-independent root directory for compiled modules",
+    ConfigParam(
+        default_base_compiledir,
+        filter=filter_base_compiledir,
+        allow_override=False),
+    in_c_key=False)
+
+
+def default_compiledir():
+    return os.path.join(
+        theano.config.base_compiledir,
+        default_compiledirname())
+
+AddConfigVar(
+    'compiledir',
+    "platform-dependent cache directory for compiled modules",
+
+    ConfigParam(
+        default_compiledir,
+        filter=filter_compiledir,
+        allow_override=False),
+    in_c_key=False)
+
+# Check if there are remaining flags provided by the user through THEANO_FLAGS.
+for key in THEANO_FLAGS_DICT.keys():
+    warnings.warn('Theano does not recognise this flag: {}'.format(key))
