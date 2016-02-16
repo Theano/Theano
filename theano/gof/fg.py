@@ -153,7 +153,6 @@ class FunctionGraph(utils.object2):
 
         self.inputs = list(inputs)
         self.outputs = outputs
-        self._removed_nodes = set()
 
         for f in features:
             self.attach_feature(f)
@@ -326,7 +325,6 @@ class FunctionGraph(utils.object2):
                     self.apply_nodes.remove(apply_node)
                     self.variables.difference_update(apply_node.outputs)
                     self.execute_callbacks('on_prune', apply_node, reason)
-                    self._removed_nodes.add(apply_node)
                     for i, input in enumerate(apply_node.inputs):
                         self.__remove_clients__(input, [(apply_node, i)],
                                                 reason=reason)
@@ -481,11 +479,6 @@ class FunctionGraph(utils.object2):
 
         for node in new_nodes:
             assert node not in self.apply_nodes
-            prevent_addition = node in self._removed_nodes
-                    
-            if prevent_addition : 
-                raise InconsistencyError
-                ("Trying to reintroduce an old nodes in the graph. This should not happen")
             self.__setup_node__(node)
             self.apply_nodes.add(node)
             for output in node.outputs:
