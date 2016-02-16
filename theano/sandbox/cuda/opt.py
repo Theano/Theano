@@ -2067,7 +2067,7 @@ def local_inplace_ger(node):
                   GpuCholesky(lower=False, inplace=False)], inplace=True)
 def local_inplace_gpu_cholesky(node):
     if isinstance(node.op, GpuCholesky) and not node.op.inplace:
-        return [GpuCholesky(lower=node.op.lower, inplace=True)]
+        return [GpuCholesky(lower=node.op.lower, inplace=True)(node.inputs[0])]
 
 
 # After destroyhandler is in but before we try to make elemwise things inplace
