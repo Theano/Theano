@@ -2436,7 +2436,7 @@ class GpuReshape(tensor.Reshape, GpuOp):
 
     """
 
-    # __hash__, __eq__, __str__ come from tensor.Subtensor
+    # __hash__, __eq__, __str__ come from tensor.Reshape
     def make_node(self, x, shp):
         x = as_cuda_ndarray_variable(x)
         shp = tensor.as_tensor_variable(shp)
