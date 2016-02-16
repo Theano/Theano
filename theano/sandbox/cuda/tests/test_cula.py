@@ -78,17 +78,9 @@ class TestGpuCholesky(unittest.TestCase):
     def get_gpu_cholesky_func(self, lower=True, inplace=False):
         """ Helper function to compile function from GPU Cholesky op. """
         A = theano.tensor.matrix("A", dtype="float32")
-        if inplace:
-            if lower:
-                chol_A = cula.gpu_cholesky_lower_inplace(A)
-            else:
-                chol_A = cula.gpu_cholesky_upper_inplace(A)
-        else:
-            if lower:
-                chol_A = cula.gpu_cholesky_lower_no_inplace(A)
-            else:
-                chol_A = cula.gpu_cholesky_upper_no_inplace(A)
-        return theano.function([A], chol_A)
+        cholesky_op = cula.GpuCholesky(lower=lower, inplace=inplace)
+        chol_A = cholesky_op(A)
+        return theano.function([A], chol_A, accept_inplace=inplace)
 
     def compare_gpu_cholesky_to_numpy(self, A_val, lower=True, inplace=False):
         """ Helper function to compare op output to numpy.cholesky output. """
@@ -121,10 +113,11 @@ class TestGpuCholesky(unittest.TestCase):
             fn(A_val)
         self.assertRaises(cula.cula.culaError, invalid_input_func)
 
-    def test_invalid_input_fail_non_positive_definite(self):
-        """ Invalid Cholesky input test with non positive-definite input. """
+    def test_invalid_input_fail_negative_definite(self):
+        """ Invalid Cholesky input test with negative-definite input. """
         def invalid_input_func():
             M_val = numpy.random.normal(size=(3, 3)).astype("float32")
+            # A = -M.dot(M) will be negative definite for all non-singular M
             A_val = -M_val.dot(M_val.T)
             fn = self.get_gpu_cholesky_func(True, False)
             fn(A_val)
@@ -134,29 +127,52 @@ class TestGpuCholesky(unittest.TestCase):
         """ Invalid Cholesky input test with vector as input. """
         def invalid_input_func():
             A = theano.tensor.vector("A", dtype="float32")
-            cula.gpu_cholesky_lower_no_inplace(A)
+            cula.GpuCholeskly(lower=True, inplace=False)(A)
         self.assertRaises(AssertionError, invalid_input_func)
 
     def test_invalid_input_fail_tensor3(self):
-        """ Invalid Cholesky input test with vector as input. """
+        """ Invalid Cholesky input test with 3D tensor as input. """
         def invalid_input_func():
             A = theano.tensor.tensor3("A", dtype="float32")
-            cula.gpu_cholesky_lower_no_inplace(A)
+            cula.GpuCholeskly(lower=True, inplace=False)(A)
         self.assertRaises(AssertionError, invalid_input_func)
 
     def test_diag_chol(self):
-        """ Diagonal matrix input with positive entries Cholesky test. """
+        """ Diagonal matrix input Cholesky test. """
+        # make sure all diagonal elements are positive so positive-definite
         A_val = numpy.diag(numpy.random.uniform(size=5).astype("float32") + 1)
         self.compare_gpu_cholesky_to_numpy(A_val, lower=True, inplace=False)
 
     def test_dense_chol_lower(self):
         """ Dense matrix input lower-triangular Cholesky test. """
         M_val = numpy.random.normal(size=(3, 3)).astype("float32")
+        # A = M.dot(M) will be positive definite for all non-singular M
         A_val = M_val.dot(M_val.T)
         self.compare_gpu_cholesky_to_numpy(A_val, lower=True, inplace=False)
 
     def test_dense_chol_upper(self):
         """ Dense matrix input upper-triangular Cholesky test. """
         M_val = numpy.random.normal(size=(3, 3)).astype("float32")
+        # A = M.dot(M) will be positive definite for all non-singular M
         A_val = M_val.dot(M_val.T)
         self.compare_gpu_cholesky_to_numpy(A_val, lower=False, inplace=False)
+
+    def test_diag_chol_inplace(self):
+        """ Diagonal matrix input inplace Cholesky test. """
+        # make sure all diagonal elements are positive so positive-definite
+        A_val = numpy.diag(numpy.random.uniform(size=5).astype("float32") + 1)
+        self.compare_gpu_cholesky_to_numpy(A_val, lower=True, inplace=True)
+
+    def test_dense_chol_lower_inplace(self):
+        """ Dense matrix input lower-triangular inplace Cholesky test. """
+        M_val = numpy.random.normal(size=(3, 3)).astype("float32")
+        # A = M.dot(M) will be positive definite for all non-singular M
+        A_val = M_val.dot(M_val.T)
+        self.compare_gpu_cholesky_to_numpy(A_val, lower=True, inplace=True)
+
+    def test_dense_chol_upper_inplace(self):
+        """ Dense matrix input upper-triangular inplace Cholesky test. """
+        M_val = numpy.random.normal(size=(3, 3)).astype("float32")
+        # A = M.dot(M) will be positive definite for all non-singular M
+        A_val = M_val.dot(M_val.T)
+        self.compare_gpu_cholesky_to_numpy(A_val, lower=False, inplace=True)

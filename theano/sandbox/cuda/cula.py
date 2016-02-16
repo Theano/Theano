@@ -293,8 +293,3 @@ class GpuCholesky(GpuOp):
         thunk.lazy = False
 
         return thunk
-
-gpu_cholesky_lower_no_inplace = GpuCholesky(lower=True, inplace=False)
-gpu_cholesky_lower_inplace = GpuCholesky(lower=True, inplace=True)
-gpu_cholesky_upper_no_inplace = GpuCholesky(lower=False, inplace=False)
-gpu_cholesky_upper_inplace = GpuCholesky(lower=False, inplace=True)
