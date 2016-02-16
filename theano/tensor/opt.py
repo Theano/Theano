@@ -828,9 +828,12 @@ class ShapeFeature(object):
     Shape_i and MakeVector Ops.
 
     This optimizer has several goals:
+
     1. to 'lift' Shapes to as close to the inputs as possible.
+
     2. to infer the shape of every node in the graph in terms of the
        input shapes.
+
     3. remove all fills (T.second, T.fill) from the graph
 
     Lifting shapes as close to the inputs as possible is important for
@@ -880,8 +883,7 @@ class ShapeFeature(object):
     execution by default.  (NOT IMPLEMENTED YET, BUT IS IN TRAC)
 
 
-    Using Shape information in Optimizations
-    ========================================
+    **Using Shape information in Optimizations**
 
     To use this shape information in OPTIMIZATIONS, use the
     ``shape_of`` dictionary.
@@ -898,7 +900,7 @@ class ShapeFeature(object):
 
         shape_of_output_zero = shape_of[node.output[0]]
 
-    The ``shape_of_output_zero'' symbol will contain a tuple, whose
+    The ``shape_of_output_zero`` symbol will contain a tuple, whose
     elements are either integers or symbolic integers.
 
     TODO: check to see if the symbols are necessarily
@@ -2618,10 +2620,12 @@ def merge_two_slices(slice1, len1, slice2, len2):
     """
      This function merges two slices into a single slice. The code works on
      the assumption that:
-          a) slice1 is actually a slice and not an index, while slice2
-          can be just an index.
-          b) the two slices **have been applied consecutively** on the same
-          tensor
+
+     a) slice1 is actually a slice and not an index, while slice2
+        can be just an index.
+
+     b) the two slices **have been applied consecutively** on the same
+        tensor
 
     The output slice is **not** in canonical form, but actually just a slice
     that can be applied to a tensor to produce the same output as applying
@@ -4044,7 +4048,8 @@ register_canonicalize(gof.OpRemove(T.tensor_copy), name='remove_tensor_copy')
 
 class Canonizer(gof.LocalOptimizer):
     """
-    Simplification tool.
+    Simplification tool. The variable is a local_optimizer. It is best used
+    with a TopoOptimizer in in_to_out order.
 
     Usage: Canonizer(main, inverse, reciprocal, calculate)
 
@@ -4063,14 +4068,11 @@ class Canonizer(gof.LocalOptimizer):
     calculate
         Function that takes a list of numpy.ndarray instances
         for the numerator, another list for the denumerator,
-        and calculates inverse(main(*num), main(*denum)). It
+        and calculates inverse(main(\*num), main(\*denum)). It
         takes a keyword argument, aslist. If True, the value
         should be returned as a list of one element, unless
         the value is such that value = main(). In that case,
         the return value should be an empty list.
-
-    The variable is a local_optimizer. It is best used with a TopoOptimizer in
-    in_to_out order.
 
     Examples
     --------
@@ -4081,16 +4083,17 @@ class Canonizer(gof.LocalOptimizer):
                                   lambda n, d: prod(n) / prod(d))
 
     Examples of optimizations mul_canonizer can perform:
-      x / x -> 1
-      (x * y) / x -> y
-      x / y / x -> 1 / y
-      x / y / z -> x / (y * z)
-      x / (y / z) -> (x * z) / y
-      (a / b) * (b / c) * (c / d) -> a / d
-      (2.0 * x) / (4.0 * y) -> (0.5 * x) / y
-      2 * x / 2 -> x
-      x * y * z -> Elemwise(T.mul){x,y,z} #only one pass over the memory.
-                !-> Elemwise(T.mul){x,Elemwise(T.mul){y,z}}
+
+    | x / x -> 1
+    | (x * y) / x -> y
+    | x / y / x -> 1 / y
+    | x / y / z -> x / (y * z)
+    | x / (y / z) -> (x * z) / y
+    | (a / b) * (b / c) * (c / d) -> a / d
+    | (2.0 * x) / (4.0 * y) -> (0.5 * x) / y
+    | 2 * x / 2 -> x
+    | x * y * z -> Elemwise(T.mul){x,y,z} #only one pass over the memory.
+    |           !-> Elemwise(T.mul){x,Elemwise(T.mul){y,z}}
 
     """
 
@@ -4113,23 +4116,23 @@ class Canonizer(gof.LocalOptimizer):
     def get_num_denum(self, input):
         """
         This extract two lists, num and denum, such that the input is:
-        self.inverse(self.main(*num), self.main(*denum)). It returns
+        self.inverse(self.main(\*num), self.main(\*denum)). It returns
         the two lists in a (num, denum) pair.
 
-        For example, for main, inverse and reciprocal = *, / and inv(),
+        For example, for main, inverse and reciprocal = \*, / and inv(),
 
-        input -> returned value (num, denum)
+        | input -> returned value (num, denum)
 
-        x*y -> ([x, y], [])
-        inv(x) -> ([], [x])
-        inv(x) * inv(y) -> ([], [x, y])
-        x*y/z -> ([x, y], [z])
-        log(x) / y * (z + x) / y -> ([log(x), z + x], [y, y])
-        (((a / b) * c) / d) -> ([a, c], [b, d])
-        a / (b / c) -> ([a, c], [b])
-        log(x) -> ([log(x)], [])
-        x**y -> ([x**y], [])
-        x * y * z -> ([x, y, z], [])
+        | x*y -> ([x, y], [])
+        | inv(x) -> ([], [x])
+        | inv(x) * inv(y) -> ([], [x, y])
+        | x*y/z -> ([x, y], [z])
+        | log(x) / y * (z + x) / y -> ([log(x), z + x], [y, y])
+        | (((a / b) * c) / d) -> ([a, c], [b, d])
+        | a / (b / c) -> ([a, c], [b])
+        | log(x) -> ([log(x)], [])
+        | x**y -> ([x**y], [])
+        | x * y * z -> ([x, y, z], [])
 
         """
 
@@ -4232,27 +4235,28 @@ class Canonizer(gof.LocalOptimizer):
     def merge_num_denum(self, num, denum):
         """
         Utility function which takes two lists, num and denum, and
-        returns something which is equivalent to inverse(main(*num),
-        main(*denum)), but depends on the length of num and the length
+        returns something which is equivalent to inverse(main(\*num),
+        main(\*denum)), but depends on the length of num and the length
         of denum (in order to minimize the number of operations).
 
         Let n = len(num) and d = len(denum):
 
-        n=0, d=0: neutral element (given by self.calculate([], []))
-                  (for example, this would be 0 if main is addition
-                  and 1 if main is multiplication)
-        n=1, d=0: num[0]
-        n=0, d=1: reciprocal(denum[0])
-        n=1, d=1: inverse(num[0], denum[0])
-        n=0, d>1: reciprocal(main(*denum))
-        n>1, d=0: main(*num)
-        n=1, d>1: inverse(num[0], main(*denum))
-        n>1, d=1: inverse(main(*num), denum[0])
-        n>1, d>1: inverse(main(*num), main(*denum))
+        | n=0, d=0: neutral element (given by self.calculate([], []))
+        |           (for example, this would be 0 if main is addition
+        |           and 1 if main is multiplication)
+        | n=1, d=0: num[0]
+        | n=0, d=1: reciprocal(denum[0])
+        | n=1, d=1: inverse(num[0], denum[0])
+        | n=0, d>1: reciprocal(main(\*denum))
+        | n>1, d=0: main(\*num)
+        | n=1, d>1: inverse(num[0], main(\*denum))
+        | n>1, d=1: inverse(main(\*num), denum[0])
+        | n>1, d>1: inverse(main(\*num), main(\*denum))
 
         Given the values of n and d to which they are associated, all
         of the above are equivalent to:
-        inverse(main(*num), main(*denum))
+        inverse(main(\*num), main(\*denum))
+
         """
 
         ln, ld = len(num), len(denum)
@@ -4297,7 +4301,10 @@ class Canonizer(gof.LocalOptimizer):
     def simplify(self, num, denum, out_type):
         """
         Shorthand for:
-        self.simplify_constants(*self.simplify_factors(num, denum))
+
+        .. code-block:: python
+
+            self.simplify_constants(*self.simplify_factors(num, denum))
 
         """
         rval = self.simplify_constants(*self.simplify_factors(num, denum),
@@ -4315,9 +4322,9 @@ class Canonizer(gof.LocalOptimizer):
         from both lists. Modifies the lists inplace. Returns the
         modified lists. For example:
 
-        [x], [x] -> [], []
-        [x, y], [x] -> [y], []
-        [a, b], [c, d] -> [a, b], [c, d]
+        | [x], [x] -> [], []
+        | [x, y], [x] -> [y], []
+        | [a, b], [c, d] -> [a, b], [c, d]
 
         """
         for v in list(num):
@@ -4340,9 +4347,9 @@ class Canonizer(gof.LocalOptimizer):
         --------
         Let main be multiplication:
 
-        [2, 3, x], [] -> [6, x], []
-        [x, y, 2], [4, z] -> [0.5, x, y], [z]
-        [x, 2, y], [z, 2] -> [x, y], [z]
+        | [2, 3, x], [] -> [6, x], []
+        | [x, y, 2], [4, z] -> [0.5, x, y], [z]
+        | [x, 2, y], [z, 2] -> [x, y], [z]
 
         """
 

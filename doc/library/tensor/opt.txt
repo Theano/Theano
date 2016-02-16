@@ -1,0 +1,12 @@
+===================================================================
+:mod:`tensor.opt` --  Tensor Optimizations
+===================================================================
+
+.. module:: tensor.opt
+   :platform: Unix, Windows
+   :synopsis: Tensor Optimizations
+.. moduleauthor:: LISA
+
+.. automodule:: theano.tensor.opt
+    :members:
+
