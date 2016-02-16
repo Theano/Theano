@@ -79,7 +79,6 @@ whitelist_flake8 = [
     "tensor/tests/test_blas_c.py",
     "tensor/tests/test_blas_scipy.py",
     "tensor/tests/test_mpi.py",
-    "tensor/signal/pool.py",
     "tensor/signal/conv.py",
     "tensor/signal/tests/test_conv.py",
     "tensor/signal/tests/test_downsample.py",

@@ -15,14 +15,6 @@ import numpy
 import theano
 from theano import gof, Op, tensor, Variable, Apply
 
-from theano.tensor.opt import register_canonicalize
-
-
-def max_pool2D(*args, **kwargs):
-    import sys
-    print("DEPRECATION: max_pool2D renamed to pool_2d", file=sys.stderr)
-    return pool_2d(*args, **kwargs)
-
 
 def max_pool_2d_same_size(input, patch_size):
     """
@@ -633,9 +625,8 @@ class PoolGrad(Op):
 
 
 class MaxPoolGrad(PoolGrad):
-
-    def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='max'):
-        PoolGrad.__init__(self, ds, ignore_border, st, padding, mode)
+    def __init__(self, ds, ignore_border, st=None, padding=(0, 0)):
+        PoolGrad.__init__(self, ds, ignore_border, st, padding, mode='max')
 
     def make_node(self, x, maxout, gz):
         # make_node should only be called by the grad function of
@@ -808,16 +799,18 @@ class MaxPoolGrad(PoolGrad):
     def c_code_cache_version(self):
         return (0, 7)
 
-DownsampleFactorMaxGrad = MaxPoolGrad
-
 
 class AveragePoolGrad(PoolGrad):
-
-    def __init__(self, ds, ignore_border, st=None, padding=(0, 0), mode='average_inc_pad'):
+    def __init__(self, ds, ignore_border, st=None, padding=(0, 0),
+                 mode='average_inc_pad'):
         assert mode in ['sum', 'average_inc_pad', 'average_exc_pad']
         PoolGrad.__init__(self, ds, ignore_border, st, padding, mode)
 
-    def make_node(self, x, gz):
+    # There is an extra dummy parameter to match the parameter count
+    # of MaxPoolGrad.  They have to keep the same interface because of
+    # the DownsampleFactorMaxGrad trick to keep old scripts working
+    # (see downsample.py for details on this).
+    def make_node(self, x, gz, dummy=None):
         # make_node should only be called by the grad function of
         # Pool, so these asserts should not fail.
         assert isinstance(x, Variable) and x.ndim == 4
@@ -934,8 +927,8 @@ class DownsampleFactorMaxGradGrad(Op):
         if len(x.shape) != 4:
             raise NotImplementedError(
                 'DownsampleFactorMaxGradGrad requires 4D input for now')
-        if (z[0] is None) or (z[0].shape != x.shape):
-            z[0] = numpy.zeros(x.shape, dtype=x.dtype)
+        if (z[0] is None) or (z[0].shape != maxout.shape):
+            z[0] = numpy.zeros(maxout.shape, dtype=x.dtype)
         ggz = z[0]  # grad wrt maxout_grad has the same shape as maxout
         # number of pooling output rows
         pr = ggz.shape[-2]
@@ -1060,19 +1053,3 @@ class DownsampleFactorMaxGradGrad(Op):
 
     def c_code_cache_version(self):
         return (0, 1)
-
-
-@register_canonicalize('fast_compile')
-@gof.local_optimizer([MaxPoolGrad])
-def local_average_pool_grad(node):
-    # To assure backward compatibility with
-    # DownsampleFactorMaxGrad
-    if (not isinstance(node.op, MaxPoolGrad) or node.op.mode not in
-            ['sum', 'average_exc_pad', 'average_inc_pad']):
-        return False
-    return [AveragePoolGrad(ds=node.op.ds,
-                            ignore_border=node.op.ignore_border,
-                            st=node.op.st,
-                            padding=node.op.padding,
-                            mode=node.op.mode)(node.inputs[0],
-                                               node.inputs[2])]
