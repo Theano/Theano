@@ -52,7 +52,7 @@ class BaseCorrMM(gof.Op):
         self.border_mode = border_mode
         if len(subsample) != 2:
             raise ValueError("subsample must have two elements")
-        self.subsample = subsample
+        self.subsample = tuple(subsample)
 
     @property
     def pad(self):

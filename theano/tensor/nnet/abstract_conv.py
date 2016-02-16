@@ -408,7 +408,7 @@ class BaseAbstractConv2d(Op):
 
         if len(subsample) != 2:
             raise ValueError("subsample must have two elements")
-        self.subsample = subsample
+        self.subsample = tuple(subsample)
 
     def flops(self, inp, outp):
         """ Useful with the hack in profilemode to print the MFlops"""
