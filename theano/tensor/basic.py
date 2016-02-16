@@ -6240,6 +6240,10 @@ class AllocEmpty(gof.Op):
         output.type.filter_checks_isfinite = False
         return Apply(self, shape, [output])
 
+    def debug_perform(self, node, inputs, out_):
+        self.perform(node, inputs, out_)
+        out_[0][0].fill(-123456789)
+
     def perform(self, node, inputs, out_):
         out, = out_
         sh = tuple([int(i) for i in inputs])

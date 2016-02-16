@@ -3682,6 +3682,13 @@ class GpuAllocEmpty(GpuOp):
         output.type.filter_checks_isfinite = False
         return Apply(self, shape, [output])
 
+    def debug_perform(self, node, inputs, out_):
+        self.perform(self, node, inputs, out_)
+        # __setitem__ is limited on CudaNdarray
+        tmp = numpy.empty(out_[0][0].shape, dtype='float32')
+        tmp.fill(-123456789)
+        out_[0][0][:] = tmp
+
     def perform(self, node, inputs, out_):
         out, = out_
         sh = tuple([int(i) for i in inputs])
