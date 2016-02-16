@@ -208,10 +208,7 @@ class GpuCholesky(GpuOp):
         def thunk():
 
             # Matrix to decompose is first (and only) input
-            # Get both CudaNdarray value and symbolic variable to allow
-            # checking whether C-contiguous if inplace op is specified
-            A_val = inputs[0][0]
-            A_sym = node.inputs[0][0]
+            A = inputs[0][0]
 
             # Cholesky decomposition of matrix should be assigned to firs
             # (and only) output storage cell
@@ -230,11 +227,11 @@ class GpuCholesky(GpuOp):
             # whether C or Fortan ordering is assumed and will cause a
             # CulaError to be raised when the decomposition fails.
             if self.inplace:
-                assert A_sym.is_c_contiguous(), (
-                    'Inplace op only valid on C-contiguous arrays')
-                A_out = A_val
+                assert A.is_c_contiguous(), (
+                    'Inplace op only valid on C-contiguous inputs.')
+                A_out = A
             else:
-                A_out = A_val.copy()
+                A_out = A.copy()
 
             def cula_gpu_cholesky(A_, lower=True):
 
