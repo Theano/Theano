@@ -15,9 +15,10 @@ except ImportError:
 cula_available = False
 
 try:
-    from scikits.cuda import cula
+    from skcuda import cula
     cula_available = True
-except (ImportError, OSError, RuntimeError, pkg_resources.DistributionNotFound):
+except (ImportError, OSError, RuntimeError,
+        pkg_resources.DistributionNotFound):
     pass
 
 cula_initialized = False
