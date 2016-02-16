@@ -319,7 +319,7 @@ class NanGuardMode(Mode):
                 # don't need to check it. It is already done after the
                 # computation.
                 if (var.owner is None and
-                    getattr(var.tag, 'nan_guard_mode_check', True)):
+                        getattr(var.tag, 'nan_guard_mode_check', True)):
                     do_check_on(x[0], node, fn, True)
             fn()
             outputs = fn.outputs
