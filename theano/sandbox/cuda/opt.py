@@ -1590,7 +1590,7 @@ def local_conv_gemm(node):
             # need to flip the kernel for valid convolution
             kern = kern[:, :, ::-1, ::-1]
             # By default use GpuCorrMM
-            rval = GpuCorrMM(**node.op._props_dict())(
+            rval = GpuCorrMM(border_mode, subsample)(
                 gpu_contiguous(img), gpu_contiguous(kern))
 
             # call GpuCorrMM_gradWeights if good

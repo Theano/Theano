@@ -222,12 +222,6 @@ class GpuElemwise(GpuOp):
         self.sync = d.get('sync', True)
         self._rehash()
 
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.scalar_op == other.scalar_op and
-                self.inplace_pattern == other.inplace_pattern and
-                self.sync == other.sync)
-
     def _rehash(self):
         items = list(self.inplace_pattern.items())
         items.sort()
@@ -570,7 +564,7 @@ class GpuCAReduce(GpuOp):
 
     """
 
-    __props__ = ("reduce_mask", "scalar_op", )
+    __props__ = ("reduce_mask", "scalar_op", "pre_scalar_op", )
 
     def __init__(self, reduce_mask, scalar_op, pre_scalar_op=None):
         self.reduce_mask = tuple(reduce_mask)
@@ -581,18 +575,6 @@ class GpuCAReduce(GpuOp):
         self.pre_scalar_op = pre_scalar_op
         if pre_scalar_op:
             assert pre_scalar_op.nin == 1
-
-    def __eq__(self, other):
-        return (type(self) == type(other) and
-                self.reduce_mask == other.reduce_mask and
-                self.scalar_op == other.scalar_op and
-                self.pre_scalar_op == other.pre_scalar_op)
-
-    def __hash__(self):
-        return (hash(type(self)) ^
-                hash(self.reduce_mask) ^
-                hash(type(self.scalar_op)) ^
-                hash(type(self.pre_scalar_op)))
 
     def __str__(self):
         pre = ""
