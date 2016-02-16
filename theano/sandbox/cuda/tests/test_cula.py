@@ -127,14 +127,14 @@ class TestGpuCholesky(unittest.TestCase):
         """ Invalid Cholesky input test with vector as input. """
         def invalid_input_func():
             A = theano.tensor.vector("A", dtype="float32")
-            cula.GpuCholeskly(lower=True, inplace=False)(A)
+            cula.GpuCholesky(lower=True, inplace=False)(A)
         self.assertRaises(AssertionError, invalid_input_func)
 
     def test_invalid_input_fail_tensor3(self):
         """ Invalid Cholesky input test with 3D tensor as input. """
         def invalid_input_func():
             A = theano.tensor.tensor3("A", dtype="float32")
-            cula.GpuCholeskly(lower=True, inplace=False)(A)
+            cula.GpuCholesky(lower=True, inplace=False)(A)
         self.assertRaises(AssertionError, invalid_input_func)
 
     def test_diag_chol(self):
