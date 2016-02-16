@@ -853,13 +853,13 @@ def test_local_inplace_gpu_cholesky():
 
     def check_inplace_opt(lower):
         # construct small graph in which Cholesky op should be optimized to
-        # be inplace by computing decomposition of matrix product
-        M = tensor.matrix('M')
+        # be inplace GPU op
+        M = tensor.matrix('M', dtype='float32')
         cholesky_op = tensor.slinalg.Cholesky(lower=lower)
-        f = theano.function([M], cholesky_op(M.dot(M.T)))
-        # GpuCholesky op should be owner of input to last op in topo sorted
+        f = theano.function([M], cholesky_op(M.dot(M.T)), mode=mode_with_gpu)
+        # GpuCholesky op should be owner of input to last entry in topo sorted
         # graph (which should be HostGromGpu)
-        op_candidate = f.maker.fgraph.toposort()[-1].owner.op
+        op_candidate = f.maker.fgraph.toposort()[-1].inputs[0].owner.op
         assert isinstance(op_candidate, cuda.cula.GpuCholesky), (
             'GpuCholesky op not in expected place in graph.')
         assert op_candidate.inplace, (
