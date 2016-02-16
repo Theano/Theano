@@ -2066,13 +2066,10 @@ def local_inplace_ger(node):
 @local_optimizer([GpuCholesky(lower=True, inplace=False),
                   GpuCholesky(lower=False, inplace=False)], inplace=True)
 def local_inplace_gpu_cholesky(node):
-    # need to ensure input is C-contiguous for inplace Cholesky op to be valid
     if node.op == GpuCholesky(lower=True, inplace=False):
-        A = gpu_contiguous(node.inputs[0])
-        return [GpuCholesky(lower=True, inplace=True)(A)]
+        return [GpuCholesky(lower=True, inplace=True)(node.inputs[0])]
     elif node.op == GpuCholesky(lower=False, inplace=False):
-        A = gpu_contiguous(node.inputs[0])
-        return [GpuCholesky(lower=False, inplace=True)(*node.inputs)]
+        return [GpuCholesky(lower=False, inplace=True)(node.inputs[0])]
 
 
 # After destroyhandler is in but before we try to make elemwise things inplace
