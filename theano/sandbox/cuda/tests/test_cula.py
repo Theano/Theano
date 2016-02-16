@@ -93,34 +93,27 @@ class TestGpuCholesky(unittest.TestCase):
 
     def test_invalid_input_fail_non_square(self):
         """ Invalid Cholesky input test with non-square matrix as input. """
-        def invalid_input_func():
-            A_val = numpy.random.normal(size=(3, 2)).astype("float32")
-            fn = self.get_gpu_cholesky_func(True, False)
-            fn(A_val)
-        self.assertRaises(ValueError, invalid_input_func)
+        A_val = numpy.random.normal(size=(3, 2)).astype("float32")
+        fn = self.get_gpu_cholesky_func(True, False)
+        self.assertRaises(ValueError, fn, A_val)
 
     def test_invalid_input_fail_non_symmetric(self):
         """ Invalid Cholesky input test with non-symmetric input.
             (Non-symmetric real input must also be non-positive definite). """
-        def invalid_input_func():
-            A_val = numpy.random.normal(size=(3, 3)).astype("float32")
-            # double-check random A_val is asymmetric - the probability of
-            # this not being the case even with finite precision should be
-            # negligible
-            assert not numpy.allclose(A_val, A_val.T)
-            fn = self.get_gpu_cholesky_func(True, False)
-            fn(A_val)
-        self.assertRaises(cula.cula.culaError, invalid_input_func)
+        A_val = numpy.random.normal(size=(3, 3)).astype("float32")
+        # double-check random A_val is asymmetric - the probability of this
+        # not being the case even with finite precision should be negligible
+        assert not numpy.allclose(A_val, A_val.T)
+        fn = self.get_gpu_cholesky_func(True, False)
+        self.assertRaises(cula.cula.culaError, fn, A_val)
 
     def test_invalid_input_fail_negative_definite(self):
         """ Invalid Cholesky input test with negative-definite input. """
-        def invalid_input_func():
-            M_val = numpy.random.normal(size=(3, 3)).astype("float32")
-            # A = -M.dot(M) will be negative definite for all non-singular M
-            A_val = -M_val.dot(M_val.T)
-            fn = self.get_gpu_cholesky_func(True, False)
-            fn(A_val)
-        self.assertRaises(cula.cula.culaError, invalid_input_func)
+        M_val = numpy.random.normal(size=(3, 3)).astype("float32")
+        # A = -M.dot(M) will be negative definite for all non-singular M
+        A_val = -M_val.dot(M_val.T)
+        fn = self.get_gpu_cholesky_func(True, False)
+        self.assertRaises(cula.cula.culaError, fn, A_val)
 
     def test_invalid_input_fail_vector(self):
         """ Invalid Cholesky input test with vector as input. """

@@ -725,17 +725,17 @@ def local_gpu_cholesky(node):
             isinstance(host_input.owner.op,
                        slinalg.Cholesky)):
             A = host_input.owner.inputs[0]
-            A_ndarray = as_cuda_ndarray_variable(A)
+            A_gpu = as_cuda_ndarray_variable(A)
             gpu_op = GpuCholesky(lower=host_input.owner.op.lower,
                                  inplace=False)
-            return [gpu_op(A_ndarray)]
+            return [gpu_op(A_gpu)]
     if isinstance(node.op, slinalg.Cholesky):
         node_inp = node.inputs[0]
         if node_inp.owner and isinstance(node_inp.owner.op, HostFromGpu):
             A = node_inp
-            A_ndarray = as_cuda_ndarray_variable(A)
+            A_gpu = as_cuda_ndarray_variable(A)
             gpu_op = GpuCholesky(lower=node.op.lower, inplace=False)
-            return [host_from_gpu(gpu_op(A_ndarray))]
+            return [host_from_gpu(gpu_op(A_gpu))]
     return False
 
 
@@ -2066,10 +2066,8 @@ def local_inplace_ger(node):
 @local_optimizer([GpuCholesky(lower=True, inplace=False),
                   GpuCholesky(lower=False, inplace=False)], inplace=True)
 def local_inplace_gpu_cholesky(node):
-    if node.op == GpuCholesky(lower=True, inplace=False):
-        return [GpuCholesky(lower=True, inplace=True)(node.inputs[0])]
-    elif node.op == GpuCholesky(lower=False, inplace=False):
-        return [GpuCholesky(lower=False, inplace=True)(node.inputs[0])]
+    if isinstance(node.op, GpuCholesky) and not node.inplace:
+        return [GpuCholesky(lower=node.op.lower, inplace=True)]
 
 
 # After destroyhandler is in but before we try to make elemwise things inplace
