@@ -32,10 +32,8 @@ class TestCula(unittest.TestCase):
     def run_gpu_solve(self, A_val, x_val):
         b_val = numpy.dot(A_val, x_val)
         A = theano.tensor.matrix("A", dtype="float32")
-        if x_val.ndim == 1:
-            b = theano.tensor.vector("b", dtype="float32")
-        else:
-            b = theano.tensor.matrix("b", dtype="float32")
+        b = theano.tensor.TensorType(dtype="float32",
+                                     broadcastable=[False, ] * x_val.ndim)()
         solver = cula.gpu_solve(A, b)
         fn = theano.function([A, b], [solver])
         res = fn(A_val, b_val)
@@ -44,19 +42,15 @@ class TestCula(unittest.TestCase):
 
     def test_invalid_input_fail_1d(self):
         """ Invalid solve input test case with 1D vector as first input. """
-        def invalid_input_func():
-            A = theano.tensor.tensor3("A", dtype="float32")
-            b = theano.tensor.matrix("b", dtype="float32")
-            cula.gpu_solve(A, b)
-        self.assertRaises(AssertionError, invalid_input_func)
+        A = theano.tensor.vector("A", dtype="float32")
+        b = theano.tensor.matrix("b", dtype="float32")
+        self.assertRaises(AssertionError, cula.gpu_solve, A, b)
 
     def test_invalid_input_fail_3d(self):
         """ Invalid solve input test case with 3D tensor as first input. """
-        def invalid_input_func():
-            A = theano.tensor.vector("A", dtype="float32")
-            b = theano.tensor.matrix("b", dtype="float32")
-            cula.gpu_solve(A, b)
-        self.assertRaises(AssertionError, invalid_input_func)
+        A = theano.tensor.tensor3("A", dtype="float32")
+        b = theano.tensor.matrix("b", dtype="float32")
+        self.assertRaises(AssertionError, cula.gpu_solve, A, b)
 
     def test_diag_solve_2d(self):
         """ Diagonal solve test case with 2D array as second input. """

@@ -695,21 +695,20 @@ def local_gpu_solve(node):
         if (host_input.owner and
             isinstance(host_input.owner.op,
                        slinalg.Solve)):
-            x, y = host_input.owner.inputs
+            A, b = host_input.owner.inputs
             A_structure = host_input.owner.op.A_structure
             gpu_solve = GpuSolve(A_structure=A_structure)
-            return [gpu_solve(as_cuda_ndarray_variable(x),
-                              as_cuda_ndarray_variable(y))]
-
+            return [gpu_solve(as_cuda_ndarray_variable(A),
+                              as_cuda_ndarray_variable(b))]
     if isinstance(node.op, slinalg.Solve):
         if any([i.owner and isinstance(i.owner.op, HostFromGpu)
                 for i in node.inputs]):
-            x, y = node.inputs
+            A, b = node.inputs
             A_structure = node.op.A_structure
             gpu_solve = GpuSolve(A_structure=A_structure)
             return [host_from_gpu(
-                    gpu_solve(as_cuda_ndarray_variable(x),
-                              as_cuda_ndarray_variable(y)))]
+                    gpu_solve(as_cuda_ndarray_variable(A),
+                              as_cuda_ndarray_variable(b)))]
     return False
 
 
