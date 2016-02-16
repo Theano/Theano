@@ -832,13 +832,20 @@ def test_local_inplace_gpu_cholesky():
         raise SkipTest('Optional dependency pycuda not available')
 
     def check_inplace_opt(lower):
-        A = tensor.matrix('A')
+        # construct small graph in which Cholesky op should be optimized to
+        # be inplace by computing decomposition of matrix product
+        M = tensor.matrix('M')
         cholesky_op = tensor.slinalg.Cholesky(lower=lower)
-        f = theano.function([A], cholesky_op(A))
-        assert isinstance(f.maker.fgraph.toposort()[1].inputs[0].owner.op,
-                          cuda.cula.GpuCholesky)
-        assert f.maker.fgraph.toposort()[1].inputs[0].owner.op.inplace
-        assert f.maker.fgraph.toposort()[1].inputs[0].owner.op.lower == lower
+        f = theano.function([M], cholesky_op(M.dot(M.T)))
+        # GpuCholesky op should be owner of input to last op in topo sorted
+        # graph (which should be HostGromGpu)
+        op_candidate = f.maker.fgraph.toposort()[-1].owner.op
+        assert isinstance(op_candidate, cuda.cula.GpuCholesky), (
+            'GpuCholesky op not in expected place in graph.')
+        assert op_candidate.inplace, (
+            'Inplace optimization not applied when it should have been.')
+        assert op_candidate.lower == lower, (
+            'Inplace otimized op did not correctly carry over lower property.')
 
     check_inplace_opt(True)
     check_inplace_opt(False)
