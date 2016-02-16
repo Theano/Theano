@@ -177,6 +177,9 @@ class GpuCholesky(GpuOp):
     def make_node(self, inp):
         inp = as_cuda_ndarray_variable(inp)
         assert inp.ndim == 2
+        if self.inplace:
+            # need to ensure input is C-contiguous for inplace op to be valid
+            inp = gpu_contiguous(inp)
         return theano.Apply(self, [inp], [inp.type()])
 
     def make_thunk(self,
