@@ -2093,6 +2093,12 @@ optdb.register('InplaceGpuBlasOpt',
                                  name="InplaceGpuBlasOpt"),
                70.0, 'fast_run', 'inplace', 'gpu')
 
+# Register CULA inplace optimizations here as well
+optdb.register('InplaceGpuCulaOpt',
+               tensor.opt.in2out(local_inplace_gpu_cholesky,
+                                 name='InplaceGpuCulaOpt'),
+               70.0, 'fast_run', 'inplace', 'gpu')
+
 
 def get_device_type_sizes():
     """
