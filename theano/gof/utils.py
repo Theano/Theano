@@ -11,19 +11,20 @@ from theano.compat import OrderedDict, PY3
 
 
 def simple_extract_stack(f=None, limit=None, skips=[]):
-    """
-    This is traceback.extract_stack from python 2.7 with this change:
+    """This is traceback.extract_stack from python 2.7 with this change:
 
     - Comment the update of the cache.
     - Skip internal stack trace level.
 
-    The update of the cache cause a call to os.stat to get the
-    line content. This take too much time on cluster.
+    The update of the cache call os.stat to verify is the cache is up
+    to date.  This take too much time on cluster.
 
-    limit - The number of stack level we want to return. If None, mean all what we can.
+    limit - The number of stack level we want to return. If None, mean
+    all what we can.
 
     skips - partial path of stack level we don't want to keep and count.
         When we find one level that isn't skipped, we stop skipping.
+
     """
     if f is None:
         try:
