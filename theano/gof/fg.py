@@ -320,14 +320,13 @@ class FunctionGraph(utils.object2):
                               if output.clients or output in self.outputs]
             # If the apply node is not used and is not an output
             if not used_or_output:
-                if apply_node in self.apply_nodes:
-                    #keeping track of removed apply node
-                    self.apply_nodes.remove(apply_node)
-                    self.variables.difference_update(apply_node.outputs)
-                    self.execute_callbacks('on_prune', apply_node, reason)
-                    for i, input in enumerate(apply_node.inputs):
-                        self.__remove_clients__(input, [(apply_node, i)],
-                                                reason=reason)
+                self.apply_nodes.remove(apply_node)
+                self.variables.difference_update(apply_node.outputs)
+                self.execute_callbacks('on_prune', apply_node, reason)
+
+                for i, input in enumerate(apply_node.inputs):
+                    self.__remove_clients__(input, [(apply_node, i)],
+                                            reason=reason)
         # variable should not have any clients.
         # assert not variable.clients
 

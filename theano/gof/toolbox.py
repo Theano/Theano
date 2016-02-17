@@ -267,6 +267,7 @@ class ReplaceValidate(History, Validator):
                        "replace_all_validate_remove"] +
                       History.pickle_rm_attr + Validator.pickle_rm_attr)
     _nodes_removed = set()
+    fail_validate = False
 
     def on_attach(self, fgraph):
         for attr in ('replace_validate', 'replace_all_validate',
@@ -373,7 +374,15 @@ class ReplaceValidate(History, Validator):
 
     def on_import(self, fgraph, node, reason):
         if node in self._nodes_removed:
-            raise theano.gof.InconsistencyError("Trying to introduce a removed node")
+            self.fail_validate = True
+
+    def validate(self, fgraph):
+        if not hasattr(fgraph, 'destroyers'):
+            return True
+        if self.fail_validate:
+            self.fail_validate = False
+            raise theano.gof.InconsistencyError("Trying to reintroduce a removed node")
+
 
 class NodeFinder(Bookkeeper):
 
