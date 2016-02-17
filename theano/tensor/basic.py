@@ -3225,10 +3225,13 @@ def minimum(x, y):
 
 def div_proxy(x, y):
     """Proxy for either true_div or int_div, depending on types of x, y."""
-    f = eval('%s_div' % scal.int_or_true_div(
+    f = scal.int_or_true_div(
         as_tensor_variable(x).dtype in discrete_dtypes,
-        as_tensor_variable(y).dtype in discrete_dtypes))
-    return f(x, y)
+        as_tensor_variable(y).dtype in discrete_dtypes)
+    if f is scal.int_div:
+        return int_div(x, y)
+    else:
+        return true_div(x, y)
 
 
 def divmod(x, y):
