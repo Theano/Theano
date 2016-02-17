@@ -255,6 +255,7 @@ def test_local_gpu_elemwise_careduce():
     assert topo[1].op.pre_scalar_op == theano.scalar.sqr
     utt.assert_allclose(f(data), (data * data).sum(axis=1))
 
+
 def test_local_lift_dot22scalar():
     x = tensor.matrix()
     y = tensor.matrix()
