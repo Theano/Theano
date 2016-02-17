@@ -3672,7 +3672,7 @@ def local_mul_switch_sink(node):
 
                     fct = [T.switch(switch.inputs[0], 0,
                                     fmul)]
-                    fct[0].values_eq_approx = values_eq_approx_remove_nan
+                    fct[0].tag.values_eq_approx = values_eq_approx_remove_nan
 
                     # Copy over stacktrace for switch op from both previous
                     #  elementwise multiplication op and previous switch op,
@@ -3696,7 +3696,7 @@ def local_mul_switch_sink(node):
 
                     fct = [T.switch(switch.inputs[0],
                                     fmul, 0)]
-                    fct[0].values_eq_approx = values_eq_approx_remove_nan
+                    fct[0].tag.values_eq_approx = values_eq_approx_remove_nan
 
                     # Copy over stacktrace for switch op from both previous
                     # elementwise multiplication op and previous switch op,
@@ -3740,7 +3740,7 @@ def local_div_switch_sink(node):
 
                 fct = [T.switch(switch.inputs[0], 0,
                                 fdiv)]
-                fct[0].values_eq_approx = values_eq_approx_remove_nan
+                fct[0].tag.values_eq_approx = values_eq_approx_remove_nan
 
                 # Copy over stacktrace for switch op from both previous
                 # elementwise division op and previous switch op,
@@ -3762,7 +3762,7 @@ def local_div_switch_sink(node):
 
                 fct = [T.switch(switch.inputs[0],
                                 fdiv, 0)]
-                fct[0].values_eq_approx = values_eq_approx_remove_nan
+                fct[0].tag.values_eq_approx = values_eq_approx_remove_nan
 
                 # Copy over stacktrace for switch op from both previous
                 # elementwise division op and previous switch op,
@@ -5566,7 +5566,7 @@ def local_log_add(node):
 
                 ret = max_pre + T.log1p(T.exp(T.add(*[p - max_pre
                                                       for p in pre_exp])))
-                ret.values_eq_approx = values_eq_approx_remove_inf
+                ret.tag.values_eq_approx = values_eq_approx_remove_inf
                 return [ret]
 
 
@@ -5990,7 +5990,7 @@ def local_log_erfc(node):
         threshold = 26.641747557
 
     ret = T.switch(x < threshold, node.outputs[0], stab_value)
-    ret.values_eq_approx = values_eq_approx_remove_inf
+    ret.tag.values_eq_approx = values_eq_approx_remove_inf
     return [ret]
 
 
@@ -6142,7 +6142,7 @@ def local_grad_log_erfc_neg(node):
     ret = T.switch(x < threshold, true_div_no_mul, stab_value)
     if y:
         ret = T.mul(ret, *y)
-    ret.values_eq_approx = values_eq_approx_remove_inf_nan
+    ret.tag.values_eq_approx = values_eq_approx_remove_inf_nan
     return [ret]
     """
 The libm used for the test is amdlibm

@@ -19,9 +19,9 @@ from six.moves import xrange
 import theano
 from theano import gof
 from theano import scalar
-from theano.tensor import basic as tensor
-from theano.tensor import subtensor
-from theano.tensor import opt
+from theano.tensor import basic as tensor, subtensor, opt
+from theano.tensor.type import (values_eq_approx_remove_inf,
+                                values_eq_approx_remove_nan)
 from theano.tensor.opt import copy_stack_trace
 from theano.compile import optdb
 from theano.gof import Apply
@@ -751,7 +751,9 @@ def local_logsoftmax(node):
             isinstance(node.inputs[0].owner.op, Softmax)):
         inVars = node.inputs[0].owner.inputs[0]
         new_op = LogSoftmax()
-        return [new_op(inVars)]
+        ret = new_op(inVars)
+        ret.tag.values_eq_approx = values_eq_approx_remove_inf
+        return [ret]
 
 
 @opt.register_specialize('stabilize', 'fast_compile')
@@ -784,7 +786,9 @@ def local_logsoftmax_grad(node):
         if grads.broadcastable[1] and not sm.broadcastable[1]:
             grads = tensor.alloc(grads, grads.shape[0], sm.shape[1])
 
-        return [grads - tensor.sum(grads, axis=1, keepdims=True) * sm]
+        ret = grads - tensor.sum(grads, axis=1, keepdims=True) * sm
+        ret.tag.values_eq_approx = values_eq_approx_remove_nan
+        return [ret]
 
 
 def softmax_graph(c):

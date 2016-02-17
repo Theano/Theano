@@ -190,6 +190,9 @@ class T_LogSoftmax(utt.InferShapeTester):
         utt.verify_grad(f, [numpy.random.rand(4)])
 
     def test_allclose(self):
+        m = theano.config.mode
+        m = theano.compile.get_mode(m)
+        m.check_isfinite = False
         x, y = tensor.matrices('xy')
         # regular softmax and crossentropy
         sm = tensor.nnet.softmax(x)
@@ -215,7 +218,7 @@ class T_LogSoftmax(utt.InferShapeTester):
         # now show that the two versions result in the same crossentropy cost
         # this indicates that the forward function does provide some numerical
         # stability
-        f2 = theano.function([x, y], [cm, cm2])
+        f2 = theano.function([x, y], [cm, cm2], mode=m)
         cm_, cm2_ = f2(a, b)
         utt.assert_allclose(cm_, cm2_)
 
@@ -249,6 +252,9 @@ class T_LogSoftmax(utt.InferShapeTester):
         grad and that the new operation does not explode for big inputs.
         Note that only the grad is checked.
         """
+        m = theano.config.mode
+        m = theano.compile.get_mode(m)
+        m.check_isfinite = False
         # some inputs that are large to make the gradient explode in the non
         # optimized case
         a = numpy.exp(10*numpy.random.rand(5, 10).astype(theano.config.floatX))
@@ -258,7 +264,7 @@ class T_LogSoftmax(utt.InferShapeTester):
             logsm = tensor.log(sm)
             return logsm
         # We set step to 0.1 because for big values we need a big epsilon
-        utt.verify_grad(myfunc, [a], eps=0.1)
+        utt.verify_grad(myfunc, [a], eps=0.1, mode=m)
 
 
 class T_SoftmaxGrad(utt.InferShapeTester):
