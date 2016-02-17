@@ -61,12 +61,6 @@ def simple_extract_stack(f=None, limit=None, skips=[]):
     trace.reverse()
     return trace
 
-if sys.version_info[:2] > (3, 4):
-    # I enable my implementation only for some python version just to
-    # be sure the Python internal do not change. If this work with
-    # other python version, you can enable it.
-    simple_extract_stack = traceback.extract_stack  # noqa
-
 
 def add_tag_trace(thing, user_line=1):
     """
