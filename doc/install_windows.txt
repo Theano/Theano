@@ -420,9 +420,9 @@ Create a test file containing:
    t_start = time.time()
    tAB = mf(A,B)
    t_end = time.time()
-   print "NP time: %f[s], theano time: %f[s] (times should be close when run on CPU!)" %(
-                                              np_end-np_start, t_end-t_start)
-   print "Result difference: %f" % (np.abs(AB-tAB).max(), )
+   print("NP time: %f[s], theano time: %f[s] (times should be close when run on CPU!)" %(
+                                              np_end-np_start, t_end-t_start))
+   print("Result difference: %f" % (np.abs(AB-tAB).max(), ))
    
 .. testoutput::
    :hide:

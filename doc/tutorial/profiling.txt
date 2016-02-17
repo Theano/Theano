@@ -30,14 +30,15 @@ functions using either of the following two options:
 2. Pass the argument :attr:`profile=True` to the function :func:`theano.function <function.function>`. And then call :attr:`f.profile.print_summary()` for a single function.
     - Use this option when you want to profile not all the
       functions but one or more specific function(s).
-    - You can also combine the profile of many functions:
-
-      .. testcode::
+    - You can also combine the profile of many functions: 
+    
+      .. doctest::
+          :hide:
 
           profile = theano.compile.ProfileStats()
-          f = theano.function(..., profile=profile)
-          g = theano.function(..., profile=profile)
-          ...
+          f = theano.function(..., profile=profile)  # doctest: +SKIP
+          g = theano.function(..., profile=profile)  # doctest: +SKIP
+          ...  # doctest: +SKIP
           profile.print_summary()
 
 

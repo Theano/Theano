@@ -336,7 +336,7 @@ shows how to print all inputs and outputs:
               end='')
 
     def inspect_outputs(i, node, fn):
-        print("output(s) value(s):", [output[0] for output in fn.outputs])
+        print(" output(s) value(s):", [output[0] for output in fn.outputs])
 
     x = theano.tensor.dscalar('x')
     f = theano.function([x], [5 * x],

@@ -156,9 +156,6 @@ the params type.
            return ("%(z)s = %(x)s * PyFloat_AsDouble(%(p)s);" %
                    dict(z=outputs[0], x=inputs[0], p=sub['params']))
 
-.. testoutput::
-   :hide:
-
 
 A more complex example
 ----------------------
@@ -225,5 +222,3 @@ weights.
            %(z)s = alpha_%(name)s * %(x)s + beta_%(name)s * %(y)s;
            """ % dict(name=name, z=outputs[0], x=inputs[0], y=inputs[1])
 
-.. testoutput::
-   :hide:

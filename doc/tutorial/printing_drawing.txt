@@ -66,7 +66,7 @@ Debug Print
 
 The pre-compilation graph:
 
->>> theano.printing.debugprint(prediction) # doctest: +NORMALIZE_WHITESPACE
+>>> theano.printing.debugprint(prediction) # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
 Elemwise{gt,no_inplace} [id A] ''
  |Elemwise{true_div,no_inplace} [id B] ''
  | |DimShuffle{x} [id C] ''
@@ -87,9 +87,9 @@ Elemwise{gt,no_inplace} [id A] ''
 
 The post-compilation graph:
 
->>> theano.printing.debugprint(predict)  # doctest: +NORMALIZE_WHITESPACE
+>>> theano.printing.debugprint(predict)  # doctest: +NORMALIZE_WHITESPACE, +ELLIPSIS
 Elemwise{Composite{GT(scalar_sigmoid((-((-i0) - i1))), i2)}} [id A] ''   4
- |CGemv{inplace} [id B] ''   3
+ |...Gemv{inplace} [id B] ''   3
  | |AllocEmpty{dtype='float64'} [id C] ''   2
  | | |Shape_i{0} [id D] ''   1
  | |   |x [id E]
