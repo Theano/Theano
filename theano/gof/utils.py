@@ -15,9 +15,12 @@ def simple_extract_stack(f=None, limit=None, skips=[]):
     This is traceback.extract_stack from python 2.7 with this change:
 
     - Comment the update of the cache.
+    - Skip internal stack trace level.
 
-    This is because this update cause an call to os.stat to get the
-    line content. This cause too much long on cluster.
+    The update of the cache cause a call to os.stat to get the
+    line content. This take too much time on cluster.
+
+    limit - The number of stack level we want to return. If None, mean all what we can.
 
     skips - partial path of stack level we don't want to keep and count.
         When we find one level that isn't skipped, we stop skipping.
@@ -44,6 +47,8 @@ def simple_extract_stack(f=None, limit=None, skips=[]):
         else:
             line = None
         f = f.f_back
+
+        # Just skip inner level
         if len(trace) == 0:
             rm = False
             for p in skips:
@@ -62,7 +67,7 @@ def simple_extract_stack(f=None, limit=None, skips=[]):
     return trace
 
 
-def add_tag_trace(thing, user_line=1):
+def add_tag_trace(thing, user_line=None):
     """
     Add tag.trace to an node or variable.
 
@@ -81,9 +86,11 @@ def add_tag_trace(thing, user_line=1):
     we look.
 
     """
-    limit = config.traceback.limit
-    if limit == -1:
-        limit = None
+    if user_line is None:
+        user_line = config.traceback.limit
+
+    if user_line == -1:
+        user_line = None
     skips = ["theano/tensor/", "theano\\tensor\\",
              "theano/compile/", "theano\\compile\\",
              "theano/gof/", "theano\\gof\\",
