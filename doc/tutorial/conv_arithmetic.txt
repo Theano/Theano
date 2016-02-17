@@ -222,13 +222,94 @@ What would happen if we were to transpose this matrix and feed the corresponding
 linear operation a 4-dimensional vector as input? We would get a 16-dimensional
 vector as output. This is what we call a **transposed convolution**.
 
+Transposed convolutions share the same connectivity pattern as their converse
+convolution, which makes them suitable for decoders in a convolutional
+autoencoder, for instance.
+
 Simplest case, transposed
 =========================
 
+If we visualize the effect of applying the transposed matrix above on a
+:math:`4 \times 4` input, this is what we get:
+
 .. figure:: conv_arithmetic_figures/no_padding_no_strides_transposed.gif
+
+Note that although equivalent to the transposed matrix, this visualization adds
+a lot of zero multiplications in the form of zero padding. This is done for
+illustration purposes, but it is inefficient, and software implementations will
+normally not perform the useless zero multiplications.
+
+One way to understand the logic behind zero padding is to consider what would
+be necessary to produce a transposed convolution with the same connectivity
+pattern as its converse convolution.
+
+In particular, the corner pixels of the input only contribute to the corner
+pixels of the output: the top left input pixel is only connected to the top left
+output pixel, the top right pixel is only connected to the top right output
+pixel, and so on. This is achieved by zero padding the input such that the
+kernel only touches a corner pixel when it is in the associated corner position.
+
+You can also verify that the connectivity pattern is respected everywhere else
+in the input. For instance, when the kernel has been translated by one row and
+one column, it covers the whole input. This means that in the converse
+convolution, the input pixel located at the first row and first column
+contributes to all output pixels.
+
+In general, a convolution described by
+
+* input size :math:`i`,
+* kernel size :math:`k`,
+* stride :math:`s = 1`,
+* padding size :math:`p = 0`
+
+has a transpose described by
+
+* input size :math:`i' = i - (k - 1)`,
+* kernel size :math:`k' = k`,
+* stride :math:`s' = 1`,
+* padding size :math:`p' = k - 1`.
+
+Note that this corresponds to a "fully padded" convolution:
+
+.. math::
+
+    \begin{split}
+    o &= i' + 2(k - 1) - (k - 1) \\
+      &= i - (k - 1) + (k - 1) \\
+      &= i.
+    \end{split}
 
 Zero padding, transposed
 ========================
+
+If the transpose of a non-padded convolution involves adding zero-padding, what
+does the transpose of a zero-padded convolution look like? It turns out that it
+involves *removing* some padding, i.e. a convolution described by
+
+* input size :math:`i`,
+* kernel size :math:`k`,
+* stride :math:`s = 1`,
+* padding size :math:`p`
+
+has a transpose described by
+
+* input size :math:`i' = i + 2p - (k - 1)`,
+* kernel size :math:`k' = k`,
+* stride :math:`s' = 1`,
+* padding size :math:`p' = k - p - 1`.
+
+The output size is
+
+.. math::
+
+    \begin{split}
+    o &= i' + 2(k - p - 1) - (k - 1) \\
+      &= i + 2p - (k - 1) - 2p + 2(k - 1) - (k - 1) \\
+      &= i.
+    \end{split}
+
+Here is what the transpose of a convolution looks like for :math:`i = 4`,
+:math:`k = 4` and :math:`p = 2`:
 
 .. figure:: conv_arithmetic_figures/arbitrary_padding_no_strides_transposed.gif
 
@@ -238,19 +319,106 @@ Zero padding, transposed: special cases
 Same
 ----
 
+Unsurprisingly, the transpose of a "same padded" convolution is itself a "same
+padded" convolution, i.e. a convolution described by
+
+* input size :math:`i`,
+* kernel size :math:`k = 2n + 1`,
+* stride :math:`s = 1`,
+* padding size :math:`p = \lfloor k / 2 \rfloor = n`
+
+has a transpose described by
+
+* input size :math:`i' = i`,
+* kernel size :math:`k' = k`,
+* stride :math:`s' = 1`,
+* padding size :math:`p' = p`.
+
+Here is what the transpose of a convolution looks like for :math:`i = 3`,
+:math:`k = 3` and :math:`p = 1`:
+
 .. figure:: conv_arithmetic_figures/same_padding_no_strides_transposed.gif
 
 Full
 ----
+
+If the transpose of a convolution with no padding is a "fully padded"
+convolution, then the transpose of a "fully padded" convolution is... a
+convolution with no padding. A convolution described by
+
+* input size :math:`i`,
+* kernel size :math:`k`,
+* stride :math:`s = 1`,
+* padding size :math:`p = k - 1`
+
+has a transpose described by
+
+* input size :math:`i' = i + (k - 1)`,
+* kernel size :math:`k' = k`,
+* stride :math:`s' = 1`,
+* padding size :math:`p' = 0`.
+
+Here is what the transpose of a convolution looks like for :math:`i = 3`,
+:math:`k = 3` and :math:`p = 2`:
 
 .. figure:: conv_arithmetic_figures/full_padding_no_strides_transposed.gif
 
 Strides, transposed
 ===================
 
+If a zero-padded convolution has a transpose with padding removed, then a
+convolution with strides greater than 1 has a transpose with strides... smaller
+than 1? In some sense, yes: in order to translate the kernel fractionally, we
+insert zeros between input pixels.
+
+Once again, doing so is inefficient and real-world implementations avoid useless
+multiplications by zero, but conceptually it's how the transpose of a strided
+convolution can be thought of. A convolution described by
+
+* input size :math:`i`,
+* kernel size :math:`k`,
+* stride :math:`s`,
+* padding size :math:`p = 0`
+
+has a transpose described by
+
+* input size :math:`i' = \left\lfloor \frac{i - k}{s} \right\rfloor + 1`,
+* stretched input size :math:`\tilde{i}' = i' + s (i' - 1)`,
+* kernel size :math:`k' = k`,
+* stride :math:`s' = 1`,
+* padding size :math:`p' = k - 1`
+
+where the input is stretched to size :math:`\tilde{i}'` by adding :math:`s - 1`
+zeros between each pixel.
+
+Here is what the transpose of a convolution looks like for :math:`i = 5`,
+:math:`k = 3` and :math:`s = 2`:
+
 .. figure:: conv_arithmetic_figures/no_padding_strides_transposed.gif
 
 Combining padding and strides, transposed
 =========================================
+
+Zero-padding and non-unit strides are treated independently to transpose a
+convolution. This means that in the most general case a convolution described by
+
+* input size :math:`i`,
+* kernel size :math:`k`,
+* stride :math:`s`,
+* padding size :math:`p`
+
+has a transpose described by
+
+* input size :math:`i' = \left\lfloor \frac{i + 2p - k}{s} \right\rfloor + 1`,
+* stretched input size :math:`\tilde{i}' = i' + s (i' - 1)`,
+* kernel size :math:`k' = k`,
+* stride :math:`s' = 1`,
+* padding size :math:`p' = k - p - 1`
+
+where the input is stretched to size :math:`\tilde{i}'` by adding :math:`s - 1`
+zeros between each pixel.
+
+Here is what the transpose of a convolution looks like for :math:`i = 5`,
+:math:`k = 3`, :math:`s = 2` and :math:`p = 1`:
 
 .. figure:: conv_arithmetic_figures/padding_strides_transposed.gif
