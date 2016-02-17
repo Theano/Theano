@@ -30,7 +30,7 @@ def simple_extract_stack(f=None, limit=None, skips=[]):
     if limit is None:
         if hasattr(sys, 'tracebacklimit'):
             limit = sys.tracebacklimit
-    list = []
+    trace = []
     n = 0
     while f is not None and (limit is None or n < limit):
         lineno = f.f_lineno
@@ -44,7 +44,7 @@ def simple_extract_stack(f=None, limit=None, skips=[]):
         else:
             line = None
         f = f.f_back
-        if len(list) == 0:
+        if len(trace) == 0:
             rm = False
             for p in skips:
                 # Julian: I added the 'tests' exception together with
@@ -56,10 +56,10 @@ def simple_extract_stack(f=None, limit=None, skips=[]):
                     break
             if rm:
                 continue
-        list.append((filename, lineno, name, line))
+        trace.append((filename, lineno, name, line))
         n = n + 1
-    list.reverse()
-    return list
+    trace.reverse()
+    return trace
 
 if sys.version_info[:2] > (3, 4):
     # I enable my implementation only for some python version just to
