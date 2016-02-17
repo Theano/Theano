@@ -1849,8 +1849,10 @@ class _Linker(gof.link.LocalLinker):
                 if new_node is not None:
                     node = new_node
 
+            debug = hasattr(node.op, 'debug_perform')
+
             try:
-                if not self.maker.mode.check_c_code:
+                if not self.maker.mode.check_c_code or debug:
                     raise utils.MethodNotDefined()
                 # Ops that do not inherit from gof.op.Op don't have certain
                 # methods defined that the CLinker expects (Scan is an
@@ -1868,18 +1870,18 @@ class _Linker(gof.link.LocalLinker):
             # Pure ops don't really have a perform ( or their perform just
             # raises an not implemented exception), so in those cases we
             # consider that we don't have a python implementation
-            if (self.maker.mode.check_py_code or thunks_c[-1] is None) and \
-               node.op.perform.__code__ != gof.op.PureOp.perform.__code__:
+            if (((self.maker.mode.check_py_code or thunks_c[-1] is None) and
+                 node.op.perform.__code__ != gof.op.PureOp.perform.__code__) or
+                    debug):
                 thunk = node.op.make_py_thunk(node, storage_map, compute_map,
-                                              no_recycling)
+                                              no_recycling, debug=debug)
                 thunks_py.append(thunk)
             else:
                 thunks_py.append(None)
 
             if not self.maker.mode.check_c_code and thunks_py[-1] is None:
-                _logger.warn(
-                    "Op %s don't have a perform, forcing check of the c code" %
-                    node.op)
+                _logger.warn("Op %s doesn't have a perform, "
+                             "forcing check of the C code" % node.op)
                 thunk = node.op.make_c_thunk(node, storage_map, compute_map,
                                              no_recycling)
                 thunks_c[-1] = thunk

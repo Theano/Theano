@@ -266,6 +266,19 @@ Optional methods or attributes
    As done in the Alloc op, you can return False only in some cases by
    analyzing the graph from the node parameter.
 
+.. function:: debug_perform(node, inputs, output_storage)
+
+   Undefined by default.
+
+   If you define this function then it will be used instead of C code
+   or perform() to do the computation while debugging (currently
+   DebugMode, but others may also use it in the future).  It has the
+   same signature and contract as :func:`perform`.
+
+   This enables ops that cause trouble with DebugMode with their
+   normal behaviour to adopt a different one when run under that
+   mode. If your op doesn't have any problems, don't implement this.
+
 If you want your op to work with gradient.grad() you also need to
 implement the functions described below.
 

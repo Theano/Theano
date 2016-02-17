@@ -723,6 +723,10 @@ class GpuAllocEmpty(HideC, Alloc):
         output.type.filter_checks_isfinite = False
         return Apply(self, sh, [output])
 
+    def debug_perform(self, node, inputs, out_, ctx):
+        self.perform(node, inputs, out_, ctx)
+        out_[0][0][:] = -123456789
+
     def perform(self, node, inputs, out_, ctx):
         out = out_[0]
         sh = [int(i) for i in inputs]

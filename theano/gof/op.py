@@ -890,7 +890,8 @@ class Op(utils.object2, PureOp, CLinkerOp):
         rval.lazy = False
         return rval
 
-    def make_py_thunk(self, node, storage_map, compute_map, no_recycling):
+    def make_py_thunk(self, node, storage_map, compute_map, no_recycling,
+                      debug=False):
         """
         Like make_thunk() but only makes python thunks.
 
@@ -898,7 +899,10 @@ class Op(utils.object2, PureOp, CLinkerOp):
         node_input_storage = [storage_map[r] for r in node.inputs]
         node_output_storage = [storage_map[r] for r in node.outputs]
 
-        p = node.op.perform
+        if debug:
+            p = node.op.debug_perform
+        else:
+            p = node.op.perform
 
         params = node.run_params()
 
