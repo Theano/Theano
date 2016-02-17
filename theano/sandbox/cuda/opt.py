@@ -2063,8 +2063,7 @@ def local_inplace_ger(node):
         return [gpu_ger_inplace(*node.inputs)]
 
 
-@local_optimizer([GpuCholesky(lower=True, inplace=False),
-                  GpuCholesky(lower=False, inplace=False)], inplace=True)
+@local_optimizer([GpuCholesky], inplace=True)
 def local_inplace_gpu_cholesky(node):
     if isinstance(node.op, GpuCholesky) and not node.op.inplace:
         return [GpuCholesky(lower=node.op.lower, inplace=True)(node.inputs[0])]
