@@ -1126,7 +1126,7 @@ class Gemm(GemmRelated):
             zout[0] = z
 
     def infer_shape(self, node, input_shapes):
-        return [inputs_shapes[0]]
+        return [input_shapes[0]]
 
     setup_z_Nz_Sz_inplace = """
         if (%(_zout)s != %(_z)s)
@@ -1752,7 +1752,7 @@ class Dot22(GemmRelated):
             raise
 
     def infer_shape(self, node, input_shapes):
-        return [[inputs_shapes[0][0], inputs_shapes[1][1]]]
+        return [[input_shapes[0][0], input_shapes[1][1]]]
 
     setup_z_Nz_Sz = """
         if ((NULL == %(_zout)s)
