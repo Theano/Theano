@@ -1610,13 +1610,13 @@ def int_or_true_div(x_discrete, y_discrete):
                 "please use x // y for an integer division.",
                 DeprecationWarning,
                 stacklevel=4)
-            return 'int'
+            return int_div
         elif config.int_division == 'floatX':
-            return 'true'
+            return true_div
         else:
             raise NotImplementedError(config.int_division)
     else:
-        return 'true'
+        return true_div
 
 
 def div_proxy(x, y):
@@ -1624,8 +1624,8 @@ def div_proxy(x, y):
     Proxy for either true_div or int_div, depending on types of x, y.
 
     """
-    f = eval('%s_div' % int_or_true_div(as_scalar(x).type in discrete_types,
-                                        as_scalar(y).type in discrete_types))
+    f = int_or_true_div(as_scalar(x).type in discrete_types,
+                        as_scalar(y).type in discrete_types)
     return f(x, y)
 
 
