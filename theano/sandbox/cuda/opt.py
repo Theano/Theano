@@ -1550,7 +1550,7 @@ def local_gpu_conv(node):
                            gpu_from_host(kern))
             out = tensor.patternbroadcast(out,
                                           node.outputs[0].broadcastable)
-            out.values_eq_approx = values_eq_approx_high_tol
+            out.tag.values_eq_approx = values_eq_approx_high_tol
             # in some case the ConvOp broadcast the last 2 dimensions
             # differently then the gpu ConvOp
             return [out]
@@ -1569,7 +1569,7 @@ def local_gpu_conv(node):
             out = tensor.patternbroadcast(
                 host_from_gpu(out),
                 node.outputs[0].broadcastable)
-            out.values_eq_approx = values_eq_approx_high_tol
+            out.tag.values_eq_approx = values_eq_approx_high_tol
             # in some case the ConvOp broadcast the last 2 dimensions
             # differently then the gpu ConvOp
             return [out]
@@ -2697,7 +2697,7 @@ def local_conv2d_gpu_conv(node):
             # out is on the GPU because both inputs are.
             out = theano.tensor.patternbroadcast(out,
                                                  node.outputs[0].broadcastable)
-            out.values_eq_approx = values_eq_approx_high_tol
+            out.tag.values_eq_approx = values_eq_approx_high_tol
             return [out]
 
     if isinstance(node.op, BaseAbstractConv2d):
@@ -2724,7 +2724,7 @@ def local_conv2d_gpu_conv(node):
             out = theano.tensor.patternbroadcast(
                 out,
                 node.outputs[0].broadcastable)
-            out.values_eq_approx = values_eq_approx_high_tol
+            out.tag.values_eq_approx = values_eq_approx_high_tol
             # If the original output was on CPU, we have to transfer it
             if isinstance(node.outputs[0].type, tensor.TensorType):
                 return [tensor.as_tensor_variable(out)]

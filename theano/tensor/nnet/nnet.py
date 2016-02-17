@@ -752,7 +752,7 @@ def local_logsoftmax(node):
         inVars = node.inputs[0].owner.inputs[0]
         new_op = LogSoftmax()
         ret = new_op(inVars)
-        ret.values_eq_approx = values_eq_approx_remove_inf
+        ret.tag.values_eq_approx = values_eq_approx_remove_inf
         return [ret]
 
 
@@ -787,7 +787,7 @@ def local_logsoftmax_grad(node):
             grads = tensor.alloc(grads, grads.shape[0], sm.shape[1])
 
         ret = grads - tensor.sum(grads, axis=1, keepdims=True) * sm
-        ret.values_eq_approx = values_eq_approx_remove_nan
+        ret.tag.values_eq_approx = values_eq_approx_remove_nan
         return [ret]
 
 

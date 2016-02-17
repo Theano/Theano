@@ -269,7 +269,7 @@ def local_ultra_fast_sigmoid(node):
             # Other test could fail without good reason.
             return tensor.TensorType.values_eq_approx(a, b, atol=0.02)
         # Let DebugMode know that there this opt approx the values.
-        out.values_eq_approx = values_eq_approx_remove_low_prec
+        out.tag.values_eq_approx = values_eq_approx_remove_low_prec
         return [out]
 theano.compile.optdb['uncanonicalize'].register("local_ultra_fast_sigmoid",
                                                 local_ultra_fast_sigmoid)
@@ -308,7 +308,7 @@ def local_hard_sigmoid(node):
             # Other test could fail without good reason.
             return tensor.TensorType.values_eq_approx(a, b, atol=0.1)
         # Let DebugMode know that there this opt approx the values.
-        out.values_eq_approx = values_eq_approx_remove_low_prec
+        out.tag.values_eq_approx = values_eq_approx_remove_low_prec
         return [out]
 theano.compile.optdb['uncanonicalize'].register("local_hard_sigmoid",
                                                 local_hard_sigmoid)
