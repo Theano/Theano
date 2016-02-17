@@ -1,6 +1,8 @@
 import numpy
 import unittest
 
+from nose.plugins.skip import SkipTest
+
 import theano
 from theano import tensor
 from theano.tests import unittest_tools as utt
@@ -56,7 +58,7 @@ class TestGetConvOutShape(unittest.TestCase):
         self.assertTrue(test4_params == (3, 4, 6, 4))
 
 
-class BaseTestConv2d(object):
+class BaseTestConv2d(unittest.TestCase):
     def setUp(self):
         self.inputs_shapes = [(8, 1, 12, 12), (8, 1, 18, 18), (2, 1, 4, 4),
                               (6, 1, 10, 11), (2, 1, 6, 5), (1, 5, 9, 9)]
@@ -237,6 +239,8 @@ class BaseTestConv2d(object):
                             mode=mode, eps=1)
 
     def test_all(self):
+        if type(self) is BaseTestConv2d:
+            raise SkipTest("base class")
         ds = [1, 1]
         db = (0, 0)
         dflip = True in self.filter_flip
