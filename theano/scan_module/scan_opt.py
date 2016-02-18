@@ -926,7 +926,7 @@ class PushOutScanOutput(gof.Optimizer):
         # For the inner_vars that don't already exist in the outer graph, add
         # them as new nitsot outputs to the scan node.
         idx_add_as_nitsots = [i for i in range(len(outer_vars))
-                              if outer_vars[i] == None]
+                              if outer_vars[i] is None]
         add_as_nitsots = [inner_vars[idx] for idx in idx_add_as_nitsots]
 
         if len(add_as_nitsots) > 0:
