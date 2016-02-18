@@ -2956,7 +2956,7 @@ class StructuredAddSVTester(unittest.TestCase):
 
                 out = f(spmat, mat)
 
-                utt.assert_allclose(spones.multiply(spmat + mat),
+                utt.assert_allclose(spones.multiply(spmat + mat).toarray(),
                                     out.toarray())
 
 
@@ -3072,7 +3072,7 @@ class SamplingDotTester(utt.InferShapeTester):
         x, y, p = self.a
         expected = p.multiply(numpy.dot(x, y.T))
 
-        utt.assert_allclose(expected, tested.toarray())
+        utt.assert_allclose(expected.toarray(), tested.toarray())
         assert tested.format == 'csr'
         assert tested.dtype == expected.dtype
 
