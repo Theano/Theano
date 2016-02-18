@@ -308,7 +308,8 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
 
         # Some environment don't have the lib dir in LD_LIBRARY_PATH.
         # So add it.
-        ret.extend(['-Wl,-rpath,'+ l for l in blas_info.get('library_dirs', [])])
+        ret.extend(['-Wl,-rpath,' + l for l in
+                    blas_info.get('library_dirs', [])])
         res = try_blas_flag(ret)
         if res:
             return res
