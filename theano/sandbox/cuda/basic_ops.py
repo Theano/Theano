@@ -3768,6 +3768,10 @@ class GpuAlloc(GpuAllocEmpty):
         shape, output = self.validate_shape(shape)
         return Apply(self, [v] + shape, [output])
 
+    # This is required because the superclass (GpuAllocEmpty) also has it.
+    def debug_perform(self, node, inputs, out_):
+        self.perform(node, inputs, out_)
+
     def perform(self, node, inputs, out_):
         # the super class (GpuAllocEmpty) allocates memory, we fill it
         value = inputs[0]
