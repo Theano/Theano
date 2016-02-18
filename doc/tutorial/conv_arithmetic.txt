@@ -15,24 +15,28 @@ Refresher: discrete convolution
 
 .. todo::
 
-    WRITEME
+    WRITEME. Talk briefly about N-D convolutions.
 
 Here are the factors determining the shape of a convolution's output size along
-a given axis (height or width):
+each given axis (height, width, ...):
 
-* **Input size**: length of the input axis.
-* **Kernel size**: length of the kernel.
-* **Stride**: distance between two consecutive positions of the kernel.
+* **Input size**: length of the input along the given axis.
+* **Kernel size**: length of the kernel along the given axis.
+* **Stride**: distance between two consecutive positions of the kernel along
+  the given axis.
 * **(Zero-) padding size**: number of zero values concatenated at the beginning
   and at the end of the axis.
 
-For the remainder of this tutorial, we will concentrate on convolutions mapping
-one input feature map to one output feature map. The relationships presented
-here also hold in the general case.
+.. note::
+    For the remainder of this tutorial, we will concentrate on 2D convolutions
+    mapping one input feature map to one output feature map. The relationships
+    presented here also hold in the general case, i.e. an N-dimensional
+    convolution with arbitrary input shape, kernel shape, zero padding and
+    strides.
 
-Since height and width are treated intependently in computing a convolution's
-output shape, we will also restrict ourselves to square input, kernel, stride
-and padding shapes.
+    Since height and width are treated intependently in computing a
+    convolution's output shape, we will also restrict ourselves to square input,
+    kernel, stride and padding shapes.
 
 Simplest case
 =============
