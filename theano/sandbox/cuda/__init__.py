@@ -565,8 +565,8 @@ def use(device,
                     if config.lib.cnmem > 1:
                         cnmem_enabled = "enabled with initial size: %d MB" % config.lib.cnmem
                     else:
-                        cnmem = min(config.lib.cnmem, 0.98)
-                        cnmem_enabled = "enabled with initial size: %.2f%% of memory" % cnmem
+                        cnmem = min(config.lib.cnmem, 0.98) * 100
+                        cnmem_enabled = "enabled with initial size: %.1f%% of memory" % cnmem
                 else:
                     cnmem_enabled = "disabled"
                 cudnn_version = "not available"
