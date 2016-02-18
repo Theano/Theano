@@ -87,7 +87,7 @@ each side), the output size :math:`o` of the convolution becomes
 
     o = (i - k) + 2p + 1.
 
-Here is an example for :math:`i = 4`, :math:`k = 4` and :math:`p = 2`:
+Here is an example for :math:`i = 5`, :math:`k = 4` and :math:`p = 2`:
 
 .. figure:: conv_arithmetic_figures/arbitrary_padding_no_strides.gif
 
@@ -147,7 +147,7 @@ Strides
 
 Up until now, we only considered convolutions where the kernel was translated by
 increments of :math:`s = 1`. Let's now examine what happens when :math:`s > 1`.
-To keep things simple, let's ignore padding, i.e.
+To keep things simple, let's ignore padding for the moment, i.e.
 
 * input size :math:`i`,
 * kernel size :math:`k`,
@@ -181,15 +181,15 @@ is
 Combining padding and strides
 -----------------------------
 
-The full picture, i.e.
+The most general case, i.e.
 
 * input size :math:`i`,
 * kernel size :math:`k`,
 * stride :math:`s`,
 * padding size :math:`p`,
 
-is obtained by applying the previous rule on the input augmented by the padding.
-In other words,
+is obtained by applying both the rule we derived for strides and the one we
+derived for the padding. In other words,
 
 .. math::
 
@@ -199,6 +199,10 @@ Here is what it looks like for :math:`i = 5`, :math:`k = 3`, :math:`s = 2` and
 :math:`p = 1`:
 
 .. figure:: conv_arithmetic_figures/padding_strides.gif
+
+.. todo::
+
+    When numbers are not nice.
 
 Transposed convolution: convolution turned on its head
 ======================================================
@@ -325,7 +329,7 @@ The output size is
       &= i.
     \end{split}
 
-Here is what the transpose of a convolution looks like for :math:`i = 4`,
+Here is what the transpose of a convolution looks like for :math:`i = 5`,
 :math:`k = 4` and :math:`p = 2`:
 
 .. figure:: conv_arithmetic_figures/arbitrary_padding_no_strides_transposed.gif
@@ -351,7 +355,7 @@ has a transpose described by
 * stride :math:`s' = 1`,
 * padding size :math:`p' = p`.
 
-Here is what the transpose of a convolution looks like for :math:`i = 3`,
+Here is what the transpose of a convolution looks like for :math:`i = 5`,
 :math:`k = 3` and :math:`p = 1`:
 
 .. figure:: conv_arithmetic_figures/same_padding_no_strides_transposed.gif
@@ -375,7 +379,7 @@ has a transpose described by
 * stride :math:`s' = 1`,
 * padding size :math:`p' = 0`.
 
-Here is what the transpose of a convolution looks like for :math:`i = 3`,
+Here is what the transpose of a convolution looks like for :math:`i = 5`,
 :math:`k = 3` and :math:`p = 2`:
 
 .. figure:: conv_arithmetic_figures/full_padding_no_strides_transposed.gif
