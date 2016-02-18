@@ -2073,6 +2073,7 @@ class Assert(T.Op):
 
     Examples
     --------
+    import theano
     T = theano.tensor
     x = T.vector('x')
     assert_op = T.opt.Assert()
@@ -4076,11 +4077,12 @@ class Canonizer(gof.LocalOptimizer):
 
     Examples
     --------
-    >>> T = theano.tensor
-    >>> add_canonizer = Canonizer(T.add, T.sub, T.neg,
-                                  lambda n, d: sum(n) - sum(d))
-    >>> mul_canonizer = Canonizer(T.mul, T.true_div, T.inv,
-                                  lambda n, d: prod(n) / prod(d))
+    >>> import theano.tensor as T
+    >>> from theano.tensor.opt import Canonizer
+    >>> add_canonizer = Canonizer(T.add, T.sub, T.neg, \\
+    ...                           lambda n, d: sum(n) - sum(d))
+    >>> mul_canonizer = Canonizer(T.mul, T.true_div, T.inv, \\
+    ...                           lambda n, d: prod(n) / prod(d))
 
     Examples of optimizations mul_canonizer can perform:
 
