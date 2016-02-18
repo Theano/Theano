@@ -1390,19 +1390,19 @@ class GpuDnnPool(DnnBase):
             node.inputs[1] = ws
             node.inputs.append(st)
             node.inputs.append(pad)
-            if isinstance(ws, theano.constant):
+            if isinstance(ws, theano.Constant):
                 storage_map[ws] = [ws.data]
                 compute_map[ws] = [True]
             else:
                 storage_map[ws] = [None]
                 compute_map[ws] = [False]
-            if isinstance(st, theano.constant):
+            if isinstance(st, theano.Constant):
                 storage_map[st] = [st.data]
                 compute_map[st] = [True]
             else:
                 storage_map[st] = [None]
                 compute_map[st] = [False]
-            if isinstance(pad, theano.constant):
+            if isinstance(pad, theano.Constant):
                 storage_map[pad] = [pad.data]
                 compute_map[pad] = [True]
             else:
@@ -1627,19 +1627,19 @@ class GpuDnnPoolGrad(DnnBase):
             node.inputs[3] = ws
             node.inputs.append(st)
             node.inputs.append(pad)
-            if isinstance(ws, theano.constant):
+            if isinstance(ws, theano.Constant):
                 storage_map[ws] = [ws.data]
                 compute_map[ws] = [True]
             else:
                 storage_map[ws] = [None]
                 compute_map[ws] = [False]
-            if isinstance(st, theano.constant):
+            if isinstance(st, theano.Constant):
                 storage_map[st] = [st.data]
                 compute_map[st] = [True]
             else:
                 storage_map[st] = [None]
                 compute_map[st] = [False]
-            if isinstance(pad, theano.constant):
+            if isinstance(pad, theano.Constant):
                 storage_map[pad] = [pad.data]
                 compute_map[pad] = [True]
             else:
