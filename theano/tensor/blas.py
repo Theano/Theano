@@ -431,14 +431,6 @@ class Gemv(Op):
             raise TypeError('gemv requires vector for x', x.type)
         if y.ndim != 1:
             raise TypeError('gemv requires vector for y', y.type)
-        if y.broadcastable[0] != A.broadcastable[0]:
-            raise TypeError('broadcastable mismatch between y and A',
-                            (y.type, A.type))
-        # The following is not grounds for error because as long as
-        # sizes are 1 at time of perform() there is no problem
-        # if x.broadcastable[0] != A.broadcastable[1]:
-        # raise TypeError('broadcastable mismatch between x and A',
-        # (x.type, A.type))
         return Apply(self, [y, alpha, A, x, beta], [y.type()])
 
     def perform(self, node, inputs, out_storage):

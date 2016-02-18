@@ -1235,6 +1235,35 @@ class TestGemv(TestCase, unittest_tools.TestOptimizationMixin):
         assert numpy.allclose(v2.get_value(),
                 numpy.dot(v1.get_value(), m.get_value()) + v2_orig)
 
+    def test_gemv_broadcast(self):
+        ''' test gemv with some broadcasted input '''
+        rng = numpy.random.RandomState(unittest_tools.fetch_seed())
+        v1 = theano.shared(numpy.array(rng.uniform(size=(2,)),
+                                       dtype='float32'))
+        v2_orig = numpy.array(rng.uniform(size=(1,)), dtype='float32')
+        v2 = theano.shared(v2_orig)
+        m = theano.shared(numpy.array(rng.uniform(size=(1, 2)),
+                                      dtype='float32'),
+                          broadcastable=(True, False))
+        o = theano.dot(m, v1)
+        f = theano.function([], o + v2, mode=mode_blas_opt)
+
+        # Assert they produce the same output
+        assert numpy.allclose(
+            f(),
+            numpy.dot(m.get_value(), v1.get_value()) + v2.get_value())
+        topo = f.maker.fgraph.toposort()
+        assert sum(isinstance(node.op, Gemv) for node in topo) == 1
+
+        # call gemv directly for mixed broadcast pattern.
+        o = theano.tensor.blas.gemv_no_inplace(v2, 0.5, m, v1, 0.25)
+        f = theano.function([], o, mode=mode_blas_opt)
+        assert numpy.allclose(
+            f(),
+            0.5*numpy.dot(m.get_value(), v1.get_value()) + 0.25*v2.get_value())
+        topo = f.maker.fgraph.toposort()
+        assert sum(isinstance(node.op, Gemv) for node in topo) == 1
+
     def test_gemv_dimensions(self):
         A = T.matrix('A')
         x, y = T.vectors('x', 'y')
