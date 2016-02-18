@@ -120,6 +120,8 @@ def function(inputs, outputs=None, mode=None, updates=None, givens=None,
     profile: None, True, or ProfileStats instance
         Accumulate profiling information into a given ProfileStats instance.
         If argument is `True` then a new ProfileStats instance will be used.
+        If argument is a string, a new ProfileStats instance will be created
+        with that string as its ``message`` attribute.
         This profiling object will be available via self.profile.
     on_unused_input
         What to do if a variable in the 'inputs' list is not used in the graph.
