@@ -91,14 +91,14 @@ Here is an example for :math:`i = 4`, :math:`k = 4` and :math:`p = 2`:
 
 .. figure:: conv_arithmetic_figures/arbitrary_padding_no_strides.gif
 
-Zero padding: special cases
-===========================
+Special cases
+-------------
 
 There are two special cases of zero padding to take note of, because they're
 quite useful in practice.
 
-Same
-----
+Half
+^^^^
 
 If :math:`k` is odd (:math:`k = 2n + 1`) and
 :math:`p = \lfloor k / 2 \rfloor = n`, we have that
@@ -118,7 +118,7 @@ referred to as ``'same'`` padding. Here is an example for :math:`i = 3`,
 .. figure:: conv_arithmetic_figures/same_padding_no_strides.gif
 
 Full
-----
+^^^^
 
 If :math:`p = k - 1`, we have that
 
@@ -172,7 +172,7 @@ is
     o = \left\lfloor \frac{i - k}{s} \right\rfloor + 1.
 
 Combining padding and strides
-=============================
+-----------------------------
 
 The full picture, i.e.
 
@@ -323,11 +323,11 @@ Here is what the transpose of a convolution looks like for :math:`i = 4`,
 
 .. figure:: conv_arithmetic_figures/arbitrary_padding_no_strides_transposed.gif
 
-Zero padding, transposed: special cases
-=======================================
+Special cases
+-------------
 
-Same
-----
+Half
+^^^^
 
 Unsurprisingly, the transpose of a "same padded" convolution is itself a "same
 padded" convolution, i.e. a convolution described by
@@ -350,7 +350,7 @@ Here is what the transpose of a convolution looks like for :math:`i = 3`,
 .. figure:: conv_arithmetic_figures/same_padding_no_strides_transposed.gif
 
 Full
-----
+^^^^
 
 If the transpose of a convolution with no padding is a "fully padded"
 convolution, then the transpose of a "fully padded" convolution is... a
@@ -407,7 +407,7 @@ Here is what the transpose of a convolution looks like for :math:`i = 5`,
 .. figure:: conv_arithmetic_figures/no_padding_strides_transposed.gif
 
 Combining padding and strides, transposed
-=========================================
+-----------------------------------------
 
 Zero-padding and non-unit strides are treated independently to transpose a
 convolution. This means that in the most general case a convolution described by
