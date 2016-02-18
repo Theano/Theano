@@ -53,19 +53,21 @@ Here is what the convolution looks like for :math:`i = 4` and :math:`k = 3`:
 .. figure:: conv_arithmetic_figures/no_padding_no_strides.gif
 
 One way of defining the output size is by the number of possible placements of
-the kernel on the input: the left side of the kernel starts at the left side of
-the input, and we slide the kernel until its right side touches the right side
-of the input. The same applies for the up-down axis.
+the kernel on the input. Let's consider the x-axis: the left side of the kernel
+starts at the left side of the input, and we slide the kernel until its right
+side touches the right side of the input. The size of the output will be equal
+to the number of steps we need to make, plus one, because we need to account for
+the initial position of the kernel. The same applies for the y-axis.
 
-In doing so, we are counting the number of positions where the bottom right
-corner of the kernel can be placed, which is equivalent to ignoring the upmost
-:math:`k - 1` rows and the leftmost :math:`k - 1` columns of the input.
+.. todo::
+
+    Add figure to illustrate the previous paragraph.
 
 From this, we conclude that the output size :math:`o` of the convolution is
 
 .. math::
 
-    o = i - (k - 1).
+    o = (i - k) + 1.
 
 Zero padding
 ============
@@ -83,7 +85,7 @@ each side), the output size :math:`o` of the convolution becomes
 
 .. math::
 
-    o = i + 2p - (k - 1).
+    o = (i - k) + 2p + 1.
 
 Here is an example for :math:`i = 4`, :math:`k = 4` and :math:`p = 2`:
 
@@ -150,13 +152,17 @@ and :math:`s = 2`:
 
 .. figure:: conv_arithmetic_figures/no_padding_strides.gif
 
-Once again, we are counting the number of positions where the bottom right
-corner of the kernel can be placed. Starting from the bottom right corner of
-a kernel placed at the top left corner of the input, we count the number of
-:math:`s`-sized hops we can make. This is equivalent to counting the number
-of groups of :math:`s` rows and columns we can make when ignoring the first
-:math:`k` rows and columns. We then need to add 1, because this counting method
-ignores the bottom right corner of the kernel.
+Once again, we are counting the number of positions where the kernel can be
+placed.  Let's consider the x-axis: the left side of the kernel starts at the
+left side of the input, but this time we slide the kernel **by hops of**
+:math:`s` until its right side touches the right side of the input. The size of
+the output will be equal to the number of steps we need to make, plus one,
+because we need to account for the initial position of the kernel. The same
+applies for the y-axis.
+
+.. todo::
+
+    Add figure to illustrate the previous paragraph.
 
 From this, we conclude that the output size :math:`o` of the strided convolution
 is
