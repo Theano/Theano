@@ -11,6 +11,7 @@ from .. import basic_ops
 from ..type import GpuArrayType, gpuarray_shared_constructor, get_context
 from ..basic_ops import (
     GpuAlloc, GpuAllocEmpty, GpuReshape, GpuFromHost, host_from_gpu)
+from ..blas import GpuGemm
 from ..elemwise import GpuCAReduceCuda, GpuCAReduceCPY, GpuElemwise
 from ..subtensor import GpuSubtensor
 
@@ -253,6 +254,23 @@ def test_local_gpu_elemwise_careduce():
     assert len(topo) == 3
     assert topo[1].op.pre_scalar_op == theano.scalar.sqr
     utt.assert_allclose(f(data), (data * data).sum(axis=1))
+
+
+def test_local_lift_dot22scalar():
+    x = tensor.matrix()
+    y = tensor.matrix()
+    a = tensor.scalar()
+    o = tensor.blas.Dot22Scalar()(x, y, a)
+    f_cpu = theano.function([x, y, a], o)
+    f_gpu = theano.function([x, y, a], o, mode=mode_with_gpu)
+    assert not any(isinstance(n.op, tensor.blas.Dot22Scalar)
+                   for n in f_gpu.maker.fgraph.apply_nodes)
+    assert any(isinstance(n.op, GpuGemm)
+               for n in f_gpu.maker.fgraph.apply_nodes)
+    x_val = numpy.random.random((2, 3)).astype(theano.config.floatX)
+    y_val = numpy.random.random((3, 4)).astype(theano.config.floatX)
+    a_val = 0.5
+    utt.assert_allclose(f_cpu(x_val, y_val, a_val), f_gpu(x_val, y_val, a_val))
 
 
 def test_local_gpu_subtensor():

@@ -751,6 +751,16 @@ def local_gpua_dot22(node, context_name):
 
 
 @register_opt('fast_compile')
+@op_lifter([tensor.blas.Dot22Scalar])
+def local_gpua_dot22scalar(node, context_name):
+    x, y, a = node.inputs
+    x = as_gpuarray_variable(x, context_name)
+    y = as_gpuarray_variable(y, context_name)
+    z = GpuAllocEmpty(x.dtype, context_name)(x.shape[0], y.shape[1])
+    return [GpuGemm(inplace=False)(z, a, x, y, 0)]
+
+
+@register_opt('fast_compile')
 @op_lifter([tensor.basic.Eye])
 def local_gpua_eye(node, context_name):
     return GpuEye(dtype=node.op.dtype, context_name=context_name)

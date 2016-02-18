@@ -2130,3 +2130,62 @@ class TestBlasStrides(TestCase):
         self.cmp_ger((0, 1), 0, 1)
         self.cmp_ger((1, 0), 1, 0)
         self.cmp_ger((0, 0), 0, 0)
+
+
+class test_infer_shape(unittest_tools.InferShapeTester):
+    def test_dot22(self):
+        x, y = T.matrices('xy')
+        self._compile_and_check(
+            [x, y], [T.blas._dot22(x, y)],
+            [numpy.random.random((2, 3)).astype(config.floatX),
+             numpy.random.random((3, 4)).astype(config.floatX)],
+            T.blas.Dot22)
+
+    def test_dot22scalar(self):
+        x, y = T.matrices('xy')
+        a = T.scalar('a')
+        self._compile_and_check(
+            [x, y, a], [T.blas._dot22scalar(x, y, a)],
+            [numpy.random.random((2, 3)).astype(config.floatX),
+             numpy.random.random((3, 4)).astype(config.floatX),
+             numpy.asarray(0.5, dtype=config.floatX)],
+            T.blas.Dot22Scalar)
+
+    def test_gemm(self):
+        x, y, z = T.matrices('xyz')
+        a = T.scalar('a')
+        b = T.scalar('b')
+        self._compile_and_check(
+            [x, y, a, z, b], [T.blas.gemm(z, a, x, y, b)],
+            [numpy.random.random((2, 3)).astype(config.floatX),
+             numpy.random.random((3, 4)).astype(config.floatX),
+             numpy.asarray(0.5, dtype=config.floatX),
+             numpy.random.random((2, 4)).astype(config.floatX),
+             numpy.asarray(0.5, dtype=config.floatX)],
+            T.blas.Gemm)
+
+    def test_gemv(self):
+        A = T.matrix('A')
+        x, y = T.vectors('xy')
+        a = T.scalar('a')
+        b = T.scalar('b')
+        self._compile_and_check(
+            [y, a, A, x, b], [T.blas.gemv(y, a, A, x, b)],
+            [numpy.random.random((2,)).astype(config.floatX),
+             numpy.asarray(0.5, dtype=config.floatX),
+             numpy.random.random((2, 3)).astype(config.floatX),
+             numpy.random.random((3,)).astype(config.floatX),
+             numpy.asarray(0.5, dtype=config.floatX)],
+            T.blas.Gemv)
+
+    def test_ger(self):
+        A = T.matrix('A')
+        x, y = T.vectors('xy')
+        a = T.scalar('a')
+        self._compile_and_check(
+            [A, a, x, y], [T.blas.ger(A, a, x, y)],
+            [numpy.random.random((2, 3)).astype(config.floatX),
+             numpy.asarray(0.5, dtype=config.floatX),
+             numpy.random.random((2,)).astype(config.floatX),
+             numpy.random.random((3,)).astype(config.floatX)],
+            T.blas.Ger)
