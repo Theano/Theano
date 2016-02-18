@@ -214,11 +214,11 @@ class NVCC_compiler(Compiler):
         if os.path.abspath(os.path.split(__file__)[0]) not in include_dirs:
             include_dirs.append(os.path.abspath(os.path.split(__file__)[0]))
 
-        libs = std_libs() + libs
+        libs = libs + std_libs()
         if 'cudart' not in libs:
             libs.append('cudart')
 
-        lib_dirs = std_lib_dirs() + lib_dirs
+        lib_dirs = lib_dirs + std_lib_dirs()
         if any(ld == os.path.join(cuda_root, 'lib') or
                ld == os.path.join(cuda_root, 'lib64') for ld in lib_dirs):
             warnings.warn("You have the cuda library directory in your "
