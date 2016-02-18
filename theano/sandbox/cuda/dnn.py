@@ -1390,12 +1390,24 @@ class GpuDnnPool(DnnBase):
             node.inputs[1] = ws
             node.inputs.append(st)
             node.inputs.append(pad)
-            storage_map[ws] = [None]
-            storage_map[st] = [None]
-            storage_map[pad] = [None]
-            compute_map[ws] = [False]
-            compute_map[st] = [False]
-            compute_map[pad] = [False]
+            if isinstance(ws, theano.constant):
+                storage_map[ws] = [ws.data]
+                compute_map[ws] = [True]
+            else:
+                storage_map[ws] = [None]
+                compute_map[ws] = [False]
+            if isinstance(st, theano.constant):
+                storage_map[st] = [st.data]
+                compute_map[st] = [True]
+            else:
+                storage_map[st] = [None]
+                compute_map[st] = [False]
+            if isinstance(pad, theano.constant):
+                storage_map[pad] = [pad.data]
+                compute_map[pad] = [True]
+            else:
+                storage_map[pad] = [None]
+                compute_map[pad] = [False]
 
     def make_node(self, img, ws, stride, pad):
         img = as_cuda_ndarray_variable(img)
@@ -1615,12 +1627,24 @@ class GpuDnnPoolGrad(DnnBase):
             node.inputs[3] = ws
             node.inputs.append(st)
             node.inputs.append(pad)
-            storage_map[ws] = [None]
-            storage_map[st] = [None]
-            storage_map[pad] = [None]
-            compute_map[ws] = [False]
-            compute_map[st] = [False]
-            compute_map[pad] = [False]
+            if isinstance(ws, theano.constant):
+                storage_map[ws] = [ws.data]
+                compute_map[ws] = [True]
+            else:
+                storage_map[ws] = [None]
+                compute_map[ws] = [False]
+            if isinstance(st, theano.constant):
+                storage_map[st] = [st.data]
+                compute_map[st] = [True]
+            else:
+                storage_map[st] = [None]
+                compute_map[st] = [False]
+            if isinstance(pad, theano.constant):
+                storage_map[pad] = [pad.data]
+                compute_map[pad] = [True]
+            else:
+                storage_map[pad] = [None]
+                compute_map[pad] = [False]
 
     def make_node(self, inp, out, inp_grad, ws, stride, pad):
         inp = as_cuda_ndarray_variable(inp)
