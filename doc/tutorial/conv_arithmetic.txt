@@ -111,11 +111,16 @@ If :math:`k` is odd (:math:`k = 2n + 1`) and
       &= i.
     \end{split}
 
-In other words, the output size is equal to the input size. This is sometimes
-referred to as ``'same'`` padding. Here is an example for :math:`i = 3`,
-:math:`k = 3` and :math:`p = 1`:
+In other words, **the output size is equal to the input size**. This is
+sometimes referred to as ``half`` (or ``same``) padding. Here is an example for
+:math:`i = 5`, :math:`k = 3` and (therefore) :math:`p = 1`:
 
 .. figure:: conv_arithmetic_figures/same_padding_no_strides.gif
+
+.. todo::
+
+    * Tie this to Theano's and Theano-dependent packages' terminology.
+    * What happens if kernel size is even?
 
 Full
 ^^^^
@@ -130,8 +135,10 @@ If :math:`p = k - 1`, we have that
     \end{split}
 
 The input size is *increased* by :math:`k - 1` rather than decreased by
-:math:`k - 1`. This is sometimes referred to as ``'full'`` padding. Here is
-an example for :math:`i = 3`, :math:`k = 3` and :math:`p = 2`:
+:math:`k - 1`, as was the case for the non-padded convolution. This is
+sometimes referred to as ``full`` padding, because every element of the
+kernel is superimposed on every element of the input feature map. Here is an
+example for :math:`i = 5`, :math:`k = 3` and (therefore) :math:`p = 2`:
 
 .. figure:: conv_arithmetic_figures/full_padding_no_strides.gif
 
@@ -329,7 +336,7 @@ Special cases
 Half
 ^^^^
 
-Unsurprisingly, the transpose of a "same padded" convolution is itself a "same
+Unsurprisingly, the transpose of a "half padded" convolution is itself a "half
 padded" convolution, i.e. a convolution described by
 
 * input size :math:`i`,
