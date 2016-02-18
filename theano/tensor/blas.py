@@ -306,6 +306,13 @@ SOMEPATH/Canopy_64bit/User/lib/python2.7/site-packages/numpy/distutils/system_in
         if res:
             return res
 
+        # Some environment don't have the lib dir in LD_LIBRARY_PATH.
+        # So add it.
+        ret.extend(['-Wl,-rpath,'+ l for l in blas_info.get('library_dirs', [])])
+        res = try_blas_flag(ret)
+        if res:
+            return res
+
         # Try to add the anaconda lib directory to runtime loading of lib.
         # This fix some case with Anaconda 2.3 on Linux.
         # Newer Anaconda still have this problem but only have
