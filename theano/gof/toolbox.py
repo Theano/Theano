@@ -266,8 +266,6 @@ class ReplaceValidate(History, Validator):
     pickle_rm_attr = (["replace_validate", "replace_all_validate",
                        "replace_all_validate_remove"] +
                       History.pickle_rm_attr + Validator.pickle_rm_attr)
-    _nodes_removed = set()
-    fail_validate = False
 
     def on_attach(self, fgraph):
         for attr in ('replace_validate', 'replace_all_validate',
@@ -275,6 +273,8 @@ class ReplaceValidate(History, Validator):
             if hasattr(fgraph, attr):
                 raise AlreadyThere("ReplaceValidate feature is already present"
                                    " or in conflict with another plugin.")
+        self._nodes_removed = set()
+        self.fail_validate = False
         History.on_attach(self, fgraph)
         Validator.on_attach(self, fgraph)
         self.unpickle(fgraph)
@@ -377,8 +377,6 @@ class ReplaceValidate(History, Validator):
             self.fail_validate = True
 
     def validate(self, fgraph):
-        if not hasattr(fgraph, 'destroyers'):
-            return True
         if self.fail_validate:
             self.fail_validate = False
             raise theano.gof.InconsistencyError("Trying to reintroduce a removed node")
