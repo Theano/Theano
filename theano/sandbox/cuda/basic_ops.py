@@ -3684,7 +3684,7 @@ class GpuAllocEmpty(GpuOp):
         return Apply(self, shape, [output])
 
     def debug_perform(self, node, inputs, out_):
-        self.perform(self, node, inputs, out_)
+        self.perform(node, inputs, out_)
         # __setitem__ is limited on CudaNdarray
         tmp = numpy.empty(out_[0][0].shape, dtype='float32')
         tmp.fill(-123456789)
@@ -3768,6 +3768,10 @@ class GpuAlloc(GpuAllocEmpty):
         v = as_cuda_ndarray_variable(value)
         shape, output = self.validate_shape(shape)
         return Apply(self, [v] + shape, [output])
+
+    # This is required because the superclass (GpuAllocEmpty) also has it.
+    def debug_perform(self, node, inputs, out_):
+        self.perform(node, inputs, out_)
 
     def perform(self, node, inputs, out_):
         # the super class (GpuAllocEmpty) allocates memory, we fill it

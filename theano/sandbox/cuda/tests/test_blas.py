@@ -17,7 +17,7 @@ if cuda_ndarray.cuda_available == False:
 import theano.sandbox.cuda as tcn
 
 from theano.tensor.signal.pool import (Pool,
-        DownsampleFactorMaxGrad, DownsampleFactorMaxGradGrad)
+        PoolGrad, DownsampleFactorMaxGradGrad)
 
 import theano.compile.mode
 from theano.tensor.tests.test_blas import BaseGemv, TestBlasStrides, TestGer
@@ -394,7 +394,7 @@ def test_downsample():
                 assert any([isinstance(node.op,
                                        tcn.blas.GpuDownsampleFactorMaxGrad)
                             for node in g.maker.fgraph.toposort()])
-                assert any([isinstance(node.op, DownsampleFactorMaxGrad)
+                assert any([isinstance(node.op, PoolGrad)
                             for node in g2.maker.fgraph.toposort()])
                 assert numpy.allclose(g(), g2()), shp
 
