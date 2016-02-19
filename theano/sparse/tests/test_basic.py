@@ -67,6 +67,9 @@ def eval_outputs(outputs):
     return compile.function([], outputs)()[0]
 
 
+# scipy 0.17 will return sparse values in all cases while previous
+# version sometimes wouldn't.  This will make everything dense so that
+# we can use assert_allclose.
 def as_ndarray(val):
     if hasattr(val, 'toarray'):
         return val.toarray()
