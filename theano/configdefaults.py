@@ -1227,6 +1227,10 @@ def default_blas_ldflags():
             ['-L%s' % l for l in blas_info.get('library_dirs', [])] +
             ['-l%s' % l for l in blas_info.get('libraries', [])] +
             blas_info.get('extra_link_args', []))
+        # For some very strange reason, we need to specify -lm twice
+        # to get mkl to link correctly.  I have no idea why.
+        if any('mkl' in fl for fl in ret):
+            ret.extend(['-lm', '-lm'])
         res = try_blas_flag(ret)
         if res:
             return res
