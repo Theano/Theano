@@ -87,9 +87,6 @@ from theano.scan_module.scan_utils import safe_new, forced_replace
 _logger = logging.getLogger('theano.scan_module.scan_op')
 
 
-from theano.configparser import AddConfigVar, BoolParam
-
-
 class Scan(PureOp):
     """
 

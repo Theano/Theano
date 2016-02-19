@@ -14,8 +14,7 @@ from theano.compile import optdb
 from theano.gof import EquilibriumDB, SequenceDB
 from theano.gof.cmodule import get_lib_extension
 from theano.gof.compilelock import get_lock, release_lock
-from theano.configparser import (
-    config, AddConfigVar, BoolParam, FloatParam, StrParam)
+from theano import config
 from . import nvcc_compiler
 
 from theano.tensor.basic import register_transfer

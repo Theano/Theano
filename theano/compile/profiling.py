@@ -29,7 +29,6 @@ import numpy
 import theano
 from six import iteritems
 from theano.gof import graph
-from theano.configparser import AddConfigVar, BoolParam, IntParam, StrParam
 
 theano_imported_time = time.time()
 config = theano.config
