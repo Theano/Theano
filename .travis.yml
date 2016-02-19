@@ -37,20 +37,6 @@ install:
   - if [[ $TRAVIS_PYTHON_VERSION == '2.6' ]]; then pip install pydot; fi
   - pip install . --no-deps
 
-# command to run tests
-env:
-  - PART="theano/tests/test_flake8.py" DOC=1
-  - PART="-e test_flake8.py theano/compat theano/compile theano/d3viz theano/gof theano/misc theano/sandbox theano/scalar theano/scan_module theano/sparse theano/tests theano/typed_list"
-  - PART="theano/tensor"
-
-matrix:
-  fast_finish: true
-  include:
-    - python: "3.3"
-      env: PART="." THEANO_FLAGS="mode=FAST_COMPILE"
-    - python: "2.6"
-      env: PART="." THEANO_FLAGS="mode=FAST_COMPILE,floatX=float32"
-
 script:
   - export THEANO_FLAGS=$THEANO_FLAGS,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,gcc.cxxflags=-pipe
   - python --version
@@ -64,9 +50,7 @@ script:
   - cd $(python -c 'import theano; import os; print(os.path.split(theano.__file__)[0])')
   - echo "$PART"
   - cd -; cd Theano
-  - theano-nose -v $PART
-  - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --nopdf --check; fi
-  - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --test --check; fi
+  - python -c 'import theano; print(theano.config.blas.ldflags)'
 
 after_failure:
   - cat /home/travis/.pip/pip.log
