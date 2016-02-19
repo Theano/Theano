@@ -304,7 +304,9 @@ def local_gpualloc_memset_0(node):
 @gof.local_optimizer([GpuAllocEmpty])
 def local_gpua_alloc_empty_to_zeros(node):
     if isinstance(node.op, GpuAllocEmpty):
-        return [GpuAlloc()(theano.tensor.constant(0, dtype='float32'),
+        context_name = infer_context_name(*node.inputs)
+        z = numpy.asarray(0, dtype=node.outputs[0].dtype)
+        return [GpuAlloc()(as_gpuarray_variable(z, context_name),
                            *node.inputs)]
 optdb.register('local_gpua_alloc_empty_to_zeros',
                theano.tensor.opt.in2out(local_gpua_alloc_empty_to_zeros),
