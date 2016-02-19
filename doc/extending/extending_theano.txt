@@ -914,7 +914,7 @@ documentation:
     :members:
 
 NanGuardMode and AllocEmpty
-------------
+---------------------------
 
 NanGuardMode help users find where in the graph NaN appear. But
 sometimes, we want some variables to not be checked. For example, in
