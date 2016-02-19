@@ -416,7 +416,7 @@ def get_mode(orig_string):
         elif string == 'NanGuardMode':
             # need to import later to break circular dependency.
             from .nanguardmode import NanGuardMode
-            # DebugMode use its own linker.
+            # NanGuardMode use its own linker.
             ret = NanGuardMode(True, True, True, optimizer=config.optimizer)
         else:
             # This might be required if the string is 'ProfileMode'

@@ -2436,7 +2436,7 @@ class GpuReshape(tensor.Reshape, GpuOp):
 
     """
 
-    # __hash__, __eq__, __str__ come from tensor.Subtensor
+    # __hash__, __eq__, __str__ come from tensor.Reshape
     def make_node(self, x, shp):
         x = as_cuda_ndarray_variable(x)
         shp = tensor.as_tensor_variable(shp)
@@ -3680,6 +3680,7 @@ class GpuAllocEmpty(GpuOp):
         # The outut can contain nan/inf.  output.type is a new
         # instance, so we can do this only for that variable.
         output.type.filter_checks_isfinite = False
+        output.tag.nan_guard_mode_check = False
         return Apply(self, shape, [output])
 
     def debug_perform(self, node, inputs, out_):

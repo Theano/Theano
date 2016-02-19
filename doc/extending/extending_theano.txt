@@ -913,6 +913,23 @@ documentation:
 .. automodule:: theano.misc.doubleop
     :members:
 
+NanGuardMode and AllocEmpty
+---------------------------
+
+NanGuardMode help users find where in the graph NaN appear. But
+sometimes, we want some variables to not be checked. For example, in
+the old GPU back-end, we use a float32 CudaNdarray to store the MRG
+random number generator state (they are integers). So if NanGuardMode
+check it, it will generate false positive. Another case is related to
+[Gpu]AllocEmpty or some computation on it (like done by Scan).
+
+You can tell NanGuardMode to do not check a variable with:
+``variable.tag.nan_guard_mode_check``. Also, this tag automatically
+follow that variable during optimization. This mean if you tag a
+variable that get replaced by an inplace version, it will keep that
+tag.
+
+
 Final Note
 ----------
 

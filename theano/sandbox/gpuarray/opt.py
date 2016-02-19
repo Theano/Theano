@@ -300,6 +300,21 @@ def local_gpualloc_memset_0(node):
             return [new_op(*node.inputs)]
 
 
+# Don't register by default.
+@gof.local_optimizer([GpuAllocEmpty])
+def local_gpua_alloc_empty_to_zeros(node):
+    if isinstance(node.op, GpuAllocEmpty):
+        context_name = infer_context_name(*node.inputs)
+        z = numpy.asarray(0, dtype=node.outputs[0].dtype)
+        return [GpuAlloc()(as_gpuarray_variable(z, context_name),
+                           *node.inputs)]
+optdb.register('local_gpua_alloc_empty_to_zeros',
+               theano.tensor.opt.in2out(local_gpua_alloc_empty_to_zeros),
+               # After move to gpu and merge2, before inplace.
+               49.3,
+               'alloc_empty_to_zeros',)
+
+
 @register_opt()
 @local_optimizer([GpuContiguous])
 def local_gpu_contiguous_gpu_contiguous(node):
@@ -569,9 +584,13 @@ def local_gpua_subtensor(node, context_name):
 @register_opt('fast_compile')
 @op_lifter([tensor.IncSubtensor])
 def local_gpua_incsubtensor(node, context_name):
-    return GpuIncSubtensor(node.op.idx_list, node.op.inplace,
-                           node.op.set_instead_of_inc,
-                           node.op.destroyhandler_tolerate_aliased)
+    op = GpuIncSubtensor(node.op.idx_list, node.op.inplace,
+                         node.op.set_instead_of_inc,
+                         node.op.destroyhandler_tolerate_aliased)
+    ret = op(*node.inputs)
+    val = getattr(node.outputs[0].tag, 'nan_guard_mode_check', True)
+    ret.tag.nan_guard_mode_check = val
+    return ret
 
 
 @register_opt('fast_compile')
