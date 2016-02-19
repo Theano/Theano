@@ -2073,11 +2073,11 @@ class Assert(T.Op):
 
     Examples
     --------
-    import theano
-    T = theano.tensor
-    x = T.vector('x')
-    assert_op = T.opt.Assert()
-    func = theano.function([x], assert_op(x, x.size<2))
+    >>> import theano
+    >>> T = theano.tensor
+    >>> x = T.vector('x')
+    >>> assert_op = T.opt.Assert()
+    >>> func = theano.function([x], assert_op(x, x.size<2))
 
     """
 
