@@ -594,7 +594,7 @@ def local_dimshuffle_lift(node):
         inplace = op.inplace and inode.op.inplace
         iinput = inode.inputs[0]
 
-        # remove useless dimshuffle
+        # remove useless dimshuffle caused by merging
         if (new_order == list(range(len(new_order))) and
                 len(new_order) == iinput.type.ndim):
             return [iinput]
@@ -604,6 +604,11 @@ def local_dimshuffle_lift(node):
             ret = apply_local_dimshuffle_lift(ret)
             copy_stack_trace(node.outputs[0], ret)
             return [ret]
+
+    # remove useless dimshuffle in general
+    if (list(op.new_order) == list(range(len(op.new_order))) and
+            len(op.new_order) == input.type.ndim):
+        return [input]
 
 
 @register_canonicalize
