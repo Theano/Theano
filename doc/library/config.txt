@@ -73,7 +73,7 @@ Environment Variables
         device = gpu0
 
         [lib]
-        cnmem = True
+        cnmem = 1
 
     Configuration attributes that are available directly in ``config``
     (e.g. ``config.device``, ``config.mode``) should be defined in the
