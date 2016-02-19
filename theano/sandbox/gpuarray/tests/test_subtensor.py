@@ -7,6 +7,7 @@ from theano.tensor.tests import test_subtensor
 
 from ..basic_ops import HostFromGpu, GpuFromHost
 from ..subtensor import (GpuIncSubtensor, GpuSubtensor,
+                         GpuAdvancedSubtensor,
                          GpuAdvancedSubtensor1,
                          GpuAdvancedIncSubtensor1)
 from ..type import gpuarray_shared_constructor
@@ -55,3 +56,22 @@ def test_advinc_subtensor1():
         rep = xval.copy()
         rep[[0, 2]] += yval
         assert numpy.allclose(rval, rep)
+
+
+def test_adv_subtensor():
+    """Test the advancedsubtensor on gpu."""
+    shp = (2, 3, 4)
+    shared = gpuarray_shared_constructor
+    xval = numpy.arange(numpy.prod(shp), dtype=theano.config.floatX).reshape(shp)
+    idx1, idx2 = tensor.ivectors('idx1', 'idx2')
+    idxs = [idx1, slice(0, 2, 1), idx2]
+    x = shared(xval, name='x')
+    expr = x[idxs]
+    f = theano.function([idx1, idx2], expr, mode=mode_with_gpu)
+    assert sum([isinstance(node.op, GpuAdvancedSubtensor)
+                    for node in f.maker.fgraph.toposort()]) == 1
+    idx1_val = [0, 1]
+    idx2_val = [0, 1]
+    rval = f(idx1_val, idx2_val)
+    rep = x_val[idx1_val, slice(0, 2, 1), idx2_val]
+    assert numpy.allclose(rval, rep)
