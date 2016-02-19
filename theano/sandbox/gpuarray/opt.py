@@ -525,6 +525,16 @@ def local_gpu_pdbbreakpoint_op(node):
 
 
 @register_opt('fast_compile')
+@op_lifter([IfElse])
+def local_gpua_lazy_ifelse(node, context_name):
+    if node.op.gpu:
+        return
+    c = nodes.inputs[0]
+    outs = [as_gpuarray_variable(v, context_name) for v in node.inputs[1:]]
+    return IfElse(node.op.n_outs, gpu=True)(c, *outs, return_list=True)
+
+
+@register_opt('fast_compile')
 @op_lifter([tensor.Join])
 def local_gpua_join(node, context_name):
     return gpu_join
