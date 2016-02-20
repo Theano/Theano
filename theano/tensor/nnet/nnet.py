@@ -2407,3 +2407,66 @@ class ScalarSoftsign(theano.scalar.UnaryScalarOp):
 scalar_softsign = ScalarSoftsign(theano.scalar.upgrade_to_float,
                                  name='scalar_softsign')
 softsign = elemwise.Elemwise(scalar_softsign, name='softsign')
+
+
+class ConfusionMatrix(gof.Op):
+    """
+    Computes the confusion matrix of given vectors containing
+    actual observations and predicted observations.
+
+    Parameters
+    ----------
+    actual : 1-d tensor
+    pred : 1-d tensor
+
+    Returns
+    -------
+    conf_mat : Confusion matrix of actual and predictions observations as shown below.
+
+               | Predicted
+    ___________|___________
+       Actual  |
+               |
+
+    order : Order of entries in terms of original data
+
+    """
+
+    __props__ = ()
+
+    def make_node(self, actual, pred):
+        actual = tensor.as_tensor_variable(actual)
+        pred = tensor.as_tensor_variable(pred)
+
+        if actual.type.ndim != 1:
+            raise ValueError('actual must be 1-d tensor')
+
+        if pred.type.ndim != 1:
+            raise ValueError('pred must be 1-d tensor')
+
+        conf = tensor.TensorType(dtype='int64', broadcastable=(False, False)).make_variable()
+        order = actual.type()
+
+        node = Apply(op=self, inputs=[actual, pred], outputs=[conf, order])
+        return node
+
+
+    def perform(self, node, input_storage, output_storage):
+        actual, pred = input_storage
+
+        if len(actual) != len(pred):
+            raise ValueError('Lengths of actual and pred must be the same.')
+
+        order = numpy.union1d(actual, pred)
+        order = order[~numpy.isnan(order)]
+
+        colA = numpy.matrix(actual).T
+        colP = numpy.matrix(pred).T
+
+        oneHotA = colA.__eq__(order).astype('int64')
+        oneHotP = colP.__eq__(order).astype('int64')
+
+        conf_mat = numpy.dot(oneHotA.T, oneHotP)
+
+        output_storage[0][0] = conf_mat
+        output_storage[1][0] = order
