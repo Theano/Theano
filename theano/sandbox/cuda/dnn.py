@@ -1367,40 +1367,78 @@ class GpuDnnPool(DnnBase):
     ----------
     img
         The image 4d or 5d tensor.
-    desc
-        The pooling descriptor.
-
+    ws
+        Windows size.
+    stride
+        (dx, dy).
+    mode : {'max', 'average_inc_pad', 'average_exc_pad'}
+        The old deprecated name 'average' correspond to 'average_inc_pad'.
+    pad
+        (padX, padY) padding information.
+        padX is the size of the left and right borders,
+        padY is the size of the top and bottom borders.
     """
 
-    __props__ = ()
+    __props__ = ("mode",)
 
-    def make_node(self, img, desc):
+    def __init__(self, mode='max'):
+        super(GpuDnnPool, self).__init__()
+        if mode == 'average':
+            mode = 'average_inc_pad'
+        assert mode in ('max', 'average_inc_pad', 'average_exc_pad')
+        self.mode = mode
+
+    def prepare_node(self, node, storage_map, compute_map):
+        if len(node.inputs) == 2:
+            warnings.warn("Theano GPUDnnPoolGrad internal changed.", stacklevel=3)
+            # Old interface
+            self.mode = node.inputs[1].owner.op.mode
+            ws = theano.tensor.constant(node.inputs[1].owner.op.ws)
+            st = theano.tensor.constant(node.inputs[1].owner.op.stride)
+            pad = theano.tensor.constant(node.inputs[1].owner.op.pad)
+            node.inputs[1] = ws
+            node.inputs.append(st)
+            node.inputs.append(pad)
+            if isinstance(ws, theano.Constant):
+                storage_map[ws] = [ws.data]
+                compute_map[ws] = [True]
+            else:
+                storage_map[ws] = [None]
+                compute_map[ws] = [False]
+            if isinstance(st, theano.Constant):
+                storage_map[st] = [st.data]
+                compute_map[st] = [True]
+            else:
+                storage_map[st] = [None]
+                compute_map[st] = [False]
+            if isinstance(pad, theano.Constant):
+                storage_map[pad] = [pad.data]
+                compute_map[pad] = [True]
+            else:
+                storage_map[pad] = [None]
+                compute_map[pad] = [False]
+
+    def make_node(self, img, ws, stride, pad):
         img = as_cuda_ndarray_variable(img)
-        if not isinstance(desc.type, CDataType) \
-                or desc.type.ctype != 'cudnnPoolingDescriptor_t':
-            raise TypeError('desc must be cudnnPoolingDescriptor_t')
+        assert (img.ndim in [4, 5])
 
-        if desc.owner is not None:
-            dop = desc.owner.op
-            e_ndim = dop.get_ndim() + 2  # 4 or 5
+        ws = tensor.as_tensor_variable(ws)
+        stride = tensor.as_tensor_variable(stride)
+        pad = tensor.as_tensor_variable(pad)
+        assert ws.type.ndim == stride.type.ndim and ws.type.ndim == pad.type.ndim
+        assert ws.type.ndim == 1
 
-            if img.type.ndim != e_ndim:
-                raise TypeError('img must be %dD tensor' % e_ndim)
-
-        return Apply(self, [img, desc], [img.type()])
+        return Apply(self, [img, ws, stride, pad], [img.type()])
 
     def infer_shape(self, node, shape):
-        if not node.inputs[1].owner:
-            raise theano.tensor.ShapeError()
-        desc = node.inputs[1].owner.op
-        nd = desc.get_ndim()
-        w = desc.ws
-        s = desc.stride
-        p = desc.pad
+        w = node.inputs[1]
+        s = node.inputs[2]
+        p = node.inputs[3]
+
         ret = [shape[0][0], shape[0][1],
                (shape[0][2] + 2 * p[0] - w[0]) // s[0] + 1,
                (shape[0][3] + 2 * p[1] - w[1]) // s[1] + 1]
-        if nd == 3:
+        if node.inputs[0].ndim == 5:
             ret.append((shape[0][4] + 2 * p[2] - w[2]) // s[2] + 1)
         return [ret]
 
@@ -1408,6 +1446,7 @@ class GpuDnnPool(DnnBase):
         return """
 cudnnTensorDescriptor_t input%(name)s;
 cudnnTensorDescriptor_t output%(name)s;
+cudnnPoolingDescriptor_t pool%(name)s;
 """ % dict(name=name)
 
     def c_init_code_struct(self, node, name, sub):
@@ -1415,6 +1454,7 @@ cudnnTensorDescriptor_t output%(name)s;
 cudnnStatus_t err%(name)s;
 input%(name)s = NULL;
 output%(name)s = NULL;
+pool%(name)s = NULL;
 if ((err%(name)s = cudnnCreateTensorDescriptor(&input%(name)s)) != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_MemoryError, "could not allocate tensor descriptor "
                "(inp): %%s", cudnnGetErrorString(err%(name)s));
@@ -1425,20 +1465,40 @@ if ((err%(name)s = cudnnCreateTensorDescriptor(&output%(name)s)) != CUDNN_STATUS
                "(out): %%s", cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
+
+if ((err%(name)s = cudnnCreatePoolingDescriptor(&pool%(name)s)) != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_MemoryError, "could not allocate pooling "
+                "descriptor: %%s", cudnnGetErrorString(err%(name)s));
+  %(fail)s
+}
 """ % dict(name=name, fail=sub['fail'])
 
     def c_cleanup_code_struct(self, node, name):
         return """
 if (input%(name)s != NULL) { cudnnDestroyTensorDescriptor(input%(name)s); }
 if (output%(name)s != NULL) { cudnnDestroyTensorDescriptor(output%(name)s); }
+if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
 """ % dict(name=name)
 
     def c_code(self, node, name, inputs, outputs, sub):
-        desc = inputs[1]
+        ws = inputs[1]
+        stride = inputs[2]
+        pad = inputs[3]
         out, = outputs
 
+        if self.mode == 'max':
+            mode_flag = 'CUDNN_POOLING_MAX'
+        elif self.mode == "average_inc_pad":
+            mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING'
+        elif self.mode == "average_exc_pad":
+            mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING'
+            if version() == -1:
+                raise Exception("cudnn v1 do not support average_exc_pad")
+        else:
+            raise NotImplementedError("Unsupported pooling model.")
+
         return """
-cudnnStatus_t err%(name)s;
+cudnnStatus_t err;
 
 int %(out)s_dims[5];
 
@@ -1450,31 +1510,36 @@ if (!CudaNdarray_is_c_contiguous(%(input)s)) {
 if (c_set_tensorNd(%(input)s, %(input_desc)s) != 0)
   %(fail)s
 
-cudnnPoolingMode_t mode;
-int win[3];
-int pad[3];
-int str[3];
-int ndims;
-err%(name)s = cudnnGetPoolingNdDescriptor(
-        %(desc)s, 3,
-        &mode, &ndims,
-        win, pad, str);
+int win[%(nd)d];
+int pad[%(nd)d];
+int str[%(nd)d];
+for(int i = 0; i < %(nd)d; i++) {
+   win[i] = *((npy_intp*)PyArray_GETPTR1(%(ws)s, i));
+}
+for(int i = 0; i < %(nd)d; i++) {
+   pad[i] = *((npy_intp*)PyArray_GETPTR1(%(pad)s, i));
+}
+for(int i = 0; i < %(nd)d; i++) {
+   str[i] = *((npy_intp*)PyArray_GETPTR1(%(str)s, i));
+}
+err = cudnnSetPoolingNdDescriptor(
+    pool%(name)s, %(mode_flag)s, %(nd)d,
+    win, pad, str);
 
-if (err%(name)s != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_RuntimeError,
-               "GpuDnnPool: error doing cudnnGetPoolingNdDescriptor operation: %%s",
-               cudnnGetErrorString(err%(name)s));
-  %(fail)s
+if (err != CUDNN_STATUS_SUCCESS) {
+PyErr_Format(PyExc_RuntimeError, "could not set op descriptor: %%s",
+                cudnnGetErrorString(err));
+%(fail)s
 }
 
 %(out)s_dims[0] = CudaNdarray_HOST_DIMS(%(input)s)[0];
 %(out)s_dims[1] = CudaNdarray_HOST_DIMS(%(input)s)[1];
 %(out)s_dims[2] = (CudaNdarray_HOST_DIMS(%(input)s)[2] + (pad[0]*2) - win[0]) / str[0] + 1;
 %(out)s_dims[3] = (CudaNdarray_HOST_DIMS(%(input)s)[3] + (pad[1]*2) - win[1]) / str[1] + 1;
-if (ndims == 3)
+if (%(nd)s == 3)
   %(out)s_dims[4] = (CudaNdarray_HOST_DIMS(%(input)s)[4] + (pad[2]*2) - win[2]) / str[2] + 1;
 
-if (CudaNdarray_prep_output(&%(out)s, ndims+2, %(out)s_dims) != 0)
+if (CudaNdarray_prep_output(&%(out)s, %(nd)s+2, %(out)s_dims) != 0)
 {
   %(fail)s
 }
@@ -1485,44 +1550,46 @@ if (c_set_tensorNd(%(out)s, %(output_desc)s) != 0)
 {
 const float alpha = 1;
 const float beta = 0;
-err%(name)s = cudnnPoolingForward(
+err = cudnnPoolingForward(
 _handle,
-%(desc)s,
+pool%(name)s,
 &alpha,
 %(input_desc)s, CudaNdarray_DEV_DATA(%(input)s),
 &beta,
 %(output_desc)s, CudaNdarray_DEV_DATA(%(out)s)
 );
 }
-if (err%(name)s != CUDNN_STATUS_SUCCESS) {
+if (err != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_RuntimeError,
                "GpuDnnPool: error doing cudnnPoolingForward operation: %%s",
-               cudnnGetErrorString(err%(name)s));
+               cudnnGetErrorString(err));
   %(fail)s
 }
-""" % dict(out=out, desc=desc, fail=sub['fail'],
+""" % dict(out=out, fail=sub['fail'],
            name=name, input=inputs[0],
-           input_desc="input" + name,
-           output_desc="output" + name)
+           ws=ws, pad=pad, str=stride,
+           nd=node.inputs[0].ndim - 2, input_desc="input" + name,
+           output_desc="output" + name,
+           mode_flag=mode_flag)
 
     def grad(self, inp, grads):
-        img, desc = inp
+        img, ws, stride, pad = inp
         grad, = grads
 
         grad = gpu_contiguous(grad)
 
-        out = self(img, desc)
+        out = self(img, ws, stride, pad)
 
-        g_out = GpuDnnPoolGrad()(img, out, grad, desc)
+        g_out = GpuDnnPoolGrad(mode=self.mode)(img, out, grad, ws, stride, pad)
 
-        return g_out, theano.gradient.DisconnectedType()()
+        return g_out, theano.gradient.DisconnectedType()(), theano.gradient.DisconnectedType()(), theano.gradient.DisconnectedType()()
 
     def connection_pattern(self, node):
         # not connected to desc
-        return [[1], [0]]
+        return [[1], [0], [0], [0]]
 
     def c_code_cache_version(self):
-        return (7, version())
+        return (8, version())
 
 
 class GpuDnnPoolGrad(DnnBase):
@@ -1537,35 +1604,75 @@ class GpuDnnPoolGrad(DnnBase):
         The output of the pooling in the forward.
     inp_grad
         Same size as out, but is the corresponding gradient information.
-    desc
-        The pooling descriptor.
-
+    ws
+        Windows size.
+    stride
+        (dx, dy).
+    mode : {'max', 'average_inc_pad', 'average_exc_pad'}
+        The old deprecated name 'average' correspond to 'average_inc_pad'.
+    pad
+        (padX, padY) padding information.
+        padX is the size of the left and right borders,
+        padY is the size of the top and bottom borders.
     """
 
-    __props__ = ()
+    __props__ = ('mode',)
 
-    def make_node(self, inp, out, inp_grad, desc):
-        if not isinstance(desc.type, CDataType) \
-                or desc.type.ctype != 'cudnnPoolingDescriptor_t':
-            raise TypeError('desc must be cudnnPoolingDescriptor_t')
+    def __init__(self, mode='max'):
+        super(GpuDnnPoolGrad, self).__init__()
+        if mode == 'average':
+            mode = 'average_inc_pad'
+        assert mode in ('max', 'average_inc_pad', 'average_exc_pad')
+        self.mode = mode
 
+    def prepare_node(self, node, storage_map, compute_map):
+        if len(node.inputs) == 4:
+            warnings.warn("Theano GPUDnnPoolGrad internal changed.", stacklevel=3)
+            # Old interface
+            self.mode = node.inputs[3].owner.op.mode
+            ws = theano.tensor.constant(node.inputs[3].owner.op.ws)
+            st = theano.tensor.constant(node.inputs[3].owner.op.stride)
+            pad = theano.tensor.constant(node.inputs[3].owner.op.pad)
+            node.inputs[3] = ws
+            node.inputs.append(st)
+            node.inputs.append(pad)
+            if isinstance(ws, theano.Constant):
+                storage_map[ws] = [ws.data]
+                compute_map[ws] = [True]
+            else:
+                storage_map[ws] = [None]
+                compute_map[ws] = [False]
+            if isinstance(st, theano.Constant):
+                storage_map[st] = [st.data]
+                compute_map[st] = [True]
+            else:
+                storage_map[st] = [None]
+                compute_map[st] = [False]
+            if isinstance(pad, theano.Constant):
+                storage_map[pad] = [pad.data]
+                compute_map[pad] = [True]
+            else:
+                storage_map[pad] = [None]
+                compute_map[pad] = [False]
+
+    def make_node(self, inp, out, inp_grad, ws, stride, pad):
         inp = as_cuda_ndarray_variable(inp)
+        assert (inp.ndim in [4, 5])
         inp_grad = as_cuda_ndarray_variable(inp_grad)
+        assert (inp_grad.ndim in [4, 5])
         out = as_cuda_ndarray_variable(out)
+        assert(out.ndim in [4, 5])
 
-        if desc.owner is not None:
-            nd = desc.owner.op.get_ndim() + 2  # 4 or 5
+        assert (inp_grad.ndim == inp.ndim)
+        assert (inp.ndim == out.ndim)
 
-            if inp.type.ndim != nd:
-                raise TypeError('inp must be %dD tensor' % (nd,))
+        ws = tensor.as_tensor_variable(ws)
+        stride = tensor.as_tensor_variable(stride)
+        pad = tensor.as_tensor_variable(pad)
+        assert ws.type.ndim == stride.type.ndim and ws.type.ndim == pad.type.ndim
+        assert ws.type.ndim == 1
 
-            if inp_grad.type.ndim != nd:
-                raise TypeError('inp_grad must be %dD tensor' % (nd,))
-
-            if out.type.ndim != nd:
-                raise TypeError('out must be %dD tensor' % (nd,))
-
-        return Apply(self, [inp, out, inp_grad, desc],
+        return Apply(self, [inp, out, inp_grad, ws, stride, pad],
                      [inp.type()])
 
     def c_support_code_struct(self, node, name):
@@ -1574,6 +1681,7 @@ cudnnTensorDescriptor_t input%(name)s;
 cudnnTensorDescriptor_t input_grad%(name)s;
 cudnnTensorDescriptor_t output%(name)s;
 cudnnTensorDescriptor_t output_grad%(name)s;
+cudnnPoolingDescriptor_t pool%(name)s;
 """ % dict(name=name)
 
     def c_init_code_struct(self, node, name, sub):
@@ -1583,6 +1691,7 @@ input%(name)s = NULL;
 input_grad%(name)s = NULL;
 output%(name)s = NULL;
 output_grad%(name)s = NULL;
+pool%(name)s = NULL;
 if ((err%(name)s = cudnnCreateTensorDescriptor(&input%(name)s)) != CUDNN_STATUS_SUCCESS) {
   PyErr_Format(PyExc_MemoryError,
                "GpuDnnPoolGrad: could not allocate tensor4d descriptor "
@@ -1607,6 +1716,12 @@ if ((err%(name)s = cudnnCreateTensorDescriptor(&output_grad%(name)s)) != CUDNN_S
                "(output_grad): %%s", cudnnGetErrorString(err%(name)s));
   %(fail)s
 }
+if ((err%(name)s = cudnnCreatePoolingDescriptor(&pool%(name)s)) != CUDNN_STATUS_SUCCESS) {
+  PyErr_Format(PyExc_MemoryError,
+               "GpuDnnPoolGrad: could not allocate pooling descriptor "
+               "(pool): %%s", cudnnGetErrorString(err%(name)s));
+  %(fail)s
+}
 """ % dict(name=name, fail=sub['fail'])
 
     def c_cleanup_code_struct(self, node, name):
@@ -1615,14 +1730,27 @@ if (input%(name)s != NULL) { cudnnDestroyTensorDescriptor(input%(name)s); }
 if (input_grad%(name)s != NULL) { cudnnDestroyTensorDescriptor(input_grad%(name)s); }
 if (output%(name)s != NULL) { cudnnDestroyTensorDescriptor(output%(name)s); }
 if (output_grad%(name)s != NULL) { cudnnDestroyTensorDescriptor(output_grad%(name)s); }
+if (pool%(name)s != NULL) { cudnnDestroyPoolingDescriptor(pool%(name)s); }
 """ % dict(name=name)
 
     def c_code(self, node, name, inputs, outputs, sub):
         # Here the name out and inp are based on the cudnn definition.
         # Not the definition of this class.
         # This make it complicated.
-        out, inp, inp_grad, desc = inputs
+        out, inp, inp_grad, ws, stride, pad = inputs
+
         out_grad, = outputs
+
+        if self.mode == 'max':
+            mode_flag = 'CUDNN_POOLING_MAX'
+        elif self.mode == "average_inc_pad":
+            mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING'
+        elif self.mode == "average_exc_pad":
+            mode_flag = 'CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING'
+            if version() == -1:
+                raise Exception("cudnn v1 do not support average_exc_pad")
+        else:
+            raise NotImplementedError("Unsupported pooling model.")
 
         return """
 cudnnStatus_t err%(name)s;
@@ -1659,16 +1787,27 @@ if (CudaNdarray_prep_output(&%(output_grad)s,
   %(fail)s
 }
 
-// Get the pooling_mode to be used. Variable 'tmp' is used because we don't
-// care about the other outputs of the function
-cudnnPoolingMode_t pooling_mode;
-int tmp;
-err%(name)s = cudnnGetPoolingNdDescriptor(%(desc)s, 0, &pooling_mode, &tmp,
-                                          &tmp, &tmp, &tmp);
+
+int win[%(nd)d];
+int pad[%(nd)d];
+int str[%(nd)d];
+for(int i = 0; i < %(nd)d; i++) {
+   win[i] = *((npy_intp*)PyArray_GETPTR1(%(ws)s, i));
+}
+for(int i = 0; i < %(nd)d; i++) {
+   pad[i] = *((npy_intp*)PyArray_GETPTR1(%(pad)s, i));
+}
+for(int i = 0; i < %(nd)d; i++) {
+   str[i] = *((npy_intp*)PyArray_GETPTR1(%(str)s, i));
+}
+err%(name)s = cudnnSetPoolingNdDescriptor(
+    pool%(name)s, %(mode_flag)s, %(nd)d,
+    win, pad, str);
+
 if (err%(name)s != CUDNN_STATUS_SUCCESS) {
-  PyErr_Format(PyExc_RuntimeError,
-               "GpuDnnPoolGrad: could not obtain pooling mode");
- %(fail)s
+PyErr_Format(PyExc_RuntimeError, "could not set op descriptor: %%s",
+                cudnnGetErrorString(err%(name)s));
+%(fail)s
 }
 
 if (c_set_tensorNd(%(output_grad)s, %(output_grad_desc)s) != 0)
@@ -1679,7 +1818,7 @@ const float alpha = 1;
 const float beta = 0;
 err%(name)s = cudnnPoolingBackward(
 _handle,
-%(desc)s,
+pool%(name)s,
 &alpha,
 %(input_desc)s, CudaNdarray_DEV_DATA(%(input)s),
 %(input_grad_desc)s, CudaNdarray_DEV_DATA(%(input_grad)s),
@@ -1694,16 +1833,18 @@ if (err%(name)s != CUDNN_STATUS_SUCCESS) {
                cudnnGetErrorString(err%(name)s));
  %(fail)s
 }
-""" % dict(output_grad=out_grad, desc=desc,
+""" % dict(output_grad=out_grad,
            fail=sub['fail'], name=name,
            input=inp, input_grad=inp_grad, output=out,
            input_desc="input" + name,
            input_grad_desc="input_grad" + name,
            output_desc="output" + name,
-           output_grad_desc="output_grad" + name)
+           output_grad_desc="output_grad" + name,
+           mode_flag=mode_flag, nd=node.inputs[0].ndim - 2,
+           ws=ws, pad=pad, str=stride)
 
     def c_code_cache_version(self):
-        return (7, version())
+        return (8, version())
 
     def infer_shape(self, node, shape):
         return [shape[0]]
@@ -1725,7 +1866,7 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
     stride
         Subsampling stride (default: (1, 1)).
     mode : {'max', 'average_inc_pad', 'average_exc_pad}
-    pad
+    pad :
         (pad_h, pad_w) padding information.
         pad_h is the number of zero-valued pixels added to each of the top and
         bottom borders.
@@ -1742,8 +1883,7 @@ def dnn_pool(img, ws, stride=(1, 1), mode='max', pad=(0, 0)):
 
     """
     img = gpu_contiguous(img)
-    desc = GpuDnnPoolDesc(ws=ws, stride=stride, mode=mode, pad=pad)()
-    return GpuDnnPool()(img, desc)
+    return GpuDnnPool(mode=mode)(img, ws, stride, pad)
 
 
 class GpuDnnSoftmaxBase(DnnBase):
@@ -2222,11 +2362,10 @@ if True:
             inp, out, inp_grad = node.inputs
             ds = node.op.ds
 
-            desc = GpuDnnPoolDesc(ws=ds, stride=ds, mode="max")()
-            return [GpuDnnPoolGrad()(gpu_contiguous(inp),
-                                     gpu_contiguous(out),
-                                     gpu_contiguous(inp_grad),
-                                     desc)]
+            return [GpuDnnPoolGrad(mode='max')(gpu_contiguous(inp),
+                                               gpu_contiguous(out),
+                                               gpu_contiguous(inp_grad),
+                                               ds, ds, (0, 0))]
 
     @register_opt('cudnn')
     @local_optimizer([MaxPoolGrad])
@@ -2246,11 +2385,11 @@ if True:
                 (out.owner and isinstance(out.owner.op, HostFromGpu)) or
                 (inp_grad.owner and isinstance(inp_grad.owner.op,
                                                HostFromGpu))):
-                desc = GpuDnnPoolDesc(ws=ds, stride=st, mode=mode, pad=pad)()
-                ret = GpuDnnPoolGrad()(gpu_contiguous(inp),
-                                       gpu_contiguous(out),
-                                       gpu_contiguous(inp_grad),
-                                       desc)
+
+                ret = GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp),
+                                                gpu_contiguous(out),
+                                                gpu_contiguous(inp_grad),
+                                                ds, st, pad)
                 return [host_from_gpu(ret)]
 
     @register_opt('cudnn')
@@ -2270,12 +2409,11 @@ if True:
             if ((inp.owner and isinstance(inp.owner.op, HostFromGpu)) or
                 (inp_grad.owner and isinstance(inp_grad.owner.op,
                                                HostFromGpu))):
-                desc = GpuDnnPoolDesc(ws=ds, stride=st, mode=mode, pad=pad)()
                 contiguous_inp_grad = gpu_contiguous(inp_grad)
-                ret = GpuDnnPoolGrad()(gpu_contiguous(inp),
-                                       contiguous_inp_grad,
-                                       contiguous_inp_grad,
-                                       desc)
+                ret = GpuDnnPoolGrad(mode=mode)(gpu_contiguous(inp),
+                                                contiguous_inp_grad,
+                                                contiguous_inp_grad,
+                                                ds, st, pad)
                 return [host_from_gpu(ret)]
 
     @register_opt('cudnn')

@@ -836,7 +836,7 @@ class Op(utils.object2, PureOp, CLinkerOp):
         else:
             return NotImplemented
 
-    def prepare_node(self, node):
+    def prepare_node(self, node, storage_map, compute_map):
         """
         Make any special modifications that the Op needs before doing
         make_thunk().
@@ -959,7 +959,8 @@ class Op(utils.object2, PureOp, CLinkerOp):
         """
         logger = logging.getLogger('theano.gof.op.Op')
 
-        new_node = self.prepare_node(node)
+        new_node = self.prepare_node(node, storage_map=storage_map,
+                                     compute_map=compute_map)
         if new_node is not None:
             node = new_node
 
@@ -1218,7 +1219,8 @@ int main( int argc, const char* argv[] )
                 self.openmp = False
                 theano.config.openmp = False
 
-    def prepare_node(self, node):
+    def prepare_node(self, node, storage_map,
+                     compute_map):
         self.update_self_openmp()
 
 
