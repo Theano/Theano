@@ -761,7 +761,6 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
         elif isinstance(mode, tuple):
             pad_h, pad_w = map(int, self.border_mode)
         mode = "valid"
-
         if self.subsample[0] > 1 or self.subsample[1] > 1:
             new_shape = (topgrad.shape[0], topgrad.shape[1],
                          shape[0] + 2 * pad_h - kern.shape[2] + 1,
@@ -776,7 +775,7 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
         if self.filter_flip:
             img = img[:, :, ::-1, ::-1]
         if pad_h > 0 or pad_w > 0:
-            img = img[:, :, pad_h:img.shape[2]-pad_h, pad_w:img.shape[2]-pad_w]
+            img = img[:, :, pad_h:img.shape[2]-pad_h, pad_w:img.shape[3]-pad_w]
         o[0] = img
 
     def grad(self, inp, grads):
