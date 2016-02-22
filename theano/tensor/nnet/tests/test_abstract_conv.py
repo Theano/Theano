@@ -256,6 +256,11 @@ class BaseTestConv2d(unittest.TestCase):
 
 
 class TestCorrConv2d(BaseTestConv2d):
+    def setUp(self):
+        if theano.config.blas.ldflags == "":
+            raise SkipTest()
+        return super(TestCorrConv2d, self).setUp()
+
     def tcase(self, i, f, s, b, flip, provide_shape):
         o = self.get_output_shape(i, f, s, b)
         self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
