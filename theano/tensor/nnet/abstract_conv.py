@@ -638,7 +638,6 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
             new_img = numpy.zeros((img.shape[0], img.shape[1],
                                    img.shape[2] + 2 *pad_h,
                                    img.shape[3] + 2 * pad_w), dtype=img.dtype)
-            #import pdb; pdb.set_trace()
             new_img[:, :, pad_h:img.shape[2]+pad_h, pad_w:img.shape[3]+pad_w] = img
             img = new_img
 
