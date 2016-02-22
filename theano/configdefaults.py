@@ -10,6 +10,8 @@ import socket
 import struct
 import warnings
 
+from six import string_types
+
 import theano
 from theano.configparser import (AddConfigVar, BoolParam, ConfigParam, EnumStr,
                                  FloatParam, IntParam, StrParam,
@@ -963,6 +965,38 @@ AddConfigVar('DebugMode.warn_input_not_reused',
              BoolParam(True),
              in_c_key=False)
 
+
+def is_valid_check_preallocated_output_param(param):
+    if not isinstance(param, string_types):
+        return False
+    valid = ["initial", "previous", "c_contiguous", "f_contiguous",
+             "strided", "wrong_size", "ALL", ""]
+    for p in param.split(":"):
+        if p not in valid:
+            return False
+    return True
+
+AddConfigVar('DebugMode.check_preallocated_output',
+             ('Test thunks with pre-allocated memory as output storage. '
+              'This is a list of strings separated by ":". Valid values are: '
+              '"initial" (initial storage in storage map, happens with Scan),'
+              '"previous" (previously-returned memory), '
+              '"c_contiguous", "f_contiguous", '
+              '"strided" (positive and negative strides), '
+              '"wrong_size" (larger and smaller dimensions), and '
+              '"ALL" (all of the above).'),
+             StrParam('', is_valid=is_valid_check_preallocated_output_param),
+             in_c_key=False)
+
+AddConfigVar('DebugMode.check_preallocated_output_ndim',
+             ('When testing with "strided" preallocated output memory, '
+              'test all combinations of strides over that number of '
+              '(inner-most) dimensions. You may want to reduce that number '
+              'to reduce memory or time usage, but it is advised to keep a '
+              'minimum of 2.'),
+             IntParam(4, lambda i: i > 0),
+             in_c_key=False)
+
 AddConfigVar('profiling.time_thunks',
              """Time individual thunks when profiling""",
              BoolParam(True),
@@ -1052,6 +1086,219 @@ AddConfigVar('cmodule.preload_cache',
              "If set to True, will preload the C module cache at import time",
              BoolParam(False, allow_override=False),
              in_c_key=False)
+
+
+def default_blas_ldflags():
+    global numpy
+    try:
+        if (hasattr(numpy.distutils, '__config__') and
+                numpy.distutils.__config__):
+            # If the old private interface is available use it as it
+            # don't print information to the user.
+            blas_info = numpy.distutils.__config__.blas_opt_info
+        else:
+            # We do this import only here, as in some setup, if we
+            # just import theano and exit, with the import at global
+            # scope, we get this error at exit: "Exception TypeError:
+            # "'NoneType' object is not callable" in <bound method
+            # Popen.__del__ of <subprocess.Popen object at 0x21359d0>>
+            # ignored"
+
+            # This happen with Python 2.7.3 |EPD 7.3-1 and numpy 1.8.1
+            import numpy.distutils.system_info  # noqa
+
+            # We need to catch warnings as in some cases NumPy print
+            # stuff that we don't want the user to see.
+            # I'm not able to remove all printed stuff
+            with warnings.catch_warnings(record=True):
+                numpy.distutils.system_info.system_info.verbosity = 0
+                blas_info = numpy.distutils.system_info.get_info("blas_opt")
+
+        # If we are in a EPD installation, mkl is available
+        if "EPD" in sys.version:
+            use_unix_epd = True
+            if sys.platform == 'win32':
+                return ' '.join(
+                    ['-L%s' % os.path.join(sys.prefix, "Scripts")] +
+                    # Why on Windows, the library used are not the
+                    # same as what is in
+                    # blas_info['libraries']?
+                    ['-l%s' % l for l in ["mk2_core", "mk2_intel_thread",
+                                          "mk2_rt"]])
+            elif sys.platform == 'darwin':
+                # The env variable is needed to link with mkl
+                new_path = os.path.join(sys.prefix, "lib")
+                v = os.getenv("DYLD_FALLBACK_LIBRARY_PATH", None)
+                if v is not None:
+                    # Explicit version could be replaced by a symbolic
+                    # link called 'Current' created by EPD installer
+                    # This will resolve symbolic links
+                    v = os.path.realpath(v)
+
+                # The python __import__ don't seam to take into account
+                # the new env variable "DYLD_FALLBACK_LIBRARY_PATH"
+                # when we set with os.environ['...'] = X or os.putenv()
+                # So we warn the user and tell him what todo.
+                if v is None or new_path not in v.split(":"):
+                    _logger.warning(
+                        "The environment variable "
+                        "'DYLD_FALLBACK_LIBRARY_PATH' does not contain "
+                        "the '%s' path in its value. This will make "
+                        "Theano use a slow version of BLAS. Update "
+                        "'DYLD_FALLBACK_LIBRARY_PATH' to contain the "
+                        "said value, this will disable this warning."
+                        % new_path)
+
+                    use_unix_epd = False
+            if use_unix_epd:
+                return ' '.join(
+                    ['-L%s' % os.path.join(sys.prefix, "lib")] +
+                    ['-l%s' % l for l in blas_info['libraries']])
+
+                # Canopy
+        if "Canopy" in sys.prefix:
+            subsub = 'lib'
+            if sys.platform == 'win32':
+                subsub = 'Scripts'
+            lib_path = os.path.join(sys.base_prefix, subsub)
+            if not os.path.exists(lib_path):
+                # Old logic to find the path. I don't think we still
+                # need it, but I don't have the time to test all
+                # installation configuration. So I keep this as a fall
+                # back in case the current expectation don't work.
+
+                # This old logic don't work when multiple version of
+                # Canopy is installed.
+                p = os.path.join(sys.base_prefix, "..", "..", "appdata")
+                assert os.path.exists(p), "Canopy changed the location of MKL"
+                lib_paths = os.listdir(p)
+                # Try to remove subdir that can't contain MKL
+                for sub in lib_paths:
+                    if not os.path.exists(os.path.join(p, sub, subsub)):
+                        lib_paths.remove(sub)
+                assert len(lib_paths) == 1, (
+                    "Unexpected case when looking for Canopy MKL libraries",
+                    p, lib_paths, [os.listdir(os.path.join(p, sub))
+                                   for sub in lib_paths])
+                lib_path = os.path.join(p, lib_paths[0], subsub)
+                assert os.path.exists(lib_path), "Canopy changed the location of MKL"
+
+            if sys.platform == "linux2" or sys.platform == "darwin":
+                return ' '.join(
+                    ['-L%s' % lib_path] +
+                    ['-l%s' % l for l in blas_info['libraries']])
+            elif sys.platform == 'win32':
+                return ' '.join(
+                    ['-L%s' % lib_path] +
+                    # Why on Windows, the library used are not the
+                    # same as what is in blas_info['libraries']?
+                    ['-l%s' % l for l in ["mk2_core", "mk2_intel_thread",
+                                          "mk2_rt"]])
+
+        # Anaconda
+        if "Anaconda" in sys.version and sys.platform == "win32":
+            # If the "mkl-service" conda package (available
+            # through Python package "mkl") is installed and
+            # importable, then the libraries (installed by conda
+            # package "mkl-rt") are actually available.  Using
+            # "conda install mkl" will install both, as well as
+            # optimized versions of numpy and scipy.
+            try:
+                import mkl  # noqa
+            except ImportError as e:
+                _logger.info('Conda mkl is not available: %s', e)
+            else:
+                # This branch is executed if no exception was raised
+                lib_path = os.path.join(sys.prefix, 'DLLs')
+                flags = ['-L%s' % lib_path]
+                flags += ['-l%s' % l for l in ["mkl_core",
+                                               "mkl_intel_thread",
+                                               "mkl_rt"]]
+                res = try_blas_flag(flags)
+                if res:
+                    return res
+
+        ret = (
+            # TODO: the Gemm op below should separate the
+            # -L and -l arguments into the two callbacks
+            # that CLinker uses for that stuff.  for now,
+            # we just pass the whole ldflags as the -l
+            # options part.
+            ['-L%s' % l for l in blas_info.get('library_dirs', [])] +
+            ['-l%s' % l for l in blas_info.get('libraries', [])] +
+            blas_info.get('extra_link_args', []))
+        # For some very strange reason, we need to specify -lm twice
+        # to get mkl to link correctly.  I have no idea why.
+        if any('mkl' in fl for fl in ret):
+            ret.extend(['-lm', '-lm'])
+        res = try_blas_flag(ret)
+        if res:
+            return res
+
+        # Some environment don't have the lib dir in LD_LIBRARY_PATH.
+        # So add it.
+        ret.extend(['-Wl,-rpath,' + l for l in
+                    blas_info.get('library_dirs', [])])
+        res = try_blas_flag(ret)
+        if res:
+            return res
+
+        # Try to add the anaconda lib directory to runtime loading of lib.
+        # This fix some case with Anaconda 2.3 on Linux.
+        # Newer Anaconda still have this problem but only have
+        # Continuum in sys.version.
+        if (("Anaconda" in sys.version or
+             "Continuum" in sys.version) and
+                "linux" in sys.platform):
+            lib_path = os.path.join(sys.prefix, 'lib')
+            ret.append('-Wl,-rpath,' + lib_path)
+            res = try_blas_flag(ret)
+            if res:
+                return res
+
+    except KeyError:
+        pass
+
+    # Even if we could not detect what was used for numpy, or if these
+    # libraries are not found, most Linux systems have a libblas.so
+    # readily available. We try to see if that's the case, rather
+    # than disable blas. To test it correctly, we must load a program.
+    # Otherwise, there could be problem in the LD_LIBRARY_PATH.
+    return try_blas_flag(['-lblas'])
+
+
+def try_blas_flag(flags):
+    from theano.gof.cmodule import GCC_compiler
+    test_code = textwrap.dedent("""\
+        extern "C" double ddot_(int*, double*, int*, double*, int*);
+        int main(int argc, char** argv)
+        {
+            int Nx = 5;
+            int Sx = 1;
+            double x[5] = {0, 1, 2, 3, 4};
+            double r = ddot_(&Nx, x, &Sx, x, &Sx);
+
+            if ((r - 30.) > 1e-6 || (r - 30.) < -1e-6)
+            {
+                return -1;
+            }
+            return 0;
+        }
+        """)
+    cflags = flags + ['-L' + d for d in theano.gof.cmodule.std_lib_dirs()]
+    res = GCC_compiler.try_compile_tmp(
+        test_code, tmp_prefix='try_blas_',
+        flags=cflags, try_run=True)
+    # res[0]: shows successful compilation
+    # res[1]: shows successful execution
+    if res and res[0] and res[1]:
+        return ' '.join(flags)
+    else:
+        return ""
+
+AddConfigVar('blas.ldflags',
+             "lib[s] to include for [Fortran] level-3 blas implementation",
+             StrParam(default_blas_ldflags))
 
 AddConfigVar(
     'metaopt.verbose',
@@ -1436,4 +1683,4 @@ AddConfigVar(
 
 # Check if there are remaining flags provided by the user through THEANO_FLAGS.
 for key in THEANO_FLAGS_DICT.keys():
-    warnings.warn('Theano does not recognise this flag: {}'.format(key))
+    warnings.warn('Theano does not recognise this flag: {0}'.format(key))

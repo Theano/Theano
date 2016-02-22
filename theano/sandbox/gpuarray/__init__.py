@@ -4,7 +4,7 @@ import sys
 import warnings
 
 import theano
-from theano.configparser import config, AddConfigVar, BoolParam
+from theano import config
 from theano.compile import optdb
 
 from theano.tensor.basic import register_transfer

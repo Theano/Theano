@@ -17,13 +17,12 @@ from theano.compat import izip
 import numpy
 
 import theano
-from theano import gof
+from theano import gof, config
 from theano.compat import get_unbound_function
-from six import string_types, iteritems, itervalues
+from six import iteritems, itervalues
 from six.moves import StringIO, xrange
 from theano.gof import (graph, utils, link, ops_with_inner_function)
 from theano.gof.link import raise_with_op
-from theano.configparser import (config, AddConfigVar, IntParam, StrParam)
 from theano.compile.function_module import (
     FunctionMaker, Function, infer_reuse_pattern,
     SymbolicInputKit, SymbolicOutput, Supervisor, std_fgraph)
@@ -31,39 +30,6 @@ from theano.compile.mode import Mode, register_mode
 from theano.compile.ops import OutputGuard
 
 __docformat__ = "restructuredtext en"
-
-
-def is_valid_check_preallocated_output_param(param):
-    if not isinstance(param, string_types):
-        return False
-    valid = ["initial", "previous", "c_contiguous", "f_contiguous",
-             "strided", "wrong_size", "ALL", ""]
-    for p in param.split(":"):
-        if p not in valid:
-            return False
-    return True
-
-AddConfigVar('DebugMode.check_preallocated_output',
-             ('Test thunks with pre-allocated memory as output storage. '
-              'This is a list of strings separated by ":". Valid values are: '
-              '"initial" (initial storage in storage map, happens with Scan),'
-              '"previous" (previously-returned memory), '
-              '"c_contiguous", "f_contiguous", '
-              '"strided" (positive and negative strides), '
-              '"wrong_size" (larger and smaller dimensions), and '
-              '"ALL" (all of the above).'),
-             StrParam('', is_valid=is_valid_check_preallocated_output_param),
-             in_c_key=False)
-
-AddConfigVar('DebugMode.check_preallocated_output_ndim',
-             ('When testing with "strided" preallocated output memory, '
-              'test all combinations of strides over that number of '
-              '(inner-most) dimensions. You may want to reduce that number '
-              'to reduce memory or time usage, but it is advised to keep a '
-              'minimum of 2.'),
-             IntParam(4, lambda i: i > 0),
-             in_c_key=False)
-
 _logger = logging.getLogger("theano.compile.debugmode")
 
 
