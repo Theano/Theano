@@ -188,6 +188,10 @@ class NVCC_compiler(Compiler):
         Otherwise nvcc never finish.
 
         """
+        # Remove empty string directory
+        include_dirs = [d for d in include_dirs if d]
+        lib_dirs = [d for d in lib_dirs if d]
+
         rpaths = list(rpaths)
 
         if sys.platform == "win32":
