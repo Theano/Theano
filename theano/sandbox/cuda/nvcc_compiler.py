@@ -188,6 +188,10 @@ class NVCC_compiler(Compiler):
         Otherwise nvcc never finish.
 
         """
+        # Remove empty string directory
+        include_dirs = [d for d in include_dirs if d]
+        lib_dirs = [d for d in lib_dirs if d]
+
         rpaths = list(rpaths)
 
         if sys.platform == "win32":
@@ -219,18 +223,20 @@ class NVCC_compiler(Compiler):
             libs.append('cudart')
 
         lib_dirs = lib_dirs + std_lib_dirs()
-        if any(ld == os.path.join(cuda_root, 'lib') or
-               ld == os.path.join(cuda_root, 'lib64') for ld in lib_dirs):
-            warnings.warn("You have the cuda library directory in your "
-                          "lib_dirs. This has been known to cause problems "
-                          "and should not be done.")
+
+        # config.dnn.include_path add this by default for cudnn in the
+        # new back-end. This should not be used in this back-end. So
+        # just remove them.
+        lib_dirs = [ld for ld in lib_dirs if
+                    not(ld == os.path.join(cuda_root, 'lib') or
+                        ld == os.path.join(cuda_root, 'lib64'))]
 
         if sys.platform != 'darwin':
             # sometimes, the linker cannot find -lpython so we need to tell it
             # explicitly where it is located
             # this returns somepath/lib/python2.x
-            python_lib = distutils.sysconfig.get_python_lib(plat_specific=1, \
-                            standard_lib=1)
+            python_lib = distutils.sysconfig.get_python_lib(plat_specific=1,
+                                                            standard_lib=1)
             python_lib = os.path.dirname(python_lib)
             if python_lib not in lib_dirs:
                 lib_dirs.append(python_lib)
