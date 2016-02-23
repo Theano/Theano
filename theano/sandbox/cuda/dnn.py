@@ -86,13 +86,10 @@ class DnnBase(GpuOp, COp):
         return ['cudnn.h', 'cudnn_helper.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__), config.dnn.include_path]
+        return [os.path.dirname(__file__)]
 
     def c_libraries(self):
         return ['cudnn']
-
-    def c_lib_dirs(self):
-        return [config.dnn.library_path]
 
 
 class GpuDnnConvDesc(GpuOp):
@@ -110,13 +107,10 @@ class GpuDnnConvDesc(GpuOp):
         return ['cudnn.h', 'cudnn_helper.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__), config.dnn.include_path]
+        return [os.path.dirname(__file__)]
 
     def c_libraries(self):
         return ['cudnn']
-
-    def c_lib_dirs(self):
-        return [config.dnn.library_path]
 
     def c_compiler(self):
         return NVCC_compiler
@@ -1262,13 +1256,10 @@ class GpuDnnPoolDesc(GpuOp):
         return ['cudnn.h', 'cudnn_helper.h']
 
     def c_header_dirs(self):
-        return [os.path.dirname(__file__), config.dnn.include_path]
+        return [os.path.dirname(__file__)]
 
     def c_libraries(self):
         return ['cudnn']
-
-    def c_lib_dirs(self):
-        return [config.dnn.library_path]
 
     def c_compiler(self):
         return NVCC_compiler
