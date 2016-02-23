@@ -354,14 +354,8 @@ class DnnVersion(GpuOp):
     def c_headers(self):
         return ['cudnn.h']
 
-    def c_header_dirs(self):
-        return [config.dnn.include_path]
-
     def c_libraries(self):
         return ['cudnn']
-
-    def c_lib_dirs(self):
-        return [config.dnn.library_path]
 
     def c_support_code(self):
         return """
