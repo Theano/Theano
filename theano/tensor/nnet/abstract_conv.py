@@ -627,6 +627,9 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
 
     def perform(self, node, inp, out_):
         img, topgrad, shape = inp
+        img = numpy.asarray(img)
+        topgrad = numpy.asarray(topgrad)
+
         o, = out_
 
         mode = self.border_mode
@@ -659,7 +662,7 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
             kern = kern.transpose(1, 0, 2, 3)[:, :, ::-1, ::-1]
         else:
             kern = kern.transpose(1, 0, 2, 3)
-        o[0] = kern
+        o[0] = node.outputs[0].type.filter(kern)
 
 
 
@@ -751,6 +754,8 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
 
     def perform(self, node, inp, out_):
         kern, topgrad, shape = inp
+        kern = numpy.asarray(kern)
+        topgrad = numpy.asarray(topgrad)
         o, = out_
 
         mode = self.border_mode
@@ -778,7 +783,7 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
             img = img[:, :, ::-1, ::-1]
         if pad_h > 0 or pad_w > 0:
             img = img[:, :, pad_h:img.shape[2]-pad_h, pad_w:img.shape[3]-pad_w]
-        o[0] = img
+        o[0] = node.outputs[0].type.filter(img)
 
     def grad(self, inp, grads):
         weights, top = inp[:2]
