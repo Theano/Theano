@@ -210,6 +210,24 @@ class TestConv2d(unittest.TestCase):
             utt.verify_grad(abstract_conv2d_gradinputs, [filters_val, output_val],
                             mode=mode, eps=1)
 
+
+    def test_abstract_conv(self):
+        if not dnn_available():
+            raise SkipTest(cuda.dnn.dnn_available.msg)
+        mode = 'DebugMode' 
+        # provide_shape is not used by the CuDNN impementation
+        provide_shape = False
+        for (i, f), s, b, flip in itertools.product(
+                zip(self.inputs_shapes, self.filters_shapes),
+                [(1, 1)], # subsamples
+                self.border_modes,
+                self.filter_flip):
+            o = self.get_output_shape(i, f, s, b)
+            self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
+                         verify_grad=True, mode=mode, device='cpu',
+                         provide_shape=provide_shape, border_mode=b,
+                         filter_flip=flip, target_op=conv.AbstractConv2d)
+
     def test_dnn_conv(self):
         if not dnn_available():
             raise SkipTest(cuda.dnn.dnn_available.msg)

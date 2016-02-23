@@ -465,10 +465,51 @@ class AbstractConv2d(BaseAbstractConv2d):
         return Apply(self, [img, kern], [output])
 
     def perform(self, node, inp, out_):
-        raise NotImplementedError(
-            'AbstractConv2d theano optimization failed. '
-            'Did you exclude both "conv_dnn" and "conv_gemm" from '
-            'the optimizer? Is cudnn available and does the GPU support it?')
+        image_data, filter_data = inp
+        N_image_shape = image_data.shape
+        N_filter_shape = filter_data.shape
+        s = 1.
+        orig_image_data = image_data
+        if border_mode is not 'full':
+            s = -1.
+        out_shape2d = numpy.array(N_image_shape[-2:]) +\
+                      s * numpy.array(N_filter_shape[-2:]) - s
+        out_shape2d = numpy.ceil(out_shape2d / numpy.array(subsample))
+        # avoid numpy deprecation
+        out_shape2d = out_shape2d.astype('int32')
+        out_shape = (N_image_shape[0], N_filter_shape[0]) + tuple(out_shape2d)
+        ref_output = out_[0]
+        ref_output = numpy.zeros(out_shape)
+
+        # loop over output feature maps
+        ref_output.fill(0)
+        if border_mode == 'full':
+            image_data2 = numpy.zeros((N_image_shape[0], N_image_shape[1],
+                                      N_image_shape[2] + 2 * N_filter_shape[2] - 2,
+                                      N_image_shape[3] + 2 * N_filter_shape[3] - 2))
+            image_data2[:, :, N_filter_shape[2] - 1:N_filter_shape[2] - 1 + N_image_shape[2],
+                              N_filter_shape[3] - 1:N_filter_shape[3] - 1 + N_image_shape[3]] = image_data
+            image_data = image_data2
+            N_image_shape = image_data.shape
+        for bb in range(N_image_shape[0]):
+            for nn in range(N_filter_shape[0]):
+                for im0 in range(N_image_shape[1]):
+                    filter2d = filter_data[nn, im0, :, :]
+                    image2d = image_data[bb, im0, :, :]
+                    for row in range(ref_output.shape[2]):
+                        irow = row * subsample[0]  # image row
+                        for col in range(ref_output.shape[3]):
+                            icol = col * subsample[1]  # image col
+                            ref_output[bb, nn, row, col] += (image2d[
+                                irow:irow + N_filter_shape[2],
+                                icol:icol + N_filter_shape[3]] * filter2d[::-1, ::-1]
+                            ).sum()
+
+
+        #raise NotImplementedError(
+        #    'AbstractConv2d theano optimization failed. '
+        #    'Did you exclude both "conv_dnn" and "conv_gemm" from '
+        #    'the optimizer? Is cudnn available and does the GPU support it?')
 
     def R_op(self, inputs, eval_points):
         rval = None
