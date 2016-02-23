@@ -507,6 +507,8 @@ class AbstractConv2d(BaseAbstractConv2d):
 
     def perform(self, node, inp, out_):
         img, kern = inp
+        img = numpy.asarray(img)
+        kern = numpy.asarray(kern)
         o, = out_
         mode = self.border_mode
 
@@ -527,7 +529,7 @@ class AbstractConv2d(BaseAbstractConv2d):
         conv_out = self.corr2d(img, kern, mode)
         conv_out =conv_out[:, :, ::self.subsample[0], ::self.subsample[1]]
 
-        o[0] = conv_out
+        o[0] = node.outputs[0].type.filter(conv_out)
 
 
     def R_op(self, inputs, eval_points):
