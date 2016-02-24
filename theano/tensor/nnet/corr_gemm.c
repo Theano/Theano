@@ -162,7 +162,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
                 "CorrMM shape inconsistency:\n"
                 "  bottom shape: %%d %%d %%d %%d\n"
                 "  weight shape: %%d %%d %%d %%d\n"
-                "  top shape: %%d %%d %%d %%d (expected %%d %%d %%d %%d)\n",
+                "  top shape: %%ld %%ld %%ld %%ld (expected %%d %%d %%d %%d)\n",
                 batchSize, nChannels, bottomHeight, bottomWidth,
                 nFilters, nChannels, kH, kW,
                 PyArray_DIMS(top)[0], PyArray_DIMS(top)[1],
@@ -182,7 +182,7 @@ PyArrayObject* corrMM(PyArrayObject* bottom,
     if (NULL == col)
     {
         PyErr_Format(PyExc_RuntimeError,
-                "CorrMM failed to allocate working memory of %%d x %%d\n",
+                "CorrMM failed to allocate working memory of %%ld x %%ld\n",
                 col_dim[0], col_dim[1]);
         return NULL;
     }
