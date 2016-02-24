@@ -140,10 +140,6 @@ side touches the right side of the input. The size of the output will be equal
 to the number of steps we need to make, plus one, because we need to account for
 the initial position of the kernel. The same applies for the y-axis.
 
-.. todo::
-
-    Add figure to illustrate the previous paragraph.
-
 From this, we conclude that the output size :math:`o` of the convolution is
 
 .. math::
@@ -248,10 +244,6 @@ the output will be equal to the number of steps we need to make, plus one,
 because we need to account for the initial position of the kernel. The same
 applies for the y-axis.
 
-.. todo::
-
-    Add figure to illustrate the previous paragraph.
-
 From this, we conclude that the output size :math:`o` of the strided convolution
 is
 
@@ -281,9 +273,25 @@ Here is what it looks like for :math:`i = 5`, :math:`k = 3`, :math:`s = 2` and
 
 .. figure:: conv_arithmetic_figures/padding_strides.gif
 
-.. todo::
+Sometimes numbers are mean
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    When numbers are not nice.
+You may have noticed that the floor function in the general case formula will
+produce the same output shape for multiple input shapes. More specifically, if
+:math:`i + 2p - k` is a multiple of :math:`s`, then any input size
+:math:`j = i + a, \quad a \in \{0,\ldots,s - 1\}` will produce the same output
+size. Note that this ambiguity applies only for :math:`s > 1`.
+
+As an example, here is what a convolution looks like for :math:`i = 6`,
+:math:`k = 3`, :math:`s = 2` and :math:`p = 1`:
+
+.. figure:: conv_arithmetic_figures/padding_strides_odd.gif
+
+Despite having different input sizes, this convolution and the previous
+convolution share the same output size.
+
+This may seem like a curiosity, but keep that in mind, as it will become
+important when we examine *transposed convolutions*.
 
 Transposed convolution: convolution turned on its head
 ======================================================
@@ -524,3 +532,28 @@ Here is what the transpose of a convolution looks like for :math:`i = 5`,
 :math:`k = 3`, :math:`s = 2` and :math:`p = 1`:
 
 .. figure:: conv_arithmetic_figures/padding_strides_transposed.gif
+
+Sometimes numbers are mean
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you recall, it was pointed out earlier that for :math:`s > 1` and given
+:math:`p` and :math:`k` there were multiple input sizes that lead to the same
+output size. Now is the time where we need to take it into account.
+
+Knowing the values for :math:`i'`, :math:`s`, :math:`k` and :math:`p` is not
+sufficient to define a transposed convolution (unless :math:`s = 1`), as the
+converse convolution over feature maps of sizes
+
+.. math::
+
+    i = s (i - 1) + a + k - 2p, \quad a \in \{0, \ldots, s - 1\}
+
+could have all produced a feature map of size :math:`i'`. This is why in
+addition to :math:`i'` we also have to specify the value of :math:`i`. If
+:math:`a > 0` in the formula above, then an additional border of :math:`a`
+zeros is added to the top and right sides of the input.
+
+Here is what the transpose of a convolution looks like for :math:`i = 6`,
+:math:`k = 3`, :math:`s = 2` and :math:`p = 1`:
+
+.. figure:: conv_arithmetic_figures/padding_strides_odd_transposed.gif
