@@ -10,6 +10,44 @@ stride, padding and its output shape can be confusing at times.
 This tutorial aims at providing an intuitive understanding of how the different
 convolution parameters influence the shape of the output it produces.
 
+Quick reference
+===============
+
+Convolution
+-----------
+
+If a convolution is specified by
+
+* input size :math:`i`,
+* kernel size :math:`k`,
+* stride :math:`s`,
+* padding size :math:`p`,
+
+then the output size is given by
+
+.. math::
+
+    o = \left\lfloor \frac{i + 2p - k}{s} \right\rfloor + 1.
+
+Transposed convolution
+----------------------
+
+If a transposed convolution is specified by
+
+* input size :math:`i`,
+* kernel size :math:`k`,
+* stride :math:`s`,
+* padding size :math:`p`,
+
+then the output size is given by
+
+.. math::
+
+    o = s (i - 1) + a + k - 2p, \quad a \in \{0, \ldots, s - 1\}
+
+where :math:`a` is a user-specified quantity used to distinguish between the
+:math:`s` different possible output sizes.
+
 Refresher: discrete convolution
 ===============================
 
