@@ -173,13 +173,13 @@ class GpuBatchedDot(GpuOp):
             }
 
             err = cublasSgemmBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
-                               y_dim2, x_dim1, x_dim2, &alpha,
-                               (const float **) gpu_y, y_dim2,
-                               (const float **) gpu_x, x_dim2, &beta,
-                               gpu_z, y_dim2, x_dim0);
+                                     y_dim2, x_dim1, x_dim2, &alpha,
+                                     (const float **) gpu_y, y_dim2,
+                                     (const float **) gpu_x, x_dim2, &beta,
+                                     gpu_z, y_dim2, x_dim0);
+            CNDA_THREAD_SYNC;
 
             CLEANUP();
-
             if (CUBLAS_STATUS_SUCCESS != err)
             {
                 PyErr_Format(PyExc_RuntimeError,
@@ -303,7 +303,6 @@ class GpuBatchedDot(GpuOp):
 
                 x += Sx[0]; y += Sy[0]; z += Sz[0];
             };
-            CNDA_THREAD_SYNC;
 
             for(int i = 0; i < N_STREAMS; i++) {
                 cudaStreamSynchronize(streams[i]);
