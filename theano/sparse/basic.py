@@ -615,7 +615,7 @@ class CSM(gof.Op):
     should be used to construct the sparse matrix.
 
     """
-
+    __props__ = ('format',)
     _hashval = None
     """
     Pre-computed hash value, defined by __init__.
@@ -634,15 +634,6 @@ class CSM(gof.Op):
         self.view_map = {0: [0]}
 
         self._hashval = (hash(type(self)) ^ hash(self.format))
-
-    def __eq__(self, other):
-        return (type(other) is CSM and other.format == self.format)
-
-    def __hash__(self):
-        return self._hashval
-
-    def __str__(self):
-        return self.__class__.__name__
 
     def make_node(self, data, indices, indptr, shape):
         data = tensor.as_tensor_variable(data)
