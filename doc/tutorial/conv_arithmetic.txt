@@ -1,0 +1,176 @@
+.. _conv_arithmetic:
+
+======================
+Convolution arithmetic
+======================
+
+The relationship between a convolution operation's input shape, kernel size,
+stride, padding and its output shape can be confusing at times.
+
+This tutorial aims at providing an intuitive understanding of how the different
+convolution parameters influence the shape of the output it produces.
+
+Refresher: discrete convolution
+===============================
+
+.. todo::
+
+    WRITEME
+
+Here are the factors determining the shape of a convolution's output size along
+a given axis (height or width):
+
+* **Input size**: length of the input axis.
+* **Kernel size**: length of the kernel.
+* **Stride**: distance between two consecutive positions of the kernel.
+* **(Zero-) padding size**: number of zero values concatenated at the beginning
+  and at the end of the axis.
+
+For the remainder of this tutorial, we will concentrate on convolutions mapping
+one input feature map to one output feature map. The relationships presented
+here also hold in the general case.
+
+Since height and width are treated intependently in computing a convolution's
+output shape, we will also restrict ourselves to square input, kernel, stride
+and padding shapes.
+
+Simplest case
+=============
+
+Let's start with the simplest case, where a kernel just slides across the input:
+
+* input size :math:`i`,
+* kernel size :math:`k`,
+* stride :math:`s = 1`,
+* padding size :math:`p = 0` (``border_mode='valid'`` in Theano).
+
+Here is what the convolution looks like for :math:`i = 4` and :math:`k = 3`:
+
+.. figure:: conv_arithmetic_figures/no_padding_no_strides.gif
+
+One way of defining the output size is by the number of possible placements of
+the kernel on the input: the left side of the kernel starts at the left side of
+the input, and we slide the kernel until its right side touches the right side
+of the input. The same applies for the up-down axis.
+
+In doing so, we are counting the number of positions where the bottom right
+corner of the kernel can be placed, which is equivalent to ignoring the upmost
+:math:`k - 1` rows and the leftmost :math:`k - 1` columns of the input.
+
+From this, we conclude that the output size :math:`o` of the convolution is
+
+.. math::
+
+    o = i - (k - 1).
+
+Zero padding
+============
+
+If we factor in zero padding, i.e.
+
+* input size :math:`i`,
+* kernel size :math:`k`,
+* stride :math:`s = 1`,
+* padding size :math:`p`,
+
+all we need to do is to apply the previous rule on the augmented input. Since
+padding with :math:`p` zeros adds :math:`2p` to the input size (:math:`p` on
+each side), the output size :math:`o` of the convolution becomes
+
+.. math::
+
+    o = i + 2p - (k - 1).
+
+Here is an example for :math:`i = 4`, :math:`k = 4` and :math:`p = 2`:
+
+.. figure:: conv_arithmetic_figures/arbitrary_padding_no_strides.gif
+
+Zero padding: special cases
+===========================
+
+There are two special cases of zero padding to take note of, because they're
+quite useful in practice.
+
+Same
+----
+
+If :math:`k` is odd (:math:`k = 2n + 1`) and
+:math:`p = \lfloor k / 2 \rfloor = n`, we have that
+
+.. math::
+
+    o = i + 2 \lfloor k / 2 \rfloor - (k - 1)
+      = i + 2n - 2n
+      = i.
+
+In other words, the output size is equal to the input size. This is sometimes
+referred to as ``'same'`` padding. Here is an example for :math:`i = 3`,
+:math:`k = 3` and :math:`p = 1`:
+
+.. figure:: conv_arithmetic_figures/same_padding_no_strides.gif
+
+Full
+----
+
+If :math:`p = k - 1`, we have that
+
+.. math::
+
+    o = i + 2(k - 1) - (k - 1)
+      = i + (k - 1).
+
+The input size is *increased* by :math:`k - 1` rather than decreased by
+:math:`k - 1`. This is sometimes referred to as ``'full'`` padding. Here is
+an example for :math:`i = 3`, :math:`k = 3` and :math:`p = 2`:
+
+.. figure:: conv_arithmetic_figures/full_padding_no_strides.gif
+
+Strides
+=======
+
+Up until now, we only considered convolutions where the kernel was translated by
+increments of :math:`s = 1`. Let's now examine what happens when :math:`s > 1`.
+To keep things simple, let's ignore padding, i.e.
+
+* input size :math:`i`,
+* kernel size :math:`k`,
+* stride :math:`s`,
+* padding size :math:`p = 0`.
+
+Here is what the strided convolution looks like for :math:`i = 5`, :math:`k = 3`
+and :math:`s = 2`:
+
+.. figure:: conv_arithmetic_figures/no_padding_strides.gif
+
+.. todo::
+
+    Explain the logic behind this formula
+
+From this, we conclude that the output size :math:`o` of the strided convolution
+is
+
+.. math::
+
+    o = \left\lfloor \frac{i - (k - s)}{s} \right\rfloor.
+
+Combining padding and strides
+=============================
+
+The full picture, i.e.
+
+* input size :math:`i`,
+* kernel size :math:`k`,
+* stride :math:`s`,
+* padding size :math:`p`,
+
+is obtained by applying the previous rule on the input augmented by the padding.
+In other words,
+
+.. math::
+
+    o = \left\lfloor \frac{i + 2p - (k - s)}{s} \right\rfloor.
+
+Here is what it looks like for :math:`i = 5`, :math:`k = 3`, :math:`s = 2` and
+:math:`p = 1`:
+
+.. figure:: conv_arithmetic_figures/padding_strides.gif
