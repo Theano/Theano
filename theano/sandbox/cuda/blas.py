@@ -16,7 +16,7 @@ from theano.tensor import as_tensor_variable
 
 
 class GpuBatchedDot(GpuOp):
-    __props__ = ()
+    __props__ = ("stream_threshold",)
 
     def __init__(self, stream_threshold=128):
         self.stream_threshold = stream_threshold
