@@ -63,7 +63,10 @@ class GpuBatchedDot(GpuOp):
         y_dim2 = CudaNdarray_HOST_DIMS(%(by)s)[2];
 
         // use parallel cublasSgemm calls rather than cublasSgemmBatched for large products
-        bool use_cublas_sgemm_batched = x_dim1 * x_dim2 * y_dim2 < %(threshold)s * %(threshold)s * %(threshold)s;
+        // (compute products in double because they can be large and we don't need to be exact)
+        bool use_cublas_sgemm_batched = (
+            double(x_dim1) * double(x_dim2) * double(y_dim2) <
+            double(%(threshold)s) * double(%(threshold)s) * double(%(threshold)s));
 
         if (x_dim0 != y_dim0)
         {
