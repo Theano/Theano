@@ -325,8 +325,8 @@ class GpuBatchedDot(GpuOp):
         x, y = inp
         gz, = grads
 
-        xgrad = batched_dot(gz, y.dimshuffle(0, 2, 1))
-        ygrad = batched_dot(x.dimshuffle(0, 2, 1), gz)
+        xgrad = GpuBatchedDot(stream_threshold=self.stream_threshold)(gz, y.dimshuffle(0, 2, 1))
+        ygrad = GpuBatchedDot(stream_threshold=self.stream_threshold)(x.dimshuffle(0, 2, 1), gz)
 
         rval = xgrad, ygrad
 
