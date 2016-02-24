@@ -290,7 +290,7 @@ class MultinomialWOReplacementFromUniform(MultinomialFromUniform):
         }
 
         { // NESTED SCOPE
-        
+
         const int nb_multi = PyArray_DIMS(%(pvals)s)[0];
         const int nb_outcomes = PyArray_DIMS(%(pvals)s)[1];
         const int n_samples = %(n)s;
