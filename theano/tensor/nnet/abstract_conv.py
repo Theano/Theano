@@ -458,7 +458,6 @@ class BaseAbstractConv2d(Op):
                 'invalid mode {}, which must be either '
                 '"valid" or "full"'.format(mode))
 
-
         out_shape = get_conv_output_shape(img.shape, kern.shape, mode, [1, 1])
         out = numpy.zeros(out_shape, dtype=img.dtype)
         val = _valfrommode(mode)
@@ -513,7 +512,7 @@ class AbstractConv2d(BaseAbstractConv2d):
         mode = self.border_mode
 
         if mode == "full":
-           mode = (kern.shape[2] - 1, kern.shape[3] - 1)
+            mode = (kern.shape[2] - 1, kern.shape[3] - 1)
         elif mode == "half":
             mode = (kern.shape[2] // 2, kern.shape[3] // 2)
         if isinstance(mode, tuple):
@@ -522,15 +521,14 @@ class AbstractConv2d(BaseAbstractConv2d):
             new_img = numpy.zeros((img.shape[0], img.shape[1],
                                    img.shape[2] + 2 * pad_h,
                                    img.shape[3] + 2 * pad_w), dtype=img.dtype)
-            new_img[:, :, pad_h:img.shape[2]+pad_h, pad_w:img.shape[3]+pad_w] = img
+            new_img[:, :, pad_h:img.shape[2] + pad_h, pad_w:img.shape[3] + pad_w] = img
             img = new_img
         if not self.filter_flip:
             kern = kern[:, :, ::-1, ::-1]
         conv_out = self.corr2d(img, kern, mode)
-        conv_out =conv_out[:, :, ::self.subsample[0], ::self.subsample[1]]
+        conv_out = conv_out[:, :, ::self.subsample[0], ::self.subsample[1]]
 
         o[0] = node.outputs[0].type.filter(conv_out)
-
 
     def R_op(self, inputs, eval_points):
         rval = None
@@ -634,18 +632,17 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
 
         mode = self.border_mode
         if mode == "full":
-           mode = (shape[0] - 1, shape[1] - 1)
+            mode = (shape[0] - 1, shape[1] - 1)
         elif mode == "half":
             mode = (shape[0] // 2, shape[1] // 2)
         if isinstance(mode, tuple):
             pad_h, pad_w = map(int, mode)
             mode = "valid"
             new_img = numpy.zeros((img.shape[0], img.shape[1],
-                                   img.shape[2] + 2 *pad_h,
+                                   img.shape[2] + 2 * pad_h,
                                    img.shape[3] + 2 * pad_w), dtype=img.dtype)
-            new_img[:, :, pad_h:img.shape[2]+pad_h, pad_w:img.shape[3]+pad_w] = img
+            new_img[:, :, pad_h:img.shape[2] + pad_h, pad_w:img.shape[3] + pad_w] = img
             img = new_img
-
 
         if self.subsample[0] > 1 or self.subsample[1] > 1:
             new_shape = (topgrad.shape[0], topgrad.shape[1],
@@ -663,8 +660,6 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
         else:
             kern = kern.transpose(1, 0, 2, 3)
         o[0] = node.outputs[0].type.filter(kern)
-
-
 
     def grad(self, inp, grads):
         bottom, top = inp[:2]
@@ -764,7 +759,7 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
         if mode == "full":
             pad_h, pad_w = (kern.shape[2] - 1, kern.shape[3] - 1)
         elif mode == "half":
-            pad_h, pad_w =  (kern.shape[2] // 2, kern.shape[3] // 2)
+            pad_h, pad_w = (kern.shape[2] // 2, kern.shape[3] // 2)
         elif isinstance(mode, tuple):
             pad_h, pad_w = map(int, self.border_mode)
         mode = "valid"
@@ -782,7 +777,7 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
         if self.filter_flip:
             img = img[:, :, ::-1, ::-1]
         if pad_h > 0 or pad_w > 0:
-            img = img[:, :, pad_h:img.shape[2]-pad_h, pad_w:img.shape[3]-pad_w]
+            img = img[:, :, pad_h:img.shape[2] - pad_h, pad_w:img.shape[3] - pad_w]
         o[0] = node.outputs[0].type.filter(img)
 
     def grad(self, inp, grads):
