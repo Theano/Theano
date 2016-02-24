@@ -46,34 +46,6 @@ class TestDnnConv2d(test_abstract_conv.BaseTestConv2d):
                            provide_shape=provide_shape, border_mode=b,
                            filter_flip=flip, target_op=GpuDnnConvGradI)
 
-
-class TestDebugMode(test_abstract_conv.BaseTestConv2d):
-    def setUp(self):
-        super(TestDnnConv2d, self).setUp()
-        # provide_shape is not used by the CuDNN impementation
-        self.provide_shape = [False]
-        self.shared = gpu_shared
-
-    def tcase(self, i, f, s, b, flip, provide_shape):
-        mode = "DebugMode"
-        o = self.get_output_shape(i, f, s, b)
-        self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
-                     verify_grad=True, mode=mode, mode_ref=mode_without_gpu,
-                     device='cpu', provide_shape=provide_shape, border_mode=b,
-                     filter_flip=flip, target_op=None)
-        self.run_gradweight(inputs_shape=i, filters_shape=f,
-                            output_shape=o, subsample=s,
-                            verify_grad=True, mode=mode, mode_ref=mode_without_gpu,
-                            device='cpu', provide_shape=provide_shape, border_mode=b,
-                            filter_flip=flip, target_op=None)
-        self.run_gradinput(inputs_shape=i, filters_shape=f,
-                           output_shape=o, subsample=s,
-                           verify_grad=True, mode=mode, mode_ref=mode_without_gpu,
-                           device='cpu', provide_shape=provide_shape, border_mode=b,
-                           filter_flip=flip, target_op=None)
-
-
-
 class TestCorrMMConv2d(test_abstract_conv.TestConv2d):
     def setUp(self):
         super(TestCorrMMConv2d, self).setUp()
