@@ -2445,7 +2445,6 @@ def confusion_matrix(actual, pred):
     [array([[0, 0, 1],
             [2, 1, 0],
             [0, 0, 1]]), array([ 0.,  1.,  2.])]
-
     """
     if actual.type.ndim != 1:
         raise ValueError('actual must be 1-d tensor variable')
