@@ -44,71 +44,57 @@ class GpuBatchedDot(GpuOp):
         fail = sub['fail']
         threshold = self.stream_threshold
         return ("""
-        float alpha = 1.0;
-        float beta = 0.0;
+        float alpha = 1.0, beta = 0.0;
 
-        int i, x_dim0, x_dim1, x_dim2, y_dim0, y_dim1, y_dim2;
-        int x_stride, y_stride, z_stride, total_size;
-        int out_dim[3];
-
-        cublasStatus_t err;
-        cudaError_t err1;
-
-        x_dim0 = CudaNdarray_HOST_DIMS(%(bx)s)[0];
-        x_dim1 = CudaNdarray_HOST_DIMS(%(bx)s)[1];
-        x_dim2 = CudaNdarray_HOST_DIMS(%(bx)s)[2];
-
-        y_dim0 = CudaNdarray_HOST_DIMS(%(by)s)[0];
-        y_dim1 = CudaNdarray_HOST_DIMS(%(by)s)[1];
-        y_dim2 = CudaNdarray_HOST_DIMS(%(by)s)[2];
+        const int* Nx = CudaNdarray_HOST_DIMS(%(bx)s);
+        const int* Ny = CudaNdarray_HOST_DIMS(%(by)s);
+        int Nz[3] = {0};
 
         // use parallel cublasSgemm calls rather than cublasSgemmBatched for large products
         // (compute products in double because they can be large and we don't need to be exact)
         bool use_cublas_sgemm_batched = (
-            double(x_dim1) * double(x_dim2) * double(y_dim2) <
+            double(Nx[1]) * double(Nx[2]) * double(Nx[2]) <
             double(%(threshold)s) * double(%(threshold)s) * double(%(threshold)s));
 
-        if (x_dim0 != y_dim0)
-        {
+        if (Nx[0] != Ny[0]) {
             PyErr_Format(PyExc_RuntimeError,
                     "The batchsizes (%%d, %%d) don't match.\\n",
-                    x_dim0, x_dim1);
+                    Nx[0], Ny[0]);
             %(fail)s;
         }
 
-        if (x_dim2 != y_dim1)
-        {
+        if (Nx[2] != Ny[1]) {
             PyErr_Format(PyExc_RuntimeError,
                     "Shape mismatch. (%%d, %%d, %%d) (%%d, %%d, %%d)\\n",
-                    x_dim0, x_dim1, x_dim2, y_dim0, y_dim1, y_dim2);
+                    Nx[0], Nx[1], Nx[2], Ny[0], Ny[1], Ny[2]);
             %(fail)s;
         }
 
-        out_dim[0] = x_dim0;
-        out_dim[1] = x_dim1;
-        out_dim[2] = y_dim2;
+        Nz[0] = Nx[0];
+        Nz[1] = Nx[1];
+        Nz[2] = Ny[2];
 
         if ( !(%(bz)s
                && %(bz)s->nd==3
                && CudaNdarray_is_c_contiguous(%(bz)s)
-               && CudaNdarray_HOST_DIMS(%(bz)s)[0]==out_dim[0]
-               && CudaNdarray_HOST_DIMS(%(bz)s)[1]==out_dim[1]
-               && CudaNdarray_HOST_DIMS(%(bz)s)[2]==out_dim[2]))
+               && CudaNdarray_HOST_DIMS(%(bz)s)[0] == Nz[0]
+               && CudaNdarray_HOST_DIMS(%(bz)s)[1] == Nz[1]
+               && CudaNdarray_HOST_DIMS(%(bz)s)[2] == Nz[2]))
         {
             Py_XDECREF(%(bz)s);
-            %(bz)s = (CudaNdarray*)CudaNdarray_NewDims(3,out_dim);
-            if (NULL == %(bz)s)
-            {
+            %(bz)s = (CudaNdarray*)CudaNdarray_NewDims(3, Nz);
+            if (NULL == %(bz)s) {
                 PyErr_Format(PyExc_RuntimeError,
                         "Failed to allocate output of %%d x %%d x %%d",
-                        out_dim[0], out_dim[1], out_dim[2]);
+                        Nz[0], Nz[1], Nz[2]);
                 %(fail)s;
             }
         }
 
-        if (x_dim0 == 0 || y_dim0 == 0 || x_dim1 == 0 || y_dim1 == 0 || x_dim2 == 0 || y_dim2 == 0)
+        if (Nx[0] == 0 || Nx[1] == 0 || Nx[2] == 0 ||
+            Ny[0] == 0 || Ny[1] == 0 || Ny[2] == 0)
         {
-            total_size = x_dim0 * x_dim1 * y_dim2 * sizeof(float);
+            const int total_size = Nz[0] * Nz[1] * Nz[2] * sizeof(float);
             if (cudaSuccess != cudaMemset(CudaNdarray_DEV_DATA(%(bz)s), 0, total_size))
             {
                 PyErr_Format(PyExc_RuntimeError,
@@ -118,7 +104,8 @@ class GpuBatchedDot(GpuOp):
         }
         else if (use_cublas_sgemm_batched)
         {
-            int ptr_array_size = 3 * CudaNdarray_HOST_DIMS(%(bx)s)[0] * sizeof(float *);
+            cublasStatus_t err;
+            cudaError_t err1;
 
             float **host_x = NULL;
             float **host_z = NULL;
@@ -128,9 +115,10 @@ class GpuBatchedDot(GpuOp):
             float **gpu_y = NULL;
             float **gpu_z = NULL;
 
-            x_stride = CudaNdarray_HOST_STRIDES(%(bx)s)[0];
-            y_stride = CudaNdarray_HOST_STRIDES(%(by)s)[0];
-            z_stride = CudaNdarray_HOST_STRIDES(%(bz)s)[0];
+            const int ptr_array_size = 3 * Nx[0] * sizeof(float *);
+            const int x_stride = CudaNdarray_HOST_STRIDES(%(bx)s)[0];
+            const int y_stride = CudaNdarray_HOST_STRIDES(%(by)s)[0];
+            const int z_stride = CudaNdarray_HOST_STRIDES(%(bz)s)[0];
 
             host_x = (float **) malloc (ptr_array_size);
 
@@ -142,14 +130,14 @@ class GpuBatchedDot(GpuOp):
                 %(fail)s;
             }
 
-            host_y = &host_x[x_dim0];
-            host_z = &host_y[x_dim0];
+            host_y = &host_x[Nx[0]];
+            host_z = &host_y[Nx[0]];
 
             host_x[0] = CudaNdarray_DEV_DATA(%(bx)s);
             host_y[0] = CudaNdarray_DEV_DATA(%(by)s);
             host_z[0] = CudaNdarray_DEV_DATA(%(bz)s);
 
-            for (i = 1; i < out_dim[0]; i++)
+            for (int i = 1; i < Nz[0]; i++)
             {
                 host_x[i] = host_x[i - 1] + x_stride;
                 host_y[i] = host_y[i - 1] + y_stride;
@@ -162,8 +150,8 @@ class GpuBatchedDot(GpuOp):
                 %(fail)s;
             }
 
-            gpu_y = &gpu_x[x_dim0];
-            gpu_z = &gpu_y[x_dim0];
+            gpu_y = &gpu_x[Nx[0]];
+            gpu_z = &gpu_y[Nx[0]];
 
             err1 = cudaMemcpy(gpu_x, host_x, ptr_array_size, cudaMemcpyHostToDevice);
 
@@ -176,10 +164,11 @@ class GpuBatchedDot(GpuOp):
             }
 
             err = cublasSgemmBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
-                                     y_dim2, x_dim1, x_dim2, &alpha,
-                                     (const float **) gpu_y, y_dim2,
-                                     (const float **) gpu_x, x_dim2, &beta,
-                                     gpu_z, y_dim2, x_dim0);
+                                     Ny[2], Nx[1], Nx[2], &alpha,
+                                     (const float **) gpu_y, Ny[2],
+                                     (const float **) gpu_x, Nx[2],
+                                     &beta, gpu_z, Ny[2], Nx[0]);
+
             CNDA_THREAD_SYNC;
 
             CLEANUP();
@@ -230,9 +219,9 @@ class GpuBatchedDot(GpuOp):
                 %(fail)s;
             }
 
-            const int *Nx = CudaNdarray_HOST_DIMS(%(bx)s), *Sx = CudaNdarray_HOST_STRIDES(%(bx)s);
-            const int *Ny = CudaNdarray_HOST_DIMS(%(by)s), *Sy = CudaNdarray_HOST_STRIDES(%(by)s);
-            const int *Nz = CudaNdarray_HOST_DIMS(%(bz)s), *Sz = CudaNdarray_HOST_STRIDES(%(bz)s);
+            const int* Sx = CudaNdarray_HOST_STRIDES(%(bx)s);
+            const int* Sy = CudaNdarray_HOST_STRIDES(%(by)s);
+            const int* Sz = CudaNdarray_HOST_STRIDES(%(bz)s);
 
             /* encode the stride structure of _x,_y,_z into a single integer. */
             int unit = 0;
@@ -261,7 +250,6 @@ class GpuBatchedDot(GpuOp):
             float* xend = x + CudaNdarray_SIZE(%(bx)s);
             float* yend = y + CudaNdarray_SIZE(%(by)s);
             float* zend = z + CudaNdarray_SIZE(%(bz)s);
-            float alpha = 1, beta = 0;
 
             #define N_STREAMS 32
             cudaStream_t streams[N_STREAMS];
@@ -307,7 +295,7 @@ class GpuBatchedDot(GpuOp):
                 x += Sx[0]; y += Sy[0]; z += Sz[0];
             };
 
-            for(int i = 0; i < N_STREAMS; i++) {
+            for (int i = 0; i < N_STREAMS; i++) {
                 cudaStreamSynchronize(streams[i]);
                 cudaStreamDestroy(streams[i]);
             }
