@@ -350,6 +350,7 @@ def _map_variables(replacer, graphs):
                 # constants as inputs to the fgraph, and not doing so
                 # is significantly faster.
                 if (not getattr(input_, "fgraph", None)
+                    and graph.owner
                     and not isinstance(input_, gof.graph.Constant)):
                     graph.owner.fgraph.add_input(input_)
         graphs_seen.add(new_graph)
