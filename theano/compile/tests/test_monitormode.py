@@ -75,7 +75,7 @@ def test_not_inplace():
 
     x = theano.tensor.vector('x')
     mode = theano.compile.MonitorMode(post_func=detect_nan)
-    #mode = mode.excluding('fusion', 'inplace')
+    # mode = mode.excluding('fusion', 'inplace')
     mode = mode.excluding('local_elemwise_fusion',
                           'inplace_elemwise_optimizer')
     o = theano.tensor.outer(x, x)
