@@ -32,7 +32,8 @@ from theano.tensor.nnet import (categorical_crossentropy,
                                 relu,
                                 h_softmax,
                                 elu,
-                                binary_crossentropy)
+                                binary_crossentropy,
+                                confusion_matrix)
 from theano.tensor import matrix, vector, lvector, scalar
 from theano.tensor.nnet.nnet import softsign
 from theano.tensor.tests.test_basic import (makeBroadcastTester, check_floatX,
@@ -1744,3 +1745,30 @@ SoftsignTester = makeBroadcastTester(
     good=_good_broadcast_unary_normal_float_no_complex,
     name='SoftsignTester',
 )
+
+
+def test_confusion_matrix():
+    # Defining numpy implementation of confusion matrix
+    def numpy_conf_mat(actual, pred):
+        order = numpy.union1d(actual, pred)
+        colA = numpy.matrix(actual).T
+        colP = numpy.matrix(pred).T
+        oneHotA = colA.__eq__(order).astype('int64')
+        oneHotP = colP.__eq__(order).astype('int64')
+        conf_mat = numpy.dot(oneHotA.T, oneHotP)
+        conf_mat = numpy.asarray(conf_mat)
+        return [conf_mat, order]
+
+    x = tensor.vector()
+    y = tensor.vector()
+    f = theano.function([x, y], confusion_matrix(x, y))
+    list_inputs = [[[0, 1, 2, 1, 0], [0, 0, 2, 1, 2]],
+                   [[2, 0, 2, 2, 0, 1], [0, 0, 2, 2, 0, 2]]]
+
+    for case in list_inputs:
+        a = numpy.asarray(case[0])
+        b = numpy.asarray(case[1])
+        out_exp = numpy_conf_mat(a, b)
+        outs = f(case[0], case[1])
+        for exp, out in zip(out_exp, outs):
+            utt.assert_allclose(exp, out)

@@ -2429,7 +2429,7 @@ def confusion_matrix(actual, pred):
        Actual  |
                |
 
-    order : Order of entries in terms of original data
+    order : 1-d array of order of entries in rows and columns
 
     Examples
     --------
@@ -2446,12 +2446,10 @@ def confusion_matrix(actual, pred):
             [2, 1, 0],
             [0, 0, 1]]), array([ 0.,  1.,  2.])]
     """
-    if actual.type.ndim != 1:
+    if actual.ndim != 1:
         raise ValueError('actual must be 1-d tensor variable')
-    if pred.type.ndim != 1:
+    if pred.ndim != 1:
         raise ValueError('pred must be 1-d tensor variable')
-    if actual.shape[0] != pred.shape[0]:
-        raise ValueError('actual and pred must have the same length')
 
     order = extra_ops.Unique(False, False, False)(tensor.concatenate([actual, pred]))
 
@@ -2462,5 +2460,4 @@ def confusion_matrix(actual, pred):
     oneHotP = tensor.eq(colP, order).astype('int64')
 
     conf_mat = tensor.dot(oneHotA.T, oneHotP)
-
     return [conf_mat, order]
