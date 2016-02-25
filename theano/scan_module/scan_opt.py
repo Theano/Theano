@@ -701,9 +701,9 @@ class PushOutScanOutput(gof.Optimizer):
 
         for nd in local_fgraph_topo:
             if (isinstance(nd.op, theano.tensor.elemwise.Elemwise) and
-                  nd.op.scalar_op == scalar.add and
-                  nd.out in args.inner_out_sit_sot and
-                  self.inner_sitsot_only_last_step_used(nd.out, args)):
+                    isinstance(nd.op.scalar_op, scalar.Add) and
+                    nd.out in args.inner_out_sit_sot and
+                    self.inner_sitsot_only_last_step_used(nd.out, args)):
 
                 # Ensure that one of the input to the add is the output of
                 # the add from a previous iteration of the inner function
