@@ -2364,7 +2364,7 @@ def elu(x, alpha=1):
 
 def confusion_matrix(actual, pred):
     """
-    Computes the confusion matrix of given vectors containing 
+    Computes the confusion matrix of given vectors containing
     actual observations and predicted observations.
 
     Parameters
@@ -2376,7 +2376,7 @@ def confusion_matrix(actual, pred):
     -------
     conf_mat : Confusion matrix of actual and predictions observations as shown below.
 
-               | Predicted 
+               | Predicted
     ___________|___________
        Actual  |
                |
@@ -2397,7 +2397,6 @@ def confusion_matrix(actual, pred):
     [array([[0, 0, 1],
             [2, 1, 0],
             [0, 0, 1]]), array([ 0.,  1.,  2.])]
-
     """
     if actual.type.ndim != 1:
         raise ValueError('actual must be 1-d tensor variable')
