@@ -20,6 +20,8 @@ from six.moves import xrange
 import theano
 from theano import gof
 from theano import scalar
+from theano.tensor import basic as tensor, subtensor, opt
+from theano.tensor import extra_ops
 from theano.gof.opt import copy_stack_trace
 from theano.tensor import basic as tensor, subtensor, opt, elemwise
 from theano.tensor.type import (values_eq_approx_remove_inf,
@@ -31,7 +33,6 @@ from theano.tensor.nnet.sigm import sigmoid, softplus
 from theano.gradient import DisconnectedType
 from theano.gradient import grad_not_implemented
 from theano.tensor.nnet.blocksparse import sparse_block_dot
-
 
 ############
 #
@@ -2409,15 +2410,15 @@ scalar_softsign = ScalarSoftsign(theano.scalar.upgrade_to_float,
 softsign = elemwise.Elemwise(scalar_softsign, name='softsign')
 
 
-class ConfusionMatrix(gof.Op):
+def confusion_matrix(actual, pred):
     """
     Computes the confusion matrix of given vectors containing
     actual observations and predicted observations.
 
     Parameters
     ----------
-    actual : 1-d tensor
-    pred : 1-d tensor
+    actual : 1-d tensor variable
+    pred : 1-d tensor variable
 
     Returns
     -------
@@ -2430,43 +2431,37 @@ class ConfusionMatrix(gof.Op):
 
     order : Order of entries in terms of original data
 
+    Examples
+    --------
+    >>> import theano
+    >>> from theano.tensor.nnet import confusion_matrix
+
+    >>> x = theano.tensor.vector()
+    >>> y = theano.tensor.vector()
+    >>> f = theano.function([x, y], confusion_matrix(x, y))
+    >>> a = [0, 1, 2, 1, 0]
+    >>> b = [0, 0, 2, 1, 2]
+    >>> print(f(a, b))
+    [array([[0, 0, 1],
+            [2, 1, 0],
+            [0, 0, 1]]), array([ 0.,  1.,  2.])]
+
     """
+    if actual.type.ndim != 1:
+        raise ValueError('actual must be 1-d tensor variable')
+    if pred.type.ndim != 1:
+        raise ValueError('pred must be 1-d tensor variable')
+    if actual.shape[0] != pred.shape[0]:
+        raise ValueError('actual and pred must have the same length')
 
-    __props__ = ()
+    order = extra_ops.Unique(False, False, False)(tensor.concatenate([actual, pred]))
 
-    def make_node(self, actual, pred):
-        actual = tensor.as_tensor_variable(actual)
-        pred = tensor.as_tensor_variable(pred)
+    colA = actual.dimshuffle(0, 'x')
+    colP = pred.dimshuffle(0, 'x')
 
-        if actual.type.ndim != 1:
-            raise ValueError('actual must be 1-d tensor')
+    oneHotA = tensor.eq(colA, order).astype('int64')
+    oneHotP = tensor.eq(colP, order).astype('int64')
 
-        if pred.type.ndim != 1:
-            raise ValueError('pred must be 1-d tensor')
+    conf_mat = tensor.dot(oneHotA.T, oneHotP)
 
-        conf = tensor.TensorType(dtype='int64', broadcastable=(False, False)).make_variable()
-        order = actual.type()
-
-        node = Apply(op=self, inputs=[actual, pred], outputs=[conf, order])
-        return node
-
-
-    def perform(self, node, input_storage, output_storage):
-        actual, pred = input_storage
-
-        if len(actual) != len(pred):
-            raise ValueError('Lengths of actual and pred must be the same.')
-
-        order = numpy.union1d(actual, pred)
-        order = order[~numpy.isnan(order)]
-
-        colA = numpy.matrix(actual).T
-        colP = numpy.matrix(pred).T
-
-        oneHotA = colA.__eq__(order).astype('int64')
-        oneHotP = colP.__eq__(order).astype('int64')
-
-        conf_mat = numpy.dot(oneHotA.T, oneHotP)
-
-        output_storage[0][0] = conf_mat
-        output_storage[1][0] = order
+    return [conf_mat, order]
