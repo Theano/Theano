@@ -694,7 +694,10 @@ class PushOutScanOutput(gof.Optimizer):
                          op.inputs, op.outputs, op.info)
 
         new_scan_node = None
-        local_fgraph_topo = theano.gof.graph.io_toposort(op.inputs, op.outputs)
+        clients = {}
+        local_fgraph_topo = theano.gof.graph.io_toposort(args.inner_inputs,
+                                                         args.inner_outputs,
+                                                         clients=clients)
 
         for nd in local_fgraph_topo:
             if (isinstance(nd.op, theano.tensor.Dot) and
@@ -808,7 +811,7 @@ class PushOutScanOutput(gof.Optimizer):
 
                     if (dot_input.owner is not None and
                         isinstance(dot_input.owner.op, theano.tensor.Dot) and
-                        len(dot_input.clients) == 1 and
+                        len(clients[dot_input]) == 1 and
                         dot_input.owner.inputs[0].ndim == 2 and
                         dot_input.owner.inputs[1].ndim == 2 and
                         self.get_outer_ndim(dot_input.owner.inputs[0], args) == 3 and
