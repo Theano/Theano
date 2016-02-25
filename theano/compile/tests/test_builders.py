@@ -108,7 +108,7 @@ class T_OpFromGraph(unittest_tools.InferShapeTester):
         fn = function([x, y, z], f)
         assert numpy.allclose(15.0 + s.get_value(),
                               fn(xv, yv, zv))
- 
+
     def test_connection_pattern(self):
         # Basic case
         x, y, z = T.matrices('xyz')

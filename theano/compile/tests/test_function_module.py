@@ -351,10 +351,10 @@ class T_function(unittest.TestCase):
         A special testcase for logistic_sgd.py in Deep Learning Tutorial
         This test assert that SharedVariable in different function have same storage
         """
-        train_x = theano.shared(value=numpy.random.rand(10, 10).astype(config.floatX))
+        # train_x = theano.shared(value=numpy.random.rand(10, 10).astype(config.floatX))
         test_x = theano.shared(value=numpy.random.rand(10, 10).astype(config.floatX))
 
-        train_y = theano.shared(value=numpy.random.rand(10, 1).astype(config.floatX))
+        # train_y = theano.shared(value=numpy.random.rand(10, 1).astype(config.floatX))
         test_y = theano.shared(value=numpy.random.rand(10, 1).astype(config.floatX))
 
         i = T.iscalar('index')
@@ -363,9 +363,9 @@ class T_function(unittest.TestCase):
         # this formular has no sense but for a test
         out = (T.sum(x) - y) ** 2
         out2 = (T.sum(x) + y) ** 2
-        train = theano.function([i], out,
-                                givens={x: train_x[i], y: train_y[i]},
-                                updates={train_x: train_x + 0.1})
+        # train = theano.function([i], out,
+        #                        givens={x: train_x[i], y: train_y[i]},
+        #                        updates={train_x: train_x + 0.1})
 
         test_def = theano.function([i], out, givens={x: test_x[i], y: test_y[i]})
         test_def2 = theano.function([i], out2, givens={x: test_x[i], y: test_y[i]})
