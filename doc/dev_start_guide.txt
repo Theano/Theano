@@ -4,6 +4,19 @@
 Developer Start Guide
 =====================
 
+Contributing
+============
+
+You want to contribute to Theano? That is great! This page explain our
+workflow and some ressource for doing so.
+
+Looking for an idea for a first contribution? Check `github issue
+<https://github.com/Theano/Theano/issues?q=is%3Aopen+is%3Aissue+label%3A%22Easy+fix%22>`
+with a label ``easy fix``. They are good starter. It is recommanded
+that you write on the issue you want to work on it. This help make
+sure it is up to date and see if nobody else is working on it. Also,
+we can sometimes provides more information about it.
+
 Resources
 =========
 
