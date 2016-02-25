@@ -44,6 +44,31 @@ class TestMapVariables(unittest.TestCase):
         assert v.owner.inputs[0].tag.identity == a.tag.identity
         assert v.owner.inputs[1].tag.identity == c.tag.identity
 
+    def test_scan_introduce_new_shared(self):
+        x = tensor.vector('x')
+        z = theano.shared(
+            numpy.array(1., dtype=theano.config.floatX),
+            name="z")
+        def step(x):
+            x.tag.replacement = z + x
+            return x
+        s, _ = theano.scan(step, sequences=[x], outputs_info=None)
+        s2, = map_variables(self.replacer, [s])
+        f = theano.function([x], [s, s2])
+        rval = f(numpy.array([1, 2, 3], dtype=numpy.float32))
+        assert numpy.array_equal(rval, [[1, 2, 3], [2, 3, 4]])
+
+    def test_scan_replace_inner_input(self):
+        x = tensor.vector('x')
+        def step(x):
+            x.tag.replacement = x + 1
+            return x
+        s, _ = theano.scan(step, sequences=[x], outputs_info=None)
+        s2, = map_variables(self.replacer, [s])
+        f = theano.function([x], [s, s2])
+        rval = f(numpy.array([1, 2, 3], dtype=numpy.float32))
+        assert numpy.array_equal(rval, [[1, 2, 3], [2, 3, 4]])
+
     def test_leaf(self):
         a = tensor.scalar("a")
         b = tensor.scalar("b")
