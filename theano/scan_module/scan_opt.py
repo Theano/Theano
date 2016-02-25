@@ -56,7 +56,7 @@ from sys import maxsize
 import numpy
 
 import theano
-from theano import tensor
+from theano import tensor, scalar
 from theano.tensor import opt, get_scalar_constant_value, Alloc, AllocEmpty
 from theano import gof
 from theano.compat import OrderedDict
@@ -782,8 +782,7 @@ class PushOutScanOutput(gof.Optimizer):
                     break
 
             elif (isinstance(nd.op, theano.tensor.elemwise.Elemwise) and
-                  isinstance(nd.op.nfunc, numpy.ufunc) and
-                  nd.op.nfunc.__name__ == 'add' and
+                  nd.op.scalar_op == scalar.add and
                   nd.out in args.inner_out_sit_sot and
                   self.inner_sitsot_only_last_step_used(nd.out, args)):
 
