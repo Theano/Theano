@@ -929,7 +929,7 @@ def general_toposort(r_out, deps, debug_print=False,
     assert isinstance(r_out, (tuple, list, deque))
 
     reachable, _clients = stack_search(deque(r_out), compute_deps_cache,
-                                      'dfs', True)
+                                       'dfs', True)
     if clients is not None:
         clients.update(_clients)
     sources = deque([r for r in reachable if not deps_cache.get(r, None)])
