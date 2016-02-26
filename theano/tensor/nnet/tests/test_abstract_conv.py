@@ -364,30 +364,6 @@ class TestCpuConv2d(BaseTestConv2d):
                               filter_flip=flip)
 
 
-class TestDebugModeConv2d(BaseTestConv2d):
-    def setUp(self):
-        super(TestDebugModeConv2d, self).setUp()
-        self.provide_shape = [False]
-
-    def tcase(self, i, f, s, b, flip, provide_shape):
-        mode = "DebugMode"
-        o = self.get_output_shape(i, f, s, b)
-        self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
-                     verify_grad=True, mode=mode,
-                     provide_shape=provide_shape, border_mode=b,
-                     filter_flip=flip, target_op=None)
-        self.run_gradweight(inputs_shape=i, filters_shape=f,
-                            output_shape=o, subsample=s,
-                            verify_grad=True, mode=mode,
-                            provide_shape=provide_shape, border_mode=b,
-                            filter_flip=flip, target_op=None)
-        self.run_gradinput(inputs_shape=i, filters_shape=f,
-                           output_shape=o, subsample=s,
-                           verify_grad=True, mode=mode,
-                           provide_shape=provide_shape, border_mode=b,
-                           filter_flip=flip, target_op=None)
-
-
 class TestConvTypes(unittest.TestCase):
     def setUp(self):
         self.input = tensor.ftensor4()
