@@ -694,8 +694,17 @@ class PushOutScanOutput(gof.Optimizer):
                          op.inputs, op.outputs, op.info)
 
         new_scan_node = None
-        local_fgraph_topo = theano.gof.graph.io_toposort(op.inputs, op.outputs)
 
+        # We need to iterate on the inner nodes.
+        # As we compare the current node again with what is in scan_args and
+        # that scan_args clone the graph, we need to iterate on that copy.
+        # As we also use .clients attribute, we need to put that copy
+        # in a FunctionGraph (that isn't cloned again).
+        local_fgraph = gof.FunctionGraph(args.inner_inputs,
+                                         args.inner_outputs,
+                                         clone=False)
+
+        local_fgraph_topo = local_fgraph.toposort()
         for nd in local_fgraph_topo:
             if (isinstance(nd.op, theano.tensor.Dot) and
                     nd.out in args.inner_out_nit_sot):
@@ -857,6 +866,10 @@ class PushOutScanOutput(gof.Optimizer):
                             reason="scanOp_pushout_output")
 
                         break
+        # It seem that scan_args don't clone correctly all Constant...
+        # At least, we get problems if we don't disown the
+        # FunctionGraph in some cases. see gh-3663
+        local_fgraph.disown()
         return new_scan_node
 
     def inner_sitsot_only_last_step_used(self, var, scan_args):
