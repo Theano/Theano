@@ -432,6 +432,9 @@ def _map_variables_inner(replacer, inner_inputs, outer_inputs,
     def inner_replacer(graph):
         new_graph = replacer(graph)
 
+        if graph is new_graph:
+            return new_graph
+
         other_inputs = []
         constants = []
         for input_ in gof.graph.inputs([new_graph]):
