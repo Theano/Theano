@@ -1117,7 +1117,7 @@ class ShapeFeature(object):
                         # But we never timed this speed optimization!
                         self.lscalar_one.equals(shape_vars[i]) or
                         self.lscalar_one.equals(
-                            T.extract_constant(shape_vars[i], only_process_constants=True))
+                            T.extract_constant(shape_vars[i]))
                         for i in xrange(r.ndim)])
             self.shape_of[r] = tuple(shape_vars)
             for sv in shape_vars:
