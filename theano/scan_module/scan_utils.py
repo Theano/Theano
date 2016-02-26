@@ -388,6 +388,13 @@ def _map_variables(replacer, graphs):
                                      **node.op.kwargs)
             # make a new node to replace the old one
             new_node = new_op.make_node(*new_outer_inputs)
+
+            # new_outer_inputs may contain new inputs; inform fg
+            for input_ in gof.graph.inputs(new_outer_inputs):
+                if (not getattr(input_, "fgraph", None)
+                    and not isinstance(input_, gof.graph.Constant)):
+                    fg.add_input(input_)
+
             nodes_seen.add(new_node)
             return new_node.outputs
         else:
