@@ -49,9 +49,11 @@ class TestMapVariables(unittest.TestCase):
         z = theano.shared(
             numpy.array(1., dtype=theano.config.floatX),
             name="z")
+
         def step(x):
             x.tag.replacement = z + x
             return x
+
         s, _ = theano.scan(step, sequences=[x], outputs_info=None)
         s2, = map_variables(self.replacer, [s])
         f = theano.function([x], [s, s2])
@@ -60,9 +62,11 @@ class TestMapVariables(unittest.TestCase):
 
     def test_scan_replace_inner_input(self):
         x = tensor.vector('x')
+
         def step(x):
             x.tag.replacement = x + 1
             return x
+
         s, _ = theano.scan(step, sequences=[x], outputs_info=None)
         s2, = map_variables(self.replacer, [s])
         f = theano.function([x], [s, s2])
