@@ -1,20 +1,14 @@
 .. _NEWS:
+up to #4129
 
 ===================
 DRAFT Release Notes
 ===================
 
-git log -p rel-0.6rc3... |grep Merge|grep '#' |cut -f 8 -d ' ' | replace "#" "* https://github.com/Theano/Theano/pull/"
+git log -p rel-0.7... |grep Merge|grep '#[0123456789]' |cut -f 8 -d ' ' | sed 's\#\* https://github.com/Theano/Theano/pull/\'
 
-git shortlog -sn rel-0.6rc3..
+git shortlog -sn rel-0.7..
 
-Done up to PR 1608
-* https://github.com/Theano/Theano/pull/1608
-
-* https://github.com/Theano/Theano/pull/1591 # need info
-
-Interface change:
- - theano.tensor.signal.conv2d(2d,2d) output 2d answer. (Frederic B., reported by Alexander Izvorski)
 
 
 Theano Development version
@@ -25,29 +19,116 @@ NEWS.txt:
 We recommend that everybody update to this version.
 
 Highlights:
+- Multi-GPU for data parallism via Platoon (https://github.com/mila-udem/platoon/)
+- cnmem
+- optimizer=fast_compile move computation to the GPU.
+- BreakpointOp
+- Faster optimization
+- Better lock
+- d3viz
+- CuDNN
+- Many Scan update (execution speed up, ...)
+- Python 2 and 3 support with the same code base
+- COp
+- __props__
+- Better convolution on CPU and GPU. (CorrMM, cudnn, 3d conv, more parameter)
+- New GPU back-end
+   - Float16 new back-end (need cuda 7.5)
+   - Multi dtypes
+   - Multi-GPU support in the same process
+
+
 
 
 Committers for this dev version only:
+TODO FILL
 
-
-A total of X people contributed to this release.
-People with a "+" by their names contributed a patch for the first time.
+A total of 143(TODO UPDATE JUSTE BEFORE RC1) people contributed to this release.
+TODO!!!!!!!People with a "+" by their names contributed a patch for the first time.
 
 Installation:
+- Better blas detection
+- Fix to more recent software and OS.
+- Support Anaconda on Windows
 
 Bug fixes:
+- GpuJoin support neg axis
+- Fix GpuCumsum for negative axis
 
 Interface Deprecation (a warning is printed):
+- Deprecate Param class.
 
 Interface Changes:
+- Rename DownsampleFactorMax to Pool.
+- Stack now use numpy interface
+- optimizer=fast_compile move to the GPU
+- Raise the user stack trace more frequently.
+- Change dev version numbering to follow the PEP 404
+
 
 New Interface (reuses existing functionality):
+- theano.tensor.nnet.relu
+- theano.tensor.nnet.elu
+- BatchNormalization.
+- MaxAndArgmax support axis=None
+- Add theano.tensor.compress (equivalent of numpy.compress)
+- theano.tensor.signal.downsamples.max_pool_2d_same_size
+
+New features
+- Unique (Iban Harlouchet)
+- map_variables
+- erfcx
+- mgrid, ogrid
+- allclose
+- BreakpointOp
+- Make bincount work on GPU
+- SolveOp on GPU
+- Optinal optimization remove_all_assert
+- AllocEmpty
+- LogSoftmax, for stability optimization when the crossentropy optimization don't apply.
+- theano.tensor.repeat work on GPU
+- BatchedDot on the GPU and faster on the CPU.
+- Faster batched_tensordot and make it work on GPU.
+- SoftmaxGrad grad
+- 3d conv via CorrMM on the GPU
+- CPU Max Pool support of padding and strides!=windows size
+- Make stability optimization was disabled in a corner cases
+- theano.function() now accept a dict for the outputs. When doing this, the function will return a dict. Helpful to keep trac of which output is what.
+- Warn Theano flags defined by user, but don't exist.
+- theano.tensor.tile update (accept symbolic reps, work on GPU)
+- scan how have a strict flag. If set to True, this make scan building faster and could make execution faster.
+- theano.tensor.signal.conv2d(2d,2d) output 2d answer
+
 
 Speed-ups:
+- Faster SetSubtensor on the GPU.
+- Support more reduction pattern on the GPU.
+- More graph optimization
+- Faster graph optimization
+- GpuCrossentropySoftmaxArgmax1HotWithBias
+
 
 Crash/no return fixes:
+- Fix crash in the assert op grad
+- Fix curand crash on Mac
+- Multiple Fix scan crashes
+- Finish to update all Op.grad() implementation to the new interface
 
 Others:
+- Support ARM processor.
+- Better tests
+- Code clean up.
+- Doc updates
+- doctest and sphinx test in travis
+- More tests tagged as slow
+- Better same_shape implementation
+- More op with c code to lower overhead
+- Custom pickler for SharedVariable theano.misc.pkl_utils.{dump,load}
+- function_dump to help us reproduce user error during compilation
+- assert_no_cpu_op
+- pep8, flake8
+- Better error message
+- On not default mode, redure the number of allocation  when allow_gc=False
 
 Todo for the final release:
  * update the NEWS.txt file.
