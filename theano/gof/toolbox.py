@@ -291,6 +291,7 @@ class ReplaceValidate(History, Validator):
     def on_detach(self, fgraph):
         History.on_detach(self, fgraph)
         Validator.on_detach(self, fgraph)
+        del self._nodes_removed
         del fgraph.replace_validate
         del fgraph.replace_all_validate
         del fgraph.replace_all_validate_remove
