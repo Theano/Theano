@@ -988,7 +988,7 @@ class ShapeFeature(object):
             # Do not call make_node for test_value
             s = Shape_i(i)(r)
             try:
-                s = get_scalar_constant_value(s, only_process_constants=True)
+                s = get_scalar_constant_value(s)
             except NotScalarConstantError:
                 pass
             return s
@@ -1058,7 +1058,7 @@ class ShapeFeature(object):
             assert len(idx) == 1
             idx = idx[0]
             try:
-                i = get_scalar_constant_value(idx, only_process_constants=True)
+                i = get_scalar_constant_value(idx)
             except NotScalarConstantError:
                 pass
             else:
@@ -1219,8 +1219,7 @@ class ShapeFeature(object):
                     # The two following comparison are a speed optimization
                     # But we never timed this speed optimization!
                     self.lscalar_one.equals(new_shape[idx]) or
-                    self.lscalar_one.equals(T.extract_constant(new_shape[idx],
-                                            only_process_constants=True))
+                    self.lscalar_one.equals(T.extract_constant(new_shape[idx]))
                     for idx in xrange(r.ndim)])
         self.shape_of[r] = tuple(new_shape)
         for sv in self.shape_of[r]:
@@ -6036,7 +6035,7 @@ def constant_folding(node):
     required = thunk()
     assert not required  # a node whose inputs are all provided should always
     # return successfully
-
+    register_uncanonicalize(topo_constant_folding, 'fast_compile', final_opt=True)
     rval = []
     for output in node.outputs:
         assert compute_map[output][0], (output, storage_map[output][0])
