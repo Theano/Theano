@@ -216,7 +216,7 @@ class MultinomialWOReplacementFromUniform(MultinomialFromUniform):
         return Apply(self, [pvals, unis, as_scalar(n)], [out])
 
     def c_code_cache_version(self):
-        return None
+        return (1,)
 
     def c_code(self, node, name, ins, outs, sub):
         (pvals, unis, n) = ins
