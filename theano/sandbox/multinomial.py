@@ -314,9 +314,9 @@ class MultinomialWOReplacementFromUniform(MultinomialFromUniform):
                         *z_nc = m;
                         // renormalize the nth row of pvals, reuse (cummul-*pvals_nm) to initialize the sum
                         dtype_%(pvals)s sum = cummul - *pvals_nm;
-                        dtype_%(pvals)s* pvals_n = (dtype_%(pvals)s*)PyArray_GETPTR2(pvals_copy, n, m+1);
+                        dtype_%(pvals)s* pvals_n = (dtype_%(pvals)s*)PyArray_GETPTR2(pvals_copy, n, m);
                         *pvals_nm = 0.;
-                        for (int k = m+1; k < nb_outcomes; ++k)
+                        for (int k = m; k < nb_outcomes; ++k)
                         {
                             sum = sum + *pvals_n;
                             pvals_n++;
