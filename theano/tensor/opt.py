@@ -1220,7 +1220,7 @@ class ShapeFeature(object):
                     # But we never timed this speed optimization!
                     self.lscalar_one.equals(new_shape[idx]) or
                     self.lscalar_one.equals(T.extract_constant(new_shape[idx],
-                        only_process_constants=True))
+                                            only_process_constants=True))
                     for idx in xrange(r.ndim)])
         self.shape_of[r] = tuple(new_shape)
         for sv in self.shape_of[r]:
@@ -2393,7 +2393,7 @@ def local_useless_inc_subtensor(node):
     idx_cst = get_idx_list(node.inputs[1:], node.op.idx_list)
     if all(isinstance(e, slice) and e.start is None and
            e.stop is None and (e.step is None or T.extract_constant(e.step,
-               only_process_constants=True) == -1)
+                               only_process_constants=True) == -1)
            for e in idx_cst):
         # IncSubtensor broadcast node.inputs[1] on node.inputs[0]
         # based on run time shapes, so we must check they are the same.
@@ -2464,7 +2464,7 @@ def local_useless_slice(node):
             # check if slice and then check slice indices
             if (isinstance(s, slice) and s.start is None and s.stop is None and
                     (s.step is None or T.extract_constant(s.step,
-                        only_process_constants=True) == 1)):
+                                                          only_process_constants=True) == 1)):
                 last_slice -= 1
             else:
                 break
@@ -2580,7 +2580,7 @@ def local_useless_subtensor(node):
         elif idx.owner is not None and isinstance(idx.owner.op, T.ARange):
             try:
                 start, stop, step = map(lambda x: get_scalar_constant_value(x,
-                                                    only_process_constants=True),
+                                                                            only_process_constants=True),
                                         idx.owner.inputs)
             except NotScalarConstantError:
                 return False
@@ -3577,7 +3577,7 @@ def local_join_empty(node):
     new_inputs = []
     try:
         join_idx = get_scalar_constant_value(node.inputs[0],
-                only_process_constants=True)
+                                             only_process_constants=True)
     except NotScalarConstantError:
         return
     for idx in xrange(1, len(node.inputs)):
@@ -3737,7 +3737,7 @@ def local_useless_switch(node):
     if (isinstance(node.op, T.Elemwise) and
             isinstance(node.op.scalar_op, scalar.basic.Switch)):
         cond = T.extract_constant(node.inputs[0], elemwise=False,
-                only_process_constants=True)
+                                  only_process_constants=True)
         if type(cond) is numpy.ndarray and cond.ndim == 0:
             if cond == 0:
                 correct_out = node.inputs[2]
@@ -3900,7 +3900,7 @@ def local_div_switch_sink(node):
         switch = node.inputs[0].owner
         try:
             if get_scalar_constant_value(switch.inputs[1],
-                    only_process_constants=True) == 0.:
+                                         only_process_constants=True) == 0.:
                 fdiv = op(switch.inputs[2], node.inputs[1])
                 # Copy over stacktrace for elementwise division op
                 # from previous elementwise multiplication op.
@@ -3923,7 +3923,7 @@ def local_div_switch_sink(node):
             pass
         try:
             if get_scalar_constant_value(switch.inputs[2],
-                    only_process_constants=True) == 0.:
+                                         only_process_constants=True) == 0.:
                 fdiv = op(switch.inputs[1], node.inputs[1])
                 # Copy over stacktrace for elementwise division op
                 # from previous elementwise multiplication op.
@@ -3989,7 +3989,7 @@ def local_useless_tile(node):
     if isinstance(node.op, T.Tile):
         try:
             a = T.get_scalar_constant_value(node.inputs[1],
-                    only_process_constants=True)
+                                            only_process_constants=True)
             if a == 1:
                 try:
                     l = T.get_vector_length(node.inputs[1])
@@ -4173,7 +4173,7 @@ if 0:
             def tmp(thing):
                 try:
                     return T.get_scalar_constant_value(thing,
-                            only_process_constants=True)
+                                                       only_process_constants=True)
                 except (TypeError, ValueError) as e:
                     print(e, thing.owner.inputs[0])
                     return None
@@ -5221,7 +5221,7 @@ def local_reduce_join(node):
         # We add the new check late to don't add extra warning.
         try:
             join_axis = get_scalar_constant_value(join.inputs[0],
-                    only_process_constants=True)
+                                                  only_process_constants=True)
 
             if join_axis != reduce_axis[0]:
                 return
@@ -5305,7 +5305,7 @@ def local_opt_alloc(node):
                     node.op.axis == tuple(range(input.ndim))):
                 try:
                     val = get_scalar_constant_value(input,
-                            only_process_constants=True)
+                                                    only_process_constants=True)
                     assert val.size == 1
                     # check which type of op
                     casted = T.mul(*shapes).astype(str(input.dtype))
@@ -5320,7 +5320,7 @@ def local_opt_alloc(node):
             else:
                 try:
                     val = get_scalar_constant_value(input,
-                            only_process_constants=True)
+                                                    only_process_constants=True)
                     assert val.size == 1
                     val = val.reshape(1)[0]
                     to_prod = [shapes[i] for i in xrange(len(shapes))
@@ -5765,7 +5765,7 @@ def local_abs_merge(node):
             elif isinstance(i, Constant):
                 try:
                     const = get_scalar_constant_value(i,
-                            only_process_constants=True)
+                                                      only_process_constants=True)
                 except NotScalarConstantError:
                     return False
                 if not (const >= 0).all():
@@ -6348,7 +6348,7 @@ def local_grad_log_erfc_neg(node):
 
         try:
             cst2 = get_scalar_constant_value(mul_neg.owner.inputs[0],
-                    only_process_constants=True)
+                                             only_process_constants=True)
         except NotScalarConstantError:
             return False
 
@@ -6376,7 +6376,7 @@ def local_grad_log_erfc_neg(node):
             x = erfc_x
             try:
                 cst = get_scalar_constant_value(erfc_x.owner.inputs[0],
-                        only_process_constants=True)
+                                                only_process_constants=True)
             except NotScalarConstantError:
                 return False
             if cst2 != -cst * 2:
