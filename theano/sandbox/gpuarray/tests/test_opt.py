@@ -214,6 +214,9 @@ class test_gpu_ifelse(test_ifelse.test_ifelse):
         return basic_ops.as_gpuarray_variable(v, test_ctx_name)
     shared = staticmethod(gpuarray_shared_constructor)
 
+    def get_ifelse(self, n):
+        return theano.ifelse.IfElse(n, gpu=True, as_view=True)
+
 
 def test_print_op():
     """ Test that print ops don't block gpu optimization"""
