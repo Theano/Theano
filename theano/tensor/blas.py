@@ -1081,14 +1081,14 @@ def _as_scalar(res, dtype=None):
 def _is_real_matrix(res):
     return (res.type.dtype in ('float32', 'float64') and
             res.type.ndim == 2 and
-            res.type.broadcastable[0] == False and
-            res.type.broadcastable[1] == False)  # cope with tuple vs. list
+            res.type.broadcastable[0] is False and
+            res.type.broadcastable[1] is False)  # cope with tuple vs. list
 
 
 def _is_real_vector(res):
     return (res.type.dtype in ('float32', 'float64') and
             res.type.ndim == 1 and
-            res.type.broadcastable[0] == False)
+            res.type.broadcastable[0] is False)
 
 
 def _beta_L_plus_alpha_M(beta, L, alpha, M, recurse_flip=True):

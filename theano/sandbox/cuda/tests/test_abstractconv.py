@@ -47,7 +47,7 @@ class TestDnnConv2d(test_abstract_conv.BaseTestConv2d):
                            filter_flip=flip, target_op=GpuDnnConvGradI)
 
 
-class TestCorrMMConv2d(test_abstract_conv.TestConv2d):
+class TestCorrMMConv2d(test_abstract_conv.BaseTestConv2d):
     def setUp(self):
         super(TestCorrMMConv2d, self).setUp()
         self.shared = gpu_shared
