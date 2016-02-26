@@ -448,8 +448,9 @@ def register_uncanonicalize(lopt, *tags, **kwargs):
             return register_uncanonicalize(inner_lopt, lopt, *tags, **kwargs)
         return register
     else:
-        name = (kwargs and kwargs.pop('name')) or lopt.__name__
-        compile.optdb['uncanonicalize'].register(name, lopt, 'fast_run', *tags)
+        name = (kwargs and kwargs.pop('name', None)) or lopt.__name__
+        compile.optdb['uncanonicalize'].register(name, lopt, 'fast_run', *tags,
+                                                 **kwargs)
         return lopt
 
 
@@ -460,7 +461,8 @@ def register_specialize_device(lopt, *tags, **kwargs):
         return register
     else:
         name = (kwargs and kwargs.pop('name')) or lopt.__name__
-        compile.optdb['specialize_device'].register(name, lopt, 'fast_run', *tags)
+        compile.optdb['specialize_device'].register(name, lopt, 'fast_run', *tags,
+                                                    **kwargs)
         return lopt
 
 
@@ -6035,7 +6037,6 @@ def constant_folding(node):
     required = thunk()
     assert not required  # a node whose inputs are all provided should always
     # return successfully
-    register_uncanonicalize(topo_constant_folding, 'fast_compile', final_opt=True)
     rval = []
     for output in node.outputs:
         assert compute_map[output][0], (output, storage_map[output][0])
@@ -6054,6 +6055,7 @@ def constant_folding(node):
 topo_constant_folding = in2out(constant_folding, ignore_newtrees=True,
                                name="topo_constant_folding")
 register_canonicalize(topo_constant_folding, 'fast_compile', final_opt=True)
+register_uncanonicalize(topo_constant_folding, 'fast_compile', final_opt=True)
 register_stabilize(topo_constant_folding, 'fast_compile', final_opt=True)
 register_specialize(topo_constant_folding, 'fast_compile', final_opt=True)
 
