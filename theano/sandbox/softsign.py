@@ -4,6 +4,7 @@ import theano.tensor
 
 
 class ScalarSoftsign(theano.scalar.UnaryScalarOp):
+    # TODO : need description for class
     @staticmethod
     def static_impl(x):
         return x / (1.0 + abs(x))

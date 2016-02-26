@@ -9,17 +9,19 @@ from theano.tests import unittest_tools as utt
 
 
 class Minimal(gof.Op):
+    # TODO : need description for class
 
-    # if the Op has any attributes,
-    # consider using them in the eq function.  If two Apply nodes have the same inputs and the
-    # ops compare equal... then they will be MERGED so they had better have computed the same
-    # thing!
+    # if the Op has any attributes, consider using them in the eq function.
+    # If two Apply nodes have the same inputs and the ops compare equal...
+    # then they will be MERGED so they had better have computed the same thing!
 
     def __init__(self):
-        # If you put things here, think about whether they change the outputs computed by
-        # self.perform()
-        #  - If they do, then you should take them into consideration in __eq__ and __hash__
-        #  - If they do not, then you should not use them in __eq__ and __hash__
+        # If you put things here, think about whether they change the outputs
+        # computed by # self.perform()
+        #  - If they do, then you should take them into consideration in
+        #    __eq__ and __hash__
+        #  - If they do not, then you should not use them in
+        #    __eq__ and __hash__
 
         super(Minimal, self).__init__()
 

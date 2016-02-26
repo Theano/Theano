@@ -116,7 +116,8 @@ class NeighbourhoodsFromImages(Op):
         return dims, num_strides
 
     # for inverse mode
-    # "output" here actually referes to the Op's input shape (but it's inverse mode)
+    # "output" here actually referes to the Op's input shape (but it's inverse
+    # mode)
     def in_shape(self, output_shape):
         out_dims = list(output_shape[:self.n_dims_before])
         num_strides = []
@@ -168,9 +169,10 @@ class NeighbourhoodsFromImages(Op):
             for dim in self.dims_neighbourhoods:
                 prod *= dim
             if x.shape[-1] != prod:
-                raise ValueError("Last dimension of neighbourhoods (%s) is not"
-                                 " the product of the neighbourhoods dimensions"
-                                 " (%s)" % (str(x.shape[-1]), str(prod)))
+                raise ValueError(
+                    "Last dimension of neighbourhoods (%s) is not"
+                    " the product of the neighbourhoods dimensions"
+                    " (%s)" % (str(x.shape[-1]), str(prod)))
         else:
             if len(x.shape) != (self.n_dims_before +
                                 len(self.dims_neighbourhoods)):
@@ -195,6 +197,7 @@ class NeighbourhoodsFromImages(Op):
         exec(self.code)
 
     def make_py_code(self):
+        # TODO : need description for method and return
         code = self._py_outerloops()
         for i in xrange(len(self.strides)):
             code += self._py_innerloop(i)
@@ -202,6 +205,7 @@ class NeighbourhoodsFromImages(Op):
         return code, builtins.compile(code, '<string>', 'exec')
 
     def _py_outerloops(self):
+        # TODO : need description for method, parameter and return
         code_before = ""
         for dim_idx in xrange(self.n_dims_before):
             code_before += ('\t' * (dim_idx)) + \
@@ -210,6 +214,7 @@ class NeighbourhoodsFromImages(Op):
         return code_before
 
     def _py_innerloop(self, inner_dim_no):
+        # TODO : need description for method, parameter and return
         base_indent = ('\t' * (self.n_dims_before + inner_dim_no * 2))
         code_before = base_indent + \
             "for stride_idx_%d in xrange(num_strides[%d]):\n" % \
@@ -229,10 +234,12 @@ class NeighbourhoodsFromImages(Op):
         return code_before
 
     def _py_flattened_idx(self):
+        # TODO : need description for method and return
         return "+".join(["neigh_strides[%d]*neigh_idx_%d" % (i, i)
                         for i in xrange(len(self.strides))])
 
     def _py_assignment(self):
+        # TODO : need description for method and return
         input_idx = "".join(["outer_idx_%d," % (i,)
                             for i in xrange(self.n_dims_before)])
         input_idx += "".join(["dim_%d_offset+neigh_idx_%d," %
@@ -259,6 +266,7 @@ class NeighbourhoodsFromImages(Op):
 
 
 class ImagesFromNeighbourhoods(NeighbourhoodsFromImages):
+    # TODO : need description for class, parameters
     def __init__(self, n_dims_before, dims_neighbourhoods,
                  strides=None, ignore_border=False):
         NeighbourhoodsFromImages.__init__(self, n_dims_before,

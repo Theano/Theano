@@ -71,10 +71,15 @@ class DebugLinker(gof.WrapLinker):
                     r.type.filter(r.value, strict=True)
                 except TypeError as e:
                     exc_type, exc_value, exc_trace = sys.exc_info()
-                    exc = DebugException(e, "The output %s was filled with data with the wrong type using linker " \
-                                         ("%s. This happened at step %i of the program." % (r, linker, i)) + \
-                                         "For more info, inspect this exception's 'original_exception', 'debugger', " \
-                                         "'output_at_fault', 'step', 'node', 'thunk' and 'linker' fields.")
+                    exc = DebugException(
+                        e,
+                        "The output %s was filled with data with the wrong "
+                        "type using linker " +
+                        ("%s. This happened at step %i of the program."
+                         % (r, linker, i)) +
+                        "For more info, inspect this exception's "
+                        "'original_exception', 'debugger', 'output_at_fault', "
+                        "'step', 'node', 'thunk' and 'linker' fields.")
                     exc.debugger = self
                     exc.original_exception = e
                     exc.output_at_fault = r
@@ -88,11 +93,18 @@ class DebugLinker(gof.WrapLinker):
         thunk0 = thunks[0]
         linker0 = self.linkers[0]
         for thunk, linker in zip(thunks[1:], self.linkers[1:]):
-            for o, output0, output in zip(node.outputs, thunk0.outputs, thunk.outputs):
+            for o, output0, output in zip(node.outputs,
+                                          thunk0.outputs,
+                                          thunk.outputs):
                 if not self.compare_fn(output0[0], output[0]):
-                    exc = DebugException(("The variables from %s and %s for output %s are not the same. This happened at step %i." % (linker0, linker, o, step)) + \
-                                         "For more info, inspect this exception's 'debugger', 'output', 'output_value1', 'output_value2', " \
-                                         "'step', 'node', 'thunk1', 'thunk2', 'linker1' and 'linker2' fields.")
+                    exc = DebugException(
+                        ("The variables from %s and %s for output %s are not "
+                         "the same. This happened at step %i."
+                         % (linker0, linker, o, step)) +
+                        "For more info, inspect this exception's 'debugger', "
+                        "'output', 'output_value1', 'output_value2', 'step', "
+                        "'node', 'thunk1', 'thunk2', 'linker1' "
+                        "and 'linker2' fields.")
                     exc.debugger = self
                     exc.output = o
                     exc.output_value1 = output0
@@ -140,8 +152,12 @@ class DebugLinker(gof.WrapLinker):
             exc_type, exc_value, exc_trace = sys.exc_info()
             if isinstance(e, DebugException):
                 raise
-            exc = DebugException(e, ("An exception occurred while processing node %s at step %i of the program." % (node, i)) + \
-                                 "For more info, inspect this exception's 'original_exception', 'debugger', 'step', 'node' and 'thunks' fields.")
+            exc = DebugException(
+                e,
+                ("An exception occurred while processing node %s at step %i "
+                 "of the program." % (node, i)) +
+                "For more info, inspect this exception's 'original_exception',"
+                "'debugger', 'step', 'node' and 'thunks' fields.")
             exc.debugger = self
             exc.original_exception = e
             exc.step = i
@@ -169,7 +185,8 @@ def print_input_shapes(i, node, *thunks):
 
 
 def print_input_types(i, node, *thunks):
-    print("input types:", ", ".join(str(type(input.value)) for input in node.inputs))
+    print("input types:", ", ".join(str(type(input.value))
+                                    for input in node.inputs))
 
 
 def print_sep(i, node, *thunks):
@@ -192,5 +209,3 @@ def numpy_debug_linker(pre, post=None):
                        pre,
                        post,
                        compare_fn=numpy_compare)
-
-
