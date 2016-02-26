@@ -206,6 +206,14 @@ class TestSpecifyShape(test_basic.TestSpecifyShape):
     input_type = GpuArrayType
 
 
+class test_gpu_ifelse(theano.tests.test_ifelse.test_ifelse):
+    mode = mode_with_gpu
+    @staticmethod
+    def cast_output(v):
+        return basic_ops.as_gpuarray_variable(v, test_ctx)
+    shared = staticmethod(gpuarray_shared_constructor)
+
+
 def test_print_op():
     """ Test that print ops don't block gpu optimization"""
     b = tensor.fmatrix()
