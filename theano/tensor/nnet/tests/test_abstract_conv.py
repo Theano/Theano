@@ -312,7 +312,7 @@ class TestCpuConv2d(BaseTestConv2d):
                          mode=mode, provide_shape=provide_shape,
                          border_mode=b, filter_flip=flip, target_op=ConvOp)
         else:
-            self.assertRaises(NotImplementedError,
+            self.assertRaises(AssertionError,
                               self.run_fwd,
                               inputs_shape=i,
                               filters_shape=f,
@@ -331,7 +331,7 @@ class TestCpuConv2d(BaseTestConv2d):
                                 filter_flip=flip,
                                 target_op=(ConvOp, ConvGrad3D))
         else:
-            self.assertRaises(NotImplementedError,
+            self.assertRaises(AssertionError,
                               self.run_gradweight,
                               inputs_shape=i,
                               filters_shape=f,
@@ -351,7 +351,7 @@ class TestCpuConv2d(BaseTestConv2d):
                                filter_flip=flip,
                                target_op=(ConvOp, ConvTransp3D))
         else:
-            self.assertRaises(NotImplementedError,
+            self.assertRaises(AssertionError,
                               self.run_gradinput,
                               inputs_shape=i,
                               filters_shape=f,
