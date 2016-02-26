@@ -281,6 +281,7 @@ class PyDotFormatter(object):
 
 
 def var_label(var, precision=3):
+    # TODO :  need description of PARAMETERS and RETURN
     """Return label of variable node."""
     if var.name is not None:
         return var.name
@@ -301,6 +302,7 @@ def var_label(var, precision=3):
 
 
 def var_tag(var):
+    # TODO :  need description of PARAMETERS and RETURN
     """Parse tag attribute of variable node."""
     tag = var.tag
     if hasattr(tag, 'trace') and len(tag.trace) and len(tag.trace[0]) == 4:
@@ -315,11 +317,13 @@ def var_tag(var):
 
 
 def apply_label(node):
+    # TODO :  need description of PARAMETERS and RETURN
     """Return label of apply node."""
     return node.op.__class__.__name__
 
 
 def apply_profile(node, profile):
+    # TODO :  need description of PARAMETERS and RETURN
     """Return apply profiling informaton."""
     if not profile or profile.fct_call_time == 0:
         return None
@@ -329,6 +333,7 @@ def apply_profile(node, profile):
 
 
 def broadcastable_to_str(b):
+    # TODO :  need description of PARAMETERS and RETURN
     """Return string representation of broadcastable."""
     named_broadcastable = {(): 'scalar',
                            (False,): 'vector',
@@ -343,16 +348,16 @@ def broadcastable_to_str(b):
 
 
 def dtype_to_char(dtype):
+    # TODO :  need description of PARAMETERS and RETURN
     """Return character that represents data type."""
-    dtype_char = {
-        'complex64': 'c',
-        'complex128': 'z',
-        'float32': 'f',
-        'float64': 'd',
-        'int8': 'b',
-        'int16': 'w',
-        'int32': 'i',
-        'int64': 'l'}
+    dtype_char = {'complex64': 'c',
+                  'complex128': 'z',
+                  'float32': 'f',
+                  'float64': 'd',
+                  'int8': 'b',
+                  'int16': 'w',
+                  'int32': 'i',
+                  'int64': 'l'}
     if dtype in dtype_char:
         return dtype_char[dtype]
     else:
@@ -360,6 +365,7 @@ def dtype_to_char(dtype):
 
 
 def type_to_str(t):
+    # TODO :  need description of PARAMETERS and RETURN
     """Return str of variable type."""
     if not hasattr(t, 'broadcastable'):
         return str(t)
@@ -372,6 +378,7 @@ def type_to_str(t):
 
 
 def dict_to_pdnode(d):
+    # TODO :  need description of PARAMETERS and RETURN
     """Create pydot node from dict."""
     e = dict()
     for k, v in iteritems(d):
