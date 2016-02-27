@@ -10,6 +10,7 @@ from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB,
                         SequenceDB, Optimizer, toolbox)
 from theano.gof.optdb import LocalGroupDB
+from theano.ifelse import IfElse
 
 from theano.scalar.basic import Scalar, Pow, Cast
 from theano.scan_module import scan_utils, scan_op, scan_opt
@@ -537,6 +538,16 @@ def local_gpu_pdbbreakpoint_op(node):
         return new_outputs
 
     return False
+
+
+@register_opt('fast_compile')
+@op_lifter([IfElse])
+def local_gpua_lazy_ifelse(node, context_name):
+    if node.op.gpu:
+        return
+    c = node.inputs[0]
+    inps = [as_gpuarray_variable(v, context_name) for v in node.inputs[1:]]
+    return IfElse(node.op.n_outs, gpu=True)(c, *inps, return_list=True)
 
 
 @register_opt('fast_compile')

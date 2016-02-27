@@ -3,7 +3,7 @@ import numpy
 import theano
 from theano import tensor
 from theano.tests.breakpoint import PdbBreakpoint
-from theano.tests import unittest_tools as utt
+from theano.tests import unittest_tools as utt, test_ifelse
 from theano.tensor.tests import test_basic
 
 import theano.sandbox.gpuarray
@@ -204,6 +204,18 @@ def test_rebroadcast():
 class TestSpecifyShape(test_basic.TestSpecifyShape):
     mode = mode_with_gpu
     input_type = GpuArrayType
+
+
+class test_gpu_ifelse(test_ifelse.test_ifelse):
+    mode = mode_with_gpu
+
+    @staticmethod
+    def cast_output(v):
+        return basic_ops.as_gpuarray_variable(v, test_ctx_name)
+    shared = staticmethod(gpuarray_shared_constructor)
+
+    def get_ifelse(self, n):
+        return theano.ifelse.IfElse(n, gpu=True, as_view=True)
 
 
 def test_print_op():
