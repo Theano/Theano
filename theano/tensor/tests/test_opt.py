@@ -205,13 +205,15 @@ class test_dimshuffle_lift(unittest.TestCase):
 
     def test_dimshuffle_on_broadcastable(self):
         x, y, z = inputs([False, True], [True, False, True], [False, False, True])
+        u = tensor.constant(1)
         ds_x = ds(x, (0, 'x'))   # useless
         ds_y = ds(y, (2, 1, 0))  # useless
         ds_z = ds(z, (2, 1, 0))  # usefull
-        g = FunctionGraph([x, y, z], [ds_x, ds_y, ds_z])
-        self.assertTrue(str(g) == "[DimShuffle{0,x}(x), DimShuffle{2,1,0}(y), DimShuffle{2,1,0}(z)]")
+        ds_u = ds(u, ('x'))  # usefull
+        g = FunctionGraph([x, y, z, u], [ds_x, ds_y, ds_z, ds_u])
+        self.assertTrue(str(g) == "[DimShuffle{0,x}(x), DimShuffle{2,1,0}(y), DimShuffle{2,1,0}(z), DimShuffle{x}(TensorConstant{1})]")
         dimshuffle_lift.optimize(g)
-        self.assertTrue(str(g) == "[x, y, DimShuffle{2,1,0}(z)]")
+        self.assertTrue(str(g) == "[x, y, DimShuffle{2,1,0}(z), DimShuffle{x}(TensorConstant{1})]")
         # Check stacktrace was copied over correctly after opt was applied
         self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
 
