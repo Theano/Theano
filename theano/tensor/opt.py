@@ -563,20 +563,21 @@ def local_dimshuffle_lift(node):
     # covers two types of useless dimshuffle:
     #   1 - dimshuffle all dimensions in order
     #   2 - dimshuffle a broadcastable dimension
-    is_useless = False
-    all_broadcastable_dims = [i for (i, is_broadcastable)
-                              in enumerate(input.type.broadcastable)
-                              if is_broadcastable] + ['x']
-    for i in range(input.type.ndim):
-        if (op.new_order[i] == i or
-                (i in all_broadcastable_dims and
-                 op.new_order[i] in all_broadcastable_dims)):
-            is_useless = True
-        else:
-            is_useless = False
-            break
-    if is_useless:
-        return [input]
+    if len(op.new_order) == input.type.ndim:
+        is_useless = False
+        all_broadcastable_dims = [i for (i, is_broadcastable)
+                                  in enumerate(input.type.broadcastable)
+                                  if is_broadcastable] + ['x']
+        for i in range(input.type.ndim):
+            if (op.new_order[i] == i or
+                    (i in all_broadcastable_dims and
+                     op.new_order[i] in all_broadcastable_dims)):
+                is_useless = True
+            else:
+                is_useless = False
+                break
+        if is_useless:
+            return [input]
 
 
 @register_canonicalize
