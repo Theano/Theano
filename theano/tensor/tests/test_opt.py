@@ -203,6 +203,18 @@ class test_dimshuffle_lift(unittest.TestCase):
         # Check stacktrace was copied over correctly after opt was applied
         self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
 
+    def test_dimshuffle_on_broadcastable(self):
+        x, y, z = inputs([False, True], [True, False, True], [False, False, True])
+        ds_x = ds(x, (0, 'x'))   # useless
+        ds_y = ds(y, (2, 1, 0))  # useless
+        ds_z = ds(z, (2, 1, 0))  # usefull
+        g = FunctionGraph([x, y, z], [ds_x, ds_y, ds_z])
+        self.assertTrue(str(g) == "[DimShuffle{0,x}(x), DimShuffle{2,1,0}(y), DimShuffle{2,1,0}(z)]")
+        dimshuffle_lift.optimize(g)
+        self.assertTrue(str(g) == "[x, y, DimShuffle{2,1,0}(z)]")
+        # Check stacktrace was copied over correctly after opt was applied
+        self.assertTrue(hasattr(g.outputs[0].tag, 'trace'))
+
 
 def test_add_canonizer_problem0():
     n_segments = 10
