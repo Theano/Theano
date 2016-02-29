@@ -8,6 +8,7 @@ import theano
 from theano.tensor import as_tensor_variable, patternbroadcast
 from theano.gof import Apply, Op
 
+from six.moves import xrange
 
 import numpy
 try:
