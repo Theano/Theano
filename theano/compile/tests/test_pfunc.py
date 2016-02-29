@@ -811,14 +811,13 @@ class Test_aliasing_rules(unittest.TestCase):
 
         f = theano.function(
             [theano.In(x, mutable=True),
-                theano.In(y, mutable=True),
-                theano.In(z, mutable=True),
-                theano.In(m1, mutable=True),
-                theano.In(m2, mutable=True),
-                theano.In(m3, mutable=True)],
-            (theano.dot((x * 2), m1) +
-                theano.dot((y * 3), m2) +
-                theano.dot((z * 4), m3)))
+             theano.In(y, mutable=True),
+             theano.In(z, mutable=True),
+             theano.In(m1, mutable=True),
+             theano.In(m2, mutable=True),
+             theano.In(m3, mutable=True)],
+            (theano.dot((x * 2), m1) + theano.dot((y * 3), m2) +
+             theano.dot((z * 4), m3)))
 
         # Compute bogus values
         v = numpy.asarray([1, 2, 3, 4, 5], dtype='float64')

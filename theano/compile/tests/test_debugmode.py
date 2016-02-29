@@ -301,9 +301,9 @@ def test_stochasticoptimization():
         theano.function([a, b],
                         theano.tensor.add(a, b),
                         mode=debugmode.DebugMode(
-                        optimizer=opt,
-                        check_c_code=True,
-                        stability_patience=max(2, config.DebugMode.patience)))
+                            optimizer=opt,
+                            check_c_code=True,
+                            stability_patience=max(2, config.DebugMode.patience)))
     except debugmode.StochasticOrder:
         return  # TEST PASS
     assert False
@@ -737,7 +737,7 @@ class Test_preallocated_output(unittest.TestCase):
             check_preallocated_output=['c_contiguous'])
 
         f = theano.function([a, b], out, mode=mode)
-        # out_val = f(a_val, b_val)
+        f(a_val, b_val)
         # print 'out_val =', out_val
         # print out_val.strides
 
@@ -769,7 +769,7 @@ class Test_preallocated_output(unittest.TestCase):
             check_preallocated_output=['c_contiguous'])
 
         f = theano.function([a, b], out, mode=mode)
-        # out_val = f(a_val, b_val)
+        f(a_val, b_val)
         # print 'out_val =', out_val
         # print out_val.strides
 
