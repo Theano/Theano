@@ -11,11 +11,11 @@ import warnings
 import numpy
 from six.moves import xrange
 
-from theano import Op, Apply, shared, config, Variable, Out
+from theano import Op, Apply, shared, config, Variable
 from theano import gradient, function
 from theano import tensor
-from theano.tensor import (raw_random, TensorType, as_tensor_variable,
-                           get_vector_length, cast, opt, scal)
+from theano.tensor import (TensorType, as_tensor_variable, get_vector_length,
+                           cast, opt, scal)
 from theano.tensor import sqrt, log, sin, cos, join, prod
 from theano.compile import optdb
 from theano.gof import local_optimizer
@@ -23,19 +23,20 @@ from . import multinomial
 
 import theano.sandbox.cuda
 from theano.sandbox.cuda import GpuOp
-if theano.sandbox.cuda.cuda_available:
-    from theano.sandbox.cuda import (CudaNdarrayType,
-                                     float32_shared_constructor)
-
 from theano.sandbox.gpuarray.basic_ops import GpuKernelBase, Kernel
 from theano.sandbox.gpuarray.type import GpuArrayType
 from theano.sandbox.gpuarray.fp16_help import write_w
+from theano.sandbox.gpuarray.opt import (register_opt as register_gpua,
+                                         host_from_gpu as host_from_gpua)
+if theano.sandbox.cuda.cuda_available:
+    from theano.sandbox.cuda import (CudaNdarrayType,
+                                     float32_shared_constructor)
 
 
 def matVecModM(A, s, m):
     # TODO : need description for method, parameter and return
     assert A.dtype == 'int64'
-    return numpy.int32(numpy.sum((A*s) % m, 1) % m)
+    return numpy.int32(numpy.sum((A * s) % m, 1) % m)
 
 
 def multMatVect(v, A, m1, B, m2):
@@ -336,7 +337,7 @@ class mrg_uniform(mrg_uniform_base):
         v_size = as_tensor_variable(size)
         if ndim is None:
             ndim = get_vector_length(v_size)
-        op = cls(TensorType(dtype, (False,)*ndim))
+        op = cls(TensorType(dtype, (False,) * ndim))
         return op(rstate, cast(v_size, 'int32'))
 
     def perform(self, node, inp, out):
@@ -547,7 +548,7 @@ class GPU_mrg_uniform(mrg_uniform_base, GpuOp):
         v_size = as_tensor_variable(size)
         if ndim is None:
             ndim = get_vector_length(v_size)
-        op = cls(CudaNdarrayType((False,)*ndim))
+        op = cls(CudaNdarrayType((False,) * ndim))
         return op(rstate, cast(v_size, 'int32'))
 
     def c_support_code_apply(self, node, nodename):
@@ -789,7 +790,7 @@ class GPUA_mrg_uniform(GpuKernelBase, mrg_uniform_base):
         v_size = as_tensor_variable(size)
         if ndim is None:
             ndim = get_vector_length(v_size)
-        op = cls(GpuArrayType(dtype, (False,)*ndim))
+        op = cls(GpuArrayType(dtype, (False,) * ndim))
         return op(rstate, cast(v_size, 'int32'))
 
     def c_headers(self):
@@ -1073,7 +1074,7 @@ def guess_n_streams(size, warn=False):
 class MRG_RandomStreams(object):
     # TODO : need description for parameter 'use_cuda'
     """
-    Module component with similar interface to numpy.random 
+    Module component with similar interface to numpy.random
     (numpy.random.RandomState).
 
     Parameters
@@ -1105,7 +1106,7 @@ class MRG_RandomStreams(object):
         self.set_rstate(seed)
 
         if use_cuda is None:
-            self.use_cuda = theano.sandbox.cuda.cuda_enabled            
+            self.use_cuda = theano.sandbox.cuda.cuda_enabled
         else:
             self.use_cuda = use_cuda
 
@@ -1247,7 +1248,7 @@ class MRG_RandomStreams(object):
         Parameters
         ----------
         low
-            Lower bound of the interval on which values are sampled. 
+            Lower bound of the interval on which values are sampled.
             If the ``dtype`` arg is provided, ``low`` will be cast into
             dtype. This bound is excluded.
         high
@@ -1393,11 +1394,11 @@ class MRG_RandomStreams(object):
         elements.
         `n` needs to be in [1, m], where m is the number of elements to select
         from, i.e. m == pvals.shape[1]. By default n = 1.
-        
+
         Example : pvals = [[.98, .01, .01], [.01, .49, .50]] and n=1 will
         probably result in [[0],[2]]. When setting n=2, this
         will probably result in [[0,1],[2,1]].
-        
+
         Notes
         -----
         -`size` and `ndim` are only there keep the same signature as other
@@ -1519,9 +1520,6 @@ class MRG_RandomStreams(object):
 
         assert final_samples.dtype == dtype
         return final_samples
-
-from theano.sandbox.gpuarray.opt import (register_opt as register_gpua,
-                                         host_from_gpu as host_from_gpua)
 
 
 @register_gpua('fast_compile')
