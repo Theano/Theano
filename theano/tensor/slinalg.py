@@ -66,7 +66,6 @@ class Cholesky(Op):
         x = inputs[0]
         dz = gradients[0]
         chol_x = self(x)
-        chol_x = theano.printing.Print('Cholesky:')(chol_x)
 
         def tril_and_halve_diagonal(mtx):
             """Extracts lower triangle of square matrix and halves diagonal."""
@@ -79,8 +78,6 @@ class Cholesky(Op):
 
         s = conjugate_solve_triangular(
             chol_x, tril_and_halve_diagonal(chol_x.T.dot(dz)))
-
-        s = theano.printing.Print('S:')(s)
 
         return [tensor.tril(s + s.T) - tensor.diag(tensor.diagonal(s))]
 
