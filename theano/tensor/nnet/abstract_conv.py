@@ -506,6 +506,13 @@ class AbstractConv2d(BaseAbstractConv2d):
         o, = out_
         mode = self.border_mode
 
+        if not ((isinstance(mode, tuple) and min(mode) >= 0) or
+                mode in ('valid', 'full', 'half')):
+            raise ValueError(
+                'invalid border_mode {}, which must be either '
+                '"valid", "full", "half", an integer or a pair of'
+                ' integers'.format(mode))
+
         if mode == "full":
             mode = (kern.shape[2] - 1, kern.shape[3] - 1)
         elif mode == "half":
@@ -626,6 +633,13 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
         o, = out_
 
         mode = self.border_mode
+        if not ((isinstance(mode, tuple) and min(mode) >= 0) or
+                mode in ('valid', 'full', 'half')):
+            raise ValueError(
+                'invalid border_mode {}, which must be either '
+                '"valid", "full", "half", an integer or a pair of'
+                ' integers'.format(mode))
+
         if mode == "full":
             mode = (shape[0] - 1, shape[1] - 1)
         elif mode == "half":
@@ -749,8 +763,14 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
         o, = out_
 
         mode = self.border_mode
-        pad_h, pad_w = 0, 0
+        if not ((isinstance(mode, tuple) and min(mode) >= 0) or
+                mode in ('valid', 'full', 'half')):
+            raise ValueError(
+                'invalid border_mode {}, which must be either '
+                '"valid", "full", "half", an integer or a pair of'
+                ' integers'.format(mode))
 
+        pad_h, pad_w = 0, 0
         if mode == "full":
             pad_h, pad_w = (kern.shape[2] - 1, kern.shape[3] - 1)
         elif mode == "half":
