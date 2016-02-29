@@ -3,27 +3,21 @@ import unittest
 
 import theano
 from theano.tensor import Tensor, TensorType
-from theano.compile.sharedvalue import *
+from theano.compile.sharedvalue import shared
+from theano.compile.sharedvalue import SharedVariable
+from theano.compile.sharedvalue import generic
 
 
 class Test_SharedVariable(unittest.TestCase):
 
     def test_ctors(self):
 
-        if 0:
-            # when using an implementation that handles scalars with
-            # Scalar type
-            assert shared(7).type == Scalar('int64')
-            assert shared(7.0).type == Scalar('float64')
-            assert shared(7, dtype='float64').type == Scalar('float64')
-
+        if theano.configdefaults.python_int_bitwidth() == 32:
+            assert shared(7).type == theano.tensor.iscalar, shared(7).type
         else:
-            if theano.configdefaults.python_int_bitwidth() == 32:
-                assert shared(7).type == theano.tensor.iscalar, shared(7).type
-            else:
-                assert shared(7).type == theano.tensor.lscalar, shared(7).type
-            assert shared(7.0).type == theano.tensor.dscalar
-            assert shared(numpy.float32(7)).type == theano.tensor.fscalar
+            assert shared(7).type == theano.tensor.lscalar, shared(7).type
+        assert shared(7.0).type == theano.tensor.dscalar
+        assert shared(numpy.float32(7)).type == theano.tensor.fscalar
 
         # test tensor constructor
         b = shared(numpy.zeros((5, 5), dtype='int32'))

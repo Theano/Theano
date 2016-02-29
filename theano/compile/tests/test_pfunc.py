@@ -8,8 +8,9 @@ from theano.tensor import dmatrix, iscalar, lscalar, dmatrices
 from theano import tensor
 
 from theano.compile import In
-from theano.compile.sharedvalue import *
-from theano.compile.pfunc import *
+from theano.compile import pfunc
+from theano.compile import shared
+from theano.compile import config
 
 
 def data_of(s):
