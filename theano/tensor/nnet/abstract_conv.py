@@ -8,6 +8,16 @@ import theano
 from theano.tensor import as_tensor_variable, patternbroadcast
 from theano.gof import Apply, Op
 
+from six.moves import xrange
+
+import numpy
+try:
+    from scipy.signal.signaltools import _valfrommode, _bvalfromboundary
+    from scipy.signal.sigtools import _convolve2d
+    imported_scipy_signal = True
+except ImportError:
+    imported_scipy_signal = False
+
 
 __docformat__ = "restructuredtext en"
 _logger = logging.getLogger("theano.tensor.nnet.abstract_conv")
@@ -430,6 +440,32 @@ class BaseAbstractConv2d(Op):
         # This may change in the future.
         return False
 
+    def conv2d(self, img, kern, mode="valid"):
+        """
+        Basic slow python implementatation for DebugMode
+        """
+
+        if not imported_scipy_signal:
+            raise NotImplementedError(
+                "AbstractConv perform requires the python package"
+                " for scipy.signal to be installed.")
+        if not (mode in ('valid', 'full')):
+            raise ValueError(
+                'invalid mode {}, which must be either '
+                '"valid" or "full"'.format(mode))
+
+        out_shape = get_conv_output_shape(img.shape, kern.shape, mode, [1, 1])
+        out = numpy.zeros(out_shape, dtype=img.dtype)
+        val = _valfrommode(mode)
+        bval = _bvalfromboundary('fill')
+        for b in xrange(img.shape[0]):
+            for n in xrange(kern.shape[0]):
+                for im0 in xrange(img.shape[1]):
+                    out[b, n, ...] += _convolve2d(img[b, im0, ...],
+                                                  kern[n, im0, ...],
+                                                  1, val, bval, 0)
+        return out
+
 
 class AbstractConv2d(BaseAbstractConv2d):
     """ Abstract Op for the forward convolution.
@@ -465,10 +501,37 @@ class AbstractConv2d(BaseAbstractConv2d):
         return Apply(self, [img, kern], [output])
 
     def perform(self, node, inp, out_):
-        raise NotImplementedError(
-            'AbstractConv2d theano optimization failed. '
-            'Did you exclude both "conv_dnn" and "conv_gemm" from '
-            'the optimizer? Is cudnn available and does the GPU support it?')
+        img, kern = inp
+        img = numpy.asarray(img)
+        kern = numpy.asarray(kern)
+        o, = out_
+        mode = self.border_mode
+
+        if not ((isinstance(mode, tuple) and min(mode) >= 0) or
+                mode in ('valid', 'full', 'half')):
+            raise ValueError(
+                'invalid border_mode {}, which must be either '
+                '"valid", "full", "half", an integer or a pair of'
+                ' integers'.format(mode))
+
+        if mode == "full":
+            mode = (kern.shape[2] - 1, kern.shape[3] - 1)
+        elif mode == "half":
+            mode = (kern.shape[2] // 2, kern.shape[3] // 2)
+        if isinstance(mode, tuple):
+            pad_h, pad_w = map(int, mode)
+            mode = "valid"
+            new_img = numpy.zeros((img.shape[0], img.shape[1],
+                                   img.shape[2] + 2 * pad_h,
+                                   img.shape[3] + 2 * pad_w), dtype=img.dtype)
+            new_img[:, :, pad_h:img.shape[2] + pad_h, pad_w:img.shape[3] + pad_w] = img
+            img = new_img
+        if not self.filter_flip:
+            kern = kern[:, :, ::-1, ::-1]
+        conv_out = self.conv2d(img, kern, mode="valid")
+        conv_out = conv_out[:, :, ::self.subsample[0], ::self.subsample[1]]
+
+        o[0] = node.outputs[0].type.filter(conv_out)
 
     def R_op(self, inputs, eval_points):
         rval = None
@@ -564,10 +627,49 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
         return Apply(self, [img, topgrad, shape], [output])
 
     def perform(self, node, inp, out_):
-        raise NotImplementedError(
-            'AbstractConv2d_gradWeights theano optimization failed. '
-            'Did you exclude both "conv_dnn" and "conv_gemm" from '
-            'the optimizer?')
+        img, topgrad, shape = inp
+        img = numpy.asarray(img)
+        topgrad = numpy.asarray(topgrad)
+
+        o, = out_
+
+        mode = self.border_mode
+        if not ((isinstance(mode, tuple) and min(mode) >= 0) or
+                mode in ('valid', 'full', 'half')):
+            raise ValueError(
+                'invalid border_mode {}, which must be either '
+                '"valid", "full", "half", an integer or a pair of'
+                ' integers'.format(mode))
+
+        if mode == "full":
+            mode = (shape[0] - 1, shape[1] - 1)
+        elif mode == "half":
+            mode = (shape[0] // 2, shape[1] // 2)
+        if isinstance(mode, tuple):
+            pad_h, pad_w = map(int, mode)
+            mode = "valid"
+            new_img = numpy.zeros((img.shape[0], img.shape[1],
+                                   img.shape[2] + 2 * pad_h,
+                                   img.shape[3] + 2 * pad_w), dtype=img.dtype)
+            new_img[:, :, pad_h:img.shape[2] + pad_h, pad_w:img.shape[3] + pad_w] = img
+            img = new_img
+
+        if self.subsample[0] > 1 or self.subsample[1] > 1:
+            new_shape = (topgrad.shape[0], topgrad.shape[1],
+                         img.shape[2] - shape[0] + 1,
+                         img.shape[3] - shape[1] + 1)
+            new_topgrad = numpy.zeros((new_shape), dtype=topgrad.dtype)
+            new_topgrad[:, :, ::self.subsample[0], ::self.subsample[1]] = topgrad
+            topgrad = new_topgrad
+
+        topgrad = topgrad.transpose(1, 0, 2, 3)[:, :, ::-1, ::-1]
+        img = img.transpose(1, 0, 2, 3)
+        kern = self.conv2d(img, topgrad, mode="valid")
+        if self.filter_flip:
+            kern = kern.transpose(1, 0, 2, 3)[:, :, ::-1, ::-1]
+        else:
+            kern = kern.transpose(1, 0, 2, 3)
+        o[0] = node.outputs[0].type.filter(kern)
 
     def grad(self, inp, grads):
         bottom, top = inp[:2]
@@ -656,10 +758,42 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
         return Apply(self, [kern, topgrad, shape], [output])
 
     def perform(self, node, inp, out_):
-        raise NotImplementedError(
-            'AbstractConv2d_gradInputs theano optimization failed. '
-            'Did you exclude both "conv_dnn" and "conv_gemm" from '
-            'the optimizer?')
+        kern, topgrad, shape = inp
+        kern = numpy.asarray(kern)
+        topgrad = numpy.asarray(topgrad)
+        o, = out_
+
+        mode = self.border_mode
+        if not ((isinstance(mode, tuple) and min(mode) >= 0) or
+                mode in ('valid', 'full', 'half')):
+            raise ValueError(
+                'invalid border_mode {}, which must be either '
+                '"valid", "full", "half", an integer or a pair of'
+                ' integers'.format(mode))
+
+        pad_h, pad_w = 0, 0
+        if mode == "full":
+            pad_h, pad_w = (kern.shape[2] - 1, kern.shape[3] - 1)
+        elif mode == "half":
+            pad_h, pad_w = (kern.shape[2] // 2, kern.shape[3] // 2)
+        elif isinstance(mode, tuple):
+            pad_h, pad_w = map(int, self.border_mode)
+        if self.subsample[0] > 1 or self.subsample[1] > 1:
+            new_shape = (topgrad.shape[0], topgrad.shape[1],
+                         shape[0] + 2 * pad_h - kern.shape[2] + 1,
+                         shape[1] + 2 * pad_w - kern.shape[3] + 1)
+            new_topgrad = numpy.zeros((new_shape), dtype=topgrad.dtype)
+            new_topgrad[:, :, ::self.subsample[0], ::self.subsample[1]] = topgrad
+            topgrad = new_topgrad
+        kern = kern.transpose(1, 0, 2, 3)
+        if self.filter_flip:
+            topgrad = topgrad[:, :, ::-1, ::-1]
+        img = self.conv2d(topgrad, kern, mode="full")
+        if self.filter_flip:
+            img = img[:, :, ::-1, ::-1]
+        if pad_h > 0 or pad_w > 0:
+            img = img[:, :, pad_h:img.shape[2] - pad_h, pad_w:img.shape[3] - pad_w]
+        o[0] = node.outputs[0].type.filter(img)
 
     def grad(self, inp, grads):
         weights, top = inp[:2]

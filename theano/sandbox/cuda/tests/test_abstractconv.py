@@ -53,7 +53,7 @@ class TestCorrMMConv2d(test_abstract_conv.BaseTestConv2d):
         self.shared = gpu_shared
         self.mode = mode_with_gpu.excluding('cudnn')
 
-    def test_gpucorrmm_conv(self, i, f, s, b, flip, provide_shape):
+    def tcase(self, i, f, s, b, flip, provide_shape):
         mode = self.mode
         o = self.get_output_shape(i, f, s, b)
         self.run_fwd(inputs_shape=i, filters_shape=f, subsample=s,
