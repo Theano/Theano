@@ -1,9 +1,3 @@
-from nose.plugins.skip import SkipTest
-
-from theano.d3viz.formatting import pydot_imported
-if not pydot_imported:
-    raise SkipTest('Missing requirements')
-
 import numpy as np
 import os.path as pt
 import tempfile
@@ -13,6 +7,11 @@ import filecmp
 import theano as th
 import theano.d3viz as d3v
 from theano.d3viz.tests import models
+
+from nose.plugins.skip import SkipTest
+from theano.d3viz.formatting import pydot_imported
+if not pydot_imported:
+    raise SkipTest('Missing requirements')
 
 
 class TestD3Viz(unittest.TestCase):
