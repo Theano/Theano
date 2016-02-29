@@ -62,6 +62,16 @@ class Cholesky(Op):
         z[0] = scipy.linalg.cholesky(x, lower=self.lower).astype(x.dtype)
 
     def grad(self, inputs, gradients):
+        """
+        Cholesky decomposition reverse-mode gradient update.
+
+        Notes
+        -----
+        Symbolic expression for reverse-mode Cholesky gradient taken from [1]_
+
+        [1] I. Murray, "Differentiation of the Cholesky decomposition",
+            http://arxiv.org/abs/1602.07527
+        """
 
         x = inputs[0]
         dz = gradients[0]
