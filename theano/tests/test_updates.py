@@ -14,10 +14,8 @@ class test_ifelse(unittest.TestCase):
         OrderedUpdates({sv: 3})
 
     def test_updates_setitem(self):
-        ok = True
 
         up = OrderedUpdates()
-        sv = theano.shared('asdf')
 
         # keys have to be SharedVariables
         self.assertRaises(TypeError, up.__setitem__, 5, 7)

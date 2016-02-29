@@ -51,8 +51,7 @@ def fetch_seed(pseed=None):
         else:
             seed = None
     except ValueError:
-        print(('Error: config.unittests.rseed contains '
-                              'invalid seed, using None instead'), file=sys.stderr)
+        print(('Error: config.unittests.rseed contains ' 'invalid seed, using None instead'), file=sys.stderr)
         seed = None
 
     return seed
@@ -66,8 +65,7 @@ def seed_rng(pseed=None):
 
     seed = fetch_seed(pseed)
     if pseed and pseed != seed:
-        print('Warning: using seed given by config.unittests.rseed=%i'\
-                'instead of seed %i given as parameter' % (seed, pseed), file=sys.stderr)
+        print('Warning: using seed given by config.unittests.rseed=%i' 'instead of seed %i given as parameter' % (seed, pseed), file=sys.stderr)
     numpy.random.seed(seed)
     return seed
 
