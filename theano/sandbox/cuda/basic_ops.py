@@ -121,14 +121,7 @@ class GpuFromHost(GpuOp):
 
     check_input = False
 
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def __hash__(self):
-        return hash(type(self))
-
-    def __str__(self):
-        return 'GpuFromHost'
+    __props__ = ()
 
     def make_node(self, x):
         if not isinstance(x.type, tensor.TensorType):
@@ -185,7 +178,7 @@ class GpuElemwise(GpuOp):
 
     """
 
-    __props__ = ("scalar_op", "inplace_pattern", )
+    __props__ = ("scalar_op", "inplace_pattern", "sync", )
 
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)

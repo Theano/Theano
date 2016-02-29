@@ -1128,11 +1128,9 @@ def local_gpu_advanced_incsubtensor1(node):
             compute_capability = device_properties(active_device_no)['major']
             if (compute_capability < 2 or y.ndim != 2 or x.ndim != 2):
 
-                gpu_op = GpuAdvancedIncSubtensor1(
-                    set_instead_of_inc=set_instead_of_inc)
+                gpu_op = tensor.AdvancedIncSubtensor1(**node.op._props_dict())
             else:
-                gpu_op = GpuAdvancedIncSubtensor1_dev20(
-                    set_instead_of_inc=set_instead_of_inc)
+                gpu_op = GPUAdvancedIncSubtensor1_dev20(**node.op._props_dict())
             return [gpu_op(as_cuda_ndarray_variable(x),
                            as_cuda_ndarray_variable(y), *coords)]
 
@@ -1191,10 +1189,7 @@ def local_gpu_incsubtensor(node):
                 # The IncSubtensor upcast to float32 y, so we do it
                 # explicitly to move it to the GPU.
                 y = y.astype('float32')
-            ret = GpuIncSubtensor(
-                incsubt.idx_list,
-                inplace=incsubt.inplace,
-                set_instead_of_inc=incsubt.set_instead_of_inc)(
+            ret = GpuIncSubtensor(**node.op._props_dict())(
                     as_cuda_ndarray_variable(x),
                     as_cuda_ndarray_variable(y),
                     *coords)
@@ -1921,7 +1916,7 @@ def local_gpu_downsample_factor_max(node):
         if (pad) != (0, 0) or node.op.mode != 'max' or stride != ws:
             return
         if (x.owner and isinstance(x.owner.op, HostFromGpu)):
-            gpu_ds = GpuDownsampleFactorMax(**node.op._props_dict())
+            gpu_ds = GpuDownsampleFactorMax(node.op.ds, node.op.ignore_border)
             return [host_from_gpu(gpu_ds(x.owner.inputs[0]))]
 
 
@@ -2683,7 +2678,7 @@ def gpu_sparse_block_outer_opt(node):
 
         inputs = _clear_host_from_gpu(node.inputs)
 
-        return [host_from_gpu(GpuSparseBlockOuter(node.op.inplace)(*inputs))]
+        return [host_from_gpu(GpuSparseBlockOuter()(*inputs))]
 
     elif isinstance(node.op, GpuFromHost) and \
             _owner_isinstance(node.inputs[0], SparseBlockOuter):
@@ -2691,7 +2686,7 @@ def gpu_sparse_block_outer_opt(node):
         meta_node = node.inputs[0].owner
         inputs = _clear_host_from_gpu(meta_node.inputs)
 
-        return [GpuSparseBlockOuter(meta_node.op.inplace)(*inputs)]
+        return [GpuSparseBlockOuter()(*inputs)]
 
 
 @local_optimizer([GpuSparseBlockGemv], inplace=True)

@@ -73,8 +73,7 @@ class DimShuffle(Op):
         list can either be an index or 'x'. Indices must be encoded
         as python integers, not theano symbolic integers.
     inplace : bool, optional
-        If True, the output will be a view of the input.
-        If False (default), the output will be a copy of the input.
+        If True (default), the output will be a view of the input.
 
     Note
     ----
@@ -136,7 +135,7 @@ class DimShuffle(Op):
     check_input = False
     __props__ = ("input_broadcastable", "new_order")
 
-    def __init__(self, input_broadcastable, new_order, inplace=False):
+    def __init__(self, input_broadcastable, new_order, inplace=True):
         input_broadcastable = tuple(input_broadcastable)
         self.input_broadcastable = input_broadcastable
         new_order = tuple(new_order)
@@ -568,8 +567,7 @@ second dimension
                 # TODO: use LComplete instead
                 args.append(dim_shuffle(
                     input.type.broadcastable,
-                    ['x'] * difference + list(range(length)),
-                    inplace=False)(input))
+                    ['x'] * difference + list(range(length)))(input))
         inputs = args
 
         # HERE: all the broadcast dims have the same length now
@@ -803,6 +801,7 @@ second dimension
                 res = theano.tensor.constant(numpy.asarray(r.data),
                                              dtype=r.type.dtype)
                 return DimShuffle((), ['x'] * nd, inplace=False)(res)
+
             new_r = Elemwise(node.op, {})(
                 *[transform(ipt) for ipt in node.inputs])
             return new_r

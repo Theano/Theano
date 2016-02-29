@@ -3513,7 +3513,7 @@ def transpose(x, axes=None):
     """
     if axes is None:
         axes = list(range((x.ndim - 1), -1, -1))
-    ret = DimShuffle(x.broadcastable, axes, inplace=False)(x)
+    ret = DimShuffle(x.broadcastable, axes)(x)
     if x.name and axes == list(range((x.ndim - 1), -1, -1)):
         ret.name = x.name + '.T'
     return ret
