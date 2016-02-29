@@ -100,7 +100,6 @@ class Test_profiling(unittest.TestCase):
             big_mat1 = 10
             big_mat2 = 11
 
-            # out = f_ifelse(val1, val2, big_mat1, big_mat2)
             f_ifelse(val1, val2, big_mat1, big_mat2)
 
         finally:
