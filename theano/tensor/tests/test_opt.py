@@ -6132,25 +6132,27 @@ def test_local_expm1():
     t = T.exp(x) - x
     s = T.exp(u) - numpy.ones((4, 3)).astype(config.floatX)
 
-    #f = function([x], y)
-    #g = function([x], z)
-    #h = function([x], t)
-    r = function([u],s)
+    f = function([x], y)
+    g = function([x], z)
+    h = function([x], t)
+    r = function([u], s)
     x_val = numpy.random.rand(4, 3).astype(config.floatX)
-    #f_val = f(x_val)
-    #g_val = g(x_val)
-    #h_val = h(x_val)
-    u_val = r(1.0)
-  
+    f_val = f(x_val)
+    f_test = function([x], T.expm1(x))
 
-    #assert any(isinstance(n.op, T.Elemwise) and isinstance(n.op.scalar_op, theano.scalar.basic.Expm1)
-     #          for n in f.maker.fgraph.toposort())
+    assert numpy.all(f_val == f_test(x_val))
 
-    #assert not any(isinstance(n.op, T.Elemwise) and isinstance(n.op.scalar_op, theano.scalar.basic.Expm1)
-     #              for n in g.maker.fgraph.toposort())
+    assert any(isinstance(n.op, T.Elemwise) and isinstance(n.op.scalar_op, theano.scalar.basic.Expm1)
+               for n in f.maker.fgraph.toposort())
 
-    #assert not any(isinstance(n.op, T.Elemwise) and isinstance(n.op.scalar_op, theano.scalar.basic.Expm1)
-     #              for n in h.maker.fgraph.toposort())
+    assert not any(isinstance(n.op, T.Elemwise) and isinstance(n.op.scalar_op, theano.scalar.basic.Expm1)
+                   for n in g.maker.fgraph.toposort())
+
+    assert not any(isinstance(n.op, T.Elemwise) and isinstance(n.op.scalar_op, theano.scalar.basic.Expm1)
+                   for n in h.maker.fgraph.toposort())
+
+    assert not any(isinstance(n.op, T.Elemwise) and isinstance(n.op.scalar_op, theano.scalar.basic.Expm1)
+                   for n in r.maker.fgraph.toposort())
 
 
 def test_local_merge_alloc():
