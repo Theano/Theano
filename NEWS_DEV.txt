@@ -38,13 +38,8 @@ Highlights:
    - Multi-GPU support in the same process
 
 
+A total of 135 people contributed to this release, see the list at the bottom.
 
-
-Committers for this dev version only:
-TODO FILL
-
-A total of 143(TODO UPDATE JUSTE BEFORE RC1) people contributed to this release.
-TODO!!!!!!!People with a "+" by their names contributed a patch for the first time.
 
 Installation:
 - Better blas detection
@@ -129,6 +124,142 @@ Others:
 - pep8, flake8
 - Better error message
 - On not default mode, redure the number of allocation  when allow_gc=False
+
+
+Committers for this dev version only:
+- Frederic Bastien
+- Arnaud Bergeron
+- Pierre Luc Carrier
+- Iban Harlouchet
+- Pascal Lamblin
+- Chienli Ma
+- David Warde-Farley
+- Amjad Almahairi
+- Tim Cooijmans
+- Christof Angermueller
+- Nicolas Ballas
+- Ziye Fan
+- Caglar
+- Sina Honari
+- Roy Xue
+- hantek
+- Mohammad Pezeshki
+- Melanie Ducoffe
+- Alexandre de Brebisson
+- Harm de Vries
+- Alex Lamb
+- Ramana.S
+- Saizheng Zhang
+- Francesco Visin
+- Ying Zhang
+- Bart van Merrienboer
+- Cesar Laurent
+- Jan Schlüter
+- Xavier Bouthillier
+- Iulian Vlad Serban
+- Samira Shabanian
+- Sigurd Spieckermann
+- Dmitrii Serdiuk
+- Kelvin Xu
+- Li Yao
+- Sebastien Jean
+- Thomas Mesnard
+- Seon-Wook Park
+- Dustin Webb
+- Mikhail Korobov
+- orhanf
+- Daniel Renshaw
+- Julien Rebetez
+- Sean Lee
+- TimSalimans
+- Andre Holzner
+- Gijs van Tulder
+- Guillaume Alain
+- Julien Demouth
+- Markus Beissinger
+- Mehdi Mirza
+- Moslem Kazemi
+- Saxenauts
+- skaae
+- Anatoly Belikov
+- Diogo Moitinho de Almeida
+- Kashif Rasul
+- Laurent Dinh
+- Rémy Léone
+- gw0 [http://gw.tnode.com/]
+- mronian
+- vesis84
+- Benni
+- JesseLivezey
+- Marius Killinger
+- Matt Graham
+- Matthew Willson
+- Piotr Frankowski
+- Stefan Krastanov
+- vdumoulin
+- Luke Metz
+- Anish Shah
+- Balázs Hidasi
+- Colin Raffel
+- Cory Lorenz
+- Doug
+- Jesse Livezey
+- John Salvatier
+- John Zedlewski
+- Jonathan Ho
+- Kaixhin
+- Liang-Chi Hsieh
+- Lucas Beyer
+- Marc-Alexandre Cote
+- Martin Arjovsky
+- Matthias Kümmerer
+- Sirisha Rambhatla
+- Vincent Michalski
+- briancheung
+- ivdorelian
+- jan-matthis
+- jojolalpin
+- joncrall
+- peterjsadowski
+- scottsievert
+- Étienne Simon
+- A. Flaxman
+- AlOa
+- Albert Zeyer
+- Andrea
+- Andy Jiang
+- Balázs
+- Ben Poole
+- Brian Cheung
+- Christophe Van Gysel
+- Claude Coulombe
+- Clay McLeod
+- Dario Garcia
+- Jakob Lombacher
+- Jakub Sygnowski
+- Joao Felipe Santos
+- John Arevalo
+- Jonas Degrave
+- Martin Thoma
+- Mathieu Germain
+- Matthew Koichi Grimes
+- Michael Eickenberg
+- Michael Opitz
+- Paul Hollensen
+- Prayag Verma
+- Saatvik Shah
+- Sergei Lebedev
+- Vik Kamath
+- Wei Ouyang
+- Yi-Lin Juang
+- Yurii Shevchuk
+- Zach Dwiel
+- dan
+- eulerreich
+- jotterbach
+- rolf
+- wuaalb
+
 
 Todo for the final release:
  * update the NEWS.txt file.
