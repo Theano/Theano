@@ -22,6 +22,7 @@ class SparseBlockGemv(Op):
         :scale: 50 %
 
     """
+    __props__ = ('inplace',)
 
     registered_opts = []
 
@@ -138,6 +139,7 @@ class SparseBlockOuter(Op):
     This op is involved in the gradient of SparseBlockGemv.
 
     """
+    __props__ = ('inplace',)
 
     registered_opts = []
 
