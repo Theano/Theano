@@ -295,6 +295,7 @@ class GpuBatchedDot(GpuOp):
                 x += Sx[0]; y += Sy[0]; z += Sz[0];
             };
 
+            cublasSetStream(handle, NULL);
             for (int i = 0; i < N_STREAMS; i++) {
                 cudaStreamSynchronize(streams[i]);
                 cudaStreamDestroy(streams[i]);
