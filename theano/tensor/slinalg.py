@@ -193,6 +193,40 @@ class Solve(Op):
             cols = Bshape[1]  # b is a Matrix
             return [(rows, cols)]
 
+    def grad(self, inputs, output_gradients):
+        """
+        Reverse-mode gradient updates for matrix solve operation c = A \ b.
+
+        Symbolic expression for updates taken from [1]_.
+
+        References
+        ----------
+        ..[1] M. B. Giles, "An extended collection of matrix derivative results
+          for forward and reverse mode automatic differentiation",
+          http://eprints.maths.ox.ac.uk/1079/
+
+        """
+        A, b = inputs
+        c = self(A, b)
+        c_bar = output_gradients[0]
+        trans_map = {
+            'lower_triangular': 'upper_triangular',
+            'upper_triangular': 'lower_triangular'
+        }
+        trans_solve_op = Solve(
+            # update A_structure and lower to account for a transpose operation
+            A_structure=trans_map.get(self.A_structure, self.A_structure),
+            lower=not self.lower
+        )
+        b_bar = trans_solve_op(A.T, c_bar)
+        # force outer product if vector second input
+        A_bar = -tensor.outer(b_bar, c) if c.ndim == 1 else -b_bar.dot(c.T)
+        if self.A_structure == 'lower_triangular':
+            A_bar = tensor.tril(A_bar)
+        elif self.A_structure == 'upper_triangular':
+            A_bar = tensor.triu(A_bar)
+        return [A_bar, b_bar]
+
 solve = Solve()  # general solve
 
 # TODO : SolveTriangular
