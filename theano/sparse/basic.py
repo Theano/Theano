@@ -616,7 +616,6 @@ class CSM(gof.Op):
 
     """
     __props__ = ('format',)
-    _hashval = None
     """
     Pre-computed hash value, defined by __init__.
 
@@ -628,12 +627,9 @@ class CSM(gof.Op):
         self.format = format
         if kmap is not None:
             raise Exception("Do not use kmap, it is removed")
-        self.kmap = kmap
         # should view the other inputs too, but viewing multiple
         # inputs is not currently supported by the destroyhandler
         self.view_map = {0: [0]}
-
-        self._hashval = (hash(type(self)) ^ hash(self.format))
 
     def make_node(self, data, indices, indptr, shape):
         data = tensor.as_tensor_variable(data)
