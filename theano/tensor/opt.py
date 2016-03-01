@@ -3576,6 +3576,38 @@ def local_join_make_vector(node):
         return [ret]
 
 
+#################
+# Exp stability #
+#################
+@register_stabilize
+@register_specialize
+@register_canonicalize
+@gof.local_optimizer([T.Elemwise])
+def local_expm1(node):
+    """ 
+    This optimization detects exp(a)-1 and converts this to expm1(a).
+    """
+    if (isinstance(node.op, T.Elemwise) and
+            isinstance(node.op.scalar_op, theano.scalar.basic.Sub)):
+        in1, in2 = node.inputs
+        out = node.outputs[0]
+        #import pdb; pdb.set_trace()
+
+        if (in1.owner and isinstance(in1.owner.op, T.Elemwise) and isinstance(in1.owner.op.scalar_op, theano.scalar.basic.Exp) and 
+                T.extract_constant(in2) == 1):
+            in11 = in1.owner.inputs[0]
+            new_out = T.expm1(in11)
+            
+           # import pdb; pdb.set_trace()
+            if new_out.dtype != out.dtype:
+                  new_out = T.cast(new_out, dtype=out.dtype)
+            # The ones could have forced a specific length
+            if new_out.type != out.type:
+                new_out = broadcast_like(new_out, out, node.fgraph)
+
+            return [new_out]
+
+
 ###############
 # Switch opts #
 ###############
@@ -6756,7 +6788,7 @@ def local_grad_clip(node):
 @register_stabilize
 @register_specialize
 @gof.local_optimizer([T.Alloc])
-def local_merge_alloc(node):
+def local_merge_allo(cnode):
     # This opt takes care of several cases:
     # Alloc(Alloc(m, x, 1, 1, 1), x, y, z, w) -> Alloc(m, x, y, z, w)
     # Alloc(Alloc(m, y, 1, 1), x, y, z, w) -> Alloc(m, x, y, z, w)
