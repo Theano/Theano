@@ -328,7 +328,7 @@ class GpuBatchedDot(GpuOp):
         return rval
 
     def c_code_cache_version(self):
-        return (2,)
+        return (3,)
 
     def infer_shape(self, node, shapes):
         xshp, yshp = shapes
