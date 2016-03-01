@@ -65,31 +65,40 @@ class Cholesky(Op):
         """
         Cholesky decomposition reverse-mode gradient update.
 
-        Notes
-        -----
         Symbolic expression for reverse-mode Cholesky gradient taken from [1]_
 
-        [1] I. Murray, "Differentiation of the Cholesky decomposition",
-            http://arxiv.org/abs/1602.07527
+        References
+        ----------
+        .. [1] I. Murray, "Differentiation of the Cholesky decomposition",
+           http://arxiv.org/abs/1602.07527
+
         """
 
         x = inputs[0]
         dz = gradients[0]
         chol_x = self(x)
 
+        # deal with upper triangular by converting to lower triangular
+        if not self.lower:
+            chol_x = chol_x.T
+            dz = dz.T
+
         def tril_and_halve_diagonal(mtx):
             """Extracts lower triangle of square matrix and halves diagonal."""
             return tensor.tril(mtx) - tensor.diag(tensor.diagonal(mtx) / 2.)
 
         def conjugate_solve_triangular(outer, inner):
-            """Computes P^{-T} Q P^{-1} for lower-triangular P."""
+            """Computes L^{-T} P L^{-1} for lower-triangular L."""
             return solve_upper_triangular(
                 outer.T, solve_upper_triangular(outer.T, inner.T).T)
 
         s = conjugate_solve_triangular(
             chol_x, tril_and_halve_diagonal(chol_x.T.dot(dz)))
 
-        return [tensor.tril(s + s.T) - tensor.diag(tensor.diagonal(s))]
+        if self.lower:
+            return [tensor.tril(s + s.T) - tensor.diag(tensor.diagonal(s))]
+        else:
+            return [tensor.triu(s + s.T) - tensor.diag(tensor.diagonal(s))]
 
 cholesky = Cholesky()
 
