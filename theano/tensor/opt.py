@@ -6783,7 +6783,7 @@ def local_grad_clip(node):
 @register_stabilize
 @register_specialize
 @gof.local_optimizer([T.Alloc])
-def local_merge_allo(cnode):
+def local_merge_alloc(node):
     # This opt takes care of several cases:
     # Alloc(Alloc(m, x, 1, 1, 1), x, y, z, w) -> Alloc(m, x, y, z, w)
     # Alloc(Alloc(m, y, 1, 1), x, y, z, w) -> Alloc(m, x, y, z, w)
