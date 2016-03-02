@@ -65,11 +65,11 @@ class Cholesky(Op):
         """
         Cholesky decomposition reverse-mode gradient update.
 
-        Symbolic expression for reverse-mode Cholesky gradient taken from [1]_
+        Symbolic expression for reverse-mode Cholesky gradient taken from [0]_
 
         References
         ----------
-        .. [1] I. Murray, "Differentiation of the Cholesky decomposition",
+        .. [0] I. Murray, "Differentiation of the Cholesky decomposition",
            http://arxiv.org/abs/1602.07527
 
         """
