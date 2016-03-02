@@ -219,15 +219,10 @@ class FunctionGraph(utils.object2):
 
     def disown(self):
         """
-        WRITEME
         Cleans up all of this FunctionGraph's nodes and variables so they are
         not associated with this FunctionGraph anymore.
 
         The FunctionGraph should not be used anymore after disown is called.
-
-        This may not clean everything this FunctionGraph's features set in the
-        nodes and variables. If there are no features, this should set
-        them back to what they were originally.
 
         """
         for f in self._features:
