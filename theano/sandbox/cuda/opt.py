@@ -548,7 +548,7 @@ def local_gpu_lazy_ifelse(node):
 
             for i in range(len(outs)):
                 if (not isinstance(outs[i].type, CudaNdarrayType) and
-                        outs[i].dtype == 'float32'):
+                        getattr(outs[i], 'dtype', None) == 'float32'):
                     outs[i] = as_cuda_ndarray_variable(outs[i])
             outs = gpu_ifelse(c, *outs, return_list=True)
             for i in range(len(outs)):
