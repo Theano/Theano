@@ -229,7 +229,10 @@ class test_Solve(utt.InferShapeTester):
                               upper_solve_func(U_val, b_val))
 
     def verify_solve_grad(self, m, n, A_structure, lower, rng):
-        A_val = rng.normal(size=(m, m))
+        # ensure diagonal elements of A relatively large to avoid numerical
+        # precision issues
+        A_val = (rng.normal(size=(m, m)) * 0.5 +
+                 numpy.eye(m)).astype(config.floatX)
         if A_structure == 'lower_triangular':
             A_val = numpy.tril(A_val)
         elif A_structure == 'upper_triangular':
