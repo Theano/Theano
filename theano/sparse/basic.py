@@ -703,7 +703,7 @@ class CSM(gof.Op):
         g_data, g_indices, g_indptr, g_shape = csm_properties(g_out)
         # unpack the data vector and wrap it as a 1d TensorType
         g_data = csm_grad()(x_data, x_indices, x_indptr, x_shape,
-                                     g_data, g_indices, g_indptr, g_shape)
+                            g_data, g_indices, g_indptr, g_shape)
         return [g_data, DisconnectedType()(), DisconnectedType()(), DisconnectedType()()]
 
     def infer_shape(self, node, shapes):
