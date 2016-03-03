@@ -3593,7 +3593,7 @@ def local_expm1(node):
         out = node.outputs[0]
 
         if (in1.owner and isinstance(in1.owner.op, T.Elemwise) and isinstance(in1.owner.op.scalar_op, theano.scalar.basic.Exp) and
-                T.extract_constant(in2) == 1):
+                T.extract_constant(in2, only_process_constants=False) == 1):
             in11 = in1.owner.inputs[0]
             new_out = T.expm1(in11)
 
