@@ -549,7 +549,7 @@ class Test_pfunc(unittest.TestCase):
     def test_default_updates_input(self):
         x = shared(0)
         y = shared(1)
-        if theano.gof.python_int_bitwidth() == 32:
+        if theano.configdefaults.python_int_bitwidth() == 32:
             a = iscalar('a')
         else:
             a = lscalar('a')

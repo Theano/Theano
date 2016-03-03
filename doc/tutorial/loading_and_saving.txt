@@ -30,10 +30,7 @@ The Basics of Pickling
 The two modules ``pickle`` and ``cPickle`` have the same functionalities, but
 ``cPickle``, coded in C, is much faster.
 
-.. If you modify this code, also change :
-.. theano/tests/test_tutorial.py:T_loading_and_saving.test_loading_and_saving_3
-
->>> import cPickle
+>>> from six.moves import cPickle
 
 You can serialize (or *save*, or *pickle*) objects to a file with
 ``cPickle.dump``:
@@ -42,7 +39,7 @@ You can serialize (or *save*, or *pickle*) objects to a file with
 
    my_obj = object()
 
->>> f = file('obj.save', 'wb')
+>>> f = open('obj.save', 'wb')
 >>> cPickle.dump(my_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
 >>> f.close()
 
@@ -60,7 +57,7 @@ You can serialize (or *save*, or *pickle*) objects to a file with
 To de-serialize (or *load*, or *unpickle*) a pickled file, use
 ``cPickle.load``:
 
->>> f = file('obj.save', 'rb')
+>>> f = open('obj.save', 'rb')
 >>> loaded_obj = cPickle.load(f)
 >>> f.close()
 
@@ -74,14 +71,14 @@ same order):
    obj2 = object()
    obj3 = object()
 
->>> f = file('objects.save', 'wb')
+>>> f = open('objects.save', 'wb')
 >>> for obj in [obj1, obj2, obj3]:
 ...     cPickle.dump(obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
 >>> f.close()
 
 Then:
 
->>> f = file('objects.save', 'rb')
+>>> f = open('objects.save', 'rb')
 >>> loaded_objects = []
 >>> for i in range(3):
 ...     loaded_objects.append(cPickle.load(f))
@@ -121,7 +118,7 @@ For instance, you can define functions along the lines of:
 
     def __setstate__(self, d):
         self.__dict__.update(d)
-        self.training_set = cPickle.load(file(self.training_set_file, 'rb'))
+        self.training_set = cPickle.load(open(self.training_set_file, 'rb'))
 
 
 Robust Serialization

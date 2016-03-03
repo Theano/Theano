@@ -21,8 +21,9 @@ from theano.compile import optdb
 from theano.gof import local_optimizer
 from . import multinomial
 
-from theano.sandbox.cuda import cuda_available, cuda_enabled, GpuOp
-if cuda_available:
+import theano.sandbox.cuda
+from theano.sandbox.cuda import GpuOp
+if theano.sandbox.cuda.cuda_available:
     from theano.sandbox.cuda import (CudaNdarrayType,
                                      float32_shared_constructor)
 
@@ -1091,7 +1092,7 @@ class MRG_RandomStreams(object):
         self.set_rstate(seed)
 
         if use_cuda is None:
-            self.use_cuda = cuda_enabled
+            self.use_cuda = theano.sandbox.cuda.cuda_enabled            
         else:
             self.use_cuda = use_cuda
 

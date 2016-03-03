@@ -21,7 +21,7 @@ import numpy
 from six.moves import xrange
 
 import theano
-from theano.compat import PY3, imap, izip
+from theano.compat import imap, izip
 from theano import gof, printing
 from theano.gof import (Op, utils, Variable, Constant, Type, Apply,
                         FunctionGraph)
@@ -604,12 +604,11 @@ class _scalar_py_operators:
     def __mul__(self, other):
         return mul(self, other)
 
-    if PY3:
-        def __truediv__(self, other):
-            return div_proxy(self, other)
-    else:
-        def __div__(self, other):
-            return div_proxy(self, other)
+    def __truediv__(self, other):
+        return div_proxy(self, other)
+
+    def __div__(self, other):
+        return div_proxy(self, other)
 
     def __floordiv__(self, other):
         return int_div(self, other)
@@ -1610,13 +1609,13 @@ def int_or_true_div(x_discrete, y_discrete):
                 "please use x // y for an integer division.",
                 DeprecationWarning,
                 stacklevel=4)
-            return 'int'
+            return int_div
         elif config.int_division == 'floatX':
-            return 'true'
+            return true_div
         else:
             raise NotImplementedError(config.int_division)
     else:
-        return 'true'
+        return true_div
 
 
 def div_proxy(x, y):
@@ -1624,8 +1623,8 @@ def div_proxy(x, y):
     Proxy for either true_div or int_div, depending on types of x, y.
 
     """
-    f = eval('%s_div' % int_or_true_div(as_scalar(x).type in discrete_types,
-                                        as_scalar(y).type in discrete_types))
+    f = int_or_true_div(as_scalar(x).type in discrete_types,
+                        as_scalar(y).type in discrete_types)
     return f(x, y)
 
 

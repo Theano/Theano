@@ -62,3 +62,18 @@ def test_hash_from_dict():
 
     # List are not hashable. So they are transformed into tuple.
     assert hash_from_dict({0: (0,)}) == hash_from_dict({0: [0]})
+
+
+def test_stack_trace():
+    orig = theano.config.traceback.limit
+    try:
+        theano.config.traceback.limit = 1
+        v = theano.tensor.vector()
+        assert len(v.tag.trace) == 1
+        assert len(v.tag.trace[0]) == 1
+        theano.config.traceback.limit = 2
+        v = theano.tensor.vector()
+        assert len(v.tag.trace) == 1
+        assert len(v.tag.trace[0]) == 2
+    finally:
+        theano.config.traceback.limit = orig

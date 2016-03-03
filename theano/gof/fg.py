@@ -172,8 +172,6 @@ class FunctionGraph(utils.object2):
         for i, output in enumerate(outputs):
             output.clients.append(('output', i))
 
-        self.node_locks = {}
-        self.variable_locks = {}
         self.profile = None
         self.update_mapping = update_mapping
 
@@ -232,6 +230,8 @@ class FunctionGraph(utils.object2):
         them back to what they were originally.
 
         """
+        for f in self._features:
+            self.remove_feature(f)
         for apply_node in self.apply_nodes:
             del apply_node.fgraph
             del apply_node.deps
@@ -242,6 +242,8 @@ class FunctionGraph(utils.object2):
         self.variables = set()
         self.inputs = None
         self.outputs = None
+        self.profile = None
+        self.update_mapping = None
 
     # clients #
     def clients(self, r):

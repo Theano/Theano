@@ -10,6 +10,7 @@ from theano.compile.ops import shape_i
 from theano.gof import (local_optimizer, EquilibriumDB,
                         SequenceDB, Optimizer, toolbox)
 from theano.gof.optdb import LocalGroupDB
+from theano.ifelse import IfElse
 
 from theano.scalar.basic import Scalar, Pow, Cast
 from theano.scan_module import scan_utils, scan_op, scan_opt
@@ -300,6 +301,21 @@ def local_gpualloc_memset_0(node):
             return [new_op(*node.inputs)]
 
 
+# Don't register by default.
+@gof.local_optimizer([GpuAllocEmpty])
+def local_gpua_alloc_empty_to_zeros(node):
+    if isinstance(node.op, GpuAllocEmpty):
+        context_name = infer_context_name(*node.inputs)
+        z = numpy.asarray(0, dtype=node.outputs[0].dtype)
+        return [GpuAlloc()(as_gpuarray_variable(z, context_name),
+                           *node.inputs)]
+optdb.register('local_gpua_alloc_empty_to_zeros',
+               theano.tensor.opt.in2out(local_gpua_alloc_empty_to_zeros),
+               # After move to gpu and merge2, before inplace.
+               49.3,
+               'alloc_empty_to_zeros',)
+
+
 @register_opt()
 @local_optimizer([GpuContiguous])
 def local_gpu_contiguous_gpu_contiguous(node):
@@ -525,6 +541,16 @@ def local_gpu_pdbbreakpoint_op(node):
 
 
 @register_opt('fast_compile')
+@op_lifter([IfElse])
+def local_gpua_lazy_ifelse(node, context_name):
+    if node.op.gpu:
+        return
+    c = node.inputs[0]
+    inps = [as_gpuarray_variable(v, context_name) for v in node.inputs[1:]]
+    return IfElse(node.op.n_outs, gpu=True)(c, *inps, return_list=True)
+
+
+@register_opt('fast_compile')
 @op_lifter([tensor.Join])
 def local_gpua_join(node, context_name):
     return gpu_join
@@ -569,9 +595,13 @@ def local_gpua_subtensor(node, context_name):
 @register_opt('fast_compile')
 @op_lifter([tensor.IncSubtensor])
 def local_gpua_incsubtensor(node, context_name):
-    return GpuIncSubtensor(node.op.idx_list, node.op.inplace,
-                           node.op.set_instead_of_inc,
-                           node.op.destroyhandler_tolerate_aliased)
+    op = GpuIncSubtensor(node.op.idx_list, node.op.inplace,
+                         node.op.set_instead_of_inc,
+                         node.op.destroyhandler_tolerate_aliased)
+    ret = op(*node.inputs)
+    val = getattr(node.outputs[0].tag, 'nan_guard_mode_check', True)
+    ret.tag.nan_guard_mode_check = val
+    return ret
 
 
 @register_opt('fast_compile')
@@ -748,6 +778,16 @@ def local_gpua_ger(node, context_name):
 @op_lifter([tensor.blas.Dot22])
 def local_gpua_dot22(node, context_name):
     return gpu_dot22
+
+
+@register_opt('fast_compile')
+@op_lifter([tensor.blas.Dot22Scalar])
+def local_gpua_dot22scalar(node, context_name):
+    x, y, a = node.inputs
+    x = as_gpuarray_variable(x, context_name)
+    y = as_gpuarray_variable(y, context_name)
+    z = GpuAllocEmpty(x.dtype, context_name)(x.shape[0], y.shape[1])
+    return [GpuGemm(inplace=False)(z, a, x, y, 0)]
 
 
 @register_opt('fast_compile')

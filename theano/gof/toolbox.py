@@ -273,6 +273,8 @@ class ReplaceValidate(History, Validator):
             if hasattr(fgraph, attr):
                 raise AlreadyThere("ReplaceValidate feature is already present"
                                    " or in conflict with another plugin.")
+        self._nodes_removed = set()
+        self.fail_validate = False
         History.on_attach(self, fgraph)
         Validator.on_attach(self, fgraph)
         self.unpickle(fgraph)
@@ -289,6 +291,7 @@ class ReplaceValidate(History, Validator):
     def on_detach(self, fgraph):
         History.on_detach(self, fgraph)
         Validator.on_detach(self, fgraph)
+        del self._nodes_removed
         del fgraph.replace_validate
         del fgraph.replace_all_validate
         del fgraph.replace_all_validate_remove
@@ -347,6 +350,7 @@ class ReplaceValidate(History, Validator):
 
         """
         chk = fgraph.replace_all_validate(replacements, reason)
+        self._nodes_removed.update(remove)
         for rm in remove:
             if rm in fgraph.apply_nodes or rm in fgraph.variables:
                 fgraph.revert(chk)
@@ -368,6 +372,15 @@ class ReplaceValidate(History, Validator):
         if "history" in d:
             del d["history"]
         return d
+
+    def on_import(self, fgraph, node, reason):
+        if node in self._nodes_removed:
+            self.fail_validate = True
+
+    def validate(self, fgraph):
+        if self.fail_validate:
+            self.fail_validate = False
+            raise theano.gof.InconsistencyError("Trying to reintroduce a removed node")
 
 
 class NodeFinder(Bookkeeper):
@@ -455,10 +468,28 @@ class PrintListener(Feature):
 
 
 class PreserveNames(Feature):
+    """
+    This preserve some variables names during optimization.
+
+    Deprecated. We need to keep it to allow unpickling.
+    """
 
     def on_change_input(self, fgraph, node, i, r, new_r, reason=None):
         if r.name is not None and new_r.name is None:
             new_r.name = r.name
+
+
+class PreserveVariableAttributes(Feature):
+    """
+    This preserve some variables attributes and tag during optimization.
+    """
+
+    def on_change_input(self, fgraph, node, i, r, new_r, reason=None):
+        if r.name is not None and new_r.name is None:
+            new_r.name = r.name
+        if getattr(r.tag, 'nan_guard_mode_check', False) and getattr(
+                new_r.tag, 'nan_guard_mode_check', False) is False:
+            new_r.tag.nan_guard_mode_check = r.tag.nan_guard_mode_check
 
 
 class NoOutputFromInplace(Feature):

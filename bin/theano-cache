@@ -6,6 +6,7 @@ import sys
 
 import theano
 from theano import config
+import theano.gof.compiledir
 from theano.gof.cc import get_module_cache
 
 _logger = logging.getLogger('theano.bin.theano-cache')

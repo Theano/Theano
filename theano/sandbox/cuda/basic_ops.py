@@ -2436,7 +2436,7 @@ class GpuReshape(tensor.Reshape, GpuOp):
 
     """
 
-    # __hash__, __eq__, __str__ come from tensor.Subtensor
+    # __hash__, __eq__, __str__ come from tensor.Reshape
     def make_node(self, x, shp):
         x = as_cuda_ndarray_variable(x)
         shp = tensor.as_tensor_variable(shp)
@@ -3008,7 +3008,7 @@ class GpuAdvancedIncSubtensor1_dev20(GpuAdvancedIncSubtensor1):
                        32: tensor.basic._convert_to_int32,
                        64: tensor.basic._convert_to_int64
         }
-        intwidth = theano.gof.compiledir.python_int_bitwidth()
+        intwidth = theano.configdefaults.python_int_bitwidth()
         ilist_ = convert_map[intwidth](ilist_)
 
         assert x_.type.dtype == y_.type.dtype
@@ -3680,7 +3680,15 @@ class GpuAllocEmpty(GpuOp):
         # The outut can contain nan/inf.  output.type is a new
         # instance, so we can do this only for that variable.
         output.type.filter_checks_isfinite = False
+        output.tag.nan_guard_mode_check = False
         return Apply(self, shape, [output])
+
+    def debug_perform(self, node, inputs, out_):
+        self.perform(node, inputs, out_)
+        # __setitem__ is limited on CudaNdarray
+        tmp = numpy.empty(out_[0][0].shape, dtype='float32')
+        tmp.fill(-123456789)
+        out_[0][0][:] = tmp
 
     def perform(self, node, inputs, out_):
         out, = out_
@@ -3760,6 +3768,10 @@ class GpuAlloc(GpuAllocEmpty):
         v = as_cuda_ndarray_variable(value)
         shape, output = self.validate_shape(shape)
         return Apply(self, [v] + shape, [output])
+
+    # This is required because the superclass (GpuAllocEmpty) also has it.
+    def debug_perform(self, node, inputs, out_):
+        self.perform(node, inputs, out_)
 
     def perform(self, node, inputs, out_):
         # the super class (GpuAllocEmpty) allocates memory, we fill it

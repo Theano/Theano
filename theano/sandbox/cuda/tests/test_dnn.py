@@ -3,6 +3,8 @@ import logging
 from nose.plugins.skip import SkipTest
 import numpy
 from itertools import chain, product
+import six.moves.cPickle as pickle
+import os
 
 import theano
 from six import StringIO
@@ -68,19 +70,6 @@ def test_dnn_conv_desc_merge():
 
         # They won't be equal if they aren't merged.
         assert d1 == d2
-
-
-def test_dnn_pool_desc_merge():
-    if not cuda.dnn.dnn_available():
-        raise SkipTest(cuda.dnn.dnn_available.msg)
-
-    x = theano.tensor.ftensor4('x')
-    y = dnn.dnn_pool(x, (2, 2))
-    z = dnn.dnn_pool(x, (2, 2))
-    f = theano.function([x], [y, z])
-    descs = [n for n in f.maker.fgraph.apply_nodes
-             if isinstance(n.op, dnn.GpuDnnPoolDesc)]
-    assert len(descs) == 1, f.maker.fgraph
 
 
 def test_dnn_conv_merge():
@@ -346,6 +335,64 @@ def test_pooling():
             utt.assert_allclose(c_out, g_out)
 
 
+def test_pooling_with_tensor_vars():
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+    x = T.ftensor4()
+    ws = theano.shared(numpy.array([2, 2], dtype='int32'))
+    st = theano.shared(numpy.array([1, 1], dtype='int32'))
+    pad = theano.shared(numpy.array([0, 0], dtype='int32'))
+    mode = 'max'
+
+    def fn(x):
+        dnn_op = cuda.dnn.dnn_pool(
+            x, ws=ws,
+            stride=st,
+            pad=pad,
+            mode=mode)
+        return dnn_op
+
+    for shp in [(1, 1, 2, 2),
+                (1, 1, 3, 3)]:
+        data = numpy.random.normal(0, 1, shp).astype("float32") * 10
+        theano.tests.unittest_tools.verify_grad(
+            fn, [data],
+            cast_to_output_type=False,
+            mode=mode_with_gpu)
+
+    out2 = pool_2d_i2n(x, ds=(2, 2), strides=(1, 1),
+                       pad=(0, 0),
+                       pool_function=T.max)
+
+    mode_without_gpu2 = mode_without_gpu.including()
+    mode_without_gpu2.check_isfinite = False
+
+    f1 = theano.function([x], fn(x), mode=mode_with_gpu)
+    assert any([isinstance(node.op, cuda.dnn.GpuDnnPool)
+                for node in f1.maker.fgraph.apply_nodes])
+    f2 = theano.function([x], out2, mode=mode_without_gpu2)
+    assert not any([isinstance(node.op, cuda.dnn.GpuDnnPool)
+                    for node in f2.maker.fgraph.apply_nodes])
+    for shp in [(1, 10, 100, 100),
+                (1, 3, 99, 99),
+                (32, 1, 147, 197),
+                ]:
+        data = numpy.random.normal(0, 1, shp).astype("float32")
+        a = f1(data).__array__()
+
+        b = f2(data).__array__()
+        utt.assert_allclose(a, b)
+
+
+def test_old_pool_interface():
+    if not cuda.dnn.dnn_available():
+        raise SkipTest(cuda.dnn.dnn_available.msg)
+    testfile_dir = os.path.dirname(os.path.realpath(__file__))
+    fname = 'old_pool_interface.pkl'
+    with open(os.path.join(testfile_dir, fname), 'rb') as fp:
+        pickle.load(fp)
+
+
 def test_pooling3d():
     # CuDNN 3d pooling requires CuDNN v3. Don't test if the CuDNN version is
     # too old.
@@ -607,8 +654,9 @@ class test_DnnSoftMax(test_nnet.test_SoftMax):
             input_val = numpy.random.normal(0, 1, inp_shape).astype("float32")
 
             out = f(input_val)
-            expected_out = numpy.log(numpy.exp(input_val) /
-                                     numpy.exp(input_val).sum(1)[:, None, :, :])
+            expected_out = numpy.log(
+                numpy.exp(input_val) /
+                numpy.exp(input_val).sum(1)[:, None, :, :])
 
             utt.assert_allclose(out, expected_out)
 
@@ -999,14 +1047,10 @@ class TestDnnInferShapes(utt.InferShapeTester):
             [(1, 1), (2, 2), (3, 3)],
             modes
         ):
-            desc = dnn.GpuDnnPoolDesc(
-                ws=params[0],
-                stride=params[1],
-                mode=params[2]
-            )()
             self._compile_and_check(
                 [img],
-                [dnn.GpuDnnPool()(img, desc)],
+                [dnn.GpuDnnPool(mode=params[2])
+                               (img, params[0], params[1], (0, 0))],
                 [img_val],
                 dnn.GpuDnnPool
             )
@@ -1035,16 +1079,13 @@ class TestDnnInferShapes(utt.InferShapeTester):
             [(1, 1), (2, 2), (3, 3)],
             ['max', 'average_inc_pad']
         ):
-            desc = dnn.GpuDnnPoolDesc(
-                ws=params[0],
-                stride=params[1],
-                mode=params[2]
-            )()
             pool_grad = dnn.GpuDnnPoolGrad()(
                 img,
                 out,
                 img_grad,
-                desc
+                params[0],
+                params[1],
+                (0, 0)
             )
             self._compile_and_check(
                 [img, img_grad, out],

@@ -29,58 +29,12 @@ import numpy
 import theano
 from six import iteritems
 from theano.gof import graph
-from theano.configparser import AddConfigVar, BoolParam, IntParam, StrParam
 
 theano_imported_time = time.time()
 config = theano.config
 
 _atexit_print_list = []
 _atexit_registered = False
-
-AddConfigVar('profiling.time_thunks',
-             """Time individual thunks when profiling""",
-             BoolParam(True),
-             in_c_key=False)
-
-AddConfigVar('profiling.n_apply',
-             "Number of Apply instances to print by default",
-             IntParam(20, lambda i: i > 0),
-             in_c_key=False)
-
-AddConfigVar('profiling.n_ops',
-             "Number of Ops to print by default",
-             IntParam(20, lambda i: i > 0),
-             in_c_key=False)
-
-AddConfigVar('profiling.output_line_width',
-             "Max line width for the profiling output",
-             IntParam(512, lambda i: i > 0),
-             in_c_key=False)
-
-AddConfigVar('profiling.min_memory_size',
-             """For the memory profile, do not print Apply nodes if the size
-             of their outputs (in bytes) is lower than this threshold""",
-             IntParam(1024, lambda i: i >= 0),
-             in_c_key=False)
-
-AddConfigVar('profiling.min_peak_memory',
-             """The min peak memory usage of the order""",
-             BoolParam(False),
-             in_c_key=False)
-
-AddConfigVar('profiling.destination',
-             """
-             File destination of the profiling output
-             """,
-             StrParam('stderr'),
-             in_c_key=False)
-
-AddConfigVar('profiling.debugprint',
-             """
-             Do a debugprint of the profiled functions
-             """,
-             BoolParam(False),
-             in_c_key=False)
 
 
 def _atexit_print_fn():
@@ -1390,6 +1344,16 @@ class ProfileStats(object):
                     print("     - MRG_RandomStreams is the only random number"
                           " generator supported on the GPU.", file = file)
                 break
+
+        # tip 6
+        for a in self.apply_time:
+            node = a
+            if (isinstance(node.op, T.Dot) and
+                len(set(i.dtype for i in node.inputs)) != 1):
+                print("  - You have a dot operation that has different dtype "
+                      " for inputs (%s). Make sure that the inputs have same "
+                      " dtype." % [i.type for i in node.inputs], file = file)
+                printed_tip = True
 
         if not printed_tip:
             print("  Sorry, no tip for today.", file = file)

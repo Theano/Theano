@@ -3,7 +3,6 @@ Test config options.
 """
 
 import unittest
-from theano import config
 from theano.configparser import AddConfigVar, ConfigParam, THEANO_FLAGS_DICT
 
 
@@ -31,17 +30,16 @@ class T_config(unittest.TestCase):
         except ValueError:
             pass
 
-        try:
-            THEANO_FLAGS_DICT['T_config.test_invalid_default_b'] = 'ok'
-            # This should succeed since we defined a proper value, even
-            # though the default was invalid.
-            AddConfigVar(
-                    'T_config.test_invalid_default_b',
-                    doc='unittest',
-                    configparam=ConfigParam('invalid', filter=filter),
-                    in_c_key=False)
-        finally:
-            # Dicionary clean-up.
-            del THEANO_FLAGS_DICT['T_config.test_invalid_default_b']
+        THEANO_FLAGS_DICT['T_config.test_invalid_default_b'] = 'ok'
+        # This should succeed since we defined a proper value, even
+        # though the default was invalid.
+        AddConfigVar(
+                'T_config.test_invalid_default_b',
+                doc='unittest',
+                configparam=ConfigParam('invalid', filter=filter),
+                in_c_key=False)
+
+        # Check that the flag has been removed
+        assert 'T_config.test_invalid_default_b' not in THEANO_FLAGS_DICT
 
         # TODO We should remove these dummy options on test exit.

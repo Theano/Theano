@@ -350,7 +350,7 @@ Example: Op definition
                 return eval_points
             return self.grad(inputs, eval_points)
 
-        doubleOp2 = DoubleOp2()
+    doubleOp2 = DoubleOp2()
 
 At a high level, the code fragment declares a class (e.g., ``DoubleOp1``) and then 
 creates one instance of it (e.g., ``doubleOp1``).
@@ -412,8 +412,9 @@ but it must not influence the semantics of the Op output.
 
 You can try the new Op as follows:
 
-.. testcode:: example(Using make_node)
+.. testcode:: example
 
+    import theano
     x = theano.tensor.matrix()
     f = theano.function([x], DoubleOp1()(x))
     import numpy
@@ -425,10 +426,9 @@ You can try the new Op as follows:
 
 .. testoutput:: example
    :hide:
-   :options: +ELLIPSIS
-
-   ...
-   ...
+   :options: +ELLIPSIS, +SKIP
+   
+    <BLANKLINE>
 
 .. code-block:: none
 
@@ -443,8 +443,9 @@ You can try the new Op as follows:
      [ 1.5465443   1.30803715  1.53125983  1.88291403]
      [ 1.6904152   0.61000201  1.76861002  1.9163731 ]]
 
-.. testcode:: example (Using itypes and otypes)
+.. testcode:: example
 
+    import theano
     x = theano.tensor.matrix()
     f = theano.function([x], DoubleOp2()(x))
     import numpy
@@ -457,10 +458,9 @@ You can try the new Op as follows:
 
 .. testoutput:: example
    :hide:
-   :options: +ELLIPSIS
+   :options: +ELLIPSIS, +SKIP
 
-   ...
-   ...
+    <BLANKLINE>
 
 .. code-block:: none
 
@@ -503,8 +503,8 @@ and ``b`` are equal.
 
         def make_node(self, x):
             # check that the theano version has support for __props__.
-            assert hasattr(self, '_props'), "Your version of theano is too old 
-            to support __props__."
+            assert hasattr(self, '_props'), ("Your version of theano is too"
+                                             "old to support __props__.")
             x = theano.tensor.as_tensor_variable(x)
             return theano.Apply(self, [x], [x.type()])
 
@@ -912,6 +912,23 @@ documentation:
 
 .. automodule:: theano.misc.doubleop
     :members:
+
+NanGuardMode and AllocEmpty
+---------------------------
+
+NanGuardMode help users find where in the graph NaN appear. But
+sometimes, we want some variables to not be checked. For example, in
+the old GPU back-end, we use a float32 CudaNdarray to store the MRG
+random number generator state (they are integers). So if NanGuardMode
+check it, it will generate false positive. Another case is related to
+[Gpu]AllocEmpty or some computation on it (like done by Scan).
+
+You can tell NanGuardMode to do not check a variable with:
+``variable.tag.nan_guard_mode_check``. Also, this tag automatically
+follow that variable during optimization. This mean if you tag a
+variable that get replaced by an inplace version, it will keep that
+tag.
+
 
 Final Note
 ----------

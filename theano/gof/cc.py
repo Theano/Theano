@@ -20,11 +20,6 @@ from theano.compat import izip
 from six import string_types, reraise
 from six.moves import StringIO, xrange
 
-# Note that we need to do this before importing cutils, since when there is
-# no theano cache dir initialized yet, importing cutils may require compilation
-# of cutils_ext.
-from theano.configparser import AddConfigVar, StrParam
-
 # gof imports
 from theano.gof import graph
 from theano.gof import link
@@ -32,10 +27,6 @@ from theano.gof import utils
 from theano.gof import cmodule
 from theano.gof.compilelock import get_lock, release_lock
 from theano.gof.callcache import CallCache
-
-AddConfigVar('gcc.cxxflags',
-             "Extra compiler flags for gcc",
-             StrParam(""))
 
 
 _logger = logging.getLogger("theano.gof.cc")
@@ -1186,11 +1177,13 @@ class CLinker(link.Linker):
             List of lists of length 1. In order to use
             the thunk returned by __compile__, the inputs must be put in
             that storage. If None, storage will be allocated.
-        @param output_storage: list of lists of length 1. The thunk returned
-            by __compile__ will put the variables of the computation in these
-            lists. If None, storage will be allocated.
-        @param storage_map: dict that map variables to storages. This is used
-            when you need to customize the storage of this thunk.
+        output_storage: list of lists of length 1.
+            The thunk returned by __compile__ will put the variables
+            of the computation in these lists. If None, storage will
+            be allocated.
+        storage_map: dict that map variables to storages.
+            This is used when you need to customize the storage of
+            this thunk.
 
         Returns: thunk, input_storage, output_storage
 

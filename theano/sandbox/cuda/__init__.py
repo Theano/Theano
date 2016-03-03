@@ -14,8 +14,7 @@ from theano.compile import optdb
 from theano.gof import EquilibriumDB, SequenceDB
 from theano.gof.cmodule import get_lib_extension
 from theano.gof.compilelock import get_lock, release_lock
-from theano.configparser import (
-    config, AddConfigVar, BoolParam, FloatParam, StrParam)
+from theano import config
 from . import nvcc_compiler
 
 from theano.tensor.basic import register_transfer
@@ -42,36 +41,6 @@ def register_opt(*tags, **kwargs):
 
 _logger_name = 'theano.sandbox.cuda'
 _logger = logging.getLogger(_logger_name)
-
-AddConfigVar('pycuda.init',
-        """If True, always initialize PyCUDA when Theano want to
-           initilize the GPU.  Currently, we must always initialize
-           PyCUDA before Theano do it.  Setting this flag to True,
-           ensure that, but always import PyCUDA.  It can be done
-           manually by importing theano.misc.pycuda_init before theano
-           initialize the GPU device.
-             """,
-        BoolParam(False),
-        in_c_key=False)
-
-AddConfigVar('cublas.lib',
-        """Name of the cuda blas library for the linker.""",
-        StrParam('cublas'))
-
-AddConfigVar('lib.cnmem',
-             """Do we enable CNMeM or not (a faster CUDA memory allocator).
-
-             The parameter represent the start size (in MB or % of
-             total GPU memory) of the memory pool.
-
-             0: not enabled.
-             0 < N <= 1: % of the total GPU memory (clipped to .985 for driver memory)
-             > 0: use that number of MB of memory.
-
-             """,
-             # We should not mix both allocator, so we can't override
-             FloatParam(0, lambda i: i >= 0, allow_override=False),
-             in_c_key=False)
 
 # is_nvcc_available called here to initialize global vars in
 # nvcc_compiler module
@@ -385,8 +354,14 @@ class DnnVersion(GpuOp):
     def c_headers(self):
         return ['cudnn.h']
 
+    def c_header_dirs(self):
+        return [config.dnn.include_path]
+
     def c_libraries(self):
         return ['cudnn']
+
+    def c_lib_dirs(self):
+        return [config.dnn.library_path]
 
     def c_support_code(self):
         return """
@@ -595,8 +570,8 @@ def use(device,
                     if config.lib.cnmem > 1:
                         cnmem_enabled = "enabled with initial size: %d MB" % config.lib.cnmem
                     else:
-                        cnmem = min(config.lib.cnmem, 0.98)
-                        cnmem_enabled = "enabled with initial size: %.2f%% of memory" % cnmem
+                        cnmem = min(config.lib.cnmem, 0.98) * 100
+                        cnmem_enabled = "enabled with initial size: %.1f%% of memory" % cnmem
                 else:
                     cnmem_enabled = "disabled"
                 cudnn_version = "not available"

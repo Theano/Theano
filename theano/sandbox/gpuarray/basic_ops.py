@@ -721,7 +721,12 @@ class GpuAllocEmpty(HideC, Alloc):
         output.tag.values_eq_approx = tensor.type.values_eq_approx_always_true
         # The outut can contain nan/inf.
         output.type.filter_checks_isfinite = False
+        output.tag.nan_guard_mode_check = False
         return Apply(self, sh, [output])
+
+    def debug_perform(self, node, inputs, out_, ctx):
+        self.perform(node, inputs, out_, ctx)
+        out_[0][0][:] = -123456789
 
     def perform(self, node, inputs, out_, ctx):
         out = out_[0]

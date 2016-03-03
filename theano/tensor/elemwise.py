@@ -792,7 +792,7 @@ class Elemwise(OpenMPOp):
 
         return ret
 
-    def prepare_node(self, node):
+    def prepare_node(self, node, storage_map, compute_map):
         # Postpone the ufunc building to the last minutes
         # NumPy ufunc support only up to 31 inputs.
         # But our c code support more.

@@ -14,7 +14,6 @@ import numpy
 import theano
 from theano import config, gof, printing, scalar
 from theano.compat import imap
-from theano.configparser import AddConfigVar, BoolParam
 from theano.printing import pprint
 from theano.tensor import basic as tensor
 from theano.tensor import elemwise, opt, NotScalarConstantError
@@ -269,7 +268,7 @@ def local_ultra_fast_sigmoid(node):
             # Other test could fail without good reason.
             return tensor.TensorType.values_eq_approx(a, b, atol=0.02)
         # Let DebugMode know that there this opt approx the values.
-        out.values_eq_approx = values_eq_approx_remove_low_prec
+        out.tag.values_eq_approx = values_eq_approx_remove_low_prec
         return [out]
 theano.compile.optdb['uncanonicalize'].register("local_ultra_fast_sigmoid",
                                                 local_ultra_fast_sigmoid)
@@ -308,7 +307,7 @@ def local_hard_sigmoid(node):
             # Other test could fail without good reason.
             return tensor.TensorType.values_eq_approx(a, b, atol=0.1)
         # Let DebugMode know that there this opt approx the values.
-        out.values_eq_approx = values_eq_approx_remove_low_prec
+        out.tag.values_eq_approx = values_eq_approx_remove_low_prec
         return [out]
 theano.compile.optdb['uncanonicalize'].register("local_hard_sigmoid",
                                                 local_hard_sigmoid)
@@ -460,14 +459,6 @@ def is_1pexp(t):
                         'option to False, or `warn.ignore_bug_before` to at '
                         'least \'0.4.1\'.')
     return None
-
-
-AddConfigVar(
-    'warn.identify_1pexp_bug',
-    'Warn if Theano versions prior to 7987b51 (2011-12-18) could have '
-    'yielded a wrong result due to a bug in the is_1pexp function',
-    BoolParam(theano.configdefaults.warn_default('0.4.1')),
-    in_c_key=False)
 
 
 def is_exp(var):
