@@ -241,7 +241,8 @@ class GpuDnnConvDesc(GpuOp):
     }
   }
 
-  err = cudnnSetConvolutionNdDescriptor_v3(
+  // err = cudnnSetConvolutionNdDescriptor_v3(
+  err = cudnnSetConvolutionNdDescriptor(
   %(desc)s,
   %(nb_dim)d,
   pad, subsample, upscale,
@@ -1361,7 +1362,7 @@ class GpuDnnPoolDesc(GpuOp):
     int win[%(nd)d] = {%(win)s};
     int pad[%(nd)d] = {%(pad)s};
     int str[%(nd)d] = {%(str)s};
-    err = cudnnSetPoolingNdDescriptor(
+    err = cudnnSetPoolingNdDescriptor_v3(
       %(desc)s, %(mode_flag)s, %(nd)d,
       win, pad, str);
   }
@@ -1543,7 +1544,7 @@ for(int i = 0; i < %(nd)d; i++) {
 for(int i = 0; i < %(nd)d; i++) {
    str[i] = *((npy_intp*)PyArray_GETPTR1(%(str)s, i));
 }
-err = cudnnSetPoolingNdDescriptor(
+err = cudnnSetPoolingNdDescriptor_v3(
     pool%(name)s, %(mode_flag)s, %(nd)d,
     win, pad, str);
 
@@ -1821,7 +1822,7 @@ for(int i = 0; i < %(nd)d; i++) {
 for(int i = 0; i < %(nd)d; i++) {
    str[i] = *((npy_intp*)PyArray_GETPTR1(%(str)s, i));
 }
-err%(name)s = cudnnSetPoolingNdDescriptor(
+err%(name)s = cudnnSetPoolingNdDescriptor_v3(
     pool%(name)s, %(mode_flag)s, %(nd)d,
     win, pad, str);
 

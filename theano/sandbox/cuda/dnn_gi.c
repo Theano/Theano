@@ -178,8 +178,8 @@ APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
       int upscale[2];
       cudnnConvolutionMode_t mode;
       cudnnDataType_t data_type;
-      err = cudnnGetConvolutionNdDescriptor_v3(desc, 2, &nd, pad, stride,
-                                               upscale, &mode, &data_type);
+      err = cudnnGetConvolutionNdDescriptor(desc, 2, &nd, pad, stride,
+                                            upscale, &mode, &data_type);
 
       if (err != CUDNN_STATUS_SUCCESS) {
         PyErr_Format(PyExc_RuntimeError,
@@ -237,7 +237,7 @@ APPLY_SPECIFIC(conv_gi)(CudaNdarray *kerns, CudaNdarray *output,
       return 1;
 
     // Perform the convolution
-    err = cudnnConvolutionBackwardData_v3(
+    err = cudnnConvolutionBackwardData(
       _handle,
       (void *)&alpha,
       APPLY_SPECIFIC(kerns), CudaNdarray_DEV_DATA(kerns),
