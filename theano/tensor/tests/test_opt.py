@@ -6138,7 +6138,7 @@ def test_local_expm1():
     r = function([u], s)
     x_val = numpy.random.rand(4, 3).astype(config.floatX)
     f_val = f(x_val)
-    f_test = function([x], T.expm1(x))
+    f_test = function([x], T.expm1(x), mode=theano.compile.get_default_mode().including('local_expm1'))
 
     assert numpy.all(f_val == f_test(x_val))
 
