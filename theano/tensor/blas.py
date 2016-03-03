@@ -188,14 +188,16 @@ def check_init_y():
         if not have_fblas:
             check_init_y._result = False
 
-        gemv = _blas_gemv_fns['float64']
         y = float('NaN') * numpy.ones((2,))
         x = numpy.ones((2,))
         A = numpy.ones((2, 2))
+        gemv = _blas_gemv_fns[y.dtype]
         gemv(1.0, A.T, x, 0.0, y, overwrite_y=True, trans=True)
         check_init_y._result = numpy.isnan(y).any()
 
     return check_init_y._result
+
+check_init_y._result = None
 
 
 class Gemv(Op):
