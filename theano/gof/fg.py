@@ -55,7 +55,6 @@ class MissingInputError(Exception):
 
 class FunctionGraph(utils.object2):
     """
-    WRITEME
     A FunctionGraph represents a subgraph bound by a set of input variables and
     a set of output variables, ie a subgraph that specifies a theano function.
     The inputs list should contain all the inputs on which the outputs depend.
@@ -219,7 +218,6 @@ class FunctionGraph(utils.object2):
 
     def disown(self):
         """
-        WRITEME
         Cleans up all of this FunctionGraph's nodes and variables so they are
         not associated with this FunctionGraph anymore.
 
@@ -258,8 +256,6 @@ class FunctionGraph(utils.object2):
     def __add_clients__(self, r, new_clients):
         """
         Updates the list of clients of r with new_clients.
-
-        WRITEME
 
         Parameters
         ----------
@@ -356,6 +352,7 @@ class FunctionGraph(utils.object2):
         """
         Import variables to this FunctionGraph and also their apply_node,
         if those nodes are not in this graph.
+        TO DO : explain the parameter "reason"
         """
         global NullType
         if NullType is None:
@@ -498,8 +495,6 @@ class FunctionGraph(utils.object2):
         """
         Changes node.inputs[i] to new_r.
 
-        WRITEME
-
         new_r.type == old_r.type must be True, where old_r is the
         current value of node.inputs[i] which we want to replace.
 
@@ -543,8 +538,6 @@ class FunctionGraph(utils.object2):
     # replace #
     def replace(self, r, new_r, reason=None, verbose=None):
         """
-        WRITEME
-
         This is the main interface to manipulate the subgraph in FunctionGraph.
         For every node that uses r as input, makes it use new_r instead.
 
@@ -600,7 +593,7 @@ class FunctionGraph(utils.object2):
 
     def replace_all(self, pairs, reason=None):
         """
-        WRITEME
+        For every node that uses r as input, makes it use new_r instead
 
         """
         for r, new_r in pairs:
@@ -638,8 +631,6 @@ class FunctionGraph(utils.object2):
 
     def remove_feature(self, feature):
         """
-        WRITEME
-
         Removes the feature from the graph.
 
         Calls feature.on_detach(function_graph) if an on_detach method
@@ -658,8 +649,6 @@ class FunctionGraph(utils.object2):
     # callback utils #
     def execute_callbacks(self, name, *args, **kwargs):
         """
-        WRITEME
-
         Calls
           getattr(feature, name)(*args)
         for each feature which has a method called after name.
@@ -681,8 +670,6 @@ class FunctionGraph(utils.object2):
 
     def collect_callbacks(self, name, *args):
         """
-        WRITEME
-
         Returns a dictionary d such that:
           d[feature] == getattr(feature, name)(*args)
         For each feature which has a method called after name.
@@ -700,8 +687,6 @@ class FunctionGraph(utils.object2):
     # misc #
     def toposort(self):
         """
-        WRITEME
-
         Return an ordering of the graph's Apply nodes such that:
         - All the nodes of the inputs of a node are before that node.
         - Satisfies the orderings provided by each feature that has
@@ -765,8 +750,6 @@ class FunctionGraph(utils.object2):
 
     def check_integrity(self):
         """
-        WRITEME
-
         Call this for a diagnosis if things go awry.
 
         """
@@ -826,7 +809,7 @@ class FunctionGraph(utils.object2):
     # clone #
     def clone(self, check_integrity=True):
         """
-        WRITEME
+        Clone the graph and get a memo( a dict )that map old node to new node
 
         """
         return self.clone_get_equiv(check_integrity)[0]
