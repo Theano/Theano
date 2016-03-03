@@ -7,7 +7,8 @@ import theano.tests.unittest_tools as utt
 import theano.tensor.nnet.tests.test_blocksparse
 
 import theano.sandbox.cuda as cuda_ndarray
-from theano.sandbox.cuda.blocksparse import (GpuSparseBlockOuter,
+from theano.sandbox.cuda.blocksparse import (GpuSparseBlockGemv,
+                                             GpuSparseBlockOuter,
                                              gpu_sparse_block_gemv,
                                              gpu_sparse_block_outer)
 from theano.sandbox.cuda.var import float32_shared_constructor
@@ -28,6 +29,8 @@ class BlockSparse_Gemv_and_Outer(
         self.mode = mode_with_gpu.excluding('constant_folding')
         self.gemv_op = gpu_sparse_block_gemv
         self.outer_op = gpu_sparse_block_outer
+        self.gemv_class = GpuSparseBlockGemv
+        self.outer_class = GpuSparseBlockOuter
 
     # This test is temporarily disabled since we disabled the output_merge
     # and alpha_merge optimizations for blocksparse due to brokeness.

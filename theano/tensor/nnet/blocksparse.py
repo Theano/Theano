@@ -22,6 +22,7 @@ class SparseBlockGemv(Op):
         :scale: 50 %
 
     """
+    __props__ = ('inplace',)
 
     registered_opts = []
 
@@ -90,10 +91,7 @@ class SparseBlockGemv(Op):
         assert inputIdx.type.dtype in discrete_dtypes
         assert outputIdx.type.dtype in discrete_dtypes
 
-        output = o.type.__class__(dtype=o.type.dtype,
-                                  broadcastable=(False,) * o.ndim)()
-
-        return Apply(self, [o, W, h, inputIdx, outputIdx], [output])
+        return Apply(self, [o, W, h, inputIdx, outputIdx], [o.type()])
 
     def perform(self, node, inp, out_):
         o, W, h, iIdx, oIdx = inp[:5]
@@ -109,6 +107,9 @@ class SparseBlockGemv(Op):
                     w = W[inputIdx, outputIdx]
                     o[b, j, :] += numpy.dot(h[b, i], w)
         out_[0][0] = o
+
+    def infer_shape(self, node, input_shapes):
+        return [input_shapes[0]]
 
     def grad(self, inputs, grads):
         o, W, h, inputIdx, outputIdx = inputs
@@ -138,6 +139,7 @@ class SparseBlockOuter(Op):
     This op is involved in the gradient of SparseBlockGemv.
 
     """
+    __props__ = ('inplace',)
 
     registered_opts = []
 
@@ -190,11 +192,11 @@ class SparseBlockOuter(Op):
         if alpha is None:
             alpha = one
 
-        output = o.type.__class__(dtype=o.type.dtype,
-                                  broadcastable=(False,) * o.ndim)()
-
         return Apply(self, [o, x, y, xIdx, yIdx, alpha],
-                     [output])
+                     [o.type()])
+
+    def infer_shape(self, node, input_shapes):
+        return [input_shapes[0]]
 
     def perform(self, node, inp, out_):
         o, x, y, xIdx, yIdx, alpha = inp[:6]

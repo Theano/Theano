@@ -2302,7 +2302,7 @@ def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
         output_probs = theano.tensor.nnet.softmax(
             activations.reshape((-1, n_outputs_per_class)))
         output_probs = output_probs.reshape((batch_size, n_classes, -1))
-        output_probs = class_probs[:, :, None] * output_probs
+        output_probs = class_probs.dimshuffle(0, 1, 'x') * output_probs
         output_probs = output_probs.reshape((batch_size, -1))
         # output_probs.shape[1] is n_classes * n_outputs_per_class, which might
         # be greater than n_outputs, so we ignore the potential irrelevant
@@ -2321,11 +2321,11 @@ def h_softmax(x, batch_size, n_outputs, n_classes, n_outputs_per_class,
 
         # Second softmax that computes the output probabilities
         activations = sparse_block_dot(
-            W2[None, :, :, :], x[:, None, :],
+            W2.dimshuffle('x', 0, 1, 2), x.dimshuffle(0, 'x', 1),
             tensor.zeros((batch_size, 1), dtype='int32'), b2,
-            target_classes[:, None])
+            target_classes.dimshuffle(0, 'x'))
 
-        output_probs = theano.tensor.nnet.softmax(activations[:, 0, :])
+        output_probs = theano.tensor.nnet.softmax(activations.dimshuffle(0, 2))
         target_class_probs = class_probs[tensor.arange(batch_size),
                                          target_classes]
         output_probs = output_probs[tensor.arange(batch_size),
