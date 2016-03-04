@@ -5888,8 +5888,19 @@ del x
 class Diagonal(Op):
     """Return specified diagonals.
 
+    Usage: Diagonal(offset, axis1, axis2)(x)
+
+    "x" has to be a tensor with 2 or more dimensions.
+
     Parameters
     ----------
+    offset
+        Indicates which diagonal to extract, "0" as main diagonal, positive as
+        diagonals in the upper triangle, and vice versa.
+
+    axis1, axis2
+        Indicates on which dimensions to extract the diagonals.
+
     x
         A tensor variable with x.ndim >= 2.
 
@@ -5943,13 +5954,45 @@ class Diagonal(Op):
 
 
 def diagonal(a, offset=0, axis1=0, axis2=1):
+    """
+    A helper function for Diagonal Op.
+
+    Parameters
+    ----------
+    a
+        A tensor variable with x.ndim >= 2.
+
+    offset
+        Indicates which diagonal to extract, "0" as main diagonal, positive as
+        diagonals in the upper triangle, and vice versa.
+
+    axis1, axis2
+        Indicates on which dimensions to extract the diagonals.
+
+    Returns
+    -------
+    vector
+        A vector representing the diagonal elements.
+    """
     if (offset, axis1, axis2) == (0, 0, 1):
         return theano.tensor.nlinalg.extract_diag(a)
     return Diagonal(offset, axis1, axis2)(a)
 
 
 class Diag(Op):
+    """
+    An op that transfers a vector into a matrix containing values in that
+    vector as its diagonal. It does the inverse of Diagonal.
 
+    Usage: T.diag()(x)
+
+    x should be a tensor vector. The parenthesis in the front should indicate
+    which main diagonal the vector value goes into. By default it is set to (
+    "0", which corresponds to setting the values of x to the main diagonal in
+    the returned matrix. Currently it only accepts "0", as other diagonals
+    hasn't been implemented for now.
+
+    """
     __props__ = ()
 
     def make_node(self, diag):
@@ -5972,6 +6015,21 @@ class Diag(Op):
 
 
 def diag(v, k=0):
+    """
+    A helper function for two ops: Diagonal and Diag. It both accepts tensor
+    vector and tensor matrix. While the passed tensor variable v has
+    v.ndim>=2, it builds a Diagonal instance, and returns a vector with its
+    entries equal to v's main diagonal; otherwise if v.ndim is 1, it builds a
+    Diag instance, and returns a matrix with v at its k-th diaogonal.
+
+    Parameters
+    ----------
+    v
+        theano tensor variable
+    k
+        offset
+
+    """
     if v.ndim == 1:
         assert k == 0, "diagonals other than main are not implemented"
         return Diag()(v)
