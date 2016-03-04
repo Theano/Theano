@@ -16,6 +16,7 @@ if cuda_available:
 
 
 class MultinomialFromUniform(Op):
+    # TODO : need description for parameter 'odtype'
     """
     Converts samples from a uniform into sample from a multinomial.
 
@@ -197,7 +198,8 @@ class MultinomialFromUniform(Op):
 
 class MultinomialWOReplacementFromUniform(MultinomialFromUniform):
     """
-    Converts samples from a uniform into sample (without replacement) from a multinomial.
+    Converts samples from a uniform into sample (without replacement) from a
+    multinomial.
 
     """
 
@@ -347,8 +349,8 @@ class MultinomialWOReplacementFromUniform(MultinomialFromUniform):
         (z,) = outs
 
         if n_samples > pvals.shape[1]:
-            raise ValueError("Cannot sample without replacement n samples bigger "
-                             "than the size of the distribution.")
+            raise ValueError("Cannot sample without replacement n samples "
+                             "bigger than the size of the distribution.")
 
         if unis.shape[0] != pvals.shape[0] * n_samples:
             raise ValueError("unis.shape[0] != pvals.shape[0] * n_samples",
@@ -358,7 +360,8 @@ class MultinomialWOReplacementFromUniform(MultinomialFromUniform):
             odtype = 'int64'
         else:
             odtype = self.odtype
-        if z[0] is None or not numpy.all(z[0].shape == [pvals.shape[0], n_samples]):
+        if (z[0] is None or
+                not numpy.all(z[0].shape == [pvals.shape[0], n_samples])):
             z[0] = -1 * numpy.ones((pvals.shape[0], n_samples), dtype=odtype)
 
         nb_multi = pvals.shape[0]
@@ -374,7 +377,8 @@ class MultinomialWOReplacementFromUniform(MultinomialFromUniform):
                     cummul += pvals[n, m]
                     if (cummul > unis_n):
                         z[0][n, c] = m
-                        # set to zero and re-normalize so that it's not selected again
+                        # set to zero and re-normalize so that it's not
+                        # selected again
                         pvals[n, m] = 0.
                         pvals[n] /= pvals[n].sum()
                         break
@@ -562,6 +566,7 @@ class GpuMultinomialFromUniform(MultinomialFromUniform, GpuOp):
 
 @local_optimizer([MultinomialFromUniform])
 def local_gpu_multinomial(node):
+    # TODO : need description for function
     if type(node.op) is MultinomialFromUniform:
         if len(node.inputs) == 2:
             p, u = node.inputs
