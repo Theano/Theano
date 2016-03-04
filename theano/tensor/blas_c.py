@@ -663,7 +663,6 @@ int main() {
         else:
             check_force_gemv_init._force_init_beta = False
 
-        print("init beta:", check_force_gemv_init._force_init_beta)
     return check_force_gemv_init._force_init_beta
 
 check_force_gemv_init._force_init_beta = None

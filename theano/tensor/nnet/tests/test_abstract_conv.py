@@ -280,6 +280,11 @@ class TestCpuConv2d(BaseTestConv2d):
     def setUp(self):
         super(TestCpuConv2d, self).setUp()
         self.mode = theano.compile.mode.get_default_mode().excluding('conv_gemm')
+        self.opt_err = theano.config.on_opt_error
+        theano.config.on_opt_error = 'ignore'
+
+    def tearDown(self):
+        theano.config.on_opt_error = self.opt_err
 
     def tcase(self, i, f, s, b, flip, provide_shape):
         mode = self.mode
