@@ -1319,6 +1319,8 @@ def test_argmax_pushdown_bias():
     fgraph = gof.FunctionGraph(
             [x, b],
             [out])
+    f = theano.function([x, b], out)
+    assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
 
     theano.compile.mode.optdb.query(
             theano.compile.mode.OPT_FAST_RUN).optimize(fgraph)
@@ -1338,6 +1340,8 @@ def test_argmax_pushdown_bias():
     fgraph = gof.FunctionGraph(
             [x, b],
             [out])
+    f = theano.function([x, b], out)
+    assert hasattr(f.maker.fgraph.outputs[0].tag, 'trace')
 
     backup = config.warn.argmax_pushdown_bug
     config.warn.argmax_pushdown_bug = False
