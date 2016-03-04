@@ -150,7 +150,7 @@ class TestCGemv(TestCase, TestOptimizationMixin):
         self.assertFunctionContains0(f, tensor.dot)
         self.assertFunctionContains1(
             f,
-            CGemv(inplace=True, force_init_beta=True)
+            CGemv(inplace=True)
         )
 
         # Assert they produce the same output
@@ -171,7 +171,7 @@ class TestCGemv(TestCase, TestOptimizationMixin):
         self.assertFunctionContains0(f, tensor.dot)
         self.assertFunctionContains1(
             f,
-            CGemv(inplace=True, force_init_beta=True)
+            CGemv(inplace=True)
         )
 
         # Assert they produce the same output
