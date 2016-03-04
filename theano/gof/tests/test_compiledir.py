@@ -1,6 +1,7 @@
 from __future__ import absolute_import, print_function, division
 from theano.configdefaults import short_platform
 
+
 def test_short_platform():
     for r, p, a in [  # (release, platform, answer)
         ('3.2.0-70-generic',
