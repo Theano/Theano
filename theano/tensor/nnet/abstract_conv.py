@@ -4,6 +4,7 @@ Abstract conv interface
 
 import logging
 from six import reraise
+import sys
 
 import theano
 
@@ -414,26 +415,30 @@ class BaseAbstractConv2d(Op):
                 '"valid", "full", "half", an integer or a pair of'
                 ' integers'.format(border_mode))
 
-        self.imshp = tuple(imshp) if imshp else None
+        self.imshp = tuple(imshp) if imshp else (None,) * 4
         for imshp_i in self.imshp:
             if imshp_i is not None:
                 # Components of imshp should be constant or ints
                 try:
-                    get_scalar_constant_value(imshp_i)
+                    get_scalar_constant_value(imshp_i,
+                                              only_process_constants=True)
                 except NotScalarConstantError:
-                    _logger.error("imshp should be None or "
-                                  "a tuple of constant int values")
-                    raise
-        self.kshp = tuple(kshp) if kshp else None
+                    reraise(ValueError,
+                            ValueError("imshp should be None or a tuple of "
+                                       "constant int values"),
+                            sys.exc_info()[2])
+        self.kshp = tuple(kshp) if kshp else (None,) * 4
         for kshp_i in self.kshp:
             if kshp_i is not None:
                 # Components of kshp should be constant or ints
                 try:
-                    get_scalar_constant_value(kshp_i)
+                    get_scalar_constant_value(kshp_i,
+                                              only_process_constants=True)
                 except NotScalarConstantError:
-                    _logger.error("kshp should be None or "
-                                  "a tuple of constant int values")
-                    raise
+                    reraise(ValueError,
+                            ValueError("kshp should be None or a tuple of "
+                                       "constant int values"),
+                            sys.exc_info()[2])
         self.border_mode = border_mode
         self.filter_flip = filter_flip
 

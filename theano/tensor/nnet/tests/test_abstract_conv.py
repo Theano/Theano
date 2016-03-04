@@ -2,12 +2,16 @@ import numpy
 import unittest
 
 from nose.plugins.skip import SkipTest
+from nose.tools import assert_raises
 
 import theano
 from theano import tensor
 from theano.tests import unittest_tools as utt
 from theano.tensor.nnet import corr, abstract_conv as conv
 from theano.tensor.nnet.abstract_conv import get_conv_output_shape
+from theano.tensor.nnet.abstract_conv import AbstractConv2d
+from theano.tensor.nnet.abstract_conv import AbstractConv2d_gradInputs
+from theano.tensor.nnet.abstract_conv import AbstractConv2d_gradWeights
 from theano.tensor.nnet.conv import ConvOp
 from theano.tensor.nnet.corr import (CorrMM, CorrMM_gradWeights,
                                      CorrMM_gradInputs)
@@ -382,6 +386,53 @@ class TestCpuConv2d(BaseTestConv2d):
                               provide_shape=provide_shape,
                               border_mode=b,
                               filter_flip=flip)
+
+
+def test_constant_shapes():
+    # Check that the `imshp` and `kshp` parameters of the AbstractConv Ops
+    # are rejected if not constant or None
+    dummy_t4 = tensor.ftensor4()
+    alloc_dummy_t4 = tensor.zeros((3, 5, 7, 11), dtype='float32')
+
+    dummy_shape = tensor.lvector()
+    dummy_one_shape = tensor.ones(4, dtype='int64')
+    constant_vec_shape = tensor.constant([3, 5, 7, 11])
+
+    tuple_shape = (3, 5, 7, 11)
+    list_shape = list(tuple_shape)
+    constant_list_shape = [tensor.constant(i, dtype='int64')
+                           for i in tuple_shape]
+    constant_tuple_shape = tuple(constant_list_shape)
+
+    bad_shapes = (
+        dummy_shape,
+        dummy_one_shape,
+        dummy_t4.shape,
+        alloc_dummy_t4.shape,
+        constant_vec_shape,
+    )
+
+    good_shapes = (
+        constant_list_shape,
+        constant_tuple_shape,
+        tuple_shape,
+        list_shape
+    )
+
+    ops_to_test = (
+        AbstractConv2d,
+        AbstractConv2d_gradInputs,
+        AbstractConv2d_gradWeights
+    )
+
+    for op in ops_to_test:
+        for shp in bad_shapes:
+            assert_raises(ValueError, op, imshp=shp)
+            assert_raises(ValueError, op, kshp=shp)
+
+        for shp in good_shapes:
+            op(imshp=shp)
+            op(kshp=shp)
 
 
 class TestConvTypes(unittest.TestCase):
