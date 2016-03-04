@@ -125,6 +125,9 @@ class ExtFunction(object):
 
 
 class DynamicModule(object):
+    """
+    WRITEME
+    """
     def __init__(self, name=None):
         assert name is None, (
             "The 'name' parameter of DynamicModule"
@@ -1471,10 +1474,15 @@ class ModuleCache(object):
 
 def _rmtree(parent, ignore_nocleanup=False, msg='', level=logging.DEBUG,
             ignore_if_missing=False):
-    # On NFS filesystems, it is impossible to delete a directory with open
-    # files in it.  So instead, some commands in this file will respond to a
-    # failed rmtree() by touching a 'delete.me' file.  This file is a message
-    # for a future process to try deleting the directory.
+    
+    """
+    On NFS filesystems, it is impossible to delete a directory with open
+    files in it.  
+
+    So instead, some commands in this file will respond to a
+    failed rmtree() by touching a 'delete.me' file.  This file is a message
+    for a future process to try deleting the directory.
+    """
     if ignore_if_missing and not os.path.exists(parent):
         return
     try:
@@ -1501,6 +1509,7 @@ _module_cache = None
 
 def get_module_cache(dirname, init_args=None):
     """
+    Create a new module_cache with the (k, v) pairs in this dictionary
 
     Parameters
     ----------

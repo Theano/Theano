@@ -1218,8 +1218,8 @@ def op_as_string(i, op,
                  leaf_formatter=default_leaf_formatter,
                  node_formatter=default_node_formatter):
     """
-    WRITEME
-
+    Op to return a string representation of the subgraph 
+    between i and o
     """
     strs = as_string(i, op.inputs, leaf_formatter, node_formatter)
     return node_formatter(op, strs)
@@ -1229,7 +1229,7 @@ def as_string(i, o,
               leaf_formatter=default_leaf_formatter,
               node_formatter=default_node_formatter):
     """
-    WRITEME
+    Returns a string representation of the subgraph between i and o
 
     Parameters
     ----------

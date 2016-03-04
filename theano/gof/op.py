@@ -1059,6 +1059,10 @@ def debug_error_message(msg):
 
 
 def debug_assert(condition, msg=None):
+    """
+    Customized assert with options to ignore the assert 
+    with just a warning
+    """
     if msg is None:
         msg = 'debug_assert failed'
     if not condition:

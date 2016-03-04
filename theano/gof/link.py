@@ -677,8 +677,6 @@ def streamline(fgraph, thunks, order, post_thunk_old_storage=None,
 
 class LocalLinker(Linker):
     """
-    WRITEME
-
     Useful base class for L{Linker}s which keep all nodes in the graph, and run
     a thunk associated with each node.
 
@@ -704,7 +702,8 @@ class LocalLinker(Linker):
 
 def gc_helper(node_list):
     """
-
+    Return the set of Variable instances which are computed by node_list.
+      
     Parameters
     ----------
     node_list
@@ -740,8 +739,6 @@ def gc_helper(node_list):
 
 class PerformLinker(LocalLinker):
     """
-    WRITEME
-
     Basic L{Linker} subclass that calls the perform method on each L{Op} in
     the L{FunctionGraph} in the order given by L{Linker.schedule}.
 
@@ -876,8 +873,6 @@ def add_clear_storage(f, computed, storage_map):
 
 class WrapLinker(Linker):
     """
-    WRITEME
-
     This class makes it easier to run several L{LocalLinker}s in parallel, and
     offers some control over how each thunk is run.
 
