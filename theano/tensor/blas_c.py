@@ -1,5 +1,3 @@
-import numpy
-
 from theano import config
 
 from theano.tensor.opt import in2out
@@ -8,7 +6,6 @@ from theano.tensor.blas import blas_optdb, optdb, local_optimizer
 from theano.tensor.blas import Ger, ger, ger_destructive
 from theano.tensor.blas import Gemv, gemv_inplace, gemv_no_inplace
 from theano.tensor import basic as T
-import theano.compile
 
 
 class BaseBLAS(object):
