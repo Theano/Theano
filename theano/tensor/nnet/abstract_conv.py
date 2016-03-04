@@ -510,7 +510,11 @@ class AbstractConv2d(BaseAbstractConv2d):
                                              filter_flip)
 
     def make_node(self, img, kern):
-        # Make sure both inputs have the same Type
+        # Make sure both inputs are Variables with the same Type
+        if not isinstance(img, theano.Variable):
+            img = as_tensor_variable(img)
+        if not isinstance(kern, theano.Variable):
+            kern = as_tensor_variable(kern)
         ktype = img.type.clone(dtype=kern.dtype,
                                broadcastable=kern.broadcastable)
         kern = ktype.filter_variable(kern)
@@ -635,7 +639,11 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
 
     # Update shape/height_width
     def make_node(self, img, topgrad, shape):
-        # Make sure both inputs have the same Type
+        # Make sure both inputs are Variables with the same Type
+        if not isinstance(img, theano.Variable):
+            img = as_tensor_variable(img)
+        if not isinstance(topgrad, theano.Variable):
+            topgrad = as_tensor_variable(topgrad)
         gtype = img.type.clone(dtype=topgrad.dtype,
                                broadcastable=topgrad.broadcastable)
         topgrad = gtype.filter_variable(topgrad)
@@ -766,7 +774,11 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
 
     # Update shape/height_width
     def make_node(self, kern, topgrad, shape):
-        # Make sure both inputs have the same Type
+        # Make sure both inputs are Variables with the same Type
+        if not isinstance(kern, theano.Variable):
+            kern = as_tensor_variable(kern)
+        if not isinstance(topgrad, theano.Variable):
+            topgrad = as_tensor_variable(topgrad)
         gtype = kern.type.clone(dtype=topgrad.dtype,
                                 broadcastable=topgrad.broadcastable)
         topgrad = gtype.filter_variable(topgrad)

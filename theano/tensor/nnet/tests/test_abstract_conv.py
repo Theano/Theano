@@ -441,6 +441,8 @@ class TestConvTypes(unittest.TestCase):
         self.filters = tensor.ftensor4()
         self.topgrad = tensor.ftensor4()
 
+        self.constant_tensor = numpy.zeros((3, 5, 7, 11), dtype='float32')
+
     def test_grad_types(self):
         # This function simply tests the behaviour of the AbstractConv
         # Ops, not their optimizations
@@ -477,3 +479,48 @@ class TestConvTypes(unittest.TestCase):
             grad_filters, grad_filters.type, filters, filters.type)
         assert grad_topgrad.type == topgrad.type, (
             grad_topgrad, grad_topgrad.type, topgrad, topgrad.type)
+
+    def test_constant_input(self):
+        # Check the AbstractConv Ops for constant inputs
+        input = self.input
+        filters = self.filters
+        topgrad = self.topgrad
+        constant_tensor = self.constant_tensor
+        out_shape = tensor.lvector()
+
+        # Check the forward Op
+        output = conv.conv2d(constant_tensor, filters)
+        grad_filters = theano.grad(output.sum(), wrt=filters)
+        assert grad_filters.type == filters.type, (
+            grad_filters, grad_filters.type, filters, filters.type)
+
+        output = conv.conv2d(input, constant_tensor)
+        grad_input = theano.grad(output.sum(), wrt=input)
+        assert grad_input.type == input.type, (
+            grad_input, grad_input.type, input, input.type)
+
+        # Check grad wrt weights
+        grad_filters = conv.AbstractConv2d_gradWeights()(
+            constant_tensor, topgrad, out_shape)
+        grad_topgrad = theano.grad(grad_filters.sum(), wrt=topgrad)
+        assert grad_topgrad.type == topgrad.type, (
+            grad_topgrad, grad_topgrad.type, topgrad, topgrad.type)
+
+        grad_filters = conv.AbstractConv2d_gradWeights()(
+            input, constant_tensor, out_shape)
+        grad_input = theano.grad(grad_filters.sum(), wrt=input)
+        assert grad_input.type == input.type, (
+            grad_input, grad_input.type, input, input.type)
+
+        # Check grad wrt inputs
+        grad_input = conv.AbstractConv2d_gradInputs()(
+            constant_tensor, topgrad, out_shape)
+        grad_topgrad = theano.grad(grad_input.sum(), wrt=topgrad)
+        assert grad_topgrad.type == topgrad.type, (
+            grad_topgrad, grad_topgrad.type, topgrad, topgrad.type)
+
+        grad_input = conv.AbstractConv2d_gradInputs()(
+            filters, constant_tensor, out_shape)
+        grad_filters = theano.grad(grad_input.sum(), wrt=filters)
+        assert grad_filters.type == filters.type, (
+            grad_filters, grad_filters.type, filters, filters.type)
