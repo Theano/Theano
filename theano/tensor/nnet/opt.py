@@ -388,21 +388,16 @@ conv_groupopt.register('local_conv2d_gradinputs_cpu',
                   AbstractConv2d_gradWeights,
                   AbstractConv2d_gradInputs])
 def local_abstractconv_check(node):
-    if isinstance(node.op, AbstractConv2d):
+    if isinstance(node.op, (AbstractConv2d,
+                            AbstractConv2d_gradWeights,
+                            AbstractConv2d_gradInputs)):
         raise AssertionError(
-            'AbstractConv2d theano optimization failed. '
-            'Did you exclude both "conv_dnn" and "conv_gemm" from '
-            'the optimizer? Is cudnn available and does the GPU support it?')
-    elif isinstance(node.op, AbstractConv2d_gradWeights):
-        raise AssertionError(
-            'AbstractConv2d_gradWeights theano optimization failed. '
-            'Did you exclude both "conv_dnn" and "conv_gemm" from '
-            'the optimizer? Is cudnn available and does the GPU support it?')
-    elif isinstance(node.op, AbstractConv2d_gradInputs):
-        raise AssertionError(
-            'AbstractConv2d_gradInputs theano optimization failed. '
-            'Did you exclude both "conv_dnn" and "conv_gemm" from '
-            'the optimizer? Is cudnn available and does the GPU support it?')
+            '%s Theano optimization failed: there is no implementation '
+            'available supporting the requested options. Did you exclude '
+            'both "conv_dnn" and "conv_gemm" from the optimizer? If on GPU, '
+            'is cuDNN available and does the GPU support it? If on CPU, '
+            'do you have a BLAS library installed Theano can link against?' %
+            node.op.__class__.__name__)
 
 optdb.register('AbstracConvCheck',
                opt.in2out(local_abstractconv_check,
