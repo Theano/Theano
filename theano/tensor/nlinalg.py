@@ -752,8 +752,8 @@ class LogAbsDet(Op):
             raise
 
     def grad(self, inputs, g_outputs):
-        gz, = g_outputs
-        x, = inputs
+        [gz] = g_outputs
+        [x] = inputs
         return [gz * matrix_inverse(x).T]
 
     def __str__(self):
