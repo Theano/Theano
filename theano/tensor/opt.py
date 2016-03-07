@@ -3204,7 +3204,6 @@ def local_incsubtensor_of_zeros(node):
             not node.op.set_instead_of_inc):
         x = node.inputs[0]
         y = node.inputs[1]
-        replace = False
         try:
             # Don't use only_process_constants=True. We need to
             # investigate Alloc of 0s but with non constant shape.
@@ -3212,7 +3211,7 @@ def local_incsubtensor_of_zeros(node):
                 # No need to copy over the stacktrace,
                 # because x should already have a stacktrace
                 return [x]
-        except NotScalarConstantError, e:
+        except NotScalarConstantError:
             return
 
 
