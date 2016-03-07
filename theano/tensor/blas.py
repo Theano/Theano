@@ -2134,6 +2134,10 @@ class BatchedDot(Op):
         _z, = out
         fail = sub["fail"]
 
+        if not config.blas.ldflags:
+            return super(BatchedDot, self).c_code(node, name,
+                                                  inp, out, sub)
+
         # generate contiguity condition
         def contiguous(var, ndim):
             strides = "PyArray_STRIDES(%s)" % var
