@@ -22,6 +22,7 @@ before_install:
   - cd ..
   - export PATH=/home/travis/miniconda2/bin:$PATH
   - conda update --yes conda
+  - conda install --yes conda=3.19
 
 addons:
   apt_packages:
