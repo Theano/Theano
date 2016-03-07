@@ -264,7 +264,8 @@ class BaseTestConv2d(unittest.TestCase):
                 except SkipTest as e:
                     skipped = e
         if skipped:
-            raise e
+            raise skipped
+
 
 class TestCorrConv2d(BaseTestConv2d):
     def setUp(self):
