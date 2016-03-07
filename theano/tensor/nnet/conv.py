@@ -794,13 +794,16 @@ class ConvOp(OpenMPOp):
         val = _valfrommode(self.out_mode)
         bval = _bvalfromboundary('fill')
 
-        for b in xrange(bsize):
-            for n in xrange(nkern):
-                zz[b, n, ...].fill(0)
-                for im0 in xrange(stacklen):
-                    zz[b, n, ...] += _convolve2d(img2d[b, im0, ...],
-                                                 filtersflipped[n, im0, ...],
-                                                 1, val, bval, 0)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            for b in xrange(bsize):
+                for n in xrange(nkern):
+                    zz[b, n, ...].fill(0)
+                    for im0 in xrange(stacklen):
+                        # some cast generates a warning here
+                        zz[b, n, ...] += _convolve2d(img2d[b, im0, ...],
+                                                     filtersflipped[n, im0, ...],
+                                                     1, val, bval, 0)
 
         if False:
             if False and self.out_mode == "full":

@@ -10,6 +10,7 @@ from theano.gof import Apply, Op
 
 from six.moves import xrange
 
+import warnings
 import numpy
 try:
     from scipy.signal.signaltools import _valfrommode, _bvalfromboundary
@@ -458,12 +459,16 @@ class BaseAbstractConv2d(Op):
         out = numpy.zeros(out_shape, dtype=img.dtype)
         val = _valfrommode(mode)
         bval = _bvalfromboundary('fill')
-        for b in xrange(img.shape[0]):
-            for n in xrange(kern.shape[0]):
-                for im0 in xrange(img.shape[1]):
-                    out[b, n, ...] += _convolve2d(img[b, im0, ...],
-                                                  kern[n, im0, ...],
-                                                  1, val, bval, 0)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', numpy.ComplexWarning)
+            for b in xrange(img.shape[0]):
+                for n in xrange(kern.shape[0]):
+                    for im0 in xrange(img.shape[1]):
+                        # some cast generates a warning here
+                        out[b, n, ...] += _convolve2d(img[b, im0, ...],
+                                                      kern[n, im0, ...],
+                                                      1, val, bval, 0)
         return out
 
 
