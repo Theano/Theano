@@ -149,6 +149,8 @@ class BaseCorrMM(gof.Op):
             If self.border_mode == 'half', a variable giving the width of the
             filters for direction="backprop weights".  Ignored otherwise.
         """
+        if not theano.config.blas.ldflags:
+            raise NotImplementedError("C code for CorrMM* classes need a blas library.")
         dH, dW = self.subsample
         if self.border_mode == "half":
             padH = padW = -1
