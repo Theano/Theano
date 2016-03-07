@@ -183,6 +183,7 @@ except ImportError as e:
                         str(e))
 
 
+# If check_init_y() == True we need to initialize y when beta == 0.
 def check_init_y():
     if check_init_y._result is None:
         if not have_fblas:
