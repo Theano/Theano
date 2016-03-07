@@ -53,7 +53,7 @@ class GpuBatchedDot(GpuOp):
         // use parallel cublasSgemm calls rather than cublasSgemmBatched for large products
         // (compute products in double because they can be large and we don't need to be exact)
         bool use_cublas_sgemm_batched = (
-            double(Nx[1]) * double(Nx[2]) * double(Nx[2]) <
+            double(Nx[1]) * double(Nx[2]) * double(Ny[2]) <
             double(%(threshold)s) * double(%(threshold)s) * double(%(threshold)s));
 
         if (Nx[0] != Ny[0]) {
