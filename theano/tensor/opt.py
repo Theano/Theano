@@ -134,7 +134,7 @@ def scalarconsts_rest(inputs):
     nonconsts = []
     for i in inputs:
         try:
-            v = get_scalar_constant_value(i)
+            v = get_scalar_constant_value(i, only_process_constants=True)
             consts.append(v)
             origconsts.append(i)
         except NotScalarConstantError:
@@ -5786,7 +5786,7 @@ def local_abs_merge(node):
 @gof.local_optimizer([T.log])
 def local_log1p(node):
     # log(1+x) -> log1p(x)
-
+    # log(1-x) -> log1p(-x)
     if node.op == T.log:
         log_arg, = node.inputs
         if log_arg.owner and log_arg.owner.op == T.add:
@@ -5801,6 +5801,13 @@ def local_log1p(node):
                 else:
                     return _fill_chain(T.log1p(T.add(*nonconsts)),
                                        scalar_inputs)
+
+        elif log_arg.owner and log_arg.owner.op == T.sub:
+            one = T.extract_constant(log_arg.owner.inputs[0],
+                                     only_process_constants=True)
+            if one != 1:
+                return
+            return [T.log1p(T.neg(log_arg.owner.inputs[1]))]
 
 
 # TODO: in canonicalize, change log10 and log2 -> log
