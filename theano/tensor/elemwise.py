@@ -117,8 +117,8 @@ class DimShuffle(Op):
     DimShuffle((False, False), [0, 'x', 1]) -> AxB to Ax1xB
     DimShuffle((False, False), [1, 'x', 0]) -> AxB to Bx1xA
 
-    The reordering of the dimensions can be done in numpy with the
-    transpose function.
+    The reordering of the dimensions can be done with the numpy.transpose
+    function.
     Adding, subtracting dimensions can be done with reshape.
 
     """
@@ -296,13 +296,14 @@ class DimShuffle(Op):
         # get the copy / view of the input depending on whether we're doingi
         # things inplace or not.
         if self.inplace:
-            get_base = [
-                '{ PyArrayObject * %(basename)s = %(input)s', 'Py_INCREF((PyObject*)%(basename)s)']
+            get_base = ['{ PyArrayObject * %(basename)s = %(input)s',
+                        'Py_INCREF((PyObject*)%(basename)s)']
         else:
-            get_base = [('{ PyArrayObject * %(basename)s = '
-                         '(PyArrayObject*)PyArray_FromAny((PyObject*)%(input)s,'
-                         ' NULL, 0, 0, NPY_ARRAY_ALIGNED|NPY_ARRAY_ENSURECOPY,'
-                         ' NULL)')]
+            get_base = [
+                ('{ PyArrayObject * %(basename)s = '
+                 '(PyArrayObject*)PyArray_FromAny((PyObject*)%(input)s,'
+                 ' NULL, 0, 0, NPY_ARRAY_ALIGNED|NPY_ARRAY_ENSURECOPY,'
+                 ' NULL)')]
 
         shape_statements = ['npy_intp dimensions[%i]' % nd_out]
         for i, o in enumerate(self.new_order):
@@ -339,11 +340,13 @@ class DimShuffle(Op):
             )
         for i in xrange(nd_out - 2, -1, -1):
             strides_statements.append(
-                "if (strides[%(i)s] == 0) strides[%(i)s] = strides[%(i)s+1] * dimensions[%(i)s+1]" % dict(i=str(i)))
+                "if (strides[%(i)s] == 0) strides[%(i)s] = strides[%(i)s+1] * "
+                "dimensions[%(i)s+1]" % dict(i=str(i)))
 
         #
-        # PyObject* PyArray_New(PyTypeObject* subtype, int nd, npy_intp* dims, int type_num,
-        #                       npy_intp* strides, void* data, int itemsize, int flags, PyObject* obj)
+        # PyObject* PyArray_New(PyTypeObject* subtype, int nd, npy_intp* dims,
+        #                       int type_num, npy_intp* strides, void* data,
+        #                       int itemsize, int flags, PyObject* obj)
         #
         close_bracket = [
             # create a new array,
@@ -777,7 +780,8 @@ class Elemwise(OpenMPOp):
                 # the gradient contains a constant, translate it as
                 # an equivalent TensorType of size 1 and proper number of
                 # dimensions
-                res = theano.tensor.constant(numpy.asarray(r.data), dtype=r.type.dtype)
+                res = theano.tensor.constant(numpy.asarray(r.data),
+                                             dtype=r.type.dtype)
                 return DimShuffle((), ['x'] * nd, inplace=False)(res)
             new_r = Elemwise(node.op, {})(
                 *[transform(ipt) for ipt in node.inputs])
@@ -1123,15 +1127,20 @@ class Elemwise(OpenMPOp):
                                             idtypes + list(real_odtypes))])
 
                 preloops = {}
-                for i, (loop_order, dtype) in enumerate(zip(loop_orders, dtypes)):
+                for i, (loop_order, dtype) in enumerate(zip(loop_orders,
+                                                            dtypes)):
                     for j, index in enumerate(loop_order):
                         if index != 'x':
                             preloops.setdefault(j, "")
-                            preloops[j] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(PyArray_DATA(%%(lv%(i)s)s));\n" % locals()) % sub
+                            preloops[j] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)"
+                                            "(PyArray_DATA(%%(lv%(i)s)s));\n"
+                                            % locals()) % sub
                             break
                     else:  # all broadcastable
                             preloops.setdefault(0, "")
-                            preloops[0] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)(PyArray_DATA(%%(lv%(i)s)s));\n" % locals()) % sub
+                            preloops[0] += ("%%(lv%(i)s)s_iter = (%(dtype)s*)"
+                                            "(PyArray_DATA(%%(lv%(i)s)s));\n"
+                                            % locals()) % sub
 
                 init_array = preloops.get(0, " ")
                 loop = """
@@ -1198,7 +1207,8 @@ class Elemwise(OpenMPOp):
             dtype_%(x)s& %(x)s_i = ((dtype_%(x)s*) PyArray_DATA(%(x)s))[0];
                             """ % locals()
                     if self.openmp:
-                        contig += """#pragma omp parallel for if(n>=%d)""" % (config.openmp_elemwise_minsize)
+                        contig += """#pragma omp parallel for if(n>=%d)
+                        """ % (config.openmp_elemwise_minsize)
                     contig += """
                     for(int i=0; i<n; i++){
                         %(index)s
@@ -1255,7 +1265,8 @@ class Elemwise(OpenMPOp):
              for output in node.outputs])
         version.append(self.scalar_op.c_code_cache_version_apply(scalar_node))
         for i in node.inputs + node.outputs:
-            version.append(get_scalar_type(dtype=i.type.dtype).c_code_cache_version())
+            version.append(
+                get_scalar_type(dtype=i.type.dtype).c_code_cache_version())
         version.append(('openmp', self.openmp))
         if all(version):
             return tuple(version)
@@ -1300,11 +1311,10 @@ class CAReduce(Op):
     CAReduce(mul) -> product
     CAReduce(maximum) -> max
     CAReduce(minimum) -> min
-    CAReduce(or_) -> any # not lazy
-    CAReduce(and_) -> all # not lazy
+    CAReduce(or) -> any # not lazy
+    CAReduce(and) -> all # not lazy
     CAReduce(xor) -> a bit at 1 tell that there was an odd number of bit at
-                      that position that where 1.
-                      0 it was an even number ...
+    that position that where 1. 0 it was an even number ...
 
     In order to (eventually) optimize memory usage patterns,
     L{CAReduce} makes zero guarantees on the order in which it
@@ -1503,7 +1513,8 @@ class CAReduce(Op):
 
         if hasattr(self, 'acc_dtype') and self.acc_dtype is not None:
             if self.acc_dtype == 'float16':
-                raise theano.gof.utils.MethodNotDefined("no c_code for float16")
+                raise theano.gof.utils.MethodNotDefined("no c_code for "
+                                                        "float16")
             acc_type = TensorType(
                 broadcastable=node.outputs[0].broadcastable,
                 dtype=self.acc_dtype)
@@ -1680,7 +1691,8 @@ for(int i=0;i<PyArray_NDIM(%(iname)s);i++){
              for output in node.outputs])
         version.append(self.scalar_op.c_code_cache_version_apply(scalar_node))
         for i in node.inputs + node.outputs:
-            version.append(get_scalar_type(dtype=i.type.dtype).c_code_cache_version())
+            version.append(
+                get_scalar_type(dtype=i.type.dtype).c_code_cache_version())
         if all(version):
             return tuple(version)
         else:
@@ -1691,7 +1703,7 @@ class All(CAReduce):
     """ Applies `bitwise and` to all the values of a tensor along the
     specified axis(es).
 
-    Equivalent to CAReduce(scalar.and_, axis=axis).
+    Equivalent to CAReduce(scalar.and, axis=axis).
 
     """
 
@@ -1723,7 +1735,7 @@ class Any(CAReduce):
     """ Applies `bitwise or` to all the values of a tensor along the
     specified axis(es).
 
-    Equivalent to CAReduce(scalar.or_, axis=axis).
+    Equivalent to CAReduce(scalar.or, axis=axis).
 
     """
 
@@ -2048,13 +2060,11 @@ class Prod(CAReduceDtype):
         "incoming gradient", ie. the gradient of the cost relative to the
         output/product).
 
-        -----
-
         With zeros, things get more complicated. For a given group, we have 3
         cases:
         * No zeros in the group. Use previous trick.
         * If only one zero is present, then the gradient for that element is
-            non-zero, but is zero for all others.
+        non-zero, but is zero for all others.
         * If more than one zero is present, then all the derivatives are zero.
 
         For the last two cases (with 1 or more zeros), we can't use the
@@ -2184,7 +2194,8 @@ class MulWithoutZeros(scalar.BinaryScalarOp):
     def c_code_cache_version(self):
         return (1,)
 
-mul_without_zeros = MulWithoutZeros(scalar.upcast_out, name='mul_without_zeros')
+mul_without_zeros = MulWithoutZeros(scalar.upcast_out,
+                                    name='mul_without_zeros')
 
 
 class ProdWithoutZeros(CAReduceDtype):

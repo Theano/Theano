@@ -219,27 +219,11 @@ GitHub, to let them know that you have submitted a fix.
 Tips for Quality Contributions
 ==============================
 
-Coding Style Auto Check
+Coding Style
 -----------------------
 
-In Theano, we use the same coding style as the `Pylearn
-<http://deeplearning.net/software/pylearn/v2_planning/API_coding_style.html>`_
-project, except that we don't use the numpy docstring standard.
-The principal thing to know is that we follow the
-`PEP 8 <http://www.python.org/dev/peps/pep-0008/>`_ coding style.
-
-We use git hooks provided in the project `pygithooks
-<https://github.com/lumberlabs/pygithooks>`_ to validate that commits
-respect pep8. This happens when each user commits, not when we
-push/merge to the Theano repository. Github doesn't allow us to have
-code executed when we push to the repository. So we ask all
-contributors to use those hooks.
-
-For historic reason, we currently don't have all files respecting pep8.
-We decided to fix everything incrementally. So not all files respect it
-now. So we strongly suggest that you use the "increment" pygithooks
-config option to have a good workflow. See the pygithooks main page
-for how to set it up for Theano and how to enable this option.
+Please always respect the :ref:`Documentation`
+or your contribution will not be accepted
 
 
 Setting up your Editor for PEP8
@@ -259,49 +243,49 @@ Detection of warnings and errors is done by the `pep8`_ script
 errors). Syntax highlighting and general integration into Vim is done by
 the `Syntastic`_ plugin for Vim.
 
-To install flake8, simply run::
+To setup VIM:
+
+#. Install flake8 (if not already installed) with::
 
     pip install flake8
 
-You can use ``easy_install`` instead of ``pip``, and ``pep8`` instead of
-``flake8`` if you prefer. The important thing is that the ``flake8`` or
-``pep8`` executable ends up in your ``$PATH``.
+   .. note:: You can use ``easy_install`` instead of ``pip``, and ``pep8``
+      instead of ``flake8`` if you prefer. The important thing is that the
+      ``flake8`` or ``pep8`` executable ends up in your ``$PATH``.
 
-To install Syntastic, according to its documentation, the easiest way is
-to install `pathogen.vim`_ first.
+#. Install vundle with::
 
-Here's a relevant extract of pathogen.vim's installation instructions:
+    git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim
 
-    Install to ``~/.vim/autoload/pathogen.vim``. Or copy and paste::
+#. Edit ``~/.vimrc`` and add the lines::
 
-        mkdir -p ~/.vim/autoload ~/.vim/bundle; \
-        curl -so ~/.vim/autoload/pathogen.vim \
-            https://raw.github.com/tpope/vim-pathogen/HEAD/autoload/pathogen.vim
+    .. code-block:: python
 
-    If you don't have ``curl``, use ``wget -O`` instead.
+    set nocompatible              " be iMproved, required
+    filetype off                  " required
+    " set the runtime path to include Vundle and initialize
+    set rtp+=~/.vim/bundle/Vundle.vim
+    call vundle#begin()
 
-    By the way, if you're using Windows, change all occurrences of ``~/.vim``
-    to ``~\vimfiles``.
+    Plugin 'gmarik/Vundle.vim' " let Vundle manage Vundle (required!)
+    Plugin 'scrooloose/syntastic'
+    Plugin 'jimf/vim-pep8-text-width'
 
-    Add this to your vimrc::
+    " Syntastic settings
+    " You can run checkers explicitly by calling :SyntasticCheck <checker
+    let g:syntastic_python_checkers = ['flake8'] "use one of the following checkers:
+                                                 " flake8, pyflakes, pylint, python (native checker)
+    let g:syntastic_enable_highlighting = 1  "highlight errors and warnings
+    let g:syntastic_style_error_symbol = ">>" "error symbol
+    let g:syntastic_warning_symbol = ">>" "warning symbol
+    let g:syntastic_check_on_open = 1
+    let g:syntastic_auto_jump = 0  "do not jump to errors when detected
 
-        call pathogen#infect()
+#. Open a new vim and run ``:PluginInstall`` to automatically install the
+   plugins. When the installation is done, close the installation "window" with ``:q``. From now on Vim will check for PEP8 errors and highlight them whenever a file is saved.
 
-    Now any plugins you wish to install can be extracted to a subdirectory
-    under ``~/.vim/bundle``, and they will be added to the ``'runtimepath'``.
-
-Now, we can install Syntastic. From the installation instructions:
-
-    .. code-block:: bash
-
-        cd ~/.vim/bundle
-        git clone https://github.com/scrooloose/syntastic.git
-
-    Then reload vim, run ``:Helptags``, and check out ``:help syntastic.txt``.
-
-From now on, when you save into a Python file, a syntax check will be
-run, and results will be displayed using Vim's `quickfix`_ mechanism
-(more precisely, a location-list). A few useful commands are:
+A few useful commands
+"""""""""""""""""""""
 
 * Open the list of errors: ``:lopen``, that can be abbreviated in ``:lop``
   (denoted ``:lop[en]``).
