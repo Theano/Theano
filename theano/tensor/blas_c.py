@@ -383,7 +383,7 @@ def gemv_c_code(y, A, x, z, alpha, beta, destructive, fail,
 
     fbeta = dbeta = ((dtype_%(beta)s*)PyArray_DATA(%(beta)s))[0];
 
-    // copy aa if not destructive
+    // copy y if not destructive
     if (!%(destructive)s)
     {
         if ((NULL == %(z)s)
@@ -579,7 +579,7 @@ def gemv_c_code(y, A, x, z, alpha, beta, destructive, fail,
         {
             // the matrix has at least one dim of length 0
             // so we do this loop, which either iterates over 0 elements
-            // or else it does the right thing for length-0 x.
+            // or else it does the right thing for length-0 A.
             dtype_%(z)s * zptr = (dtype_%(z)s*)(PyArray_DATA(%(z)s));
             for (int i = 0; i < NA0; ++i)
             {
