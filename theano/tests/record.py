@@ -1,13 +1,13 @@
 from __future__ import print_function
+from theano.compile import Mode
+import theano
+from theano.printing import hex_digest
+
 __authors__ = "Ian Goodfellow"
 __credits__ = ["Ian Goodfellow"]
 __license__ = "3-clause BSD"
 __maintainer__ = "Ian Goodfellow"
 __email__ = "goodfeli@iro"
-
-from theano.compile import Mode
-import theano
-from theano.printing import hex_digest
 
 
 class MismatchError(Exception):
@@ -96,12 +96,12 @@ class Record(object):
                 msg = 'Replay detected mismatch.\n'
                 msg += ' I wanted to write:\n'
                 if len(line) > 100:
-                    msg += line[0:100]+'...'
+                    msg += line[0:100] + '...'
                 else:
                     msg += line
                 msg += '\nwhen previous job wrote:\n'
                 if len(old_line) > 100:
-                    msg += old_line[0:100]+'...'
+                    msg += old_line[0:100] + '...'
                 else:
                     msg += old_line
                 raise MismatchError(msg)
@@ -198,7 +198,7 @@ class RecordMode(Mode):
             except MismatchError as e:
                 print('Got this MismatchError:')
                 print(e)
-                print('while processing node i='+str(i)+':')
+                print('while processing node i=' + str(i) + ':')
                 print('str(node):', str(node))
                 print('Symbolic inputs: ')
                 for elem in node.inputs:
@@ -208,7 +208,7 @@ class RecordMode(Mode):
                     assert isinstance(elem, list)
                     elem, = elem
                     print(str(elem))
-                print('function name: '+node.fgraph.name)
+                print('function name: ' + node.fgraph.name)
                 raise MismatchError("Non-determinism detected by WrapLinker")
 
         def callback(i, node, fn):
@@ -228,16 +228,15 @@ class RecordMode(Mode):
                                 for elem in self.known_fgraphs])
                 self.known_fgraphs.add(fgraph)
                 num_app = len(fgraph.apply_nodes)
-                line = 'Function '+fgraph.name+' has ' + str(num_app) \
+                line = 'Function ' + fgraph.name + ' has ' + str(num_app) \
                        + ' apply nodes.\n'
                 handle_line(line, i, node, fn)
 
-            line = 'Function name: '+fgraph.name + '\n'
+            line = 'Function name: ' + fgraph.name + '\n'
             handle_line(line, i, node, fn)
-            line = 'Node '+str(i)+':'+str(node)+'\n'
+            line = 'Node ' + str(i) + ':' + str(node) + '\n'
             handle_line(line, i, node, fn)
-            assert all([isinstance(x, list)
-                        and len(x) == 1 for x in fn.inputs])
+            assert all([isinstance(x, list) and len(x) == 1 for x in fn.inputs])
 
             def digest(x):
                 x = x[0]
