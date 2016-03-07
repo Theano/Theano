@@ -3736,7 +3736,8 @@ def local_useless_switch(node):
             isinstance(node.op.scalar_op, scalar.basic.Switch)):
         cond = T.extract_constant(node.inputs[0], elemwise=False,
                                   only_process_constants=True)
-        if type(cond) is numpy.ndarray and cond.ndim == 0:
+        if ((type(cond) is numpy.ndarray and cond.ndim == 0) or
+                isinstance(cond, numpy.number)):
             if cond == 0:
                 correct_out = node.inputs[2]
             else:
