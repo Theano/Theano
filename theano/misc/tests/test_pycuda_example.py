@@ -4,19 +4,18 @@ import numpy
 import theano
 import theano.misc.pycuda_init
 
-if not theano.misc.pycuda_init.pycuda_available:
+if not theano.misc.pycuda_init.pycuda_available:  # noqa
     from nose.plugins.skip import SkipTest
     raise SkipTest("Pycuda not installed. Skip test of theano op"
                    " with pycuda code.")
 
 import theano.sandbox.cuda as cuda_ndarray
-if not cuda_ndarray.cuda_available:
+if not cuda_ndarray.cuda_available:  # noqa
     from nose.plugins.skip import SkipTest
     raise SkipTest('Optional package cuda disabled')
 
 import theano.tensor as T
 from theano.misc.pycuda_example import (PycudaElemwiseSourceModuleOp,
-#                                        PycudaElemwiseKernelOp,
                                         PycudaElemwiseSourceModuleMakeThunkOp)
 
 if theano.config.mode == 'FAST_COMPILE':
