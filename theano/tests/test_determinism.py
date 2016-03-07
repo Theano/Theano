@@ -25,7 +25,7 @@ def test_determinism_1():
     # This specific script is capable of catching a bug where
     # FunctionGraph.toposort was non-deterministic.
     try:
-        import hashlib
+        import hashlib  # NOQA
     except ImportError:
         raise SkipTest('python version too old to do this test')
 

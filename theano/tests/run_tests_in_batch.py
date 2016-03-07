@@ -1,9 +1,4 @@
 #!/usr/bin/env python
-from __future__ import print_function
-
-__authors__ = "Olivier Delalleau, Eric Larsen"
-__contact__ = "delallea@iro"
-
 """
 Run this script to run tests in small batches rather than all at the same time
 or to conduct time-profiling.
@@ -53,7 +48,7 @@ all tests are run. Note that this is slower, in particular because of the
 initial cost of importing theano and loading the C module cache on each call of
 nosetests.
 """
-
+from __future__ import print_function
 
 import datetime
 import os
@@ -65,6 +60,9 @@ import six.moves.cPickle as pickle
 
 import theano
 from theano.misc.windows import output_subprocess_Popen
+
+__authors__ = "Olivier Delalleau, Eric Larsen"
+__contact__ = "delallea@iro"
 
 
 def main(stdout=None, stderr=None, argv=None, theano_nose=None,
@@ -94,8 +92,8 @@ def main(stdout=None, stderr=None, argv=None, theano_nose=None,
     if argv is None:
         argv = sys.argv
     if theano_nose is None:
-    # If Theano is installed with pip/easy_install, it can be in the
-    #*/lib/python2.7/site-packages/theano, but theano-nose in */bin
+        # If Theano is installed with pip/easy_install, it can be in the
+        # */lib/python2.7/site-packages/theano, but theano-nose in */bin
         for i in range(1, 5):
             path = theano.__path__[0]
             for _ in range(i):
@@ -145,8 +143,7 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
     # Using sys.executable, so that the same Python version is used.
     python = sys.executable
     rval = subprocess.call(
-        ([python, theano_nose, '--collect-only', '--with-id']
-         + argv),
+        ([python, theano_nose, '--collect-only', '--with-id'] + argv),
         stdin=dummy_in.fileno(),
         stdout=stdout.fileno(),
         stderr=stderr.fileno())
@@ -214,13 +211,10 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
 ################################""")
             stdout.flush()
             stderr.flush()
-            subprocess.call(
-                ([python, theano_nose, '-v', '--with-id']
-                 + failed
-                 + argv),
-                stdin=dummy_in.fileno(),
-                stdout=stdout.fileno(),
-                stderr=stderr.fileno())
+            subprocess.call(([python, theano_nose, '-v', '--with-id'] + failed + argv),
+                            stdin=dummy_in.fileno(),
+                            stdout=stdout.fileno(),
+                            stderr=stderr.fileno())
             stdout.flush()
             stderr.flush()
             return 0
@@ -252,7 +246,6 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
         # iterating through tests
         # initializing master profiling list and raw log
         prof_master_nosort = []
-        prof_rawlog = []
         dummy_out = open(os.devnull, 'w')
         path_rawlog = os.path.join(sav_dir, 'timeprof_rawlog')
         stamp = str(datetime.datetime.now()) + '\n\n'
@@ -273,21 +266,20 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
             f_nosort.flush()
             for test_floor in xrange(1, n_tests + 1, batch_size):
                 for test_id in xrange(test_floor, min(test_floor + batch_size,
-                                                     n_tests + 1)):
+                                                      n_tests + 1)):
                     # Print the test we will start in the raw log to help
                     # debug tests that are too long.
                     f_rawlog.write("\n%s Will run test #%d %s\n" % (
                         time.ctime(), test_id, data["ids"][test_id]))
                     f_rawlog.flush()
 
-                    p_out = output_subprocess_Popen(
-                        ([python, theano_nose, '-v', '--with-id']
-                         + [str(test_id)] + argv +
-                         ['--disabdocstring']))
-                        # the previous option calls a custom Nosetests plugin
-                        # precluding automatic sustitution of doc. string for
-                        # test name in display
-                        # (see class 'DisabDocString' in file theano-nose)
+                    p_out = output_subprocess_Popen(([python, theano_nose, '-v', '--with-id'] +
+                                                    [str(test_id)] + argv +
+                                                    ['--disabdocstring']))
+                    # the previous option calls a custom Nosetests plugin
+                    # precluding automatic sustitution of doc. string for
+                    # test name in display
+                    # (see class 'DisabDocString' in file theano-nose)
 
                     # recovering and processing data from pipe
                     err = p_out[1]
@@ -334,9 +326,9 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
 
                     # write the no sort file
                     s_nosort = ((str(prof_tuple[0]) + 's').ljust(10) +
-                     " " + prof_tuple[1].ljust(7) + " " +
-                     prof_tuple[2] + prof_tuple[3] +
-                     "\n")
+                                " " + prof_tuple[1].ljust(7) + " " +
+                                prof_tuple[2] + prof_tuple[3] +
+                                "\n")
                     f_nosort.write(s_nosort)
                     f_nosort.flush()
 
@@ -354,9 +346,9 @@ def run(stdout, stderr, argv, theano_nose, batch_size, time_profile,
                              ' (sorted by computation time)\n\n' + stamp + fields)
                 for i in xrange(len(prof_master_nosort)):
                     s_sort = ((str(prof_master_sort[i][0]) + 's').ljust(10) +
-                         " " + prof_master_sort[i][1].ljust(7) + " " +
-                         prof_master_sort[i][2] + prof_master_sort[i][3] +
-                         "\n")
+                              " " + prof_master_sort[i][1].ljust(7) + " " +
+                              prof_master_sort[i][2] + prof_master_sort[i][3] +
+                              "\n")
                     f_sort.write(s_sort)
 
             # end of saving nosort

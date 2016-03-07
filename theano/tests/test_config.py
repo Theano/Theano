@@ -33,11 +33,10 @@ class T_config(unittest.TestCase):
         THEANO_FLAGS_DICT['T_config.test_invalid_default_b'] = 'ok'
         # This should succeed since we defined a proper value, even
         # though the default was invalid.
-        AddConfigVar(
-                'T_config.test_invalid_default_b',
-                doc='unittest',
-                configparam=ConfigParam('invalid', filter=filter),
-                in_c_key=False)
+        AddConfigVar('T_config.test_invalid_default_b',
+                     doc='unittest',
+                     configparam=ConfigParam('invalid', filter=filter),
+                     in_c_key=False)
 
         # Check that the flag has been removed
         assert 'T_config.test_invalid_default_b' not in THEANO_FLAGS_DICT
