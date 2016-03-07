@@ -22,6 +22,7 @@ before_install:
   - cd ..
   - export PATH=/home/travis/miniconda2/bin:$PATH
   - conda update --yes conda
+  - conda install --yes conda=3.19
 
 addons:
   apt_packages:
@@ -47,9 +48,9 @@ matrix:
   fast_finish: true
   include:
     - python: "3.3"
-      env: PART="." THEANO_FLAGS="mode=FAST_COMPILE"
+      env: PART="-e test_flake8.py ." THEANO_FLAGS="mode=FAST_COMPILE"
     - python: "2.6"
-      env: PART="." THEANO_FLAGS="mode=FAST_COMPILE,floatX=float32"
+      env: PART="-e test_flake8.py ." THEANO_FLAGS="mode=FAST_COMPILE,floatX=float32"
 
 script:
   - export THEANO_FLAGS=$THEANO_FLAGS,warn.ignore_bug_before=all,on_opt_error=raise,on_shape_error=raise,gcc.cxxflags=-pipe
@@ -65,6 +66,7 @@ script:
   - echo "$PART"
   - cd -; cd Theano
   - python -c 'import theano; print(theano.config)'
+  - python -c 'import theano; assert(theano.config.blas.ldflags != "")'
   - theano-nose -v $PART
   - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --nopdf --check; fi
   - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --test --check; fi
