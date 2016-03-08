@@ -1023,7 +1023,7 @@ def local_gpu_flatten(node):
             return [gpu_flatten(host_input.owner.inputs[0], outdim)(
                 as_cuda_ndarray_variable(host_input.owner.inputs[0]))]
     if isinstance(node.op, tensor.Flatten):
-        x = node.inputs
+        x, = node.inputs
         if x.owner and isinstance(x.owner.op, HostFromGpu):
             outdim = node.op.outdim
             gpu_x, = x.owner.inputs
