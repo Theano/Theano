@@ -1,10 +1,13 @@
 from nose.plugins.skip import SkipTest
 
+import numpy
+
 from theano.tensor.nnet.tests import test_abstract_conv
-from ..type import GpuArrayType, gpuarray_shared_constructor
+from ..type import GpuArrayType, gpuarray_shared_constructor, get_context
 from ..dnn import dnn_available, GpuDnnConv, GpuDnnConvGradW, GpuDnnConvGradI
 
 from .config import mode_with_gpu, test_ctx_name
+from pygpu import gpuarray
 
 gpu_ftensor4 = GpuArrayType(dtype='float32', broadcastable=(False,) * 4)
 
@@ -43,3 +46,6 @@ class TestDnnConvTypes(test_abstract_conv.TestConvTypes):
         self.input = gpu_ftensor4()
         self.filters = gpu_ftensor4()
         self.topgrad = gpu_ftensor4()
+        self.constant_tensor = gpuarray.array(
+            numpy.zeros((3, 5, 7, 11), dtype='float32'),
+            context=get_context(test_ctx_name))

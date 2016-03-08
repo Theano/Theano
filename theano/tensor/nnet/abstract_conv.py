@@ -3,9 +3,13 @@ Abstract conv interface
 """
 
 import logging
+from six import reraise
+import sys
+
 import theano
 
 from theano.tensor import as_tensor_variable, patternbroadcast
+from theano.tensor import get_scalar_constant_value, NotScalarConstantError
 from theano.gof import Apply, Op
 
 from six.moves import xrange
@@ -412,8 +416,30 @@ class BaseAbstractConv2d(Op):
                 '"valid", "full", "half", an integer or a pair of'
                 ' integers'.format(border_mode))
 
-        self.imshp = tuple(imshp) if imshp else None
-        self.kshp = tuple(kshp) if kshp else None
+        self.imshp = tuple(imshp) if imshp else (None,) * 4
+        for imshp_i in self.imshp:
+            if imshp_i is not None:
+                # Components of imshp should be constant or ints
+                try:
+                    get_scalar_constant_value(imshp_i,
+                                              only_process_constants=True)
+                except NotScalarConstantError:
+                    reraise(ValueError,
+                            ValueError("imshp should be None or a tuple of "
+                                       "constant int values"),
+                            sys.exc_info()[2])
+        self.kshp = tuple(kshp) if kshp else (None,) * 4
+        for kshp_i in self.kshp:
+            if kshp_i is not None:
+                # Components of kshp should be constant or ints
+                try:
+                    get_scalar_constant_value(kshp_i,
+                                              only_process_constants=True)
+                except NotScalarConstantError:
+                    reraise(ValueError,
+                            ValueError("kshp should be None or a tuple of "
+                                       "constant int values"),
+                            sys.exc_info()[2])
         self.border_mode = border_mode
         self.filter_flip = filter_flip
 
@@ -489,7 +515,11 @@ class AbstractConv2d(BaseAbstractConv2d):
                                              filter_flip)
 
     def make_node(self, img, kern):
-        # Make sure both inputs have the same Type
+        # Make sure both inputs are Variables with the same Type
+        if not isinstance(img, theano.Variable):
+            img = as_tensor_variable(img)
+        if not isinstance(kern, theano.Variable):
+            kern = as_tensor_variable(kern)
         ktype = img.type.clone(dtype=kern.dtype,
                                broadcastable=kern.broadcastable)
         kern = ktype.filter_variable(kern)
@@ -614,7 +644,11 @@ class AbstractConv2d_gradWeights(BaseAbstractConv2d):
 
     # Update shape/height_width
     def make_node(self, img, topgrad, shape):
-        # Make sure both inputs have the same Type
+        # Make sure both inputs are Variables with the same Type
+        if not isinstance(img, theano.Variable):
+            img = as_tensor_variable(img)
+        if not isinstance(topgrad, theano.Variable):
+            topgrad = as_tensor_variable(topgrad)
         gtype = img.type.clone(dtype=topgrad.dtype,
                                broadcastable=topgrad.broadcastable)
         topgrad = gtype.filter_variable(topgrad)
@@ -745,7 +779,11 @@ class AbstractConv2d_gradInputs(BaseAbstractConv2d):
 
     # Update shape/height_width
     def make_node(self, kern, topgrad, shape):
-        # Make sure both inputs have the same Type
+        # Make sure both inputs are Variables with the same Type
+        if not isinstance(kern, theano.Variable):
+            kern = as_tensor_variable(kern)
+        if not isinstance(topgrad, theano.Variable):
+            topgrad = as_tensor_variable(topgrad)
         gtype = kern.type.clone(dtype=topgrad.dtype,
                                 broadcastable=topgrad.broadcastable)
         topgrad = gtype.filter_variable(topgrad)
