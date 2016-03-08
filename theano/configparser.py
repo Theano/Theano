@@ -165,10 +165,11 @@ def fetch_val_for_key(key, delete_key=False):
 _config_var_list = []
 
 
-def _config_print(thing, buf):
+def _config_print(thing, buf, print_doc=True):
     for cv in _config_var_list:
         print(cv, file=buf)
-        print("    Doc: ", cv.doc, file=buf)
+        if print_doc:
+            print("    Doc: ", cv.doc, file=buf)
         print("    Value: ", cv.__get__(True, None), file=buf)
         print("", file=buf)
 
@@ -191,9 +192,9 @@ class TheanoConfigParser(object):
     # properties are installed by AddConfigVar
     _i_am_a_config_class = True
 
-    def __str__(self):
+    def __str__(self, print_doc=True):
         sio = StringIO()
-        _config_print(self.__class__, sio)
+        _config_print(self.__class__, sio, print_doc=print_doc)
         return sio.getvalue()
 
 # N.B. all instances of TheanoConfigParser give access to the same properties.
