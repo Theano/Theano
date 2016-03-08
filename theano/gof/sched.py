@@ -267,7 +267,9 @@ def sort_schedule_fn(*cmps):
 
 
 def key_to_cmp(key):
-    "comparator function based on "key" function
+    """
+    comparator function based on "key" function
+    """
     def key_cmp(a, b):
         return cmp(key(a), key(b))
     return key_cmp

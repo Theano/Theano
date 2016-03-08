@@ -461,7 +461,7 @@ def get_c_sync(r, name, sub):
 
 
 def apply_policy(policy, r, name, sub):
-   """
+    """
     WRITEME
 
     Parameters
@@ -1090,6 +1090,7 @@ class CLinker(link.Linker):
 
     def __compile__(self, input_storage=None, output_storage=None,
                     storage_map=None, keep_lock=False):
+        """
         Compiles this linker's fgraph.
 
         Parameters
@@ -1154,6 +1155,7 @@ class CLinker(link.Linker):
 
     def make_thunk(self, input_storage=None, output_storage=None,
                    storage_map=None, keep_lock=False):
+        """
         Compiles this linker's fgraph and returns a function to perform the
         computations, as well as lists of storage cells for both the inputs
         and outputs.
