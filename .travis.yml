@@ -65,7 +65,7 @@ script:
   - cd $(python -c 'import theano; import os; print(os.path.split(theano.__file__)[0])')
   - echo "$PART"
   - cd -; cd Theano
-  - python -c 'import theano; print theano.config.__str__(print_doc=False)'
+  - python -c 'import theano; print(theano.config.__str__(print_doc=False))'
   - python -c 'import theano; assert(theano.config.blas.ldflags != "")'
   - theano-nose -v $PART
   - if [[ $DOC == "1" ]]; then python doc/scripts/docgen.py --nopdf --check; fi
